@@ -10,71 +10,71 @@
              [util :as u]]
             [metabase.driver.util :as driver.u]
             [metabase.query-processor.store :as qp.store]
-            [metabase.util.i18n :refer [trs tru]])
+            [metabase.util.i18n :refer [deferred-tru trs tru]])
   (:import java.text.SimpleDateFormat
            org.joda.time.DateTime
            org.joda.time.format.DateTimeFormatter))
 
 (def connection-error-messages
   "Generic error messages that drivers should return in their implementation of `humanize-connection-error-message`."
-  {:cannot-connect-check-host-and-port (str (tru "Hmm, we couldn''t connect to the database.")
+  {:cannot-connect-check-host-and-port (str (deferred-tru "Hmm, we couldn''t connect to the database.")
                                             " "
-                                            (tru "Make sure your host and port settings are correct"))
-   :ssh-tunnel-auth-fail               (str (tru "We couldn''t connect to the ssh tunnel host.")
+                                            (deferred-tru "Make sure your host and port settings are correct"))
+   :ssh-tunnel-auth-fail               (str (deferred-tru "We couldn''t connect to the ssh tunnel host.")
                                             " "
-                                            (tru "Check the username, password."))
-   :ssh-tunnel-connection-fail         (str (tru "We couldn''t connect to the ssh tunnel host.")
+                                            (deferred-tru "Check the username, password."))
+   :ssh-tunnel-connection-fail         (str (deferred-tru "We couldn''t connect to the ssh tunnel host.")
                                             " "
-                                            (tru "Check the hostname and port."))
-   :database-name-incorrect            (tru "Looks like the database name is incorrect.")
-   :invalid-hostname                   (str (tru "It looks like your host is invalid.")
+                                            (deferred-tru "Check the hostname and port."))
+   :database-name-incorrect            (deferred-tru "Looks like the database name is incorrect.")
+   :invalid-hostname                   (str (deferred-tru "It looks like your host is invalid.")
                                             " "
-                                            (tru "Please double-check it and try again."))
-   :password-incorrect                 (tru "Looks like your password is incorrect.")
-   :password-required                  (tru "Looks like you forgot to enter your password.")
-   :username-incorrect                 (tru "Looks like your username is incorrect.")
-   :username-or-password-incorrect     (tru "Looks like the username or password is incorrect.")})
+                                            (deferred-tru "Please double-check it and try again."))
+   :password-incorrect                 (deferred-tru "Looks like your password is incorrect.")
+   :password-required                  (deferred-tru "Looks like you forgot to enter your password.")
+   :username-incorrect                 (deferred-tru "Looks like your username is incorrect.")
+   :username-or-password-incorrect     (deferred-tru "Looks like the username or password is incorrect.")})
 
 ;; TODO - we should rename these from `default-*-details` to `default-*-connection-property`
 
 (def default-host-details
   "Map of the db host details field, useful for `connection-properties` implementations"
   {:name         "host"
-   :display-name (tru "Host")
+   :display-name (deferred-tru "Host")
    :default      "localhost"})
 
 (def default-port-details
   "Map of the db port details field, useful for `connection-properties` implementations. Implementations should assoc a
   `:default` key."
   {:name         "port"
-   :display-name (tru "Port")
+   :display-name (deferred-tru "Port")
    :type         :integer})
 
 (def default-user-details
   "Map of the db user details field, useful for `connection-properties` implementations"
   {:name         "user"
-   :display-name (tru "Database username")
-   :placeholder  (tru "What username do you use to login to the database?")
+   :display-name (deferred-tru "Database username")
+   :placeholder  (deferred-tru "What username do you use to login to the database?")
    :required     true})
 
 (def default-password-details
   "Map of the db password details field, useful for `connection-properties` implementations"
   {:name         "password"
-   :display-name (tru "Database password")
+   :display-name (deferred-tru "Database password")
    :type         :password
    :placeholder  "*******"})
 
 (def default-dbname-details
   "Map of the db name details field, useful for `connection-properties` implementations"
   {:name         "dbname"
-   :display-name (tru "Database name")
-   :placeholder  (tru "birds_of_the_world")
+   :display-name (deferred-tru "Database name")
+   :placeholder  (deferred-tru "birds_of_the_world")
    :required     true})
 
 (def default-ssl-details
   "Map of the db ssl details field, useful for `connection-properties` implementations"
   {:name         "ssl"
-   :display-name (tru "Use a secure connection (SSL)?")
+   :display-name (deferred-tru "Use a secure connection (SSL)?")
    :type         :boolean
    :default      false})
 
@@ -82,7 +82,7 @@
   "Map of the db `additional-options` details field, useful for `connection-properties` implementations. Should assoc a
   `:placeholder` key"
   {:name         "additional-options"
-   :display-name (tru "Additional JDBC connection string options")})
+   :display-name (deferred-tru "Additional JDBC connection string options")})
 
 (def default-options
   "Default options listed above, keyed by name. These keys can be listed in the plugin manifest to specify connection
@@ -108,7 +108,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defprotocol ^:private ParseDateTimeString
-  (^:private parse [this date-time-str] "Parse the `date-time-str` and return a `DateTime` instance"))
+  (^:private parse
+   ^DateTime [this date-time-str]
+   "Parse the `date-time-str` and return a `DateTime` instance."))
 
 (extend-protocol ParseDateTimeString
   DateTimeFormatter
@@ -138,7 +140,7 @@
 (defn- first-successful-parse
   "Attempt to parse `time-str` with each of `date-formatters`, returning the first successful parse. If there are no
   successful parses throws the exception that the last formatter threw."
-  [date-formatters time-str]
+  ^DateTime [date-formatters time-str]
   (or (some #(u/ignore-exceptions (parse % time-str)) date-formatters)
       (doseq [formatter (reverse date-formatters)]
         (parse formatter time-str))))
@@ -163,7 +165,7 @@
   `current-db-time-date-formatters` multimethods defined above. Execute a native query for the current time, and parse
   the results using the date formatters, preserving the timezone. To use this implementation, you must implement the
   aforementioned multimethods; no default implementation is provided."
-  [driver database]
+  ^DateTime [driver database]
   {:pre [(map? database)]}
   (let [native-query    (current-db-time-native-query driver)
         date-formatters (current-db-time-date-formatters driver)
@@ -173,7 +175,7 @@
                           ;; need to initialize the store sicne we're calling `execute-query` directly instead of
                           ;; going thru normal QP pipeline
                           (qp.store/with-store
-                            (qp.store/store-database! database)
+                            (qp.store/fetch-and-store-database! (u/get-id database))
                             (->
                              (driver/execute-query driver
                                (merge settings {:database (u/get-id database), :native {:query native-query}}))

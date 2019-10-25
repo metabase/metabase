@@ -1,12 +1,12 @@
 import React from "react";
 import { Route } from "metabase/hoc/Title";
 import { IndexRedirect, IndexRoute } from "react-router";
-import { t } from "c-3po";
-import DataPermissionsApp from "./containers/DataPermissionsApp.jsx";
-import DatabasesPermissionsApp from "./containers/DatabasesPermissionsApp.jsx";
-import SchemasPermissionsApp from "./containers/SchemasPermissionsApp.jsx";
-import TablesPermissionsApp from "./containers/TablesPermissionsApp.jsx";
-import CollectionPermissions from "./containers/CollectionsPermissionsApp.jsx";
+import { t } from "ttag";
+import DataPermissionsApp from "./containers/DataPermissionsApp";
+import DatabasesPermissionsApp from "./containers/DatabasesPermissionsApp";
+import SchemasPermissionsApp from "./containers/SchemasPermissionsApp";
+import TablesPermissionsApp from "./containers/TablesPermissionsApp";
+import CollectionPermissions from "./containers/CollectionsPermissionsApp";
 
 const getRoutes = store => (
   <Route title={t`Permissions`} path="permissions">

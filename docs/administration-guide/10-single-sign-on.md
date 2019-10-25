@@ -47,5 +47,5 @@ If you have user groups in Metabase you are using to control access, it is often
 
 ---
 
-## Next: Authenticating with SAML
-If you use a SAML-based identity provider for SSO, [learn how to connect it to Metabase](16-authenticating-with-saml.md).
+## Next: setting data permissions
+Find out how to create user groups and define what data they can access with [permissions](05-setting-permissions.md).

@@ -59,3 +59,7 @@ bin/node_modules/
 /backend-checksums.txt
 .vscode
 target/checksum.txt
+/resources/frontend_client/app/locales
+*.iml
+.idea/
+/local/src

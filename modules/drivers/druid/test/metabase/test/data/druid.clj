@@ -30,13 +30,14 @@
 ;;; Generating Data File
 
 (defn- flattened-test-data []
-  (let [dbdef    (tx/flatten-dbdef defs/test-data "checkins")
+  (let [dbdef    (tx/get-dataset-definition
+                  (tx/flattened-dataset-definition defs/test-data "checkins"))
         tabledef (first (:table-definitions dbdef))]
     (->> (:rows tabledef)
          (map (partial zipmap (map :field-name (:field-definitions tabledef))))
          (map-indexed (fn [i row]
                         (assoc row :id (inc i))))
-         (sort-by (u/rpartial get "date")))))
+         (sort-by #(get % "date")))))
 
 (defn- write-dbdef-to-json [db-def filename]
   (io/delete-file filename :silently)
@@ -69,13 +70,18 @@
                                                                       :format :auto}
                                                      :dimensionsSpec {:dimensions ["id"
                                                                                    "user_last_login"
-                                                                                   "user_name"
+                                                                                   {:name "user_name"
+                                                                                    :type "string"
+                                                                                    :isInputHyperUnique true}
                                                                                    "user_password"
                                                                                    "venue_category_name"
-                                                                                   "venue_latitude"
-                                                                                   "venue_longitude"
+                                                                                   {:name "venue_latitude"
+                                                                                    :type "double"}
+                                                                                   {:name "venue_longitude"
+                                                                                    :type "double"}
                                                                                    "venue_name"
-                                                                                   "venue_price"]}}}
+                                                                                   {:name "venue_price"
+                                                                                    :type "float"}]}}}
                        :metricsSpec     [{:type :count
                                           :name :count}]
                        :granularitySpec {:type               :uniform

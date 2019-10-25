@@ -23,13 +23,14 @@ import "ace/snippets/mysql";
 import "ace/snippets/pgsql";
 import "ace/snippets/sqlserver";
 import "ace/snippets/json";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 
 import _ from "underscore";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
+
 import Parameters from "metabase/parameters/components/Parameters";
 
 const SCROLL_MARGIN = 8;
@@ -37,6 +38,8 @@ const LINE_HEIGHT = 16;
 
 const MIN_HEIGHT_LINES = 1;
 const MAX_AUTO_SIZE_LINES = 12;
+
+const ICON_SIZE = 18;
 
 const getEditorLineHeight = lines => lines * LINE_HEIGHT + 2 * SCROLL_MARGIN;
 
@@ -54,6 +57,9 @@ import {
   SchemaAndTableDataSelector,
 } from "metabase/query_builder/components/DataSelector";
 
+import DataReferenceButton from "./view/DataReferenceButton";
+import NativeVariablesButton from "./view/NativeVariablesButton";
+
 type AutoCompleteResult = [string, string, string];
 type AceEditor = any; // TODO;
 
@@ -63,17 +69,21 @@ type Props = {
   question: Question,
   query: NativeQuery,
 
+  handleResize: () => void,
+
   runQuestionQuery: (options?: RunQueryParams) => void,
   setDatasetQuery: (datasetQuery: DatasetQuery) => void,
 
-  setDatabaseFn: (databaseId: DatabaseId) => void,
   setParameterValue: (parameterId: ParameterId, value: string) => void,
 
   autocompleteResultsFn: (input: string) => Promise<AutoCompleteResult[]>,
+
+  isNativeEditorOpen: boolean,
+  setIsNativeEditorOpen: (isOpen: boolean) => void,
 };
 type State = {
-  showEditor: boolean,
   initialHeight: number,
+  firstRun: boolean,
 };
 
 export default class NativeQueryEditor extends Component {
@@ -92,8 +102,8 @@ export default class NativeQueryEditor extends Component {
     );
 
     this.state = {
-      showEditor: !props.question || !props.question.isSaved(),
       initialHeight: getEditorLineHeight(lines),
+      firstRun: true,
     };
 
     // Ace sometimes fires mutliple "change" events in rapid succession
@@ -105,6 +115,11 @@ export default class NativeQueryEditor extends Component {
   static defaultProps = {
     isOpen: false,
   };
+
+  componentWillMount() {
+    const { question, setIsNativeEditorOpen } = this.props;
+    setIsNativeEditorOpen(!question || !question.isSaved());
+  }
 
   componentDidMount() {
     this.loadAceEditor();
@@ -127,7 +142,7 @@ export default class NativeQueryEditor extends Component {
       this._localUpdate = false;
     }
 
-    let editorElement = ReactDOM.findDOMNode(this.refs.editor);
+    const editorElement = ReactDOM.findDOMNode(this.refs.editor);
     if (query.hasWritePermission()) {
       this._editor.setReadOnly(false);
       editorElement.classList.remove("read-only");
@@ -142,6 +157,13 @@ export default class NativeQueryEditor extends Component {
       if (aceMode.indexOf("sql") >= 0) {
         this._editor.getSession().$mode.$behaviour = new SQLBehaviour();
       }
+    }
+  }
+
+  componentWillReceiveProps(nextProps: Props) {
+    if (this.state.firstRun && nextProps.isRunning && !this.props.isRunning) {
+      this.setState({ firstRun: false });
+      this._updateSize(true);
     }
   }
 
@@ -160,7 +182,7 @@ export default class NativeQueryEditor extends Component {
         const selectedText = this._editor.getSelectedText();
         if (selectedText) {
           const temporaryCard = query
-            .updateQueryText(selectedText)
+            .setQueryText(selectedText)
             .question()
             .card();
           runQuestionQuery({
@@ -177,7 +199,7 @@ export default class NativeQueryEditor extends Component {
   loadAceEditor() {
     const { query } = this.props;
 
-    let editorElement = ReactDOM.findDOMNode(this.refs.editor);
+    const editorElement = ReactDOM.findDOMNode(this.refs.editor);
 
     // $FlowFixMe
     if (typeof ace === "undefined" || !ace || !ace.edit) {
@@ -201,7 +223,7 @@ export default class NativeQueryEditor extends Component {
     // hmmm, this could be dangerous
     this._editor.focus();
 
-    let aceLanguageTools = ace.require("ace/ext/language_tools");
+    const aceLanguageTools = ace.require("ace/ext/language_tools");
     this._editor.setOptions({
       enableBasicAutocompletion: true,
       enableSnippets: true,
@@ -216,9 +238,9 @@ export default class NativeQueryEditor extends Component {
       getCompletions: async (editor, session, pos, prefix, callback) => {
         try {
           // HACK: call this.props.autocompleteResultsFn rather than caching the prop since it might change
-          let results = await this.props.autocompleteResultsFn(prefix);
+          const results = await this.props.autocompleteResultsFn(prefix);
           // transform results of the API call into what ACE expects
-          let js_results = results.map(function(result) {
+          const js_results = results.map(function(result) {
             return {
               name: result[0],
               value: result[0],
@@ -234,12 +256,12 @@ export default class NativeQueryEditor extends Component {
     });
   }
 
-  _updateSize() {
+  _updateSize(allowShrink: boolean = false) {
     const doc = this._editor.getSession().getDocument();
     const element = ReactDOM.findDOMNode(this.refs.resizeBox);
     const newHeight = getEditorLineHeight(doc.getLength());
     if (
-      newHeight > element.offsetHeight &&
+      (allowShrink || newHeight > element.offsetHeight) &&
       newHeight <= getEditorLineHeight(MAX_AUTO_SIZE_LINES)
     ) {
       element.style.height = newHeight + "px";
@@ -253,28 +275,33 @@ export default class NativeQueryEditor extends Component {
       this._updateSize();
       if (query.queryText() !== this._editor.getValue()) {
         query
-          .updateQueryText(this._editor.getValue())
+          .setQueryText(this._editor.getValue())
           .update(this.props.setDatasetQuery);
       }
     }
   }
 
   toggleEditor = () => {
-    this.setState({ showEditor: !this.state.showEditor });
+    this.props.setIsNativeEditorOpen(!this.props.isNativeEditorOpen);
   };
 
   /// Change the Database we're currently editing a query for.
   setDatabaseId = (databaseId: DatabaseId) => {
-    // TODO: use metabase-lib
-    this.props.setDatabaseFn(databaseId);
+    const { query } = this.props;
+    if (query.databaseId() !== databaseId) {
+      query
+        .setDatabaseId(databaseId)
+        .setDefaultCollection()
+        .update(this.props.setDatasetQuery);
+    }
   };
 
   setTableId = (tableId: TableId) => {
     // TODO: push more of this into metabase-lib?
     const { query } = this.props;
-    const table = query._metadata.tables[tableId];
+    const table = query.metadata().table(tableId);
     if (table && table.name !== query.collection()) {
-      query.updateCollection(table.name).update(this.props.setDatasetQuery);
+      query.setCollectionName(table.name).update(this.props.setDatasetQuery);
     }
   };
 
@@ -286,24 +313,29 @@ export default class NativeQueryEditor extends Component {
   };
 
   render() {
-    const { query, setParameterValue, location } = this.props;
+    const {
+      query,
+      setParameterValue,
+      location,
+      isNativeEditorOpen,
+    } = this.props;
+
     const database = query.database();
     const databases = query.databases();
     const parameters = query.question().parameters();
 
     let dataSelectors = [];
-    if (this.state.showEditor && databases.length > 0) {
+    if (isNativeEditorOpen && databases.length > 0) {
       // we only render a db selector if there are actually multiple to choose from
       if (
-        databases.length > 1 &&
-        (database == null || _.any(databases, db => db.id === database.id))
+        database == null ||
+        (databases.length > 1 && databases.some(db => db.id === database.id))
       ) {
         dataSelectors.push(
           <div
             key="db_selector"
-            className="GuiBuilder-section GuiBuilder-data flex align-center"
+            className="GuiBuilder-section GuiBuilder-data flex align-center ml2"
           >
-            <span className="GuiBuilder-section-label Query-label">{t`Database`}</span>
             <DatabaseDataSelector
               databases={databases}
               selectedDatabaseId={database && database.id}
@@ -326,9 +358,8 @@ export default class NativeQueryEditor extends Component {
         dataSelectors.push(
           <div
             key="table_selector"
-            className="GuiBuilder-section GuiBuilder-data flex align-center"
+            className="GuiBuilder-section GuiBuilder-data flex align-center ml2"
           >
-            <span className="GuiBuilder-section-label Query-label">{t`Table`}</span>
             <SchemaAndTableDataSelector
               selectedTableId={selectedTable ? selectedTable.id : null}
               selectedDatabaseId={database && database.id}
@@ -347,7 +378,7 @@ export default class NativeQueryEditor extends Component {
     }
 
     let editorClasses, toggleEditorText, toggleEditorIcon;
-    if (this.state.showEditor) {
+    if (isNativeEditorOpen) {
       editorClasses = "";
       toggleEditorText = query.hasWritePermission()
         ? t`Hide Editor`
@@ -362,41 +393,56 @@ export default class NativeQueryEditor extends Component {
     }
 
     return (
-      <div className="wrapper">
-        <div className="NativeQueryEditor bordered rounded shadowed">
-          <div className="flex align-center" style={{ minHeight: 50 }}>
-            {dataSelectors}
-            <Parameters
-              parameters={parameters}
-              query={location.query}
-              setParameterValue={setParameterValue}
-              setParameterIndex={this.setParameterIndex}
-              syncQueryString
-              isEditing
-              isQB
-              commitImmediately
-            />
+      <div className="NativeQueryEditor bg-light full">
+        <div className="flex align-center" style={{ minHeight: 55 }}>
+          {dataSelectors}
+          <Parameters
+            parameters={parameters}
+            query={location.query}
+            setParameterValue={setParameterValue}
+            setParameterIndex={this.setParameterIndex}
+            syncQueryString
+            isEditing
+            isQB
+            commitImmediately
+          />
+          <div className="flex-align-right flex align-center text-medium pr1">
+            {isNativeEditorOpen &&
+              DataReferenceButton.shouldRender(this.props) && (
+                <DataReferenceButton {...this.props} size={ICON_SIZE} />
+              )}
+            {isNativeEditorOpen &&
+              NativeVariablesButton.shouldRender(this.props) && (
+                <NativeVariablesButton
+                  {...this.props}
+                  size={ICON_SIZE}
+                  className="mx3 flex align-center"
+                />
+              )}
             <a
-              className="Query-label no-decoration flex-align-right flex align-center px2"
+              className="Query-label no-decoration flex align-center mx3 text-brand-hover transition-all"
               onClick={this.toggleEditor}
             >
-              <span className="mx2">{toggleEditorText}</span>
-              <Icon name={toggleEditorIcon} size={20} />
+              <span className="mr1" style={{ minWidth: 70 }}>
+                {toggleEditorText}
+              </span>
+              <Icon name={toggleEditorIcon} size={18} />
             </a>
           </div>
-          <ResizableBox
-            ref="resizeBox"
-            className={"border-top " + editorClasses}
-            height={this.state.initialHeight}
-            minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
-            axis="y"
-            onResizeStop={(e, data) => {
-              this._editor.resize();
-            }}
-          >
-            <div id="id_sql" ref="editor" />
-          </ResizableBox>
         </div>
+        <ResizableBox
+          ref="resizeBox"
+          className={"border-top " + editorClasses}
+          height={this.state.initialHeight}
+          minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
+          axis="y"
+          onResizeStop={(e, data) => {
+            this.props.handleResize();
+            this._editor.resize();
+          }}
+        >
+          <div id="id_sql" ref="editor" />
+        </ResizableBox>
       </div>
     );
   }

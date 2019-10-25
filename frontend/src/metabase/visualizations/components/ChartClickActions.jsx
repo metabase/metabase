@@ -21,7 +21,7 @@ import _ from "underscore";
 
 const SECTIONS = {
   zoom: {
-    icon: "zoom-in",
+    icon: "zoom_in",
   },
   records: {
     icon: "table2",
@@ -41,19 +41,19 @@ const SECTIONS = {
   averages: {
     icon: "curve",
   },
+  distribution: {
+    icon: "bar",
+  },
   filter: {
-    icon: "funneloutline",
+    icon: "funnel_outline",
   },
   dashboard: {
     icon: "dashboard",
   },
-  distribution: {
-    icon: "bar",
-  },
   auto: {
     icon: "bolt",
   },
-  Formatting: {
+  formatting: {
     icon: "pencil",
   },
 };
@@ -94,13 +94,7 @@ export default class ChartClickActions extends Component {
   handleClickAction = (action: ClickAction) => {
     // $FlowFixMe: dispatch provided by @connect
     const { dispatch, onChangeCardAndRun } = this.props;
-    if (action.action) {
-      const reduxAction = action.action();
-      if (reduxAction) {
-        dispatch(reduxAction);
-      }
-      this.props.onClose();
-    } else if (action.popover) {
+    if (action.popover) {
       MetabaseAnalytics.trackEvent(
         "Actions",
         "Open Click Action Popover",
@@ -132,7 +126,7 @@ export default class ChartClickActions extends Component {
       return null;
     }
 
-    let { popoverAction } = this.state;
+    const { popoverAction } = this.state;
     let popover;
     if (popoverAction && popoverAction.popover) {
       const PopoverContent = popoverAction.popover;

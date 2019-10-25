@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.auto-bucket-datetimes-test
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.middleware.auto-bucket-datetimes :as auto-bucket-datetimes]
             [metabase.test.data :as data]
@@ -32,6 +33,19 @@
   (auto-bucket-mbql
    {:source-table 1
     :filter       [:= [:field-id (u/get-id field)] "2018-11-19"]}))
+
+;; Fields should still get auto-bucketed when present in compound filter clauses (#9127)
+(tt/expect-with-temp [Field [field-1 {:base_type :type/DateTime, :special_type nil}]
+                      Field [field-2 {:base_type :type/Text,     :special_type nil}]]
+  {:source-table 1
+   :filter       [:and
+                  [:= [:datetime-field [:field-id (u/get-id field-1)] :day] "2018-11-19"]
+                  [:= [:field-id (u/get-id field-2)] "ABC"]]}
+  (auto-bucket-mbql
+   {:source-table 1
+    :filter       [:and
+                   [:= [:field-id (u/get-id field-1)] "2018-11-19"]
+                   [:= [:field-id (u/get-id field-2)] "ABC"]]}))
 
 ;; DateTime field literals should also get auto-bucketed (#9007)
 (expect
@@ -164,10 +178,22 @@
 (expect
   (data/dataset sad-toucan-incidents
     (data/$ids incidents
-      {:source-table $$table
-       :breakout     [[:datetime-field [:field-id $timestamp] :day]]}))
+      {:source-table $$incidents
+       :breakout     [!day.timestamp]}))
   (data/dataset sad-toucan-incidents
     (data/$ids incidents
       (auto-bucket-mbql
-       {:source-table $$table
-        :breakout     [[:field-id $timestamp]]}))))
+       {:source-table $$incidents
+        :breakout     [$timestamp]}))))
+
+(deftest relative-datetime-test
+  (is (= (->
+          (data/mbql-query checkins
+            {:filter [:= [:datetime-field $date :day] [:relative-datetime :current]]})
+          :query :filter)
+         (->
+          (auto-bucket
+           (data/mbql-query checkins
+             {:filter [:= $date [:relative-datetime :current]]}))
+          :query :filter))
+      "Fields being compared against `:relative-datetime`s should be subject to auto-bucketing. (#9014)"))

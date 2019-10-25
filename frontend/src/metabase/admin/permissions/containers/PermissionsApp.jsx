@@ -6,9 +6,9 @@ import { push } from "react-router-redux";
 
 import { initialize } from "../permissions";
 import { getIsDirty } from "../selectors";
-import { t } from "c-3po";
-import ConfirmContent from "metabase/components/ConfirmContent.jsx";
-import Modal from "metabase/components/Modal.jsx";
+import { t } from "ttag";
+import ConfirmContent from "metabase/components/ConfirmContent";
+import Modal from "metabase/components/Modal";
 
 const mapStateToProps = (state, props) => ({
   isDirty: getIsDirty(state, props),
@@ -20,7 +20,10 @@ const mapDispatchToProps = {
 };
 
 @withRouter
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class PermissionsApp extends Component {
   static propTypes = {
     load: PropTypes.func.isRequired,

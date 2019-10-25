@@ -4,8 +4,8 @@
             [metabase
              [email-test :as et]
              [http-client :as http]
-             [middleware :as middleware]
              [util :as u]]
+            [metabase.middleware.util :as middleware.u]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -122,8 +122,8 @@
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
 
-(expect (get middleware/response-unauthentic :body) (http/client :get 401 "alert"))
-(expect (get middleware/response-unauthentic :body) (http/client :put 401 "alert/13"))
+(expect (get middleware.u/response-unauthentic :body) (http/client :get 401 "alert"))
+(expect (get middleware.u/response-unauthentic :body) (http/client :put 401 "alert/13"))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

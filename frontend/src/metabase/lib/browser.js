@@ -1,8 +1,8 @@
 import querystring from "querystring";
 
 export function parseHashOptions(hash) {
-  let options = querystring.parse(hash.replace(/^#/, ""));
-  for (let name in options) {
+  const options = querystring.parse(hash.replace(/^#/, ""));
+  for (const name in options) {
     if (options[name] === "") {
       options[name] = true;
     } else if (/^(true|false|-?\d+(\.\d+)?)$/.test(options[name])) {

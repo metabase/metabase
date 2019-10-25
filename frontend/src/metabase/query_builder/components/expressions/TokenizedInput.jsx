@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
-import TokenizedExpression from "./TokenizedExpression.jsx";
+import TokenizedExpression from "./TokenizedExpression";
 
 import {
   getCaretPosition,
@@ -22,8 +22,12 @@ export default class TokenizedInput extends Component {
     };
   }
 
+  static defaultProps = {
+    style: {},
+  };
+
   _getValue() {
-    if (this.props.value != undefined) {
+    if (this.props.value != null) {
       return this.props.value;
     } else {
       return this.state.value;
@@ -72,7 +76,7 @@ export default class TokenizedInput extends Component {
 
     const input = ReactDOM.findDOMNode(this);
 
-    let [start, end] = getSelectionPosition(input);
+    const [start, end] = getSelectionPosition(input);
     if (start !== end) {
       return;
     }
@@ -154,11 +158,11 @@ export default class TokenizedInput extends Component {
   }
 
   render() {
-    const { className, onFocus, onBlur } = this.props;
+    const { className, onFocus, onBlur, style } = this.props;
     return (
       <div
         className={className}
-        style={{ whiteSpace: "pre-wrap" }}
+        style={{ whiteSpace: "pre-wrap", ...style }}
         contentEditable
         onKeyDown={this.onKeyDown}
         onInput={this.onInput}

@@ -3,8 +3,8 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import GettingStartedGuide from "metabase/reference/guide/GettingStartedGuide.jsx";
-import GettingStartedGuideEditForm from "metabase/reference/guide/GettingStartedGuideEditForm.jsx";
+import GettingStartedGuide from "metabase/reference/guide/GettingStartedGuide";
+import GettingStartedGuideEditForm from "metabase/reference/guide/GettingStartedGuideEditForm";
 
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
@@ -24,7 +24,10 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class GettingStartedGuideContainer extends Component {
   static propTypes = {
     params: PropTypes.object.isRequired,

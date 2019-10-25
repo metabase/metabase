@@ -3,7 +3,7 @@
   (:require [clojure.tools.logging :as log]
             [metabase.models
              [field :refer [Field]]
-             [field-values :refer [FieldValues] :as field-values]]
+             [field-values :as field-values :refer [FieldValues]]]
             [metabase.sync
              [interface :as i]
              [util :as sync-util]]

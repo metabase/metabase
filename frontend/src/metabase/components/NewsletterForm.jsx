@@ -2,9 +2,9 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-import { t } from "c-3po";
-import Icon from "metabase/components/Icon.jsx";
-import colors from "metabase/lib/colors";
+import { t } from "ttag";
+import Icon from "metabase/components/Icon";
+import { color } from "metabase/lib/colors";
 
 export default class NewsletterForm extends Component {
   constructor(props, context) {
@@ -19,7 +19,7 @@ export default class NewsletterForm extends Component {
 
       input: {
         fontSize: "1.1rem",
-        color: colors["text-dark"],
+        color: color("text-dark"),
         width: "350px",
       },
 
@@ -36,11 +36,11 @@ export default class NewsletterForm extends Component {
   subscribeUser(e) {
     e.preventDefault();
 
-    let formData = new FormData();
+    const formData = new FormData();
     formData.append("EMAIL", ReactDOM.findDOMNode(this.refs.email).value);
     formData.append("b_869fec0e4689e8fd1db91e795_b9664113a8", "");
 
-    let req = new XMLHttpRequest();
+    const req = new XMLHttpRequest();
     req.open(
       "POST",
       "https://metabase.us10.list-manage.com/subscribe/post?u=869fec0e4689e8fd1db91e795&id=b9664113a8",
@@ -75,7 +75,7 @@ export default class NewsletterForm extends Component {
         <div className="MB-Newsletter sm-float-right">
           <div>
             <div
-              style={{ color: colors["text-medium"] }}
+              style={{ color: color("text-medium") }}
               className="text-medium h3 pb3"
             >
               {t`Get infrequent emails about new releases and feature updates.`}

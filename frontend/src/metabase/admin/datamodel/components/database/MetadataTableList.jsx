@@ -1,15 +1,14 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import ProgressBar from "metabase/components/ProgressBar.jsx";
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
-import { t, ngettext, msgid } from "c-3po";
-
-import { normal } from "metabase/lib/colors";
+import { t, ngettext, msgid } from "ttag";
 
 import _ from "underscore";
 import cx from "classnames";
+
+import { regexpEscape } from "metabase/lib/string";
 
 export default class MetadataTableList extends Component {
   constructor(props, context) {
@@ -33,39 +32,36 @@ export default class MetadataTableList extends Component {
     this.setState({
       searchText: event.target.value,
       searchRegex: event.target.value
-        ? new RegExp(RegExp.escape(event.target.value), "i")
+        ? new RegExp(regexpEscape(event.target.value), "i")
         : null,
     });
   }
 
   render() {
     let queryableTablesHeader, hiddenTablesHeader;
-    let queryableTables = [];
-    let hiddenTables = [];
+    const queryableTables = [];
+    const hiddenTables = [];
 
     if (this.props.tables) {
-      let tables = _.sortBy(this.props.tables, "display_name");
+      const tables = _.sortBy(this.props.tables, "display_name");
       _.each(tables, table => {
         const selected = this.props.tableId === table.id;
-        let row = (
+        const row = (
           <li key={table.id}>
             <a
-              className={cx("AdminList-item flex align-center no-decoration", {
-                selected,
-              })}
+              className={cx(
+                "AdminList-item flex align-center no-decoration text-wrap",
+                {
+                  selected,
+                },
+              )}
               onClick={this.props.selectTable.bind(null, table)}
             >
               {table.display_name}
-              <span className="flex-align-right" style={{ width: 17 }}>
-                <ProgressBar
-                  percentage={table.metadataStrength}
-                  color={selected ? normal.grey2 : normal.grey1}
-                />
-              </span>
             </a>
           </li>
         );
-        let regex = this.state.searchRegex;
+        const regex = this.state.searchRegex;
         if (
           !regex ||
           regex.test(table.display_name) ||
@@ -126,8 +122,9 @@ export default class MetadataTableList extends Component {
                 {t`Schemas`}
               </span>
             )}
-            {this.props.onBack &&
-              this.props.schema && <span className="mx1">-</span>}
+            {this.props.onBack && this.props.schema && (
+              <span className="mx1">-</span>
+            )}
             {this.props.schema && <span> {this.props.schema.name}</span>}
           </h4>
         )}

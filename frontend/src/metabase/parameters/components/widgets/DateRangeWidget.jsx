@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import Calendar from "metabase/components/Calendar.jsx";
+import Calendar from "metabase/components/Calendar";
 import moment from "moment";
 
 const SEPARATOR = "~"; // URL-safe

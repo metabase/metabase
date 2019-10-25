@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 import { forceRedraw } from "metabase/lib/dom";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { KEYCODE_ENTER, KEYCODE_ESCAPE } from "metabase/lib/keyboard";
 
 export default class TextWidget extends Component {

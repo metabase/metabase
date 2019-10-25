@@ -26,6 +26,10 @@
 }
 
 /* Fullscreen mode */
+.Dashboard.Dashboard--fullscreen {
+  min-height: 100vh;
+}
+
 .Dashboard.Dashboard--fullscreen .Header-button {
   color: var(--color-text-light);
 }

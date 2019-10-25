@@ -1,19 +1,9 @@
 import React from "react";
 
-import { entityObjectLoader } from "metabase/entities/containers/EntityObjectLoader";
+import Question from "metabase/entities/questions";
 
-const QuestionNameLoader = entityObjectLoader({
-  entityType: "question",
-  properties: ["name"],
-  loadingAndErrorWrapper: false,
-})(({ object }) => <span>{object && object.name}</span>);
+// TODO: remove this in favor of using Question.Name directly
 
-const QuestionName = ({ questionId }) => {
-  if (questionId == undefined || isNaN(questionId)) {
-    return null;
-  } else {
-    return <QuestionNameLoader entityId={questionId} />;
-  }
-};
+const QuestionName = ({ questionId }) => <Question.Name id={questionId} />;
 
 export default QuestionName;

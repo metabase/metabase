@@ -3,14 +3,14 @@ import PropTypes from "prop-types";
 
 import { CSSTransitionGroup } from "react-transition-group";
 
-import FormField from "metabase/components/form/FormField.jsx";
-import ModalContent from "metabase/components/ModalContent.jsx";
-import Radio from "metabase/components/Radio.jsx";
+import FormField from "metabase/components/form/FormField";
+import ModalContent from "metabase/components/ModalContent";
+import Radio from "metabase/components/Radio";
 import Button from "metabase/components/Button";
 import CollectionSelect from "metabase/containers/CollectionSelect";
 
-import Query from "metabase/lib/query";
-import { t } from "c-3po";
+import * as Q_DEPRECATED from "metabase/lib/query";
+import { t } from "ttag";
 import "./SaveQuestionModal.css";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 
@@ -18,7 +18,7 @@ export default class SaveQuestionModal extends Component {
   constructor(props, context) {
     super(props, context);
 
-    const isStructured = Query.isStructured(props.card.dataset_query);
+    const isStructured = Q_DEPRECATED.isStructured(props.card.dataset_query);
 
     this.state = {
       error: null,
@@ -26,7 +26,7 @@ export default class SaveQuestionModal extends Component {
       details: {
         name:
           props.card.name || isStructured
-            ? Query.generateQueryDescription(
+            ? Q_DEPRECATED.generateQueryDescription(
                 props.tableMetadata,
                 props.card.dataset_query.query,
               )
@@ -60,7 +60,7 @@ export default class SaveQuestionModal extends Component {
   }
 
   validateForm() {
-    let { details } = this.state;
+    const { details } = this.state;
 
     let valid = true;
 
@@ -89,7 +89,7 @@ export default class SaveQuestionModal extends Component {
         e.preventDefault();
       }
 
-      let { details } = this.state;
+      const { details } = this.state;
       // TODO Atte Keinäenn 31/1/18 Refactor this
       // I think that the primary change should be that
       // SaveQuestionModal uses Question objects instead of directly modifying card objects –
@@ -110,7 +110,9 @@ export default class SaveQuestionModal extends Component {
         description:
           details.saveType === "overwrite"
             ? originalCard.description
-            : details.description ? details.description.trim() : null,
+            : details.description
+            ? details.description.trim()
+            : null,
         collection_id:
           details.saveType === "overwrite"
             ? originalCard.collection_id
@@ -124,7 +126,7 @@ export default class SaveQuestionModal extends Component {
         await saveFn(card);
       }
 
-      this.props.onClose();
+      // this.props.onClose();
     } catch (error) {
       if (error && !error.isCanceled) {
         this.setState({ error: error });
@@ -136,7 +138,7 @@ export default class SaveQuestionModal extends Component {
   };
 
   render() {
-    let { error, details } = this.state;
+    const { error, details } = this.state;
     let formError;
     if (error) {
       let errorMessage;
@@ -183,7 +185,7 @@ export default class SaveQuestionModal extends Component {
       );
     }
 
-    let title = this.props.multiStep
+    const title = this.props.multiStep
       ? t`First, save your question`
       : t`Save question`;
 

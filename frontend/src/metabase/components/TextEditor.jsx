@@ -38,7 +38,7 @@ export default class TextEditor extends Component {
   }
 
   _update() {
-    let element = ReactDOM.findDOMNode(this);
+    const element = ReactDOM.findDOMNode(this);
 
     this._updateValue();
 
@@ -74,7 +74,7 @@ export default class TextEditor extends Component {
   };
 
   componentDidMount() {
-    let element = ReactDOM.findDOMNode(this);
+    const element = ReactDOM.findDOMNode(this);
     this._editor = ace.edit(element);
 
     window.editor = this._editor;

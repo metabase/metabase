@@ -5,7 +5,8 @@
              [util :as qputil]]))
 
 (defn add-row-count-and-status
-  "Wrap the results of a successfully processed query in the format expected by the frontend (add `row_count` and `status`)."
+  "Wrap the results of a successfully processed query in the format expected by the frontend (add `row_count` and
+  `status`)."
   [qp]
   (fn [{{:keys [max-results max-results-bare-rows]} :constraints, :as query}]
     (let [results-limit (or (when (qputil/query-without-aggregations-or-limits? query)

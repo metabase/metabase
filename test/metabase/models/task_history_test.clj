@@ -1,7 +1,5 @@
 (ns metabase.models.task-history-test
-  (:require [clj-time
-             [coerce :as tcoerce]
-             [core :as time]]
+  (:require [clj-time.core :as time]
             [expectations :refer :all]
             [metabase.models.task-history :refer :all]
             [metabase.test.util :as tu]

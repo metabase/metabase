@@ -1,6 +1,6 @@
 /* @flow */
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import moment from "moment";
 import _ from "underscore";
 
@@ -58,7 +58,7 @@ type ColumnSettingDef = SettingDef & {
 export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
   ...def
-}: ColumnSettingDef) {
+}: ColumnSettingDef = {}) {
   return nestedSettings("column_settings", {
     section: t`Formatting`,
     objectName: "column",
@@ -76,7 +76,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { isa } from "metabase/lib/types";
 
 export function getGlobalSettingsForColumn(column: Column) {
-  let settings = {};
+  const settings = {};
 
   const customFormatting = MetabaseSettings.get("custom-formatting");
   // NOTE: the order of these doesn't matter as long as there's no overlap between settings
@@ -294,6 +294,7 @@ export const NUMBER_COLUMN_SETTINGS = {
     // hide this for currency
     getHidden: (column: Column, settings: ColumnSettings) =>
       isCurrency(column) && settings["number_style"] === "currency",
+    readDependencies: ["currency"],
   },
   currency: {
     title: t`Unit of currency`,
@@ -312,8 +313,8 @@ export const NUMBER_COLUMN_SETTINGS = {
     },
     default: "USD",
     getHidden: (column: Column, settings: ColumnSettings) =>
-      settings["number_style"] !== "currency",
-    readDependencies: ["number_style"],
+      // NOTE: ideally we'd hide this if number_style != "currency" but that would result in a circular dependency
+      !isCurrency(column),
   },
   currency_style: {
     title: t`Currency label style`,
@@ -441,11 +442,11 @@ const COMMON_COLUMN_SETTINGS = {
 };
 
 export function getSettingDefintionsForColumn(series: Series, column: Column) {
-  const { CardVisualization } = getVisualizationRaw(series);
+  const { visualization } = getVisualizationRaw(series);
   const extraColumnSettings =
-    typeof CardVisualization.columnSettings === "function"
-      ? CardVisualization.columnSettings(column)
-      : CardVisualization.columnSettings || {};
+    typeof visualization.columnSettings === "function"
+      ? visualization.columnSettings(column)
+      : visualization.columnSettings || {};
 
   if (isDate(column)) {
     return {

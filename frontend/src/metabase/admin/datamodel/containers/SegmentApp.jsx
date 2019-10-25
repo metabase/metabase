@@ -4,72 +4,77 @@ import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import SegmentForm from "./SegmentForm.jsx";
+import SegmentForm from "./SegmentForm";
 
-import { segmentEditSelectors } from "../selectors";
-import * as actions from "../datamodel";
-import { clearRequestState } from "metabase/redux/requests";
+import { updatePreviewSummary } from "../datamodel";
+import { getPreviewSummary } from "../selectors";
+import withTableMetadataLoaded from "../withTableMetadataLoaded";
 import { getMetadata } from "metabase/selectors/metadata";
-import { fetchTableMetadata } from "metabase/redux/metadata";
+import Segments from "metabase/entities/segments";
+import Tables from "metabase/entities/tables";
 
 const mapDispatchToProps = {
-  ...actions,
-  fetchTableMetadata,
-  clearRequestState,
+  updatePreviewSummary,
+  createSegment: Segments.actions.create,
   onChangeLocation: push,
 };
 
 const mapStateToProps = (state, props) => ({
-  ...segmentEditSelectors(state, props),
   metadata: getMetadata(state, props),
+  previewSummary: getPreviewSummary(state),
 });
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class SegmentApp extends Component {
-  async componentWillMount() {
-    const { params, location } = this.props;
-
-    let tableId;
-    if (params.id) {
-      const segmentId = parseInt(params.id);
-      const { payload: segment } = await this.props.getSegment({ segmentId });
-      tableId = segment.table_id;
-    } else if (location.query.table) {
-      tableId = parseInt(location.query.table);
-    }
-
-    if (tableId != null) {
-      // TODO Atte Keinänen 6/8/17: Use only global metadata (`fetchTableMetadata`)
-      this.props.loadTableMetadata(tableId);
-      this.props.fetchTableMetadata(tableId);
-    }
-  }
-
-  async onSubmit(segment, f) {
-    let { tableMetadata } = this.props;
-    if (segment.id != null) {
-      await this.props.updateSegment(segment);
-      this.props.clearRequestState({ statePath: ["entities", "segments"] });
-      MetabaseAnalytics.trackEvent("Data Model", "Segment Updated");
-    } else {
-      await this.props.createSegment(segment);
-      this.props.clearRequestState({ statePath: ["entities", "segments"] });
-      MetabaseAnalytics.trackEvent("Data Model", "Segment Created");
-    }
-
+@Segments.load({
+  id: (state, props) => parseInt(props.params.id),
+  wrapped: true,
+})
+@Tables.load({ id: (state, props) => props.segment.table_id, wrapped: true })
+@withTableMetadataLoaded
+class UpdateSegmentForm extends Component {
+  onSubmit = async segment => {
+    await this.props.segment.update(segment);
+    MetabaseAnalytics.trackEvent("Data Model", "Segment Updated");
+    const { id: tableId, db_id: databaseId } = this.props.table;
     this.props.onChangeLocation(
-      "/admin/datamodel/database/" +
-        tableMetadata.db_id +
-        "/table/" +
-        tableMetadata.id,
+      `/admin/datamodel/database/${databaseId}/table/${tableId}`,
     );
-  }
+  };
 
   render() {
-    return (
-      <div>
-        <SegmentForm {...this.props} onSubmit={this.onSubmit.bind(this)} />
-      </div>
+    return <SegmentForm {...this.props} onSubmit={this.onSubmit} />;
+  }
+}
+
+@Tables.load({
+  id: (state, props) => parseInt(props.location.query.table),
+  wrapped: true,
+})
+@withTableMetadataLoaded
+class CreateSegmentForm extends Component {
+  onSubmit = async segment => {
+    const { id: tableId, db_id: databaseId } = this.props.table;
+    await this.props.createSegment({ ...segment, table_id: tableId });
+    MetabaseAnalytics.trackEvent("Data Model", "Segment Updated");
+    this.props.onChangeLocation(
+      `/admin/datamodel/database/${databaseId}/table/${tableId}`,
+    );
+  };
+
+  render() {
+    return <SegmentForm {...this.props} onSubmit={this.onSubmit} />;
+  }
+}
+
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
+export default class SegmentApp extends Component {
+  render() {
+    return this.props.params.id ? (
+      <UpdateSegmentForm {...this.props} />
+    ) : (
+      <CreateSegmentForm {...this.props} />
     );
   }
 }

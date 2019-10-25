@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 
-import SaveStatus from "metabase/components/SaveStatus.jsx";
+import SaveStatus from "metabase/components/SaveStatus";
 
 export default class AdminHeader extends Component {
   render() {

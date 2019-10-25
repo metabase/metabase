@@ -15,9 +15,9 @@
   {:pre [(integer? db-id)]}
   (-> (binding [qpi/*disable-qp-logging* true]
         (qp/process-query
-          {:type     :query
-           :database db-id
-           :query    mbql-query}))
+         {:type     :query
+          :database db-id
+          :query    mbql-query}))
       :data
       :rows))
 
@@ -62,7 +62,7 @@
   (int 5000))
 
 (s/defn field-distinct-values
-  "Return the distinct values of FIELD.
+  "Return the distinct values of `field`.
    This is used to create a `FieldValues` object for `:type/Category` Fields."
   ([field]
    (field-distinct-values field absolute-max-distinct-values-limit))
@@ -71,14 +71,14 @@
                                    :limit    max-results}))))
 
 (defn field-distinct-count
-  "Return the distinct count of FIELD."
+  "Return the distinct count of `field`."
   [field & [limit]]
   (-> (field-query field {:aggregation [[:distinct [:field-id (u/get-id field)]]]
                           :limit       limit})
       first first int))
 
 (defn field-count
-  "Return the count of FIELD."
+  "Return the count of `field`."
   [field]
   (-> (field-query field {:aggregation [[:count [:field-id (u/get-id field)]]]})
       first first int))

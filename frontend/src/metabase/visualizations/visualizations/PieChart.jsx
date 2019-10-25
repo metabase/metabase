@@ -3,15 +3,18 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import styles from "./PieChart.css";
-import { t } from "c-3po";
-import ChartTooltip from "../components/ChartTooltip.jsx";
-import ChartWithLegend from "../components/ChartWithLegend.jsx";
+import { t } from "ttag";
+import ChartTooltip from "../components/ChartTooltip";
+import ChartWithLegend from "../components/ChartWithLegend";
 
 import {
   ChartSettingsError,
   MinRowsError,
 } from "metabase/visualizations/lib/errors";
-import { getFriendlyName } from "metabase/visualizations/lib/utils";
+import {
+  getFriendlyName,
+  computeMaxDecimalsForValues,
+} from "metabase/visualizations/lib/utils";
 import {
   metricSetting,
   dimensionSetting,
@@ -20,17 +23,19 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import { formatValue } from "metabase/lib/formatting";
 
-import colors, { getColorsForValues } from "metabase/lib/colors";
+import { color, getColorsForValues } from "metabase/lib/colors";
 
 import cx from "classnames";
 
 import d3 from "d3";
 import _ from "underscore";
 
+const MAX_PIE_SIZE = 550;
+
 const OUTER_RADIUS = 50; // within 100px canvas
 const INNER_RADIUS_RATIO = 3 / 5;
 
-const PAD_ANGLE = Math.PI / 180 * 1; // 1 degree in radians
+const PAD_ANGLE = (Math.PI / 180) * 1; // 1 degree in radians
 const SLICE_THRESHOLD = 0.025; // approx 1 degree in percentage
 const OTHER_SLICE_MIN_PERCENTAGE = 0.003;
 
@@ -51,7 +56,14 @@ export default class PieChart extends Component {
     return cols.length === 2;
   }
 
-  static checkRenderable([{ data: { cols, rows } }], settings) {
+  static checkRenderable(
+    [
+      {
+        data: { cols, rows },
+      },
+    ],
+    settings,
+  ) {
     // This prevents showing "Which columns do you want to use" when
     // the piechart is displayed with no results in the dashboard
     if (rows.length < 1) {
@@ -63,6 +75,28 @@ export default class PieChart extends Component {
       });
     }
   }
+
+  static placeholderSeries = [
+    {
+      card: {
+        display: "pie",
+        visualization_settings: { "pie.show_legend": false },
+        dataset_query: { type: "null" },
+      },
+      data: {
+        rows: [
+          ["Doohickey", 3976],
+          ["Gadget", 4939],
+          ["Gizmo", 4784],
+          ["Widget", 5061],
+        ],
+        cols: [
+          { name: "Category", base_type: "type/Category" },
+          { name: "Count", base_type: "type/Integer" },
+        ],
+      },
+    },
+  ];
 
   static settings = {
     ...columnSettings({ hidden: true }),
@@ -120,17 +154,36 @@ export default class PieChart extends Component {
       readDependencies: ["pie._dimensionValues", "pie.colors"],
     },
     "pie._metricIndex": {
-      getValue: ([{ data: { cols } }], settings) =>
-        _.findIndex(cols, col => col.name === settings["pie.metric"]),
+      getValue: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) => _.findIndex(cols, col => col.name === settings["pie.metric"]),
       readDependencies: ["pie.metric"],
     },
     "pie._dimensionIndex": {
-      getValue: ([{ data: { cols } }], settings) =>
-        _.findIndex(cols, col => col.name === settings["pie.dimension"]),
+      getValue: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) => _.findIndex(cols, col => col.name === settings["pie.dimension"]),
       readDependencies: ["pie.dimension"],
     },
     "pie._dimensionValues": {
-      getValue: ([{ data: { rows } }], settings) => {
+      getValue: (
+        [
+          {
+            data: { rows },
+          },
+        ],
+        settings,
+      ) => {
         const dimensionIndex = settings["pie._dimensionIndex"];
         return dimensionIndex >= 0
           ? // cast to string because getColorsForValues expects strings
@@ -142,9 +195,9 @@ export default class PieChart extends Component {
   };
 
   componentDidUpdate() {
-    let groupElement = ReactDOM.findDOMNode(this.refs.group);
-    let detailElement = ReactDOM.findDOMNode(this.refs.detail);
-    if (groupElement.getBoundingClientRect().width < 100) {
+    const groupElement = ReactDOM.findDOMNode(this.refs.group);
+    const detailElement = ReactDOM.findDOMNode(this.refs.detail);
+    if (groupElement.getBoundingClientRect().width < 120) {
       detailElement.classList.add("hide");
     } else {
       detailElement.classList.remove("hide");
@@ -163,7 +216,11 @@ export default class PieChart extends Component {
       settings,
     } = this.props;
 
-    const [{ data: { cols, rows } }] = series;
+    const [
+      {
+        data: { cols, rows },
+      },
+    ] = series;
     const dimensionIndex = settings["pie._dimensionIndex"];
     const metricIndex = settings["pie._metricIndex"];
 
@@ -179,72 +236,76 @@ export default class PieChart extends Component {
         jsx,
         majorWidth: 0,
       });
-    const formatPercent = (percent, jsx = true) =>
-      formatValue(percent, {
-        ...settings.column(cols[metricIndex]),
-        jsx,
-        majorWidth: 0,
-        number_style: "percent",
-        minimumSignificantDigits: 3,
-        maximumSignificantDigits: 3,
-      });
+
+    const total: number = rows.reduce((sum, row) => sum + row[metricIndex], 0);
 
     const showPercentInTooltip =
       !PERCENT_REGEX.test(cols[metricIndex].name) &&
       !PERCENT_REGEX.test(cols[metricIndex].display_name);
 
-    let total: number = rows.reduce((sum, row) => sum + row[metricIndex], 0);
-
-    let sliceThreshold =
+    const sliceThreshold =
       typeof settings["pie.slice_threshold"] === "number"
         ? settings["pie.slice_threshold"] / 100
         : SLICE_THRESHOLD;
 
-    let [slices, others] = _.chain(rows)
+    const [slices, others] = _.chain(rows)
       .map((row, index) => ({
         key: row[dimensionIndex],
+        // Value is used to determine arc size and is modified for very small
+        // other slices. We save displayValue for use in tooltips.
         value: row[metricIndex],
+        displayValue: row[metricIndex],
         percentage: row[metricIndex] / total,
         color: settings["pie._colors"][row[dimensionIndex]],
       }))
       .partition(d => d.percentage > sliceThreshold)
       .value();
 
-    let otherSlice;
-    if (others.length > 1) {
-      let otherTotal = others.reduce((acc, o) => acc + o.value, 0);
-      if (otherTotal > 0) {
-        otherSlice = {
-          key: "Other",
-          value: otherTotal,
-          percentage: otherTotal / total,
-          color: colors["text-light"],
-        };
-        slices.push(otherSlice);
+    const otherTotal = others.reduce((acc, o) => acc + o.value, 0);
+    // Multiple others get squashed together under the key "Other"
+    let otherSlice =
+      others.length === 1
+        ? others[0]
+        : {
+            key: "Other",
+            value: otherTotal,
+            percentage: otherTotal / total,
+            color: color("text-light"),
+          };
+    if (otherSlice.value > 0) {
+      // increase "other" slice so it's barely visible
+      if (otherSlice.percentage < OTHER_SLICE_MIN_PERCENTAGE) {
+        otherSlice.value = total * OTHER_SLICE_MIN_PERCENTAGE;
       }
-    } else {
-      slices.push(...others);
+      slices.push(otherSlice);
     }
 
-    // increase "other" slice so it's barely visible
-    // $FlowFixMe
-    if (otherSlice && otherSlice.percentage < OTHER_SLICE_MIN_PERCENTAGE) {
-      otherSlice.value = total * OTHER_SLICE_MIN_PERCENTAGE;
-    }
+    const decimals = computeMaxDecimalsForValues(
+      slices.map(s => s.percentage),
+      { style: "percent", maximumSignificantDigits: 3 },
+    );
+    const formatPercent = percent =>
+      formatValue(percent, {
+        column: cols[metricIndex],
+        jsx: true,
+        majorWidth: 0,
+        number_style: "percent",
+        decimals,
+      });
 
-    let legendTitles = slices.map(slice => [
+    const legendTitles = slices.map(slice => [
       slice.key === "Other" ? slice.key : formatDimension(slice.key, true),
       settings["pie.show_legend_perecent"]
-        ? formatPercent(slice.percentage, true)
+        ? formatPercent(slice.percentage)
         : undefined,
     ]);
-    let legendColors = slices.map(slice => slice.color);
+    const legendColors = slices.map(slice => slice.color);
 
     // no non-zero slices
     if (slices.length === 0) {
       otherSlice = {
         value: 1,
-        color: colors["text-light"],
+        color: color("text-light"),
         noHover: true,
       };
       slices.push(otherSlice);
@@ -264,13 +325,13 @@ export default class PieChart extends Component {
       const slice = slices[index];
       if (!slice || slice.noHover) {
         return null;
-      } else if (slice === otherSlice) {
+      } else if (slice === otherSlice && others.length > 1) {
         return {
           index,
           event: event && event.nativeEvent,
           data: others.map(o => ({
             key: formatDimension(o.key, false),
-            value: formatMetric(o.value, false),
+            value: formatMetric(o.displayValue, false),
           })),
         };
       } else {
@@ -284,7 +345,7 @@ export default class PieChart extends Component {
             },
             {
               key: getFriendlyName(cols[metricIndex]),
-              value: formatMetric(slice.value),
+              value: formatMetric(slice.displayValue),
             },
           ].concat(
             showPercentInTooltip && slice.percentage != null
@@ -354,8 +415,12 @@ export default class PieChart extends Component {
             </div>
             <div className={styles.Title}>{title}</div>
           </div>
-          <div className={styles.Chart}>
-            <svg className={styles.Donut + " m1"} viewBox="0 0 100 100">
+          <div className={cx(styles.Chart, "layout-centered")}>
+            <svg
+              className={cx(styles.Donut, "m1")}
+              viewBox="0 0 100 100"
+              style={{ maxWidth: MAX_PIE_SIZE, maxHeight: MAX_PIE_SIZE }}
+            >
               <g ref="group" transform={`translate(50,50)`}>
                 {pie(slices).map((slice, index) => (
                   <path

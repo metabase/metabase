@@ -1,6 +1,6 @@
 (ns metabase.query-processor.middleware.cache-test
   "Tests for the Query Processor cache."
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase.models.query-cache :refer [QueryCache]]
             [metabase.query-processor.middleware.cache :as cache]
             [metabase.test.util :as tu]
@@ -20,9 +20,9 @@
 
 (def ^:private ^:dynamic ^Integer *query-execution-delay-ms* 0)
 
-(defn- mock-qp [& _]
+(defn- mock-qp [_ respond _ _]
   (Thread/sleep *query-execution-delay-ms*)
-  mock-results)
+  (respond mock-results))
 
 (def ^:private maybe-return-cached-results (cache/maybe-return-cached-results mock-qp))
 
@@ -34,7 +34,12 @@
     :not-cached))
 
 (defn- run-query [& {:as query-kvs}]
-  (cached? (maybe-return-cached-results (merge {:cache-ttl 60, :query :abc} query-kvs))))
+  (cached?
+   (maybe-return-cached-results
+    (merge {:cache-ttl 60, :query :abc} query-kvs)
+    identity
+    (fn [e] (throw e))
+    nil)))
 
 
 ;;; -------------------------------------------- tests for is-cacheable? ---------------------------------------------

@@ -16,7 +16,8 @@
              [collection :as collection]
              [interface :as mi]
              [pulse :as pulse :refer [Pulse]]
-             [pulse-channel :refer [channel-types]]]
+             [pulse-channel :refer [channel-types PulseChannel]]
+             [pulse-channel-recipient :refer [PulseChannelRecipient]]]
             [metabase.pulse.render :as render]
             [metabase.util
              [i18n :refer [tru]]
@@ -134,10 +135,13 @@
                    (catch Throwable e
                      (assoc-in chan-types [:slack :error] (.getMessage e)))))}))
 
-(defn- pulse-card-query-results [card]
-  (qp/process-query-and-save-execution! (:dataset_query card) {:executed-by api/*current-user-id*
-                                                               :context     :pulse
-                                                               :card-id     (u/get-id card)}))
+(defn- pulse-card-query-results
+  {:arglists '([card])}
+  [{query :dataset_query, card-id :id}]
+  (qp/process-query-and-save-execution! (assoc query :async? false)
+    {:executed-by api/*current-user-id*
+     :context     :pulse
+     :card-id     card-id}))
 
 (api/defendpoint GET "/preview_card/:id"
   "Get HTML rendering of a Card with `id`."
@@ -191,5 +195,13 @@
   (p/send-pulse! body)
   {:ok true})
 
+(api/defendpoint DELETE "/:id/subscription/email"
+  "For uses to remove themselves from a pulse subscription"
+  [id]
+  (api/let-404 [pulse-id (db/select-one-id Pulse :id id)
+                pc-id    (db/select-one-id PulseChannel :pulse_id pulse-id :channel_type "email")
+                pcr-id   (db/select-one-id PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
+    (db/delete! PulseChannelRecipient :id pcr-id))
+  api/generic-204-no-content)
 
 (api/define-routes)

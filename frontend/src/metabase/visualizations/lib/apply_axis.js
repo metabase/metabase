@@ -49,7 +49,7 @@ function averageStringLengthOfValues(values) {
   values = values.slice(0, MAX_VALUES_TO_MEASURE);
 
   let totalLength = 0;
-  for (let value of values) {
+  for (const value of values) {
     totalLength += String(value).length;
   }
 
@@ -97,10 +97,11 @@ export function applyChartTimeseriesXAxis(
   let dimensionColumn = firstSeries.data.cols[0];
 
   // get the data's timezone offset from the first row
-  let dataOffset = parseTimestamp(firstSeries.data.rows[0][0]).utcOffset() / 60;
+  const dataOffset =
+    parseTimestamp(firstSeries.data.rows[0][0]).utcOffset() / 60;
 
   // compute the data interval
-  let dataInterval = xInterval;
+  const dataInterval = xInterval;
   let tickInterval = dataInterval;
 
   if (chart.settings["graph.x_axis.labels_enabled"]) {
@@ -121,6 +122,7 @@ export function applyChartTimeseriesXAxis(
 
     // special handling for weeks
     // TODO: are there any other cases where we should do this?
+    let tickFormatUnit = dimensionColumn.unit;
     if (dataInterval.interval === "week") {
       // if tick interval is compressed then show months instead of weeks because they're nicer formatted
       const newTickInterval = computeTimeseriesTicksInterval(
@@ -132,8 +134,8 @@ export function applyChartTimeseriesXAxis(
         newTickInterval.interval !== tickInterval.interval ||
         newTickInterval.count !== tickInterval.count
       ) {
-        (dimensionColumn = { ...dimensionColumn, unit: "month" }),
-          (tickInterval = { interval: "month", count: 1 });
+        tickFormatUnit = "month";
+        tickInterval = { interval: "month", count: 1 };
       }
     }
 
@@ -143,8 +145,12 @@ export function applyChartTimeseriesXAxis(
       const timestampFixed = moment(timestamp)
         .utcOffset(dataOffset)
         .format();
+      const { column, ...columnSettings } = chart.settings.column(
+        dimensionColumn,
+      );
       return formatValue(timestampFixed, {
-        ...chart.settings.column(dimensionColumn),
+        ...columnSettings,
+        column: { ...column, unit: tickFormatUnit },
         type: "axis",
         compact: chart.settings["graph.x_axis.axis_enabled"] === "compact",
       });
@@ -162,14 +168,7 @@ export function applyChartTimeseriesXAxis(
   }
 
   // pad the domain slightly to prevent clipping
-  xDomain[0] = moment(xDomain[0]).subtract(
-    dataInterval.count * 0.75,
-    dataInterval.interval,
-  );
-  xDomain[1] = moment(xDomain[1]).add(
-    dataInterval.count * 0.75,
-    dataInterval.interval,
-  );
+  xDomain = stretchTimeseriesDomain(xDomain, dataInterval);
 
   // set the x scale
   chart.x(d3.time.scale.utc().domain(xDomain)); //.nice(d3.time[dataInterval.interval]));
@@ -180,6 +179,29 @@ export function applyChartTimeseriesXAxis(
       1 + moment(stop).diff(start, dataInterval.interval) / dataInterval.count,
     ),
   );
+}
+
+export function stretchTimeseriesDomain([start, end], { count, interval }) {
+  // Non-timeseries axes are stretched by 0.75 x-intervals in both directions.
+  // That's a bit trickier to do with dates because moment doesn't support
+  // adding or subtracting partial months, weeks, or days. To work around this,
+  // we do approximate math with smaller units. We're unable to add 0.75 months,
+  // so instead we add 0.75 * 30 days. I'm unclear why, but moment *is* able to add partial years and quarters.
+  if (interval === "month") {
+    interval = "day";
+    count *= 30;
+  } else if (interval === "week") {
+    interval = "day";
+    count *= 7;
+  } else if (interval === "day") {
+    interval = "hour";
+    count *= 24;
+  }
+
+  return [
+    moment(start).subtract(count * 0.75, interval),
+    moment(end).add(count * 0.75, interval),
+  ];
 }
 
 export function applyChartQuantitativeXAxis(
@@ -300,6 +322,17 @@ export function applyChartOrdinalXAxis(
   chart.x(d3.scale.ordinal().domain(xValues)).xUnits(dc.units.ordinal);
 }
 
+// Sometimes tick marks are placed *just* off from zero.
+// We still want to format these as "0" rather than "0.0000000000000018".
+// But! We need to allow for real non-zero ticks at very small values,
+// so we scale a tolerance to the extent of the yAxis.
+// The tolerance is arbitrarily set to one millionth of the yExtent.
+const TOLERANCE_TO_Y_EXTENT = 1e6;
+export function maybeRoundValueToZero(value, [yMin, yMax]) {
+  const tolerance = Math.abs(yMax - yMin) / TOLERANCE_TO_Y_EXTENT;
+  return Math.abs(value) < tolerance ? 0 : value;
+}
+
 export function applyChartYAxis(chart, series, yExtent, axisName) {
   let axis;
   if (axisName !== "right") {
@@ -340,12 +373,11 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
     if (chart.settings["stackable.stack_type"] === "normalized") {
       axis.axis().tickFormat(value => Math.round(value * 100) + "%");
     } else {
-      let metricColumn = series[0].data.cols[1];
-      axis
-        .axis()
-        .tickFormat(value =>
-          formatValue(value, chart.settings.column(metricColumn)),
-        );
+      const metricColumn = series[0].data.cols[1];
+      axis.axis().tickFormat(value => {
+        value = maybeRoundValueToZero(value, yExtent);
+        return formatValue(value, chart.settings.column(metricColumn));
+      });
     }
     chart.renderHorizontalGridLines(true);
     adjustYAxisTicksIfNeeded(axis.axis(), chart.height());
@@ -363,33 +395,46 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
     scale = d3.scale.linear();
   }
 
+  scale.clamp(true);
+
   if (axis.setting("auto_range")) {
     // elasticY not compatible with log scale
     if (axis.setting("scale") !== "log") {
       // TODO: right axis?
       chart.elasticY(true);
     } else {
-      if (
-        !(
-          (yExtent[0] < 0 && yExtent[1] < 0) ||
-          (yExtent[0] > 0 && yExtent[1] > 0)
-        )
-      ) {
+      const [min, max] = yExtent;
+      if (!((min < 0 && max < 0) || (min > 0 && max > 0))) {
         throw "Y-axis must not cross 0 when using log scale.";
       }
-      scale.domain(yExtent);
+
+      // With chart.elasticY, the y axis adjusts to show the beginning of the
+      // bars. If there are any bar series, we try to do the same with the log
+      // scale. We start at ±1 because things get wacky in (0, ±1].
+      const noBarSeries = series.every(s => s.card.display !== "bar");
+      if (noBarSeries) {
+        scale.domain([min, max]);
+      } else if (min < 0) {
+        scale.domain([min, -1]);
+      } else {
+        scale.domain([1, max]);
+      }
     }
     axis.scale(scale);
   } else {
+    // We union data's yExtent with the range specified in the chart settings
+    // This avoids rendering issues with bars and lines overflowing the c
+    const [min, max] = d3.extent([
+      axis.setting("min"),
+      axis.setting("max"),
+      ...yExtent,
+    ]);
     if (
       axis.setting("scale") === "log" &&
-      !(
-        (axis.setting("min") < 0 && axis.setting("max") < 0) ||
-        (axis.setting("min") > 0 && axis.setting("max") > 0)
-      )
+      !((min < 0 && max < 0) || (min > 0 && max > 0))
     ) {
       throw "Y-axis must not cross 0 when using log scale.";
     }
-    axis.scale(scale.domain([axis.setting("min"), axis.setting("max")]));
+    axis.scale(scale.domain([min, max]));
   }
 }

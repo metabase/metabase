@@ -2,14 +2,14 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Box } from "grid-styled";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
 import { capitalize } from "metabase/lib/formatting";
+import { color, darken } from "metabase/lib/colors";
 
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
 import Modal from "metabase/components/Modal";
-import Logs from "metabase/components/Logs";
 
 import LogoIcon from "metabase/components/LogoIcon";
 import EntityMenu from "metabase/components/EntityMenu";
@@ -55,20 +55,16 @@ export default class ProfileLink extends Component {
           }`,
         },
       ]),
-      ...(admin && [
-        {
-          title: t`Logs`,
-          icon: null,
-          action: () => this.openModal("logs"),
-          event: `Navbar;Profile Dropdown;Debugging ${tag}`,
-        },
-      ]),
+      {
+        title: t`Activity`,
+        icon: null,
+        link: "/activity",
+        event: `Navbar;Profile Dropdown;Activity ${tag}`,
+      },
       {
         title: t`Help`,
         icon: null,
-        // HACK - for some reason if you use // react router treats the link
-        // as a non local route
-        link: `//metabase.com/docs/${tag}`,
+        link: MetabaseSettings.docsUrl(),
         externalLink: true,
         event: `Navbar;Profile Dropdown;About ${tag}`,
       },
@@ -96,6 +92,12 @@ export default class ProfileLink extends Component {
           tooltip={t`Settings`}
           items={this.generateOptionsForUser()}
           triggerIcon="gear"
+          triggerProps={{
+            hover: {
+              backgroundColor: darken(color("brand")),
+              color: "white",
+            },
+          }}
         />
         {modalOpen === "about" ? (
           <Modal small onClose={this.closeModal}>
@@ -134,10 +136,6 @@ export default class ProfileLink extends Component {
               </span>
               <span>{t`and is built with care in San Francisco, CA`}</span>
             </div>
-          </Modal>
-        ) : modalOpen === "logs" ? (
-          <Modal wide onClose={this.closeModal}>
-            <Logs onClose={this.closeModal} />
           </Modal>
         ) : null}
       </Box>

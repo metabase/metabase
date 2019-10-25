@@ -30,7 +30,7 @@ mkdir -p "locales"
 BABEL_ENV=extract ./node_modules/.bin/babel -q -x .js,.jsx -o /dev/null frontend/src
 # BABEL_ENV=extract BABEL_DISABLE_CACHE=1 yarn run build
 
-# NOTE: replace c-3po's "${ 0 }" style references with xgettext "{0}" style references for consistency
+# NOTE: replace ttag's "${ 0 }" style references with xgettext "{0}" style references for consistency
 sed -i".bak" -E 's/\$\{ *([0-9]+) *\}/{\1}/g' "$POT_FRONTEND_NAME"
 rm "$POT_FRONTEND_NAME.bak"
 
@@ -53,6 +53,8 @@ find src -name "*.clj" | xgettext                   \
   -kmark:1 -ki18n/mark:1                            \
   -ktrs:1 -ki18n/trs:1                              \
   -ktru:1 -ki18n/tru:1                              \
+  -kdeferred-trs:1 -ki18n/deferred-trs:1            \
+  -kdeferred-tru:1 -ki18n/deferred-tru:1            \
   -ktrun:1,2 -ki18n/trun:1,2                        \
   -ktrsn:1,2 -ki18n/trsn:1,2                        \
   $LOC_OPT                                          \

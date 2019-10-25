@@ -2,6 +2,7 @@
   (:require [metabase
              [events :as events]
              [util :as u]]
+            [metabase.api.common :as api]
             [metabase.models
              [card :refer [Card]]
              [dashboard :refer [Dashboard]]
@@ -23,10 +24,26 @@
    "pulse"     Pulse
    "segment"   Segment})
 
-(defn- can-? [f {model :model, model-id :model_id, :as activity}]
+(defmulti can-?
+  "Implementation for `can-read?`/`can-write?` for items in the activity feed. Dispatches off of the activity `:topic`,
+  e.g. `:user-joined`. `perms-check-fn` is `can-read?` or `can-write?` and should be called as needed on models the
+  activity records."
+  {:arglists '([perms-check-fn activity])}
+  (fn [_ {:keys [topic]}]
+    topic))
+
+;; For now only admins can see when another user joined -- we don't want every user knowing about every other user. In
+;; the future we might want to change this and come up with some sort of system where we can determine which users get
+;; to see other users -- perhaps if they are in a group together other than 'All Users'
+(defmethod can-? :user-joined [_ _]
+  api/*is-superuser?*)
+
+;; For every other activity topic we'll look at the read/write perms for the object the activty is about (e.g. a Card
+;; or Dashboard). For all other activity feed items with no model everyone can read/write
+(defmethod can-? :default [perms-check-fn {model :model, model-id :model_id, :as activity}]
   (if-let [object (when-let [entity (model->entity model)]
                     (entity model-id))]
-    (f object)
+    (perms-check-fn object)
     true))
 
 
@@ -47,6 +64,7 @@
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
          {:can-read?  (partial can-? i/can-read?)
+          ;; TODO - when do people *write* activities?
           :can-write? (partial can-? i/can-write?)}))
 
 

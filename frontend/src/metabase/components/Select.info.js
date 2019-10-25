@@ -1,5 +1,5 @@
 import React from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Select, { Option } from "metabase/components/Select";
 
 export const component = Select;
@@ -18,7 +18,9 @@ export const description = t`
 export const examples = {
   Default: (
     <Select value="yellow" onChange={() => alert(t`Selected`)}>
-      {fixture.map(f => <Option name={f.name}>{f.name}</Option>)}
+      {fixture.map(f => (
+        <Option name={f.name}>{f.name}</Option>
+      ))}
     </Select>
   ),
   "With search": (
@@ -27,7 +29,9 @@ export const examples = {
       searchProp="name"
       onChange={() => alert(t`Selected`)}
     >
-      {fixture.map(f => <Option name={f.name}>{f.name}</Option>)}
+      {fixture.map(f => (
+        <Option name={f.name}>{f.name}</Option>
+      ))}
     </Select>
   ),
 };

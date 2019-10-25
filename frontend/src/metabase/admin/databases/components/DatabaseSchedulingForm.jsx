@@ -2,14 +2,14 @@ import React, { Component } from "react";
 import cx from "classnames";
 import _ from "underscore";
 import { assocIn } from "icepick";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import FormMessage from "metabase/components/form/FormMessage";
 import SchedulePicker from "metabase/components/SchedulePicker";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 export const SyncOption = ({ selected, name, children, select }) => (
   <div
@@ -22,7 +22,7 @@ export const SyncOption = ({ selected, name, children, select }) => (
         width: 18,
         height: 18,
         borderWidth: 2,
-        borderColor: selected ? colors["brand"] : colors["text-light"],
+        borderColor: selected ? color("brand") : color("text-light"),
         borderStyle: "solid",
       }}
     >
@@ -32,12 +32,12 @@ export const SyncOption = ({ selected, name, children, select }) => (
           style={{
             width: 8,
             height: 8,
-            backgroundColor: selected ? colors["brand"] : colors["text-light"],
+            backgroundColor: selected ? color("brand") : color("text-light"),
           }}
         />
       )}
     </div>
-    <div className="Form-offset ml1">
+    <div className="ml4 pl2">
       <div className={cx({ "text-brand": selected })}>
         <h3>{name}</h3>
       </div>
@@ -116,7 +116,7 @@ export default class DatabaseSchedulingForm extends Component {
       <LoadingAndErrorWrapper loading={!this.props.database} error={null}>
         {() => (
           <form onSubmit={this.onSubmitForm} noValidate>
-            <div className="Form-offset mr4 mt4">
+            <div className="mr4 mt4">
               <div style={{ maxWidth: 600 }} className="border-bottom pb2">
                 <p className="text-paragraph text-measure">
                   {t`To do some of its magic, Metabase needs to scan your database. We will also rescan it periodically to keep the metadata up-to-date. You can control when the periodic rescans happen below.`}
@@ -155,8 +155,7 @@ export default class DatabaseSchedulingForm extends Component {
                                     can be a somewhat resource-intensive process, particularly if you have a very large
                                     database.`}</p>
 
-                <h3
-                >{t`When should Metabase automatically scan and cache field values?`}</h3>
+                <h3>{t`When should Metabase automatically scan and cache field values?`}</h3>
                 <ol className="bordered shadowed mt3">
                   <li className="border-bottom">
                     <SyncOption

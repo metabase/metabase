@@ -7,8 +7,9 @@
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.api.common :as api :refer [*current-user-id*]]
-            [metabase.api.common :as api :refer [*current-user-id* *current-user-permissions-set*]]
-            [metabase.mbql.util :as mbql.u]
+            [metabase.mbql
+             [normalize :as normalize]
+             [util :as mbql.u]]
             [metabase.models
              [dependency :as dependency]
              [field-values :as field-values]
@@ -22,8 +23,7 @@
             [metabase.util.i18n :as ui18n :refer [tru]]
             [toucan
              [db :as db]
-             [models :as models]]
-            [metabase.mbql.normalize :as normalize]))
+             [models :as models]]))
 
 (models/defmodel Card :report_card)
 
@@ -92,12 +92,12 @@
 
         (ids-already-seen source-card-id)
         (throw
-         (ui18n/ex-info (tru "Cannot save Question: source query has circular references.")
+         (ex-info (tru "Cannot save Question: source query has circular references.")
            {:status-code 400}))
 
         :else
         (recur (or (db/select-one-field :dataset_query Card :id source-card-id)
-                   (throw (ui18n/ex-info (tru "Card {0} does not exist." source-card-id)
+                   (throw (ex-info (tru "Card {0} does not exist." source-card-id)
                             {:status-code 404})))
                (conj ids-already-seen source-card-id))))))
 
@@ -114,8 +114,8 @@
     ;; Cards with queries they wouldn't be allowed to run!
     (when *current-user-id*
       (when-not (query-perms/can-run-query? query)
-        (throw (Exception. (str (tru "You do not have permissions to run ad-hoc native queries against Database {0}."
-                                     (:database query)))))))
+        (throw (Exception. (tru "You do not have permissions to run ad-hoc native queries against Database {0}."
+                                (:database query))))))
     ;; make sure this Card doesn't have circular source query references
     (check-for-circular-source-query-references card)))
 
@@ -153,6 +153,7 @@
     (when (:dataset_query card)
       (check-for-circular-source-query-references card))))
 
+;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (defn- pre-delete [{:keys [id]}]
   (db/delete! 'PulseCard :card_id id)
   (db/delete! 'Revision :model "Card", :model_id id)

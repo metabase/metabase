@@ -20,7 +20,7 @@ export const BackendResource = createSharedResource("BackendResource", {
     return dbKey || {};
   },
   create({ dbKey = DEFAULT_DB }) {
-    let dbFile = getDbFile();
+    const dbFile = getDbFile();
     if (!dbKey) {
       dbKey = dbFile;
     }
@@ -31,7 +31,7 @@ export const BackendResource = createSharedResource("BackendResource", {
         process: { kill: () => {} },
       };
     } else {
-      let port = getPort();
+      const port = getPort();
       return {
         dbKey: dbKey,
         dbFile: dbFile,
@@ -43,8 +43,9 @@ export const BackendResource = createSharedResource("BackendResource", {
   async start(server) {
     if (!server.process) {
       if (server.dbKey !== server.dbFile) {
-        await fs.copy(`${server.dbKey}.h2.db`, `${server.dbFile}.h2.db`);
+        await fs.copy(`${server.dbKey}.mv.db`, `${server.dbFile}.mv.db`);
       }
+
       server.process = spawn(
         "java",
         [
@@ -54,6 +55,7 @@ export const BackendResource = createSharedResource("BackendResource", {
           "-Xverify:none", // Skip bytecode verification for the JAR so it launches faster
           "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
           "-Duser.timezone=US/Pacific",
+          `-Dlog4j.configuration=file:${__dirname}/log4j.properties`,
           "-jar",
           "target/uberjar/metabase.jar",
         ],
@@ -61,13 +63,18 @@ export const BackendResource = createSharedResource("BackendResource", {
           env: {
             MB_DB_TYPE: "h2",
             MB_DB_FILE: server.dbFile,
+            MB_JETTY_HOST: "0.0.0.0",
             MB_JETTY_PORT: server.port,
           },
-          stdio: "inherit",
+          stdio:
+            process.env["DISABLE_LOGGING"] ||
+            process.env["DISABLE_LOGGING_BACKEND"]
+              ? "ignore"
+              : "inherit",
         },
       );
     }
-    if (!await isReady(server.host)) {
+    if (!(await isReady(server.host))) {
       process.stdout.write(
         "Waiting for backend (host=" +
           server.host +
@@ -75,8 +82,11 @@ export const BackendResource = createSharedResource("BackendResource", {
           server.dbKey +
           ")",
       );
-      while (!await isReady(server.host)) {
-        process.stdout.write(".");
+      while (!(await isReady(server.host))) {
+        if (!process.env["CI"]) {
+          // disable for CI since it break's CircleCI's no_output_timeout
+          process.stdout.write(".");
+        }
         await delay(500);
       }
       process.stdout.write("\n");
@@ -94,7 +104,7 @@ export const BackendResource = createSharedResource("BackendResource", {
     }
     try {
       if (server.dbFile) {
-        await fs.unlink(`${server.dbFile}.h2.db`);
+        await fs.unlink(`${server.dbFile}.mv.db`);
       }
     } catch (e) {}
   },
@@ -102,7 +112,7 @@ export const BackendResource = createSharedResource("BackendResource", {
 
 export async function isReady(host) {
   try {
-    let response = await fetch(`${host}/api/health`);
+    const response = await fetch(`${host}/api/health`);
     if (response.status === 200) {
       return true;
     }
@@ -120,14 +130,14 @@ function createSharedResource(
     stop = resource => {},
   },
 ) {
-  let entriesByKey = new Map();
-  let entriesByResource = new Map();
+  const entriesByKey = new Map();
+  const entriesByResource = new Map();
 
   function kill(entry) {
     if (entriesByKey.has(entry.key)) {
       entriesByKey.delete(entry.key);
       entriesByResource.delete(entry.resource);
-      let p = stop(entry.resource).then(null, err =>
+      const p = stop(entry.resource).then(null, err =>
         console.log("Error stopping resource", resourceName, entry.key, err),
       );
       return p;
@@ -136,7 +146,7 @@ function createSharedResource(
 
   return {
     get(options = defaultOptions) {
-      let key = getKey(options);
+      const key = getKey(options);
       let entry = entriesByKey.get(key);
       if (!entry) {
         entry = {
@@ -151,11 +161,11 @@ function createSharedResource(
       return entry.resource;
     },
     async start(resource) {
-      let entry = entriesByResource.get(resource);
+      const entry = entriesByResource.get(resource);
       return start(entry.resource);
     },
     async stop(resource) {
-      let entry = entriesByResource.get(resource);
+      const entry = entriesByResource.get(resource);
       if (entry && --entry.references <= 0) {
         await kill(entry);
       }

@@ -48,7 +48,7 @@ export default class InputBlurChange extends Component {
   }
 
   render() {
-    let props = _.omit(
+    const props = _.omit(
       this.props,
       "onBlurChange",
       "value",

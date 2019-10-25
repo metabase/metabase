@@ -1,11 +1,11 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
-import Clearable from "./Clearable.jsx";
+import { t } from "ttag";
+import Clearable from "./Clearable";
 
-import Query from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
 
-import Dimension, { AggregationDimension } from "metabase-lib/lib/Dimension";
+import Dimension from "metabase-lib/lib/Dimension";
 
 import _ from "underscore";
 import cx from "classnames";
@@ -25,10 +25,11 @@ export default class FieldName extends Component {
 
   displayNameForFieldLiteral(tableMetadata, fieldLiteral) {
     // see if we can find an entry in the table metadata that matches the field literal
-    let matchingField = _.find(
+    const matchingField = _.find(
       tableMetadata.fields,
       field =>
-        Query.isFieldLiteral(field.id) && field.id[1] === fieldLiteral[1],
+        Q_DEPRECATED.isFieldLiteral(field.id) &&
+        field.id[1] === fieldLiteral[1],
     ); // check whether names of field literals match
 
     return (matchingField && matchingField.display_name) || fieldLiteral[1];
@@ -37,26 +38,19 @@ export default class FieldName extends Component {
   render() {
     let { field, tableMetadata, query, className } = this.props;
 
+    if (!tableMetadata && query) {
+      tableMetadata = query.tableMetadata();
+    }
+
     let parts = [];
 
     if (field) {
-      const dimension = Dimension.parseMBQL(
-        field,
-        tableMetadata && tableMetadata.metadata,
-      );
+      const dimension = query
+        ? query.parseFieldReference(field)
+        : Dimension.parseMBQL(field, tableMetadata && tableMetadata.metadata);
       if (dimension) {
-        if (dimension instanceof AggregationDimension) {
-          // Aggregation dimension doesn't know about its relation to the current query
-          // so we have to infer the display name of aggregation here
-          parts = (
-            <span key="field">
-              {query.aggregations()[dimension.aggregationIndex()][0]}
-            </span>
-          );
-        } else {
-          parts = <span key="field">{dimension.render()}</span>;
-        }
-      } else if (Query.isFieldLiteral(field)) {
+        parts = <span key="field">{dimension.render()}</span>;
+      } else if (Q_DEPRECATED.isFieldLiteral(field)) {
         // TODO Atte Keinänen 6/23/17: Move nested queries logic to Dimension subclasses
         // if the Field in question is a field literal, e.g. ["field-literal", <name>, <type>] just use name as-is
         parts.push(
@@ -64,7 +58,10 @@ export default class FieldName extends Component {
             {this.displayNameForFieldLiteral(tableMetadata, field)}
           </span>,
         );
-      } else if (Query.isLocalField(field) && Query.isFieldLiteral(field[1])) {
+      } else if (
+        Q_DEPRECATED.isLocalField(field) &&
+        Q_DEPRECATED.isFieldLiteral(field[1])
+      ) {
         // otherwise if for some weird reason we wound up with a Field Literal inside a field ID,
         // e.g. ["field-id", ["field-literal", <name>, <type>], still just use the name as-is
         parts.push(
@@ -82,7 +79,7 @@ export default class FieldName extends Component {
     const content = (
       <span
         className={cx(className, {
-          selected: Query.isValidField(field),
+          selected: Q_DEPRECATED.isValidField(field),
           "cursor-pointer": this.props.onClick,
         })}
         onClick={this.props.onClick}

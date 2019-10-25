@@ -1,10 +1,10 @@
 import React from "react";
 import { Box, Flex } from "grid-styled";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 import _ from "underscore";
 
 import { formatNumber, formatValue } from "metabase/lib/formatting";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
 
@@ -19,7 +19,7 @@ import ScalarValue, {
 } from "metabase/visualizations/components/ScalarValue";
 
 export default class Smart extends React.Component {
-  static uiName = "Smart Number";
+  static uiName = t`Trend`;
   static identifier = "smartscalar";
   static iconName = "smartscalar";
 
@@ -31,7 +31,14 @@ export default class Smart extends React.Component {
 
   static settings = {
     ...columnSettings({
-      getColumns: ([{ data: { cols } }], settings) => [
+      getColumns: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) => [
         _.find(cols, col => col.name === settings["scalar.field"]) || cols[1],
       ],
     }),
@@ -46,7 +53,14 @@ export default class Smart extends React.Component {
   }
 
   // Smart scalars need to have a breakout
-  static checkRenderable([{ data: { insights } }], settings) {
+  static checkRenderable(
+    [
+      {
+        data: { insights },
+      },
+    ],
+    settings,
+  ) {
     if (!insights || insights.length === 0) {
       throw new NoBreakoutError(
         t`Group by a time field to see how this has changed over time`,
@@ -63,7 +77,12 @@ export default class Smart extends React.Component {
       isFullscreen,
       settings,
       visualizationIsClickable,
-      series: [{ card, data: { rows, cols } }],
+      series: [
+        {
+          card,
+          data: { rows, cols },
+        },
+      ],
       rawSeries,
     } = this.props;
 
@@ -73,12 +92,6 @@ export default class Smart extends React.Component {
     const lastRow = rows[rows.length - 1];
     const value = lastRow && lastRow[metricIndex];
     const column = cols[metricIndex];
-    const dimensionColumn = cols[dimensionIndex];
-
-    let granularity =
-      dimensionColumn && dimensionColumn.unit
-        ? formatBucketing(dimensionColumn.unit).toLowerCase()
-        : null;
 
     const insights =
       rawSeries && rawSeries[0].data && rawSeries[0].data.insights;
@@ -87,17 +100,21 @@ export default class Smart extends React.Component {
       return null;
     }
 
-    const change = formatNumber(insight["last-change"] * 100);
-    const isNegative = (change && Math.sign(change) < 0) || false;
+    const granularity = formatBucketing(insight["unit"]).toLowerCase();
 
-    let color = isNegative ? colors["error"] : colors["success"];
+    const lastChange = insight["last-change"];
+    const previousValue = insight["previous-value"];
+
+    const change = formatNumber(lastChange * 100);
+    const isNegative = (change && Math.sign(change) < 0) || false;
+    const isSwapped = settings["scalar.switch_positive_negative"];
 
     // if the number is negative but thats been identified as a good thing (e.g. decreased latency somehow?)
-    if (isNegative && settings["scalar.switch_positive_negative"]) {
-      color = colors["success"];
-    } else if (!isNegative && settings["scalar.switch_positive_negative"]) {
-      color = colors["error"];
-    }
+    const changeColor = (isSwapped
+    ? !isNegative
+    : isNegative)
+      ? color("error")
+      : color("success");
 
     const changeDisplay = (
       <span style={{ fontWeight: 900 }}>{Math.abs(change)}%</span>
@@ -105,7 +122,7 @@ export default class Smart extends React.Component {
     const separator = (
       <span
         style={{
-          color: colors["text-light"],
+          color: color("text-light"),
           fontSize: "0.7rem",
           marginLeft: 4,
           marginRight: 4,
@@ -160,25 +177,32 @@ export default class Smart extends React.Component {
           />
         )}
         <Box className="SmartWrapper">
-          <Flex align="center" mt={1} flexWrap="wrap">
-            <Flex align="center" color={color}>
-              <Icon name={isNegative ? "arrowDown" : "arrowUp"} />
-              {changeDisplay}
+          {!lastChange || !previousValue ? (
+            <Box
+              className="text-centered text-bold mt1"
+              color={color("text-medium")}
+            >{jt`Nothing to compare for the previous ${granularity}.`}</Box>
+          ) : (
+            <Flex align="center" mt={1} flexWrap="wrap">
+              <Flex align="center" color={changeColor}>
+                <Icon name={isNegative ? "arrow_down" : "arrow_up"} />
+                {changeDisplay}
+              </Flex>
+              <h4
+                id="SmartScalar-PreviousValue"
+                className="flex align-center hide lg-show"
+                style={{
+                  color: color("text-medium"),
+                }}
+              >
+                {!isFullscreen &&
+                  jt`${separator} was ${formatValue(
+                    previousValue,
+                    settings.column(column),
+                  )} ${granularityDisplay}`}
+              </h4>
             </Flex>
-            <h4
-              id="SmartScalar-PreviousValue"
-              className="flex align-center hide lg-show"
-              style={{
-                color: colors["text-medium"],
-              }}
-            >
-              {!isFullscreen &&
-                jt`${separator} was ${formatValue(
-                  insight["previous-value"],
-                  settings.column(column),
-                )} ${granularityDisplay}`}
-            </h4>
-          </Flex>
+          )}
         </Box>
       </ScalarWrapper>
     );

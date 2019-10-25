@@ -2,12 +2,11 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link, withRouter } from "react-router";
 
-import InputBlurChange from "metabase/components/InputBlurChange.jsx";
-import Select, { Option } from "metabase/components/Select.jsx";
+import InputBlurChange from "metabase/components/InputBlurChange";
+import Select, { Option } from "metabase/components/Select";
 import Icon from "metabase/components/Icon";
-import { t } from "c-3po";
+import { t } from "ttag";
 import * as MetabaseCore from "metabase/lib/core";
-import { titleize, humanize } from "metabase/lib/formatting";
 import { isNumericBaseType, isCurrency } from "metabase/lib/schema_metadata";
 import { TYPE, isa, isFK } from "metabase/lib/types";
 import currency from "metabase/lib/currency";
@@ -21,47 +20,39 @@ import MetabaseAnalytics from "metabase/lib/analytics";
 
 @withRouter
 export default class Column extends Component {
-  constructor(props, context) {
-    super(props, context);
-    this.onDescriptionChange = this.onDescriptionChange.bind(this);
-    this.onNameChange = this.onNameChange.bind(this);
-    this.onVisibilityChange = this.onVisibilityChange.bind(this);
-  }
-
   static propTypes = {
     field: PropTypes.object,
     idfields: PropTypes.array.isRequired,
     updateField: PropTypes.func.isRequired,
   };
 
-  updateProperty(name, value) {
-    this.props.field[name] = value;
-    this.props.updateField(this.props.field);
-  }
+  updateField = properties =>
+    this.props.updateField({
+      ...this.props.field.getPlainObject(),
+      ...properties,
+    });
 
-  onNameChange(event) {
+  onNameChange = event => {
     if (!_.isEmpty(event.target.value)) {
-      this.updateProperty("display_name", event.target.value);
+      this.updateField({ display_name: event.target.value });
     } else {
       // if the user set this to empty then simply reset it because that's not allowed!
       event.target.value = this.props.field.display_name;
     }
-  }
+  };
 
-  onDescriptionChange(event) {
-    this.updateProperty("description", event.target.value);
-  }
+  onDescriptionChange = event =>
+    this.updateField({ description: event.target.value });
 
-  onVisibilityChange(type) {
-    this.updateProperty("visibility_type", type.id);
-  }
+  onVisibilityChange = ({ id: visibility_type }) =>
+    this.updateField({ visibility_type });
 
   render() {
-    const { field, idfields, updateField } = this.props;
+    const { field, idfields } = this.props;
 
     return (
       <li className="mt1 mb3 flex">
-        <div className="flex flex-column flex-full">
+        <div className="flex flex-column flex-auto">
           <div>
             <InputBlurChange
               style={{ minWidth: 420 }}
@@ -71,19 +62,19 @@ export default class Column extends Component {
               onBlurChange={this.onNameChange}
             />
             <div className="clearfix">
-              <div className="flex flex-full">
-                <div className="flex-full px1">
+              <div className="flex flex-auto">
+                <div className="flex-auto pl1">
                   <FieldVisibilityPicker
                     className="block"
                     field={field}
-                    updateField={updateField}
+                    updateField={this.updateField}
                   />
                 </div>
-                <div className="flex-full px1">
+                <div className="flex-auto px1">
                   <SpecialTypeAndTargetPicker
                     className="block"
                     field={field}
-                    updateField={updateField}
+                    updateField={this.updateField}
                     idfields={idfields}
                   />
                 </div>
@@ -120,22 +111,19 @@ export class FieldVisibilityPicker extends Component {
     className?: string,
   };
 
-  onVisibilityChange = visibilityType => {
-    const { field } = this.props;
-    field.visibility_type = visibilityType.id;
-    this.props.updateField(field);
-  };
+  onVisibilityChange = ({ id: visibility_type }) =>
+    this.props.updateField({ visibility_type });
 
   render() {
     const { field, className } = this.props;
 
     return (
       <Select
-        className={cx("TableEditor-field-visibility block", className)}
+        className={cx("TableEditor-field-visibility", className)}
         placeholder={t`Select a field visibility`}
-        value={_.find(MetabaseCore.field_visibility_types, type => {
-          return type.id === field.visibility_type;
-        })}
+        value={MetabaseCore.field_visibility_types.find(
+          type => type.id === field.visibility_type,
+        )}
         options={MetabaseCore.field_visibility_types}
         onChange={this.onVisibilityChange}
         triggerClasses={this.props.triggerClasses}
@@ -152,26 +140,24 @@ export class SpecialTypeAndTargetPicker extends Component {
     selectSeparator?: React$Element<any>,
   };
 
-  onSpecialTypeChange = async special_type => {
+  onSpecialTypeChange = async ({ id: special_type }) => {
     const { field, updateField } = this.props;
-
-    // FIXME: mutation
-    field.special_type = special_type.id;
 
     // If we are changing the field from a FK to something else, we should delete any FKs present
     if (field.target && field.target.id != null && isFK(field.special_type)) {
-      // we have something that used to be an FK and is now not an FK
-      // clean up after ourselves
-      field.target = null;
-      field.fk_target_field_id = null;
+      await updateField({
+        special_type,
+        target: null,
+        k_target_field_id: null,
+      });
+    } else {
+      await updateField({ special_type });
     }
-
-    await updateField(field);
 
     MetabaseAnalytics.trackEvent(
       "Data Model",
       "Update Field Special-Type",
-      field.special_type,
+      special_type,
     );
   };
 
@@ -192,17 +178,14 @@ export class SpecialTypeAndTargetPicker extends Component {
     );
   };
 
-  onTargetChange = async target_field => {
-    const { field, updateField } = this.props;
-    field.fk_target_field_id = target_field.id;
-
-    await updateField(field);
+  onTargetChange = async ({ id: fk_target_field_id }) => {
+    await this.props.updateField({ fk_target_field_id });
 
     MetabaseAnalytics.trackEvent("Data Model", "Update Field Target");
   };
 
   render() {
-    const { field, idfields, className, selectSeparator } = this.props;
+    const { field, className, selectSeparator } = this.props;
 
     let specialTypes = MetabaseCore.field_special_types.slice(0);
     specialTypes.push({
@@ -219,18 +202,23 @@ export class SpecialTypeAndTargetPicker extends Component {
 
     const showCurrencyTypeSelect = isCurrency(field);
 
+    let { idfields } = this.props;
+
     // If all FK target fields are in the same schema (like `PUBLIC` for sample dataset)
     // or if there are no schemas at all, omit the schema name
-    const includeSchemaName =
+    const includeSchema =
       _.uniq(idfields.map(idField => idField.table.schema)).length > 1;
+
+    idfields = _.sortBy(idfields, field =>
+      field.displayName({ includeTable: true, includeSchema }),
+    );
 
     return (
       <div>
         <Select
-          className={cx("TableEditor-field-special-type", className)}
+          className={cx("TableEditor-field-special-type", "mt0", className)}
           placeholder={t`Select a special type`}
-          value={_.find(
-            MetabaseCore.field_special_types,
+          value={MetabaseCore.field_special_types.find(
             type => type.id === field.special_type,
           )}
           options={specialTypes}
@@ -260,7 +248,7 @@ export class SpecialTypeAndTargetPicker extends Component {
             searchCaseSensitive={false}
           >
             {Object.values(currency).map(c => (
-              <Option name={c.name} value={c.code}>
+              <Option name={c.name} value={c.code} key={c.code}>
                 <span className="flex full align-center">
                   <span>{c.name}</span>
                   <span className="text-bold text-light ml1">{c.symbol}</span>
@@ -272,23 +260,15 @@ export class SpecialTypeAndTargetPicker extends Component {
         {showFKTargetSelect && selectSeparator}
         {showFKTargetSelect && (
           <Select
-            className={cx("TableEditor-field-target", className)}
+            className={cx("TableEditor-field-target", "text-wrap", className)}
             triggerClasses={this.props.triggerClasses}
             placeholder={t`Select a target`}
-            value={
-              field.fk_target_field_id &&
-              _.find(
-                idfields,
-                idField => idField.id === field.fk_target_field_id,
-              )
-            }
+            value={idfields.find(
+              idField => idField.id === field.fk_target_field_id,
+            )}
             options={idfields}
-            optionNameFn={idField =>
-              includeSchemaName
-                ? titleize(humanize(idField.table.schema)) +
-                  "." +
-                  idField.displayName
-                : idField.displayName
+            optionNameFn={field =>
+              field.displayName({ includeTable: true, includeSchema })
             }
             onChange={this.onTargetChange}
           />

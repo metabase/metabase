@@ -52,7 +52,7 @@
        json/generate-string))
 
 (defn- metadata-checksum
-  "Simple, checksum of the column results METADATA.
+  "Simple, checksum of the column results `metadata`.
    Results metadata is returned as part of all query results, with the hope that the frontend will pass it back to
    us when a Card is saved or updated. This checksum (also passed) is a simple way for us to check whether the metadata
    is valid and hasn't been accidentally tampered with.
@@ -73,12 +73,12 @@
         encryption/maybe-encrypt)))
 
 (defn valid-checksum?
-  "Is the CHECKSUM the right one for this column METADATA?"
+  "Is the `checksum` the right one for this column `metadata`?"
   [metadata checksum]
   (and metadata
        checksum
-       (= (encryption/maybe-decrypt (metadata-checksum metadata))
-          (encryption/maybe-decrypt checksum))))
+       (= (encryption/maybe-decrypt (metadata-checksum metadata) :log-errors? false)
+          (encryption/maybe-decrypt checksum                     :log-errors? false))))
 
 (defn record-and-return-metadata!
   "Middleware that records metadata about the columns returned when running the query."

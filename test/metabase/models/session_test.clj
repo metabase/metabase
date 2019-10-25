@@ -4,7 +4,6 @@
              [session :refer :all]
              [user :refer [User]]]
             [metabase.test.util :as tu]
-            [metabase.util :as u]
             [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt]))

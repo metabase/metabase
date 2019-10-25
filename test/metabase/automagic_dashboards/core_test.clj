@@ -2,10 +2,9 @@
   (:require [clj-time
              [core :as t]
              [format :as t.format]]
+            [clojure.core.async :as a]
+            [clojure.test :refer :all]
             [expectations :refer :all]
-            [metabase.api
-             [card :as card.api]
-             [common :as api]]
             [metabase.automagic-dashboards
              [core :as magic :refer :all]
              [rules :as rules]]
@@ -19,15 +18,16 @@
              [permissions-group :as perms-group]
              [query :as query]
              [table :as table :refer [Table]]]
+            [metabase.query-processor.async :as qp.async]
             [metabase.test
              [automagic-dashboards :refer :all]
              [data :as data]
              [util :as tu]]
-            [metabase.util.date :as date]
-            [puppetlabs.i18n.core :as i18n :refer [tru]]
+            [metabase.util
+             [date :as date]
+             [i18n :refer [tru]]]
             [toucan.db :as db]
-            [toucan.util.test :as tt]
-            [metabase.util :as u]))
+            [toucan.util.test :as tt]))
 
 ;;; ------------------- `->reference` -------------------
 
@@ -149,6 +149,12 @@
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (-> card-id Card test-automagic-analysis))))))
 
+(defn- result-metadata-for-query [query]
+  (first
+   (a/alts!!
+    [(qp.async/result-metadata-for-query-async query)
+     (a/timeout 1000)])))
+
 (expect
   (tu/with-non-admin-groups-no-root-collection-perms
     (let [source-query {:query    {:source-table (data/id :venues)}
@@ -158,7 +164,7 @@
                       Card [{source-id :id} {:table_id      (data/id :venues)
                                              :collection_id   collection-id
                                              :dataset_query   source-query
-                                             :result_metadata (with-rasta (#'card.api/result-metadata-for-query source-query))}]
+                                             :result_metadata (with-rasta (result-metadata-for-query source-query))}]
                       Card [{card-id :id} {:table_id      (data/id :venues)
                                            :collection_id collection-id
                                            :dataset_query {:query    {:filter       [:> [:field-literal "PRICE" "type/Number"] 10]
@@ -193,7 +199,7 @@
                       Card [{source-id :id} {:table_id        nil
                                              :collection_id   collection-id
                                              :dataset_query   source-query
-                                             :result_metadata (with-rasta (#'card.api/result-metadata-for-query source-query))}]
+                                             :result_metadata (with-rasta (result-metadata-for-query source-query))}]
                       Card [{card-id :id} {:table_id      nil
                                            :collection_id collection-id
                                            :dataset_query {:query    {:filter       [:> [:field-literal "PRICE" "type/Number"] 10]
@@ -322,9 +328,9 @@
 ;;; ------------------- /candidates -------------------
 
 (expect
-  3
+  4
   (with-rasta
-    (->> (Database (data/id)) candidate-tables first :tables count)))
+    (->> (data/db) candidate-tables first :tables count)))
 
 ;; /candidates should work with unanalyzed tables
 (expect
@@ -510,15 +516,17 @@
                                                               :day-of-month
                                                               :week-of-year]))))
 
-(expect
-  (map str [(tru "{0}st" 1)
-            (tru "{0}nd" 22)
-            (tru "{0}rd" 303)
-            (tru "{0}th" 0)
-            (tru "{0}th" 8)])
-  (map (comp str #'magic/pluralize) [1 22 303 0 8]))
+(deftest pluralize-test
+  (are [expected n] (= (str expected)
+                       (str (#'magic/pluralize n)))
+    (tru "{0}st" 1)   1
+    (tru "{0}nd" 22)  22
+    (tru "{0}rd" 303) 303
+    (tru "{0}th" 0)   0
+    (tru "{0}th" 8)   8))
 
-;; Make sure we have handlers for all the units available
-(expect
-  (every? (partial #'magic/humanize-datetime "1990-09-09T12:30:00")
-          (concat (var-get #'date/date-extract-units) (var-get #'date/date-trunc-units))))
+(deftest handlers-test
+  (testing "Make sure we have handlers for all the units available"
+    (doseq [unit (concat date/date-extract-units date/date-trunc-units)]
+      (testing unit
+        (is (some? (#'magic/humanize-datetime "1990-09-09T12:30:00" unit)))))))

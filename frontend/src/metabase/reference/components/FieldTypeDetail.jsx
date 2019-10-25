@@ -3,12 +3,12 @@ import PropTypes from "prop-types";
 import cx from "classnames";
 import { getIn } from "icepick";
 import pure from "recompose/pure";
-import { t } from "c-3po";
+import { t } from "ttag";
 import * as MetabaseCore from "metabase/lib/core";
 import { isNumericBaseType } from "metabase/lib/schema_metadata";
 import { isFK } from "metabase/lib/types";
 
-import Select from "metabase/components/Select.jsx";
+import Select from "metabase/components/Select";
 
 import D from "metabase/reference/components/Detail.css";
 
@@ -41,11 +41,10 @@ const FieldTypeDetail = ({
                   name: t`No field type`,
                   section: t`Other`,
                 })
-                .filter(
-                  type =>
-                    !isNumericBaseType(field)
-                      ? !(type.id && type.id.startsWith("timestamp_"))
-                      : true,
+                .filter(type =>
+                  !isNumericBaseType(field)
+                    ? !(type.id && type.id.startsWith("timestamp_"))
+                    : true,
                 )}
               onChange={type => fieldTypeFormField.onChange(type.id)}
             />

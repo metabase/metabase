@@ -1,3 +1,5 @@
+/* @flow */
+
 import Query from "metabase-lib/lib/queries/Query";
 import type Table from "metabase-lib/lib/metadata/Table";
 import type { DatabaseEngine, DatabaseId } from "metabase/meta/types/Database";

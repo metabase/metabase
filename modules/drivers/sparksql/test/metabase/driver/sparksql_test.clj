@@ -1,5 +1,5 @@
 (ns metabase.driver.sparksql-test
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase.driver.sql.query-processor :as sql.qp]))
 
 ;; Make sure our custom implementation of `apply-page` works the way we'd expect

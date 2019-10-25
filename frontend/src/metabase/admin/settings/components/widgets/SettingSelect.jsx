@@ -1,22 +1,29 @@
 import React from "react";
 
-import Select from "metabase/components/Select.jsx";
-import _ from "underscore";
+import Select, { Option } from "metabase/components/Select";
 
-const SettingSelect = ({ setting, onChange, disabled }) => (
+const SettingSelect = ({
+  setting: { placeholder, value, options, defaultValue },
+  onChange,
+  disabled,
+}) => (
   <Select
     className="full-width"
-    placeholder={setting.placeholder}
-    value={
-      _.findWhere(setting.options, { value: setting.value }) || setting.value
-    }
-    options={setting.options}
-    onChange={onChange}
-    optionNameFn={option => (typeof option === "object" ? option.name : option)}
-    optionValueFn={option =>
-      typeof option === "object" ? option.value : option
-    }
-  />
+    placeholder={placeholder}
+    value={value}
+    defaultValue={defaultValue}
+    onChange={e => onChange(e.target.value)}
+  >
+    {options.map(option => {
+      const name = typeof option === "object" ? option.name : option;
+      const value = typeof option === "object" ? option.value : option;
+      return (
+        <Option key={value} name={name} value={value}>
+          {name}
+        </Option>
+      );
+    })}
+  </Select>
 );
 
 export default SettingSelect;

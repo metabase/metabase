@@ -9,7 +9,7 @@
     "<rootDir>/frontend/test/legacy-selenium"
   ],
   "testMatch": [
-    "**/?(*.)integ.spec.js?(x)"
+    "<rootDir>/frontend/test/**/*.integ.spec.js?(x)"
   ],
   "modulePaths": [
     "<rootDir>/frontend/test",
@@ -17,6 +17,7 @@
   ],
   "setupFiles": [
     "<rootDir>/frontend/test/jest-setup.js",
+    "<rootDir>/frontend/test/enzyme-setup.js",
     "<rootDir>/frontend/test/metabase-bootstrap.js"
   ],
   "globals": {
@@ -24,5 +25,8 @@
     "ga": {},
     "document": {}
   },
-  "testURL": "http://localhost"
+  "coverageDirectory": "./",
+  "coverageReporters": ["text", "json-summary"],
+  "collectCoverageFrom": ["frontend/src/**/*.js", "frontend/src/**/*.jsx"],
+  "coveragePathIgnorePatterns": ["/node_modules/", "/frontend/src/metabase/visualizations/lib/errors.js"]
 }

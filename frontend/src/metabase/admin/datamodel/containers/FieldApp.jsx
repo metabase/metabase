@@ -11,7 +11,7 @@ import { Link } from "react-router";
 import { connect } from "react-redux";
 
 import _ from "underscore";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 // COMPONENTS
 
@@ -22,11 +22,8 @@ import SaveStatus from "metabase/components/SaveStatus";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import AdminLayout from "metabase/components/AdminLayout.jsx";
-import {
-  LeftNavPane,
-  LeftNavPaneItem,
-} from "metabase/components/LeftNavPane.jsx";
+import AdminLayout from "metabase/components/AdminLayout";
+import { LeftNavPane, LeftNavPaneItem } from "metabase/components/LeftNavPane";
 import Section, { SectionHeader } from "../components/Section";
 import SelectSeparator from "../components/SelectSeparator";
 
@@ -40,17 +37,14 @@ import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
 
 // SELECTORS
 import { getMetadata } from "metabase/selectors/metadata";
-import { getDatabaseIdfields } from "metabase/admin/datamodel/selectors";
 
 // ACTIONS
-import * as metadataActions from "metabase/redux/metadata";
-import * as datamodelActions from "../datamodel";
 import { rescanFieldValues, discardFieldValues } from "../field";
 
 // LIB
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import { has_field_values_options } from "metabase/lib/core";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import { isCurrency } from "metabase/lib/schema_metadata";
 
@@ -58,31 +52,37 @@ import type { ColumnSettings as ColumnSettingsType } from "metabase/meta/types/D
 import type { DatabaseId } from "metabase/meta/types/Database";
 import type { TableId } from "metabase/meta/types/Table";
 import type { FieldId } from "metabase/meta/types/Field";
+import Databases from "metabase/entities/databases";
+import Tables from "metabase/entities/tables";
+import Fields from "metabase/entities/fields";
 
 const mapStateToProps = (state, props) => {
+  const databaseId = parseInt(props.params.databaseId);
   return {
-    databaseId: parseInt(props.params.databaseId),
+    databaseId,
     tableId: parseInt(props.params.tableId),
     fieldId: parseInt(props.params.fieldId),
     metadata: getMetadata(state),
-    idfields: getDatabaseIdfields(state),
+    idfields: Databases.selectors.getIdfields(state, { databaseId }),
   };
 };
 
 const mapDispatchToProps = {
-  fetchDatabaseMetadata: metadataActions.fetchDatabaseMetadata,
-  fetchTableMetadata: metadataActions.fetchTableMetadata,
-  fetchFieldValues: metadataActions.fetchFieldValues,
-  updateField: metadataActions.updateField,
-  updateFieldValues: metadataActions.updateFieldValues,
-  updateFieldDimension: metadataActions.updateFieldDimension,
-  deleteFieldDimension: metadataActions.deleteFieldDimension,
-  fetchDatabaseIdfields: datamodelActions.fetchDatabaseIdfields,
+  fetchDatabaseMetadata: Databases.actions.fetchDatabaseMetadata,
+  fetchTableMetadata: Tables.actions.fetchTableMetadata,
+  fetchFieldValues: Fields.actions.fetchFieldValues,
+  updateField: Fields.actions.update,
+  updateFieldValues: Fields.actions.updateFieldValues,
+  updateFieldDimension: Fields.actions.updateFieldDimension,
+  deleteFieldDimension: Fields.actions.deleteFieldDimension,
   rescanFieldValues,
   discardFieldValues,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class FieldApp extends React.Component {
   state = {
     tab: "general",
@@ -97,14 +97,13 @@ export default class FieldApp extends React.Component {
     metadata: Metadata,
     idfields: Object[],
 
-    fetchDatabaseMetadata: number => Promise<void>,
-    fetchTableMetadata: number => Promise<void>,
-    fetchFieldValues: number => Promise<void>,
+    fetchDatabaseMetadata: Object => Promise<void>,
+    fetchTableMetadata: Object => Promise<void>,
+    fetchFieldValues: Object => Promise<void>,
     updateField: any => Promise<void>,
     updateFieldValues: any => Promise<void>,
-    updateFieldDimension: (FieldId, any) => Promise<void>,
-    deleteFieldDimension: FieldId => Promise<void>,
-    fetchDatabaseIdfields: DatabaseId => Promise<void>,
+    updateFieldDimension: (Object, any) => Promise<void>,
+    deleteFieldDimension: Object => Promise<void>,
 
     rescanFieldValues: FieldId => Promise<void>,
     discardFieldValues: FieldId => Promise<void>,
@@ -121,38 +120,30 @@ export default class FieldApp extends React.Component {
       fieldId,
       fetchDatabaseMetadata,
       fetchTableMetadata,
-      fetchDatabaseIdfields,
       fetchFieldValues,
     } = this.props;
 
-    // A complete database metadata is needed in case that foreign key is changed
-    // and then we need to show FK remapping options for a new table
-    await fetchDatabaseMetadata(databaseId);
+    await Promise.all([
+      // A complete database metadata is needed in case that foreign key is
+      // changed and then we need to show FK remapping options for a new table
+      fetchDatabaseMetadata({ id: databaseId }),
 
-    // Only fetchTableMetadata hydrates `dimension` in the field object
-    // Force reload to ensure that we are not showing stale information
-    await fetchTableMetadata(tableId, true);
+      // Only fetchTableMetadata hydrates `dimension` in the field object
+      // Force reload to ensure that we are not showing stale information
+      fetchTableMetadata({ id: tableId }, { reload: true }),
 
-    // load field values if has_field_values === "list"
-    const field = this.props.metadata.field(fieldId);
-    if (field && field.has_field_values === "list") {
-      await fetchFieldValues(fieldId);
-    }
-
-    // TODO Atte Keinänen 7/10/17: Migrate this to redux/metadata
-    await fetchDatabaseIdfields(databaseId);
+      // always load field values even though it's only needed if
+      // has_field_values === "list"
+      fetchFieldValues({ id: fieldId }),
+    ]);
   }
 
-  linkWithSaveStatus = (saveMethod: Function) => {
-    const self = this;
-    return async (...args: any[]) => {
-      self.saveStatus && self.saveStatus.setSaving();
-      await saveMethod(...args);
-      self.saveStatus && self.saveStatus.setSaved();
-    };
+  linkWithSaveStatus = (saveMethod: Function) => async (...args: any[]) => {
+    this.saveStatus && this.saveStatus.setSaving();
+    await saveMethod(...args);
+    this.saveStatus && this.saveStatus.setSaved();
   };
 
-  onUpdateField = this.linkWithSaveStatus(this.props.updateField);
   onUpdateFieldProperties = this.linkWithSaveStatus(async fieldProps => {
     const { metadata, fieldId } = this.props;
     const field = metadata.fields[fieldId];
@@ -251,7 +242,6 @@ export default class FieldApp extends React.Component {
                   idfields={idfields}
                   table={table}
                   metadata={metadata}
-                  onUpdateField={this.onUpdateField}
                   onUpdateFieldValues={this.onUpdateFieldValues}
                   onUpdateFieldProperties={this.onUpdateFieldProperties}
                   onUpdateFieldDimension={this.onUpdateFieldDimension}
@@ -283,7 +273,6 @@ const FieldGeneralPane = ({
   idfields,
   table,
   metadata,
-  onUpdateField,
   onUpdateFieldValues,
   onUpdateFieldProperties,
   onUpdateFieldDimension,
@@ -309,7 +298,7 @@ const FieldGeneralPane = ({
       <div style={{ maxWidth: 400 }}>
         <FieldVisibilityPicker
           field={field.getPlainObject()}
-          updateField={onUpdateField}
+          updateField={onUpdateFieldProperties}
         />
       </div>
     </Section>
@@ -318,7 +307,7 @@ const FieldGeneralPane = ({
       <SectionHeader title={t`Field Type`} />
       <SpecialTypeAndTargetPicker
         field={field.getPlainObject()}
-        updateField={onUpdateField}
+        updateField={onUpdateFieldProperties}
         idfields={idfields}
         selectSeparator={<SelectSeparator />}
       />
@@ -400,9 +389,9 @@ export const BackButton = ({
   <Link
     to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
     className="circle text-white p2 flex align-center justify-center inline"
-    style={{ backgroundColor: colors["bg-dark"] }}
+    style={{ backgroundColor: color("bg-dark") }}
   >
-    <Icon name="backArrow" />
+    <Icon name="arrow_back" />
   </Link>
 );
 
@@ -421,11 +410,14 @@ export class FieldHeader extends React.Component {
     // Update the dimension name if it exists
     // TODO: Have a separate input field for the dimension name?
     if (!_.isEmpty(field.dimensions)) {
-      await updateFieldDimension(field.id, {
-        type: field.dimensions.type,
-        human_readable_field_id: field.dimensions.human_readable_field_id,
-        name,
-      });
+      await updateFieldDimension(
+        { id: field.id },
+        {
+          type: field.dimensions.type,
+          human_readable_field_id: field.dimensions.human_readable_field_id,
+          name,
+        },
+      );
     }
 
     // todo: how to treat empty / too long strings? see how this is done in Column

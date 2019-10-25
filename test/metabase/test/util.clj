@@ -3,16 +3,16 @@
   (:require [cheshire.core :as json]
             [clj-time.core :as time]
             [clojure
-             [string :as s]
+             [string :as str]
+             [test :as t]
              [walk :as walk]]
             [clojure.tools.logging :as log]
             [clojurewerkz.quartzite.scheduler :as qs]
-            [expectations :refer :all]
+            [colorize.core :as colorize]
             [metabase
              [driver :as driver]
              [task :as task]
              [util :as u]]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
             [metabase.models
              [card :refer [Card]]
              [collection :as collection :refer [Collection]]
@@ -33,70 +33,46 @@
              [table :refer [Table]]
              [task-history :refer [TaskHistory]]
              [user :refer [User]]]
-            [metabase.test.data :as data]
-            [metabase.test.data.dataset-definitions :as defs]
+            [metabase.plugins.classloader :as classloader]
+            [metabase.test
+             [data :as data]
+             [initialize :as initialize]]
             [metabase.util.date :as du]
+            [schema.core :as s]
             [toucan.db :as db]
-            [toucan.util.test :as test])
-  (:import java.util.TimeZone
+            [toucan.util.test :as tt])
+  (:import java.util.concurrent.TimeoutException
            org.apache.log4j.Logger
-           org.joda.time.DateTimeZone
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
-;;; ---------------------------------------------------- match-$ -----------------------------------------------------
+(defmethod t/assert-expr 'schema=
+  [message form]
+  (let [[_ schema actual] form]
+    `(let [schema# ~schema
+           actual# ~actual
+           pass?#  (nil? (s/check schema# actual#))]
+       (t/do-report
+        {:type     (if pass?# :pass :fail)
+         :message  ~message
+         :expected (s/explain schema#)
+         :actual   actual#
+         :diffs    (when-not pass?#
+                     [(s/check schema# actual#)])}))))
 
-(defn- $->prop
-  "If FORM is a symbol starting with a `$`, convert it to the form `(form-keyword SOURCE-OBJ)`.
+(defmacro ^:deprecated expect-schema
+  "Like `expect`, but checks that results match a schema."
+  {:style/indent 0}
+  [expected actual]
+  `(t/deftest ~(symbol (format "expect-schema-%d" (hash &form)))
+     (t/is (~'schema= ~expected ~actual))))
 
-    ($->prop my-obj 'fish)  -> 'fish
-    ($->prop my-obj '$fish) -> '(:fish my-obj)"
-  [source-obj form]
-  (or (when (and (symbol? form)
-                 (= (first (name form)) \$)
-                 (not= form '$))
-        (if (= form '$$)
-          source-obj
-          `(~(keyword (apply str (rest (name form)))) ~source-obj)))
-      form))
-
-(defmacro ^:deprecated match-$
-  "Walk over map DEST-OBJECT and replace values of the form `$`, `$key`, or `$$` as follows:
-
-    {k $}     -> {k (k SOURCE-OBJECT)}
-    {k $symb} -> {k (:symb SOURCE-OBJECT)}
-    $$        -> {k SOURCE-OBJECT}
-
-  ex.
-
-    (match-$ m {:a $, :b 3, :c $b}) -> {:a (:a m), b 3, :c (:b m)}"
-  ;; DEPRECATED - This is an old pattern for writing tests and is probably best avoided going forward.
-  ;; Tests that use this macro end up being huge, often with giant maps with many values that are `$`.
-  ;; It's better just to write a helper function that only keeps values relevant to the tests you're writing
-  ;; and use that to pare down the results (e.g. only keeping a handful of keys relevant to the test).
-  ;; Alternatively, you can also consider converting fields that naturally change to boolean values indiciating their
-  ;; presence see the `boolean-ids-and-timestamps` function below
-  {:style/indent 1}
-  [source-obj dest-object]
-  {:pre [(map? dest-object)]}
-  (let [source##    (gensym)
-        dest-object (into {} (for [[k v] dest-object]
-                               {k (condp = v
-                                    '$ `(~k ~source##)
-                                    '$$ source##
-                                    v)}))]
-    `(let [~source## ~source-obj]
-       ~(walk/prewalk (partial $->prop source##)
-                      dest-object))))
-
-
-;;; random-name
-(def ^:private ^{:arglists '([])} random-uppercase-letter
-  (partial rand-nth (mapv char (range (int \A) (inc (int \Z))))))
+(defn- random-uppercase-letter []
+  (char (+ (int \A) (rand-int 26))))
 
 (defn random-name
   "Generate a random string of 20 uppercase letters."
   []
-  (apply str (repeatedly 20 random-uppercase-letter)))
+  (str/join (repeatedly 20 random-uppercase-letter)))
 
 (defn random-email
   "Generate a random email address."
@@ -111,8 +87,8 @@
     (every-pred (some-fn keyword? string?)
                 (some-fn #{:id :created_at :updated_at :last_analyzed :created-at :updated-at :field-value-id :field-id
                            :fields_hash :date_joined :date-joined :last_login :dimension-id :human-readable-field-id}
-                         #(s/ends-with? % "_id")
-                         #(s/ends-with? % "_at")))
+                         #(str/ends-with? % "_id")
+                         #(str/ends-with? % "_at")))
     data))
   ([pred data]
    (walk/prewalk (fn [maybe-map]
@@ -127,13 +103,13 @@
 
 
 (defn- user-id [username]
-  (require 'metabase.test.data.users)
+  (classloader/require 'metabase.test.data.users)
   ((resolve 'metabase.test.data.users/user->id) username))
 
 (defn- rasta-id [] (user-id :rasta))
 
 (u/strict-extend (class Card)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id             (rasta-id)
                                 :dataset_query          {}
                                 :display                :table
@@ -141,33 +117,33 @@
                                 :visualization_settings {}})})
 
 (u/strict-extend (class Collection)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:name  (random-name)
                                 :color "#ABCDEF"})})
 
 (u/strict-extend (class Dashboard)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id   (rasta-id)
                                 :name         (random-name)})})
 
 (u/strict-extend (class DashboardCardSeries)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (constantly {:position 0})})
 
 (u/strict-extend (class Database)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:details   {}
                                 :engine    :h2
                                 :is_sample false
                                 :name      (random-name)})})
 
 (u/strict-extend (class Dimension)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:name (random-name)
                                 :type "internal"})})
 
 (u/strict-extend (class Field)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:database_type "VARCHAR"
                                 :base_type     :type/Text
                                 :name          (random-name)
@@ -175,7 +151,7 @@
                                 :table_id      (data/id :checkins)})})
 
 (u/strict-extend (class Metric)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id  (rasta-id)
                                 :definition  {}
                                 :description "Lookin' for a blueberry"
@@ -183,35 +159,35 @@
                                 :table_id    (data/id :checkins)})})
 
 (u/strict-extend (class PermissionsGroup)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:name (random-name)})})
 
 (u/strict-extend (class Pulse)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id (rasta-id)
                                 :name       (random-name)})})
 
 (u/strict-extend (class PulseCard)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:position    0
                                 :include_csv false
                                 :include_xls false})})
 
 (u/strict-extend (class PulseChannel)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (constantly {:channel_type  :email
                                     :details       {}
                                     :schedule_type :daily
                                     :schedule_hour 15})})
 
 (u/strict-extend (class Revision)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:user_id      (rasta-id)
                                 :is_creation  false
                                 :is_reversion false})})
 
 (u/strict-extend (class Segment)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:creator_id (rasta-id)
                                 :definition  {}
                                 :description "Lookin' for a blueberry"
@@ -221,13 +197,13 @@
 ;; TODO - `with-temp` doesn't return `Sessions`, probably because their ID is a string?
 
 (u/strict-extend (class Table)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:db_id  (data/id)
                                 :active true
                                 :name   (random-name)})})
 
 (u/strict-extend (class TaskHistory)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_]
                          (let [started (time/now)
                                ended   (time/plus started (time/millis 10))]
@@ -238,7 +214,7 @@
                             :duration   (du/calculate-duration started ended)}))})
 
 (u/strict-extend (class User)
-  test/WithTempDefaults
+  tt/WithTempDefaults
   {:with-temp-defaults (fn [_] {:first_name (random-name)
                                 :last_name  (random-name)
                                 :email      (random-email)
@@ -277,16 +253,22 @@
 
 
 (defn do-with-temporary-setting-value
-  "Temporarily set the value of the `Setting` named by keyword SETTING-K to VALUE and execute F, then re-establish the
-  original value. This works much the same way as `binding`.
+  "Temporarily set the value of the Setting named by keyword `setting-k` to `value` and execute `f`, then re-establish
+  the original value. This works much the same way as `binding`.
 
    Prefer the macro `with-temporary-setting-values` over using this function directly."
   {:style/indent 2}
   [setting-k value f]
-  (let [original-value (setting/get setting-k)]
+  ;; plugins have to be initialized because changing `report-timezone` will call driver methods
+  (initialize/initialize-if-needed! :db :plugins)
+  (let [setting        (#'setting/resolve-setting setting-k)
+        original-value (when (or (#'setting/db-or-cache-value setting)
+                                 (#'setting/env-var-value setting))
+                         (setting/get setting-k))]
     (try
       (setting/set! setting-k value)
-      (f)
+      (t/testing (colorize/blue (format "Setting %s = %s" (keyword setting-k) value))
+        (f))
       (finally
         (setting/set! setting-k original-value)))))
 
@@ -296,25 +278,47 @@
 
      (with-temporary-setting-values [google-auth-auto-create-accounts-domain \"metabase.com\"]
        (google-auth-auto-create-accounts-domain)) -> \"metabase.com\""
-  [[setting-k value & more] & body]
-  (let [body `(do-with-temporary-setting-value ~(keyword setting-k) ~value (fn [] ~@body))]
-    (if (seq more)
-      `(with-temporary-setting-values ~more ~body)
-      body)))
+  [[setting-k value & more :as bindings] & body]
+  (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
+  (if (empty? bindings)
+    `(do ~@body)
+    (let [body `(do-with-temporary-setting-value ~(keyword setting-k) ~value (fn [] ~@body))]
+      (if (seq more)
+        `(with-temporary-setting-values ~more ~body)
+        body))))
+
+(defmacro discard-setting-changes
+  "Execute `body` in a try-finally block, restoring any changes to listed `settings` to their original values at its
+  conclusion.
+
+    (discard-setting-changes [site-name]
+      ...)"
+  {:style/indent 1}
+  [settings & body]
+  `(with-temporary-setting-values ~(vec (mapcat (juxt identity #(list `setting/get (keyword %))) settings))
+     ~@body))
 
 
 (defn do-with-temp-vals-in-db
   "Implementation function for `with-temp-vals-in-db` macro. Prefer that to using this directly."
   [model object-or-id column->temp-value f]
-  (let [original-column->value (db/select-one (vec (cons model (keys column->temp-value)))
-                                 :id (u/get-id object-or-id))]
+  ;; use low-level `query` and `execute` functions here, because Toucan `select` and `update` functions tend to do
+  ;; things like add columns like `common_name` that don't actually exist, causing subsequent update to fail
+  (let [model                    (db/resolve-model model)
+        [original-column->value] (db/query {:select (keys column->temp-value)
+                                            :from   [model]
+                                            :where  [:= :id (u/get-id object-or-id)]})]
+    (assert original-column->value
+      (format "%s %d not found." (name model) (u/get-id object-or-id)))
     (try
       (db/update! model (u/get-id object-or-id)
-        column->temp-value)
+                  column->temp-value)
       (f)
       (finally
-        (db/update! model (u/get-id object-or-id)
-          original-column->value)))))
+        (db/execute!
+         {:update model
+          :set    original-column->value
+          :where  [:= :id (u/get-id object-or-id)]})))))
 
 (defmacro with-temp-vals-in-db
   "Temporary set values for an `object-or-id` in the application database, execute `body`, and then restore the
@@ -322,9 +326,9 @@
   in the DB for 'permanent' rows (rows that live for the life of the test suite, rather than just a single test). For
   example, Database/Table/Field rows related to the test DBs can be temporarily tweaked in this way.
 
-      ;; temporarily make Field 100 a FK to Field 200 and call (do-something)
-      (with-temp-vals-in-db Field 100 {:fk_target_field_id 200, :special_type \"type/FK\"}
-        (do-something))"
+    ;; temporarily make Field 100 a FK to Field 200 and call (do-something)
+    (with-temp-vals-in-db Field 100 {:fk_target_field_id 200, :special_type \"type/FK\"}
+      (do-something))"
   {:style/indent 3}
   [model object-or-id column->temp-value & body]
   `(do-with-temp-vals-in-db ~model ~object-or-id ~column->temp-value (fn [] ~@body)))
@@ -383,18 +387,6 @@
        (finally
          (.setLevel (metabase-logger) orig-log-level#)))))
 
-(defn vectorize-byte-arrays
-  "Walk form X and convert any byte arrays in the results to standard Clojure vectors. This is useful when writing
-  tests that return byte arrays (such as things that work with query hashes),since identical arrays are not considered
-  equal."
-  {:style/indent 0}
-  [x]
-  (walk/postwalk (fn [form]
-                   (if (instance? (Class/forName "[B") form)
-                     (vec form)
-                     form))
-                 x))
-
 (defn- update-in-if-present
   "If the path `KS` is found in `M`, call update-in with the original
   arguments to this function, otherwise, return `M`"
@@ -403,7 +395,7 @@
     m
     (apply update-in m ks f args)))
 
-(defn- round-fingerprint-fields [fprint-type-map decimal-places fields]
+(defn- ^:deprecated round-fingerprint-fields [fprint-type-map decimal-places fields]
   (reduce (fn [fprint field]
             (update-in-if-present fprint [field] (fn [num]
                                                    (if (integer? num)
@@ -411,16 +403,24 @@
                                                      (u/round-to-decimals decimal-places num)))))
           fprint-type-map fields))
 
-(defn round-fingerprint
-  "Rounds the numerical fields of a fingerprint to 2 decimal places"
+(defn ^:deprecated round-fingerprint
+  "Rounds the numerical fields of a fingerprint to 2 decimal places
+
+  DEPRECATED -- this should no longer be needed; use `qp.tt/col` to get the actual real-life fingerprint of the
+  column instead."
   [field]
   (-> field
       (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields 2 [:min :max :avg :sd])
-      ;; quartal estimation is order dependent and the ordering is not stable across different DB engines, hence more aggressive trimming
+      ;; quartal estimation is order dependent and the ordering is not stable across different DB engines, hence more
+      ;; aggressive trimming
       (update-in-if-present [:fingerprint :type :type/Number] round-fingerprint-fields 0 [:q1 :q3])
       (update-in-if-present [:fingerprint :type :type/Text] round-fingerprint-fields 2 [:percent-json :percent-url :percent-email :average-length])))
 
-(defn round-fingerprint-cols
+(defn ^:deprecated round-fingerprint-cols
+  "Round fingerprints to a few digits, so it can be included directly in 'expected' parts of tests.
+
+  DEPRECATED -- this should no longer be needed; use `qp.tt/col` to get the actual real-life fingerprint of the
+  column instead."
   ([query-results]
    (if (map? query-results)
      (let [maybe-data-cols (if (contains? query-results :data)
@@ -443,7 +443,7 @@
 (defn round-all-decimals
   "Uses `walk/postwalk` to crawl `data`, looking for any double values, will round any it finds"
   [decimal-place data]
-  (postwalk-pred double?
+  (postwalk-pred (some-fn double? decimal?)
                  #(u/round-to-decimals decimal-place %)
                  data))
 
@@ -466,11 +466,14 @@
   `(do-with-scheduler ~scheduler (fn [] ~@body)))
 
 (defn do-with-temp-scheduler [f]
+  (classloader/the-classloader)
+  (initialize/initialize-if-needed! :db)
   (let [temp-scheduler (qs/start (qs/initialize))]
     (with-scheduler temp-scheduler
-      (try (f)
-           (finally
-             (qs/shutdown temp-scheduler))))))
+      (try
+        (f)
+        (finally
+          (qs/shutdown temp-scheduler))))))
 
 (defmacro with-temp-scheduler
   "Execute BODY with a temporary scheduler in place.
@@ -521,39 +524,6 @@
           .getZone
           .getID))))
 
-(defn call-with-jvm-tz
-  "Invokes the thunk `F` with the JVM timezone set to `DTZ`, puts the various timezone settings back the way it found
-  it when it exits."
-  [^DateTimeZone dtz f]
-  (let [orig-tz (TimeZone/getDefault)
-        orig-dtz (time/default-time-zone)
-        orig-tz-prop (System/getProperty "user.timezone")]
-    (try
-      ;; It looks like some DB drivers cache the timezone information
-      ;; when instantiated, this clears those to force them to reread
-      ;; that timezone value
-      (reset! @#'sql-jdbc.conn/database-id->connection-pool {})
-      ;; Used by JDBC, and most JVM things
-      (TimeZone/setDefault (.toTimeZone dtz))
-      ;; Needed as Joda time has a different default TZ
-      (DateTimeZone/setDefault dtz)
-      ;; We read the system property directly when formatting results, so this needs to be changed
-      (System/setProperty "user.timezone" (.getID dtz))
-      (with-redefs [du/jvm-timezone (delay (.toTimeZone dtz))]
-        (f))
-      (finally
-        ;; We need to ensure we always put the timezones back the way
-        ;; we found them as it will cause test failures
-        (TimeZone/setDefault orig-tz)
-        (DateTimeZone/setDefault orig-dtz)
-        (System/setProperty "user.timezone" orig-tz-prop)))))
-
-(defmacro with-jvm-tz
-  "Invokes `BODY` with the JVM timezone set to `DTZ`"
-  [dtz & body]
-  `(call-with-jvm-tz ~dtz (fn [] ~@body)))
-
-
 (defmulti ^:private do-model-cleanup! class)
 
 (defmethod do-model-cleanup! :default
@@ -579,59 +549,59 @@
   [model-seq & body]
   `(do-with-model-cleanup ~model-seq (fn [] ~@body)))
 
+;; TODO - not 100% sure I understand
 (defn call-with-paused-query
   "This is a function to make testing query cancellation eaiser as it can be complex handling the multiple threads
   needed to orchestrate a query cancellation.
 
   This function takes `f` which is a function of 4 arguments:
-     - query-thunk - no-arg function that will invoke a query
-     - query promise - promise used to validate the query function was called
-     - cancel promise - promise used to validate a cancellation function was called
-     - pause query promise - promise used to hang the query function, allowing cancellation
+     - query-thunk         - No-arg function that will invoke a query.
+     - query promise       - Promise used to validate the query function was called.  Deliver something to this once the
+                             query has started running
+     - cancel promise      - Promise used to validate a cancellation function was called. Deliver something to this once
+                             the query was successfully canceled.
+     - pause query promise - Promise used to hang the query function, allowing cancellation. Wait for this to be
+                             delivered to hang the query.
 
-  This function returns a vector of booleans indicating the various statuses of the promises, useful for comparison
-  in an `expect`"
+  `f` should return a future that can be canceled."
   [f]
-  (data/with-db (data/get-or-create-database! defs/test-data)
-    (let [called-cancel?             (promise)
-          called-query?              (promise)
-          pause-query                (promise)
-          before-query-called-cancel (realized? called-cancel?)
-          before-query-called-query  (realized? called-query?)
-          query-thunk                (fn [] (data/run-mbql-query checkins
-                                              {:aggregation [[:count]]}))
-          ;; When the query is ran via the datasets endpoint, it will run in a future. That future can be cancelled,
-          ;; which should cause an interrupt
-          query-future               (f query-thunk called-query? called-cancel? pause-query)]
-
-      ;; Make sure that we start out with our promises not having a value
-      [before-query-called-cancel
-       before-query-called-query
-       ;; The cancelled-query? and called-cancel? timeouts are very high and are really just intended to
-       ;; prevent the test from hanging indefinitely. It shouldn't be hit unless something is really wrong
-       (deref called-query? 120000 ::query-never-called)
-       ;; At this point in time, the query is blocked, waiting for `pause-query` do be delivered
-       (realized? called-cancel?)
-       (do
-         ;; If we cancel the future, it should throw an InterruptedException, which should call the cancel
-         ;; method on the prepared statement
-         (future-cancel query-future)
-         (deref called-cancel? 120000 ::cancel-never-called))
-       (do
-         ;; This releases the fake query function so it finishes
-         (deliver pause-query true)
-         true)])))
+  (let [called-cancel? (promise)
+        called-query?  (promise)
+        pause-query    (promise)
+        query-thunk    (fn []
+                         (data/run-mbql-query checkins
+                           {:aggregation [[:count]]}))
+        ;; When the query is ran via the datasets endpoint, it will run in a future. That future can be canceled,
+        ;; which should cause an interrupt
+        query-future   (f query-thunk called-query? called-cancel? pause-query)]
+    ;; The cancelled-query? and called-cancel? timeouts are very high and are really just intended to
+    ;; prevent the test from hanging indefinitely. It shouldn't be hit unless something is really wrong
+    (when (= ::query-never-called (deref called-query? 10000 ::query-never-called))
+      (throw (TimeoutException. "query should have been called by now.")))
+    ;; At this point in time, the query is blocked, waiting for `pause-query` do be delivered. Cancel still should
+    ;; not have been called yet.
+    (assert (not (realized? called-cancel?)) "cancel still should not have been called yet.")
+    ;; If we cancel the future, it should throw an InterruptedException, which should call the cancel
+    ;; method on the prepared statement
+    (future-cancel query-future)
+    (when (= ::cancel-never-called (deref called-cancel? 10000 ::cancel-never-called))
+      (throw (TimeoutException. "cancel should have been called by now.")))
+    ;; This releases the fake query function so it finishes
+    (deliver pause-query true)
+    ::success))
 
 (defmacro throw-if-called
   "Redefines `fn-var` with a function that throws an exception if it's called"
   {:style/indent 1}
-  [fn-var & body]
-  `(with-redefs [~fn-var (fn [& args#]
-                           (throw (RuntimeException. "Should not be called!")))]
+  [fn-symb & body]
+  {:pre [(symbol? fn-symb)]}
+  `(with-redefs [~fn-symb (fn [& ~'_]
+                            (throw (RuntimeException. ~(format "%s should not be called!" fn-symb))))]
      ~@body))
 
 
 (defn do-with-non-admin-groups-no-root-collection-perms [f]
+  (initialize/initialize-if-needed! :db)
   (try
     (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
       (perms/revoke-collection-permissions! group-id collection/root-collection))

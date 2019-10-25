@@ -3,9 +3,9 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import BaseSidebar from "metabase/reference/guide/BaseSidebar.jsx";
-import SidebarLayout from "metabase/components/SidebarLayout.jsx";
-import MetricList from "metabase/reference/metrics/MetricList.jsx";
+import BaseSidebar from "metabase/reference/guide/BaseSidebar";
+import SidebarLayout from "metabase/components/SidebarLayout";
+import MetricList from "metabase/reference/metrics/MetricList";
 
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
@@ -22,7 +22,10 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class MetricListContainer extends Component {
   static propTypes = {
     params: PropTypes.object.isRequired,

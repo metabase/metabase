@@ -3,9 +3,9 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import TableSidebar from "./TableSidebar.jsx";
-import SidebarLayout from "metabase/components/SidebarLayout.jsx";
-import FieldList from "metabase/reference/databases/FieldList.jsx";
+import TableSidebar from "./TableSidebar";
+import SidebarLayout from "metabase/components/SidebarLayout";
+import FieldList from "metabase/reference/databases/FieldList";
 
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
@@ -29,7 +29,10 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class FieldListContainer extends Component {
   static propTypes = {
     params: PropTypes.object.isRequired,

@@ -1,8 +1,9 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import Icon from "metabase/components/Icon.jsx";
-import { t } from "c-3po";
+import Icon from "metabase/components/Icon";
+import { t } from "ttag";
+import cx from "classnames";
 
 export default class ListSearchField extends Component {
   static propTypes = {
@@ -13,8 +14,6 @@ export default class ListSearchField extends Component {
   };
 
   static defaultProps = {
-    className: "bordered rounded text-light flex flex-full align-center",
-    inputClassName: "p1 h4 input--borderless text-default flex-full",
     placeholder: t`Find...`,
     searchText: "",
     autoFocus: false,
@@ -39,12 +38,20 @@ export default class ListSearchField extends Component {
     } = this.props;
 
     return (
-      <div className={className}>
+      <div
+        className={cx(
+          className,
+          "bordered rounded text-light flex flex-full align-center",
+        )}
+      >
         <span className="px1">
           <Icon name="search" size={16} />
         </span>
         <input
-          className={inputClassName}
+          className={cx(
+            inputClassName,
+            "p1 h4 input--borderless text-default flex-full",
+          )}
           type="text"
           placeholder={placeholder}
           value={searchText}

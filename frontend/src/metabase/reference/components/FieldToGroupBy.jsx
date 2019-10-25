@@ -1,11 +1,11 @@
 import React from "react";
 import PropTypes from "prop-types";
 import pure from "recompose/pure";
-import { t } from "c-3po";
+import { t } from "ttag";
 import S from "./FieldToGroupBy.css";
 import Q from "metabase/components/QueryButton.css";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
 const FieldToGroupBy = ({
   className,

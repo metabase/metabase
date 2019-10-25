@@ -212,8 +212,6 @@
         ;; Get the entires we're going to add to `:cols` for each of the remapped values we add
         internal-only-cols (map :new-column internal-only-dims)]
     (-> results
-        ;; add the names of each newly added column to the end of `:columns`
-        (update :columns concat (map :to internal-only-dims))
         ;; add remapping info `:remapped_from` and `:remapped_to` to each existing `:col`
         (update :cols add-remapping-info remapping-dimensions internal-only-cols)
         ;; now add the entries for each newly added column to the end of `:cols`

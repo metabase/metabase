@@ -15,7 +15,7 @@ export default class LogoIcon extends Component {
   };
 
   render() {
-    let { dark, height, width, size } = this.props;
+    const { dark, height, width, size } = this.props;
     return (
       <svg
         className={cx("Icon", { "text-brand": !dark }, { "text-white": dark })}

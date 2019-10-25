@@ -22,7 +22,8 @@ export default ({
   defaultSingleSuggestion = false,
 }) => ComposedComponent =>
   class extends Component {
-    static displayName = "Typeahead[" +
+    static displayName =
+      "Typeahead[" +
       (ComposedComponent.displayName || ComposedComponent.name) +
       "]";
 
@@ -83,7 +84,7 @@ export default ({
     }
 
     setSelectedIndex(newIndex) {
-      let index = Math.max(
+      const index = Math.max(
         Math.min(newIndex, this.state.suggestions.length - 1),
         0,
       );

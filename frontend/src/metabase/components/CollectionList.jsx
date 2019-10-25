@@ -1,12 +1,12 @@
 import React from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { Box, Flex } from "grid-styled";
 import { connect } from "react-redux";
 
 import * as Urls from "metabase/lib/urls";
 
 import CollectionItem from "metabase/components/CollectionItem";
-import { normal } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
@@ -16,7 +16,10 @@ import ItemDragSource from "metabase/containers/dnd/ItemDragSource";
 
 import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
 
-@connect(({ currentUser }) => ({ currentUser }), null)
+@connect(
+  ({ currentUser }) => ({ currentUser }),
+  null,
+)
 class CollectionList extends React.Component {
   render() {
     const {
@@ -74,40 +77,38 @@ class CollectionList extends React.Component {
               </CollectionDropTarget>
             </GridItem>
           )}
-          {isRoot &&
-            currentUser.is_superuser && (
-              <GridItem w={w}>
-                <CollectionItem
-                  collection={{
-                    name: PERSONAL_COLLECTIONS.name,
-                    // Bit of a hack. The route /collection/users lists
-                    // user collections but is not itself a colllection,
-                    // but using the fake id users here works
-                    id: "users",
-                  }}
-                  iconName="person"
-                  event={`${analyticsContext};Collection List;All user collecetions click`}
-                  asCard={asCards}
-                />
-              </GridItem>
-            )}
-          {currentCollection &&
-            currentCollection.can_write && (
-              <GridItem w={w}>
-                <Link
-                  to={Urls.newCollection(currentCollection.id)}
-                  color={normal.grey2}
-                  hover={{ color: normal.blue }}
-                  p={w === 1 ? [1, 2] : 0}
-                  data-metabase-event={`${analyticsContext};Collection List; New Collection Click`}
-                >
-                  <Flex align="center" py={1}>
-                    <Icon name="add" mr={1} bordered />
-                    <h4>{t`New collection`}</h4>
-                  </Flex>
-                </Link>
-              </GridItem>
-            )}
+          {isRoot && currentUser.is_superuser && (
+            <GridItem w={w}>
+              <CollectionItem
+                collection={{
+                  name: PERSONAL_COLLECTIONS.name,
+                  // Bit of a hack. The route /collection/users lists
+                  // user collections but is not itself a colllection,
+                  // but using the fake id users here works
+                  id: "users",
+                }}
+                iconName="person"
+                event={`${analyticsContext};Collection List;All user collections click`}
+                asCard={asCards}
+              />
+            </GridItem>
+          )}
+          {currentCollection && currentCollection.can_write && (
+            <GridItem w={w}>
+              <Link
+                to={Urls.newCollection(currentCollection.id)}
+                color={color("text-medium")}
+                hover={{ color: color("brand") }}
+                p={w === 1 ? [1, 2] : 0}
+                data-metabase-event={`${analyticsContext};Collection List; New Collection Click`}
+              >
+                <Flex align="center" py={1}>
+                  <Icon name="add" mr={1} bordered />
+                  <h4>{t`New collection`}</h4>
+                </Flex>
+              </Link>
+            </GridItem>
+          )}
         </Grid>
       </Box>
     );

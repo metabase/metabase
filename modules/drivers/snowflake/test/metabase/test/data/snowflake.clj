@@ -4,6 +4,7 @@
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.test.data
              [interface :as tx]
              [sql :as sql.tx]
@@ -11,19 +12,24 @@
             [metabase.test.data.sql-jdbc
              [execute :as execute]
              [load-data :as load-data]]
+            [metabase.test.data.sql.ddl :as ddl]
             [metabase.util :as u]))
 
 (sql-jdbc.tx/add-test-extensions! :snowflake)
 
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/BigInteger] [_ _] "BIGINT")
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Boolean]    [_ _] "BOOLEAN")
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Date]       [_ _] "DATE")
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/DateTime]   [_ _] "TIMESTAMPLTZ")
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Decimal]    [_ _] "DECIMAL")
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Float]      [_ _] "FLOAT")
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Integer]    [_ _] "INTEGER")
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Text]       [_ _] "TEXT")
-(defmethod sql.tx/field-base-type->sql-type [:snowflake :type/Time]       [_ _] "TIME")
+(defmethod tx/sorts-nil-first? :snowflake [_] false)
+
+(doseq [[base-type sql-type] {:type/BigInteger     "BIGINT"
+                              :type/Boolean        "BOOLEAN"
+                              :type/Date           "DATE"
+                              :type/DateTime       "TIMESTAMP_LTZ"
+                              :type/DateTimeWithTZ "TIMESTAMP_TZ"
+                              :type/Decimal        "DECIMAL"
+                              :type/Float          "FLOAT"
+                              :type/Integer        "INTEGER"
+                              :type/Text           "TEXT"
+                              :type/Time           "TIME"}]
+  (defmethod sql.tx/field-base-type->sql-type [:snowflake base-type] [_ _] sql-type))
 
 (defmethod tx/dbdef->connection-details :snowflake [_ context {:keys [database-name]}]
   (merge
@@ -45,14 +51,10 @@
   ([_ db-name table-name]            [db-name "PUBLIC" table-name])
   ([_ db-name table-name field-name] [db-name "PUBLIC" table-name field-name]))
 
-(defmethod sql.tx/create-db-sql :snowflake [driver {:keys [database-name]}]
-  (let [db (sql.tx/qualify+quote-name driver database-name)]
+(defmethod sql.tx/create-db-sql :snowflake
+  [driver {:keys [database-name]}]
+  (let [db (sql.tx/qualify-and-quote driver database-name)]
     (format "DROP DATABASE IF EXISTS %s; CREATE DATABASE %s;" db db)))
-
-(defmethod tx/expected-base-type->actual :snowflake [_ base-type]
-  (if (isa? base-type :type/Integer)
-    :type/Number
-    base-type))
 
 (defn- no-db-connection-spec
   "Connection spec for connecting to our Snowflake instance without specifying a DB."
@@ -89,9 +91,18 @@
       ;; load it next time around
       (catch Throwable e
         (let [drop-db-sql (format "DROP DATABASE \"%s\";" database-name)]
-          (println "Creating DB failed; executing" drop-db-sql)
+          (println "Creating DB failed:" e)
+          (println "Executing" drop-db-sql)
           (jdbc/execute! (no-db-connection-spec) [drop-db-sql]))
         (throw e)))))
+
+;; For reasons I don't understand the Snowflake JDBC driver doesn't seem to work when trying to use parameterized
+;; INSERT statements, even though the documentation suggests it should. Just go ahead and deparameterize all the
+;; statements for now.
+(defmethod ddl/insert-rows-ddl-statements :snowflake
+  [driver table-identifier row-or-rows]
+  (for [sql+args ((get-method ddl/insert-rows-ddl-statements :sql-jdbc/test-extensions) driver table-identifier row-or-rows)]
+    (unprepare/unprepare driver sql+args)))
 
 (defmethod execute/execute-sql! :snowflake [& args]
   (apply execute/sequentially-execute-sql! args))

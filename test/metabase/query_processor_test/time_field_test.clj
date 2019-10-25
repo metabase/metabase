@@ -4,16 +4,15 @@
              [query-processor-test :as qpt]]
             [metabase.test
              [data :as data]
-             [util :as tu]]
-            [metabase.test.data.dataset-definitions :as defs]))
+             [util :as tu]]))
 
 (defmacro ^:private time-query [additional-clauses]
   `(qpt/rows
-     (data/with-db (data/get-or-create-database! defs/test-data-with-time)
+     (data/dataset ~'test-data-with-time
        (data/run-mbql-query users
          ~(merge
-           {:fields   `[~'$id ~'$name ~'$last_login_time]
-            :order-by `[[:asc ~'$id]]}
+           '{:fields   [$id $name $last_login_time]
+             :order-by [[:asc $id]]}
            additional-clauses)))))
 
 ;; Basic between query on a time field
@@ -69,16 +68,6 @@
     (= :presto driver/*driver*)
     [[3 "Kaneonuskatew Eiran" "00:15:00.000-08:00"]]
 
-    ;; Best I can tell, MySQL's interpretation of this part of the
-    ;; JDBC is way off. This doesn't return results because it looks
-    ;; like it's basically double converting the time to
-    ;; America/Los_Angeles. What's getting sent to the database is
-    ;; 00:00 and 01:00 (which we have no data in that range). I think
-    ;; we'll need to switch to their new JDBC date code to get this
-    ;; fixed
-    (= :mysql driver/*driver*)
-    []
-
     ;; It looks like Snowflake is doing this conversion correctly. Snowflake's time field is stored as wall clock time
     ;; (vs. PG and others storing it without a timezone). Originally, this time is 16:15 in UTC, which is 8:15 in
     ;; pacific time. The other report timezone databases are not doing this timezone conversion.
@@ -97,10 +86,7 @@
     [[1 "Plato Yeshua" "08:30:00.000Z"]
      [4 "Simcha Yan" "08:30:00.000Z"]])
   (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-    (time-query {:filter (vec (cons
-                               :between
-                               (cons
-                                $last_login_time
-                                (if (qpt/supports-report-timezone? driver/*driver*)
-                                  ["08:00:00" "09:00:00"]
-                                  ["08:00:00-00:00" "09:00:00-00:00"]))))})))
+    (time-query {:filter (into [:between $last_login_time]
+                               (if (qpt/supports-report-timezone? driver/*driver*)
+                                 ["08:00:00" "09:00:00"]
+                                 ["08:00:00-00:00" "09:00:00-00:00"]))})))

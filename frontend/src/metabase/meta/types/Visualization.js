@@ -2,8 +2,6 @@
 
 import type { DatasetData, Column } from "metabase/meta/types/Dataset";
 import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
-import type { TableMetadata } from "metabase/meta/types/Metadata";
-import type { Field, FieldId } from "metabase/meta/types/Field";
 import type { ReduxAction } from "metabase/meta/types/redux";
 import Question from "metabase-lib/lib/Question";
 
@@ -32,7 +30,7 @@ export type DimensionValue = {
 
 export type ClickObject = {
   value?: Value,
-  column?: Column,
+  column?: ?Column,
   dimensions?: DimensionValue[],
   event?: MouseEvent,
   element?: HTMLElement,
@@ -108,25 +106,7 @@ export type VisualizationProps = {
 
   onUpdateVisualizationSettings: ({ [key: string]: any }) => void,
 
-  // object detail
-  tableMetadata: ?TableMetadata,
-  tableForeignKeys: ?(ForeignKey[]),
-  tableForeignKeyReferences: { [id: ForeignKeyId]: ForeignKeyCountInfo },
-  loadObjectDetailFKReferences: () => void,
-  followForeignKey: (fk: any) => void,
-};
-
-type ForeignKeyId = number;
-type ForeignKey = {
-  id: ForeignKeyId,
-  relationship: string,
-  origin: Field,
-  origin_id: FieldId,
-  destination: Field,
-  destination_id: FieldId,
-};
-
-type ForeignKeyCountInfo = {
-  status: number,
-  value: number,
+  onAddSeries?: Function,
+  onEditSeries?: Function,
+  onRemoveSeries?: Function,
 };

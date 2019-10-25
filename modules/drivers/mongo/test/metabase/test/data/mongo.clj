@@ -40,7 +40,8 @@
               (catch com.mongodb.MongoException _))))))))
 
 
-(defmethod tx/format-name :mongo [_ table-or-field-name]
+(defmethod tx/format-name :mongo
+  [_ table-or-field-name]
   (if (= table-or-field-name "id")
     "_id"
     table-or-field-name))

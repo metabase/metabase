@@ -1,6 +1,7 @@
 (ns metabase.models.query.permissions-test
   (:require [expectations :refer :all]
             [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.models
              [card :as card :refer :all]
              [collection :refer [Collection]]
@@ -11,6 +12,7 @@
              [permissions-group :as perms-group]
              [table :refer [Table]]]
             [metabase.models.query.permissions :as query-perms]
+            [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test.data :as data]
             [metabase.test.data.users :as users]
             [metabase.test.util.log :as tu.log]
@@ -122,17 +124,19 @@
 
 (expect
   #{"/db/1/native/"}
-  (query-perms/perms-set (native "SELECT count(*) FROM toucan_sightings;")))
+  (query-perms/perms-set
+   (native "SELECT count(*) FROM toucan_sightings;")))
 
 
 ;;; ------------------------------------------------- MBQL w/o JOIN --------------------------------------------------
 
 (expect
-  #{(perms/object-path (data/id) "PUBLIC" (data/id :venues))}
-  (query-perms/perms-set (data/mbql-query venues)))
+  #{(perms/table-query-path (data/id) "PUBLIC" (data/id :venues))}
+  (query-perms/perms-set
+   (data/mbql-query venues)))
 
 (expect
-  #{(perms/object-path (data/id) "PUBLIC" (data/id :venues))}
+  #{(perms/table-query-path (data/id) "PUBLIC" (data/id :venues))}
   (query-perms/perms-set
    {:query    {:source-table (data/id :venues)
                :filter       [:> [:field-id (data/id :venues :id)] 10]}
@@ -143,7 +147,7 @@
 (tt/expect-with-temp [Database [db]
                       Table    [table {:db_id (u/get-id db), :schema nil}]
                       Field    [_     {:table_id (u/get-id table)}]]
-  #{(perms/object-path db nil table)}
+  #{(perms/table-query-path db nil table)}
   (do
     (perms/revoke-permissions! (perms-group/all-users) db)
     (binding [*current-user-permissions-set* (atom nil)
@@ -155,7 +159,7 @@
 
 ;; should be able to calculate permissions of a query before normalization
 (expect
-  #{(perms/object-path (data/id) "PUBLIC" (data/id :venues))}
+  #{(perms/table-query-path (data/id) "PUBLIC" (data/id :venues))}
   (query-perms/perms-set
    {:query    {"SOURCE_TABLE" (data/id :venues)
                "FILTER"       [">" (data/id :venues :id) 10]}
@@ -166,8 +170,8 @@
 
 ;; you should need perms for both tables if you include a JOIN
 (expect
-  #{(perms/object-path (data/id) "PUBLIC" (data/id :checkins))
-    (perms/object-path (data/id) "PUBLIC" (data/id :venues))}
+  #{(perms/table-query-path (data/id) "PUBLIC" (data/id :checkins))
+    (perms/table-query-path (data/id) "PUBLIC" (data/id :venues))}
   (query-perms/perms-set
    (data/mbql-query checkins
      {:order-by [[:asc $checkins.venue_id->venues.name]]})))
@@ -176,7 +180,7 @@
 ;;; ------------------------------------------- MBQL w/ nested MBQL query --------------------------------------------
 
 (defn- query-with-source-card [card]
-  {:database database/virtual-id, :type "query", :query {:source-table (str "card__" (u/get-id card))}})
+  {:database mbql.s/saved-questions-virtual-database-id, :type "query", :query {:source-table (str "card__" (u/get-id card))}})
 
 ;; if source card is *not* in a Collection, we require Root Collection read perms
 (expect
@@ -184,7 +188,8 @@
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :query
                                             :query    {:source-table (data/id :venues)}}}]
-    (query-perms/perms-set (query-with-source-card card))))
+    (query-perms/perms-set
+     (query-with-source-card card))))
 
 ;; if source Card *is* in a Collection, we require read perms for that Collection
 (tt/expect-with-temp [Collection [collection {}]]
@@ -193,7 +198,8 @@
                             :dataset_query {:database (data/id)
                                             :type     :query
                                             :query    {:source-table (data/id :venues)}}}]
-    (query-perms/perms-set (query-with-source-card card))))
+    (query-perms/perms-set
+     (query-with-source-card card))))
 
 
 ;;; ----------------------------------- MBQL w/ nested MBQL query including a JOIN -----------------------------------
@@ -207,7 +213,8 @@
                              :type     :query
                              :query    {:source-table (data/id :checkins)
                                         :order-by     [[:asc [:fk-> (data/id :checkins :user_id) (data/id :users :id)]]]}}}]
-    (query-perms/perms-set (query-with-source-card card))))
+    (query-perms/perms-set
+     (query-with-source-card card))))
 
 
 ;;; ------------------------------------------ MBQL w/ nested NATIVE query -------------------------------------------
@@ -218,15 +225,18 @@
   (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                             :type     :native
                                             :native   {:query "SELECT * FROM CHECKINS"}}}]
-    (query-perms/perms-set (query-with-source-card card))))
+    (query-perms/perms-set
+     (query-with-source-card card))))
 
 ;; However if you just pass in the same query directly as a `:source-query` you will still require READWRITE
 ;; permissions to save the query since we can't verify that it belongs to a Card that you can view.
 (expect
   #{(perms/adhoc-native-query-path (data/id))}
-  (query-perms/perms-set {:database (data/id)
-                          :type     :query
-                          :query    {:source-query {:native "SELECT * FROM CHECKINS"}}}))
+  (query-perms/perms-set
+   {:database (data/id)
+    :type     :query
+    :query    {:source-query {:native "SELECT * FROM CHECKINS"}}}
+   :throw-exceptions? true))
 
 
 ;;; --------------------------------------------- invalid/legacy queries ---------------------------------------------
@@ -235,5 +245,40 @@
 (expect
   #{"/db/0/"}
   (tu.log/suppress-output
-    (query-perms/perms-set (data/mbql-query venues
-                             {:filter [:WOW 100 200]}))))
+    (query-perms/perms-set
+     (data/mbql-query venues
+       {:filter [:WOW 100 200]}))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                   JOINS 2.0                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Are permissions calculated correctly for JOINs?
+(expect
+  #{(perms/table-query-path (data/id) "PUBLIC" (data/id :checkins))
+    (perms/table-query-path (data/id) "PUBLIC" (data/id :users))}
+  (tt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
+                                     (data/mbql-query checkins
+                                                      {:aggregation [[:sum $id]]
+                                                       :breakout    [$user_id]}))]
+    (query-perms/perms-set
+     (data/mbql-query users
+                      {:joins [{:fields       :all
+                                :alias        "__alias__"
+                                :source-table (str "card__" card-id)
+                                :condition    [:=
+                                               $id
+                                               ["joined-field" "__alias__" ["field-literal" "USER_ID" "type/Integer"]]]}]
+                       :limit 10})
+     :throw-exceptions? true)))
+
+(expect
+  #{(perms/table-query-path (data/id) "PUBLIC" (data/id :checkins))
+    (perms/table-query-path (data/id) "PUBLIC" (data/id :users))}
+  (query-perms/perms-set
+   (data/mbql-query users
+     {:joins [{:alias        "c"
+               :source-table $$checkins
+               :condition    [:= $id &c.*USER_ID/Integer]}]})
+   :throw-exceptions? true))

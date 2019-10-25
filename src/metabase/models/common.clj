@@ -1,5 +1,6 @@
 (ns metabase.models.common)
 
+;; TODO - why is this here? Doesn't seem like the right place for it
 (def timezones
   "The different timezones supported by Metabase.
    Presented as options for the `report-timezone` Setting in the admin panel."

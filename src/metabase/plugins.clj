@@ -5,29 +5,57 @@
             [environ.core :as env]
             [metabase.plugins
              [classloader :as classloader]
-             [files :as files]
              [initialize :as initialize]]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util
+             [files :as files]
+             [i18n :refer [trs]]]
             [yaml.core :as yaml])
-  (:import java.nio.file.Path))
+  (:import [java.nio.file Files Path]))
 
 (defn- plugins-dir-filename ^String []
   (or (env/env :mb-plugins-dir)
-      (str (System/getProperty "user.dir") "/plugins")))
+      (.getAbsolutePath (io/file "plugins"))))
 
-(defn- ^Path plugins-dir
-  "Get a `Path` to the Metabase plugins directory, creating it if needed."
-  []
-  (let [path (files/get-path (plugins-dir-filename))]
-    (files/create-dir-if-not-exists! path)
-    path))
+;; logic for determining plugins dir -- see below
+(defonce ^:private plugins-dir*
+  (delay
+   (let [filename (plugins-dir-filename)]
+     (try
+       ;; attempt to create <current-dir>/plugins if it doesn't already exist. Check that the directory is readable.
+       (u/prog1 (files/get-path filename)
+         (files/create-dir-if-not-exists! <>)
+         (assert (Files/isWritable <>)
+           (trs "Metabase does not have permissions to write to plugins directory {0}" filename)))
+       ;; If we couldn't create the directory, or the directory is not writable, fall back to a temporary directory
+       ;; rather than failing to launch entirely. Log instructions for what should be done to fix the problem.
+       (catch Throwable e
+         (log/warn
+          e
+          (trs "Metabase cannot use the plugins directory {0}" filename)
+          "\n"
+          (trs "Please make sure the directory exists and that Metabase has permission to write to it.")
+          (trs "You can change the directory Metabase uses for modules by setting the environment variable MB_PLUGINS_DIR.")
+          (trs "Falling back to a temporary directory for now."))
+         ;; Check whether the fallback temporary directory is writable. If it's not, there's no way for us to
+         ;; gracefully proceed here. Throw an Exception detailing the critical issues.
+         (u/prog1 (files/get-path (System/getProperty "java.io.tmpdir"))
+           (assert (Files/isWritable <>)
+             (trs "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."))))))))
+
+;; Actual logic is wrapped in a delay rather than a normal function so we don't log the error messages more than once
+;; in cases where we have to fall back to the system temporary directory
+(defn- plugins-dir
+  "Get a `Path` to the Metabase plugins directory, creating it if needed. If it cannot be created for one reason or
+  another, or if we do not have write permissions for it, use a temporary directory instead."
+  ^Path []
+  @plugins-dir*)
 
 (defn- extract-system-modules! []
   (when (io/resource "modules")
     (let [plugins-path (plugins-dir)]
       (files/with-open-path-to-resource [modules-path "modules"]
-        (files/copy-files-if-not-exists! modules-path plugins-path)))))
+        (files/copy-files! modules-path plugins-path)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -73,11 +101,19 @@
                             ;; ignore it but let people know they can get rid of it.
                             (log/warn
                              (u/format-color 'red
-                                 (trs "spark-deps.jar is no longer needed by Metabase 1.0+. You can delete it from the plugins directory.")))))]
+                                 (trs "spark-deps.jar is no longer needed by Metabase 0.32.0+. You can delete it from the plugins directory.")))))]
     path))
 
+(defn- has-manifest? ^Boolean [^Path path]
+  (boolean (files/file-exists-in-archive? path "metabase-plugin.yaml")))
+
 (defn- init-plugins! [paths]
-  (doseq [^Path path paths]
+  ;; sort paths so that ones that correspond to JARs with no plugin manifest (e.g. a dependency like the Oracle JDBC
+  ;; driver `ojdbc8.jar`) always get initialized (i.e., added to the classpath) first; that way, Metabase drivers that
+  ;; depend on them (such as Oracle) can be initialized the first time we see them.
+  ;;
+  ;; In Clojure world at least `false` < `true` so we can use `sort-by` to get non-Metabase-plugin JARs in front
+  (doseq [^Path path (sort-by has-manifest? paths)]
     (try
       (init-plugin! path)
       (catch Throwable e

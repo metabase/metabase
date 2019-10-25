@@ -12,7 +12,7 @@ export const rescanTableFieldValues = createThunkAction(
   function(tableId) {
     return async function(dispatch, getState) {
       try {
-        let call = await MetabaseApi.table_rescan_values({ tableId });
+        const call = await MetabaseApi.table_rescan_values({ tableId });
         MetabaseAnalytics.trackEvent(
           "Data Model",
           "Manual Re-scan Field Values for Table",
@@ -30,7 +30,7 @@ export const discardTableFieldValues = createThunkAction(
   function(tableId) {
     return async function(dispatch, getState) {
       try {
-        let call = await MetabaseApi.table_discard_values({ tableId });
+        const call = await MetabaseApi.table_discard_values({ tableId });
         MetabaseAnalytics.trackEvent(
           "Data Model",
           "Manual Discard Field Values for Table",

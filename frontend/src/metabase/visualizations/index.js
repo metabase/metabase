@@ -1,22 +1,22 @@
 /* @flow weak */
 
-import Scalar from "./visualizations/Scalar.jsx";
-import SmartScalar from "./visualizations/SmartScalar.jsx";
-import Progress from "./visualizations/Progress.jsx";
-import Table from "./visualizations/Table.jsx";
-import Text from "./visualizations/Text.jsx";
-import LineChart from "./visualizations/LineChart.jsx";
-import BarChart from "./visualizations/BarChart.jsx";
-import RowChart from "./visualizations/RowChart.jsx";
-import PieChart from "./visualizations/PieChart.jsx";
-import AreaChart from "./visualizations/AreaChart.jsx";
-import ComboChart from "./visualizations/ComboChart.jsx";
-import MapViz from "./visualizations/Map.jsx";
-import ScatterPlot from "./visualizations/ScatterPlot.jsx";
-import Funnel from "./visualizations/Funnel.jsx";
-import Gauge from "./visualizations/Gauge.jsx";
-import ObjectDetail from "./visualizations/ObjectDetail.jsx";
-import { t } from "c-3po";
+import Scalar from "./visualizations/Scalar";
+import SmartScalar from "./visualizations/SmartScalar";
+import Progress from "./visualizations/Progress";
+import Table from "./visualizations/Table";
+import Text from "./visualizations/Text";
+import LineChart from "./visualizations/LineChart";
+import BarChart from "./visualizations/BarChart";
+import RowChart from "./visualizations/RowChart";
+import PieChart from "./visualizations/PieChart";
+import AreaChart from "./visualizations/AreaChart";
+import ComboChart from "./visualizations/ComboChart";
+import MapViz from "./visualizations/Map";
+import ScatterPlot from "./visualizations/ScatterPlot";
+import Funnel from "./visualizations/Funnel";
+import Gauge from "./visualizations/Gauge";
+import ObjectDetail from "./visualizations/ObjectDetail";
+import { t } from "ttag";
 import _ from "underscore";
 
 import type { Series } from "metabase/meta/types/Visualization";
@@ -32,7 +32,7 @@ export function registerVisualization(visualization) {
   if (visualization == null) {
     throw new Error(t`Visualization is null`);
   }
-  let identifier = visualization.identifier;
+  const identifier = visualization.identifier;
   if (identifier == null) {
     throw new Error(
       t`Visualization must define an 'identifier' static variable: ` +
@@ -46,7 +46,7 @@ export function registerVisualization(visualization) {
     );
   }
   visualizations.set(identifier, visualization);
-  for (let alias of visualization.aliases || []) {
+  for (const alias of visualization.aliases || []) {
     aliases.set(alias, visualization);
   }
 }
@@ -54,7 +54,7 @@ export function registerVisualization(visualization) {
 export function getVisualizationRaw(series: Series) {
   return {
     series: series,
-    CardVisualization: visualizations.get(series[0].card.display),
+    visualization: visualizations.get(series[0].card.display),
   };
 }
 
@@ -65,15 +65,15 @@ export function getVisualizationTransformed(series: Series) {
   }
 
   // if a visualization has a transformSeries function, do the transformation until it returns the same visualization / series
-  let CardVisualization, lastSeries;
+  let visualization, lastSeries;
   do {
-    CardVisualization = visualizations.get(series[0].card.display);
-    if (!CardVisualization) {
+    visualization = visualizations.get(series[0].card.display);
+    if (!visualization) {
       throw new Error(t`No visualization for ${series[0].card.display}`);
     }
     lastSeries = series;
-    if (typeof CardVisualization.transformSeries === "function") {
-      series = CardVisualization.transformSeries(series);
+    if (typeof visualization.transformSeries === "function") {
+      series = visualization.transformSeries(series);
     }
     if (series !== lastSeries) {
       series = [...series];
@@ -82,7 +82,12 @@ export function getVisualizationTransformed(series: Series) {
     }
   } while (series !== lastSeries);
 
-  return { series, CardVisualization };
+  return { series, visualization };
+}
+
+export function getIconForVisualizationType(display) {
+  const viz = visualizations.get(display);
+  return viz && viz.iconName;
 }
 
 export const extractRemappings = series => {

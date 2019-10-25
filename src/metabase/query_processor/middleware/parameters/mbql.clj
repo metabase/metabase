@@ -17,9 +17,9 @@
   convert the parameters to integers or floating-point numbers."
   [param-type param-value, field-id :- su/IntGreaterThanZero]
   (cond
-    ;; for `id` type params look up the base-type of the Field and see if it's a number or not. If it *is* a number
-    ;; then recursively call this function and parse the param value as a number as appropriate.
-    (and (= param-type :id)
+    ;; for `id` or `category` type params look up the base-type of the Field and see if it's a number or not.
+    ;; If it *is* a number then recursively call this function and parse the param value as a number as appropriate.
+    (and (#{:id :category} param-type)
          (isa? (db/select-one-field :base_type Field :id field-id) :type/Number))
     (recur :number param-value field-id)
 
@@ -36,7 +36,7 @@
     :else
     (Long/parseLong param-value)))
 
-(s/defn ^:private build-filter-clause :- mbql.s/Filter
+(s/defn ^:private build-filter-clause :- (s/maybe mbql.s/Filter)
   [{param-type :type, param-value :value, [_ field :as target] :target, :as param}]
   (cond
     ;; multipe values. Recursively handle them all and glue them all together with an OR clause
@@ -49,6 +49,12 @@
     (date-params/date-type? param-type)
     (date-params/date-string->filter (parse-param-value-for-type param-type param-value (params/field-form->id field))
                                      field)
+
+    ;; TODO - We can't tell the difference between a dashboard parameter (convert to an MBQL filter) and a native
+    ;; query template tag parameter without this. There's should be a better, less fragile way to do this. (Not 100%
+    ;; sure why, but this is needed for GTAPs to work.)
+    (mbql.u/is-clause? :template-tag field)
+    nil
 
     ;; single-value, non-date param. Generate MBQL [= [field-id <field>] <value>] clause
     :else

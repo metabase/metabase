@@ -5,17 +5,18 @@ import { connect } from "react-redux";
 import title from "metabase/hoc/Title";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { slugify } from "metabase/lib/formatting";
-import { t } from "c-3po";
-import AdminLayout from "metabase/components/AdminLayout.jsx";
+import { t } from "ttag";
+import AdminLayout from "metabase/components/AdminLayout";
+import { NotFound } from "metabase/containers/ErrorPages";
 
-import SettingsSetting from "../components/SettingsSetting.jsx";
-import SettingsEmailForm from "../components/SettingsEmailForm.jsx";
-import SettingsSlackForm from "../components/SettingsSlackForm.jsx";
-import SettingsLdapForm from "../components/SettingsLdapForm.jsx";
-import SettingsSetupList from "../components/SettingsSetupList.jsx";
-import SettingsUpdatesForm from "../components/SettingsUpdatesForm.jsx";
-import SettingsSingleSignOnForm from "../components/SettingsSingleSignOnForm.jsx";
-import SettingsAuthenticationOptions from "../components/SettingsAuthenticationOptions.jsx";
+import SettingsSetting from "../components/SettingsSetting";
+import SettingsEmailForm from "../components/SettingsEmailForm";
+import SettingsSlackForm from "../components/SettingsSlackForm";
+import SettingsLdapForm from "../components/SettingsLdapForm";
+import SettingsSetupList from "../components/SettingsSetupList";
+import SettingsUpdatesForm from "../components/SettingsUpdatesForm";
+import SettingsSingleSignOnForm from "../components/SettingsSingleSignOnForm";
+import SettingsAuthenticationOptions from "../components/SettingsAuthenticationOptions";
 
 import { prepareAnalyticsValue } from "metabase/admin/settings/utils";
 
@@ -45,7 +46,10 @@ const mapDispatchToProps = {
   ...settingsActions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @title(({ activeSection }) => activeSection && activeSection.name)
 export default class SettingsEditorApp extends Component {
   layout = null; // the reference to AdminLayout
@@ -98,7 +102,7 @@ export default class SettingsEditorApp extends Component {
         typeof value === "number" && value,
       );
     } catch (error) {
-      let message =
+      const message =
         error && (error.message || (error.data && error.data.message));
       this.layout.setSaveError(message);
       MetabaseAnalytics.trackEvent(
@@ -122,7 +126,7 @@ export default class SettingsEditorApp extends Component {
     const { activeSection, settingValues } = this.props;
 
     if (!activeSection) {
-      return null;
+      return <NotFound />;
     }
 
     if (activeSection.slug === "email") {
@@ -188,9 +192,8 @@ export default class SettingsEditorApp extends Component {
       return (
         <ul>
           {activeSection.settings
-            .filter(
-              setting =>
-                setting.getHidden ? !setting.getHidden(settingValues) : true,
+            .filter(setting =>
+              setting.getHidden ? !setting.getHidden(settingValues) : true,
             )
             .map((setting, index) => (
               <SettingsSetting

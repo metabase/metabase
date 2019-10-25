@@ -1,9 +1,8 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
-import cxs from "cxs";
 
 import { getQuestionAlerts } from "metabase/query_builder/selectors";
 import { getUser } from "metabase/selectors/user";
@@ -20,25 +19,11 @@ import {
   UpdateAlertModalContent,
 } from "metabase/query_builder/components/AlertModals";
 
-const unsubscribedClasses = cxs({
-  marginLeft: "10px",
-});
-const ownAlertClasses = cxs({
-  marginLeft: "9px",
-  marginRight: "17px",
-});
-const unsubscribeButtonClasses = cxs({
-  transform: `translateY(4px)`,
-});
-const popoverClasses = cxs({
-  minWidth: "410px",
-});
-
 @connect(
   state => ({ questionAlerts: getQuestionAlerts(state), user: getUser(state) }),
   null,
 )
-export class AlertListPopoverContent extends Component {
+export default class AlertListPopoverContent extends Component {
   props: {
     questionAlerts: any[],
     setMenuFreeze: boolean => void,
@@ -89,7 +74,7 @@ export class AlertListPopoverContent extends Component {
     const hasOwnAndOthers = hasOwnAlerts && othersAlerts.length > 0;
 
     return (
-      <div className={popoverClasses}>
+      <div style={{ minWidth: 410 }}>
         <ul>
           {Object.values(sortedQuestionAlerts).map(alert => (
             <AlertListItem
@@ -111,7 +96,7 @@ export class AlertListPopoverContent extends Component {
               className="link flex align-center text-bold text-small"
               onClick={this.onAdd}
             >
-              <Icon name="add" className={ownAlertClasses} />{" "}
+              <Icon name="add" style={{ marginLeft: 9, marignRight: 17 }} />{" "}
               {t`Set up your own alert`}
             </a>
           </div>
@@ -129,10 +114,13 @@ export class AlertListPopoverContent extends Component {
   }
 }
 
-@connect(state => ({ user: getUser(state) }), {
-  unsubscribeFromAlert,
-  deleteAlert,
-})
+@connect(
+  state => ({ user: getUser(state) }),
+  {
+    unsubscribeFromAlert,
+    deleteAlert,
+  },
+)
 export class AlertListItem extends Component {
   props: {
     alert: any,
@@ -203,20 +191,23 @@ export class AlertListItem extends Component {
               <AlertCreatorTitle alert={alert} user={user} />
             </div>
             <div
-              className={`${unsubscribeButtonClasses} ml-auto text-bold text-small`}
+              className={`ml-auto text-bold text-small`}
+              style={{
+                transform: `translateY(4px)`,
+              }}
             >
               {(isAdmin || isCurrentUser) && (
                 <a className="link" onClick={this.onEdit}>{jt`Edit`}</a>
               )}
-              {!isAdmin &&
-                !unsubscribingProgress && (
-                  <a
-                    className="link ml2"
-                    onClick={this.onUnsubscribe}
-                  >{jt`Unsubscribe`}</a>
-                )}
-              {!isAdmin &&
-                unsubscribingProgress && <span> {unsubscribingProgress}</span>}
+              {!isAdmin && !unsubscribingProgress && (
+                <a
+                  className="link ml2"
+                  onClick={this.onUnsubscribe}
+                >{jt`Unsubscribe`}</a>
+              )}
+              {!isAdmin && unsubscribingProgress && (
+                <span> {unsubscribingProgress}</span>
+              )}
             </div>
           </div>
 
@@ -231,22 +222,20 @@ export class AlertListItem extends Component {
                 verbose={!isAdmin}
               />
             </li>
-            {isAdmin &&
-              emailEnabled && (
-                <li className="ml3 flex align-center">
-                  <Icon name="mail" className="mr1" />
-                  {emailChannel.recipients.length}
-                </li>
-              )}
-            {isAdmin &&
-              slackEnabled && (
-                <li className="ml3 flex align-center">
-                  <Icon name="slack" size={16} className="mr1" />
-                  {(slackChannel.details &&
-                    slackChannel.details.channel.replace("#", "")) ||
-                    t`No channel`}
-                </li>
-              )}
+            {isAdmin && emailEnabled && (
+              <li className="ml3 flex align-center">
+                <Icon name="mail" className="mr1" />
+                {emailChannel.recipients.length}
+              </li>
+            )}
+            {isAdmin && slackEnabled && (
+              <li className="ml3 flex align-center">
+                <Icon name="slack" size={16} className="mr1" />
+                {(slackChannel.details &&
+                  slackChannel.details.channel.replace("#", "")) ||
+                  t`No channel`}
+              </li>
+            )}
           </ul>
         </div>
 
@@ -270,7 +259,8 @@ export const UnsubscribedListItem = () => (
       <Icon name="check" className="text-success" />
     </div>
     <h3
-      className={`${unsubscribedClasses} text-dark`}
+      className={`text-dark`}
+      style={{ marginLeft: 10 }}
     >{jt`Okay, you're unsubscribed`}</h3>
   </li>
 );

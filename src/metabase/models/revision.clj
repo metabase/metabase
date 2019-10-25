@@ -6,6 +6,7 @@
             [metabase.util
              [date :as du]
              [i18n :refer [tru]]]
+            [potemkin.types :as p.types]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]
@@ -17,7 +18,7 @@
 
 ;;; # IRevisioned Protocl
 
-(defprotocol IRevisioned
+(p.types/defprotocol+ IRevisioned
   "Methods an entity may optionally implement to control how revisions of an instance are saved and reverted to.
    All of these methods except for `serialize-instance` have a default implementation in `IRevisionedDefaults`."
   (serialize-instance [this id instance]
@@ -83,7 +84,7 @@
   (merge models/IModelDefaults
          {:types       (constantly {:object :json, :message :clob})
           :pre-insert  pre-insert
-          :pre-update  (fn [& _] (throw (Exception. (str (tru "You cannot update a Revision!")))))
+          :pre-update  (fn [& _] (throw (Exception. (tru "You cannot update a Revision!"))))
           :post-select do-post-select-for-object}))
 
 
@@ -134,6 +135,7 @@
   [& {object :object,
       :keys [entity id user-id is-creation? message],
       :or {id (:id object), is-creation? false}}]
+  ;; TODO - rewrite this to use a schema
   {:pre [(models/model? entity)
          (integer? user-id)
          (db/exists? User :id user-id)

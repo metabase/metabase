@@ -7,18 +7,14 @@ import {
 } from "metabase/meta/Parameter";
 
 import * as Query from "metabase/lib/query/query";
-import Q from "metabase/lib/query"; // legacy
+import * as Q_DEPRECATED from "metabase/lib/query"; // legacy
 import Utils from "metabase/lib/utils";
 import * as Urls from "metabase/lib/urls";
 
 import _ from "underscore";
 import { assoc, updateIn } from "icepick";
 
-import type {
-  StructuredQuery,
-  NativeQuery,
-  TemplateTag,
-} from "metabase/meta/types/Query";
+import type { StructuredQuery, TemplateTag } from "metabase/meta/types/Query";
 import type {
   Card,
   DatasetQuery,
@@ -65,24 +61,6 @@ export function isStructured(card: Card): boolean {
 
 export function isNative(card: Card): boolean {
   return card.dataset_query.type === "native";
-}
-
-export function canRun(card: Card): boolean {
-  if (card.dataset_query.type === "query") {
-    const query = getQuery(card);
-    return (
-      query != null &&
-      query["source-table"] != undefined &&
-      Query.hasValidAggregation(query)
-    );
-  } else if (card.dataset_query.type === "native") {
-    const native: NativeQuery = card.dataset_query.native;
-    return (
-      native && card.dataset_query.database != undefined && native.query !== ""
-    );
-  } else {
-    return false;
-  }
 }
 
 export function cardVisualizationIsEquivalent(
@@ -180,11 +158,11 @@ export function applyParameters(
   const datasetQuery = Utils.copy(card.dataset_query);
   // clean the query
   if (datasetQuery.type === "query") {
-    datasetQuery.query = Q.cleanQuery(datasetQuery.query);
+    datasetQuery.query = Q_DEPRECATED.cleanQuery(datasetQuery.query);
   }
   datasetQuery.parameters = [];
   for (const parameter of parameters || []) {
-    let value = parameterValues[parameter.id];
+    const value = parameterValues[parameter.id];
     if (value == null) {
       continue;
     }

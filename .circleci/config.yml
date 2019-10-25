@@ -1,27 +1,171 @@
-defaults: &defaults
-  working_directory: /home/circleci/metabase/metabase/
-  docker:
-    - image: circleci/clojure:lein-2.8.1-node-browsers
-
-restore-be-deps-cache: &restore-be-deps-cache
-  keys:
-    - be-deps-{{ checksum "project.clj" }}
-    - be-deps-
-
-restore-fe-deps-cache: &restore-fe-deps-cache
-  keys:
-    - fe-deps-{{ checksum "yarn.lock" }}
-    - fe-deps-
-
 version: 2.1
+
+########################################################################################################################
+#                                                      EXECUTORS                                                       #
+########################################################################################################################
+
+executors:
+  basic:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: alpine/git
+
+  clojure:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1
+
+  node:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      # - image: circleci/node:7-browsers
+      - image: circleci/clojure:lein-2.8.1-node-browsers
+
+  clojure-and-node:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1-node-browsers
+
+  build:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: metabase/ci-build:latest
+
+  java-11:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:openjdk-11-lein-2.8.1
+
+  postgres-9-6:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1
+        environment:
+          MB_DB_TYPE: postgres
+          MB_DB_PORT: 5432
+          MB_DB_HOST: localhost
+          MB_DB_DBNAME: circle_test
+          MB_DB_USER: circle_test
+          MB_POSTGRESQL_TEST_USER: circle_test
+      - image: circleci/postgres:9.6-alpine
+        environment:
+          POSTGRES_USER: circle_test
+          POSTGRES_DB: circle_test
+
+  mysql-5-7:
+    parameters:
+      # for testing the use of an at-rest encryption key. Optional.
+      encryption-key:
+        type: string
+        default: ""
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1
+        environment:
+          MB_DB_TYPE: mysql
+          MB_DB_HOST: localhost
+          MB_DB_PORT: 3306
+          MB_DB_DBNAME: circle_test
+          MB_DB_USER: root
+          MB_MYSQL_TEST_USER: root
+          MB_ENCRYPTION_SECRET_KEY: << parameters.encryption-key >>
+      - image: circleci/mysql:5.7.23
+
+  mongo:
+     working_directory: /home/circleci/metabase/metabase/
+     docker:
+       - image: circleci/clojure:lein-2.8.1
+       - image: circleci/mongo:3.4
+
+  presto:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1
+        environment:
+          MB_PRESTO_TEST_HOST: localhost
+          MB_PRESTO_TEST_PORT: 8080
+      - image: metabase/presto-mb-ci
+        environment:
+          JAVA_TOOL_OPTIONS: "-Xmx2g"
+
+  sparksql:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1
+      - image: metabase/spark:2.1.1
+
+  vertica:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1
+      - image: sumitchawla/vertica
+
+  sqlserver:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1
+        environment:
+          MB_SQLSERVER_TEST_HOST: localhost
+          MB_SQLSERVER_TEST_PASSWORD: 'P@ssw0rd'
+          MB_SQLSERVER_TEST_USER: SA
+      - image: mcr.microsoft.com/mssql/server:2017-latest
+        environment:
+          ACCEPT_EULA: Y
+          SA_PASSWORD: 'P@ssw0rd'
+
+
+
+########################################################################################################################
+#                                                       COMMANDS                                                       #
+########################################################################################################################
+
+commands:
+  attach-workspace:
+    steps:
+      - attach_workspace:
+          at: /home/circleci/
+
+  restore-be-deps-cache:
+    steps:
+      - restore_cache:
+          keys:
+            - be-deps-{{ checksum "project.clj" }}
+            - be-deps-
+
+  restore-fe-deps-cache:
+    steps:
+      - restore_cache:
+          keys:
+            - fe-deps-{{ checksum "yarn.lock" }}
+            - fe-deps-
+
+  run-yarn-command:
+    parameters:
+      command-name:
+        type: string
+      command:
+        type: string
+      before-steps:
+        type: steps
+        default: []
+    steps:
+      - attach-workspace
+      - restore-fe-deps-cache
+      - steps: << parameters.before-steps >>
+      - run:
+          name: << parameters.command-name >>
+          command: yarn << parameters.command >>
+          no_output_timeout: 5m
+
+
 jobs:
 
 ########################################################################################################################
-#                                                       CHECKOUT                                                       #
+#                                                    CHECKOUT ETC.                                                     #
 ########################################################################################################################
 
   checkout:
-    <<: *defaults
+    executor: basic
     steps:
       - restore_cache:
           keys:
@@ -41,395 +185,172 @@ jobs:
           command: >
             for file in `find ./src -type f -name '*.clj' | sort`;
               do echo `md5sum $file` >> backend-checksums.txt;
-            done
+            done;
+            echo `md5sum project.clj` >> backend-checksums.txt
       - persist_to_workspace:
           root: /home/circleci/
           paths:
             - metabase/metabase
+
+  yaml-linter:
+    executor: node
+    steps:
+      - attach-workspace
+      - run:
+          name: Install yamllint
+          command: npm install yaml-lint
+          no_output_timeout: 2m
+      - run:
+          name: Lint YAML files
+          command: ./node_modules/.bin/yamllint `find resources -name '*.yaml'`
+          no_output_timeout: 2m
+
+  verify-i18n-files:
+    executor: node
+    steps:
+      - attach-workspace
+      - restore-fe-deps-cache
+      - run:
+          name: Update apt
+          command: sudo apt-get update
+      - run:
+          name: Install gettext
+          command: sudo apt-get install gettext
+      - run:
+          name: Verify i18n .po files
+          command: ./bin/i18n/build-translation-resources
+          no_output_timeout: 2m
+
 
 ########################################################################################################################
 #                                                       BACKEND                                                        #
 ########################################################################################################################
 
   be-deps:
-    <<: *defaults
+    executor: clojure
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run: lein with-profile +include-all-drivers deps
       - save_cache:
           key: be-deps-{{ checksum "project.clj" }}
           paths:
             - /home/circleci/.m2
 
-  be-tests:
-    <<: *defaults
+  lein:
+    parameters:
+      e:
+        type: executor
+        default: clojure
+      lein-command:
+        type: string
+    executor: << parameters.e >>
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
-          name: Run backend unit tests with Java 8
-          command: lein with-profile +ci test
-          no_output_timeout: 5m
-
-  be-tests-java-11:
-    <<: *defaults
-    docker:
-      - image: circleci/clojure:openjdk-11-lein-2.8.1
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run backend unit tests with Java 11
-          command: lein with-profile +ci test
-          no_output_timeout: 5m
-
-  be-linter-eastwood:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run Eastwood linter
-          command: lein with-profile +ci eastwood
-          no_output_timeout: 5m
-
-  be-linter-docstring-checker:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run dockstring-checker
-          command: lein with-profile +ci docstring-checker
-          no_output_timeout: 5m
-
-  be-linter-bikeshed:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run Bikeshed linter
-          command: lein with-profile +ci bikeshed
+          command: lein with-profile +ci << parameters.lein-command >>
           no_output_timeout: 5m
 
   be-linter-reflection-warnings:
-    <<: *defaults
+    executor: clojure
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
           name: Run reflection warnings checker
           command: ./bin/reflection-linter
           no_output_timeout: 5m
 
-  be-tests-mysql:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
-      - image: circleci/mysql:5.7.23
+  test-driver:
+    parameters:
+      e:
+        type: executor
+        default: clojure
+      driver:
+        type: string
+      timeout:
+        type: string
+        default: 5m
+      jdbc-driver-source:
+        type: string
+        default: ""
+      jdbc-driver-dest:
+        type: string
+        default: ""
+      wait-for-port:
+        type: string
+        default: ""
+      auto-retry:
+        type: boolean
+        default: false
+    executor: << parameters.e >>
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
+      - when:
+          condition: << parameters.wait-for-port >>
+          steps:
+            - run:
+                name: Wait for << parameters.driver >> to be ready
+                command: >
+                  /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
+                  while ! nc -z localhost << parameters.wait-for-port >>; do sleep 0.1; done
+                no_output_timeout: 5m
+      - when:
+          condition: << parameters.jdbc-driver-source >>
+          steps:
+            - run:
+                name: Make plugins dir
+                command: mkdir /home/circleci/metabase/metabase/plugins
+            - run:
+                name: Download << parameters.driver >> JDBC driver JAR
+                command: >
+                  /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
+                  wget --output-document=plugins/<< parameters.jdbc-driver-dest >> ${<< parameters.jdbc-driver-source >>}
+                no_output_timeout: 5m
+      - unless:
+          condition: << parameters.auto-retry >>
+          steps:
+            - run:
+                name: Test << parameters.driver >> driver
+                environment:
+                  DRIVERS: h2,<< parameters.driver >>
+                command: >
+                  /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
+                  lein with-profile +ci test
+                no_output_timeout: << parameters.timeout >>
+      # This is exactly the same as without auto-retry but will try running the tests a second time if they fail
+      - when:
+          condition: << parameters.auto-retry >>
+          steps:
+            - run:
+                name: Test << parameters.driver >> driver
+                environment:
+                  DRIVERS: h2,<< parameters.driver >>
+                command: >
+                  /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
+                  lein with-profile +ci test || lein with-profile +ci test
+                no_output_timeout: << parameters.timeout >>
+
+
+  test-migrate-from-h2:
+    parameters:
+      e:
+        type: executor
+      db-type:
+        type: string
+    executor: << parameters.e >>
+    steps:
+      - attach-workspace
+      - restore-be-deps-cache
       - run:
-          name: Run backend unit tests (MySQL)
+          name: Test migrating from H2 -> << parameters.db-type >> -> H2
           environment:
-            DRIVERS: h2,mysql
-            MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
-            MB_DB_TYPE: mysql
+            MB_DB_TYPE: << parameters.db-type >>
             MB_DB_HOST: localhost
-            MB_DB_PORT: 3306
-            MB_DB_DBNAME: circle_test
-            MB_DB_USER: root
-            MB_MYSQL_TEST_USER: root
           command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh mysql ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
-
-  be-tests-postgres:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
-      - image: circleci/postgres:9.6-alpine
-        environment:
-          POSTGRES_USER: circle_test
-          POSTGRES_DB: circle_test
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (Postgres)
-          environment:
-            DRIVERS: h2,postgres
-            MB_DB_TYPE: postgres
-            MB_DB_PORT: 5432
-            MB_DB_HOST: localhost
-            MB_DB_DBNAME: circle_test
-            MB_DB_USER: circle_test
-            MB_POSTGRESQL_TEST_USER: circle_test
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh postgres ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
-
-  be-tests-sparksql:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
-      - image: metabase/spark:2.1.1
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Wait for SparkSQL to be ready
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sparksql ||
-            while ! nc -z localhost 10000; do sleep 0.1; done
-          no_output_timeout: 5m
-      - run:
-          name: Run backend unit tests (SparkSQL)
-          environment:
-            DRIVERS: h2,sparksql
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sparksql ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
-
-  be-tests-mongo:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
-      - image: circleci/mongo:3.2
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (MongoDB 3.2)
-          environment:
-            DRIVERS: h2,mongo
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh mongo ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
-
-  be-tests-vertica:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
-      - image: sumitchawla/vertica
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Make plugins dir
-          command: mkdir /home/circleci/metabase/metabase/plugins
-      - run:
-          name: Download Vertica JAR
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh vertica ||
-            wget --output-document=plugins/vertica-jdbc-7.1.2-0.jar $VERTICA_JDBC_JAR
-          no_output_timeout: 5m
-      - run:
-          name: Run backend unit tests (Vertica)
-          environment:
-            DRIVERS: h2,vertica
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh vertica ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
-
-  be-tests-snowflake:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (Snowflake)
-          environment:
-            DRIVERS: h2,snowflake
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh snowflake ||
-            lein with-profile +ci test
-          no_output_timeout: 10m
-
-  be-tests-sqlserver:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (SQL Server)
-          environment:
-            DRIVERS: h2,sqlserver
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sqlserver ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
-
-  be-tests-bigquery:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (BigQuery)
-          environment:
-            DRIVERS: h2,bigquery
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh bigquery ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
-
-  be-tests-googleanalytics:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (Google Analytics)
-          environment:
-            DRIVERS: h2,googleanalytics
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh googleanalytics ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
-
-  be-tests-sqlite:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (SQLite)
-          environment:
-            DRIVERS: h2,sqlite
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh sqlite ||
-            lein with-profile +ci test
-
-  be-tests-druid:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (Druid)
-          environment:
-            DRIVERS: h2,druid
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh druid ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
-
-  be-tests-redshift:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Run backend unit tests (Redshift)
-          environment:
-            DRIVERS: h2,redshift
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh redshift ||
-            lein with-profile +ci test
-          no_output_timeout: 10m
-
-
-  be-tests-presto:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: circleci/clojure:lein-2.8.1-node-browsers
-      - image: metabase/presto-mb-ci
-        environment:
-          JAVA_TOOL_OPTIONS: "-Xmx2g"
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Wait for Presto to be ready
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh presto ||
-            while ! nc -z localhost 8080; do sleep 0.1; done
-          no_output_timeout: 5m
-      - run:
-          name: Run backend unit tests (Presto)
-          environment:
-            DRIVERS: h2,presto
-            MB_PRESTO_TEST_HOST: localhost
-            MB_PRESTO_TEST_PORT: 8080
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh presto ||
-            lein with-profile +ci test
-          no_output_timeout: 5m
-
-
-  be-tests-oracle:
-    <<: *defaults
-    steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
-      - run:
-          name: Make plugins dir
-          command: mkdir /home/circleci/metabase/metabase/plugins
-      - run:
-          name: Download Oracle JAR
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh oracle ||
-            wget --output-document=/home/circleci/metabase/metabase/plugins/ojdbc7.jar $ORACLE_JDBC_JAR
-      - run:
-          name: Run backend unit tests (Oracle)
-          environment:
-            DRIVERS: h2,oracle
-          command: >
-            /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh oracle ||
-            lein with-profile +ci test
+            ./bin/test-load-and-dump.sh
           no_output_timeout: 5m
 
 
@@ -438,12 +359,10 @@ jobs:
 ########################################################################################################################
 
   fe-deps:
-    <<: *defaults
+    executor: node
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-fe-deps-cache
+      - attach-workspace
+      - restore-fe-deps-cache
       - run:
           name: Run yarn if yarn.lock checksum has changed
           command: >
@@ -463,72 +382,52 @@ jobs:
             - /home/circleci/yarn.lock.checksum
 
   fe-linter-eslint:
-    <<: *defaults
+    executor: node
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-fe-deps-cache
-      - run:
-          name: Run ESLint linter
-          command: yarn lint-eslint
-          no_output_timeout: 5m
+      - run-yarn-command:
+          command-name: Run ESLint linter
+          command: lint-eslint
 
   fe-linter-prettier:
-    <<: *defaults
+    executor: node
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-fe-deps-cache
-      - run:
-          name: Run Prettier formatting linter
-          command: yarn lint-prettier
-          no_output_timeout: 5m
+      - run-yarn-command:
+          command-name: Run Prettier formatting linter
+          command: lint-prettier
 
   fe-linter-flow:
-    <<: *defaults
+    executor: node
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-fe-deps-cache
-      - run:
-          name: Run Flow type checker
-          command: yarn flow
-          no_output_timeout: 5m
+      - run-yarn-command:
+          command-name: Run Flow type checker
+          command: flow
 
   fe-tests-karma:
-    <<: *defaults
+    executor: node
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-fe-deps-cache
-      - run:
-          name: Run frontend tests (karma)
-          command: yarn run test-karma
-          no_output_timeout: 5m
+      - run-yarn-command:
+          command-name: Run frontend tests (karma)
+          command: run test-karma
 
   fe-tests-unit:
-    <<: *defaults
+    executor: node
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-fe-deps-cache
-      - run:
-          name: Run frontend unit tests
-          command: yarn run test-unit
-          no_output_timeout: 5m
+      - run-yarn-command:
+          command-name: Run frontend unit tests
+          command: run test-unit
+
+  fe-tests-integration:
+    executor: node
+    steps:
+      - run-yarn-command:
+          command-name: Run frontend integration tests
+          command: run test-integration
 
   build-uberjar:
-    <<: *defaults
+    executor: clojure-and-node
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-be-deps-cache
+      - attach-workspace
+      - restore-be-deps-cache
       - restore_cache:
           keys:
             - uberjar-{{ checksum "./backend-checksums.txt" }}
@@ -544,23 +443,19 @@ jobs:
           paths:
             - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
 
-  fe-tests-integrated:
-    <<: *defaults
+  fe-tests-e2e:
+    executor: clojure-and-node
     steps:
-      - attach_workspace:
-          at: /home/circleci/
-      - restore_cache:
-          <<: *restore-fe-deps-cache
-      - restore_cache:
-          keys:
-            - uberjar-{{ checksum "./backend-checksums.txt" }}
-      - run:
-          name: Generate version file
-          command: ./bin/build version
-      - run:
-          name: Run frontend integrated tests
-          command: yarn run test-integrated-no-build
-          no_output_timeout: 5m
+      - run-yarn-command:
+          command-name: Run frontend e2e tests
+          command: run test-e2e-no-build
+          before-steps:
+            - restore_cache:
+                keys:
+                  - uberjar-{{ checksum "./backend-checksums.txt" }}
+            - run:
+                name: Generate version file
+                command: ./bin/build version
 
 
 ########################################################################################################################
@@ -568,10 +463,9 @@ jobs:
 ########################################################################################################################
 
   deploy-master:
-    <<: *defaults
+    executor: clojure
     steps:
-      - attach_workspace:
-          at: /home/circleci/
+      - attach-workspace
       - run: ./bin/deploy-webhook $DEPLOY_WEBHOOK
 
 
@@ -584,69 +478,177 @@ workflows:
   build:
     jobs:
       - checkout
+
+      - yaml-linter:
+          requires:
+            - checkout
+
+      - verify-i18n-files:
+          requires:
+            - checkout
+            - fe-deps
+
       - be-deps:
           requires:
             - checkout
-      - be-tests:
+
+      - lein:
+          name: be-tests
           requires:
             - be-deps
-      - be-tests-java-11:
+          lein-command: test
+
+      - lein:
+          name: be-tests-java-11
           requires:
             - be-deps
-      - be-linter-eastwood:
+          e: java-11
+          lein-command: test
+
+      - lein:
+          name: be-linter-eastwood
           requires:
             - be-deps
-      - be-linter-docstring-checker:
+          lein-command: eastwood
+
+      - lein:
+          name: be-linter-docstring-checker
           requires:
             - be-deps
-      - be-linter-bikeshed:
+          lein-command: docstring-checker
+
+      - lein:
+          name: be-linter-namespace-decls
           requires:
             - be-deps
+          lein-command: check-namespace-decls
+
+      - lein:
+          name: be-linter-bikeshed
+          requires:
+            - be-deps
+          lein-command: bikeshed
+
       - be-linter-reflection-warnings:
           requires:
             - be-deps
-      - be-tests-mysql:
+
+      - test-driver:
+          name: be-tests-bigquery
           requires:
             - be-tests
-      - be-tests-postgres:
+          driver: bigquery
+
+      - test-driver:
+          name: be-tests-druid
           requires:
             - be-tests
-      - be-tests-sparksql:
+          driver: druid
+
+      - test-driver:
+          name: be-tests-googleanalytics
           requires:
             - be-tests
-      - be-tests-mongo:
+          driver: googleanalytics
+
+      - test-driver:
+          name: be-tests-mongo
           requires:
             - be-tests
-      - be-tests-sqlserver:
+          e: mongo
+          driver: mongo
+
+      - test-driver:
+          name: be-tests-mysql
           requires:
             - be-tests
-      - be-tests-bigquery:
+          e:
+            name: mysql-5-7
+            encryption-key: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
+          driver: mysql
+
+      - test-driver:
+          name: be-tests-oracle
           requires:
             - be-tests
-      - be-tests-googleanalytics:
+          jdbc-driver-source: ORACLE_JDBC_JAR
+          jdbc-driver-dest: ojdbc7.jar
+          driver: oracle
+
+      - test-driver:
+          name: be-tests-postgres
           requires:
             - be-tests
-      - be-tests-sqlite:
+          e: postgres-9-6
+          driver: postgres
+
+      - test-driver:
+          name: be-tests-presto
           requires:
             - be-tests
-      - be-tests-presto:
+          e: presto
+          wait-for-port: "8080"
+          driver: presto
+
+      - test-driver:
+          name: be-tests-redshift
           requires:
             - be-tests
-      - be-tests-oracle:
+          driver: redshift
+          timeout: 10m
+
+      - test-driver:
+          name: be-tests-snowflake
           requires:
             - be-tests
-      - be-tests-druid:
+          driver: snowflake
+          timeout: 15m
+
+      - test-driver:
+          name: be-tests-sparksql
           requires:
             - be-tests
-      - be-tests-redshift:
+          e: sparksql
+          wait-for-port: "10000"
+          driver: sparksql
+
+      - test-driver:
+          name: be-tests-sqlite
           requires:
             - be-tests
-      - be-tests-vertica:
+          driver: sqlite
+
+      - test-driver:
+          name: be-tests-sqlserver
           requires:
             - be-tests
-      - be-tests-snowflake:
+          e: sqlserver
+          driver: sqlserver
+
+      - test-driver:
+          name: be-tests-vertica
           requires:
             - be-tests
+          e: vertica
+          jdbc-driver-source: VERTICA_JDBC_JAR
+          jdbc-driver-dest: vertica-jdbc-7.1.2-0.jar
+          driver: vertica
+          auto-retry: true
+
+      - test-migrate-from-h2:
+          name: be-tests-migrate-to-postgres
+          requires:
+            - be-tests
+          e: postgres-9-6
+          db-type: postgres
+
+      - test-migrate-from-h2:
+          name: be-tests-migrate-to-mysql
+          requires:
+            - be-tests
+          e: mysql-5-7
+          db-type: mysql
+
       - fe-deps:
           requires:
             - checkout
@@ -665,42 +667,57 @@ workflows:
       - fe-tests-unit:
           requires:
             - fe-deps
+      - fe-tests-integration:
+          requires:
+            - fe-deps
       - build-uberjar:
           requires:
             - be-deps
-      - fe-tests-integrated:
+      - fe-tests-e2e:
           requires:
             - build-uberjar
             - fe-deps
+
       - deploy-master:
           requires:
-            - be-linter-eastwood
-            - be-linter-docstring-checker
+            - yaml-linter
+            - verify-i18n-files
+
             - be-linter-bikeshed
+            - be-linter-docstring-checker
+            - be-linter-eastwood
+            - be-linter-namespace-decls
             - be-linter-reflection-warnings
 
             - be-tests
-            - be-tests-mysql
-            - be-tests-postgres
-            - be-tests-sparksql
-            - be-tests-mongo
-            - be-tests-sqlserver
+            - be-tests-java-11
+
             - be-tests-bigquery
-            - be-tests-googleanalytics
-            - be-tests-sqlite
-            - be-tests-presto
-            - be-tests-oracle
             - be-tests-druid
+            - be-tests-googleanalytics
+            - be-tests-mongo
+            - be-tests-mysql
+            - be-tests-oracle
+            - be-tests-postgres
+            - be-tests-presto
             - be-tests-redshift
-            - be-tests-vertica
             - be-tests-snowflake
+            - be-tests-sparksql
+            - be-tests-sqlite
+            - be-tests-sqlserver
+            - be-tests-vertica
+
+            - be-tests-migrate-to-mysql
+            - be-tests-migrate-to-postgres
 
             - fe-linter-eslint
-            - fe-linter-prettier
             - fe-linter-flow
+            - fe-linter-prettier
+
+            - fe-tests-e2e
+            - fe-tests-integration
             - fe-tests-karma
             - fe-tests-unit
-            - fe-tests-integrated
           filters:
             branches:
               only: master

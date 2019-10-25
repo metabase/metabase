@@ -30,7 +30,7 @@
   [token & query-params]
   (let [unsigned-token (check-and-unsign token)
         card-id        (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
-    (embed-api/run-query-for-card-with-params
+    (embed-api/run-query-for-card-with-params-async
       :card-id          card-id
       :token-params     (eu/get-in-unsigned-token-or-throw unsigned-token [:params])
       :embedding-params (eu/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
@@ -47,7 +47,7 @@
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT TOKEN."
   [token dashcard-id card-id & query-params]
   (let [unsigned-token (check-and-unsign token)]
-    (embed-api/dashcard-results
+    (embed-api/dashcard-results-async
       :dashboard-id     (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
       :dashcard-id      dashcard-id
       :card-id          card-id

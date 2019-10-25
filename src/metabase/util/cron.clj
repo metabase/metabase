@@ -3,8 +3,8 @@
    See http://www.quartz-scheduler.org/documentation/quartz-2.x/tutorials/crontrigger.html#format for details on cron
    format."
   (:require [clojure.string :as str]
-            [schema.core :as s]
-            [metabase.util.schema :as su])
+            [metabase.util.schema :as su]
+            [schema.core :as s])
   (:import org.quartz.CronExpression))
 
 (def CronScheduleString

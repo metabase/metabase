@@ -21,7 +21,7 @@ import type { Metadata } from "metabase/meta/types/Metadata";
 
 import moment from "moment";
 
-import Q from "metabase/lib/query";
+import * as Q_DEPRECATED from "metabase/lib/query";
 
 import { isNumericBaseType } from "metabase/lib/schema_metadata";
 
@@ -51,9 +51,9 @@ export const getParametersBySlug = (
   parameters: Parameter[],
   parameterValues: ParameterValues,
 ): { [key: string]: string } => {
-  let result = {};
+  const result = {};
   for (const parameter of parameters) {
-    if (parameterValues[parameter.id] != undefined) {
+    if (parameterValues[parameter.id] != null) {
       result[parameter.slug] = parameterValues[parameter.id];
     }
   }
@@ -63,20 +63,20 @@ export const getParametersBySlug = (
 /** Returns the field ID that this parameter target points to, or null if it's not a dimension target. */
 export function getParameterTargetFieldId(
   target: ?ParameterTarget,
-  datasetQuery: DatasetQuery,
+  datasetQuery: ?DatasetQuery,
 ): ?FieldId {
   if (target && target[0] === "dimension") {
-    let dimension = target[1];
+    const dimension = target[1];
     if (Array.isArray(dimension) && dimension[0] === "template-tag") {
-      if (datasetQuery.type === "native") {
-        let templateTag =
+      if (datasetQuery && datasetQuery.type === "native") {
+        const templateTag =
           datasetQuery.native["template-tags"][String(dimension[1])];
         if (templateTag && templateTag.type === "dimension") {
-          return Q.getFieldTargetId(templateTag.dimension);
+          return Q_DEPRECATED.getFieldTargetId(templateTag.dimension);
         }
       }
     } else {
-      return Q.getFieldTargetId(dimension);
+      return Q_DEPRECATED.getFieldTargetId(dimension);
     }
   }
   return null;
@@ -211,7 +211,7 @@ export function parameterToMBQLFilter(
   if (parameter.type.indexOf("date/") === 0) {
     return dateParameterValueToMBQL(parameter.value, fieldRef);
   } else {
-    const fieldId = Q.getFieldTargetId(fieldRef);
+    const fieldId = Q_DEPRECATED.getFieldTargetId(fieldRef);
     const field = metadata.fields[fieldId];
     // if the field is numeric, parse the value as a number
     if (isNumericBaseType(field)) {

@@ -13,7 +13,7 @@ const DisclosureTriangle = ({ open }) => (
     {motionStyle => (
       <Icon
         className="ml1 mr1"
-        name="expandarrow"
+        name="expand_arrow"
         style={{
           transform: `rotate(${motionStyle.deg}deg)`,
         }}

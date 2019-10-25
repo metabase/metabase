@@ -1,12 +1,14 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
-import StepTitle from "./StepTitle.jsx";
-import CollapsedStep from "./CollapsedStep.jsx";
+import { t } from "ttag";
 
-import DatabaseDetailsForm from "metabase/components/DatabaseDetailsForm.jsx";
-import FormField from "metabase/components/form/FormField.jsx";
+import { Box } from "grid-styled";
+import StepTitle from "./StepTitle";
+import CollapsedStep from "./CollapsedStep";
+
+import DatabaseDetailsForm from "metabase/components/DatabaseDetailsForm";
+import FormField from "metabase/components/form/FormField";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -30,7 +32,7 @@ export default class DatabaseConnectionStep extends Component {
   };
 
   chooseDatabaseEngine = e => {
-    let engine = e.target.value;
+    const engine = e.target.value;
 
     this.setState({
       engine: engine,
@@ -115,12 +117,12 @@ export default class DatabaseConnectionStep extends Component {
   }
 
   renderEngineSelect() {
-    let engines = MetabaseSettings.get("engines");
-    let { engine } = this.state,
-      engineNames = _.keys(engines).sort();
+    const engines = MetabaseSettings.get("engines");
+    const { engine } = this.state;
+    const engineNames = _.keys(engines).sort();
 
     return (
-      <label className="Select Form-offset mt1">
+      <label className="Select mt1">
         <select defaultValue={engine} onChange={this.chooseDatabaseEngine}>
           <option value="">{t`Select the type of Database you use`}</option>
           {engineNames.map(opt => (
@@ -134,9 +136,14 @@ export default class DatabaseConnectionStep extends Component {
   }
 
   render() {
-    let { activeStep, databaseDetails, setActiveStep, stepNumber } = this.props;
-    let { engine, formError } = this.state;
-    let engines = MetabaseSettings.get("engines");
+    const {
+      activeStep,
+      databaseDetails,
+      setActiveStep,
+      stepNumber,
+    } = this.props;
+    const { engine, formError } = this.state;
+    const engines = MetabaseSettings.get("engines");
 
     let stepText = t`Add your data`;
     if (activeStep > stepNumber) {
@@ -158,10 +165,13 @@ export default class DatabaseConnectionStep extends Component {
       );
     } else {
       return (
-        <section className="SetupStep bg-white rounded full relative SetupStep--active">
+        <Box
+          p={4}
+          className="SetupStep bg-white rounded full relative SetupStep--active"
+        >
           <StepTitle title={stepText} circleText={"2"} />
           <div className="mb4">
-            <div style={{ maxWidth: 600 }} className="Form-field Form-offset">
+            <div style={{ maxWidth: 600 }} className="Form-field">
               {t`You’ll need some info about your database, like the username and password. If you don’t have that right now, Metabase also comes with a sample dataset you can get started with.`}
             </div>
 
@@ -177,6 +187,7 @@ export default class DatabaseConnectionStep extends Component {
                         ...databaseDetails.details,
                         name: databaseDetails.name,
                         is_full_sync: databaseDetails.is_full_sync,
+                        auto_run_queries: databaseDetails.auto_run_queries,
                       }
                     : null
                 }
@@ -189,14 +200,14 @@ export default class DatabaseConnectionStep extends Component {
               />
             ) : null}
 
-            <div className="Form-field Form-offset">
+            <div className="Form-field mt1">
               <a
                 className="link"
                 onClick={this.skipDatabase.bind(this)}
               >{t`I'll add my data later`}</a>
             </div>
           </div>
-        </section>
+        </Box>
       );
     }
   }

@@ -4,9 +4,8 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import title from "metabase/hoc/Title";
-import fitViewport from "metabase/hoc/FitViewPort";
 
-import Dashboard from "metabase/dashboard/components/Dashboard.jsx";
+import Dashboard from "metabase/dashboard/components/Dashboard";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 import { setErrorPage } from "metabase/redux/app";
@@ -17,7 +16,6 @@ import {
   getIsDirty,
   getDashboardComplete,
   getCardList,
-  getRevisions,
   getCardData,
   getSlowCards,
   getEditingParameter,
@@ -42,7 +40,6 @@ const mapStateToProps = (state, props) => {
     isDirty: getIsDirty(state, props),
     dashboard: getDashboardComplete(state, props),
     cards: getCardList(state, props),
-    revisions: getRevisions(state, props),
     dashcardData: getCardData(state, props),
     slowCards: getSlowCards(state, props),
     databases: getDatabases(state, props),
@@ -65,16 +62,19 @@ type DashboardAppState = {
   addCardOnLoad: number | null,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @title(({ dashboard }) => dashboard && dashboard.name)
-@fitViewport
+// NOTE: should use DashboardControls and DashboardData HoCs here?
 export default class DashboardApp extends Component {
   state: DashboardAppState = {
     addCardOnLoad: null,
   };
 
   componentWillMount() {
-    let options = parseHashOptions(window.location.hash);
+    const options = parseHashOptions(window.location.hash);
     if (options.add) {
       this.setState({ addCardOnLoad: parseInt(options.add) });
     }
@@ -82,7 +82,7 @@ export default class DashboardApp extends Component {
 
   render() {
     return (
-      <div className={this.props.fitClassNames}>
+      <div>
         <Dashboard addCardOnLoad={this.state.addCardOnLoad} {...this.props} />
         {/* For rendering modal urls */}
         {this.props.children}

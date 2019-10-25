@@ -37,7 +37,7 @@ export const refreshSiteSettings = createThunkAction(
 export const refreshSettingsList = createAction(
   REFRESH_SETTINGS_LIST,
   async () => {
-    let settingsList = await SettingsApi.list();
+    const settingsList = await SettingsApi.list();
     MetabaseSettings.setAll(collectSettingsValues(settingsList));
     return settingsList.map(setting => {
       setting.originalValue = setting.value;
@@ -47,7 +47,7 @@ export const refreshSettingsList = createAction(
 );
 
 const collectSettingsValues = settingsList => {
-  let settings = {};
+  const settings = {};
   for (const setting of settingsList) {
     settings[setting.key] = setting.value;
   }

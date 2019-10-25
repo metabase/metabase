@@ -3,7 +3,7 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
-import { t } from "c-3po";
+import { t, ngettext, msgid } from "ttag";
 
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import Popover from "metabase/components/Popover";
@@ -28,7 +28,7 @@ type State = {
   widgetWidth: ?number,
 };
 
-const BORDER_WIDTH = 2;
+const BORDER_WIDTH = 1;
 
 const normalizeValue = value =>
   Array.isArray(value) ? value : value != null ? [value] : [];
@@ -54,7 +54,8 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
   static format(value, field) {
     value = normalizeValue(value);
     if (value.length > 1) {
-      return `${value.length} selections`;
+      const n = value.length;
+      return ngettext(msgid`${n} selection`, `${n} selections`, n);
     } else {
       return <RemappedValue value={value[0]} column={field} />;
     }
@@ -67,7 +68,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
   }
 
   componentDidUpdate() {
-    let element = ReactDOM.findDOMNode(this._unfocusedElement);
+    const element = ReactDOM.findDOMNode(this._unfocusedElement);
     if (!this.state.isFocused && element) {
       const parameterWidgetElement = element.parentNode.parentNode.parentNode;
       if (parameterWidgetElement.clientWidth !== this.state.widgetWidth) {
@@ -77,8 +78,8 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
   }
 
   render() {
-    let { setValue, isEditing, field, parentFocusChanged } = this.props;
-    let { isFocused } = this.state;
+    const { setValue, isEditing, field, parentFocusChanged } = this.props;
+    const { isFocused } = this.state;
 
     const savedValue = normalizeValue(this.props.value);
     const unsavedValue = normalizeValue(this.state.value);
@@ -141,6 +142,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
                 ? this.state.widgetWidth + BORDER_WIDTH * 2
                 : null,
             }}
+            className="border-bottom"
             minWidth={400}
             maxWidth={400}
           />

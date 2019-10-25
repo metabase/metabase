@@ -56,18 +56,16 @@ const EmptyState = ({
       */}
     <Flex mt={2}>
       <Flex align="center" ml="auto" mr="auto">
-        {action &&
-          link && (
-            <Link to={link} target={link.startsWith("http") ? "_blank" : ""}>
-              <Button primary>{action}</Button>
-            </Link>
-          )}
-        {action &&
-          onActionClick && (
-            <Button onClick={onActionClick} primary>
-              {action}
-            </Button>
-          )}
+        {action && link && (
+          <Link to={link} target={link.startsWith("http") ? "_blank" : ""}>
+            <Button primary>{action}</Button>
+          </Link>
+        )}
+        {action && onActionClick && (
+          <Button onClick={onActionClick} primary>
+            {action}
+          </Button>
+        )}
       </Flex>
     </Flex>
   </Box>

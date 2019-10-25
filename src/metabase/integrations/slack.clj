@@ -4,13 +4,17 @@
             [clojure.core.memoize :as memoize]
             [clojure.java.io :as io]
             [clojure.tools.logging :as log]
+            [metabase
+             [config :as config]
+             [util :as u]]
             [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [tru]]
-            [metabase.config :as config]))
+            [metabase.util
+             [i18n :refer [deferred-tru]]
+             [schema :as su]]
+            [schema.core :as s]))
 
 ;; Define a setting which captures our Slack api token
-(defsetting slack-token (tru "Slack API bearer token obtained from https://api.slack.com/web#authentication"))
+(defsetting slack-token (deferred-tru "Slack API bearer token obtained from https://api.slack.com/web#authentication"))
 
 (def ^:private ^String slack-api-base-url "https://slack.com/api")
 (def ^:private ^String files-channel-name "metabase_files")
@@ -38,8 +42,15 @@
                                                                                :conn-timeout   1000
                                                                                :socket-timeout 1000}))))
 
-(def ^{:arglists '([endpoint & {:as params}]), :style/indent 1} GET  "Make a GET request to the Slack API."  (partial do-slack-request http/get  :query-params))
-(def ^{:arglists '([endpoint & {:as params}]), :style/indent 1} POST "Make a POST request to the Slack API." (partial do-slack-request http/post :form-params))
+(def ^{:arglists '([endpoint & {:as params}]), :style/indent 1}
+  GET
+  "Make a GET request to the Slack API."
+  (partial do-slack-request http/get  :query-params))
+
+(def ^{:arglists '([endpoint & {:as params}]), :style/indent 1}
+  POST
+  "Make a POST request to the Slack API."
+  (partial do-slack-request http/post :form-params))
 
 (def ^{:arglists '([& {:as args}])} channels-list
   "Calls Slack api `channels.list` function and returns the list of available channels."
@@ -49,7 +60,7 @@
   "Calls Slack api `users.list` function and returns the list of available users."
   (comp :members (partial GET :users.list)))
 
-(def ^:private ^:const ^String channel-missing-msg
+(def ^:private ^String channel-missing-msg
   (str "Slack channel named `metabase_files` is missing! Please create the channel in order to complete "
        "the Slack integration. The channel is used for storing graphs that are included in pulses and "
        "MetaBot answers."))
@@ -83,18 +94,16 @@
     (let [six-hours-ms (* 6 60 60 1000)]
       (memoize/ttl files-channel* :ttl/threshold six-hours-ms))))
 
+(def ^:private NonEmptyByteArray
+  (s/constrained
+   (Class/forName "[B")
+   #(pos? (count %))
+   "Non-empty byte array"))
 
-(defn upload-file!
+(s/defn upload-file!
   "Calls Slack api `files.upload` function and returns the body of the uploaded file."
-  [file filename channel-ids-str]
-  {:pre [file
-         (instance? (Class/forName "[B") file)
-         (not (zero? (count file)))
-         (string? filename)
-         (seq filename)
-         (string? channel-ids-str)
-         (seq channel-ids-str)
-         (seq (slack-token))]}
+  [file :- NonEmptyByteArray, filename :- su/NonBlankString, channel-ids-str :- su/NonBlankString]
+  {:pre [(seq (slack-token))]}
   (let [response (http/post (str slack-api-base-url "/files.upload") {:multipart [{:name "token",    :content (slack-token)}
                                                                                   {:name "file",     :content file}
                                                                                   {:name "filename", :content filename}
@@ -105,11 +114,10 @@
         (log/debug "Uploaded image" <>))
       (log/warn "Error uploading file to Slack:" (u/pprint-to-str response)))))
 
-(defn post-chat-message!
-  "Calls Slack api `chat.postMessage` function and posts a message to a given channel.
-   ATTACHMENTS should be serialized JSON."
-  [channel-id text-or-nil & [attachments]]
-  {:pre [(string? channel-id)]}
+(s/defn post-chat-message!
+  "Calls Slack api `chat.postMessage` function and posts a message to a given channel. `attachments` should be
+  serialized JSON."
+  [channel-id :- su/NonBlankString, text-or-nil :- (s/maybe s/Str) & [attachments]]
   ;; TODO: it would be nice to have an emoji or icon image to use here
   (POST :chat.postMessage
     :channel     channel-id

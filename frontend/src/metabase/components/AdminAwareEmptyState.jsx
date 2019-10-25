@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import EmptyState from "metabase/components/EmptyState.jsx";
+import EmptyState from "metabase/components/EmptyState";
 import { getUser } from "metabase/selectors/user";
 import { connect } from "react-redux";
 
@@ -12,7 +12,10 @@ const mapStateToProps = (state, props) => ({
   user: getUser(state, props),
 });
 
-@connect(mapStateToProps, null)
+@connect(
+  mapStateToProps,
+  null,
+)
 class AdminAwareEmptyState extends Component {
   render() {
     const {

@@ -1,6 +1,6 @@
 title: A look at the [[this]]
-transient_title: Here's a quick look at the [[this]]
-description: How it's distributed across time and other categories.
+transient_title: Here''s a quick look at the [[this]]
+description: How it''s distributed across time and other categories.
 applies_to: GenericTable
 metrics:
 # Placeholder that will get overloaded by reference to the actual metric, so we can

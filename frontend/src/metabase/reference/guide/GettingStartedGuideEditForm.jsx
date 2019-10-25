@@ -3,20 +3,22 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-import CreateDashboardModal from "metabase/components/CreateDashboardModal.jsx";
-import Modal from "metabase/components/Modal.jsx";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CreateDashboardModal from "metabase/components/CreateDashboardModal";
+import Modal from "metabase/components/Modal";
 
-import EditHeader from "metabase/reference/components/EditHeader.jsx";
-import GuideEditSection from "metabase/reference/components/GuideEditSection.jsx";
-import GuideDetailEditor from "metabase/reference/components/GuideDetailEditor.jsx";
+import EditHeader from "metabase/reference/components/EditHeader";
+import GuideEditSection from "metabase/reference/components/GuideEditSection";
+import GuideDetailEditor from "metabase/reference/components/GuideDetailEditor";
 
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
 import { clearRequestState } from "metabase/redux/requests";
+
+import MetabaseSettings from "metabase/lib/settings";
 
 import Dashboards from "metabase/entities/dashboards";
 
@@ -123,7 +125,10 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @reduxForm({
   form: "guide",
   fields: [
@@ -285,7 +290,10 @@ export default class GettingStartedGuideEditForm extends Component {
                 collapsedTitle={t`Do you have any commonly referenced metrics?`}
                 collapsedIcon="ruler"
                 linkMessage={t`Learn how to define a metric`}
-                link="http://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html#creating-a-metric"
+                link={MetabaseSettings.docsUrl(
+                  "administration-guide/07-segments-and-metrics",
+                  "creating-a-metric",
+                )}
                 expand={() =>
                   important_metrics.addField({
                     id: null,
@@ -357,7 +365,10 @@ export default class GettingStartedGuideEditForm extends Component {
                 collapsedTitle={t`Do you have any commonly referenced segments or tables?`}
                 collapsedIcon="table2"
                 linkMessage={t`Learn how to create a segment`}
-                link="http://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html#creating-a-segment"
+                link={MetabaseSettings.docsUrl(
+                  "administration-guide/07-segments-and-metrics",
+                  "creating-a-segment",
+                )}
                 expand={() =>
                   important_segments_and_tables.addField({
                     id: null,

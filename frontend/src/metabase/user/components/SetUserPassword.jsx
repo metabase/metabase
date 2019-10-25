@@ -2,10 +2,10 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-import { t } from "c-3po";
-import FormField from "metabase/components/form/FormField.jsx";
-import FormLabel from "metabase/components/form/FormLabel.jsx";
-import FormMessage from "metabase/components/form/FormMessage.jsx";
+import { t } from "ttag";
+import FormField from "metabase/components/form/FormField";
+import FormLabel from "metabase/components/form/FormLabel";
+import FormMessage from "metabase/components/form/FormMessage";
 
 import MetabaseUtils from "metabase/lib/utils";
 import MetabaseSettings from "metabase/lib/settings";
@@ -30,12 +30,12 @@ export default class SetUserPassword extends Component {
   }
 
   validateForm() {
-    let { valid } = this.state;
+    const { valid } = this.state;
     let isValid = true;
 
     // required: first_name, last_name, email
-    for (let fieldName in this.refs) {
-      let node = ReactDOM.findDOMNode(this.refs[fieldName]);
+    for (const fieldName in this.refs) {
+      const node = ReactDOM.findDOMNode(this.refs[fieldName]);
       if (node.required && MetabaseUtils.isEmpty(node.value)) {
         isValid = false;
       }
@@ -59,7 +59,7 @@ export default class SetUserPassword extends Component {
       formError: null,
     });
 
-    let formErrors = { data: { errors: {} } };
+    const formErrors = { data: { errors: {} } };
 
     // make sure new passwords match
     if (
@@ -76,7 +76,7 @@ export default class SetUserPassword extends Component {
       return;
     }
 
-    let details = {};
+    const details = {};
 
     details.user_id = this.props.user.id;
     details.old_password = ReactDOM.findDOMNode(this.refs.oldPassword).value;
@@ -98,7 +98,7 @@ export default class SetUserPassword extends Component {
     return (
       <div>
         <form
-          className="Form-new bordered rounded shadowed"
+          className="NewForm"
           onSubmit={this.formSubmitted.bind(this)}
           noValidate
         >
@@ -111,14 +111,13 @@ export default class SetUserPassword extends Component {
             <input
               ref="oldPassword"
               type="password"
-              className="Form-input Form-offset full"
+              className="Form-input full"
               name="old_password"
               placeholder={t`Shhh...`}
               onChange={this.onChange.bind(this)}
               autoFocus={true}
               required
             />
-            <span className="Form-charm" />
           </FormField>
 
           <FormField fieldName="password" formError={formError}>
@@ -127,22 +126,16 @@ export default class SetUserPassword extends Component {
               fieldName="password"
               formError={formError}
             />
-            <span
-              style={{ fontWeight: "400" }}
-              className="Form-label Form-offset"
-            >
-              {passwordComplexity}
-            </span>
+            <span className="block mb1">{passwordComplexity}</span>
             <input
               ref="password"
               type="password"
-              className="Form-input Form-offset full"
+              className="Form-input full"
               name="password"
               placeholder={t`Make sure its secure like the instructions above`}
               onChange={this.onChange.bind(this)}
               required
             />
-            <span className="Form-charm" />
           </FormField>
 
           <FormField fieldName="password2" formError={formError}>
@@ -154,22 +147,15 @@ export default class SetUserPassword extends Component {
             <input
               ref="password2"
               type="password"
-              className="Form-input Form-offset full"
+              className="Form-input full"
               name="password"
               placeholder={t`Make sure it matches the one you just entered`}
               required
               onChange={this.onChange.bind(this)}
             />
-            <span className="Form-charm" />
           </FormField>
 
-          <div className="Form-actions">
-            <button
-              className={cx("Button", { "Button--primary": valid })}
-              disabled={!valid}
-            >
-              {t`Save`}
-            </button>
+          <div className="flex">
             <FormMessage
               formError={
                 updatePasswordResult &&
@@ -184,6 +170,12 @@ export default class SetUserPassword extends Component {
                   : undefined
               }
             />
+            <button
+              className={cx("Button ml-auto", { "Button--primary": valid })}
+              disabled={!valid}
+            >
+              {t`Save`}
+            </button>
           </div>
         </form>
       </div>

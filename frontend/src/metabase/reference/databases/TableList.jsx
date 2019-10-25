@@ -2,19 +2,19 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { isQueryable } from "metabase/lib/table";
 
 import S from "metabase/components/List.css";
 import R from "metabase/reference/Reference.css";
 
-import List from "metabase/components/List.jsx";
-import ListItem from "metabase/components/ListItem.jsx";
-import EmptyState from "metabase/components/EmptyState.jsx";
+import List from "metabase/components/List";
+import ListItem from "metabase/components/ListItem";
+import EmptyState from "metabase/components/EmptyState";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import ReferenceHeader from "../components/ReferenceHeader.jsx";
+import ReferenceHeader from "../components/ReferenceHeader";
 
 import {
   getDatabase,
@@ -66,12 +66,14 @@ export const separateTablesBySchema = (
   createListItem,
 ) =>
   Object.values(tables)
-    .sort(
-      (table1, table2) =>
-        table1.schema > table2.schema
-          ? 1
-          : table1.schema === table2.schema ? 0 : -1,
+    .sort((table1, table2) =>
+      table1.schema > table2.schema
+        ? 1
+        : table1.schema === table2.schema
+        ? 0
+        : -1,
     )
+    .filter(isQueryable)
     .map((table, index, sortedTables) => {
       if (!table || !table.id || !table.name) {
         return;
@@ -84,7 +86,10 @@ export const separateTablesBySchema = (
         : createListItem(table, index);
     });
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class TableList extends Component {
   static propTypes = {
     style: PropTypes.object.isRequired,

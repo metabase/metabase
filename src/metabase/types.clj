@@ -99,9 +99,21 @@
 
 (derive :type/JoinTimestamp :type/DateTime)
 (derive :type/JoinTime :type/Date)
-(derive :type/JoinTime :type/CreationTimestamp)
+(derive :type/JoinTime :type/JoinTimestamp)
 (derive :type/JoinDate :type/Date)
-(derive :type/JoinDate :type/CreationTimestamp)
+(derive :type/JoinDate :type/JoinTimestamp)
+
+(derive :type/CancelationTimestamp :type/DateTime)
+(derive :type/CancelationTime :type/Date)
+(derive :type/CancelationTime :type/CancelationTimestamp)
+(derive :type/CancelationDate :type/Date)
+(derive :type/CancelationDate :type/CancelationTimestamp)
+
+(derive :type/DeletionTimestamp :type/DateTime)
+(derive :type/DeletionTime :type/Date)
+(derive :type/DeletionTime :type/DeletionTimestamp)
+(derive :type/DeletionDate :type/Date)
+(derive :type/DeletionDate :type/DeletionTimestamp)
 
 (derive :type/Birthdate :type/Date)
 

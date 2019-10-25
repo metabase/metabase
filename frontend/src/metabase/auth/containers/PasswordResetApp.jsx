@@ -3,13 +3,13 @@ import { connect } from "react-redux";
 import { Link } from "react-router";
 
 import cx from "classnames";
-import { t, jt } from "c-3po";
-import AuthScene from "../components/AuthScene.jsx";
-import FormField from "metabase/components/form/FormField.jsx";
-import FormLabel from "metabase/components/form/FormLabel.jsx";
-import FormMessage from "metabase/components/form/FormMessage.jsx";
-import LogoIcon from "metabase/components/LogoIcon.jsx";
-import Icon from "metabase/components/Icon.jsx";
+import { t, jt } from "ttag";
+import AuthScene from "../components/AuthScene";
+import FormField from "metabase/components/form/FormField";
+import FormLabel from "metabase/components/form/FormLabel";
+import FormMessage from "metabase/components/form/FormMessage";
+import LogoIcon from "metabase/components/LogoIcon";
+import Icon from "metabase/components/Icon";
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -30,7 +30,10 @@ const mapDispatchToProps = {
   ...authActions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class PasswordResetApp extends Component {
   constructor(props, context) {
     super(props, context);
@@ -42,7 +45,7 @@ export default class PasswordResetApp extends Component {
   }
 
   validateForm() {
-    let { credentials } = this.state;
+    const { credentials } = this.state;
 
     let valid = true;
 
@@ -57,7 +60,7 @@ export default class PasswordResetApp extends Component {
 
   async componentWillMount() {
     try {
-      let result = await SessionApi.password_reset_token_valid({
+      const result = await SessionApi.password_reset_token_valid({
         token: this.props.token,
       });
       if (result && result.valid) {
@@ -85,8 +88,8 @@ export default class PasswordResetApp extends Component {
   formSubmitted(e) {
     e.preventDefault();
 
-    let { token, passwordReset } = this.props;
-    let { credentials } = this.state;
+    const { token, passwordReset } = this.props;
+    const { credentials } = this.state;
 
     passwordReset(token, credentials);
   }
@@ -117,8 +120,8 @@ export default class PasswordResetApp extends Component {
                   />
                 </div>
                 <div className="Grid-cell bordered rounded shadowed">
-                  <h3 className="Login-header Form-offset mt4">{t`Whoops, that's an expired link`}</h3>
-                  <p className="Form-offset mb4 mr4">
+                  <h3 className="Login-header mt4">{t`Whoops, that's an expired link`}</h3>
+                  <p className="mb4 mr4">
                     {jt`For security reasons, password reset links expire after a little while. If you still need
                                         to reset your password, you can ${requestLink}.`}
                   </p>
@@ -139,14 +142,14 @@ export default class PasswordResetApp extends Component {
             {!resetSuccess ? (
               <div className="Grid-cell">
                 <form
-                  className="ForgotForm Login-wrapper bg-white Form-new bordered rounded shadowed"
+                  className="ForgotForm p4 Login-wrapper bg-white Form-new bordered rounded shadowed"
                   name="form"
                   onSubmit={e => this.formSubmitted(e)}
                   noValidate
                 >
-                  <h3 className="Login-header Form-offset">{t`New password`}</h3>
+                  <h3 className="Login-header-offset">{t`New password`}</h3>
 
-                  <p className="Form-offset text-medium mb4">{t`To keep your data secure, passwords ${passwordComplexity}`}</p>
+                  <p className="text-medium mb4">{t`To keep your data secure, passwords ${passwordComplexity}`}</p>
 
                   <FormMessage
                     formError={
@@ -165,14 +168,13 @@ export default class PasswordResetApp extends Component {
                       formError={resetError}
                     />
                     <input
-                      className="Form-input Form-offset full"
+                      className="Form-input full"
                       name="password"
                       placeholder={t`Make sure its secure like the instructions above`}
                       type="password"
                       onChange={e => this.onChange("password", e.target.value)}
                       autoFocus
                     />
-                    <span className="Form-charm" />
                   </FormField>
 
                   <FormField
@@ -186,13 +188,12 @@ export default class PasswordResetApp extends Component {
                       formError={resetError}
                     />
                     <input
-                      className="Form-input Form-offset full"
+                      className="Form-input full"
                       name="password2"
                       placeholder={t`Make sure it matches the one you just entered`}
                       type="password"
                       onChange={e => this.onChange("password2", e.target.value)}
                     />
-                    <span className="Form-charm" />
                   </FormField>
 
                   <div className="Form-actions">

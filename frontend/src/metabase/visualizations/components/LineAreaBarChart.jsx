@@ -2,18 +2,20 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
-import CardRenderer from "./CardRenderer.jsx";
-import LegendHeader from "./LegendHeader.jsx";
-import { TitleLegendHeader } from "./TitleLegendHeader.jsx";
+import { t } from "ttag";
+import CardRenderer from "./CardRenderer";
+import LegendHeader from "./LegendHeader";
+import { TitleLegendHeader } from "./TitleLegendHeader";
 
 import "./LineAreaBarChart.css";
 
-import { isNumeric, isDate } from "metabase/lib/schema_metadata";
 import {
-  getChartTypeFromData,
-  getFriendlyName,
-} from "metabase/visualizations/lib/utils";
+  isNumeric,
+  isDate,
+  isDimension,
+  isMetric,
+} from "metabase/lib/schema_metadata";
+import { getFriendlyName, MAX_SERIES } from "metabase/visualizations/lib/utils";
 import { addCSSRule } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
 
@@ -26,8 +28,6 @@ import {
 
 import _ from "underscore";
 import cx from "classnames";
-
-const MAX_SERIES = 20;
 
 const MUTE_STYLE = "opacity: 0.25;";
 for (let i = 0; i < MAX_SERIES; i++) {
@@ -83,7 +83,17 @@ export default class LineAreaBarChart extends Component {
   static minSize = { width: 4, height: 3 };
 
   static isSensible({ cols, rows }) {
-    return getChartTypeFromData(cols, rows, false) != null;
+    return (
+      rows.length > 1 &&
+      cols.length >= 2 &&
+      cols.filter(isDimension).length > 0 &&
+      cols.filter(isMetric).length > 0
+    );
+  }
+
+  static isLiveResizable(series) {
+    const totalRows = series.reduce((sum, s) => sum + s.data.rows.length, 0);
+    return totalRows < 10;
   }
 
   static checkRenderable(series, settings) {
@@ -106,18 +116,18 @@ export default class LineAreaBarChart extends Component {
   }
 
   static seriesAreCompatible(initialSeries, newSeries) {
-    let initialSettings = getComputedSettingsForSeries([initialSeries]);
-    let newSettings = getComputedSettingsForSeries([newSeries]);
+    const initialSettings = getComputedSettingsForSeries([initialSeries]);
+    const newSettings = getComputedSettingsForSeries([newSeries]);
 
-    let initialDimensions = getColumnsFromNames(
+    const initialDimensions = getColumnsFromNames(
       initialSeries.data.cols,
       initialSettings["graph.dimensions"],
     );
-    let newDimensions = getColumnsFromNames(
+    const newDimensions = getColumnsFromNames(
       newSeries.data.cols,
       newSettings["graph.dimensions"],
     );
-    let newMetrics = getColumnsFromNames(
+    const newMetrics = getColumnsFromNames(
       newSeries.data.cols,
       newSettings["graph.metrics"],
     );
@@ -149,8 +159,25 @@ export default class LineAreaBarChart extends Component {
     return true;
   }
 
+  static placeholderSeries = [
+    {
+      card: {
+        display: "line",
+        visualization_settings: {},
+        dataset_query: { type: "null" },
+      },
+      data: {
+        rows: _.range(0, 11).map(i => [i, i]),
+        cols: [
+          { name: "x", base_type: "type/Integer" },
+          { name: "y", base_type: "type/Integer" },
+        ],
+      },
+    },
+  ];
+
   static transformSeries(series) {
-    let newSeries = [].concat(
+    const newSeries = [].concat(
       ...series.map((s, seriesIndex) =>
         transformSingleSeries(s, series, seriesIndex),
       ),
@@ -174,13 +201,15 @@ export default class LineAreaBarChart extends Component {
   getHoverClasses() {
     const { hovered } = this.props;
     if (hovered && hovered.index != null) {
-      let seriesClasses = _.range(0, MAX_SERIES)
+      const seriesClasses = _.range(0, MAX_SERIES)
         .filter(n => n !== hovered.index)
         .map(n => "mute-" + n);
-      let axisClasses =
+      const axisClasses =
         hovered.axisIndex === 0
           ? "mute-yr"
-          : hovered.axisIndex === 1 ? "mute-yl" : null;
+          : hovered.axisIndex === 1
+          ? "mute-yl"
+          : null;
       return seriesClasses.concat(axisClasses);
     } else {
       return null;
@@ -188,8 +217,8 @@ export default class LineAreaBarChart extends Component {
   }
 
   getFidelity() {
-    let fidelity = { x: 0, y: 0 };
-    let size = this.props.gridSize || { width: Infinity, height: Infinity };
+    const fidelity = { x: 0, y: 0 };
+    const size = this.props.gridSize || { width: Infinity, height: Infinity };
     if (size.width >= 5) {
       fidelity.x = 2;
     } else if (size.width >= 4) {
@@ -205,9 +234,9 @@ export default class LineAreaBarChart extends Component {
   }
 
   getSettings() {
-    let fidelity = this.getFidelity();
+    const fidelity = this.getFidelity();
 
-    let settings = { ...this.props.settings };
+    const settings = { ...this.props.settings };
 
     // smooth interpolation at smallest x/y fidelity
     if (fidelity.x === 0 && fidelity.y === 0) {
@@ -236,12 +265,15 @@ export default class LineAreaBarChart extends Component {
       onChangeCardAndRun,
       onVisualizationClick,
       visualizationIsClickable,
+      onAddSeries,
+      onEditSeries,
+      onRemoveSeries,
     } = this.props;
 
     const settings = this.getSettings();
 
     let multiseriesHeaderSeries;
-    if (series.length > 1) {
+    if (series.length > 1 || onAddSeries || onEditSeries || onRemoveSeries) {
       multiseriesHeaderSeries = series;
     }
 
@@ -274,6 +306,9 @@ export default class LineAreaBarChart extends Component {
             onChangeCardAndRun={onChangeCardAndRun}
             onVisualizationClick={onVisualizationClick}
             visualizationIsClickable={visualizationIsClickable}
+            onAddSeries={onAddSeries}
+            onEditSeries={onEditSeries}
+            onRemoveSeries={onRemoveSeries}
           />
         ) : null}
         <CardRenderer
@@ -319,7 +354,9 @@ function transformSingleSeries(s, series, seriesIndex) {
     settings["scatter.bubble"] &&
     _.findIndex(cols, col => col.name === settings["scatter.bubble"]);
   const extraColumnIndexes =
-    bubbleColumnIndex && bubbleColumnIndex >= 0 ? [bubbleColumnIndex] : [];
+    bubbleColumnIndex != null && bubbleColumnIndex >= 0
+      ? [bubbleColumnIndex]
+      : [];
 
   if (dimensions.length > 1) {
     const [dimensionColumnIndex, seriesColumnIndex] = dimensionColumnIndexes;
@@ -341,7 +378,7 @@ function transformSingleSeries(s, series, seriesIndex) {
         breakoutValues.push(seriesValue);
       }
 
-      let newRow = rowColumnIndexes.map(columnIndex => row[columnIndex]);
+      const newRow = rowColumnIndexes.map(columnIndex => row[columnIndex]);
       // $FlowFixMe: _origin not typed
       newRow._origin = { seriesIndex, rowIndex, row, cols };
       seriesRows.push(newRow);
@@ -392,6 +429,7 @@ function transformSingleSeries(s, series, seriesIndex) {
         series.length > 1 && card.name,
         // show column name if there are multiple metrics or sigle series
         (metricColumnIndexes.length > 1 || series.length === 1) &&
+          col &&
           getFriendlyName(col),
       ]
         .filter(n => n)
@@ -403,7 +441,9 @@ function transformSingleSeries(s, series, seriesIndex) {
           name: name,
           _transformed: true,
           _seriesIndex: seriesIndex,
-          _seriesKey: seriesIndex === 0 ? getFriendlyName(col) : name,
+          // use underlying column name as the seriesKey since it should be unique
+          // EXCEPT for dashboard multiseries, so check seriesIndex == 0
+          _seriesKey: seriesIndex === 0 && col ? col.name : name,
         },
         data: {
           rows: rows.map((row, rowIndex) => {

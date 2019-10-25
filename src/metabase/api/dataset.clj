@@ -1,22 +1,30 @@
 (ns metabase.api.dataset
   "/api/dataset endpoints."
   (:require [cheshire.core :as json]
+            [clojure.core.async :as a]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :refer [POST]]
+            [medley.core :as m]
             [metabase.api.common :as api]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database]]
              [query :as query]]
             [metabase.query-processor :as qp]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor
+             [async :as qp.async]
+             [error-type :as qp.error-type]
+             [util :as qputil]]
+            [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.util
              [date :as du]
              [export :as ex]
              [i18n :refer [trs tru]]
              [schema :as su]]
-            [schema.core :as s]))
+            [schema.core :as s])
+  (:import clojure.core.async.impl.channels.ManyToManyChannel))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
 
@@ -36,16 +44,13 @@
   [:as {{:keys [database], :as query} :body}]
   {database s/Int}
   ;; don't permissions check the 'database' if it's the virtual database. That database doesn't actually exist :-)
-  (when-not (= database database/virtual-id)
+  (when-not (= database mbql.s/saved-questions-virtual-database-id)
     (api/read-check Database database))
   ;; add sensible constraints for results limits on our query
-  (let [source-card-id (query->source-card-id query)]
-    (api/cancelable-json-response
-     (fn []
-       (qp/process-query-and-save-with-max!
-           query
-           {:executed-by api/*current-user-id*, :context :ad-hoc,
-            :card-id     source-card-id,        :nested? (boolean source-card-id)})))))
+  (let [source-card-id (query->source-card-id query)
+        options        {:executed-by api/*current-user-id*, :context :ad-hoc,
+                        :card-id     source-card-id,        :nested? (boolean source-card-id)}]
+    (qp.async/process-query-and-save-with-max-results-constraints! query options)))
 
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
@@ -56,12 +61,12 @@
 
 (defn export-format->context
   "Return the `:context` that should be used when saving a QueryExecution triggered by a request to download results
-  in EXPORT-FORAMT.
+  in `export-foramt`.
 
     (export-format->context :json) ;-> :json-download"
   [export-format]
   (or (get-in ex/export-formats [export-format :context])
-      (throw (Exception. (str (tru "Invalid export format: {0}" export-format))))))
+      (throw (Exception. (tru "Invalid export format: {0}" export-format)))))
 
 (defn- datetime-str->date
   "Dates are iso formatted, i.e. 2014-09-18T00:00:00.000-07:00. We can just drop the T and everything after it since
@@ -95,20 +100,42 @@
       (map (comp (swap-date-columns date-indexes) vec) rows)
       rows)))
 
-(defn as-format
-  "Return a response containing the RESULTS of a query in the specified format."
+(defn- as-format-response
+  "Return a response containing the `results` of a query in the specified format."
   {:style/indent 1, :arglists '([export-format results])}
-  [export-format {{:keys [columns rows cols]} :data, :keys [status], :as response}]
+  [export-format {{:keys [rows cols]} :data, :keys [status error], error-type :error_type, :as response}]
   (api/let-404 [export-conf (ex/export-formats export-format)]
     (if (= status :completed)
       ;; successful query, send file
       {:status  200
-       :body    ((:export-fn export-conf) columns (maybe-modify-date-values cols rows))
+       :body    ((:export-fn export-conf)
+                 (map #(some % [:display_name :name]) cols)
+                 (maybe-modify-date-values cols rows))
        :headers {"Content-Type"        (str (:content-type export-conf) "; charset=utf-8")
-                 "Content-Disposition" (str "attachment; filename=\"query_result_" (du/date->iso-8601) "." (:ext export-conf) "\"")}}
+                 "Content-Disposition" (format "attachment; filename=\"query_result_%s.%s\""
+                                               (du/date->iso-8601) (:ext export-conf))}}
       ;; failed query, send error message
-      {:status 500
-       :body   (:error response)})))
+      {:status (if (qp.error-type/server-error? error-type)
+                 500
+                 400)
+       :body   error})))
+
+(s/defn as-format-async
+  "Write the results of an async query to API `respond` or `raise` functions in `export-format`. `in-chan` should be a
+  core.async channel that can be used to fetch the results of the query."
+  {:style/indent 3}
+  [export-format :- ExportFormat, respond :- (s/pred fn?), raise :- (s/pred fn?), in-chan :- ManyToManyChannel]
+  (a/go
+    (try
+      (let [results (a/<! in-chan)]
+        (if (instance? Throwable results)
+          (raise results)
+          (respond (as-format-response export-format results))))
+      (catch Throwable e
+        (raise e))
+      (finally
+        (a/close! in-chan))))
+  nil)
 
 (def export-format-regex
   "Regex for matching valid export formats (e.g., `json`) for queries.
@@ -117,19 +144,21 @@
      (api/defendpoint POST [\"/:export-format\", :export-format export-format-regex]"
   (re-pattern (str "(" (str/join "|" (keys ex/export-formats)) ")")))
 
-(api/defendpoint POST ["/:export-format", :export-format export-format-regex]
+(api/defendpoint-async POST ["/:export-format", :export-format export-format-regex]
   "Execute a query and download the result data as a file in the specified format."
-  [export-format query]
+  [{{:keys [export-format query]} :params} respond raise]
   {query         su/JSONString
    export-format ExportFormat}
   (let [{:keys [database] :as query} (json/parse-string query keyword)]
-    (when-not (= database database/virtual-id)
+    (when-not (= database mbql.s/saved-questions-virtual-database-id)
       (api/read-check Database database))
-    (as-format export-format
-      (qp/process-query-and-save-execution! (-> query
-                                                (dissoc :constraints)
-                                                (assoc-in [:middleware :skip-results-metadata?] true))
-        {:executed-by api/*current-user-id*, :context (export-format->context export-format)}))))
+    (as-format-async export-format respond raise
+      (qp.async/process-query-and-save-execution!
+       (-> query
+           (dissoc :constraints)
+           (m/dissoc-in [:middleware :add-default-userland-constraints?])
+           (assoc-in [:middleware :skip-results-metadata?] true))
+       {:executed-by api/*current-user-id*, :context (export-format->context export-format)}))))
 
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------
@@ -141,8 +170,16 @@
   (api/read-check Database database)
   ;; try calculating the average for the query as it was given to us, otherwise with the default constraints if
   ;; there's no data there. If we still can't find relevant info, just default to 0
-  {:average (or (query/average-execution-time-ms (qputil/query-hash query))
-                (query/average-execution-time-ms (qputil/query-hash (assoc query :constraints qp/default-query-constraints)))
-                0)})
+  {:average (or
+             (some (comp query/average-execution-time-ms qputil/query-hash)
+                   [query
+                    (assoc query :constraints constraints/default-query-constraints)])
+             0)})
+
+(api/defendpoint POST "/native"
+  "Fetch a native version of an MBQL query."
+  [:as {query :body}]
+  (qp/query->native-with-spliced-params query))
+
 
 (api/define-routes)

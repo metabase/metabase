@@ -4,11 +4,12 @@
   actions can take place or be prevented when something changes."
   (:require [clojure.set :as set]
             [metabase.util.date :as du]
+            [potemkin.types :as p.types]
             [toucan
              [db :as db]
              [models :as models]]))
 
-(defprotocol IDependent
+(p.types/defprotocol+ IDependent
   "Methods an entity may optionally implement to control how dependencies of an instance are captured."
   (dependencies [this id instance]
     "Provide a map of dependent models and their corresponding IDs for the given instance.  Each key in the returned map

@@ -2,17 +2,17 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { isQueryable } from "metabase/lib/table";
 
 import S from "metabase/components/List.css";
 
-import List from "metabase/components/List.jsx";
-import ListItem from "metabase/components/ListItem.jsx";
+import List from "metabase/components/List";
+import ListItem from "metabase/components/ListItem";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import ReferenceHeader from "../components/ReferenceHeader.jsx";
+import ReferenceHeader from "../components/ReferenceHeader";
 
 import { getDatabases, getError, getLoading } from "../selectors";
 
@@ -29,7 +29,10 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class DatabaseList extends Component {
   static propTypes = {
     style: PropTypes.object.isRequired,

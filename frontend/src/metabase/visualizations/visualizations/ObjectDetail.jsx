@@ -2,12 +2,12 @@
 
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 import DirectionalButton from "metabase/components/DirectionalButton";
-import ExpandableString from "metabase/query_builder/components/ExpandableString.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import IconBorder from "metabase/components/IconBorder.jsx";
-import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
+import ExpandableString from "metabase/query_builder/components/ExpandableString";
+import Icon from "metabase/components/Icon";
+import IconBorder from "metabase/components/IconBorder";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import {
   isID,
@@ -20,26 +20,66 @@ import { formatValue, formatColumn } from "metabase/lib/formatting";
 import { isQueryable } from "metabase/lib/table";
 
 import {
+  loadObjectDetailFKReferences,
+  followForeignKey,
   viewPreviousObjectDetail,
   viewNextObjectDetail,
 } from "metabase/query_builder/actions";
+import {
+  getTableMetadata,
+  getTableForeignKeys,
+  getTableForeignKeyReferences,
+} from "metabase/query_builder/selectors";
+
+import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import cx from "classnames";
 import _ from "underscore";
 
 import type { VisualizationProps } from "metabase/meta/types/Visualization";
+import type { TableMetadata } from "metabase/meta/types/Metadata";
+import type { FieldId, Field } from "metabase/meta/types/Field";
+
+type ForeignKeyId = number;
+type ForeignKey = {
+  id: ForeignKeyId,
+  relationship: string,
+  origin: Field,
+  origin_id: FieldId,
+  destination: Field,
+  destination_id: FieldId,
+};
+
+type ForeignKeyCountInfo = {
+  status: number,
+  value: number,
+};
 
 type Props = VisualizationProps & {
+  tableMetadata: ?TableMetadata,
+  tableForeignKeys: ?(ForeignKey[]),
+  tableForeignKeyReferences: { [id: ForeignKeyId]: ForeignKeyCountInfo },
+  loadObjectDetailFKReferences: () => void,
+  followForeignKey: (fk: any) => void,
   viewNextObjectDetail: () => void,
   viewPreviousObjectDetail: () => void,
 };
 
-const mapStateToProps = () => ({});
+const mapStateToProps = state => ({
+  tableMetadata: getTableMetadata(state),
+  tableForeignKeys: getTableForeignKeys(state),
+  tableForeignKeyReferences: getTableForeignKeyReferences(state),
+});
 
-const mapDispatchToProps = {
-  viewPreviousObjectDetail,
-  viewNextObjectDetail,
-};
+// ugh, using function form of mapDispatchToProps here due to circlular dependency with actions
+const mapDispatchToProps = dispatch => ({
+  loadObjectDetailFKReferences: (...args) =>
+    dispatch(loadObjectDetailFKReferences(...args)),
+  followForeignKey: (...args) => dispatch(followForeignKey(...args)),
+  viewPreviousObjectDetail: (...args) =>
+    dispatch(viewPreviousObjectDetail(...args)),
+  viewNextObjectDetail: (...args) => dispatch(viewNextObjectDetail(...args)),
+});
 
 export class ObjectDetail extends Component {
   props: Props;
@@ -51,9 +91,15 @@ export class ObjectDetail extends Component {
 
   static hidden = true;
 
+  static settings = {
+    ...columnSettings({ hidden: true }),
+  };
+
   componentDidMount() {
     // load up FK references
-    this.props.loadObjectDetailFKReferences();
+    if (this.props.tableForeignKeys) {
+      this.props.loadObjectDetailFKReferences();
+    }
     window.addEventListener("keydown", this.onKeyDown, true);
   }
 
@@ -62,8 +108,10 @@ export class ObjectDetail extends Component {
   }
 
   componentWillReceiveProps(nextProps) {
-    // if the card has changed then reload fk references
-    if (this.props.data != nextProps.data) {
+    // if the card changed or table metadata loaded then reload fk references
+    const tableFKsJustLoaded =
+      nextProps.tableForeignKeys && !this.props.tableForeignKeys;
+    if (this.props.data !== nextProps.data || tableFKsJustLoaded) {
       this.props.loadObjectDetailFKReferences();
     }
   }
@@ -73,7 +121,9 @@ export class ObjectDetail extends Component {
       return null;
     }
 
-    const { data: { cols, rows } } = this.props;
+    const {
+      data: { cols, rows },
+    } = this.props;
     const columnIndex = _.findIndex(cols, col => isPK(col));
     return rows[0][columnIndex];
   }
@@ -83,7 +133,11 @@ export class ObjectDetail extends Component {
   };
 
   cellRenderer(column, value, isColumn) {
-    const { onVisualizationClick, visualizationIsClickable } = this.props;
+    const {
+      settings,
+      onVisualizationClick,
+      visualizationIsClickable,
+    } = this.props;
 
     let cellValue;
     let clicked;
@@ -99,14 +153,14 @@ export class ObjectDetail extends Component {
       if (value === null || value === undefined || value === "") {
         cellValue = <span className="text-light">{t`Empty`}</span>;
       } else if (isa(column.special_type, TYPE.SerializedJSON)) {
-        let formattedJson = JSON.stringify(JSON.parse(value), null, 2);
+        const formattedJson = JSON.stringify(JSON.parse(value), null, 2);
         cellValue = <pre className="ObjectJSON">{formattedJson}</pre>;
       } else if (typeof value === "object") {
-        let formattedJson = JSON.stringify(value, null, 2);
+        const formattedJson = JSON.stringify(value, null, 2);
         cellValue = <pre className="ObjectJSON">{formattedJson}</pre>;
       } else {
         cellValue = formatValue(value, {
-          column: column,
+          ...settings.column(column),
           jsx: true,
           rich: true,
         });
@@ -145,7 +199,9 @@ export class ObjectDetail extends Component {
   }
 
   renderDetailsTable() {
-    const { data: { cols, rows } } = this.props;
+    const {
+      data: { cols, rows },
+    } = this.props;
     return cols.map((column, columnIndex) => (
       <div className="Grid Grid--1of2 mb2" key={columnIndex}>
         <div className="Grid-cell">
@@ -275,56 +331,72 @@ export class ObjectDetail extends Component {
     const idValue = this.getIdValue();
 
     return (
-      <div className="ObjectDetail rounded mt2">
-        <div className="Grid ObjectDetail-headingGroup">
-          <div className="Grid-cell ObjectDetail-infoMain px4 py3 ml2 arrow-right">
-            <div className="text-brand text-bold">
-              <span>{tableName}</span>
-              <h1>{idValue}</h1>
-            </div>
-          </div>
-          <div className="Grid-cell flex align-center Cell--1of3 bg-alt">
-            <div className="p4 flex align-center text-bold text-medium">
-              <Icon name="connections" size={17} />
-              <div className="ml2">
-                {jt`This ${(
-                  <span className="text-dark">{tableName}</span>
-                )} is connected to:`}
+      <div className="scroll-y pt2 px4">
+        <div className="ObjectDetail bordered rounded">
+          <div className="Grid border-bottom relative">
+            <div className="Grid-cell border-right px4 py3 ml2 arrow-right">
+              <div className="text-brand text-bold">
+                <span>{tableName}</span>
+                <h1>{idValue}</h1>
               </div>
             </div>
+            <div className="Grid-cell flex align-center Cell--1of3 bg-alt">
+              <div className="p4 flex align-center text-bold text-medium">
+                <Icon name="connections" size={17} />
+                <div className="ml2">
+                  {jt`This ${(
+                    <span className="text-dark">{tableName}</span>
+                  )} is connected to:`}
+                </div>
+              </div>
+            </div>
+
+            <div
+              className={cx(
+                "absolute left cursor-pointer text-brand-hover lg-ml2",
+                { disabled: idValue <= 1 },
+              )}
+              style={{
+                top: "50%",
+                transform: "translate(-50%, -50%)",
+              }}
+            >
+              <DirectionalButton
+                direction="back"
+                onClick={this.props.viewPreviousObjectDetail}
+              />
+            </div>
+            <div
+              className="absolute right cursor-pointer text-brand-hover lg-ml2"
+              style={{
+                top: "50%",
+                transform: "translate(50%, -50%)",
+              }}
+            >
+              <DirectionalButton
+                direction="forward"
+                onClick={this.props.viewNextObjectDetail}
+              />
+            </div>
           </div>
-        </div>
-        <div className="Grid">
-          <div className="Grid-cell ObjectDetail-infoMain p4">
-            {this.renderDetailsTable()}
+          <div className="Grid">
+            <div
+              className="Grid-cell p4"
+              style={{ marginLeft: "2.4rem", fontSize: "1rem" }}
+            >
+              {this.renderDetailsTable()}
+            </div>
+            <div className="Grid-cell Cell--1of3 bg-alt">
+              {this.renderRelationships()}
+            </div>
           </div>
-          <div className="Grid-cell Cell--1of3 bg-alt">
-            {this.renderRelationships()}
-          </div>
-        </div>
-        <div
-          className={cx("fixed left cursor-pointer text-brand-hover lg-ml2", {
-            disabled: idValue <= 1,
-          })}
-          style={{ top: "50%", left: "1em", transform: "translate(0, -50%)" }}
-        >
-          <DirectionalButton
-            direction="back"
-            onClick={this.props.viewPreviousObjectDetail}
-          />
-        </div>
-        <div
-          className="fixed right cursor-pointer text-brand-hover lg-ml2"
-          style={{ top: "50%", right: "1em", transform: "translate(0, -50%)" }}
-        >
-          <DirectionalButton
-            direction="forward"
-            onClick={this.props.viewNextObjectDetail}
-          />
         </div>
       </div>
     );
   }
 }
 
-export default connect(mapStateToProps, mapDispatchToProps)(ObjectDetail);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(ObjectDetail);

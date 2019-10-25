@@ -7,14 +7,9 @@ import { push } from "react-router-redux";
 import TogglePropagateAction from "./containers/TogglePropagateAction";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import colors, { alpha } from "metabase/lib/colors";
+import { color, alpha } from "metabase/lib/colors";
 
-import { t } from "c-3po";
-import {
-  isDefaultGroup,
-  isAdminGroup,
-  isMetaBotGroup,
-} from "metabase/lib/groups";
+import { t } from "ttag";
 
 import _ from "underscore";
 import { getIn, assocIn } from "icepick";
@@ -31,13 +26,24 @@ import {
   diffPermissions,
   inferAndUpdateEntityPermissions,
 } from "metabase/lib/permissions";
+import {
+  isDefaultGroup,
+  isAdminGroup,
+  isMetaBotGroup,
+  canEditPermissions,
+} from "metabase/lib/groups";
+
+import Group from "metabase/entities/groups";
 
 import { getMetadata } from "metabase/selectors/metadata";
 
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import type { DatabaseId } from "metabase/meta/types/Database";
 import type { SchemaName } from "metabase/meta/types/Table";
-import type { Group, GroupsPermissions } from "metabase/meta/types/Permissions";
+import type {
+  Group as GroupType,
+  GroupsPermissions,
+} from "metabase/meta/types/Permissions";
 
 const getPermissions = state => state.admin.permissions.permissions;
 const getOriginalPermissions = state =>
@@ -66,17 +72,18 @@ function getTooltipForGroup(group) {
 }
 
 export const getGroups = createSelector(
-  state => state.admin.permissions.groups,
+  [Group.selectors.getList],
   groups => {
-    let orderedGroups = groups ? [...groups] : [];
-    for (let groupFilter of SPECIAL_GROUP_FILTERS) {
-      let index = _.findIndex(orderedGroups, groupFilter);
+    const orderedGroups = groups ? [...groups] : [];
+    for (const groupFilter of SPECIAL_GROUP_FILTERS) {
+      const index = _.findIndex(orderedGroups, groupFilter);
       if (index >= 0) {
         orderedGroups.unshift(...orderedGroups.splice(index, 1));
       }
     }
     return orderedGroups.map(group => ({
       ...group,
+      editable: canEditPermissions(group),
       tooltip: getTooltipForGroup(group),
     }));
   },
@@ -109,8 +116,8 @@ function getPermissionWarning(
   if (!defaultGroup || groupId === defaultGroup.id) {
     return null;
   }
-  let perm = value || getter(permissions, groupId, entityId);
-  let defaultPerm = getter(permissions, defaultGroup.id, entityId);
+  const perm = value || getter(permissions, groupId, entityId);
+  const defaultPerm = getter(permissions, defaultGroup.id, entityId);
   if (perm === "controlled" && defaultPerm === "controlled") {
     return t`The "${
       defaultGroup.name
@@ -135,7 +142,7 @@ function getPermissionWarningModal(
   entityId,
   value,
 ) {
-  let permissionWarning = getPermissionWarning(
+  const permissionWarning = getPermissionWarning(
     entityType,
     getter,
     defaultGroup,
@@ -227,18 +234,18 @@ const BG_ALPHA = 0.15;
 
 const OPTION_GREEN = {
   icon: "check",
-  iconColor: colors["success"],
-  bgColor: alpha(colors["success"], BG_ALPHA),
+  iconColor: color("success"),
+  bgColor: alpha(color("success"), BG_ALPHA),
 };
 const OPTION_YELLOW = {
   icon: "eye",
-  iconColor: colors["warning"],
-  bgColor: alpha(colors["warning"], BG_ALPHA),
+  iconColor: color("warning"),
+  bgColor: alpha(color("warning"), BG_ALPHA),
 };
 const OPTION_RED = {
   icon: "close",
-  iconColor: colors["error"],
-  bgColor: alpha(colors["error"], BG_ALPHA),
+  iconColor: color("error"),
+  bgColor: alpha(color("error"), BG_ALPHA),
 };
 
 const OPTION_ALL = {
@@ -253,7 +260,7 @@ const OPTION_CONTROLLED = {
   value: "controlled",
   title: t`Limit access`,
   tooltip: t`Limited access`,
-  icon: "permissionsLimited",
+  icon: "permissions_limited",
 };
 
 const OPTION_NONE = {
@@ -293,12 +300,12 @@ export const getTablesPermissionsGrid = createSelector(
   getSchemaName,
   (
     metadata: Metadata,
-    groups: Array<Group>,
+    groups: Array<GroupType>,
     permissions: GroupsPermissions,
     databaseId: DatabaseId,
     schemaName: SchemaName,
   ) => {
-    const database = metadata.databases[databaseId];
+    const database = metadata.database(databaseId);
 
     if (!groups || !permissions || !database) {
       return null;
@@ -333,7 +340,7 @@ export const getTablesPermissionsGrid = createSelector(
           },
           updater(groupId, entityId, value) {
             MetabaseAnalytics.trackEvent("Permissions", "fields", value);
-            let updatedPermissions = updateFieldsPermission(
+            const updatedPermissions = updateFieldsPermission(
               permissions,
               groupId,
               entityId,
@@ -400,11 +407,11 @@ export const getSchemasPermissionsGrid = createSelector(
   getDatabaseId,
   (
     metadata: Metadata,
-    groups: Array<Group>,
+    groups: Array<GroupType>,
     permissions: GroupsPermissions,
     databaseId: DatabaseId,
   ) => {
-    const database = metadata.databases[databaseId];
+    const database = metadata.database(databaseId);
 
     if (!groups || !permissions || !database) {
       return null;
@@ -429,7 +436,7 @@ export const getSchemasPermissionsGrid = createSelector(
           },
           updater(groupId, entityId, value) {
             MetabaseAnalytics.trackEvent("Permissions", "tables", value);
-            let updatedPermissions = updateTablesPermission(
+            const updatedPermissions = updateTablesPermission(
               permissions,
               groupId,
               entityId,
@@ -501,14 +508,14 @@ export const getDatabasesPermissionsGrid = createSelector(
   getPermissions,
   (
     metadata: Metadata,
-    groups: Array<Group>,
+    groups: Array<GroupType>,
     permissions: GroupsPermissions,
   ) => {
     if (!groups || !permissions || !metadata) {
       return null;
     }
 
-    const databases = Object.values(metadata.databases);
+    const databases = metadata.databasesList({ savedQuestions: false });
     const defaultGroup = _.find(groups, isDefaultGroup);
 
     return {
@@ -536,8 +543,8 @@ export const getDatabasesPermissionsGrid = createSelector(
           },
           postAction(groupId, { databaseId }, value) {
             if (value === "controlled") {
-              let database = metadata.databases[databaseId];
-              let schemas = database ? database.schemaNames() : [];
+              const database = metadata.database(databaseId);
+              const schemas = database ? database.schemaNames() : [];
               if (
                 schemas.length === 0 ||
                 (schemas.length === 1 && schemas[0] === "")
@@ -633,7 +640,7 @@ export const getDatabasesPermissionsGrid = createSelector(
         },
       },
       entities: databases.map(database => {
-        let schemas = database.schemaNames();
+        const schemas = database.schemaNames();
         return {
           id: {
             databaseId: database.id,
@@ -646,16 +653,16 @@ export const getDatabasesPermissionsGrid = createSelector(
                   url: `/admin/permissions/databases/${database.id}/tables`,
                 }
               : schemas.length === 1
-                ? {
-                    name: t`View tables`,
-                    url: `/admin/permissions/databases/${database.id}/schemas/${
-                      schemas[0]
-                    }/tables`,
-                  }
-                : {
-                    name: t`View schemas`,
-                    url: `/admin/permissions/databases/${database.id}/schemas`,
-                  },
+              ? {
+                  name: t`View tables`,
+                  url: `/admin/permissions/databases/${database.id}/schemas/${
+                    schemas[0]
+                  }/tables`,
+                }
+              : {
+                  name: t`View schemas`,
+                  url: `/admin/permissions/databases/${database.id}/schemas`,
+                },
         };
       }),
     };
@@ -708,7 +715,7 @@ export const getCollectionsPermissionsGrid = createSelector(
   getPropagatePermissions,
   (
     collections,
-    groups: Array<Group>,
+    groups: Array<GroupType>,
     permissions: GroupsPermissions,
     propagatePermissions: boolean,
   ) => {
@@ -853,7 +860,7 @@ function getDecendentCollections(collection) {
 }
 
 function getPermissionsSet(collections, permissions, groupId) {
-  let perms = collections.map(collection =>
+  const perms = collections.map(collection =>
     getCollectionPermission(permissions, groupId, {
       collectionId: collection.id,
     }),
@@ -868,7 +875,7 @@ export const getDiff = createSelector(
   getOriginalPermissions,
   (
     metadata: Metadata,
-    groups: Array<Group>,
+    groups: Array<GroupType>,
     permissions: GroupsPermissions,
     originalPermissions: GroupsPermissions,
   ) => diffPermissions(permissions, originalPermissions, groups, metadata),

@@ -1,6 +1,7 @@
 // This must be before all other imports
 import { eventListeners } from "./mocks";
 
+import { delay } from "metabase/lib/promise";
 import Button from "metabase/components/Button";
 
 // Triggers events that are being listened to with `window.addEventListener` or `document.addEventListener`
@@ -83,3 +84,74 @@ export const chooseSelectOption = optionWrapper => {
   const parentSelect = optionWrapper.closest("select");
   parentSelect.simulate("change", { target: { value: optionValue } });
 };
+
+const TIMEOUT = 1000;
+
+async function eventually(fn, timeout = TIMEOUT) {
+  const start = Date.now();
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    try {
+      return fn();
+    } catch (e) {
+      if (Date.now() - start > timeout) {
+        throw e;
+      } else {
+        await delay(100);
+      }
+    }
+  }
+}
+
+export function enhanceEnzymeWrapper(wrapper) {
+  // add a "async" namespace that wraps functions in `eventually`
+  wrapper.async = {
+    find: selector =>
+      eventually(() => {
+        const node = wrapper.find(selector);
+        if (node.exists()) {
+          return node;
+        } else {
+          throw new Error("Not found: " + selector);
+        }
+      }),
+  };
+  return wrapper;
+}
+
+export async function getFormValues(wrapper) {
+  const values = {};
+  // enhance the wrapper if it hasn't already been enhanced so we can
+  // pass things other than the top level wrapper from mountStore
+  if (!wrapper.async) {
+    enhanceEnzymeWrapper(wrapper);
+  }
+  const inputs = await wrapper.async.find("input");
+  for (const input of inputs) {
+    values[input.props.name] = input.props.value;
+  }
+  return values;
+}
+
+async function fillFormValues(wrapper, values) {
+  const inputs = await wrapper.async.find("input");
+  for (const input of inputs) {
+    const name = input.props.name;
+    if (name in values) {
+      input.props.onChange(values[name]);
+    }
+  }
+}
+
+function submitForm(wrapper) {
+  wrapper
+    .find("form")
+    .first()
+    .props()
+    .onSubmit();
+}
+
+export async function fillAndSubmitForm(wrapper, values) {
+  await fillFormValues(wrapper, values);
+  submitForm(wrapper);
+}

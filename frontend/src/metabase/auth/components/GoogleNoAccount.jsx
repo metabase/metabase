@@ -1,8 +1,8 @@
 import React from "react";
-import { t } from "c-3po";
-import AuthScene from "./AuthScene.jsx";
-import LogoIcon from "metabase/components/LogoIcon.jsx";
-import BackToLogin from "./BackToLogin.jsx";
+import { t } from "ttag";
+import AuthScene from "./AuthScene";
+import LogoIcon from "metabase/components/LogoIcon";
+import BackToLogin from "./BackToLogin";
 
 const GoogleNoAccount = () => (
   <div className="full-height bg-white flex flex-column flex-full md-layout-centered">

@@ -2,11 +2,11 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import Select from "metabase/components/Select.jsx";
+import Select from "metabase/components/Select";
 
 import Settings from "metabase/lib/settings";
 import { capitalize } from "metabase/lib/formatting";
-import { t } from "c-3po";
+import { t } from "ttag";
 import _ from "underscore";
 
 export const HOUR_OPTIONS = _.times(12, n => ({
@@ -119,9 +119,9 @@ export default class SchedulePicker extends Component {
   }
 
   renderMonthlyPicker() {
-    let { schedule } = this.props;
+    const { schedule } = this.props;
 
-    let DAY_OPTIONS = DAY_OF_WEEK_OPTIONS.slice(0);
+    const DAY_OPTIONS = DAY_OF_WEEK_OPTIONS.slice(0);
     DAY_OPTIONS.unshift({ name: t`Calendar Day`, value: null });
 
     return (
@@ -158,7 +158,7 @@ export default class SchedulePicker extends Component {
   }
 
   renderDayPicker() {
-    let { schedule } = this.props;
+    const { schedule } = this.props;
 
     return (
       <span className="mt1">
@@ -179,12 +179,14 @@ export default class SchedulePicker extends Component {
   }
 
   renderHourPicker() {
-    let { schedule, textBeforeSendTime } = this.props;
+    const { schedule, textBeforeSendTime } = this.props;
 
-    let hourOfDay = isNaN(schedule.schedule_hour) ? 8 : schedule.schedule_hour;
-    let hour = hourOfDay % 12;
-    let amPm = hourOfDay >= 12 ? 1 : 0;
-    let timezone = Settings.get("timezone_short");
+    const hourOfDay = isNaN(schedule.schedule_hour)
+      ? 8
+      : schedule.schedule_hour;
+    const hour = hourOfDay % 12;
+    const amPm = hourOfDay >= 12 ? 1 : 0;
+    const timezone = Settings.get("timezone_short");
     return (
       <div className="mt1">
         <span className="h4 text-bold mr1">at</span>
@@ -215,7 +217,7 @@ export default class SchedulePicker extends Component {
   }
 
   render() {
-    let { schedule, scheduleOptions, textBeforeInterval } = this.props;
+    const { schedule, scheduleOptions, textBeforeInterval } = this.props;
 
     const scheduleType = schedule.schedule_type;
 

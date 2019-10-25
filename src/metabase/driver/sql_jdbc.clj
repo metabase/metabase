@@ -7,6 +7,7 @@
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.util.honeysql-extensions :as hx]))
 
 (driver/register! :sql-jdbc, :parent :sql, :abstract? true)
@@ -15,18 +16,14 @@
 ;;; |                                                  Run a Query                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- qualify+escape ^clojure.lang.Keyword
-  ([table]       (hx/qualify-and-escape-dots (:schema table) (:name table)))
-  ([table field] (hx/qualify-and-escape-dots (:schema table) (:name table) (:name field))))
-
 ;; TODO - Seems like this is only used in a handful of places, consider moving to util namespace
 (defn query
   "Execute a `honeysql-form` query against `database`, `driver`, and optionally `table`."
   ([driver database honeysql-form]
    (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
-               (sql.qp/honeysql-form->sql+args driver honeysql-form)))
+               (sql.qp/format-honeysql driver honeysql-form)))
   ([driver database table honeysql-form]
-   (query driver database (merge {:from [(qualify+escape table)]}
+   (query driver database (merge {:from [(sql.qp/->honeysql driver (hx/identifier :table (:schema table) (:name table)))]}
                                  honeysql-form))))
 
 
@@ -57,3 +54,12 @@
 
 (defmethod driver/describe-table-fks :sql-jdbc [driver database table]
   (sql-jdbc.sync/describe-table-fks driver database table))
+
+
+;; `:sql-jdbc` drivers almost certainly don't need to override this method, and instead can implement
+;; `unprepare/unprepare-value` for specific classes, or, in extereme cases, `unprepare/unprepare` itself.
+(defmethod driver/splice-parameters-into-native-query :sql-jdbc [driver {:keys [params], sql :query, :as query}]
+  (cond-> query
+    (seq params)
+    (merge {:params nil
+            :query  (unprepare/unprepare driver (cons sql params))})))

@@ -1,9 +1,11 @@
 (ns metabase.api.common-test
-  (:require [clojure.core.async :as async]
-            [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase.api.common :as api :refer :all]
             [metabase.api.common.internal :refer :all]
-            [metabase.middleware :as mb-middleware]
+            [metabase.middleware
+             [exceptions :as mw.exceptions]
+             [misc :as mw.misc]
+             [security :as mw.security]]
             [metabase.test.data :refer :all]
             [metabase.util.schema :as su]))
 
@@ -14,7 +16,7 @@
   {:status  404
    :body    "Not found."
    :headers {"Cache-Control"                     "max-age=0, no-cache, must-revalidate, proxy-revalidate"
-             "Content-Security-Policy"           (-> @#'mb-middleware/content-security-policy-header vals first)
+             "Content-Security-Policy"           (-> @#'mw.security/content-security-policy-header vals first)
              "Content-Type"                      "text/plain"
              "Expires"                           "Tue, 03 Jul 2001 06:00:00 GMT"
              "Last-Modified"                     true ; this will be current date, so do update-in ... string?
@@ -25,10 +27,14 @@
              "X-XSS-Protection"                  "1; mode=block"}})
 
 (defn- mock-api-fn [response-fn]
-  ((-> response-fn
-       mb-middleware/catch-api-exceptions
-       mb-middleware/add-content-type)
-   {:uri "/api/my_fake_api_call"}))
+  ((-> (fn [request respond _]
+         (respond (response-fn request)))
+       mw.exceptions/catch-uncaught-exceptions
+       mw.exceptions/catch-api-exceptions
+       mw.misc/add-content-type)
+   {:uri "/api/my_fake_api_call"}
+   identity
+   (fn [e] (throw e))))
 
 (defn- my-mock-api-fn []
   (mock-api-fn
@@ -63,11 +69,14 @@
 ;; otherwise let-404 should bind as expected
 (expect
   {:user {:name "Cam"}}
-  ((mb-middleware/catch-api-exceptions
-    (fn [_]
-      (let-404 [user {:name "Cam"}]
-        {:user user})))
-   nil))
+  ((mw.exceptions/catch-api-exceptions
+    (fn [_ respond _]
+      (respond
+       (let-404 [user {:name "Cam"}]
+         {:user user}))))
+   nil
+   identity
+   (fn [e] (throw e))))
 
 
 (defmacro ^:private expect-expansion
@@ -123,86 +132,3 @@
     (defendpoint GET "/:id" [id]
       {id su/IntGreaterThanZero}
       (select-one Card :id id))))
-
-(def ^:private long-timeout
-  ;; 2 minutes
-  (* 2 60000))
-
-(defn- take-with-timeout [response-chan]
-  (let [[response c] (async/alts!! [response-chan
-                                    ;; We should never reach this unless something is REALLY wrong
-                                    (async/timeout long-timeout)])]
-    (when (and (nil? response)
-               (not= c response-chan))
-      (throw (Exception. "Taking from streaming endpoint timed out!")))
-
-    response))
-
-(defn- wait-for-future-cancellation
-  "Once a client disconnects, the next heartbeat sent will result in an exception that should cancel the future. In
-  theory 1 keepalive-interval should be enough, but building in some wiggle room here for poor concurrency timing in
-  tests."
-  [fut]
-  (let [keepalive-interval (var-get #'api/streaming-response-keep-alive-interval-ms)
-        max-iterations     (long (/ long-timeout keepalive-interval))]
-    (loop [i 0]
-      (if (or (future-cancelled? fut) (> i max-iterations))
-        fut
-        (do
-          (Thread/sleep keepalive-interval)
-          (recur (inc i)))))))
-
-;; This simulates 2 keepalive-intervals followed by the query response
-(expect
-  [\newline \newline {:success true} false]
-  (let [send-response (promise)
-        {:keys [output-channel error-channel response-future]} (#'api/invoke-thunk-with-keepalive (fn [] @send-response))]
-    [(take-with-timeout output-channel)
-     (take-with-timeout output-channel)
-     (do
-       (deliver send-response {:success true})
-       (take-with-timeout output-channel))
-     (future-cancelled? response-future)]))
-
-;; This simulates an immediate query response
-(expect
-  [{:success true} false]
-  (let [{:keys [output-channel error-channel response-future]} (#'api/invoke-thunk-with-keepalive (fn [] {:success true}))]
-    [(take-with-timeout output-channel)
-     (future-cancelled? response-future)]))
-
-;; This simulates a closed connection from the client, should cancel the future
-(expect
-  [\newline \newline true]
-  (let [send-response (promise)
-        {:keys [output-channel error-channel response-future]} (#'api/invoke-thunk-with-keepalive (fn [] (Thread/sleep long-timeout)))]
-    [(take-with-timeout output-channel)
-     (take-with-timeout output-channel)
-     (do
-       (async/close! output-channel)
-       (future-cancelled? (wait-for-future-cancellation response-future)))]))
-
-;; When an immediate exception happens, we should know that via the error channel
-(expect
-  ;; Each channel should have the failure and then get closed
-  ["It failed" "It failed" nil nil]
-  (let [{:keys [output-channel error-channel response-future]} (#'api/invoke-thunk-with-keepalive (fn [] (throw (Exception. "It failed"))))]
-    [(.getMessage (take-with-timeout error-channel))
-     (.getMessage (take-with-timeout output-channel))
-     (async/<!! error-channel)
-     (async/<!! output-channel)]))
-
-;; This simulates a slow failure, we'll still get an exception, but the error channel is closed, so at this point
-;; we've assumed it would be a success, but it wasn't
-(expect
-  [\newline nil \newline "It failed" false]
-  (let [now-throw-exception (promise)
-        {:keys [output-channel error-channel response-future]} (#'api/invoke-thunk-with-keepalive
-                                                                (fn [] @now-throw-exception (throw (Exception. "It failed"))))]
-    [(take-with-timeout output-channel)
-     (take-with-timeout error-channel)
-     (take-with-timeout output-channel)
-     (do
-       (deliver now-throw-exception true)
-       (.getMessage (take-with-timeout output-channel)))
-     (future-cancelled? response-future)]))

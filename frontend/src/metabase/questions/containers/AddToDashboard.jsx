@@ -1,7 +1,7 @@
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 
-import ModalContent from "metabase/components/ModalContent.jsx";
+import ModalContent from "metabase/components/ModalContent";
 import QuestionPicker from "metabase/containers/QuestionPicker";
 
 export default class AddToDashboard extends Component {

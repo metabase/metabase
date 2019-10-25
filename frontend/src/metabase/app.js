@@ -1,6 +1,7 @@
 /* @flow weak */
 
-import "babel-polyfill";
+import "core-js/stable";
+import "regenerator-runtime/runtime";
 
 // Use of classList.add and .remove in Background and FitViewPort Hocs requires
 // this polyfill so that those work in older browsers
@@ -97,7 +98,7 @@ function _init(reducers, getRoutes, callback) {
 }
 
 export function init(...args) {
-  if (document.readyState != "loading") {
+  if (document.readyState !== "loading") {
     _init(...args);
   } else {
     document.addEventListener("DOMContentLoaded", () => _init(...args));

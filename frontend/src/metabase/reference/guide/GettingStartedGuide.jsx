@@ -3,13 +3,13 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { connect } from "react-redux";
-import { t, jt } from "c-3po";
+import { t, jt } from "ttag";
 import cx from "classnames";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import GuideHeader from "metabase/reference/components/GuideHeader.jsx";
-import GuideDetail from "metabase/reference/components/GuideDetail.jsx";
+import GuideHeader from "metabase/reference/components/GuideHeader";
+import GuideDetail from "metabase/reference/components/GuideDetail";
 
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
@@ -44,18 +44,18 @@ const isGuideEmpty = ({
   things_to_know
     ? false
     : contact && contact.name
-      ? false
-      : contact && contact.email
-        ? false
-        : most_important_dashboard
-          ? false
-          : important_metrics && important_metrics.length !== 0
-            ? false
-            : important_segments && important_segments.length !== 0
-              ? false
-              : important_tables && important_tables.length !== 0
-                ? false
-                : true;
+    ? false
+    : contact && contact.email
+    ? false
+    : most_important_dashboard
+    ? false
+    : important_metrics && important_metrics.length !== 0
+    ? false
+    : important_segments && important_segments.length !== 0
+    ? false
+    : important_tables && important_tables.length !== 0
+    ? false
+    : true;
 
 // This function generates a link for each important field of a Metric.
 // The link goes to a question comprised of this Metric broken out by
@@ -102,7 +102,10 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class GettingStartedGuide extends Component {
   static propTypes = {
     fields: PropTypes.object,
@@ -150,22 +153,20 @@ export default class GettingStartedGuide extends Component {
               />
 
               <div className="wrapper wrapper--trim">
-                {(!guide || isGuideEmpty(guide)) &&
-                  user &&
-                  user.is_superuser && (
-                    <AdminInstructions>
-                      <h2 className="py2">{t`Help your team get started with your data.`}</h2>
-                      <GuideText>
-                        {t`Show your team what’s most important by choosing your top dashboard, metrics, and segments.`}
-                      </GuideText>
-                      <button
-                        className="Button Button--primary"
-                        onClick={startEditing}
-                      >
-                        {t`Get started`}
-                      </button>
-                    </AdminInstructions>
-                  )}
+                {(!guide || isGuideEmpty(guide)) && user && user.is_superuser && (
+                  <AdminInstructions>
+                    <h2 className="py2">{t`Help your team get started with your data.`}</h2>
+                    <GuideText>
+                      {t`Show your team what’s most important by choosing your top dashboard, metrics, and segments.`}
+                    </GuideText>
+                    <button
+                      className="Button Button--primary"
+                      onClick={startEditing}
+                    >
+                      {t`Get started`}
+                    </button>
+                  </AdminInstructions>
+                )}
 
                 {guide.most_important_dashboard !== null && [
                   <div className="my2">

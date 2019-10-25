@@ -5,7 +5,7 @@ import React, { Component } from "react";
 import cx from "classnames";
 import styles from "./FunnelNormal.css";
 
-import Ellipsified from "metabase/components/Ellipsified.jsx";
+import Ellipsified from "metabase/components/Ellipsified";
 import { formatValue } from "metabase/lib/formatting";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
@@ -133,7 +133,7 @@ export default class FunnelNormal extends Component {
     // Remove initial setup
     infos = infos.slice(1);
 
-    let initial = infos[0];
+    const initial = infos[0];
 
     const isClickable = visualizationIsClickable(infos[0].clicked);
 

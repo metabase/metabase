@@ -3,6 +3,7 @@ import inflection from "inflection";
 
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { parseTimestamp } from "metabase/lib/time";
+import { t, ngettext, msgid } from "ttag";
 
 export const DATETIME_UNITS = [
   // "default",
@@ -31,12 +32,12 @@ export function computeFilterTimeRange(filter) {
     expandedFilter = filter;
   }
 
-  let [operator, field, ...values] = expandedFilter;
-  let bucketing = parseFieldBucketing(field, "day");
+  const [operator, field, ...values] = expandedFilter;
+  const bucketing = parseFieldBucketing(field, "day");
 
   let start, end;
   if (operator === "=" && values[0]) {
-    let point = absolute(values[0]);
+    const point = absolute(values[0]);
     start = point.clone().startOf(bucketing);
     end = point.clone().endOf(bucketing);
   } else if (operator === ">" && values[0]) {
@@ -68,7 +69,7 @@ export function expandTimeIntervalFilter(filter) {
     n = 1;
   }
 
-  field = ["datetime-field", field, "as", unit];
+  field = ["datetime-field", field, unit];
 
   if (n < -1) {
     return [
@@ -92,11 +93,11 @@ export function expandTimeIntervalFilter(filter) {
 }
 
 export function generateTimeFilterValuesDescriptions(filter) {
-  let [operator, field, ...values] = filter;
-  let bucketing = parseFieldBucketing(field);
+  const [operator, field, ...values] = filter;
+  const bucketing = parseFieldBucketing(field);
 
   if (operator === "time-interval") {
-    let [n, unit] = values;
+    const [n, unit] = values;
     return generateTimeIntervalDescription(n, unit);
   } else {
     return values.map(value => generateTimeValueDescription(value, bucketing));
@@ -108,34 +109,38 @@ export function generateTimeIntervalDescription(n, unit) {
     switch (n) {
       case "current":
       case 0:
-        return ["Today"];
+        return [t`Today`];
       case "next":
       case 1:
-        return ["Tomorrow"];
+        return [t`Tomorrow`];
       case "last":
       case -1:
-        return ["Yesterday"];
+        return [t`Yesterday`];
     }
   }
 
   if (!unit && n === 0) {
-    return "Today";
+    return t`Today`;
   } // ['relative-datetime', 'current'] is a legal MBQL form but has no unit
 
-  unit = inflection.capitalize(unit);
-  if (typeof n === "string") {
-    if (n === "current") {
-      n = "this";
-    }
-    return [inflection.capitalize(n) + " " + unit];
+  switch (n) {
+    case "current":
+    case 0:
+      return [t`This ${formatBucketing(unit)}`];
+    case "next":
+    case 1:
+      return [t`Next ${formatBucketing(unit)}`];
+    case "last":
+    case -1:
+      return [t`Previous ${formatBucketing(unit)}`];
+  }
+
+  if (n < 0) {
+    return [t`Previous ${-n} ${formatBucketing(unit, -n)}`];
+  } else if (n > 0) {
+    return [t`Next ${n} ${formatBucketing(unit, n)}`];
   } else {
-    if (n < 0) {
-      return ["Past " + -n + " " + inflection.inflect(unit, -n)];
-    } else if (n > 0) {
-      return ["Next " + n + " " + inflection.inflect(unit, n)];
-    } else {
-      return ["This " + unit];
-    }
+    return [t`This ${formatBucketing(unit)}`];
   }
 }
 
@@ -163,24 +168,58 @@ export function generateTimeValueDescription(value, bucketing) {
     } else {
       // FIXME: what to do if the bucketing and unit don't match?
       if (n === 0) {
-        return "Now";
+        return t`Now`;
       } else {
-        return (
-          Math.abs(n) +
-          " " +
-          inflection.inflect(unit, Math.abs(n)) +
-          (n < 0 ? " ago" : " from now")
-        );
+        return n < 0
+          ? t`${-n} ${formatBucketing(unit, -n).toLowerCase()} ago`
+          : t`${n} ${formatBucketing(unit, n).toLowerCase()} from now`;
       }
     }
   } else {
     console.warn("Unknown datetime format", value);
-    return "[Unknown]";
+    return `[${t`Unknown`}]`;
   }
 }
 
-export function formatBucketing(bucketing = "") {
-  let words = bucketing.split("-");
+export function formatBucketing(bucketing = "", n = 1) {
+  if (!bucketing) {
+    return "";
+  }
+  switch (bucketing) {
+    case "default":
+      return ngettext(msgid`Default period`, `Default periods`, n);
+    case "minute":
+      return ngettext(msgid`Minute`, `Minutes`, n);
+    case "hour":
+      return ngettext(msgid`Hour`, `Hours`, n);
+    case "day":
+      return ngettext(msgid`Day`, `Days`, n);
+    case "week":
+      return ngettext(msgid`Week`, `Weeks`, n);
+    case "month":
+      return ngettext(msgid`Month`, `Months`, n);
+    case "quarter":
+      return ngettext(msgid`Quarter`, `Quarters`, n);
+    case "year":
+      return ngettext(msgid`Year`, `Years`, n);
+    case "minute-of-hour":
+      return ngettext(msgid`Minute of hour`, `Minutes of hour`, n);
+    case "hour-of-day":
+      return ngettext(msgid`Hour of day`, `Hours of day`, n);
+    case "day-of-week":
+      return ngettext(msgid`Day of week`, `Days of week`, n);
+    case "day-of-month":
+      return ngettext(msgid`Day of month`, `Days of month`, n);
+    case "day-of-year":
+      return ngettext(msgid`Day of year`, `Days of year`, n);
+    case "week-of-year":
+      return ngettext(msgid`Week of year`, `Weeks of year`, n);
+    case "month-of-year":
+      return ngettext(msgid`Month of year`, `Months of year`, n);
+    case "quarter-of-year":
+      return ngettext(msgid`Quarter of year`, `Quarters of year`, n);
+  }
+  const words = bucketing.split("-");
   words[0] = inflection.capitalize(words[0]);
   return words.join(" ");
 }
@@ -237,7 +276,7 @@ export function parseFieldTargetId(field) {
       return field[1];
     }
     if (field[0] === "fk->") {
-      return field[1];
+      return parseFieldTargetId(field[1]);
     }
     if (field[0] === "datetime-field") {
       return parseFieldTargetId(field[1]);
@@ -255,6 +294,7 @@ export function parseFieldTargetId(field) {
 function max() {
   return moment(new Date(864000000000000));
 }
+
 function min() {
   return moment(new Date(-864000000000000));
 }

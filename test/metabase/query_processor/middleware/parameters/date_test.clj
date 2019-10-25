@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.parameters.date-test
   "Tests for datetime parameters."
-  (:require [expectations :refer :all]
-            [clj-time.core :as t]
+  (:require [clj-time.core :as t]
+            [expectations :refer :all]
             [metabase.query-processor.middleware.parameters.dates :refer :all]))
 
 ;; we hard code "now" to a specific point in time so that we can control the test output

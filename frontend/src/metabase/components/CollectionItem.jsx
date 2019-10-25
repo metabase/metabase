@@ -6,29 +6,35 @@ import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 const ItemLink = props => (
   <Link
     to={`collection/${props.collection.id}`}
     bg={
       props.hovered
-        ? colors["brand"]
-        : props.highlighted ? colors["bg-light"] : colors["bg-medium"]
+        ? color("brand")
+        : props.highlighted
+        ? color("bg-light")
+        : color("bg-medium")
     }
-    color={props.hovered ? "white" : colors["text-medium"]}
+    color={props.hovered ? "white" : color("text-medium")}
     className="block rounded relative text-brand-hover"
     data-metabase-event={props.event}
     style={{
       borderSize: 1,
       borderColor: props.hovered
-        ? colors["brand"]
-        : props.highlighted ? colors["bg-medium"] : "transparent",
+        ? color("brand")
+        : props.highlighted
+        ? color("bg-medium")
+        : "transparent",
       borderStyle: props.hovered
         ? "solid"
-        : props.highlighted ? "dotted" : "solid",
+        : props.highlighted
+        ? "dotted"
+        : "solid",
     }}
-    hover={{ color: colors["brand"] }}
+    hover={{ color: color("brand") }}
   >
     {props.children}
   </Link>
@@ -45,7 +51,7 @@ const CollectionItem = props => {
     <Icon
       name={props.iconName}
       mx={props.asCard ? 0 : 1}
-      color={props.asCard ? "white" : colors["bg-dark"]}
+      color={props.asCard ? "white" : color("bg-dark")}
     />
   );
 
@@ -61,7 +67,7 @@ const CollectionItem = props => {
           align="center"
           justify="center"
           w="42px"
-          bg={colors["bg-dark"]}
+          bg={color("bg-dark")}
           style={{ height: 42, borderRadius: 6, flexShrink: 0 }}
           mr={1}
         >

@@ -1,6 +1,6 @@
 import React from "react";
 
-import Select, { Option } from "metabase/components/Select.jsx";
+import Select, { Option } from "metabase/components/Select";
 
 import cx from "classnames";
 
@@ -15,7 +15,7 @@ const ChartSettingSelect = ({
   ...props
 }) => (
   <Select
-    className={cx(className, "block flex-full", {
+    className={cx(className, "block flex-auto", {
       disabled:
         options.length === 0 ||
         (options.length === 1 && options[0].value === value),

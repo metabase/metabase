@@ -1,12 +1,12 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import FilterList from "./FilterList.jsx";
-import AggregationWidget from "./AggregationWidget.jsx";
-import FieldSet from "metabase/components/FieldSet.jsx";
+import FilterList from "./FilterList";
+import AggregationName from "./AggregationName";
+import FieldSet from "metabase/components/FieldSet";
 
-import Query from "metabase/lib/query";
-import { t } from "c-3po";
+import * as Q_DEPRECATED from "metabase/lib/query";
+import { t } from "ttag";
 
 export default class QueryDefinitionTooltip extends Component {
   static propTypes = {
@@ -16,7 +16,7 @@ export default class QueryDefinitionTooltip extends Component {
   };
 
   render() {
-    const { type, object, tableMetadata } = this.props;
+    const { type, object, tableMetadata, customFields } = this.props;
 
     return (
       <div className="p2" style={{ width: 250 }}>
@@ -29,14 +29,17 @@ export default class QueryDefinitionTooltip extends Component {
           <div className="mt2">
             <FieldSet legend={t`Definition`} className="border-light">
               <div className="TooltipFilterList">
-                {Query.getAggregations(object.definition).map(aggregation => (
-                  <AggregationWidget
-                    aggregation={aggregation}
-                    tableMetadata={tableMetadata}
-                  />
-                ))}
+                {Q_DEPRECATED.getAggregations(object.definition).map(
+                  aggregation => (
+                    <AggregationName
+                      aggregation={aggregation}
+                      tableMetadata={tableMetadata}
+                      customFields={customFields}
+                    />
+                  ),
+                )}
                 <FilterList
-                  filters={Query.getFilters(object.definition)}
+                  filters={Q_DEPRECATED.getFilters(object.definition)}
                   maxDisplayValues={Infinity}
                 />
               </div>

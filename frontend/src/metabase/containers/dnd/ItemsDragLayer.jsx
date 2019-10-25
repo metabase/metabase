@@ -58,7 +58,9 @@ class DraggedItems extends React.Component {
           transform: index > 0 ? `translate(0px, ${-index * 72}px)` : null,
         }}
       >
-        {items.map(item => <NormalItem item={item} />)}
+        {items.map(item => (
+          <NormalItem item={item} />
+        ))}
       </div>
     );
   }

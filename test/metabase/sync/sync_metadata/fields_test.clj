@@ -2,24 +2,23 @@
   "Tests for the logic that syncs Field models with the Metadata fetched from a DB. (There are more tests for this
   behavior in the namespace `metabase.sync-database.sync-dynamic-test`, which is sort of a misnomer.)"
   (:require [clojure.java.jdbc :as jdbc]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [metabase
              [query-processor :as qp]
              [sync :as sync]
              [util :as u]]
             [metabase.models
-             [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
-            [metabase.sync.util-test :as sut]
+            [metabase.sync.sync-metadata.fields.sync-instances :as sync-fields.sync-instances]
+            [metabase.sync.util-test :as sync.util-test]
             [metabase.test
              [data :as data]
              [util :as tu]]
             [metabase.test.data.one-off-dbs :as one-off-dbs]
             [toucan
              [db :as db]
-             [hydrate :refer [hydrate]]]
-            [toucan.util.test :as tt]))
+             [hydrate :refer [hydrate]]]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Dropping & Undropping Columns                                          |
@@ -119,69 +118,72 @@
   (sync/sync-table! (Table (data/id :venues))))
 
 ;; Test PK Syncing
-(expect [:type/PK
-         nil
-         :type/PK
-         :type/Latitude
-         :type/PK]
-  (let [get-special-type (fn [] (db/select-one-field :special_type Field, :id (data/id :venues :id)))]
-    [;; Special type should be :id to begin with
-     (get-special-type)
-     ;; Clear out the special type
-     (do (db/update! Field (data/id :venues :id), :special_type nil)
-         (get-special-type))
-     ;; Calling sync-table! should set the special type again
-     (do (force-sync-table! (data/id :venues))
-         (get-special-type))
-     ;; sync-table! should *not* change the special type of fields that are marked with a different type
-     (do (db/update! Field (data/id :venues :id), :special_type :type/Latitude)
-         (get-special-type))
-     ;; Make sure that sync-table runs set-table-pks-if-needed!
-     (do (db/update! Field (data/id :venues :id), :special_type nil)
-         (force-sync-table! (Table (data/id :venues)))
-         (get-special-type))]))
+(expect
+  [:type/PK
+   nil
+   :type/PK
+   :type/Latitude
+   :type/PK]
+  (data/with-temp-copy-of-db
+    (let [get-special-type (fn [] (db/select-one-field :special_type Field, :id (data/id :venues :id)))]
+      [ ;; Special type should be :id to begin with
+       (get-special-type)
+       ;; Clear out the special type
+       (do (db/update! Field (data/id :venues :id), :special_type nil)
+           (get-special-type))
+       ;; Calling sync-table! should set the special type again
+       (do (force-sync-table! (data/id :venues))
+           (get-special-type))
+       ;; sync-table! should *not* change the special type of fields that are marked with a different type
+       (do (db/update! Field (data/id :venues :id), :special_type :type/Latitude)
+           (get-special-type))
+       ;; Make sure that sync-table runs set-table-pks-if-needed!
+       (do (db/update! Field (data/id :venues :id), :special_type nil)
+           (force-sync-table! (Table (data/id :venues)))
+           (get-special-type))])))
 
 
 ;; Check that Foreign Key relationships were created on sync as we expect
-(expect (data/id :venues :id)
+(expect
+  (data/id :venues :id)
   (db/select-one-field :fk_target_field_id Field, :id (data/id :checkins :venue_id)))
 
-(expect (data/id :users :id)
+(expect
+  (data/id :users :id)
   (db/select-one-field :fk_target_field_id Field, :id (data/id :checkins :user_id)))
 
-(expect (data/id :categories :id)
+(expect
+  (data/id :categories :id)
   (db/select-one-field :fk_target_field_id Field, :id (data/id :venues :category_id)))
 
 ;; Check that sync-table! causes FKs to be set like we'd expect
-(expect (concat
-         (repeat 2 {:total-fks 3, :updated-fks 0, :total-failed 0})
-         [{:special_type :type/FK, :fk_target_field_id true}
-          {:special_type nil,      :fk_target_field_id false}]
-         (repeat 2 {:total-fks 3, :updated-fks 1, :total-failed 0})
-         [{:special_type :type/FK, :fk_target_field_id true}])
-  (let [field-id (data/id :checkins :user_id)
-        get-special-type-and-fk-exists? (fn []
-                                          (into {} (-> (db/select-one [Field :special_type :fk_target_field_id],
-                                                         :id field-id)
-                                                       (update :fk_target_field_id #(db/exists? Field :id %)))))
-        {before-step-info :step-info,
-         before-task-history :task-history} (sut/sync-database! "sync-fks" (Database (data/id)))
-        before-special-type-exists? (get-special-type-and-fk-exists?)
-        _ (db/update! Field field-id, :special_type nil, :fk_target_field_id nil)
-        after-special-type-exists? (get-special-type-and-fk-exists?)
-        {after-step-info :step-info,
-         after-task-history :task-history} (sut/sync-database! "sync-fks" (Database (data/id)))]
-    [
-     (sut/only-step-keys before-step-info)
-     (:task_details before-task-history)
-     ;; FK should exist to start with
-     before-special-type-exists?
-     ;; Clear out FK / special_type
-     after-special-type-exists?
-     ;; Run sync-table and they should be set again
-     (sut/only-step-keys after-step-info)
-     (:task_details after-task-history)
-     (get-special-type-and-fk-exists?)]))
+(expect
+  {:before
+   {:step-info         {:total-fks 3, :updated-fks 0, :total-failed 0}
+    :task-details      {:total-fks 3, :updated-fks 0, :total-failed 0}
+    :special-type      :type/FK
+    :fk-target-exists? true}
+
+   :after
+   {:step-info         {:total-fks 3, :updated-fks 1, :total-failed 0}
+    :task-details      {:total-fks 3, :updated-fks 1, :total-failed 0}
+    :special-type      :type/FK
+    :fk-target-exists? true}}
+  (data/with-temp-copy-of-db
+    (let [state (fn []
+                  (let [{:keys                  [step-info]
+                         {:keys [task_details]} :task-history}    (sync.util-test/sync-database! "sync-fks" (data/db))
+                        {:keys [special_type fk_target_field_id]} (db/select-one [Field :special_type :fk_target_field_id]
+                                                                    :id (data/id :checkins :user_id))]
+                    {:step-info         (sync.util-test/only-step-keys step-info)
+                     :task-details      task_details
+                     :special-type      special_type
+                     :fk-target-exists? (db/exists? Field :id fk_target_field_id)}))]
+      (array-map
+       :before (state)
+       :after  (do (db/update! Field (data/id :checkins :user_id), :special_type nil, :fk_target_field_id nil)
+                   (state))))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     tests related to sync's Field hashes                                       |
@@ -217,7 +219,7 @@
             {new-db-type :database_type} (get-field)]
 
         ;; Syncing again with no change should not call sync-field-instances! or update the hash
-        (tu/throw-if-called metabase.sync.sync-metadata.fields/sync-field-instances!
+        (tu/throw-if-called sync-fields.sync-instances/sync-instances!
           (sync/sync-database! (data/db))
           [old-db-type
            new-db-type
@@ -303,4 +305,4 @@
       [(no-fields-hash before-table-md)
        (no-fields-hash after-table-md)
        (= (:fields-hash before-table-md)
-          (:fields-hash after-table-md))]))  )
+          (:fields-hash after-table-md))])))

@@ -11,7 +11,8 @@ import "leaflet-draw";
 
 import _ from "underscore";
 
-import { updateLatLonFilter } from "metabase/qb/lib/actions";
+import Question from "metabase-lib/lib/Question";
+import { updateLatLonFilter } from "metabase/modes/lib/actions";
 
 export default class LeafletMap extends Component {
   componentDidMount() {
@@ -124,9 +125,14 @@ export default class LeafletMap extends Component {
     const bounds = e.layer.getBounds();
 
     const {
-      series: [{ card, data: { cols } }],
+      series: [
+        {
+          card,
+          data: { cols },
+        },
+      ],
       settings,
-      setCardAndRun,
+      onChangeCardAndRun,
     } = this.props;
 
     const latitudeColumn = _.findWhere(cols, {
@@ -136,9 +142,18 @@ export default class LeafletMap extends Component {
       name: settings["map.longitude_column"],
     });
 
-    setCardAndRun(
-      updateLatLonFilter(card, latitudeColumn, longitudeColumn, bounds),
-    );
+    const question = new Question(card);
+    if (question.isStructured()) {
+      const nextCard = updateLatLonFilter(
+        question.query(),
+        latitudeColumn,
+        longitudeColumn,
+        bounds,
+      )
+        .question()
+        .card();
+      onChangeCardAndRun({ nextCard });
+    }
 
     this.props.onFiltering(false);
   };
@@ -149,7 +164,14 @@ export default class LeafletMap extends Component {
   }
 
   _getLatLonIndexes() {
-    const { settings, series: [{ data: { cols } }] } = this.props;
+    const {
+      settings,
+      series: [
+        {
+          data: { cols },
+        },
+      ],
+    } = this.props;
     return {
       latitudeIndex: _.findIndex(
         cols,
@@ -163,7 +185,13 @@ export default class LeafletMap extends Component {
   }
 
   _getLatLonColumns() {
-    const { series: [{ data: { cols } }] } = this.props;
+    const {
+      series: [
+        {
+          data: { cols },
+        },
+      ],
+    } = this.props;
     const { latitudeIndex, longitudeIndex } = this._getLatLonIndexes();
     return {
       latitudeColumn: cols[latitudeIndex],
@@ -172,7 +200,14 @@ export default class LeafletMap extends Component {
   }
 
   _getMetricColumn() {
-    const { settings, series: [{ data: { cols } }] } = this.props;
+    const {
+      settings,
+      series: [
+        {
+          data: { cols },
+        },
+      ],
+    } = this.props;
     return _.findWhere(cols, { name: settings["map.metric_column"] });
   }
 }

@@ -1,7 +1,7 @@
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
-import PermissionsEditor from "../components/PermissionsEditor.jsx";
+import PermissionsEditor from "../components/PermissionsEditor";
 
 import {
   getTablesPermissionsGrid,
@@ -32,4 +32,7 @@ const mapDispatchToProps = {
   onChangeTab: tab => push(`/admin/permissions/${tab}`),
 };
 
-export default connect(mapStateToProps, mapDispatchToProps)(PermissionsEditor);
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(PermissionsEditor);

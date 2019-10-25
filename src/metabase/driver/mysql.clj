@@ -7,6 +7,7 @@
             [clojure
              [set :as set]
              [string :as str]]
+            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
@@ -22,10 +23,11 @@
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
+             [i18n :refer [trs]]
              [ssh :as ssh]]
             [schema.core :as s])
-  (:import java.sql.Time
-           [java.util Date TimeZone]
+  (:import [java.sql ResultSet Time Timestamp Types]
+           [java.util Calendar Date TimeZone]
            metabase.util.honeysql_extensions.Literal
            org.joda.time.format.DateTimeFormatter))
 
@@ -38,6 +40,8 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defmethod driver/supports? [:mysql :full-join] [_ _] false)
+
 (defmethod driver/connection-properties :mysql [_]
   (ssh/with-tunnel-config
     [driver.common/default-host-details
@@ -45,14 +49,13 @@
      driver.common/default-dbname-details
      driver.common/default-user-details
      driver.common/default-password-details
+     driver.common/default-ssl-details
      (assoc driver.common/default-additional-options-details
        :placeholder  "tinyInt1isBit=false")]))
 
 
-(defmethod driver/date-interval :mysql [_ unit amount]
-  (hsql/call :date_add
-    :%now
-    (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit)))))
+(defmethod driver/date-add :mysql [_ dt amount unit]
+  (hsql/call :date_add dt (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit)))))
 
 
 (defmethod driver/humanize-connection-error-message :mysql [_ message]
@@ -74,10 +77,12 @@
 
 
 (defmethod driver.common/current-db-time-date-formatters :mysql [_]
-  (concat (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSSSSS zzz")
-          ;; In some timezones, MySQL doesn't return a timezone description but rather a truncated offset, such as
-          ;; '-02'. That offset will fail to parse using a regular formatter
-          (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSSSSS Z")))
+  (mapcat
+   driver.common/create-db-time-formatters
+   ["yyyy-MM-dd HH:mm:ss.SSSSSS zzz"
+    ;; In some timezones, MySQL doesn't return a timezone description but rather a truncated offset, such as
+    ;; '-02'. That offset will fail to parse using a regular formatter
+    "yyyy-MM-dd HH:mm:ss.SSSSSS Z"]))
 
 (defmethod driver.common/current-db-time-native-query :mysql [_]
   "select CONCAT(DATE_FORMAT(current_timestamp, '%Y-%m-%d %H:%i:%S.%f' ), ' ', @@system_time_zone)")
@@ -107,6 +112,8 @@
   "JodaTime formatter that returns just the raw timezone offset, e.g. `-08:00` or `+00:00`."
   (time/formatter "ZZ"))
 
+;; TODO - we should rewrite `metabase.driver.sql-jdbc.execute/set-parameters-with-timezone` as a generalized
+;; multimethod like we did for `read-columns`, and then we can override that here instead of this crazy crazy messiness
 (defn- timezone-id->offset-str
   "Get an appropriate timezone offset string for a timezone with `timezone-id` and `date-time`. MySQL only accepts
   these offsets as strings like `-8:00`.
@@ -195,7 +202,7 @@
 (defmethod sql.qp/date [:mysql :day-of-year]     [_ _ expr] (hsql/call :dayofyear expr))
 (defmethod sql.qp/date [:mysql :month-of-year]   [_ _ expr] (hx/month expr))
 (defmethod sql.qp/date [:mysql :quarter-of-year] [_ _ expr] (hx/quarter expr))
-(defmethod sql.qp/date [:mysql :year]            [_ _ expr] (hx/year expr))
+(defmethod sql.qp/date [:mysql :year]            [_ _ expr] (hsql/call :makedate (hx/year expr) 1))
 
 ;; To convert a YEARWEEK (e.g. 201530) back to a date you need tell MySQL which day of the week to use,
 ;; because otherwise as far as MySQL is concerned you could be talking about any of the days in that week
@@ -264,49 +271,45 @@
    ;; strip off " UNSIGNED" from end if present
    (keyword (str/replace (name database-type) #"\sUNSIGNED$" ""))))
 
-
 (def ^:private default-connection-args
-  "Map of args for the MySQL JDBC connection string.
-   Full list of is options is available here: http://dev.mysql.com/doc/connector-j/6.0/en/connector-j-reference-configuration-properties.html"
+  "Map of args for the MySQL/MariaDB JDBC connection string."
   { ;; 0000-00-00 dates are valid in MySQL; convert these to `null` when they come back because they're illegal in Java
-   :zeroDateTimeBehavior          :convertToNull
+   :zeroDateTimeBehavior "convertToNull"
    ;; Force UTF-8 encoding of results
-   :useUnicode                    :true
-   :characterEncoding             :UTF8
-   :characterSetResults           :UTF8
-   ;; Needs to be true to set useJDBCCompliantTimezoneShift to true
-   :useLegacyDatetimeCode         :true
-   ;; This allows us to adjust the timezone of timestamps as we pull them from the resultset
-   :useJDBCCompliantTimezoneShift :true})
+   :useUnicode           true
+   :characterEncoding    "UTF8"
+   :characterSetResults  "UTF8"
+   ;; GZIP compress packets sent between Metabase server and MySQL/MariaDB database
+   :useCompression       true})
 
-(def ^:private ^:const ^String default-connection-args-string
-  (str/join \& (for [[k v] default-connection-args]
-                 (str (name k) \= (name v)))))
-
-(defn- append-connection-args
-  "Append `default-connection-args-string` to the connection string in CONNECTION-DETAILS, and an additional option to
-  explicitly disable SSL if appropriate. (Newer versions of MySQL will complain if you don't explicitly disable SSL.)"
-  {:argslist '([connection-spec details])}
-  [connection-spec {ssl? :ssl}]
-  (update connection-spec :subname
-          (fn [subname]
-            (let [join-char (if (str/includes? subname "?") "&" "?")]
-              (str subname join-char default-connection-args-string (when-not ssl?
-                                                                      "&useSSL=false"))))))
-
-(defmethod sql-jdbc.conn/connection-details->spec :mysql [_ details]
-  (-> details
-      (set/rename-keys {:dbname :db})
-      dbspec/mysql
-      (append-connection-args details)
-      (sql-jdbc.common/handle-additional-options details)))
+(defmethod sql-jdbc.conn/connection-details->spec :mysql
+  [_ {ssl? :ssl, :keys [additional-options], :as details}]
+  ;; In versions older than 0.32.0 the MySQL driver did not correctly save `ssl?` connection status. Users worked
+  ;; around this by including `useSSL=true`. Check if that's there, and if it is, assume SSL status. See #9629
+  ;;
+  ;; TODO - should this be fixed by a data migration instead?
+  (let [ssl? (or ssl? (some-> additional-options (str/includes? "useSSL=true")))]
+    (when (and ssl?
+               (not (some->  additional-options (str/includes? "trustServerCertificate"))))
+      (log/info (trs "You may need to add 'trustServerCertificate=true' to the additional connection options to connect with SSL.")))
+    (merge
+     default-connection-args
+     ;; newer versions of MySQL will complain if you don't specify this when not using SSL
+     {:useSSL (boolean ssl?)}
+     (let [details (-> details
+                       (set/rename-keys {:dbname :db})
+                       (dissoc :ssl))]
+       (-> (dbspec/mysql details)
+           (sql-jdbc.common/handle-additional-options details))))))
 
 
-(defmethod sql-jdbc.sync/active-tables :mysql [& args]
+(defmethod sql-jdbc.sync/active-tables :mysql
+  [& args]
   (apply sql-jdbc.sync/post-filtered-active-tables args))
 
 
-(defmethod sql-jdbc.sync/excluded-schemas :mysql [_]
+(defmethod sql-jdbc.sync/excluded-schemas :mysql
+  [_]
   #{"INFORMATION_SCHEMA"})
 
 (defmethod sql.qp/quote-style :mysql [_] :mysql)
@@ -317,6 +320,29 @@
 ;;
 ;; See https://dev.mysql.com/doc/refman/5.7/en/time-zone-support.html for details
 ;;
-;; TODO - This can also be set via `sessionVariables` in the connection string, if that's more useful (?)
-(defmethod sql-jdbc.execute/set-timezone-sql :mysql [_]
+(defmethod sql-jdbc.execute/set-timezone-sql :mysql
+  [_]
   "SET @@session.time_zone = %s;")
+
+;; MariaDB refuses to respect timezones when returning timestamps so we'll just ask it to return them as strings
+;; instead which at least are always in UTC which means we can handle timezones ourselves
+(defmethod sql-jdbc.execute/read-column [:mysql Types/TIME]
+  [_ _, ^ResultSet resultset, _, ^Integer i]
+  (when-let [time-str (.getString resultset i)]
+    ;; time str comes back like append 'Z' so we always parse as UTC
+    (Time. (.getTime (tcoerce/to-sql-time (str time-str "Z"))))))
+
+(defn- get-string-datetime ^Timestamp [^Calendar calendar, ^ResultSet resultset, ^Integer i]
+  ;; similar to what we do with Times, fetch the Date or Timestamp as a string (always in UTC) then parse it for the
+  ;; current timezone which will give us the correct results
+  (if calendar
+    (some-> (.getString resultset i) (du/->Timestamp (.getTimeZone calendar)))
+    (.getObject resultset i)))
+
+(defmethod sql-jdbc.execute/read-column [:mysql Types/TIMESTAMP]
+  [_ calendar resultset _ i]
+  (get-string-datetime calendar resultset i))
+
+(defmethod sql-jdbc.execute/read-column [:mysql Types/DATE]
+  [_ calendar resultset _ i]
+  (get-string-datetime calendar resultset i))

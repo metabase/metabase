@@ -1,14 +1,15 @@
 (ns metabase.api.dashboard-test
   "Tests for /api/dashboard endpoints."
-  (:require [expectations :refer :all]
+  (:require [clojure.walk :as walk]
+            [expectations :refer :all]
             [medley.core :as m]
             [metabase
              [http-client :as http]
-             [middleware :as middleware]
              [util :as u]]
             [metabase.api
              [card-test :as card-api-test]
              [dashboard :as dashboard-api]]
+            [metabase.middleware.util :as middleware.u]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -16,10 +17,12 @@
              [dashboard-card :refer [DashboardCard retrieve-dashboard-card]]
              [dashboard-card-series :refer [DashboardCardSeries]]
              [dashboard-test :as dashboard-test]
+             [field :refer [Field]]
              [permissions :as perms]
              [permissions-group :as group]
              [pulse :refer [Pulse]]
-             [revision :refer [Revision]]]
+             [revision :refer [Revision]]
+             [table :refer [Table]]]
             [metabase.test.data.users :refer :all]
             [metabase.test.util :as tu]
             [toucan.db :as db]
@@ -44,17 +47,8 @@
                    [k (boolean v)]
                    [k (f v)]))))))
 
-(defn user-details [user]
-  (tu/match-$ user
-    {:id           $
-     :email        $
-     :date_joined  $
-     :first_name   $
-     :last_name    $
-     :last_login   $
-     :is_superuser $
-     :is_qbnewb    $
-     :common_name  $}))
+(defn- user-details [user]
+  (select-keys user [:common_name :date_joined :email :first_name :id :is_qbnewb :is_superuser :last_login :last_name]))
 
 (defn- dashcard-response [{:keys [card created_at updated_at] :as dashcard}]
   (-> (into {} dashcard)
@@ -97,8 +91,8 @@
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
 
-(expect (get middleware/response-unauthentic :body) (http/client :get 401 "dashboard"))
-(expect (get middleware/response-unauthentic :body) (http/client :put 401 "dashboard/13"))
+(expect (get middleware.u/response-unauthentic :body) (http/client :get 401 "dashboard"))
+(expect (get middleware.u/response-unauthentic :body) (http/client :put 401 "dashboard/13"))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -186,6 +180,8 @@
           :creator_id    (user->id :rasta)
           :collection_id true
           :can_write     false
+          :param_values  nil
+          :param_fields  nil
           :ordered_cards [{:sizeX                  2
                            :sizeY                  2
                            :col                    0
@@ -212,6 +208,56 @@
     (with-dashboards-in-readable-collection [dashboard-id]
       (card-api-test/with-cards-in-readable-collection [card-id]
         (dashboard-response ((user->client :rasta) :get 200 (format "dashboard/%d" dashboard-id)))))))
+
+;; As above, but with a param
+(tt/expect-with-temp [Table         [{table-id :id} {}]
+                      Field         [{field-id :id display-name :display_name} {:table_id table-id}]
+
+                      Dashboard     [{dashboard-id :id} {:name "Test Dashboard"}]
+                      Card          [{card-id :id}      {:name "Dashboard Test Card"}]
+                      DashboardCard [{dc-id :id}        {:dashboard_id       dashboard-id
+                                                         :card_id            card-id
+                                                         :parameter_mappings [{:card_id      1
+                                                                               :parameter_id "foo"
+                                                                               :target       [:dimension [:field_id field-id]]}]}]]
+  (merge dashboard-defaults
+         {:name          "Test Dashboard"
+          :creator_id    (user->id :rasta)
+          :collection_id true
+          :can_write     false
+          :param_values  {}
+          :param_fields  {(keyword (str field-id)) {:id               field-id
+                                                    :table_id         table-id
+                                                    :display_name     display-name
+                                                    :base_type        "type/Text"
+                                                    :special_type     nil
+                                                    :has_field_values "search" :name_field nil
+                                                    :dimensions       ()}}
+          :ordered_cards [{:sizeX                  2
+                           :sizeY                  2
+                           :col                    0
+                           :row                    0
+                           :updated_at             true
+                           :created_at             true
+                           :parameter_mappings     [{:card_id      1
+                                                     :parameter_id "foo"
+                                                     :target       ["dimension" ["field-id" field-id]]}]
+                           :visualization_settings {}
+                           :card                   (merge card-api-test/card-defaults
+                                                          {:name                   "Dashboard Test Card"
+                                                           :creator_id             (user->id :rasta)
+                                                           :collection_id          true
+                                                           :display                "table"
+                                                           :query_type             nil
+                                                           :dataset_query          {}
+                                                           :read_permissions       nil
+                                                           :visualization_settings {}
+                                                           :result_metadata        nil})
+                           :series                 []}]})
+  ;; fetch a dashboard WITH a dashboard card on it
+  (with-dashboards-in-readable-collection [dashboard-id]
+    (card-api-test/with-cards-in-readable-collection [card-id]
+      (dashboard-response ((user->client :rasta) :get 200 (format "dashboard/%d" dashboard-id))))))
 
 ;; ## GET /api/dashboard/:id with a series, should fail if the user doesn't have access to the collection
 (expect
@@ -987,11 +1033,23 @@
 ;;; |                                Tests for including query average duration info                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- vectorize-byte-arrays
+  "Walk form X and convert any byte arrays in the results to standard Clojure vectors. This is useful when writing
+  tests that return byte arrays (such as things that work with query hashes),since identical arrays are not considered
+  equal."
+  {:style/indent 0}
+  [x]
+  (walk/postwalk (fn [form]
+                   (if (instance? (Class/forName "[B") form)
+                     (vec form)
+                     form))
+                 x))
+
 (expect
   [[-109 -42 53 92 -31 19 -111 13 -11 -111 127 -110 -12 53 -42 -3 -58 -61 60 97 123 -65 -117 -110 -27 -2 -99 102 -59 -29 49 27]
    [43 -96 52 23 -69 81 -59 15 -74 -59 -83 -9 -110 40 1 -64 -117 -44 -67 79 -123 -9 -107 20 113 -59 -93 25 60 124 -110 -30]]
-  (tu/vectorize-byte-arrays
-    (#'dashboard-api/dashcard->query-hashes {:card {:dataset_query {:database 1}}})))
+  (vectorize-byte-arrays
+   (#'dashboard-api/dashcard->query-hashes {:card {:dataset_query {:database 1}}})))
 
 (expect
   [[89 -75 -86 117 -35 -13 -69 -36 -17 84 37 86 -121 -59 -3 1 37 -117 -86 -42 -127 -42 -74 101 83 72 10 44 75 -126 43 66]
@@ -1000,7 +1058,7 @@
    [116 69 -44 77 100 8 -40 -67 25 -4 27 -21 111 98 -45 85 83 -27 -39 8 63 -25 -88 74 32 -10 -2 35 102 -72 -104 111]
    [-84 -2 87 22 -4 105 68 48 -113 93 -29 52 3 102 123 -70 -123 36 31 76 -16 87 70 116 -93 109 -88 108 125 -36 -43 73]
    [90 127 103 -71 -76 -36 41 -107 -7 -13 -83 -87 28 86 -94 110 74 -86 110 -54 -128 124 102 -73 -127 88 77 -36 62 5 -84 -100]]
-  (tu/vectorize-byte-arrays
+  (vectorize-byte-arrays
     (#'dashboard-api/dashcard->query-hashes {:card   {:dataset_query {:database 2}}
                                              :series [{:dataset_query {:database 3}}
                                                       {:dataset_query {:database 4}}]})))
@@ -1014,7 +1072,7 @@
    [116 69 -44 77 100 8 -40 -67 25 -4 27 -21 111 98 -45 85 83 -27 -39 8 63 -25 -88 74 32 -10 -2 35 102 -72 -104 111]
    [-84 -2 87 22 -4 105 68 48 -113 93 -29 52 3 102 123 -70 -123 36 31 76 -16 87 70 116 -93 109 -88 108 125 -36 -43 73]
    [90 127 103 -71 -76 -36 41 -107 -7 -13 -83 -87 28 86 -94 110 74 -86 110 -54 -128 124 102 -73 -127 88 77 -36 62 5 -84 -100]]
-  (tu/vectorize-byte-arrays (#'dashboard-api/dashcards->query-hashes [{:card   {:dataset_query {:database 1}}}
+  (vectorize-byte-arrays (#'dashboard-api/dashcards->query-hashes [{:card   {:dataset_query {:database 1}}}
                                                                       {:card   {:dataset_query {:database 2}}
                                                                        :series [{:dataset_query {:database 3}}
                                                                                 {:dataset_query {:database 4}}]}])))

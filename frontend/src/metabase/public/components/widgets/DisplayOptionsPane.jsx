@@ -4,7 +4,7 @@ import React from "react";
 
 import EmbedSelect from "./EmbedSelect";
 import CheckBox from "metabase/components/CheckBox";
-import { t } from "c-3po";
+import { t } from "ttag";
 import type { DisplayOptions } from "./EmbedModalContent";
 
 type Props = {

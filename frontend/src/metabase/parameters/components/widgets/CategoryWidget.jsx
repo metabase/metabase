@@ -3,12 +3,12 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t, ngettext, msgid } from "ttag";
 
 import { createMultiwordSearchRegex } from "metabase/lib/string";
 import { getHumanReadableValue } from "metabase/lib/query/field";
 
-import SelectPicker from "../../../query_builder/components/filters/pickers/SelectPicker.jsx";
+import SelectPicker from "../../../query_builder/components/filters/pickers/SelectPicker";
 
 type Props = {
   value: any,
@@ -58,7 +58,8 @@ export default class CategoryWidget extends Component {
 
   static format(values, fieldValues) {
     if (Array.isArray(values) && values.length > 1) {
-      return `${values.length} selections`;
+      const n = values.length;
+      return ngettext(msgid`${n} selection`, `${n} selections`, n);
     } else {
       return getHumanReadableValue(values, fieldValues);
     }

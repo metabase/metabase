@@ -1,9 +1,9 @@
 (ns metabase.models.query-execution
   "QueryExecution is a log of very time a query is executed, and other information such as the User who executed it, run
   time, context it was executed in, etc."
-  (:require [metabase.util :as u]
+  (:require [metabase.mbql.schema :as mbql.s]
+            [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
-            [metabase.mbql.schema :as mbql.s]
             [schema.core :as s]
             [toucan.models :as models]))
 
@@ -25,5 +25,5 @@
   (merge models/IModelDefaults
          {:types       (constantly {:json_query :json, :status :keyword, :context :keyword, :error :clob})
           :pre-insert  pre-insert
-          :pre-update  (fn [& _] (throw (Exception. (str (tru "You cannot update a QueryExecution!")))))
+          :pre-update  (fn [& _] (throw (Exception. (tru "You cannot update a QueryExecution!"))))
           :post-select post-select}))

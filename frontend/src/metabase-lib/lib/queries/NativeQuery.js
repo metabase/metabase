@@ -1,6 +1,5 @@
 /* @flow weak */
 
-import Question from "../Question";
 import Query from "./Query";
 
 import Database from "metabase-lib/lib/metadata/Database";
@@ -19,12 +18,14 @@ import {
 import { chain, assoc, getIn, assocIn, updateIn } from "icepick";
 import _ from "underscore";
 
+import type Question from "metabase-lib/lib/Question";
 import type {
   DatasetQuery,
   NativeDatasetQuery,
 } from "metabase/meta/types/Card";
 import type { TemplateTags, TemplateTag } from "metabase/meta/types/Query";
 import type { DatabaseEngine, DatabaseId } from "metabase/meta/types/Database";
+
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 
 export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
@@ -50,21 +51,27 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   static isDatasetQueryType(datasetQuery: DatasetQuery): boolean {
-    return datasetQuery.type === NATIVE_QUERY_TEMPLATE.type;
+    return datasetQuery && datasetQuery.type === NATIVE_QUERY_TEMPLATE.type;
   }
 
   /* Query superclass methods */
 
+  hasData() {
+    return (
+      this.databaseId() != null && (!this.requiresTable() || this.collection())
+    );
+  }
+
   canRun() {
     return (
-      this.databaseId() != null &&
+      this.hasData() &&
       this.queryText().length > 0 &&
-      (!this.requiresTable() || this.collection())
+      this.allTemplateTagsAreValid()
     );
   }
 
   isEmpty() {
-    return this.databaseId() == null || this.queryText().length == 0;
+    return this.databaseId() == null || this.queryText().length === 0;
   }
 
   databases(): Database[] {
@@ -99,15 +106,28 @@ export default class NativeQuery extends AtomicQuery {
    * @returns a new query with the provided Database set.
    */
   setDatabase(database: Database): NativeQuery {
-    if (database.id !== this.databaseId()) {
+    return this.setDatabaseId(database.id);
+  }
+  setDatabaseId(databaseId: DatabaseId): NativeQuery {
+    if (databaseId !== this.databaseId()) {
       // TODO: this should reset the rest of the query?
       return new NativeQuery(
         this._originalQuestion,
-        assoc(this.datasetQuery(), "database", database.id),
+        assoc(this.datasetQuery(), "database", databaseId),
       );
     } else {
       return this;
     }
+  }
+
+  setDefaultCollection(): NativeQuery {
+    if (this.requiresTable()) {
+      const tables = this.tables();
+      if (tables && tables.length > 0) {
+        return this.setCollectionName(tables[0].name);
+      }
+    }
+    return this;
   }
 
   hasWritePermission(): boolean {
@@ -135,7 +155,7 @@ export default class NativeQuery extends AtomicQuery {
     return getIn(this.datasetQuery(), ["native", "query"]) || "";
   }
 
-  updateQueryText(newQueryText: string): Query {
+  setQueryText(newQueryText: string): Query {
     return new NativeQuery(
       this._originalQuestion,
       chain(this._datasetQuery)
@@ -152,7 +172,7 @@ export default class NativeQuery extends AtomicQuery {
     return getIn(this.datasetQuery(), ["native", "collection"]);
   }
 
-  updateCollection(newCollection: string) {
+  setCollectionName(newCollection: string) {
     return new NativeQuery(
       this._originalQuestion,
       assocIn(this._datasetQuery, ["native", "collection"], newCollection),
@@ -210,6 +230,12 @@ export default class NativeQuery extends AtomicQuery {
   templateTagsMap(): TemplateTags {
     return getIn(this.datasetQuery(), ["native", "template-tags"]) || {};
   }
+  allTemplateTagsAreValid(): boolean {
+    return this.templateTags().every(
+      // field filters require a field
+      t => !(t.type === "dimension" && t.dimension == null),
+    );
+  }
 
   setDatasetQuery(datasetQuery: DatasetQuery): NativeQuery {
     return new NativeQuery(this._originalQuestion, datasetQuery);
@@ -226,8 +252,8 @@ export default class NativeQuery extends AtomicQuery {
       // a variable name can optionally end with :start or :end which is not considered part of the actual variable name
       // expected pattern is like mustache templates, so we are looking for something like {{category}} or {{date:start}}
       // anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
-      let match,
-        re = /\{\{\s*([A-Za-z0-9_]+?)\s*\}\}/g;
+      let match;
+      const re = /\{\{\s*([A-Za-z0-9_]+?)\s*\}\}/g;
       while ((match = re.exec(queryText)) != null) {
         tags.push(match[1]);
       }
@@ -236,14 +262,14 @@ export default class NativeQuery extends AtomicQuery {
       const existingTemplateTags = this.templateTagsMap();
 
       tags = _.uniq(tags);
-      let existingTags = Object.keys(existingTemplateTags);
+      const existingTags = Object.keys(existingTemplateTags);
 
       // if we ended up with any variables in the query then update the card parameters list accordingly
       if (tags.length > 0 || existingTags.length > 0) {
-        let newTags = _.difference(tags, existingTags);
-        let oldTags = _.difference(existingTags, tags);
+        const newTags = _.difference(tags, existingTags);
+        const oldTags = _.difference(existingTags, tags);
 
-        let templateTags = { ...existingTemplateTags };
+        const templateTags = { ...existingTemplateTags };
         if (oldTags.length === 1 && newTags.length === 1) {
           // renaming
           templateTags[newTags[0]] = { ...templateTags[oldTags[0]] };
@@ -261,12 +287,12 @@ export default class NativeQuery extends AtomicQuery {
           }
 
           // create new vars
-          for (let tagName of newTags) {
+          for (const tagName of newTags) {
             templateTags[tagName] = {
               id: Utils.uuid(),
               name: tagName,
               display_name: humanize(tagName),
-              type: null,
+              type: "text",
             };
           }
         }
@@ -274,7 +300,7 @@ export default class NativeQuery extends AtomicQuery {
         // ensure all tags have an id since we need it for parameter values to work
         // $FlowFixMe
         for (const tag: TemplateTag of Object.values(templateTags)) {
-          if (tag.id == undefined) {
+          if (tag.id == null) {
             tag.id = Utils.uuid();
           }
         }

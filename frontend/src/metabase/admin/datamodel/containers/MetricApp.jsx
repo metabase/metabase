@@ -3,73 +3,77 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-
-import MetricForm from "./MetricForm.jsx";
-
-import { metricEditSelectors } from "../selectors";
-import * as actions from "../datamodel";
-import { clearRequestState } from "metabase/redux/requests";
-import { fetchTableMetadata } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
+import Metrics from "metabase/entities/metrics";
+import Tables from "metabase/entities/tables";
+
+import { updatePreviewSummary } from "../datamodel";
+import { getPreviewSummary } from "../selectors";
+import withTableMetadataLoaded from "../withTableMetadataLoaded";
+import MetricForm from "./MetricForm";
 
 const mapDispatchToProps = {
-  ...actions,
-  fetchTableMetadata,
-  clearRequestState,
+  updatePreviewSummary,
+  createMetric: Metrics.actions.create,
   onChangeLocation: push,
 };
 
 const mapStateToProps = (state, props) => ({
-  ...metricEditSelectors(state, props),
-  metadata: getMetadata(state, props),
+  metadata: getMetadata(state),
+  previewSummary: getPreviewSummary(state),
 });
 
-@connect(mapStateToProps, mapDispatchToProps)
-export default class MetricApp extends Component {
-  async componentWillMount() {
-    const { params, location } = this.props;
-
-    let tableId;
-    if (params.id) {
-      const metricId = parseInt(params.id);
-      const { payload: metric } = await this.props.getMetric({ metricId });
-      tableId = metric.table_id;
-    } else if (location.query.table) {
-      tableId = parseInt(location.query.table);
-    }
-
-    if (tableId != null) {
-      // TODO Atte Keinänen 6/8/17: Use only global metadata (`fetchTableMetadata`)
-      this.props.loadTableMetadata(tableId);
-      this.props.fetchTableMetadata(tableId);
-    }
-  }
-
-  async onSubmit(metric, f) {
-    let { tableMetadata } = this.props;
-    if (metric.id != null) {
-      await this.props.updateMetric(metric);
-      this.props.clearRequestState({ statePath: ["entities", "metrics"] });
-      MetabaseAnalytics.trackEvent("Data Model", "Metric Updated");
-    } else {
-      await this.props.createMetric(metric);
-      this.props.clearRequestState({ statePath: ["entities", "metrics"] });
-      MetabaseAnalytics.trackEvent("Data Model", "Metric Created");
-    }
-
+@Metrics.load({
+  id: (state, props) => parseInt(props.params.id),
+  wrapped: true,
+})
+@Tables.load({ id: (state, props) => props.metric.table_id, wrapped: true })
+@withTableMetadataLoaded
+class UpdateMetricForm extends Component {
+  onSubmit = async metric => {
+    await this.props.metric.update(metric);
+    MetabaseAnalytics.trackEvent("Data Model", "Metric Updated");
+    const { id: tableId, db_id: databaseId } = this.props.table;
     this.props.onChangeLocation(
-      "/admin/datamodel/database/" +
-        tableMetadata.db_id +
-        "/table/" +
-        tableMetadata.id,
+      `/admin/datamodel/database/${databaseId}/table/${tableId}`,
     );
-  }
+  };
 
   render() {
-    return (
-      <div>
-        <MetricForm {...this.props} onSubmit={this.onSubmit.bind(this)} />
-      </div>
+    return <MetricForm {...this.props} onSubmit={this.onSubmit} />;
+  }
+}
+
+@Tables.load({
+  id: (state, props) => parseInt(props.location.query.table),
+  wrapped: true,
+})
+@withTableMetadataLoaded
+class CreateMetricForm extends Component {
+  onSubmit = async metric => {
+    const { id: tableId, db_id: databaseId } = this.props.table;
+    await this.props.createMetric({ ...metric, table_id: tableId });
+    MetabaseAnalytics.trackEvent("Data Model", "Metric Updated");
+    this.props.onChangeLocation(
+      `/admin/datamodel/database/${databaseId}/table/${tableId}`,
+    );
+  };
+
+  render() {
+    return <MetricForm {...this.props} onSubmit={this.onSubmit} />;
+  }
+}
+
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
+export default class MetricApp extends Component {
+  render() {
+    return this.props.params.id ? (
+      <UpdateMetricForm {...this.props} />
+    ) : (
+      <CreateMetricForm {...this.props} />
     );
   }
 }

@@ -3,7 +3,8 @@ import PropTypes from "prop-types";
 
 const Expandable = ComposedComponent =>
   class extends Component {
-    static displayName = "Expandable[" +
+    static displayName =
+      "Expandable[" +
       (ComposedComponent.displayName || ComposedComponent.name) +
       "]";
 

@@ -4,10 +4,10 @@ import PropTypes from "prop-types";
 
 import { List } from "react-virtualized";
 import "react-virtualized/styles.css";
-import { t } from "c-3po";
-import ColumnarSelector from "metabase/components/ColumnarSelector.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
+import { t } from "ttag";
+import ColumnarSelector from "metabase/components/ColumnarSelector";
+import Icon from "metabase/components/Icon";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton from "./SelectButton";
 
 import cx from "classnames";
@@ -36,6 +36,7 @@ class BrowserSelect extends Component {
     children: PropTypes.array.isRequired,
     onChange: PropTypes.func.isRequired,
     value: PropTypes.any,
+    defaultValue: PropTypes.any,
 
     searchProp: PropTypes.string,
     searchCaseInsensitive: PropTypes.bool,
@@ -66,14 +67,15 @@ class BrowserSelect extends Component {
   };
 
   isSelected(otherValue) {
-    const { value, multiple } = this.props;
+    const { value, multiple, defaultValue } = this.props;
     if (multiple) {
       return _.any(value, v => v === otherValue);
     } else {
       return (
         value === otherValue ||
         ((value == null || value === "") &&
-          (otherValue == null || otherValue === ""))
+          (otherValue == null || otherValue === "")) ||
+        (value == null && otherValue === defaultValue)
       );
     }
   }
@@ -95,7 +97,7 @@ class BrowserSelect extends Component {
       multiple,
     } = this.props;
 
-    let children = this.props.children;
+    let children = _.flatten(this.props.children);
 
     let selectedNames = children
       .filter(child => this.isSelected(child.props.value))
@@ -190,10 +192,10 @@ class BrowserSelect extends Component {
               const child = children[index];
 
               /*
-                             * for each child we need to add props based on
-                             * the parent's onClick and the current selection
-                             * status, so we use cloneElement here
-                            * */
+               * for each child we need to add props based on
+               * the parent's onClick and the current selection
+               * status, so we use cloneElement here
+               * */
               return (
                 <div key={key} style={style} onClick={e => e.stopPropagation()}>
                   {React.cloneElement(children[index], {
@@ -321,11 +323,13 @@ class LegacySelect extends Component {
       disabled,
     } = this.props;
 
-    let selectedName = value
+    const selectedName = value
       ? optionNameFn(value)
-      : options && options.length > 0 ? placeholder : emptyPlaceholder;
+      : options && options.length > 0
+      ? placeholder
+      : emptyPlaceholder;
 
-    let triggerElement = (
+    const triggerElement = (
       <div
         className={cx(
           "flex align-center",
@@ -350,7 +354,7 @@ class LegacySelect extends Component {
 
     let sections = {};
     options.forEach(function(option) {
-      let sectionName = option.section || "";
+      const sectionName = option.section || "";
       sections[sectionName] = sections[sectionName] || {
         title: sectionName || undefined,
         items: [],
@@ -359,7 +363,7 @@ class LegacySelect extends Component {
     });
     sections = Object.keys(sections).map(sectionName => sections[sectionName]);
 
-    let columns = [
+    const columns = [
       {
         selectedItem: value,
         selectedItems: values,

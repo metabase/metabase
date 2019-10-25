@@ -3,13 +3,13 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 import S from "./DashCardCardParameterMapper.css";
 
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import AccordianList from "metabase/components/AccordianList.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import Icon from "metabase/components/Icon";
+import AccordionList from "metabase/components/AccordionList";
+import Tooltip from "metabase/components/Tooltip";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 
@@ -58,7 +58,10 @@ const mapDispatchToProps = {
   fetchDatabaseMetadata,
 };
 
-@connect(makeMapStateToProps, mapDispatchToProps)
+@connect(
+  makeMapStateToProps,
+  mapDispatchToProps,
+)
 export default class DashCardCardParameterMapper extends Component {
   props: {
     card: Card,
@@ -143,24 +146,20 @@ export default class DashCardCardParameterMapper extends Component {
     }
 
     return (
-      <div
-        className="mx1 flex flex-column align-center"
-        onMouseDown={e => e.stopPropagation()}
-      >
-        {dashcard.series &&
-          dashcard.series.length > 0 && (
-            <div
-              className="h5 mb1 text-bold"
-              style={{
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap",
-                overflowX: "hidden",
-                maxWidth: 100,
-              }}
-            >
-              {card.name}
-            </div>
-          )}
+      <div className="mx1 flex flex-column align-center drag-disabled">
+        {dashcard.series && dashcard.series.length > 0 && (
+          <div
+            className="h5 mb1 text-bold"
+            style={{
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              overflowX: "hidden",
+              maxWidth: 100,
+            }}
+          >
+            {card.name}
+          </div>
+        )}
         <PopoverWithTrigger
           ref="popover"
           triggerClasses={cx({ disabled: disabled })}
@@ -184,7 +183,9 @@ export default class DashCardCardParameterMapper extends Component {
                 <span className="text-centered mr1">
                   {disabled
                     ? t`No valid fields`
-                    : selected ? selected.name : t`Select…`}
+                    : selected
+                    ? selected.name
+                    : t`Select…`}
                 </span>
                 {selected ? (
                   <Icon
@@ -207,7 +208,7 @@ export default class DashCardCardParameterMapper extends Component {
             </Tooltip>
           }
         >
-          <AccordianList
+          <AccordionList
             className="text-brand scroll-show scroll-y"
             style={{ maxHeight: 600 }}
             sections={sections}

@@ -53,15 +53,14 @@
    (.offer acc x)
    acc))
 
-(defmulti
-  ^{:doc "Return a fingerprinter transducer for a given field based on the field's type."
-    :arglists '([field])}
-  fingerprinter (fn [{:keys [base_type special_type unit] :as field}]
-                  [(cond
-                     (du/date-extract-units unit)  :type/Integer
-                     (field/unix-timestamp? field) :type/DateTime
-                     :else                         base_type)
-                   (or special_type :type/*)]))
+(defmulti fingerprinter
+  "Return a fingerprinter transducer for a given field based on the field's type."
+   (fn [{:keys [base_type special_type unit] :as field}]
+     [(cond
+        (du/date-extract-units unit)  :type/Integer
+        (field/unix-timestamp? field) :type/DateTime
+        :else                         base_type)
+      (or special_type :type/*)]))
 
 (def ^:private global-fingerprinter
   (redux/post-complete
@@ -86,6 +85,7 @@
 (prefer-method fingerprinter [:type/* :type/PK] [:type/Number :type/*])
 (prefer-method fingerprinter [:type/* :type/PK] [:type/Text :type/*])
 (prefer-method fingerprinter [:type/DateTime :type/*] [:type/* :type/PK])
+(prefer-method fingerprinter [:type/DateTime :type/*] [:type/* :type/FK])
 
 (defn- with-global-fingerprinter
   [fingerprinter]
@@ -129,7 +129,7 @@
             ~transducer
             (fn [fingerprint#]
               {:type {~(first field-type) fingerprint#}})))
-         (str (trs "Error generating fingerprint for {0}" (sync-util/name-for-logging field#)))))))
+         (trs "Error generating fingerprint for {0}" (sync-util/name-for-logging field#))))))
 
 (defn- earliest
   ([] (java.util.Date. Long/MAX_VALUE))
@@ -165,7 +165,8 @@
   String                 (->date [this] (-> this du/str->date-time t.coerce/to-date))
   java.util.Date         (->date [this] this)
   DateTime               (->date [this] (t.coerce/to-date this))
-  Long                   (->date [^Long this] (java.util.Date. this)))
+  Long                   (->date [^Long this] (java.util.Date. this))
+  Integer                (->date [^Integer this] (java.util.Date. (long this))))
 
 (deffingerprinter :type/DateTime
   ((map ->date)

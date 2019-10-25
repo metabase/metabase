@@ -4,16 +4,17 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import title from "metabase/hoc/Title";
-import { t } from "c-3po";
+import { t } from "ttag";
+import { Box, Flex } from "grid-styled";
 
 import MetabaseSettings from "metabase/lib/settings";
-import DeleteDatabaseModal from "../components/DeleteDatabaseModal.jsx";
-import DatabaseEditForms from "../components/DatabaseEditForms.jsx";
+import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
+import DatabaseEditForms from "../components/DatabaseEditForms";
 import DatabaseSchedulingForm from "../components/DatabaseSchedulingForm";
-import ActionButton from "metabase/components/ActionButton.jsx";
-import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
-import Radio from "metabase/components/Radio.jsx";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
+import ActionButton from "metabase/components/ActionButton";
+import Breadcrumbs from "metabase/components/Breadcrumbs";
+import Radio from "metabase/components/Radio";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
 import {
   getEditingDatabase,
@@ -61,7 +62,10 @@ const TABS: TabOption[] = [
   { name: t`Scheduling`, value: "scheduling" },
 ];
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @title(({ database }) => database && database.name)
 export default class DatabaseEditApp extends Component {
   state: {
@@ -108,7 +112,7 @@ export default class DatabaseEditApp extends Component {
   }
 
   render() {
-    let { database, formState } = this.props;
+    const { database, formState } = this.props;
     const { currentTab } = this.state;
 
     const editingExistingDatabase = database && database.id != null;
@@ -129,11 +133,11 @@ export default class DatabaseEditApp extends Component {
             [addingNewDatabase ? t`Add Database` : database.name],
           ]}
         />
-        <section className="Grid Grid--gutters Grid--2-of-3">
-          <div className="Grid-cell">
-            <div className="Form-new bordered rounded shadowed pt0">
+        <Flex pb={2}>
+          <Box>
+            <div className="pt0">
               {showTabs && (
-                <div className="Form-offset border-bottom">
+                <div className="border-bottom">
                   <Radio
                     value={currentTab}
                     options={TABS}
@@ -175,12 +179,12 @@ export default class DatabaseEditApp extends Component {
                 )}
               </LoadingAndErrorWrapper>
             </div>
-          </div>
+          </Box>
 
           {/* Sidebar Actions */}
           {editingExistingDatabase && (
-            <div className="Grid-cell Cell--1of3">
-              <div className="Actions bordered rounded shadowed">
+            <Box ml={[2, 3]} w={420}>
+              <div className="Actions bg-light rounded p3">
                 <div className="Actions-group">
                   <label className="Actions-groupLabel block text-bold">{t`Actions`}</label>
                   <ol>
@@ -250,9 +254,9 @@ export default class DatabaseEditApp extends Component {
                   </ol>
                 </div>
               </div>
-            </div>
+            </Box>
           )}
-        </section>
+        </Flex>
       </div>
     );
   }

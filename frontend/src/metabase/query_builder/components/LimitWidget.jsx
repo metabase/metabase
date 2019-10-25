@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 export default class LimitWidget extends Component {
   static propTypes = {

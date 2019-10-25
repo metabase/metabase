@@ -6,14 +6,14 @@ import cx from "classnames";
 
 import S from "./QueryButton.css";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
 const QueryButton = ({ className, text, icon, iconClass, onClick, link }) => (
   <div className={className}>
     <Link className={S.queryButton} onClick={onClick} to={link}>
       <Icon
         className={iconClass}
-        size={20}
+        size={14}
         {...(typeof icon === "string" ? { name: icon } : icon)}
       />
       <span className={cx(S.queryButtonText, "text-brand-hover")}>{text}</span>

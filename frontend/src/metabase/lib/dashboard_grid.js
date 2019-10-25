@@ -28,8 +28,8 @@ export function getPositionForNewDashCard(
   while (row < 1000) {
     while (col <= width - sizeX) {
       let good = true;
-      let position = { col, row, sizeX, sizeY };
-      for (let card of cards) {
+      const position = { col, row, sizeX, sizeY };
+      for (const card of cards) {
         if (intersects(card, position)) {
           good = false;
           break;

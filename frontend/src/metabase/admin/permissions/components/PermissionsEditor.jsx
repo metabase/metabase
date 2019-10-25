@@ -1,14 +1,14 @@
 import React from "react";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-import Confirm from "metabase/components/Confirm.jsx";
-import PermissionsGrid from "../components/PermissionsGrid.jsx";
-import PermissionsConfirm from "../components/PermissionsConfirm.jsx";
-import PermissionsTabs from "../components/PermissionsTabs.jsx";
-import EditBar from "metabase/components/EditBar.jsx";
-import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Confirm from "metabase/components/Confirm";
+import PermissionsGrid from "../components/PermissionsGrid";
+import PermissionsConfirm from "../components/PermissionsConfirm";
+import PermissionsTabs from "../components/PermissionsTabs";
+import EditBar from "metabase/components/EditBar";
+import Breadcrumbs from "metabase/components/Breadcrumbs";
 import Button from "metabase/components/Button";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 
 import _ from "underscore";
@@ -93,9 +93,8 @@ PermissionsEditor.defaultProps = {
 };
 
 function getEntityAndGroupIdFromLocation({ query = {} } = {}) {
-  query = _.mapObject(
-    query,
-    value => (isNaN(value) ? value : parseFloat(value)),
+  query = _.mapObject(query, value =>
+    isNaN(value) ? value : parseFloat(value),
   );
   const entityId = _.omit(query, "groupId");
   const groupId = query.groupId;

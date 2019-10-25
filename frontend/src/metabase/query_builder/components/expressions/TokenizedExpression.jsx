@@ -22,7 +22,9 @@ const renderSyntaxTree = (node, index) => (
   >
     {node.text != null
       ? node.text
-      : node.children ? node.children.map(renderSyntaxTree) : null}
+      : node.children
+      ? node.children.map(renderSyntaxTree)
+      : null}
   </span>
 );
 
@@ -34,11 +36,11 @@ function nextNonWhitespace(tokens, index) {
 }
 
 function parse(expressionString) {
-  let tokens = (expressionString || " ").match(
+  const tokens = (expressionString || " ").match(
     /[a-zA-Z]\w*|"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*"|\(|\)|\d+|\s+|[*/+-]|.+/g,
   );
 
-  let root = { type: "group", children: [] };
+  const root = { type: "group", children: [] };
   let current = root;
   let outsideAggregation = true;
   const stack = [];
@@ -54,7 +56,7 @@ function parse(expressionString) {
     current = stack.pop();
   };
   for (let i = 0; i < tokens.length; i++) {
-    let token = tokens[i];
+    const token = tokens[i];
     if (/^[a-zA-Z]\w*$/.test(token)) {
       if (nextNonWhitespace(tokens, i) === "(") {
         outsideAggregation = false;

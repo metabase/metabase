@@ -4,17 +4,17 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
 import { push } from "react-router-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 import S from "metabase/reference/Reference.css";
 
-import List from "metabase/components/List.jsx";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import List from "metabase/components/List";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import EditHeader from "metabase/reference/components/EditHeader.jsx";
-import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader.jsx";
-import Detail from "metabase/reference/components/Detail.jsx";
-import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail.jsx";
-import UsefulQuestions from "metabase/reference/components/UsefulQuestions.jsx";
+import EditHeader from "metabase/reference/components/EditHeader";
+import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
+import Detail from "metabase/reference/components/Detail";
+import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
+import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 
 import { getQuestionUrl } from "../utils";
 
@@ -100,7 +100,10 @@ const validate = (values, props) => {
   return {};
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @reduxForm({
   form: "details",
   fields: [

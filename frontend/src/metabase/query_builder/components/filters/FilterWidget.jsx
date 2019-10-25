@@ -2,22 +2,22 @@
 
 import React, { Component } from "react";
 
-import Icon from "metabase/components/Icon.jsx";
-import Popover from "metabase/components/Popover.jsx";
-import FilterPopover from "./FilterPopover.jsx";
+import Icon from "metabase/components/Icon";
+import Popover from "metabase/components/Popover";
+import FilterPopover from "./FilterPopover";
 import Filter from "metabase/query_builder/components/Filter";
 
 import cx from "classnames";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import type { Filter as FilterType } from "metabase/meta/types/Query";
 import type { FilterRenderer } from "metabase/query_builder/components/Filter";
+import type FilterWrapper from "metabase-lib/lib/queries/structured/Filter";
 
 type Props = {
   query: StructuredQuery,
-  filter: FilterType,
+  filter: FilterWrapper,
   index: number,
-  updateFilter?: (index: number, field: FilterType) => void,
+  updateFilter?: (index: number, filter: FilterWrapper) => void,
   removeFilter?: (index: number) => void,
   maxDisplayValues?: number,
 };
@@ -72,7 +72,7 @@ export default class FilterWidget extends Component {
     super(props);
 
     this.state = {
-      isOpen: this.props.filter[0] == undefined,
+      isOpen: this.props.filter[0] == null,
     };
   }
 
@@ -116,7 +116,7 @@ export default class FilterWidget extends Component {
           <FilterPopover
             query={query}
             filter={filter}
-            onCommitFilter={filter =>
+            onChangeFilter={filter =>
               this.props.updateFilter &&
               this.props.updateFilter(this.props.index, filter)
             }

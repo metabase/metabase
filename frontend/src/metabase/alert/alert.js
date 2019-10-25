@@ -3,10 +3,10 @@ import _ from "underscore";
 import { handleActions } from "redux-actions";
 import { combineReducers } from "redux";
 import { addUndo } from "metabase/redux/undo";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { AlertApi } from "metabase/services";
 import { RestfulRequest } from "metabase/lib/request";
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
 export const FETCH_ALL_ALERTS = "metabase/alerts/FETCH_ALL_ALERTS";
 const fetchAllAlertsRequest = new RestfulRequest({
@@ -56,7 +56,7 @@ export const createAlert = alert => {
         // eslint-disable-next-line react/display-name
         message: () => (
           <div className="flex align-center text-bold">
-            <Icon name="alertConfirm" size="19" className="mr2 text-success" />
+            <Icon name="alert_confirm" size="19" className="mr2 text-success" />
             {t`Your alert is all set up.`}
           </div>
         ),
@@ -97,7 +97,7 @@ export const updateAlert = alert => {
         // eslint-disable-next-line react/display-name
         message: () => (
           <div className="flex align-center text-bold">
-            <Icon name="alertConfirm" size="19" className="mr2 text-success" />
+            <Icon name="alert_confirm" size="19" className="mr2 text-success" />
             {t`Your alert was updated.`}
           </div>
         ),
@@ -145,7 +145,7 @@ export const deleteAlert = alertId => {
         // eslint-disable-next-line react/display-name
         message: () => (
           <div className="flex align-center text-bold">
-            <Icon name="alertConfirm" size="19" className="mr2 text-success" />
+            <Icon name="alert_confirm" size="19" className="mr2 text-success" />
             {t`The alert was successfully deleted.`}
           </div>
         ),

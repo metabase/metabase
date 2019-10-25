@@ -4,12 +4,18 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import Select, { Option } from "metabase/components/Select";
 
-import type { Operator, OperatorName } from "metabase/meta/types/Metadata";
+import cx from "classnames";
+
+import type {
+  FilterOperator,
+  FilterOperatorName,
+} from "metabase/meta/types/Metadata";
 
 type Props = {
   operator: string,
-  operators: Operator[],
-  onOperatorChange: (name: OperatorName) => void,
+  operators: FilterOperator[],
+  onOperatorChange: (name: FilterOperatorName) => void,
+  className?: string,
 };
 
 export default class OperatorSelector extends Component {
@@ -22,13 +28,13 @@ export default class OperatorSelector extends Component {
   };
 
   render() {
-    let { operator, operators, onOperatorChange } = this.props;
+    const { operator, operators, onOperatorChange, className } = this.props;
 
     return (
       <Select
         value={operator}
         onChange={e => onOperatorChange(e.target.value)}
-        className="border-medium"
+        className={cx("border-medium text-default", className)}
       >
         {operators.map(o => (
           <Option key={o.name} value={o.name}>

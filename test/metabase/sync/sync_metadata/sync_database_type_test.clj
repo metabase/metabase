@@ -10,7 +10,6 @@
              [table :refer [Table]]]
             [metabase.sync.util-test :as sut]
             [metabase.test.data :as data]
-            metabase.test.util ; to make sure defaults for with-temp are registered
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 

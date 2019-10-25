@@ -8,16 +8,40 @@
   `metabase.driver.sql-jdbc` for more details."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase.models.setting :refer [defsetting]]
+            [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util
              [date :as du]
-             [i18n :refer [trs tru]]
+             [i18n :refer [deferred-tru trs tru]]
              [schema :as su]]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db])
+  (:import org.joda.time.DateTime))
 
-(defsetting report-timezone (tru "Connection timezone to use when executing queries. Defaults to system timezone."))
+(declare notify-database-updated)
+
+(defn- notify-all-databases-updated
+  "Send notification that all Databases should immediately release cached resources (i.e., connection pools).
+
+  Currently only used below by `report-timezone` setter (i.e., only used when report timezone changes). Reusing pooled
+  connections with the old session timezone can have weird effects, especially if report timezone is changed to nil
+  (meaning subsequent queries will not attempt to change the session timezone) or something considered invalid by a
+  given Database (meaning subsequent queries will fail to change the session timezone)."
+  []
+  (doseq [{driver :engine, id :id, :as database} (db/select 'Database)]
+    (try
+      (notify-database-updated driver database)
+      (catch Throwable e
+        (log/error e (trs "Failed to notify {0} Database {1} updated" driver id))))))
+
+(defsetting report-timezone
+  (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
+  :setter
+  (fn [new-value]
+    (setting/set-string! :report-timezone new-value)
+    (notify-all-databases-updated)))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Current Driver                                                 |
@@ -28,6 +52,14 @@
   below. The QP binds the driver this way in the `bind-driver` middleware."
   nil)
 
+(declare the-driver)
+
+(defn do-with-driver
+  "Impl for `with-driver`."
+  [driver f]
+  (binding [*driver* (the-driver driver)]
+    (f)))
+
 (defmacro with-driver
   "Bind current driver to `driver` and execute `body`.
 
@@ -35,8 +67,7 @@
       ...)"
   {:style/indent 1}
   [driver & body]
-  `(binding [*driver* ~driver]
-     ~@body))
+  `(do-with-driver ~driver (fn [] ~@body)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -47,17 +78,32 @@
   hierarchy
   (make-hierarchy))
 
-(defn registered?
+(defn- registered?
   "Is `driver` a valid registered driver?"
   [driver]
-  (isa? hierarchy driver ::driver))
+  (isa? hierarchy (keyword driver) ::driver))
 
-(defn abstract?
-  "Is `driver` an abstract \"base class\"?"
+(defn- concrete?
+  "Is `driver` registered, and non-abstract?"
   [driver]
-  (not (isa? hierarchy driver ::concrete)))
+  (isa? hierarchy (keyword driver) ::concrete))
 
-(defn- driver->expected-namespace [driver]
+(defn- abstract?
+  "Is `driver` an abstract \"base class\"? i.e. a driver that you cannot use directly when adding a Database, such as
+  `:sql` or `:sql-jdbc`."
+  [driver]
+  (not (concrete? driver)))
+
+(defn available?
+  "Is this driver available for use? (i.e. should we show it as an option when adding a new database?) This is `true`
+  for all registered, non-abstract drivers and false everything else.
+
+  Note that an available driver is not necessarily initialized yet; for example lazy-loaded drivers are *registered*
+  when Metabase starts up (meaning this will return `true` for them) and only initialized when first needed."
+  [driver]
+  ((every-pred registered? concrete?) driver))
+
+(s/defn ^:private driver->expected-namespace [driver :- s/Keyword]
   (symbol
    (or (namespace driver)
        (str "metabase.driver." (name driver)))))
@@ -65,22 +111,19 @@
 (defonce ^:private require-lock (Object.))
 
 (defn- require-driver-ns [driver & require-options]
-  ;; call `the-classloader` for side effects which will make sure the current thread's context classloader is one
-  ;; that has access to any URLs we've added dynamically if not already the case.
-  (classloader/the-classloader)
-  ;; make sure Clojure is using the context classloader to load namespaces. This should normally be the case, but
-  ;; better safe than sorry IMO
-  (binding [*use-context-classloader* true]
-    (let [expected-ns (driver->expected-namespace driver)]
-      ;; acquire an exclusive lock FOR THIS THREAD to make sure no other threads simultaneously call `require` when
-      ;; loading drivers; e.g. if multiple queries are launched at once requiring different drivers. Clojure breaks if
-      ;; you try to do multithreaded require, at least last time I checked.
-      (locking require-lock
-        (log/debug
-         (trs "Loading driver {0} {1}" (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
-        (apply require expected-ns require-options)))))
+  (let [expected-ns (driver->expected-namespace driver)]
+    ;; acquire an exclusive lock FOR THIS THREAD to make sure no other threads simultaneously call `require` when
+    ;; loading drivers; e.g. if multiple queries are launched at once requiring different drivers. Clojure breaks if
+    ;; you try to do multithreaded require, at least last time I checked.
+    (locking require-lock
+      (log/debug
+       (trs "Loading driver {0} {1}" (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
+      (try
+        (apply classloader/require expected-ns require-options)
+        (catch Throwable _
+          (throw (Exception. (tru "Could not find {0} driver." driver))))))))
 
-(defn- load-driver-namespace-if-needed
+(defn- load-driver-namespace-if-needed!
   "Load the expected namespace for a `driver` if it has not already been registed. This only works for core Metabase
   drivers, whose namespaces follow an expected pattern; drivers provided by 3rd-party plugins are expected to register
   themselves in their plugin initialization code.
@@ -98,11 +141,13 @@
           (require-driver-ns driver :reload)
           ;; if *still* not registered, throw an Exception
           (when-not (registered? driver)
-            (throw (Exception. (str (tru "Driver not registered after loading: {0}" driver))))))))))
+            (throw (Exception. (tru "Driver not registered after loading: {0}" driver)))))))))
 
 (defn the-driver
   "Like Clojure core `the-ns`. Converts argument to a keyword, then loads and registers the driver if not already done,
-  throwing an Exception if it fails or is invalid. Returns keyword.
+  throwing an Exception if it fails or is invalid. Returns keyword. Note that this does not neccessarily mean the
+  driver is initialized (e.g., its full implementation and deps might not be loaded into memory) -- see also
+  `the-initialized-driver`.
 
   This is useful in several cases:
 
@@ -118,24 +163,28 @@
     (the-driver :postgres) ; -> :postgres
     (the-driver :baby)     ; -> Exception"
   [driver]
+  {:pre [((some-fn keyword? string?) driver)]}
+  (classloader/the-classloader)
   (let [driver (keyword driver)]
-    (load-driver-namespace-if-needed driver)
+    (load-driver-namespace-if-needed! driver)
     driver))
 
 (defn- check-abstractness-hasnt-changed
   "Check to make sure we're not trying to change the abstractness of an already registered driver"
   [driver new-abstract?]
-  (let [old-abstract? (abstract? driver)]
-    (when (and (registered? driver) (not= (boolean old-abstract?) (boolean new-abstract?)))
-      (throw (Exception. (str (tru "Error: attempting to change {0} property `:abstract?` from {1} to {2}."
-                                   driver old-abstract? new-abstract?)))))))
+  (when (registered? driver)
+    (let [old-abstract? (boolean (abstract? driver))
+          new-abstract? (boolean new-abstract?)]
+      (when (not= old-abstract? new-abstract?)
+        (throw (Exception. (tru "Error: attempting to change {0} property `:abstract?` from {1} to {2}."
+                                driver old-abstract? new-abstract?)))))))
 
 (defn add-parent!
   "Add a new parent to `driver`."
   [driver new-parent]
   (when-not *compile-files*
-    (load-driver-namespace-if-needed driver)
-    (load-driver-namespace-if-needed new-parent)
+    (load-driver-namespace-if-needed! driver)
+    (load-driver-namespace-if-needed! new-parent)
     (alter-var-root #'hierarchy derive driver new-parent)))
 
 (defn register!
@@ -161,31 +210,39 @@
   Note that because concreteness is implemented as part of our keyword hierarchy it is not currently possible to
   create an abstract driver with a concrete driver as its parent, since it would still ultimately derive from
   `::concrete`."
+  {:style/indent 1}
   [driver & {:keys [parent abstract?]}]
   {:pre [(keyword? driver)]}
   ;; no-op during compilation.
   (when-not *compile-files*
-    ;; validate that the registration isn't stomping on things
-    (check-abstractness-hasnt-changed driver abstract?)
-    ;; ok, if that was successful we can derive the driver from `::driver`/`::concrete` and parent(s)
-    (let [derive! (partial alter-var-root #'hierarchy derive driver)]
-      (derive! ::driver)
-      (when-not abstract?
-        (derive! ::concrete))
-      (doseq [parent (u/one-or-many parent)
-              :when  parent]
-        (load-driver-namespace-if-needed parent)
-        (derive! parent)))
-    ;; ok, log our great success
-    (log/info
-     (u/format-color 'blue
-         (if (metabase.driver/abstract? driver)
-           (trs "Registered abstract driver {0}" driver)
-           (trs "Registered driver {0}" driver)))
-     (if (seq (filter some? (u/one-or-many parent)))
-       (trs "(parents: {0})" parent)
-       "")
-     (u/emoji "🚚"))))
+    (let [parents (filter some? (u/one-or-many parent))]
+      ;; load parents as needed; if this is an abstract driver make sure parents aren't concrete
+      (doseq [parent parents]
+        (load-driver-namespace-if-needed! parent))
+      (when abstract?
+        (doseq [parent parents
+                :when  (concrete? parent)]
+          (throw (ex-info (trs "Abstract drivers cannot derive from concrete parent drivers.")
+                   {:driver driver, :parent parent}))))
+      ;; validate that the registration isn't stomping on things
+      (check-abstractness-hasnt-changed driver abstract?)
+      ;; ok, if that was successful we can derive the driver from `::driver`/`::concrete` and parent(s)
+      (let [derive! (partial alter-var-root #'hierarchy derive driver)]
+        (derive! ::driver)
+        (when-not abstract?
+          (derive! ::concrete))
+        (doseq [parent parents]
+          (derive! parent)))
+      ;; ok, log our great success
+      (log/info
+       (u/format-color 'blue
+           (if (metabase.driver/abstract? driver)
+             (trs "Registered abstract driver {0}" driver)
+             (trs "Registered driver {0}" driver)))
+       (if (seq parents)
+         (trs "(parents: {0})" (vec parents))
+         "")
+       (u/emoji "🚚")))))
 
 (defn- dispatch-on-uninitialized-driver
   "Dispatch function to use for driver multimethods. Dispatches on first arg, a driver keyword; loads that driver's
@@ -303,26 +360,6 @@
 (defmethod initialize! :default [_]) ; no-op
 
 
-(defmulti ^:deprecated available?
-  "Is this driver available for use? (i.e. should we show it as an option when adding a new database?) This is `true` by
-  default for all non-abstract driver types and false for abstract ones; some drivers might want to override this to
-  return false even if the driver isn't abstract -- for example, the Oracle driver might return false if the JDBC
-  driver it depends on is not available.
-
-  This method is also used in tests to determine whether the standard set of Query Processor tests should
-  automatically against it; for one-off test drivers to test specific functionality, you should return `false`.
-
-  DEPRECATED -- drivers that require external dependencies are now shipping as plugins; they can declare dependencies
-  on external classes, and we can skip loading them entirely if the dependencies are not available. Please do not
-  implement this method; it will most likely be removed before version 1.0 ships."
-  {:arglists '([driver])}
-  dispatch-on-uninitialized-driver
-  :hierarchy #'hierarchy)
-
-(defmethod available? ::driver [driver]
-  (isa? hierarchy driver ::concrete))
-
-
 (defmulti display-name
   "A nice name for the driver that we'll display to in the admin panel, e.g. \"PostgreSQL\" for `:postgres`. Default
   implementation capitializes the name of the driver, e.g. `:presto` becomes \"Presto\".
@@ -340,8 +377,10 @@
 
 
 (defmulti can-connect?
-  "Check whether we can connect to a `Database` with DETAILS-MAP and perform a simple query. For example, a SQL
-  database might try running a query like `SELECT 1;`. This function should return `true` or `false`."
+  "Check whether we can connect to a `Database` with `details-map` and perform a simple query. For example, a SQL
+  database might try running a query like `SELECT 1;`. This function should return truthy if a connection to the DB
+  can be made successfully, otherwise it should return falsey or throw an appropriate Exception. Exceptions if a
+  connection cannot be made."
   {:arglists '([driver details])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -349,19 +388,11 @@
 
 ;; TODO - this is only used (or implemented for that matter) by SQL drivers. This should probably be moved into the
 ;; `:sql` driver. Don't bother to implement this for non-SQL drivers.
-(defmulti date-interval
-  "Return an driver-appropriate representation of a moment relative to the current moment in time. By default, this
-  returns an `Timestamp` by calling `metabase.util.date/relative-date`; but when possible drivers should return a
-  native form so we can be sure the correct timezone is applied. For example, SQL drivers should return a HoneySQL
-  form to call the appropriate SQL fns:
-
-    (date-interval :postgres :month 1) -> (hsql/call :+ :%now (hsql/raw \"INTERVAL '1 month'\"))"
-  {:arglists '([driver unit amount])}
+(defmulti date-add
+  "Return an driver-appropriate representation of a moment relative to the given time."
+  {:arglists '([driver dt amount unit])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
-
-(defmethod date-interval ::driver [_ unit amount]
-  (du/relative-date unit amount))
 
 
 (defmulti describe-database
@@ -500,7 +531,12 @@
     ;; SQLite, SQLServer, and MySQL do not support this -- `LIKE` clauses are always case-insensitive.
     ;;
     ;; DEFAULTS TO TRUE.
-    :case-sensitivity-string-filter-options})
+    :case-sensitivity-string-filter-options
+
+    :left-join
+    :right-join
+    :inner-join
+    :full-join})
 
 (defmulti supports?
   "Does this driver support a certain `feature`? (A feature is a keyword, and can be any of the ones listed above in
@@ -510,7 +546,7 @@
   {:arglists '([driver feature])}
   (fn [driver feature]
     (when-not (driver-features feature)
-      (throw (Exception. (str (tru "Invalid driver feature: {0}" feature)))))
+      (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
     [(dispatch-on-initialized-driver driver) feature])
   :hierarchy #'hierarchy)
 
@@ -521,12 +557,24 @@
 (defmethod supports? [::driver :case-sensitivity-string-filter-options] [_ _] true)
 
 
-(defmulti format-custom-field-name
-  "Return the custom name passed via an MBQL `:named` clause so it matches the way it is returned in the results. This
-  is used by the post-processing annotation stage to find the correct metadata to include with fields in the results.
-  The default implementation is `identity`, meaning the resulting field will have exactly the same name as passed to
-  the `:named` clause. Certain drivers like Redshift always lowercase these names, so this method is provided for
-  those situations."
+(defmulti ^:deprecated format-custom-field-name
+  "Prior to Metabase 0.33.0, you could specifiy custom names for aggregations in MBQL by wrapping the clause in a
+  `:named` clause:
+
+    [:named [:count] \"My Count\"]
+
+  This name was used for both the `:display_name` in the query results, and for the `:name` used as an alias in the
+  query (e.g. the right-hand side of a SQL `AS` expression). Because some custom display names weren't allowed by some
+  drivers, or would be transformed in some way (for example, Redshift always lowercases custom aliases), this method
+  was needed so we could match the name we had given the column with the one in the query results.
+
+  In 0.33.0, we started using `:named` internally to alias aggregations in middleware in *all* queries to prevent
+  issues with referring to multiple aggregations of the same type when that query was used as a source query.
+  See [#9767](https://github.com/metabase/metabase/issues/9767) for more details. After this change, it became
+  desirable to differentiate between such internally-generated aliases and display names, which need not be used in
+  the query at all; thus in MBQL 1.3.0 [`:named` was replaced by the more general
+  `:aggregation-options`](https://github.com/metabase/mbql/pull/7). Because user-generated names are no longer used as
+  aliases in native queries themselves, this method is no longer needed and will be removed in a future release."
   {:arglists '([driver custom-field-name])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -535,9 +583,12 @@
   custom-field-name)
 
 
-(defmulti ^String humanize-connection-error-message
-  "Return a humanized (user-facing) version of an connection error message string. Generic error messages are provided
-  in `metabase.driver.common/connection-error-messages`; return one of these whenever possible."
+(defmulti humanize-connection-error-message
+  "Return a humanized (user-facing) version of an connection error message.
+  Generic error messages are provided in `metabase.driver.common/connection-error-messages`; return one of these
+  whenever possible.
+  Error messages can be strings, or localized strings, as returned by `metabase.util.i18n/trs` and
+  `metabase.util.i18n/tru`."
   {:arglists '([this message])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -560,11 +611,42 @@
 
     {:query \"-- Metabase card: 10 user: 5
               SELECT * FROM my_table\"}"
-  {:arglists '([driver query])}
+  {:arglists '([driver query]), :style/indent 1}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
 
+(defmulti splice-parameters-into-native-query
+  "For a native query that has separate parameters, such as a JDBC prepared statement, e.g.
+
+    {:query \"SELECT * FROM birds WHERE name = ?\", :params [\"Reggae\"]}
+
+  splice the parameters in to the native query as literals so it can be executed by the user, e.g.
+
+    {:query \"SELECT * FROM birds WHERE name = 'Reggae'\"}
+
+  This is used to power features such as 'Convert this Question to SQL' in the Query Builder. Normally when executing
+  the query we'd like to leave the statement as a prepared one and pass parameters that way instead of splicing them
+  in as literals so as to avoid SQL injection vulnerabilities. Thus the results of this method are not normally
+  executed by the Query Processor when processing an MBQL query. However when people convert a
+  question to SQL they can see what they will be executing and edit the query as needed.
+
+  Input to this function follows the same shape as output of `mbql->native` -- that is, it will be a so-called 'inner'
+  native query, with `:query` and `:params` keys, as in the example code above; output should be of the same format.
+  This method might be called even if no splicing needs to take place, e.g. if `:params` is empty; implementations
+  should be sure to handle this situation correctly.
+
+  For databases that do not feature concepts like 'prepared statements', this method need not be implemented; the
+  default implementation is an identity function."
+  {:arglists '([driver query]), :style/indent 1}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod splice-parameters-into-native-query ::driver [_ query]
+  query)
+
+
+;; TODO - we should just have some sort of `core.async` channel to handle DB update notifications instead
 (defmulti notify-database-updated
   "Notify the driver that the attributes of a `database` have changed, or that `database was deleted. This is
   specifically relevant in the event that the driver was doing some caching or connection pooling; the driver should
@@ -619,9 +701,9 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti current-db-time
+(defmulti ^DateTime current-db-time
   "Return the current time and timezone from the perspective of `database`. You can use
-  `metabase.driver.common/current-db-time` to implement this."
+  `metabase.driver.common/current-db-time` to implement this. This should return a Joda-Time `DateTime`."
   {:arglists '([driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

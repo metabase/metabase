@@ -147,3 +147,8 @@
   right: 0;
   bottom: 0;
 }
+
+/* force a stacking context for adding z-index to children */
+.stacking-context {
+  transform: scale(1);
+}

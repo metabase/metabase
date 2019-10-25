@@ -7,7 +7,7 @@ const ExternalLink = ({ href, className, children, ...props }) => (
     // open in a new tab
     target="_blank"
     // prevent malicious pages from navigating us away
-    rel="noopener"
+    rel="noopener noreferrer"
     // disables quickfilter in tables
     onClickCapture={e => e.stopPropagation()}
     {...props}

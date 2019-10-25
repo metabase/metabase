@@ -4,32 +4,22 @@
             [metabase.test.data
              [dataset-definitions :as defs]
              [datasets :as datasets]
-             [interface :as tx]]
-            [metabase.util :as u]))
+             [interface :as tx]]))
 
 (def event-based-dbs
   #{:druid})
 
-(def flattened-db-def
-  "The normal test-data DB definition as a flattened, single-table DB definition. (This is a function rather than a
-  straight delay because clojure complains when they delay gets embedding in expanded macros)"
-  (delay (tx/flatten-dbdef defs/test-data "checkins")))
-
-;; force loading of the flattened db definitions for the DBs that need it
-(defn- load-event-based-db-data!
-  {:expectations-options :before-run}
-  []
-  (doseq [driver event-based-dbs]
-    (datasets/with-driver-when-testing driver
-      (data/do-with-temp-db @flattened-db-def (constantly nil)))))
+(def ^:private flattened-db-def
+  "The normal test-data DB definition as a flattened, single-table DB definition."
+  (tx/flattened-dataset-definition defs/test-data "checkins"))
 
 (defn do-with-flattened-dbdef
-  "Execute F with a flattened version of the test data DB as the current DB def."
+  "Execute `f` with a flattened version of the test data DB as the current DB def."
   [f]
-  (data/do-with-temp-db @flattened-db-def (u/drop-first-arg f)))
+  (data/dataset flattened-db-def (f)))
 
 (defmacro with-flattened-dbdef
-  "Execute BODY using the flattened test data DB definition."
+  "Execute `body` using the flattened test data DB definition."
   [& body]
   `(do-with-flattened-dbdef (fn [] ~@body)))
 

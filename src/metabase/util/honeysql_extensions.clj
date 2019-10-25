@@ -1,14 +1,21 @@
 (ns metabase.util.honeysql-extensions
   (:refer-clojure :exclude [+ - / * mod inc dec cast concat format])
-  (:require [clojure.string :as s]
+  (:require [clojure.string :as str]
             [honeysql
              [core :as hsql]
-             [format :as hformat]])
+             [format :as hformat]]
+            [metabase
+             [config :as config]
+             [util :as u]]
+            [potemkin.types :as p.types]
+            [pretty.core :refer [PrettyPrintable]]
+            [schema.core :as s])
   (:import honeysql.format.ToSql
            java.util.Locale))
 
-(alter-meta! #'honeysql.core/format assoc :style/indent 1)
-(alter-meta! #'honeysql.core/call   assoc :style/indent 1)
+(when config/is-dev?
+  (alter-meta! #'honeysql.core/format assoc :style/indent 1)
+  (alter-meta! #'honeysql.core/call   assoc :style/indent 1))
 
 (defn- english-upper-case
   "Use this function when you need to upper-case an identifier or table name. Similar to `clojure.string/upper-case`
@@ -20,10 +27,8 @@
   (-> s str (.toUpperCase Locale/ENGLISH)))
 
 ;; Add an `:h2` quote style that uppercases the identifier
-(let [quote-fns     @(resolve 'honeysql.format/quote-fns)
-      ansi-quote-fn (:ansi quote-fns)]
-  (intern 'honeysql.format 'quote-fns
-          (assoc quote-fns :h2 (comp english-upper-case ansi-quote-fn))))
+(let [{ansi-quote-fn :ansi} @#'honeysql.format/quote-fns]
+  (alter-var-root #'honeysql.format/quote-fns assoc :h2 (comp english-upper-case ansi-quote-fn)))
 
 ;; register the `extract` function with HoneySQL
 ;; (hsql/format (hsql/call :extract :a :b)) -> "extract(a from b)"
@@ -42,62 +47,100 @@
 ;; SELECT clause and a GROUP BY clause is the same thing if the calculation involves parameters. Go ahead an use the
 ;; old behavior so we can keep our HoneySQL dependency up to date.
 (extend-protocol honeysql.format/ToSql
-  java.lang.Number
+  Number
   (to-sql [x] (str x)))
 
-;; HoneySQL automatically assumes that dots within keywords are used to separate schema / table / field / etc. To
-;; handle weird situations where people actually put dots *within* a single identifier we'll replace those dots with
-;; lozenges, let HoneySQL do its thing, then switch them back at the last second
-;;
-;; TODO - Maybe instead of this lozengey hackiness it would make more sense just to add a new "identifier" record type
-;; that implements `ToSql` in a more intelligent way
-(defn escape-dots
-  "Replace dots in a string with WHITE MEDIUM LOZENGES (⬨)."
-  ^String [s]
-  (s/replace (name s) #"\." "⬨"))
+;; Ratios are represented as the division of two numbers which may cause order-of-operation issues when dealing with
+;; queries. The easiest way around this is to convert them to their decimal representations.
+(extend-protocol honeysql.format/ToSql
+  clojure.lang.Ratio
+  (to-sql [x] (hformat/to-sql (double x))))
 
-(defn qualify-and-escape-dots
-  "Combine several NAME-COMPONENTS into a single Keyword, and escape dots in each name by replacing them with WHITE
-  MEDIUM LOZENGES (⬨).
+(def IdentifierType
+  "Schema for valid Identifier types."
+  (s/enum
+   :database
+   :schema
+   :constraint
+   :index
+   ;; Suppose we have a query like:
+   ;; SELECT my_field f FROM my_table t
+   ;; then:
+   :table          ; is `my_table`
+   :table-alias    ; is `t`
+   :field          ; is `my_field`
+   :field-alias))  ; is `f`
 
-     (qualify-and-escape-dots :ab.c :d) -> :ab⬨c.d"
-  ^clojure.lang.Keyword [& name-components]
-  (apply hsql/qualify (for [s name-components
-                            :when s]
-                        (escape-dots s))))
-
-(defn unescape-dots
-  "Unescape lozenge-escaped names in a final SQL string (or vector including params).
-   Use this to undo escaping done by `qualify-and-escape-dots` after HoneySQL compiles a statement to SQL."
-  ^String [sql-string-or-vector]
-  (when sql-string-or-vector
-    (if (string? sql-string-or-vector)
-      (s/replace sql-string-or-vector #"⬨" ".")
-      (vec (cons (unescape-dots (first sql-string-or-vector))
-                 (rest sql-string-or-vector))))))
-
-
-;; Single-quoted string literal
-(defrecord Literal [literal]
-  :load-ns true
+(p.types/defrecord+ Identifier [identifier-type components]
   ToSql
   (to-sql [_]
-    (str \' (name literal) \')))
+    (binding [hformat/*allow-dashed-names?* true]
+      (str/join
+       \.
+       (for [component components]
+         (hformat/quote-identifier component, :split false)))))
+  PrettyPrintable
+  (pretty [_]
+    (cons 'identifier (cons identifier-type components))))
+
+;; don't use `->Identifier` or `map->Identifier`. Use the `identifier` function instead, which cleans up its input
+(when-not config/is-prod?
+  (alter-meta! #'->Identifier    assoc :private true)
+  (alter-meta! #'map->Identifier assoc :private true))
+
+(s/defn identifier :- Identifier
+  "Define an identifer of type with `components`. Prefer this to using keywords for identifiers, as those do not
+  properly handle identifiers with slashes in them.
+
+  `identifier-type` represents the type of identifier in question, which is important context for some drivers, such
+  as BigQuery (which needs to qualify Tables identifiers with their dataset name.)
+
+  This function automatically unnests any Identifiers passed as arguments, removes nils, and converts all args to
+  strings."
+  [identifier-type :- IdentifierType, & components]
+  (Identifier.
+   identifier-type
+   (for [component components
+         component (if (instance? Identifier component)
+                     (:components component)
+                     [component])
+         :when     (some? component)]
+     (u/qualified-name component))))
+
+;; Single-quoted string literal
+(p.types/defrecord+ Literal [literal]
+  ToSql
+  (to-sql [_]
+    (as-> literal <>
+      (str/replace <> #"(?<![\\'])'(?![\\'])"  "''")
+      (str \' <> \')))
+  PrettyPrintable
+  (pretty [_]
+    (list 'literal literal)))
+
+;; as with `Identifier` you should use the the `literal` function below instead of the auto-generated factory functions.
+(when-not config/is-prod?
+  (alter-meta! #'->Literal    assoc :private true)
+  (alter-meta! #'map->Literal assoc :private true))
 
 (defn literal
-  "Wrap keyword or string S in single quotes and a HoneySQL `raw` form."
+  "Wrap keyword or string `s` in single quotes and a HoneySQL `raw` form.
+
+  We'll try to escape single quotes in the literal, unless they're already escaped (either as `''` or as `\\`, but
+  this won't handle wacky cases like three single quotes in a row. Don't use `literal` for things that might be wacky.
+  Only use it for things that are hardcoded."
   [s]
-  (Literal. (name s)))
+  (Literal. (u/qualified-name s)))
 
 
-(def ^{:arglists '([& exprs])}  +  "Math operator. Interpose `+` between EXPRS and wrap in parentheses." (partial hsql/call :+))
-(def ^{:arglists '([& exprs])}  -  "Math operator. Interpose `-` between EXPRS and wrap in parentheses." (partial hsql/call :-))
-(def ^{:arglists '([& exprs])}  /  "Math operator. Interpose `/` between EXPRS and wrap in parentheses." (partial hsql/call :/))
-(def ^{:arglists '([& exprs])}  *  "Math operator. Interpose `*` between EXPRS and wrap in parentheses." (partial hsql/call :*))
-(def ^{:arglists '([& exprs])} mod "Math operator. Interpose `%` between EXPRS and wrap in parentheses." (partial hsql/call :%))
+(def ^{:arglists '([& exprs])}  +  "Math operator. Interpose `+` between `exprs` and wrap in parentheses." (partial hsql/call :+))
+(def ^{:arglists '([& exprs])}  -  "Math operator. Interpose `-` between `exprs` and wrap in parentheses." (partial hsql/call :-))
+(def ^{:arglists '([& exprs])}  /  "Math operator. Interpose `/` between `exprs` and wrap in parentheses." (partial hsql/call :/))
+(def ^{:arglists '([& exprs])}  *  "Math operator. Interpose `*` between `exprs` and wrap in parentheses." (partial hsql/call :*))
+(def ^{:arglists '([& exprs])} mod "Math operator. Interpose `%` between `exprs` and wrap in parentheses." (partial hsql/call :%))
 
-(defn inc "Add 1 to X."        [x] (+ x 1))
-(defn dec "Subtract 1 from X." [x] (- x 1))
+(defn inc "Add 1 to `x`."        [x] (+ x 1))
+(defn dec "Subtract 1 from `x`." [x] (- x 1))
 
 
 (defn cast
@@ -123,18 +166,19 @@
   [x decimal-places]
   (hsql/call :round x decimal-places))
 
-(defn ->date                     "CAST X to a `date`."                     [x] (cast :date x))
-(defn ->datetime                 "CAST X to a `datetime`."                 [x] (cast :datetime x))
-(defn ->timestamp                "CAST X to a `timestamp`."                [x] (cast :timestamp x))
-(defn ->timestamp-with-time-zone "CAST X to a `timestamp with time zone`." [x] (cast "timestamp with time zone" x))
-(defn ->integer                  "CAST X to a `integer`."                  [x] (cast :integer x))
-(defn ->time                     "CAST X to a `time` datatype"             [x] (cast :time x))
-(defn ->boolean                  "CAST X to a `boolean` datatype"          [x] (cast :boolean x))
+(defn ->date                     "CAST `x` to a `date`."                     [x] (cast :date x))
+(defn ->datetime                 "CAST `x` to a `datetime`."                 [x] (cast :datetime x))
+(defn ->timestamp                "CAST `x` to a `timestamp`."                [x] (cast :timestamp x))
+(defn ->timestamp-with-time-zone "CAST `x` to a `timestamp with time zone`." [x] (cast "timestamp with time zone" x))
+(defn ->integer                  "CAST `x` to a `integer`."                  [x] (cast :integer x))
+(defn ->time                     "CAST `x` to a `time` datatype"             [x] (cast :time x))
+(defn ->boolean                  "CAST `x` to a `boolean` datatype"          [x] (cast :boolean x))
 
 ;;; Random SQL fns. Not all DBs support all these!
 (def ^{:arglists '([& exprs])} floor   "SQL `floor` function."  (partial hsql/call :floor))
 (def ^{:arglists '([& exprs])} hour    "SQL `hour` function."   (partial hsql/call :hour))
 (def ^{:arglists '([& exprs])} minute  "SQL `minute` function." (partial hsql/call :minute))
+(def ^{:arglists '([& exprs])} day     "SQL `day` function."    (partial hsql/call :day))
 (def ^{:arglists '([& exprs])} week    "SQL `week` function."   (partial hsql/call :week))
 (def ^{:arglists '([& exprs])} month   "SQL `month` function."  (partial hsql/call :month))
 (def ^{:arglists '([& exprs])} quarter "SQL `quarter` function."(partial hsql/call :quarter))

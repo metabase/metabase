@@ -2,14 +2,14 @@ import React, { Component } from "react";
 
 import _ from "underscore";
 import cx from "classnames";
-import { t } from "c-3po";
-import AuthScene from "../components/AuthScene.jsx";
-import BackToLogin from "../components/BackToLogin.jsx";
-import FormField from "metabase/components/form/FormField.jsx";
-import FormLabel from "metabase/components/form/FormLabel.jsx";
-import FormMessage from "metabase/components/form/FormMessage.jsx";
-import LogoIcon from "metabase/components/LogoIcon.jsx";
-import Icon from "metabase/components/Icon.jsx";
+import { t } from "ttag";
+import AuthScene from "../components/AuthScene";
+import BackToLogin from "../components/BackToLogin";
+import FormField from "metabase/components/form/FormField";
+import FormLabel from "metabase/components/form/FormLabel";
+import FormMessage from "metabase/components/form/FormMessage";
+import LogoIcon from "metabase/components/LogoIcon";
+import Icon from "metabase/components/Icon";
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -62,11 +62,11 @@ export default class ForgotPasswordApp extends Component {
               {!sentNotification ? (
                 <div>
                   <form
-                    className="ForgotForm bg-white Form-new bordered rounded shadowed"
+                    className="ForgotForm bg-white bordered rounded shadowed p4"
                     name="form"
                     noValidate
                   >
-                    <h3 className="Login-header Form-offset mb3">{t`Forgot password`}</h3>
+                    <h3 className="Login-header mb3">{t`Forgot password`}</h3>
 
                     <FormMessage
                       message={error && error.data && error.data.message}
@@ -79,7 +79,7 @@ export default class ForgotPasswordApp extends Component {
                         formError={error}
                       />
                       <input
-                        className="Form-input Form-offset full"
+                        className="Form-input full"
                         name="email"
                         placeholder={t`The email you use for your Metabase account`}
                         type="text"
@@ -87,7 +87,6 @@ export default class ForgotPasswordApp extends Component {
                         defaultValue={this.state.email}
                         autoFocus
                       />
-                      <span className="Form-charm" />
                     </FormField>
 
                     <div className="Form-actions">

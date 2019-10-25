@@ -3,7 +3,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import S from "./Detail.css";
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 import pure from "recompose/pure";
 
@@ -47,9 +47,9 @@ const Detail = ({
             {description || placeholder || t`No description yet`}
           </span>
         )}
-        {isEditing &&
-          field.error &&
-          field.touched && <span className="text-error">{field.error}</span>}
+        {isEditing && field.error && field.touched && (
+          <span className="text-error">{field.error}</span>
+        )}
       </div>
     </div>
   </div>

@@ -121,7 +121,6 @@
              [3 "The Apple Pan"                11 2 "Bar"]
              [4 "Wurstküche"                   29 2 "Baz"]
              [5 "Brite Spot Family Restaurant" 20 2 "Qux"]]
-   :columns ["ID" "NAME" "CATEGORY_ID" "PRICE" "Foo"]
    :cols    [example-result-cols-id
              example-result-cols-name
              (assoc example-result-cols-category-id
@@ -143,7 +142,6 @@
                 [3 "The Apple Pan"                11 2]
                 [4 "Wurstküche"                   29 2]
                 [5 "Brite Spot Family Restaurant" 20 2]]
-      :columns ["ID" "NAME" "CATEGORY_ID" "PRICE"]
       :cols    [example-result-cols-id
                 example-result-cols-name
                 example-result-cols-category-id
@@ -166,7 +164,6 @@
 
 (expect
   {:rows    []
-   :columns ["ID" "NAME" "CATEGORY_ID" "PRICE" "CATEGORY"]
    :cols    [example-result-cols-id
              example-result-cols-name
              (assoc example-result-cols-category-id
@@ -178,7 +175,6 @@
   (#'add-dim-projections/remap-results
    [{:name "My Venue Category", :field_id 11, :human_readable_field_id 27}]
    {:rows    []
-    :columns ["ID" "NAME" "CATEGORY_ID" "PRICE" "CATEGORY"]
     :cols    [example-result-cols-id
               example-result-cols-name
               example-result-cols-category-id

@@ -1,25 +1,18 @@
 import React from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { Box, Flex } from "grid-styled";
 
-import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
+import Task from "metabase/entities/tasks";
 
 import AdminHeader from "metabase/components/AdminHeader";
 import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Tooltip from "metabase/components/Tooltip";
 
-@entityListLoader({
-  entityType: "tasks",
+@Task.loadList({
   pageSize: 50,
 })
 class TasksApp extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      offset: this.props.entityQuery.offset,
-    };
-  }
   render() {
     const {
       tasks,

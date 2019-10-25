@@ -1,6 +1,6 @@
 (ns metabase.automagic-dashboards.filters-test
   (:require [expectations :refer :all]
-            [metabase.automagic-dashboards.filters :refer :all :as filters]))
+            [metabase.automagic-dashboards.filters :as filters :refer :all]))
 
 ;; Replace range with the more specific `:=`.
 (expect

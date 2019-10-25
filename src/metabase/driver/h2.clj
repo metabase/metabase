@@ -9,12 +9,17 @@
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
+             [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor.store :as qp.store]
             [metabase.util
+             [date :as du]
              [honeysql-extensions :as hx]
-             [i18n :refer [tru]]]))
+             [i18n :refer [deferred-tru tru]]])
+  (:import [java.sql ResultSet Time Types]
+           java.util.Date))
 
 (driver/register! :h2, :parent :sql-jdbc)
 
@@ -22,14 +27,18 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod driver/connection-properties :h2 [_]
+(defmethod driver/supports? [:h2 :full-join] [_ _] false)
+
+(defmethod driver/connection-properties :h2
+  [_]
   [{:name         "db"
     :display-name (tru "Connection String")
-    :placeholder  (str "file:/" (tru "Users/camsaul/bird_sightings/toucans"))
+    :placeholder  (str "file:/" (deferred-tru "Users/camsaul/bird_sightings/toucans"))
     :required     true}])
 
+;; TODO - it would be better not to put all the options in the connection string in the first place?
 (defn- connection-string->file+options
-  "Explode a CONNECTION-STRING like `file:my-db;OPTION=100;OPTION_2=TRUE` to a pair of file and an options map.
+  "Explode a `connection-string` like `file:my-db;OPTION=100;OPTION_2=TRUE` to a pair of file and an options map.
 
     (connection-string->file+options \"file:my-crazy-db;OPTION=100;OPTION_X=TRUE\")
       -> [\"file:my-crazy-db\" {\"OPTION\" \"100\", \"OPTION_X\" \"TRUE\"}]"
@@ -40,32 +49,33 @@
                                     (str/split option #"=")))]
     [file options]))
 
+(defn- db-details->user [{:keys [db], :as details}]
+  {:pre [(string? db)]}
+  (or (some (partial get details) ["USER" :USER])
+      (let [[_ {:strs [USER]}] (connection-string->file+options db)]
+        USER)))
+
 (defn- check-native-query-not-using-default-user [{query-type :type, database-id :database, :as query}]
-  {:pre [(integer? database-id)]}
   (u/prog1 query
     ;; For :native queries check to make sure the DB in question has a (non-default) NAME property specified in the
     ;; connection string. We don't allow SQL execution on H2 databases for the default admin account for security
     ;; reasons
     (when (= (keyword query-type) :native)
-      (let [{:keys [db]}   (:details (qp.store/database))
-            _              (assert db)
-            [_ options]    (connection-string->file+options db)
-            {:strs [USER]} options]
-        (when (or (str/blank? USER)
-                  (= USER "sa"))        ; "sa" is the default USER
+      (let [{:keys [details]} (qp.store/database)
+            user              (db-details->user details)]
+        (when (or (str/blank? user)
+                  (= user "sa"))        ; "sa" is the default USER
           (throw
            (Exception.
-            (str (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")))))))))
+            (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden."))))))))
 
 (defmethod driver/process-query-in-context :h2 [_ qp]
   (comp qp check-native-query-not-using-default-user))
 
-
-(defmethod driver/date-interval :h2 [driver unit amount]
+(defmethod driver/date-add :h2 [driver dt amount unit]
   (if (= unit :quarter)
-    (recur driver :month (hx/* amount 3))
-    (hsql/call :dateadd (hx/literal unit) amount :%now)))
-
+    (recur driver dt (hx/* amount 3) :month)
+    (hsql/call :dateadd (hx/literal unit) amount dt)))
 
 (defmethod driver/humanize-connection-error-message :h2 [_ message]
   (condp re-matches message
@@ -130,7 +140,7 @@
 (defmethod sql.qp/date [:h2 :month]           [_ _ expr] (trunc-with-format "yyyyMM" expr))
 (defmethod sql.qp/date [:h2 :month-of-year]   [_ _ expr] (hx/month expr))
 (defmethod sql.qp/date [:h2 :quarter-of-year] [_ _ expr] (hx/quarter expr))
-(defmethod sql.qp/date [:h2 :year]            [_ _ expr] (hx/year expr))
+(defmethod sql.qp/date [:h2 :year]            [_ _ expr] (parse-datetime "yyyy" (hx/year expr)))
 
 ;; Rounding dates to quarters is a bit involved but still doable. Here's the plan:
 ;; *  extract the year and quarter from the date;
@@ -146,6 +156,12 @@
                   (hx/concat (hx/year expr) (hx/- (hx/* (hx/quarter expr)
                                                         3)
                                                   2))))
+
+
+(defmethod unprepare/unprepare-value [:h2 Date] [_ value]
+  (format "timestamp '%s'" (du/date->iso-8601 value)))
+
+(prefer-method unprepare/unprepare-value [:sql Time] [:h2 Date])
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -228,7 +244,7 @@
                     (str ";" k "=" v))))
 
 (defn- connection-string-set-safe-options
-  "Add Metabase Security Settings™ to this CONNECTION-STRING (i.e. try to keep shady users from writing nasty SQL)."
+  "Add Metabase Security Settings™ to this `connection-string` (i.e. try to keep shady users from writing nasty SQL)."
   [connection-string]
   (let [[file options] (connection-string->file+options connection-string)]
     (file+options->connection-string file (merge options {"IFEXISTS"         "TRUE"
@@ -241,3 +257,8 @@
 
 (defmethod sql-jdbc.sync/active-tables :h2 [& args]
   (apply sql-jdbc.sync/post-filtered-active-tables args))
+
+;; return a normal `java.sql.Timestamp` instead of `org.h2.api.TimestampWithTimeZone`
+(defmethod sql-jdbc.execute/read-column [:h2 Types/TIMESTAMP_WITH_TIMEZONE]
+  [_ _, ^ResultSet resultset, _, ^Integer i]
+  (.getTimestamp resultset i))

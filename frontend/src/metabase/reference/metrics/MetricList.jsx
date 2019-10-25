@@ -2,20 +2,22 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { isQueryable } from "metabase/lib/table";
 
 import S from "metabase/components/List.css";
 
-import List from "metabase/components/List.jsx";
-import ListItem from "metabase/components/ListItem.jsx";
-import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState.jsx";
+import List from "metabase/components/List";
+import ListItem from "metabase/components/ListItem";
+import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import ReferenceHeader from "../components/ReferenceHeader.jsx";
+import ReferenceHeader from "../components/ReferenceHeader";
 
 import { getMetrics, getError, getLoading } from "../selectors";
+
+import MetabaseSettings from "metabase/lib/settings";
 
 import * as metadataActions from "metabase/redux/metadata";
 
@@ -25,8 +27,10 @@ const emptyStateData = {
   message: t`Metrics will appear here once your admins have created some`,
   image: "app/assets/img/metrics-list",
   adminAction: t`Learn how to create metrics`,
-  adminLink:
-    "http://www.metabase.com/docs/latest/administration-guide/07-segments-and-metrics.html",
+  adminLink: MetabaseSettings.docsUrl(
+    "administration-guide/07-segments-and-metrics",
+    "creating-a-metric",
+  ),
 };
 
 const mapStateToProps = (state, props) => ({
@@ -39,7 +43,10 @@ const mapDispatchToProps = {
   ...metadataActions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class MetricList extends Component {
   static propTypes = {
     style: PropTypes.object.isRequired,

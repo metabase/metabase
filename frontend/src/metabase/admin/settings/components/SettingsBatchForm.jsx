@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import _ from "underscore";
 
 import Collapse from "react-collapse";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import Button from "metabase/components/Button";
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";
@@ -22,7 +22,7 @@ const VALIDATIONS = {
   },
 };
 
-let SAVE_SETTINGS_BUTTONS_STATES = {
+const SAVE_SETTINGS_BUTTONS_STATES = {
   default: t`Save changes`,
   working: t`Saving...`,
   success: t`Changes saved!`,
@@ -56,7 +56,7 @@ export default class SettingsBatchForm extends Component {
   }
 
   updateFormData(props) {
-    let formData = {};
+    const formData = {};
     for (const element of props.elements) {
       formData[element.key] = element.value;
     }
@@ -101,11 +101,11 @@ export default class SettingsBatchForm extends Component {
   }
 
   validateForm() {
-    let { elements, enabledKey } = this.props;
-    let { formData } = this.state;
+    const { elements, enabledKey } = this.props;
+    const { formData } = this.state;
 
-    let valid = true,
-      validationErrors = {};
+    let valid = true;
+    const validationErrors = {};
 
     // Validate form only if LDAP is enabled
     if (!enabledKey || formData[enabledKey]) {
@@ -150,7 +150,7 @@ export default class SettingsBatchForm extends Component {
 
   handleFormErrors(error) {
     // parse and format
-    let formErrors = {};
+    const formErrors = {};
     if (error.data && error.data.message) {
       formErrors.message = error.data.message;
     } else {
@@ -167,7 +167,7 @@ export default class SettingsBatchForm extends Component {
   updateSettings = e => {
     e.preventDefault();
 
-    let { formData, valid } = this.state;
+    const { formData, valid } = this.state;
 
     if (valid) {
       this.setState({
@@ -215,11 +215,11 @@ export default class SettingsBatchForm extends Component {
         return null;
       }
       // merge together data from a couple places to provide a complete view of the Element state
-      let errorMessage =
+      const errorMessage =
         formErrors && formErrors.elements
           ? formErrors.elements[element.key]
           : validationErrors[element.key];
-      let value =
+      const value =
         formData[element.key] == null
           ? element.defaultValue
           : formData[element.key];
@@ -243,17 +243,16 @@ export default class SettingsBatchForm extends Component {
           <Breadcrumbs crumbs={this.props.breadcrumbs} className="ml2 mb3" />
         )}
 
-        {layout.map(
-          (section, index) =>
-            section.collapse ? (
-              <CollapsibleSection title={section.title} key={index}>
-                {section.settings.map(key => getSetting(key))}
-              </CollapsibleSection>
-            ) : (
-              <StandardSection title={section.title} key={index}>
-                {section.settings.map(key => getSetting(key))}
-              </StandardSection>
-            ),
+        {layout.map((section, index) =>
+          section.collapse ? (
+            <CollapsibleSection title={section.title} key={index}>
+              {section.settings.map(key => getSetting(key))}
+            </CollapsibleSection>
+          ) : (
+            <StandardSection title={section.title} key={index}>
+              {section.settings.map(key => getSetting(key))}
+            </StandardSection>
+          ),
         )}
 
         <div className="m2 mb4">

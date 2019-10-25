@@ -1,6 +1,7 @@
 import React from "react";
-import { t, jt } from "c-3po";
-import Code from "metabase/components/Code.jsx";
+import { t, jt } from "ttag";
+import Code from "metabase/components/Code";
+import MetabaseSettings from "metabase/lib/settings";
 
 const EXAMPLES = {
   variable: {
@@ -30,6 +31,7 @@ const EXAMPLES = {
           display_name: "Created At",
           type: "dimension",
           dimension: null,
+          required: false,
         },
       },
     },
@@ -57,11 +59,33 @@ const EXAMPLES = {
       query:
         "SELECT count(*)\nFROM products\nWHERE 1=1\n  [[AND id = {{id}}]]\n  [[AND category = {{category}}]]",
       "template-tags": {
-        id: { name: "id", display_name: "ID", type: "number", required: false },
+        id: {
+          name: "id",
+          display_name: "ID",
+          type: "number",
+          required: false,
+        },
         category: {
           name: "category",
           display_name: "Category",
           type: "text",
+          required: false,
+        },
+      },
+    },
+  },
+  optionalDimension: {
+    database: null,
+    type: "native",
+    native: {
+      query:
+        "SELECT count(*)\nFROM products\nWHERE 1=1\n  [[AND {{category}}]]",
+      "template-tags": {
+        category: {
+          name: "category",
+          display_name: "Category",
+          type: "dimension",
+          dimension: null,
           required: false,
         },
       },
@@ -125,11 +149,14 @@ const TagEditorHelp = ({ setDatasetQuery, sampleDatasetId }) => {
       <p>
         {t`When adding a Field Filter variable, you'll need to map it to a specific field. You can then choose to display a filter widget on your question, but even if you don't, you can now map your Field Filter variable to a dashboard filter when adding this question to a dashboard. Field Filters should be used inside of a "WHERE" clause.`}
       </p>
-      <TagExample datasetQuery={EXAMPLES.dimension} />
+      <TagExample
+        datasetQuery={EXAMPLES.dimension}
+        setDatasetQuery={setQueryWithSampleDatasetId}
+      />
 
       <h4 className="pt2">{t`Optional Clauses`}</h4>
       <p>
-        {jt`brackets around a ${(
+        {jt`Brackets around a ${(
           <Code>{"[[{{variable}}]]"}</Code>
         )} create an optional clause in the template. If "variable" is set, then the entire clause is placed into the template. If not, then the entire clause is ignored.`}
       </p>
@@ -146,9 +173,15 @@ const TagEditorHelp = ({ setDatasetQuery, sampleDatasetId }) => {
         setDatasetQuery={setQueryWithSampleDatasetId}
       />
 
+      <p>{t`When using a Field Filter, the column name should not be included in the SQL. Instead, the variable should be mapped to a field in the side panel.`}</p>
+      <TagExample
+        datasetQuery={EXAMPLES.optionalDimension}
+        setDatasetQuery={setQueryWithSampleDatasetId}
+      />
+
       <p className="pt2 link">
         <a
-          href="https://www.metabase.com/docs/latest/users-guide/13-sql-parameters.html"
+          href={MetabaseSettings.docsUrl("users-guide/13-sql-parameters")}
           target="_blank"
           data-metabase-event="QueryBuilder;Template Tag Documentation Click"
         >{t`Read the full documentation`}</a>

@@ -103,17 +103,20 @@
                                        :num-bins  8}))
 
 ;; Try an end-to-end test of the middleware
-(tt/expect-with-temp [Field [field (field/map->FieldInstance
-                                    {:database_type "DOUBLE"
-                                     :table_id      (data/id :checkins)
-                                     :special_type  :type/Income
-                                     :name          "TOTAL"
-                                     :display_name  "Total"
-                                     :fingerprint   {:global {:distinct-count 10000}
-                                                     :type   {:type/Number {:min 12.061602936923117
-                                                                            :max 238.32732001721533
-                                                                            :avg 82.96014815230829}}}
-                                     :base_type     :type/Float})]]
+(defn- test-field []
+  (field/map->FieldInstance
+   {:database_type "DOUBLE"
+    :table_id      (data/id :checkins)
+    :special_type  :type/Income
+    :name          "TOTAL"
+    :display_name  "Total"
+    :fingerprint   {:global {:distinct-count 10000}
+                    :type   {:type/Number {:min 12.061602936923117
+                                           :max 238.32732001721533
+                                           :avg 82.96014815230829}}}
+    :base_type     :type/Float}))
+
+(tt/expect-with-temp [Field [field (test-field)]]
   {:query    {:source-table (data/id :checkins)
               :breakout     [[:binning-strategy
                               [:field-id (u/get-id field)]
@@ -126,5 +129,24 @@
     ((binning/update-binning-strategy identity)
      {:query    {:source-table (data/id :checkins)
                  :breakout     [[:binning-strategy [:field-id (u/get-id field)] :default]]}
+      :type     :query
+      :database (data/id)})))
+
+;; make sure `update-binning-strategy` works recursively on nested queries
+(tt/expect-with-temp [Field [field (test-field)]]
+  {:query    {:source-query
+              {:source-table (data/id :checkins)
+               :breakout     [[:binning-strategy
+                               [:field-id (u/get-id field)]
+                               :num-bins
+                               nil
+                               {:min-value 0.0, :max-value 240.0, :num-bins 8, :bin-width 30}]]}}
+   :type     :query
+   :database (data/id)}
+  (qp.test-util/with-everything-store
+    ((binning/update-binning-strategy identity)
+     {:query    {:source-query
+                 {:source-table (data/id :checkins)
+                  :breakout     [[:binning-strategy [:field-id (u/get-id field)] :default]]}}
       :type     :query
       :database (data/id)})))

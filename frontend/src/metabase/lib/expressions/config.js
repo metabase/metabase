@@ -1,4 +1,4 @@
-import { t } from "c-3po";
+import { t } from "ttag";
 
 export const VALID_OPERATORS = new Set(["+", "-", "*", "/"]);
 

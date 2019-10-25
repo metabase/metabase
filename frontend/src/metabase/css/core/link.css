@@ -22,6 +22,10 @@
   word-break: break-all;
 }
 
+.link--icon {
+  line-height: initial;
+}
+
 .expand-clickable {
   display: inline-block;
   position: relative;

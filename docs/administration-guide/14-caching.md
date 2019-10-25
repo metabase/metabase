@@ -22,5 +22,5 @@ Lastly, you can set the maximum size of each question's cache in kilobytes, to p
 
 ---
 
-## Next: customize how Metabase looks
-With just a few clicks, you can [change Metabase's color palette, logo, and more](15-whitelabeling.md).
+## Next: map customization
+If you need to use a map tile server other than the one Metabase provides, you can find more information [on the next page](20-custom-maps.md).

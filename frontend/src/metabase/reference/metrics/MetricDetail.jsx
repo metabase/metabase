@@ -4,15 +4,15 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
 import { push } from "react-router-redux";
-import { t } from "c-3po";
-import List from "metabase/components/List.jsx";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-import EditHeader from "metabase/reference/components/EditHeader.jsx";
-import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader.jsx";
-import Detail from "metabase/reference/components/Detail.jsx";
-import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy.jsx";
-import Formula from "metabase/reference/components/Formula.jsx";
-import MetricImportantFieldsDetail from "metabase/reference/components/MetricImportantFieldsDetail.jsx";
+import { t } from "ttag";
+import List from "metabase/components/List";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import EditHeader from "metabase/reference/components/EditHeader";
+import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
+import Detail from "metabase/reference/components/Detail";
+import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy";
+import Formula from "metabase/reference/components/Formula";
+import MetricImportantFieldsDetail from "metabase/reference/components/MetricImportantFieldsDetail";
 
 import { getQuestionUrl } from "../utils";
 
@@ -75,7 +75,10 @@ const validate = (values, props) =>
     ? { revision_message: t`Please enter a revision message` }
     : {};
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @reduxForm({
   form: "details",
   fields: [
@@ -237,18 +240,17 @@ export default class MetricDetail extends Component {
                     field={how_is_this_calculated}
                   />
                 </li>
-                {table &&
-                  !isEditing && (
-                    <li className="relative">
-                      <Formula
-                        type="metric"
-                        entity={entity}
-                        isExpanded={isFormulaExpanded}
-                        expandFormula={expandFormula}
-                        collapseFormula={collapseFormula}
-                      />
-                    </li>
-                  )}
+                {table && !isEditing && (
+                  <li className="relative">
+                    <Formula
+                      type="metric"
+                      entity={entity}
+                      isExpanded={isFormulaExpanded}
+                      expandFormula={expandFormula}
+                      collapseFormula={collapseFormula}
+                    />
+                  </li>
+                )}
                 <li className="relative">
                   <MetricImportantFieldsDetail
                     fields={

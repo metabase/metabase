@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 
-import YearPicker from "./YearPicker.jsx";
+import YearPicker from "./YearPicker";
 
 import moment from "moment";
 import _ from "underscore";
@@ -10,7 +10,7 @@ export default class DateMonthYearWidget extends Component {
   constructor(props, context) {
     super(props, context);
 
-    let initial = moment(this.props.value, "YYYY-MM");
+    const initial = moment(this.props.value, "YYYY-MM");
     if (initial.isValid()) {
       this.state = {
         month: initial.month(),
@@ -35,7 +35,7 @@ export default class DateMonthYearWidget extends Component {
   componentWillUnmount() {
     const { month, year } = this.state;
     if (month != null && year != null) {
-      let value = moment()
+      const value = moment()
         .year(year)
         .month(month)
         .format("YYYY-MM");

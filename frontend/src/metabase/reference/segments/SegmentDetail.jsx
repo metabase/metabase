@@ -3,15 +3,15 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
-import { t } from "c-3po";
-import List from "metabase/components/List.jsx";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import { t } from "ttag";
+import List from "metabase/components/List";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import EditHeader from "metabase/reference/components/EditHeader.jsx";
-import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader.jsx";
-import Detail from "metabase/reference/components/Detail.jsx";
-import UsefulQuestions from "metabase/reference/components/UsefulQuestions.jsx";
-import Formula from "metabase/reference/components/Formula.jsx";
+import EditHeader from "metabase/reference/components/EditHeader";
+import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
+import Detail from "metabase/reference/components/Detail";
+import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
+import Formula from "metabase/reference/components/Formula";
 
 import { getQuestionUrl } from "../utils";
 
@@ -95,7 +95,10 @@ const validate = (values, props) =>
     ? { revision_message: t`Please enter a revision message` }
     : {};
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @reduxForm({
   form: "details",
   fields: [
@@ -231,19 +234,18 @@ export default class SegmentDetail extends Component {
                     field={caveats}
                   />
                 </li>
-                {table &&
-                  !isEditing && (
-                    <li className="relative">
-                      <Formula
-                        type="segment"
-                        entity={entity}
-                        table={table}
-                        isExpanded={isFormulaExpanded}
-                        expandFormula={expandFormula}
-                        collapseFormula={collapseFormula}
-                      />
-                    </li>
-                  )}
+                {table && !isEditing && (
+                  <li className="relative">
+                    <Formula
+                      type="segment"
+                      entity={entity}
+                      table={table}
+                      isExpanded={isFormulaExpanded}
+                      expandFormula={expandFormula}
+                      collapseFormula={collapseFormula}
+                    />
+                  </li>
+                )}
                 {!isEditing && (
                   <li className="relative">
                     <UsefulQuestions

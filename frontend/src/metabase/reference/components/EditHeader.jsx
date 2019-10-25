@@ -2,10 +2,10 @@ import React from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import pure from "recompose/pure";
-import { t } from "c-3po";
+import { t } from "ttag";
 import S from "./EditHeader.css";
 
-import RevisionMessageModal from "metabase/reference/components/RevisionMessageModal.jsx";
+import RevisionMessageModal from "metabase/reference/components/RevisionMessageModal";
 
 const EditHeader = ({
   hasRevisionHistory,

@@ -1,12 +1,12 @@
 /* @flow */
 import React, { Component } from "react";
 import { Link } from "react-router";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
 
 import Button from "metabase/components/Button";
-import ModalContent from "metabase/components/ModalContent.jsx";
+import ModalContent from "metabase/components/ModalContent";
 
 type Props = {
   databaseId: number,

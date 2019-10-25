@@ -34,9 +34,13 @@ export default (
   // NOTE: ideally we would remove the current state from the history so the forward
   // button wouldn't be enabled, maybe using `replace`
 ) =>
-  connect(mapStateToProps, mapDispatchToProps)(
+  connect(
+    mapStateToProps,
+    mapDispatchToProps,
+  )(
     class extends Component {
-      static displayName = "Routeless[" +
+      static displayName =
+        "Routeless[" +
         (ComposedComponent.displayName || ComposedComponent.name) +
         "]";
 

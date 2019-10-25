@@ -2,12 +2,12 @@ import React from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import pure from "recompose/pure";
-import { t } from "c-3po";
+import { t } from "ttag";
 import S from "./UsefulQuestions.css";
 import D from "metabase/reference/components/Detail.css";
 import L from "metabase/components/List.css";
 
-import QueryButton from "metabase/components/QueryButton.jsx";
+import QueryButton from "metabase/components/QueryButton";
 
 const UsefulQuestions = ({ questions }) => (
   <div className={cx(D.detail)}>

@@ -9,7 +9,10 @@ const mapDispatchToProps = {
   logout,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class LogoutApp extends Component {
   componentWillMount() {
     this.props.logout();

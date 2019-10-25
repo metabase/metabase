@@ -1,6 +1,6 @@
 import React from "react";
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 const EmbeddingLegalese = ({ onChange }) => (
   <div className="bordered rounded text-measure p4">
@@ -9,11 +9,12 @@ const EmbeddingLegalese = ({ onChange }) => (
       {t`By enabling embedding you're agreeing to the embedding license located at`}{" "}
       <a
         className="link"
-        href="http://www.metabase.com/license/embedding"
+        href="https://metabase.com/license/embedding"
         target="_blank"
       >
         metabase.com/license/embedding
-      </a>.
+      </a>
+      .
     </p>
     <p className="text-medium" style={{ lineHeight: 1.48 }}>
       {t`In plain English, when you embed charts or dashboards from Metabase in your own application, that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the "Powered by Metabase" visible on those embeds. You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature.`}

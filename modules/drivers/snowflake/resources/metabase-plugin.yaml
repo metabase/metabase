@@ -1,6 +1,6 @@
 info:
   name: Metabase Snowflake Driver
-  version: 1.0.0-SNAPSHOT-3.6.20
+  version: 1.0.0-SNAPSHOT-3.6.27
   description: Allows Metabase to connect to Snowflake databases.
 driver:
   name: snowflake
@@ -33,6 +33,7 @@ driver:
     - name: role
       display-name: Role
       placeholder: my_role
+    - additional-options
   connection-properties-include-tunnel-config: true
 init:
   - step: load-namespace

@@ -1,6 +1,6 @@
 import React from "react";
 
-import CheckBox from "metabase/components/CheckBox.jsx";
+import CheckBox from "metabase/components/CheckBox";
 
 import {
   isDefaultGroup,
@@ -12,8 +12,13 @@ import {
 import cx from "classnames";
 import _ from "underscore";
 
-export const GroupOption = ({ group, selectedGroups = {}, onGroupChange }) => {
-  const disabled = !canEditMembership(group);
+export const GroupOption = ({
+  group,
+  selectedGroups = {},
+  onGroupChange,
+  isDisabled = false,
+}) => {
+  const disabled = isDisabled || !canEditMembership(group);
   const selected = isDefaultGroup(group) || selectedGroups[group.id];
   return (
     <div
@@ -30,7 +35,12 @@ export const GroupOption = ({ group, selectedGroups = {}, onGroupChange }) => {
   );
 };
 
-export const GroupSelect = ({ groups, selectedGroups, onGroupChange }) => {
+export const GroupSelect = ({
+  groups,
+  selectedGroups,
+  onGroupChange,
+  isCurrentUser,
+}) => {
   const other = groups.filter(g => !isAdminGroup(g) && !isDefaultGroup(g));
   return (
     <div className="GroupSelect scroll-y py1">
@@ -38,6 +48,7 @@ export const GroupSelect = ({ groups, selectedGroups, onGroupChange }) => {
         group={_.find(groups, isAdminGroup)}
         selectedGroups={selectedGroups}
         onGroupChange={onGroupChange}
+        isDisabled={isCurrentUser}
       />
       <GroupOption
         group={_.find(groups, isDefaultGroup)}

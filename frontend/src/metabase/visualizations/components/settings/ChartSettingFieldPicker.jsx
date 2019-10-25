@@ -1,12 +1,12 @@
 import React from "react";
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 
-import ChartSettingSelect from "./ChartSettingSelect.jsx";
+import ChartSettingSelect from "./ChartSettingSelect";
 
 import { keyForColumn } from "metabase/lib/dataset";
 

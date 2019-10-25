@@ -1,10 +1,8 @@
 (ns metabase.test.util.log
   "Utils for controlling the logging that goes on when running tests."
-  (:require [clojure.tools.logging :as log]
-            [metabase.util :as u])
-  (:import [org.apache.log4j Level Logger LogManager]
+  (:import java.io.PrintStream
            [org.apache.commons.io.output NullOutputStream NullWriter]
-           java.io.PrintStream))
+           [org.apache.log4j Level Logger LogManager]))
 
 (defn do-with-suppressed-output
   "Impl for `suppress-output` macro; don't use this directly."

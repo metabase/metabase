@@ -8,7 +8,7 @@ import L from "metabase/components/List.css";
 
 import { getQuestionUrl } from "../utils";
 
-import FieldToGroupBy from "metabase/reference/components/FieldToGroupBy.jsx";
+import FieldToGroupBy from "metabase/reference/components/FieldToGroupBy";
 
 import { fetchTableMetadata } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -22,7 +22,10 @@ const mapStateToProps = (state, props) => ({
   metadata: getMetadata(state, props),
 });
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class FieldsToGroupBy extends Component {
   props: {
     fields: Object,

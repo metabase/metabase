@@ -4,7 +4,8 @@
             [clojure.string :as str]
             [metabase
              [config :as config]
-             [util :as u]]))
+             [util :as u]]
+            [metabase.plugins.classloader :as classloader]))
 
 (defn- dox
   "Generate a Markdown string containing documentation for all Metabase API endpoints."
@@ -14,7 +15,7 @@
        "\n\n"
        (str/join "\n\n\n" (for [ns-symb     @u/metabase-namespace-symbols
                                 :when       (.startsWith (name ns-symb) "metabase.api.")
-                                [symb varr] (do (require ns-symb)
+                                [symb varr] (do (classloader/require ns-symb)
                                                 (sort (ns-interns ns-symb)))
                                 :when       (:is-endpoint? (meta varr))]
                             (:doc (meta varr))))))

@@ -20,3 +20,8 @@
 (expect
   "ga::B"
   (#'ga.qp/built-in-segment {:filter [:and [:segment 100] [:segment "ga::B"]]}))
+
+;; Make sure we properly parse isoYearIsoWeeks (#9244)
+(expect
+  #inst "2018-12-31T00:00:00.000000000-00:00"
+  ((#'ga.qp/ga-dimension->date-format-fn "ga:isoYearIsoWeek") "201901"))

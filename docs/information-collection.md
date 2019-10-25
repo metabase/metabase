@@ -46,7 +46,7 @@ NOTE: we never capture any specific details in any of our tracking methodology s
 ### Google Analytics Events
 
 | Category | Action | Why we collect this |
-|---------|--------|--------------------|
+|----------|--------|---------------------|
 | Links and Page Views | General website tracking of what pages are most used | This provides better understanding of what parts of the application are liked and used by customers so we know what's popular and potentially what needs more improvement. |
 | Dashboards | When the dashboard dropdown is used, when dashboards are created and updated, what types of edits occur such as adding/removing cards and repositioning. | We use this information to understand how dashboards are being used and what types of activities users most commonly do on their dashboards. |
 | Pulses | When pulses are created and updated, what types of pulses are created, and how many cards typically go in a pulse. | This is used to have a sense for how teams are structuring their push based communication.  When and where is information most often sent and how much information allows Metabase to continue improving features around push based data interactions. |
@@ -58,29 +58,28 @@ NOTE: we never capture any specific details in any of our tracking methodology s
 
 
 ### Server-side Analytics
-| Metric |  An example of why we collect this |
-|---------|--------|
-| Number of Users/Admins and whether SSO is enabled | To understand which auth methods are being used, and whether to prioritize features that scale with # of users. |
-| Number of user groups | Action | To understand how complicated a permissions model most of our users have, and to make sure that we don't over-simplify our designs. |
-| Number of Dashboards | Action | Whether we need to provide ways to organize dashboards. |
-| Number of Cards per Dashboards | Action | Do we need to provide more structure to make long dashboards easier to parse?|
-| Number of Dashboards per Card | Action | Are our users only creating a card to put it in a dashboard or are they used in many places? |
-| Types of Databases | Action | Which database driver bugs to prioritize |
-| Number of pulses with attachments | Action | Are people using attachments? |
-| Number of alerts | Action | Are people using alerts? Do they typically have a few or does each user have them?|
-| Number of Collections | Action | Do we need to add additional organization tools? |
-| Number of Databases | Action | Are users using a single DB or many? How large should the icons for a database in the databrowser be? |
-| Number of Schema | Action | Are users actively using namespaces on redshift? Do we actually need to design for 100s of schemas or is that just a small percentage of our users? |
-| Number of Tables | Action | What kind of data models are people using? Do we need table search?|
-| Number of Fields | Action | Can we pre-fetch all the fields in our metadata api to improve performance for most usres, or should we fetch them per table to scale more efficiently? |
-| Number of Segments | Action | Are people using segments widely? If so, should we surface them up higher in the UI? |
-| Number of Metrics | Action | Are metrics common? If not, should we remove the "Metrics" option in the New Question Flow|
-| Number of Queries Run | Action | How many queries do our most active instances run per day? Do we need to improve caching? |
-| Number of Query Errors | Action | Do we need to change how we display errors in the logs? Are they being spammed? |
-| Query Latencies | Action | What percentage of our user base runs queries that allow for iterative querying (<1second) |
-| Timezone | Action | We have a bug in a certain timezone, how many users are in that timezone?  |
-| Language | Action | How many non-english speaking users do we have? How fast should we be pushing internationalization?|
-| OS + JVM Version | Action | Can we deprecate Java 7 already? |
+| Metric | An example of why we collect this |
+|--------|-----------------------------------|
+| Number of Users/Admins and whether SSO is enabled | To understand which auth methods are being used, and whether to prioritize features that scale with number of users. |
+| Number of user groups | To understand how complicated a permissions model most of our users have, and to make sure that we don't over-simplify our designs. |
+| Number of Dashboards | Whether we need to provide ways to organize dashboards. |
+| Number of Cards per Dashboards | Do we need to provide more structure to make long dashboards easier to parse? |
+| Number of Dashboards per Card | Are our users only creating a card to put it in a dashboard or are they used in many places? |
+| Types of Databases | Which database driver bugs to prioritize |
+| Number of pulses with attachments | Are people using attachments? |
+| Number of alerts | Are people using alerts? Do they typically have a few or does each user have them? |
+| Number of Collections | Do we need to add additional organization tools? |
+| Number of Databases | Are users using a single DB or many? How large should the icons for a database in the databrowser be? |
+| Number of Schema | Are users actively using namespaces on redshift? Do we actually need to design for 100s of schemas or is that just a small percentage of our users? |
+| Number of Tables | What kind of data models are people using? Do we need table search? |
+| Number of Fields | Can we pre-fetch all the fields in our metadata api to improve performance for most usres, or should we fetch them per table to scale more efficiently? |
+| Number of Segments | Are people using segments widely? If so, should we surface them up higher in the UI? |
+| Number of Metrics | Are metrics common? If not, should we remove the Metrics option in the New Question Flow |
+| Number of Queries Run | How many queries do our most active instances run per day? Do we need to improve caching? |
+| Number of Query Errors | Do we need to change how we display errors in the logs? Are they being spammed? |
+| Query Latencies | What percentage of our user base runs queries that allow for iterative querying (<1second) |
+| Timezone | We have a bug in a certain timezone, how many users are in that timezone? |
+| Language | How many non-english speaking users do we have? How fast should we be pushing internationalization? |
+| OS and JVM Version | Can we deprecate Java 7 already? |
 
-Note this is meant to be representative, an exact (as in the actual code that is running to generate this can be audited at https://github.com/metabase/metabase/blob/master/src/metabase/util/stats.clj)
-
+Note this is meant to be representative. The actual code that is running to generate this can be audited at [https://github.com/metabase/metabase/blob/master/src/metabase/util/stats.clj](https://github.com/metabase/metabase/blob/master/src/metabase/util/stats.clj).

@@ -13,16 +13,13 @@ import Field from "metabase-lib/lib/metadata/Field";
 import Metric from "metabase-lib/lib/metadata/Metric";
 import Segment from "metabase-lib/lib/metadata/Segment";
 
-import Databases from "metabase/entities/databases";
-
 import _ from "underscore";
 import { shallowEqual } from "recompose";
 import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 
 import {
-  getOperators,
-  getBreakouts,
-  getAggregatorsWithFields,
+  getFilterOperators,
+  getAggregationOperatorsWithFields,
 } from "metabase/lib/schema_metadata";
 import { getIn } from "icepick";
 
@@ -61,6 +58,7 @@ export const getShallowMetrics = getNormalizedMetrics;
 export const getShallowSegments = getNormalizedSegments;
 
 // fully connected graph of all databases, tables, fields, segments, and metrics
+// TODO: do this lazily using ES6 Proxies
 export const getMetadata = createSelector(
   [
     getNormalizedDatabases,
@@ -99,18 +97,20 @@ export const getMetadata = createSelector(
       }
     });
 
-    hydrate(meta.fields, "operators", f => getOperators(f, f.table));
-    hydrate(meta.tables, "aggregation_options", t =>
-      getAggregatorsWithFields(t),
+    hydrate(meta.fields, "filter_operators", f =>
+      getFilterOperators(f, f.table),
     );
-    hydrate(meta.tables, "breakout_options", t => getBreakouts(t.fields));
+    hydrate(meta.tables, "aggregation_operators", t =>
+      getAggregationOperatorsWithFields(t),
+    );
 
     hydrate(meta.fields, "values", f => getFieldValues(f));
     hydrate(meta.fields, "remapping", f => new Map(getRemappings(f)));
 
     hydrateLookup(meta.databases, "tables", "id");
     hydrateLookup(meta.tables, "fields", "id");
-    hydrateLookup(meta.fields, "operators", "name");
+    hydrateLookup(meta.fields, "filter_operators", "name");
+    hydrateLookup(meta.tables, "aggregation_operators", "short");
 
     return meta;
   },
@@ -121,16 +121,15 @@ export const getDatabases = createSelector(
   ({ databases }) => databases,
 );
 
-// NOTE: this should be paired with the `fetchDatabaes` action in
-// metabase/redux/metadata which uses the same entityQuery
-export const getDatabasesList = state =>
-  Databases.selectors.getList(state, {
-    entityQuery: { include_tables: true, include_cards: true },
-  }) || [];
+export const getTables = createSelector(
+  [getMetadata],
+  ({ tables }) => tables,
+);
 
-export const getTables = createSelector([getMetadata], ({ tables }) => tables);
-
-export const getFields = createSelector([getMetadata], ({ fields }) => fields);
+export const getFields = createSelector(
+  [getMetadata],
+  ({ fields }) => fields,
+);
 export const getMetrics = createSelector(
   [getMetadata],
   ({ metrics }) => metrics,
@@ -228,7 +227,7 @@ export const makeGetMergedParameterFieldValues = () => {
 
 // clone each object in the provided mapping of objects
 export function copyObjects(metadata, objects, Klass) {
-  let copies = {};
+  const copies = {};
   for (const object of Object.values(objects)) {
     if (object && object.id != null) {
       // $FlowFixMe
@@ -260,7 +259,7 @@ function hydrateList(objects, property, targetObjects) {
 // creates a *_lookup object for a previously hydrated list
 function hydrateLookup(objects, property, idProperty = "id") {
   hydrate(objects, property + "_lookup", object => {
-    let lookup = {};
+    const lookup = {};
     for (const item of object[property] || []) {
       lookup[item[idProperty]] = item;
     }

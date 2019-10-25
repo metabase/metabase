@@ -2,7 +2,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
-import { t } from "c-3po";
+import { t } from "ttag";
 import * as MetabaseCore from "metabase/lib/core";
 import { isNumericBaseType } from "metabase/lib/schema_metadata";
 import { isa, isFK, TYPE } from "metabase/lib/types";
@@ -12,8 +12,8 @@ import { getIn } from "icepick";
 import S from "metabase/components/List.css";
 import F from "./Field.css";
 
-import Select from "metabase/components/Select.jsx";
-import Icon from "metabase/components/Icon.jsx";
+import Select from "metabase/components/Select";
+import Icon from "metabase/components/Icon";
 
 import cx from "classnames";
 import pure from "recompose/pure";

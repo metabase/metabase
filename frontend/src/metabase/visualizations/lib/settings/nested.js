@@ -1,7 +1,7 @@
 /* @flow */
 
 import _ from "underscore";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import { getComputedSettings, getSettingsWidgets } from "../settings";
 

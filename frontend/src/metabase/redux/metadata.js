@@ -105,7 +105,7 @@ export const fetchDatabaseMetadata = (dbId, reload = false) => {
 export const updateDatabase = database => {
   deprecated("metabase/redux/metadata updateDatabase");
   const slimDatabase = _.omit(database, "tables", "tables_lookup");
-  return database.actions.update(slimDatabase);
+  return Databases.actions.update(slimDatabase);
 };
 
 export const updateTable = table => {
@@ -114,8 +114,7 @@ export const updateTable = table => {
     table,
     "fields",
     "fields_lookup",
-    "aggregation_options",
-    "breakout_options",
+    "aggregation_operators",
     "metrics",
     "segments",
   );
@@ -128,9 +127,9 @@ export const fetchTables = (reload = false) => {
 };
 
 export { FETCH_TABLE_METADATA } from "metabase/entities/tables";
-export const fetchTableMetadata = (tableId, reload = false) => {
+export const fetchTableMetadata = (id, reload = false) => {
   deprecated("metabase/redux/metadata fetchTableMetadata");
-  return Tables.actions.fetchTableMetadata({ id: tableId }, reload);
+  return Tables.actions.fetchTableMetadata({ id }, { reload });
 };
 
 export const fetchField = (id, reload = false) => {
@@ -139,9 +138,9 @@ export const fetchField = (id, reload = false) => {
 };
 
 export const FETCH_FIELD_VALUES = Fields.actions.fetchFieldValues.toString();
-export const fetchFieldValues = (fieldId, reload) => {
+export const fetchFieldValues = (id, reload = false) => {
   deprecated("metabase/redux/metadata fetchFieldValues");
-  return Fields.actions.fetchFieldValues({ id: fieldId }, reload);
+  return Fields.actions.fetchFieldValues({ id }, reload);
 };
 
 export const UPDATE_FIELD_VALUES = Fields.actions.updateFieldValues.toString();
@@ -165,7 +164,7 @@ export const addFields = fieldMaps => {
 export const UPDATE_FIELD = Fields.actions.update.toString();
 export const updateField = field => {
   deprecated("metabase/redux/metadata updateField");
-  const slimField = _.omit(field, "operators_lookup");
+  const slimField = _.omit(field, "filter_operators_lookup");
   return Fields.actions.update(slimField);
 };
 

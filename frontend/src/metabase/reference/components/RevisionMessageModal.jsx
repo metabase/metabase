@@ -1,9 +1,9 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
-import ModalContent from "metabase/components/ModalContent.jsx";
+import { t } from "ttag";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import ModalContent from "metabase/components/ModalContent";
 
 import S from "./RevisionMessageModal.css";
 

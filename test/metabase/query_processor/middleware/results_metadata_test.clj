@@ -3,10 +3,10 @@
             [metabase
              [query-processor :as qp]
              [util :as u]]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
-             [database :as database]
              [permissions :as perms]
              [permissions-group :as group]]
             [metabase.query-processor.middleware.results-metadata :as results-metadata]
@@ -48,7 +48,9 @@
     :special_type "type/Longitude", :fingerprint  (:longitude mutil/venue-fingerprints)}])
 
 (def ^:private default-card-results-native
-  (update-in default-card-results [3 :fingerprint] assoc :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0 :sd 23.06}}))
+  (for [column (-> default-card-results
+                   (update-in [3 :fingerprint] assoc :type {:type/Number {:min 2.0, :max 74.0, :avg 29.98, :q1 7.0, :q3 49.0 :sd 23.06}}))]
+    (assoc column :display_name (:name column))))
 
 ;; test that Card result metadata is saved after running a Card
 (expect
@@ -70,7 +72,7 @@
   (tt/with-temp Card [card {:dataset_query   (native-query "SELECT * FROM VENUES")
                             :result_metadata [{:name "NAME", :display_name "Name", :base_type "type/Text"}]}]
     (u/prog1
-     (qp/process-query {:database database/virtual-id
+     (qp/process-query {:database mbql.s/saved-questions-virtual-database-id
                         :type     :query
                         :query    {:source-table (str "card__" (u/get-id card))}})
      (assert (= (:status <>) :completed)))
@@ -84,7 +86,7 @@
                                     :dataset_query   (native-query "SELECT * FROM VENUES")
                                     :result_metadata [{:name "NAME", :display_name "Name", :base_type "type/Text"}]}]]
     (perms/grant-collection-read-permissions! (group/all-users) collection)
-    ((users/user->client :rasta) :post 200 "dataset" {:database database/virtual-id
+    ((users/user->client :rasta) :post 200 "dataset" {:database mbql.s/saved-questions-virtual-database-id
                                                       :type     :query
                                                       :query    {:source-table (str "card__" (u/get-id card))}})
     (card-metadata card)))
@@ -128,6 +130,11 @@
   (with-redefs [encrypt/default-secret-key nil]
     (#'results-metadata/metadata-checksum metadata)))
 
+;; metadata-checksum should be the same every time
+(expect
+  (metadata-checksum example-metadata)
+  (metadata-checksum example-metadata))
+
 ;; tests that the checksum is consistent when an array-map is switched to a hash-map
 (expect
   (metadata-checksum example-metadata)
@@ -139,6 +146,7 @@
   (metadata-checksum (update-in example-metadata [1 :fingerprint :type :type/Number :min] int)))
 
 ;; make sure that queries come back with metadata
+;; TODO - this test is a good candidate to rewrite to use `expect-schema`
 (expect
   {:checksum java.lang.String
    :columns  (map (fn [col]
@@ -146,26 +154,26 @@
                         (update :special_type keyword)
                         (update :base_type keyword)))
                   default-card-results-native)}
-  (-> (qp/process-query {:database (data/id)
-                         :type     :native
-                         :native   {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"}})
+  (-> (qp/process-query
+        {:database (data/id)
+         :type     :native
+         :native   {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"}})
       (get-in [:data :results_metadata])
       (update :checksum class)
       round-to-2-decimals
       (->> (tu/round-fingerprint-cols [:columns]))))
 
-;; make sure that a Card where a DateTime column is broken out by year advertises that column as Text, since you can't
-;; do datetime breakouts on years
+;; make sure that a Card where a DateTime column is broken out by year works the way we'd expect
 (expect
-  [{:base_type    "type/Text"
+  [{:base_type    "type/Date"
     :display_name "Date"
     :name         "DATE"
-    :unit         nil
+    :unit         "year"
     :special_type nil
     :fingerprint  {:global {:distinct-count 618 :nil% 0.0}, :type {:type/DateTime {:earliest "2013-01-03T00:00:00.000Z"
-                                                                         :latest   "2015-12-29T00:00:00.000Z"}}}}
+                                                                                   :latest   "2015-12-29T00:00:00.000Z"}}}}
    {:base_type    "type/Integer"
-    :display_name "count"
+    :display_name "Count"
     :name         "count"
     :special_type "type/Quantity"
     :fingerprint  {:global {:distinct-count 3

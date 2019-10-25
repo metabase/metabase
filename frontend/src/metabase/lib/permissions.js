@@ -29,7 +29,7 @@ export function getPermission(
   path: Array<string | number>,
   isControlledType: boolean = false,
 ): string {
-  let value = getIn(permissions, [groupId].concat(path));
+  const value = getIn(permissions, [groupId].concat(path));
   if (isControlledType) {
     if (!value) {
       return "none";
@@ -53,7 +53,7 @@ export function updatePermission(
   entityIds: ?(Array<string> | Array<number>),
 ): GroupsPermissions {
   const fullPath = [groupId].concat(path);
-  let current = getIn(permissions, fullPath);
+  const current = getIn(permissions, fullPath);
   if (
     current === value ||
     (current && typeof current === "object" && value === "controlled")
@@ -64,7 +64,7 @@ export function updatePermission(
   if (value === "controlled") {
     newValue = {};
     if (entityIds) {
-      for (let entityId of entityIds) {
+      for (const entityId of entityIds) {
         newValue[entityId] = current;
       }
     }
@@ -100,7 +100,7 @@ export const getTablesPermission = (
   groupId: GroupId,
   { databaseId, schemaName }: SchemaEntityId,
 ): string => {
-  let schemas = getSchemasPermission(permissions, groupId, { databaseId });
+  const schemas = getSchemasPermission(permissions, groupId, { databaseId });
   if (schemas === "controlled") {
     return getPermission(
       permissions,
@@ -118,7 +118,7 @@ export const getFieldsPermission = (
   groupId: GroupId,
   { databaseId, schemaName, tableId }: TableEntityId,
 ): string => {
-  let tables = getTablesPermission(permissions, groupId, {
+  const tables = getTablesPermission(permissions, groupId, {
     databaseId,
     schemaName,
   });
@@ -141,10 +141,12 @@ export function downgradeNativePermissionsIfNeeded(
   value: string,
   metadata: Metadata,
 ): GroupsPermissions {
-  let currentSchemas = getSchemasPermission(permissions, groupId, {
+  const currentSchemas = getSchemasPermission(permissions, groupId, {
     databaseId,
   });
-  let currentNative = getNativePermission(permissions, groupId, { databaseId });
+  const currentNative = getNativePermission(permissions, groupId, {
+    databaseId,
+  });
 
   if (value === "none") {
     // if changing schemas to none, downgrade native to none
@@ -454,7 +456,7 @@ function diffDatabasePermissions(
     }
   }
   // remove types that have no tables
-  for (let type of ["grantedTables", "revokedTables"]) {
+  for (const type of ["grantedTables", "revokedTables"]) {
     deleteIfEmpty(databaseDiff, type);
   }
   return databaseDiff;
@@ -466,7 +468,7 @@ function diffGroupPermissions(
   groupId: GroupId,
   metadata: Metadata,
 ): GroupPermissionsDiff {
-  let groupDiff: GroupPermissionsDiff = { databases: {} };
+  const groupDiff: GroupPermissionsDiff = { databases: {} };
   for (const database of metadata.databasesList()) {
     groupDiff.databases[database.id] = diffDatabasePermissions(
       newPerms,
@@ -489,9 +491,9 @@ export function diffPermissions(
   groups: Array<Group>,
   metadata: Metadata,
 ): PermissionsDiff {
-  let permissionsDiff: PermissionsDiff = { groups: {} };
+  const permissionsDiff: PermissionsDiff = { groups: {} };
   if (newPerms && oldPerms && metadata) {
-    for (let group of groups) {
+    for (const group of groups) {
       permissionsDiff.groups[group.id] = diffGroupPermissions(
         newPerms,
         oldPerms,
