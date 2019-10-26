@@ -33,11 +33,11 @@
      [:absolute-datetime _ (unit-2 :guard optimizable-units)]]
     (= (datetime-field-unit field) unit-1 unit-2)))
 
-(defn- lower-bound [unit v]
-  (u.date/truncate unit v))
+(defn- lower-bound [unit t]
+  (u.date/truncate t unit))
 
-(defn- upper-bound [unit v]
-  (u.date/add unit 1 (lower-bound unit v)))
+(defn- upper-bound [unit t]
+  (u.date/add (lower-bound unit t) unit 1))
 
 (defn- change-datetime-field-unit-to-default [field]
   (mbql.u/replace field

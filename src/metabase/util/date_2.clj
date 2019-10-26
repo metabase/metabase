@@ -2,39 +2,18 @@
   "Replacement for `metabase.util.date` that consistently uses `java.time` instead of a mix of `java.util.Date`,
   `java.sql.*`, and Joda-Time."
   (:require [java-time :as t]
-            [metabase.util.date-2
-             [common :as common]
-             [parse :as parse]]
+            [metabase.util.date-2.parse :as parse]
             [metabase.util.i18n :refer [tru]])
-  (:import [java.time DayOfWeek Instant LocalDate LocalDateTime LocalTime ZonedDateTime]
-           [java.time.temporal ChronoUnit Temporal]
-           org.threeten.extra.YearWeek))
+  (:import [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
+           [java.time.temporal Temporal TemporalAdjuster WeekFields]))
 
-(defn- ->offset [v timezone-id]
-  (condp instance? v
-    LocalDate     (t/offset-date-time v (t/local-time 0) (t/zone-id timezone-id))
-    LocalDateTime (t/offset-date-time v (t/zone-id timezone-id))
-    LocalTime     (t/offset-time v (t/zone-id timezone-id))
-    v))
-
-(defn- ->local [v timezone-id]
-  (condp instance? v
-    OffsetDateTime (t/local-date-time v (t/zone-id timezone-id))
-    OffsetTime     (t/local-time v (t/zone-id timezone-id))
-    v))
-
-(defn- ->timezone [v timezone-id]
-  (condp instance? v
-    OffsetDateTime (.atZoneSameInstant ^OffsetDateTime v (t/zone-id timezone-id))
-    #_OffsetTime     #_(.atZoneSameInstant ^OffsetTime v (t/zone-id timezone-id))
-    (->offset v timezone-id)))
-
-(defn- ->zoned [v timezone-id]
-  (condp instance? v
-    LocalDateTime (t/zoned-date-time v (t/zone-id timezone-id))
-    LocalDate     (t/zoned-date-time v (t/local-time 0) (t/zone-id timezone-id))
-    LocalTime     (t/offset-time v (t/zone-id timezone-id))
-    v))
+;; TODO - not sure if we actually want to use this...
+(defn- ->zoned [t timezone-id]
+  (condp instance? t
+    LocalDateTime (t/zoned-date-time t (t/zone-id timezone-id))
+    LocalDate     (t/zoned-date-time t (t/local-time 0) (t/zone-id timezone-id))
+    LocalTime     (t/offset-time t (t/zone-id timezone-id))
+    t))
 
 (defn parse
   "With one arg, parse a temporal literal into a corresponding `java.time` class, such as `LocalDate` or
@@ -55,12 +34,19 @@
 (defn datetime? [x]
   (some #(instance? % x) [Instant ZonedDateTime OffsetDateTime LocalDateTime]))
 
+#_(defn ->temporal [v]
+  (condp instance? v
+    ;; TODO - not sure this is actually what we want??
+    java.sql.Timestamp (t/instant v)
+    java.sql.Date      (t/instant v)
+    java.util.Date     (t/instant v)))
+
 (defn add
   (^Temporal [unit amount]
-   (add unit amount (t/offset-date-time)))
+   (add (t/zoned-date-time) unit amount))
 
-  (^Temporal [unit amount v]
-   (t/plus v (case unit
+  (^Temporal [t unit amount]
+   (t/plus t (case unit
                :millisecond (t/millis amount)
                :second      (t/seconds amount)
                :minute      (t/minutes amount)
@@ -71,96 +57,68 @@
                :quarter     (t/months (* amount 3))
                :year        (t/years 1)))))
 
-(def date-extract-units
+(def extract-units
   "Units which return a (numerical, periodic) component of a date"
-  #{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year :month-of-year :quarter-of-year
-    :year})
+  #{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year :iso-week-of-year :month-of-year
+    :quarter-of-year :year})
+
+(def ^:private week-fields
+  (common/static-instances WeekFields))
 
 (defn extract
-  (^Integer [unit]
-   (extract unit (t/offset-date-time)))
+  ([unit]
+   (extract unit (t/zoned-date-time)))
 
-  (^Integer [unit v]
-   {:pre [(date-extract-units unit)]}
-   ;; TOOD - not sure if this makes sense
-   (let [v (->local v "UTC")]
-     (case unit
-       :minute-of-hour  (.getFrom (parse/chrono-field :minute-of-hour) v)
-       :hour-of-day     (.getFrom (parse/chrono-field :hour-of-day) v)
-       :day-of-week     (.getValue (t/day-of-week v))
-       :day-of-month    (.getValue (t/day-of-month v))
-       :day-of-year     (.getFrom (parse/chrono-field :day-of-year) v)
-       :week-of-year    (.getWeek (YearWeek/from v))
-       :month-of-year   (.getValue (t/month v))
-       :quarter-of-year (.getValue (t/quarter v))
-       :year            (.getValue (t/year v)))))
+  ([^Temporal t, unit]
+   (case unit
+     :minute-of-hour   (t/as t :minute-of-hour)
+     :hour-of-day      (t/as t :hour-of-day)
+     :day-of-week      (t/as t :day-of-week)
+     :day-of-month     (t/as t :day-of-month)
+     :day-of-year      (t/as t :day-of-year)
+     :week-of-year     (t/as t (week-fields :sunday-start))
+     :iso-week-of-year (t/as t (week-fields :iso))
+     :month-of-year    (t/as t :month-of-year)
+     :quarter-of-year  (t/as t :quarter-of-year)
+     :year             (t/as t :year))))
 
-  (^Integer [unit v timezone-id]
-   (extract unit (->timezone v timezone-id))))
+(def trucate-units  "Valid date bucketing units"
+  #{:second :minute :hour :day :week :iso-week :month :quarter :year})
 
-(def date-trunc-units
-  "Valid date bucketing units"
-  #{:second :minute :hour :day :week :month :quarter :year})
+(def ^:private ^{:arglists `(^TemporalAdjuster [~'k])} adjusters
+  {:first-day-of-week
+   (reify TemporalAdjuster
+     (adjustInto [_ t]
+       (t/adjust t :previous-or-same-day-of-week :sunday)))
 
-(def ^:private ^ChronoUnit chrono-unit (common/static-instances ChronoUnit))
+   :first-day-of-iso-week
+   (reify TemporalAdjuster
+     (adjustInto [_ t]
+       (t/adjust t :previous-or-same-day-of-week :monday)))
 
-(defn truncate-time
-  ^Temporal [unit v]
-  {:pre [(chrono-unit unit)]}
-  (let [unit (chrono-unit unit)]
-    (condp instance? v
-      OffsetDateTime (.truncatedTo ^OffsetDateTime v unit)
-      OffsetTime     (.truncatedTo ^OffsetTime     v unit)
-      LocalDateTime  (.truncatedTo ^LocalDateTime  v unit)
-      LocalTime      (.truncatedTo ^LocalTime      v unit)
-      LocalDate      v)))
-
-(defn truncate-date
-  ^Temporal [unit v]
-  (condp instance? v
-    OffsetDateTime
-    (-> (truncate-date unit (t/local-date v))
-        (t/offset-date-time (t/local-time 0) (t/zone-offset v)))
-
-    OffsetTime
-    (throw (Exception. (tru "Cannot truncate a time to {0}." unit)))
-
-    LocalTime
-    (throw (Exception. (tru "Cannot truncate a time to {0}." unit)))
-
-    (case unit
-      :week    (.atDay (YearWeek/from v) DayOfWeek/MONDAY)
-      :month   (.atDay (t/year-month v) 1)
-      :quarter (.atDay (t/year-quarter v) 1)
-      :year    (.atDay (t/year v) 1))))
+   :first-day-of-quarter
+   (reify TemporalAdjuster
+     (adjustInto [_ t]
+       (.with t (.atDay (t/year-quarter t) 1))))})
 
 (defn truncate
-  ^Temporal [unit v]
-  {:pre [(date-trunc-units unit)]}
-  (case unit
-    :default     v
-    :millisecond (truncate-time :millis  v)
-    :second      (truncate-time :seconds v)
-    :minute      (truncate-time :minutes v)
-    :hour        (truncate-time :hours   v)
-    :day         (truncate-time :days    v)
-    :week        (truncate-date :week    v)
-    :month       (truncate-date :month   v)
-    :quarter     (truncate-date :quarter v)
-    :year        (truncate-date :year    v)))
+  (^Temporal [unit]
+   (truncate (t/zoned-date-time) unit))
 
-#_(defn truncate-2 [unit v]
-  (case unit
-    :default     v
-    :millisecond (truncate-time :millis  v)
-    :second      (truncate-time :seconds v)
-    :minute      (truncate-time :minutes v)
-    :hour        (truncate-time :hours v)
-    :day         (DayOfYear/from v)
-    :week        (YearWeek/from v)
-    :month       (t/year-month v)
-    :quarter     (t/year-quarter v)
-    :year        (t/year v)))
+  (^Temporal [^Temporal t, unit]
+   (case unit
+     :default     t
+     :millisecond (t/truncate-to t :millis)
+     :second      (t/truncate-to t :seconds)
+     :minute      (t/truncate-to t :minutes)
+     :hour        (t/truncate-to t :hours)
+     :day         (t/truncate-to t :days)
+     :week        (-> (.with t (adjusters :first-day-of-week))     (t/truncate-to :days))
+     :iso-week    (-> (.with t (adjusters :first-day-of-iso-week)) (t/truncate-to :days))
+     :month       (-> (t/adjust t :first-day-of-month)             (t/truncate-to :days))
+     :quarter     (-> (.with t (adjusters :first-day-of-quarter))  (t/truncate-to :days))
+     :year        (-> (t/adjust t :first-day-of-year)              (t/truncate-to :days)))))
+
 
 (defn from-legacy ^:deprecated ^Temporal [v timezone-id]
   (condp instance? v
@@ -168,9 +126,16 @@
     java.util.Date (OffsetDateTime/ofInstant (t/instant v) (t/zone-id timezone-id))
     java.sql.Time  (t/offset-time (t/instant (.getTime ^java.sql.Time v)) (t/zone-id timezone-id))))
 
-(defn bucket [unit v timezone id]
-  (if (= unit :default)
-    v))
+(defn bucket
+  ([unit]
+   (bucket (t/zoned-date-time) unit))
+
+  ([t unit]
+   (cond
+     (= unit :default)    t
+     (extract-units unit) (extract t unit)
+     (trucate-units unit) (truncate t unit)
+     :else                (throw (Exception. (tru "Invalid unit: {0}" unit))))))
 
 (defn seconds->ms
   "Convert `seconds` to milliseconds. More readable than doing this math inline."

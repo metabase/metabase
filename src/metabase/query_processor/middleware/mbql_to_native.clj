@@ -14,7 +14,7 @@
   (u/prog1 (if-not (= :query query-type)
              (:native query)
              (try
-               (driver/mbql->native (:driver query) query)
+               (driver/mbql->native driver/*driver* query)
                (catch Throwable e
                  (when-not i/*disable-qp-logging*
                    (log/error (tru "Error transforming MBQL query to native:") "\n" (u/pprint-to-str query)))

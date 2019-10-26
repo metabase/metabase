@@ -1,153 +1,91 @@
 (ns metabase.util.date-2.parse
   (:require [java-time :as t]
-            [metabase.util.date-2.common :as common])
-  (:import [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime]
-           [java.time.format DateTimeFormatter DateTimeFormatterBuilder SignStyle]
-           [java.time.temporal ChronoField TemporalAccessor]))
-
-(def ^ChronoField chrono-field
-  (common/static-instances ChronoField))
-
-(def ^:private ^SignStyle sign-style
-  (common/static-instances SignStyle))
-
-(defn- value
-  ([chrono-field-name]
-   (fn [^DateTimeFormatterBuilder builder]
-     (.appendValue builder (chrono-field chrono-field-name))))
-
-  ([chrono-field-name width]
-   (fn [^DateTimeFormatterBuilder builder]
-     (.appendValue builder (chrono-field chrono-field-name) width)))
-
-  ([chrono-field-name min max sign-style-name]
-   (fn [^DateTimeFormatterBuilder builder]
-     (.appendValue builder (chrono-field chrono-field-name) min max (sign-style sign-style-name)))))
-
-(defn- default-value [chrono-field-name default-value]
-  (fn [^DateTimeFormatterBuilder builder]
-    (.parseDefaulting builder (chrono-field chrono-field-name) default-value)))
-
-(defn- fraction
-  [chrono-field-name min-width max-width & {:keys [decimal-point?]}]
-  (fn [^DateTimeFormatterBuilder builder]
-    (.appendFraction builder (chrono-field chrono-field-name) 0 9 (boolean decimal-point?))))
-
-(defn- optional [& parts]
-  (fn [^DateTimeFormatterBuilder builder]
-    (.optionalStart builder)
-    (doseq [part parts]
-      (part builder))
-    (.optionalEnd builder)))
-
-(defn- literal [^String s]
-  (fn [^DateTimeFormatterBuilder builder]
-    (.appendLiteral builder s)))
-
-(defn- lenient [& parts]
-  (fn [^DateTimeFormatterBuilder builder]
-    (.parseLenient builder)
-    (doseq [part parts]
-      (part builder))
-    (.parseStrict builder)))
-
-(defn- offset []
-  (lenient
-   (fn [^DateTimeFormatterBuilder builder]
-     (.appendOffset builder "+HH:MM:ss" "Z"))))
-
-(defn- append [^DateTimeFormatter formatter]
-  (fn [^DateTimeFormatterBuilder builder]
-    (.append builder formatter)))
-
-(defn- case-insensitive []
-  (fn [^DateTimeFormatterBuilder builder]
-    (.parseCaseInsensitive builder)))
-
-(defn- build-formatter
-  ^DateTimeFormatter [& parts]
-  (let [builder (DateTimeFormatterBuilder.)]
-    (doseq [part parts]
-      (part builder))
-    (.toFormatter builder)))
+            [metabase.util.date-2.parse.builder :as b])
+  (:import [java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset]
+           java.time.format.DateTimeFormatter
+           [java.time.temporal TemporalAccessor TemporalQueries]))
 
 (def ^:private ^DateTimeFormatter date-formatter*
-  (build-formatter
-   (value :year 4 10 :exceeds-pad)
-   (optional
-    (literal "-")
-    (value :month-of-year 2)
-    (optional
-     (literal "-")
-     (value :day-of-month 2)))
-   (default-value :month-of-year 1)
-   (default-value :day-of-month 1)))
-
-;; TO actually use date or time formatter you need to append the (optional (offset))
+  (b/build-formatter
+   (b/value :year 4 10 :exceeds-pad)
+   (b/optional
+    (b/literal "-")
+    (b/value :month-of-year 2)
+    (b/optional
+     (b/literal "-")
+     (b/value :day-of-month 2)))
+   (b/default-value :month-of-year 1)
+   (b/default-value :day-of-month 1)))
 
 (def ^:private ^DateTimeFormatter time-formatter*
-  (build-formatter
-   (value :hour-of-day 2)
-   (optional
-    (literal ":")
-    (value :minute-of-hour 2)
-    (optional
-     (literal ":")
-     (value :second-of-minute 2)
-     (optional
-      (fraction :nano-of-second 0 9, :decimal-point? true))))
-   (default-value :minute-of-hour 0)
-   (default-value :second-of-minute 0)
-   (default-value :nano-of-second 0)))
+  (b/build-formatter
+   (b/value :hour-of-day 2)
+   (b/optional
+    (b/literal ":")
+    (b/value :minute-of-hour 2)
+    (b/optional
+     (b/literal ":")
+     (b/value :second-of-minute 2)
+     (b/optional
+      (b/fraction :nano-of-second 0 9, :decimal-point? true))))
+   (b/default-value :minute-of-hour 0)
+   (b/default-value :second-of-minute 0)
+   (b/default-value :nano-of-second 0)))
+
+(def ^:private ^DateTimeFormatter offset-formatter*
+  (b/build-formatter
+   (b/offset-id)
+   (b/optional
+    (b/offset-zone-id))))
 
 (def ^:private ^DateTimeFormatter formatter
-  (build-formatter
-   (case-insensitive)
-   (optional
-    (append date-formatter*))
-   (optional
-    (literal "T"))
-   (optional
-    (literal " "))
-   (optional
-    (append time-formatter*))
-   (optional
-    (offset))))
+  (b/build-formatter
+   (b/case-insensitive
+    (b/optional
+     (b/append date-formatter*))
+    (b/optional
+     (b/literal "T"))
+    (b/optional
+     (b/literal " "))
+    (b/optional
+     (b/append time-formatter*))
+    (b/optional
+     (b/append offset-formatter*)))))
 
-(defn- accessor-get ^Long [^TemporalAccessor accessor, chrono-field-name]
-  (.getLong accessor (chrono-field chrono-field-name)))
-
-(defn- accessor-supports? [^TemporalAccessor accessor, chrono-field-name]
-  (.isSupported accessor (chrono-field chrono-field-name)))
-
-(defn- offset-date-from-accessor ^OffsetDateTime [^TemporalAccessor accessor]
-  (OffsetDateTime/of
-   (accessor-get accessor :year)
-   (accessor-get accessor :month-of-year)
-   (accessor-get accessor :day-of-month)
-   0
-   0
-   0
-   0
-   (t/zone-offset accessor)))
+(def ^:private ^{:arglists '([accessor query])} query
+  (let [queries {:local-date  (TemporalQueries/localDate)
+                 :local-time  (TemporalQueries/localTime)
+                 :zone-offset (TemporalQueries/offset)
+                 :zone-id     (TemporalQueries/zoneId)}]
+    (fn [^TemporalAccessor accessor query]
+      (.query accessor (queries query)))))
 
 (defn parse
   "Parse a string into a `java.time` object."
   [^String s]
   (when (seq s)
     (let [accessor     (.parse formatter s)
-          has-date?    (accessor-supports? accessor :year)
-          has-time?    (accessor-supports? accessor :hour-of-day)
-          has-offset?  (accessor-supports? accessor :offset-seconds)
-          literal-type [(if has-offset? :offset :local)
+          local-date   (query accessor :local-date)
+          local-time   (query accessor :local-time)
+          zone-offset  (query accessor :zone-offset)
+          zone-id      (or (query accessor :zone-id)
+                           (when (= zone-offset ZoneOffset/UTC)
+                             (t/zone-id "UTC")))
+          literal-type [(cond
+                          zone-id     :zone
+                          zone-offset :offset
+                          :else       :local)
                         (cond
-                          (and has-date? has-time?) :datetime
-                          has-date?                 :date
-                          has-time?                 :time)]]
+                          (and local-date local-time) :datetime
+                          local-date                 :date
+                          local-time                  :time)]]
       (case literal-type
-        [:offset :datetime] (OffsetDateTime/from accessor)
-        [:local :datetime]  (LocalDateTime/from accessor)
-        [:offset :date]     (offset-date-from-accessor accessor)
-        [:local :date]      (LocalDate/from accessor)
-        [:offset :time]     (OffsetTime/from accessor)
-        [:local :time]      (LocalTime/from accessor)))))
+        [:zone :datetime]   (ZonedDateTime/of  local-date local-time zone-id)
+        [:offset :datetime] (OffsetDateTime/of local-date local-time zone-offset)
+        [:local :datetime]  (LocalDateTime/of  local-date local-time)
+        [:zone :date]       (ZonedDateTime/of  local-date (t/local-time 0) zone-id)
+        [:offset :date]     (OffsetDateTime/of local-date (t/local-time 0) zone-offset)
+        [:local :date]      local-date
+        [:zone :time]       (OffsetTime/of local-time zone-offset)
+        [:offset :time]     (OffsetTime/of local-time zone-offset)
+        [:local :time]      local-time))))

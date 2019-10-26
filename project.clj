@@ -108,7 +108,7 @@
    [me.raynes/fs "1.4.6"]                                             ; Filesystem tools
    [medley "1.2.0"]                                                   ; lightweight lib of useful functions
    [metabase/connection-pool "1.0.3"]                                 ; simple wrapper around C3P0. JDBC connection pools
-   [metabase/mbql "1.3.6"]                                            ; MBQL language schema & util fns
+   [metabase/mbql "1.3.7-SNAPSHOT"]                                   ; MBQL language schema & util fns
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
    [org.apache.commons/commons-lang3 "3.9"]                           ; helper methods for working with java.lang stuff
