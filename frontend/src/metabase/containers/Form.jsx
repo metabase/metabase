@@ -6,7 +6,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { createSelector } from "reselect";
 import { reduxForm, getValues, initialize } from "redux-form";
-import { getIn, assocIn, dissocIn } from "icepick";
+import { getIn, assocIn } from "icepick";
 import _ from "underscore";
 
 import CustomForm from "metabase/components/form/CustomForm";
@@ -128,16 +128,27 @@ export default class Form extends React.Component {
         (state, props) => props.validate,
         (state, props) => props.initial,
         (state, props) => props.normalize,
+        (state, props) => props.fields,
         (state, props) => state.inlineFields,
       ],
-      (form, validate, initial, normalize, inlineFields) =>
-        // use props.form if provided, otherwise generate from state.fields and props.{validate,initial,normalize}
-        form || {
+      (form, validate, initial, normalize, fields, inlineFields) => {
+        // use props.form if provided, otherwise generate from props.{fields,initial,validate,normalize}
+        const formDef = form || {
           validate,
           initial,
           normalize,
-          fields: Object.values(inlineFields),
-        },
+          fields: fields || Object.values(inlineFields),
+        };
+        return {
+          ...formDef,
+          fields: (...args) =>
+            // merge inlineFields in
+            getValue(formDef.fields, ...args).map(fieldDef => ({
+              ...inlineFields[fieldDef.name],
+              ...fieldDef,
+            })),
+        };
+      },
     );
     const getFormObject = createSelector(
       [getFormDefinition],
@@ -187,11 +198,7 @@ export default class Form extends React.Component {
       if (newFields.length > 0) {
         // $FlowFixMe: dispatch provided by connect
         this.props.dispatch(
-          initialize(
-            this.props.formName,
-            this._getInitialValues(),
-            this._getFieldNames(),
-          ),
+          initialize(this.props.formName, this._getInitialValues(), newFields),
         );
       }
     }
@@ -209,9 +216,9 @@ export default class Form extends React.Component {
   _unregisterFormField = (field: FormFieldDefinition) => {
     if (this.state.inlineFields[field.name]) {
       // console.log("_unregisterFormField", field.name);
-      this.setState(prevState =>
-        dissocIn(prevState, ["inlineFields", field.name]),
-      );
+      // this.setState(prevState =>
+      //   dissocIn(prevState, ["inlineFields", field.name]),
+      // );
     }
   };
 

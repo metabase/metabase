@@ -7,6 +7,9 @@ import FormMessage from "metabase/components/form/FormMessage";
 
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";
 
+import Button from "metabase/components/Button";
+import ActionButton from "metabase/components/ActionButton";
+
 import _ from "underscore";
 
 import { t } from "ttag";
@@ -123,7 +126,7 @@ export class CustomFormField extends React.Component {
     }
   }
   render() {
-    const { name, renderWidget } = this.props;
+    const { name } = this.props;
     const { fields, formFieldsByName } = this.context;
 
     const field = getIn(fields, name.split("."));
@@ -133,32 +136,32 @@ export class CustomFormField extends React.Component {
     }
     return (
       <FormField {...this.props} field={field} formField={formField}>
-        {renderWidget ? (
-          renderWidget(field)
-        ) : (
-          <FormWidget {...this.props} field={field} formField={formField} />
-        )}
+        <FormWidget {...this.props} field={field} formField={formField} />
       </FormField>
     );
   }
 }
 
-import ActionButton from "metabase/components/ActionButton";
-
 export const CustomFormSubmit = (
   { children = t`Submit`, ...props },
   { values, submitting, invalid, pristine, handleSubmit },
-) => (
-  <ActionButton
-    {...props}
-    actionFn={async e => handleSubmit()}
-    type="submit"
-    primary={!(submitting || invalid || pristine)}
-    disabled={submitting || invalid || pristine}
-  >
-    {children}
-  </ActionButton>
-);
+) => {
+  // NOTE: need a way to configure if "pristine" forms can be submitted
+  const canSubmit = !(submitting || invalid); // || pristine );
+  return (
+    <ActionButton
+      normalText={children}
+      activeText={children}
+      failedText={t`Failed`}
+      successText={t`Success`}
+      primary={canSubmit}
+      disabled={!canSubmit}
+      {...props}
+      type="submit"
+      actionFn={handleSubmit}
+    />
+  );
+};
 CustomFormSubmit.contextTypes = {
   values: PropTypes.object,
   submitting: PropTypes.bool,
@@ -217,9 +220,20 @@ export const CustomFormSection = ({ collapsible, ...props }) =>
     <StandardSection {...props} />
   );
 
-export const CustomFormFooter = ({ submitTitle }) => (
+export const CustomFormFooter = ({
+  submitTitle,
+  cancelTitle = t`Cancel`,
+  onCancel,
+}) => (
   <div className="flex align-center">
     <CustomFormMessage />
-    <CustomFormSubmit className="ml-auto">{submitTitle}</CustomFormSubmit>
+    <div className="flex align-center ml-auto">
+      {onCancel && (
+        <Button className="ml1" onClick={onCancel}>
+          {cancelTitle}
+        </Button>
+      )}
+      <CustomFormSubmit className="ml1">{submitTitle}</CustomFormSubmit>
+    </div>
   </div>
 );

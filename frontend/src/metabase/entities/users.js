@@ -8,6 +8,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import MetabaseUtils from "metabase/lib/utils";
 
 import { createEntity } from "metabase/lib/entities";
+import validate from "metabase/lib/validate";
 
 import { UserApi, SessionApi } from "metabase/services";
 
@@ -33,26 +34,19 @@ const DETAILS_FORM_FIELDS: FormFieldDefinition[] = [
     name: "first_name",
     title: t`First name`,
     placeholder: "Johnny",
-    validate: name =>
-      (!name && t`required`) ||
-      (name && name.length > 100 && t`must be 100 characters or less`),
+    validate: validate.required().maxLength(100),
   },
   {
     name: "last_name",
     title: t`Last name`,
     placeholder: "Appleseed",
-    validate: name =>
-      (!name && t`required`) ||
-      (name && name.length > 100 && t`must be 100 characters or less`),
+    validate: validate.required().maxLength(100),
   },
   {
     name: "email",
     title: t`Email`,
     placeholder: "youlooknicetoday@email.com",
-    validate: email =>
-      (!email && t`required`) ||
-      (!MetabaseUtils.validEmail(email) &&
-        t`not a valid formatted email address`),
+    validate: validate.required().email(),
   },
 ];
 
@@ -62,9 +56,7 @@ const PASSWORD_FORM_FIELDS: FormFieldDefinition[] = [
     title: t`Enter a password`,
     type: "password",
     placeholder: t`Shh...`,
-    validate: password =>
-      (!password && t`required`) ||
-      MetabaseSettings.passwordComplexityDescription(password),
+    validate: validate.required().passwordComplexity(),
   },
   {
     name: "password_confirm",
@@ -192,7 +184,7 @@ const Users = createEntity({
           name: "site_name",
           title: t`Your company or team name`,
           placeholder: t`Department of Awesome`,
-          validate: value => !value && t`required`,
+          validate: validate.required(),
         },
       ],
     },
@@ -203,7 +195,7 @@ const Users = createEntity({
           type: "password",
           title: t`Current password`,
           placeholder: t`Shhh...`,
-          validate: value => !value && t`required`,
+          validate: validate.required(),
         },
         ...PASSWORD_FORM_FIELDS,
       ],

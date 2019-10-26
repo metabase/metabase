@@ -11,6 +11,7 @@ import FormMessage from "metabase/components/form/FormMessage";
 import LogoIcon from "metabase/components/LogoIcon";
 import Settings from "metabase/lib/settings";
 import Utils from "metabase/lib/utils";
+import validate from "metabase/lib/validate";
 
 import Form from "metabase/containers/Form";
 
@@ -72,13 +73,7 @@ export default class LoginApp extends Component {
 
   handleUsernameAndPasswordLogin = async credentials => {
     const { login, location } = this.props;
-
-    try {
-      await login(credentials, location.query.redirect);
-    } catch (e) {
-      console.log(e);
-      throw e;
-    }
+    await login(credentials, location.query.redirect);
   };
 
   render() {
@@ -145,26 +140,22 @@ const UsernameAndPasswordForm = ({ onSubmit, ldapEnabled }) => (
       <Form>
         <FormField
           name="username"
-          title={
-            Settings.ldapEnabled()
-              ? t`Username or email address`
-              : t`Email address`
-          }
+          type={ldapEnabled ? "input" : "email"}
+          title={ldapEnabled ? t`Username or email address` : t`Email address`}
           placeholder="youlooknicetoday@email.com"
-          validate={email => !email && t`Email is required`}
-          type={ldapEnabled ? "text" : "email"}
+          validate={ldapEnabled ? validate.required() : validate.email()}
         />
         <FormField
           name="password"
-          title={t`Password`}
           type="password"
+          title={t`Password`}
           placeholder="Shh..."
-          validate={password => !password && t`Password is required`}
+          validate={validate.required()}
         />
         <FormField
           name="remember"
-          title={t`Remember me`}
           type="checkbox"
+          title={t`Remember me`}
           initial={true}
           horizontal
         />

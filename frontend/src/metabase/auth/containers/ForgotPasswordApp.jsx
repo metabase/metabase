@@ -8,6 +8,7 @@ import LogoIcon from "metabase/components/LogoIcon";
 import Icon from "metabase/components/Icon";
 
 import MetabaseSettings from "metabase/lib/settings";
+import validate from "metabase/lib/validate";
 
 import { SessionApi } from "metabase/services";
 
@@ -51,7 +52,7 @@ export default class ForgotPasswordApp extends Component {
                           name: "email",
                           title: t`Email address`,
                           placeholder: t`The email you use for your Metabase account`,
-                          validate: email => !email && t`required`,
+                          validate: validate.email(),
                         },
                       ],
                     }}
