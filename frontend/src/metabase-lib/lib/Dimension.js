@@ -821,6 +821,8 @@ export class ExpressionDimension extends Dimension {
   }
 }
 
+const UNAGGREGATED_SPECIAL_TYPES = new Set([TYPE.FK, TYPE.PK]);
+
 /**
  * Aggregation reference, `["aggregation", aggregation-index]`
  */
@@ -841,8 +843,10 @@ export class AggregationDimension extends Dimension {
 
   column(extra = {}) {
     const aggregation = this.aggregation();
+    const { special_type, ...column } = super.column();
     return {
-      ...super.column(),
+      ...column,
+      ...(!UNAGGREGATED_SPECIAL_TYPES.has(special_type) && { special_type }),
       base_type: aggregation ? aggregation.baseType() : TYPE.Float,
       source: "aggregation",
       ...extra,
