@@ -36,6 +36,7 @@
     "leaflet.heat": "^0.2.0",
     "lodash.memoize": "^4.1.2",
     "moment": "2.19.3",
+    "moment-timezone": "^0.5.26",
     "mustache": "^2.3.2",
     "node-libs-browser": "^2.0.0",
     "normalizr": "^3.0.2",

@@ -43,6 +43,8 @@
           query                                   (cond-> query
                                                     settings (assoc :settings settings))
           results                                 (qp query)]
-      (assoc results
-             :expected_timezone (expected-timezone-id)
-             :actual_timezone   (actual-timezone-id)))))
+      (update results
+              :data
+              assoc
+              :requested_timezone (expected-timezone-id)
+              :results_timezone   (actual-timezone-id)))))

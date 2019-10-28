@@ -36,23 +36,23 @@
         "if the driver doesn't support `:set-timezone`, query should be unchanged, even if `report-timezone` is valid")))
 
 (deftest post-processing-test
-  (doseq [[driver timezone->expected] {::timezone-driver    {"US/Pacific" {:actual_timezone   "US/Pacific"
-                                                                           :expected_timezone "US/Pacific"}
-                                                             nil          {:actual_timezone   "UTC"
-                                                                           :expected_timezone "UTC"}}
-                                       ::no-timezone-driver {"US/Pacific" {:actual_timezone   "UTC"
-                                                                           :expected_timezone "US/Pacific"}
-                                                             nil          {:actual_timezone   "UTC"
-                                                                           :expected_timezone "UTC"}}}
+  (doseq [[driver timezone->expected] {::timezone-driver    {"US/Pacific" {:results_timezone   "US/Pacific"
+                                                                           :requested_timezone "US/Pacific"}
+                                                             nil          {:results_timezone   "UTC"
+                                                                           :requested_timezone "UTC"}}
+                                       ::no-timezone-driver {"US/Pacific" {:results_timezone   "UTC"
+                                                                           :requested_timezone "US/Pacific"}
+                                                             nil          {:results_timezone   "UTC"
+                                                                           :requested_timezone "UTC"}}}
           [timezone expected]         timezone->expected]
     (testing driver
       (tu/with-temporary-setting-values [report-timezone timezone]
         (driver/with-driver driver
-          (is (= (assoc expected :results? true)
+          (is (= expected
                  (let [query        {:query? true}
                        results      {:results? true}
                        add-settings (add-settings/add-settings (constantly results))]
-                   (add-settings query)))))))))
+                   (:data (add-settings query))))))))))
 
 (defn- env [_]
   "SOME_VALUE")
