@@ -1,6 +1,6 @@
 (ns ^:deprecated metabase.util.date
-  "Utility functions for working with datetimes of different types, and other related tasks. Deprecate: use
-  `metabase.util.date` instead."
+  "Utility functions for working with datetimes of different types, and other related tasks. Deprecated: use
+  `metabase.util.date-2` instead."
   (:require [clj-time
              [coerce :as coerce]
              [core :as t]

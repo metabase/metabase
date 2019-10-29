@@ -8,12 +8,14 @@
             [honeysql
              [core :as hsql]
              [format :as hformat]]
+            [java-time :as t]
             [metabase.driver :as driver]
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]
              [i18n :refer [trs]]])
   (:import java.sql.Time
+           [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            java.util.Date))
 
 (defmulti unprepare-value
@@ -55,15 +57,46 @@
   (hformat/to-sql
    (hsql/call iso-8601-fn (hx/literal (du/date->iso-8601 value)))))
 
+;; TODO - this can probably be removed!
 (defmethod unprepare-value [:sql Date]
   [_ value]
   (unprepare-date-with-iso-8601-fn :timestamp value))
 
-;; default impl for Time is just converting the Time literal to a `1970-01-01T<time>` Timestamp and passing to impl
-;; for `Date`, then wrapping entire expression in `time()`
+;; TODO - this can probably be removed!
 (defmethod unprepare-value [:sql Time]
   [driver value]
+  ;; default impl for Time is just converting the Time literal to a `1970-01-01T<time>` Timestamp and passing to impl
+  ;; for `Date`, then wrapping entire expression in `time()`
   (hformat/to-sql (hx/->time (hsql/raw (unprepare-value driver (du/->Timestamp value))))))
+
+(defmethod unprepare-value [:sql LocalDate]
+  [_ value]
+  (format "date '%s'" (t/format "yyyy-MM-dd" value)))
+
+(defmethod unprepare-value [:sql LocalTime]
+  [_ value]
+  (format "time '%s'" (t/format "HH:mm:ss.SSS" value)))
+
+(defmethod unprepare-value [:sql OffsetTime]
+  [_ value]
+  (format "time with time zone '%s'" (t/format "HH:mm:ss.SSSZZZZZ" value)))
+
+(defmethod unprepare-value [:sql LocalDateTime]
+  [_ value]
+  (format "timestamp '%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSS" value)))
+
+(defmethod unprepare-value [:sql OffsetDateTime]
+  [_ value]
+  (format "timestamp with time zone '%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" value)))
+
+(defmethod unprepare-value [:sql ZonedDateTime]
+  [_ value]
+  (format "timestamp with time zone '%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" value)))
+
+(defmethod unprepare-value [:sql Instant]
+  [_ value]
+  (format "timestamp with time zone '%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ"
+                                                    (t/offset-date-time value (t/zone-offset 0)))))
 
 
 ;; TODO - I think a name like `deparameterize` would be more appropriate here

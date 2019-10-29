@@ -65,9 +65,8 @@
   "The pivotal stage of the `process-query` pipeline where the query is actually executed by the driver's Query
   Processor methods. This function takes the fully pre-processed query, runs it, and returns the results, which then
   run through the various post-processing steps."
-  [query :- {:driver   s/Keyword
-             s/Keyword s/Any}]
-  (driver/execute-query (:driver query) query))
+  [query :- (s/pred map?)]
+  (driver/execute-query driver/*driver* query))
 
 ;; The way these functions are applied is actually straight-forward; it matches the middleware pattern used by
 ;; Ring.

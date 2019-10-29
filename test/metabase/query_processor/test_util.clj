@@ -23,12 +23,16 @@
 ;; `metabase.query-processor-test`
 
 (s/defn ^:private everything-store-table [table-id :- (s/maybe su/IntGreaterThanZero)]
+  (assert (= (:id (qp.store/database)) (data/id))
+    "with-everything-store currently does not support switching drivers. Make sure you call with-driver *before* with-everything-store.")
   (or (get-in @@#'qp.store/*store* [:tables table-id])
       (do
         (qp.store/fetch-and-store-tables! [table-id])
         (qp.store/table table-id))))
 
 (s/defn ^:private everything-store-field [field-id :- (s/maybe su/IntGreaterThanZero)]
+  (assert (= (:id (qp.store/database)) (data/id))
+    "with-everything-store currently does not support switching drivers. Make sure you call with-driver *before* with-everything-store.")
   (or (get-in @@#'qp.store/*store* [:fields field-id])
       (do
         (qp.store/fetch-and-store-fields! [field-id])

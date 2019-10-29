@@ -3,10 +3,12 @@
   (:require [bigml.histogram.core :as hist]
             [cheshire.core :as json]
             [clj-time.coerce :as t.coerce]
+            [java-time :as t]
             [kixi.stats
              [core :as stats]
              [math :as math]]
             [metabase.models.field :as field]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.sync.analyze.classifiers.name :as classify.name]
             [metabase.sync.util :as sync-util]
             [metabase.util :as u]
@@ -160,13 +162,22 @@
   (->date ^java.util.Date [this]
     "Coerce object to a `java.util.Date`."))
 
+(defn- date-coercion-timezone-id []
+  ;; TODO - if `database-timezone-id` isn't bound we should probably throw an Exception or at the very least log a
+  ;; warning
+  (t/zone-id (or (qp.timezone/database-timezone-id) "UTC")))
+
 (extend-protocol IDateCoercible
-  nil                    (->date [_] nil)
-  String                 (->date [this] (-> this du/str->date-time t.coerce/to-date))
-  java.util.Date         (->date [this] this)
-  DateTime               (->date [this] (t.coerce/to-date this))
-  Long                   (->date [^Long this] (java.util.Date. this))
-  Integer                (->date [^Integer this] (java.util.Date. (long this))))
+  nil                         (->date [_] nil)
+  String                      (->date [this] (-> this du/str->date-time t.coerce/to-date))
+  java.util.Date              (->date [this] this)
+  DateTime                    (->date [this] (t.coerce/to-date this))
+  Long                        (->date [^Long this] (java.util.Date. this))
+  Integer                     (->date [^Integer this] (java.util.Date. (long this)))
+  java.time.temporal.Temporal (->date [this] (t/to-java-date this))
+  java.time.LocalDate         (->date [this] (t/to-java-date (t/zoned-date-time this (t/local-time 0) (date-coercion-timezone-id))))
+  java.time.LocalTime         (->date [this] (t/to-java-date (t/zoned-date-time (t/local-date 0) this (date-coercion-timezone-id))))
+  java.time.LocalDateTime     (->date [this] (t/to-java-date (t/zoned-date-time this (date-coercion-timezone-id)))))
 
 (deffingerprinter :type/DateTime
   ((map ->date)

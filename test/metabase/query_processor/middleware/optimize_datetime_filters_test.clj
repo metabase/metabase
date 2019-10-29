@@ -2,13 +2,13 @@
   (:require [clojure
              [string :as str]
              [test :refer :all]]
+            [java-time :as t]
             [metabase
              [driver :as driver]
              [query-processor :as qp]]
             [metabase.query-processor.middleware.optimize-datetime-filters :as optimize-datetime-filters]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
+            [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.test.data :as data]
             [metabase.util.date-2 :as u.date]))
 
 (driver/register! ::timezone-driver, :abstract? true)
@@ -102,43 +102,38 @@
                      [:absolute-datetime filter-value unit]
                      [:absolute-datetime filter-value unit]])))))))))
 
+(defn- optimize-with-timezone [t]
+  (-> ((optimize-datetime-filters/optimize-datetime-filters identity)
+       {:database 1
+        :type     :query
+        :query    {:filter [:=
+                            [:datetime-field [:field-id 1] :day]
+                            [:absolute-datetime t :day]]}})
+      (get-in [:query :filter])))
+
 (deftest timezones-test
   (driver/with-driver ::timezone-driver
-    (let [optimize-with-timezone (fn [inst]
-                                   (-> ((optimize-datetime-filters/optimize-datetime-filters identity)
-                                        {:database 1
-                                         :type     :query
-                                         :query    {:filter [:=
-                                                             [:datetime-field [:field-id 1] :day]
-                                                             [:absolute-datetime inst :day]]}})
-                                       (get-in [:query :filter])))]
-      (doseq [[timezone-id {:keys [inst lower upper]}]
-              {"UTC"        {:inst  "2015-11-18T00:00:00.000000000-00:00"
-                             :lower "2015-11-18T00:00:00.000000000-00:00"
-                             :upper "2015-11-19T00:00:00.000000000-00:00"}
-               "US/Pacific" {:inst  "2015-11-18T08:00:00.000000000-00:00"
-                             :lower "2015-11-18T08:00:00.000000000-00:00"
-                             :upper "2015-11-19T08:00:00.000000000-00:00"}}]
-        (testing (format "%s timezone" timezone-id)
-          (let [inst'  (u.date/parse inst "UTC")
-                lower' (u.date/parse lower "UTC")
-                upper' (u.date/parse upper "UTC")]
-            (tu/with-temporary-setting-values [report-timezone timezone-id]
-              (testing "lower-bound and upper-bound util fns"
-                (is (= lower'
-                       (#'optimize-datetime-filters/lower-bound :day inst'))
-                    (format "lower bound of day(%s) in the %s timezone should be %s" inst timezone-id lower))
-                (is (= upper'
-                       (#'optimize-datetime-filters/upper-bound :day inst'))
-                    (format "upper bound of day(%s) in the %s timezone should be %s" inst timezone-id upper)))
-              (testing "optimize-with-datetime"
-                (let [expected [:and
-                                [:>= [:datetime-field [:field-id 1] :default] [:absolute-datetime lower' :default]]
-                                [:<  [:datetime-field [:field-id 1] :default] [:absolute-datetime upper' :default]]]]
-                  (is (= expected
-                         (optimize-with-timezone inst'))
-                      (format "= %s in the %s timezone should be optimized to range %s -> %s"
-                              inst timezone-id lower upper)))))))))))
+    (doseq [timezone-id ["UTC" "US/Pacific"]]
+      (testing (format "%s timezone" timezone-id)
+        (let [t     (u.date/parse "2015-11-18" timezone-id)
+              lower (t/zoned-date-time (t/local-date 2015 11 18) (t/local-time 0) timezone-id)
+              upper (t/zoned-date-time (t/local-date 2015 11 19) (t/local-time 0) timezone-id)]
+          (qp.timezone/with-report-timezone-id timezone-id
+            (testing "lower-bound and upper-bound util fns"
+              (is (= lower
+                     (#'optimize-datetime-filters/lower-bound :day t))
+                  (format "lower bound of day(%s) in the %s timezone should be %s" t timezone-id lower))
+              (is (= upper
+                     (#'optimize-datetime-filters/upper-bound :day t))
+                  (format "upper bound of day(%s) in the %s timezone should be %s" t timezone-id upper)))
+            (testing "optimize-with-datetime"
+              (let [expected [:and
+                              [:>= [:datetime-field [:field-id 1] :default] [:absolute-datetime lower :default]]
+                              [:<  [:datetime-field [:field-id 1] :default] [:absolute-datetime upper :default]]]]
+                (is (= expected
+                       (optimize-with-timezone t))
+                    (format "= %s in the %s timezone should be optimized to range %s -> %s"
+                            t timezone-id lower upper))))))))))
 
 (deftest skip-optimization-test
   (let [clause [:= [:datetime-field [:field-id 1] :day] [:absolute-datetime #inst "2019-01-01" :month]]]
@@ -159,18 +154,18 @@
 (deftest e2e-test
   (testing :=
     (is (= {:query  "WHERE (CHECKINS.DATE >= ? AND CHECKINS.DATE < ?)"
-            :params [#inst "2019-09-24T00:00:00.000000000-00:00"
-                     #inst "2019-09-25T00:00:00.000000000-00:00"]}
+            :params [(t/zoned-date-time (t/local-date 2019 9 24) (t/local-time 0) "UTC")
+                     (t/zoned-date-time (t/local-date 2019 9 25) (t/local-time 0) "UTC")]}
            (data/$ids checkins
              (filter->sql [:= !day.date "2019-09-24T12:00:00.000Z"])))))
   (testing :<
     (is (= {:query  "WHERE CHECKINS.DATE < ?"
-            :params [#inst "2019-09-24T00:00:00.000000000-00:00"]}
+            :params [(t/zoned-date-time (t/local-date 2019 9 24) (t/local-time 0) "UTC")]}
            (data/$ids checkins
              (filter->sql [:< !day.date "2019-09-24T12:00:00.000Z"])))))
   (testing :between
     (is (= {:query  "WHERE (CHECKINS.DATE >= ? AND CHECKINS.DATE < ?)"
-            :params [#inst "2019-09-01T00:00:00.000000000-00:00"
-                     #inst "2019-11-01T00:00:00.000000000-00:00"]}
+            :params [(t/zoned-date-time (t/local-date 2019  9 1) (t/local-time 0) "UTC")
+                     (t/zoned-date-time (t/local-date 2019 11 1) (t/local-time 0) "UTC")]}
            (data/$ids checkins
              (filter->sql [:between !month.date "2019-09-02T12:00:00.000Z" "2019-10-05T12:00:00.000Z"]))))))

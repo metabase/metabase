@@ -47,8 +47,8 @@
 (deftest result-rows-test
   (data/dataset test-data-with-timezones
     (datasets/test-drivers (timezone-aware-column-drivers)
-      (is (= [[12 "2014-07-03T01:30:00.000Z"]
-              [10 "2014-07-03T19:30:00.000Z"]]
+      (is (= [[12 "2014-07-03T01:30:00Z"]
+              [10 "2014-07-03T19:30:00Z"]]
              (qp.test/formatted-rows [int identity]
                (data/run-mbql-query users
                  {:fields   [$id $last_login]
@@ -56,9 +56,9 @@
                   :order-by [[:asc $last_login]]})))
           "Basic sanity check: make sure the rows come back with the values we'd expect without setting report-timezone"))
     (datasets/test-drivers (set-timezone-drivers)
-      (doseq [[timezone expected-rows] {"UTC"        [[12 "2014-07-03T01:30:00.000Z"]
-                                                      [10 "2014-07-03T19:30:00.000Z"]]
-                                        "US/Pacific" [[10 "2014-07-03T12:30:00.000-07:00"]]}]
+      (doseq [[timezone expected-rows] {"UTC"        [[12 "2014-07-03T01:30:00Z"]
+                                                      [10 "2014-07-03T19:30:00Z"]]
+                                        "US/Pacific" [[10 "2014-07-03T12:30:00-07:00"]]}]
         (tu/with-temporary-setting-values [report-timezone timezone]
           (is (= expected-rows
                  (qp.test/formatted-rows [int identity]

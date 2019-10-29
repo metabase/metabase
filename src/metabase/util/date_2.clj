@@ -2,7 +2,10 @@
   "Replacement for `metabase.util.date` that consistently uses `java.time` instead of a mix of `java.util.Date`,
   `java.sql.*`, and Joda-Time."
   (:require [java-time :as t]
-            [metabase.util.date-2.parse :as parse]
+            [java-time.core :as t.core]
+            [metabase.util.date-2
+             [common :as common]
+             [parse :as parse]]
             [metabase.util.i18n :refer [tru]])
   (:import [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            [java.time.temporal Temporal TemporalAdjuster WeekFields]))
@@ -23,7 +26,8 @@
    (parse/parse s))
 
   ([s default-timezone-id]
-   (->zoned (parse s) default-timezone-id)))
+   (cond-> (parse s)
+     default-timezone-id (->zoned default-timezone-id))))
 
 (defn time? [x]
   (some #(instance? % x) [OffsetTime LocalTime]))
@@ -57,12 +61,13 @@
                :quarter     (t/months (* amount 3))
                :year        (t/years 1)))))
 
+;; TODO - what about seconds & milliseconds?
 (def extract-units
   "Units which return a (numerical, periodic) component of a date"
-  #{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year :iso-week-of-year :month-of-year
-    :quarter-of-year :year})
+  #{:minute-of-hour :hour-of-day :day-of-week :iso-day-of-week :day-of-month :day-of-year :week-of-year
+    :iso-week-of-year :month-of-year :quarter-of-year :year})
 
-(def ^:private week-fields
+(def ^:private ^{:arglists `(^WeekFields [~'k])} week-fields
   (common/static-instances WeekFields))
 
 (defn extract
@@ -73,17 +78,15 @@
    (case unit
      :minute-of-hour   (t/as t :minute-of-hour)
      :hour-of-day      (t/as t :hour-of-day)
-     :day-of-week      (t/as t :day-of-week)
+     :day-of-week      (t/as t (.dayOfWeek (week-fields :sunday-start)))
+     :iso-day-of-week  (t/as t (.dayOfWeek (week-fields :iso)))
      :day-of-month     (t/as t :day-of-month)
      :day-of-year      (t/as t :day-of-year)
-     :week-of-year     (t/as t (week-fields :sunday-start))
-     :iso-week-of-year (t/as t (week-fields :iso))
+     :week-of-year     (t/as t (.weekOfYear (week-fields :sunday-start)))
+     :iso-week-of-year (t/as t (.weekOfYear (week-fields :iso)))
      :month-of-year    (t/as t :month-of-year)
      :quarter-of-year  (t/as t :quarter-of-year)
      :year             (t/as t :year))))
-
-(def trucate-units  "Valid date bucketing units"
-  #{:second :minute :hour :day :week :iso-week :month :quarter :year})
 
 (def ^:private ^{:arglists `(^TemporalAdjuster [~'k])} adjusters
   {:first-day-of-week
@@ -100,6 +103,21 @@
    (reify TemporalAdjuster
      (adjustInto [_ t]
        (.with t (.atDay (t/year-quarter t) 1))))})
+
+;; if you attempt to truncate a `LocalDate` to `:day` or anything smaller we can go ahead and return it as is
+(extend-protocol t.core/Truncatable
+  LocalDate
+  (truncate-to [t unit]
+    (case unit
+      :millis  t
+      :seconds t
+      :minutes t
+      :hours   t
+      :days    t)))
+
+;; TODO - what about milliseconds?
+(def trucate-units  "Valid date bucketing units"
+  #{:second :minute :hour :day :week :iso-week :month :quarter :year})
 
 (defn truncate
   (^Temporal [unit]

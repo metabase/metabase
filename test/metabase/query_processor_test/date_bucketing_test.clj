@@ -43,7 +43,7 @@
     x))
 
 (defn- sad-toucan-incidents-with-bucketing
-  "Returns 10 sad toucan incidents grouped by `UNIT`"
+  "Returns 10 sad toucan incidents grouped by `unit`"
   ([unit]
    (->> (data/dataset sad-toucan-incidents
           (data/run-mbql-query incidents

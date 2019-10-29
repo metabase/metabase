@@ -6,12 +6,8 @@
             [metabase
              [driver :as driver]
              [util :as u]]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor
-             [interface :as qp.i]
-             [store :as qp.store]
-             [util :as qputil]]
+            [metabase.driver.sql-jdbc.execute-2 :as execute-2]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util
              [date :as du]
              [i18n :refer [tru]]])
@@ -252,47 +248,56 @@
 
 (defn- set-timezone!
   "Set the timezone for the current connection."
-  {:arglists '([driver settings connection])}
-  [driver {:keys [report-timezone]} connection]
-  (let [timezone      (u/prog1 report-timezone
-                        (assert (re-matches #"[A-Za-z\/_]+" <>)))
+  [driver connection]
+  (let [timezone-id   (qp.timezone/report-timezone-id-if-supported)
         format-string (set-timezone-sql driver)
-        sql           (format format-string (str \' timezone \'))]
+        sql           (format format-string (str \' timezone-id \'))]
     (log/debug (u/format-color 'green (tru "Setting timezone with statement: {0}" sql)))
     (jdbc/db-do-prepared connection [sql])))
 
-(defn- run-query-without-timezone [driver _ connection query]
+(defn- run-query-without-timezone [driver connection query]
   (do-in-transaction connection (partial run-query driver query nil)))
 
-(defn- run-query-with-timezone [driver {:keys [^String report-timezone] :as settings} connection query]
-  (try
-    (do-in-transaction connection (fn [transaction-connection]
-                                    (set-timezone! driver settings transaction-connection)
-                                    (run-query driver
-                                               query
-                                               (some-> report-timezone TimeZone/getTimeZone)
-                                               transaction-connection)))
-    (catch SQLException e
-      (log/error (tru "Failed to set timezone ''{0}'' for driver {1}" report-timezone driver) "\n" (with-out-str (jdbc/print-sql-exception-chain e)))
-      (run-query-without-timezone driver settings connection query))
-    (catch Throwable e
-      (log/error e (tru "Failed to set timezone ''{0}'' for driver {1}" report-timezone driver))
-      (run-query-without-timezone driver settings connection query))))
+(defn- run-query-with-timezone [driver connection query]
+  (let [timezone-id (qp.timezone/report-timezone-id-if-supported)]
+    (try
+      (do-in-transaction connection (fn [transaction-connection]
+                                      (set-timezone! driver transaction-connection)
+                                      (run-query driver
+                                                 query
+                                                 (some-> timezone-id TimeZone/getTimeZone)
+                                                 transaction-connection)))
+      (catch SQLException e
+        (log/error (tru "Failed to set timezone ''{0}'' for driver {1}" timezone-id driver)
+                   "\n" (with-out-str (jdbc/print-sql-exception-chain e)))
+        (run-query-without-timezone driver connection query))
+      (catch Throwable e
+        (log/error e (tru "Failed to set timezone ''{0}'' for driver {1}" timezone-id driver))
+        (run-query-without-timezone driver connection query)))))
 
 
 ;;; ------------------------------------------------- execute-query --------------------------------------------------
 
-(defn execute-query
+#_(defn execute-query
   "Process and run a native (raw SQL) `query`."
-  [driver {{:keys [report-timezone], :as settings} :settings, query :native, :as outer-query}]
-  (let [query (assoc query
-                     :remark   (qputil/query->remark outer-query)
-                     :max-rows (or (mbql.u/query->max-rows-limit outer-query) qp.i/absolute-max-results))]
+  [driver {query :native, :as outer-query}]
+  (let [report-timezone (qp.timezone/report-timezone-id-if-supported)
+        query           (assoc query
+                               :remark   (qputil/query->remark outer-query)
+                               :max-rows (or (mbql.u/query->max-rows-limit outer-query) qp.i/absolute-max-results))]
     (do-with-try-catch
       (fn []
         (let [db-connection (sql-jdbc.conn/db->pooled-connection-spec (qp.store/database))
-              run-query*    (if (and (seq report-timezone)
-                                     (driver/supports? driver :set-timezone))
+              run-query*    (if report-timezone
                               run-query-with-timezone
                               run-query-without-timezone)]
-          (run-query* driver settings db-connection query))))))
+          (run-query* driver db-connection query))))))
+
+(doseq [[symb varr] (ns-interns *ns*)]
+  (when-not (= symb 'execute-query)
+    (alter-meta! varr assoc :deprecated true)))
+
+(defn execute-query [driver query]
+  ;; TODO - correct results xform
+  (execute-2/execute-query driver query {:row-xform     vec
+                                         :results-xform vec}))

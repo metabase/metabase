@@ -85,7 +85,7 @@
 (datasets/expect-with-driver :postgres
   [{:name "id",      :base_type :type/Integer}
    {:name "user_id", :base_type :type/UUID}]
-  (->> (data/dataset metabase.driver.postgres-test/with-uuid
+  (->> (data/dataset with-uuid
          (data/run-mbql-query users))
        :data
        :cols
@@ -95,21 +95,21 @@
 ;; Check that we can filter by a UUID Field
 (datasets/expect-with-driver :postgres
   [[2 #uuid "4652b2e7-d940-4d55-a971-7e484566663e"]]
-  (rows (data/dataset metabase.driver.postgres-test/with-uuid
+  (rows (data/dataset with-uuid
           (data/run-mbql-query users
             {:filter [:= $user_id "4652b2e7-d940-4d55-a971-7e484566663e"]}))))
 
 ;; check that a nil value for a UUID field doesn't barf (#2152)
 (datasets/expect-with-driver :postgres
   []
-  (rows (data/dataset metabase.driver.postgres-test/with-uuid
+  (rows (data/dataset with-uuid
           (data/run-mbql-query users
             {:filter [:= $user_id nil]}))))
 
 ;; Check that we can filter by a UUID for SQL Field filters (#7955)
 (datasets/expect-with-driver :postgres
   [[#uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027" 1]]
-  (data/dataset metabase.driver.postgres-test/with-uuid
+  (data/dataset with-uuid
     (rows (qp/process-query {:database   (data/id)
                              :type       :native
                              :native     {:query         "SELECT * FROM users WHERE {{user}}"

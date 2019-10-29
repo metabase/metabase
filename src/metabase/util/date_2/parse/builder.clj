@@ -37,6 +37,7 @@
 (def ^:private ^:dynamic *strict?* true)
 
 (defn- set-strict! [^DateTimeFormatterBuilder builder strict?]
+  ;; TODO - what about ResolverStyle/SMART ?
   (if strict?
     (.parseStrict builder)
     (.parseLenient builder)))

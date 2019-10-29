@@ -1,19 +1,166 @@
 (ns metabase.util.date-2-test
-  (:require [clojure.test :refer :all]
+  (:require [clojure
+             [string :as str]
+             [test :refer :all]]
             [java-time :as t]
             [metabase.util.date-2 :as u.date]))
 
-(deftest date-extract-test
-  (is (= 1
-         (u.date/extract :hour-of-day (t/offset-date-time 2019 10 24 1))))
-  (is (= 1
-         (u.date/extract :hour-of-day (t/offset-date-time 2019 10 24 1) "UTC")))
-  (is (= 18
-         (u.date/extract :hour-of-day (t/offset-date-time 2019 10 24 1) "US/Pacific")))
-  (is (= 1
-         (u.date/extract :hour-of-day (t/local-date-time 2019 10 24 1))))
-  (is (= 1
-         (u.date/extract :hour-of-day (t/local-date-time 2019 10 24 1) "UTC")))
-  ;; TODO - not sure
-  (is (= 8
-         (u.date/extract :hour-of-day (t/local-date-time 2019 10 24 1) "US/Pacific"))))
+(deftest parse-test
+  (letfn [(message [expected s default-timezone-id]
+            (if default-timezone-id
+              (format "parsing '%s' with default timezone id '%s' should give you %s" s default-timezone-id expected)
+              (format "parsing '%s' should give you %s" s expected)))
+          (is-parsed? [expected s default-timezone-id]
+            {:pre [(string? s)]}
+            (testing "ISO-8601-style literal"
+              (is (= expected
+                     (u.date/parse s default-timezone-id))
+                  (message expected s default-timezone-id)))
+            (when (str/includes? s "T")
+              (testing "SQL-style literal"
+                (let [s (str/replace s #"T" " ")]
+                  (is (= expected
+                         (u.date/parse s default-timezone-id))
+                      (message expected s default-timezone-id))))))]
+    (testing "literals without timezone"
+      (doseq [[s expected]
+              {"2019"                    (t/local-date 2019 1 1)
+               "2019-10"                 (t/local-date 2019 10 1)
+               "2019-10-28"              (t/local-date 2019 10 28)
+               "2019-10-28T13"           (t/local-date-time 2019 10 28 13)
+               "2019-10-28T13:14"        (t/local-date-time 2019 10 28 13 14)
+               "2019-10-28T13:14:15"     (t/local-date-time 2019 10 28 13 14 15)
+               "2019-10-28T13:14:15.555" (t/local-date-time 2019 10 28 13 14 15 (* 555 1000 1000))
+               "13:30"                   (t/local-time 13 30)
+               "13:30:20"                (t/local-time 13 30 20)
+               "13:30:20.555"            (t/local-time 13 30 20 (* 555 1000 1000))}]
+        (is-parsed? expected s nil)))
+    (testing "literals without timezone, but default timezone provided"
+      (doseq [[s expected]
+              {"2019"                    (t/zoned-date-time 2019  1  1  0  0  0               0 (t/zone-id "America/Los_Angeles"))
+               "2019-10"                 (t/zoned-date-time 2019 10  1  0  0  0               0 (t/zone-id "America/Los_Angeles"))
+               "2019-10-28"              (t/zoned-date-time 2019 10 28  0  0  0               0 (t/zone-id "America/Los_Angeles"))
+               "2019-10-28T13"           (t/zoned-date-time 2019 10 28 13  0  0               0 (t/zone-id "America/Los_Angeles"))
+               "2019-10-28T13:14"        (t/zoned-date-time 2019 10 28 13 14  0               0 (t/zone-id "America/Los_Angeles"))
+               "2019-10-28T13:14:15"     (t/zoned-date-time 2019 10 28 13 14 15               0 (t/zone-id "America/Los_Angeles"))
+               "2019-10-28T13:14:15.555" (t/zoned-date-time 2019 10 28 13 14 15 (* 555 1000000) (t/zone-id "America/Los_Angeles"))
+               "13:30"                   (t/offset-time 13 30  0               0 (t/zone-offset -7))
+               "13:30:20"                (t/offset-time 13 30 20               0 (t/zone-offset -7))
+               "13:30:20.555"            (t/offset-time 13 30 20 (* 555 1000000) (t/zone-offset -7))}]
+        (is-parsed? expected s "America/Los_Angeles")))
+    (testing "literals with a timezone offset"
+      (doseq [[s expected]
+              {"2019-10-28-07:00"              (t/offset-date-time 2019 10 28  0  0  0               0 (t/zone-offset -7))
+               "2019-10-28T13-07:00"           (t/offset-date-time 2019 10 28 13  0  0               0 (t/zone-offset -7))
+               "2019-10-28T13:14-07:00"        (t/offset-date-time 2019 10 28 13 14  0               0 (t/zone-offset -7))
+               "2019-10-28T13:14:15-07:00"     (t/offset-date-time 2019 10 28 13 14 15               0 (t/zone-offset -7))
+               "2019-10-28T13:14:15.555-07:00" (t/offset-date-time 2019 10 28 13 14 15 (* 555 1000000) (t/zone-offset -7))
+               "13:30-07:00"                   (t/offset-time 13 30  0               0 (t/zone-offset -7))
+               "13:30:20-07:00"                (t/offset-time 13 30 20               0 (t/zone-offset -7))
+               "13:30:20.555-07:00"            (t/offset-time 13 30 20 (* 555 1000000) (t/zone-offset -7))}]
+        ;; The 'UTC' default timezone ID should be ignored entirely since all these literals specify their offset
+        (is-parsed? expected s "UTC")))
+    (testing "literals with a timezone id"
+      (doseq [[s expected] {"2019-10-28-07:00[America/Los_Angeles]"              (t/zoned-date-time 2019 10 28  0  0  0               0 (t/zone-id "America/Los_Angeles"))
+                            "2019-10-28T13-07:00[America/Los_Angeles]"           (t/zoned-date-time 2019 10 28 13  0  0               0 (t/zone-id "America/Los_Angeles"))
+                            "2019-10-28T13:14-07:00[America/Los_Angeles]"        (t/zoned-date-time 2019 10 28 13 14  0               0 (t/zone-id "America/Los_Angeles"))
+                            "2019-10-28T13:14:15-07:00[America/Los_Angeles]"     (t/zoned-date-time 2019 10 28 13 14 15               0 (t/zone-id "America/Los_Angeles"))
+                            "2019-10-28T13:14:15.555-07:00[America/Los_Angeles]" (t/zoned-date-time 2019 10 28 13 14 15 (* 555 1000000) (t/zone-id "America/Los_Angeles"))
+                            "13:30-07:00[America/Los_Angeles]"                   (t/offset-time 13 30  0               0 (t/zone-offset -7))
+                            "13:30:20-07:00[America/Los_Angeles]"                (t/offset-time 13 30 20               0 (t/zone-offset -7))
+                            "13:30:20.555-07:00[America/Los_Angeles]"            (t/offset-time 13 30 20 (* 555 1000000) (t/zone-offset -7))}]
+        ;; The 'UTC' default timezone ID should be ignored entirely since all these literals specify their zone ID
+        (is-parsed? expected s "UTC")))
+    (testing "literals with UTC offset 'Z'"
+      (doseq [[s expected] {"2019Z"                    (t/zoned-date-time 2019  1  1  0  0  0               0 (t/zone-id "UTC"))
+                            "2019-10Z"                 (t/zoned-date-time 2019 10  1  0  0  0               0 (t/zone-id "UTC"))
+                            "2019-10-28Z"              (t/zoned-date-time 2019 10 28  0  0  0               0 (t/zone-id "UTC"))
+                            "2019-10-28T13Z"           (t/zoned-date-time 2019 10 28 13  0  0               0 (t/zone-id "UTC"))
+                            "2019-10-28T13:14Z"        (t/zoned-date-time 2019 10 28 13 14  0               0 (t/zone-id "UTC"))
+                            "2019-10-28T13:14:15Z"     (t/zoned-date-time 2019 10 28 13 14 15               0 (t/zone-id "UTC"))
+                            "2019-10-28T13:14:15.555Z" (t/zoned-date-time 2019 10 28 13 14 15 (* 555 1000000) (t/zone-id "UTC"))
+                            "13:30Z"                   (t/offset-time 13 30  0               0 (t/zone-offset 0))
+                            "13:30:20Z"                (t/offset-time 13 30 20               0 (t/zone-offset 0))
+                            "13:30:20.555Z"            (t/offset-time 13 30 20 (* 555 1000000) (t/zone-offset 0))}]
+        ;; default timezone ID should be ignored; because `Z` means UTC we should return ZonedDateTimes instead of
+        ;; OffsetDateTime
+        (is-parsed? expected s "US/Pacific")))))
+
+(deftest extract-test
+  ;; everything is at `Sunday October 27th 2019 2:03:40.555 PM` or subset thereof
+  (let [temporal-category->sample-values {:dates     [(t/local-date 2019 10 27)]
+                                          :times     [(t/local-time  14 3 40 (* 555 1000000))
+                                                      (t/offset-time 14 3 40 (* 555 1000000) (t/zone-offset -7))]
+                                          :datetimes [(t/offset-date-time 2019 10 27 14 3 40 (* 555 1000000) (t/zone-offset -7))
+                                                      (t/zoned-date-time  2019 10 27 14 3 40 (* 555 1000000) (t/zone-id "America/Los_Angeles"))
+                                                      #_(t/instant (t/zoned-date-time  2019 10 27 14 3 40 (* 555 1000000) (t/zone-id "UTC")))]}]
+    (doseq [[categories unit->expected] {#{:times :datetimes} {:minute-of-hour 3
+                                                               :hour-of-day    14}
+                                         #{:dates :datetimes} {:day-of-week      1
+                                                               :iso-day-of-week  7
+                                                               :day-of-month     27
+                                                               :day-of-year      300
+                                                               :week-of-year     44
+                                                               :iso-week-of-year 43
+                                                               :month-of-year    10
+                                                               :quarter-of-year  4
+                                                               :year             2019}}
+            category                    categories
+            t                           (get temporal-category->sample-values category)
+            [unit expected]             unit->expected]
+         (is (= expected
+                (u.date/extract t unit))
+             (format "Extract %s from %s %s should be %s" unit (class t) t expected)))))
+
+(deftest truncate-test
+  (let [t->unit->expected
+        {(t/local-date 2019 10 27)
+         {:second   (t/local-date 2019 10 27)
+          :minute   (t/local-date 2019 10 27)
+          :hour     (t/local-date 2019 10 27)
+          :day      (t/local-date 2019 10 27)
+          :week     (t/local-date 2019 10 27)
+          :iso-week (t/local-date 2019 10 21)
+          :month    (t/local-date 2019 10 1)
+          :quarter  (t/local-date 2019 10 1)
+          :year     (t/local-date 2019 1 1)}
+
+         (t/local-time 14 3 40 (* 555 1000000))
+         {:second (t/local-time 14 3 40)
+          :minute (t/local-time 14 3)
+          :hour   (t/local-time 14)}
+
+         (t/offset-time 14 3 40 (* 555 1000000) (t/zone-offset -7))
+         {:second (t/offset-time 14 3 40 0 (t/zone-offset -7))
+          :minute (t/offset-time 14 3  0 0 (t/zone-offset -7))
+          :hour   (t/offset-time 14 0  0 0 (t/zone-offset -7))}
+
+         (t/offset-date-time 2019 10 27 14 3 40 (* 555 1000000) (t/zone-offset -7))
+         {:second   (t/offset-date-time 2019 10 27 14 3 40 0 (t/zone-offset -7))
+          :minute   (t/offset-date-time 2019 10 27 14 3  0 0 (t/zone-offset -7))
+          :hour     (t/offset-date-time 2019 10 27 14 0  0 0 (t/zone-offset -7))
+          :day      (t/offset-date-time 2019 10 27 0  0  0 0 (t/zone-offset -7))
+          :week     (t/offset-date-time 2019 10 27 0  0  0 0 (t/zone-offset -7))
+          :iso-week (t/offset-date-time 2019 10 21 0  0  0 0 (t/zone-offset -7))
+          :month    (t/offset-date-time 2019 10  1 0  0  0 0 (t/zone-offset -7))
+          :quarter  (t/offset-date-time 2019 10  1 0  0  0 0 (t/zone-offset -7))
+          :year     (t/offset-date-time 2019  1  1 0  0  0 0 (t/zone-offset -7))   }
+
+         (t/zoned-date-time  2019 10 27 14 3 40 (* 555 1000000) (t/zone-id "America/Los_Angeles"))
+         {:second   (t/zoned-date-time  2019 10 27 14 3 40 0 (t/zone-id "America/Los_Angeles"))
+          :minute   (t/zoned-date-time  2019 10 27 14 3  0 0 (t/zone-id "America/Los_Angeles"))
+          :hour     (t/zoned-date-time  2019 10 27 14 0  0 0 (t/zone-id "America/Los_Angeles"))
+          :day      (t/zoned-date-time  2019 10 27  0 0  0 0 (t/zone-id "America/Los_Angeles"))
+          :week     (t/zoned-date-time  2019 10 27  0 0  0 0 (t/zone-id "America/Los_Angeles"))
+          :iso-week (t/zoned-date-time  2019 10 21  0 0  0 0 (t/zone-id "America/Los_Angeles"))
+          :month    (t/zoned-date-time  2019 10  1  0 0  0 0 (t/zone-id "America/Los_Angeles"))
+          :quarter  (t/zoned-date-time  2019 10  1  0 0  0 0 (t/zone-id "America/Los_Angeles"))
+          :year     (t/zoned-date-time  2019  1  1  0 0  0 0 (t/zone-id "America/Los_Angeles"))}}]
+    (doseq [[t unit->expected] t->unit->expected
+            [unit expected]    unit->expected]
+      (is (= expected
+             (u.date/truncate t unit))
+          (format "Truncate %s %s to %s should be %s" (class t) t unit expected)))))
+
+;; TODO
+(deftest add-test)
