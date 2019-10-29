@@ -13,7 +13,7 @@ testAcrossTimezones(reportTz => {
       const rows = [[time1, 1], [time2, 2], [time3, 3]];
       const [filledData] = fillMissingValuesInDatas(
         {
-          series: [{ card: { results_timezone: reportTz } }],
+          series: [{}],
           settings: {
             "graph.x_axis.scale": "timeseries",
             series: () => ({ "line.missing": "zero" }),
@@ -22,7 +22,7 @@ testAcrossTimezones(reportTz => {
         {
           xValues: [time1, time2, time3],
           xDomain: [time1, time3],
-          xInterval: { interval: "day", count: 1 },
+          xInterval: { interval: "day", count: 1, timezone: reportTz },
         },
         [rows],
       );
