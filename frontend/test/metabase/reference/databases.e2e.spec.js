@@ -103,7 +103,7 @@ describe("The Reference Section", () => {
     // database update
     it("should update the sample database", async () => {
       // create a new db by cloning #1
-      var d1 = await MetabaseApi.db_get({ dbId: 1 });
+      let d1 = await MetabaseApi.db_get({ dbId: 1 });
       d1.name = "cloned-db";
       const { id } = await MetabaseApi.db_create(d1);
 
