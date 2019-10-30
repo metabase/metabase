@@ -3,6 +3,70 @@
   (:import [java.time.format DateTimeFormatter DateTimeFormatterBuilder SignStyle]
            java.time.temporal.ChronoField))
 
+(defprotocol BuilderPart
+  (apply-part [this builder]))
+
+(extend-protocol BuilderPart
+  String
+  (apply-part [this builder]
+    (.appendLiteral ^DateTimeFormatterBuilder builder this))
+
+  clojure.lang.Fn
+  (apply-part [this builder]
+    (this builder))
+
+  DateTimeFormatter
+  (apply-part [this builder]
+    (.append ^DateTimeFormatterBuilder builder this)))
+
+(defn apply-parts [builder parts]
+  (doseq [part parts]
+    (apply-part part builder)))
+
+(defn optional [& parts]
+  (reify BuilderPart
+    (apply-part [_ builder]
+      (.optionalStart ^DateTimeFormatterBuilder builder)
+      (apply-parts builder parts)
+      (.optionalEnd ^DateTimeFormatterBuilder builder))))
+
+(defn- set-option [^DateTimeFormatterBuilder builder option]
+  (case option
+    :strict           (.parseStrict builder)
+    :lenient          (.parseLenient builder)
+    :case-sensitive   (.parseCaseSensitive builder)
+    :case-insensitive (.parseCaseInsensitive builder)))
+
+(def ^:private ^:dynamic *options*
+  {:strictness       :strict
+   :case-sensitivity :case-sensitive})
+
+(defn- do-with-option [builder k new-value thunk]
+  (let [old-value (get *options* k)]
+    (if (= old-value new-value)
+      (thunk)
+      (binding [*options* (assoc *options* k new-value)]
+        (set-option builder new-value)
+        (thunk)
+        (set-option builder old-value)))))
+
+(defn- with-option-part [k v parts]
+  (reify BuilderPart
+    (apply-part [_ builder]
+      (do-with-option builder k v (fn [] (apply-parts builder parts))))))
+
+(defn strict [& parts]
+  (with-option-part :strictness :strict parts))
+
+(defn lenient [& parts]
+  (with-option-part :strictness :lenient parts))
+
+(defn case-sensitive [& parts]
+  (with-option-part :case-sensitivity :case-sensitive parts))
+
+(defn case-insensitive [& parts]
+  (with-option-part :case-sensitivity :case-insensitive parts))
+
 (def ^:private ^ChronoField chrono-field
   (common/static-instances ChronoField))
 
@@ -10,53 +74,6 @@
   (common/static-instances SignStyle))
 
 (def ^:private ^:dynamic *case-sensitive?* true)
-
-(defn- set-case-sensitive! [^DateTimeFormatterBuilder builder case-sensitive?]
-  (if case-sensitive?
-    (.parseCaseSensitive builder)
-    (.parseCaseInsensitive builder)))
-
-(defn- do-with-case-sensitivity [builder case-sensitive? thunk]
-  (if (= case-sensitive? *case-sensitive?*)
-    (thunk)
-    (let [old *case-sensitive?*]
-      (binding [*case-sensitive?* case-sensitive?]
-        (set-case-sensitive! builder case-sensitive?)
-        (thunk)
-        (set-case-sensitive! builder old)))))
-
-(defn case-insensitive [& forms]
-  (fn [builder]
-    (do-with-case-sensitivity builder false (fn [] (doseq [form forms] (form builder))))))
-
-(defn case-sensitive [& forms]
-  (fn [builder]
-    (do-with-case-sensitivity builder true (fn [] (doseq [form forms] (form builder))))))
-
-
-(def ^:private ^:dynamic *strict?* true)
-
-(defn- set-strict! [^DateTimeFormatterBuilder builder strict?]
-  ;; TODO - what about ResolverStyle/SMART ?
-  (if strict?
-    (.parseStrict builder)
-    (.parseLenient builder)))
-
-(defn- do-with-strict-parsing [builder strict? thunk]
-  (if (= strict? *strict?*)
-    (thunk)
-    (binding [*strict?* strict?]
-      (set-strict! builder strict?)
-      (thunk)
-      (set-strict! builder (not strict?)))))
-
-(defn strict [& forms]
-  (fn [builder]
-    (do-with-strict-parsing builder true (fn [] (doseq [form forms] (form builder))))))
-
-(defn lenient [& forms]
-  (fn [builder]
-    (do-with-strict-parsing builder false (fn [] (doseq [form forms] (form builder))))))
 
 (defn value
   ([chrono-field-name]
@@ -80,21 +97,6 @@
   (fn [^DateTimeFormatterBuilder builder]
     (.appendFraction builder (chrono-field chrono-field-name) 0 9 (boolean decimal-point?))))
 
-(defn optional [& parts]
-  (fn [^DateTimeFormatterBuilder builder]
-    (.optionalStart builder)
-    (doseq [part parts]
-      (part builder))
-    (.optionalEnd builder)))
-
-(defn literal [^String s]
-  (fn [^DateTimeFormatterBuilder builder]
-    (.appendLiteral builder s)))
-
-(defn append [^DateTimeFormatter formatter]
-  (fn [^DateTimeFormatterBuilder builder]
-    (.append builder formatter)))
-
 (defn offset-id []
   (lenient
    (fn [^DateTimeFormatterBuilder builder]
@@ -103,14 +105,13 @@
 (defn offset-zone-id []
   (strict
    (case-sensitive
-    (literal "[")
+    "["
     (fn [^DateTimeFormatterBuilder builder]
       (.appendZoneOrOffsetId builder))
-    (literal "]"))))
+    "]")))
 
 (defn build-formatter
   ^DateTimeFormatter [& parts]
   (let [builder (DateTimeFormatterBuilder.)]
-    (doseq [part parts]
-      (part builder))
+    (apply-parts builder parts)
     (.toFormatter builder)))

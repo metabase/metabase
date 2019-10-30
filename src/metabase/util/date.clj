@@ -18,10 +18,12 @@
            [org.joda.time DateTime DateTimeZone]
            org.joda.time.format.DateTimeFormatter))
 
+(alter-meta! *ns* assoc :deprecated true)
+
 ;; TODO - move this stuff to `metabase.query-processor.timestamp` -- it's QP specific and doesn't really belong here
 (def ^:dynamic ^:deprecated ^TimeZone ^{:doc "Timezone to be used when formatting timestamps for display or
  for the data (pre aggregation). Deprecated — use `metabase.query-processor.timezone/results-timezone-id` instead."}
- *report-timezone*)
+  *report-timezone*)
 
 (def ^:dynamic ^:deprecated ^TimeZone ^{:doc "The timezone of the database currently being queried.
  Deprecated — you shouldn't need to use this directly; use `metabase.query-processor.timezone/results-timezone-id`
@@ -497,5 +499,8 @@
   [minutes]
   (-> minutes minutes->seconds seconds->ms))
 
-(doseq [[_ varr] (ns-publics *ns*)]
-  (alter-meta! varr assoc :deprecated true))
+;; deprecate this entire namespace and `clj-time` as well!
+(doseq [a-namespace (cons *ns* '[clj-time.core clj-time.coerce clj-time.format])]
+  (alter-meta! (the-ns a-namespace) assoc :deprecated true)
+  (doseq [[_ varr] (ns-publics a-namespace)]
+    (alter-meta! varr assoc :deprecated true)))

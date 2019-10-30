@@ -1,8 +1,10 @@
-(ns expectations
+(ns ^:deprecated expectations
   (:require [clojure
              [data :as data]
              [test :as t]]
             [methodical.core :as m]))
+
+(alter-meta! *ns* assoc :deprecated true)
 
 ;; Basically a Chain of Responibility pattern: we try each impl in turn until one of them accepts the args and returns
 ;; a report

@@ -17,8 +17,7 @@
              [i18n :refer [trs]]]
             [redux.core :as redux])
   (:import com.bigml.histogram.Histogram
-           com.clearspring.analytics.stream.cardinality.HyperLogLogPlus
-           org.joda.time.DateTime))
+           com.clearspring.analytics.stream.cardinality.HyperLogLogPlus))
 
 (defn col-wise
   "Apply reducing functinons `rfs` coll-wise to a seq of seqs."
@@ -171,12 +170,12 @@
   nil                         (->date [_] nil)
   String                      (->date [this] (-> this du/str->date-time t.coerce/to-date))
   java.util.Date              (->date [this] this)
-  DateTime                    (->date [this] (t.coerce/to-date this))
+  org.joda.time.DateTime      (->date [this] (t.coerce/to-date this))
   Long                        (->date [^Long this] (java.util.Date. this))
   Integer                     (->date [^Integer this] (java.util.Date. (long this)))
   java.time.temporal.Temporal (->date [this] (t/to-java-date this))
   java.time.LocalDate         (->date [this] (t/to-java-date (t/zoned-date-time this (t/local-time 0) (date-coercion-timezone-id))))
-  java.time.LocalTime         (->date [this] (t/to-java-date (t/zoned-date-time (t/local-date 0) this (date-coercion-timezone-id))))
+  java.time.LocalTime         (->date [this] (t/to-java-date (t/zoned-date-time (t/local-date 1970 1 1) this (date-coercion-timezone-id))))
   java.time.LocalDateTime     (->date [this] (t/to-java-date (t/zoned-date-time this (date-coercion-timezone-id)))))
 
 (deffingerprinter :type/DateTime

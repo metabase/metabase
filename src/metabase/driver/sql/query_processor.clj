@@ -216,25 +216,25 @@
   (binding [*table-alias* alias]
     (->honeysql driver field)))
 
-(p.types/defrecord+ AtTimezone [expr timezone-id]
-  PrettyPrintable
-  (pretty [_]
-    (list 'at-timezone expr timezone-id))
+;; (p.types/defrecord+ AtTimezone [expr timezone-id]
+;;   PrettyPrintable
+;;   (pretty [_]
+;;     (list 'at-timezone expr timezone-id))
 
-  hformat/ToSql
-  (to-sql [_]
-    (format "(%s at time zone '%s')" (hformat/to-sql expr) timezone-id)))
+;;   hformat/ToSql
+;;   (to-sql [_]
+;;     (format "(%s at time zone '%s')" (hformat/to-sql expr) timezone-id)))
 
-(defn at-timezone
-  ([expr]
-   (at-timezone expr (qp.timezone/results-timezone-id)))
+;; (defn at-timezone
+;;   ([expr]
+;;    (at-timezone expr (qp.timezone/results-timezone-id)))
 
-  ([expr timezone-id]
-   (AtTimezone. expr timezone-id)))
+;;   ([expr timezone-id]
+;;    (AtTimezone. expr timezone-id)))
 
 (defmethod ->honeysql [:sql :datetime-field]
   [driver [_ field unit]]
-  (date driver unit (at-timezone (->honeysql driver field))))
+  (date driver unit (->honeysql driver field)))
 
 (defmethod ->honeysql [:sql :binning-strategy]
   [driver [_ field _ _ {:keys [bin-width min-value max-value]}]]

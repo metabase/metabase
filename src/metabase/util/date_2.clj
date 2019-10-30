@@ -1,6 +1,7 @@
 (ns metabase.util.date-2
   "Replacement for `metabase.util.date` that consistently uses `java.time` instead of a mix of `java.util.Date`,
   `java.sql.*`, and Joda-Time."
+  (:refer-clojure :exclude [format])
   (:require [java-time :as t]
             [java-time.core :as t.core]
             [metabase.util.date-2
@@ -28,6 +29,19 @@
   ([s default-timezone-id]
    (cond-> (parse s)
      default-timezone-id (->zoned default-timezone-id))))
+
+(defn format
+  "Format temporal value `t` as a ISO-8601 date/time/datetime string."
+  ^String [t]
+  (when t
+    (condp instance? t
+      LocalDate      (t/format :iso-local-date       t)
+      LocalTime      (t/format :iso-local-time       t)
+      LocalDateTime  (t/format :iso-local-date-time  t)
+      OffsetTime     (t/format :iso-offset-time      t)
+      OffsetDateTime (t/format :iso-offset-date-time t)
+      ZonedDateTime  (t/format :iso-offset-date-time t)
+      Instant        (t/format :iso-offset-date-time (t/zoned-date-time (t/instant) (t/zone-id "UTC"))))))
 
 (defn time? [x]
   (some #(instance? % x) [OffsetTime LocalTime]))

@@ -1,7 +1,8 @@
 (ns metabase.driver.postgres-test
   "Tests for features/capabilities specific to PostgreSQL driver, such as support for Postgres UUID or enum types."
   (:require [clojure.java.jdbc :as jdbc]
-            [expectations :refer :all]
+            [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
@@ -263,7 +264,7 @@
 (defn- get-timezone-with-report-timezone [report-timezone]
   (ffirst (:rows (#'sql-jdbc.execute/run-query-with-timezone
                   :postgres
-                  {:report-timezone report-timezone}
+                  report-timezone
                   (sql-jdbc.conn/connection-details->spec :postgres (tx/dbdef->connection-details :postgres :server nil))
                   {:query "SELECT current_setting('TIMEZONE') AS timezone;"}))))
 
@@ -302,20 +303,8 @@
   (tu/db-timezone-id))
 
 ;; Make sure we're able to fingerprint TIME fields (#5911)
-(datasets/expect-with-driver :postgres
-  #{#metabase.models.field.FieldInstance{:name "start_time", :fingerprint {:global {:distinct-count 1
-                                                                                    :nil% 0.0}
-                                                                           :type {:type/DateTime {:earliest "1970-01-01T22:00:00.000Z", :latest "1970-01-01T22:00:00.000Z"}}}}
-    #metabase.models.field.FieldInstance{:name "end_time",   :fingerprint {:global {:distinct-count 1
-                                                                                    :nil% 0.0}
-                                                                           :type {:type/DateTime {:earliest "1970-01-01T09:00:00.000Z", :latest "1970-01-01T09:00:00.000Z"}}}}
-    #metabase.models.field.FieldInstance{:name "reason",     :fingerprint {:global {:distinct-count 1
-                                                                                    :nil% 0.0}
-                                                                           :type   {:type/Text {:percent-json    0.0
-                                                                                                :percent-url     0.0
-                                                                                                :percent-email   0.0
-                                                                                                :average-length 12.0}}}}}
-  (do
+(deftest fingerprint-time-fields-test
+  (datasets/test-driver :postgres
     (drop-if-exists-and-create-db! "time_field_test")
     (let [details (tx/dbdef->connection-details :postgres :db {:database-name "time_field_test"})]
       (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details)
@@ -328,7 +317,22 @@
                            "  VALUES ('22:00'::time, '9:00'::time, 'Beauty Sleep');")])
       (tt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "time_field_test")}]
         (sync/sync-database! database)
-        (set (db/select [Field :name :fingerprint] :table_id (db/select-one-id Table :db_id (u/get-id database))))))))
+        (is (= {"start_time" {:global {:distinct-count 1
+                                       :nil%           0.0}
+                              :type   {:type/DateTime {:earliest "1970-01-01T22:00:00.000Z"
+                                                       :latest   "1970-01-01T22:00:00.000Z"}}}
+                "end_time"   {:global {:distinct-count 1
+                                       :nil%           0.0}
+                              :type   {:type/DateTime {:earliest "1970-01-01T09:00:00.000Z"
+                                                       :latest   "1970-01-01T09:00:00.000Z"}}}
+                "reason"     {:global {:distinct-count 1
+                                       :nil%           0.0}
+                              :type   {:type/Text {:percent-json   0.0
+                                                   :percent-url    0.0
+                                                   :percent-email  0.0
+                                                   :average-length 12.0}}}}
+               (db/select-field->field :name :fingerprint Field
+                 :table_id (db/select-one-id Table :db_id (u/get-id database)))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

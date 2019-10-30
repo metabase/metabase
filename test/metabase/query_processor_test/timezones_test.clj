@@ -66,7 +66,7 @@
                      {:fields   [$id $last_login]
                       :filter   [:= $last_login "2014-07-03"]
                       :order-by [[:asc $last_login]]})))
-              (format "There should be %d checkins on July 30th in the %s timezone" (count expected-rows) timezone)))))))
+              (format "There should be %d checkins on July 3rd in the %s timezone" (count expected-rows) timezone)))))))
 
 (deftest filter-test
   (data/dataset test-data-with-timezones

@@ -9,10 +9,10 @@
   (b/build-formatter
    (b/value :year 4 10 :exceeds-pad)
    (b/optional
-    (b/literal "-")
+    "-"
     (b/value :month-of-year 2)
     (b/optional
-     (b/literal "-")
+     "-"
      (b/value :day-of-month 2)))
    (b/default-value :month-of-year 1)
    (b/default-value :day-of-month 1)))
@@ -21,10 +21,10 @@
   (b/build-formatter
    (b/value :hour-of-day 2)
    (b/optional
-    (b/literal ":")
+    ":"
     (b/value :minute-of-hour 2)
     (b/optional
-     (b/literal ":")
+     ":"
      (b/value :second-of-minute 2)
      (b/optional
       (b/fraction :nano-of-second 0 9, :decimal-point? true))))
@@ -42,15 +42,13 @@
   (b/build-formatter
    (b/case-insensitive
     (b/optional
-     (b/append date-formatter*))
+     date-formatter*)
+    (b/optional "T")
+    (b/optional " ")
     (b/optional
-     (b/literal "T"))
+     time-formatter*)
     (b/optional
-     (b/literal " "))
-    (b/optional
-     (b/append time-formatter*))
-    (b/optional
-     (b/append offset-formatter*)))))
+     offset-formatter*))))
 
 (def ^:private ^{:arglists '([accessor query])} query
   (let [queries {:local-date  (TemporalQueries/localDate)

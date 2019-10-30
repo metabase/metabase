@@ -22,13 +22,13 @@
               :fields       (s/eq [["datetime_field" (data/id :venues :id) "MONTH"]])}})
 
 (defn- bad-query-preprocessed-schema []
-  {:database            (s/eq (data/id))
-   :type                (s/eq :query)
-   :query               {:source-table (s/eq (data/id :venues))
-                         :fields       (s/eq [[:datetime-field [:field-id (data/id :venues :id)] :month]])
-                         :limit        (s/eq qp.i/absolute-max-results)}
-   :preprocessing-level (s/eq 1)
-   :driver              (s/eq :h2)})
+  {:database                (s/eq (data/id))
+   :type                    (s/eq :query)
+   :query                   {:source-table (s/eq (data/id :venues))
+                             :fields       (s/eq [[:datetime-field [:field-id (data/id :venues :id)] :month]])
+                             :limit        (s/eq qp.i/absolute-max-results)}
+   :preprocessing-level     (s/eq 1)
+   (s/optional-key :driver) (s/eq :h2)})
 
 (def ^:private bad-query-native-schema
   {:query  (s/eq (str "SELECT parsedatetime(formatdatetime(\"PUBLIC\".\"VENUES\".\"ID\", 'yyyyMM'), 'yyyyMM') AS \"ID\" "

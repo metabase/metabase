@@ -2,8 +2,7 @@
   "Tests for expressions (calculated columns)."
   (:require [clj-time
              [coerce :as tcoerce]
-             [core :as time]
-             [format :as tformat]]
+             [core :as time]]
             [metabase
              [driver :as driver]
              [query-processor-test :as qp.test]]
@@ -11,7 +10,9 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data.datasets :as datasets]
-            [metabase.util.date :as du]))
+            [metabase.util
+             [date :as du]
+             [date-2 :as u.date]]))
 
 ;; Do a basic query including an expression
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expressions)
@@ -194,10 +195,10 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                           DATETIME EXTRACTION AND MANIPULATION                                           |
+;;; |                                      DATETIME EXTRACTION AND MANIPULATION                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(def ^:private utc-tz (time/time-zone-for-id "UTC"))
+(def ^:private ^org.joda.time.DateTimeZone utc-tz (time/time-zone-for-id "UTC"))
 
 (defn- maybe-truncate
   [dt]
@@ -206,22 +207,16 @@
     dt))
 
 (defn- robust-dates
-  [dates]
-  (let [output-format (if (= :sqlite driver/*driver*)
-                        :mysql
-                        :date-time)]
-    (for [d dates]
-      [(->> d
-            (tformat/parse (tformat/with-zone (tformat/formatters :date-hour-minute-second-fraction) utc-tz))
-            maybe-truncate
-            (tformat/unparse (tformat/with-zone (tformat/formatters output-format) utc-tz)))])))
+  [strs]
+  (for [s strs]
+    [(u.date/format (u.date/parse s "UTC"))]))
 
 ;; Test that we can do datetime arithemtics using MBQL `:interval` clause in expressions
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expressions)
   (robust-dates
-   ["2014-09-02T13:45:00.000"
-    "2014-07-02T09:30:00.000"
-    "2014-07-01T10:30:00.000"])
+   ["2014-09-02T13:45:00"
+    "2014-07-02T09:30:00"
+    "2014-07-01T10:30:00"])
   (tu/with-temporary-setting-values [report-timezone (.getID utc-tz)]
     (-> (data/run-mbql-query users
             {:expressions {:prev_month [:+ $last_login [:interval -31 :day]]}
@@ -233,9 +228,9 @@
 ;; Test interaction of datetime arithmetics with truncation
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expressions)
   (robust-dates
-   ["2014-09-02T00:00:00.000"
-    "2014-07-02T00:00:00.000"
-    "2014-07-01T00:00:00.000"])
+   ["2014-09-02T00:00:00"
+    "2014-07-02T00:00:00"
+    "2014-07-01T00:00:00"])
   (tu/with-temporary-setting-values [report-timezone (.getID utc-tz)]
     (-> (data/run-mbql-query users
           {:expressions {:prev_month [:+ [:datetime-field $last_login :day] [:interval -31 :day]]}

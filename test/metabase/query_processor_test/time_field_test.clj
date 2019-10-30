@@ -21,8 +21,8 @@
     [[1 "Plato Yeshua" "08:30:00"]
      [4 "Simcha Yan"   "08:30:00"]]
 
-    [[1 "Plato Yeshua" "08:30:00.000Z"]
-     [4 "Simcha Yan"   "08:30:00.000Z"]])
+    [[1 "Plato Yeshua" "08:30:00Z"]
+     [4 "Simcha Yan"   "08:30:00Z"]])
   (time-query {:filter [:between $last_login_time "08:00:00" "09:00:00"]}))
 
 ;; Basic between query on a time field with milliseconds
@@ -31,8 +31,8 @@
     [[1 "Plato Yeshua" "08:30:00"]
      [4 "Simcha Yan"   "08:30:00"]]
 
-    [[1 "Plato Yeshua" "08:30:00.000Z"]
-     [4 "Simcha Yan"   "08:30:00.000Z"]])
+    [[1 "Plato Yeshua" "08:30:00Z"]
+     [4 "Simcha Yan"   "08:30:00Z"]])
   (time-query {:filter [:between $last_login_time "08:00:00.000" "09:00:00.000"]}))
 
 ;; Basic > query with a time field
@@ -42,18 +42,17 @@
      [5 "Quentin Sören" "17:30:00"]
      [10 "Frans Hevel" "19:30:00"]]
 
-    [[3 "Kaneonuskatew Eiran" "16:15:00.000Z"]
-     [5 "Quentin Sören" "17:30:00.000Z"]
-     [10 "Frans Hevel" "19:30:00.000Z"]])
-  (time-query {:filter [:> $last_login_time "16:00:00.000Z"]}))
+    [[3 "Kaneonuskatew Eiran" "16:15:00Z"]
+     [5 "Quentin Sören" "17:30:00Z"]
+     [10 "Frans Hevel" "19:30:00Z"]])
+  (time-query {:filter [:> $last_login_time "16:00:00Z"]}))
 
 ;; Basic query with an = filter on a time field
 (qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift :sparksql}
   (if (= :sqlite driver/*driver*)
     [[3 "Kaneonuskatew Eiran" "16:15:00"]]
-
-    [[3 "Kaneonuskatew Eiran" "16:15:00.000Z"]])
-  (time-query {:filter [:= $last_login_time "16:15:00.000Z"]}))
+    [[3 "Kaneonuskatew Eiran" "16:15:00Z"]])
+  (time-query {:filter [:= $last_login_time "16:15:00Z"]}))
 
 ;; Query with a time filter and a report timezone
 (qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift :sparksql}
@@ -83,8 +82,8 @@
      [4 "Simcha Yan" "00:30:00.000-08:00"]]
 
     :else
-    [[1 "Plato Yeshua" "08:30:00.000Z"]
-     [4 "Simcha Yan" "08:30:00.000Z"]])
+    [[1 "Plato Yeshua" "08:30:00Z"]
+     [4 "Simcha Yan" "08:30:00Z"]])
   (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
     (time-query {:filter (into [:between $last_login_time]
                                (if (qpt/supports-report-timezone? driver/*driver*)

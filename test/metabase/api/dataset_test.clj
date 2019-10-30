@@ -204,11 +204,11 @@
 
 ;; DateTime fields are untouched when exported
 (expect
-  [["1" "Plato Yeshua"        "2014-04-01T08:30:00.000Z"]
-   ["2" "Felipinho Asklepios" "2014-12-05T15:15:00.000Z"]
-   ["3" "Kaneonuskatew Eiran" "2014-11-06T16:15:00.000Z"]
-   ["4" "Simcha Yan"          "2014-01-01T08:30:00.000Z"]
-   ["5" "Quentin Sören"       "2014-10-03T17:30:00.000Z"]]
+  [["1" "Plato Yeshua"        "2014-04-01T08:30:00Z"]
+   ["2" "Felipinho Asklepios" "2014-12-05T15:15:00Z"]
+   ["3" "Kaneonuskatew Eiran" "2014-11-06T16:15:00Z"]
+   ["4" "Simcha Yan"          "2014-01-01T08:30:00Z"]
+   ["5" "Quentin Sören"       "2014-10-03T17:30:00Z"]]
   (let [result ((test-users/user->client :rasta) :post 200 "dataset/csv" :query
                 (json/generate-string (data/mbql-query users)))]
     (take 5 (parse-and-sort-csv result))))
@@ -279,8 +279,8 @@
             (data/mbql-query venues
               {:fields [$id $name]}))))
     (is (= {:query (str "SELECT \"PUBLIC\".\"CHECKINS\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"CHECKINS\" "
-                        "WHERE (\"PUBLIC\".\"CHECKINS\".\"DATE\" >= timestamp '2015-11-13T00:00:00.000Z'"
-                        " AND \"PUBLIC\".\"CHECKINS\".\"DATE\" < timestamp '2015-11-14T00:00:00.000Z') "
+                        "WHERE (\"PUBLIC\".\"CHECKINS\".\"DATE\" >= timestamp with time zone '2015-11-13 00:00:00.000Z'"
+                        " AND \"PUBLIC\".\"CHECKINS\".\"DATE\" < timestamp with time zone '2015-11-14 00:00:00.000Z') "
                         "LIMIT 1048576")
             :params nil}
            ((test-users/user->client :rasta) :post 200 "dataset/native"

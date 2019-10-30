@@ -1,11 +1,15 @@
 (ns metabase.query-processor.middleware.format-rows
   "Middleware that formats the results of a query.
    Currently, the only thing this does is convert datetime types to ISO-8601 strings in the appropriate timezone."
-  (:require [java-time :as t]
+  (:require [clojure.tools.logging :as log]
+            [java-time :as t]
             [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [tru]]
             [potemkin.types :as p.types])
   (:import [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime ZoneId]))
 
+;; TODO - consider moving to `metabase.util.date-2/format-with-timezone`
 (p.types/defprotocol+ FormatValue
   (format-value [v, ^ZoneId timezone-id]
     "Serialize a value in the QP results. You can add impementations for driver-specific types as needed."))
@@ -16,7 +20,6 @@
 
   Object
   (format-value [v _]
-    #_(println "(class v) v:" (class v) v) ; NOCOMMIT
     v)
 
   LocalTime
@@ -56,6 +59,10 @@
               (t/offset-date-time (t/with-zone-same-instant t timezone-id)))))
 
 (defn- format-rows* [rows]
+  ;; NOCOMMIT (maybe)
+  (log/debug (tru "Formatting rows with results timezone ID {0}" (qp.timezone/results-timezone-id))
+             "\n"
+             (u/pprint-to-str 'blue (take 5 rows)))
   (let [timezone-id (t/zone-id (qp.timezone/results-timezone-id))]
     (for [row rows]
       (for [v row]

@@ -9,7 +9,9 @@
              [util :as u]]
             [metabase.driver.sql-jdbc-test :as sql-jdbc-test]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.query-processor.test-util :as qp.tu]
+            [metabase.query-processor
+             [test-util :as qp.tu]
+             [timezone :as qp.timezone]]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -224,11 +226,12 @@
 
                   sql-jdbc.execute/set-timezone!
                   (let [orig @#'sql-jdbc.execute/set-timezone!]
-                    (fn [driver {:keys [report-timezone], :as settings} connection]
+                    (fn [driver report-timezone connection]
                       (deliver timezone report-timezone)
-                      (orig driver settings connection)))]
+                      (orig driver report-timezone connection)))]
       (qp.tu/with-everything-store
-        (sql-jdbc.execute/execute-query driver query))
+        (driver/with-driver driver
+          (sql-jdbc.execute/execute-query driver query)))
       {:ran-with-timezone? (u/deref-with-timeout ran-with-timezone? 1000)
        :timezone           (u/deref-with-timeout timezone 1000)})))
 
@@ -243,9 +246,9 @@
 (expect
   {:ran-with-timezone? true, :timezone "US/Pacific"}
   (with-redefs [driver/supports? (constantly true)]
-    (ran-with-timezone?
-     :h2
-     {:database (data/id)
-      :type     :native
-      :native   {:query "SELECT * FROM VENUES LIMIT 1;"}
-      :settings {:report-timezone "US/Pacific"}})))
+    (qp.timezone/with-report-timezone-id "US/Pacific"
+      (ran-with-timezone?
+       :h2
+       {:database (data/id)
+        :type     :native
+        :native   {:query "SELECT * FROM VENUES LIMIT 1;"}}))))

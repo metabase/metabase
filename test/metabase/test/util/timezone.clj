@@ -1,5 +1,6 @@
 (ns metabase.test.util.timezone
   (:require [clj-time.core :as time]
+            [clojure.test :as t]
             [metabase.driver :as driver]
             [metabase.test.initialize :as initialize]
             [metabase.util.date :as du])
@@ -14,7 +15,7 @@
     (string? timezone)
     (DateTimeZone/forID timezone)
 
-    (instance? TimeZone)
+    (instance? TimeZone timezone)
     (DateTimeZone/forTimeZone timezone)))
 
 (defn call-with-jvm-tz
@@ -37,7 +38,8 @@
       ;; We read the system property directly when formatting results, so this needs to be changed
       (System/setProperty "user.timezone" (.getID dtz))
       (with-redefs [du/jvm-timezone (delay (.toTimeZone dtz))]
-        (thunk))
+        (t/testing (format "JVM timezone set to %s" (.getID dtz))
+          (thunk)))
       (finally
         ;; We need to ensure we always put the timezones back the way
         ;; we found them as it will cause test failures

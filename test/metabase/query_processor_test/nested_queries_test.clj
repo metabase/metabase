@@ -3,6 +3,7 @@
   (:require [clojure.test :refer :all]
             [expectations :refer [expect]]
             [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
@@ -271,8 +272,8 @@
                     [:source.PRICE :PRICE]]
            :from   [[venues-source-honeysql :source]]
            :where  [:and
-                    [:>= (hsql/raw "\"source\".\"BIRD.ID\"") #inst "2017-01-01T00:00:00.000000000-00:00"]
-                    [:< (hsql/raw "\"source\".\"BIRD.ID\"") #inst "2017-01-08T00:00:00.000000000-00:00"]]
+                    [:>= (hsql/raw "\"source\".\"BIRD.ID\"") (t/zoned-date-time "2017-01-01T00:00Z[UTC]")]
+                    [:< (hsql/raw "\"source\".\"BIRD.ID\"")  (t/zoned-date-time "2017-01-08T00:00Z[UTC]")]]
            :limit  10})
          (qp/query->native
            (data/mbql-query venues
@@ -620,8 +621,8 @@
 ;; Do nested queries work with two of the same aggregation? (#9767)
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :foreign-keys)
   {:rows
-   [["2014-02-01T00:00:00.000Z" 302 1804]
-    ["2014-03-01T00:00:00.000Z" 350 2362]]
+   [["2014-02-01T00:00:00Z" 302 1804]
+    ["2014-03-01T00:00:00Z" 350 2362]]
    :cols
    [(assoc (qp.test/field-literal-col :checkins :date)
       :unit :month)
@@ -674,7 +675,7 @@
 ;; using the first as a source. This is a side-effect of MBQL year bucketing coming back as values like `2016` rather
 ;; than timestamps
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries)
-  [[(if (= :sqlite driver/*driver*) "2013-01-01" "2013-01-01T00:00:00.000Z")]]
+  [[(if (= :sqlite driver/*driver*) "2013-01-01" "2013-01-01T00:00:00Z")]]
   (qp.test/rows
     (data/run-mbql-query checkins
       {:source-query {:source-table $$checkins

@@ -167,33 +167,34 @@
   aforementioned multimethods; no default implementation is provided."
   ^DateTime [driver database]
   {:pre [(map? database)]}
-  (let [native-query    (current-db-time-native-query driver)
-        date-formatters (current-db-time-date-formatters driver)
-        settings        (when-let [report-tz (driver.u/report-timezone-if-supported driver)]
-                          {:settings {:report-timezone report-tz}})
-        time-str        (try
-                          ;; need to initialize the store sicne we're calling `execute-query` directly instead of
-                          ;; going thru normal QP pipeline
-                          (qp.store/with-store
-                            (qp.store/fetch-and-store-database! (u/get-id database))
-                            (->
-                             (driver/execute-query driver
-                               (merge settings {:database (u/get-id database), :native {:query native-query}}))
-                             :rows
-                             ffirst))
-                          (catch Exception e
-                            (throw
-                             (Exception.
-                              (format "Error querying database '%s' for current time" (:name database)) e))))]
-    (try
-      (when time-str
-        (first-successful-parse date-formatters time-str))
-      (catch Exception e
-        (throw
-         (Exception.
-          (str
-           (tru "Unable to parse date string ''{0}'' for database engine ''{1}''"
-                time-str (-> database :engine name))) e))))))
+  (driver/with-driver driver
+    (let [native-query    (current-db-time-native-query driver)
+          date-formatters (current-db-time-date-formatters driver)
+          settings        (when-let [report-tz (driver.u/report-timezone-if-supported driver)]
+                            {:settings {:report-timezone report-tz}})
+          time-str        (try
+                            ;; need to initialize the store sicne we're calling `execute-query` directly instead of
+                            ;; going thru normal QP pipeline
+                            (qp.store/with-store
+                              (qp.store/fetch-and-store-database! (u/get-id database))
+                              (->
+                               (driver/execute-query driver
+                                 (merge settings {:database (u/get-id database), :native {:query native-query}}))
+                               :rows
+                               ffirst))
+                            (catch Exception e
+                              (throw
+                               (Exception.
+                                (format "Error querying database '%s' for current time" (:name database)) e))))]
+      (try
+        (when time-str
+          (first-successful-parse date-formatters time-str))
+        (catch Exception e
+          (throw
+           (Exception.
+            (str
+             (tru "Unable to parse date string ''{0}'' for database engine ''{1}''"
+                  time-str (-> database :engine name))) e)))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -204,36 +205,52 @@
   "Return the `Field.base_type` that corresponds to a given class returned by the DB.
    This is used to infer the types of results that come back from native queries."
   [klass]
-  (or (some (fn [[mapped-class mapped-type]]
-              (when (isa? klass mapped-class)
-                mapped-type))
-            [[Boolean                        :type/Boolean]
-             [Double                         :type/Float]
-             [Float                          :type/Float]
-             [Integer                        :type/Integer]
-             [Long                           :type/Integer]
-             [java.math.BigDecimal           :type/Decimal]
-             [java.math.BigInteger           :type/BigInteger]
-             [Number                         :type/Number]
-             [String                         :type/Text]
-             [java.sql.Date                  :type/Date]
-             [java.sql.Timestamp             :type/DateTime]
-             [java.util.Date                 :type/DateTime]
-             [DateTime                       :type/DateTime]
-             [java.util.UUID                 :type/Text]       ; shouldn't this be :type/UUID ?
-             [clojure.lang.IPersistentMap    :type/Dictionary]
-             [clojure.lang.IPersistentVector :type/Array]
-             [org.postgresql.util.PGobject   :type/*]
-             [nil                            :type/*]]) ; all-NULL columns in DBs like Mongo w/o explicit types
+  (condp #(isa? %2 %1) klass
+    Boolean                        :type/Boolean
+    Double                         :type/Float
+    Float                          :type/Float
+    Integer                        :type/Integer
+    Long                           :type/Integer
+    java.math.BigDecimal           :type/Decimal
+    java.math.BigInteger           :type/BigInteger
+    Number                         :type/Number
+    String                         :type/Text
+    ;; java.sql types and Joda-Time types should be considered DEPRECATED
+    java.sql.Date                  :type/Date
+    java.sql.Timestamp             :type/DateTime
+    java.util.Date                 :type/DateTime
+    DateTime                       :type/DateTime
+    ;; shouldn't this be :type/UUID ?
+    java.util.UUID                 :type/Text
+    clojure.lang.IPersistentMap    :type/Dictionary
+    clojure.lang.IPersistentVector :type/Array
+    java.time.LocalDate            :type/Date
+    java.time.LocalTime            :type/Time
+    java.time.LocalDateTime        :type/DateTime
+    java.time.OffsetTime           :type/Time
+    java.time.OffsetDateTime       :type/DateTimeWithTZ
+    java.time.ZonedDateTime        :type/DateTimeWithTZ
+    java.time.Instant              :type/DateTime
+    ;; TODO - this should go in the Postgres driver implementation of this method rather than here
+    org.postgresql.util.PGobject   :type/*
+    ;; all-NULL columns in DBs like Mongo w/o explicit types
+    nil                            :type/*
+    (do
       (log/warn (trs "Don''t know how to map class ''{0}'' to a Field base_type, falling back to :type/*." klass))
-      :type/*))
+      :type/*)))
+
+(defn- values->class->count [values]
+  (reduce
+   (fn [class->count klass]
+     (update class->count klass (fnil inc 0)))
+   {}
+   ;; take (up to) the first 100 non-nil values out of the first 1000 values
+   (eduction (map class) (take 100) (filter some?) (take 1000) values)))
+
+(defn- values->most-common-class [values]
+  (ffirst (reverse (sort-by second (values->class->count values)))))
 
 (defn values->base-type
-  "Given a sequence of VALUES, return the most common base type."
+  "Given a sequence of `values`, return the most common base type."
   [values]
-  (->> values
-       (take 100)                                   ; take up to 100 values
-       (remove nil?)                                ; filter out `nil` values
-       (group-by (comp class->base-type class))     ; now group by their base-type
-       (sort-by (comp (partial * -1) count second)) ; sort the map into pairs of [base-type count] with highest count as first pair
-       ffirst))                                     ; take the base-type from the first pair
+  (-> values values->most-common-class class->base-type))

@@ -60,14 +60,6 @@
   `(binding [api-common/*current-user-permissions-set* (delay ~permissions)]
      ~@body))
 
-(defn do-with-test-drivers [test-drivers thunk]
-  {:pre [((some-fn sequential? set?) test-drivers)]}
-  (with-redefs [tx.env/test-drivers            (atom (set test-drivers))
-                qp.test/non-timeseries-drivers (atom (set/difference
-                                                      (set test-drivers)
-                                                      (var-get #'qp.test/timeseries-drivers)))]
-    (thunk)))
-
 (defmacro with-test-drivers
   "Temporarily change the drivers that Metabase tests will run against as if you had set the `DRIVERS` env var.
 
@@ -81,4 +73,7 @@
     (dev/with-test-drivers #{:h2 :postgres}
       (my-test))"
   [test-driver-or-drivers & body]
-  `(do-with-test-drivers ~(u/one-or-many test-driver-or-drivers) (fn [] ~@body)))
+  `(tx.env/with-test-drivers ~(if (keyword? test-driver-or-drivers)
+                                #{test-driver-or-drivers}
+                                test-driver-or-drivers)
+     ~@body))

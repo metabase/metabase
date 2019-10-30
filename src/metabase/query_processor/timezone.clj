@@ -15,6 +15,9 @@
 (def ^:private ^:dynamic *results-timezone-id-override* nil)
 
 (defn do-with-report-timezone-id [timezone-id thunk]
+  {:pre [((some-fn nil? string?) timezone-id)]}
+  ;; TODO - HACKY
+  (#'driver/notify-all-databases-updated)
   (binding [*report-timezone-id-override* (or timezone-id ::nil)]
     (thunk)))
 
@@ -22,6 +25,7 @@
   `(do-with-report-timezone-id ~timezone-id (fn [] ~@body)))
 
 (defn do-with-database-timezone-id [timezone-id thunk]
+  {:pre [((some-fn nil? string?) timezone-id)]}
   (binding [*database-timezone-id-override* (or timezone-id ::nil)]
     (thunk)))
 
@@ -29,12 +33,14 @@
   `(do-with-database-timezone-id ~timezone-id (fn [] ~@body)))
 
 (defn do-with-results-timezone-id [timezone-id thunk]
+  {:pre [((some-fn nil? string?) timezone-id)]}
   (binding [*results-timezone-id-override* (or timezone-id ::nil)]
     (thunk)))
 
 (defmacro with-results-timezone-id [timezone-id & body]
   `(do-with-results-timezone-id ~timezone-id (fn [] ~@body)))
 
+;; TODO - consider making this `metabase.util.date-2/the-timezone-id`
 (defn- valid-timezone-id [timezone-id]
   (when (and (string? timezone-id)
              (seq timezone-id))

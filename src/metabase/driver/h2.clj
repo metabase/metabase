@@ -1,6 +1,7 @@
 (ns metabase.driver.h2
   (:require [clojure.string :as str]
             [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase
              [db :as mdb]
              [driver :as driver]
@@ -18,7 +19,8 @@
              [date :as du]
              [honeysql-extensions :as hx]
              [i18n :refer [deferred-tru tru]]])
-  (:import [java.sql ResultSet Time Types]
+  (:import java.sql.Time
+           java.time.OffsetTime
            java.util.Date))
 
 (driver/register! :h2, :parent :sql-jdbc)
@@ -259,6 +261,11 @@
   (apply sql-jdbc.sync/post-filtered-active-tables args))
 
 ;; return a normal `java.sql.Timestamp` instead of `org.h2.api.TimestampWithTimeZone`
-(defmethod sql-jdbc.execute/read-column [:h2 Types/TIMESTAMP_WITH_TIMEZONE]
+#_(defmethod sql-jdbc.execute/read-column [:h2 Types/TIMESTAMP_WITH_TIMEZONE]
   [_ _, ^ResultSet resultset, _, ^Integer i]
   (.getTimestamp resultset i))
+
+(defmethod sql-jdbc.execute/set-parameter [:h2 OffsetTime]
+  [driver prepared-statement i t]
+  (let [local-time (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))]
+    (sql-jdbc.execute/set-parameter driver prepared-statement i local-time)))
