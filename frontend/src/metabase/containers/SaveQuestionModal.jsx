@@ -6,7 +6,6 @@ import { CSSTransitionGroup } from "react-transition-group";
 import Form, { FormField, FormFooter } from "metabase/containers/Form";
 import ModalContent from "metabase/components/ModalContent";
 import Radio from "metabase/components/Radio";
-import Button from "metabase/components/Button";
 
 import * as Q_DEPRECATED from "metabase/lib/query";
 import validate from "metabase/lib/validate";
@@ -116,7 +115,7 @@ export default class SaveQuestionModal extends Component {
             <Form>
               <FormField
                 name="saveType"
-                displayName={t`Replace or save as new?`}
+                title={t`Replace or save as new?`}
                 type={SaveTypeInput}
                 hidden={!showSaveType}
                 originalCard={originalCard}

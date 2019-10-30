@@ -26,7 +26,7 @@ export default class SetUserPassword extends Component {
   render() {
     return (
       <User.Form
-        formName="password"
+        form={User.forms.password}
         submitTitle={t`Save`}
         onSubmit={this.handleSubmit}
       />

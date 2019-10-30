@@ -18,6 +18,7 @@ import { getIn } from "icepick";
 class CustomForm extends React.Component {
   static childContextTypes = {
     handleSubmit: PropTypes.func,
+    submitTitle: PropTypes.string,
     className: PropTypes.string,
     style: PropTypes.object,
     fields: PropTypes.object,
@@ -28,6 +29,7 @@ class CustomForm extends React.Component {
     invalid: PropTypes.bool,
     pristine: PropTypes.bool,
     error: PropTypes.string,
+    onChangeField: PropTypes.func,
   };
 
   getChildContext() {
@@ -40,14 +42,17 @@ class CustomForm extends React.Component {
       pristine,
       error,
       handleSubmit,
+      submitTitle,
       className,
       style,
+      onChangeField,
     } = this.props;
     const formFields = form.fields(values);
     const formFieldsByName = _.indexBy(formFields, "name");
 
     return {
       handleSubmit,
+      submitTitle,
       className,
       style,
       fields,
@@ -58,6 +63,7 @@ class CustomForm extends React.Component {
       invalid,
       pristine,
       error,
+      onChangeField,
     };
   }
 
@@ -100,6 +106,8 @@ export class CustomFormField extends React.Component {
   static contextTypes = {
     fields: PropTypes.object,
     formFieldsByName: PropTypes.object,
+    values: PropTypes.object,
+    onChangeField: PropTypes.func,
     registerFormField: PropTypes.func,
     unregisterFormField: PropTypes.func,
   };
@@ -127,31 +135,41 @@ export class CustomFormField extends React.Component {
   }
   render() {
     const { name } = this.props;
-    const { fields, formFieldsByName } = this.context;
+    const { fields, formFieldsByName, values, onChangeField } = this.context;
 
     const field = getIn(fields, name.split("."));
     const formField = formFieldsByName[name];
     if (!field || !formField) {
       return null;
     }
+
+    const props = {
+      ...this.props,
+      values,
+      onChangeField,
+      field,
+      formField,
+    };
+
     return (
-      <FormField {...this.props} field={field} formField={formField}>
-        <FormWidget {...this.props} field={field} formField={formField} />
+      <FormField {...props}>
+        <FormWidget {...props} />
       </FormField>
     );
   }
 }
 
 export const CustomFormSubmit = (
-  { children = t`Submit`, ...props },
-  { values, submitting, invalid, pristine, handleSubmit },
+  { children, ...props },
+  { values, submitting, invalid, pristine, handleSubmit, submitTitle },
 ) => {
+  const title = children || submitTitle || t`Submit`;
   // NOTE: need a way to configure if "pristine" forms can be submitted
   const canSubmit = !(submitting || invalid); // || pristine );
   return (
     <ActionButton
-      normalText={children}
-      activeText={children}
+      normalText={title}
+      activeText={title}
       failedText={t`Failed`}
       successText={t`Success`}
       primary={canSubmit}
@@ -226,14 +244,14 @@ export const CustomFormFooter = ({
   onCancel,
 }) => (
   <div className="flex align-center">
-    <CustomFormMessage />
-    <div className="flex align-center ml-auto">
+    <div className="flex align-center mr-auto">
       {onCancel && (
-        <Button className="ml1" onClick={onCancel}>
+        <Button className="mr1" onClick={onCancel}>
           {cancelTitle}
         </Button>
       )}
-      <CustomFormSubmit className="ml1">{submitTitle}</CustomFormSubmit>
+      <CustomFormSubmit className="mr1">{submitTitle}</CustomFormSubmit>
     </div>
+    <CustomFormMessage />
   </div>
 );

@@ -145,7 +145,7 @@ const SECTIONS = [
         key: "email-smtp-password",
         display_name: t`SMTP Password`,
         description: null,
-        placeholder: "Shh...",
+        placeholder: "Shhh...",
         type: "password",
       },
       {

@@ -3,24 +3,22 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import title from "metabase/hoc/Title";
+
 import { t } from "ttag";
+
 import { Box, Flex } from "grid-styled";
 
-import MetabaseSettings from "metabase/lib/settings";
+import title from "metabase/hoc/Title";
+
 import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
-import DatabaseEditForms from "../components/DatabaseEditForms";
-import DatabaseSchedulingForm from "../components/DatabaseSchedulingForm";
 import ActionButton from "metabase/components/ActionButton";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import Radio from "metabase/components/Radio";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 
-import {
-  getEditingDatabase,
-  getFormState,
-  getDatabaseCreationStep,
-} from "../selectors";
+import Databases from "metabase/entities/databases";
+
+import { getEditingDatabase, getDatabaseCreationStep } from "../selectors";
 
 import {
   reset,
@@ -39,7 +37,6 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 const mapStateToProps = (state, props) => ({
   database: getEditingDatabase(state),
   databaseCreationStep: getDatabaseCreationStep(state),
-  formState: getFormState(state),
 });
 
 const mapDispatchToProps = {
@@ -58,8 +55,14 @@ type TabName = "connection" | "scheduling";
 type TabOption = { name: string, value: TabName };
 
 const TABS: TabOption[] = [
-  { name: t`Connection`, value: "connection" },
-  { name: t`Scheduling`, value: "scheduling" },
+  {
+    name: t`Connection`,
+    value: "connection",
+  },
+  {
+    name: t`Scheduling`,
+    value: "scheduling",
+  },
 ];
 
 @connect(
@@ -83,7 +86,6 @@ export default class DatabaseEditApp extends Component {
   static propTypes = {
     database: PropTypes.object,
     databaseCreationStep: PropTypes.string,
-    formState: PropTypes.object.isRequired,
     params: PropTypes.object.isRequired,
     reset: PropTypes.func.isRequired,
     initializeDatabase: PropTypes.func.isRequired,
@@ -103,16 +105,15 @@ export default class DatabaseEditApp extends Component {
   }
 
   componentWillReceiveProps(nextProps) {
-    const addingNewDatabase = !nextProps.database || !nextProps.database.id;
-
-    if (addingNewDatabase) {
+    const isNew = !nextProps.database || !nextProps.database.id;
+    if (isNew) {
       // Update the current creation step (= active tab) if adding a new database
       this.setState({ currentTab: nextProps.databaseCreationStep });
     }
   }
 
   render() {
-    const { database, formState } = this.props;
+    const { database } = this.props;
     const { currentTab } = this.state;
 
     const editingExistingDatabase = database && database.id != null;
@@ -137,7 +138,7 @@ export default class DatabaseEditApp extends Component {
           <Box>
             <div className="pt0">
               {showTabs && (
-                <div className="border-bottom">
+                <div className="border-bottom mb2">
                   <Radio
                     value={currentTab}
                     options={TABS}
@@ -148,34 +149,16 @@ export default class DatabaseEditApp extends Component {
               )}
               <LoadingAndErrorWrapper loading={!database} error={null}>
                 {() => (
-                  <div>
-                    {currentTab === "connection" && (
-                      <DatabaseEditForms
-                        database={database}
-                        details={database ? database.details : null}
-                        engines={MetabaseSettings.get("engines")}
-                        hiddenFields={{ ssl: true }}
-                        formState={formState}
-                        selectEngine={this.props.selectEngine}
-                        save={
-                          addingNewDatabase
-                            ? this.props.proceedWithDbCreation
-                            : this.props.saveDatabase
-                        }
-                      />
-                    )}
-                    {currentTab === "scheduling" && (
-                      <DatabaseSchedulingForm
-                        database={database}
-                        formState={formState}
-                        // Use saveDatabase both for db creation and updating
-                        save={this.props.saveDatabase}
-                        submitButtonText={
-                          addingNewDatabase ? t`Save` : t`Save changes`
-                        }
-                      />
-                    )}
-                  </div>
+                  <Databases.Form
+                    database={database}
+                    form={Databases.forms[currentTab]}
+                    onSubmit={
+                      addingNewDatabase && currentTab === "connection"
+                        ? this.props.proceedWithDbCreation
+                        : this.props.saveDatabase
+                    }
+                    submitTitle={addingNewDatabase ? t`Save` : t`Save changes`}
+                  />
                 )}
               </LoadingAndErrorWrapper>
             </div>

@@ -8,28 +8,13 @@ import ModalContent from "metabase/components/ModalContent";
 
 import entityType from "./EntityType";
 
-import type { Entity } from "metabase/lib/entities";
-
-export function getForm(entityDef: Entity, formName?: any = null) {
-  // 1. named form
-  // 2. default `form`
-  // 3. first of the named `forms`
-  return formName
-    ? // $FlowFixMe
-      entityDef.forms[formName]
-    : entityDef.form
-    ? entityDef.form
-    : Object.values(entityDef.forms)[0];
-}
-
 @entityType()
 export default class EntityForm extends React.Component {
   render() {
     const {
       entityDef,
       entityObject,
-      formName,
-      form = getForm(entityDef, formName),
+      form = entityDef.form || Object.values(entityDef.forms)[0],
       update,
       create,
       // defaults to `create` or `update` (if an id is present)

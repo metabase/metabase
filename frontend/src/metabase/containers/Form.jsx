@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 
 import { connect } from "react-redux";
 import { createSelector } from "reselect";
-import { reduxForm, getValues, initialize } from "redux-form";
+import { reduxForm, getValues, initialize, change } from "redux-form";
 import { getIn, assocIn } from "icepick";
 import _ from "underscore";
 
@@ -144,8 +144,8 @@ export default class Form extends React.Component {
           fields: (...args) =>
             // merge inlineFields in
             getValue(formDef.fields, ...args).map(fieldDef => ({
-              ...inlineFields[fieldDef.name],
               ...fieldDef,
+              ...inlineFields[fieldDef.name],
             })),
         };
       },
@@ -262,6 +262,10 @@ export default class Form extends React.Component {
     }
   };
 
+  _handleChangeField = (fieldName: FieldName, value: FieldValue) => {
+    return this.props.dispatch(change(this.props.formName, fieldName, value));
+  };
+
   render() {
     // eslint-disable-next-line
     const { formName } = this.props;
@@ -278,6 +282,7 @@ export default class Form extends React.Component {
         initialValues={initialValues}
         validate={this._validate}
         onSubmit={this._onSubmit}
+        onChangeField={this._handleChangeField}
       />
     );
   }
@@ -341,6 +346,7 @@ function makeFormObject(formDef: FormDefinition): FormObject {
   makeFormMethod(form, "initial");
   // for normalizeing the object before submitting, or normalizeing individual values
   makeFormMethod(form, "normalize", object => object);
+  makeFormMethod(form, "hidden");
   return form;
 }
 

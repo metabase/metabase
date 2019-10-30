@@ -205,7 +205,7 @@ export const createDatabase = function(database) {
         "Create Failed",
         database.engine,
       );
-      dispatch.action(CREATE_DATABASE_FAILED, { error });
+      throw error;
     }
   };
 };
@@ -233,28 +233,22 @@ export const updateDatabase = function(database) {
 
 // NOTE Atte Keinänen 7/26/17: Original monolithic saveDatabase was broken out to smaller actions
 // but `saveDatabase` action creator is still left here for keeping the interface for React components unchanged
-export const saveDatabase = function(database, details) {
-  // If we don't let user control the scheduling settings, let's override them with Metabase defaults
-  // TODO Atte Keinänen 8/15/17: Implement engine-specific scheduling defaults
-  const letUserControlScheduling = details["let-user-control-scheduling"];
-  const overridesIfNoUserControl = letUserControlScheduling
-    ? {}
-    : {
+export const saveDatabase = function(database) {
+  return async function(dispatch, getState) {
+    if (!database.details["let-user-control-scheduling"]) {
+      // If we don't let user control the scheduling settings, let's override them with Metabase defaults
+      // TODO Atte Keinänen 8/15/17: Implement engine-specific scheduling defaults
+      database = {
+        ...database,
         is_full_sync: true,
         schedules: DEFAULT_SCHEDULES,
       };
-
-  return async function(dispatch, getState) {
-    const databaseWithDetails = {
-      ...database,
-      details,
-      ...overridesIfNoUserControl,
-    };
-    const isUnsavedDatabase = !databaseWithDetails.id;
+    }
+    const isUnsavedDatabase = !database.id;
     if (isUnsavedDatabase) {
-      dispatch(createDatabase(databaseWithDetails));
+      dispatch(createDatabase(database));
     } else {
-      dispatch(updateDatabase(databaseWithDetails));
+      dispatch(updateDatabase(database));
     }
   };
 };
@@ -369,42 +363,9 @@ const databaseCreationStep = handleActions(
   DB_EDIT_FORM_CONNECTION_TAB,
 );
 
-const DEFAULT_FORM_STATE = {
-  formSuccess: null,
-  formError: null,
-  isSubmitting: false,
-};
-
-const formState = handleActions(
-  {
-    [RESET]: { next: () => DEFAULT_FORM_STATE },
-    [CREATE_DATABASE_STARTED]: () => ({ isSubmitting: true }),
-    // not necessarily needed as the page is immediately redirected after db creation
-    [CREATE_DATABASE]: () => ({
-      formSuccess: { data: { message: t`Successfully created!` } },
-    }),
-    [VALIDATE_DATABASE_FAILED]: (state, { payload: { error } }) => ({
-      formError: error,
-    }),
-    [CREATE_DATABASE_FAILED]: (state, { payload: { error } }) => ({
-      formError: error,
-    }),
-    [UPDATE_DATABASE_STARTED]: () => ({ isSubmitting: true }),
-    [UPDATE_DATABASE]: () => ({
-      formSuccess: { data: { message: t`Successfully saved!` } },
-    }),
-    [UPDATE_DATABASE_FAILED]: (state, { payload: { error } }) => ({
-      formError: error,
-    }),
-    [CLEAR_FORM_STATE]: () => DEFAULT_FORM_STATE,
-  },
-  DEFAULT_FORM_STATE,
-);
-
 export default combineReducers({
   editingDatabase,
   deletionError,
   databaseCreationStep,
-  formState,
   deletes,
 });

@@ -142,14 +142,14 @@ const UsernameAndPasswordForm = ({ onSubmit, ldapEnabled }) => (
           name="username"
           type={ldapEnabled ? "input" : "email"}
           title={ldapEnabled ? t`Username or email address` : t`Email address`}
-          placeholder="youlooknicetoday@email.com"
+          placeholder={t`youlooknicetoday@email.com`}
           validate={ldapEnabled ? validate.required() : validate.email()}
         />
         <FormField
           name="password"
           type="password"
           title={t`Password`}
-          placeholder="Shh..."
+          placeholder={t`Shhh...`}
           validate={validate.required()}
         />
         <FormField

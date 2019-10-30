@@ -2,7 +2,6 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import cx from "classnames";
-import { getIn } from "icepick";
 
 export default class FormField extends Component {
   static propTypes = {
@@ -16,36 +15,37 @@ export default class FormField extends Component {
     active: PropTypes.bool,
 
     hidden: PropTypes.bool,
-    displayName: PropTypes.string,
+    title: PropTypes.string,
     description: PropTypes.string,
 
     children: PropTypes.oneOfType([
       PropTypes.arrayOf(PropTypes.node),
       PropTypes.node,
     ]),
-
-    // legacy
-    fieldName: PropTypes.string,
-    formError: PropTypes.object,
   };
 
   render() {
     const {
+      className,
       formField,
-      displayName = formField &&
-        (formField.title || formField.name.split(".").pop()),
+      title = formField && formField.title,
       description = formField && formField.description,
-      hidden = formField && formField.type === "hidden",
-      horizontal = formField && formField.horizontal,
+      hidden = formField &&
+        (formField.hidden != null
+          ? formField.hidden
+          : formField.type === "hidden"),
+      horizontal = formField &&
+        (formField.horizontal != null
+          ? formField.horizontal
+          : formField.type === "boolean"),
       children,
     } = this.props;
 
+    if (hidden) {
+      return null;
+    }
+
     let { name, error, visited, active } = {
-      ...{
-        // legacy
-        name: this.props.fieldName,
-        error: getIn(this.props.formError, ["data", "errors", name]),
-      },
       ...(this.props.field || {}),
       ...this.props,
     };
@@ -57,24 +57,22 @@ export default class FormField extends Component {
 
     return (
       <div
-        className={cx("Form-field", {
+        className={cx("Form-field", className, {
           "Form--fieldError": !!error,
-          hide: hidden,
-          flex: horizontal,
+          "flex flex-reverse justify-end": horizontal,
         })}
       >
-        {horizontal && children}
-        {displayName && (
-          <label
-            className={cx("Form-label", { ml1: horizontal })}
-            htmlFor={name}
-          >
-            {displayName}{" "}
-            {error && <span className="text-error">: {error}</span>}
-          </label>
+        {(title || description) && (
+          <div className={cx({ ml2: horizontal })}>
+            {title && (
+              <label className="Form-label" htmlFor={name}>
+                {title} {error && <span className="text-error">: {error}</span>}
+              </label>
+            )}
+            {description && <div className="mb1">{description}</div>}
+          </div>
         )}
-        {!horizontal && description && <div className="mb1">{description}</div>}
-        {!horizontal && children}
+        <div className="flex-no-shrink">{children}</div>
       </div>
     );
   }
