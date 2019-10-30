@@ -364,8 +364,8 @@
 (s/defn ^:private test-unique-db-name
   "Check if the database name already exists on a specific engine and returns a useful error message
   if it does, otherwise it returns `nil` if the name is valid (unique)."
-  [name :- su/NonBlankString, engine :- DBEngineString]
-  (let [current-db {:name name
+  [db-name :- su/NonBlankString, engine :- DBEngineString]
+  (let [current-db {:name db-name
                     :engine (keyword engine)}
         db-names (mapv #(select-keys % [:name :engine]) (dbs-list true true))
         valid-name? (every? #(not= % current-db) db-names)]
