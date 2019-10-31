@@ -200,9 +200,9 @@ export default class FieldApp extends React.Component {
           <AdminLayout
             sidebar={
               <div>
-                <Header>
+                <div className="flex align-center mb2">
                   <BackButton databaseId={databaseId} tableId={tableId} />
-                </Header>
+                </div>
                 <LeftNavPane>
                   <LeftNavPaneItem
                     name={t`General`}
@@ -218,23 +218,21 @@ export default class FieldApp extends React.Component {
             }
           >
             <div className="wrapper">
-              <Header>
-                <div className="mb4 py1 ml-auto mr-auto">
-                  <Breadcrumbs
-                    crumbs={[
-                      [db.name, `/admin/datamodel/database/${db.id}`],
-                      [
-                        table.display_name,
-                        `/admin/datamodel/database/${db.id}/table/${table.id}`,
-                      ],
-                      t`${field.display_name} – Field Settings`,
-                    ]}
-                  />
-                </div>
-                <div className="absolute top right mt4 mr4">
-                  <SaveStatus ref={ref => (this.saveStatus = ref)} />
-                </div>
-              </Header>
+              <div className="mb4 pt2 ml-auto mr-auto">
+                <Breadcrumbs
+                  crumbs={[
+                    [db.name, `/admin/datamodel/database/${db.id}`],
+                    [
+                      table.display_name,
+                      `/admin/datamodel/database/${db.id}/table/${table.id}`,
+                    ],
+                    t`${field.display_name} – Field Settings`,
+                  ]}
+                />
+              </div>
+              <div className="absolute top right mt4 mr4">
+                <SaveStatus ref={ref => (this.saveStatus = ref)} />
+              </div>
 
               {section == null || section === "general" ? (
                 <FieldGeneralPane
@@ -263,10 +261,6 @@ export default class FieldApp extends React.Component {
     );
   }
 }
-
-const Header = ({ children, height = 50 }) => (
-  <div style={{ height }}>{children}</div>
-);
 
 const FieldGeneralPane = ({
   field,
@@ -388,8 +382,7 @@ export const BackButton = ({
 }) => (
   <Link
     to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
-    className="circle text-white p2 flex align-center justify-center inline"
-    style={{ backgroundColor: color("bg-dark") }}
+    className="circle text-white p2 flex align-center justify-center bg-dark bg-brand-hover"
   >
     <Icon name="arrow_back" />
   </Link>
