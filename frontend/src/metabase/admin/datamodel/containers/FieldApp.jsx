@@ -383,7 +383,7 @@ export const BackButton = ({
     to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
     className="circle text-white p2 flex align-center justify-center bg-dark bg-brand-hover"
   >
-    <Icon name="arrow_back" />
+    <Icon name="arrow_left" />
   </Link>
 );
 
