@@ -239,9 +239,7 @@ export function createEntity(def: EntityDefinition): Entity {
   const UPDATE_ACTION = `metabase/entities/${entity.name}/UPDATE`;
   const DELETE_ACTION = `metabase/entities/${entity.name}/DELETE`;
   const FETCH_LIST_ACTION = `metabase/entities/${entity.name}/FETCH_LIST`;
-  const INVALIDATE_LISTS_ACTION = `metabase/entities/${
-    entity.name
-  }/INVALIDATE_LISTS`;
+  const INVALIDATE_LISTS_ACTION = `metabase/entities/${entity.name}/INVALIDATE_LISTS`;
 
   entity.actionTypes = {
     CREATE: CREATE_ACTION,

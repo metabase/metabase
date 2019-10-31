@@ -119,16 +119,10 @@ function getPermissionWarning(
   const perm = value || getter(permissions, groupId, entityId);
   const defaultPerm = getter(permissions, defaultGroup.id, entityId);
   if (perm === "controlled" && defaultPerm === "controlled") {
-    return t`The "${
-      defaultGroup.name
-    }" group may have access to a different set of ${entityType} than this group, which may give this group additional access to some ${entityType}.`;
+    return t`The "${defaultGroup.name}" group may have access to a different set of ${entityType} than this group, which may give this group additional access to some ${entityType}.`;
   }
   if (hasGreaterPermissions(defaultPerm, perm)) {
-    return t`The "${
-      defaultGroup.name
-    }" group has a higher level of access than this, which will override this setting. You should limit or revoke the "${
-      defaultGroup.name
-    }" group's access to this item.`;
+    return t`The "${defaultGroup.name}" group has a higher level of access than this, which will override this setting. You should limit or revoke the "${defaultGroup.name}" group's access to this item.`;
   }
   return null;
 }
