@@ -35,7 +35,7 @@
   ;; Don't i18n this docstring because it's not user-facing! :)
   "Unique identifier used for this instance of Metabase. This is set once and only once the first time it is fetched via
   its magic getter. Nice!"
-  :internal? true
+  :visibility :internal
   :setter    (fn [& _]
                (throw (UnsupportedOperationException. "site-uuid is automatically generated. Don't try to change it!")))
   ;; magic getter will either fetch value from DB, or if no value exists, set the value to a random UUID.
@@ -61,6 +61,7 @@
 ;; It will also prepend `http://` to the URL if there's not protocol when it comes in
 (defsetting site-url
   (deferred-tru "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\".")
+  :visibility :public
   :getter (fn []
             (try
               (some-> (setting/get-string :site-url) normalize-site-url)
@@ -78,32 +79,41 @@
   :default   "en")
 
 (defsetting admin-email
-  (deferred-tru "The email address users should be referred to if they encounter a problem."))
+  (deferred-tru "The email address users should be referred to if they encounter a problem.")
+  :visibility :public)
 
 (defsetting anon-tracking-enabled
   (deferred-tru "Enable the collection of anonymous usage data in order to help Metabase improve.")
   :type   :boolean
-  :default true)
+  :default true
+  :visibility :public)
+
+(defsetting ga-code
+  (deferred-tru "Google Analytics tracking code.")
+  :default    "UA-60817802-1"
+  :visibility :public)
 
 (defsetting map-tile-server-url
   (deferred-tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
-  :default "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
+  :default "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+  :visibility :authenticated)
 
 (defsetting enable-public-sharing
   (deferred-tru "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?")
   :type    :boolean
-  :default false)
+  :default false
+  :visibility :authenticated)
 
 (defsetting enable-embedding
   (deferred-tru "Allow admins to securely embed questions and dashboards within other applications?")
   :type    :boolean
-  :default false)
+  :default false
+  :visibility :authenticated)
 
 (defsetting enable-nested-queries
   (deferred-tru "Allow using a saved question as the source for other queries?")
   :type    :boolean
   :default true)
-
 
 (defsetting enable-query-caching
   (deferred-tru "Enabling caching will save the results of queries that take a long time to run.")
@@ -163,13 +173,15 @@
 
 (defsetting custom-formatting
   (deferred-tru "Object keyed by type, containing formatting settings")
-  :type    :json
-  :default {})
+  :type       :json
+  :default    {}
+  :visibility :authenticated)
 
 (defsetting enable-xrays
   (deferred-tru "Allow users to explore data using X-rays")
-  :type    :boolean
-  :default true)
+  :type       :boolean
+  :default    true
+  :visibility :authenticated)
 
 (defsetting source-address-header
   (deferred-tru "Identify the source of HTTP requests by this header's value, instead of its remote address.")
@@ -210,33 +222,21 @@
   "Return a simple map of key/value pairs which represent the public settings (`MetabaseBootstrap`) for the front-end
    application."
   []
-  {:admin_email           (admin-email)
-   :anon_tracking_enabled (anon-tracking-enabled)
+  (merge
+   (setting/settings :public)
+   ;; TODO only load authenticated settings if the user is authenticated. reload settings after authenticating
+   (setting/settings :authenticated)
+   {
    :available_locales     (available-locales-with-names)
-   :custom_formatting     (custom-formatting)
-   :custom_geojson        (resolve-setting 'metabase.api.geojson 'custom-geojson)
    :email_configured      (resolve-setting 'metabase.email 'email-configured?)
-   :embedding             (enable-embedding)
-   :enable_nested_queries (enable-nested-queries)
-   :enable_query_caching  (enable-query-caching)
-   :enable_xrays          (enable-xrays)
    :engines               (driver.u/available-drivers-info)
    :entities              (types/types->parents :entity/*)
-   :ga_code               "UA-60817802-1"
-   :google_auth_client_id (resolve-setting 'metabase.api.session 'google-auth-client-id)
    :has_sample_dataset    (db/exists? 'Database, :is_sample true)
    :hide_embed_branding   (metastore/hide-embed-branding?)
    :ldap_configured       (resolve-setting 'metabase.integrations.ldap 'ldap-configured?)
-   :map_tile_server_url   (map-tile-server-url)
-   :metastore_url         metastore/store-url
    :password_complexity   password/active-password-complexity
-   :premium_token         (metastore/premium-embedding-token)
-   :public_sharing        (enable-public-sharing)
-   :report_timezone       (resolve-setting 'metabase.driver 'report-timezone)
    :setup_token           (resolve-setting 'metabase.setup 'token-value)
-   :site_name             (site-name)
-   :site_url              (site-url)
    :timezone_short        (short-timezone-name (setting/get :report-timezone))
    :timezones             common/timezones
    :types                 (types/types->parents :type/*)
-   :version               config/mb-version-info})
+   :version               config/mb-version-info}))

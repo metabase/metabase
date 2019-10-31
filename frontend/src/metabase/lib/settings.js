@@ -34,7 +34,7 @@ const MetabaseSettings = {
 
   // these are all special accessors which provide a lookup of a property plus some additional help
   adminEmail: function() {
-    return mb_settings.admin_email;
+    return mb_settings["admin-email"];
   },
 
   isEmailConfigured: function() {
@@ -42,17 +42,15 @@ const MetabaseSettings = {
   },
 
   isTrackingEnabled: function() {
-    return mb_settings.anon_tracking_enabled || false;
+    return mb_settings["anon-tracking-enabled"] || false;
   },
 
   hasSetupToken: function() {
-    return (
-      mb_settings.setup_token !== undefined && mb_settings.setup_token !== null
-    );
+    return mb_settings.setup_token != null;
   },
 
   ssoEnabled: function() {
-    return mb_settings.google_auth_client_id != null;
+    return mb_settings["google-auth-client-id"] != null;
   },
 
   ldapEnabled: function() {
@@ -60,8 +58,6 @@ const MetabaseSettings = {
   },
 
   hideEmbedBranding: () => mb_settings.hide_embed_branding,
-
-  metastoreUrl: () => mb_settings.metastore_url,
 
   docsUrl: (page = "", anchor = "") => {
     let { tag } = MetabaseSettings.get("version", {});

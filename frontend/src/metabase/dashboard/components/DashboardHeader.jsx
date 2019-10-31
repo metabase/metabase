@@ -205,8 +205,8 @@ export default class DashboardHeader extends Component {
     const isEmpty = !dashboard || dashboard.ordered_cards.length === 0;
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
 
-    const isPublicLinksEnabled = MetabaseSettings.get("public_sharing");
-    const isEmbeddingEnabled = MetabaseSettings.get("embedding");
+    const isPublicLinksEnabled = MetabaseSettings.get("enable-public-sharing");
+    const isEmbeddingEnabled = MetabaseSettings.get("enable-embedding");
 
     const buttons = [];
 

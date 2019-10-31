@@ -98,7 +98,7 @@ describe("public/embedded", () => {
       const store = await createTestStore();
 
       // load public sharing settings
-      store.pushPath("/admin/settings/public_sharing");
+      store.pushPath("/admin/settings/enable-public-sharing");
       const app = mount(store.getAppContainer());
 
       await store.waitForActions([LOAD_CURRENT_USER, INITIALIZE_SETTINGS]);

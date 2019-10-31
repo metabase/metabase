@@ -19,7 +19,7 @@ export default class CreatedDatabaseModal extends Component {
 
   render() {
     const { onClose, onDone, databaseId } = this.props;
-    const xraysEnabled = MetabaseSettings.get("enable_xrays");
+    const xraysEnabled = MetabaseSettings.get("enable-xrays");
     return (
       <ModalContent title={t`Your database has been added!`} onClose={onClose}>
         <div className="mb4">

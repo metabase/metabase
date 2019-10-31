@@ -326,7 +326,7 @@ const SECTIONS = [
   },
   {
     name: t`Public Sharing`,
-    slug: "public_sharing",
+    slug: "enable-public-sharing",
     settings: [
       {
         key: "enable-public-sharing",

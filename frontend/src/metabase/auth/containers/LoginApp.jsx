@@ -72,7 +72,7 @@ export default class LoginApp extends Component {
       try {
         window.gapi.load("auth2", () => {
           const auth2 = window.gapi.auth2.init({
-            client_id: Settings.get("google_auth_client_id"),
+            client_id: Settings.get("google-auth-client-id"),
             cookiepolicy: "single_host_origin",
           });
           auth2.attachClickHandler(

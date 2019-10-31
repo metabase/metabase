@@ -31,17 +31,13 @@ const FieldSidebar = ({ database, table, field, style, className }) => (
         />
       </div>
       <SidebarItem
-        key={`/reference/databases/${database.id}/tables/${table.id}/fields/${
-          field.id
-        }`}
-        href={`/reference/databases/${database.id}/tables/${table.id}/fields/${
-          field.id
-        }`}
+        key={`/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`}
+        href={`/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`}
         icon="document"
         name={t`Details`}
       />
 
-      {MetabaseSettings.get("enable_xrays") && (
+      {MetabaseSettings.get("enable-xrays") && (
         <SidebarItem
           key={`/auto/dashboard/field/${field.id}`}
           href={`/auto/dashboard/field/${field.id}`}

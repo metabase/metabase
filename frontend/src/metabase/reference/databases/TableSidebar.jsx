@@ -41,13 +41,11 @@ const TableSidebar = ({ database, table, style, className }) => (
       />
       <SidebarItem
         key={`/reference/databases/${database.id}/tables/${table.id}/questions`}
-        href={`/reference/databases/${database.id}/tables/${
-          table.id
-        }/questions`}
+        href={`/reference/databases/${database.id}/tables/${table.id}/questions`}
         icon="all"
         name={t`Questions about this table`}
       />
-      {MetabaseSettings.get("enable_xrays") && (
+      {MetabaseSettings.get("enable-xrays") && (
         <SidebarItem
           key={`/auto/dashboard/table/${table.id}`}
           href={`/auto/dashboard/table/${table.id}`}

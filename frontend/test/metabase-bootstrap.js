@@ -4,7 +4,7 @@ import "number-to-locale-string";
 import "metabase/css/index.css";
 
 window.MetabaseBootstrap = {
-  enable_xrays: true,
+  "enable-xrays": true,
   timezones: [
     "GMT",
     "UTC",

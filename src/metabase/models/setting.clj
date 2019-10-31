@@ -64,6 +64,9 @@
 (def ^:private Type
   (s/enum :string :boolean :json :integer :double :timestamp :csv))
 
+(def ^:private Visibility
+  (s/enum :public :authenticated :admin :internal))
+
 (def ^:private default-tag-for-type
   "Type tag that will be included in the Setting's metadata, so that the getter function will not cause reflection
   warnings."
@@ -82,7 +85,7 @@
    :setter      clojure.lang.IFn
    :tag         (s/maybe Class)  ; type annotation, e.g. ^String, to be applied. Defaults to tag based on :type
    :sensitive?  s/Bool           ; is this sensitive (never show in plaintext), like a password? (default: false)
-   :internal?   s/Bool           ; should the API never return this setting? (default: false)
+   :visibility  Visibility       ; where should the API return this setting? (default: admin)
    :cache?      s/Bool           ; should the getter always fetch this value "fresh" from the DB? (default: false)
 
   ;; called whenever setting value changes, whether from update-setting! or a cache refresh. used to handle cases
@@ -405,7 +408,7 @@
                :getter      (partial (default-getter-for-type setting-type) setting-name)
                :setter      (partial (default-setter-for-type setting-type) setting-name)
                :tag         (default-tag-for-type setting-type)
-               :internal?   false
+               :visibility  :admin
                :sensitive?  false
                :cache?      true}
                     (dissoc setting :name :type :default)))
@@ -506,8 +509,8 @@
                       Settings have special default getters and setters that automatically coerce values to the correct
                       types.
 
-   *  `:internal?`  - This Setting is for internal use and shouldn't be exposed in the UI (i.e., not returned by the
-                      corresponding endpoints). Default: `false`
+   *  `:visibility` - `:admin` (default), `:public`, `:authenticated`, or `:internal`. Controls where this setting is
+                      returned by the API.
 
    *  `:getter`     - A custom getter fn, which takes no arguments. Overrides the default implementation. (This can in
                       turn call functions in this namespace like `get-string` or `get-boolean` to invoke the default
@@ -529,7 +532,7 @@
   {:style/indent 1}
   [setting-symb description & {:as options}]
   {:pre [(symbol? setting-symb)]}
-  `(let [desc# ~(if (:internal? options)
+  `(let [desc# ~(if (= (:visibility options) :internal)
                   description
                   (validate-description description))
          setting# (register-setting! (assoc ~options
@@ -616,3 +619,11 @@
   [& {:as options}]
   (for [setting (sort-by :name (vals @registered-settings))]
     (m/mapply user-facing-info setting options)))
+
+(defn settings
+  [visibility]
+  (->> @registered-settings
+    (filter (fn [[_ options]] (and (not (:sensitive? options))
+                                   (= (:visibility options) visibility))))
+    (map (fn [[name]] [name (get name)]))
+    (into {})))
