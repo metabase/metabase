@@ -91,6 +91,7 @@ function _init(reducers, getRoutes, callback) {
 
   window.Metabase = window.Metabase || {};
   window.Metabase.store = store;
+  window.Metabase.settings = MetabaseSettings;
 
   if (callback) {
     callback(store);

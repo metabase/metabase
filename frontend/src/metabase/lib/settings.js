@@ -9,6 +9,8 @@ const settingListeners = {};
 
 // provides access to Metabase application settings
 const MetabaseSettings = {
+  _settings: mb_settings,
+
   get: function(propName, defaultValue = null) {
     return mb_settings[propName] !== undefined
       ? mb_settings[propName]
@@ -38,7 +40,7 @@ const MetabaseSettings = {
   },
 
   isEmailConfigured: function() {
-    return mb_settings.email_configured;
+    return mb_settings["email-configured"];
   },
 
   isTrackingEnabled: function() {
@@ -46,7 +48,7 @@ const MetabaseSettings = {
   },
 
   hasSetupToken: function() {
-    return mb_settings.setup_token != null;
+    return mb_settings["setup-token"] != null;
   },
 
   ssoEnabled: function() {
@@ -54,10 +56,10 @@ const MetabaseSettings = {
   },
 
   ldapEnabled: function() {
-    return mb_settings.ldap_configured;
+    return mb_settings["ldap-configured"];
   },
 
-  hideEmbedBranding: () => mb_settings.hide_embed_branding,
+  hideEmbedBranding: () => mb_settings["hide-embed-branding"],
 
   docsUrl: (page = "", anchor = "") => {
     let { tag } = MetabaseSettings.get("version", {});
@@ -92,11 +94,11 @@ const MetabaseSettings = {
   },
 
   // returns a map that looks like {total: 6, digit: 1}
-  passwordComplexityRequirements: () => mb_settings.password_complexity,
+  passwordComplexityRequirements: () => mb_settings["password-complexity"],
 
   // returns a description of password complexity requirements rather than the actual map of requirements
   passwordComplexityDescription: function(capitalize) {
-    const complexity = this.get("password_complexity");
+    const complexity = this.get("password-complexity");
 
     const clauseDescription = function(clause) {
       switch (clause) {

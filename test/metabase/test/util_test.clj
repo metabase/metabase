@@ -29,7 +29,7 @@
 
 (setting/defsetting test-util-test-setting
   "Another internal test setting"
-  :visibility :internal
+  :internal? true
   :default "A,B,C"
   :type :csv)
 

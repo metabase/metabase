@@ -58,11 +58,11 @@ const SECTIONS = [
         key: "site-locale",
         display_name: t`Language`,
         type: "select",
-        options: (MetabaseSettings.get("available_locales") || []).map(
+        options: (MetabaseSettings.get("available-locales") || []).map(
           ([value, name]) => ({ name, value }),
         ),
         defaultValue: "en",
-        getHidden: () => MetabaseSettings.get("available_locales").length < 2,
+        getHidden: () => MetabaseSettings.get("available-locales").length < 2,
       },
       {
         key: "anon-tracking-enabled",
@@ -450,7 +450,7 @@ const SECTIONS = [
 ];
 
 export const getSettings = createSelector(
-  state => state.settings.settings,
+  state => state.admin.settings.settings,
   state => state.admin.settings.warnings,
   (settings, warnings) =>
     settings.map(setting =>

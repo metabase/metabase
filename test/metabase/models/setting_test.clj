@@ -23,31 +23,31 @@
 
 (defsetting test-setting-1
   "Test setting - this only shows up in dev (1)"
-  :visibility :internal)
+  :internal? true)
 
 (defsetting test-setting-2
   "Test setting - this only shows up in dev (2)"
-  :visibility :internal
+  :internal? true
   :default "[Default Value]")
 
 (defsetting ^:private test-boolean-setting
   "Test setting - this only shows up in dev (3)"
-  :visibility :internal
+  :internal? true
   :type :boolean)
 
 (defsetting ^:private test-json-setting
   "Test setting - this only shows up in dev (4)"
-  :visibility :internal
+  :internal? true
   :type :json)
 
 (defsetting ^:private test-csv-setting
   "Test setting - this only shows up in dev (5)"
-  :visibility :internal
+  :internal? true
   :type :csv)
 
 (defsetting ^:private test-csv-setting-with-default
   "Test setting - this only shows up in dev (6)"
-  :visibility :internal
+  :internal? true
   :type :csv
   :default "A,B,C")
 
@@ -332,7 +332,7 @@
 
 (setting/defsetting toucan-name
   "Name for the Metabase Toucan mascot."
-  :visibility :internal)
+  :internal? true)
 
 (expect
   "Banana Beak"
@@ -447,7 +447,7 @@
 
 (defsetting ^:private test-timestamp-setting
   "Test timestamp setting"
-  :visibility :internal
+  :internal? true
   :type :timestamp)
 
 (expect
@@ -471,7 +471,7 @@
 
 (defsetting ^:private uncached-setting
   "A test setting that should *not* be cached."
-  :visibility :internal
+  :internal? true
   :cache? false)
 
 ;; make sure uncached setting still saves to the DB

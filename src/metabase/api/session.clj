@@ -16,7 +16,7 @@
             [metabase.middleware.session :as mw.session]
             [metabase.models
              [session :refer [Session]]
-             [setting :refer [defsetting]]
+             [setting :as setting :refer [defsetting]]
              [user :as user :refer [User]]]
             [metabase.util
              [i18n :as ui18n :refer [deferred-tru trs tru]]
@@ -237,7 +237,12 @@
 (api/defendpoint GET "/properties"
   "Get all global properties and their values. These are the specific `Settings` which are meant to be public."
   []
-  (public-settings/public-settings))
+  (merge
+   (setting/properties :public)
+   (when @api/*current-user*
+     (setting/properties :authenticated))
+   (when api/*is-superuser?*
+     (setting/properties :admin))))
 
 
 ;;; -------------------------------------------------- GOOGLE AUTH ---------------------------------------------------

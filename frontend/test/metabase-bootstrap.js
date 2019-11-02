@@ -17,7 +17,7 @@ window.MetabaseBootstrap = {
     "US/Pacific",
     "America/Costa_Rica",
   ],
-  available_locales: [["en", "English"]],
+  "availabl-locales": [["en", "English"]],
   // NOTE: update this when updating types.clj
   types: {
     "type/DruidHyperUnique": ["type/*"],

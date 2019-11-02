@@ -35,7 +35,7 @@
   ;; Don't i18n this docstring because it's not user-facing! :)
   "Unique identifier used for this instance of Metabase. This is set once and only once the first time it is fetched via
   its magic getter. Nice!"
-  :visibility :internal
+  :internal? true
   :setter    (fn [& _]
                (throw (UnsupportedOperationException. "site-uuid is automatically generated. Don't try to change it!")))
   ;; magic getter will either fetch value from DB, or if no value exists, set the value to a random UUID.
@@ -217,26 +217,67 @@
       (tru "Invalid Setting: {0}/{1}" ns-symb setting-symb))
     (f)))
 
-;; TODO - it seems like it would be a nice performance win to cache this a little bit
-(defn public-settings
-  "Return a simple map of key/value pairs which represent the public settings (`MetabaseBootstrap`) for the front-end
-   application."
-  []
-  (merge
-   (setting/settings :public)
-   ;; TODO only load authenticated settings if the user is authenticated. reload settings after authenticating
-   (setting/settings :authenticated)
-   {
-   :available_locales     (available-locales-with-names)
-   :email_configured      (resolve-setting 'metabase.email 'email-configured?)
-   :engines               (driver.u/available-drivers-info)
-   :entities              (types/types->parents :entity/*)
-   :has_sample_dataset    (db/exists? 'Database, :is_sample true)
-   :hide_embed_branding   (metastore/hide-embed-branding?)
-   :ldap_configured       (resolve-setting 'metabase.integrations.ldap 'ldap-configured?)
-   :password_complexity   password/active-password-complexity
-   :setup_token           (resolve-setting 'metabase.setup 'token-value)
-   :timezone_short        (short-timezone-name (setting/get :report-timezone))
-   :timezones             common/timezones
-   :types                 (types/types->parents :type/*)
-   :version               config/mb-version-info}))
+(defsetting available-locales
+  (deferred-tru "TODO")
+  :visibility :public
+  :getter     (fn [] (available-locales-with-names)))
+
+(defsetting email-configured
+  (deferred-tru "TODO")
+  :visibility :public
+  :getter     (fn [] (resolve-setting 'metabase.email 'email-configured?)))
+
+(defsetting engines
+  (deferred-tru "TODO")
+  :visibility :public
+  :getter     (fn [] (driver.u/available-drivers-info)))
+
+(defsetting entities
+  (deferred-tru "TODO")
+  :visibility :authenticated
+  :getter     (fn [] (types/types->parents :entity/*)))
+
+(defsetting has-sample-dataset
+  (deferred-tru "TODO")
+  :visibility :public
+  :getter     (fn [] (db/exists? 'Database, :is_sample true)))
+
+(defsetting hide-embed-branding
+  (deferred-tru "TODO")
+  :visibility :public
+  :getter     (fn [] (metastore/hide-embed-branding?)))
+
+(defsetting ldap-configured
+  (deferred-tru "TODO")
+  :visibility :public
+  :getter     (fn [] (resolve-setting 'metabase.integrations.ldap 'ldap-configured?)))
+
+(defsetting password-complexity
+  (deferred-tru "TODO")
+  :visibility :public
+  :getter     (fn [] password/active-password-complexity))
+
+(defsetting setup-token
+  (deferred-tru "TODO")
+  :visibility :public
+  :getter     (fn [] (resolve-setting 'metabase.setup 'token-value)))
+
+(defsetting timezone-short
+  (deferred-tru "TODO")
+  :visibility :public
+  :getter     (fn [] (short-timezone-name (setting/get :report-timezone))))
+
+(defsetting timezones
+  (deferred-tru "TODO")
+  :visibility :public
+  :getter     (fn [] common/timezones))
+
+(defsetting types
+  (deferred-tru "TODO")
+  :visibility :public
+  :getter     (fn [] (types/types->parents :type/*)))
+
+(defsetting version
+  (deferred-tru "TODO")
+  :visibility :public
+  :getter     (fn [] config/mb-version-info))
