@@ -19,14 +19,29 @@
             [metabase.util.date :as du])
   (:import java.sql.Time))
 
-(defonce ^{:doc "Set of drivers descending from `:sql-jdbc`, for test purposes (i.e. `expect-with-drivers`)"}
-  sql-jdbc-drivers
+(defonce ^:private sql-jdbc-drivers*
   (delay
-   (du/profile "resolve @metabase.driver.sql-jdbc-test/sql-jdbc-drivers"
-     (set
-      (for [driver @tx.env/test-drivers
-            :when  (isa? driver/hierarchy (driver/the-driver driver) (driver/the-driver :sql-jdbc))]
-        (tx/the-driver-with-test-extensions driver))))))
+    (du/profile "resolve @metabase.driver.sql-jdbc-test/sql-jdbc-drivers"
+      (set
+       (for [driver (tx.env/test-drivers)
+             :when  (isa? driver/hierarchy (driver/the-driver driver) (driver/the-driver :sql-jdbc))]
+         (tx/the-driver-with-test-extensions driver))))))
+
+(def ^{:arglists '([])} sql-jdbc-drivers
+  "Set of drivers descending from `:sql-jdbc`, for test purposes (i.e. `expect-with-drivers`).
+
+  You should use this as a function call going forward, e.g.
+
+    (sql-jdbc-drivers)
+
+  but for historic reasons, it can also be dereffed as if it were a delay (as it was in the past)"
+  (reify
+    clojure.lang.IDeref
+    (deref [_]
+      @sql-jdbc-drivers*)
+    clojure.lang.IFn
+    (invoke [_]
+      @sql-jdbc-drivers*)))
 
 
 ;; DESCRIBE-DATABASE

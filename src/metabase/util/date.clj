@@ -1,6 +1,9 @@
 (ns ^:deprecated metabase.util.date
   "Utility functions for working with datetimes of different types, and other related tasks. Deprecated: use
-  `metabase.util.date-2` instead."
+  `metabase.util.date-2` instead.
+
+  TIMEZONE FIXME - remove this namespace entirely
+"
   (:require [clj-time
              [coerce :as coerce]
              [core :as t]

@@ -1,11 +1,9 @@
 (ns metabase.driver.sqlite
-  (:require [clj-time
-             [coerce :as tcoerce]
-             [format :as tformat]]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [honeysql
              [core :as hsql]
              [format :as hformat]]
+            [java-time :as t]
             [metabase
              [config :as config]
              [driver :as driver]]
@@ -17,10 +15,12 @@
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.util
-             [date :as du]
+             [date-2 :as u.date]
              [honeysql-extensions :as hx]]
             [schema.core :as s])
-  (:import [java.sql Time Timestamp]))
+  (:import java.sql.Time
+           [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
+           java.time.temporal.Temporal))
 
 (driver/register! :sqlite, :parent :sql-jdbc)
 
@@ -68,40 +68,74 @@
 
 ;; See also the [SQLite Date and Time Functions Reference](http://www.sqlite.org/lang_datefunc.html).
 
-(defn- ts->str
-  "Convert Timestamps to ISO 8601 strings before passing to SQLite, otherwise they don't seem to work correctly"
-  [expr]
-  ;; See https://github.com/xerial/sqlite-jdbc/issues/88 for more context
-  (if (instance? Timestamp expr)
-    (hx/literal (du/format-date "yyyy-MM-dd HH:mm:ss" expr))
-    expr))
+(defmethod sql.qp/date [:sqlite :default]
+  [driver _ expr]
+  (sql.qp/->honeysql driver expr))
 
-(defmethod sql.qp/date [:sqlite :default]        [_ _ expr] (ts->str expr))
-(defmethod sql.qp/date [:sqlite :second]         [_ _ expr] (->datetime (strftime "%Y-%m-%d %H:%M:%S" (ts->str expr))))
-(defmethod sql.qp/date [:sqlite :minute]         [_ _ expr] (->datetime (strftime "%Y-%m-%d %H:%M" (ts->str expr))))
-(defmethod sql.qp/date [:sqlite :minute-of-hour] [_ _ expr] (hx/->integer (strftime "%M" (ts->str expr))))
-(defmethod sql.qp/date [:sqlite :hour]           [_ _ expr] (->datetime (strftime "%Y-%m-%d %H:00" (ts->str expr))))
-(defmethod sql.qp/date [:sqlite :hour-of-day]    [_ _ expr] (hx/->integer (strftime "%H" (ts->str expr))))
-(defmethod sql.qp/date [:sqlite :day]            [_ _ expr] (->date (ts->str expr)))
+(defmethod sql.qp/date [:sqlite :second]
+  [driver _ expr]
+  (->datetime (strftime "%Y-%m-%d %H:%M:%S" (sql.qp/->honeysql driver expr))))
+
+(defmethod sql.qp/date [:sqlite :minute]
+  [driver _ expr]
+  (->datetime (strftime "%Y-%m-%d %H:%M" (sql.qp/->honeysql driver expr))))
+
+(defmethod sql.qp/date [:sqlite :minute-of-hour]
+  [driver _ expr]
+  (hx/->integer (strftime "%M" (sql.qp/->honeysql driver expr))))
+
+(defmethod sql.qp/date [:sqlite :hour]
+  [driver _ expr]
+  (->datetime (strftime "%Y-%m-%d %H:00" (sql.qp/->honeysql driver expr))))
+
+(defmethod sql.qp/date [:sqlite :hour-of-day]
+  [driver _ expr]
+  (hx/->integer (strftime "%H" (sql.qp/->honeysql driver expr))))
+
+(defmethod sql.qp/date [:sqlite :day]
+  [driver _ expr]
+  (->date (sql.qp/->honeysql driver expr)))
+
 ;; SQLite day of week (%w) is Sunday = 0 <-> Saturday = 6. We want 1 - 7 so add 1
-(defmethod sql.qp/date [:sqlite :day-of-week]    [_ _ expr] (hx/->integer (hx/inc (strftime "%w" (ts->str expr)))))
-(defmethod sql.qp/date [:sqlite :day-of-month]   [_ _ expr] (hx/->integer (strftime "%d" (ts->str expr))))
-(defmethod sql.qp/date [:sqlite :day-of-year]    [_ _ expr] (hx/->integer (strftime "%j" (ts->str expr))))
+(defmethod sql.qp/date [:sqlite :day-of-week]
+  [driver _ expr]
+  (hx/->integer (hx/inc (strftime "%w" (sql.qp/->honeysql driver expr)))))
+
+(defmethod sql.qp/date [:sqlite :day-of-month]
+  [driver _ expr]
+  (hx/->integer (strftime "%d" (sql.qp/->honeysql driver expr))))
+
+(defmethod sql.qp/date [:sqlite :day-of-year]
+  [driver _ expr]
+  (hx/->integer (strftime "%j" (sql.qp/->honeysql driver expr))))
+
 ;; Move back 6 days, then forward to the next Sunday
-(defmethod sql.qp/date [:sqlite :week]           [_ _ expr] (->date (ts->str expr) (hx/literal "-6 days") (hx/literal "weekday 0")))
+(defmethod sql.qp/date [:sqlite :week]
+  [driver _ expr]
+  (->date (sql.qp/->honeysql driver expr) (hx/literal "-6 days") (hx/literal "weekday 0")))
+
 ;; SQLite first week of year is 0, so add 1
-(defmethod sql.qp/date [:sqlite :week-of-year]   [_ _ expr] (hx/->integer (hx/inc (strftime "%W" (ts->str expr)))))
-(defmethod sql.qp/date [:sqlite :month]          [_ _ expr] (->date (ts->str expr) (hx/literal "start of month")))
-(defmethod sql.qp/date [:sqlite :month-of-year]  [_ _ expr] (hx/->integer (strftime "%m" (ts->str expr))))
-(defmethod sql.qp/date [:sqlite :year]           [_ _ expr] (->date (ts->str expr) (hx/literal "start of year")))
+(defmethod sql.qp/date [:sqlite :week-of-year]
+  [driver _ expr]
+  (hx/->integer (hx/inc (strftime "%W" (sql.qp/->honeysql driver expr)))))
+
+(defmethod sql.qp/date [:sqlite :month]
+  [driver _ expr]
+  (->date (sql.qp/->honeysql driver expr) (hx/literal "start of month")))
+
+(defmethod sql.qp/date [:sqlite :month-of-year]
+  [driver _ expr]
+  (hx/->integer (strftime "%m" (sql.qp/->honeysql driver expr))))
+
 ;;    DATE(DATE(%s, 'start of month'), '-' || ((STRFTIME('%m', %s) - 1) % 3) || ' months')
 ;; -> DATE(DATE('2015-11-16', 'start of month'), '-' || ((STRFTIME('%m', '2015-11-16') - 1) % 3) || ' months')
 ;; -> DATE('2015-11-01', '-' || ((11 - 1) % 3) || ' months')
 ;; -> DATE('2015-11-01', '-' || 1 || ' months')
 ;; -> DATE('2015-11-01', '-1 months')
 ;; -> '2015-10-01'
-(defmethod sql.qp/date [:sqlite :quarter] [_ _ expr]
-  (let [v (ts->str expr)]
+(defmethod sql.qp/date [:sqlite :quarter]
+  [driver _ expr]
+  (let [v (sql.qp/->honeysql driver expr)]
     (->date
      (->date v (hx/literal "start of month"))
      (hsql/call :sqlite-concat
@@ -111,10 +145,15 @@
        (hx/literal " months")))))
 
 ;; q = (m + 2) / 3
-(defmethod sql.qp/date [:sqlite :quarter-of-year] [_ _ expr]
-  (hx// (hx/+ (strftime "%m" (ts->str expr))
+(defmethod sql.qp/date [:sqlite :quarter-of-year]
+  [driver _ expr]
+  (hx// (hx/+ (strftime "%m" (sql.qp/->honeysql driver expr))
               2)
         3))
+
+(defmethod sql.qp/date [:sqlite :year]
+  [driver _ expr]
+  (->date (sql.qp/->honeysql driver expr) (hx/literal "start of year")))
 
 (defmethod driver/date-add :sqlite [driver dt amount unit]
   (let [[multiplier sqlite-unit] (case unit
@@ -141,7 +180,8 @@
     (->datetime (sql.qp/date driver unit dt)
                 (hx/literal (format "%+d %s" (* amount multiplier) sqlite-unit)))))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:sqlite :seconds] [_ _ expr]
+(defmethod sql.qp/unix-timestamp->timestamp [:sqlite :seconds]
+  [_ _ expr]
   (->datetime expr (hx/literal "unixepoch")))
 
 ;; SQLite doesn't like things like Timestamps getting passed in as prepared statement args, so we need to convert them
@@ -149,24 +189,46 @@
 ;;
 ;; TODO - not sure why this doesn't need to be done in `->honeysql` as well? I think it's because the MBQL date values
 ;; are funneled through the `date` family of functions above
-(s/defmethod sql/->prepared-substitution [:sqlite java.util.Date] :- sql/PreparedStatementSubstitution
+;; TIMESTAMP FIXME
+(s/defmethod sql/->prepared-substitution [:sqlite Temporal] :- sql/PreparedStatementSubstitution
   [_ date]
   ;; for anything that's a Date (usually a java.sql.Timestamp) convert it to a yyyy-MM-dd formatted date literal
   ;; string For whatever reason the SQL generated from parameters ends up looking like `WHERE date(some_field) = ?`
   ;; sometimes so we need to use just the date rather than a full ISO-8601 string
-  (sql/make-stmt-subs "?" [(du/format-date "yyyy-MM-dd" date)]))
+  (sql/make-stmt-subs "?" [(t/format "yyyy-MM-dd" date)]))
 
 ;; SQLite doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:sqlite Boolean]
   [_ bool]
   (if bool 1 0))
 
-(defmethod sql.qp/->honeysql [:sqlite Time]
-  [_ time-value]
-  (->> time-value
-       tcoerce/to-date-time
-       (tformat/unparse (tformat/formatters :hour-minute-second-ms))
-       (hsql/call :time)))
+(defmethod sql.qp/->honeysql [:sqlite Instant]
+  [_ t]
+  (hsql/call :time (hx/literal (u.date/format-sql t))))
+
+(defmethod sql.qp/->honeysql [:sqlite LocalDate]
+  [_ t]
+  (hsql/call :time (hx/literal (u.date/format-sql t))))
+
+(defmethod sql.qp/->honeysql [:sqlite LocalDateTime]
+  [_ t]
+  (hsql/call :time (hx/literal (u.date/format-sql t))))
+
+(defmethod sql.qp/->honeysql [:sqlite LocalTime]
+  [_ t]
+  (hsql/call :time (hx/literal (u.date/format-sql t))))
+
+(defmethod sql.qp/->honeysql [:sqlite OffsetDateTime]
+  [_ t]
+  (hsql/call :time (hx/literal (u.date/format-sql t))))
+
+(defmethod sql.qp/->honeysql [:sqlite OffsetTime]
+  [_ t]
+  (hsql/call :time (hx/literal (u.date/format-sql t))))
+
+(defmethod sql.qp/->honeysql [:sqlite ZonedDateTime]
+  [_ t]
+  (hsql/call :time (hx/literal (u.date/format-sql t))))
 
 ;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made case-sensitive. So let people know
 ;; we have this 'feature' so the frontend doesn't try to present the option to you.

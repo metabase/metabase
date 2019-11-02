@@ -535,3 +535,13 @@
   ;; `[:in :special_type #{"type/URL" "type/ImageURL"}]`)
   ([expr type-keyword]
    [:in expr (type-keyword->descendants type-keyword)]))
+
+;; good
+(java.sql.DriverManager/getConnection
+ "jdbc:postgresql://localhost:5432/metabase?user=cam")
+
+;; better
+(java.sql.DriverManager/getConnection
+ "jdbc:postgresql://localhost:5432/metabase"
+ (doto (java.util.Properties.)
+   (.setProperty "user" "cam")))

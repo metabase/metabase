@@ -61,6 +61,7 @@
 (defn parse
   "Parse a string into a `java.time` object."
   [^String s]
+  {:pre [((some-fn string? nil?) s)]}
   (when (seq s)
     (let [accessor     (.parse formatter s)
           local-date   (query accessor :local-date)

@@ -66,7 +66,7 @@
 
 
 ;; standard deviation aggregations
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :standard-deviation-aggregations)
+(datasets/expect-with-drivers (qp.test/normal-drivers-with-feature :standard-deviation-aggregations)
   {:cols [(qp.test/aggregate-col :stddev :venues :latitude)]
    :rows [[3.4]]}
   (qp.test/rows-and-cols
@@ -74,7 +74,7 @@
       (data/run-mbql-query venues {:aggregation [[:stddev $latitude]]}))))
 
 ;; Make sure standard deviation fails for the Mongo driver since its not supported
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-without-feature :standard-deviation-aggregations)
+(datasets/expect-with-drivers (qp.test/normal-drivers-without-feature :standard-deviation-aggregations)
   {:status :failed
    :error  "standard-deviation-aggregations is not supported by this driver."}
   (select-keys (data/run-mbql-query venues
@@ -138,7 +138,7 @@
 ;; TODO - this isn't tested against Mongo because those driver doesn't currently work correctly with multiple columns
 ;; with the same name. It seems like it would be pretty easy to take the stuff we have for BigQuery and generalize it
 ;; so we can use it with Mongo
-(datasets/expect-with-drivers (disj @qp.test/non-timeseries-drivers :mongo)
+(datasets/expect-with-drivers (disj (qp.test/normal-drivers) :mongo)
   [(qp.test/aggregate-col :count)
    (assoc (qp.test/aggregate-col :count) :name "count_2", :field_ref [:aggregation 1])]
   (qp.test/cols

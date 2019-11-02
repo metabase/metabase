@@ -8,14 +8,10 @@
              [config :as config]
              [util :as u]]
             [potemkin.types :as p.types]
-            [pretty.core :refer [PrettyPrintable]]
+            [pretty.core :as pretty :refer [PrettyPrintable]]
             [schema.core :as s])
   (:import honeysql.format.ToSql
            java.util.Locale))
-
-(when config/is-dev?
-  (alter-meta! #'honeysql.core/format assoc :style/indent 1)
-  (alter-meta! #'honeysql.core/call   assoc :style/indent 1))
 
 (defn- english-upper-case
   "Use this function when you need to upper-case an identifier or table name. Similar to `clojure.string/upper-case`
@@ -184,3 +180,24 @@
 (def ^{:arglists '([& exprs])} quarter "SQL `quarter` function."(partial hsql/call :quarter))
 (def ^{:arglists '([& exprs])} year    "SQL `year` function."   (partial hsql/call :year))
 (def ^{:arglists '([& exprs])} concat  "SQL `concat` function." (partial hsql/call :concat))
+
+;; Etc (Dev Stuff)
+
+(when config/is-dev?
+  (alter-meta! #'honeysql.core/format assoc :style/indent 1)
+  (alter-meta! #'honeysql.core/call   assoc :style/indent 1)
+
+  (require 'honeysql.types)
+  (extend-protocol PrettyPrintable
+    honeysql.types.SqlCall
+    (pretty [{fn-name :name, args :args}]
+      (apply list 'hsql/call fn-name args)))
+
+  (defmethod print-method honeysql.types.SqlCall
+    [call writer]
+    (print-method (pretty/pretty call) writer))
+
+  (require 'clojure.pprint)
+  (defmethod clojure.pprint/simple-dispatch honeysql.types.SqlCall
+    [call]
+    (clojure.pprint/write-out (pretty/pretty call))))

@@ -6,7 +6,8 @@
             [schema.core :as s])
   (:import clojure.lang.Keyword
            honeysql.types.SqlCall
-           java.util.Date))
+           java.util.Date
+           java.time.temporal.Temporal))
 
 (driver/register! :sql, :abstract? true)
 
@@ -81,6 +82,11 @@
   [driver sql-call]
   (honeysql->prepared-stmt-subs driver sql-call))
 
+;; TIMEZONE FIXME - remove this since we aren't using `Date` anymore
 (s/defmethod ->prepared-substitution [:sql Date] :- PreparedStatementSubstitution
   [driver date]
   (make-stmt-subs "?" [date]))
+
+(s/defmethod ->prepared-substitution [:sql Temporal] :- PreparedStatementSubstitution
+  [driver t]
+  (make-stmt-subs "?" [t]))

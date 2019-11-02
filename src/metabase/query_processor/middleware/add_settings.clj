@@ -2,12 +2,9 @@
   "Middleware for adding a `:settings` map to a query before it is processed."
   (:require [metabase.query-processor.timezone :as qp.timezone]))
 
-;; TODO - rename + update dox
+;; TODO - rename
 (defn add-settings
-  "Adds the `:settings` map to the query which can contain any fixed properties that would be useful at execution time,
-  and to the results of the query. Currently supports a settings object like:
-
-       {:report-timezone \"US/Pacific\"}"
+  "Add `:actual_timezone` and `:expected_timezone` info to query results."
   [qp]
   (comp
    (fn [results]

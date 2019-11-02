@@ -63,7 +63,7 @@
 (defn ^:deprecated non-timeseries-drivers-without-feature
   "DEPRECATED — use `normal-drivers-without-feature` instead."
   [feature]
-  (normal-drivers-with-feature feature))
+  (normal-drivers-without-feature feature))
 
 (defmacro ^:deprecated expect-with-non-timeseries-dbs
   "DEPRECATED — Use `deftest` + `test-drivers` + `non-timeseries-drivers` instead.

@@ -86,6 +86,11 @@
         ;; OffsetDateTime
         (is-parsed? expected s "US/Pacific")))))
 
+;; TODO - more tests!
+(deftest format-test
+  (is (= "2019-11-01 18:39:00.000-07:00"
+         (u.date/format-sql (t/zoned-date-time "2019-11-01T18:39:00-07:00[US/Pacific]")))))
+
 (deftest extract-test
   ;; everything is at `Sunday October 27th 2019 2:03:40.555 PM` or subset thereof
   (let [temporal-category->sample-values {:dates     [(t/local-date 2019 10 27)]
@@ -108,9 +113,9 @@
             category                    categories
             t                           (get temporal-category->sample-values category)
             [unit expected]             unit->expected]
-         (is (= expected
-                (u.date/extract t unit))
-             (format "Extract %s from %s %s should be %s" unit (class t) t expected)))))
+      (is (= expected
+             (u.date/extract t unit))
+          (format "Extract %s from %s %s should be %s" unit (class t) t expected)))))
 
 (deftest truncate-test
   (let [t->unit->expected
@@ -164,3 +169,18 @@
 
 ;; TODO
 (deftest add-test)
+
+(deftest range-test
+  (is (= {:start (t/zoned-date-time "2019-10-27T00:00Z[UTC]")
+          :end   (t/zoned-date-time "2019-11-03T00:00Z[UTC]")}
+         (u.date/range (t/zoned-date-time "2019-11-01T15:29:00Z[UTC]") :week))))
+
+(deftest date-range-test
+  (is (= {:start (t/local-date "2019-03-25"), :end (t/local-date "2019-03-31")}
+         (u.date/date-range (t/local-date "2019-03-25") (t/local-date "2019-03-31"))))
+  (is (= {:start (t/local-date "2019-11-01"), :end (t/local-date "2019-12-01")}
+         (u.date/date-range (t/local-date "2019-11-01") [1 :month])))
+  (is (= {:start (t/local-date "2019-10-01"), :end (t/local-date "2019-11-01")}
+         (u.date/date-range [-1 :month] (t/local-date "2019-11-01"))))
+  (is (= {:start (t/local-date "2019-09-05"), :end (t/local-date "2020-01-05")}
+         (u.date/date-range [-2 :month] (t/local-date "2019-11-05") [2 :month]))))

@@ -52,14 +52,12 @@
                     offset (.getOffset rules (t/instant t))]
                 (t/with-offset-same-instant t offset))))
 
-
   ZonedDateTime
   (format-value [t timezone-id]
     (t/format :iso-offset-date-time
               (t/offset-date-time (t/with-zone-same-instant t timezone-id)))))
 
 (defn- format-rows* [rows]
-  ;; NOCOMMIT (maybe)
   (log/debug (tru "Formatting rows with results timezone ID {0}" (qp.timezone/results-timezone-id))
              "\n"
              (u/pprint-to-str 'blue (take 5 rows)))

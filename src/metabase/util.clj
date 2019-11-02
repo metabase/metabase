@@ -60,9 +60,11 @@
 
 ;;; ## Etc
 
-(defprotocol ^:private IClobToStr
-  (jdbc-clob->str ^String [this]
-   "Convert a Postgres/H2/SQLServer JDBC Clob to a string. (If object isn't a Clob, this function returns it as-is.)"))
+(defprotocol ^:private ^:deprecated IClobToStr
+  (^:deprecated jdbc-clob->str ^String [this]
+   "Convert a Postgres/H2/SQLServer JDBC Clob to a string. (If object isn't a Clob, this function returns it as-is.)
+   DEPRECATED — we should convert CLOBS to strings as they're read out of the database, instead of doing it after the
+   fact."))
 
 (extend-protocol IClobToStr
   nil     (jdbc-clob->str [_]    nil)

@@ -15,13 +15,16 @@
             [metabase.query-processor.middleware.parameters.native.interface :as i]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util
-             [date :as du]
+             [date-2 :as u.date]
+             [i18n :refer [tru]]
              [schema :as su]]
             [schema.core :as s])
   (:import clojure.lang.Keyword
            honeysql.types.SqlCall
+           java.time.temporal.Temporal
            java.util.UUID
-           [metabase.query_processor.middleware.parameters.native.interface CommaSeparatedNumbers Date DateRange FieldFilter MultipleValues]))
+           [metabase.query_processor.middleware.parameters.native.interface CommaSeparatedNumbers Date DateRange
+            FieldFilter MultipleValues]))
 
 (def ^:private ParamSnippetInfo
   {(s/optional-key :replacement-snippet)     s/Str     ; allowed to be blank if this is an optional param
@@ -80,12 +83,18 @@
     {:replacement-snippet     (str/join ", " (map :replacement-snippet values))
      :prepared-statement-args (apply concat (map :prepared-statement-args values))}))
 
+(defn- maybe-parse-temporal-literal [x]
+  (condp instance? x
+    String   (u.date/parse x (qp.timezone/report-timezone-id-if-supported))
+    Temporal x
+    (throw (Exception. (tru "Don''t know how to parse {0} {1}" (class x) x)))))
+
 (defmethod ->replacement-snippet-info Date
   [{:keys [s]}]
-  (create-replacement-snippet (du/->Timestamp s)))
+  (create-replacement-snippet (maybe-parse-temporal-literal s)))
 
 (defn- prepared-ts-subs [operator date-str]
-  (let [{:keys [sql-string param-values]} (sql/->prepared-substitution driver/*driver* (du/->Timestamp date-str))]
+  (let [{:keys [sql-string param-values]} (sql/->prepared-substitution driver/*driver* (maybe-parse-temporal-literal date-str))]
     {:replacement-snippet     (str operator " " sql-string)
      :prepared-statement-args param-values}))
 
@@ -102,7 +111,8 @@
     (prepared-ts-subs \> start)
 
     :else
-    (let [params (map (comp #(sql/->prepared-substitution driver/*driver* %) du/->Timestamp) [start end])]
+    ;; TIMEZONE FIXME - this is WRONG WRONG WRONG because date ranges should be inclusive for start and *exclusive* for end
+    (let [params (map (comp #(sql/->prepared-substitution driver/*driver* %) maybe-parse-temporal-literal) [start end])]
       {:replacement-snippet     (apply format "BETWEEN %s AND %s" (map :sql-string params)),
        :prepared-statement-args (vec (mapcat :param-values params))})))
 

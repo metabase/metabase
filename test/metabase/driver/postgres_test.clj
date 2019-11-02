@@ -26,6 +26,7 @@
             [metabase.test.data
              [datasets :as datasets]
              [interface :as tx]]
+            [metabase.test.util.log :as tu.log]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -261,12 +262,16 @@
 
 ;;; timezone tests
 
+(defn- server-spec []
+  (sql-jdbc.conn/connection-details->spec :postgres (tx/dbdef->connection-details :postgres :server nil)))
+
+(def ^:private current-timezone-query
+  {:query "SELECT current_setting('TIMEZONE') AS timezone;"})
+
 (defn- get-timezone-with-report-timezone [report-timezone]
-  (ffirst (:rows (#'sql-jdbc.execute/run-query-with-timezone
-                  :postgres
-                  report-timezone
-                  (sql-jdbc.conn/connection-details->spec :postgres (tx/dbdef->connection-details :postgres :server nil))
-                  {:query "SELECT current_setting('TIMEZONE') AS timezone;"}))))
+  (-> (#'sql-jdbc.execute/run-query-with-timezone :postgres report-timezone (server-spec) current-timezone-query)
+      :rows
+      ffirst))
 
 ;; check that if we set report-timezone to US/Pacific that the session timezone is in fact US/Pacific
 (datasets/expect-with-driver :postgres
@@ -281,8 +286,9 @@
 ;; ok, check that if we try to put in a fake timezone that the query still reëxecutes without a custom timezone. This
 ;; should give us the same result as if we didn't try to set a timezone at all
 (datasets/expect-with-driver :postgres
-  (get-timezone-with-report-timezone nil)
-  (get-timezone-with-report-timezone "Crunk Burger"))
+  (-> (#'sql-jdbc.execute/run-query-without-timezone :postgres nil (server-spec) current-timezone-query) :rows ffirst)
+  (tu.log/suppress-output
+   (get-timezone-with-report-timezone "Crunk Burger")))
 
 
 ;; make sure connection details w/ extra params work as expected

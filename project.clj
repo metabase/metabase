@@ -245,7 +245,11 @@
 
    :include-all-drivers
    [:with-include-drivers-middleware
-    {:include-drivers :all}]
+    {:include-drivers :all
+     :injections
+     [(println "(require 'metabase.plugins)")
+      (require 'metabase.plugins)
+      (metabase.plugins/load-plugins!)]}]
 
    :repl
    [:include-all-drivers
@@ -311,8 +315,8 @@
    {:dependencies
     [[faker "0.3.2"]                                                     ; Fake data generator -- port of Perl/Ruby library
      [jdistlib "0.5.1" :exclusions [com.github.wendykierp/JTransforms]]] ; Distribution statistic tests
-    :source-paths ["lein-commands/sample-dataset"]
-    :main         ^:skip-aot metabase.sample-dataset.generate}
+    :source-paths                                                        ["lein-commands/sample-dataset"]
+    :main                                                                ^:skip-aot metabase.sample-dataset.generate}
 
    ;; lein strip-and-compress my-plugin.jar [path/to/metabase.jar]
    ;; strips classes from my-plugin.jar that already exist in other JAR and recompresses with higher compression ratio.
@@ -320,7 +324,7 @@
    :strip-and-compress
    {:source-paths ["src"
                    "lein-commands/strip-and-compress"]
-    :main ^:skip-aot metabase.strip-and-compress-module}
+    :main         ^:skip-aot metabase.strip-and-compress-module}
 
    ;; Profile Metabase start time with `lein profile`
    :profile
@@ -335,5 +339,5 @@
    {:main metabase.automagic-dashboards.rules}
 
    :compare-h2-dbs
-   {:main ^:skip-aot metabase.cmd.compare-h2-dbs
+   {:main         ^:skip-aot metabase.cmd.compare-h2-dbs
     :source-paths ["test"]}})

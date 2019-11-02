@@ -289,6 +289,7 @@
                        LocalDateTime)]
     (.getObject rs i klass)))
 
+;; Postgres doesn't support OffsetTime
 (defmethod sql-jdbc.execute/set-parameter [:postgres OffsetTime]
   [driver prepared-statement i t]
   (let [local-time (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))]

@@ -1,7 +1,7 @@
 (ns metabase.util.date-2
   "Replacement for `metabase.util.date` that consistently uses `java.time` instead of a mix of `java.util.Date`,
   `java.sql.*`, and Joda-Time."
-  (:refer-clojure :exclude [format])
+  (:refer-clojure :exclude [format range])
   (:require [java-time :as t]
             [java-time.core :as t.core]
             [metabase.util.date-2
@@ -11,8 +11,7 @@
   (:import [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            [java.time.temporal Temporal TemporalAdjuster WeekFields]))
 
-;; TODO - not sure if we actually want to use this...
-(defn- ->zoned [t timezone-id]
+(defn- add-zone-to-local [t timezone-id]
   (condp instance? t
     LocalDateTime (t/zoned-date-time t (t/zone-id timezone-id))
     LocalDate     (t/zoned-date-time t (t/local-time 0) (t/zone-id timezone-id))
@@ -28,20 +27,40 @@
 
   ([s default-timezone-id]
    (cond-> (parse s)
-     default-timezone-id (->zoned default-timezone-id))))
+     default-timezone-id (add-zone-to-local default-timezone-id))))
+
+(defn- temporal->iso-8601-formatter [t]
+  (condp instance? t
+    LocalDate      :iso-local-date
+    LocalTime      :iso-local-time
+    LocalDateTime  :iso-local-date-time
+    OffsetTime     :iso-offset-time
+    OffsetDateTime :iso-offset-date-time
+    ZonedDateTime  :iso-offset-date-time))
+
+(defn- temporal->sql-formatter [t]
+  (condp instance? t
+    LocalDate      "yyyy-MM-dd"
+    LocalTime      "HH:mm:ss.SSSSS"
+    LocalDateTime  "yyyy-MM-dd HH:mm:ss.SSSZZZZZ"
+    OffsetTime     "HH:mm:ss.SSSZZZZZ"
+    OffsetDateTime "yyyy-MM-dd HH:mm:ss.SSSZZZZZ"
+    ZonedDateTime  "yyyy-MM-dd HH:mm:ss.SSSZZZZZ"))
+
+(defn- format* [formatter t]
+  (when t
+    (if (t/instant? t)
+      (recur formatter (t/zoned-date-time t (t/zone-id "UTC")))
+      (t/format formatter t))))
 
 (defn format
   "Format temporal value `t` as a ISO-8601 date/time/datetime string."
   ^String [t]
-  (when t
-    (condp instance? t
-      LocalDate      (t/format :iso-local-date       t)
-      LocalTime      (t/format :iso-local-time       t)
-      LocalDateTime  (t/format :iso-local-date-time  t)
-      OffsetTime     (t/format :iso-offset-time      t)
-      OffsetDateTime (t/format :iso-offset-date-time t)
-      ZonedDateTime  (t/format :iso-offset-date-time t)
-      Instant        (t/format :iso-offset-date-time (t/zoned-date-time (t/instant) (t/zone-id "UTC"))))))
+  (format* (temporal->iso-8601-formatter t) t))
+
+(defn format-sql
+  ^String [t]
+  (format* (temporal->sql-formatter t) t))
 
 (defn time? [x]
   (some #(instance? % x) [OffsetTime LocalTime]))
@@ -52,28 +71,23 @@
 (defn datetime? [x]
   (some #(instance? % x) [Instant ZonedDateTime OffsetDateTime LocalDateTime]))
 
-#_(defn ->temporal [v]
-  (condp instance? v
-    ;; TODO - not sure this is actually what we want??
-    java.sql.Timestamp (t/instant v)
-    java.sql.Date      (t/instant v)
-    java.util.Date     (t/instant v)))
-
 (defn add
   (^Temporal [unit amount]
    (add (t/zoned-date-time) unit amount))
 
   (^Temporal [t unit amount]
-   (t/plus t (case unit
-               :millisecond (t/millis amount)
-               :second      (t/seconds amount)
-               :minute      (t/minutes amount)
-               :hour        (t/hours amount)
-               :day         (t/days amount)
-               :week        (t/days (* amount 7))
-               :month       (t/months amount)
-               :quarter     (t/months (* amount 3))
-               :year        (t/years 1)))))
+   (if (zero? amount)
+     t
+     (t/plus t (case unit
+                 :millisecond (t/millis amount)
+                 :second      (t/seconds amount)
+                 :minute      (t/minutes amount)
+                 :hour        (t/hours amount)
+                 :day         (t/days amount)
+                 :week        (t/days (* amount 7))
+                 :month       (t/months amount)
+                 :quarter     (t/months (* amount 3))
+                 :year        (t/years 1))))))
 
 ;; TODO - what about seconds & milliseconds?
 (def extract-units
@@ -89,18 +103,18 @@
    (extract unit (t/zoned-date-time)))
 
   ([^Temporal t, unit]
-   (case unit
-     :minute-of-hour   (t/as t :minute-of-hour)
-     :hour-of-day      (t/as t :hour-of-day)
-     :day-of-week      (t/as t (.dayOfWeek (week-fields :sunday-start)))
-     :iso-day-of-week  (t/as t (.dayOfWeek (week-fields :iso)))
-     :day-of-month     (t/as t :day-of-month)
-     :day-of-year      (t/as t :day-of-year)
-     :week-of-year     (t/as t (.weekOfYear (week-fields :sunday-start)))
-     :iso-week-of-year (t/as t (.weekOfYear (week-fields :iso)))
-     :month-of-year    (t/as t :month-of-year)
-     :quarter-of-year  (t/as t :quarter-of-year)
-     :year             (t/as t :year))))
+   (t/as t (case unit
+             :minute-of-hour   :minute-of-hour
+             :hour-of-day      :hour-of-day
+             :day-of-week      (.dayOfWeek (week-fields :sunday-start))
+             :iso-day-of-week  (.dayOfWeek (week-fields :iso))
+             :day-of-month     :day-of-month
+             :day-of-year      :day-of-year
+             :week-of-year     (.weekOfYear (week-fields :sunday-start))
+             :iso-week-of-year (.weekOfYear (week-fields :iso))
+             :month-of-year    :month-of-year
+             :quarter-of-year  :quarter-of-year
+             :year             :year))))
 
 (def ^:private ^{:arglists `(^TemporalAdjuster [~'k])} adjusters
   {:first-day-of-week
@@ -169,6 +183,69 @@
      (trucate-units unit) (truncate t unit)
      :else                (throw (Exception. (tru "Invalid unit: {0}" unit))))))
 
+(defn range
+  "Get a start (inclusive) and end (exclusive) pair of instants for a `unit` span of time containing `t`. e.g.
+
+    (range (t/zoned-date-time \"2019-11-01T15:29:00Z[UTC]\") :week)
+    ->
+    {:start (t/zoned-date-time \"2019-10-27T00:00Z[UTC]\")
+     :end   (t/zoned-date-time \"2019-11-03T00:00Z[UTC]\")}"
+  [t unit]
+  (let [t (truncate t unit)]
+    {:start t, :end (add t unit 1)}))
+
+(defn date-range
+  "Return a date range with `:start` (inclusive) and `:end` (exclusive) points, either of which may be relative to the
+  other if passed as a pair of `[n unit]`. With three args, both `start` and `end` can be relative to some instant
+  `t`.
+
+    (date-range (t/local-date \"2019-03-25\") (t/local-date \"2019-03-31\"))
+    ->
+    {:start (t/local-date \"2019-03-25\"), :end (t/local-date \"2019-03-31\")}
+
+    ;; get the month starting with `2019-11-01`, i.e. the entire month of November 2019
+    (date-range (t/local-date \"2019-11-01\") [1 :month])
+    ->
+    {:start (t/local-date \"2019-11-01\"), :end (t/local-date \"2019-12-01\")}
+
+    ;; get the month prior to `2019-11-01`
+    (date-range [-1 :month] (t/local-date \"2019-11-01\"))
+    ->
+    {:start (t/local-date \"2019-10-01\"), :end (t/local-date \"2019-11-01\")}
+
+    ;; get a span from two months before `2019-11-05` to the next two months after
+    (date-range [-2 :month] (t/local-date \"2019-11-05\") [2 :month])
+    ->
+    {:start (t/local-date \"2019-09-05\"), :end (t/local-date \"2020-01-05\")}"
+  {:arglists '([start end] [start [n unit]] [[n unit] end] [[n unit] t [n unit]])}
+  ([start end]
+   (cond
+     (and (instance? Temporal start) (instance? Temporal end))
+     {:start (truncate start :day), :end (truncate end :day)}
+
+     (instance? Temporal start)
+     (date-range nil start end)
+
+     (instance? Temporal end)
+     (date-range start end nil)))
+
+  ([[start-n start-unit :as start] t [end-n end-unit :as end]]
+   {:pre [(instance? Temporal t)]}
+   (date-range
+    (if start
+      (add t start-unit start-n)
+      t)
+    (if end
+      (add t end-unit end-n)
+      t))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                      Etc                                                       |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; TODO - I think these actually belong in `metabase.util`
+
 (defn seconds->ms
   "Convert `seconds` to milliseconds. More readable than doing this math inline."
   [seconds]
@@ -183,3 +260,15 @@
   "Convert `minutes` to milliseconds. More readable than doing this math inline."
   [minutes]
   (-> minutes minutes->seconds seconds->ms))
+
+;; Mainly for REPL usage. Have various temporal types print as a `java-time` function call you can use
+(doseq [[klass f-symb] {Instant        't/instant
+                        LocalDate      't/local-date
+                        LocalDateTime  't/local-date-time
+                        LocalTime      't/local-time
+                        OffsetDateTime 't/offset-date-time
+                        OffsetTime     't/offset-time
+                        ZonedDateTime  't/zoned-date-time}]
+  (defmethod print-method klass
+    [t writer]
+    (print-method (list f-symb (str t)) writer)))

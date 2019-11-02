@@ -34,10 +34,10 @@
     (= (datetime-field-unit field) unit-1 unit-2)))
 
 (defn- lower-bound [unit t]
-  (u.date/truncate t unit))
+  (:start (u.date/range t unit)))
 
 (defn- upper-bound [unit t]
-  (u.date/add (lower-bound unit t) unit 1))
+  (:end (u.date/range t unit)))
 
 (defn- change-datetime-field-unit-to-default [field]
   (mbql.u/replace field

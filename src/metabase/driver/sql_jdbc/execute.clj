@@ -186,10 +186,11 @@
   [driver prepared-statement i t]
   (set-parameter driver prepared-statement i (t/offset-date-time t (t/zone-offset 0))))
 
-;; TODO - this might not be needed for all drivers
-#_(defmethod set-parameter [::driver/driver ZonedDateTime]
+;; TODO - this might not be needed for all drivers. It is at least needed for H2 and Postgres. Not sure which, if any
+;; JDBC drivers support `ZonedDateTime`.
+(defmethod set-parameter [::driver/driver ZonedDateTime]
   [driver prepared-statement i t]
-  (set-parameter driver prepared-statement i (t/offset-date-time t)))
+    (set-parameter driver prepared-statement i (t/offset-date-time t)))
 
 (defn- set-parameters [driver prepared-statement params]
   (doseq [[i param] (map-indexed vector params)]

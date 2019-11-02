@@ -115,7 +115,6 @@
      (t/do-report
       (compare-expr ~e a# ~msg '~form))))
 
-
 (defmacro ^:deprecated expect
   "Simple macro that simulates converts an Expectations-style `expect` form into a `clojure.test` `deftest` form."
   {:arglists '([actual] [actual expected] [test-name actual expected])}

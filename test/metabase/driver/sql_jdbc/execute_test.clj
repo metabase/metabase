@@ -43,7 +43,7 @@
   `(do-with-max-rows (fn [] ~@body)))
 
 ;; We should be setting statement max rows based on appropriate limits when running queries (Snowflake runs tests with
-(datasets/expect-with-drivers @sql-jdbc-test/sql-jdbc-drivers
+(datasets/expect-with-drivers (sql-jdbc-test/sql-jdbc-drivers)
   {:max-rows 10}
   (with-max-rows
     (qp/process-query
@@ -52,7 +52,7 @@
        :query    {:source-table (data/id :venues)
                   :limit        10}})))
 
-(datasets/expect-with-drivers @sql-jdbc-test/sql-jdbc-drivers
+(datasets/expect-with-drivers (sql-jdbc-test/sql-jdbc-drivers)
   {:max-rows 5}
   (with-max-rows
     (qp/process-query
@@ -63,7 +63,7 @@
        :constraints {:max-results 5}})))
 
 
-(datasets/expect-with-drivers @sql-jdbc-test/sql-jdbc-drivers
+(datasets/expect-with-drivers (sql-jdbc-test/sql-jdbc-drivers)
   {:max-rows 15}
   (with-max-rows
     (qp/process-query
@@ -245,7 +245,8 @@
 
 (expect
   {:ran-with-timezone? true, :timezone "US/Pacific"}
-  (with-redefs [driver/supports? (constantly true)]
+  (with-redefs [driver/supports?               (constantly true)
+                sql-jdbc.execute/set-timezone! (constantly nil)]
     (qp.timezone/with-report-timezone-id "US/Pacific"
       (ran-with-timezone?
        :h2

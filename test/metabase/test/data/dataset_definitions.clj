@@ -49,7 +49,7 @@
   not explicitly marked as a foreign key, because the test dataset syntax does not yet have a way to support nullable
   foreign keys.)")
 
-
+;; TODO - all of this stuff should be updated to use `java.time` instead
 (defn- calendar-with-fields ^Calendar [date & fields]
   (let [^Calendar cal-from-date  (doto (Calendar/getInstance (TimeZone/getTimeZone "UTC"))
                                    (.setTime date))

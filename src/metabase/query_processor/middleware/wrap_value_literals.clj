@@ -92,6 +92,7 @@
   (if-let [temporal-value (when (and unit
                                      parse-datetime-strings?
                                      (string? this))
+                            ;; TIMEZONE FIXME - I think this should actually use (qp.timezone/report-timezone-id-if-supported) instead ?
                             (u.date/parse this (qp.timezone/results-timezone-id)))]
     (if (u.date/time? temporal-value)
       [:time temporal-value unit]

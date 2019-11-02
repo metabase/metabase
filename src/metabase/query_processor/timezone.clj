@@ -3,9 +3,7 @@
   (:require [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.driver :as driver]
-            [metabase.query-processor
-             [store :as qp.store]
-             [timezone :as qp.timezone]]
+            [metabase.query-processor.store :as qp.store]
             [metabase.util.i18n :refer [tru]]))
 
 (def ^:private ^:dynamic *report-timezone-id-override* nil)

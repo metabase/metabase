@@ -20,6 +20,7 @@
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db]))
 
+;; TIMEZONE FIXME
 (def ^:private broken-drivers
   "The following drivers are broken to some extent -- details listed in the Google Doc, or can be see here:
   https://circleci.com/workflow-run/856f6dd0-3d95-4732-a56e-1af59e3ae4ba. The goal is to gradually remove these
@@ -35,7 +36,7 @@
   "Drivers that support setting a Session timezone."
   []
   (set/difference
-   (set (qp.test/non-timeseries-drivers-with-feature :set-timezone))
+   (set (qp.test/normal-drivers-with-feature :set-timezone))
    broken-drivers))
 
 (defn- timezone-aware-column-drivers
@@ -72,13 +73,13 @@
   (data/dataset test-data-with-timezones
     (datasets/test-drivers (set-timezone-drivers)
       (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-        (is (= [[6 "Shad Ferdynand" "2014-08-02T05:30:00.000-07:00"]]
+        (is (= [[6 "Shad Ferdynand" "2014-08-02T05:30:00-07:00"]]
                (qp.test/formatted-rows [int identity identity]
                  (data/run-mbql-query users
                    {:filter [:between $last_login "2014-08-02T03:00:00.000000" "2014-08-02T06:00:00.000000"]})))
             (str "If MBQL datetime literal strings do not explicitly specify a timezone, they should be parsed as if "
                  "in the current reporting timezone (Pacific in this case)"))
-        (is (= [[6 "Shad Ferdynand" "2014-08-02T05:30:00.000-07:00"]]
+        (is (= [[6 "Shad Ferdynand" "2014-08-02T05:30:00-07:00"]]
                (qp.test/formatted-rows [int identity identity]
                  (data/run-mbql-query users
                    {:filter [:between $last_login "2014-08-02T10:00:00.000000Z" "2014-08-02T13:00:00.000000Z"]})))
@@ -89,7 +90,7 @@
                           (qp.test/formatted-rows [int identity identity]
                             (data/run-mbql-query users
                               {:filter [:between $last_login "2014-08-02T10:00:00.000000" "2014-08-02T13:00:00.000000"]})))
-            utc-results [[6 "Shad Ferdynand" "2014-08-02T12:30:00.000Z"]]]
+            utc-results [[6 "Shad Ferdynand" "2014-08-02T12:30:00Z"]]]
         (datasets/test-drivers (set-timezone-drivers)
           (is (= utc-results
                  (tu/with-temporary-setting-values [report-timezone "UTC"]
@@ -123,7 +124,7 @@
                                                   [:id :name :last_login])
                                   :from     [(table-identifier :users)]
                                   :where    [:between
-                                             (hx/cast :date (field-identifier :users :last_login))
+                                             (field-identifier :users :last_login)
                                              (hsql/raw "{{date1}}")
                                              (hsql/raw "{{date2}}")]
                                   :order-by [[(field-identifier :users :id) :asc]]})
@@ -175,8 +176,8 @@
         (testing "Native dates should be parsed with the report timezone"
           (doseq [[params-description query] (native-params-queries)]
             (testing (format "Query with %s" params-description)
-              (is (= [[6 "Shad Ferdynand"  "2014-08-02T05:30:00.000-07:00"]
-                      [7 "Conchúr Tihomir" "2014-08-02T02:30:00.000-07:00"]]
+              (is (= [[6 "Shad Ferdynand"  "2014-08-02T05:30:00-07:00"]
+                      [7 "Conchúr Tihomir" "2014-08-02T02:30:00-07:00"]]
                      (qp.test/formatted-rows [int identity identity]
                        (qp/process-query
                          (merge

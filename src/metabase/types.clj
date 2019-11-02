@@ -80,11 +80,13 @@
 
 ;;; DateTime Types
 
+;; TODO - Consider renaming the parent of temporal types to `:type/Temporal`, and making `:type/DateTime` a sibling of
+;; `:type/Time` and `:type/Date` rather than its parent
 (derive :type/DateTime :type/*)
-
-(derive :type/Time :type/DateTime)
-(derive :type/Date :type/DateTime)
 (derive :type/DateTimeWithTZ :type/DateTime)
+(derive :type/Time :type/DateTime)
+(derive :type/TimeWithTZ :type/Time)
+(derive :type/Date :type/DateTime)
 
 (derive :type/UNIXTimestamp :type/DateTime)
 (derive :type/UNIXTimestamp :type/Integer)
