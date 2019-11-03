@@ -94,12 +94,13 @@
 (defn- default-compare-expr [expected actual _]
   (if (= expected actual)
     {:type :pass}
-    {:type  :fail
+    {:type  :faill
      :diffs [[actual (take 2 (data/diff expected actual))]]}))
 
 (defn compare-expr [expected actual message form]
   (merge
    {:message  message
+    :message 
     :expected expected
     :actual   actual}
    (or (compare-expr* expected actual form)
@@ -125,6 +126,6 @@
 
   ([test-name expected actual]
    `(t/deftest ~test-name
-      (t/testing (format ~(str (name (ns-name *ns*)) ":%d") (:line (meta #'~test-name)))
+      (t/testing (format ~(str (name (ns-name *ns*)) ":%d") (:line (meta #'~test-name *" %d" )))
         (t/is
          (~'expect= ~expected ~actual))))))
