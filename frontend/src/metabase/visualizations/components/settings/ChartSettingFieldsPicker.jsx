@@ -45,8 +45,9 @@ const ChartSettingFieldsPicker = ({
       <span className="text-error">{t`error`}</span>
     )}
     {addAnother && (
-      <div className="mt1">
+      <div className="mt2 mb3">
         <a
+          className="text-brand text-bold py1 px2 rounded bg-light bg-medium-hover"
           onClick={() => {
             const remaining = options.filter(o => value.indexOf(o.value) < 0);
             if (remaining.length === 1) {
