@@ -137,6 +137,7 @@ class ChartSettings extends Component {
 
   render() {
     const {
+      className,
       question,
       addField,
       noPreview,
@@ -243,7 +244,7 @@ class ChartSettings extends Component {
 
     // default layout with visualization
     return (
-      <div className="flex flex-column spread">
+      <div className={cx(className, "flex flex-column")}>
         {showSectionPicker && (
           <div className="flex flex-no-shrink pl4 pt2 pb1">{sectionPicker}</div>
         )}
