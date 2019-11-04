@@ -50,34 +50,34 @@
     (b/optional
      offset-formatter*))))
 
-(def ^:private ^{:arglists '([accessor query])} query
+(def ^:private ^{:arglists '([temporal-accessor query])} query
   (let [queries {:local-date  (TemporalQueries/localDate)
                  :local-time  (TemporalQueries/localTime)
                  :zone-offset (TemporalQueries/offset)
                  :zone-id     (TemporalQueries/zoneId)}]
-    (fn [^TemporalAccessor accessor query]
-      (.query accessor (queries query)))))
+    (fn [^TemporalAccessor temporal-accessor query]
+      (.query temporal-accessor (queries query)))))
 
 (defn parse
   "Parse a string into a `java.time` object."
   [^String s]
   {:pre [((some-fn string? nil?) s)]}
   (when (seq s)
-    (let [accessor     (.parse formatter s)
-          local-date   (query accessor :local-date)
-          local-time   (query accessor :local-time)
-          zone-offset  (query accessor :zone-offset)
-          zone-id      (or (query accessor :zone-id)
-                           (when (= zone-offset ZoneOffset/UTC)
-                             (t/zone-id "UTC")))
-          literal-type [(cond
-                          zone-id     :zone
-                          zone-offset :offset
-                          :else       :local)
-                        (cond
-                          (and local-date local-time) :datetime
-                          local-date                 :date
-                          local-time                  :time)]]
+    (let [temporal-accessor (.parse formatter s)
+          local-date        (query temporal-accessor :local-date)
+          local-time        (query temporal-accessor :local-time)
+          zone-offset       (query temporal-accessor :zone-offset)
+          zone-id           (or (query temporal-accessor :zone-id)
+                                (when (= zone-offset ZoneOffset/UTC)
+                                  (t/zone-id "UTC")))
+          literal-type      [(cond
+                               zone-id     :zone
+                               zone-offset :offset
+                               :else       :local)
+                             (cond
+                               (and local-date local-time) :datetime
+                               local-date                  :date
+                               local-time                  :time)]]
       (case literal-type
         [:zone :datetime]   (ZonedDateTime/of  local-date local-time zone-id)
         [:offset :datetime] (OffsetDateTime/of local-date local-time zone-offset)

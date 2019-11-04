@@ -8,6 +8,7 @@
 *.xcworkspacedata
 .DS_Store
 .\#*
+.eastwood
 .idea/
 .idea/
 .nrepl-port
@@ -46,8 +47,8 @@
 /resources/sample-dataset.db.trace.db
 /resources/version.properties
 /screenshots
-/stats.json
 /sqlite.db
+/stats.json
 /target
 /test-report-*
 OSX/Metabase/jre

@@ -5,6 +5,7 @@
   - Convert parse tree to path, e.g. ['3' :all] or ['3' :schemas :all]
   - Convert set of paths to a map, the permission graph"
   (:require [clojure.core.match :as match]
+            [clojure.walk :as walk]
             [instaparse.core :as insta]))
 
 (def ^:private grammar
@@ -73,23 +74,23 @@
                    (into paths path)
                    (conj paths path)))
                [])
-       (clojure.walk/prewalk (fn [x]
-                               (if (and (sequential? x)
-                                        (sequential? (first x))
-                                        (seq (first x)))
-                                 (->> x
-                                      (group-by first)
-                                      (reduce-kv (fn [m k v]
-                                                   (assoc m k (->> (map rest v)
-                                                                   (filter seq))))
-                                                 {}))
-                                 x)))
-       (clojure.walk/prewalk (fn [x]
-                               (if-let [terminal (and (map? x)
-                                                      (some #(and (= (% x) '()) %)
-                                                            [:all :some :write :read :segmented]))]
-                                 terminal
-                                 x)))))
+       (walk/prewalk (fn [x]
+                       (if (and (sequential? x)
+                                (sequential? (first x))
+                                (seq (first x)))
+                         (->> x
+                              (group-by first)
+                              (reduce-kv (fn [m k v]
+                                           (assoc m k (->> (map rest v)
+                                                           (filter seq))))
+                                         {}))
+                         x)))
+       (walk/prewalk (fn [x]
+                       (if-let [terminal (and (map? x)
+                                              (some #(and (= (% x) '()) %)
+                                                    [:all :some :write :read :segmented]))]
+                         terminal
+                         x)))))
 
 (defn permissions->graph
   "Given a set of permission strings, return a graph that expresses the most permissions possible for the set"

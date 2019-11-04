@@ -247,8 +247,7 @@
    [:with-include-drivers-middleware
     {:include-drivers :all
      :injections
-     [(println "(require 'metabase.plugins)")
-      (require 'metabase.plugins)
+     [(require 'metabase.plugins)
       (metabase.plugins/load-plugins!)]}]
 
    :repl
@@ -292,7 +291,7 @@
    :docstring-checker
    [:include-all-drivers
     {:plugins
-     [[docstring-checker "1.0.3"]]
+     [[docstring-checker "1.1.0-SNAPSHOT"]]
 
      :docstring-checker
      {:include [#"^metabase"]

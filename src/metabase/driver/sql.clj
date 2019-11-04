@@ -6,8 +6,8 @@
             [schema.core :as s])
   (:import clojure.lang.Keyword
            honeysql.types.SqlCall
-           java.util.Date
-           java.time.temporal.Temporal))
+           java.time.temporal.Temporal
+           java.util.Date))
 
 (driver/register! :sql, :abstract? true)
 

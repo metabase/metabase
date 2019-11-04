@@ -84,16 +84,16 @@
    (fn [^DateTimeFormatterBuilder builder]
      (.appendValue builder (chrono-field chrono-field-name) width)))
 
-  ([chrono-field-name min max sign-style-name]
+  ([chrono-field-name min-val max-val sign-style-name]
    (fn [^DateTimeFormatterBuilder builder]
-     (.appendValue builder (chrono-field chrono-field-name) min max (sign-style sign-style-name)))))
+     (.appendValue builder (chrono-field chrono-field-name) min-val max-val (sign-style sign-style-name)))))
 
 (defn default-value [chrono-field-name default-value]
   (fn [^DateTimeFormatterBuilder builder]
     (.parseDefaulting builder (chrono-field chrono-field-name) default-value)))
 
 (defn fraction
-  [chrono-field-name min-width max-width & {:keys [decimal-point?]}]
+  [chrono-field-name min-val-width max-val-width & {:keys [decimal-point?]}]
   (fn [^DateTimeFormatterBuilder builder]
     (.appendFraction builder (chrono-field chrono-field-name) 0 9 (boolean decimal-point?))))
 

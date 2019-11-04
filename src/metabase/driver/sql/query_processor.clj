@@ -17,8 +17,7 @@
              [table :refer [Table]]]
             [metabase.query-processor
              [interface :as i]
-             [store :as qp.store]
-             [timezone :as qp.timezone]]
+             [store :as qp.store]]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.util
              [honeysql-extensions :as hx]

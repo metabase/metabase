@@ -1,12 +1,12 @@
 (ns metabase.util.honeysql-extensions
   (:refer-clojure :exclude [+ - / * mod inc dec cast concat format])
-  (:require [clojure.string :as str]
+  (:require [clojure
+             [pprint :as pprint]
+             [string :as str]]
             [honeysql
              [core :as hsql]
              [format :as hformat]]
-            [metabase
-             [config :as config]
-             [util :as u]]
+            [metabase.util :as u]
             [potemkin.types :as p.types]
             [pretty.core :as pretty :refer [PrettyPrintable]]
             [schema.core :as s])
@@ -80,9 +80,8 @@
     (cons 'identifier (cons identifier-type components))))
 
 ;; don't use `->Identifier` or `map->Identifier`. Use the `identifier` function instead, which cleans up its input
-(when-not config/is-prod?
-  (alter-meta! #'->Identifier    assoc :private true)
-  (alter-meta! #'map->Identifier assoc :private true))
+(alter-meta! #'->Identifier    assoc :private true)
+(alter-meta! #'map->Identifier assoc :private true)
 
 (s/defn identifier :- Identifier
   "Define an identifer of type with `components`. Prefer this to using keywords for identifiers, as those do not
@@ -115,9 +114,8 @@
     (list 'literal literal)))
 
 ;; as with `Identifier` you should use the the `literal` function below instead of the auto-generated factory functions.
-(when-not config/is-prod?
-  (alter-meta! #'->Literal    assoc :private true)
-  (alter-meta! #'map->Literal assoc :private true))
+(alter-meta! #'->Literal    assoc :private true)
+(alter-meta! #'map->Literal assoc :private true)
 
 (defn literal
   "Wrap keyword or string `s` in single quotes and a HoneySQL `raw` form.
@@ -182,22 +180,19 @@
 (def ^{:arglists '([& exprs])} concat  "SQL `concat` function." (partial hsql/call :concat))
 
 ;; Etc (Dev Stuff)
+(alter-meta! #'honeysql.core/format assoc :style/indent 1)
+(alter-meta! #'honeysql.core/call   assoc :style/indent 1)
 
-(when config/is-dev?
-  (alter-meta! #'honeysql.core/format assoc :style/indent 1)
-  (alter-meta! #'honeysql.core/call   assoc :style/indent 1)
+(require 'honeysql.types)
+(extend-protocol PrettyPrintable
+  honeysql.types.SqlCall
+  (pretty [{fn-name :name, args :args}]
+    (apply list 'hsql/call fn-name args)))
 
-  (require 'honeysql.types)
-  (extend-protocol PrettyPrintable
-    honeysql.types.SqlCall
-    (pretty [{fn-name :name, args :args}]
-      (apply list 'hsql/call fn-name args)))
+(defmethod print-method honeysql.types.SqlCall
+  [call writer]
+  (print-method (pretty/pretty call) writer))
 
-  (defmethod print-method honeysql.types.SqlCall
-    [call writer]
-    (print-method (pretty/pretty call) writer))
-
-  (require 'clojure.pprint)
-  (defmethod clojure.pprint/simple-dispatch honeysql.types.SqlCall
-    [call]
-    (clojure.pprint/write-out (pretty/pretty call))))
+(defmethod clojure.pprint/simple-dispatch honeysql.types.SqlCall
+  [call]
+  (clojure.pprint/write-out (pretty/pretty call)))
