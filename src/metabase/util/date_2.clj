@@ -87,7 +87,7 @@
                  :week        (t/days (* amount 7))
                  :month       (t/months amount)
                  :quarter     (t/months (* amount 3))
-                 :year        (t/years 1))))))
+                 :year        (t/years amount))))))
 
 ;; TODO - what about seconds & milliseconds?
 (def extract-units

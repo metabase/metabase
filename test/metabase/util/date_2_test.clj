@@ -167,8 +167,19 @@
              (u.date/truncate t unit))
           (format "Truncate %s %s to %s should be %s" (class t) t unit expected)))))
 
-;; TODO
-(deftest add-test)
+(deftest add-test
+  (let [t (t/zoned-date-time "2019-06-14T00:00:00.000Z[UTC]")]
+    (doseq [[unit n expected] [[:second  5 "2019-06-14T00:00:05Z[UTC]"]
+                               [:minute  5 "2019-06-14T00:05:00Z[UTC]"]
+                               [:hour    5 "2019-06-14T05:00:00Z[UTC]"]
+                               [:day     5 "2019-06-19T00:00:00Z[UTC]"]
+                               [:week    5 "2019-07-19T00:00:00Z[UTC]"]
+                               [:month   5 "2019-11-14T00:00:00Z[UTC]"]
+                               [:quarter 5 "2020-09-14T00:00:00Z[UTC]"]
+                               [:year    5 "2024-06-14T00:00:00Z[UTC]"]]]
+      (is (= (t/zoned-date-time expected)
+             (u.date/add t unit n))
+          (format "%s plus %d %ss should be %s" t n unit expected)))))
 
 (deftest range-test
   (is (= {:start (t/zoned-date-time "2019-10-27T00:00Z[UTC]")
