@@ -1,8 +1,6 @@
 (ns metabase.query-processor.middleware.parameters
   "Middleware for substituting parameters in queries."
-  (:require [clojure
-             [data :as data]
-             [set :as set]]
+  (:require [clojure.data :as data]
             [clojure.tools.logging :as log]
             [metabase.mbql
              [normalize :as normalize]
@@ -11,7 +9,7 @@
             [metabase.query-processor.interface :as i]
             [metabase.query-processor.middleware.parameters
              [mbql :as params.mbql]
-             [sql :as params.sql]]
+             [native :as params.native]]
             [metabase.util :as u]
             [schema.core :as s]))
 
@@ -40,21 +38,11 @@
     (cond-> expanded
       (join? m) move-join-condition-to-source-query)))
 
-(defn- expand-native-params [outer-query {:keys [parameters], is-source-query? :native, :as m}]
-  ;; HACK totally rediculous, but top-level native queries use the key `:query` for SQL or equivalent, while native
-  ;; source queries use `:native`; rename `:native` to `:query` so the `params.sql/` code, which thinks it's always
-  ;; operation on top-level queries, works as expected.
-  ;;
-  ;; TODO - Like the MBQL stuff, `params.sql` should be fixed so it operates on any level instead of only top-level.
-  (let [wrapped            (assoc outer-query :native (set/rename-keys m {:native :query}))
-        {expanded :native} (params.sql/expand (dissoc wrapped :parameters) parameters)]
-    ;; remove `:parameters` and `:template-tags` now that we've spliced them in to the query
-    (cond-> expanded
-      ;; rename `:query` back to `:native` if this was a native source query
-      is-source-query? (set/rename-keys {:query :native}))))
+(defn- expand-native-params [_ m]
+  (params.native/expand-inner m))
 
 (defn- expand-one
-  "Expand `:parameters` in one [inner-query style] map that contains them."
+  "Expand `:parameters` in one inner-query-style map that contains them."
   [outer-query {:keys [source-table source-query parameters], :as m}]
   ;; HACK - normalization does not yet operate on `:parameters` that aren't at the top level, so double-check that
   ;; they're normalized properly before proceeding.

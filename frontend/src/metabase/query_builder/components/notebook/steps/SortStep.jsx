@@ -27,7 +27,7 @@ export default function SortStep({
           }}
         >
           <Icon
-            name={sort[0] === "asc" ? "up_arrow" : "down_arrow"}
+            name={sort[0] === "asc" ? "arrow_up" : "arrow_down"}
             className="text-white mr1"
           />
           <SortName sort={sort} query={query} />
@@ -40,7 +40,7 @@ export default function SortStep({
           onChangeSort={newSort =>
             sort
               ? query.updateSort(index, newSort).update(updateQuery)
-              : query.addSort(newSort).update(updateQuery)
+              : query.sort(newSort).update(updateQuery)
           }
         />
       )}

@@ -7149,9 +7149,8 @@ msgid "Visible fields"
 msgstr "Görünür alanlar"
 
 #: frontend/src/metabase/visualizations/visualizations/Text.jsx:167
-#, fuzzy
 msgid "Write here, and use Markdown if you'd like"
-msgstr "Buraya yaz ve istersen Markdown'u kullan."
+msgstr "Buraya yazın ve isterseniz Markdown'ı kullanın."
 
 #: frontend/src/metabase/visualizations/visualizations/Text.jsx:73
 msgid "Vertical Alignment"
@@ -12386,7 +12385,7 @@ msgstr "{0} milisaniyenin ardından zaman aşımı."
 
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:27
 msgid "Misfire Instruction"
-msgstr ""
+msgstr "Yanlış talimat"
 
 #: frontend/src/metabase/components/ArchiveModal.jsx:31
 msgid "Archive this?"
@@ -12398,7 +12397,7 @@ msgstr "Veri hakkında daha fazla"
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:267
 msgid "Use DNS SRV when connecting"
-msgstr ""
+msgstr "Bağlanırken DNS SRV kullan"
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:269
 msgid "Using this option requires that provided host is a FQDN.  If connecting to \n"
@@ -12468,7 +12467,7 @@ msgstr "Bir veri kümesi seçerek filtrele ya da görselleştir"
 
 #: frontend/src/metabase/new_query/containers/NewQueryOptions.jsx:156
 msgid "Custom question"
-msgstr ""
+msgstr "Özel soru"
 
 #: frontend/src/metabase/new_query/containers/NewQueryOptions.jsx:157
 msgid "Use the advanced notebook editor to join data, create custom columns, do math, and more."
@@ -12476,19 +12475,19 @@ msgstr ""
 
 #: frontend/src/metabase/query_builder/components/AggregationPopover.jsx:23
 msgid "Basic Metrics"
-msgstr ""
+msgstr "Basit Metrikler"
 
 #: frontend/src/metabase/query_builder/components/AggregationPopover.jsx:319
 msgid "Custom…"
-msgstr ""
+msgstr "Özel..."
 
 #: frontend/src/metabase/query_builder/components/DimensionList.jsx:147
 msgid "Add grouping"
-msgstr ""
+msgstr "Gruplama ekle"
 
 #: frontend/src/metabase/query_builder/components/LimitPopover.jsx:14
 msgid "Pick a limit"
-msgstr ""
+msgstr "Bir limit seçin"
 
 #: frontend/src/metabase/query_builder/components/LimitPopover.jsx:38
 msgid "Show maximum"
@@ -12496,15 +12495,15 @@ msgstr ""
 
 #: frontend/src/metabase/query_builder/components/RunButton.jsx:47
 msgid "Get Preview"
-msgstr ""
+msgstr "Önizleme al"
 
 #: frontend/src/metabase/query_builder/components/VisualizationResult.jsx:82
 msgid "Back to previous results"
-msgstr ""
+msgstr "Önceki sonuçlara dön"
 
 #: frontend/src/metabase/query_builder/components/dataref/DetailPane.jsx:21
 msgid "Sample values"
-msgstr ""
+msgstr "Örnek değerler"
 
 #: frontend/src/metabase/query_builder/components/dataref/MainPane.jsx:10
 msgid "Browse the contents of your databases, tables, and columns. Pick a database to get started."
@@ -12512,20 +12511,20 @@ msgstr ""
 
 #: frontend/src/metabase/query_builder/components/notebook/Notebook.jsx:40
 msgid "Visualize"
-msgstr ""
+msgstr "Görselleştir"
 
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:34
 msgid "Join data"
-msgstr ""
+msgstr "Veri birleştir"
 
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:41
 msgid "Custom column"
-msgstr ""
+msgstr "Özel kolon"
 
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:54
 #: frontend/src/metabase/query_builder/components/view/QuestionSummaries.jsx:61
 msgid "Summarize"
-msgstr ""
+msgstr "Özetle"
 
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:61
 msgid "Aggregate"

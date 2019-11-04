@@ -1014,7 +1014,7 @@
                                       (format "%s#show=all" (:url root)))
                  :transient_filters (:query-filter context)
                  :param_fields      (->> context :query-filter (filter-referenced-fields root)))))
-    (throw (ui18n/ex-info (trs "Can''t create dashboard for {0}" full-name)
+    (throw (ex-info (trs "Can''t create dashboard for {0}" full-name)
              {:root            root
               :available-rules (map :rule (or (some-> rule rules/get-rule vector)
                                               (rules/get-rules rules-prefix)))}))))
@@ -1085,6 +1085,7 @@
                                   (t.format/formatter formatter (t/time-zone-for-id tz))
                                   dt))]
     (case unit
+      :second          (tru "at {0}" (unparse-with-formatter "h:mm:ss a, MMMM d, YYYY" dt))
       :minute          (tru "at {0}" (unparse-with-formatter "h:mm a, MMMM d, YYYY" dt))
       :hour            (tru "at {0}" (unparse-with-formatter "h a, MMMM d, YYYY" dt))
       :day             (tru "on {0}" (unparse-with-formatter "MMMM d, YYYY" dt))

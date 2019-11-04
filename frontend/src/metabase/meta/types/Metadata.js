@@ -30,16 +30,15 @@ export type TableMetadata = Table & {
   segments: SegmentMetadata[],
   metrics: MetricMetadata[],
 
-  aggregation_options: AggregationOption[],
-  breakout_options: BreakoutOption,
+  aggregation_operators: AggregationOperator[],
 };
 
 export type FieldMetadata = Field & {
   table: TableMetadata,
   target: FieldMetadata,
 
-  operators: FilterOperator[],
-  operators_lookup: { [key: FilterOperatorName]: FilterOperator },
+  filter_operators: FilterOperator[],
+  filter_operators_lookup: { [key: FilterOperatorName]: FilterOperator },
 };
 
 export type SegmentMetadata = Segment & {
@@ -76,18 +75,11 @@ export type ValidArgumentsFilter = (field: Field, table: Table) => boolean;
 
 type FieldsFilter = (fields: Field[]) => Field[];
 
-export type AggregationOption = {
+export type AggregationOperator = {
   name: string,
   short: string,
   fields: Field[],
   validFieldsFilters: FieldsFilter[],
-};
-
-export type BreakoutOption = {
-  name: string,
-  short: string,
-  fields: Field[],
-  validFieldsFilter: FieldsFilter,
 };
 
 export type FieldOptions = {

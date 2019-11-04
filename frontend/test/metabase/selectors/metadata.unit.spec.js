@@ -4,9 +4,8 @@ import Database from "metabase-lib/lib/metadata/Database";
 import {
   metadata, // connected graph,
   state, // the original non connected metadata objects,
-  DATABASE_ID,
-  ORDERS_TABLE_ID,
-  ORDERS_CREATED_DATE_FIELD_ID,
+  SAMPLE_DATASET,
+  ORDERS,
 } from "__support__/sample_dataset_fixture";
 
 import { copyObjects } from "metabase/selectors/metadata";
@@ -31,28 +30,27 @@ describe("getMetadata", () => {
 
   describe("connected database", () => {
     it("should have the proper number of tables", () => {
-      const database = metadata.databases[DATABASE_ID];
+      const database = metadata.databases[SAMPLE_DATASET.id];
       expect(database.tables.length).toEqual(NUM_TABLES);
     });
   });
 
   describe("connected table", () => {
-    const table = metadata.tables[ORDERS_TABLE_ID];
-
+    const table = metadata.table(ORDERS.id);
     it("should have the proper number of fields", () => {
       // TODO - make this more dynamic
       expect(table.fields.length).toEqual(7);
     });
 
     it("should have a parent database", () => {
-      expect(table.database).toEqual(metadata.databases[DATABASE_ID]);
+      expect(table.database).toEqual(metadata.databases[SAMPLE_DATASET.id]);
     });
   });
 
   describe("connected field", () => {
-    const field = metadata.fields[ORDERS_CREATED_DATE_FIELD_ID];
+    const field = metadata.field(ORDERS.CREATED_AT.id);
     it("should have a parent table", () => {
-      expect(field.table).toEqual(metadata.tables[ORDERS_TABLE_ID]);
+      expect(field.table).toEqual(metadata.table(ORDERS.id));
     });
   });
 });

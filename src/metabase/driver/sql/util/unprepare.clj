@@ -4,13 +4,15 @@
   TODO - since this is no longer strictly a 'util' namespace (most `:sql-jdbc` drivers need to implement one or
   methods from here) let's rename this `metabase.driver.sql.unprepare` when we get a chance."
   (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [honeysql
              [core :as hsql]
              [format :as hformat]]
             [metabase.driver :as driver]
             [metabase.util
              [date :as du]
-             [honeysql-extensions :as hx]])
+             [honeysql-extensions :as hx]
+             [i18n :refer [trs]]])
   (:import java.sql.Time
            java.util.Date))
 
@@ -22,17 +24,28 @@
     [(driver/the-initialized-driver driver) (class value)])
   :hierarchy #'driver/hierarchy)
 
-(defmethod unprepare-value [:sql nil] [_ _]
+(defmethod unprepare-value :default
+  [_ value]
+  ;; it's better return a slightly broken SQL query with a probably incorrect string representation of the value than
+  ;; to have the entire QP run fail because of an unknown type.
+  (log/warn (trs "Don''t know how to unprepare values of class {0}" (.getName (class value))))
+  (str value))
+
+(defmethod unprepare-value [:sql nil]
+  [_ _]
   "NULL")
 
-(defmethod unprepare-value [:sql String] [_ value]
+(defmethod unprepare-value [:sql String]
+  [_ value]
   ;; escape single-quotes like Cam's String -> Cam''s String
   (str \' (str/replace value "'" "''") \'))
 
-(defmethod unprepare-value [:sql Boolean] [_ value]
+(defmethod unprepare-value [:sql Boolean]
+  [_ value]
   (if value "TRUE" "FALSE"))
 
-(defmethod unprepare-value [:sql Number] [_ value]
+(defmethod unprepare-value [:sql Number]
+  [_ value]
   (str value))
 
 (defn unprepare-date-with-iso-8601-fn
@@ -42,12 +55,14 @@
   (hformat/to-sql
    (hsql/call iso-8601-fn (hx/literal (du/date->iso-8601 value)))))
 
-(defmethod unprepare-value [:sql Date] [_ value]
+(defmethod unprepare-value [:sql Date]
+  [_ value]
   (unprepare-date-with-iso-8601-fn :timestamp value))
 
 ;; default impl for Time is just converting the Time literal to a `1970-01-01T<time>` Timestamp and passing to impl
 ;; for `Date`, then wrapping entire expression in `time()`
-(defmethod unprepare-value [:sql Time] [driver value]
+(defmethod unprepare-value [:sql Time]
+  [driver value]
   (hformat/to-sql (hx/->time (hsql/raw (unprepare-value driver (du/->Timestamp value))))))
 
 
@@ -63,15 +78,14 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod unprepare :sql [driver [sql & args]]
-  (loop [sql sql, [arg & more-args, :as args] args]
-    (if-not (seq args)
-      sql
-      ;; Only match single question marks; do not match ones like `??` which JDBC converts to `?` to use as Postgres
-      ;; JSON operators amongst other things.
-      ;;
-      ;; TODO - this is not smart enough to handle question marks in non argument contexts, for example if someone
-      ;; were to have a question mark inside an identifier such as a table name. I think we'd have to parse the SQL in
-      ;; order to handle those situations.
-      (recur
-       (str/replace-first sql #"(?<!\?)\?(?!\?)" (unprepare-value driver arg))
-       more-args))))
+  (reduce
+   (fn [sql arg]
+     ;; Only match single question marks; do not match ones like `??` which JDBC converts to `?` to use as Postgres
+     ;; JSON operators amongst other things.
+     ;;
+     ;; TODO - this is not smart enough to handle question marks in non argument contexts, for example if someone
+     ;; were to have a question mark inside an identifier such as a table name. I think we'd have to parse the SQL in
+     ;; order to handle those situations.
+     (str/replace-first sql #"(?<!\?)\?(?!\?)" (unprepare-value driver arg)))
+   sql
+   args))

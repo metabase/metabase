@@ -34,9 +34,8 @@
   (:import java.util.Date))
 
 (defn- merge-count-maps
-  "Merge sequence of maps MS by summing counts inside them.
-   Non-integer values are allowed; truthy values are considered to add a count of `1`, while non-truthy
-   values do not affect the result count."
+  "Merge sequence of maps `ms` by summing counts inside them. Non-integer values are allowed; truthy values are
+  considered to add a count of `1`, while non-truthy values do not affect the result count."
   [ms]
   (reduce (partial merge-with +)
           (for [m ms]
@@ -46,17 +45,7 @@
                            :else       0)
                         m))))
 
-(def ^:private ^:const ^String metabase-usage-url "https://xuq0fbkk0j.execute-api.us-east-1.amazonaws.com/prod")
-
-
-#_(defn- bin-micro-number
-  "Return really small bin number. Assumes positive inputs."
-  [x]
-  (case x
-    0 "0"
-    1 "1"
-    2 "2"
-    "3+"))
+(def ^:private ^String metabase-usage-url "https://xuq0fbkk0j.execute-api.us-east-1.amazonaws.com/prod")
 
 (defn- bin-small-number
   "Return small bin number. Assumes positive inputs."
@@ -114,10 +103,6 @@
   ([binning-fn many-maps k]
    (histogram binning-fn (vals (value-frequencies many-maps k)))))
 
-#_(def ^:private micro-histogram
-  "Return a histogram for micro numbers."
-  (partial histogram bin-micro-number))
-
 (def ^:private medium-histogram
   "Return a histogram for medium numbers."
   (partial histogram bin-medium-number))
@@ -127,7 +112,7 @@
   []
   (:min (db/select-one [User [:%min.date_joined :min]])))
 
-(defn- environment-type
+(defn environment-type
   "Figure out what we're running under"
   []
   (cond

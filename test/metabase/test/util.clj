@@ -8,6 +8,7 @@
              [walk :as walk]]
             [clojure.tools.logging :as log]
             [clojurewerkz.quartzite.scheduler :as qs]
+            [colorize.core :as colorize]
             [metabase
              [driver :as driver]
              [task :as task]
@@ -258,14 +259,16 @@
    Prefer the macro `with-temporary-setting-values` over using this function directly."
   {:style/indent 2}
   [setting-k value f]
-  (initialize/initialize-if-needed! :db)
+  ;; plugins have to be initialized because changing `report-timezone` will call driver methods
+  (initialize/initialize-if-needed! :db :plugins)
   (let [setting        (#'setting/resolve-setting setting-k)
         original-value (when (or (#'setting/db-or-cache-value setting)
                                  (#'setting/env-var-value setting))
                          (setting/get setting-k))]
     (try
       (setting/set! setting-k value)
-      (f)
+      (t/testing (colorize/blue (format "Setting %s = %s" (keyword setting-k) value))
+        (f))
       (finally
         (setting/set! setting-k original-value)))))
 
@@ -275,12 +278,14 @@
 
      (with-temporary-setting-values [google-auth-auto-create-accounts-domain \"metabase.com\"]
        (google-auth-auto-create-accounts-domain)) -> \"metabase.com\""
-  [[setting-k value & more] & body]
-  (let [body `(t/testing ~(format "Setting %s = %s" (keyword setting-k) value)
-                (do-with-temporary-setting-value ~(keyword setting-k) ~value (fn [] ~@body)))]
-    (if (seq more)
-      `(with-temporary-setting-values ~more ~body)
-      body)))
+  [[setting-k value & more :as bindings] & body]
+  (assert (even? (count bindings)) "mismatched setting/value pairs: is each setting name followed by a value?")
+  (if (empty? bindings)
+    `(do ~@body)
+    (let [body `(do-with-temporary-setting-value ~(keyword setting-k) ~value (fn [] ~@body))]
+      (if (seq more)
+        `(with-temporary-setting-values ~more ~body)
+        body))))
 
 (defmacro discard-setting-changes
   "Execute `body` in a try-finally block, restoring any changes to listed `settings` to their original values at its
@@ -462,6 +467,7 @@
 
 (defn do-with-temp-scheduler [f]
   (classloader/the-classloader)
+  (initialize/initialize-if-needed! :db)
   (let [temp-scheduler (qs/start (qs/initialize))]
     (with-scheduler temp-scheduler
       (try
@@ -595,6 +601,7 @@
 
 
 (defn do-with-non-admin-groups-no-root-collection-perms [f]
+  (initialize/initialize-if-needed! :db)
   (try
     (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
       (perms/revoke-collection-permissions! group-id collection/root-collection))

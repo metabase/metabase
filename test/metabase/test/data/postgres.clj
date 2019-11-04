@@ -15,18 +15,19 @@
 
 (defmethod sql.tx/pk-sql-type :postgres [_] "SERIAL")
 
-(defmethod sql.tx/field-base-type->sql-type [:postgres :type/BigInteger]     [_ _] "BIGINT")
-(defmethod sql.tx/field-base-type->sql-type [:postgres :type/Boolean]        [_ _] "BOOL")
-(defmethod sql.tx/field-base-type->sql-type [:postgres :type/Date]           [_ _] "DATE")
-(defmethod sql.tx/field-base-type->sql-type [:postgres :type/DateTime]       [_ _] "TIMESTAMP")
-(defmethod sql.tx/field-base-type->sql-type [:postgres :type/DateTimeWithTZ] [_ _] "TIMESTAMP WITH TIME ZONE")
-(defmethod sql.tx/field-base-type->sql-type [:postgres :type/Decimal]        [_ _] "DECIMAL")
-(defmethod sql.tx/field-base-type->sql-type [:postgres :type/Float]          [_ _] "FLOAT")
-(defmethod sql.tx/field-base-type->sql-type [:postgres :type/Integer]        [_ _] "INTEGER")
-(defmethod sql.tx/field-base-type->sql-type [:postgres :type/IPAddress]      [_ _] "INET")
-(defmethod sql.tx/field-base-type->sql-type [:postgres :type/Text]           [_ _] "TEXT")
-(defmethod sql.tx/field-base-type->sql-type [:postgres :type/Time]           [_ _] "TIME")
-(defmethod sql.tx/field-base-type->sql-type [:postgres :type/UUID]           [_ _] "UUID")
+(doseq [[base-type db-type] {:type/BigInteger     "BIGINT"
+                             :type/Boolean        "BOOL"
+                             :type/Date           "DATE"
+                             :type/DateTime       "TIMESTAMP"
+                             :type/DateTimeWithTZ "TIMESTAMP WITH TIME ZONE"
+                             :type/Decimal        "DECIMAL"
+                             :type/Float          "FLOAT"
+                             :type/Integer        "INTEGER"
+                             :type/IPAddress      "INET"
+                             :type/Text           "TEXT"
+                             :type/Time           "TIME"
+                             :type/UUID           "UUID"}]
+  (defmethod sql.tx/field-base-type->sql-type [:postgres base-type] [_ _] db-type))
 
 (defmethod tx/dbdef->connection-details :postgres [_ context {:keys [database-name]}]
   (merge

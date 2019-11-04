@@ -1,31 +1,22 @@
 import React from "react";
 import { mount } from "enzyme";
 
-import {
-  metadata, // connected graph,
-  ORDERS_TABLE_ID,
-  ORDERS_CREATED_DATE_FIELD_ID,
-  ORDERS_PRODUCT_FK_FIELD_ID,
-  PRODUCT_CATEGORY_FIELD_ID,
-} from "__support__/sample_dataset_fixture";
+import { ORDERS, PRODUCTS } from "__support__/sample_dataset_fixture";
 
 import FieldName from "metabase/query_builder/components/FieldName";
 
 describe("FieldName", () => {
   it("should render regular field correctly", () => {
     const fieldName = mount(
-      <FieldName
-        field={ORDERS_CREATED_DATE_FIELD_ID}
-        tableMetadata={metadata.tables[ORDERS_TABLE_ID]}
-      />,
+      <FieldName field={ORDERS.CREATED_AT.id} tableMetadata={ORDERS} />,
     );
     expect(fieldName.text()).toEqual("Created At");
   });
   it("should render local field correctly", () => {
     const fieldName = mount(
       <FieldName
-        field={["field-id", ORDERS_CREATED_DATE_FIELD_ID]}
-        tableMetadata={metadata.tables[ORDERS_TABLE_ID]}
+        field={["field-id", ORDERS.CREATED_AT.id]}
+        tableMetadata={ORDERS}
       />,
     );
     expect(fieldName.text()).toEqual("Created At");
@@ -33,8 +24,8 @@ describe("FieldName", () => {
   it("should render foreign key correctly", () => {
     const fieldName = mount(
       <FieldName
-        field={["fk->", ORDERS_PRODUCT_FK_FIELD_ID, PRODUCT_CATEGORY_FIELD_ID]}
-        tableMetadata={metadata.tables[ORDERS_TABLE_ID]}
+        field={["fk->", ORDERS.PRODUCT_ID.id, PRODUCTS.CATEGORY.id]}
+        tableMetadata={ORDERS}
       />,
     );
     expect(fieldName.text()).toEqual("Product → Category");
@@ -42,8 +33,8 @@ describe("FieldName", () => {
   it("should render datetime correctly", () => {
     const fieldName = mount(
       <FieldName
-        field={["datetime-field", ORDERS_CREATED_DATE_FIELD_ID, "week"]}
-        tableMetadata={metadata.tables[ORDERS_TABLE_ID]}
+        field={["datetime-field", ORDERS.CREATED_AT.id, "week"]}
+        tableMetadata={ORDERS}
       />,
     );
     expect(fieldName.text()).toEqual("Created At: Week");
@@ -51,9 +42,7 @@ describe("FieldName", () => {
   // TODO: How to test nested fields with the test dataset? Should we create a test mongo dataset?
   it("should render nested field correctly", () => {
     pending();
-    const fieldName = mount(
-      <FieldName field={2} tableMetadata={ORDERS_TABLE_ID} />,
-    );
+    const fieldName = mount(<FieldName field={2} tableMetadata={ORDERS.id} />);
     expect(fieldName.text()).toEqual("Foo: Baz");
   });
   // TODO: How to test nested fields with the test dataset? Should we create a test mongo dataset?
@@ -62,7 +51,7 @@ describe("FieldName", () => {
     const fieldName = mount(
       <FieldName
         field={["fk->", ["field-id", 3], ["field-id", 2]]}
-        tableMetadata={ORDERS_TABLE_ID}
+        tableMetadata={ORDERS.id}
       />,
     );
     expect(fieldName.text()).toEqual("BarFoo: Baz");

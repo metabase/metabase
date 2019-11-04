@@ -1,3 +1,5 @@
+/* @flow weak */
+
 import _ from "underscore";
 import { t } from "ttag";
 import {
@@ -188,7 +190,7 @@ export const isAvatarURL = field =>
 export const isImageURL = field =>
   isa(field && field.special_type, TYPE.ImageURL);
 
-// operator argument constructors:
+// filter operator argument constructors:
 
 function freeformArgument(field, table) {
   return {
@@ -272,7 +274,7 @@ const CASE_SENSITIVE_OPTION = {
   },
 };
 
-const OPERATORS = {
+const FILTER_OPERATORS = {
   "=": {
     validArgumentsFilters: [equivalentArgument],
     multi: true,
@@ -347,7 +349,7 @@ const OPERATORS = {
   },
 };
 
-const DEFAULT_OPERATORS = [
+const DEFAULT_FILTER_OPERATORS = [
   { name: "=", verboseName: t`Is` },
   { name: "!=", verboseName: t`Is not` },
   { name: "is-null", verboseName: t`Is empty` },
@@ -355,7 +357,7 @@ const DEFAULT_OPERATORS = [
 ];
 
 // ordered list of operators and metadata per type
-const OPERATORS_BY_TYPE_ORDERED = {
+const FILTER_OPERATORS_BY_TYPE_ORDERED = {
   [NUMBER]: [
     { name: "=", verboseName: t`Equal to` },
     { name: "!=", verboseName: t`Not equal to` },
@@ -407,8 +409,8 @@ const OPERATORS_BY_TYPE_ORDERED = {
     { name: "is-null", verboseName: t`Is empty` },
     { name: "not-null", verboseName: t`Not empty` },
   ],
-  [FOREIGN_KEY]: DEFAULT_OPERATORS,
-  [UNKNOWN]: DEFAULT_OPERATORS,
+  [FOREIGN_KEY]: DEFAULT_FILTER_OPERATORS,
+  [UNKNOWN]: DEFAULT_FILTER_OPERATORS,
 };
 
 const MORE_VERBOSE_NAMES = {
@@ -423,10 +425,10 @@ const MORE_VERBOSE_NAMES = {
   "greater than or equal to": "is greater than or equal to",
 };
 
-export function getOperators(field, table) {
+export function getFilterOperators(field, table) {
   const type = getFieldType(field) || UNKNOWN;
-  return OPERATORS_BY_TYPE_ORDERED[type].map(operatorForType => {
-    const operator = OPERATORS[operatorForType.name];
+  return FILTER_OPERATORS_BY_TYPE_ORDERED[type].map(operatorForType => {
+    const operator = FILTER_OPERATORS[operatorForType.name];
     const verboseNameLower = operatorForType.verboseName.toLowerCase();
     return {
       ...operator,
@@ -448,87 +450,92 @@ function summableFields(fields) {
   return _.filter(fields, isSummable);
 }
 
-function dimensionFields(fields) {
-  return _.filter(fields, isDimension);
-}
-
-const Aggregators = [
+const AGGREGATION_OPERATORS = [
   {
     // DEPRECATED: "rows" is equivalent to no aggregations
-    name: t`Raw data`,
     short: "rows",
+    name: t`Raw data`,
     description: t`Just a table with the rows in the answer, no additional operations.`,
     validFieldsFilters: [],
     requiresField: false,
     requiredDriverFeature: "basic-aggregations",
   },
   {
-    name: t`Count of rows`,
     short: "count",
+    name: t`Count of rows`,
+    columnName: t`Count`,
     description: t`Total number of rows in the answer.`,
     validFieldsFilters: [],
     requiresField: false,
     requiredDriverFeature: "basic-aggregations",
   },
   {
-    name: t`Sum of ...`,
     short: "sum",
+    name: t`Sum of ...`,
+    columnName: t`Sum`,
     description: t`Sum of all the values of a column.`,
     validFieldsFilters: [summableFields],
     requiresField: true,
     requiredDriverFeature: "basic-aggregations",
   },
   {
-    name: t`Average of ...`,
     short: "avg",
+    name: t`Average of ...`,
+    columnName: t`Average`,
     description: t`Average of all the values of a column`,
     validFieldsFilters: [summableFields],
     requiresField: true,
     requiredDriverFeature: "basic-aggregations",
   },
   {
-    name: t`Number of distinct values of ...`,
     short: "distinct",
+    name: t`Number of distinct values of ...`,
+    columnName: t`Distinct values`,
     description: t`Number of unique values of a column among all the rows in the answer.`,
     validFieldsFilters: [allFields],
     requiresField: true,
     requiredDriverFeature: "basic-aggregations",
   },
   {
-    name: t`Cumulative sum of ...`,
     short: "cum-sum",
+    name: t`Cumulative sum of ...`,
+    columnName: t`Cumulative sum`, // NOTE: actually "Sum" as of 2019-10-01
     description: t`Additive sum of all the values of a column.\ne.x. total revenue over time.`,
     validFieldsFilters: [summableFields],
     requiresField: true,
     requiredDriverFeature: "basic-aggregations",
   },
   {
-    name: t`Cumulative count of rows`,
     short: "cum-count",
+    name: t`Cumulative count of rows`,
+    columnName: t`Cumulative count`, // NOTE: actually "Count" as of 2019-10-01
     description: t`Additive count of the number of rows.\ne.x. total number of sales over time.`,
     validFieldsFilters: [],
     requiresField: false,
     requiredDriverFeature: "basic-aggregations",
   },
   {
-    name: t`Standard deviation of ...`,
     short: "stddev",
+    name: t`Standard deviation of ...`,
+    columnName: t`Standard deviation`, // NOTE: actually "SD" as of 2019-10-01
     description: t`Number which expresses how much the values of a column vary among all rows in the answer.`,
     validFieldsFilters: [summableFields],
     requiresField: true,
     requiredDriverFeature: "standard-deviation-aggregations",
   },
   {
-    name: t`Minimum of ...`,
     short: "min",
+    name: t`Minimum of ...`,
+    columnName: t`Min`,
     description: t`Minimum value of a column`,
     validFieldsFilters: [summableFields],
     requiresField: true,
     requiredDriverFeature: "basic-aggregations",
   },
   {
-    name: t`Maximum of ...`,
     short: "max",
+    name: t`Maximum of ...`,
+    columnName: t`Max`,
     description: t`Maximum value of a column`,
     validFieldsFilters: [summableFields],
     requiresField: true,
@@ -536,81 +543,70 @@ const Aggregators = [
   },
 ];
 
-const BreakoutAggregator = {
-  name: t`Break out by dimension`,
-  short: "breakout",
-  validFieldsFilters: [dimensionFields],
-};
-
-function populateFields(aggregator, fields) {
+function populateFields(aggregationOperator, fields) {
   return {
-    name: aggregator.name,
-    short: aggregator.short,
-    description: aggregator.description || "",
-    advanced: aggregator.advanced || false,
-    fields: _.map(aggregator.validFieldsFilters, function(validFieldsFilterFn) {
-      return validFieldsFilterFn(fields);
-    }),
-    validFieldsFilters: aggregator.validFieldsFilters,
-    requiresField: aggregator.requiresField,
-    requiredDriverFeature: aggregator.requiredDriverFeature,
+    ...aggregationOperator,
+    fields: aggregationOperator.validFieldsFilters.map(validFieldsFilters =>
+      validFieldsFilters(fields),
+    ),
   };
 }
 
 // TODO: unit test
-export function getAggregators(table) {
-  const supportedAggregations = Aggregators.filter(function(agg) {
-    return !(
-      agg.requiredDriverFeature &&
-      table.db &&
-      !_.contains(table.db.features, agg.requiredDriverFeature)
-    );
-  });
-  return _.map(supportedAggregations, function(aggregator) {
-    return populateFields(aggregator, table.fields);
-  });
+export function getAggregationOperators(table) {
+  return AGGREGATION_OPERATORS.filter(
+    aggregationOperator =>
+      !(
+        aggregationOperator.requiredDriverFeature &&
+        table.db &&
+        !_.contains(
+          table.db.features,
+          aggregationOperator.requiredDriverFeature,
+        )
+      ),
+  ).map(aggregationOperator =>
+    populateFields(aggregationOperator, table.fields),
+  );
 }
 
-export function getAggregatorsWithFields(table) {
-  return getAggregators(table).filter(
+export function getAggregationOperatorsWithFields(table) {
+  return getAggregationOperators(table).filter(
     aggregation =>
       !aggregation.requiresField ||
-      aggregation.fields.reduce((ok, fields) => ok && fields.length > 0, true),
+      aggregation.fields.every(fields => fields.length > 0),
   );
 }
 
 // TODO: unit test
-export function getAggregator(short) {
-  return _.findWhere(Aggregators, { short: short });
+export function getAggregationOperator(short) {
+  return _.findWhere(AGGREGATION_OPERATORS, { short: short });
 }
 
-export const isCompatibleAggregatorForField = (aggregator, field) =>
-  aggregator.validFieldsFilters.every(filter => filter([field]).length === 1);
-
-export function getBreakouts(fields) {
-  const result = populateFields(BreakoutAggregator, fields);
-  result.fields = result.fields[0];
-  result.validFieldsFilter = result.validFieldsFilters[0];
-  return result;
+export function isCompatibleAggregationOperatorForField(
+  aggregationOperator,
+  field,
+) {
+  return aggregationOperator.validFieldsFilters.every(
+    filter => filter([field]).length === 1,
+  );
 }
 
 export function addValidOperatorsToFields(table) {
   for (const field of table.fields) {
-    field.operators = getOperators(field, table);
+    field.filter_operators = getFilterOperators(field, table);
   }
-  table.aggregation_options = getAggregatorsWithFields(table);
-  table.breakout_options = getBreakouts(table.fields);
+  table.aggregation_operators = getAggregationOperatorsWithFields(table);
   return table;
 }
 
-export function hasLatitudeAndLongitudeColumns(columnDefs) {
+export function hasLatitudeAndLongitudeColumns(cols) {
   let hasLatitude = false;
   let hasLongitude = false;
-  for (const col of columnDefs) {
-    if (isa(col.special_type, TYPE.Latitude)) {
+  for (const col of cols) {
+    if (isLatitude(col)) {
       hasLatitude = true;
     }
-    if (isa(col.special_type, TYPE.Longitude)) {
+    if (isLongitude(col)) {
       hasLongitude = true;
     }
   }
@@ -652,8 +648,11 @@ export function getIconForField(field) {
   return ICON_MAPPING[getFieldType(field)] || "unknown";
 }
 
-export function getFilterArgumentFormatOptions(operator, index) {
+export function getFilterArgumentFormatOptions(filterOperator, index) {
   return (
-    (operator && operator.formatOptions && operator.formatOptions[index]) || {}
+    (filterOperator &&
+      filterOperator.formatOptions &&
+      filterOperator.formatOptions[index]) ||
+    {}
   );
 }

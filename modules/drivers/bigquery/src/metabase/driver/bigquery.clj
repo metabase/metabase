@@ -1,64 +1,34 @@
 (ns metabase.driver.bigquery
-  (:require [clj-time
-             [coerce :as tcoerce]
-             [core :as time]
-             [format :as tformat]]
+  (:require [clj-time.core :as time]
             [clojure
              [set :as set]
              [string :as str]]
-            [honeysql
-             [core :as hsql]
-             [helpers :as h]]
             [metabase
              [driver :as driver]
              [util :as u]]
             [metabase.driver
              [common :as driver.common]
              [google :as google]]
-            [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.bigquery
+             [common :as bigquery.common]
+             [query-processor :as bigquery.qp]]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.models.table :as table]
             [metabase.query-processor
              [store :as qp.store]
              [util :as qputil]]
             [metabase.util
              [date :as du]
-             [honeysql-extensions :as hx]
-             [i18n :refer [tru]]
              [schema :as su]]
-            [schema.core :as s]
-            [toucan.db :as db])
+            [schema.core :as s])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            com.google.api.client.http.HttpRequestInitializer
            [com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes]
-           [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema TableList
-            TableList$Tables TableReference TableRow TableSchema]
+           [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema
+            TableList TableList$Tables TableReference TableRow TableSchema]
            java.sql.Time
-           [java.util Collections Date]
-           metabase.util.honeysql_extensions.Identifier))
+           [java.util Collections Date]))
 
 (driver/register! :bigquery, :parent #{:google :sql})
-
-(defn- valid-bigquery-identifier?
-  "Is String `s` a valid BigQuery identifier? Identifiers are only allowed to contain letters, numbers, and underscores;
-  cannot start with a number; and can be at most 128 characters long."
-  [s]
-  (boolean
-   (and (string? s)
-        (re-matches #"^([a-zA-Z_][a-zA-Z_0-9]*){1,128}$" s))))
-
-(def ^:private BigQueryIdentifierString
-  (s/pred valid-bigquery-identifier? "Valid BigQuery identifier"))
-
-(s/defn ^:private dataset-name-for-current-query :- BigQueryIdentifierString
-  "Fetch the dataset name for the database associated with this query, needed because BigQuery requires you to qualify
-  identifiers with it. This is primarily called automatically for the `to-sql` implementation of the
-  `BigQueryIdentifier` record type; see its definition for more details."
-  []
-  (when (qp.store/initialized?)
-    (some-> (qp.store/database) :details :dataset-id)))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Client                                                     |
@@ -118,7 +88,6 @@
   ;; g2g
   (boolean (list-tables {:details details-map})))
 
-
 (s/defn get-table :- Table
   ([{{:keys [project-id dataset-id]} :details, :as database} table-id]
    (get-table (database->client database) project-id dataset-id table-id))
@@ -155,10 +124,71 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                       Running Queries & Parsing Results                                        |
+;;; |                                                Running Queries                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def ^:private ^:const ^Integer query-timeout-seconds 60)
+
+(defn do-with-finished-response
+  "Impl for `with-finished-response`."
+  {:style/indent 1}
+  [^QueryResponse response, f]
+  ;; 99% of the time by the time this is called `.getJobComplete` will return `true`. On the off chance it doesn't,
+  ;; wait a few seconds for the job to finish.
+  (loop [remaining-timeout (double query-timeout-seconds)]
+    (cond
+      (.getJobComplete response)
+      (f response)
+
+      (pos? remaining-timeout)
+      (do
+        (Thread/sleep 250)
+        (recur (- remaining-timeout 0.25)))
+
+      :else
+      (throw (ex-info "Query timed out." (into {} response))))))
+
+(defmacro with-finished-response
+  "Exeecute `body` with after waiting for `response` to complete. Throws exception if response does not complete before
+  `query-timeout-seconds`.
+
+    (with-finished-response [response (execute-bigquery ...)]
+      ...)"
+  [[response-binding response] & body]
+  `(do-with-finished-response
+    ~response
+    (fn [~(vary-meta response-binding assoc :tag 'com.google.api.services.bigquery.model.QueryResponse)]
+      ~@body)))
+
+(defn- post-process-native
+  "Parse results of a BigQuery query."
+  [^QueryResponse resp]
+  (with-finished-response [response resp]
+    (let [^TableSchema schema
+          (.getSchema response)
+
+          parsers
+          (doall
+           (for [^TableFieldSchema field (.getFields schema)
+                 :let                    [column-type (.getType field)
+                                          method (get-method bigquery.qp/parse-result-of-type column-type)]]
+             (partial method column-type bigquery.common/*bigquery-timezone*)))
+
+          columns
+          (for [column (table-schema->metabase-field-info schema)]
+            (-> column
+                (set/rename-keys {:base-type :base_type})
+                (dissoc :database-type)))]
+      {:columns (map (comp u/qualified-name :name) columns)
+       :cols    columns
+       :rows    (for [^TableRow row (.getRows response)]
+                  (for [[^TableCell cell, parser] (partition 2 (interleave (.getF row) parsers))]
+                    (when-let [v (.getV cell)]
+                      ;; There is a weird error where everything that *should* be NULL comes back as an Object.
+                      ;; See https://jira.talendforge.org/browse/TBD-1592
+                      ;; Everything else comes back as a String luckily so we can proceed normally.
+                      (when-not (= (class v) Object)
+                        (parser v)))))})))
 
 (defn- ^QueryResponse execute-bigquery
   ([{{:keys [project-id]} :details, :as database} query-string]
@@ -173,84 +203,6 @@
                    (.setQuery query-string))]
      (google/execute (.query (.jobs client) project-id request)))))
 
-(def ^:private ^:dynamic *bigquery-timezone*
-  "BigQuery stores all of it's timestamps in UTC. That timezone can be changed via a SQL function invocation in a
-  native query, but that change in timezone is not conveyed through the BigQuery API. In most situations
-  `*bigquery-timezone*` will just be UTC. If the user is always changing the timezone via native SQL function
-  invocation, they can set their JVM TZ to the correct timezone, mark `use-jvm-timezone` to `true` and that will bind
-  this dynamic var to the JVM TZ rather than UTC"
-  time/utc)
-
-(defn- parse-timestamp-str [timezone]
-  (fn [s]
-    ;; Timestamp strings either come back as ISO-8601 strings or Unix timestamps in µs, e.g. "1.3963104E9"
-    (or
-     (du/->Timestamp s timezone)
-     ;; If parsing as ISO-8601 fails parse as a double then convert to ms. This is ms since epoch in UTC. By using
-     ;; `->Timestamp`, it will convert from ms in UTC to a timestamp object in the JVM timezone
-     (du/->Timestamp (* (Double/parseDouble s) 1000)))))
-
-(defn- bigquery-time-format [timezone]
-  (tformat/formatter "HH:mm:SS" timezone))
-
-(defn- parse-bigquery-time [timezone]
-  (fn [time-string]
-    (->> time-string
-         (tformat/parse (bigquery-time-format timezone))
-         tcoerce/to-long
-         Time.)))
-
-(defn- unparse-bigquery-time [timezone coercible-to-dt]
-  (->> coercible-to-dt
-       tcoerce/to-date-time
-       (tformat/unparse (bigquery-time-format timezone))))
-
-(def ^:private type->parser
-  "Functions that should be used to coerce string values in responses to the appropriate type for their column."
-  {"BOOLEAN"   (constantly #(Boolean/parseBoolean %))
-   "FLOAT"     (constantly #(Double/parseDouble %))
-   "INTEGER"   (constantly #(Long/parseLong %))
-   "NUMERIC"   (constantly #(bigdec %))
-   "RECORD"    (constantly identity)
-   "STRING"    (constantly identity)
-   "DATE"      parse-timestamp-str
-   "DATETIME"  parse-timestamp-str
-   "TIMESTAMP" parse-timestamp-str
-   "TIME"      parse-bigquery-time})
-
-(defn- post-process-native
-  ([^QueryResponse response]
-   (post-process-native response query-timeout-seconds))
-  ([^QueryResponse response, ^Integer timeout-seconds]
-   (if-not (.getJobComplete response)
-     ;; 99% of the time by the time this is called `.getJobComplete` will return `true`. On the off chance it doesn't,
-     ;; wait a few seconds for the job to finish.
-     (do
-       (when (zero? timeout-seconds)
-         (throw (ex-info "Query timed out." (into {} response))))
-       (Thread/sleep 1000)
-       (post-process-native response (dec timeout-seconds)))
-     ;; Otherwise the job *is* complete
-     (let [^TableSchema schema (.getSchema response)
-           parsers             (doall
-                                (for [^TableFieldSchema field (.getFields schema)
-                                      :let                    [parser-fn (type->parser (.getType field))]]
-                                  (parser-fn *bigquery-timezone*)))
-           columns             (for [column (table-schema->metabase-field-info schema)]
-                                 (-> column
-                                     (set/rename-keys {:base-type :base_type})
-                                     (dissoc :database-type)))]
-       {:columns (map (comp u/qualified-name :name) columns)
-        :cols    columns
-        :rows    (for [^TableRow row (.getRows response)]
-                   (for [[^TableCell cell, parser] (partition 2 (interleave (.getF row) parsers))]
-                     (when-let [v (.getV cell)]
-                       ;; There is a weird error where everything that *should* be NULL comes back as an Object.
-                       ;; See https://jira.talendforge.org/browse/TBD-1592
-                       ;; Everything else comes back as a String luckily so we can proceed normally.
-                       (when-not (= (class v) Object)
-                         (parser v)))))}))))
-
 (defn- process-native* [database query-string]
   {:pre [(map? database) (map? (:details database))]}
   ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by
@@ -258,193 +210,25 @@
   (u/auto-retry 1
     (post-process-native (execute-bigquery database query-string))))
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                               SQL Driver Methods                                               |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- trunc
-  "Generate raw SQL along the lines of `timestamp_trunc(cast(<some-field> AS timestamp), day)`"
-  [unit expr]
-  (hsql/call :timestamp_trunc (hx/->timestamp expr) (hsql/raw (name unit))))
-
-(defn- extract [unit expr]
-  ;; implemenation of extract() in `metabase.util.honeysql-extensions` handles actual conversion to raw SQL (!)
-  (hsql/call :extract unit (hx/->timestamp expr)))
-
-(defmethod sql.qp/date [:bigquery :minute]          [_ _ expr] (trunc   :minute    expr))
-(defmethod sql.qp/date [:bigquery :minute-of-hour]  [_ _ expr] (extract :minute    expr))
-(defmethod sql.qp/date [:bigquery :hour]            [_ _ expr] (trunc   :hour      expr))
-(defmethod sql.qp/date [:bigquery :hour-of-day]     [_ _ expr] (extract :hour      expr))
-(defmethod sql.qp/date [:bigquery :day]             [_ _ expr] (trunc   :day       expr))
-(defmethod sql.qp/date [:bigquery :day-of-week]     [_ _ expr] (extract :dayofweek expr))
-(defmethod sql.qp/date [:bigquery :day-of-month]    [_ _ expr] (extract :day       expr))
-(defmethod sql.qp/date [:bigquery :day-of-year]     [_ _ expr] (extract :dayofyear expr))
-(defmethod sql.qp/date [:bigquery :week]            [_ _ expr] (trunc   :week      expr))
-;; ; BigQuery's impl of `week` uses 0 for the first week; we use 1
-(defmethod sql.qp/date [:bigquery :week-of-year]    [_ _ expr] (-> (extract :week  expr) hx/inc))
-(defmethod sql.qp/date [:bigquery :month]           [_ _ expr] (trunc   :month     expr))
-(defmethod sql.qp/date [:bigquery :month-of-year]   [_ _ expr] (extract :month     expr))
-(defmethod sql.qp/date [:bigquery :quarter]         [_ _ expr] (trunc   :quarter   expr))
-(defmethod sql.qp/date [:bigquery :quarter-of-year] [_ _ expr] (extract :quarter   expr))
-(defmethod sql.qp/date [:bigquery :year]            [_ _ expr] (trunc   :year      expr))
-
-(defmethod sql.qp/unix-timestamp->timestamp [:bigquery :seconds] [_ _ expr]
-  (hsql/call :timestamp_seconds expr))
-
-(defmethod sql.qp/unix-timestamp->timestamp [:bigquery :milliseconds] [_ _ expr]
-  (hsql/call :timestamp_millis expr))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                Query Processor                                                 |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- should-qualify-identifier?
-  "Should we qualify an Identifier with the dataset name?
-
-  Table & Field identifiers (usually) need to be qualified with the current dataset name; this needs to be part of the
-  table e.g.
-
-    `table`.`field` -> `dataset.table`.`field`"
-  [{:keys [identifier-type components]}]
-  (cond
-    ;; If we're currently using a Table alias, don't qualify the alias with the dataset name
-    sql.qp/*table-alias*
-    false
-
-    ;; otherwise always qualify Table identifiers
-    (= identifier-type :table)
-    true
-
-    ;; Only qualify Field identifiers that are qualified by a Table. (e.g. don't qualify stuff inside `CREATE TABLE`
-    ;; DDL statements)
-    (and (= identifier-type :field)
-         (>= (count components) 2))
-    true))
-
-(defmethod sql.qp/->honeysql [:bigquery Identifier]
-  [_ identifier]
-  (cond-> identifier
-    (should-qualify-identifier? identifier)
-    (update :components (fn [[table & more]]
-                          (cons (str (dataset-name-for-current-query) \. table)
-                                more)))))
-
-(s/defn ^:private honeysql-form->sql :- s/Str
-  [honeysql-form :- su/Map]
-  (let [[sql & args] (sql.qp/format-honeysql :bigquery honeysql-form)]
-    (when (seq args)
-      (throw (Exception. (tru "BigQuery statements can''t be parameterized!"))))
-    sql))
-
-;; From the dox: Fields must contain only letters, numbers, and underscores, start with a letter or underscore, and be
-;; at most 128 characters long.
-(defmethod driver/format-custom-field-name :bigquery [_ custom-field-name]
-  (let [replaced-str (-> (str/trim custom-field-name)
-                         (str/replace #"[^\w\d_]" "_")
-                         (str/replace #"(^\d)" "_$1"))]
-    (subs replaced-str 0 (min 128 (count replaced-str)))))
-
-;; These provide implementations of `->honeysql` that prevent HoneySQL from converting forms to prepared statement
-;; parameters (`?` symbols)
-(defmethod sql.qp/->honeysql [:bigquery String]
-  [_ s]
-  (hx/literal s))
-
-(defmethod sql.qp/->honeysql [:bigquery Boolean]
-  [_ bool]
-  (hsql/raw (if bool "TRUE" "FALSE")))
-
-(defmethod sql.qp/->honeysql [:bigquery Date]
-  [_ date]
-  (hsql/call :timestamp (hx/literal (du/date->iso-8601 date))))
-
-(defmethod sql.qp/->honeysql [:bigquery :time]
-  [driver [_ value unit]]
-  (->> value
-       (unparse-bigquery-time *bigquery-timezone*)
-       (sql.qp/->honeysql driver)
-       (sql.qp/date driver unit)
-       hx/->time))
-
-(defmethod sql.qp/field->identifier :bigquery [_ {table-id :table_id, field-name :name, :as field}]
-  ;; TODO - Making a DB call for each field to fetch its Table is inefficient and makes me cry, but this method is
-  ;; currently only used for SQL params so it's not a huge deal at this point
-  ;;
-  ;; TODO - we should make sure these are in the QP store somewhere and then could at least batch the calls
-  (let [table-name (db/select-one-field :name table/Table :id (u/get-id table-id))]
-    (hx/identifier :field table-name field-name)))
-
-(defmethod sql.qp/apply-top-level-clause [:bigquery :breakout]
-  [driver _ honeysql-form {breakouts :breakout, fields :fields}]
-  (-> honeysql-form
-      ;; Group by all the breakout fields.
-      ;;
-      ;; Unlike other SQL drivers, BigQuery requires that we refer to Fields using the alias we gave them in the
-      ;; `SELECT` clause, rather than repeating their definitions.
-      ((partial apply h/group) (map (partial sql.qp/field-clause->alias driver) breakouts))
-      ;; Add fields form only for fields that weren't specified in :fields clause -- we don't want to include it
-      ;; twice, or HoneySQL will barf
-      ((partial apply h/merge-select) (for [field-clause breakouts
-                                            :when        (not (contains? (set fields) field-clause))]
-                                        (sql.qp/as driver field-clause)))))
-
-;; as with breakouts BigQuery requires that you use the Field aliases in order by clauses, so override the methods for
-;; compiling `:asc` and `:desc` and alias the Fields if applicable
-(defn- alias-order-by-field [driver [direction field-clause]]
-  (let [field-clause (if (mbql.u/is-clause? :aggregation field-clause)
-                       field-clause
-                       (sql.qp/field-clause->alias driver field-clause))]
-    ((get-method sql.qp/->honeysql [:sql direction]) driver [direction field-clause])))
-
-(defmethod sql.qp/->honeysql [:bigquery :asc]  [driver clause] (alias-order-by-field driver clause))
-(defmethod sql.qp/->honeysql [:bigquery :desc] [driver clause] (alias-order-by-field driver clause))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                Other Driver / SQLDriver Method Implementations                                 |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defmethod driver/date-add :bigquery
-  [_ dt amount unit]
-  (hsql/call :datetime_add (hx/->datetime dt) (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit)))))
-
-(defmethod driver/mbql->native :bigquery
-  [driver
-   {database-id                                                 :database
-    {source-table-id :source-table, source-query :source-query} :query
-    :as                                                         outer-query}]
-  (let [dataset-id         (-> (qp.store/database) :details :dataset-id)
-        {table-name :name} (some-> source-table-id qp.store/table)]
-    (assert (seq dataset-id))
-    (binding [sql.qp/*query* (assoc outer-query :dataset-id dataset-id)]
-      {:query      (->> outer-query
-                        (sql.qp/build-honeysql-form :bigquery)
-                        honeysql-form->sql)
-       :table-name (or table-name
-                       (when source-query
-                         sql.qp/source-query-alias))
-       :mbql?      true})))
-
 (defn- effective-query-timezone [database]
   (if-let [^java.util.TimeZone jvm-tz (and (get-in database [:details :use-jvm-timezone])
                                            @du/jvm-timezone)]
     (time/time-zone-for-id (.getID jvm-tz))
     time/utc))
 
-(defmethod driver/execute-query :bigquery [driver {{sql :query, params :params, :keys [table-name mbql?]} :native
-                                                   :as                                                    outer-query}]
+(defmethod driver/execute-query :bigquery
+  [driver {{sql :query, params :params, :keys [table-name mbql?]} :native, :as outer-query}]
   (let [database (qp.store/database)]
-    (binding [*bigquery-timezone* (effective-query-timezone database)]
+    (binding [bigquery.common/*bigquery-timezone* (effective-query-timezone database)]
       (let [sql (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
                                                                      (unprepare/unprepare driver (cons sql params))
                                                                      sql))]
         (process-native* database sql)))))
 
-(defmethod sql.qp/current-datetime-fn :bigquery [_] :%current_timestamp)
 
-(defmethod sql.qp/quote-style :bigquery [_] :mysql)
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                           Other Driver Method Impls                                            |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod driver/supports? [:bigquery :expressions] [_ _] false)
 

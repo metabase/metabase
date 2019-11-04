@@ -13,7 +13,10 @@ import { DEBUG } from "metabase/lib/debug";
  * Provides the same functionality as redux-thunk and augments the dispatch method with
  * `dispatch.action(type, payload)` which creates an action that adheres to Flux Standard Action format.
  */
-const thunkWithDispatchAction = ({ dispatch, getState }) => next => action => {
+export const thunkWithDispatchAction = ({
+  dispatch,
+  getState,
+}) => next => action => {
   if (typeof action === "function") {
     const dispatchAugmented = Object.assign(dispatch, {
       action: (type, payload) => dispatch({ type, payload }),

@@ -1,6 +1,7 @@
 (ns metabase.driver.util
   "Utility functions for common operations on drivers."
-  (:require [clojure.string :as str]
+  (:require [clojure.core.memoize :as memoize]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
              [config :as config]
@@ -55,12 +56,16 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- database->driver* [database-or-id]
-  (db/select-one-field :engine 'Database, :id (u/get-id database-or-id)))
+  (or
+   (:engine database-or-id)
+   (db/select-one-field :engine 'Database, :id (u/get-id database-or-id))))
 
 (def ^{:arglists '([database-or-id])} database->driver
-  "Memoized function that returns the driver instance that should be used for `Database` with ID. (Databases aren't
-  expected to change their types, and this optimization makes things a lot faster)."
-  (memoize database->driver*))
+  "Look up the driver that should be used for a Database. Lightly cached.
+
+  (This is cached for a second, so as to avoid repeated application DB calls if this function is called several times
+  over the duration of a single API request or sync operation.)"
+  (memoize/ttl database->driver* :ttl/threshold 1000))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -111,7 +116,7 @@
   features."
   []
   (into {} (for [driver (available-drivers)]
-             ;; TODO - maybe we should rename `connection-properties` -> `connection-properties` on the FE as well?
+             ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
              [driver {:details-fields (driver/connection-properties driver)
                       :driver-name    (driver/display-name driver)
                       #_:features       #_(features driver)}])))

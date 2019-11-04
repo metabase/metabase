@@ -491,8 +491,8 @@
 
 (defonce ^{:arglists '([]), :doc "Do general preparation of database by validating that we can connect. Caller can
   specify if we should run any pending database migrations. If DB is already set up, this function will no-op."}
-         setup-db!
-         (partial deref (delay (setup-db-from-env!*))))
+  setup-db!
+  (partial deref (delay (setup-db-from-env!*))))
 
 
 ;;; Various convenience fns (experiMENTAL)

@@ -44,7 +44,7 @@
                :password "birdseed"
                :active   false}})
 
-(def ^:private usernames
+(def usernames
   (set (keys user->info)))
 
 (def ^:private TestUserName
@@ -80,16 +80,6 @@
     (fetch-user :rasta) -> {:id 100 :first_name \"Rasta\" ...}"
   [username :- TestUserName]
   (m/mapply fetch-or-create-user! (user->info username)))
-
-(s/defn create-users-if-needed!
-  "Force creation of the test users if they don't already exist."
-  ([]
-   (apply create-users-if-needed! usernames))
-
-  ([& usernames :- [TestUserName]]
-   (doseq [username usernames]
-     ;; fetch-user will force creation of users
-     (fetch-user username))))
 
 (def ^{:arglists '([username])} user->id
   "Memoized fn that returns the ID of User associated with `username`. Creates user if needed.
@@ -155,18 +145,8 @@
 
      ((user->client) :get 200 \"meta/table\")"
   [username :- TestUserName]
-  (create-users-if-needed! username)
+  (fetch-user username) ; force creation of the user if not already created
   (partial client-fn username))
-
-(s/defn do-with-test-user
-  "Call `f` with various `metabase.api.common` dynamic vars bound to the test User named by `user-kwd`."
-  [user-kwd :- TestUserName, f :- (s/pred fn?)]
-  ((mw.session/bind-current-user (fn [_ respond _] (respond (f))))
-   (let [user-id (user->id user-kwd)]
-     {:metabase-user-id user-id
-      :is-superuser?    (db/select-one-field :is_superuser User :id user-id)})
-   identity
-   (fn [e] (throw e))))
 
 (defmacro with-test-user
   "Call `body` with various `metabase.api.common` dynamic vars like `*current-user*` bound to the test User named by
@@ -174,4 +154,5 @@
   {:style/indent 1}
   [user-kwd & body]
   `(t/testing ~(format "with test user %s" user-kwd)
-     (do-with-test-user ~user-kwd (fn [] ~@body))))
+     (mw.session/with-current-user (some-> ~user-kwd user->id)
+       ~@body)))

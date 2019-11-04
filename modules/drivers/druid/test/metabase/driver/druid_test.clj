@@ -1,6 +1,7 @@
 (ns metabase.driver.druid-test
   (:require [cheshire.core :as json]
             [clj-time.core :as time]
+            [clojure.test :refer :all]
             [expectations :refer [expect]]
             [medley.core :as m]
             [metabase
@@ -90,37 +91,40 @@
 
 ;; test druid native queries
 (datasets/expect-with-driver :druid
-  {:row_count 2
-   :status    :completed
-   :data      {:rows        [["2013-01-03T08:00:00.000Z" "931" "Simcha Yan" "1" "Kinaree Thai Bistro"       1]
-                             ["2013-01-10T08:00:00.000Z" "285" "Kfir Caj"   "2" "Ruen Pair Thai Restaurant" 1]]
-               :cols        (mapv #(merge col-defaults %)
-                                  [{:name         "timestamp"
-                                    :source       :native
-                                    :display_name "timestamp"
-                                    :field_ref    [:field-literal "timestamp" :type/Text]}
-                                   {:name         "id"
-                                    :source       :native
-                                    :display_name "id"
-                                    :field_ref    [:field-literal "id" :type/Text]}
-                                   {:name         "user_name"
-                                    :source       :native
-                                    :display_name "user_name"
-                                    :field_ref    [:field-literal "user_name" :type/Text]}
-                                   {:name         "venue_price"
-                                    :source       :native
-                                    :display_name "venue_price"
-                                    :field_ref    [:field-literal "venue_price" :type/Text]}
-                                   {:name         "venue_name"
-                                    :source       :native
-                                    :display_name "venue_name"
-                                    :field_ref    [:field-literal "venue_name" :type/Text]}
-                                   {:name         "count"
-                                    :source       :native
-                                    :display_name "count"
-                                    :base_type    :type/Integer
-                                    :field_ref    [:field-literal "count" :type/Integer]}])
-               :native_form {:query native-query-1}}}
+  {:row_count         2
+   :status            :completed
+   :data              {:rows        [["2013-01-03T08:00:00.000Z" "931" "Simcha Yan" "1" "Kinaree Thai Bistro"       1]
+                                     ["2013-01-10T08:00:00.000Z" "285" "Kfir Caj"   "2" "Ruen Pair Thai Restaurant" 1]]
+                       :cols        (mapv #(merge col-defaults %)
+                                          [{:name         "timestamp"
+                                            :source       :native
+                                            :display_name "timestamp"
+                                            :field_ref    [:field-literal "timestamp" :type/Text]}
+                                           {:name         "id"
+                                            :source       :native
+                                            :display_name "id"
+                                            :field_ref    [:field-literal "id" :type/Text]}
+                                           {:name         "user_name"
+                                            :source       :native
+                                            :display_name "user_name"
+                                            :field_ref    [:field-literal "user_name" :type/Text]}
+                                           {:name         "venue_price"
+                                            :source       :native
+                                            :display_name "venue_price"
+                                            :field_ref    [:field-literal "venue_price" :type/Text]}
+                                           {:name         "venue_name"
+                                            :source       :native
+                                            :display_name "venue_name"
+                                            :field_ref    [:field-literal "venue_name" :type/Text]}
+                                           {:name         "count"
+                                            :source       :native
+                                            :display_name "count"
+                                            :base_type    :type/Integer
+                                            :field_ref    [:field-literal "count" :type/Integer]}])
+                       :native_form       {:query native-query-1}
+                       :requested_timezone "UTC"
+                       :results_timezone   "UTC"}}
+
   (-> (process-native-query native-query-1)
       (m/dissoc-in [:data :insights])))
 
@@ -141,12 +145,6 @@
   :completed
   (:status (process-native-query native-query-2)))
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                            EXPRESSION AGGREGATIONS                                             |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-
 (defmacro ^:private druid-query {:style/indent 0} [& body]
   `(tqpt/with-flattened-dbdef
      (qp/process-query (data/mbql-query ~'checkins
@@ -155,15 +153,17 @@
 (defmacro ^:private druid-query-returning-rows {:style/indent 0} [& body]
   `(qp.test/rows (druid-query ~@body)))
 
-;; Count the number of events in the given week. Metabase uses Sunday as the start of the week, Druid by default will
-;; use Monday.All of the below events should happen in one week. Using Druid's default grouping, 3 of the events would
-;; have counted for the previous week
-(datasets/expect-with-driver :druid
-  [["2015-10-04" 9]]
-  (druid-query-returning-rows
-    {:filter      [:between [:datetime-field $timestamp :day] "2015-10-04" "2015-10-10"]
-     :aggregation [[:count $id]]
-     :breakout    [[:datetime-field $timestamp :week]]}))
+(deftest start-of-week-test
+  (datasets/test-driver :druid
+    (is (= [["2015-10-04" 9]]
+           (druid-query-returning-rows
+             {:filter      [:between [:datetime-field $timestamp :day] "2015-10-04" "2015-10-10"]
+              :aggregation [[:count $id]]
+              :breakout    [[:datetime-field $timestamp :week]]}))
+        (str "Count the number of events in the given week. Metabase uses Sunday as the start of the week, Druid by "
+             "default will use Monday. All of the below events should happen in one week. Using Druid's default "
+             "grouping, 3 of the events would have counted for the previous week."))))
+
 
 ;; sum, *
 (datasets/expect-with-driver :druid
@@ -458,4 +458,17 @@
     {:aggregation [[:aggregation-options [:distinct $checkins.venue_name] {:name "__count_0"}]]
      :breakout   [$venue_category_name $user_name]
      :order-by   [[:asc [:aggregation 0]] [:asc $checkins.venue_category_name]]
+     :limit      5}))
+
+;; Do we generate the correct count clause for HLL fields?
+(datasets/expect-with-driver :druid
+  [["Bar" "Szymon Theutrich" 13]
+   ["Mexican" "Dwight Gresham" 12]
+   ["American" "Spiros Teofil" 10]
+   ["Bar" "Felipinho Asklepios" 10]
+   ["Bar" "Kaneonuskatew Eiran" 10]]
+  (druid-query-returning-rows
+    {:aggregation [[:aggregation-options [:count $checkins.user_name] {:name "__count_0"}]]
+     :breakout   [$venue_category_name $user_name]
+     :order-by   [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]
      :limit      5}))

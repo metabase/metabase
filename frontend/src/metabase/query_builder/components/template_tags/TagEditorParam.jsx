@@ -160,7 +160,12 @@ export default class TagEditorParam extends Component {
 
         {tag.type === "dimension" && (
           <div className="pb1">
-            <h5 className="pb1 text-normal">{t`Field to map to`}</h5>
+            <h5 className="pb1 text-normal">
+              {t`Field to map to`}
+              {tag.dimension == null && (
+                <span className="text-error mx1">(required)</span>
+              )}
+            </h5>
 
             {(!hasSelectedDimensionField ||
               (hasSelectedDimensionField && fieldMetadataLoaded)) && (
@@ -179,41 +184,43 @@ export default class TagEditorParam extends Component {
           </div>
         )}
 
-        <div className="pb1">
-          <h5 className="pb1 text-normal">{t`Filter widget type`}</h5>
-          <Select
-            className="border-med bg-white block"
-            value={tag["widget-type"]}
-            onChange={e =>
-              this.setParameterAttribute("widget-type", e.target.value)
-            }
-            isInitiallyOpen={!tag["widget-type"] && hasWidgetOptions}
-            placeholder={t`Select…`}
-          >
-            {[{ name: "None", type: undefined }]
-              .concat(widgetOptions)
-              .map(widgetOption => (
-                <Option key={widgetOption.type} value={widgetOption.type}>
-                  {widgetOption.name}
-                </Option>
-              ))}
-          </Select>
-          {hasSelectedDimensionField && !hasWidgetOptions && (
-            <p className="pb1">
-              {t`There aren't any filter widgets for this type of field yet.`}{" "}
-              <Link
-                to={MetabaseSettings.docsUrl(
-                  "users-guide/13-sql-parameters",
-                  "the-field-filter-variable-type",
-                )}
-                target="_blank"
-                className="link"
-              >
-                {t`Learn more`}
-              </Link>
-            </p>
-          )}
-        </div>
+        {hasSelectedDimensionField && (
+          <div className="pb1">
+            <h5 className="pb1 text-normal">{t`Filter widget type`}</h5>
+            <Select
+              className="border-med bg-white block"
+              value={tag["widget-type"]}
+              onChange={e =>
+                this.setParameterAttribute("widget-type", e.target.value)
+              }
+              isInitiallyOpen={!tag["widget-type"] && hasWidgetOptions}
+              placeholder={t`Select…`}
+            >
+              {[{ name: "None", type: undefined }]
+                .concat(widgetOptions)
+                .map(widgetOption => (
+                  <Option key={widgetOption.type} value={widgetOption.type}>
+                    {widgetOption.name}
+                  </Option>
+                ))}
+            </Select>
+            {!hasWidgetOptions && (
+              <p className="pb1">
+                {t`There aren't any filter widgets for this type of field yet.`}{" "}
+                <Link
+                  to={MetabaseSettings.docsUrl(
+                    "users-guide/13-sql-parameters",
+                    "the-field-filter-variable-type",
+                  )}
+                  target="_blank"
+                  className="link"
+                >
+                  {t`Learn more`}
+                </Link>
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="flex align-center pb1">
           <h5 className="text-normal mr1">{t`Required?`}</h5>

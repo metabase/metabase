@@ -13,11 +13,11 @@ import Popover from "metabase/components/Popover";
 import {
   KEYCODE_ESCAPE,
   KEYCODE_ENTER,
-  KEYCODE_COMMA,
   KEYCODE_TAB,
   KEYCODE_UP,
   KEYCODE_DOWN,
   KEYCODE_BACKSPACE,
+  KEY_COMMA,
 } from "metabase/lib/keyboard";
 import { isObscured } from "metabase/lib/dom";
 
@@ -266,7 +266,7 @@ export default class TokenField extends Component {
       this.props.onInputKeyDown(event);
     }
 
-    const keyCode = event.keyCode;
+    const { key, keyCode } = event;
 
     const { filteredOptions, selectedOptionValue } = this.state;
 
@@ -274,7 +274,11 @@ export default class TokenField extends Component {
     if (
       keyCode === KEYCODE_ESCAPE ||
       keyCode === KEYCODE_TAB ||
-      keyCode === KEYCODE_COMMA ||
+      // We check event.key for comma presses because some keyboard layouts
+      // (e.g. Russian) have a letter on that key and require a modifier to type
+      // ",". Similarly, if you want to type "<" on the US keyboard layout, you
+      // need to look at `key` to distinguish it from ",".
+      key === KEY_COMMA ||
       keyCode === KEYCODE_ENTER
     ) {
       if (this.addSelectedOption(event)) {

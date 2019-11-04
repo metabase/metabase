@@ -7,9 +7,8 @@ import moment from "moment";
 
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { formatValue } from "metabase/lib/formatting";
-import { parseTimestamp } from "metabase/lib/time";
 
-import { computeTimeseriesTicksInterval } from "./timeseries";
+import { computeTimeseriesTicksInterval, timeseriesScale } from "./timeseries";
 import { isMultipleOf, getModuloScaleFactor } from "./numeric";
 import { getFriendlyName } from "./utils";
 import { isHistogram } from "./renderer_utils";
@@ -96,10 +95,6 @@ export function applyChartTimeseriesXAxis(
   // setup an x-axis where the dimension is a timeseries
   let dimensionColumn = firstSeries.data.cols[0];
 
-  // get the data's timezone offset from the first row
-  const dataOffset =
-    parseTimestamp(firstSeries.data.rows[0][0]).utcOffset() / 60;
-
   // compute the data interval
   const dataInterval = xInterval;
   let tickInterval = dataInterval;
@@ -120,8 +115,12 @@ export function applyChartTimeseriesXAxis(
       dimensionColumn = { ...dimensionColumn, unit: dataInterval.interval };
     }
 
+    // extract xInterval timezone for updating tickInterval
+    const { timezone } = tickInterval;
+
     // special handling for weeks
     // TODO: are there any other cases where we should do this?
+    let tickFormatUnit = dimensionColumn.unit;
     if (dataInterval.interval === "week") {
       // if tick interval is compressed then show months instead of weeks because they're nicer formatted
       const newTickInterval = computeTimeseriesTicksInterval(
@@ -133,40 +132,35 @@ export function applyChartTimeseriesXAxis(
         newTickInterval.interval !== tickInterval.interval ||
         newTickInterval.count !== tickInterval.count
       ) {
-        (dimensionColumn = { ...dimensionColumn, unit: "month" }),
-          (tickInterval = { interval: "month", count: 1 });
+        tickFormatUnit = "month";
+        tickInterval = { interval: "month", count: 1, timezone };
       }
     }
 
     chart.xAxis().tickFormat(timestamp => {
-      // timestamp is a plain Date object which discards the timezone,
-      // so add it back in so it's formatted correctly
-      const timestampFixed = moment(timestamp)
-        .utcOffset(dataOffset)
-        .format();
-      return formatValue(timestampFixed, {
-        ...chart.settings.column(dimensionColumn),
+      const { column, ...columnSettings } = chart.settings.column(
+        dimensionColumn,
+      );
+      return formatValue(timestamp, {
+        ...columnSettings,
+        column: { ...column, unit: tickFormatUnit },
         type: "axis",
         compact: chart.settings["graph.x_axis.axis_enabled"] === "compact",
       });
     });
 
     // Compute a sane interval to display based on the data granularity, domain, and chart width
-    tickInterval = computeTimeseriesTicksInterval(
-      xDomain,
-      tickInterval,
-      chart.width(),
-    );
-    chart.xAxis().ticks(tickInterval.rangeFn, tickInterval.count);
-  } else {
-    chart.xAxis().ticks(0);
+    tickInterval = {
+      ...computeTimeseriesTicksInterval(xDomain, tickInterval, chart.width()),
+      timezone,
+    };
   }
 
   // pad the domain slightly to prevent clipping
   xDomain = stretchTimeseriesDomain(xDomain, dataInterval);
 
   // set the x scale
-  chart.x(d3.time.scale.utc().domain(xDomain)); //.nice(d3.time[dataInterval.interval]));
+  chart.x(timeseriesScale(tickInterval).domain(xDomain));
 
   // set the x units (used to compute bar size)
   chart.xUnits((start, stop) =>
@@ -398,15 +392,22 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
       // TODO: right axis?
       chart.elasticY(true);
     } else {
-      if (
-        !(
-          (yExtent[0] < 0 && yExtent[1] < 0) ||
-          (yExtent[0] > 0 && yExtent[1] > 0)
-        )
-      ) {
+      const [min, max] = yExtent;
+      if (!((min < 0 && max < 0) || (min > 0 && max > 0))) {
         throw "Y-axis must not cross 0 when using log scale.";
       }
-      scale.domain(yExtent);
+
+      // With chart.elasticY, the y axis adjusts to show the beginning of the
+      // bars. If there are any bar series, we try to do the same with the log
+      // scale. We start at ±1 because things get wacky in (0, ±1].
+      const noBarSeries = series.every(s => s.card.display !== "bar");
+      if (noBarSeries) {
+        scale.domain([min, max]);
+      } else if (min < 0) {
+        scale.domain([min, -1]);
+      } else {
+        scale.domain([1, max]);
+      }
     }
     axis.scale(scale);
   } else {

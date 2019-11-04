@@ -43,7 +43,7 @@ describe("Pulse", () => {
     questionCount = await createSavedQuestion(
       Question.create({ databaseId: 1, tableId: 1, metadata: null })
         .query()
-        .addAggregation(["count"])
+        .aggregate(["count"])
         .question()
         .setDisplay("scalar")
         .setDisplayName("count"),

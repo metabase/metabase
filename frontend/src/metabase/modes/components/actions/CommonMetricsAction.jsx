@@ -19,6 +19,10 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
   return activeMetrics.slice(0, 5).map(metric => ({
     name: "common-metric",
     title: <span>{jt`View ${<strong>{metric.name}</strong>}`}</span>,
-    question: () => question.summarize(["metric", metric.id]),
+    question: () =>
+      query
+        .aggregate(["metric", metric.id])
+        .question()
+        .setDefaultDisplay(),
   }));
 };

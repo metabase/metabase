@@ -25,6 +25,8 @@ export default class CardRenderer extends Component {
     series: PropTypes.array.isRequired,
     renderer: PropTypes.func.isRequired,
     onRenderError: PropTypes.func.isRequired,
+    isEditing: PropTypes.bool,
+    isDashboard: PropTypes.bool,
   };
 
   _deregister: ?DeregisterFunction;
@@ -59,7 +61,8 @@ export default class CardRenderer extends Component {
   }
 
   renderChart() {
-    if (this.props.width == null || this.props.height == null) {
+    const { width, height, isDashboard, isEditing, isSettings } = this.props;
+    if (width == null || height == null) {
       return;
     }
 
@@ -69,14 +72,23 @@ export default class CardRenderer extends Component {
     this._deregisterChart();
 
     // reset the DOM:
-    let element = parent.firstChild;
-    if (element) {
-      parent.removeChild(element);
+    while (parent.firstChild) {
+      parent.removeChild(parent.firstChild);
     }
 
     // create a new container element
-    element = document.createElement("div");
+    const element = document.createElement("div");
     parent.appendChild(element);
+
+    if (isDashboard && isEditing && !isSettings) {
+      // If this card is a dashboard that's currently being edited, we cover the
+      // content to prevent interaction with the chart. The !isSettings
+      // exception is to handle modals that appear above a dashboard.
+      const mouseBlocker = document.createElement("div");
+      mouseBlocker.classList.add("spread");
+      mouseBlocker.style.setProperty("pointer-events", "all");
+      parent.appendChild(mouseBlocker);
+    }
 
     try {
       this._deregister = this.props.renderer(element, this.props);

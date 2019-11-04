@@ -18,9 +18,8 @@ import { shallowEqual } from "recompose";
 import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 
 import {
-  getOperators,
-  getBreakouts,
-  getAggregatorsWithFields,
+  getFilterOperators,
+  getAggregationOperatorsWithFields,
 } from "metabase/lib/schema_metadata";
 import { getIn } from "icepick";
 
@@ -59,6 +58,7 @@ export const getShallowMetrics = getNormalizedMetrics;
 export const getShallowSegments = getNormalizedSegments;
 
 // fully connected graph of all databases, tables, fields, segments, and metrics
+// TODO: do this lazily using ES6 Proxies
 export const getMetadata = createSelector(
   [
     getNormalizedDatabases,
@@ -97,18 +97,20 @@ export const getMetadata = createSelector(
       }
     });
 
-    hydrate(meta.fields, "operators", f => getOperators(f, f.table));
-    hydrate(meta.tables, "aggregation_options", t =>
-      getAggregatorsWithFields(t),
+    hydrate(meta.fields, "filter_operators", f =>
+      getFilterOperators(f, f.table),
     );
-    hydrate(meta.tables, "breakout_options", t => getBreakouts(t.fields));
+    hydrate(meta.tables, "aggregation_operators", t =>
+      getAggregationOperatorsWithFields(t),
+    );
 
     hydrate(meta.fields, "values", f => getFieldValues(f));
     hydrate(meta.fields, "remapping", f => new Map(getRemappings(f)));
 
     hydrateLookup(meta.databases, "tables", "id");
     hydrateLookup(meta.tables, "fields", "id");
-    hydrateLookup(meta.fields, "operators", "name");
+    hydrateLookup(meta.fields, "filter_operators", "name");
+    hydrateLookup(meta.tables, "aggregation_operators", "short");
 
     return meta;
   },

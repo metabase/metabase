@@ -97,7 +97,7 @@
         (throw (ex-info (.getMessage e) {:status-code 400}))))))
 
 (defn get-in-unsigned-token-or-throw
-  "Find KEYSEQ in the UNSIGNED-TOKEN (a JWT token decoded by `unsign`) or throw a 400."
+  "Find `keyseq` in the `unsigned-token` (a JWT token decoded by `unsign`) or throw a 400."
   [unsigned-token keyseq]
   (or (get-in unsigned-token keyseq)
-      (throw (ex-info (tru "Token is missing value for keypath" " " keyseq) {:status-code 400}))))
+      (throw (ex-info (tru "Token is missing value for keypath {0}" keyseq) {:status-code 400}))))

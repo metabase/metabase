@@ -40,11 +40,6 @@
   <body>
     <div id="root"></div>
 
-    <!-- Using the Web Font Loader lets us load the fonts asynchronously for faster page loads -- see https://github.com/typekit/webfontloader -->
-    <!-- If you modify this script, make sure you update the whitelisted Content-Security-Policy hash in metabase.middleware.security -->
-    <script type="text/javascript">{{{webFontConfigJS}}}</script>
-    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js" async></script>
-
     <!-- If Google Auth is enabled load the Google Auth JS lib -->
     {{#enableGoogleAuth}}
       <script type="text/javascript" src="https://apis.google.com/js/api:client.js" async></script>
