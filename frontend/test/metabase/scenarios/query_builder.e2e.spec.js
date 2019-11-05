@@ -77,7 +77,7 @@ describe("query builder", () => {
         await app.async.findByText("Summarize").click();
         await app.async.findByText("Category").click();
         await app.async.findByText("Done").click();
-        await app.async.findByText("Count of rows by Product → Category");
+        await app.async.findByText("Count by Product → Category");
       });
     });
 

@@ -537,11 +537,11 @@ export const loadMetadataForCard = createThunkAction(
       const query = new Question(card, getMetadata(getState())).query();
       if (query instanceof StructuredQuery) {
         try {
-          const rootTable = query.rootTable();
-          if (rootTable) {
+          const rootTableId = query.rootTableId();
+          if (rootTableId != null) {
             await Promise.all([
-              dispatch(Tables.actions.fetchTableMetadata(rootTable)),
-              dispatch(Tables.actions.fetchForeignKeys(rootTable)),
+              dispatch(Tables.actions.fetchTableMetadata({ id: rootTableId })),
+              dispatch(Tables.actions.fetchForeignKeys({ id: rootTableId })),
             ]);
           }
           await Promise.all(

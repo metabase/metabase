@@ -1456,6 +1456,13 @@ export default class StructuredQuery extends AtomicQuery {
     return this.rootQuery().table();
   }
 
+  /**
+   * returns the original Table ID at the beginning of the nested queries
+   */
+  rootTableId(): ?TableId {
+    return this.rootQuery().sourceTableId();
+  }
+
   setSourceQuery(sourceQuery: DatasetQuery | StructuredQuery): StructuredQuery {
     if (sourceQuery instanceof StructuredQuery) {
       if (this.sourceQuery() === sourceQuery) {
