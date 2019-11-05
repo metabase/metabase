@@ -511,15 +511,15 @@ export function createEntity(def: EntityDefinition): Entity {
 
   const getLoading = createSelector(
     [getRequestState],
-    requestState => requestState.state === "LOADING",
+    requestState => requestState.loading,
   );
   const getLoaded = createSelector(
     [getRequestState],
-    requestState => requestState.state === "LOADED",
+    requestState => requestState.loaded,
   );
   const getFetched = createSelector(
     [getRequestState],
-    requestState => !!requestState.fetched,
+    requestState => requestState.fetched,
   );
   const getError = createSelector(
     [getRequestState],

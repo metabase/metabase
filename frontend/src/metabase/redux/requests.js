@@ -1,48 +1,83 @@
 /* @flow weak */
 
 import { handleActions, createAction } from "metabase/lib/redux";
-import { updateIn } from "icepick";
+import { updateIn, dissocIn } from "icepick";
 
-export const SET_REQUEST_STATE = "metabase/requests/SET_REQUEST_STATE";
-export const CLEAR_REQUEST_STATE = "metabase/requests/CLEAR_REQUEST_STATE";
+export const setRequestLoading = createAction(
+  "metabase/requests/SET_REQUEST_LOADING",
+  statePath => ({ statePath }),
+);
+export const setRequestLoaded = createAction(
+  "metabase/requests/SET_REQUEST_LOADED",
+  statePath => ({ statePath }),
+);
+export const setRequestError = createAction(
+  "metabase/requests/SET_REQUEST_ERROR",
+  (statePath, error) => ({ statePath, error }),
+);
+export const setRequestUnloaded = createAction(
+  "metabase/requests/SET_REQUEST_UNLOADED",
+  statePath => ({ statePath }),
+);
 
-export const setRequestState = createAction(SET_REQUEST_STATE);
-export const clearRequestState = createAction(CLEAR_REQUEST_STATE);
+const RESET_REQUEST_STATES = "metabase/requests/RESET_REQUEST_STATES";
+export const resetRequestStates = createAction(
+  RESET_REQUEST_STATES,
+  statePath => ({ statePath }),
+);
 
-// e.x. for statePath ["a", "b", "fetch"]
-//
-// {
-//     a: {
-//       b: {
-//         fetch: {
-//           state: "LOADING"|"LOADED",
-//           error: ...
-//           fetched: true
-//         }
-//       }
-//     }
-// }
+const initialRequestState = {
+  loading: false,
+  loaded: false,
+  fetched: false,
+  error: null,
+};
 
-// For a given state path, returns the current request state ("LOADING", "LOADED" or a request error)
-export default handleActions(
+const requestStateReducer = handleActions(
   {
-    [SET_REQUEST_STATE]: {
-      next: (state, { payload }) =>
-        updateIn(state, payload.statePath, (previous = {}) => ({
-          ...previous,
-          fetched: previous.fetched || payload.state === "LOADED",
-          state: payload.state,
-          error: payload.error,
-        })),
+    [setRequestLoading]: {
+      next: state => ({
+        ...state,
+        loading: true,
+        loaded: false,
+        error: null,
+      }),
     },
-    [CLEAR_REQUEST_STATE]: {
-      next: (state, { payload }) =>
-        updateIn(state, payload.statePath, (previous = {}) => ({
-          ...previous,
-          state: null,
-          error: false,
-        })),
+    [setRequestLoaded]: {
+      next: state => ({
+        ...state,
+        loading: false,
+        loaded: true,
+        error: null,
+        fetched: true,
+      }),
+    },
+    [setRequestError]: {
+      next: (state, { payload: { error } }) => ({
+        ...state,
+        loading: false,
+        loaded: false,
+        error: error,
+      }),
+    },
+    [setRequestUnloaded]: {
+      next: state => ({
+        ...initialRequestState,
+        fetched: state.fetched,
+      }),
     },
   },
-  {},
+  initialRequestState,
 );
+
+export default (state = {}, action) => {
+  if (action && action.payload && action.payload.statePath) {
+    if (action.type === RESET_REQUEST_STATES) {
+      return dissocIn(state, action.payload.statePath);
+    }
+    return updateIn(state, action.payload.statePath, requestState =>
+      requestStateReducer(requestState, action),
+    );
+  }
+  return state;
+};

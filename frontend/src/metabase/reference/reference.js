@@ -322,7 +322,7 @@ export const tryUpdateGuide = async (formFields, props) => {
     updateMetricImportantFields,
     updateSetting,
     fetchGuide,
-    clearRequestState,
+    resetRequestStates,
   } = props;
 
   startLoading();
@@ -520,7 +520,7 @@ export const tryUpdateGuide = async (formFields, props) => {
     if (updatingData.length > 0) {
       await Promise.all(updatingData);
 
-      clearRequestState({ statePath: ["reference", "guide"] });
+      resetRequestStates(["reference", "guide"]);
 
       await fetchGuide();
     }
