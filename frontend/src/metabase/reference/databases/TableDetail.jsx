@@ -185,8 +185,8 @@ export default class TableDetail extends Component {
           error={loadingError}
         >
           {() => (
-            <div className="wrapper wrapper--trim">
-              <Card px={4} pt={2} mb={4}>
+            <div className="wrapper">
+              <Card px={3} pt={2} mb={4}>
                 <List>
                   <li className="relative">
                     <Detail

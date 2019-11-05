@@ -151,7 +151,7 @@ export default class DatabaseDetail extends Component {
           error={loadingError}
         >
           {() => (
-            <div className="wrapper wrapper--trim">
+            <div className="wrapper">
               <Card px={3} pt={2} mb={4}>
                 <List>
                   <li className="relative">

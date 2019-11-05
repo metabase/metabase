@@ -30,7 +30,7 @@ const EditableReferenceHeader = ({
   displayNameFormField,
   nameFormField,
 }) => (
-  <div className="wrapper wrapper--trim">
+  <div className="wrapper">
     <div
       className={cx("relative", L.header)}
       style={type === "segment" ? { marginBottom: 0 } : {}}
