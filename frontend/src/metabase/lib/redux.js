@@ -71,11 +71,7 @@ export const fetchData = async ({
 
   const statePath = requestStatePath.concat(["fetch"]);
   try {
-    const requestState = getIn(getState(), [
-      "requests",
-      "states",
-      ...statePath,
-    ]);
+    const requestState = getIn(getState(), ["requests", ...statePath]);
     if (!requestState || requestState.error || reload) {
       dispatch(setRequestState({ statePath, state: "LOADING" }));
       const data = await getData();
@@ -279,11 +275,7 @@ function withCachedData(getExistingStatePath, getRequestStatePath) {
         const { reload, properties } = options;
 
         const existingStatePath = getExistingStatePath(...args);
-        const requestStatePath = [
-          "requests",
-          "states",
-          ...getRequestStatePath(...args),
-        ];
+        const requestStatePath = ["requests", ...getRequestStatePath(...args)];
         const existingData = getIn(getState(), existingStatePath);
         const requestState = getIn(getState(), requestStatePath);
 

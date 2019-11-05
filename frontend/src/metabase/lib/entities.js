@@ -491,32 +491,39 @@ export function createEntity(def: EntityDefinition): Entity {
 
   // REQUEST STATE SELECTORS
 
-  const getStatePath = props =>
-    props.entityId != null
-      ? getObjectStatePath(props.entityId)
-      : getListStatePath(props.entityQuery);
+  const getStatePath = ({ entityId, entityQuery } = {}) =>
+    entityId != null
+      ? getObjectStatePath(entityId)
+      : getListStatePath(entityQuery);
 
-  const getRequestState = (state, props = {}) =>
-    getIn(state, ["requests", "states", ...getStatePath(props), "fetch"]);
+  const getRequestStatePath = ({
+    entityId,
+    entityQuery,
+    requestType = "fetch",
+  } = {}) => [
+    "requests",
+    ...getStatePath({ entityId, entityQuery }),
+    requestType,
+  ];
 
-  const getFetchState = (state, props = {}) =>
-    getIn(state, ["requests", "fetched", ...getStatePath(props)]);
+  const getRequestState = (state, props) =>
+    getIn(state, getRequestStatePath(props)) || {};
 
   const getLoading = createSelector(
     [getRequestState],
-    requestState => (requestState ? requestState.state === "LOADING" : false),
+    requestState => requestState.state === "LOADING",
   );
   const getLoaded = createSelector(
     [getRequestState],
-    requestState => (requestState ? requestState.state === "LOADED" : false),
+    requestState => requestState.state === "LOADED",
   );
   const getFetched = createSelector(
-    [getFetchState],
-    fetchState => !!fetchState,
+    [getRequestState],
+    requestState => !!requestState.fetched,
   );
   const getError = createSelector(
     [getRequestState],
-    requestState => (requestState ? requestState.error : null),
+    requestState => requestState.error,
   );
 
   entity.selectors = {
@@ -597,7 +604,7 @@ export function createEntity(def: EntityDefinition): Entity {
     // reset all list request states when creating, deleting, or updating
     // to force a reload
     if (entity.actionShouldInvalidateLists(action)) {
-      return dissocIn(state, ["states", "entities", entity.name + "_list"]);
+      return dissocIn(state, ["entities", entity.name + "_list"]);
     }
     return state;
   };

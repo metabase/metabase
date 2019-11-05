@@ -17,9 +17,7 @@ describe("Metadata", () => {
     existingStatePath = statePath,
     getState = () => ({
       requests: {
-        states: {
-          test: { path: { fetch: requestState, update: requestState } },
-        },
+        test: { path: { fetch: requestState, update: requestState } },
       },
       test: { path: existingData },
     }),
