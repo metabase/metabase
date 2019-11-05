@@ -14,6 +14,8 @@ Data sandboxes do not take effect on SQL/native queries, saved or otherwise. Thi
 2. If a user views a saved SQL/native query, data sandboxes will not filter the results of that query, even if the query includes data from a table for which the user only has sandboxed access.
 3. A user can start a new Custom GUI question using any saved question they have access to as the starting data for that new question (a "nested" question). If they have access to view any saved SQL questions, they can use such a question as starting data for their new question, and this new question will not be filtered by data sandboxes.
 
+An important distinction to make is that you can use a saved SQL query in the _creation_ of a sandbox. One of the options for setting up a data sandbox allows you to display the results of a saved question instead of the raw table. In this situation, you might choose to use a SQL query to supply the results that you'd like to display to a specific user group instead of the raw table itself.
+
 With that said, let's now take a look at setting up a data sandbox.
 
 ### Getting user attributes
