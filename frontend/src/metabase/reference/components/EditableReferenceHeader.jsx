@@ -87,7 +87,7 @@ const EditableReferenceHeader = ({
         )}
         {user && user.is_superuser && !isEditing && (
           <Button
-            primary
+            secondary
             icon="pencil"
             style={{ fontSize: 14 }}
             onClick={startEditing}

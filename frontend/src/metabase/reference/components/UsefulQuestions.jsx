@@ -17,12 +17,7 @@ const UsefulQuestions = ({ questions }) => (
       </div>
       <div className={S.usefulQuestions}>
         {questions.map((question, index, questions) => (
-          <QueryButton
-            key={index}
-            className={cx("border-bottom", "pt1", "pb1")}
-            iconClass={L.icon}
-            {...question}
-          />
+          <QueryButton key={index} iconClass={L.icon} {...question} />
         ))}
       </div>
     </div>

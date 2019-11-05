@@ -37,7 +37,14 @@
 }
 
 :local(.tableActualName) {
-  color: var(--subtitle-color);
+  font-family: monospace;
+  color: var(--color-accent3);
+  background-color: var(--color-bg-light);
+  border-radius: 4px;
+  padding: 0.2em 0.4em;
+  line-height: 1.4em;
+  white-space: pre-wrap;
+  font-size: 13px;
 }
 
 :local(.guideLeftPadded) {

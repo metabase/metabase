@@ -152,7 +152,7 @@ export default class DatabaseDetail extends Component {
         >
           {() => (
             <div className="wrapper wrapper--trim">
-              <Card px={3} pt={2}>
+              <Card px={3} pt={2} mb={4}>
                 <List>
                   <li className="relative">
                     <Detail

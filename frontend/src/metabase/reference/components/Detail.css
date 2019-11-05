@@ -11,7 +11,7 @@
 
 :local(.detailBody) {
   composes: flex-full from "style";
-  max-width: 550px;
+  max-width: 600px;
   padding-top: 20px;
   padding-bottom: 20px;
 }
@@ -22,9 +22,10 @@
 }
 
 :local(.detailSubtitle) {
-  composes: text-dark text-paragraph mt2 from "style";
+  composes: text-dark text-paragraph mt1 from "style";
   white-space: pre-wrap;
-  font-size: 18px;
+  font-size: 16px;
+  line-height: 24px;
 }
 
 :local(.detailSubtitleLight) {

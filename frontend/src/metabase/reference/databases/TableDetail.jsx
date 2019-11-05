@@ -14,6 +14,7 @@ import EditHeader from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import Detail from "metabase/reference/components/Detail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
+import Card from "metabase/components/Card";
 
 import { getQuestionUrl } from "../utils";
 
@@ -185,55 +186,57 @@ export default class TableDetail extends Component {
         >
           {() => (
             <div className="wrapper wrapper--trim">
-              <List>
-                <li className="relative">
-                  <Detail
-                    id="description"
-                    name={t`Description`}
-                    description={entity.description}
-                    placeholder={t`No description yet`}
-                    isEditing={isEditing}
-                    field={description}
-                  />
-                </li>
-                {!isEditing && (
+              <Card px={4} pt={2} mb={4}>
+                <List>
                   <li className="relative">
                     <Detail
-                      id="name"
-                      name={t`Actual name in database`}
-                      description={entity.name}
-                      subtitleClass={S.tableActualName}
+                      id="description"
+                      name={t`Description`}
+                      description={entity.description}
+                      placeholder={t`No description yet`}
+                      isEditing={isEditing}
+                      field={description}
                     />
                   </li>
-                )}
-                <li className="relative">
-                  <Detail
-                    id="points_of_interest"
-                    name={t`Why this table is interesting`}
-                    description={entity.points_of_interest}
-                    placeholder={t`Nothing interesting yet`}
-                    isEditing={isEditing}
-                    field={points_of_interest}
-                  />
-                </li>
-                <li className="relative">
-                  <Detail
-                    id="caveats"
-                    name={t`Things to be aware of about this table`}
-                    description={entity.caveats}
-                    placeholder={t`Nothing to be aware of yet`}
-                    isEditing={isEditing}
-                    field={caveats}
-                  />
-                </li>
-                {!isEditing && (
+                  {!isEditing && (
+                    <li className="relative">
+                      <Detail
+                        id="name"
+                        name={t`Actual name in database`}
+                        description={entity.name}
+                        subtitleClass={S.tableActualName}
+                      />
+                    </li>
+                  )}
                   <li className="relative">
-                    <UsefulQuestions
-                      questions={interestingQuestions(this.props.table)}
+                    <Detail
+                      id="points_of_interest"
+                      name={t`Why this table is interesting`}
+                      description={entity.points_of_interest}
+                      placeholder={t`Nothing interesting yet`}
+                      isEditing={isEditing}
+                      field={points_of_interest}
                     />
                   </li>
-                )}
-              </List>
+                  <li className="relative">
+                    <Detail
+                      id="caveats"
+                      name={t`Things to be aware of about this table`}
+                      description={entity.caveats}
+                      placeholder={t`Nothing to be aware of yet`}
+                      isEditing={isEditing}
+                      field={caveats}
+                    />
+                  </li>
+                  {!isEditing && (
+                    <li className="relative">
+                      <UsefulQuestions
+                        questions={interestingQuestions(this.props.table)}
+                      />
+                    </li>
+                  )}
+                </List>
+              </Card>
             </div>
           )}
         </LoadingAndErrorWrapper>
