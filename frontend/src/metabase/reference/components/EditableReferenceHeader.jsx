@@ -70,18 +70,14 @@ const EditableReferenceHeader = ({
                 : name}
             </Ellipsified>,
             headerLink && (
-              <div key="2" className={cx("flex-full", S.headerButton)}>
-                <Link
-                  to={headerLink}
-                  className={cx("Button", "Button--borderless", "ml3")}
-                  data-metabase-event={`Data Reference;Entity -> QB click;${type}`}
-                >
-                  <div className="flex align-center relative">
-                    <span className="mr1 flex-no-shrink">{t`See this ${type}`}</span>
-                    <Icon name="chevronright" size={16} />
-                  </div>
-                </Link>
-              </div>
+              <Button
+                primary
+                className="flex flex-align-right mr2"
+                style={{ fontSize: 14 }}
+                data-metabase-event={`Data Reference;Entity -> QB click;${type}`}
+              >
+                <Link to={headerLink}>{t`See this ${type}`}</Link>
+              </Button>
             ),
           ]
         )}
