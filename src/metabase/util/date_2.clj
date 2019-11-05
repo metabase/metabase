@@ -15,7 +15,12 @@
   (condp instance? t
     LocalDateTime (t/zoned-date-time t (t/zone-id timezone-id))
     LocalDate     (t/zoned-date-time t (t/local-time 0) (t/zone-id timezone-id))
-    LocalTime     (t/offset-time t (t/zone-id timezone-id))
+    ;; don't attempt to convert local times to offset times because we have no idea what the offset actually should
+    ;; be, since we don't know the date. Since it's not an exact instant in time we're not using it to make ranges in
+    ;; MBQL filter clauses anyway
+    ;;
+    ;; TODO - not sure we even want to be adding zone-id info for the timestamps above either
+    #_LocalTime     #_(t/offset-time t (t/zone-id timezone-id))
     t))
 
 (defn parse
@@ -62,6 +67,7 @@
   ^String [t]
   (format* (temporal->sql-formatter t) t))
 
+;; TODO - where are these used?
 (defn time? [x]
   (some #(instance? % x) [OffsetTime LocalTime]))
 
@@ -165,12 +171,6 @@
      :quarter     (-> (.with t (adjusters :first-day-of-quarter))  (t/truncate-to :days))
      :year        (-> (t/adjust t :first-day-of-year)              (t/truncate-to :days)))))
 
-
-(defn from-legacy ^:deprecated ^Temporal [v timezone-id]
-  (condp instance? v
-    java.sql.Date  (OffsetDateTime/ofInstant (t/instant (.getTime ^java.sql.Date v)) (t/zone-id timezone-id))
-    java.util.Date (OffsetDateTime/ofInstant (t/instant v) (t/zone-id timezone-id))
-    java.sql.Time  (t/offset-time (t/instant (.getTime ^java.sql.Time v)) (t/zone-id timezone-id))))
 
 (defn bucket
   ([unit]

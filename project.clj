@@ -166,6 +166,7 @@
 
     :dependencies
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
+     [jonase/eastwood "0.3.6" :exclusions [org.clojure/clojure]]      ; to run Eastwood
      [methodical "0.9.4-alpha"]
      [pjstadig/humane-test-output "0.9.0"]
      [ring/ring-mock "0.3.2"]]
@@ -291,7 +292,7 @@
    :docstring-checker
    [:include-all-drivers
     {:plugins
-     [[docstring-checker "1.1.0-SNAPSHOT"]]
+     [[docstring-checker "1.1.0"]]
 
      :docstring-checker
      {:include [#"^metabase"]

@@ -44,9 +44,12 @@
                "2019-10-28T13:14"        (t/zoned-date-time 2019 10 28 13 14  0               0 (t/zone-id "America/Los_Angeles"))
                "2019-10-28T13:14:15"     (t/zoned-date-time 2019 10 28 13 14 15               0 (t/zone-id "America/Los_Angeles"))
                "2019-10-28T13:14:15.555" (t/zoned-date-time 2019 10 28 13 14 15 (* 555 1000000) (t/zone-id "America/Los_Angeles"))
-               "13:30"                   (t/offset-time 13 30  0               0 (t/zone-offset -7))
-               "13:30:20"                (t/offset-time 13 30 20               0 (t/zone-offset -7))
-               "13:30:20.555"            (t/offset-time 13 30 20 (* 555 1000000) (t/zone-offset -7))}]
+               ;; Times without timezone info should always be parsed as `LocalTime` regardless of whether a default
+               ;; timezone if provided. That's because we can't convert the zone to an offset because the offset is up
+               ;; in the air because of daylight savings.
+               "13:30"                   (t/local-time 13 30  0               0)
+               "13:30:20"                (t/local-time 13 30 20               0)
+               "13:30:20.555"            (t/local-time 13 30 20 (* 555 1000000))}]
         (is-parsed? expected s "America/Los_Angeles")))
     (testing "literals with a timezone offset"
       (doseq [[s expected]
