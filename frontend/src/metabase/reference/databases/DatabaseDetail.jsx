@@ -11,6 +11,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import EditHeader from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import Detail from "metabase/reference/components/Detail";
+import Card from "metabase/components/Card";
 
 import {
   getDatabase,
@@ -136,7 +137,6 @@ export default class DatabaseDetail extends Component {
           entity={entity}
           table={table}
           type="database"
-          headerIcon="database"
           name="Details"
           user={user}
           isEditing={isEditing}
@@ -152,38 +152,40 @@ export default class DatabaseDetail extends Component {
         >
           {() => (
             <div className="wrapper wrapper--trim">
-              <List>
-                <li className="relative">
-                  <Detail
-                    id="description"
-                    name={t`Description`}
-                    description={entity.description}
-                    placeholder={t`No description yet`}
-                    isEditing={isEditing}
-                    field={description}
-                  />
-                </li>
-                <li className="relative">
-                  <Detail
-                    id="points_of_interest"
-                    name={t`Why this database is interesting`}
-                    description={entity.points_of_interest}
-                    placeholder={t`Nothing interesting yet`}
-                    isEditing={isEditing}
-                    field={points_of_interest}
-                  />
-                </li>
-                <li className="relative">
-                  <Detail
-                    id="caveats"
-                    name={t`Things to be aware of about this database`}
-                    description={entity.caveats}
-                    placeholder={t`Nothing to be aware of yet`}
-                    isEditing={isEditing}
-                    field={caveats}
-                  />
-                </li>
-              </List>
+              <Card px={3} pt={2}>
+                <List>
+                  <li className="relative">
+                    <Detail
+                      id="description"
+                      name={t`Description`}
+                      description={entity.description}
+                      placeholder={t`No description yet`}
+                      isEditing={isEditing}
+                      field={description}
+                    />
+                  </li>
+                  <li className="relative">
+                    <Detail
+                      id="points_of_interest"
+                      name={t`Why this database is interesting`}
+                      description={entity.points_of_interest}
+                      placeholder={t`Nothing interesting yet`}
+                      isEditing={isEditing}
+                      field={points_of_interest}
+                    />
+                  </li>
+                  <li className="relative">
+                    <Detail
+                      id="caveats"
+                      name={t`Things to be aware of about this database`}
+                      description={entity.caveats}
+                      placeholder={t`Nothing to be aware of yet`}
+                      isEditing={isEditing}
+                      field={caveats}
+                    />
+                  </li>
+                </List>
+              </Card>
             </div>
           )}
         </LoadingAndErrorWrapper>

@@ -6,7 +6,6 @@ import pure from "recompose/pure";
 
 import S from "./ReferenceHeader.css";
 import L from "metabase/components/List.css";
-import E from "metabase/reference/components/EditButton.css";
 
 import IconBorder from "metabase/components/IconBorder";
 import Icon from "metabase/components/Icon";
@@ -51,12 +50,7 @@ const ReferenceHeader = ({
           <div key="2" className={cx("flex-full", S.headerButton)}>
             <Link
               to={headerLink}
-              className={cx(
-                "Button",
-                "Button--borderless",
-                "ml3",
-                E.editButton,
-              )}
+              className={cx("Button", "Button--borderless", "ml3")}
               data-metabase-event={`Data Reference;Entity -> QB click;${type}`}
             >
               <div className="flex align-center relative">

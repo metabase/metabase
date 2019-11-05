@@ -6,13 +6,12 @@ import pure from "recompose/pure";
 import { t } from "ttag";
 import S from "./ReferenceHeader.css";
 import L from "metabase/components/List.css";
-import E from "metabase/reference/components/EditButton.css";
 
 import IconBorder from "metabase/components/IconBorder";
 import Icon from "metabase/components/Icon";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Ellipsified from "metabase/components/Ellipsified";
-import EditButton from "metabase/reference/components/EditButton";
+import Button from "metabase/components/Button";
 
 import { color } from "metabase/lib/colors";
 
@@ -36,21 +35,6 @@ const EditableReferenceHeader = ({
       className={cx("relative", L.header)}
       style={type === "segment" ? { marginBottom: 0 } : {}}
     >
-      <div className={L.leftIcons}>
-        {headerIcon && (
-          <IconBorder
-            borderWidth="0"
-            style={{ backgroundColor: color("bg-medium") }}
-          >
-            <Icon
-              className="text-brand"
-              name={headerIcon}
-              width={24}
-              height={24}
-            />
-          </IconBorder>
-        )}
-      </div>
       {type === "table" && !hasSingleSchema && !isEditing && (
         <div className={S.headerSchema}>{entity.schema}</div>
       )}
@@ -89,12 +73,7 @@ const EditableReferenceHeader = ({
               <div key="2" className={cx("flex-full", S.headerButton)}>
                 <Link
                   to={headerLink}
-                  className={cx(
-                    "Button",
-                    "Button--borderless",
-                    "ml3",
-                    E.editButton,
-                  )}
+                  className={cx("Button", "Button--borderless", "ml3")}
                   data-metabase-event={`Data Reference;Entity -> QB click;${type}`}
                 >
                   <div className="flex align-center relative">
@@ -107,7 +86,14 @@ const EditableReferenceHeader = ({
           ]
         )}
         {user && user.is_superuser && !isEditing && (
-          <EditButton className="ml1" startEditing={startEditing} />
+          <Button
+            primary
+            icon="pencil"
+            style={{ fontSize: 14 }}
+            onClick={startEditing}
+          >
+            {t`Edit`}
+          </Button>
         )}
       </div>
     </div>
