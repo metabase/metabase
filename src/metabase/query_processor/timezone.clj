@@ -12,30 +12,44 @@
 
 (def ^:private ^:dynamic *results-timezone-id-override* nil)
 
-(defn do-with-report-timezone-id [timezone-id thunk]
+;; TIMEZONE FIXME - since these are all intended for REPL and test usage we should move them all into a test namespace.
+
+(defn do-with-report-timezone-id
+  "Impl for `with-report-timezone-id`."
+  [timezone-id thunk]
   {:pre [((some-fn nil? string?) timezone-id)]}
-  ;; TODO - HACKY
+  ;; TODO - HACKY. Not sure if we want this.
   (#'driver/notify-all-databases-updated)
   (binding [*report-timezone-id-override* (or timezone-id ::nil)]
     (thunk)))
 
-(defmacro with-report-timezone-id [timezone-id & body]
+(defmacro with-report-timezone-id
+  "Override the `report-timezone` Setting and execute `body`. Intended primarily for REPL and test usage."
+  [timezone-id & body]
   `(do-with-report-timezone-id ~timezone-id (fn [] ~@body)))
 
-(defn do-with-database-timezone-id [timezone-id thunk]
+(defn do-with-database-timezone-id
+  "Impl for `with-database-timezone-id`."
+  [timezone-id thunk]
   {:pre [((some-fn nil? string?) timezone-id)]}
   (binding [*database-timezone-id-override* (or timezone-id ::nil)]
     (thunk)))
 
-(defmacro with-database-timezone-id [timezone-id & body]
+(defmacro with-database-timezone-id
+  "Override the database timezone ID and execute `body`. Intended primarily for REPL and test usage."
+  [timezone-id & body]
   `(do-with-database-timezone-id ~timezone-id (fn [] ~@body)))
 
-(defn do-with-results-timezone-id [timezone-id thunk]
+(defn do-with-results-timezone-id
+  "Impl for `with-results-timezone-id`."
+  [timezone-id thunk]
   {:pre [((some-fn nil? string?) timezone-id)]}
   (binding [*results-timezone-id-override* (or timezone-id ::nil)]
     (thunk)))
 
-(defmacro with-results-timezone-id [timezone-id & body]
+(defmacro with-results-timezone-id
+  "Override the determined results timezone ID and execute `body`. Intended primarily for REPL and test usage."
+  [timezone-id & body]
   `(do-with-results-timezone-id ~timezone-id (fn [] ~@body)))
 
 ;; TODO - consider making this `metabase.util.date-2/the-timezone-id`
@@ -70,11 +84,13 @@
     (valid-timezone-id (report-timezone-id*))))
 
 (defn database-timezone-id
+  "The timezone that the current database is in, as determined by the most recent sync."
   ^String []
   (valid-timezone-id
    (database-timezone-id*)))
 
 (defn system-timezone-id
+  "The system timezone of this Metabase instance."
   ^String []
   (.. (t/system-clock) getZone getId))
 

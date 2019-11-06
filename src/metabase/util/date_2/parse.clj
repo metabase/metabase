@@ -6,7 +6,7 @@
            [java.time.temporal TemporalAccessor TemporalQueries]))
 
 (def ^:private ^DateTimeFormatter date-formatter*
-  (b/build-formatter
+  (b/formatter
    (b/value :year 4 10 :exceeds-pad)
    (b/optional
     "-"
@@ -18,7 +18,7 @@
    (b/default-value :day-of-month 1)))
 
 (def ^:private ^DateTimeFormatter time-formatter*
-  (b/build-formatter
+  (b/formatter
    (b/value :hour-of-day 2)
    (b/optional
     ":"
@@ -33,13 +33,13 @@
    (b/default-value :nano-of-second 0)))
 
 (def ^:private ^DateTimeFormatter offset-formatter*
-  (b/build-formatter
-   (b/offset-id)
+  (b/formatter
+   (b/zone-offset)
    (b/optional
-    (b/offset-zone-id))))
+    (b/zone-id))))
 
 (def ^:private ^DateTimeFormatter formatter
-  (b/build-formatter
+  (b/formatter
    (b/case-insensitive
     (b/optional
      date-formatter*)

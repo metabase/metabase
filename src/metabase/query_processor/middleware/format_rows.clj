@@ -22,6 +22,7 @@
   (format-value [v _]
     v)
 
+  ;; TIMEZONE FIXME — not sure this makes sense at all...
   LocalTime
   (format-value [t timezone-id]
     (t/format :iso-offset-time (t/offset-time t timezone-id)))

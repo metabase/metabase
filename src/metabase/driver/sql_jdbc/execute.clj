@@ -142,6 +142,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmulti set-parameter
+  "Set the `PreparedStatement` parameter at index `i` to `object`. Dispatches by driver and class of `object`. By
+  default, this calls `.setObject`, but drivers can override this method to convert the object to a different class or
+  set it with a different intended JDBC type as needed."
   {:arglists '([driver prepared-statement i object])}
   (fn [driver _ _ object]
     [(driver/dispatch-on-initialized-driver driver) (class object)])

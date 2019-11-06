@@ -280,8 +280,10 @@
                            ;; get them to work
                            #_:unused-fn-args
                            #_:unused-locals]
-      ;; Turn this off temporarily until we finish removing self-deprecated functions & macros
-      :exclude-linters    [:deprecations]}}]
+      :exclude-linters    [; Turn this off temporarily until we finish removing self-deprecated functions & macros
+                           :deprecations
+                           ;; this has a fit in libs that use Potemin `import-vars` such as `java-time`
+                           :implicit-dependencies]}}]
 
    ;; run ./bin/reflection-linter to check for reflection warnings
    :reflection-warnings

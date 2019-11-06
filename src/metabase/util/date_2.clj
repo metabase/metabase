@@ -7,7 +7,8 @@
             [metabase.util.date-2
              [common :as common]
              [parse :as parse]]
-            [metabase.util.i18n :refer [tru]])
+            [metabase.util.i18n :refer [tru]]
+            [schema.core :as s])
   (:import [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            [java.time.temporal Temporal TemporalAdjuster WeekFields]))
 
@@ -19,7 +20,7 @@
     ;; be, since we don't know the date. Since it's not an exact instant in time we're not using it to make ranges in
     ;; MBQL filter clauses anyway
     ;;
-    ;; TODO - not sure we even want to be adding zone-id info for the timestamps above either
+    ;; TIMEZONE FIXME - not sure we even want to be adding zone-id info for the timestamps above either
     #_LocalTime     #_(t/offset-time t (t/zone-id timezone-id))
     t))
 
@@ -64,24 +65,25 @@
   (format* (temporal->iso-8601-formatter t) t))
 
 (defn format-sql
+  "Format a temporal value `t` as a SQL-style literal string. This is basically the same as ISO-8601 but uses a space
+  rather than of a `T` to separate the date and time components."
   ^String [t]
   (format* (temporal->sql-formatter t) t))
 
-;; TODO - where are these used?
-(defn time? [x]
-  (some #(instance? % x) [OffsetTime LocalTime]))
+(def ^:private add-units
+  #{:millisecond :second :minute :hour :day :week :month :quarter :year})
 
-(defn date? [x]
-  (instance? LocalDate x))
+(s/defn add :- Temporal
+  "Return a temporal value relative to temporal value `t` by adding (or subtracting) a number of units. Returned value
+  will be of same class as `t`.
 
-(defn datetime? [x]
-  (some #(instance? % x) [Instant ZonedDateTime OffsetDateTime LocalDateTime]))
-
-(defn add
-  (^Temporal [unit amount]
+    (add (t/zoned-date-time \"2019-11-05T15:44-08:00[US/Pacific]\") :month 2)
+    ->
+    (t/zoned-date-time \"2020-01-05T15:44-08:00[US/Pacific]\")"
+  ([unit amount]
    (add (t/zoned-date-time) unit amount))
 
-  (^Temporal [t unit amount]
+  ([t :- Temporal, unit :- (apply s/enum add-units), amount :- (s/maybe s/Int)]
    (if (zero? amount)
      t
      (t/plus t (case unit
@@ -95,20 +97,37 @@
                  :quarter     (t/months (* amount 3))
                  :year        (t/years amount))))))
 
-;; TODO - what about seconds & milliseconds?
+;; TIMEZONE FIXME - we should add `:millisecond-of-second` (or `:fraction-of-second`?) and `:second-of-minute` as
+;; well. Not sure where we'd use these, but we should have them for consistency
 (def extract-units
   "Units which return a (numerical, periodic) component of a date"
-  #{:minute-of-hour :hour-of-day :day-of-week :iso-day-of-week :day-of-month :day-of-year :week-of-year
-    :iso-week-of-year :month-of-year :quarter-of-year :year})
+  #{:minute-of-hour
+    :hour-of-day
+    :day-of-week
+    :iso-day-of-week
+    :day-of-month
+    :day-of-year
+    :week-of-year
+    :iso-week-of-year
+    :month-of-year
+    :quarter-of-year
+    :year})
 
-(def ^:private ^{:arglists `(^WeekFields [~'k])} week-fields
+(def ^:private ^{:arglists (list (with-meta ['k] {:tag `WeekFields}))} week-fields
   (common/static-instances WeekFields))
 
-(defn extract
+(s/defn extract :- Number
+  "Extract a field such as `:minute-of-hour` from a temporal value `t`.
+
+    (extract (t/zoned-date-time \"2019-11-05T15:44-08:00[US/Pacific]\") :day-of-month)
+    ;; -> 5
+
+  Values are returned as numbers (currently, always and integers, but this may change if we add support for
+  `:fraction-of-second` in the future.)"
   ([unit]
    (extract unit (t/zoned-date-time)))
 
-  ([^Temporal t, unit]
+  ([t :- Temporal, unit :- (apply s/enum extract-units)]
    (t/as t (case unit
              :minute-of-hour   :minute-of-hour
              :hour-of-day      :hour-of-day
@@ -122,7 +141,7 @@
              :quarter-of-year  :quarter-of-year
              :year             :year))))
 
-(def ^:private ^{:arglists `(^TemporalAdjuster [~'k])} adjusters
+(def ^:private ^{:arglists (list (with-meta ['k] {:tag `TemporalAdjuster}))} adjusters
   {:first-day-of-week
    (reify TemporalAdjuster
      (adjustInto [_ t]
@@ -149,15 +168,17 @@
       :hours   t
       :days    t)))
 
-;; TODO - what about milliseconds?
-(def trucate-units  "Valid date bucketing units"
-  #{:second :minute :hour :day :week :iso-week :month :quarter :year})
+(def truncate-units  "Valid date trucation units"
+  #{:millisecond :second :minute :hour :day :week :iso-week :month :quarter :year})
 
-(defn truncate
-  (^Temporal [unit]
+(s/defn truncate :- Temporal
+  "Truncate a temporal value `t` to the beginning of `unit`, e.g. `:hour` or `:day`. Not all truncation units are
+  supported on all subclasses of `Temporal` — for example, you can't truncate a `LocalTime` to `:month`, for obvious
+  reasons."
+  ([unit]
    (truncate (t/zoned-date-time) unit))
 
-  (^Temporal [^Temporal t, unit]
+  ([t :- Temporal, unit :- (apply s/enum truncate-units)]
    (case unit
      :default     t
      :millisecond (t/truncate-to t :millis)
@@ -171,17 +192,23 @@
      :quarter     (-> (.with t (adjusters :first-day-of-quarter))  (t/truncate-to :days))
      :year        (-> (t/adjust t :first-day-of-year)              (t/truncate-to :days)))))
 
+(s/defn bucket :- (s/cond-pre Number Temporal)
+  "Perform a truncation or extraction unit on temporal value `t`. (These two operations are collectively known as
+  'date bucketing' in Metabase code and MBQL, e.g. for date/time columns in MBQL `:breakout` (SQL `GROUP BY`)).
 
-(defn bucket
+  You can combine this function with `group-by` to do some date/time bucketing in Clojure-land:
+
+    (group-by #(bucket % :quarter-of-year) (map t/local-date [\"2019-01-01\" \"2019-01-02\" \"2019-01-04\"]))
+    ;; -> {1 [(t/local-date \"2019-01-01\") (t/local-date \"2019-01-02\")], 2 [(t/local-date \"2019-01-04\")]}"
   ([unit]
    (bucket (t/zoned-date-time) unit))
 
-  ([t unit]
+  ([t :- Temporal, unit :- (apply s/enum (into extract-units truncate-units))]
    (cond
-     (= unit :default)    t
-     (extract-units unit) (extract t unit)
-     (trucate-units unit) (truncate t unit)
-     :else                (throw (Exception. (tru "Invalid unit: {0}" unit))))))
+     (= unit :default)     t
+     (extract-units unit)  (extract t unit)
+     (truncate-units unit) (truncate t unit)
+     :else                 (throw (Exception. (tru "Invalid unit: {0}" unit))))))
 
 (defn range
   "Get a start (inclusive) and end (exclusive) pair of instants for a `unit` span of time containing `t`. e.g.
@@ -244,7 +271,7 @@
 ;;; |                                                      Etc                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO - I think these actually belong in `metabase.util`
+;; TIMEZONE FIXME - I think these actually belong in `metabase.util`
 
 (defn seconds->ms
   "Convert `seconds` to milliseconds. More readable than doing this math inline."

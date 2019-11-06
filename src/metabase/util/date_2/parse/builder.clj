@@ -1,33 +1,45 @@
 (ns metabase.util.date-2.parse.builder
+  "Utility functions for programatically building a `DateTimeFormatter`. Easier to understand than chaining a hundred
+  Java calls and trying to keep the structure straight.
+
+  The basic idea here is you pass a number of `sections` to `formatter` to build a `DateTimeFormatter` — see
+  `metabase.util.date-2.parse` for examples. Most of these sections are simple wrappers around corresponding
+  `DateTimeFormatterBuilder` -- see
+  https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatterBuilder.html for documenation.
+
+  TODO - this is a prime library candidate."
   (:require [metabase.util.date-2.common :as common])
   (:import [java.time.format DateTimeFormatter DateTimeFormatterBuilder SignStyle]
            java.time.temporal.ChronoField))
 
-(defprotocol BuilderPart
-  (apply-part [this builder]))
+(defprotocol ^:private Section
+  (^:private apply-section [this builder]))
 
-(extend-protocol BuilderPart
+(extend-protocol Section
   String
-  (apply-part [this builder]
-    (.appendLiteral ^DateTimeFormatterBuilder builder this))
+  (apply-section [s builder]
+    (.appendLiteral ^DateTimeFormatterBuilder builder s))
 
   clojure.lang.Fn
-  (apply-part [this builder]
-    (this builder))
+  (apply-section [f builder]
+    (f builder))
+
+  clojure.lang.Sequential
+  (apply-section [sections builder]
+    (doseq [section sections]
+      (apply-section section builder)))
 
   DateTimeFormatter
-  (apply-part [this builder]
-    (.append ^DateTimeFormatterBuilder builder this)))
+  (apply-section [formatter builder]
+    (.append ^DateTimeFormatterBuilder builder formatter)))
 
-(defn apply-parts [builder parts]
-  (doseq [part parts]
-    (apply-part part builder)))
-
-(defn optional [& parts]
-  (reify BuilderPart
-    (apply-part [_ builder]
+(defn optional
+  "Make wrapped `sections` optional."
+  [& sections]
+  (reify Section
+    (apply-section [_ builder]
       (.optionalStart ^DateTimeFormatterBuilder builder)
-      (apply-parts builder parts)
+      (apply-section sections builder)
       (.optionalEnd ^DateTimeFormatterBuilder builder))))
 
 (defn- set-option [^DateTimeFormatterBuilder builder option]
@@ -50,22 +62,30 @@
         (thunk)
         (set-option builder old-value)))))
 
-(defn- with-option-part [k v parts]
-  (reify BuilderPart
-    (apply-part [_ builder]
-      (do-with-option builder k v (fn [] (apply-parts builder parts))))))
+(defn- with-option-section [k v sections]
+  (reify Section
+    (apply-section [_ builder]
+      (do-with-option builder k v (fn [] (apply-section sections builder))))))
 
-(defn strict [& parts]
-  (with-option-part :strictness :strict parts))
+(defn strict
+  "Use strict parsing for wrapped `sections`."
+  [& sections]
+  (with-option-section :strictness :strict sections))
 
-(defn lenient [& parts]
-  (with-option-part :strictness :lenient parts))
+(defn lenient
+  "Use lenient parsing for wrapped `sections`."
+  [& sections]
+  (with-option-section :strictness :lenient sections))
 
-(defn case-sensitive [& parts]
-  (with-option-part :case-sensitivity :case-sensitive parts))
+(defn case-sensitive
+  "Make wrapped `sections` case-sensitive."
+  [& sections]
+  (with-option-section :case-sensitivity :case-sensitive sections))
 
-(defn case-insensitive [& parts]
-  (with-option-part :case-sensitivity :case-insensitive parts))
+(defn case-insensitive
+  "Make wrapped `sections` case-insensitive."
+  [& sections]
+  (with-option-section :case-sensitivity :case-insensitive sections))
 
 (def ^:private ^ChronoField chrono-field
   (common/static-instances ChronoField))
@@ -73,9 +93,8 @@
 (def ^:private ^SignStyle sign-style
   (common/static-instances SignStyle))
 
-(def ^:private ^:dynamic *case-sensitive?* true)
-
 (defn value
+  "Define a section for a specific field such as `:hour-of-day` or `:minute-of-hour`."
   ([chrono-field-name]
    (fn [^DateTimeFormatterBuilder builder]
      (.appendValue builder (chrono-field chrono-field-name))))
@@ -88,30 +107,53 @@
    (fn [^DateTimeFormatterBuilder builder]
      (.appendValue builder (chrono-field chrono-field-name) min-val max-val (sign-style sign-style-name)))))
 
-(defn default-value [chrono-field-name default-value]
+(defn default-value
+  "Define a section that sets a default value for a field like `:minute-of-hour`."
+  [chrono-field-name default-value]
   (fn [^DateTimeFormatterBuilder builder]
     (.parseDefaulting builder (chrono-field chrono-field-name) default-value)))
 
 (defn fraction
+  "Define a section for a fractional value, e.g. milliseconds or nanoseconds."
   [chrono-field-name min-val-width max-val-width & {:keys [decimal-point?]}]
   (fn [^DateTimeFormatterBuilder builder]
     (.appendFraction builder (chrono-field chrono-field-name) 0 9 (boolean decimal-point?))))
 
-(defn offset-id []
+(defn zone-offset
+  "Define a section for a timezone offset. e.g. `-08:00`."
+  []
   (lenient
    (fn [^DateTimeFormatterBuilder builder]
      (.appendOffsetId builder))))
 
-(defn offset-zone-id []
+(defn zone-id
+  "An a section for a timezone ID wrapped in square brackets, e.g. `[America/Los_Angeles]`."
+  []
   (strict
    (case-sensitive
     "["
     (fn [^DateTimeFormatterBuilder builder]
-      (.appendZoneOrOffsetId builder))
+      (.appendZoneRegionId builder))
     "]")))
 
-(defn build-formatter
-  ^DateTimeFormatter [& parts]
+(defn formatter
+  "Return a new `DateTimeFormatter` from `sections`. See examples in `metabase.util.date-2.parse` for more details.
+
+    (formatter
+     (case-insensitive
+      (value :hour-of-day 2)
+      (optional
+       \":\"
+       (value :minute-of-hour 2)
+       (optional
+        \":\"
+        (value :second-of-minute)))))
+
+    ->
+
+    #object[java.time.format.DateTimeFormatter
+            \"ParseCaseSensitive(false)Value(HourOfDay,2)[':'Value(MinuteOfHour,2)[':'Value(SecondOfMinute)]]\"]"
+  ^DateTimeFormatter [& sections]
   (let [builder (DateTimeFormatterBuilder.)]
-    (apply-parts builder parts)
+    (apply-section sections builder)
     (.toFormatter builder)))

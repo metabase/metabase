@@ -80,9 +80,8 @@
              ;; 08:00 time is interpreted as UTC, then not adjusted to Pacific
              ;; time by the DB
              (qpt/supports-report-timezone? driver/*driver*)
-             ;; TIMEZONE FIXME — is this correct??
-             [[2 "Felipinho Asklepios" "15:15:00-07:00"]]
-             #_[[1 "Plato Yeshua" "00:30:00.000-08:00"]
+             ;; TIMEZONE FIXME — the value of this changes based on whether we are in DST. This is B R O K E N
+             [[1 "Plato Yeshua" "00:30:00.000-08:00"]
               [4 "Simcha Yan" "00:30:00.000-08:00"]]
 
              :else
