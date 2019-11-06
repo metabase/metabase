@@ -10,10 +10,8 @@
 }
 
 :local(.detailBody) {
-  composes: flex-full from "style";
+  composes: flex-full pb4 from "style";
   max-width: 600px;
-  padding-top: 20px;
-  padding-bottom: 20px;
 }
 
 :local(.detailTitle) {
@@ -22,14 +20,14 @@
 }
 
 :local(.detailSubtitle) {
-  composes: text-dark text-paragraph mt1 from "style";
+  composes: text-dark text-paragraph from "style";
   white-space: pre-wrap;
   font-size: 16px;
   line-height: 24px;
 }
 
 :local(.detailSubtitleLight) {
-  composes: mt2 text-light from "style";
+  composes: text-light from "style";
 }
 
 :local(.detailTextarea) {

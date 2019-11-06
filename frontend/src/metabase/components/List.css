@@ -7,7 +7,6 @@
 
 :local(.list) {
   composes: ml-auto mr-auto from "style";
-  padding-bottom: 40px;
 }
 
 :local(.list-wrapper) {
@@ -54,11 +53,9 @@
 }
 
 :local(.itemBody) {
-  composes: border-top from "style";
+  composes: border-top mb3 from "style";
   composes: flex-full from "style";
   max-width: 100%;
-  padding-top: 20px;
-  padding-bottom: 20px;
   border-color: var(--color-border);
 }
 

@@ -29,9 +29,7 @@ const Detail = ({
         )}
       </div>
       <div
-        className={cx(description ? S.detailSubtitle : S.detailSubtitleLight, {
-          mt1: true,
-        })}
+        className={cx(description ? S.detailSubtitle : S.detailSubtitleLight)}
       >
         {isEditing ? (
           <textarea
