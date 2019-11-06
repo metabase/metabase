@@ -95,8 +95,9 @@
   composes: flex flex-row align-center from "style";
 }
 :local(.leftIcons) {
-  composes: flex-no-shrink flex align-self-start pt3 ml3 mr2 from "style";
+  composes: flex-no-shrink flex align-self-start mr2 from "style";
   composes: icons;
+  padding-top: 2px;
 }
 :local(.rightIcons) {
   composes: icons;

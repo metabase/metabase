@@ -20,9 +20,6 @@ import pure from "recompose/pure";
 
 const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
   <div className={cx(S.item)}>
-    <div className={S.leftIcons}>
-      {icon && <Icon className={S.chartIcon} name={icon} size={20} />}
-    </div>
     <div className={S.itemBody} style={{ maxWidth: "100%", borderTop: "none" }}>
       <div className={F.field}>
         <div className={cx(S.itemTitle, F.fieldName)}>
@@ -69,21 +66,26 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
               onChange={type => formField.special_type.onChange(type.id)}
             />
           ) : (
-            <span
-              className={
-                getIn(MetabaseCore.field_special_types_map, [
+            <div className="flex">
+              <div className={S.leftIcons}>
+                {icon && <Icon className={S.chartIcon} name={icon} size={20} />}
+              </div>
+              <span
+                className={
+                  getIn(MetabaseCore.field_special_types_map, [
+                    field.special_type,
+                    "name",
+                  ])
+                    ? "text-medium"
+                    : "text-light"
+                }
+              >
+                {getIn(MetabaseCore.field_special_types_map, [
                   field.special_type,
                   "name",
-                ])
-                  ? "text-medium"
-                  : "text-light"
-              }
-            >
-              {getIn(MetabaseCore.field_special_types_map, [
-                field.special_type,
-                "name",
-              ]) || t`No field type`}
-            </span>
+                ]) || t`No field type`}
+              </span>
+            </div>
           )}
         </div>
         <div className={F.fieldDataType}>{field.base_type}</div>

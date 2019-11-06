@@ -20,7 +20,6 @@
 
 :local(.columnHeader) {
   composes: flex flex-full from "style";
-  margin-left: var(--icon-width);
   padding-top: 20px;
   padding-bottom: 20px;
 }
