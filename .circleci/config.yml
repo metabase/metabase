@@ -72,10 +72,10 @@ executors:
       - image: circleci/mysql:5.7.23
 
   mongo:
-    working_directory: /home/circleci/metabase/metabase/
-    docker:
-      - image: circleci/clojure:lein-2.8.1
-      - image: circleci/mongo:3.4
+     working_directory: /home/circleci/metabase/metabase/
+     docker:
+       - image: circleci/clojure:lein-2.8.1
+       - image: circleci/mongo:3.4
 
   presto:
     working_directory: /home/circleci/metabase/metabase/
@@ -106,12 +106,14 @@ executors:
       - image: circleci/clojure:lein-2.8.1
         environment:
           MB_SQLSERVER_TEST_HOST: localhost
-          MB_SQLSERVER_TEST_PASSWORD: "P@ssw0rd"
+          MB_SQLSERVER_TEST_PASSWORD: 'P@ssw0rd'
           MB_SQLSERVER_TEST_USER: SA
       - image: mcr.microsoft.com/mssql/server:2017-latest
         environment:
           ACCEPT_EULA: Y
-          SA_PASSWORD: "P@ssw0rd"
+          SA_PASSWORD: 'P@ssw0rd'
+
+
 
 ########################################################################################################################
 #                                                       COMMANDS                                                       #
@@ -155,10 +157,12 @@ commands:
           command: yarn << parameters.command >>
           no_output_timeout: 5m
 
+
 jobs:
-  ########################################################################################################################
-  #                                                    CHECKOUT ETC.                                                     #
-  ########################################################################################################################
+
+########################################################################################################################
+#                                                    CHECKOUT ETC.                                                     #
+########################################################################################################################
 
   checkout:
     executor: basic
@@ -207,6 +211,9 @@ jobs:
       - attach-workspace
       - restore-fe-deps-cache
       - run:
+          name: Update apt
+          command: sudo apt-get update
+      - run:
           name: Install gettext
           command: sudo apt-get install gettext
       - run:
@@ -214,9 +221,10 @@ jobs:
           command: ./bin/i18n/build-translation-resources
           no_output_timeout: 2m
 
-  ########################################################################################################################
-  #                                                       BACKEND                                                        #
-  ########################################################################################################################
+
+########################################################################################################################
+#                                                       BACKEND                                                        #
+########################################################################################################################
 
   be-deps:
     executor: clojure
@@ -325,6 +333,7 @@ jobs:
                   lein with-profile +ci test || lein with-profile +ci test
                 no_output_timeout: << parameters.timeout >>
 
+
   test-migrate-from-h2:
     parameters:
       e:
@@ -344,9 +353,10 @@ jobs:
             ./bin/test-load-and-dump.sh
           no_output_timeout: 5m
 
-  ########################################################################################################################
-  #                                                       FRONTEND                                                       #
-  ########################################################################################################################
+
+########################################################################################################################
+#                                                       FRONTEND                                                       #
+########################################################################################################################
 
   fe-deps:
     executor: node
@@ -447,15 +457,17 @@ jobs:
                 name: Generate version file
                 command: ./bin/build version
 
-  ########################################################################################################################
-  #                                                   DEPLOYMENT, ETC.                                                   #
-  ########################################################################################################################
+
+########################################################################################################################
+#                                                   DEPLOYMENT, ETC.                                                   #
+########################################################################################################################
 
   deploy-master:
     executor: clojure
     steps:
       - attach-workspace
       - run: ./bin/deploy-webhook $DEPLOY_WEBHOOK
+
 
 ########################################################################################################################
 #                                                      WORKFLOWS                                                       #
