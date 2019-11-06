@@ -3599,7 +3599,7 @@ msgstr "調子はどう？"
 
 #: frontend/src/metabase/lib/greeting.js:6
 msgid "Howdy"
-msgstr "よお"
+msgstr "こんにちは"
 
 #: frontend/src/metabase/lib/greeting.js:7
 msgid "Greetings"
@@ -13110,5 +13110,5 @@ msgstr "クエリの予想列の決定エラー"
 
 #: src/metabase/query_processor/middleware/async.clj
 msgid "Unhandled exception, expected `catch-exceptions` middleware to handle it."
-msgstr ""
+msgstr "例外がハンドリングされていません。ミドルウェアで`catch-exceptions`を行いハンドリングしてください。"
 
