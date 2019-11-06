@@ -6,13 +6,11 @@
 }
 
 :local(.list) {
-  max-width: var(--md-width);
   composes: ml-auto mr-auto from "style";
   padding-bottom: 40px;
 }
 
 :local(.list-wrapper) {
-  max-width: var(--md-width);
   composes: ml-auto mr-auto from "style";
 }
 
@@ -58,7 +56,7 @@
 :local(.itemBody) {
   composes: border-top from "style";
   composes: flex-full from "style";
-  max-width: 550px;
+  max-width: 100%;
   padding-top: 20px;
   padding-bottom: 20px;
   border-color: var(--color-border);
@@ -69,7 +67,6 @@
   max-width: 100%;
   overflow: hidden;
   color: var(--title-color);
-  font-size: 18px;
 }
 
 :local(.itemName) {
@@ -101,9 +98,8 @@
   composes: flex flex-row align-center from "style";
 }
 :local(.leftIcons) {
-  composes: flex-no-shrink flex layout-centered mr2 from "style";
+  composes: flex-no-shrink flex align-self-start pt3 ml3 mr2 from "style";
   composes: icons;
-  width: 48px;
 }
 :local(.rightIcons) {
   composes: icons;

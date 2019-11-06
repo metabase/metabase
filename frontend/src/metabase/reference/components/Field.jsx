@@ -35,9 +35,14 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
               defaultValue={field.display_name}
             />
           ) : (
-            <Link to={url} className={S.itemName}>
-              {field.display_name}
-            </Link>
+            <div>
+              <Link to={url}>
+                <span className="text-brand">{field.display_name}</span>
+                <span className={cx(F.fieldActualName, "ml2")}>
+                  {field.name}
+                </span>
+              </Link>
+            </div>
           )}
         </div>
         <div className={F.fieldType}>
@@ -64,7 +69,16 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
               onChange={type => formField.special_type.onChange(type.id)}
             />
           ) : (
-            <span>
+            <span
+              className={
+                getIn(MetabaseCore.field_special_types_map, [
+                  field.special_type,
+                  "name",
+                ])
+                  ? "text-medium"
+                  : "text-light"
+              }
+            >
               {getIn(MetabaseCore.field_special_types_map, [
                 field.special_type,
                 "name",
@@ -75,7 +89,6 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
         <div className={F.fieldDataType}>{field.base_type}</div>
       </div>
       <div className={cx(S.itemSubtitle, F.fieldSecondary, { mt1: true })}>
-        <div className={F.fieldActualName}>{field.name}</div>
         <div className={F.fieldForeignKey}>
           {isEditing
             ? (isFK(formField.special_type.value) ||

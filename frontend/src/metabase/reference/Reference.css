@@ -1,7 +1,7 @@
 :root {
   --title-color: var(--color-text-medium);
   --subtitle-color: var(--color-text-medium);
-  --icon-width: calc(48px + 1rem);
+  --icon-width: 60px;
 }
 
 :local(.guideEmpty) {
