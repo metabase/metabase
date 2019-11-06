@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { t } from "ttag";
-import SegmentItem from "./SegmentItem.jsx";
+import SegmentItem from "./SegmentItem";
 
 export default class SegmentsList extends Component {
   static propTypes = {

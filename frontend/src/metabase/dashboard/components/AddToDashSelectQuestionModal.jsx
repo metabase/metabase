@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import AddToDashboard from "metabase/questions/containers/AddToDashboard.jsx";
+import AddToDashboard from "metabase/questions/containers/AddToDashboard";
 
 export default class AddToDashSelectQuestionModal extends Component {
   constructor(props, context) {
@@ -38,7 +38,7 @@ export default class AddToDashSelectQuestionModal extends Component {
       dashId: this.props.dashboard.id,
       cardId: cardId,
     });
-    this.props.onEditingChange(true);
+    this.props.onEditingChange(this.props.dashboard);
     this.props.onClose();
     MetabaseAnalytics.trackEvent("Dashboard", "Add Card");
   };

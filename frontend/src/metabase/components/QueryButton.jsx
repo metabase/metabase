@@ -6,7 +6,7 @@ import cx from "classnames";
 
 import S from "./QueryButton.css";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
 const QueryButton = ({ className, text, icon, iconClass, onClick, link }) => (
   <div className={className}>

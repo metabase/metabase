@@ -2,7 +2,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
 const MainPane = ({ databases, show }) => (
   <div>
@@ -12,6 +12,7 @@ const MainPane = ({ databases, show }) => (
     <ul>
       {databases &&
         databases
+          .filter(db => !db.is_saved_questions)
           .filter(db => db.tables && db.tables.length > 0)
           .map(database => (
             <li className="mb2" key={database.id}>

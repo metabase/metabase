@@ -3,7 +3,7 @@
 import d3 from "d3";
 import _ from "underscore";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { clipPathReference } from "metabase/lib/dom";
 import { adjustYAxisTicksIfNeeded } from "./apply_axis";
 
@@ -97,7 +97,7 @@ const DOT_OVERLAP_RATIO = 0.1;
 const DOT_OVERLAP_DISTANCE = 8;
 
 function onRenderSetLineWidth(chart) {
-  const dots = chart.svg()[0][0].getElementsByClassName("dot");
+  const dots = chart.svg()[0][0].querySelectorAll(".dot");
   if (dots.length < MAX_DOTS_FOR_LINE_WIDTH_ADJUSTMENT) {
     const min = getMinElementSpacing(dots);
     if (min > 150) {
@@ -224,7 +224,7 @@ function onRenderVoronoiHover(chart) {
     .data(voronoi(vertices), d => d && d.join(","))
     .enter()
     .append("svg:path")
-    .filter(d => d != undefined)
+    .filter(d => d != null)
     .attr("d", d => "M" + d.join("L") + "Z")
     .attr("clip-path", (d, i) => clipPathReference("clip-" + i))
     // in the functions below e is not an event but the circle element being hovered/clicked
@@ -284,7 +284,7 @@ function onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis) {
         y: y - 5,
         "text-anchor": labelOnRight ? "end" : "start",
         "font-weight": "bold",
-        fill: colors["text-medium"],
+        fill: color("text-medium"),
       })
       .on("mouseenter", function() {
         onGoalHover(this);

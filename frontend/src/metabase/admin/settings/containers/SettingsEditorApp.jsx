@@ -6,17 +6,17 @@ import title from "metabase/hoc/Title";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { slugify } from "metabase/lib/formatting";
 import { t } from "ttag";
-import AdminLayout from "metabase/components/AdminLayout.jsx";
+import AdminLayout from "metabase/components/AdminLayout";
 import { NotFound } from "metabase/containers/ErrorPages";
 
-import SettingsSetting from "../components/SettingsSetting.jsx";
-import SettingsEmailForm from "../components/SettingsEmailForm.jsx";
-import SettingsSlackForm from "../components/SettingsSlackForm.jsx";
-import SettingsLdapForm from "../components/SettingsLdapForm.jsx";
-import SettingsSetupList from "../components/SettingsSetupList.jsx";
-import SettingsUpdatesForm from "../components/SettingsUpdatesForm.jsx";
-import SettingsSingleSignOnForm from "../components/SettingsSingleSignOnForm.jsx";
-import SettingsAuthenticationOptions from "../components/SettingsAuthenticationOptions.jsx";
+import SettingsSetting from "../components/SettingsSetting";
+import SettingsEmailForm from "../components/SettingsEmailForm";
+import SettingsSlackForm from "../components/SettingsSlackForm";
+import SettingsLdapForm from "../components/SettingsLdapForm";
+import SettingsSetupList from "../components/SettingsSetupList";
+import SettingsUpdatesForm from "../components/SettingsUpdatesForm";
+import SettingsSingleSignOnForm from "../components/SettingsSingleSignOnForm";
+import SettingsAuthenticationOptions from "../components/SettingsAuthenticationOptions";
 
 import { prepareAnalyticsValue } from "metabase/admin/settings/utils";
 

@@ -71,7 +71,7 @@ export const getQuestion = ({
   // http://ramdajs.com/0.21.0/index.html
   const question = chain(newQuestion)
     .updateIn(["dataset_query", "query", "aggregation"], aggregation =>
-      getCount ? ["count"] : aggregation,
+      getCount ? [["count"]] : aggregation,
     )
     .updateIn(["display"], display => visualization || display)
     .updateIn(["dataset_query", "query", "breakout"], oldBreakout => {
@@ -89,7 +89,7 @@ export const getQuestion = ({
     return assocIn(
       question,
       ["dataset_query", "query", "aggregation"],
-      ["metric", metricId],
+      [["metric", metricId]],
     );
   }
 
@@ -97,7 +97,7 @@ export const getQuestion = ({
     return assocIn(
       question,
       ["dataset_query", "query", "filter"],
-      ["and", ["segment", segmentId]],
+      ["segment", segmentId],
     );
   }
 

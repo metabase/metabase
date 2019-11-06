@@ -14,17 +14,17 @@ import { t } from "ttag";
 
 import Select, { Option } from "metabase/components/Select";
 import { addCSSRule } from "metabase/lib/dom";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 const ANSI_COLORS = {
-  black: colors["text-black"],
-  white: colors["text-white"],
-  gray: colors["text-medium"],
-  red: colors["saturated-red"],
-  green: colors["saturated-green"],
-  yellow: colors["saturated-yellow"],
-  blue: colors["saturated-blue"],
-  magenta: colors["saturated-purple"],
+  black: color("text-dark"),
+  white: color("text-white"),
+  gray: color("text-medium"),
+  red: color("saturated-red"),
+  green: color("saturated-green"),
+  yellow: color("saturated-yellow"),
+  blue: color("saturated-blue"),
+  magenta: color("saturated-purple"),
   cyan: "cyan",
 };
 for (const [name, color] of Object.entries(ANSI_COLORS)) {

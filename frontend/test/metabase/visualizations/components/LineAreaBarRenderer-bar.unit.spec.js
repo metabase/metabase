@@ -38,8 +38,16 @@ function MainSeries(chartType, settings = {}, { key = "A", value = 1 } = {}) {
     },
     data: {
       cols: [
-        StringColumn({ display_name: "Category", source: "breakout" }),
-        NumberColumn({ display_name: "Sum", source: "aggregation" }),
+        StringColumn({
+          display_name: "Category",
+          source: "breakout",
+          field_ref: ["field-id", 1],
+        }),
+        NumberColumn({
+          display_name: "Sum",
+          source: "aggregation",
+          field_ref: ["field-id", 2],
+        }),
       ],
       rows: [[key, value]],
     },
@@ -51,8 +59,16 @@ function ExtraSeries(count = 2) {
     card: {},
     data: {
       cols: [
-        StringColumn({ display_name: "Category", source: "breakout" }),
-        NumberColumn({ display_name: "Count", source: "aggregation" }),
+        StringColumn({
+          display_name: "Category",
+          source: "breakout",
+          field_ref: ["field-id", 3],
+        }),
+        NumberColumn({
+          display_name: "Count",
+          source: "aggregation",
+          field_ref: ["field-id", 4],
+        }),
       ],
       rows: [["A", count]],
     },
@@ -239,6 +255,22 @@ describe("LineAreaBarRenderer-bar", () => {
 
     const tick = element.querySelector(".axis.x .tick text");
     expect(tick.textContent).toEqual("(empty)");
+  });
+
+  it(`should render a stacked chart on a logarithmic y scale`, async () => {
+    const settings = {
+      "stackable.stack_type": "stacked",
+      "graph.y_axis.scale": "log",
+    };
+    renderLineAreaBar(element, [
+      MainSeries("bar", settings, { value: 100 }),
+      ExtraSeries(1000),
+    ]);
+    const ticks = qsa(".axis.y .tick text").map(n => n.textContent);
+    const lastTickValue = parseInt(ticks[ticks.length - 1]);
+    // if there are no ticks above 500, we're incorrectly using only the
+    // first series to determine the y axis domain
+    expect(lastTickValue > 500).toBe(true);
   });
 });
 

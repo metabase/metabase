@@ -6,10 +6,10 @@ import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import cx from "classnames";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import GuideHeader from "metabase/reference/components/GuideHeader.jsx";
-import GuideDetail from "metabase/reference/components/GuideDetail.jsx";
+import GuideHeader from "metabase/reference/components/GuideHeader";
+import GuideDetail from "metabase/reference/components/GuideDetail";
 
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";

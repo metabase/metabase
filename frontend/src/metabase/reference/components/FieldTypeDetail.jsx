@@ -8,7 +8,7 @@ import * as MetabaseCore from "metabase/lib/core";
 import { isNumericBaseType } from "metabase/lib/schema_metadata";
 import { isFK } from "metabase/lib/types";
 
-import Select from "metabase/components/Select.jsx";
+import Select from "metabase/components/Select";
 
 import D from "metabase/reference/components/Detail.css";
 

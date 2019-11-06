@@ -6,12 +6,12 @@ import { t } from "ttag";
 import DatePicker, {
   DATE_OPERATORS,
   getOperator,
-} from "metabase/query_builder/components/filters/pickers/DatePicker.jsx";
-import FilterOptions from "metabase/query_builder/components/filters/FilterOptions.jsx";
+} from "metabase/query_builder/components/filters/pickers/DatePicker";
+import FilterOptions from "metabase/query_builder/components/filters/FilterOptions";
 import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
 import { dateParameterValueToMBQL } from "metabase/meta/Parameter";
 
-import type { OperatorName } from "metabase/query_builder/components/filters/pickers/DatePicker.jsx";
+import type { OperatorName } from "metabase/query_builder/components/filters/pickers/DatePicker";
 import type { FieldFilter } from "metabase/meta/types/Query";
 
 type UrlEncoded = string;

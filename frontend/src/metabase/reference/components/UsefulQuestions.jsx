@@ -7,7 +7,7 @@ import S from "./UsefulQuestions.css";
 import D from "metabase/reference/components/Detail.css";
 import L from "metabase/components/List.css";
 
-import QueryButton from "metabase/components/QueryButton.jsx";
+import QueryButton from "metabase/components/QueryButton";
 
 const UsefulQuestions = ({ questions }) => (
   <div className={cx(D.detail)}>

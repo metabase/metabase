@@ -1,8 +1,8 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import ModalContent from "metabase/components/ModalContent.jsx";
-import CheckBox from "metabase/components/CheckBox.jsx";
+import ModalContent from "metabase/components/ModalContent";
+import CheckBox from "metabase/components/CheckBox";
 import { t } from "ttag";
 import cx from "classnames";
 import _ from "underscore";

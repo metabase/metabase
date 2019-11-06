@@ -4,8 +4,8 @@ import { Link } from "react-router";
 
 import S from "./Breadcrumbs.css";
 
-import Icon from "metabase/components/Icon.jsx";
-import Ellipsified from "metabase/components/Ellipsified.jsx";
+import Icon from "metabase/components/Icon";
+import Ellipsified from "metabase/components/Ellipsified";
 
 import cx from "classnames";
 

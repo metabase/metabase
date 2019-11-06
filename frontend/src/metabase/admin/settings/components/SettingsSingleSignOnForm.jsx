@@ -4,8 +4,8 @@ import cx from "classnames";
 import _ from "underscore";
 import { t, jt } from "ttag";
 
-import Breadcrumbs from "metabase/components/Breadcrumbs.jsx";
-import InputBlurChange from "metabase/components/InputBlurChange.jsx";
+import Breadcrumbs from "metabase/components/Breadcrumbs";
+import InputBlurChange from "metabase/components/InputBlurChange";
 
 export default class SettingsSingleSignOnForm extends Component {
   constructor(props, context) {

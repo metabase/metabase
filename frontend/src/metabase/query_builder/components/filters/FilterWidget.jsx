@@ -2,9 +2,9 @@
 
 import React, { Component } from "react";
 
-import Icon from "metabase/components/Icon.jsx";
-import Popover from "metabase/components/Popover.jsx";
-import FilterPopover from "./FilterPopover.jsx";
+import Icon from "metabase/components/Icon";
+import Popover from "metabase/components/Popover";
+import FilterPopover from "./FilterPopover";
 import Filter from "metabase/query_builder/components/Filter";
 
 import cx from "classnames";
@@ -72,7 +72,7 @@ export default class FilterWidget extends Component {
     super(props);
 
     this.state = {
-      isOpen: this.props.filter[0] == undefined,
+      isOpen: this.props.filter[0] == null,
     };
   }
 

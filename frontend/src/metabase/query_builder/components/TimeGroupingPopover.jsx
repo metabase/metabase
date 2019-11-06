@@ -62,7 +62,6 @@ export default class TimeGroupingPopover extends Component {
     this.props.onFieldChange([
       "datetime-field",
       this.props.field[1],
-      "as",
       bucketing,
     ]);
   }

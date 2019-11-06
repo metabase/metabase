@@ -9,7 +9,7 @@ import {
 import _ from "underscore";
 
 import * as Urls from "metabase/lib/urls";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import { createSelector } from "reselect";
 
@@ -172,10 +172,12 @@ const Tables = createEntity({
     getUrl: table =>
       Urls.tableRowsQuery(table.database_id, table.table_id, null),
     getIcon: table => "table",
-    getColor: table => colors["accent2"],
+    getColor: table => color("accent2"),
   },
 
   selectors: {
+    getObject: (state, { entityId }) => getMetadata(state).table(entityId),
+
     getTable: createSelector(
       // we wrap getMetadata to handle a circular dep issue
       [state => getMetadata(state), (state, props) => props.entityId],

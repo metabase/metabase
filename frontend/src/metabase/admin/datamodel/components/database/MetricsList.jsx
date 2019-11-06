@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { t } from "ttag";
-import MetricItem from "./MetricItem.jsx";
+import MetricItem from "./MetricItem";
 
 export default class MetricsList extends Component {
   static propTypes = {

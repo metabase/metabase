@@ -5,8 +5,8 @@ import cx from "classnames";
 import _ from "underscore";
 import { color } from "metabase/lib/colors";
 
-import Icon from "metabase/components/Icon.jsx";
-import ListSearchField from "metabase/components/ListSearchField.jsx";
+import Icon from "metabase/components/Icon";
+import ListSearchField from "metabase/components/ListSearchField";
 import { List, CellMeasurer, CellMeasurerCache } from "react-virtualized";
 
 export type RenderItemWrapper = (

@@ -2,13 +2,13 @@
 
 import React from "react";
 
-import ExplicitSize from "metabase/components/ExplicitSize.jsx";
-import LegendHeader from "metabase/visualizations/components/LegendHeader.jsx";
-import ChartTooltip from "metabase/visualizations/components/ChartTooltip.jsx";
-import ChartClickActions from "metabase/visualizations/components/ChartClickActions.jsx";
-import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
+import ExplicitSize from "metabase/components/ExplicitSize";
+import LegendHeader from "metabase/visualizations/components/LegendHeader";
+import ChartTooltip from "metabase/visualizations/components/ChartTooltip";
+import ChartClickActions from "metabase/visualizations/components/ChartClickActions";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
+import Icon from "metabase/components/Icon";
+import Tooltip from "metabase/components/Tooltip";
 import { t, jt } from "ttag";
 import { duration, formatNumber } from "metabase/lib/formatting";
 import MetabaseAnalytics from "metabase/lib/analytics";
@@ -28,6 +28,8 @@ import {
   MinRowsError,
   ChartSettingsError,
 } from "metabase/visualizations/lib/errors";
+
+import NoResults from "assets/img/no_results.svg";
 
 import { assoc, setIn } from "icepick";
 import _ from "underscore";
@@ -256,7 +258,7 @@ export default class Visualization extends React.PureComponent {
 
   @memoize
   _getQuestionForCardCached(metadata, card) {
-    return metadata && card && new Question(metadata, card);
+    return metadata && card && new Question(card, metadata);
   }
 
   getClickActions(clicked: ?ClickObject) {
@@ -512,7 +514,7 @@ export default class Visualization extends React.PureComponent {
             }
           >
             <Tooltip tooltip={t`No results!`} isEnabled={small}>
-              <img src="app/assets/img/no_results.svg" />
+              <img src={NoResults} />
             </Tooltip>
             {!small && <span className="h4 text-bold">No results!</span>}
           </div>

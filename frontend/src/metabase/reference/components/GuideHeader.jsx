@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import pure from "recompose/pure";
 import { t } from "ttag";
-import EditButton from "metabase/reference/components/EditButton.jsx";
+import EditButton from "metabase/reference/components/EditButton";
 
 const GuideHeader = ({ startEditing, isSuperuser }) => (
   <div>

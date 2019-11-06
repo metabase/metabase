@@ -216,9 +216,9 @@ export const updateUrl = createThunkAction(
       card = getCard(getState());
       question = getQuestion(getState());
     } else {
-      question = new Question(getMetadata(getState()), card);
+      question = new Question(card, getMetadata(getState()));
     }
-    if (dirty == undefined) {
+    if (dirty == null) {
       const originalQuestion = getOriginalQuestion(getState());
       dirty =
         !originalQuestion ||
@@ -264,7 +264,7 @@ export const updateUrl = createThunkAction(
       return;
     }
 
-    if (replaceState == undefined) {
+    if (replaceState == null) {
       // if the serialized card is identical replace the previous state instead of adding a new one
       // e.x. when saving a new card we want to replace the state and URL with one with the new card ID
       replaceState = isSameCard && isSameMode;
@@ -308,7 +308,7 @@ export const initializeQB = (location, params) => {
 
     // always start the QB by loading up the databases for the application
     try {
-      await dispatch(
+      dispatch(
         Databases.actions.fetchList({
           include_tables: true,
           include_cards: true,
@@ -413,16 +413,16 @@ export const initializeQB = (location, params) => {
 
       // initialize parts of the query based on optional parameters supplied
       if (card.dataset_query.query) {
-        if (options.table != undefined) {
+        if (options.table != null) {
           card.dataset_query.query["source-table"] = parseInt(options.table);
         }
-        if (options.segment != undefined) {
+        if (options.segment != null) {
           card.dataset_query.query.filter = [
             "segment",
             parseInt(options.segment),
           ];
         }
-        if (options.metric != undefined) {
+        if (options.metric != null) {
           // show the summarize sidebar for metrics
           uiControls.isShowingSummarySidebar = true;
           card.dataset_query.query.aggregation = [
@@ -441,6 +441,15 @@ export const initializeQB = (location, params) => {
 
     /**** All actions are dispatched here ****/
 
+    // Fetch alerts for the current question if the question is saved
+    if (card && card.id != null) {
+      dispatch(fetchAlertsForQuestion(card.id));
+    }
+    // Fetch the question metadata (blocking)
+    if (card) {
+      await dispatch(loadMetadataForCard(card));
+    }
+
     // Update the question to Redux state together with the initial state of UI controls
     dispatch.action(INITIALIZE_QB, {
       card,
@@ -448,13 +457,7 @@ export const initializeQB = (location, params) => {
       uiControls,
     });
 
-    // Fetch alerts for the current question if the question is saved
-    card && card.id && dispatch(fetchAlertsForQuestion(card.id));
-
-    // Fetch the question metadata
-    card && dispatch(loadMetadataForCard(card));
-
-    const question = card && new Question(getMetadata(getState()), card);
+    const question = card && new Question(card, getMetadata(getState()));
 
     // if we have loaded up a card that we can run then lets kick that off as well
     // but don't bother for "notebook" mode
@@ -531,7 +534,7 @@ export const loadMetadataForCard = createThunkAction(
       if (!card || !card.dataset_query) {
         return;
       }
-      const query = new Question(getMetadata(getState()), card).query();
+      const query = new Question(card, getMetadata(getState())).query();
       if (query instanceof StructuredQuery) {
         try {
           const rootTable = query.rootTable();
@@ -883,8 +886,8 @@ export const runQuestionQuery = ({
   overrideWithCard,
 }: RunQueryParams = {}) => {
   return async (dispatch, getState) => {
-    const questionFromCard = (c: Card): Question =>
-      c && new Question(getMetadata(getState()), c);
+    const questionFromCard = (card: Card): Question =>
+      card && new Question(card, getMetadata(getState()));
 
     let question: Question = overrideWithCard
       ? questionFromCard(overrideWithCard)
@@ -1081,6 +1084,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
   LOAD_OBJECT_DETAIL_FK_REFERENCES,
   () => {
     return async (dispatch, getState) => {
+      dispatch.action(CLEAR_OBJECT_DETAIL_FK_REFERENCES);
       // TODO Atte Keinänen 6/1/17: Should use `queryResults` instead
       const {
         qb: { card },
@@ -1141,10 +1145,23 @@ export const loadObjectDetailFKReferences = createThunkAction(
         fkReferences[fk.origin.id] = info;
       }
 
+      // It's possible that while we were running those queries, the object
+      // detail id changed. If so, these fk reference are stale and we shouldn't
+      // put them in state.
+      const updatedQueryResult = getFirstQueryResult(getState());
+      if (
+        getObjectDetailIdValue(queryResult.data) !==
+        getObjectDetailIdValue(updatedQueryResult.data)
+      ) {
+        return null;
+      }
       return fkReferences;
     };
   },
 );
+
+export const CLEAR_OBJECT_DETAIL_FK_REFERENCES =
+  "metabase/qb/CLEAR_OBJECT_DETAIL_FK_REFERENCES";
 
 // DEPRECATED: use metabase/entities/questions
 export const ARCHIVE_QUESTION = "metabase/qb/ARCHIVE_QUESTION";

@@ -5,7 +5,7 @@ import { t } from "ttag";
 import S from "./FieldToGroupBy.css";
 import Q from "metabase/components/QueryButton.css";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
 const FieldToGroupBy = ({
   className,

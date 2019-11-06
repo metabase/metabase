@@ -1,8 +1,8 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
-import PermissionsEditor from "../components/PermissionsEditor.jsx";
-import PermissionsApp from "./PermissionsApp.jsx";
+import PermissionsEditor from "../components/PermissionsEditor";
+import PermissionsApp from "./PermissionsApp";
 import fitViewport from "metabase/hoc/FitViewPort";
 
 import { CollectionsApi } from "metabase/services";

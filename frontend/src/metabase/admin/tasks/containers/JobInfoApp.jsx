@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 
 import { Box, Flex } from "grid-styled";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import AdminHeader from "metabase/components/AdminHeader";
 import Link from "metabase/components/Link";
 

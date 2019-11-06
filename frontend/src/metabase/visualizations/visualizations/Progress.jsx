@@ -5,9 +5,9 @@ import ReactDOM from "react-dom";
 import { t } from "ttag";
 import { formatValue } from "metabase/lib/formatting";
 import { isNumeric } from "metabase/lib/schema_metadata";
-import Icon from "metabase/components/Icon.jsx";
-import IconBorder from "metabase/components/IconBorder.jsx";
-import { normal } from "metabase/lib/colors";
+import Icon from "metabase/components/Icon";
+import IconBorder from "metabase/components/IconBorder";
+import { color } from "metabase/lib/colors";
 
 import _ from "underscore";
 
@@ -67,7 +67,7 @@ export default class Progress extends Component {
       section: t`Display`,
       title: t`Color`,
       widget: "color",
-      default: normal.green,
+      default: color("accent1"),
     },
   };
 

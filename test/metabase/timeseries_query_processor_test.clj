@@ -500,11 +500,11 @@
 ;;; date bucketing - default (day)
 (tqp.test/expect-with-timeseries-dbs
   {:columns ["timestamp" "count"]
-   :rows    [["2013-01-03+00:00" 1]
-             ["2013-01-10+00:00" 1]
-             ["2013-01-19+00:00" 1]
-             ["2013-01-22+00:00" 1]
-             ["2013-01-23+00:00" 1]]}
+   :rows    [["2013-01-03T00:00:00+00:00" 1]
+             ["2013-01-10T00:00:00+00:00" 1]
+             ["2013-01-19T00:00:00+00:00" 1]
+             ["2013-01-22T00:00:00+00:00" 1]
+             ["2013-01-23T00:00:00+00:00" 1]]}
   (qp.test/rows+column-names
    (data/run-mbql-query checkins
      {:aggregation [[:count]]
@@ -577,11 +577,11 @@
 ;;; date bucketing - day
 (tqp.test/expect-with-timeseries-dbs
   {:columns ["timestamp" "count"]
-   :rows    [["2013-01-03+00:00" 1]
-             ["2013-01-10+00:00" 1]
-             ["2013-01-19+00:00" 1]
-             ["2013-01-22+00:00" 1]
-             ["2013-01-23+00:00" 1]]}
+   :rows    [["2013-01-03T00:00:00+00:00" 1]
+             ["2013-01-10T00:00:00+00:00" 1]
+             ["2013-01-19T00:00:00+00:00" 1]
+             ["2013-01-22T00:00:00+00:00" 1]
+             ["2013-01-23T00:00:00+00:00" 1]]}
   (qp.test/rows+column-names
    (data/run-mbql-query checkins
      {:aggregation [[:count]]

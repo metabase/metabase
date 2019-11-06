@@ -6,15 +6,15 @@ import visualizations, { getVisualizationRaw } from "metabase/visualizations";
 import Visualization, {
   ERROR_MESSAGE_GENERIC,
   ERROR_MESSAGE_PERMISSION,
-} from "metabase/visualizations/components/Visualization.jsx";
+} from "metabase/visualizations/components/Visualization";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 
-import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
-import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings.jsx";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
-import DashCardParameterMapper from "./DashCardParameterMapper.jsx";
+import DashCardParameterMapper from "./DashCardParameterMapper";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 

@@ -3,9 +3,9 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 import { t } from "ttag";
-import FormField from "metabase/components/form/FormField.jsx";
-import FormLabel from "metabase/components/form/FormLabel.jsx";
-import FormMessage from "metabase/components/form/FormMessage.jsx";
+import FormField from "metabase/components/form/FormField";
+import FormLabel from "metabase/components/form/FormLabel";
+import FormMessage from "metabase/components/form/FormMessage";
 
 import MetabaseUtils from "metabase/lib/utils";
 import MetabaseSettings from "metabase/lib/settings";
@@ -107,7 +107,6 @@ export default class SetUserPassword extends Component {
               title={t`Current password`}
               fieldName="old_password"
               formError={formError}
-              offset={false}
             />
             <input
               ref="oldPassword"
@@ -126,7 +125,6 @@ export default class SetUserPassword extends Component {
               title={t`New password`}
               fieldName="password"
               formError={formError}
-              offset={false}
             />
             <span className="block mb1">{passwordComplexity}</span>
             <input
@@ -145,7 +143,6 @@ export default class SetUserPassword extends Component {
               title={t`Confirm new password`}
               fieldName="password2"
               formError={formError}
-              offset={false}
             />
             <input
               ref="password2"

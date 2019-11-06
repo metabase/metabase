@@ -2,14 +2,14 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import Visualization from "metabase/visualizations/components/Visualization.jsx";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
-import CheckBox from "metabase/components/CheckBox.jsx";
+import Visualization from "metabase/visualizations/components/Visualization";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Icon from "metabase/components/Icon";
+import Tooltip from "metabase/components/Tooltip";
+import CheckBox from "metabase/components/CheckBox";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import * as Q_DEPRECATED from "metabase/lib/query";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 
@@ -263,7 +263,7 @@ export default class AddSeriesModal extends Component {
             {this.state.state && (
               <div
                 className="spred flex layout-centered"
-                style={{ backgroundColor: colors["bg-white"] }}
+                style={{ backgroundColor: color("bg-white") }}
               >
                 {this.state.state === "loading" ? (
                   <div className="h3 rounded bordered p3 bg-white shadowed">
@@ -294,13 +294,13 @@ export default class AddSeriesModal extends Component {
           className="border-left flex flex-column"
           style={{
             width: 370,
-            backgroundColor: colors["bg-light"],
-            borderColor: colors["border"],
+            backgroundColor: color("bg-light"),
+            borderColor: color("border"),
           }}
         >
           <div
             className="flex-no-shrink border-bottom flex flex-row align-center"
-            style={{ borderColor: colors["border"] }}
+            style={{ borderColor: color("border") }}
           >
             <Icon className="ml2" name="search" size={16} />
             <input

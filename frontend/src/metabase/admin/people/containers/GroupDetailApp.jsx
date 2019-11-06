@@ -6,7 +6,7 @@ import Group from "metabase/entities/groups";
 import { getUsersWithMemberships } from "../selectors";
 import { getUser } from "metabase/selectors/user";
 
-import GroupDetail from "../components/GroupDetail.jsx";
+import GroupDetail from "../components/GroupDetail";
 
 @User.loadList()
 @Group.load({ id: (state, props) => props.params.groupId })

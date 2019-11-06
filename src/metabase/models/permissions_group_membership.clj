@@ -12,7 +12,7 @@
   "Throw an Exception if we're trying to add or remove a user to the MetaBot group."
   [group-id]
   (when (= group-id (:id (group/metabot)))
-    (throw (ui18n/ex-info (tru "You cannot add or remove users to/from the ''MetaBot'' group.")
+    (throw (ex-info (tru "You cannot add or remove users to/from the ''MetaBot'' group.")
              {:status-code 400}))))
 
 (defonce ^:dynamic ^{:doc "Should we allow people to be added to or removed from the All Users permissions group? By
@@ -25,14 +25,14 @@
   [group-id]
   (when (= group-id (:id (group/all-users)))
     (when-not *allow-changing-all-users-group-members*
-      (throw (ui18n/ex-info (tru "You cannot add or remove users to/from the ''All Users'' group.")
+      (throw (ex-info (tru "You cannot add or remove users to/from the ''All Users'' group.")
                {:status-code 400})))))
 
 (defn- check-not-last-admin []
   (when (<= (db/count PermissionsGroupMembership
               :group_id (:id (group/admin)))
             1)
-    (throw (ui18n/ex-info (tru "You cannot remove the last member of the ''Admin'' group!")
+    (throw (ex-info (tru "You cannot remove the last member of the ''Admin'' group!")
              {:status-code 400}))))
 
 (defn- pre-delete [{:keys [group_id user_id]}]

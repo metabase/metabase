@@ -12,8 +12,8 @@ import { getIn } from "icepick";
 import S from "metabase/components/List.css";
 import F from "./Field.css";
 
-import Select from "metabase/components/Select.jsx";
-import Icon from "metabase/components/Icon.jsx";
+import Select from "metabase/components/Select";
+import Icon from "metabase/components/Icon";
 
 import cx from "classnames";
 import pure from "recompose/pure";

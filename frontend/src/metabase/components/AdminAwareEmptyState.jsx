@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import EmptyState from "metabase/components/EmptyState.jsx";
+import EmptyState from "metabase/components/EmptyState";
 import { getUser } from "metabase/selectors/user";
 import { connect } from "react-redux";
 

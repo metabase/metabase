@@ -1,5 +1,5 @@
 import Button from "metabase/components/Button";
-import colors, { alpha } from "metabase/lib/colors";
+import { color, alpha } from "metabase/lib/colors";
 
 import styled from "styled-components";
 
@@ -20,7 +20,7 @@ const ViewButton = styled(Button)`
   }
 `;
 ViewButton.defaultProps = {
-  color: colors["brand"],
+  color: color("brand"),
 };
 
 export default ViewButton;

@@ -1,13 +1,13 @@
 import React from "react";
 
 import Icon from "metabase/components/Icon";
-import colors, { alpha } from "metabase/lib/colors";
+import { color as c, alpha } from "metabase/lib/colors";
 import cx from "classnames";
 
 export default function ViewPill({
   className,
   style = {},
-  color = colors["brand"],
+  color = c("brand"),
   invert,
   children,
   onClick,

@@ -6,7 +6,7 @@ import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 
-import ChartSettingSelect from "./ChartSettingSelect.jsx";
+import ChartSettingSelect from "./ChartSettingSelect";
 
 import { keyForColumn } from "metabase/lib/dataset";
 

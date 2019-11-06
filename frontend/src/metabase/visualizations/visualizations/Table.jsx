@@ -3,7 +3,7 @@
 import React, { Component } from "react";
 
 import TableInteractive from "../components/TableInteractive.jsx";
-import TableSimple from "../components/TableSimple.jsx";
+import TableSimple from "../components/TableSimple";
 import { t } from "ttag";
 import * as DataGrid from "metabase/lib/data_grid";
 import { findColumnIndexForColumnSetting } from "metabase/lib/dataset";
@@ -22,10 +22,10 @@ import {
   isImageURL,
   isAvatarURL,
 } from "metabase/lib/schema_metadata";
-import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns.jsx";
+import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
 import ChartSettingsTableFormatting, {
   isFormattable,
-} from "metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx";
+} from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 
 import { makeCellBackgroundGetter } from "metabase/visualizations/lib/table_format";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";

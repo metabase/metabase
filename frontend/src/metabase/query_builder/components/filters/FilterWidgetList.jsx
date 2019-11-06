@@ -3,7 +3,7 @@
 import React, { Component } from "react";
 import { findDOMNode } from "react-dom";
 import { t } from "ttag";
-import FilterWidget from "./FilterWidget.jsx";
+import FilterWidget from "./FilterWidget";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Filter from "metabase-lib/lib/queries/structured/Filter";

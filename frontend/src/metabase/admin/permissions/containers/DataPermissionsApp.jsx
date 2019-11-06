@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 
 import fitViewport from "metabase/hoc/FitViewPort";
 
-import PermissionsApp from "./PermissionsApp.jsx";
+import PermissionsApp from "./PermissionsApp";
 
 import { PermissionsApi } from "metabase/services";
 import { fetchRealDatabases } from "metabase/redux/metadata";

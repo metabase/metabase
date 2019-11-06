@@ -5,7 +5,7 @@ import RetinaImage from "react-retina-image";
 import styled from "styled-components";
 import { color, space, hover } from "styled-system";
 import cx from "classnames";
-import colors from "metabase/lib/colors";
+import { color as c } from "metabase/lib/colors";
 
 import { loadIcon } from "metabase/icon_paths";
 import { stripLayoutProps } from "metabase/lib/utils";
@@ -21,7 +21,7 @@ export const IconWrapper = styled("div")`
   height: 40px;
   border-radius: 99px;
   cursor: pointer;
-  color: ${props => (props.open ? colors["brand"] : "inherit")};
+  color: ${props => (props.open ? c("brand") : "inherit")};
   // special cases for certain icons
   // Icon-share has a taller viewvbox than most so to optically center
   // the icon we need to translate it upwards
@@ -34,8 +34,8 @@ export const IconWrapper = styled("div")`
 
 IconWrapper.defaultProps = {
   hover: {
-    backgroundColor: colors["bg-medium"],
-    color: colors["brand"],
+    backgroundColor: c("bg-medium"),
+    color: c("brand"),
   },
 };
 

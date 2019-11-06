@@ -1,4 +1,4 @@
-import Triggerable from "./Triggerable.jsx";
-import Modal from "./Modal.jsx";
+import Triggerable from "./Triggerable";
+import Modal from "./Modal";
 
 export default Triggerable(Modal);

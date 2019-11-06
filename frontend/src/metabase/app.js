@@ -98,7 +98,7 @@ function _init(reducers, getRoutes, callback) {
 }
 
 export function init(...args) {
-  if (document.readyState != "loading") {
+  if (document.readyState !== "loading") {
     _init(...args);
   } else {
     document.addEventListener("DOMContentLoaded", () => _init(...args));

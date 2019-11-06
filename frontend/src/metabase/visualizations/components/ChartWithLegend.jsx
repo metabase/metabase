@@ -1,10 +1,10 @@
 import React, { Component } from "react";
 import styles from "./ChartWithLegend.css";
 
-import LegendVertical from "./LegendVertical.jsx";
-import LegendHorizontal from "./LegendHorizontal.jsx";
+import LegendVertical from "./LegendVertical";
+import LegendHorizontal from "./LegendHorizontal";
 
-import ExplicitSize from "metabase/components/ExplicitSize.jsx";
+import ExplicitSize from "metabase/components/ExplicitSize";
 
 import cx from "classnames";
 

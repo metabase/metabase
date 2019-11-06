@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
-import RevisionHistory from "../components/revisions/RevisionHistory.jsx";
+import RevisionHistory from "../components/revisions/RevisionHistory";
 import Metrics from "metabase/entities/metrics";
 import Segments from "metabase/entities/segments";
 
@@ -28,7 +28,7 @@ export default class RevisionHistoryApp extends Component {
   }
 
   render() {
-    return this.props.objectType == "metric" ? (
+    return this.props.objectType === "metric" ? (
       <MetricRevisionHistory {...this.props} />
     ) : (
       <SegmentRevisionHistory {...this.props} />

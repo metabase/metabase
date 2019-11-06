@@ -8,7 +8,9 @@ import {
   cleanupFixture,
 } from "../__support__/visualizations";
 
-import colors from "metabase/lib/colors";
+import { delay } from "metabase/lib/promise";
+
+import { color } from "metabase/lib/colors";
 import Visualization from "metabase/visualizations/components/Visualization";
 
 describe("Visualization", () => {
@@ -17,11 +19,14 @@ describe("Visualization", () => {
   const qs = s => element.querySelector(s);
   const qsa = s => [...element.querySelectorAll(s)];
 
-  const renderViz = series => {
+  const renderViz = async series => {
     ReactDOM.render(
       <Visualization ref={ref => (viz = ref)} rawSeries={series} />,
       element,
     );
+    // The chart isn't rendered until the next tick. This is due to ExplicitSize
+    // not setting the dimensions until after mounting.
+    await delay(0);
   };
 
   beforeEach(() => {
@@ -33,8 +38,8 @@ describe("Visualization", () => {
   });
 
   describe("scalar", () => {
-    it("should render", () => {
-      renderViz([
+    it("should render", async () => {
+      await renderViz([
         {
           card: { display: "scalar" },
           data: { rows: [[1]], cols: [NumberColumn({ name: "Count" })] },
@@ -47,8 +52,8 @@ describe("Visualization", () => {
   describe("bar", () => {
     const getBarColors = () => qsa(".bar").map(bar => bar.getAttribute("fill"));
     describe("single series", () => {
-      it("should have correct colors", () => {
-        renderViz([
+      it("should have correct colors", async () => {
+        await renderViz([
           {
             card: { name: "Card", display: "bar" },
             data: {
@@ -61,14 +66,14 @@ describe("Visualization", () => {
           },
         ]);
         expect(getBarColors()).toEqual([
-          colors.brand, // "count"
-          colors.brand, // "count"
+          color("brand"), // "count"
+          color("brand"), // "count"
         ]);
       });
     });
     describe("multiseries: multiple metrics", () => {
-      it("should have correct colors", () => {
-        renderViz([
+      it("should have correct colors", async () => {
+        await renderViz([
           {
             card: { name: "Card", display: "bar" },
             data: {
@@ -82,16 +87,16 @@ describe("Visualization", () => {
           },
         ]);
         expect(getBarColors()).toEqual([
-          colors.brand, // "count"
-          colors.brand, // "count"
-          colors.accent1, // "sum"
-          colors.accent1, // "sum"
+          color("brand"), // "count"
+          color("brand"), // "count"
+          color("accent1"), // "sum"
+          color("accent1"), // "sum"
         ]);
       });
     });
     describe("multiseries: multiple breakouts", () => {
-      it("should have correct colors", () => {
-        renderViz([
+      it("should have correct colors", async () => {
+        await renderViz([
           {
             card: { name: "Card", display: "bar" },
             data: {
@@ -110,16 +115,16 @@ describe("Visualization", () => {
           },
         ]);
         expect(getBarColors()).toEqual([
-          colors.accent1, // "a"
-          colors.accent1, // "a"
-          colors.accent2, // "b"
-          colors.accent2, // "b"
+          color("accent1"), // "a"
+          color("accent1"), // "a"
+          color("accent2"), // "b"
+          color("accent2"), // "b"
         ]);
       });
     });
     describe("multiseries: dashcard", () => {
-      it("should have correct colors", () => {
-        renderViz([
+      it("should have correct colors", async () => {
+        await renderViz([
           {
             card: { name: "Card1", display: "bar" },
             data: {
@@ -142,10 +147,10 @@ describe("Visualization", () => {
           },
         ]);
         expect(getBarColors()).toEqual([
-          colors.brand, // "count"
-          colors.brand, // "count"
-          colors.accent2, // "Card2"
-          colors.accent2, // "Card2"
+          color("brand"), // "count"
+          color("brand"), // "count"
+          color("accent2"), // "Card2"
+          color("accent2"), // "Card2"
         ]);
       });
     });

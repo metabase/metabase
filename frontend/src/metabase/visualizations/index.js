@@ -1,21 +1,21 @@
 /* @flow weak */
 
-import Scalar from "./visualizations/Scalar.jsx";
-import SmartScalar from "./visualizations/SmartScalar.jsx";
-import Progress from "./visualizations/Progress.jsx";
-import Table from "./visualizations/Table.jsx";
-import Text from "./visualizations/Text.jsx";
-import LineChart from "./visualizations/LineChart.jsx";
-import BarChart from "./visualizations/BarChart.jsx";
-import RowChart from "./visualizations/RowChart.jsx";
-import PieChart from "./visualizations/PieChart.jsx";
-import AreaChart from "./visualizations/AreaChart.jsx";
-import ComboChart from "./visualizations/ComboChart.jsx";
-import MapViz from "./visualizations/Map.jsx";
-import ScatterPlot from "./visualizations/ScatterPlot.jsx";
-import Funnel from "./visualizations/Funnel.jsx";
-import Gauge from "./visualizations/Gauge.jsx";
-import ObjectDetail from "./visualizations/ObjectDetail.jsx";
+import Scalar from "./visualizations/Scalar";
+import SmartScalar from "./visualizations/SmartScalar";
+import Progress from "./visualizations/Progress";
+import Table from "./visualizations/Table";
+import Text from "./visualizations/Text";
+import LineChart from "./visualizations/LineChart";
+import BarChart from "./visualizations/BarChart";
+import RowChart from "./visualizations/RowChart";
+import PieChart from "./visualizations/PieChart";
+import AreaChart from "./visualizations/AreaChart";
+import ComboChart from "./visualizations/ComboChart";
+import MapViz from "./visualizations/Map";
+import ScatterPlot from "./visualizations/ScatterPlot";
+import Funnel from "./visualizations/Funnel";
+import Gauge from "./visualizations/Gauge";
+import ObjectDetail from "./visualizations/ObjectDetail";
 import { t } from "ttag";
 import _ from "underscore";
 

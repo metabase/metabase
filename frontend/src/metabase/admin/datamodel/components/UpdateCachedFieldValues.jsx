@@ -2,7 +2,7 @@ import React from "react";
 
 import { t } from "ttag";
 
-import ActionButton from "metabase/components/ActionButton.jsx";
+import ActionButton from "metabase/components/ActionButton";
 
 export default class UpdateCachedFieldValues extends React.Component {
   render() {

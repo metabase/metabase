@@ -40,7 +40,7 @@ export default function SortStep({
           onChangeSort={newSort =>
             sort
               ? query.updateSort(index, newSort).update(updateQuery)
-              : query.addSort(newSort).update(updateQuery)
+              : query.sort(newSort).update(updateQuery)
           }
         />
       )}
@@ -54,7 +54,7 @@ const SortName = ({ sort, query }) => (
   <FieldName field={sort && sort[1]} query={query} />
 );
 
-import FieldList from "metabase/query_builder/components/FieldList.jsx";
+import FieldList from "metabase/query_builder/components/FieldList";
 
 import type { OrderBy } from "metabase/meta/types/Query";
 import type { FieldOptions } from "metabase/meta/types/Metadata";

@@ -60,7 +60,28 @@ export default class Database extends Base {
   }
 
   newQuestion(): Question {
-    return Question.create({ databaseId: this.id, metadata: this.metadata });
+    return this.question()
+      .setDefaultQuery()
+      .setDefaultDisplay();
+  }
+
+  question(): Question {
+    return Question.create({
+      databaseId: this.id,
+      metadata: this.metadata,
+    });
+  }
+
+  nativeQuestion(): Question {
+    return Question.create({
+      databaseId: this.id,
+      metadata: this.metadata,
+      native: "native",
+    });
+  }
+
+  nativeQuery() {
+    return this.nativeQuestion().query();
   }
 
   /** Returns a database containing only the saved questions from the same database, if any */

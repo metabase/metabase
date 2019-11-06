@@ -7,19 +7,19 @@ import { t } from "ttag";
 import _ from "underscore";
 import moment from "moment";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import * as Urls from "metabase/lib/urls";
 
-import AdminPaneLayout from "metabase/components/AdminPaneLayout.jsx";
+import AdminPaneLayout from "metabase/components/AdminPaneLayout";
 import EntityMenu from "metabase/components/EntityMenu";
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import Radio from "metabase/components/Radio";
-import Tooltip from "metabase/components/Tooltip.jsx";
-import UserAvatar from "metabase/components/UserAvatar.jsx";
+import Tooltip from "metabase/components/Tooltip";
+import UserAvatar from "metabase/components/UserAvatar";
 
-import UserGroupSelect from "../components/UserGroupSelect.jsx";
+import UserGroupSelect from "../components/UserGroupSelect";
 
 import { loadMemberships, createMembership, deleteMembership } from "../people";
 import {
@@ -142,9 +142,7 @@ export default class PeopleListingApp extends Component {
                     <span className="text-white inline-block">
                       <UserAvatar
                         bg={
-                          user.is_superuser
-                            ? colors["accent2"]
-                            : colors["brand"]
+                          user.is_superuser ? color("accent2") : color("brand")
                         }
                         user={user}
                       />

@@ -19,7 +19,7 @@ export default function FilterPopoverHeader({
   const showOperatorSelectorOnOwnRow = isSidebar || !showFieldPicker;
 
   const setOperator = operatorName => {
-    if (filter.operator() !== operatorName) {
+    if (filter.operatorName() !== operatorName) {
       onFilterChange(filter.setOperator(operatorName));
     }
   };
@@ -48,7 +48,7 @@ export default function FilterPopoverHeader({
             my1: showOperatorSelectorOnOwnRow,
           })}
           operator={filter.operatorName()}
-          operators={filter.operatorOptions()}
+          operators={filter.filterOperators()}
           onOperatorChange={setOperator}
         />
       )}

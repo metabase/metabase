@@ -1,69 +1,47 @@
 /* eslint-disable flowtype/require-valid-file-annotation */
 
-import {
-  question,
-  clickedMetric,
-  clickedDateTimeValue,
-  ORDERS_TABLE_ID,
-  ORDERS_CREATED_DATE_FIELD_ID,
-} from "__support__/sample_dataset_fixture";
-
-import { chain } from "icepick";
+import { ORDERS } from "__support__/sample_dataset_fixture";
 
 import ZoomDrill from "metabase/modes/components/drill/ZoomDrill";
 
 describe("ZoomDrill", () => {
   it("should not be valid for top level actions", () => {
-    expect(ZoomDrill({ question })).toHaveLength(0);
+    expect(ZoomDrill({ question: ORDERS.newQuestion() })).toHaveLength(0);
   });
   it("should be return correct new for month -> week", () => {
+    const query = ORDERS.query()
+      .aggregate(["count"])
+      .breakout([
+        "datetime-field",
+        ["field-id", ORDERS.CREATED_AT.id],
+        "month",
+      ]);
+
     const actions = ZoomDrill({
-      question: question
-        .query()
-        .setQuery({
-          "source-table": ORDERS_TABLE_ID,
-          aggregation: [["count"]],
-          breakout: [
-            [
-              "datetime-field",
-              ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
-              "as",
-              "month",
-            ],
-          ],
-        })
-        .question(),
+      question: query.question(),
       clicked: {
-        ...clickedMetric,
+        column: query.aggregationDimensions()[0].column(),
+        value: 42,
         dimensions: [
-          chain(clickedDateTimeValue)
-            .assocIn(["column", "unit"], "month")
-            .value(),
+          {
+            column: ORDERS.CREATED_AT.column({ unit: "month" }),
+            value: "2018-01-01T00:00:00Z",
+          },
         ],
       },
     });
     expect(actions).toHaveLength(1);
     const newCard = actions[0].question().card();
     expect(newCard.dataset_query.query).toEqual({
-      "source-table": ORDERS_TABLE_ID,
+      "source-table": ORDERS.id,
       aggregation: [["count"]],
       filter: [
         "=",
-        [
-          "datetime-field",
-          ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
-          "as",
-          "month",
-        ],
-        clickedDateTimeValue.value,
+        ["datetime-field", ["field-id", ORDERS.CREATED_AT.id], "month"],
+        "2018-01-01T00:00:00Z",
       ],
       breakout: [
-        [
-          "datetime-field",
-          ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
-          // "as",
-          "week",
-        ],
+        ["datetime-field", ["field-id", ORDERS.CREATED_AT.id], "week"],
       ],
     });
     expect(newCard.display).toEqual("line");

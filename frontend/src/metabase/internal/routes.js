@@ -10,6 +10,8 @@ import {
   Unauthorized,
 } from "metabase/containers/ErrorPages";
 
+import ModalsPage from "./pages/ModalsPage";
+
 import fitViewport from "metabase/hoc/FitViewPort";
 
 const ErrorWithDetails = () => <GenericError details="Example error message" />;
@@ -76,6 +78,7 @@ export default (
           <Route path={name.toLowerCase()} component={Component} />
         )),
     )}
+    <Route path="modals" component={ModalsPage} />
     <Route path="errors">
       <Route path="404" component={NotFound} />
       <Route path="archived" component={Archived} />

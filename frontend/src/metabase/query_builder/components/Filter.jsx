@@ -2,7 +2,7 @@
 
 import React from "react";
 
-import FieldName from "./FieldName.jsx";
+import FieldName from "./FieldName";
 import Value from "metabase/components/Value";
 
 import Dimension from "metabase-lib/lib/Dimension";
@@ -73,7 +73,7 @@ export const OperatorFilter = ({
     return null;
   }
 
-  const operator = dimension.operator(op);
+  const operator = dimension.filterOperator(op);
 
   let formattedValues;
   // $FlowFixMe: not understanding maxDisplayValues is provided by defaultProps

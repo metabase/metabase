@@ -5,9 +5,9 @@ import PropTypes from "prop-types";
 import { List } from "react-virtualized";
 import "react-virtualized/styles.css";
 import { t } from "ttag";
-import ColumnarSelector from "metabase/components/ColumnarSelector.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
+import ColumnarSelector from "metabase/components/ColumnarSelector";
+import Icon from "metabase/components/Icon";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton from "./SelectButton";
 
 import cx from "classnames";

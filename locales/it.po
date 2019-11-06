@@ -946,7 +946,8 @@ msgstr "Rimuovere questo gruppo?"
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:60
 msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
-msgstr "Sei sicuro? Tutti i membri di questo gruppo perderanno tutti i permessi basati su di esso. Operazione irreversibile."
+msgstr "Sei sicuro? Tutti i membri di questo gruppo perderanno tutti i permessi basati su di esso.\n"
+"Operazione irreversibile."
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:71
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:43
@@ -6583,7 +6584,8 @@ msgstr "Formattazione condizionale"
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:193
 msgid "You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
-msgstr "Puoi aggiungere regole per fare in modo che le celle di questa tabella cambino colore se soddisfano determinate condizioni."
+msgstr "Puoi aggiungere regole per fare in modo che le celle di questa tabella cambino colore\n"
+"se soddisfano determinate condizioni."
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:203
 msgid "Add a rule"
@@ -13115,7 +13117,7 @@ msgid "All elements must be distinct."
 msgstr "Tutti gli elementi devono essere distinti."
 ""
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Scegli le colonne che desideri includere"
@@ -13157,4 +13159,3 @@ msgstr ""
 #: src/metabase/query_processor/middleware/async.clj
 msgid "Unhandled exception, expected `catch-exceptions` middleware to handle it."
 msgstr ""
-

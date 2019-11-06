@@ -17,11 +17,11 @@ import HomepageApp from "metabase/home/containers/HomepageApp";
 
 // auth containers
 import AuthApp from "metabase/auth/AuthApp";
-import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp.jsx";
-import LoginApp from "metabase/auth/containers/LoginApp.jsx";
-import LogoutApp from "metabase/auth/containers/LogoutApp.jsx";
-import PasswordResetApp from "metabase/auth/containers/PasswordResetApp.jsx";
-import GoogleNoAccount from "metabase/auth/components/GoogleNoAccount.jsx";
+import ForgotPasswordApp from "metabase/auth/containers/ForgotPasswordApp";
+import LoginApp from "metabase/auth/containers/LoginApp";
+import LogoutApp from "metabase/auth/containers/LogoutApp";
+import PasswordResetApp from "metabase/auth/containers/PasswordResetApp";
+import GoogleNoAccount from "metabase/auth/components/GoogleNoAccount";
 
 /* Dashboards */
 import DashboardApp from "metabase/dashboard/containers/DashboardApp";
@@ -34,19 +34,19 @@ import {
   TableBrowser,
 } from "metabase/components/BrowseApp";
 
-import QueryBuilder from "metabase/query_builder/containers/QueryBuilder.jsx";
+import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";
 
-import CollectionEdit from "metabase/collections/containers/CollectionEdit.jsx";
-import CollectionCreate from "metabase/collections/containers/CollectionCreate.jsx";
+import CollectionEdit from "metabase/collections/containers/CollectionEdit";
+import CollectionCreate from "metabase/collections/containers/CollectionCreate";
 import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
 import CollectionPermissionsModal from "metabase/admin/permissions/containers/CollectionPermissionsModal";
 import UserCollectionList from "metabase/containers/UserCollectionList";
 
-import PulseEditApp from "metabase/pulse/containers/PulseEditApp.jsx";
-import SetupApp from "metabase/setup/containers/SetupApp.jsx";
-import PostSetupApp from "metabase/setup/containers/PostSetupApp.jsx";
-import UserSettingsApp from "metabase/user/containers/UserSettingsApp.jsx";
-import EntityPage from "metabase/components/EntityPage.jsx";
+import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
+import SetupApp from "metabase/setup/containers/SetupApp";
+import PostSetupApp from "metabase/setup/containers/PostSetupApp";
+import UserSettingsApp from "metabase/user/containers/UserSettingsApp";
+import EntityPage from "metabase/components/EntityPage";
 // new question
 import NewQueryOptions from "metabase/new_query/containers/NewQueryOptions";
 
@@ -55,32 +55,32 @@ import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 import { NotFound, Unauthorized } from "metabase/containers/ErrorPages";
 
 // Reference Guide
-import GettingStartedGuideContainer from "metabase/reference/guide/GettingStartedGuideContainer.jsx";
+import GettingStartedGuideContainer from "metabase/reference/guide/GettingStartedGuideContainer";
 // Reference Metrics
-import MetricListContainer from "metabase/reference/metrics/MetricListContainer.jsx";
-import MetricDetailContainer from "metabase/reference/metrics/MetricDetailContainer.jsx";
-import MetricQuestionsContainer from "metabase/reference/metrics/MetricQuestionsContainer.jsx";
-import MetricRevisionsContainer from "metabase/reference/metrics/MetricRevisionsContainer.jsx";
+import MetricListContainer from "metabase/reference/metrics/MetricListContainer";
+import MetricDetailContainer from "metabase/reference/metrics/MetricDetailContainer";
+import MetricQuestionsContainer from "metabase/reference/metrics/MetricQuestionsContainer";
+import MetricRevisionsContainer from "metabase/reference/metrics/MetricRevisionsContainer";
 // Reference Segments
-import SegmentListContainer from "metabase/reference/segments/SegmentListContainer.jsx";
-import SegmentDetailContainer from "metabase/reference/segments/SegmentDetailContainer.jsx";
-import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer.jsx";
-import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer.jsx";
-import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer.jsx";
-import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer.jsx";
+import SegmentListContainer from "metabase/reference/segments/SegmentListContainer";
+import SegmentDetailContainer from "metabase/reference/segments/SegmentDetailContainer";
+import SegmentQuestionsContainer from "metabase/reference/segments/SegmentQuestionsContainer";
+import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisionsContainer";
+import SegmentFieldListContainer from "metabase/reference/segments/SegmentFieldListContainer";
+import SegmentFieldDetailContainer from "metabase/reference/segments/SegmentFieldDetailContainer";
 // Reference Databases
-import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer.jsx";
-import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer.jsx";
-import TableListContainer from "metabase/reference/databases/TableListContainer.jsx";
-import TableDetailContainer from "metabase/reference/databases/TableDetailContainer.jsx";
-import TableQuestionsContainer from "metabase/reference/databases/TableQuestionsContainer.jsx";
-import FieldListContainer from "metabase/reference/databases/FieldListContainer.jsx";
-import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer.jsx";
+import DatabaseListContainer from "metabase/reference/databases/DatabaseListContainer";
+import DatabaseDetailContainer from "metabase/reference/databases/DatabaseDetailContainer";
+import TableListContainer from "metabase/reference/databases/TableListContainer";
+import TableDetailContainer from "metabase/reference/databases/TableDetailContainer";
+import TableQuestionsContainer from "metabase/reference/databases/TableQuestionsContainer";
+import FieldListContainer from "metabase/reference/databases/FieldListContainer";
+import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer";
 
 import getAdminRoutes from "metabase/admin/routes";
 
-import PublicQuestion from "metabase/public/containers/PublicQuestion.jsx";
-import PublicDashboard from "metabase/public/containers/PublicDashboard.jsx";
+import PublicQuestion from "metabase/public/containers/PublicQuestion";
+import PublicDashboard from "metabase/public/containers/PublicDashboard";
 import DashboardHistoryModal from "metabase/dashboard/components/DashboardHistoryModal";
 import DashboardMoveModal from "metabase/dashboard/components/DashboardMoveModal";
 import DashboardCopyModal from "metabase/dashboard/components/DashboardCopyModal";
@@ -89,7 +89,7 @@ import { ModalRoute } from "metabase/hoc/ModalRoute";
 import CollectionLanding from "metabase/components/CollectionLanding";
 import Overworld from "metabase/containers/Overworld";
 
-import ArchiveApp from "metabase/home/containers/ArchiveApp.jsx";
+import ArchiveApp from "metabase/home/containers/ArchiveApp";
 import SearchApp from "metabase/home/containers/SearchApp";
 
 const MetabaseIsSetup = UserAuthWrapper({

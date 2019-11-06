@@ -1,11 +1,11 @@
 import React, { Component } from "react";
 import { Link } from "react-router";
 
-import FormLabel from "../components/FormLabel.jsx";
-import FormInput from "../components/FormInput.jsx";
-import FormTextArea from "../components/FormTextArea.jsx";
-import FieldSet from "metabase/components/FieldSet.jsx";
-import PartialQueryBuilder from "../components/PartialQueryBuilder.jsx";
+import FormLabel from "../components/FormLabel";
+import FormInput from "../components/FormInput";
+import FormTextArea from "../components/FormTextArea";
+import FieldSet from "metabase/components/FieldSet";
+import PartialQueryBuilder from "../components/PartialQueryBuilder";
 import { t } from "ttag";
 import { formatValue } from "metabase/lib/formatting";
 
@@ -64,7 +64,7 @@ export default class SegmentForm extends Component {
       ...datasetQuery,
       query: {
         ...datasetQuery.query,
-        aggregation: ["count"],
+        aggregation: [["count"]],
       },
     });
   }

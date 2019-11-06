@@ -4,8 +4,8 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import styles from "./PieChart.css";
 import { t } from "ttag";
-import ChartTooltip from "../components/ChartTooltip.jsx";
-import ChartWithLegend from "../components/ChartWithLegend.jsx";
+import ChartTooltip from "../components/ChartTooltip";
+import ChartWithLegend from "../components/ChartWithLegend";
 
 import {
   ChartSettingsError,
@@ -23,7 +23,7 @@ import { columnSettings } from "metabase/visualizations/lib/settings/column";
 
 import { formatValue } from "metabase/lib/formatting";
 
-import colors, { getColorsForValues } from "metabase/lib/colors";
+import { color, getColorsForValues } from "metabase/lib/colors";
 
 import cx from "classnames";
 
@@ -251,7 +251,10 @@ export default class PieChart extends Component {
     const [slices, others] = _.chain(rows)
       .map((row, index) => ({
         key: row[dimensionIndex],
+        // Value is used to determine arc size and is modified for very small
+        // other slices. We save displayValue for use in tooltips.
         value: row[metricIndex],
+        displayValue: row[metricIndex],
         percentage: row[metricIndex] / total,
         color: settings["pie._colors"][row[dimensionIndex]],
       }))
@@ -267,7 +270,7 @@ export default class PieChart extends Component {
             key: "Other",
             value: otherTotal,
             percentage: otherTotal / total,
-            color: colors["text-light"],
+            color: color("text-light"),
           };
     if (otherSlice.value > 0) {
       // increase "other" slice so it's barely visible
@@ -281,20 +284,19 @@ export default class PieChart extends Component {
       slices.map(s => s.percentage),
       { style: "percent", maximumSignificantDigits: 3 },
     );
-    const formatPercent = (percent, jsx = true) =>
+    const formatPercent = percent =>
       formatValue(percent, {
-        ...settings.column(cols[metricIndex]),
-        jsx,
+        column: cols[metricIndex],
+        jsx: true,
         majorWidth: 0,
         number_style: "percent",
-        _numberFormatter: undefined, // remove the passed formatter
         decimals,
       });
 
     const legendTitles = slices.map(slice => [
       slice.key === "Other" ? slice.key : formatDimension(slice.key, true),
       settings["pie.show_legend_perecent"]
-        ? formatPercent(slice.percentage, true)
+        ? formatPercent(slice.percentage)
         : undefined,
     ]);
     const legendColors = slices.map(slice => slice.color);
@@ -303,7 +305,7 @@ export default class PieChart extends Component {
     if (slices.length === 0) {
       otherSlice = {
         value: 1,
-        color: colors["text-light"],
+        color: color("text-light"),
         noHover: true,
       };
       slices.push(otherSlice);
@@ -323,13 +325,13 @@ export default class PieChart extends Component {
       const slice = slices[index];
       if (!slice || slice.noHover) {
         return null;
-      } else if (slice === otherSlice) {
+      } else if (slice === otherSlice && others.length > 1) {
         return {
           index,
           event: event && event.nativeEvent,
           data: others.map(o => ({
             key: formatDimension(o.key, false),
-            value: formatMetric(o.value, false),
+            value: formatMetric(o.displayValue, false),
           })),
         };
       } else {
@@ -343,7 +345,7 @@ export default class PieChart extends Component {
             },
             {
               key: getFriendlyName(cols[metricIndex]),
-              value: formatMetric(slice.value),
+              value: formatMetric(slice.displayValue),
             },
           ].concat(
             showPercentInTooltip && slice.percentage != null

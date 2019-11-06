@@ -316,8 +316,13 @@
       reference)))
 
 (defmethod ->reference [:string (type Field)]
-  [_ {:keys [display_name full-name]}]
-  (or full-name display_name))
+  [_ {:keys [display_name full-name link table_id]}]
+  (cond
+    full-name full-name
+    link      (format "%s → %s"
+                      (-> link Field :display_name (str/replace #"(?i)\sid$" ""))
+                      display_name)
+    :else     display_name))
 
 (defmethod ->reference [:string (type Table)]
   [_ {:keys [display_name full-name]}]
@@ -1009,7 +1014,7 @@
                                       (format "%s#show=all" (:url root)))
                  :transient_filters (:query-filter context)
                  :param_fields      (->> context :query-filter (filter-referenced-fields root)))))
-    (throw (ui18n/ex-info (trs "Can''t create dashboard for {0}" full-name)
+    (throw (ex-info (trs "Can''t create dashboard for {0}" full-name)
              {:root            root
               :available-rules (map :rule (or (some-> rule rules/get-rule vector)
                                               (rules/get-rules rules-prefix)))}))))
@@ -1080,6 +1085,7 @@
                                   (t.format/formatter formatter (t/time-zone-for-id tz))
                                   dt))]
     (case unit
+      :second          (tru "at {0}" (unparse-with-formatter "h:mm:ss a, MMMM d, YYYY" dt))
       :minute          (tru "at {0}" (unparse-with-formatter "h:mm a, MMMM d, YYYY" dt))
       :hour            (tru "at {0}" (unparse-with-formatter "h a, MMMM d, YYYY" dt))
       :day             (tru "on {0}" (unparse-with-formatter "MMMM d, YYYY" dt))

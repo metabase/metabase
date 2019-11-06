@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import styled from "styled-components";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 type Props = {
   percentage: number,
@@ -36,7 +36,7 @@ const Progress = styled.div`
         left: 0;
         width: ${props => props.width / 4}%;
         height: 100%;
-        background-color: ${colors["bg-black"]};
+        background-color: ${color("bg-black")};
         animation: ${props =>
           props.animated ? "progress-bar 1.5s linear infinite" : "none"};
       },
@@ -47,7 +47,7 @@ export default class ProgressBar extends Component {
 
   static defaultProps = {
     animated: false,
-    color: colors["brand"],
+    color: color("brand"),
     height: 10,
   };
 

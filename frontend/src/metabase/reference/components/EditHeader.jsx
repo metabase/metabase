@@ -5,7 +5,7 @@ import pure from "recompose/pure";
 import { t } from "ttag";
 import S from "./EditHeader.css";
 
-import RevisionMessageModal from "metabase/reference/components/RevisionMessageModal.jsx";
+import RevisionMessageModal from "metabase/reference/components/RevisionMessageModal";
 
 const EditHeader = ({
   hasRevisionHistory,

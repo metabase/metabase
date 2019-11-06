@@ -8,7 +8,7 @@ import cx from "classnames";
 
 import _ from "underscore";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { formatValue } from "metabase/lib/formatting";
 import { isNumeric } from "metabase/lib/schema_metadata";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
@@ -30,10 +30,10 @@ const ARROW_BASE = ARROW_HEIGHT / Math.tan((64 / 180) * Math.PI);
 const ARROW_STROKE_THICKNESS = 1.25;
 
 // colors
-const BACKGROUND_ARC_COLOR = colors["bg-medium"];
-const SEGMENT_LABEL_COLOR = colors["text-dark"];
-const CENTER_LABEL_COLOR = colors["text-dark"];
-const ARROW_FILL_COLOR = colors["text-medium"];
+const BACKGROUND_ARC_COLOR = color("bg-medium");
+const SEGMENT_LABEL_COLOR = color("text-dark");
+const CENTER_LABEL_COLOR = color("text-dark");
+const ARROW_FILL_COLOR = color("text-medium");
 const ARROW_STROKE_COLOR = "white";
 
 // in ems, but within the scaled 100px SVG element
@@ -119,9 +119,9 @@ export default class Gauge extends Component {
           value = series[0].data.rows[0][0];
         } catch (e) {}
         return [
-          { min: 0, max: value / 2, color: colors["error"], label: "" },
-          { min: value / 2, max: value, color: colors["warning"], label: "" },
-          { min: value, max: value * 2, color: colors["success"], label: "" },
+          { min: 0, max: value / 2, color: color("error"), label: "" },
+          { min: value / 2, max: value, color: color("warning"), label: "" },
+          { min: value, max: value * 2, color: color("success"), label: "" },
         ];
       },
       widget: ChartSettingGaugeSegments,
@@ -399,7 +399,7 @@ const GaugeSegmentLabel = ({ position: [x, y], style = {}, children }) => (
     x={x}
     y={y}
     style={{
-      fill: colors["text-medium"],
+      fill: color("text-medium"),
       fontSize: `${FONT_SIZE_SEGMENT_LABEL}em`,
       textAnchor: Math.abs(x) < 5 ? "middle" : x > 0 ? "start" : "end",
       // shift text in the lower half down a bit

@@ -81,7 +81,7 @@ export const selectEngine = createAction(SELECT_ENGINE);
 // Migration is run as a separate action because that makes it easy to track in tests
 const migrateDatabaseToNewSchedulingSettings = database => {
   return async function(dispatch, getState) {
-    if (database.details["let-user-control-scheduling"] == undefined) {
+    if (database.details["let-user-control-scheduling"] == null) {
       dispatch.action(MIGRATE_TO_NEW_SCHEDULING_SETTINGS, {
         ...database,
         details: {
@@ -111,11 +111,11 @@ export const initializeDatabase = function(databaseId) {
         dispatch.action(INITIALIZE_DATABASE, database);
 
         // If the new scheduling toggle isn't set, run the migration
-        if (database.details["let-user-control-scheduling"] == undefined) {
+        if (database.details["let-user-control-scheduling"] == null) {
           dispatch(migrateDatabaseToNewSchedulingSettings(database));
         }
       } catch (error) {
-        if (error.status == 404) {
+        if (error.status === 404) {
           //$location.path('/admin/databases/');
         } else {
           console.error("error fetching database", databaseId, error);
@@ -140,6 +140,7 @@ export const addSampleDataset = createThunkAction(
     return async function(dispatch, getState) {
       try {
         const sampleDataset = await MetabaseApi.db_add_sample_dataset();
+        dispatch(Databases.actions.fetchList(undefined, { reload: true }));
         MetabaseAnalytics.trackEvent("Databases", "Add Sample Data");
         return sampleDataset;
       } catch (error) {

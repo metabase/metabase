@@ -10,7 +10,7 @@ import Tables from "metabase/entities/tables";
 import { updatePreviewSummary } from "../datamodel";
 import { getPreviewSummary } from "../selectors";
 import withTableMetadataLoaded from "../withTableMetadataLoaded";
-import MetricForm from "./MetricForm.jsx";
+import MetricForm from "./MetricForm";
 
 const mapDispatchToProps = {
   updatePreviewSummary,

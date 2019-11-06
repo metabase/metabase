@@ -44,7 +44,7 @@ type Props = {
 
   isAdmin: boolean,
   isEditable: boolean,
-  isEditing: boolean,
+  isEditing: false | DashboardWithCards,
   isFullscreen: boolean,
   isNightMode: boolean,
 
@@ -64,7 +64,7 @@ type Props = {
   addParameter: (option: ParameterOption) => Promise<Parameter>,
   setEditingParameter: (parameterId: ?ParameterId) => void,
 
-  onEditingChange: (isEditing: boolean) => void,
+  onEditingChange: (isEditing: false | DashboardWithCards) => void,
   onRefreshPeriodChange: (?number) => void,
   onNightModeChange: boolean => void,
   onFullscreenChange: boolean => void,
@@ -85,7 +85,8 @@ export default class DashboardHeader extends Component {
   static propTypes = {
     dashboard: PropTypes.object.isRequired,
     isEditable: PropTypes.bool.isRequired,
-    isEditing: PropTypes.bool.isRequired,
+    isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
+      .isRequired,
     isFullscreen: PropTypes.bool.isRequired,
     isNightMode: PropTypes.bool.isRequired,
 
@@ -106,8 +107,8 @@ export default class DashboardHeader extends Component {
     onFullscreenChange: PropTypes.func.isRequired,
   };
 
-  onEdit() {
-    this.props.onEditingChange(true);
+  handleEdit(dashboard: DashboardWithCards) {
+    this.props.onEditingChange(dashboard);
   }
 
   onAddTextBox() {
@@ -140,6 +141,22 @@ export default class DashboardHeader extends Component {
     // TODO - this should use entity action
     await this.props.archiveDashboard(dashboard.id);
     this.props.onChangeLocation(Urls.collection(dashboard.collection_id));
+  }
+
+  getEditWarning(dashboard: DashboardWithCards) {
+    if (dashboard.embedding_params) {
+      const currentSlugs = Object.keys(dashboard.embedding_params);
+      // are all of the original embedding params keys in the current
+      // embedding params keys?
+      if (
+        this.props.isEditing &&
+        !Object.keys(this.props.isEditing.embedding_params).every(slug =>
+          currentSlugs.includes(slug),
+        )
+      ) {
+        return "You've updated embedded params and will need to update your embed code.";
+      }
+    }
   }
 
   getEditingButtons() {
@@ -239,7 +256,7 @@ export default class DashboardHeader extends Component {
             <a
               key="parameters"
               className={cx("text-brand-hover", {
-                "text-brand": this.state.modal == "parameters",
+                "text-brand": this.state.modal === "parameters",
               })}
               title={t`Parameters`}
               onClick={() => this.setState({ modal: "parameters" })}
@@ -294,7 +311,7 @@ export default class DashboardHeader extends Component {
             key="edit"
             title={t`Edit Dashboard Layout`}
             className="text-brand-hover cursor-pointer"
-            onClick={() => this.onEdit()}
+            onClick={() => this.handleEdit(dashboard)}
           >
             <Icon name="pencil" size={16} />
           </a>
@@ -355,6 +372,7 @@ export default class DashboardHeader extends Component {
         showBadge={!this.props.isEditing && !this.props.isFullscreen}
         isEditingInfo={this.props.isEditing}
         headerButtons={this.getHeaderButtons()}
+        editWarning={this.getEditWarning(dashboard)}
         editingTitle={t`You are editing a dashboard`}
         editingButtons={this.getEditingButtons()}
         setItemAttributeFn={this.props.setDashboardAttribute}

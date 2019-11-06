@@ -63,11 +63,15 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   canRun() {
-    return this.hasData() && this.queryText().length > 0;
+    return (
+      this.hasData() &&
+      this.queryText().length > 0 &&
+      this.allTemplateTagsAreValid()
+    );
   }
 
   isEmpty() {
-    return this.databaseId() == null || this.queryText().length == 0;
+    return this.databaseId() == null || this.queryText().length === 0;
   }
 
   databases(): Database[] {
@@ -226,6 +230,12 @@ export default class NativeQuery extends AtomicQuery {
   templateTagsMap(): TemplateTags {
     return getIn(this.datasetQuery(), ["native", "template-tags"]) || {};
   }
+  allTemplateTagsAreValid(): boolean {
+    return this.templateTags().every(
+      // field filters require a field
+      t => !(t.type === "dimension" && t.dimension == null),
+    );
+  }
 
   setDatasetQuery(datasetQuery: DatasetQuery): NativeQuery {
     return new NativeQuery(this._originalQuestion, datasetQuery);
@@ -282,7 +292,7 @@ export default class NativeQuery extends AtomicQuery {
               id: Utils.uuid(),
               name: tagName,
               display_name: humanize(tagName),
-              type: null,
+              type: "text",
             };
           }
         }
@@ -290,7 +300,7 @@ export default class NativeQuery extends AtomicQuery {
         // ensure all tags have an id since we need it for parameter values to work
         // $FlowFixMe
         for (const tag: TemplateTag of Object.values(templateTags)) {
-          if (tag.id == undefined) {
+          if (tag.id == null) {
             tag.id = Utils.uuid();
           }
         }

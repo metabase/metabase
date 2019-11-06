@@ -1,13 +1,18 @@
 (ns metabase.task-test
-  (:require [clojurewerkz.quartzite
+  (:require [clojure.test :refer :all]
+            [clojurewerkz.quartzite
              [jobs :as jobs]
              [scheduler :as qs]
              [triggers :as triggers]]
             [clojurewerkz.quartzite.schedule.cron :as cron]
             [expectations :refer [expect]]
             [metabase.task :as task]
-            [metabase.test.util :as tu])
+            [metabase.test
+             [fixtures :as fixtures]
+             [util :as tu]])
   (:import [org.quartz CronTrigger JobDetail]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 ;; make sure we attempt to reschedule tasks so changes made in source are propogated to JDBC backend
 

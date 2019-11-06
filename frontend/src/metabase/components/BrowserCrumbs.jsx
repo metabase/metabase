@@ -3,7 +3,7 @@ import { Flex } from "grid-styled";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 // TODO: merge with Breadcrumbs
 
@@ -35,7 +35,7 @@ const BrowserCrumbs = ({ crumbs, analyticsContext }) => (
             <Icon
               key={"divider" + index}
               name="chevronright"
-              color={colors["text-light"]}
+              color={color("text-light")}
               mx={1}
             />
           ) : null}

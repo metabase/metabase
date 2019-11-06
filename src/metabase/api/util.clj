@@ -3,8 +3,10 @@
   page tasks."
   (:require [compojure.core :refer [GET POST]]
             [crypto.random :as crypto-random]
+            [metabase
+             [logger :as logger]
+             [troubleshooting :as troubleshooting]]
             [metabase.api.common :as api]
-            [metabase.logger :as logger]
             [metabase.util
              [schema :as su]
              [stats :as stats]]))
@@ -34,5 +36,10 @@
   []
   {:token (crypto-random/hex 32)})
 
+(api/defendpoint GET "/bug_report_details"
+  []
+  (api/check-superuser)
+  {:system-info (troubleshooting/system-info)
+   :metabase-info (troubleshooting/metabase-info)})
 
 (api/define-routes)

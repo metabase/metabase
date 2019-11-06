@@ -4,19 +4,19 @@ import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
 
-import CheckBox from "metabase/components/CheckBox.jsx";
+import CheckBox from "metabase/components/CheckBox";
 import Icon from "metabase/components/Icon";
 import IconWrapper from "metabase/components/IconWrapper";
 import Swapper from "metabase/components/Swapper";
 import Tooltip from "metabase/components/Tooltip";
 
-import colors from "metabase/lib/colors";
+import { color as c } from "metabase/lib/colors";
 
 const ArchivedItem = ({
   name,
   type,
   icon,
-  color = colors["text-light"],
+  color = c("text-light"),
   isAdmin = false,
   onUnarchive,
   onDelete,

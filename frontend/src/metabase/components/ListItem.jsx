@@ -4,8 +4,8 @@ import PropTypes from "prop-types";
 import { Link } from "react-router";
 import S from "./List.css";
 import { t } from "ttag";
-import Icon from "./Icon.jsx";
-import Ellipsified from "./Ellipsified.jsx";
+import Icon from "./Icon";
+import Ellipsified from "./Ellipsified";
 
 import cx from "classnames";
 import pure from "recompose/pure";

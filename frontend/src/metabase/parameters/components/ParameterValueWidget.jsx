@@ -5,16 +5,16 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import DateSingleWidget from "./widgets/DateSingleWidget.jsx";
-import DateRangeWidget from "./widgets/DateRangeWidget.jsx";
-import DateRelativeWidget from "./widgets/DateRelativeWidget.jsx";
-import DateMonthYearWidget from "./widgets/DateMonthYearWidget.jsx";
-import DateQuarterYearWidget from "./widgets/DateQuarterYearWidget.jsx";
-import DateAllOptionsWidget from "./widgets/DateAllOptionsWidget.jsx";
-import CategoryWidget from "./widgets/CategoryWidget.jsx";
-import TextWidget from "./widgets/TextWidget.jsx";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import Icon from "metabase/components/Icon";
+import DateSingleWidget from "./widgets/DateSingleWidget";
+import DateRangeWidget from "./widgets/DateRangeWidget";
+import DateRelativeWidget from "./widgets/DateRelativeWidget";
+import DateMonthYearWidget from "./widgets/DateMonthYearWidget";
+import DateQuarterYearWidget from "./widgets/DateQuarterYearWidget";
+import DateAllOptionsWidget from "./widgets/DateAllOptionsWidget";
+import CategoryWidget from "./widgets/CategoryWidget";
+import TextWidget from "./widgets/TextWidget";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget";
 
 import { fetchField, fetchFieldValues } from "metabase/redux/metadata";

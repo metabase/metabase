@@ -53,6 +53,10 @@ To add a database, you'll need its connection information.
    - Database Name - Find this under "Configuration Details"
    - Password - Ask your database administrator for the password.
 
+#### Errors When Connecting
+
+If you're experiencing errors when connecting to your database, check our [troubleshooting guide](../troubleshooting-guide/datawarehouse.md) for help.
+
 ### Secure Socket Layer (SSL)
 
 Metabase automatically tries to connect to databases with and without SSL. If it is possible to connect to your database with a SSL connection, Metabase will make that the default setting for your database. You can always change this setting later if you prefer to connect without this layer of security, but we highly recommend keeping SSL turned on to keep your data secure.
@@ -73,9 +77,9 @@ Metabase maintains its own information about the various tables and fields in ea
 
 Syncing can be set to hourly, or daily at a specific time. Syncing can't be turned off completely, otherwise Metabase wouldn't work.
 
-If you'd like to sync your database manually at any time, click on it from the Databases list in the admin panel and click on the Sync button on the right side of the screen:
+If you'd like to sync your database manually at any time, click on it from the Databases list in the admin panel and click on the Sync database schema now button on the right side of the screen:
 
-![Database connection](images/DatabaseConnection.png)
+![Database Manual Sync](images/DatabaseManualSync.png)
 
 #### Query auto-running settings
 
@@ -97,9 +101,7 @@ If for some reason you need to flush out the cached field values for your databa
 
 ##### Re-scanning a single table or field
 
-To re-scan a specific table, go to the Data Model section of the Admin Panel, select the table from the list, and click the gear icon in the top right of the page. Similarly, to do this for just a specific field, on the same Data Model page, find the field you want and click the gear icon on the far right of the field's name and options:
-
-![Field options][images/field-options.png]
+To re-scan a specific table, go to the Data Model section of the Admin Panel, select the table from the list, and click the gear icon in the top right of the page. Similarly, to do this for just a specific field, on the same Data Model page, find the field you want and click the gear icon on the far right of the field's name and options.
 
 On either the table settings or field settings page, you'll see these options:
 
@@ -109,7 +111,7 @@ On either the table settings or field settings page, you'll see these options:
 
 To delete a database from Metabase, click on **Remove this database** from the database detail screen.
 
-![databaseconnection](images/DatabaseConnection.png)
+![Database Manual Sync](images/DatabaseManualSync.png)
 
 You can also delete a database from the database list: hover over the row with the database you want to remove and click the **Delete** button that appears.
 

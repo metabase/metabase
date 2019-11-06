@@ -1,20 +1,8 @@
 /* eslint-disable flowtype/require-valid-file-annotation */
 
-import {
-  metadata,
-  ORDERS_CREATED_DATE_FIELD_ID,
-  ORDERS_TOTAL_FIELD_ID,
-  PEOPLE_LATITUDE_FIELD_ID,
-  PEOPLE_LONGITUDE_FIELD_ID,
-  PEOPLE_STATE_FIELD_ID,
-} from "__support__/sample_dataset_fixture";
+import { metadata, ORDERS, PEOPLE } from "__support__/sample_dataset_fixture";
 
 import { drillDownForDimensions } from "metabase/modes/lib/drilldown";
-
-const col = (fieldId, extra = {}) => ({
-  ...metadata.fields[fieldId],
-  ...extra,
-});
 
 describe("drilldown", () => {
   describe("drillDownForDimensions", () => {
@@ -28,20 +16,14 @@ describe("drilldown", () => {
       const drillDown = drillDownForDimensions(
         [
           {
-            column: col(ORDERS_CREATED_DATE_FIELD_ID, {
-              unit: "year",
-            }),
+            column: ORDERS.CREATED_AT.column({ unit: "year" }),
           },
         ],
         metadata,
       );
       expect(drillDown).toEqual({
         breakouts: [
-          [
-            "datetime-field",
-            ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
-            "quarter",
-          ],
+          ["datetime-field", ["field-id", ORDERS.CREATED_AT.id], "quarter"],
         ],
       });
     });
@@ -49,20 +31,14 @@ describe("drilldown", () => {
       const drillDown = drillDownForDimensions(
         [
           {
-            column: col(ORDERS_CREATED_DATE_FIELD_ID, {
-              unit: "hour",
-            }),
+            column: ORDERS.CREATED_AT.column({ unit: "hour" }),
           },
         ],
         metadata,
       );
       expect(drillDown).toEqual({
         breakouts: [
-          [
-            "datetime-field",
-            ["field-id", ORDERS_CREATED_DATE_FIELD_ID],
-            "minute",
-          ],
+          ["datetime-field", ["field-id", ORDERS.CREATED_AT.id], "minute"],
         ],
       });
     });
@@ -70,7 +46,7 @@ describe("drilldown", () => {
       const drillDown = drillDownForDimensions(
         [
           {
-            column: col(ORDERS_CREATED_DATE_FIELD_ID, {
+            column: ORDERS.CREATED_AT.column({
               unit: "minute",
             }),
           },
@@ -85,7 +61,7 @@ describe("drilldown", () => {
       const drillDown = drillDownForDimensions(
         [
           {
-            column: col(ORDERS_TOTAL_FIELD_ID, {
+            column: ORDERS.TOTAL.column({
               binning_info: {
                 binning_strategy: "num-bins",
                 num_bins: 10,
@@ -97,7 +73,7 @@ describe("drilldown", () => {
       );
       expect(drillDown).toEqual({
         breakouts: [
-          ["binning-strategy", ["field-id", ORDERS_TOTAL_FIELD_ID], "default"],
+          ["binning-strategy", ["field-id", ORDERS.TOTAL.id], "default"],
         ],
       });
     });
@@ -106,7 +82,7 @@ describe("drilldown", () => {
       const drillDown = drillDownForDimensions(
         [
           {
-            column: col(ORDERS_TOTAL_FIELD_ID, {
+            column: ORDERS.TOTAL.column({
               binning_info: {
                 binning_strategy: "bin-width",
                 bin_width: 10,
@@ -118,12 +94,7 @@ describe("drilldown", () => {
       );
       expect(drillDown).toEqual({
         breakouts: [
-          [
-            "binning-strategy",
-            ["field-id", ORDERS_TOTAL_FIELD_ID],
-            "bin-width",
-            1,
-          ],
+          ["binning-strategy", ["field-id", ORDERS.TOTAL.id], "bin-width", 1],
         ],
       });
     });
@@ -131,20 +102,20 @@ describe("drilldown", () => {
     // GEO:
     it("should return breakout by lat/lon for breakout by state", () => {
       const drillDown = drillDownForDimensions(
-        [{ column: col(PEOPLE_STATE_FIELD_ID) }],
+        [{ column: PEOPLE.STATE.column() }],
         metadata,
       );
       expect(drillDown).toEqual({
         breakouts: [
           [
             "binning-strategy",
-            ["field-id", PEOPLE_LATITUDE_FIELD_ID],
+            ["field-id", PEOPLE.LATITUDE.id],
             "bin-width",
             1,
           ],
           [
             "binning-strategy",
-            ["field-id", PEOPLE_LONGITUDE_FIELD_ID],
+            ["field-id", PEOPLE.LONGITUDE.id],
             "bin-width",
             1,
           ],
@@ -155,7 +126,7 @@ describe("drilldown", () => {
       const drillDown = drillDownForDimensions(
         [
           {
-            column: col(PEOPLE_LATITUDE_FIELD_ID, {
+            column: PEOPLE.LATITUDE.column({
               binning_info: {
                 binning_strategy: "bin-width",
                 bin_width: 30,
@@ -163,7 +134,7 @@ describe("drilldown", () => {
             }),
           },
           {
-            column: col(PEOPLE_LONGITUDE_FIELD_ID, {
+            column: PEOPLE.LONGITUDE.column({
               binning_info: {
                 binning_strategy: "bin-width",
                 bin_width: 30,
@@ -177,13 +148,13 @@ describe("drilldown", () => {
         breakouts: [
           [
             "binning-strategy",
-            ["field-id", PEOPLE_LATITUDE_FIELD_ID],
+            ["field-id", PEOPLE.LATITUDE.id],
             "bin-width",
             10,
           ],
           [
             "binning-strategy",
-            ["field-id", PEOPLE_LONGITUDE_FIELD_ID],
+            ["field-id", PEOPLE.LONGITUDE.id],
             "bin-width",
             10,
           ],
@@ -193,11 +164,11 @@ describe("drilldown", () => {
 
     // it("should return breakout by state for breakout by country", () => {
     //     const drillDown = drillDownForDimensions([
-    //         { column: col(PEOPLE_STATE_FIELD_ID) }
+    //         { column: col(PEOPLE.STATE.id) }
     //     ], metadata);
     //     expect(drillDown).toEqual({ breakouts: [
-    //         ["binning-strategy", ["field-id", PEOPLE_LATITUDE_FIELD_ID], "bin-width", 1],
-    //         ["binning-strategy", ["field-id", PEOPLE_LONGITUDE_FIELD_ID], "bin-width", 1],
+    //         ["binning-strategy", ["field-id", PEOPLE.LATITUDE.id], "bin-width", 1],
+    //         ["binning-strategy", ["field-id", PEOPLE.LONGITUDE.id], "bin-width", 1],
     //     ]});
     // })
   });

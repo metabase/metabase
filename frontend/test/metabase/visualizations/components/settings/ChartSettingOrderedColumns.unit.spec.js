@@ -4,7 +4,7 @@ import ChartSettingOrderedColumns from "metabase/visualizations/components/setti
 
 import { mount } from "enzyme";
 
-import { question } from "__support__/sample_dataset_fixture.js";
+import { ORDERS } from "__support__/sample_dataset_fixture.js";
 
 function renderChartSettingOrderedColumns(props) {
   return mount(
@@ -65,7 +65,7 @@ describe("ChartSettingOrderedColumns", () => {
       const setting = renderChartSettingOrderedColumns({
         value: [],
         columns: [],
-        question,
+        question: ORDERS.question(),
         onChange,
       });
       expect(setting.find(".Icon-add")).toHaveLength(28);

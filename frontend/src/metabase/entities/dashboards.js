@@ -9,7 +9,7 @@ import {
 
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
-import { normal } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { assocIn } from "icepick";
 import { t } from "ttag";
 
@@ -132,7 +132,7 @@ const Dashboards = createEntity({
     getName: dashboard => dashboard && dashboard.name,
     getUrl: dashboard => dashboard && Urls.dashboard(dashboard.id),
     getIcon: dashboard => "dashboard",
-    getColor: () => normal.blue,
+    getColor: () => color("dashboard"),
   },
 
   form: {

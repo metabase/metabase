@@ -8,13 +8,13 @@ import S from "./ReferenceHeader.css";
 import L from "metabase/components/List.css";
 import E from "metabase/reference/components/EditButton.css";
 
-import IconBorder from "metabase/components/IconBorder.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import InputBlurChange from "metabase/components/InputBlurChange.jsx";
-import Ellipsified from "metabase/components/Ellipsified.jsx";
-import EditButton from "metabase/reference/components/EditButton.jsx";
+import IconBorder from "metabase/components/IconBorder";
+import Icon from "metabase/components/Icon";
+import InputBlurChange from "metabase/components/InputBlurChange";
+import Ellipsified from "metabase/components/Ellipsified";
+import EditButton from "metabase/reference/components/EditButton";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 const EditableReferenceHeader = ({
   entity = {},
@@ -40,7 +40,7 @@ const EditableReferenceHeader = ({
         {headerIcon && (
           <IconBorder
             borderWidth="0"
-            style={{ backgroundColor: colors["bg-medium"] }}
+            style={{ backgroundColor: color("bg-medium") }}
           >
             <Icon
               className="text-brand"

@@ -174,6 +174,12 @@ Here are a few things to double check if you're experiencing issues setting up y
 * Set your attributes and check your assertions! Many SAML providers make this pretty easy to do - just look for a button marked "Preview the SAML assertion."
 * Verify that the Single Sign On URL (or equivalent) that you enter on your SAML provider's website has "/auth/sso" appended to it. For instance, if you want your users to end up at ``https://metabase.mycompany.com``, the full url should be ``https://metabase.mycompany.com/auth/sso``
 
+### Disabling Password Log-in
+
+Once you have configured your SAML authentication, you can choose to disable the option for users to log in via username and password. To do this, return to the main Authentication settings page and scroll to the bottom. A toggle will now be visible allowing you to make this change.
+
+![Password disable](images/password-disable.png)
+
 ---
 
 ## Next: JWT-based SSO

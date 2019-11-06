@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 import { t, ngettext, msgid } from "ttag";
 
 import _ from "underscore";

@@ -2,11 +2,14 @@
   (:require [clojure.core.memoize :as memoize]
             [expectations :refer [expect]]
             [honeysql.core :as hsql]
-            [metabase.db :as mdb]
+            [metabase
+             [db :as mdb]
+             [public-settings :as public-settings]]
             [metabase.models
              [setting :refer [Setting]]
              [setting-test :as setting-test]]
             [metabase.models.setting.cache :as cache]
+            [metabase.test.util :as tu]
             [toucan.db :as db]))
 
 ;;; --------------------------------------------- Cache Synchronization ----------------------------------------------
@@ -151,3 +154,30 @@
       (setting-test/toucan-name "Batman Toucan"))
     (setting-test/test-setting-1 "Batman")
     (setting-test/toucan-name)))
+
+;; sets site locale setting
+(expect
+  "fr"
+  (tu/discard-setting-changes [site-locale]
+    (let [original-locale (java.util.Locale/getDefault)]
+      (try (let [new-language (do (clear-cache!)
+                                  (public-settings/site-locale "en")
+                                  (simulate-another-instance-updating-setting! :site-locale "fr")
+                                  (flush-memoized-results-for-should-restore-cache!)
+                                  (public-settings/site-locale))]
+             new-language)
+           (finally (java.util.Locale/setDefault original-locale))))))
+
+;; sets java util locale
+(expect
+  "fr"
+  (tu/discard-setting-changes [site-locale]
+    (let [original-locale (java.util.Locale/getDefault)]
+      (try (let [new-language (do (clear-cache!)
+                                  (public-settings/site-locale "en")
+                                  (simulate-another-instance-updating-setting! :site-locale "fr")
+                                  (flush-memoized-results-for-should-restore-cache!)
+                                  (public-settings/site-locale)
+                                  (.getLanguage (java.util.Locale/getDefault)))]
+             new-language)
+           (finally (java.util.Locale/setDefault original-locale))))))

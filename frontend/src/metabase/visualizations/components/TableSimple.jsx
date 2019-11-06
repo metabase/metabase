@@ -6,9 +6,9 @@ import ReactDOM from "react-dom";
 
 import styles from "./Table.css";
 
-import ExplicitSize from "metabase/components/ExplicitSize.jsx";
-import Ellipsified from "metabase/components/Ellipsified.jsx";
-import Icon from "metabase/components/Icon.jsx";
+import ExplicitSize from "metabase/components/ExplicitSize";
+import Ellipsified from "metabase/components/Ellipsified";
+import Icon from "metabase/components/Icon";
 import MiniBar from "./MiniBar";
 
 import { formatValue } from "metabase/lib/formatting";
