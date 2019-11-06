@@ -1,7 +1,7 @@
 /* @flow weak */
 
 import { handleActions, createAction } from "metabase/lib/redux";
-import { updateIn, dissocIn } from "icepick";
+import { updateIn, assoc } from "icepick";
 
 export const setRequestLoading = createAction(
   "metabase/requests/SET_REQUEST_LOADING",
@@ -20,17 +20,12 @@ export const setRequestUnloaded = createAction(
   statePath => ({ statePath }),
 );
 
-const RESET_REQUEST_STATES = "metabase/requests/RESET_REQUEST_STATES";
-export const resetRequestStates = createAction(
-  RESET_REQUEST_STATES,
-  statePath => ({ statePath }),
-);
-
 const initialRequestState = {
   loading: false,
   loaded: false,
   fetched: false,
   error: null,
+  _isRequestState: true,
 };
 
 const requestStateReducer = handleActions(
@@ -62,21 +57,30 @@ const requestStateReducer = handleActions(
     },
     [setRequestUnloaded]: {
       next: state => ({
-        ...initialRequestState,
-        fetched: state.fetched,
+        ...state,
+        loaded: false,
+        error: null,
       }),
     },
   },
   initialRequestState,
 );
 
+function requestStateReducerRecursive(state, action) {
+  if (!state || state._isRequestState) {
+    return requestStateReducer(state, action);
+  } else {
+    for (const [key, subState] of Object.entries(state)) {
+      state = assoc(state, key, requestStateReducerRecursive(subState, action));
+    }
+    return state;
+  }
+}
+
 export default (state = {}, action) => {
   if (action && action.payload && action.payload.statePath) {
-    if (action.type === RESET_REQUEST_STATES) {
-      return dissocIn(state, action.payload.statePath);
-    }
-    return updateIn(state, action.payload.statePath, requestState =>
-      requestStateReducer(requestState, action),
+    state = updateIn(state, action.payload.statePath, subState =>
+      requestStateReducerRecursive(subState, action),
     );
   }
   return state;

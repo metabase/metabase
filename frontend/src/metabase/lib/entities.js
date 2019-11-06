@@ -12,6 +12,7 @@ import {
 import createCachedSelector from "re-reselect";
 
 import { addUndo } from "metabase/redux/undo";
+import requestsReducer, { setRequestUnloaded } from "metabase/redux/requests";
 
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 
@@ -20,7 +21,7 @@ import inflection from "inflection";
 
 import { createSelector } from "reselect";
 import { normalize, denormalize, schema } from "normalizr";
-import { getIn, dissocIn, merge } from "icepick";
+import { getIn, merge } from "icepick";
 import _ from "underscore";
 
 // entity defintions export the following properties (`name`, and `api` or `path` are required)
@@ -604,7 +605,10 @@ export function createEntity(def: EntityDefinition): Entity {
     // reset all list request states when creating, deleting, or updating
     // to force a reload
     if (entity.actionShouldInvalidateLists(action)) {
-      return dissocIn(state, ["entities", entity.name + "_list"]);
+      return requestsReducer(
+        state,
+        setRequestUnloaded(["entities", entity.name + "_list"]),
+      );
     }
     return state;
   };

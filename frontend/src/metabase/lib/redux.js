@@ -277,19 +277,19 @@ function withCachedData(getExistingStatePath, getRequestStatePath) {
         const existingStatePath = getExistingStatePath(...args);
         const requestStatePath = ["requests", ...getRequestStatePath(...args)];
         const existingData = getIn(getState(), existingStatePath);
-        const requestState = getIn(getState(), requestStatePath);
+        const { loading, loaded } = getIn(getState(), requestStatePath) || {};
+
+        const hasRequestedProperties =
+          properties &&
+          existingData &&
+          _.all(properties, p => existingData[p] !== undefined);
 
         // return existing data if
         if (
           // we don't want to reload
           !reload &&
-          // and either
-          // we have a list of properties that all exist on the object
-          ((properties &&
-            existingData &&
-            _.all(properties, p => existingData[p] !== undefined)) ||
-            // or we have a an non-error request state
-            (requestState && !requestState.error))
+          // and we have a an non-error request state or have a list of properties that all exist on the object
+          (loading || loaded || hasRequestedProperties)
         ) {
           // TODO: if requestState is LOADING can we wait for the other reques
           // to complete and return that result instead?
