@@ -156,7 +156,7 @@
     "postcss-import": "^9.0.0",
     "postcss-loader": "^2.0.8",
     "postcss-url": "^6.0.4",
-    "prettier": "^1.17.0",
+    "prettier": "1.18.2",
     "promise-loader": "^1.0.0",
     "raf": "^3.4.0",
     "react-test-renderer": "15",
