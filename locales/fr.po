@@ -13038,7 +13038,7 @@ msgstr "Incapable de mettre à jour le champ binné: la requête manque de méta
 
 #: src/metabase/query_processor/middleware/binning.clj
 msgid "Cannot update binned field: could not find matching source metadata for Field ''{0}''"
-msgstr "Dans l'incapacité de mttre à jour le champ binné: métadonnées correspondantes non trouvées pour le champ \"{0}\"\n"
+msgstr "Dans l'incapacité de mttre à jour le champ binné: métadonnées correspondantes non trouvées pour le champ ''{0}''"
 ""
 
 #: src/metabase/query_processor/middleware/cache.clj
@@ -13149,7 +13149,7 @@ msgstr "Echec à la planification des tâches pour la base de données {0}"
 msgid "All elements must be distinct."
 msgstr "Tous les éléments doivent être distincts."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Choisissez les colonnes concernées"
@@ -13191,4 +13191,3 @@ msgstr "Erreur lors de la détermination des colonnes attendues pour la requête
 #: src/metabase/query_processor/middleware/async.clj
 msgid "Unhandled exception, expected `catch-exceptions` middleware to handle it."
 msgstr "Exception non gérée, aurait du être prise en charge par le middleware `catch-exceptions`."
-
