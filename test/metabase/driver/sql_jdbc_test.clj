@@ -84,7 +84,7 @@
   (driver/describe-table-fks :h2 (data/db) (Table (data/id :venues))))
 
 ;;; TABLE-ROWS-SAMPLE
-(datasets/expect-with-drivers @sql-jdbc-drivers
+(datasets/expect-with-drivers (sql-jdbc-drivers)
   [["20th Century Cafe"]
    ["25°"]
    ["33 Taps"]
@@ -98,7 +98,7 @@
 
 
 ;;; TABLE-ROWS-SEQ
-(datasets/expect-with-drivers @sql-jdbc-drivers
+(datasets/expect-with-drivers (sql-jdbc-drivers)
   [{:name "Red Medicine",                 :price 3, :category_id  4, :id 1}
    {:name "Stout Burgers & Beers",        :price 2, :category_id 11, :id 2}
    {:name "The Apple Pan",                :price 2, :category_id 11, :id 3}
@@ -145,7 +145,7 @@
 ;;
 ;; (This test won't work if a driver that doesn't use single quotes for string literals comes along. We can cross that
 ;; bridge when we get there.)
-(datasets/expect-with-drivers @sql-jdbc-drivers
+(datasets/expect-with-drivers (sql-jdbc-drivers)
   {:query  "SELECT * FROM birds WHERE name = 'Reggae'"
    :params nil}
   (driver/splice-parameters-into-native-query driver/*driver*
@@ -153,7 +153,7 @@
      :params ["Reggae"]}))
 
 ;; test splicing multiple params
-(datasets/expect-with-drivers @sql-jdbc-drivers
+(datasets/expect-with-drivers (sql-jdbc-drivers)
   {:query
    "SELECT * FROM birds WHERE name = 'Reggae' AND type = 'toucan' AND favorite_food = 'blueberries';",
    :params nil}
@@ -163,7 +163,7 @@
 
 ;; I think we're supposed to ignore multiple question narks, only single ones should get substituted
 ;; (`??` becomes `?` in JDBC, which is used for Postgres as a "key exists?" JSON operator amongst other uses)
-(datasets/expect-with-drivers @sql-jdbc-drivers
+(datasets/expect-with-drivers (sql-jdbc-drivers)
   {:query
    "SELECT * FROM birds WHERE favorite_food ?? bird_info AND name = 'Reggae'",
    :params nil}
@@ -172,7 +172,7 @@
      :params ["Reggae"]}))
 
 ;; splicing with no params should no-op
-(datasets/expect-with-drivers @sql-jdbc-drivers
+(datasets/expect-with-drivers (sql-jdbc-drivers)
   {:query "SELECT * FROM birds;", :params []}
   (driver/splice-parameters-into-native-query driver/*driver*
     {:query  "SELECT * FROM birds;"
@@ -195,7 +195,7 @@
             :native   spliced}))))))
 
 (deftest splice-parameters-test
-  (datasets/test-drivers @sql-jdbc-drivers
+  (datasets/test-drivers (sql-jdbc-drivers)
     (data/$ids venues
       (testing "splicing a string"
         (is (= 3
@@ -222,7 +222,7 @@
         (is (= 3
                (spliced-count-of :checkins [:= $date "2014-03-05"]))))))
   ;; Oracle, Redshift, and SparkSQL don't have 'Time' types
-  (datasets/test-drivers (disj @sql-jdbc-drivers :oracle :redshift :sparksql)
+  (datasets/test-drivers (disj (sql-jdbc-drivers) :oracle :redshift :sparksql)
     (testing "splicing a `Time`"
       (is (= 2
              (data/dataset test-data-with-time

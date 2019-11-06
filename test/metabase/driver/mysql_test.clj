@@ -2,16 +2,13 @@
   (:require [clj-time.core :as t]
             [clojure.java.jdbc :as jdbc]
             [expectations :refer [expect]]
-            [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :as qp.test]
              [sync :as sync]
              [util :as u]]
-            [metabase.driver.mysql :as mysql]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]]
@@ -95,7 +92,7 @@
 
 (expect-with-driver :mysql
   "-02:00"
-  (with-redefs [driver/execute-query (constantly {:rows [["2018-01-09 18:39:08.000000 -02"]]})]
+  (with-redefs [driver/execute-query (constantly {:rows [["2018-01-09 18:39:08000 -02"]]})]
     (tu/db-timezone-id)))
 
 (expect-with-driver :mysql
@@ -107,33 +104,6 @@
 (def ^:private before-daylight-savings (du/str->date-time "2018-03-10 10:00:00" du/utc))
 (def ^:private after-daylight-savings  (du/str->date-time "2018-03-12 10:00:00" du/utc))
 
-(expect (#'mysql/timezone-id->offset-str "US/Pacific" before-daylight-savings) "-08:00")
-(expect (#'mysql/timezone-id->offset-str "US/Pacific" after-daylight-savings)  "-07:00")
-
-(expect (#'mysql/timezone-id->offset-str "UTC" before-daylight-savings) "+00:00")
-(expect (#'mysql/timezone-id->offset-str "UTC" after-daylight-savings) "+00:00")
-
-(expect (#'mysql/timezone-id->offset-str "America/Los_Angeles" before-daylight-savings) "-08:00")
-(expect (#'mysql/timezone-id->offset-str "America/Los_Angeles" after-daylight-savings) "-07:00")
-
-;; make sure DateTime types generate appropriate SQL...
-;; ...with no report-timezone set
-(expect
-  ["?" (du/->Timestamp #inst "2018-01-03")]
-  (tu/with-temporary-setting-values [report-timezone nil]
-    (hsql/format (sql.qp/->honeysql :mysql (du/->Timestamp #inst "2018-01-03")))))
-
-;; ...with a report-timezone set
-(expect
-  ["convert_tz('2018-01-03T00:00:00.000', '+00:00', '-08:00')"]
-  (tu/with-temporary-setting-values [report-timezone "US/Pacific"]
-    (hsql/format (sql.qp/->honeysql :mysql (du/->Timestamp #inst "2018-01-03")))))
-
-;; ...with a report-timezone set to the same as the system timezone (shouldn't need to do TZ conversion)
-(expect
-  ["?" (du/->Timestamp #inst "2018-01-03")]
-  (tu/with-temporary-setting-values [report-timezone "UTC"]
-    (hsql/format (sql.qp/->honeysql :mysql (du/->Timestamp #inst "2018-01-03")))))
 
 ;; Most of our tests either deal in UTC (offset 00:00) or America/Los_Angeles timezones (-07:00/-08:00). When dealing
 ;; with dates, we will often truncate the timestamp to a date. When we only test with negative timezone offsets, in
@@ -145,7 +115,7 @@
 ;;
 ;; This test ensures if our JVM timezone and reporting timezone are Asia/Hong_Kong, we get a correctly formatted date
 (expect-with-driver :mysql
-  ["2018-04-18T00:00:00.000+08:00"]
+  ["2018-04-18T00:00:00+08:00"]
   (tu.tz/with-jvm-tz (t/time-zone-for-id "Asia/Hong_Kong")
     (tu/with-temporary-setting-values [report-timezone "Asia/Hong_Kong"]
       (qp.test/first-row
@@ -168,7 +138,7 @@
 ;; in the system timezone rather than UTC which caused an incorrect conversion and with the trucation, let to it being
 ;; off by a day
 (expect-with-driver :mysql
-  ["2018-04-18T00:00:00.000-07:00"]
+  ["2018-04-18T00:00:00-07:00"]
   (tu.tz/with-jvm-tz (t/time-zone-for-id "Asia/Hong_Kong")
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
       (qp.test/first-row

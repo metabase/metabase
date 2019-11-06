@@ -1,14 +1,11 @@
 (ns dev
   "Put everything needed for REPL development within easy reach"
-  (:require [clojure.set :as set]
-            [metabase
+  (:require [metabase
              [core :as mbc]
              [db :as mdb]
              [handler :as handler]
              [plugins :as pluguns]
-             [query-processor-test :as qp.test]
-             [server :as server]
-             [util :as u]]
+             [server :as server]]
             [metabase.api.common :as api-common]
             [metabase.test.data.env :as tx.env]))
 

@@ -2,6 +2,7 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql
@@ -13,13 +14,11 @@
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.util
-             [date :as du]
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
-  (:import com.mchange.v2.c3p0.impl.NewProxyConnection
-           [java.sql ResultSet Types]
-           java.util.Date
-           [oracle.jdbc OracleConnection OracleTypes]))
+  (:import [java.sql ResultSet Types]
+           [java.time Instant OffsetDateTime ZonedDateTime]
+           oracle.jdbc.OracleTypes))
 
 (driver/register! :oracle, :parent :sql-jdbc)
 
@@ -283,22 +282,24 @@
 
 ;; instead of returning a CLOB object, return the String. (#9026)
 (defmethod sql-jdbc.execute/read-column [:oracle Types/CLOB]
-  [_ _, ^ResultSet resultset, _, ^Integer i]
-  (.getString resultset i))
+  [_ _ ^ResultSet rs _ ^Integer i]
+  (.getString rs i))
 
 (defmethod sql-jdbc.execute/read-column [:oracle OracleTypes/TIMESTAMPTZ]
-  [driver calendar, ^ResultSet resultset, resultset-metadata i]
-  (let [m (get-method sql-jdbc.execute/read-column [:sql-jdbc Types/TIMESTAMP_WITH_TIMEZONE])
-        v (m driver calendar resultset resultset-metadata i)]
-    (or
-     (when (instance? oracle.sql.TIMESTAMPTZ v)
-       (let [connection (.. resultset getStatement getConnection)]
-         (when (and (instance? NewProxyConnection connection)
-                    (.isWrapperFor ^NewProxyConnection connection OracleConnection))
-           (let [^OracleConnection oracle-connection (.unwrap ^NewProxyConnection connection OracleConnection)]
-             (.timestampValue ^oracle.sql.TIMESTAMPTZ  v oracle-connection)))))
-     v)))
+  [driver _ ^ResultSet rs _ ^Integer i]
+  (.getObject rs i OffsetDateTime))
 
-(defmethod unprepare/unprepare-value [:oracle Date]
-  [_ value]
-  (format "timestamp '%s'" (du/format-date "yyyy-MM-dd HH:mm:ss.SSS ZZ" value)))
+(defmethod unprepare/unprepare-value [:oracle OffsetDateTime]
+  [_ t]
+  (let [s (-> (t/format "yyyy-MM-dd HH:mm:ss.SSS ZZZZZ" t)
+              ;; Oracle doesn't like `Z` to mean UTC
+              (str/replace #"Z$" "UTC"))]
+    (format "timestamp '%s'" s)))
+
+(defmethod unprepare/unprepare-value [:oracle ZonedDateTime]
+  [_ t]
+  (format "timestamp '%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSS VV" t)))
+
+(defmethod unprepare/unprepare-value [:oracle Instant]
+  [driver t]
+  (unprepare/unprepare-value driver (t/zoned-date-time t (t/zone-id "UTC"))))

@@ -1,6 +1,7 @@
 (ns metabase.driver.sqlserver
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
   (:require [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase
              [config :as config]
              [driver :as driver]]
@@ -14,9 +15,10 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor.interface :as qp.i]
             [metabase.util
-             [date :as du]
+             [date-2 :as u.date]
              [honeysql-extensions :as hx]])
   (:import [java.sql ResultSet Time]
+           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime]
            java.util.Date))
 
 (driver/register! :sqlserver, :parent :sql-jdbc)
@@ -252,13 +254,24 @@
   [_]
   #{"sys" "INFORMATION_SCHEMA"})
 
-(defmethod unprepare/unprepare-value [:sqlserver Date]
-  [_ value]
-  (format "cast('%s' AS datetime)" (du/date->iso-8601 value)))
+(defmethod unprepare/unprepare-value [:sqlserver LocalDate]
+  [_ t]
+  (format "{d '%s'}" (u.date/format t)))
 
-(prefer-method unprepare/unprepare-value [:sqlserver Date] [:sql Time])
+(defmethod unprepare/unprepare-value [:sqlserver LocalTime]
+  [_ t]
+  (format "{t '%s'}" (t/format "HH:mm:ss" t)))
+
+(defmethod unprepare/unprepare-value [:sqlserver LocalDateTime]
+  [_ t]
+  (format "{ts '%s'}" (u.date/format-sql t)))
+
+(defmethod unprepare/unprepare-value [:sqlserver OffsetDateTime]
+  [_ t]
+  (format "{ts '%s'}" (u.date/format-sql t)))
 
 ;; instead of default `microsoft.sql.DateTimeOffset`
 (defmethod sql-jdbc.execute/read-column [:sqlserver microsoft.sql.Types/DATETIMEOFFSET]
-  [_ _, ^ResultSet resultset, _, ^Integer i]
-  (.getTimestamp resultset i))
+  [_ _^ResultSet rs _ ^Integer i]
+  (println "(.getObject rs i OffsetDateTime):" (.getObject rs i OffsetDateTime)) ; NOCOMMIT
+  (.getObject rs i OffsetDateTime))

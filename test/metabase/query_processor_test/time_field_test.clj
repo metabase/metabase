@@ -26,7 +26,7 @@
                                    ["08:00:00" "09:00:00"]
 
                                    "Basic between query on a time field with milliseconds in literal"
-                                   ["08:00:00.000" "09:00:00.000"]}]
+                                   ["08:00:00" "09:00:00"]}]
       (testing message
         (is (= (if (= :sqlite driver/*driver*)
                  [[1 "Plato Yeshua" "08:30:00"]
@@ -66,14 +66,14 @@
              ;; pass through JDBC. The 08:00 is adjusted to UTC (16:00), which
              ;; should yield the third item
              (= :presto driver/*driver*)
-             [[3 "Kaneonuskatew Eiran" "00:15:00.000-08:00"]]
+             [[3 "Kaneonuskatew Eiran" "00:15:00-08:00"]]
 
              ;; It looks like Snowflake is doing this conversion correctly. Snowflake's time field is stored as wall
              ;; clock time (vs. PG and others storing it without a timezone). Originally, this time is 16:15 in UTC,
              ;; which is 8:15 in pacific time. The other report timezone databases are not doing this timezone
              ;; conversion.
              (= :snowflake driver/*driver*)
-             [[3 "Kaneonuskatew Eiran" "08:15:00.000-08:00"]]
+             [[3 "Kaneonuskatew Eiran" "08:15:00-08:00"]]
 
              ;; Databases like PostgreSQL ignore timezone information when
              ;; using a time field, the result below is what happens when the
@@ -81,8 +81,8 @@
              ;; time by the DB
              (qpt/supports-report-timezone? driver/*driver*)
              ;; TIMEZONE FIXME — the value of this changes based on whether we are in DST. This is B R O K E N
-             [[1 "Plato Yeshua" "00:30:00.000-08:00"]
-              [4 "Simcha Yan" "00:30:00.000-08:00"]]
+             [[1 "Plato Yeshua" "08:30:00-08:00"]
+              [4 "Simcha Yan" "08:30:00-08:00"]]
 
              :else
              [[1 "Plato Yeshua" "08:30:00Z"]

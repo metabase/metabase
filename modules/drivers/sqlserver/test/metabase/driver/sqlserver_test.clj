@@ -1,15 +1,22 @@
 (ns metabase.driver.sqlserver-test
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
+  (:require [clojure
+             [string :as str]
+             [test :refer :all]]
+            [clojure.java.jdbc :as jdbc]
+            [colorize.core :as colorize]
             [expectations :refer [expect]]
             [honeysql.core :as hsql]
+            [java-time :as t]
             [medley.core :as m]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :as qp.test]]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc
+             [connection :as sql-jdbc.conn]
+             [execute :as sql-jdbc.execute]]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test
              [data :as data]
@@ -156,3 +163,25 @@
                            (cons (str "SET LANGUAGE Italian; " sql) args)))
       ;; rollback transaction so `temp` table gets discarded
       (finally (.rollback (jdbc/get-connection t-conn))))))
+
+(defn- query [sql-args]
+  (jdbc/query
+   (sql-jdbc.conn/db->pooled-connection-spec (data/db))
+   sql-args
+   {:read-columns (sql-jdbc.execute/read-columns driver/*driver* nil)}))
+
+(deftest unprepare-test
+  (datasets/test-driver :sqlserver
+    (let [date (t/local-date 2019 11 5)
+          time (t/local-time 19 27)]
+      (doseq [[t expected] {date                                                                  ""
+                            time                                                                  ""
+                            (t/local-date-time date time)                                         ""
+                            (t/offset-time time (t/zone-offset -8))                               ""
+                            (t/offset-date-time (t/local-date-time date time) (t/zone-offset -8)) ""
+                            (t/zoned-date-time  date time (t/zone-id "America/Los_Angeles"))      ""}]
+        (testing (format "Convert %s to SQL literal" (colorize/magenta (with-out-str (pr t))))
+          (let [sql (format "SELECT %s AS t;" (unprepare/unprepare-value :sqlserver t))]
+            (is (= expected
+                   (-> (query sql) first :t))
+                (format "SQL %s should return %s" (colorize/blue sql) (colorize/green expected)))))))))

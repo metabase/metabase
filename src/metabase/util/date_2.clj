@@ -113,8 +113,13 @@
     :quarter-of-year
     :year})
 
-(def ^:private ^{:arglists (list (with-meta ['k] {:tag `WeekFields}))} week-fields
+(def ^:private week-fields*
   (common/static-instances WeekFields))
+
+;; this function is separate from the map above mainly to appease Eastwood due to a bug in `clojure/tools.analyzer` —
+;; see https://clojure.atlassian.net/browse/TANAL-132
+(defn- week-fields ^WeekFields [k]
+  (get week-fields* k))
 
 (s/defn extract :- Number
   "Extract a field such as `:minute-of-hour` from a temporal value `t`.
@@ -141,7 +146,7 @@
              :quarter-of-year  :quarter-of-year
              :year             :year))))
 
-(def ^:private ^{:arglists (list (with-meta ['k] {:tag `TemporalAdjuster}))} adjusters
+(def ^:private adjusters*
   {:first-day-of-week
    (reify TemporalAdjuster
      (adjustInto [_ t]
@@ -156,6 +161,9 @@
    (reify TemporalAdjuster
      (adjustInto [_ t]
        (.with t (.atDay (t/year-quarter t) 1))))})
+
+(defn- adjusters ^TemporalAdjuster [k]
+  (get adjusters* k))
 
 ;; if you attempt to truncate a `LocalDate` to `:day` or anything smaller we can go ahead and return it as is
 (extend-protocol t.core/Truncatable

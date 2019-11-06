@@ -1,35 +1,26 @@
 (ns metabase.driver.mysql
   "MySQL driver. Builds off of the SQL-JDBC driver."
-  (:require [clj-time
-             [coerce :as tcoerce]
-             [core :as t]
-             [format :as time]]
-            [clojure
+  (:require [clojure
              [set :as set]
              [string :as str]]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase.db.spec :as dbspec]
             [metabase.driver :as driver]
-            [metabase.driver
-             [common :as driver.common]
-             [sql :as sql]]
+            [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc
              [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.util
-             [date :as du]
              [honeysql-extensions :as hx]
              [i18n :refer [trs]]
-             [ssh :as ssh]]
-            [schema.core :as s])
-  (:import [java.sql ResultSet Time Timestamp Types]
-           [java.util Calendar Date TimeZone]
-           metabase.util.honeysql_extensions.Literal
-           org.joda.time.format.DateTimeFormatter))
+             [ssh :as ssh]])
+  (:import [java.time Instant OffsetDateTime OffsetTime ZonedDateTime]))
 
 (driver/register! :mysql, :parent :sql-jdbc)
 
@@ -107,82 +98,6 @@
 
 (defn- date-format [format-str expr] (hsql/call :date_format expr (hx/literal format-str)))
 (defn- str-to-date [format-str expr] (hsql/call :str_to_date expr (hx/literal format-str)))
-
-(def ^:private ^DateTimeFormatter timezone-offset-formatter
-  "JodaTime formatter that returns just the raw timezone offset, e.g. `-08:00` or `+00:00`."
-  (time/formatter "ZZ"))
-
-;; TODO - we should rewrite `metabase.driver.sql-jdbc.execute/set-parameters-with-timezone` as a generalized
-;; multimethod like we did for `read-columns`, and then we can override that here instead of this crazy crazy messiness
-(defn- timezone-id->offset-str
-  "Get an appropriate timezone offset string for a timezone with `timezone-id` and `date-time`. MySQL only accepts
-  these offsets as strings like `-8:00`.
-
-      (timezone-id->offset-str \"US/Pacific\", date-time) ; -> \"-08:00\"
-
-  Returns `nil` if `timezone-id` is itself `nil`. The `date-time` must be included as some timezones vary their
-  offsets at different times of the year (i.e. daylight savings time)."
-  [^String timezone-id date-time]
-  (when timezone-id
-    (time/unparse (.withZone timezone-offset-formatter (t/time-zone-for-id timezone-id)) date-time)))
-
-(def ^:private ^TimeZone utc   (TimeZone/getTimeZone "UTC"))
-(def ^:private utc-hsql-offset (hx/literal "+00:00"))
-
-(s/defn ^:private create-hsql-for-date
-  "Returns an HoneySQL structure representing the date for MySQL. If there's a report timezone, we need to ensure the
-  timezone conversion is wrapped around the `date-literal-or-string`. It supports both an `hx/literal` and a plain
-  string depending on whether or not the date value should be emedded in the statement or separated as a prepared
-  statement parameter. Use a string for prepared statement values, a literal if you want it embedded in the statement"
-  [date-obj :- java.util.Date
-   date-literal-or-string :- (s/either s/Str Literal)]
-  (let [date-as-dt                 (tcoerce/from-date date-obj)
-        report-timezone-offset-str (timezone-id->offset-str (driver/report-timezone) date-as-dt)]
-    (if (and report-timezone-offset-str
-             (not (.hasSameRules utc (TimeZone/getTimeZone (driver/report-timezone)))))
-      ;; if we have a report timezone we want to generate SQL like convert_tz('2004-01-01T12:00:00','-8:00','-2:00')
-      ;; to convert our timestamp from the UTC timezone -> report timezone. Note `date-object-literal` is assumed to be
-      ;; in UTC as `du/format-date` is being used which defaults to UTC.
-      ;; See https://dev.mysql.com/doc/refman/5.7/en/date-and-time-functions.html#function_convert-tz
-      ;; (We're using raw offsets for the JVM/report timezone instead of the timezone ID because we can't be 100% sure that
-      ;; MySQL will accept either of our timezone IDs as valid.)
-      ;;
-      ;; Note there's a small chance that report timezone will never be set on the MySQL connection, if attempting to
-      ;; do so fails because the ID is valid; if the report timezone is different from the MySQL database's timezone,
-      ;; this will result in the `convert_tz()` call below being incorrect. Unfortunately we don't currently have a
-      ;; way to determine that setting a timezone has failed for the current query, since it actualy is attempted
-      ;; after the query is compiled. Hopefully situtations where that happens are rare; at any rate it's probably
-      ;; preferable to have timezones slightly wrong in these rare theoretical situations, instead of all the time, as
-      ;; was the previous behavior.
-      (hsql/call :convert_tz
-        date-literal-or-string
-        utc-hsql-offset
-        (hx/literal report-timezone-offset-str))
-      ;; otherwise if we don't have a report timezone we can continue to pass the object as-is, e.g. as a prepared
-      ;; statement param
-      date-obj)))
-
-;; MySQL doesn't seem to correctly want to handle timestamps no matter how nicely we ask. SAD! Thus we will just
-;; convert them to appropriate timestamp literals and include functions to convert timezones as needed
-(defmethod sql.qp/->honeysql [:mysql Date]
-  [_ date]
-  (create-hsql-for-date date (hx/literal (du/format-date :date-hour-minute-second-ms date))))
-
-;; The sql.qp/->honeysql entrypoint is used by MBQL, but native queries with field filters have the same issue. Below
-;; will return a map that will be used in the prepared statement to correctly convert and parameterize the date
-(s/defmethod sql/->prepared-substitution [:mysql Date] :- sql/PreparedStatementSubstitution
-  [_ date]
-  (let [date-str (du/format-date :date-hour-minute-second-ms date)]
-    (sql/make-stmt-subs (-> (create-hsql-for-date date date-str)
-                            hx/->date
-                            (hsql/format :quoting :mysql, :allow-dashed-names? true)
-                            first)
-                        [date-str])))
-
-(defmethod sql.qp/->honeysql [:mysql Time]
-  [_ time-value]
-  (hx/->time time-value))
-
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
 ;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an
@@ -324,25 +239,36 @@
   [_]
   "SET @@session.time_zone = %s;")
 
-;; MariaDB refuses to respect timezones when returning timestamps so we'll just ask it to return them as strings
-;; instead which at least are always in UTC which means we can handle timezones ourselves
-(defmethod sql-jdbc.execute/read-column [:mysql Types/TIME]
-  [_ _, ^ResultSet resultset, _, ^Integer i]
-  (when-let [time-str (.getString resultset i)]
-    ;; time str comes back like append 'Z' so we always parse as UTC
-    (Time. (.getTime (tcoerce/to-sql-time (str time-str "Z"))))))
+(defn- format-offset [t]
+  (let [offset (t/format "ZZZZZ" (t/zone-offset t))]
+    (if (= offset "Z")
+      "UTC"
+      offset)))
 
-(defn- get-string-datetime ^Timestamp [^Calendar calendar, ^ResultSet resultset, ^Integer i]
-  ;; similar to what we do with Times, fetch the Date or Timestamp as a string (always in UTC) then parse it for the
-  ;; current timezone which will give us the correct results
-  (if calendar
-    (some-> (.getString resultset i) (du/->Timestamp (.getTimeZone calendar)))
-    (.getObject resultset i)))
+(defmethod sql-jdbc.execute/set-parameter [:mysql ZonedDateTime]
+  [driver ps i t]
+  (sql-jdbc.execute/set-parameter driver ps i (t/offset-date-time t)))
 
-(defmethod sql-jdbc.execute/read-column [:mysql Types/TIMESTAMP]
-  [_ calendar resultset _ i]
-  (get-string-datetime calendar resultset i))
+(defmethod unprepare/unprepare-value [:mysql OffsetTime]
+  [_ t]
+  ;; MySQL doesn't support timezone offsets in literals so pass in a local time literal wrapped in a call to convert
+  ;; it to the appropriate timezone
+  (format "convert_tz('%s', '%s', @@session.time_zone);"
+          (t/format "HH:mm:ss.SSS" t)
+          (format-offset t)))
 
-(defmethod sql-jdbc.execute/read-column [:mysql Types/DATE]
-  [_ calendar resultset _ i]
-  (get-string-datetime calendar resultset i))
+(defmethod unprepare/unprepare-value [:mysql OffsetDateTime]
+  [_ t]
+  (format "convert_tz('%s', '%s', @@session.time_zone);"
+          (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)
+          (format-offset t)))
+
+(defmethod unprepare/unprepare-value [:mysql ZonedDateTime]
+  [_ t]
+  (format "convert_tz('%s', '%s', @@session.time_zone);"
+          (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)
+          (str (t/zone-id t))))
+
+(defmethod unprepare/unprepare-value [:mysql Instant]
+  [driver t]
+  (unprepare/unprepare-value driver (t/zoned-date-time t (t/zone-id "UTC"))))
