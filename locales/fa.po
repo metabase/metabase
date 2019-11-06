@@ -272,7 +272,9 @@ msgstr "بررسی انجام نگرفت"
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:17
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:89
 msgid "Scan triggered!"
-msgstr "اسکن شروع شد"
+msgstr "اسکن شروع شد\n"
+"\n"
+""
 
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:218
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:400
@@ -1410,7 +1412,7 @@ msgstr "این یک عدد صحیح معتبر نیست"
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:161
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:223
 msgid "Changes saved!"
-msgstr "!تغییرات ذخیره شد"
+msgstr "تغییرات ذخیره شد!"
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:157
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:132
@@ -1423,11 +1425,11 @@ msgstr "ارسال ایمیل آزمایشی"
 
 #: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:13
 msgid "Sending..."
-msgstr "…درحال ارسال"
+msgstr "درحال ارسال..."
 
 #: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:14
 msgid "Sent!"
-msgstr "!ارسال شد"
+msgstr "ارسال شد!"
 
 #: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:82
 msgid "Clear"
@@ -1545,7 +1547,7 @@ msgstr "پاک کردن"
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:148
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:189
 msgid "Select…"
-msgstr "…اتخاب"
+msgstr "اتخاب..."
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:243
 msgid "Sample values:"
@@ -9528,11 +9530,13 @@ msgstr "HH:MM"
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:240
 msgid "HH:MM:SS"
-msgstr "HH:MM:SS"
+msgstr "HH:MM:SS\n"
+""
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:243
 msgid "HH:MM:SS.MS"
-msgstr "HH:MM:SS.MS"
+msgstr "HH:MM:SS.MS\n"
+""
 
 #: frontend/src/metabase/visualizations/lib/settings/column.js:254
 msgid "Time style"
@@ -9805,7 +9809,8 @@ msgstr "فقط یک بخش Google Analytics به طور همزمان مجاز ا
 
 #: src/metabase/driver/mongo/query_processor.clj
 msgid "MONGO AGGREGATION PIPELINE:"
-msgstr ":خط لوله مونگو"
+msgstr "MONGO AGGREGATION PIPELINE:\n"
+""
 
 #: src/metabase/driver/mongo/query_processor.clj
 msgid "Error: mismatched columns in results! Expected: {0} Got: {1}"
@@ -10179,7 +10184,8 @@ msgstr "رویدادها در هر ساعت از روز"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[Singleton]]"
-msgstr "[[Singleton]]"
+msgstr "[[Singleton]]\n"
+""
 
 #: resources/automagic_dashboards/field/State.yaml
 #: resources/automagic_dashboards/field/Country.yaml
@@ -10680,7 +10686,8 @@ msgstr "10 کشور برتر با فروش"
 
 #: resources/automagic_dashboards/table/GenericTable.yaml
 msgid "[[Timestamp]]"
-msgstr "[[Timestamp]]"
+msgstr "[[Timestamp]]\n"
+""
 
 #: resources/automagic_dashboards/table/TransactionTable.yaml
 msgid "Where these transactions happened"
@@ -11346,7 +11353,8 @@ msgstr "کلاس"
 
 #: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:32
 msgid "Triggers"
-msgstr "ماشه ها"
+msgstr "ماشه ها\n"
+""
 
 #: frontend/src/metabase/admin/tasks/containers/JobInfoApp.jsx:48
 msgid "View triggers"
@@ -11714,7 +11722,8 @@ msgstr "بانک اطلاعاتی نمی توانند در دایرکتوری م
 
 #: src/metabase/plugins.clj
 msgid "spark-deps.jar is no longer needed by Metabase 1.0+. You can delete it from the plugins directory."
-msgstr "spark-deps.jar is no longer needed by Metabase 1.0+. You can delete it from the plugins directory."
+msgstr "spark-deps.jar is no longer needed by Metabase 1.0+. You can delete it from the plugins directory.\n"
+""
 
 #: src/metabase/plugins.clj
 msgid "Failied to initialize plugin {0}"
@@ -12024,7 +12033,8 @@ msgstr "[[CreateTimestamp]] تا چهارم سال"
 #: resources/automagic_dashboards/table/GenericTable.yaml
 #: resources/automagic_dashboards/metric/GenericMetric.yaml
 msgid "How they compare across location"
-msgstr "نحوه مقایسه انها در سراسر مکان یا نحوه مقایه انها بر اساس موقعیت مکانی"
+msgstr "نحوه مقایسه انها در سراسر مکان یا نحوه مقایه انها بر اساس موقعیت مکانی\n"
+""
 
 #: resources/automagic_dashboards/table/TransactionTable/ByProduct.yaml
 msgid "Here's a closer look at your [[this]] by products"
@@ -12197,7 +12207,8 @@ msgstr "{0} به اتمام رسید به {1}"
 
 #: src/metabase/api/metric.clj
 msgid "DELETE /api/metric/:id is deprecated. Instead, change its `archived` value via PUT /api/metric/:id."
-msgstr "DELETE /api/metric/:id is deprecated. Instead, change its `archived` value via PUT /api/metric/:id."
+msgstr "DELETE /api/metric/:id is deprecated. Instead, change its `archived` value via PUT /api/metric/:id.\n"
+""
 
 #: src/metabase/api/segment.clj
 msgid "DELETE /api/segment/:id is deprecated. Instead, change its `archived` value via PUT /api/segment/:id."
@@ -12533,7 +12544,8 @@ msgstr "تجمیع"
 
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:68
 msgid "Breakout"
-msgstr "برک آوت"
+msgstr "Breakout\n"
+""
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/AggregateStep.jsx:18
 msgid "Pick the metric you want to see"
@@ -12684,7 +12696,8 @@ msgstr "این معمولاً خیلی سریع است اما به نظر می �
 
 #: frontend/src/metabase/visualizations/visualizations/ComboChart.jsx:16
 msgid "Combo"
-msgstr "ترکیب"
+msgstr "Combo\n"
+""
 
 #: frontend/src/metabase/visualizations/visualizations/RowChart.jsx:13
 msgid "Row"
@@ -12696,7 +12709,7 @@ msgstr "روند"
 
 #: frontend/src/metabase-lib/lib/DimensionOptions.js:129
 msgid "Boolean"
-msgstr "بول"
+msgstr "Boolean"
 
 #: frontend/src/metabase-lib/lib/queries/structured/Filter.js:59
 msgid "Unknown Segment"
@@ -12930,15 +12943,16 @@ msgstr "جمع {0}"
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "SD of {0}"
-msgstr "{0} انحراف استاندارد از"
+msgstr "SD of {0}"
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "Min of {0}"
-msgstr "{0} حداقل از"
+msgstr "Min of {0}\n"
+""
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "Max of {0}"
-msgstr "{0} حداکثر از"
+msgstr "Max of {0}"
 
 #. until we have a way to generate good names for filters we'll just have to say 'matching condition' for now
 #: src/metabase/query_processor/middleware/annotate.clj
@@ -12963,7 +12977,7 @@ msgstr "به طور غیر منتظره پاسخ 'nil' پردازنده Query ر
 
 #: src/metabase/query_processor/middleware/async.clj
 msgid "Got InterruptedException. Canceling query."
-msgstr "InterruptedException در حال لغو پرس و جو"
+msgstr "InterpreException در حال لغو پرس و جو"
 
 #: src/metabase/query_processor/middleware/async.clj
 msgid "Unhandled exception, exepected `catch-exceptions` middleware to handle it."
@@ -13055,11 +13069,11 @@ msgstr "الگوی '' {0} '' بارگیری نشد. یادتان هست که ج�
 
 #: src/metabase/sample_data.clj
 msgid "Sample dataset DB file ''{0}'' cannot be found."
-msgstr "نمونه پرونده داده DB ''{0}'' یافت نشد."
+msgstr "نمونه پرونده داده {DB '' {0'' یافت نشد."
 
 #: src/metabase/sample_data.clj
 msgid "Loading sample dataset..."
-msgstr "…بارگیری مجموعه داده نمونه"
+msgstr "بارگیری مجموعه داده نمونه ..."
 
 #: src/metabase/sample_data.clj
 msgid "Failed to load sample dataset"
@@ -13067,15 +13081,15 @@ msgstr "بارگیری مجموعه داده نمونه انجام نشد"
 
 #: src/metabase/sync/sync_metadata/tables.clj
 msgid "Found new tables:"
-msgstr ":جداول جدید یافت"
+msgstr "جداول جدید یافت:"
 
 #: src/metabase/sync/sync_metadata/tables.clj
 msgid "Marking tables as inactive:"
-msgstr ":علامت گذاری جداول به عنوان غیرفعال"
+msgstr "علامت گذاری جداول به عنوان غیرفعال:"
 
 #: src/metabase/sync/sync_metadata/tables.clj
-msgid "Updating description for tables"
-msgstr ":به روزرسانی توضیحات برای جداول:"
+msgid "Updating description for tables:"
+msgstr "به روزرسانی توضیحات برای جداول:"
 
 #: src/metabase/task.clj
 msgid "Rescheduling job {0}"
@@ -13099,9 +13113,9 @@ msgstr "برنامه ریزی وظایف برای بانک اطلاعات {0} ا
 
 #: src/metabase/util/schema.clj
 msgid "All elements must be distinct."
-msgstr ".همه عناصر باید مشخص باشند"
+msgstr "همه عناصر باید مشخص باشند."
 
-#:
+#: 
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "ستون هایی را که می خواهید گنجانید انتخاب کنید"
@@ -13143,3 +13157,4 @@ msgstr "خطا در تعیین ستون های مورد انتظار برای پ
 #: src/metabase/query_processor/middleware/async.clj
 msgid "Unhandled exception, expected `catch-exceptions` middleware to handle it."
 msgstr "استثناء نامحدود ، انتظار می رود واسطه میانجی \"گرفتن استثناء\" برای رسیدگی به آن."
+

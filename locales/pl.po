@@ -1163,7 +1163,7 @@ msgstr "Nigdy"
 #: src/metabase/automagic_dashboards/core.clj
 msgid "{0} table"
 msgid_plural "{0} tables"
-msgstr[0] "tabela"
+msgstr[0] "tabelę {0}"
 msgstr[1] "{0} tabele"
 msgstr[2] "{0} tabele"
 msgstr[3] "{0} tabele"
@@ -2489,7 +2489,7 @@ msgstr "Na podstawie schematu"
 
 #: frontend/src/metabase/components/ExplorePane.jsx:173
 msgid "A look at your"
-msgstr "Zobacz na"
+msgstr "Przegląd twojej"
 
 #: frontend/src/metabase/components/FieldValuesWidget.jsx:240
 msgid "Search the list"
@@ -11837,7 +11837,8 @@ msgstr "Wtyczka \"{0}\" zależy od wtyczki \"{1}\""
 
 #: src/metabase/plugins/dependencies.clj
 msgid "{0} dependency {1} satisfied? {2}"
-msgstr "{0} zależności {1} zadowolony? {2}"
+msgstr "{0} zależności {1} zadowolony? {2}\n"
+""
 
 #: src/metabase/plugins/dependencies.clj
 msgid "Plugins with unsatisfied deps: {0}"
@@ -12884,7 +12885,8 @@ msgstr "Błąd podczas niszczenia puli wątków dla bazy danych."
 
 #: src/metabase/models/humanization.clj
 msgid "Updating display name for {0} ''{1}'': ''{2}'' -> ''{3}''"
-msgstr "Aktualizowanie nazwy wyświetlanej dla {0} ''{1}'': ''{2}'' -> ''{3}''"
+msgstr "Aktualizowanie nazwy wyświetlanej dla {0} ''{1}'': ''{2}'' -> ''{3}''\n"
+""
 
 #: src/metabase/models/humanization.clj
 msgid "Invalid humanization strategy ''{0}''. Valid strategies are: {1}"
