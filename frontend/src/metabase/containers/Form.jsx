@@ -233,7 +233,7 @@ export default class Form extends React.Component {
     // HACK: clears failed state for global error
     if (!this._submitting && this._submitFailed) {
       this._submitFailed = false;
-      props.dispatch(props.stopSubmit(this.props.formName));
+      props.stopSubmit();
     }
     const formObject = this._getFormObject();
     return formObject.validate(values, props);
@@ -251,6 +251,10 @@ export default class Form extends React.Component {
       this._submitFailed = true;
       // redux-form expects { "FIELD NAME": "FIELD ERROR STRING" } or {"_error": "GLOBAL ERROR STRING" }
       if (error && error.data && error.data.errors) {
+        try {
+          // HACK: blur the current element to ensure we show the error
+          document.activeElement.blur();
+        } catch (e) {}
         throw error.data.errors;
       } else if (error) {
         throw {
