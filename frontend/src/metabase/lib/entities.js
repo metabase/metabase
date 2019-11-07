@@ -12,6 +12,7 @@ import {
 import createCachedSelector from "re-reselect";
 
 import { addUndo } from "metabase/redux/undo";
+import requestsReducer, { setRequestUnloaded } from "metabase/redux/requests";
 
 import { GET, PUT, POST, DELETE } from "metabase/lib/api";
 
@@ -20,7 +21,7 @@ import inflection from "inflection";
 
 import { createSelector } from "reselect";
 import { normalize, denormalize, schema } from "normalizr";
-import { getIn, dissocIn, merge } from "icepick";
+import { getIn, merge } from "icepick";
 import _ from "underscore";
 
 // entity defintions export the following properties (`name`, and `api` or `path` are required)
@@ -491,32 +492,39 @@ export function createEntity(def: EntityDefinition): Entity {
 
   // REQUEST STATE SELECTORS
 
-  const getStatePath = props =>
-    props.entityId != null
-      ? getObjectStatePath(props.entityId)
-      : getListStatePath(props.entityQuery);
+  const getStatePath = ({ entityId, entityQuery } = {}) =>
+    entityId != null
+      ? getObjectStatePath(entityId)
+      : getListStatePath(entityQuery);
 
-  const getRequestState = (state, props = {}) =>
-    getIn(state, ["requests", "states", ...getStatePath(props), "fetch"]);
+  const getRequestStatePath = ({
+    entityId,
+    entityQuery,
+    requestType = "fetch",
+  } = {}) => [
+    "requests",
+    ...getStatePath({ entityId, entityQuery }),
+    requestType,
+  ];
 
-  const getFetchState = (state, props = {}) =>
-    getIn(state, ["requests", "fetched", ...getStatePath(props)]);
+  const getRequestState = (state, props) =>
+    getIn(state, getRequestStatePath(props)) || {};
 
   const getLoading = createSelector(
     [getRequestState],
-    requestState => (requestState ? requestState.state === "LOADING" : false),
+    requestState => requestState.loading,
   );
   const getLoaded = createSelector(
     [getRequestState],
-    requestState => (requestState ? requestState.state === "LOADED" : false),
+    requestState => requestState.loaded,
   );
   const getFetched = createSelector(
-    [getFetchState],
-    fetchState => !!fetchState,
+    [getRequestState],
+    requestState => requestState.fetched,
   );
   const getError = createSelector(
     [getRequestState],
-    requestState => (requestState ? requestState.error : null),
+    requestState => requestState.error,
   );
 
   entity.selectors = {
@@ -597,7 +605,10 @@ export function createEntity(def: EntityDefinition): Entity {
     // reset all list request states when creating, deleting, or updating
     // to force a reload
     if (entity.actionShouldInvalidateLists(action)) {
-      return dissocIn(state, ["states", "entities", entity.name + "_list"]);
+      return requestsReducer(
+        state,
+        setRequestUnloaded(["entities", entity.name + "_list"]),
+      );
     }
     return state;
   };
