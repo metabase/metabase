@@ -45,39 +45,34 @@ export const BackendResource = createSharedResource("BackendResource", {
       if (server.dbKey !== server.dbFile) {
         await fs.copy(`${server.dbKey}.mv.db`, `${server.dbFile}.mv.db`);
       }
-      const javaOpts = [
-        "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
-        "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
-        "-Xmx2g", // Hard limit of 2GB size for the heap since Circle is dumb and the JVM tends to go over the limit otherwise
-        "-Xverify:none", // Skip bytecode verification for the JAR so it launches faster
-        "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
-        "-Duser.timezone=US/Pacific",
-        `-Dlog4j.configuration=file:${__dirname}/log4j.properties`,
-      ];
-      const env = {
-        ...process.env,
-        MB_DB_TYPE: "h2",
-        MB_DB_FILE: server.dbFile,
-        MB_JETTY_PORT: server.port,
-      };
-      if (process.env["METABASE_JAR"]) {
-        server.process = spawn(
-          "java",
-          [...javaOpts, "-jar", process.env["METABASE_JAR"]],
-          {
-            env: env,
-            stdio: "inherit",
-          },
-        );
-      } else {
-        server.process = spawn("lein", ["run"], {
+
+      server.process = spawn(
+        "java",
+        [
+          "-XX:+IgnoreUnrecognizedVMOptions", // ignore options not recognized by this Java version (e.g. Java 8 should ignore Java 9 options)
+          "-Dh2.bindAddress=localhost", // fix H2 randomly not working (?)
+          "-Xmx2g", // Hard limit of 2GB size for the heap since Circle is dumb and the JVM tends to go over the limit otherwise
+          "-Xverify:none", // Skip bytecode verification for the JAR so it launches faster
+          "-Djava.awt.headless=true", // when running on macOS prevent little Java icon from popping up in Dock
+          "-Duser.timezone=US/Pacific",
+          `-Dlog4j.configuration=file:${__dirname}/log4j.properties`,
+          "-jar",
+          "target/uberjar/metabase.jar",
+        ],
+        {
           env: {
-            ...env,
-            JAVA_OPTS: javaOpts.join(" "),
+            MB_DB_TYPE: "h2",
+            MB_DB_FILE: server.dbFile,
+            MB_JETTY_HOST: "0.0.0.0",
+            MB_JETTY_PORT: server.port,
           },
-          stdio: "inherit",
-        });
-      }
+          stdio:
+            process.env["DISABLE_LOGGING"] ||
+            process.env["DISABLE_LOGGING_BACKEND"]
+              ? "ignore"
+              : "inherit",
+        },
+      );
     }
     if (!(await isReady(server.host))) {
       process.stdout.write(

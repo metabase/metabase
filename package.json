@@ -185,7 +185,7 @@
     "test-unit-update-snapshot": "yarn test-unit --updateSnapshot",
     "test-integration": "yarn && jest --maxWorkers=8 --config jest.integ.conf.json",
     "test-integration-watch": "yarn test-integration --watch",
-    "test-e2e": "./bin/build-for-test && METABASE_JAR=./target/uberjar/metabase.jar yarn test-e2e-no-build",
+    "test-e2e": "./bin/build-for-test && yarn test-e2e-no-build",
     "test-e2e-watch": "yarn test-e2e --watch",
     "test-e2e-no-build": "yarn && babel-node ./frontend/test/__runner__/run_e2e_tests.js",
     "test-karma": "yarn && karma start frontend/test/karma.conf.js --single-run",

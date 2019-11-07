@@ -94,7 +94,7 @@ const init = async () => {
   );
   console.log(
     chalk.cyan(
-      "You can update the fixture by running a local instance against it:\n`MB_DB_FILE=frontend/test/__runner__/test_db_fixture.db lein run`",
+      "You can update the fixture by running a local instance against it:\n`MB_DB_TYPE=h2 MB_DB_FILE=frontend/test/__runner__/test_db_fixture.db lein run`",
     ),
   );
   await BackendResource.start(serverWithTestDbFixture);
