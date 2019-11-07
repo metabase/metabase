@@ -173,7 +173,7 @@
    :type/Boolean        :BOOLEAN
    :type/Date           :TIMESTAMP
    :type/DateTime       :TIMESTAMP
-   :type/DateTimeWithTZ :TIMESTAMP
+   :type/DateTimeWithTZ :TIMESTAMP ; is this correct ???
    :type/Decimal        :NUMERIC
    :type/Dictionary     :RECORD
    :type/Float          :FLOAT

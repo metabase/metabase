@@ -142,7 +142,7 @@ export default class PasswordResetApp extends Component {
             {!resetSuccess ? (
               <div className="Grid-cell">
                 <form
-                  className="ForgotForm Login-wrapper bg-white Form-new bordered rounded shadowed"
+                  className="ForgotForm p4 Login-wrapper bg-white Form-new bordered rounded shadowed"
                   name="form"
                   onSubmit={e => this.formSubmitted(e)}
                   noValidate

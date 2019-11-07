@@ -65,10 +65,12 @@
     [(driver/dispatch-on-initialized-driver driver) (.getColumnType resultset-metadata i)])
   :hierarchy #'driver/hierarchy)
 
-(defmethod read-column :default [_ _, ^ResultSet resultset, _, ^Integer i]
+(defmethod read-column :default
+  [_ _, ^ResultSet resultset, _, ^Integer i]
   (.getObject resultset i))
 
-(defmethod read-column [::driver/driver Types/DATE] [_, ^Calendar cal, ^ResultSet resultset, _, ^Integer i]
+(defmethod read-column [::driver/driver Types/DATE]
+  [_, ^Calendar cal, ^ResultSet resultset, _, ^Integer i]
   (if-not cal
     (.getObject resultset i)
     (try
@@ -76,7 +78,9 @@
       (catch SQLException e
         (parse-date-as-string cal resultset i)))))
 
-(defmethod read-column [::driver/driver Types/TIMESTAMP] [_, ^Calendar cal, ^ResultSet resultset, _, ^Integer i]
+;; TODO - what about `TIMESTAMP_WITH_TIMEZONE` ???
+(defmethod read-column [::driver/driver Types/TIMESTAMP]
+  [_, ^Calendar cal, ^ResultSet resultset, _, ^Integer i]
   (if-not cal
     (.getObject resultset i)
     (try
@@ -84,7 +88,8 @@
       (catch SQLException e
         (parse-date-as-string cal resultset i)))))
 
-(defmethod read-column [::driver/driver Types/TIME] [driver, _, ^ResultSet resultset, _, ^Integer i]
+(defmethod read-column [::driver/driver Types/TIME]
+  [driver, _, ^ResultSet resultset, _, ^Integer i]
   ;; .getTime will be something like 1970-01-01-09:14:00 when it comes back from the DB for normal DBs (i.e., already
   ;; in UTC), so always pass in UTC Calendar -- otherwise the normal behavior is to try to apply the default calendar,
   ;; which uses the default timezone, which is either the report timezone or system timezone, and not what we want.
@@ -109,7 +114,8 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod read-columns :default [driver, ^Calendar calendar]
+(defmethod read-columns :default
+  [driver, ^Calendar calendar]
   (fn [^ResultSet resultset, ^ResultSetMetaData resultset-metadata, indexes]
     (for [^Integer i, indexes]
       (jdbc/result-set-read-column (read-column driver calendar resultset resultset-metadata i) resultset-metadata i))))
@@ -119,10 +125,10 @@
 ;;; |                                                 Setting Params                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO - this should be a multimethod like `read-column`. Perhaps named `set-parameter`
+;; TODO - this should be a multimethod like `read-column`. Perhaps named `set-parameter`. Basically like the existing
+;; one in `clojure.java.jdbc` but for QP only
 (defn- set-parameters-with-timezone
-  "Returns a function that will set date/timestamp PreparedStatement
-  parameters with the correct timezone"
+  "Returns a function that will set Date/Timestamp PreparedStatement parameters with the correct timezone"
   [^TimeZone tz]
   (fn [^PreparedStatement stmt params]
     (mapv (fn [^Integer i value]
@@ -278,13 +284,14 @@
 
 (defn execute-query
   "Process and run a native (raw SQL) `query`."
-  [driver {settings :settings, query :native, :as outer-query}]
+  [driver {{:keys [report-timezone], :as settings} :settings, query :native, :as outer-query}]
   (let [query (assoc query
-                :remark   (qputil/query->remark outer-query)
-                :max-rows (or (mbql.u/query->max-rows-limit outer-query) qp.i/absolute-max-results))]
+                     :remark   (qputil/query->remark outer-query)
+                     :max-rows (or (mbql.u/query->max-rows-limit outer-query) qp.i/absolute-max-results))]
     (do-with-try-catch
       (fn []
-        (let [db-connection (sql-jdbc.conn/db->pooled-connection-spec (qp.store/database))]
-          ((if (seq (:report-timezone settings))
-             run-query-with-timezone
-             run-query-without-timezone) driver settings db-connection query))))))
+        (let [db-connection (sql-jdbc.conn/db->pooled-connection-spec (qp.store/database))
+              run-query*    (if (seq report-timezone)
+                              run-query-with-timezone
+                              run-query-without-timezone)]
+          (run-query* driver settings db-connection query))))))

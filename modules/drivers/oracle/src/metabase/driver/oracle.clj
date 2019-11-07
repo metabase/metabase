@@ -16,8 +16,10 @@
              [date :as du]
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
-  (:import [java.sql ResultSet Types]
-           java.util.Date))
+  (:import com.mchange.v2.c3p0.impl.NewProxyConnection
+           [java.sql ResultSet Types]
+           java.util.Date
+           [oracle.jdbc OracleConnection OracleTypes]))
 
 (driver/register! :oracle, :parent :sql-jdbc)
 
@@ -54,12 +56,14 @@
     [#"URI"         :type/Text]
     [#"XML"         :type/*]]))
 
-(defmethod sql-jdbc.sync/database-type->base-type :oracle [_ column-type]
+(defmethod sql-jdbc.sync/database-type->base-type :oracle
+  [_ column-type]
   (database-type->base-type column-type))
 
-(defmethod sql-jdbc.conn/connection-details->spec :oracle [_ {:keys [host port sid service-name]
-                                                              :or   {host "localhost", port 1521}
-                                                              :as   details}]
+(defmethod sql-jdbc.conn/connection-details->spec :oracle
+  [_ {:keys [host port sid service-name]
+      :or   {host "localhost", port 1521}
+      :as   details}]
   (assert (or sid service-name))
   (merge
    {:classname   "oracle.jdbc.OracleDriver"
@@ -77,10 +81,10 @@
     :oracle.jdbc.J2EE13Compliant true}
    (dissoc details :host :port :sid :service-name)))
 
-(defmethod driver/can-connect? :oracle [driver details]
+(defmethod driver/can-connect? :oracle
+  [driver details]
   (let [connection (sql-jdbc.conn/connection-details->spec driver (ssh/include-ssh-tunnel details))]
     (= 1M (first (vals (first (jdbc/query connection ["SELECT 1 FROM dual"])))))))
-
 
 (defn- trunc
   "Truncate a date. See also this [table of format
@@ -145,10 +149,12 @@
                               :quarter (num-to-ym-interval :month  (hx/* amount (hsql/raw 3)))
                               :year    (num-to-ym-interval :year   amount))))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:oracle :seconds] [_ _ field-or-value]
+(defmethod sql.qp/unix-timestamp->timestamp [:oracle :seconds]
+  [_ _ field-or-value]
   (hx/+ date-1970-01-01 (num-to-ds-interval :second field-or-value)))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:oracle :milliseconds] [driver _ field-or-value]
+(defmethod sql.qp/unix-timestamp->timestamp [:oracle :milliseconds]
+  [driver _ field-or-value]
   (sql.qp/unix-timestamp->timestamp driver :seconds (hx// field-or-value (hsql/raw 1000))))
 
 ;; Oracle doesn't support `LIMIT n` syntax. Instead we have to use `WHERE ROWNUM <= n` (`NEXT n ROWS ONLY` isn't
@@ -271,7 +277,8 @@
       "XDB"
       "XS$NULL"}))
 
-(defmethod sql-jdbc.execute/set-timezone-sql :oracle [_]
+(defmethod sql-jdbc.execute/set-timezone-sql :oracle
+  [_]
   "ALTER session SET time_zone = %s")
 
 ;; instead of returning a CLOB object, return the String. (#9026)
@@ -279,5 +286,19 @@
   [_ _, ^ResultSet resultset, _, ^Integer i]
   (.getString resultset i))
 
-(defmethod unprepare/unprepare-value [:oracle Date] [_ value]
+(defmethod sql-jdbc.execute/read-column [:oracle OracleTypes/TIMESTAMPTZ]
+  [driver calendar, ^ResultSet resultset, resultset-metadata i]
+  (let [m (get-method sql-jdbc.execute/read-column [:sql-jdbc Types/TIMESTAMP_WITH_TIMEZONE])
+        v (m driver calendar resultset resultset-metadata i)]
+    (or
+     (when (instance? oracle.sql.TIMESTAMPTZ v)
+       (let [connection (.. resultset getStatement getConnection)]
+         (when (and (instance? NewProxyConnection connection)
+                    (.isWrapperFor ^NewProxyConnection connection OracleConnection))
+           (let [^OracleConnection oracle-connection (.unwrap ^NewProxyConnection connection OracleConnection)]
+             (.timestampValue ^oracle.sql.TIMESTAMPTZ  v oracle-connection)))))
+     v)))
+
+(defmethod unprepare/unprepare-value [:oracle Date]
+  [_ value]
   (format "timestamp '%s'" (du/format-date "yyyy-MM-dd HH:mm:ss.SSS ZZ" value)))

@@ -30,9 +30,6 @@ export const getNormalizedFields = state => state.entities.fields;
 export const getNormalizedMetrics = state => state.entities.metrics;
 export const getNormalizedSegments = state => state.entities.segments;
 
-export const getMetadataFetched = state =>
-  state.requests.fetched.metadata || {};
-
 // TODO: these should be denomalized but non-cylical, and only to the same "depth" previous "tableMetadata" was, e.x.
 //
 // TABLE:

@@ -2,7 +2,7 @@
   (:require [metabase.util.date :as du]))
 
 (defn bind-effective-timezone
-  "Middlware that ensures the report-timezone and data-timezone are bound based on the database being queried against"
+  "Middlware that ensures the `*report-timezone*` and `*database-timezone*` are bound based on the database being queried against"
   [qp]
   (fn [query]
     (du/with-effective-timezone (:database query)
