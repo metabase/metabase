@@ -1,6 +1,6 @@
 import React from "react";
 import { Provider } from "react-redux";
-import { mount } from "__support__/enzyme_utils";
+import { mount } from "__support__/enzyme";
 
 import reducers from "metabase/reducers-main";
 import { getStore } from "metabase/store";

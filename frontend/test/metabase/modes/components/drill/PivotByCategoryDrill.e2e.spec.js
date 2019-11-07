@@ -6,7 +6,7 @@ import {
   metadata,
 } from "__support__/sample_dataset_fixture";
 import Question from "metabase-lib/lib/Question";
-import { useSharedAdminLogin } from "__support__/e2e_tests";
+import { useSharedAdminLogin } from "__support__/e2e";
 
 describe("PivotByCategoryDrill", () => {
   beforeAll(async () => {

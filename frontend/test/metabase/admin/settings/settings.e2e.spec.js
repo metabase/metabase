@@ -1,5 +1,5 @@
 // Converted from an old Selenium E2E test
-import { useSharedAdminLogin, createTestStore } from "__support__/e2e_tests";
+import { useSharedAdminLogin, createTestStore } from "__support__/e2e";
 import { mount } from "enzyme";
 import SettingInput from "metabase/admin/settings/components/widgets/SettingInput";
 import {
@@ -7,7 +7,7 @@ import {
   UPDATE_SETTING,
 } from "metabase/admin/settings/settings";
 import { LOAD_CURRENT_USER } from "metabase/redux/user";
-import { setInputValue } from "__support__/enzyme_utils";
+import { setInputValue } from "__support__/enzyme";
 
 describe("admin/settings", () => {
   beforeAll(async () => useSharedAdminLogin());

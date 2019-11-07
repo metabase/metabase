@@ -4,8 +4,8 @@ import {
   createTestStore,
   deleteAllSegments,
   deleteAllMetrics,
-} from "__support__/e2e_tests";
-import { click, clickButton, setInputValue } from "__support__/enzyme_utils";
+} from "__support__/e2e";
+import { click, clickButton, setInputValue } from "__support__/enzyme";
 
 import { mount } from "enzyme";
 import { UPDATE_PREVIEW_SUMMARY } from "metabase/admin/datamodel/datamodel";
