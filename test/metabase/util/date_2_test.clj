@@ -94,6 +94,10 @@
   (is (= "2019-11-01 18:39:00.000-07:00"
          (u.date/format-sql (t/zoned-date-time "2019-11-01T18:39:00-07:00[US/Pacific]")))))
 
+(deftest format-sql-test
+  (is (= "2019-11-05 19:27:00"
+         (u.date/format-sql (t/local-date-time "2019-11-05T19:27")))))
+
 (deftest extract-test
   ;; everything is at `Sunday October 27th 2019 2:03:40.555 PM` or subset thereof
   (let [temporal-category->sample-values {:dates     [(t/local-date 2019 10 27)]

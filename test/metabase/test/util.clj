@@ -510,8 +510,9 @@
                                   {:cron-schedule (.getCronExpression ^CronTrigger trigger)
                                    :data          (into {} (.getJobDataMap trigger))}))))}))))))
 
-(defn db-timezone-id
-  "Return the timezone id from the test database. Must be called with `*driver*` bound,such as via `driver/with-driver`"
+(defn ^:deprecated db-timezone-id
+  "Return the timezone id from the test database. Must be called with `*driver*` bound,such as via `driver/with-driver`.
+  DEPRECATED — just call `metabase.driver/db-default-timezone` instead directly."
   []
   (assert driver/*driver*)
   (let [db (data/db)]
@@ -521,10 +522,12 @@
     ;; determine the database's timezone.
     (driver/notify-database-updated driver/*driver* db)
     (data/dataset test-data
-      (-> (driver/current-db-time driver/*driver* db)
-          .getChronology
-          .getZone
-          .getID))))
+      (or
+       (driver/db-default-timezone driver/*driver* db)
+       (-> (driver/current-db-time driver/*driver* db)
+           .getChronology
+           .getZone
+           .getID)))))
 
 (defmulti ^:private do-model-cleanup! class)
 

@@ -2,7 +2,8 @@
   "Replacement for `metabase.util.date` that consistently uses `java.time` instead of a mix of `java.util.Date`,
   `java.sql.*`, and Joda-Time."
   (:refer-clojure :exclude [format range])
-  (:require [java-time :as t]
+  (:require [clojure.string :as str]
+            [java-time :as t]
             [java-time.core :as t.core]
             [metabase.util.date-2
              [common :as common]
@@ -44,15 +45,6 @@
     OffsetDateTime :iso-offset-date-time
     ZonedDateTime  :iso-offset-date-time))
 
-(defn- temporal->sql-formatter [t]
-  (condp instance? t
-    LocalDate      "yyyy-MM-dd"
-    LocalTime      "HH:mm:ss.SSSSS"
-    LocalDateTime  "yyyy-MM-dd HH:mm:ss.SSSZZZZZ"
-    OffsetTime     "HH:mm:ss.SSSZZZZZ"
-    OffsetDateTime "yyyy-MM-dd HH:mm:ss.SSSZZZZZ"
-    ZonedDateTime  "yyyy-MM-dd HH:mm:ss.SSSZZZZZ"))
-
 (defn- format* [formatter t]
   (when t
     (if (t/instant? t)
@@ -65,10 +57,11 @@
   (format* (temporal->iso-8601-formatter t) t))
 
 (defn format-sql
-  "Format a temporal value `t` as a SQL-style literal string. This is basically the same as ISO-8601 but uses a space
-  rather than of a `T` to separate the date and time components."
+  "Format a temporal value `t` as a SQL-style literal string (for most SQL databases). This is the same as ISO-8601 but
+  uses a space rather than of a `T` to separate the date and time components."
   ^String [t]
-  (format* (temporal->sql-formatter t) t))
+  ;; replace the `T` with a space. Easy!
+  (str/replace-first (format t) #"(\d{2})T(\d{2})" "$1 $2"))
 
 (def ^:private add-units
   #{:millisecond :second :minute :hour :day :week :month :quarter :year})

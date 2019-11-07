@@ -16,9 +16,11 @@
             [metabase.util
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
-  (:import [java.sql ResultSet Types]
+  (:import com.mchange.v2.c3p0.C3P0ProxyConnection
+           [java.sql ResultSet Types]
            [java.time Instant OffsetDateTime ZonedDateTime]
-           oracle.jdbc.OracleTypes))
+           [oracle.jdbc OracleConnection OracleTypes]
+           oracle.sql.TIMESTAMPTZ))
 
 (driver/register! :oracle, :parent :sql-jdbc)
 
@@ -127,9 +129,7 @@
   (hx/inc (hx/- (sql.qp/date driver :day v)
                 (sql.qp/date driver :week v))))
 
-
-(def ^:private now             (hsql/raw "SYSDATE"))
-(def ^:private date-1970-01-01 (hsql/call :to_timestamp (hx/literal :1970-01-01) (hx/literal :YYYY-MM-DD)))
+(def ^:private now (hsql/raw "SYSDATE"))
 
 (defmethod sql.qp/current-datetime-fn :oracle [_] now)
 
@@ -150,7 +150,8 @@
 
 (defmethod sql.qp/unix-timestamp->timestamp [:oracle :seconds]
   [_ _ field-or-value]
-  (hx/+ date-1970-01-01 (num-to-ds-interval :second field-or-value)))
+  (hx/+ (hsql/raw "timestamp '1970-01-01 00:00:00 UTC'")
+        (num-to-ds-interval :second field-or-value)))
 
 (defmethod sql.qp/unix-timestamp->timestamp [:oracle :milliseconds]
   [driver _ field-or-value]
@@ -227,7 +228,8 @@
      :rows    (for [row rows]
                 (butlast row))}))
 
-(defmethod driver/humanize-connection-error-message :oracle [_ message]
+(defmethod driver/humanize-connection-error-message :oracle
+  [_ message]
   ;; if the connection error message is caused by the assertion above checking whether sid or service-name is set,
   ;; return a slightly nicer looking version. Otherwise just return message as-is
   (if (str/includes? message "(or sid service-name)")
@@ -237,10 +239,12 @@
 (defmethod driver/execute-query :oracle [driver query]
   (remove-rownum-column ((get-method driver/execute-query :sql-jdbc) driver query)))
 
-(defmethod driver.common/current-db-time-date-formatters :oracle [_]
+(defmethod driver.common/current-db-time-date-formatters :oracle
+  [_]
   (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSS zzz"))
 
-(defmethod driver.common/current-db-time-native-query :oracle [_]
+(defmethod driver.common/current-db-time-native-query :oracle
+  [_]
   "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.FF3 TZD') FROM DUAL")
 
 (defmethod driver/current-db-time :oracle [& args]
@@ -248,7 +252,8 @@
 
 ;; don't redef if already definied -- test extensions override this impl
 (when-not (get (methods sql-jdbc.sync/excluded-schemas) :oracle)
-  (defmethod sql-jdbc.sync/excluded-schemas :oracle [_]
+  (defmethod sql-jdbc.sync/excluded-schemas :oracle
+    [_]
     #{"ANONYMOUS"
       ;; TODO - are there othere APEX tables we want to skip? Maybe we should make this a pattern instead? (#"^APEX_")
       "APEX_040200"
@@ -287,7 +292,16 @@
 
 (defmethod sql-jdbc.execute/read-column [:oracle OracleTypes/TIMESTAMPTZ]
   [driver _ ^ResultSet rs _ ^Integer i]
-  (.getObject rs i OffsetDateTime))
+  ;; Oracle `TIMESTAMPTZ` types can have either a zone offset *or* a zone ID; you could fetch either `OffsetDateTime`
+  ;; or `ZonedDateTime` using `.getObject`, but fetching the wrong type will result in an Exception, meaning we have
+  ;; try both and wrap the first in a try-catch. As far as I know there's now way to tell whether the value has a zone
+  ;; offset or ID without first fetching a `TIMESTAMPTZ` object. So to avoid the try-catch we can fetch the
+  ;; `TIMESTAMPTZ` and use `.offsetDateTimeValue` instead.
+  (let [^TIMESTAMPTZ t                  (.getObject rs i TIMESTAMPTZ)
+        ^C3P0ProxyConnection proxy-conn (.. rs getStatement getConnection)
+        conn                            (.unwrap proxy-conn OracleConnection)]
+    ;; TIMEZONE FIXME - we need to warn if the Oracle JDBC driver is `ojdbc7.jar`, which probably won't have this method
+    (.offsetDateTimeValue t conn)))
 
 (defmethod unprepare/unprepare-value [:oracle OffsetDateTime]
   [_ t]

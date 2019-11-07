@@ -119,6 +119,14 @@
       (catch Throwable e
         (log/error e (u/format-color 'red (trs "Failied to initialize plugin {0}" (.getFileName path))))))))
 
+(defn- load! []
+  (log/info (u/format-color 'magenta (trs "Loading plugins in {0}..." (str (plugins-dir)))))
+  (extract-system-modules!)
+  (let [paths (plugins-paths)]
+    (init-plugins! paths)))
+
+(defonce ^:private load!* (delay (load!)))
+
 (defn load-plugins!
   "Load Metabase plugins. The are JARs shipped as part of Metabase itself, under the `resources/modules` directory (the
   source for these JARs is under the `modules` directory); and others manually added by users to the Metabase plugins
@@ -129,10 +137,12 @@
   *  Metabase creates the plugins directory if it does not already exist.
   *  Any plugins that are shipped as part of Metabase itself are extracted from the Metabase uberjar (or `resources`
      directory when running with `lein`) into the plugins directory.
-  *  Each JAR in the plugins directory is added to the classpath.
-  *  For JARs that include a Metabase plugin manifest (a `metabase-plugin.yaml` file), "
+  *  Each JAR in the plugins directory that *does not* include a Metabase plugin manifest is added to the classpath.
+  *  For JARs that include a Metabase plugin manifest (a `metabase-plugin.yaml` file), a lazy-loading Metabase driver
+     is registered; when the driver is initialized (automatically, when certain methods are called) the JAR is added
+     to the classpath and the driver namespace is loaded
+
+  This function will only perform loading steps the first time it is called — it is safe to call this function more
+  than once."
   []
-  (log/info (u/format-color 'magenta (trs "Loading plugins in {0}..." (str (plugins-dir)))))
-  (extract-system-modules!)
-  (let [paths (plugins-paths)]
-    (init-plugins! paths)))
+  @load!*)

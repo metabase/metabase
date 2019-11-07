@@ -168,20 +168,27 @@
   (jdbc/query
    (sql-jdbc.conn/db->pooled-connection-spec (data/db))
    sql-args
-   {:read-columns (sql-jdbc.execute/read-columns driver/*driver* nil)}))
+   {:read-columns (partial sql-jdbc.execute/read-columns driver/*driver*)}))
 
 (deftest unprepare-test
   (datasets/test-driver :sqlserver
     (let [date (t/local-date 2019 11 5)
           time (t/local-time 19 27)]
-      (doseq [[t expected] {date                                                                  ""
-                            time                                                                  ""
-                            (t/local-date-time date time)                                         ""
-                            (t/offset-time time (t/zone-offset -8))                               ""
-                            (t/offset-date-time (t/local-date-time date time) (t/zone-offset -8)) ""
-                            (t/zoned-date-time  date time (t/zone-id "America/Los_Angeles"))      ""}]
-        (testing (format "Convert %s to SQL literal" (colorize/magenta (with-out-str (pr t))))
-          (let [sql (format "SELECT %s AS t;" (unprepare/unprepare-value :sqlserver t))]
-            (is (= expected
-                   (-> (query sql) first :t))
-                (format "SQL %s should return %s" (colorize/blue sql) (colorize/green expected)))))))))
+      ;; various types should come out the same as they went in (1 value per tuple) or something functionally
+      ;; equivalent (2 values)
+      (doseq [[t expected] [[date]
+                            [time]
+                            [(t/local-date-time date time)]
+                            ;; SQL server doesn't support OffsetTime, so we should convert it to UTC and then to a
+                            ;; LocalTime (?)
+                            [(t/offset-time time (t/zone-offset -8)) (t/local-time 3 27)]
+                            [(t/offset-date-time (t/local-date-time date time) (t/zone-offset -8))]
+                            ;; since SQL Server doesn't support timezone IDs it should be converted to an offset in the literal
+                            [(t/zoned-date-time  date time (t/zone-id "America/Los_Angeles"))
+                             (t/offset-date-time (t/local-date-time date time) (t/zone-offset -8))]]]
+        (let [expected (or expected t)]
+          (testing (format "Convert %s to SQL literal" (colorize/magenta (with-out-str (pr t))))
+            (let [sql (format "SELECT %s AS t;" (unprepare/unprepare-value :sqlserver t))]
+              (is (= expected
+                     (-> (query sql) first :t))
+                  (format "SQL %s should return %s" (colorize/blue sql) (colorize/green expected))))))))))

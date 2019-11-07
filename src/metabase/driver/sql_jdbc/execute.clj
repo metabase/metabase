@@ -17,8 +17,7 @@
              [util :as qputil]]
             [metabase.util.i18n :refer [tru]])
   (:import [java.sql PreparedStatement ResultSet ResultSetMetaData SQLException Types]
-           [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
-           [java.util Calendar TimeZone]))
+           [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Interface (Multimethods)                                            |
@@ -40,7 +39,8 @@
 ;;; |                                                Parsing Results                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TODO - update docstring
+;; TIMEZONE FIXME — update docstring
+;; TIMEZONE FIXME — remove the `calendar` param
 (defmulti read-column
   "Read a single value from a single column in a single row from the JDBC ResultSet of a Metabase query. Normal
   implementations call an appropriate method on `ResultSet` to retrieve this value, such as `(.getObject rs
@@ -58,7 +58,7 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod read-column :default
-  [_ _, ^ResultSet rs, _, ^Integer i]
+  [_ col-type ^ResultSet rs _ ^Integer i]
   (.getObject rs i))
 
 (defn- get-object-of-class [^ResultSet rs, ^Integer index, ^Class klass]
@@ -97,44 +97,18 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-;; TODO - these are debugging-specific
-(def ^:private sql-type-num->name
-  (into {} (for [^java.lang.reflect.Field f (.getFields java.sql.Types)]
-             [(.get f nil) (.getName f)])))
+(defn read-columns
+  "Read columns from a JDBC `ResultSet` for the current row. This function uses `read-column` to read each individual
+  value; `read-column` dispatches on `driver` and the JDBC type of each column — override this as needed.
 
-(defn- actual-dispatch-value [multifn method]
-  (some (fn [[dispatch-value a-method]]
-          (when (= method a-method)
-            dispatch-value))
-        (methods multifn)))
+  You can pass this method to `clojure.java.jdbc/query` and related functions as the `:read-columns` option:
 
-(defn- read-column-methods [driver ^ResultSetMetaData rsmeta indexes]
-  (into {} (for [^Integer i indexes]
-             (let [column-type (.getColumnType rsmeta i)
-                   m           (get-method read-column [driver column-type])]
-               (log/debug (tru "Reading {0} {1} column with method {2}"
-                               driver
-                               (sql-type-num->name column-type)
-                               (let [dispatch-value (actual-dispatch-value read-column m)]
-                                 (if (vector? dispatch-value)
-                                   [(first dispatch-value) (sql-type-num->name (second dispatch-value))]
-                                   dispatch-value))))
-               [i m]))))
-
-(defmethod read-columns :default
-  [driver, ^Calendar calendar]
-  ;; methods calculated once and cached so we don't have to do it again for every single row
-  (let [methods*            (atom nil)
-        read-column-methods (fn [rsmeta indexes]
-                              (or @methods*
-                                  (let [resolved (read-column-methods driver rsmeta indexes)]
-                                    (reset! methods* resolved)
-                                    resolved)))]
-    (fn [rs rsmeta indexes]
-      (mapv (let [methods (read-column-methods rsmeta indexes)]
-              (fn [i]
-                ((get methods i) driver calendar rs rsmeta i)))
-            indexes))))
+    (jdbc/query spec sql {:read-columns (partial :read-columns driver)})"
+  [driver rs rsmeta indexes]
+  (mapv
+   (fn [i]
+     (read-column driver nil rs rsmeta i))
+   indexes))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -142,7 +116,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmulti set-parameter
-  "Set the `PreparedStatement` parameter at index `i` to `object`. Dispatches by driver and class of `object`. By
+  "Set the `PreparedStatement` parameter at index `i` to `object`. Dispatches on driver and class of `object`. By
   default, this calls `.setObject`, but drivers can override this method to convert the object to a different class or
   set it with a different intended JDBC type as needed."
   {:arglists '([driver prepared-statement i object])}
@@ -195,7 +169,14 @@
   [driver prepared-statement i t]
     (set-parameter driver prepared-statement i (t/offset-date-time t)))
 
-(defn- set-parameters [driver prepared-statement params]
+(defn set-parameters
+  "Set a sequence of `prepared-statement` `params`. This method calls `set-parameter` for each param; `set-parameter`
+  dispatches on `driver` and the class of the param — override this as needed.
+
+  You can pass this method to `clojure.java.jdbc/query` and related functions as the `:set-parameters` option:
+
+    (jdbc/query spec sql {:set-parameters (partial set-parameters driver)})"
+  [driver prepared-statement params]
   (doseq [[i param] (map-indexed vector params)]
     (log/debug (tru "set query parameter {0} to {1} {2}" (inc i) (class param) param))
     (set-parameter driver prepared-statement (inc i) param)))
@@ -244,14 +225,13 @@
 
 (defn- run-query
   "Run the query itself."
-  ;; TODO - the `timezone` here is basically no longer needed
-  [driver {sql :query, :keys [params remark max-rows]}, ^TimeZone timezone, connection]
+  [driver {sql :query, :keys [params remark max-rows]} connection]
   (let [sql              (str "-- " remark "\n" sql)
         [columns & rows] (cancelable-run-query
                           connection sql params
                           {:identifiers    identity
                            :as-arrays?     true
-                           :read-columns   (read-columns driver (some-> timezone Calendar/getInstance))
+                           :read-columns   (partial read-columns driver)
                            :set-parameters (partial set-parameters driver)
                            :max-rows       max-rows})]
     {:rows    (or rows [])
@@ -322,7 +302,7 @@
       (jdbc/db-do-prepared connection [sql]))))
 
 (defn- run-query-without-timezone [driver _ connection query]
-  (do-in-transaction connection (partial run-query driver query nil)))
+  (do-in-transaction connection (partial run-query driver query)))
 
 (defn- run-query-with-timezone [driver ^String report-timezone connection query]
   (let [result (do-in-transaction
@@ -339,7 +319,7 @@
                                           (log/error e (tru "Failed to set timezone ''{0}''" report-timezone))))]
                     (if-not set-timezone?
                       ::set-timezone-failed
-                      (run-query driver query (some-> report-timezone TimeZone/getTimeZone) transaction-connection)))))]
+                      (run-query driver query transaction-connection)))))]
     (if (= result ::set-timezone-failed)
       (run-query-without-timezone driver report-timezone connection query)
       result)))

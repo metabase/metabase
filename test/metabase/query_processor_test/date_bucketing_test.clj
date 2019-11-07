@@ -61,7 +61,7 @@
 
 (deftest sanity-check-test
   (datasets/test-drivers (qp.test/normal-drivers)
-    (testing "Regardless of report timezone, UNIX timestamps should always be interpreted a being in UTC"
+    (testing "Regardless of report timezone, UNIX timestamps should always be interpreted a being in UTC."
       (let [utc-results [[1 "2015-06-06T10:40:00Z" 4]
                          [2 "2015-06-10T19:51:00Z" 0]
                          [3 "2015-06-09T15:42:00Z" 5]
@@ -73,11 +73,10 @@
                                         (not (driver/supports? driver/*driver* :set-timezone)))
                                   utc-results
                                   (for [[id s cnt] utc-results]
-                                    (let [t       (u.date/parse s)
-                                          zone-id (t/zone-id (->timezone-id timezone))
-                                          t'      (t/offset-date-time (t/with-zone-same-instant t zone-id))
-                                          s'      (t/format :iso-offset-date-time t')]
-                                      [id s' cnt])))]
+                                    (let [zone-id (t/zone-id (->timezone-id timezone))
+                                          t       (t/offset-date-time (t/with-zone-same-instant (u.date/parse s) zone-id))
+                                          s       (t/format :iso-offset-date-time t)]
+                                      [id s cnt])))]
               (qp.timezone/with-report-timezone-id (->timezone-id timezone)
                 (data/dataset sad-toucan-incidents
                   (is (= local-results
@@ -101,6 +100,8 @@
   ([unit timezone-id]
    (qp.timezone/with-report-timezone-id (->timezone-id timezone-id)
      (sad-toucan-incidents-with-bucketing unit))))
+
+SELECT trunc((timestamp '1970-01-01 00:00:00 UTC' + numtodsinterval((\"CAM_117\".\"sad_toucan_incidents_incidents\".\"timestamp\" / 1000), 'second')), 'dd') AS \"timestamp\", count(*) AS \"count\" FROM \"CAM_117\".\"sad_toucan_incidents_incidents\" GROUP BY trunc((timestamp '1970-01-01 00:00:00 UTC' + numtodsinterval((\"CAM_117\".\"sad_toucan_incidents_incidents\".\"timestamp\" / 1000), 'second')), 'dd') ORDER BY trunc((timestamp '1970-01-01 00:00:00 UTC' + numtodsinterval((\"CAM_117\".\"sad_toucan_incidents_incidents\".\"timestamp\" / 1000), 'second')), 'dd') ASC
 
 (defn- default-parse-fn [s]
   (u.date/parse s))

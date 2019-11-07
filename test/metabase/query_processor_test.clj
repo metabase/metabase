@@ -411,4 +411,5 @@
   differentiate Oracle from the other report-timezone databases until that bug can get fixed. Redshift and Snowflake
   also have this issue."
   [driver]
+  ;; TIMEZONE FIXME — remove this and fix the drivers
   (contains? #{:snowflake :oracle :redshift} driver))

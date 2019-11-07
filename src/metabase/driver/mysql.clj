@@ -3,6 +3,7 @@
   (:require [clojure
              [set :as set]
              [string :as str]]
+            [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [java-time :as t]
@@ -33,7 +34,8 @@
 
 (defmethod driver/supports? [:mysql :full-join] [_ _] false)
 
-(defmethod driver/connection-properties :mysql [_]
+(defmethod driver/connection-properties :mysql
+  [_]
   (ssh/with-tunnel-config
     [driver.common/default-host-details
      (assoc driver.common/default-port-details :default 3306)
@@ -44,12 +46,12 @@
      (assoc driver.common/default-additional-options-details
        :placeholder  "tinyInt1isBit=false")]))
 
-
-(defmethod driver/date-add :mysql [_ dt amount unit]
+(defmethod driver/date-add :mysql
+  [_ dt amount unit]
   (hsql/call :date_add dt (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit)))))
 
-
-(defmethod driver/humanize-connection-error-message :mysql [_ message]
+(defmethod driver/humanize-connection-error-message :mysql
+  [_ message]
   (condp re-matches message
     #"^Communications link failure\s+The last packet sent successfully to the server was 0 milliseconds ago. The driver has not received any packets from the server.$"
     (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
@@ -66,21 +68,32 @@
     #".*"                               ; default
     message))
 
-
-(defmethod driver.common/current-db-time-date-formatters :mysql [_]
-  (mapcat
-   driver.common/create-db-time-formatters
-   ["yyyy-MM-dd HH:mm:ss.SSSSSS zzz"
-    ;; In some timezones, MySQL doesn't return a timezone description but rather a truncated offset, such as
-    ;; '-02'. That offset will fail to parse using a regular formatter
-    "yyyy-MM-dd HH:mm:ss.SSSSSS Z"]))
-
-(defmethod driver.common/current-db-time-native-query :mysql [_]
-  "select CONCAT(DATE_FORMAT(current_timestamp, '%Y-%m-%d %H:%i:%S.%f' ), ' ', @@system_time_zone)")
-
-(defmethod driver/current-db-time :mysql [& args]
-  (apply driver.common/current-db-time args))
-
+(defmethod driver/db-default-timezone :mysql
+  [_ db]
+  (let [spec                             (sql-jdbc.conn/db->pooled-connection-spec db)
+        sql                              (str "SELECT @@GLOBAL.time_zone AS global,"
+                                              " @@system_time_zone AS system,"
+                                              " time_format("
+                                              "   timediff(now(), convert_tz(now(), @@GLOBAL.time_zone, '+00:00')),"
+                                              "  '%H:%i'"
+                                              " ) AS offset;")
+        [{:keys [global system offset]}] (jdbc/query spec sql)
+        the-valid-id                     (fn [zone-id]
+                                           (when zone-id
+                                             (try
+                                               (.getId (t/zone-id zone-id))
+                                               (catch Throwable _))))]
+    (or
+     ;; if global timezone ID is 'SYSTEM', then try to use the system timezone ID
+     (when (= global "SYSTEM")
+       (the-valid-id system))
+     ;; otherwise try to use the global ID
+     (the-valid-id global)
+     ;; failing that, calculate the offset between now in the global timezone and now in UTC. Non-negative offsets
+     ;; don't come back with `+` so add that if needed
+     (if (str/starts-with? offset "-")
+       offset
+       (str \+ offset)))))
 
 ;; MySQL LIKE clauses are case-sensitive or not based on whether the collation of the server and the columns
 ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
@@ -95,7 +108,6 @@
 (defmethod sql.qp/unix-timestamp->timestamp [:mysql :seconds] [_ _ expr]
   (hsql/call :from_unixtime expr))
 
-
 (defn- date-format [format-str expr] (hsql/call :date_format expr (hx/literal format-str)))
 (defn- str-to-date [format-str expr] (hsql/call :str_to_date expr (hx/literal format-str)))
 
@@ -104,7 +116,6 @@
 ;; explanation of format specifiers
 (defn- trunc-with-format [format-str expr]
   (str-to-date format-str (date-format format-str expr)))
-
 
 (defmethod sql.qp/date [:mysql :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:mysql :minute]          [_ _ expr] (trunc-with-format "%Y-%m-%d %H:%i" expr))

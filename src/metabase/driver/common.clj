@@ -17,23 +17,40 @@
 
 (def connection-error-messages
   "Generic error messages that drivers should return in their implementation of `humanize-connection-error-message`."
-  {:cannot-connect-check-host-and-port (str (deferred-tru "Hmm, we couldn''t connect to the database.")
-                                            " "
-                                            (deferred-tru "Make sure your host and port settings are correct"))
-   :ssh-tunnel-auth-fail               (str (deferred-tru "We couldn''t connect to the ssh tunnel host.")
-                                            " "
-                                            (deferred-tru "Check the username, password."))
-   :ssh-tunnel-connection-fail         (str (deferred-tru "We couldn''t connect to the ssh tunnel host.")
-                                            " "
-                                            (deferred-tru "Check the hostname and port."))
-   :database-name-incorrect            (deferred-tru "Looks like the database name is incorrect.")
-   :invalid-hostname                   (str (deferred-tru "It looks like your host is invalid.")
-                                            " "
-                                            (deferred-tru "Please double-check it and try again."))
-   :password-incorrect                 (deferred-tru "Looks like your password is incorrect.")
-   :password-required                  (deferred-tru "Looks like you forgot to enter your password.")
-   :username-incorrect                 (deferred-tru "Looks like your username is incorrect.")
-   :username-or-password-incorrect     (deferred-tru "Looks like the username or password is incorrect.")})
+  {:cannot-connect-check-host-and-port
+   (str (deferred-tru "Hmm, we couldn''t connect to the database.")
+        " "
+        (deferred-tru "Make sure your host and port settings are correct"))
+
+   :ssh-tunnel-auth-fail
+   (str (deferred-tru "We couldn''t connect to the ssh tunnel host.")
+        " "
+        (deferred-tru "Check the username, password."))
+
+   :ssh-tunnel-connection-fail
+   (str (deferred-tru "We couldn''t connect to the ssh tunnel host.")
+        " "
+        (deferred-tru "Check the hostname and port."))
+
+   :database-name-incorrect
+   (deferred-tru "Looks like the database name is incorrect.")
+
+   :invalid-hostname
+   (str (deferred-tru "It looks like your host is invalid.")
+        " "
+        (deferred-tru "Please double-check it and try again."))
+
+   :password-incorrect
+   (deferred-tru "Looks like your password is incorrect.")
+
+   :password-required
+   (deferred-tru "Looks like you forgot to enter your password.")
+
+   :username-incorrect
+   (deferred-tru "Looks like your username is incorrect.")
+
+   :username-or-password-incorrect
+   (deferred-tru "Looks like the username or password is incorrect.")})
 
 ;; TODO - we should rename these from `default-*-details` to `default-*-connection-property`
 
@@ -107,7 +124,7 @@
 ;;; |                                           Fetching Current Timezone                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defprotocol ^:private ParseDateTimeString
+(defprotocol ^:private ^:deprecated ParseDateTimeString
   (^:private parse
    ^DateTime [this date-time-str]
    "Parse the `date-time-str` and return a `DateTime` instance."))
@@ -122,7 +139,7 @@
 ;; dispatch parsing for SimpleDateFormat instances. Dispatching off of the SimpleDateFormat directly wouldn't be good
 ;; as it's not threadsafe. This will always create a new SimpleDateFormat instance and discard it after parsing the
 ;; date
-(defrecord ^:private ThreadSafeSimpleDateFormat [format-str]
+(defrecord ^:private ^:deprecated ThreadSafeSimpleDateFormat [format-str]
   ParseDateTimeString
   (parse [_ date-time-str]
     (let [sdf         (SimpleDateFormat. format-str)
@@ -130,14 +147,14 @@
           joda-tz     (-> sdf .getTimeZone .getID time/time-zone-for-id)]
       (time/to-time-zone (tcoerce/from-date parsed-date) joda-tz))))
 
-(defn create-db-time-formatters
+(defn ^:deprecated create-db-time-formatters
   "Creates date formatters from `DATE-FORMAT-STR` that will preserve the offset/timezone information. Will return a
   JodaTime date formatter and a core Java SimpleDateFormat. Results of this are threadsafe and can safely be def'd."
   [date-format-str]
   [(.withOffsetParsed ^DateTimeFormatter (tformat/formatter date-format-str))
    (ThreadSafeSimpleDateFormat. date-format-str)])
 
-(defn- first-successful-parse
+(defn- ^:deprecated first-successful-parse
   "Attempt to parse `time-str` with each of `date-formatters`, returning the first successful parse. If there are no
   successful parses throws the exception that the last formatter threw."
   ^DateTime [date-formatters time-str]
@@ -145,26 +162,35 @@
       (doseq [formatter (reverse date-formatters)]
         (parse formatter time-str))))
 
-(defmulti current-db-time-native-query
+(defmulti ^:deprecated current-db-time-native-query
   "Return a native query that will fetch the current time (presumably as a string) used by the `current-db-time`
-  implementation below."
+  implementation below.
+
+  DEPRECATED — `metabase.driver/current-db-time`, the method this function provides an implementation for, is itself
+  deprecated. Implement `metabase.driver/db-default-timezone` instead directly."
   {:arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmulti current-db-time-date-formatters
+(defmulti ^:deprecated current-db-time-date-formatters
   "Return JODA time date formatters to parse the current time returned by `current-db-time-native-query`. Used by
   `current-db-time` implementation below. You can use `create-db-time-formatters` provided by this namespace to create
-  formatters for a date format string."
+  formatters for a date format string.
+
+  DEPRECATED — `metabase.driver/current-db-time`, the method this function provides an implementation for, is itself
+  deprecated. Implement `metabase.driver/db-default-timezone` instead directly."
   {:arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defn current-db-time
+(defn ^:deprecated current-db-time
   "Implementation of `driver/current-db-time` using the `current-db-time-native-query` and
   `current-db-time-date-formatters` multimethods defined above. Execute a native query for the current time, and parse
   the results using the date formatters, preserving the timezone. To use this implementation, you must implement the
-  aforementioned multimethods; no default implementation is provided."
+  aforementioned multimethods; no default implementation is provided.
+
+  DEPRECATED — `metabase.driver/current-db-time`, the method this function provides an implementation for, is itself
+  deprecated. Implement `metabase.driver/db-default-timezone` instead directly."
   ^DateTime [driver database]
   {:pre [(map? database)]}
   (driver/with-driver driver

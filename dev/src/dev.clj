@@ -1,13 +1,18 @@
 (ns dev
   "Put everything needed for REPL development within easy reach"
-  (:require [metabase
+  (:require [clojure.java.jdbc :as jdbc]
+            [metabase
              [core :as mbc]
              [db :as mdb]
+             [driver :as driver]
              [handler :as handler]
              [plugins :as pluguns]
              [server :as server]]
             [metabase.api.common :as api-common]
-            [metabase.test.data.env :as tx.env]))
+            [metabase.driver.sql-jdbc
+             [connection :as sql-jdbc.conn]
+             [execute :as sql-jdbc.execute]]
+            [metabase.test.data :as data]))
 
 (defn init!
   []
@@ -57,20 +62,20 @@
   `(binding [api-common/*current-user-permissions-set* (delay ~permissions)]
      ~@body))
 
-(defmacro with-test-drivers
-  "Temporarily change the drivers that Metabase tests will run against as if you had set the `DRIVERS` env var.
+(defn query-jdbc-db
+  "Execute a SQL query against a JDBC database. Useful for testing SQL syntax locally.
 
-    ;; my-test will run against any non-timeseries driver (i.e., anything except for Druid) that is listed in the
-    ;; `DRIVERS` env var
-    (deftest my-test
-      (datasets/test-drivers @qp.test/non-timeseries-drivers
-        ...))
+    (query-jdbc-db :oracle SELECT to_date('1970-01-01', 'YYYY-MM-DD') FROM dual\")
 
-    ;; Run `my-test` against H2 and Postgres regardless of what's in the `DRIVERS` env var
-    (dev/with-test-drivers #{:h2 :postgres}
-      (my-test))"
-  [test-driver-or-drivers & body]
-  `(tx.env/with-test-drivers ~(if (keyword? test-driver-or-drivers)
-                                #{test-driver-or-drivers}
-                                test-driver-or-drivers)
-     ~@body))
+  `sql-args` can be either a SQL string or a tuple with a SQL string followed by any prepared statement args. By
+  default this method uses the same methods to set prepared statement args and read columns from results as used by
+  the `:sql-jdbc` Query Processor, but you pass the optional third arg `options`, as `nil` to use the driver's default
+  behavior."
+  ([driver sql-args]
+   (query-jdbc-db driver sql-args {:read-columns   (partial sql-jdbc.execute/read-columns driver)
+                                   :set-parameters (partial sql-jdbc.execute/set-parameters driver)}))
+
+  ([driver sql-args options]
+   (driver/with-driver driver
+     (let [spec (sql-jdbc.conn/db->pooled-connection-spec (data/db))]
+       (jdbc/query spec sql-args options)))))

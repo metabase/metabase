@@ -1,7 +1,6 @@
 (ns metabase.driver.sqlserver
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
   (:require [honeysql.core :as hsql]
-            [java-time :as t]
             [metabase
              [config :as config]
              [driver :as driver]]
@@ -14,11 +13,9 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor.interface :as qp.i]
-            [metabase.util
-             [date-2 :as u.date]
-             [honeysql-extensions :as hx]])
+            [metabase.util.honeysql-extensions :as hx])
   (:import [java.sql ResultSet Time]
-           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime]
+           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            java.util.Date))
 
 (driver/register! :sqlserver, :parent :sql-jdbc)
@@ -255,23 +252,45 @@
   #{"sys" "INFORMATION_SCHEMA"})
 
 (defmethod unprepare/unprepare-value [:sqlserver LocalDate]
-  [_ t]
-  (format "{d '%s'}" (u.date/format t)))
+  [_ ^LocalDate t]
+  ;; datefromparts(year, month, day)
+  ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/datefromparts-transact-sql?view=sql-server-ver15
+  (format "DateFromParts(%d, %d, %d)" (.getYear t) (.getMonthValue t) (.getDayOfMonth t)))
 
 (defmethod unprepare/unprepare-value [:sqlserver LocalTime]
-  [_ t]
-  (format "{t '%s'}" (t/format "HH:mm:ss" t)))
+  [_ ^LocalTime t]
+  ;; timefromparts(hour, minute, seconds, fraction, precision)
+  ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/timefromparts-transact-sql?view=sql-server-ver15
+  ;; precision = 7 which means the fraction is 100 nanoseconds, smallest supported by SQL Server
+  (format "TimeFromParts(%d, %d, %d, %d, 7)" (.getHour t) (.getMinute t) (.getSecond t) (long (/ (.getNano t) 100))))
 
-(defmethod unprepare/unprepare-value [:sqlserver LocalDateTime]
-  [_ t]
-  (format "{ts '%s'}" (u.date/format-sql t)))
+(defmethod unprepare/unprepare-value [:sqlserver OffsetTime]
+  [driver t]
+  (unprepare/unprepare-value driver (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
 
 (defmethod unprepare/unprepare-value [:sqlserver OffsetDateTime]
-  [_ t]
-  (format "{ts '%s'}" (u.date/format-sql t)))
+  [_ ^OffsetDateTime t]
+  ;; DateTimeOffsetFromParts(year, month, day, hour, minute, seconds, fractions, hour_offset, minute_offset, precision)
+  (let [offset-minutes (long (/ (.getTotalSeconds (.getOffset t)) 60))
+        hour-offset    (long (/ offset-minutes 60))
+        minute-offset  (mod offset-minutes 60)]
+    (format "DateTimeOffsetFromParts(%d, %d, %d, %d, %d, %d, %d, %d, %d, 7)"
+            (.getYear t) (.getMonthValue t) (.getDayOfMonth t)
+            (.getHour t) (.getMinute t) (.getSecond t) (long (/ (.getNano t) 100))
+            hour-offset minute-offset)))
+
+(defmethod unprepare/unprepare-value [:sqlserver ZonedDateTime]
+  [driver t]
+  (unprepare/unprepare-value driver (t/offset-date-time t)))
+
+(defmethod unprepare/unprepare-value [:sqlserver LocalDateTime]
+  [_ ^LocalDateTime t]
+  ;; DateTime2FromParts(year, month, day, hour, minute, seconds, fractions, precision)
+  (format "DateTime2FromParts(%d, %d, %d, %d, %d, %d, %d, 7)"
+          (.getYear t) (.getMonthValue t) (.getDayOfMonth t)
+          (.getHour t) (.getMinute t) (.getSecond t) (long (/ (.getNano t) 100))))
 
 ;; instead of default `microsoft.sql.DateTimeOffset`
 (defmethod sql-jdbc.execute/read-column [:sqlserver microsoft.sql.Types/DATETIMEOFFSET]
   [_ _^ResultSet rs _ ^Integer i]
-  (println "(.getObject rs i OffsetDateTime):" (.getObject rs i OffsetDateTime)) ; NOCOMMIT
   (.getObject rs i OffsetDateTime))

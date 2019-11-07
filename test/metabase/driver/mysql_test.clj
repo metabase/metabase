@@ -1,5 +1,8 @@
 (ns metabase.driver.mysql-test
   (:require [clj-time.core :as t]
+            [clojure
+             [string :as str]
+             [test :refer :all]]
             [clojure.java.jdbc :as jdbc]
             [expectations :refer [expect]]
             [metabase
@@ -16,7 +19,7 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data
-             [datasets :refer [expect-with-driver]]
+             [datasets :as datasets :refer [expect-with-driver]]
              [interface :as tx]]
             [metabase.test.util.timezone :as tu.tz]
             [metabase.util.date :as du]
@@ -86,24 +89,36 @@
       (sync/sync-database! db)
       (db->fields db))))
 
-(expect-with-driver :mysql
-  "UTC"
-  (tu/db-timezone-id))
-
-(expect-with-driver :mysql
-  "-02:00"
-  (with-redefs [driver/execute-query (constantly {:rows [["2018-01-09 18:39:08000 -02"]]})]
-    (tu/db-timezone-id)))
-
-(expect-with-driver :mysql
-  "Europe/Paris"
-  (with-redefs [driver/execute-query (constantly {:rows [["2018-01-08 23:00:00.008 CET"]]})]
-    (tu/db-timezone-id)))
+(deftest db-timezone-id-test
+  (datasets/test-driver :mysql
+    (let [timezone (fn [result-row]
+                     (let [db (data/db)]
+                       (with-redefs [jdbc/query (let [orig jdbc/query]
+                                                  (fn [spec sql-args & options]
+                                                    (if (and (string? sql-args)
+                                                             (str/includes? sql-args "GLOBAL.time_zone"))
+                                                      [result-row]
+                                                      (apply orig spec sql-args options))))]
+                         (driver/db-default-timezone driver/*driver* db))))]
+      (is (= "US/Pacific"
+             (timezone {:global "US/Pacific", :system "UTC"}))
+          "Should use global timezone by default")
+      (is (= "UTC"
+             (timezone {:global "SYSTEM", :system "UTC"}))
+          "If global timezone is 'SYSTEM', should use system timezone")
+      (is (= "+00:00"
+             (timezone {:offset "00:00"}))
+          "Should fall back to returning `offset` if global/system aren't present")
+      (is (= "-08:00"
+             (timezone {:global "PDT", :system "PDT", :offset "-08:00"}))
+          "If global timezone is invalid, should fall back to offset")
+      (is (= "+00:00"
+             (timezone {:global "PDT", :system "UTC", :offset "00:00"}))
+          "Should add a `+` if needed to offset"))))
 
 
 (def ^:private before-daylight-savings (du/str->date-time "2018-03-10 10:00:00" du/utc))
 (def ^:private after-daylight-savings  (du/str->date-time "2018-03-12 10:00:00" du/utc))
-
 
 ;; Most of our tests either deal in UTC (offset 00:00) or America/Los_Angeles timezones (-07:00/-08:00). When dealing
 ;; with dates, we will often truncate the timestamp to a date. When we only test with negative timezone offsets, in
