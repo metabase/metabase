@@ -7,11 +7,9 @@ import pure from "recompose/pure";
 import S from "./ReferenceHeader.css";
 import L from "metabase/components/List.css";
 
-import IconBorder from "metabase/components/IconBorder";
 import Icon from "metabase/components/Icon";
 import Ellipsified from "metabase/components/Ellipsified";
 import { t } from "ttag";
-import { color } from "metabase/lib/colors";
 
 const ReferenceHeader = ({
   name,

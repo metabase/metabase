@@ -23,9 +23,8 @@
 }
 
 :local(.subheaderBody) {
-  composes: text-dark from "style";
-  margin-left: var(--icon-width);
-  font-size: 16px;
+  composes: text-medium text-bold from "style";
+  font-size: 14px;
 }
 
 :local(.subheaderLink) {

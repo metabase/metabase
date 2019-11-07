@@ -12,8 +12,6 @@ import InputBlurChange from "metabase/components/InputBlurChange";
 import Ellipsified from "metabase/components/Ellipsified";
 import Button from "metabase/components/Button";
 
-import { color } from "metabase/lib/colors";
-
 const EditableReferenceHeader = ({
   entity = {},
   table,
@@ -30,10 +28,7 @@ const EditableReferenceHeader = ({
   nameFormField,
 }) => (
   <div className="wrapper">
-    <div
-      className={cx("relative", L.header)}
-      style={type === "segment" ? { marginBottom: 0 } : {}}
-    >
+    <div className={cx("relative", L.header)}>
       <div className="flex align-center mr2">
         {headerIcon && (
           <Icon className="text-light" name={headerIcon} size={21} />
@@ -97,19 +92,6 @@ const EditableReferenceHeader = ({
         )}
       </div>
     </div>
-    {type === "segment" && table && (
-      <div className={S.subheader}>
-        <div className={cx(S.subheaderBody)}>
-          {t`A subset of`}{" "}
-          <Link
-            className={S.subheaderLink}
-            to={`/reference/databases/${table.db_id}/tables/${table.id}`}
-          >
-            {table.display_name}
-          </Link>
-        </div>
-      </div>
-    )}
   </div>
 );
 EditableReferenceHeader.propTypes = {

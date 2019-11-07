@@ -4,6 +4,8 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
 import { t } from "ttag";
+import S from "../components/Detail.css";
+import cx from "classnames";
 import List from "metabase/components/List";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
@@ -13,6 +15,7 @@ import Detail from "metabase/reference/components/Detail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import Formula from "metabase/reference/components/Formula";
 import Card from "metabase/components/Card";
+import Link from "metabase/components/Link";
 
 import { getQuestionUrl } from "../utils";
 
@@ -206,6 +209,30 @@ export default class SegmentDetail extends Component {
             <div className="wrapper">
               <Card px={3} pt={3} mb={4}>
                 <List>
+                  {/*table && (
+                    <li>
+                      <div className={cx(S.detail)}>
+                        <div className={S.detailBody}>
+                          <div>
+                            <div className={S.detailTitle}>
+                              {t`Table this is based on`}
+                            </div>
+                            <div>
+                              <Link
+                                className="text-brand text-bold"
+                                style="fontSize: 16px"
+                                to={`/reference/databases/${
+                                  table.db_id
+                                }/tables/${table.id}`}
+                              >
+                                <span>{table.display_name}</span>
+                              </Link>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  )*/}
                   <li className="relative">
                     <Detail
                       id="description"
@@ -236,18 +263,6 @@ export default class SegmentDetail extends Component {
                       field={caveats}
                     />
                   </li>
-                  {table && !isEditing && (
-                    <li className="relative">
-                      <Formula
-                        type="segment"
-                        entity={entity}
-                        table={table}
-                        isExpanded={isFormulaExpanded}
-                        expandFormula={expandFormula}
-                        collapseFormula={collapseFormula}
-                      />
-                    </li>
-                  )}
                   {!isEditing && (
                     <li className="relative">
                       <UsefulQuestions
@@ -255,6 +270,18 @@ export default class SegmentDetail extends Component {
                           this.props.table,
                           this.props.entity,
                         )}
+                      />
+                    </li>
+                  )}
+                  {table && !isEditing && (
+                    <li className="relative mb4">
+                      <Formula
+                        type="segment"
+                        entity={entity}
+                        table={table}
+                        isExpanded={isFormulaExpanded}
+                        expandFormula={expandFormula}
+                        collapseFormula={collapseFormula}
                       />
                     </li>
                   )}
