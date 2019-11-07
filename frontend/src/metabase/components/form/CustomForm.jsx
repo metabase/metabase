@@ -11,6 +11,7 @@ import Button from "metabase/components/Button";
 import ActionButton from "metabase/components/ActionButton";
 
 import _ from "underscore";
+import cx from "classnames";
 
 import { t } from "ttag";
 import { getIn } from "icepick";
@@ -238,20 +239,24 @@ export const CustomFormSection = ({ collapsible, ...props }) =>
     <StandardSection {...props} />
   );
 
-export const CustomFormFooter = ({
-  submitTitle,
-  cancelTitle = t`Cancel`,
-  onCancel,
-}) => (
-  <div className="flex align-center">
-    <div className="flex align-center mr-auto">
+export const CustomFormFooter = (
+  { submitTitle, cancelTitle = t`Cancel`, onCancel },
+  { isModal },
+) => {
+  return (
+    <div className={cx("flex align-center", { "flex-reverse": isModal })}>
+      <CustomFormSubmit>{submitTitle}</CustomFormSubmit>
       {onCancel && (
-        <Button className="mr1" onClick={onCancel}>
+        <Button className="mx1" onClick={onCancel}>
           {cancelTitle}
         </Button>
       )}
-      <CustomFormSubmit className="mr1">{submitTitle}</CustomFormSubmit>
+      <div className="flex-full" />
+      <CustomFormMessage />
     </div>
-    <CustomFormMessage />
-  </div>
-);
+  );
+};
+
+CustomFormFooter.contextTypes = {
+  isModal: PropTypes.bool,
+};
