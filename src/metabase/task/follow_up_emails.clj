@@ -30,7 +30,7 @@
   "Have we sent a follow up email to the instance admin?"
   :type       :boolean
   :default    false
-  :internal? true)
+  :visibility :internal)
 
 (defn- send-follow-up-email!
   "Send an email to the instance admin following up on their experience with Metabase thus far."
@@ -87,9 +87,9 @@
 
 (setting/defsetting ^:private abandonment-email-sent
   "Have we sent an abandonment email to the instance admin?"
-  :type      :boolean
-  :default   false
-  :internal? true)
+  :type       :boolean
+  :default    false
+  :visibility :internal)
 
 (defn- send-abandonment-email!
   "Send an email to the instance admin about why Metabase usage has died down."

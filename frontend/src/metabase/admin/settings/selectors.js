@@ -49,7 +49,7 @@ const SECTIONS = [
         type: "select",
         options: [
           { name: t`Database Default`, value: "" },
-          ...MetabaseSettings.get("timezones"),
+          ...MetabaseSettings.get("available-timezones"),
         ],
         note: t`Not all databases support timezones, in which case this setting won't take effect.`,
         allowValueCollection: true,

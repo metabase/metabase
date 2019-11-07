@@ -35,14 +35,13 @@
   ;; Don't i18n this docstring because it's not user-facing! :)
   "Unique identifier used for this instance of Metabase. This is set once and only once the first time it is fetched via
   its magic getter. Nice!"
-  :internal? true
-  :setter    (fn [& _]
-               (throw (UnsupportedOperationException. "site-uuid is automatically generated. Don't try to change it!")))
+  :visibility :internal
+  :setter     :none
   ;; magic getter will either fetch value from DB, or if no value exists, set the value to a random UUID.
-  :getter    (fn []
-               (or (setting/get-string :site-uuid)
-                   (let [value (str (UUID/randomUUID))]
-                     (setting/set-string! :site-uuid value)
+  :getter     (fn []
+                (or (setting/get-string :site-uuid)
+                    (let [value (str (UUID/randomUUID))]
+                      (setting/set-string! :site-uuid value)
                      value))))
 
 (defn- normalize-site-url [^String s]
@@ -208,76 +207,56 @@
 
 (def ^:private short-timezone-name (memoize short-timezone-name*))
 
-(defn- resolve-setting [ns-symb setting-symb]
-  (classloader/require ns-symb)
-  (let [varr (or (ns-resolve ns-symb setting-symb)
-                 (throw (Exception. (tru "Could not resolve Setting {0}/{1}" ns-symb setting-symb))))
-        f    (var-get varr)]
-    (assert (ifn? f)
-      (tru "Invalid Setting: {0}/{1}" ns-symb setting-symb))
-    (f)))
-
 (defsetting available-locales
-  (deferred-tru "TODO")
+  "Available i18n locales"
   :visibility :public
-  :getter     (fn [] (available-locales-with-names)))
+  :setter     :none
+  :getter     available-locales-with-names)
 
-(defsetting email-configured
-  (deferred-tru "TODO")
+(defsetting available-timezones
+  "Available report timezone options"
   :visibility :public
-  :getter     (fn [] (resolve-setting 'metabase.email 'email-configured?)))
-
+  :setter     :none
+  :getter     (constantly common/timezones))
+  
 (defsetting engines
-  (deferred-tru "TODO")
+  "Available database engines"
   :visibility :public
-  :getter     (fn [] (driver.u/available-drivers-info)))
-
-(defsetting entities
-  (deferred-tru "TODO")
-  :visibility :authenticated
-  :getter     (fn [] (types/types->parents :entity/*)))
-
-(defsetting has-sample-dataset
-  (deferred-tru "TODO")
-  :visibility :public
-  :getter     (fn [] (db/exists? 'Database, :is_sample true)))
-
-(defsetting hide-embed-branding
-  (deferred-tru "TODO")
-  :visibility :public
-  :getter     (fn [] (metastore/hide-embed-branding?)))
-
-(defsetting ldap-configured
-  (deferred-tru "TODO")
-  :visibility :public
-  :getter     (fn [] (resolve-setting 'metabase.integrations.ldap 'ldap-configured?)))
-
-(defsetting password-complexity
-  (deferred-tru "TODO")
-  :visibility :public
-  :getter     (fn [] password/active-password-complexity))
-
-(defsetting setup-token
-  (deferred-tru "TODO")
-  :visibility :public
-  :getter     (fn [] (resolve-setting 'metabase.setup 'token-value)))
-
-(defsetting timezone-short
-  (deferred-tru "TODO")
-  :visibility :public
-  :getter     (fn [] (short-timezone-name (setting/get :report-timezone))))
-
-(defsetting timezones
-  (deferred-tru "TODO")
-  :visibility :public
-  :getter     (fn [] common/timezones))
+  :setter     :none
+  :getter     driver.u/available-drivers-info)
 
 (defsetting types
-  (deferred-tru "TODO")
+  "Field types"
   :visibility :public
+  :setter     :none
   :getter     (fn [] (types/types->parents :type/*)))
 
-(defsetting version
-  (deferred-tru "TODO")
+(defsetting entities
+  "Entity types"
   :visibility :public
-  :getter     (fn [] config/mb-version-info))
+  :setter     :none
+  :getter     (fn [] (types/types->parents :entity/*)))
+
+(defsetting has-sample-dataset?
+  "Whether this instance has a Sample Dataset database"
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (db/exists? 'Database, :is_sample true)))
+
+(defsetting password-complexity
+  "Current password complexity requirements"
+  :visibility :public
+  :setter     :none
+  :getter     (constantly password/active-password-complexity))
+
+(defsetting report-timezone-short
+  "Current report timezone abbreviation"
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (short-timezone-name (setting/get :report-timezone))))
+
+(defsetting version
+  "Metabase's version info"
+  :visibility :public
+  :setter     :none
+  :getter     (constantly config/mb-version-info))

@@ -40,7 +40,7 @@ const MetabaseSettings = {
   },
 
   isEmailConfigured: function() {
-    return mb_settings["email-configured"];
+    return mb_settings["email-configured?"];
   },
 
   isTrackingEnabled: function() {
@@ -56,10 +56,10 @@ const MetabaseSettings = {
   },
 
   ldapEnabled: function() {
-    return mb_settings["ldap-configured"];
+    return mb_settings["ldap-configured?"];
   },
 
-  hideEmbedBranding: () => mb_settings["hide-embed-branding"],
+  hideEmbedBranding: () => mb_settings["hide-embed-branding?"],
 
   docsUrl: (page = "", anchor = "") => {
     let { tag } = MetabaseSettings.get("version", {});
