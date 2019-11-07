@@ -218,7 +218,7 @@
   :visibility :public
   :setter     :none
   :getter     (constantly common/timezones))
-  
+
 (defsetting engines
   "Available database engines"
   :visibility :public
