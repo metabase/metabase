@@ -12,6 +12,7 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import Detail from "metabase/reference/components/Detail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import Formula from "metabase/reference/components/Formula";
+import Card from "metabase/components/Card";
 
 import { getQuestionUrl } from "../utils";
 
@@ -203,60 +204,62 @@ export default class SegmentDetail extends Component {
         >
           {() => (
             <div className="wrapper wrapper--trim">
-              <List>
-                <li className="relative">
-                  <Detail
-                    id="description"
-                    name={t`Description`}
-                    description={entity.description}
-                    placeholder={t`No description yet`}
-                    isEditing={isEditing}
-                    field={description}
-                  />
-                </li>
-                <li className="relative">
-                  <Detail
-                    id="points_of_interest"
-                    name={t`Why this Segment is interesting`}
-                    description={entity.points_of_interest}
-                    placeholder={t`Nothing interesting yet`}
-                    isEditing={isEditing}
-                    field={points_of_interest}
-                  />
-                </li>
-                <li className="relative">
-                  <Detail
-                    id="caveats"
-                    name={t`Things to be aware of about this Segment`}
-                    description={entity.caveats}
-                    placeholder={t`Nothing to be aware of yet`}
-                    isEditing={isEditing}
-                    field={caveats}
-                  />
-                </li>
-                {table && !isEditing && (
+              <Card px={3} pt={3} mb={4}>
+                <List>
                   <li className="relative">
-                    <Formula
-                      type="segment"
-                      entity={entity}
-                      table={table}
-                      isExpanded={isFormulaExpanded}
-                      expandFormula={expandFormula}
-                      collapseFormula={collapseFormula}
+                    <Detail
+                      id="description"
+                      name={t`Description`}
+                      description={entity.description}
+                      placeholder={t`No description yet`}
+                      isEditing={isEditing}
+                      field={description}
                     />
                   </li>
-                )}
-                {!isEditing && (
                   <li className="relative">
-                    <UsefulQuestions
-                      questions={interestingQuestions(
-                        this.props.table,
-                        this.props.entity,
-                      )}
+                    <Detail
+                      id="points_of_interest"
+                      name={t`Why this Segment is interesting`}
+                      description={entity.points_of_interest}
+                      placeholder={t`Nothing interesting yet`}
+                      isEditing={isEditing}
+                      field={points_of_interest}
                     />
                   </li>
-                )}
-              </List>
+                  <li className="relative">
+                    <Detail
+                      id="caveats"
+                      name={t`Things to be aware of about this Segment`}
+                      description={entity.caveats}
+                      placeholder={t`Nothing to be aware of yet`}
+                      isEditing={isEditing}
+                      field={caveats}
+                    />
+                  </li>
+                  {table && !isEditing && (
+                    <li className="relative">
+                      <Formula
+                        type="segment"
+                        entity={entity}
+                        table={table}
+                        isExpanded={isFormulaExpanded}
+                        expandFormula={expandFormula}
+                        collapseFormula={collapseFormula}
+                      />
+                    </li>
+                  )}
+                  {!isEditing && (
+                    <li className="relative">
+                      <UsefulQuestions
+                        questions={interestingQuestions(
+                          this.props.table,
+                          this.props.entity,
+                        )}
+                      />
+                    </li>
+                  )}
+                </List>
+              </Card>
             </div>
           )}
         </LoadingAndErrorWrapper>

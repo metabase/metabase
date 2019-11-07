@@ -7,12 +7,14 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 import List from "metabase/components/List";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+
 import EditHeader from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import Detail from "metabase/reference/components/Detail";
 import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy";
 import Formula from "metabase/reference/components/Formula";
 import MetricImportantFieldsDetail from "metabase/reference/components/MetricImportantFieldsDetail";
+import Card from "metabase/components/Card";
 
 import { getQuestionUrl } from "../utils";
 
@@ -199,107 +201,109 @@ export default class MetricDetail extends Component {
         >
           {() => (
             <div className="wrapper wrapper--trim">
-              <List>
-                <li className="relative">
-                  <Detail
-                    id="description"
-                    name={t`Description`}
-                    description={entity.description}
-                    placeholder={t`No description yet`}
-                    isEditing={isEditing}
-                    field={description}
-                  />
-                </li>
-                <li className="relative">
-                  <Detail
-                    id="points_of_interest"
-                    name={t`Why this Metric is interesting`}
-                    description={entity.points_of_interest}
-                    placeholder={t`Nothing interesting yet`}
-                    isEditing={isEditing}
-                    field={points_of_interest}
-                  />
-                </li>
-                <li className="relative">
-                  <Detail
-                    id="caveats"
-                    name={t`Things to be aware of about this Metric`}
-                    description={entity.caveats}
-                    placeholder={t`Nothing to be aware of yet`}
-                    isEditing={isEditing}
-                    field={caveats}
-                  />
-                </li>
-                <li className="relative">
-                  <Detail
-                    id="how_is_this_calculated"
-                    name={t`How this Metric is calculated`}
-                    description={entity.how_is_this_calculated}
-                    placeholder={t`Nothing on how it's calculated yet`}
-                    isEditing={isEditing}
-                    field={how_is_this_calculated}
-                  />
-                </li>
-                {table && !isEditing && (
+              <Card px={3} pt={3} mb={4}>
+                <List>
                   <li className="relative">
-                    <Formula
-                      type="metric"
-                      entity={entity}
-                      isExpanded={isFormulaExpanded}
-                      expandFormula={expandFormula}
-                      collapseFormula={collapseFormula}
+                    <Detail
+                      id="description"
+                      name={t`Description`}
+                      description={entity.description}
+                      placeholder={t`No description yet`}
+                      isEditing={isEditing}
+                      field={description}
                     />
                   </li>
-                )}
-                <li className="relative">
-                  <MetricImportantFieldsDetail
-                    fields={
-                      guide &&
-                      guide.metric_important_fields[entity.id] &&
-                      Object.values(guide.metric_important_fields[entity.id])
-                        .map(fieldId => metadataFields[fieldId])
-                        .reduce(
-                          (map, field) => ({ ...map, [field.id]: field }),
-                          {},
-                        )
-                    }
-                    table={table}
-                    allFields={metadataFields}
-                    metric={entity}
-                    onChangeLocation={onChangeLocation}
-                    isEditing={isEditing}
-                    formField={important_fields}
-                  />
-                </li>
-                {!isEditing && (
                   <li className="relative">
-                    <FieldsToGroupBy
-                      fields={table.fields
-                        .filter(
-                          fieldId =>
-                            !guide ||
-                            !guide.metric_important_fields[entity.id] ||
-                            !guide.metric_important_fields[entity.id].includes(
-                              fieldId,
-                            ),
-                        )
-                        .map(fieldId => metadataFields[fieldId])
-                        .reduce(
-                          (map, field) => ({ ...map, [field.id]: field }),
-                          {},
-                        )}
-                      databaseId={table && table.db_id}
-                      metric={entity}
-                      title={
-                        guide && guide.metric_important_fields[entity.id]
-                          ? t`Other fields you can group this metric by`
-                          : t`Fields you can group this metric by`
+                    <Detail
+                      id="points_of_interest"
+                      name={t`Why this Metric is interesting`}
+                      description={entity.points_of_interest}
+                      placeholder={t`Nothing interesting yet`}
+                      isEditing={isEditing}
+                      field={points_of_interest}
+                    />
+                  </li>
+                  <li className="relative">
+                    <Detail
+                      id="caveats"
+                      name={t`Things to be aware of about this Metric`}
+                      description={entity.caveats}
+                      placeholder={t`Nothing to be aware of yet`}
+                      isEditing={isEditing}
+                      field={caveats}
+                    />
+                  </li>
+                  <li className="relative">
+                    <Detail
+                      id="how_is_this_calculated"
+                      name={t`How this Metric is calculated`}
+                      description={entity.how_is_this_calculated}
+                      placeholder={t`Nothing on how it's calculated yet`}
+                      isEditing={isEditing}
+                      field={how_is_this_calculated}
+                    />
+                  </li>
+                  {table && !isEditing && (
+                    <li className="relative">
+                      <Formula
+                        type="metric"
+                        entity={entity}
+                        isExpanded={isFormulaExpanded}
+                        expandFormula={expandFormula}
+                        collapseFormula={collapseFormula}
+                      />
+                    </li>
+                  )}
+                  <li className="relative">
+                    <MetricImportantFieldsDetail
+                      fields={
+                        guide &&
+                        guide.metric_important_fields[entity.id] &&
+                        Object.values(guide.metric_important_fields[entity.id])
+                          .map(fieldId => metadataFields[fieldId])
+                          .reduce(
+                            (map, field) => ({ ...map, [field.id]: field }),
+                            {},
+                          )
                       }
+                      table={table}
+                      allFields={metadataFields}
+                      metric={entity}
                       onChangeLocation={onChangeLocation}
+                      isEditing={isEditing}
+                      formField={important_fields}
                     />
                   </li>
-                )}
-              </List>
+                  {!isEditing && (
+                    <li className="relative">
+                      <FieldsToGroupBy
+                        fields={table.fields
+                          .filter(
+                            fieldId =>
+                              !guide ||
+                              !guide.metric_important_fields[entity.id] ||
+                              !guide.metric_important_fields[
+                                entity.id
+                              ].includes(fieldId),
+                          )
+                          .map(fieldId => metadataFields[fieldId])
+                          .reduce(
+                            (map, field) => ({ ...map, [field.id]: field }),
+                            {},
+                          )}
+                        databaseId={table && table.db_id}
+                        metric={entity}
+                        title={
+                          guide && guide.metric_important_fields[entity.id]
+                            ? t`Other fields you can group this metric by`
+                            : t`Fields you can group this metric by`
+                        }
+                        onChangeLocation={onChangeLocation}
+                      />
+                    </li>
+                  )}
+                </List>
+              </Card>
             </div>
           )}
         </LoadingAndErrorWrapper>
