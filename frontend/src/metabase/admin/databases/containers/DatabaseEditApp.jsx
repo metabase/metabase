@@ -135,7 +135,7 @@ export default class DatabaseEditApp extends Component {
           ]}
         />
         <Flex pb={2}>
-          <Box>
+          <Box style={{ maxWidth: 720 }}>
             <div className="pt0">
               {showTabs && (
                 <div className="border-bottom mb2">
