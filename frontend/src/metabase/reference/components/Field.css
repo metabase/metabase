@@ -26,13 +26,13 @@
 }
 
 :local(.fieldType) {
-  composes: flex-half text-medium pr2 from "style";
+  composes: flex-1-quarter text-medium pr2 from "style";
   overflow: hidden;
   white-space: nowrap;
 }
 
 :local(.fieldDataType) {
-  composes: flex-half text-medium from "style";
+  composes: flex-1-quarter text-medium from "style";
 }
 
 :local(.fieldSecondary) {

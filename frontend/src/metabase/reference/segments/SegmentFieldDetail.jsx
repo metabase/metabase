@@ -14,6 +14,7 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import Detail from "metabase/reference/components/Detail";
 import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
+import Card from "metabase/components/Card";
 
 import { getQuestionUrl } from "../utils";
 
@@ -202,78 +203,80 @@ export default class SegmentFieldDetail extends Component {
           error={loadingError}
         >
           {() => (
-            <div className="wrapper wrapper--trim">
-              <List>
-                <li className="relative">
-                  <Detail
-                    id="description"
-                    name={t`Description`}
-                    description={entity.description}
-                    placeholder={t`No description yet`}
-                    isEditing={isEditing}
-                    field={description}
-                  />
-                </li>
-                {!isEditing && (
+            <div className="wrapper">
+              <Card px={3} pt={3} mb={4}>
+                <List>
                   <li className="relative">
                     <Detail
-                      id="name"
-                      name={t`Actual name in database`}
-                      description={entity.name}
-                      subtitleClass={S.tableActualName}
+                      id="description"
+                      name={t`Description`}
+                      description={entity.description}
+                      placeholder={t`No description yet`}
+                      isEditing={isEditing}
+                      field={description}
                     />
                   </li>
-                )}
-                <li className="relative">
-                  <Detail
-                    id="points_of_interest"
-                    name={t`Why this field is interesting`}
-                    description={entity.points_of_interest}
-                    placeholder={t`Nothing interesting yet`}
-                    isEditing={isEditing}
-                    field={points_of_interest}
-                  />
-                </li>
-                <li className="relative">
-                  <Detail
-                    id="caveats"
-                    name={t`Things to be aware of about this field`}
-                    description={entity.caveats}
-                    placeholder={t`Nothing to be aware of yet`}
-                    isEditing={isEditing}
-                    field={caveats}
-                  />
-                </li>
+                  {!isEditing && (
+                    <li className="relative">
+                      <Detail
+                        id="name"
+                        name={t`Actual name in database`}
+                        description={entity.name}
+                        subtitleClass={S.tableActualName}
+                      />
+                    </li>
+                  )}
+                  <li className="relative">
+                    <Detail
+                      id="points_of_interest"
+                      name={t`Why this field is interesting`}
+                      description={entity.points_of_interest}
+                      placeholder={t`Nothing interesting yet`}
+                      isEditing={isEditing}
+                      field={points_of_interest}
+                    />
+                  </li>
+                  <li className="relative">
+                    <Detail
+                      id="caveats"
+                      name={t`Things to be aware of about this field`}
+                      description={entity.caveats}
+                      placeholder={t`Nothing to be aware of yet`}
+                      isEditing={isEditing}
+                      field={caveats}
+                    />
+                  </li>
 
-                {!isEditing && (
+                  {!isEditing && (
+                    <li className="relative">
+                      <Detail
+                        id="base_type"
+                        name={t`Data type`}
+                        description={entity.base_type}
+                      />
+                    </li>
+                  )}
                   <li className="relative">
-                    <Detail
-                      id="base_type"
-                      name={t`Data type`}
-                      description={entity.base_type}
+                    <FieldTypeDetail
+                      field={entity}
+                      foreignKeys={foreignKeys}
+                      fieldTypeFormField={special_type}
+                      foreignKeyFormField={fk_target_field_id}
+                      isEditing={isEditing}
                     />
                   </li>
-                )}
-                <li className="relative">
-                  <FieldTypeDetail
-                    field={entity}
-                    foreignKeys={foreignKeys}
-                    fieldTypeFormField={special_type}
-                    foreignKeyFormField={fk_target_field_id}
-                    isEditing={isEditing}
-                  />
-                </li>
-                {!isEditing && (
-                  <li className="relative">
-                    <UsefulQuestions
-                      questions={interestingQuestions(
-                        this.props.table,
-                        this.props.entity,
-                      )}
-                    />
-                  </li>
-                )}
-              </List>
+                  {!isEditing && (
+                    <li className="relative">
+                      <UsefulQuestions
+                        questions={interestingQuestions(
+                          this.props.table,
+                          this.props.entity,
+                        )}
+                      />
+                    </li>
+                  )}
+                </List>
+              </Card>
             </div>
           )}
         </LoadingAndErrorWrapper>

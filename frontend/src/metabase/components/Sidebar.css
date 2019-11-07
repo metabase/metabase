@@ -1,6 +1,7 @@
 :local(.sidebar) {
   composes: py2 from "style";
-  width: 345px;
+  width: 30%;
+  max-width: 500px;
   background-color: var(--color-bg-light);
   color: var(--color-text-medium);
 }

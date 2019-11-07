@@ -10,8 +10,8 @@
 }
 
 :local(.detailBody) {
-  composes: flex-full pb4 from "style";
-  max-width: 600px;
+  composes: pb4 from "style";
+  max-width: 900px;
 }
 
 :local(.detailTitle) {

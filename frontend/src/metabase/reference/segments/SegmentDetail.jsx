@@ -203,7 +203,7 @@ export default class SegmentDetail extends Component {
           error={loadingError}
         >
           {() => (
-            <div className="wrapper wrapper--trim">
+            <div className="wrapper">
               <Card px={3} pt={3} mb={4}>
                 <List>
                   <li className="relative">

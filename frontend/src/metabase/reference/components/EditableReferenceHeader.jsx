@@ -7,7 +7,6 @@ import { t } from "ttag";
 import S from "./ReferenceHeader.css";
 import L from "metabase/components/List.css";
 
-import IconBorder from "metabase/components/IconBorder";
 import Icon from "metabase/components/Icon";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Ellipsified from "metabase/components/Ellipsified";
@@ -35,6 +34,11 @@ const EditableReferenceHeader = ({
       className={cx("relative", L.header)}
       style={type === "segment" ? { marginBottom: 0 } : {}}
     >
+      <div className="flex align-center mr2">
+        {headerIcon && (
+          <Icon className="text-light" name={headerIcon} size={21} />
+        )}
+      </div>
       {type === "table" && !hasSingleSchema && !isEditing && (
         <div className={S.headerSchema}>{entity.schema}</div>
       )}

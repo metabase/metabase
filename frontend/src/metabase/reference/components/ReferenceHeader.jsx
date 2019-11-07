@@ -22,19 +22,9 @@ const ReferenceHeader = ({
 }) => (
   <div className="wrapper wrapper--trim">
     <div className={cx("relative", L.header)}>
-      <div className={L.leftIcons}>
+      <div className="flex align-center mr2">
         {headerIcon && (
-          <IconBorder
-            borderWidth="0"
-            style={{ backgroundColor: color("bg-medium") }}
-          >
-            <Icon
-              className="text-brand"
-              name={headerIcon}
-              width={24}
-              height={24}
-            />
-          </IconBorder>
+          <Icon className="text-light" name={headerIcon} size={21} />
         )}
       </div>
       <div className={S.headerBody}>

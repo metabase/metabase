@@ -138,6 +138,7 @@ export default class DatabaseDetail extends Component {
           table={table}
           type="database"
           name="Details"
+          headerIcon="database"
           user={user}
           isEditing={isEditing}
           hasSingleSchema={false}
