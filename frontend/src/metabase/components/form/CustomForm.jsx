@@ -186,7 +186,7 @@ CustomFormSubmit.contextTypes = {
   submitting: PropTypes.bool,
   invalid: PropTypes.bool,
   pristine: PropTypes.bool,
-  handleSubmit: PropTypes.bool,
+  handleSubmit: PropTypes.func,
 };
 
 export const CustomFormMessage = (props, { error }) =>

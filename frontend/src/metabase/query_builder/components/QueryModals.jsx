@@ -45,12 +45,12 @@ export default class QueryModals extends React.Component {
           originalCard={this.props.originalCard}
           tableMetadata={this.props.tableMetadata}
           initialCollectionId={this.props.initialCollectionId}
-          saveFn={async card => {
+          onSave={async card => {
             // if saving modified question, don't show "add to dashboard" modal
             await this.props.onSave(card);
             onCloseModal();
           }}
-          createFn={async card => {
+          onCreate={async card => {
             await this.props.onCreate(card);
             onOpenModal("saved");
           }}
@@ -73,11 +73,11 @@ export default class QueryModals extends React.Component {
           originalCard={this.props.originalCard}
           tableMetadata={this.props.tableMetadata}
           initialCollectionId={this.props.initialCollectionId}
-          saveFn={async card => {
+          onSave={async card => {
             await this.props.onSave(card);
             onOpenModal("add-to-dashboard");
           }}
-          createFn={async card => {
+          onCreate={async card => {
             await this.props.onCreate(card);
             onOpenModal("add-to-dashboard");
           }}
@@ -106,11 +106,11 @@ export default class QueryModals extends React.Component {
           card={this.props.card}
           originalCard={this.props.originalCard}
           tableMetadata={this.props.tableMetadata}
-          saveFn={async card => {
+          onSave={async card => {
             await this.props.onSave(card, false);
             this.showAlertsAfterQuestionSaved();
           }}
-          createFn={async card => {
+          onCreate={async card => {
             await this.props.onCreate(card, false);
             this.showAlertsAfterQuestionSaved();
           }}
@@ -125,11 +125,11 @@ export default class QueryModals extends React.Component {
           card={this.props.card}
           originalCard={this.props.originalCard}
           tableMetadata={this.props.tableMetadata}
-          saveFn={async card => {
+          onSave={async card => {
             await this.props.onSave(card, false);
             onOpenModal("embed");
           }}
-          createFn={async card => {
+          onCreate={async card => {
             await this.props.onCreate(card, false);
             onOpenModal("embed");
           }}

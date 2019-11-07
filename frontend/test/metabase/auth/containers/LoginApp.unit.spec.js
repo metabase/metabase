@@ -5,10 +5,7 @@ import LoginApp from "metabase/auth/containers/LoginApp";
 import { mountWithStore } from "__support__/integration_tests";
 
 jest.mock("metabase/lib/settings", () => ({
-  get: () => ({
-    tag: 1,
-    version: 1,
-  }),
+  ...require.requireActual("metabase/lib/settings").default,
   ssoEnabled: jest.fn(),
   ldapEnabled: jest.fn(),
 }));

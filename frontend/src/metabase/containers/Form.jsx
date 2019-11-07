@@ -176,7 +176,7 @@ export default class Form extends React.Component {
   }
 
   static propTypes = {
-    form: PropTypes.object.isRequired,
+    form: PropTypes.object,
     onSubmit: PropTypes.func.isRequired,
     initialValues: PropTypes.object,
     formName: PropTypes.string,

@@ -85,4 +85,7 @@ window.MetabaseBootstrap = {
     "type/UNIXTimestamp": ["type/Integer", "type/DateTime"],
     "type/Enum": ["type/Category", "type/*"],
   },
+  version: {
+    tag: "v1",
+  },
 };

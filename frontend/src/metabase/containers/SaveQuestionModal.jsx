@@ -19,8 +19,8 @@ export default class SaveQuestionModal extends Component {
     card: PropTypes.object.isRequired,
     originalCard: PropTypes.object,
     tableMetadata: PropTypes.object, // can't be required, sometimes null
-    createFn: PropTypes.func.isRequired,
-    saveFn: PropTypes.func.isRequired,
+    onCreate: PropTypes.func.isRequired,
+    onSave: PropTypes.func.isRequired,
     onClose: PropTypes.func.isRequired,
     multiStep: PropTypes.bool,
   };
@@ -34,7 +34,7 @@ export default class SaveQuestionModal extends Component {
     //     .setDisplayName(details.name.trim())
     //     .setDescription(details.description ? details.description.trim() : null)
     //     .setCollectionId(details.collection_id)
-    let { card, originalCard, createFn, saveFn } = this.props;
+    let { card, originalCard, onCreate, onSave } = this.props;
 
     card = {
       ...card,
@@ -56,10 +56,10 @@ export default class SaveQuestionModal extends Component {
     };
 
     if (details.saveType === "create") {
-      await createFn(card);
+      await onCreate(card);
     } else if (details.saveType === "overwrite") {
       card.id = this.props.originalCard.id;
-      await saveFn(card);
+      await onSave(card);
     }
   };
 
