@@ -233,21 +233,38 @@ const forms = {
         hidden: !engine || !details["let-user-control-scheduling"],
       },
     ],
+    normalize: function(database) {
+      if (!database.details["let-user-control-scheduling"]) {
+        // If we don't let user control the scheduling settings, let's override them with Metabase defaults
+        // TODO Atte Keinänen 8/15/17: Implement engine-specific scheduling defaults
+        return {
+          ...database,
+          is_full_sync: true,
+          schedules: DEFAULT_SCHEDULES,
+        };
+      } else {
+        return database;
+      }
+    },
   },
-  connection: {
-    fields: (...args) =>
-      forms.details.fields(...args).map(field => ({
-        ...field,
-        hidden: field.hidden || SCHEDULING_FIELDS.has(field.name),
-      })),
-  },
-  scheduling: {
-    fields: (...args) =>
-      forms.details.fields(...args).map(field => ({
-        ...field,
-        hidden: field.hidden || !SCHEDULING_FIELDS.has(field.name),
-      })),
-  },
+};
+
+// partial forms for tabbed view:
+forms.connection = {
+  ...forms.details,
+  fields: (...args) =>
+    forms.details.fields(...args).map(field => ({
+      ...field,
+      hidden: field.hidden || SCHEDULING_FIELDS.has(field.name),
+    })),
+};
+forms.scheduling = {
+  ...forms.details,
+  fields: (...args) =>
+    forms.details.fields(...args).map(field => ({
+      ...field,
+      hidden: field.hidden || !SCHEDULING_FIELDS.has(field.name),
+    })),
 };
 
 const SCHEDULING_FIELDS = new Set([

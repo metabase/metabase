@@ -66,7 +66,6 @@ export const DELETE_DATABASE_STARTED =
   "metabase/admin/databases/DELETE_DATABASE_STARTED";
 export const DELETE_DATABASE_FAILED =
   "metabase/admin/databases/DELETE_DATABASE_FAILED";
-export const CLEAR_FORM_STATE = "metabase/admin/databases/CLEAR_FORM_STATE";
 export const MIGRATE_TO_NEW_SCHEDULING_SETTINGS =
   "metabase/admin/databases/MIGRATE_TO_NEW_SCHEDULING_SETTINGS";
 
@@ -157,33 +156,27 @@ export const proceedWithDbCreation = function(database) {
       try {
         dispatch.action(VALIDATE_DATABASE_STARTED);
         const { valid } = await MetabaseApi.db_validate({ details: database });
-
         if (valid) {
           dispatch.action(SET_DATABASE_CREATION_STEP, {
-            // NOTE Atte Keinänen: DatabaseSchedulingForm needs `editingDatabase` with `schedules` so I decided that
-            // it makes sense to set the value of editingDatabase as part of SET_DATABASE_CREATION_STEP
-            database: {
-              ...database,
-              is_full_sync: true,
-              schedules: DEFAULT_SCHEDULES,
-            },
+            database: database,
             step: DB_EDIT_FORM_SCHEDULING_TAB,
           });
         } else {
-          dispatch.action(VALIDATE_DATABASE_FAILED, {
+          throw {
             error: {
               data: {
                 message: t`Couldn't connect to the database. Please check the connection details.`,
               },
             },
-          });
+          };
         }
       } catch (error) {
         dispatch.action(VALIDATE_DATABASE_FAILED, { error });
+        throw error;
       }
     } else {
       // Skip the scheduling step if user doesn't need precise control over sync and scan
-      dispatch(createDatabase(database));
+      await dispatch(createDatabase(database));
     }
   };
 };
@@ -219,7 +212,6 @@ export const updateDatabase = function(database) {
       MetabaseAnalytics.trackEvent("Databases", "Update", database.engine);
 
       dispatch.action(UPDATE_DATABASE, { database: savedDatabase });
-      setTimeout(() => dispatch.action(CLEAR_FORM_STATE), 3000);
     } catch (error) {
       MetabaseAnalytics.trackEvent(
         "Databases",
@@ -227,6 +219,7 @@ export const updateDatabase = function(database) {
         database.engine,
       );
       dispatch.action(UPDATE_DATABASE_FAILED, { error });
+      throw error;
     }
   };
 };
@@ -235,20 +228,11 @@ export const updateDatabase = function(database) {
 // but `saveDatabase` action creator is still left here for keeping the interface for React components unchanged
 export const saveDatabase = function(database) {
   return async function(dispatch, getState) {
-    if (!database.details["let-user-control-scheduling"]) {
-      // If we don't let user control the scheduling settings, let's override them with Metabase defaults
-      // TODO Atte Keinänen 8/15/17: Implement engine-specific scheduling defaults
-      database = {
-        ...database,
-        is_full_sync: true,
-        schedules: DEFAULT_SCHEDULES,
-      };
-    }
     const isUnsavedDatabase = !database.id;
     if (isUnsavedDatabase) {
-      dispatch(createDatabase(database));
+      await dispatch(createDatabase(database));
     } else {
-      dispatch(updateDatabase(database));
+      await dispatch(updateDatabase(database));
     }
   };
 };
