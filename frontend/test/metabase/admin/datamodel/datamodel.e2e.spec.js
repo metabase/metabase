@@ -5,12 +5,7 @@ import {
   deleteAllSegments,
   deleteAllMetrics,
 } from "__support__/e2e_tests";
-import {
-  click,
-  clickButton,
-  setInputValue,
-  enhanceEnzymeWrapper,
-} from "__support__/enzyme_utils";
+import { click, clickButton, setInputValue } from "__support__/enzyme_utils";
 
 import { mount } from "enzyme";
 import { UPDATE_PREVIEW_SUMMARY } from "metabase/admin/datamodel/datamodel";
@@ -42,7 +37,7 @@ describe("admin/datamodel", () => {
       const store = await createTestStore();
 
       store.pushPath("/admin/datamodel/database");
-      const app = enhanceEnzymeWrapper(mount(store.getAppContainer()));
+      const app = mount(store.getAppContainer());
       await store.waitForActions([Tables.actions.fetchList]);
 
       // Open "Orders" table section
