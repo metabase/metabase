@@ -31,12 +31,13 @@
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
-
-(defmethod driver/date-add :postgres [_ dt amount unit]
+(defmethod driver/date-add :postgres
+  [_ dt amount unit]
   (hx/+ (hx/->timestamp dt)
         (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit)))))
 
-(defmethod driver/humanize-connection-error-message :postgres [_ message]
+(defmethod driver/humanize-connection-error-message :postgres
+  [_ message]
   (condp re-matches message
     #"^FATAL: database \".*\" does not exist$"
     (driver.common/connection-error-messages :database-name-incorrect)
@@ -60,17 +61,20 @@
     #".*" ; default
     message))
 
-(defmethod driver.common/current-db-time-date-formatters :postgres [_]
+(defmethod driver.common/current-db-time-date-formatters :postgres
+  [_]
   (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss.SSS zzz"))
 
-(defmethod driver.common/current-db-time-native-query :postgres [_]
+(defmethod driver.common/current-db-time-native-query :postgres
+  [_]
   "select to_char(current_timestamp, 'YYYY-MM-DD HH24:MI:SS.MS TZ')")
 
-(defmethod driver/current-db-time :postgres [& args]
+(defmethod driver/current-db-time :postgres
+  [& args]
   (apply driver.common/current-db-time args))
 
-
-(defmethod driver/connection-properties :postgres [_]
+(defmethod driver/connection-properties :postgres
+  [_]
   (ssh/with-tunnel-config
     [driver.common/default-host-details
      (assoc driver.common/default-port-details :default 5432)
@@ -80,7 +84,6 @@
      driver.common/default-ssl-details
      (assoc driver.common/default-additional-options-details
        :placeholder "prepareThreshold=0")]))
-
 
 (defn- enum-types [driver database]
   (set
@@ -96,7 +99,8 @@
 ;; Describe the Fields present in a `table`. This just hands off to the normal SQL driver implementation of the same
 ;; name, but first fetches database enum types so we have access to them. These are simply binded to the dynamic var
 ;; and used later in `database-type->base-type`, which you will find below.
-(defmethod driver/describe-table :postgres [driver database table]
+(defmethod driver/describe-table :postgres
+  [driver database table]
   (binding [*enum-types* (enum-types driver database)]
     (sql-jdbc.sync/describe-table driver database table)))
 
@@ -114,7 +118,7 @@
 
 (def ^:private extract-integer (comp hx/->integer extract))
 
-(def ^:private ^:const one-day (hsql/raw "INTERVAL '1 day'"))
+(def ^:private one-day (hsql/raw "INTERVAL '1 day'"))
 
 (defmethod sql.qp/date [:postgres :default]        [_ _ expr] expr)
 (defmethod sql.qp/date [:postgres :minute]         [_ _ expr] (date-trunc :minute expr))
@@ -139,7 +143,8 @@
 (defmethod sql.qp/date [:postgres :year]            [_ _ expr] (date-trunc :year expr))
 
 
-(defmethod sql.qp/->honeysql [:postgres :value] [driver value]
+(defmethod sql.qp/->honeysql [:postgres :value]
+  [driver value]
   (let [[_ value {base-type :base_type, database-type :database_type}] value]
     (when (some? value)
       (cond
@@ -148,16 +153,18 @@
         (isa? base-type :type/PostgresEnum) (hx/quoted-cast database-type value)
         :else                               (sql.qp/->honeysql driver value)))))
 
-(defmethod sql.qp/->honeysql [:postgres Time] [_ time-value]
+(defmethod sql.qp/->honeysql [:postgres Time]
+  [_ time-value]
   (hx/->time time-value))
 
-
-(defmethod unprepare/unprepare-value [:postgres Date] [_ value]
+(defmethod unprepare/unprepare-value [:postgres Date]
+  [_ value]
   (format "'%s'::timestamp" (du/date->iso-8601 value)))
 
 (prefer-method unprepare/unprepare-value [:sql Time] [:postgres Date])
 
-(defmethod unprepare/unprepare-value [:postgres UUID] [_ value]
+(defmethod unprepare/unprepare-value [:postgres UUID]
+  [_ value]
   (format "'%s'::uuid" value))
 
 
@@ -227,12 +234,14 @@
    (keyword "timestamp with timezone")    :type/DateTime
    (keyword "timestamp without timezone") :type/DateTime})
 
-(defmethod sql-jdbc.sync/database-type->base-type :postgres [driver column]
+(defmethod sql-jdbc.sync/database-type->base-type :postgres
+  [driver column]
   (if (contains? *enum-types* column)
     :type/PostgresEnum
     (default-base-types column)))
 
-(defmethod sql-jdbc.sync/column->special-type :postgres [_ database-type _]
+(defmethod sql-jdbc.sync/column->special-type :postgres
+  [_ database-type _]
   ;; this is really, really simple right now.  if its postgres :json type then it's :type/SerializedJSON special-type
   (case database-type
     "json" :type/SerializedJSON
@@ -243,13 +252,14 @@
   "Params to include in the JDBC connection spec for an SSL connection."
   {:ssl        true
    :sslmode    "require"
-   :sslfactory "org.postgresql.ssl.NonValidatingFactory"})  ; HACK Why enable SSL if we disable certificate validation?
+   :sslfactory "org.postgresql.ssl.NonValidatingFactory"})
 
 (def ^:private disable-ssl-params
   "Params to include in the JDBC connection spec to disable SSL."
   {:sslmode "disable"})
 
-(defmethod sql-jdbc.conn/connection-details->spec :postgres [_ {ssl? :ssl, :as details-map}]
+(defmethod sql-jdbc.conn/connection-details->spec :postgres
+  [_ {ssl? :ssl, :as details-map}]
   (-> details-map
       (update :port (fn [port]
                       (if (string? port)
@@ -264,5 +274,6 @@
       db.spec/postgres
       (sql-jdbc.common/handle-additional-options details-map)))
 
-(defmethod sql-jdbc.execute/set-timezone-sql :postgres [_]
+(defmethod sql-jdbc.execute/set-timezone-sql :postgres
+  [_]
   "SET SESSION TIMEZONE TO %s;")

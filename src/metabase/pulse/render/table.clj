@@ -15,23 +15,25 @@
 (defn- bar-th-style []
   (merge
    (style/font-style)
-   {:font-size :14.22px
+   {:font-size :12.5px
     :font-weight     700
-    :color           style/color-gray-4
-    :border-bottom   (str "1px solid " style/color-row-border)
+    :color           style/color-text-medium
+    :border-bottom   (str "1px solid " style/color-header-row-border)
     :padding-top     :20px
     :padding-bottom  :5px}))
 
 (defn- bar-td-style []
   (merge
    (style/font-style)
-   {:font-size      :14.22px
-    :font-weight    400
+   {:font-size      :12.5px
+    :font-weight    700
     :text-align     :left
+    :color          style/color-text-dark
+    :border-bottom  (str "1px solid " style/color-body-row-border)
+    :height         :36px
+    :width          :106px
     :padding-right  :0.5em
-    :padding-left   :0.5em
-    :padding-top    :4px
-    :padding-bottom :4px}))
+    :padding-left   :0.5em}))
 
 (defn- bar-th-style-numeric []
   (merge (style/font-style) (bar-th-style) {:text-align :right}))

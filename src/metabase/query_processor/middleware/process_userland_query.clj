@@ -68,7 +68,7 @@
                 :cols []}}
    ;; include stacktrace and preprocessed/native stages of the query if available in the response which should
    ;; make debugging queries a bit easier
-   (-> (select-keys result [:stacktrace :preprocessed :native])
+   (-> (select-keys result [:stacktrace :preprocessed :native :error_type])
        (m/dissoc-in [:preprocessed :info]))))
 
 

@@ -104,12 +104,11 @@
                  javax.jms/jms
                  com.sun.jdmk/jmxtools
                  com.sun.jmx/jmxri]]
-   [me.raynes/fs "1.4.6"]                                   ; FS tools
+   [me.raynes/fs "1.4.6"]                                             ; Filesystem tools
    [medley "1.2.0"]                                                   ; lightweight lib of useful functions
-   [metabase/connection-pool "1.0.2"]                                 ; simple wrapper around C3P0. JDBC connection pools
+   [metabase/connection-pool "1.0.3"]                                 ; simple wrapper around C3P0. JDBC connection pools
    [metabase/mbql "1.3.6"]                                            ; MBQL language schema & util fns
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
-   [methodical "0.9.4-alpha"]
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
    [org.apache.commons/commons-lang3 "3.9"]                           ; helper methods for working with java.lang stuff
    [org.clojars.pntblnk/clj-ldap "0.0.16"]                            ; LDAP client
@@ -131,7 +130,7 @@
    [ring/ring-jetty-adapter "1.7.1"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
    [ring/ring-json "0.4.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
-   [toucan "1.14.0" :exclusions [org.clojure/java.jdbc honeysql]]     ; Model layer, hydration, and DB utilities
+   [toucan "1.15.0" :exclusions [org.clojure/java.jdbc honeysql]]     ; Model layer, hydration, and DB utilities
    [weavejester/dependency "0.2.1"]                                   ; Dependency graphs and topological sorting
    ]
 
@@ -165,6 +164,7 @@
 
     :dependencies
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
+     [methodical "0.9.4-alpha"]
      [pjstadig/humane-test-output "0.9.0"]
      [ring/ring-mock "0.3.2"]]
 
@@ -252,7 +252,7 @@
    :bikeshed
    [:include-all-drivers
     {:plugins
-     [[lein-bikeshed "0.4.1"]]}]
+     [[lein-bikeshed "0.5.2"]]}]
 
    :eastwood
    [:include-all-drivers

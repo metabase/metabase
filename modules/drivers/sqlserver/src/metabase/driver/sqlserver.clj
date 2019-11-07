@@ -8,6 +8,7 @@
             [metabase.driver.sql-jdbc
              [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn]
+             [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
@@ -15,13 +16,14 @@
             [metabase.util
              [date :as du]
              [honeysql-extensions :as hx]])
-  (:import java.sql.Time
+  (:import [java.sql ResultSet Time]
            java.util.Date))
 
 (driver/register! :sqlserver, :parent :sql-jdbc)
 
 ;; See the list here: https://docs.microsoft.com/en-us/sql/connect/jdbc/using-basic-data-types
-(defmethod sql-jdbc.sync/database-type->base-type :sqlserver [_ column-type]
+(defmethod sql-jdbc.sync/database-type->base-type :sqlserver
+  [_ column-type]
   ({:bigint           :type/BigInteger
     :binary           :type/*
     :bit              :type/Boolean ; actually this is 1 / 0 instead of true / false ...
@@ -98,19 +100,24 @@
 ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/date-and-time-data-types-and-functions-transact-sql for
 ;; details on the functions we're using.
 
-(defmethod sql.qp/date [:sqlserver :default] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :default]
+  [_ _ expr]
   expr)
 
-(defmethod sql.qp/date [:sqlserver :minute] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :minute]
+  [_ _ expr]
   (hx/cast :smalldatetime expr))
 
-(defmethod sql.qp/date [:sqlserver :minute-of-hour] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :minute-of-hour]
+  [_ _ expr]
   (date-part :minute expr))
 
-(defmethod sql.qp/date [:sqlserver :hour] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :hour]
+  [_ _ expr]
   (hsql/call :datetime2fromparts (hx/year expr) (hx/month expr) (hx/day expr) (date-part :hour expr) 0 0 0 0))
 
-(defmethod sql.qp/date [:sqlserver :hour-of-day] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :hour-of-day]
+  [_ _ expr]
   (date-part :hour expr))
 
 ;; jTDS is wack; I sense an ongoing theme here. It returns DATEs as strings instead of as java.sql.Dates like every
@@ -119,55 +126,67 @@
 ;;
 ;; TODO - I'm not sure we still need to do this now that we're using the official Microsoft JDBC driver. Maybe we can
 ;; simplify this now?
-(defmethod sql.qp/date [:sqlserver :day] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :day]
+  [_ _ expr]
   (hx/->datetime (hx/->date expr)))
 
-(defmethod sql.qp/date [:sqlserver :day-of-week] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :day-of-week]
+  [_ _ expr]
   (date-part :weekday expr))
 
-(defmethod sql.qp/date [:sqlserver :day-of-month] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :day-of-month]
+  [_ _ expr]
   (date-part :day expr))
 
-(defmethod sql.qp/date [:sqlserver :day-of-year] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :day-of-year]
+  [_ _ expr]
   (date-part :dayofyear expr))
 
 ;; Subtract the number of days needed to bring us to the first day of the week, then convert to date
 ;; The equivalent SQL looks like:
 ;;     CAST(DATEADD(day, 1 - DATEPART(weekday, %s), CAST(%s AS DATE)) AS DATETIME)
-(defmethod sql.qp/date [:sqlserver :week] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :week]
+  [_ _ expr]
   (hx/->datetime
    (date-add :day
              (hx/- 1 (date-part :weekday expr))
              (hx/->date expr))))
 
-(defmethod sql.qp/date [:sqlserver :week-of-year] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :week-of-year]
+  [_ _ expr]
   (date-part :iso_week expr))
 
-(defmethod sql.qp/date [:sqlserver :month] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :month]
+  [_ _ expr]
   (hsql/call :datefromparts (hx/year expr) (hx/month expr) 1))
 
-(defmethod sql.qp/date [:sqlserver :month-of-year] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :month-of-year]
+  [_ _ expr]
   (date-part :month expr))
 
 ;; Format date as yyyy-01-01 then add the appropriate number of quarter
 ;; Equivalent SQL:
 ;;     DATEADD(quarter, DATEPART(quarter, %s) - 1, FORMAT(%s, 'yyyy-01-01'))
-(defmethod sql.qp/date [:sqlserver :quarter] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :quarter]
+  [_ _ expr]
   (date-add :quarter
             (hx/dec (date-part :quarter expr))
             (hsql/call :datefromparts (hx/year expr) 1 1)))
 
-(defmethod sql.qp/date [:sqlserver :quarter-of-year] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :quarter-of-year]
+  [_ _ expr]
   (date-part :quarter expr))
 
-(defmethod sql.qp/date [:sqlserver :year] [_ _ expr]
+(defmethod sql.qp/date [:sqlserver :year]
+  [_ _ expr]
   (hsql/call :datefromparts (hx/year expr) 1 1))
 
 
 (defmethod driver/date-add :sqlserver [_ dt amount unit]
   (date-add unit amount dt))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:sqlserver :seconds] [_ _ expr]
+(defmethod sql.qp/unix-timestamp->timestamp [:sqlserver :seconds]
+  [_ _ expr]
   ;; The second argument to DATEADD() gets casted to a 32-bit integer. BIGINT is 64 bites, so we tend to run into
   ;; integer overflow errors (especially for millisecond timestamps).
   ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
@@ -188,7 +207,8 @@
 ;;
 ;; To fix this we'll add a max-results LIMIT to the query when we add the order-by if there's no `limit` specified,
 ;; but not for `top-level` queries (since it's not needed there)
-(defmethod sql.qp/apply-top-level-clause [:sqlserver :order-by] [driver _ honeysql-form {:keys [limit], :as query}]
+(defmethod sql.qp/apply-top-level-clause [:sqlserver :order-by]
+  [driver _ honeysql-form {:keys [limit], :as query}]
   (let [add-limit?    (and (not limit) (pos? sql.qp/*nested-query-level*))
         honeysql-form ((get-method sql.qp/apply-top-level-clause [:sql-jdbc :order-by])
                        driver :order-by honeysql-form query)]
@@ -209,13 +229,16 @@
   [driver [_ field]]
   (hsql/call :stdev (sql.qp/->honeysql driver field)))
 
-(defmethod driver.common/current-db-time-date-formatters :sqlserver [_]
+(defmethod driver.common/current-db-time-date-formatters :sqlserver
+  [_]
   (driver.common/create-db-time-formatters "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSZ"))
 
-(defmethod driver.common/current-db-time-native-query :sqlserver [_]
+(defmethod driver.common/current-db-time-native-query :sqlserver
+  [_]
   "select CONVERT(nvarchar(30), SYSDATETIMEOFFSET(), 127)")
 
-(defmethod driver/current-db-time :sqlserver [& args]
+(defmethod driver/current-db-time :sqlserver
+  [& args]
   (apply driver.common/current-db-time args))
 
 (defmethod sql.qp/current-datetime-fn :sqlserver [_] :%getdate)
@@ -225,10 +248,17 @@
 ;; users in the UI
 (defmethod driver/supports? [:sqlserver :case-sensitivity-string-filter-options] [_ _] false)
 
-(defmethod sql-jdbc.sync/excluded-schemas :sqlserver [_]
+(defmethod sql-jdbc.sync/excluded-schemas :sqlserver
+  [_]
   #{"sys" "INFORMATION_SCHEMA"})
 
-(defmethod unprepare/unprepare-value [:sqlserver Date] [_ value]
+(defmethod unprepare/unprepare-value [:sqlserver Date]
+  [_ value]
   (format "cast('%s' AS datetime)" (du/date->iso-8601 value)))
 
 (prefer-method unprepare/unprepare-value [:sqlserver Date] [:sql Time])
+
+;; instead of default `microsoft.sql.DateTimeOffset`
+(defmethod sql-jdbc.execute/read-column [:sqlserver microsoft.sql.Types/DATETIMEOFFSET]
+  [_ _, ^ResultSet resultset, _, ^Integer i]
+  (.getTimestamp resultset i))

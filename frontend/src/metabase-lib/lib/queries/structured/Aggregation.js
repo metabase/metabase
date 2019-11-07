@@ -6,12 +6,16 @@ import { t } from "ttag";
 
 import * as A_DEPRECATED from "metabase/lib/query_aggregation";
 
+import { TYPE } from "metabase/lib/types";
+
 import type { Aggregation as AggregationObject } from "metabase/meta/types/Query";
 import type StructuredQuery from "../StructuredQuery";
 import type Dimension from "../../Dimension";
-import type { AggregationOption } from "metabase/meta/types/Metadata";
+import type { AggregationOperator } from "metabase/meta/types/Metadata";
 import type { MetricId } from "metabase/meta/types/Metric";
 import type { FieldId } from "metabase/meta/types/Field";
+
+const INTEGER_AGGREGATIONS = new Set(["count", "cum-count", "distinct"]);
 
 export default class Aggregation extends MBQLClause {
   /**
@@ -30,7 +34,7 @@ export default class Aggregation extends MBQLClause {
    * Adds itself to the parent query and returns the new StructuredQuery
    */
   add(): StructuredQuery {
-    return this._query.addAggregation(this);
+    return this._query.aggregate(this);
   }
 
   /**
@@ -50,28 +54,78 @@ export default class Aggregation extends MBQLClause {
    * Returns the display name for the aggregation
    */
   displayName() {
-    if (this.hasOptions()) {
-      return this.name() || this.aggregation().displayName();
-    } else if (this.isCustom()) {
-      return this._query.formatExpression(this);
-    } else if (this.isMetric()) {
-      const metric = this.metric();
+    const displayName = this.options()["display-name"];
+    if (displayName) {
+      return displayName;
+    }
+    const aggregation = this.aggregation();
+    if (aggregation.isCustom()) {
+      return aggregation._query.formatExpression(aggregation);
+    } else if (aggregation.isMetric()) {
+      const metric = aggregation.metric();
       if (metric) {
         return metric.displayName();
       }
-    } else if (this.isStandard()) {
-      const option = this.getOption();
+    } else if (aggregation.isStandard()) {
+      const option = aggregation.option();
       if (option) {
-        const aggregationName = option.name.replace(" of ...", "");
-        const dimension = this.dimension();
+        const aggregationName =
+          option.columnName || option.name.replace(" of ...", "");
+        const dimension = aggregation.dimension();
         if (dimension) {
-          return t`${aggregationName} of ${dimension.displayName()}`;
+          return t`${aggregationName} of ${dimension.render()}`;
         } else {
           return aggregationName;
         }
       }
     }
     return null;
+  }
+
+  /**
+   * Returns the column name (non-deduplicated)
+   */
+  columnName() {
+    const displayName = this.options()["display-name"];
+    if (displayName) {
+      return displayName;
+    }
+    const aggregation = this.aggregation();
+    if (aggregation.isCustom()) {
+      return "expression";
+    } else if (aggregation.isMetric()) {
+      const metric = aggregation.metric();
+      if (metric) {
+        // delegate to the metric's definition
+        return metric.columnName();
+      }
+    } else if (aggregation.isStandard()) {
+      const short = this.short();
+      if (short) {
+        // NOTE: special case for "distinct"
+        return short === "distinct" ? "count" : short;
+      }
+    }
+    return null;
+  }
+
+  short() {
+    const aggregation = this.aggregation();
+    // FIXME: if metric, this should be the underlying metric's short name?
+    if (aggregation.isMetric()) {
+      const metric = aggregation.metric();
+      if (metric) {
+        // delegate to the metric's definition
+        return metric.aggregation().short();
+      }
+    } else if (aggregation.isStandard()) {
+      return aggregation[0];
+    }
+  }
+
+  baseType() {
+    const short = this.short();
+    return INTEGER_AGGREGATIONS.has(short) ? TYPE.Integer : TYPE.Float;
   }
 
   /**
@@ -110,43 +164,48 @@ export default class Aggregation extends MBQLClause {
     return A_DEPRECATED.isStandard(this);
   }
 
-  dimension(): ?Dimension {
-    if (this.isStandard() && this.length > 1) {
-      return this._query.parseFieldReference(this.getFieldReference());
-    }
-  }
-
   /**
    * Gets the aggregation option matching this aggregation
-   * Returns `null` if the clause isn't in a standard format
+   * Returns `null` if the clause isn't a "standard" metric
    */
-  getOption(): ?AggregationOption {
-    if (this._query == null) {
+  option(): ?AggregationOperator {
+    const operatorName = this.operatorName();
+    if (this._query == null || !operatorName) {
       return null;
     }
-
-    const operator = this.getOperator();
-    return operator
-      ? this._query
-          .aggregationOptions()
-          .find(option => option.short === operator)
-      : null;
+    return this._query
+      .aggregationOperators()
+      .find(option => option.short === operatorName);
   }
 
   /**
    * Get the operator from a standard aggregation clause
-   * Returns `null` if the clause isn't in a standard format
+   * Returns `null` if the clause isn't a "standard" metric
    */
-  getOperator(): ?string {
-    return A_DEPRECATED.getOperator(this);
+  operatorName(): ?string {
+    if (this.isStandard()) {
+      return this[0];
+    }
   }
 
   /**
    * Get the fieldId from a standard aggregation clause
-   * Returns `null` if the clause isn't in a standard format
+   * Returns `null` if the clause isn't a "standard" metric
    */
   getFieldReference(): ?FieldId {
-    return A_DEPRECATED.getField(this);
+    if (this.isStandard()) {
+      return this[1];
+    }
+  }
+
+  /**
+   * Gets the dimension for this this aggregation
+   * Returns `null` if the clause isn't a "standard" metric
+   */
+  dimension(): ?Dimension {
+    if (this.isStandard() && this.length > 1) {
+      return this._query.parseFieldReference(this.getFieldReference());
+    }
   }
 
   // METRIC AGGREGATION
@@ -195,19 +254,6 @@ export default class Aggregation extends MBQLClause {
     } else {
       return {};
     }
-  }
-
-  // NAMED
-
-  /**
-   * Returns true if this a named aggregation
-   */
-  isNamed() {
-    return !!this.options()["display-name"];
-  }
-
-  name() {
-    return this.options()["display-name"];
   }
 
   /**

@@ -22,6 +22,6 @@ describe("CountByTimeAction", () => {
       aggregation: [["count"]],
       breakout: [["datetime-field", ["field-id", ORDERS.CREATED_AT.id], "day"]],
     });
-    expect(newCard.display).toEqual("bar");
+    expect(newCard.display).toEqual("line");
   });
 });

@@ -61,7 +61,7 @@ import Tables from "metabase/entities/tables";
 import Databases from "metabase/entities/databases";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { clearRequestState } from "metabase/redux/requests";
+import { setRequestUnloaded } from "metabase/redux/requests";
 
 import type { Card } from "metabase/meta/types/Card";
 
@@ -216,7 +216,7 @@ export const updateUrl = createThunkAction(
       card = getCard(getState());
       question = getQuestion(getState());
     } else {
-      question = new Question(getMetadata(getState()), card);
+      question = new Question(card, getMetadata(getState()));
     }
     if (dirty == null) {
       const originalQuestion = getOriginalQuestion(getState());
@@ -441,6 +441,15 @@ export const initializeQB = (location, params) => {
 
     /**** All actions are dispatched here ****/
 
+    // Fetch alerts for the current question if the question is saved
+    if (card && card.id != null) {
+      dispatch(fetchAlertsForQuestion(card.id));
+    }
+    // Fetch the question metadata (blocking)
+    if (card) {
+      await dispatch(loadMetadataForCard(card));
+    }
+
     // Update the question to Redux state together with the initial state of UI controls
     dispatch.action(INITIALIZE_QB, {
       card,
@@ -448,13 +457,7 @@ export const initializeQB = (location, params) => {
       uiControls,
     });
 
-    // Fetch alerts for the current question if the question is saved
-    card && card.id && dispatch(fetchAlertsForQuestion(card.id));
-
-    // Fetch the question metadata
-    card && dispatch(loadMetadataForCard(card));
-
-    const question = card && new Question(getMetadata(getState()), card);
+    const question = card && new Question(card, getMetadata(getState()));
 
     // if we have loaded up a card that we can run then lets kick that off as well
     // but don't bother for "notebook" mode
@@ -531,7 +534,7 @@ export const loadMetadataForCard = createThunkAction(
       if (!card || !card.dataset_query) {
         return;
       }
-      const query = new Question(getMetadata(getState()), card).query();
+      const query = new Question(card, getMetadata(getState())).query();
       if (query instanceof StructuredQuery) {
         try {
           const rootTable = query.rootTable();
@@ -817,7 +820,7 @@ export const apiCreateQuestion = question => {
     // remove the databases in the store that are used to populate the QB databases list.
     // This is done when saving a Card because the newly saved card will be eligible for use as a source query
     // so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
-    dispatch(clearRequestState({ statePath: ["entities", "databases"] }));
+    dispatch(setRequestUnloaded(["entities", "databases"]));
 
     dispatch(updateUrl(createdQuestion.card(), { dirty: false }));
     MetabaseAnalytics.trackEvent(
@@ -854,7 +857,7 @@ export const apiUpdateQuestion = question => {
     // remove the databases in the store that are used to populate the QB databases list.
     // This is done when saving a Card because the newly saved card will be eligible for use as a source query
     // so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
-    dispatch(clearRequestState({ statePath: ["entities", "databases"] }));
+    dispatch(setRequestUnloaded(["entities", "databases"]));
 
     dispatch(updateUrl(updatedQuestion.card(), { dirty: false }));
     MetabaseAnalytics.trackEvent(
@@ -883,8 +886,8 @@ export const runQuestionQuery = ({
   overrideWithCard,
 }: RunQueryParams = {}) => {
   return async (dispatch, getState) => {
-    const questionFromCard = (c: Card): Question =>
-      c && new Question(getMetadata(getState()), c);
+    const questionFromCard = (card: Card): Question =>
+      card && new Question(card, getMetadata(getState()));
 
     let question: Question = overrideWithCard
       ? questionFromCard(overrideWithCard)

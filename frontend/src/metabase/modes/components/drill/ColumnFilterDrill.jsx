@@ -48,7 +48,7 @@ export default function QuickFilterDrill({
           onClose={onClose}
           onChangeFilter={filter => {
             const nextCard = query
-              .addFilter(filter)
+              .filter(filter)
               .question()
               .card();
             onChangeCardAndRun({ nextCard });

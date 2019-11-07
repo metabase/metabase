@@ -68,7 +68,6 @@
   return a broken-out map."
   [uri]
   (when-let [[_ _ protocol user pass host port db query] (re-matches jdbc-connection-regex uri)]
-    (println "Parsed: " protocol user pass host port db query)
     (u/prog1 (merge {:type     (case (keyword protocol)
                                  :postgres   :postgres
                                  :postgresql :postgres

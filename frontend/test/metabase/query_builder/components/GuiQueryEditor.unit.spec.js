@@ -31,7 +31,7 @@ describe("GuiQueryEditor", () => {
       metadata,
     })
       .query()
-      .addAggregation(["count"]);
+      .aggregate(["count"]);
 
     const component = shallow(getGuiQueryEditor(query));
 
@@ -45,8 +45,8 @@ describe("GuiQueryEditor", () => {
       metadata,
     })
       .query()
-      .addAggregation(["count"])
-      .addBreakout(["field-id", ORDERS.TOTAL.id]);
+      .aggregate(["count"])
+      .breakout(["field-id", ORDERS.TOTAL.id]);
 
     const component = shallow(getGuiQueryEditor(query));
 

@@ -9,16 +9,16 @@ import type {
   ClickActionProps,
 } from "metabase/meta/types/Visualization";
 
-import { isDate } from "metabase/lib/schema_metadata";
-
 export default ({ question }: ClickActionProps): ClickAction[] => {
   const query = question.query();
   if (!(query instanceof StructuredQuery)) {
     return [];
   }
 
-  const dateField = query.table().fields.filter(isDate)[0];
-  if (!dateField) {
+  const dateDimension = query
+    .dimensionOptions(d => d.field().isDate())
+    .all()[0];
+  if (!dateDimension) {
     return [];
   }
 
@@ -29,9 +29,11 @@ export default ({ question }: ClickActionProps): ClickAction[] => {
       title: <span>{t`Count of rows by time`}</span>,
       icon: "line",
       question: () =>
-        question
-          .summarize(["count"])
-          .breakout(["datetime-field", ["field-id", dateField.id], "day"]),
+        query
+          .aggregate(["count"])
+          .breakout(dateDimension.defaultDimension().mbql())
+          .question()
+          .setDefaultDisplay(),
     },
   ];
 };

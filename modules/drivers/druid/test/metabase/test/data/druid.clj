@@ -70,7 +70,9 @@
                                                                       :format :auto}
                                                      :dimensionsSpec {:dimensions ["id"
                                                                                    "user_last_login"
-                                                                                   "user_name"
+                                                                                   {:name "user_name"
+                                                                                    :type "string"
+                                                                                    :isInputHyperUnique true}
                                                                                    "user_password"
                                                                                    "venue_category_name"
                                                                                    {:name "venue_latitude"

@@ -42,8 +42,8 @@
 (models/defmodel DataMigrations :data_migrations)
 
 (defn- run-migration-if-needed!
-  "Run migration defined by MIGRATION-VAR if needed.
-   RAN-MIGRATIONS is a set of migrations names that have already been run.
+  "Run migration defined by `migration-var` if needed. `ran-migrations` is a set of migrations names that have already
+  been run.
 
      (run-migration-if-needed! #{\"migrate-base-types\"} #'set-card-database-and-table-ids)"
   [ran-migrations migration-var]

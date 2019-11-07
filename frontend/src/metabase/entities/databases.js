@@ -10,7 +10,7 @@ import { MetabaseApi } from "metabase/services";
 import { DatabaseSchema } from "metabase/schema";
 import Fields from "metabase/entities/fields";
 
-import { getFields } from "metabase/selectors/metadata";
+import { getMetadata, getFields } from "metabase/selectors/metadata";
 import { createSelector } from "reselect";
 
 import forms from "./databases/forms";
@@ -58,6 +58,8 @@ const Databases = createEntity({
   },
 
   selectors: {
+    getObject: (state, { entityId }) => getMetadata(state).database(entityId),
+
     getHasSampleDataset: state =>
       _.any(Databases.selectors.getList(state), db => db.is_sample),
     getIdfields: createSelector(

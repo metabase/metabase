@@ -26,8 +26,8 @@ describe("TimeseriesFilterWidget", () => {
     metadata,
   })
     .query()
-    .addAggregation(["count"])
-    .addBreakout(["datetime-field", ["field-id", 1], "day"])
+    .aggregate(["count"])
+    .breakout(["datetime-field", ["field-id", 1], "day"])
     .question();
 
   it("should display 'All Time' text if no filter is selected", () => {
@@ -37,7 +37,7 @@ describe("TimeseriesFilterWidget", () => {
   it("should display 'Previous 30 Days' text if that filter is selected", () => {
     const questionWithFilter = questionWithoutFilter
       .query()
-      .addFilter(["time-interval", ["field-id", 1], -30, "day"])
+      .filter(["time-interval", ["field-id", 1], -30, "day"])
       .question();
 
     const widget = mount(getTimeseriesFilterWidget(questionWithFilter));
@@ -46,7 +46,7 @@ describe("TimeseriesFilterWidget", () => {
   it("should display 'Is Empty' text if that filter is selected", () => {
     const questionWithFilter = questionWithoutFilter
       .query()
-      .addFilter(["is-null", ["field-id", 1]])
+      .filter(["is-null", ["field-id", 1]])
       .question();
 
     const widget = mount(getTimeseriesFilterWidget(questionWithFilter));
@@ -55,7 +55,7 @@ describe("TimeseriesFilterWidget", () => {
   it("should display 'Not Empty' text if that filter is selected", () => {
     const questionWithFilter = questionWithoutFilter
       .query()
-      .addFilter(["not-null", ["field-id", 1]])
+      .filter(["not-null", ["field-id", 1]])
       .question();
 
     const widget = mount(getTimeseriesFilterWidget(questionWithFilter));

@@ -362,7 +362,7 @@ export class ObjectDetail extends Component {
               }}
             >
               <DirectionalButton
-                direction="back"
+                direction="left"
                 onClick={this.props.viewPreviousObjectDetail}
               />
             </div>
@@ -374,7 +374,7 @@ export class ObjectDetail extends Component {
               }}
             >
               <DirectionalButton
-                direction="forward"
+                direction="right"
                 onClick={this.props.viewNextObjectDetail}
               />
             </div>

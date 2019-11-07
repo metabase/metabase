@@ -8,6 +8,8 @@ import { assocIn, updateIn } from "icepick";
 import { t } from "ttag";
 import { lighten } from "metabase/lib/colors";
 
+import Question from "metabase-lib/lib/Question";
+
 import {
   computeSplit,
   computeMaxDecimalsForValues,
@@ -15,7 +17,11 @@ import {
   colorShades,
 } from "./utils";
 
-import { minTimeseriesUnit, computeTimeseriesDataInverval } from "./timeseries";
+import {
+  minTimeseriesUnit,
+  computeTimeseriesDataInverval,
+  getTimezone,
+} from "./timeseries";
 
 import { computeNumericDataInverval } from "./numeric";
 
@@ -93,11 +99,16 @@ function checkSeriesIsValid({ series, maxSeries }) {
   }
 }
 
-function getXInterval({ settings, series }, xValues) {
+function getXInterval({ settings, series }, xValues, warn) {
   if (isTimeseries(settings)) {
-    // compute the interval
+    // We need three pieces of information to define a timeseries range:
+    // 1. interval - it's really the "unit": month, day, etc
+    // 2. count - how many intervals per tick?
+    // 3. timezone - what timezone are values in? days vary in length by timezone
     const unit = minTimeseriesUnit(series.map(s => s.data.cols[0].unit));
-    return computeTimeseriesDataInverval(xValues, unit);
+    const timezone = getTimezone(series, warn);
+    const { count, interval } = computeTimeseriesDataInverval(xValues, unit);
+    return { count, interval, timezone };
   } else if (isQuantitative(settings) || isHistogram(settings)) {
     // Get the bin width from binning_info, if available
     // TODO: multiseries?
@@ -112,10 +123,10 @@ function getXInterval({ settings, series }, xValues) {
   }
 }
 
-function getXAxisProps(props, datas) {
+function getXAxisProps(props, datas, warn) {
   const rawXValues = getXValues(props);
   const isHistogram = isHistogramBar(props);
-  const xInterval = getXInterval(props, rawXValues);
+  const xInterval = getXInterval(props, rawXValues, warn);
 
   // For histograms we add a fake x value one xInterval to the right
   // This compensates for the barshifting we do align ticks
@@ -364,15 +375,21 @@ function makeBrushChangeFunctions({ series, onChangeCardAndRun }) {
     if (range) {
       const column = series[0].data.cols[0];
       const card = series[0].card;
+      // $FlowFixMe: Question requires Metadata but we don't actually need it in this case
+      const query = new Question(card).query();
       const [start, end] = range;
       if (isDimensionTimeseries(series)) {
         onChangeCardAndRun({
-          nextCard: updateDateTimeFilter(card, column, start, end),
+          nextCard: updateDateTimeFilter(query, column, start, end)
+            .question()
+            .card(),
           previousCard: card,
         });
       } else {
         onChangeCardAndRun({
-          nextCard: updateNumericFilter(card, column, start, end),
+          nextCard: updateNumericFilter(query, column, start, end)
+            .question()
+            .card(),
           previousCard: card,
         });
       }
@@ -796,10 +813,10 @@ export default function lineAreaBar(
   }
 
   let datas = getDatas(props, warn);
-  let xAxisProps = getXAxisProps(props, datas);
+  let xAxisProps = getXAxisProps(props, datas, warn);
 
   datas = fillMissingValuesInDatas(props, xAxisProps, datas);
-  xAxisProps = getXAxisProps(props, datas);
+  xAxisProps = getXAxisProps(props, datas, warn);
 
   if (isScalarSeries) {
     xAxisProps.xValues = datas.map(data => data[0][0]);

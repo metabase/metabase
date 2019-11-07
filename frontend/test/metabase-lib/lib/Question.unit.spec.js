@@ -100,8 +100,8 @@ const orders_count_by_id_card = {
 
 describe("Question", () => {
   describe("CREATED WITH", () => {
-    describe("new Question(metadata, alreadyDefinedCard)", () => {
-      const question = new Question(metadata, orders_raw_card);
+    describe("new Question(alreadyDefinedCard, metadata)", () => {
+      const question = new Question(orders_raw_card, metadata);
       it("isn't empty", () => {
         expect(question.isEmpty()).toBe(false);
       });
@@ -143,27 +143,27 @@ describe("Question", () => {
   describe("STATUS METHODS", () => {
     describe("canRun()", () => {
       it("You should be able to run a newly created query", () => {
-        const question = new Question(metadata, orders_raw_card);
+        const question = new Question(orders_raw_card, metadata);
         expect(question.canRun()).toBe(true);
       });
     });
     describe("canWrite()", () => {
       it("You should be able to write to a question you have permissions to", () => {
-        const question = new Question(metadata, orders_raw_card);
+        const question = new Question(orders_raw_card, metadata);
         expect(question.canWrite()).toBe(true);
       });
       it("You should not be able to write to a question you dont  have permissions to", () => {
-        const question = new Question(metadata, orders_count_by_id_card);
+        const question = new Question(orders_count_by_id_card, metadata);
         expect(question.canWrite()).toBe(false);
       });
     });
     describe("isSaved()", () => {
       it("A newly created query doesn't have an id and shouldn't be marked as isSaved()", () => {
-        const question = new Question(metadata, card);
+        const question = new Question(card, metadata);
         expect(question.isSaved()).toBe(false);
       });
       it("A saved question does have an id and should be marked as isSaved()", () => {
-        const question = new Question(metadata, orders_raw_card);
+        const question = new Question(orders_raw_card, metadata);
         expect(question.isSaved()).toBe(true);
       });
     });
@@ -172,14 +172,14 @@ describe("Question", () => {
   describe("CARD METHODS", () => {
     describe("card()", () => {
       it("A question wraps a query/card and you can see the underlying card with card()", () => {
-        const question = new Question(metadata, orders_raw_card);
+        const question = new Question(orders_raw_card, metadata);
         expect(question.card()).toEqual(orders_raw_card);
       });
     });
 
     describe("setCard(card)", () => {
       it("changes the underlying card", () => {
-        const question = new Question(metadata, orders_raw_card);
+        const question = new Question(orders_raw_card, metadata);
         expect(question.card()).toEqual(orders_raw_card);
         const newQustion = question.setCard(orders_count_by_id_card);
         expect(question.card()).toEqual(orders_raw_card);
@@ -191,27 +191,27 @@ describe("Question", () => {
   describe("At the heart of a question is an MBQL query.", () => {
     describe("query()", () => {
       it("returns a correct class instance for structured query", () => {
-        const question = new Question(metadata, orders_raw_card);
+        const question = new Question(orders_raw_card, metadata);
         // This is a bit wack, and the repetitive naming is pretty confusing.
         const query = question.query();
         expect(query instanceof StructuredQuery).toBe(true);
       });
       it("returns a correct class instance for native query", () => {
-        const question = new Question(metadata, native_orders_count_card);
+        const question = new Question(native_orders_count_card, metadata);
         const query = question.query();
         expect(query instanceof NativeQuery).toBe(true);
       });
       it("throws an error for invalid queries", () => {
-        const question = new Question(metadata, invalid_orders_count_card);
+        const question = new Question(invalid_orders_count_card, metadata);
         expect(question.query).toThrow();
       });
     });
     describe("setQuery(query)", () => {
       it("updates the dataset_query of card", () => {
-        const question = new Question(metadata, orders_raw_card);
+        const question = new Question(orders_raw_card, metadata);
         const rawQuery = new Question(
-          metadata,
           native_orders_count_card,
+          metadata,
         ).query();
 
         const newRawQuestion = question.setQuery(rawQuery);
@@ -221,7 +221,7 @@ describe("Question", () => {
     });
     describe("setDatasetQuery(datasetQuery)", () => {
       it("updates the dataset_query of card", () => {
-        const question = new Question(metadata, orders_raw_card);
+        const question = new Question(orders_raw_card, metadata);
         const rawQuestion = question.setDatasetQuery(
           native_orders_count_card.dataset_query,
         );
@@ -234,14 +234,14 @@ describe("Question", () => {
   describe("RESETTING METHODS", () => {
     describe("withoutNameAndId()", () => {
       it("unsets the name and id", () => {
-        const question = new Question(metadata, orders_raw_card);
+        const question = new Question(orders_raw_card, metadata);
         const newQuestion = question.withoutNameAndId();
 
         expect(newQuestion.id()).toBeUndefined();
         expect(newQuestion.displayName()).toBeUndefined();
       });
       it("retains the dataset query", () => {
-        const question = new Question(metadata, orders_raw_card);
+        const question = new Question(orders_raw_card, metadata);
 
         expect(question.id()).toBeDefined();
         expect(question.displayName()).toBeDefined();
@@ -252,7 +252,7 @@ describe("Question", () => {
   describe("VISUALIZATION METHODS", () => {
     describe("display()", () => {
       it("returns the card's visualization type", () => {
-        const question = new Question(metadata, orders_raw_card);
+        const question = new Question(orders_raw_card, metadata);
         // this forces a table view
         const tableQuestion = question.toUnderlyingData();
         // Not sure I'm a huge fan of magic strings here.
@@ -261,7 +261,7 @@ describe("Question", () => {
     });
     describe("setDisplay(display)", () => {
       it("sets the card's visualization type", () => {
-        const question = new Question(metadata, orders_raw_card);
+        const question = new Question(orders_raw_card, metadata);
         // Not sure I'm a huge fan of magic strings here.
         const scalarQuestion = question.setDisplay("scalar");
         expect(scalarQuestion.display()).toBe("scalar");
@@ -273,15 +273,15 @@ describe("Question", () => {
   // At the same time, the choice that which actions are visible depend on the question's properties
   // as actions are filtered using those
   describe("METHODS FOR DRILL-THROUGH / ACTION WIDGET", () => {
-    const rawDataQuestion = new Question(metadata, orders_raw_card);
+    const rawDataQuestion = new Question(orders_raw_card, metadata);
     const timeBreakoutQuestion = Question.create({
       databaseId: SAMPLE_DATASET.id,
       tableId: ORDERS.id,
       metadata,
     })
       .query()
-      .addAggregation(["count"])
-      .addBreakout(["datetime-field", ["field-id", 1], "day"])
+      .aggregate(["count"])
+      .breakout(["datetime-field", ["field-id", 1], "day"])
       .question()
       .setDisplay("table");
 
@@ -298,10 +298,10 @@ describe("Question", () => {
       });
     });
 
-    describe("summarize(...)", async () => {
-      const question = new Question(metadata, orders_raw_card);
+    describe("aggregate(...)", async () => {
+      const question = new Question(orders_raw_card, metadata);
       it("returns the correct query for a summarization of a raw data table", () => {
-        const summarizedQuestion = question.summarize(["count"]);
+        const summarizedQuestion = question.aggregate(["count"]);
         expect(summarizedQuestion.canRun()).toBe(true);
         // if I actually call the .query() method below, this blows up garbage collection =/
         expect(summarizedQuestion._card.dataset_query).toEqual(
@@ -312,7 +312,7 @@ describe("Question", () => {
 
     describe("breakout(...)", async () => {
       it("works with a datetime field reference", () => {
-        const ordersCountQuestion = new Question(metadata, orders_count_card);
+        const ordersCountQuestion = new Question(orders_count_card, metadata);
         const brokenOutCard = ordersCountQuestion.breakout([
           "field-id",
           ORDERS.CREATED_AT.id,
@@ -336,7 +336,7 @@ describe("Question", () => {
         });
       });
       it("works with a primary key field reference", () => {
-        const ordersCountQuestion = new Question(metadata, orders_count_card);
+        const ordersCountQuestion = new Question(orders_count_card, metadata);
         const brokenOutCard = ordersCountQuestion.breakout([
           "field-id",
           ORDERS.ID.id,
@@ -362,7 +362,7 @@ describe("Question", () => {
     });
 
     describe("pivot(...)", async () => {
-      const ordersCountQuestion = new Question(metadata, orders_count_card);
+      const ordersCountQuestion = new Question(orders_count_card, metadata);
       it("works with a datetime dimension ", () => {
         const pivoted = ordersCountQuestion.pivot([
           ["field-id", ORDERS.CREATED_AT.id],
@@ -408,7 +408,7 @@ describe("Question", () => {
     });
 
     describe("filter(...)", async () => {
-      const questionForFiltering = new Question(metadata, orders_raw_card);
+      const questionForFiltering = new Question(orders_raw_card, metadata);
 
       it("works with an id filter", () => {
         const filteringQuestion = questionForFiltering.filter(
@@ -471,8 +471,8 @@ describe("Question", () => {
 
     describe("drillUnderlyingRecords(...)", async () => {
       const ordersCountQuestion = new Question(
-        metadata,
         orders_count_by_id_card,
+        metadata,
       );
 
       // ???
@@ -496,8 +496,8 @@ describe("Question", () => {
     });
 
     describe("toUnderlyingRecords(...)", async () => {
-      const question = new Question(metadata, orders_raw_card);
-      const ordersCountQuestion = new Question(metadata, orders_count_card);
+      const question = new Question(orders_raw_card, metadata);
+      const ordersCountQuestion = new Question(orders_count_card, metadata);
 
       it("returns underlying records correctly for a raw data query", () => {
         const underlyingRecordsQuestion = question.toUnderlyingRecords();
@@ -530,7 +530,7 @@ describe("Question", () => {
     });
 
     describe("toUnderlyingData()", async () => {
-      const ordersCountQuestion = new Question(metadata, orders_count_card);
+      const ordersCountQuestion = new Question(orders_count_card, metadata);
 
       it("returns underlying data correctly for table query", () => {
         const underlyingDataQuestion = ordersCountQuestion
@@ -549,7 +549,7 @@ describe("Question", () => {
     });
 
     describe("drillPK(...)", async () => {
-      const question = new Question(metadata, orders_raw_card);
+      const question = new Question(orders_raw_card, metadata);
       it("returns the correct query for a PK detail drill-through", () => {
         const drilledQuestion = question.drillPK(ORDERS.ID, 1);
 
@@ -580,12 +580,12 @@ describe("Question", () => {
   describe("COMPARISON TO OTHER QUESTIONS", () => {
     describe("isDirtyComparedTo(question)", () => {
       it("New questions are automatically dirty", () => {
-        const question = new Question(metadata, orders_raw_card);
+        const question = new Question(orders_raw_card, metadata);
         const newQuestion = question.withoutNameAndId();
         expect(newQuestion.isDirtyComparedTo(question)).toBe(true);
       });
       it("Changing vis settings makes something dirty", () => {
-        const question = new Question(metadata, orders_count_card);
+        const question = new Question(orders_count_card, metadata);
         const underlyingDataQuestion = question.toUnderlyingRecords();
         expect(underlyingDataQuestion.isDirtyComparedTo(question)).toBe(true);
       });
@@ -598,13 +598,13 @@ describe("Question", () => {
     describe("getUrl(originalQuestion?)", () => {
       it("returns URL with ID for saved question", () => {
         const question = new Question(
-          metadata,
           assoc(orders_raw_card, "id", 1),
+          metadata,
         );
         expect(question.getUrl()).toBe("/question/1");
       });
       it("returns a URL with hash for an unsaved question", () => {
-        const question = new Question(metadata, dissoc(orders_raw_card, "id"));
+        const question = new Question(dissoc(orders_raw_card, "id"), metadata);
         expect(question.getUrl()).toBe(
           "/question#eyJuYW1lIjoiUmF3IG9yZGVycyBkYXRhIiwiZGF0YXNldF9xdWVyeSI6eyJ0eXBlIjoicXVlcnkiLCJkYXRhYmFzZSI6MSwicXVlcnkiOnsic291cmNlLXRhYmxlIjoxfX0sImRpc3BsYXkiOiJ0YWJsZSIsInZpc3VhbGl6YXRpb25fc2V0dGluZ3MiOnt9fQ==",
         );

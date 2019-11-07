@@ -1,6 +1,7 @@
 (ns metabase.driver.mongo-test
   "Tests for Mongo driver."
-  (:require [expectations :refer :all]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [medley.core :as m]
             [metabase
              [driver :as driver]
@@ -26,7 +27,7 @@
 
 ;; ## Constants + Helper Fns/Macros
 ;; TODO - move these to metabase.test-data ?
-(def ^:private ^:const table-names
+(def ^:private table-names
   "The names of the various test data `Tables`."
   [:categories
    :checkins
@@ -34,64 +35,61 @@
    :venues])
 
 ;; ## Tests for connection functions
+(deftest can-connect-test?
+  (datasets/test-driver :mongo
+    (doseq [{:keys [details expected message]} [{:details  {:host   "localhost"
+                                                            :port   3000
+                                                            :dbname "bad-db-name"}
+                                                 :expected false}
+                                                {:details  {}
+                                                 :expected false}
+                                                {:details  {:host   "localhost"
+                                                            :port   27017
+                                                            :dbname "metabase-test"}
+                                                 :expected true}
+                                                {:details  {:host   "localhost"
+                                                            :dbname "metabase-test"}
+                                                 :expected true
+                                                 :message  "should use default port 27017 if not specified"}
+                                                {:details  {:host   "123.4.5.6"
+                                                            :dbname "bad-db-name?connectTimeoutMS=50"}
+                                                 :expected false}
+                                                {:details  {:host   "localhost"
+                                                            :port   3000
+                                                            :dbname "bad-db-name?connectTimeoutMS=50"}
+                                                 :expected false}]]
 
-(datasets/expect-with-driver :mongo
-  false
-  (driver.u/can-connect-with-details? :mongo {:host   "localhost"
-                                              :port   3000
-                                              :dbname "bad-db-name"}))
+      (is (= expected
+             (driver.u/can-connect-with-details? :mongo details))
+          message))))
 
-(datasets/expect-with-driver :mongo
-  false
-  (driver.u/can-connect-with-details? :mongo {}))
-
-(datasets/expect-with-driver :mongo
-  true
-  (driver.u/can-connect-with-details? :mongo {:host "localhost"
-                                              :port 27017
-                                              :dbname "metabase-test"}))
-
-;; should use default port 27017 if not specified
-(datasets/expect-with-driver :mongo
-  true
-  (driver.u/can-connect-with-details? :mongo {:host "localhost"
-                                              :dbname "metabase-test"}))
-
-(datasets/expect-with-driver :mongo
-  false
-  (driver.u/can-connect-with-details? :mongo {:host "123.4.5.6"
-                                              :dbname "bad-db-name?connectTimeoutMS=50"}))
-
-(datasets/expect-with-driver :mongo
-  false
-  (driver.u/can-connect-with-details? :mongo {:host "localhost"
-                                              :port 3000
-                                              :dbname "bad-db-name?connectTimeoutMS=50"}))
-
-(def ^:const ^:private native-query
+(def ^:private native-query
   "[{\"$project\": {\"_id\": \"$_id\"}},
     {\"$match\": {\"_id\": {\"$eq\": 1}}},
     {\"$group\": {\"_id\": null, \"count\": {\"$sum\": 1}}},
     {\"$sort\": {\"_id\": 1}},
     {\"$project\": {\"_id\": false, \"count\": true}}]")
 
-(datasets/expect-with-driver :mongo
-  {:status    :completed
-   :row_count 1
-   :data      {:rows        [[1]]
-               :cols        [{:name         "count"
-                              :display_name "count"
-                              :base_type    :type/Integer
-                              :source       :native
-                              :field_ref    [:field-literal "count" :type/Integer]}]
-               :native_form {:collection "venues"
-                             :query      native-query}}}
-  (-> (qp/process-query {:native   {:query      native-query
-                                    :collection "venues"}
-                         :type     :native
-                         :database (data/id)})
-      (m/dissoc-in [:data :results_metadata])
-      (m/dissoc-in [:data :insights])))
+(deftest native-query-test
+  (datasets/test-driver :mongo
+    (is (= {:status            :completed
+            :row_count         1
+            :data              {:rows               [[1]]
+                                :cols               [{:name         "count"
+                                                      :display_name "count"
+                                                      :base_type    :type/Integer
+                                                      :source       :native
+                                                      :field_ref    [:field-literal "count" :type/Integer]}]
+                                :native_form        {:collection "venues"
+                                                     :query      native-query}
+                                :requested_timezone "UTC"
+                                :results_timezone   "UTC"}}
+           (-> (qp/process-query {:native   {:query      native-query
+                                             :collection "venues"}
+                                  :type     :native
+                                  :database (data/id)})
+               (m/dissoc-in [:data :results_metadata])
+               (m/dissoc-in [:data :insights]))))))
 
 ;; ## Tests for individual syncing functions
 
@@ -140,7 +138,7 @@
   [{:name "_id",            :database_type "java.lang.Long",   :base_type :type/Integer, :special_type :type/PK}
    {:name "favorite_snack", :database_type "NULL",             :base_type :type/*,       :special_type nil}
    {:name "name",           :database_type "java.lang.String", :base_type :type/Text,    :special_type :type/Name}]
-  (data/dataset metabase.driver.mongo-test/all-null-columns
+  (data/dataset all-null-columns
     (map (partial into {})
          (db/select [Field :name :database_type :base_type :special_type]
            :table_id (data/id :bird_species)
@@ -162,17 +160,17 @@
 
 
 ;; ## Big-picture tests for the way data should look post-sync
-
-;; Test that Tables got synced correctly, and row counts are correct
-(datasets/expect-with-driver :mongo
-  [{:active true, :name "categories"}
-   {:active true, :name "checkins"}
-   {:active true, :name "users"}
-   {:active true, :name "venues"}]
-  (for [field (db/select [Table :name :active]
-                :db_id (data/id)
-                {:order-by [:name]})]
-    (into {} field)))
+(deftest table-sync-test
+  (datasets/test-driver :mongo
+    (is (= [{:active true, :name "categories"}
+            {:active true, :name "checkins"}
+            {:active true, :name "users"}
+            {:active true, :name "venues"}]
+           (for [field (db/select [Table :name :active]
+                         :db_id (data/id)
+                         {:order-by [:name]})]
+             (into {} field)))
+        "Test that Tables got synced correctly")))
 
 ;; Test that Fields got synced correctly, and types are correct
 (datasets/expect-with-driver :mongo
@@ -200,7 +198,6 @@
                 (into {} field))))))
 
 
-;;; Check that we support Mongo BSON ID and can filter by it (#1367)
 (tx/defdataset ^:private with-bson-ids
   [["birds"
      [{:field-name "name", :base-type :type/Text}
@@ -208,11 +205,13 @@
      [["Rasta Toucan" (ObjectId. "012345678901234567890123")]
       ["Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]]])
 
-(datasets/expect-with-driver :mongo
-  [[2 "Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]
-  (rows (data/dataset metabase.driver.mongo-test/with-bson-ids
-          (data/run-mbql-query birds
-            {:filter [:= $bird_id "abcdefabcdefabcdefabcdef"]}))))
+(deftest bson-ids-test
+  (datasets/test-driver :mongo
+    (is (= [[2 "Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]
+           (rows (data/dataset with-bson-ids
+                   (data/run-mbql-query birds
+                     {:filter [:= $bird_id "abcdefabcdefabcdefabcdef"]}))))
+        "Check that we support Mongo BSON ID and can filter by it (#1367)")))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

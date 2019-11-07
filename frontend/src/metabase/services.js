@@ -121,12 +121,6 @@ export const LdapApi = {
   updateSettings: PUT("/api/ldap/settings"),
 };
 
-// adds a flag to google analytics provided segments and metrics
-// we use this when we just want to filter out our own segments/metrics
-function addGoogleAnalyticsFlag(segmentOrMetric) {
-  return { ...segmentOrMetric, googleAnalyics: true };
-}
-
 export const MetabaseApi = {
   db_list: GET("/api/database"),
   db_list_with_tables: GET(
@@ -163,9 +157,24 @@ export const MetabaseApi = {
       // HACK: inject GA metadata that we don't have intergrated on the backend yet
       if (table && table.db && table.db.engine === "googleanalytics") {
         const GA = await getGAMetadata();
-        table.fields = table.fields.map(f => ({ ...f, ...GA.fields[f.name] }));
-        table.metrics.push(...GA.metrics.map(addGoogleAnalyticsFlag));
-        table.segments.push(...GA.segments.map(addGoogleAnalyticsFlag));
+        table.fields = table.fields.map(field => ({
+          ...field,
+          ...GA.fields[field.name],
+        }));
+        table.metrics.push(
+          ...GA.metrics.map(metric => ({
+            ...metric,
+            table_id: table.id,
+            googleAnalyics: true,
+          })),
+        );
+        table.segments.push(
+          ...GA.segments.map(segment => ({
+            ...segment,
+            table_id: table.id,
+            googleAnalyics: true,
+          })),
+        );
       }
 
       if (table && table.fields) {

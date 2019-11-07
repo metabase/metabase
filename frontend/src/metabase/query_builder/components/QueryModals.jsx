@@ -12,6 +12,7 @@ import EditQuestionInfoModal from "metabase/query_builder/components/view/EditQu
 
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 import ArchiveQuestionModal from "metabase/query_builder/containers/ArchiveQuestionModal";
+import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
 
 import QuestionHistoryModal from "metabase/query_builder/containers/QuestionHistoryModal";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
@@ -118,6 +119,25 @@ export default class QueryModals extends React.Component {
           initialCollectionId={this.props.initialCollectionId}
         />
       </Modal>
+    ) : modal === "save-question-before-embed" ? (
+      <Modal onClose={onCloseModal}>
+        <SaveQuestionModal
+          card={this.props.card}
+          originalCard={this.props.originalCard}
+          tableMetadata={this.props.tableMetadata}
+          saveFn={async card => {
+            await this.props.onSave(card, false);
+            onOpenModal("embed");
+          }}
+          createFn={async card => {
+            await this.props.onCreate(card, false);
+            onOpenModal("embed");
+          }}
+          onClose={onCloseModal}
+          multiStep
+          initialCollectionId={this.props.initialCollectionId}
+        />
+      </Modal>
     ) : modal === "history" ? (
       <Modal onClose={onCloseModal}>
         <QuestionHistoryModal
@@ -156,6 +176,10 @@ export default class QueryModals extends React.Component {
           onClose={onCloseModal}
           onSave={card => this.props.onSave(card, false)}
         />
+      </Modal>
+    ) : modal === "embed" ? (
+      <Modal full onClose={onCloseModal}>
+        <QuestionEmbedWidget card={this.props.card} onClose={onCloseModal} />
       </Modal>
     ) : null;
   }
