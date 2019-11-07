@@ -137,10 +137,10 @@ The way integration tests are written is a little unconventional so here is an e
 import {
     useSharedAdminLogin,
     createTestStore,
-} from "__support__/e2e_tests";
+} from "__support__/e2e";
 import {
     click
-} from "__support__/enzyme_utils"
+} from "__support__/enzyme"
 
 import { mount } from "enzyme"
 
@@ -180,7 +180,7 @@ describe("Query builder", () => {
         store.debug();
 
         // For simulating user interactions like clicks and input events you should use methods defined
-        // in `enzyme_utils.js` as they abstract away some React/Redux complexities.
+        // in `enzyme.js` as they abstract away some React/Redux complexities.
         click(app.find(RunButton))
 
         // Note: In pretty rare cases where rendering the whole app is problematic or slow, you can just render a single
@@ -190,7 +190,7 @@ describe("Query builder", () => {
 })
 ```
 
-You can also skim through [`__support__/e2e_tests.js`](https://github.com/metabase/metabase/blob/master/frontend/test/__support__/e2e_tests.js) and [`__support__/enzyme_utils.js`](https://github.com/metabase/metabase/blob/master/frontend/test/__support__/enzyme_utils.js) to see all available methods.
+You can also skim through [`__support__/e2e.js`](https://github.com/metabase/metabase/blob/master/frontend/test/__support__/e2e.js) and [`__support__/enzyme.js`](https://github.com/metabase/metabase/blob/master/frontend/test/__support__/enzyme.js) to see all available methods.
 
 ### Jest unit tests
 

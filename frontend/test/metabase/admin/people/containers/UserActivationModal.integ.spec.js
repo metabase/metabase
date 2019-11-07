@@ -1,7 +1,7 @@
 import React from "react";
 import mock from "xhr-mock";
-import { mountWithStore } from "__support__/integration_tests";
-import { clickButton } from "__support__/enzyme_utils";
+import { mountWithStore } from "__support__/integration";
+import { clickButton } from "__support__/enzyme";
 
 import UserActivationModal from "metabase/admin/people/containers/UserActivationModal";
 
