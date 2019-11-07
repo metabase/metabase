@@ -101,8 +101,6 @@
    (qp.timezone/with-report-timezone-id (->timezone-id timezone-id)
      (sad-toucan-incidents-with-bucketing unit))))
 
-SELECT trunc((timestamp '1970-01-01 00:00:00 UTC' + numtodsinterval((\"CAM_117\".\"sad_toucan_incidents_incidents\".\"timestamp\" / 1000), 'second')), 'dd') AS \"timestamp\", count(*) AS \"count\" FROM \"CAM_117\".\"sad_toucan_incidents_incidents\" GROUP BY trunc((timestamp '1970-01-01 00:00:00 UTC' + numtodsinterval((\"CAM_117\".\"sad_toucan_incidents_incidents\".\"timestamp\" / 1000), 'second')), 'dd') ORDER BY trunc((timestamp '1970-01-01 00:00:00 UTC' + numtodsinterval((\"CAM_117\".\"sad_toucan_incidents_incidents\".\"timestamp\" / 1000), 'second')), 'dd') ASC
-
 (defn- default-parse-fn [s]
   (u.date/parse s))
 
