@@ -40,7 +40,7 @@ const interestingQuestions = (table, field) => {
       text: t`Number of ${table && table.display_name} grouped by ${
         field.display_name
       }`,
-      icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
+      icon: "number",
       link: getQuestionUrl({
         dbId: table && table.db_id,
         tableId: table.id,

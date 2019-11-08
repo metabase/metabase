@@ -36,7 +36,7 @@ const interestingQuestions = table => {
   return [
     {
       text: t`Count of ${table.display_name}`,
-      icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
+      icon: "number",
       link: getQuestionUrl({
         dbId: table.db_id,
         tableId: table.id,

@@ -15,7 +15,7 @@ const QueryButton = ({ className, text, icon, iconClass, onClick, link }) => (
       onClick={onClick}
       to={link}
     >
-      <Icon {...(typeof icon === "string" ? { name: icon } : icon)} />
+      <Icon name={icon} />
       <span className={S.queryButtonText}>{text}</span>
     </Link>
   </div>

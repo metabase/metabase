@@ -37,7 +37,7 @@ const interestingQuestions = (database, table, field, metadata) => {
   return [
     {
       text: t`Number of ${table.display_name} grouped by ${field.display_name}`,
-      icon: { name: "bar", scale: 1, viewBox: "8 8 16 16" },
+      icon: "bar",
       link: getQuestionUrl({
         dbId: database.id,
         tableId: table.id,
@@ -49,7 +49,7 @@ const interestingQuestions = (database, table, field, metadata) => {
     },
     {
       text: t`Number of ${table.display_name} grouped by ${field.display_name}`,
-      icon: { name: "pie", scale: 1, viewBox: "8 8 16 16" },
+      icon: "pie",
       link: getQuestionUrl({
         dbId: database.id,
         tableId: table.id,
