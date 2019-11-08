@@ -16,7 +16,7 @@ const ListItem = ({ index, name, description, placeholder, url, icon }) => (
   <Link to={url} className="text-brand-hover">
     <Card hoverable className="mb2 p3 bg-white rounded bordered">
       <div className={cx(S.item)}>
-        <div className={S.leftIcons}>
+        <div className={S.itemIcons}>
           {icon && <Icon className={S.chartIcon} name={icon} size={16} />}
         </div>
         <div className={S.itemBody}>

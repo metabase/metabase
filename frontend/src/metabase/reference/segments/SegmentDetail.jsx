@@ -217,12 +217,14 @@ export default class SegmentDetail extends Component {
                           {table && (
                             <div>
                               <Link
-                                className="text-brand text-bold text-paragraph pt2"
+                                className="text-brand text-bold text-paragraph"
                                 to={`/reference/databases/${
                                   table.db_id
                                 }/tables/${table.id}`}
                               >
-                                <span>{table.display_name}</span>
+                                <span className="pt1">
+                                  {table.display_name}
+                                </span>
                               </Link>
                             </div>
                           )}

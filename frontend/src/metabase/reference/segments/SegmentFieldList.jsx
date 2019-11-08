@@ -147,7 +147,7 @@ export default class SegmentFieldList extends Component {
           {() =>
             Object.keys(entities).length > 0 ? (
               <div className="wrapper">
-                <div className="pl3 pt1 pb2 mb4 bg-white bordered">
+                <div className="pl4 pb2 mb4 bg-white rounded bordered">
                   <div className={S.item}>
                     <div className={R.columnHeader}>
                       <div className={cx(S.itemTitle, F.fieldNameTitle)}>
