@@ -9,7 +9,7 @@
   left: 0;
   right: 0;
   height: 43px;
-  background-color: var(--edit-header-color);
+  background-color: color(var(--color-bg-white) alpha(-85%));
 }
 
 :local(.editHeaderButtons) {
