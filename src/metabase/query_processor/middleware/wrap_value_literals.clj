@@ -9,7 +9,7 @@
              [store :as qp.store]
              [timezone :as qp.timezone]]
             [metabase.util.date-2 :as u.date])
-  (:import [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
+  (:import [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
 ;;; --------------------------------------------------- Type Info ----------------------------------------------------
 
@@ -57,10 +57,6 @@
 (defmethod add-type-info Object
   [this info & _]
   [:value this info])
-
-(defmethod add-type-info Instant
-  [this info & _]
-  [:absolute-datetime this (get info :unit :default)])
 
 (defmethod add-type-info LocalDate
   [this info & _]

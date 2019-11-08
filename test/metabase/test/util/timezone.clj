@@ -7,7 +7,7 @@
   (:import java.util.TimeZone
            org.joda.time.DateTimeZone))
 
-(defn- ->datetimezone ^DateTimeZone [timezone]
+(defn- ^:deprecated ->datetimezone ^DateTimeZone [timezone]
   (cond
     (instance? DateTimeZone timezone)
     timezone
@@ -48,6 +48,6 @@
         (System/setProperty "user.timezone" orig-tz-prop)))))
 
 (defmacro with-jvm-tz
-  "Invokes `BODY` with the JVM timezone set to `DTZ`"
+  "Invokes `body` with the JVM timezone set to `dtz`"
   [^DateTimeZone dtz & body]
   `(call-with-jvm-tz ~dtz (fn [] ~@body)))

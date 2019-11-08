@@ -4,7 +4,6 @@
              [test :refer :all]]
             [clojure.java.jdbc :as jdbc]
             [colorize.core :as colorize]
-            [expectations :refer [expect]]
             [honeysql.core :as hsql]
             [java-time :as t]
             [medley.core :as m]
@@ -43,28 +42,29 @@
         (data/run-mbql-query genetic-data))
       :data :rows obj->json->obj)) ; convert to JSON + back so the Clob gets stringified
 
-;;; Test that additional connection string options work (#5296)
-(expect
-  {:subprotocol     "sqlserver"
-   :applicationName "Metabase <version>"
-   :subname         "//localhost;trustServerCertificate=false"
-   :database        "birddb"
-   :port            1433
-   :instanceName    nil
-   :user            "cam"
-   :password        "toucans"
-   :encrypt         false
-   :loginTimeout    10}
-  (-> (sql-jdbc.conn/connection-details->spec
-       :sqlserver
-       {:user               "cam"
-        :password           "toucans"
-        :db                 "birddb"
-        :host               "localhost"
-        :port               1433
-        :additional-options "trustServerCertificate=false"})
-      ;; the MB version Is subject to change between test runs, so replace the part like `v.0.25.0` with `<version>`
-      (update :applicationName #(str/replace % #"\s.*$" " <version>"))))
+(deftest connection-spec-test
+  (testing "Test that additional connection string options work (#5296)"
+    (is (= {:applicationName    "Metabase <version>"
+            :database           "birddb"
+            :encrypt            false
+            :instanceName       nil
+            :loginTimeout       10
+            :password           "toucans"
+            :port               1433
+            :sendTimeAsDatetime false
+            :subname            "//localhost;trustServerCertificate=false"
+            :subprotocol        "sqlserver"
+            :user               "cam"}
+           (-> (sql-jdbc.conn/connection-details->spec :sqlserver
+                 {:user               "cam"
+                  :password           "toucans"
+                  :db                 "birddb"
+                  :host               "localhost"
+                  :port               1433
+                  :additional-options "trustServerCertificate=false"})
+               ;; the MB version Is subject to change between test runs, so replace the part like `v.0.25.0` with
+               ;; `<version>`
+               (update :applicationName #(str/replace % #"\s.*$" " <version>")))))))
 
 (datasets/expect-with-driver :sqlserver
   "UTC"

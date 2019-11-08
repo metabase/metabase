@@ -77,8 +77,10 @@
      ~expected
      ~actual))
 
-(defn normal-drivers-except
-  "Return the set of all drivers except Druid, Google Analytics, and those in `excluded-drivers`."
+(defn ^:deprecated normal-drivers-except
+  "Return the set of all drivers except Druid, Google Analytics, and those in `excluded-drivers`.
+
+  DEPRECATED — just use `(disj (normal-drivers) ...)` instead."
   [excluded-drivers]
   (set/difference (normal-drivers) (set excluded-drivers)))
 

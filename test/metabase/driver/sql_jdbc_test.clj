@@ -16,12 +16,12 @@
              [env :as tx.env]
              [interface :as tx]]
             [metabase.test.util.log :as tu.log]
-            [metabase.util.date :as du])
-  (:import java.sql.Time))
+            [java-time :as t]
+            [metabase.util.date :as du]))
 
 (defonce ^:private sql-jdbc-drivers*
   (delay
-    (du/profile "resolve @metabase.driver.sql-jdbc-test/sql-jdbc-drivers"
+    (du/profile "resolve sql-jdbc-drivers"
       (set
        (for [driver (tx.env/test-drivers)
              :when  (isa? driver/hierarchy (driver/the-driver driver) (driver/the-driver :sql-jdbc))]
@@ -43,45 +43,41 @@
     (invoke [_]
       @sql-jdbc-drivers*)))
 
+(deftest describe-database-test
+  (is (= {:tables (set (for [table ["CATEGORIES" "VENUES" "CHECKINS" "USERS"]]
+                         {:name table, :schema "PUBLIC", :description nil}))}
+         (driver/describe-database :h2 (data/db)))))
 
-;; DESCRIBE-DATABASE
-(expect
-  {:tables (set (for [table ["CATEGORIES" "VENUES" "CHECKINS" "USERS"]]
-                  {:name table, :schema "PUBLIC", :description nil}))}
-  (driver/describe-database :h2 (data/db)))
+(deftest describe-table-test
+  (is (= {:name   "VENUES"
+          :schema "PUBLIC"
+          :fields #{{:name          "NAME",
+                     :database-type "VARCHAR"
+                     :base-type     :type/Text}
+                    {:name          "LATITUDE"
+                     :database-type "DOUBLE"
+                     :base-type     :type/Float}
+                    {:name          "LONGITUDE"
+                     :database-type "DOUBLE"
+                     :base-type     :type/Float}
+                    {:name          "PRICE"
+                     :database-type "INTEGER"
+                     :base-type     :type/Integer}
+                    {:name          "CATEGORY_ID"
+                     :database-type "INTEGER"
+                     :base-type     :type/Integer}
+                    {:name          "ID"
+                     :database-type "BIGINT"
+                     :base-type     :type/BigInteger
+                     :pk?           true}}}
+         (driver/describe-table :h2 (data/db) (Table (data/id :venues))))))
 
-;; DESCRIBE-TABLE
-(expect
-  {:name   "VENUES"
-   :schema "PUBLIC"
-   :fields #{{:name          "NAME",
-              :database-type "VARCHAR"
-              :base-type     :type/Text}
-             {:name          "LATITUDE"
-              :database-type "DOUBLE"
-              :base-type     :type/Float}
-             {:name          "LONGITUDE"
-              :database-type "DOUBLE"
-              :base-type     :type/Float}
-             {:name          "PRICE"
-              :database-type "INTEGER"
-              :base-type     :type/Integer}
-             {:name          "CATEGORY_ID"
-              :database-type "INTEGER"
-              :base-type     :type/Integer}
-             {:name          "ID"
-              :database-type "BIGINT"
-              :base-type     :type/BigInteger
-              :pk?           true}}}
-  (driver/describe-table :h2 (data/db) (Table (data/id :venues))))
-
-;; DESCRIBE-TABLE-FKS
-(expect
-  #{{:fk-column-name   "CATEGORY_ID"
-     :dest-table       {:name   "CATEGORIES"
-                        :schema "PUBLIC"}
-     :dest-column-name "ID"}}
-  (driver/describe-table-fks :h2 (data/db) (Table (data/id :venues))))
+(deftest describe-table-fks-test
+  (is (= #{{:fk-column-name   "CATEGORY_ID"
+            :dest-table       {:name   "CATEGORIES"
+                               :schema "PUBLIC"}
+            :dest-column-name "ID"}}
+         (driver/describe-table-fks :h2 (data/db) (Table (data/id :venues))))))
 
 ;;; TABLE-ROWS-SAMPLE
 (datasets/expect-with-drivers (sql-jdbc-drivers)
@@ -95,7 +91,6 @@
        ;; since order is not guaranteed do some sorting here so we always get the same results
        (sort-by first)
        (take 5)))
-
 
 ;;; TABLE-ROWS-SEQ
 (datasets/expect-with-drivers (sql-jdbc-drivers)
@@ -112,7 +107,6 @@
         (update :price int)
         (update :category_id int)
         (update :id int))))
-
 
 ;;; Make sure invalid ssh credentials are detected if a direct connection is possible
 (datasets/expect-with-driver :postgres
@@ -138,6 +132,7 @@
         (or (when (instance? com.jcraft.jsch.JSchException e)
               e)
             (some-> (.getCause e) recur))))))
+
 
 ;;; --------------------------------- Tests for splice-parameters-into-native-query ----------------------------------
 
@@ -227,4 +222,4 @@
       (is (= 2
              (data/dataset test-data-with-time
                (data/$ids users
-                 (spliced-count-of :users [:= $last_login_time (Time. 9 30 0)]))))))))
+                 (spliced-count-of :users [:= $last_login_time "09:30"]))))))))
