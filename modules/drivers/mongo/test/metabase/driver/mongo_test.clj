@@ -74,16 +74,16 @@
   (datasets/test-driver :mongo
     (is (= {:status            :completed
             :row_count         1
-            :data              {:rows        [[1]]
-                                :cols        [{:name         "count"
-                                               :display_name "count"
-                                               :base_type    :type/Integer
-                                               :source       :native
-                                               :field_ref    [:field-literal "count" :type/Integer]}]
-                                :native_form {:collection "venues"
-                                              :query      native-query}}
-            :expected_timezone "UTC"
-            :actual_timezone   "UTC"}
+            :data              {:rows               [[1]]
+                                :cols               [{:name         "count"
+                                                      :display_name "count"
+                                                      :base_type    :type/Integer
+                                                      :source       :native
+                                                      :field_ref    [:field-literal "count" :type/Integer]}]
+                                :native_form        {:collection "venues"
+                                                     :query      native-query}
+                                :requested_timezone "UTC"
+                                :results_timezone   "UTC"}}
            (-> (qp/process-query {:native   {:query      native-query
                                              :collection "venues"}
                                   :type     :native

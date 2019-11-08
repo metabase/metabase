@@ -728,3 +728,12 @@ if (
 }
 
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 20000;
+
+import { mount } from "./enzyme";
+
+export async function mountApp(url = "/") {
+  const store = await createTestStore();
+  store.pushPath(url);
+  const app = mount(store.getAppContainer());
+  return { app, store };
+}

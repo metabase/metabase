@@ -14,12 +14,14 @@
 (defmethod driver/supports? [::no-timezone-driver :set-timezone] [_ _] false)
 
 (deftest post-processing-test
-  (doseq [[driver timezone->expected] {::timezone-driver    {"US/Pacific" {:actual_timezone   "US/Pacific"
-                                                                           :expected_timezone "US/Pacific"}
-                                                             nil          {:actual_timezone "UTC"}}
-                                       ::no-timezone-driver {"US/Pacific" {:actual_timezone   "UTC"
-                                                                           :expected_timezone "US/Pacific"}
-                                                             nil          {:actual_timezone "UTC"}}}
+  (doseq [[driver timezone->expected] {::timezone-driver    {"US/Pacific" {:results_timezone   "US/Pacific"
+                                                                           :requested_timezone "US/Pacific"}
+                                                             nil          {:results_timezone   "UTC"
+                                                                           :requested_timezone "UTC"}}
+                                       ::no-timezone-driver {"US/Pacific" {:results_timezone   "UTC"
+                                                                           :requested_timezone "US/Pacific"}
+                                                             nil          {:results_timezone   "UTC"
+                                                                           :requested_timezone "UTC"}}}
           [timezone expected]         timezone->expected]
     (testing driver
       (tu/with-temporary-setting-values [report-timezone timezone]
@@ -29,7 +31,7 @@
                    (let [query        {:query? true}
                          results      {:results? true}
                          add-settings (add-settings/add-settings (constantly results))]
-                     (add-settings query))))))))))
+                     (:data (add-settings query)))))))))))
 
 (defn- env [_]
   "SOME_VALUE")

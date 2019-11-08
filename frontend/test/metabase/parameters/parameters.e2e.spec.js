@@ -12,7 +12,7 @@ import {
   waitForAllRequestsToComplete,
   cleanup,
   eventually,
-} from "__support__/e2e_tests";
+} from "__support__/e2e";
 
 import jwt from "jsonwebtoken";
 

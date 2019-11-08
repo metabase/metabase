@@ -18,7 +18,7 @@ msgstr "Verilerinizi inceledik ve size sunabileceğimiz bazı otomatik gözlemle
 
 #: frontend/src/metabase/admin/databases/components/CreatedDatabaseModal.jsx:35
 msgid "I'm good thanks"
-msgstr "Teşekkür ederim."
+msgstr "İyiyim, teşekkür ederim."
 
 #: frontend/src/metabase/admin/databases/components/CreatedDatabaseModal.jsx:42
 msgid "Explore this data"
@@ -122,7 +122,7 @@ msgstr "Bu veritabanına dayanan tüm kayıtlı sorgular, metrikler ve segmentle
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:62
 msgid "This cannot be undone."
-msgstr "Bu geri alınamaz."
+msgstr "Bu işlem geri alınamaz."
 
 #: frontend/src/metabase/admin/databases/components/DeleteDatabaseModal.jsx:65
 msgid "If you're sure, please type"
@@ -3385,7 +3385,7 @@ msgstr "Numara"
 #: frontend/src/metabase/lib/core.js:90
 #: frontend/src/metabase/meta/Dashboard.js:65
 msgid "State"
-msgstr "Belirtmek"
+msgstr "Eyalet"
 
 #: frontend/src/metabase/lib/core.js:95
 msgid "UNIX Timestamp (Seconds)"

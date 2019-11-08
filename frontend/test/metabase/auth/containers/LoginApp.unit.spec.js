@@ -2,7 +2,7 @@ import React from "react";
 
 import LoginApp from "metabase/auth/containers/LoginApp";
 
-import { mountWithStore } from "__support__/integration_tests";
+import { mountWithStore } from "__support__/integration";
 
 jest.mock("metabase/lib/settings", () => ({
   get: () => ({
