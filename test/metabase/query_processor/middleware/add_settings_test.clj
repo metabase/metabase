@@ -16,18 +16,16 @@
 (deftest post-processing-test
   (doseq [[driver timezone->expected] {::timezone-driver    {"US/Pacific" {:results_timezone   "US/Pacific"
                                                                            :requested_timezone "US/Pacific"}
-                                                             nil          {:results_timezone   "UTC"
-                                                                           :requested_timezone "UTC"}}
+                                                             nil          {:results_timezone "UTC"}}
                                        ::no-timezone-driver {"US/Pacific" {:results_timezone   "UTC"
                                                                            :requested_timezone "US/Pacific"}
-                                                             nil          {:results_timezone   "UTC"
-                                                                           :requested_timezone "UTC"}}}
+                                                             nil          {:results_timezone "UTC"}}}
           [timezone expected]         timezone->expected]
     (testing driver
       (tu/with-temporary-setting-values [report-timezone timezone]
         (driver/with-driver driver
           (qp.timezone/with-database-timezone-id nil
-            (is (= (assoc expected :results? true)
+            (is (= expected
                    (let [query        {:query? true}
                          results      {:results? true}
                          add-settings (add-settings/add-settings (constantly results))]

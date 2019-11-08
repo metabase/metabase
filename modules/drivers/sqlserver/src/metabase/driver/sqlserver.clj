@@ -300,7 +300,6 @@
 ;; this mystery out
 (defmethod sql-jdbc.execute/set-parameter [:sqlserver OffsetTime]
   [driver prepared-statement index t]
-  (println "t:" t "->" (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))) ; NOCOMMIT
   (sql-jdbc.execute/set-parameter driver prepared-statement index
                                   (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
 

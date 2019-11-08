@@ -271,7 +271,7 @@
                               :aggregation  [[:count]]}}))
 
 (expect
-  #{:cols :rows :insights :results_timezone :requested_timezone}
+  #{:cols :rows :insights :results_timezone}
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (tt/with-temp Card [{uuid :public_uuid} (card-with-trendline)]
       (-> (http/client :get 200 (str "public/card/" uuid "/query"))
