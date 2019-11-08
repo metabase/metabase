@@ -5,7 +5,7 @@ import {
   ORDERS,
   metadata,
 } from "__support__/sample_dataset_fixture";
-import { click } from "__support__/enzyme_utils";
+import { click } from "__support__/enzyme";
 import Question from "metabase-lib/lib/Question";
 import SummarizeBySegmentMetricAction from "metabase/modes/components/actions/SummarizeBySegmentMetricAction";
 import { mount } from "enzyme";

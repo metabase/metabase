@@ -1,8 +1,15 @@
 // This must be before all other imports
 import { eventListeners } from "./mocks";
 
+import { ReactWrapper } from "enzyme";
+import proxymise from "proxymise";
+
 import { delay } from "metabase/lib/promise";
 import Button from "metabase/components/Button";
+
+// convienence
+export { mount } from "enzyme";
+export { delay } from "metabase/lib/promise";
 
 // Triggers events that are being listened to with `window.addEventListener` or `document.addEventListener`
 export const dispatchBrowserEvent = (eventName, ...args) => {
@@ -32,6 +39,9 @@ export const click = enzymeWrapper => {
   // Normal click event. Works for both `onClick` React event handlers and react-router <Link> objects.
   // We simulate a left button click with `{ button: 0 }` because react-router requires that.
   enzymeWrapper.simulate("click", { button: 0 });
+
+  // add a slight delay for robustness
+  return delay(10);
 };
 
 export const clickButton = enzymeWrapper => {
@@ -58,6 +68,9 @@ export const clickButton = enzymeWrapper => {
       enzymeWrapper.simulate("click", { button: 0 });
     } catch (e) {}
   }
+
+  // add a slight delay for robustness
+  return delay(10);
 };
 
 export const setInputValue = (inputWrapper, value, { blur = true } = {}) => {
@@ -85,7 +98,7 @@ export const chooseSelectOption = optionWrapper => {
   parentSelect.simulate("change", { target: { value: optionValue } });
 };
 
-const TIMEOUT = 1000;
+const TIMEOUT = 15000;
 
 async function eventually(fn, timeout = TIMEOUT) {
   const start = Date.now();
@@ -103,29 +116,8 @@ async function eventually(fn, timeout = TIMEOUT) {
   }
 }
 
-export function enhanceEnzymeWrapper(wrapper) {
-  // add a "async" namespace that wraps functions in `eventually`
-  wrapper.async = {
-    find: selector =>
-      eventually(() => {
-        const node = wrapper.find(selector);
-        if (node.exists()) {
-          return node;
-        } else {
-          throw new Error("Not found: " + selector);
-        }
-      }),
-  };
-  return wrapper;
-}
-
 export async function getFormValues(wrapper) {
   const values = {};
-  // enhance the wrapper if it hasn't already been enhanced so we can
-  // pass things other than the top level wrapper from mountStore
-  if (!wrapper.async) {
-    enhanceEnzymeWrapper(wrapper);
-  }
   const inputs = await wrapper.async.find("input");
   for (const input of inputs) {
     values[input.props.name] = input.props.value;
@@ -154,4 +146,61 @@ function submitForm(wrapper) {
 export async function fillAndSubmitForm(wrapper, values) {
   await fillFormValues(wrapper, values);
   submitForm(wrapper);
+}
+
+function findByText(wrapper, text) {
+  return wrapper.find(`[children=${JSON.stringify(text)}]`);
+}
+function findByIcon(wrapper, icon) {
+  return wrapper.find(`.Icon-${icon}`);
+}
+
+// adds helper  methods to enzyme ReactWrapper
+addReactWrapperMethod("click", click);
+addReactWrapperMethod("clickButton", clickButton);
+addReactWrapperMethod("findByText", findByText);
+addReactWrapperMethod("findByIcon", findByIcon);
+addReactWrapperMethod("setInputValue", setInputValue);
+
+// creates the magic "async" namespace for `find` methods
+Object.defineProperty(ReactWrapper.prototype, "async", {
+  get() {
+    if (!this.__async) {
+      this.__async = {
+        find: asyncFind(this, "find"),
+        findWhere: asyncFind(this, "findWhere"),
+        findByText: asyncFind(this, "findByText"),
+        findByIcon: asyncFind(this, "findByIcon"),
+      };
+    }
+    return this.__async;
+  },
+});
+
+function addReactWrapperMethod(name, method) {
+  ReactWrapper.prototype[name] = function(...args) {
+    return method(this, ...args);
+  };
+}
+
+function asyncFind(wrapper, name) {
+  return (...args) =>
+    // proxymise allows chaining like app.async.find(...).click()
+    proxymise(
+      eventually(() => {
+        const node = wrapper[name](...args);
+        if (node.exists()) {
+          if (node.length > 1) {
+            console.warn(
+              `Found ${node.length} nodes: ${name}(${args.join(", ")})`,
+            );
+          }
+          return node;
+        } else {
+          throw new Error(
+            `Not found within timeout: ${name}(${args.join(", ")})`,
+          );
+        }
+      }),
+    );
 }

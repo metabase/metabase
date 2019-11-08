@@ -2,8 +2,8 @@ import {
   useSharedAdminLogin,
   createTestStore,
   eventually,
-} from "__support__/e2e_tests";
-import { click, clickButton, setInputValue } from "__support__/enzyme_utils";
+} from "__support__/e2e";
+import { click, clickButton, setInputValue } from "__support__/enzyme";
 
 import { mount } from "enzyme";
 import {

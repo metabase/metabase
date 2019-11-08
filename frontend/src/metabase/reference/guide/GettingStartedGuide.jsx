@@ -13,7 +13,7 @@ import GuideDetail from "metabase/reference/components/GuideDetail";
 
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
-import { clearRequestState } from "metabase/redux/requests";
+import { setRequestUnloaded } from "metabase/redux/requests";
 import Dashboards from "metabase/entities/dashboards";
 
 import { updateSetting } from "metabase/admin/settings/settings";
@@ -97,7 +97,7 @@ const mapDispatchToProps = {
   updateDashboard: Dashboards.actions.update,
   createDashboard: Dashboards.actions.create,
   updateSetting,
-  clearRequestState,
+  setRequestUnloaded,
   ...metadataActions,
   ...actions,
 };

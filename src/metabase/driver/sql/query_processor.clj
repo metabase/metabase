@@ -597,6 +597,7 @@
 
 (defn format-honeysql
   "Convert `honeysql-form` to a vector of SQL string and params, like you'd pass to JDBC."
+  {:style/indent 1}
   [driver honeysql-form]
   (try
     (binding [hformat/*subquery?* false]

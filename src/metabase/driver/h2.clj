@@ -9,6 +9,7 @@
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
+             [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
@@ -17,7 +18,7 @@
              [date :as du]
              [honeysql-extensions :as hx]
              [i18n :refer [deferred-tru tru]]])
-  (:import java.sql.Time
+  (:import [java.sql ResultSet Time Types]
            java.util.Date))
 
 (driver/register! :h2, :parent :sql-jdbc)
@@ -28,12 +29,14 @@
 
 (defmethod driver/supports? [:h2 :full-join] [_ _] false)
 
-(defmethod driver/connection-properties :h2 [_]
+(defmethod driver/connection-properties :h2
+  [_]
   [{:name         "db"
     :display-name (tru "Connection String")
     :placeholder  (str "file:/" (deferred-tru "Users/camsaul/bird_sightings/toucans"))
     :required     true}])
 
+;; TODO - it would be better not to put all the options in the connection string in the first place?
 (defn- connection-string->file+options
   "Explode a `connection-string` like `file:my-db;OPTION=100;OPTION_2=TRUE` to a pair of file and an options map.
 
@@ -69,12 +72,10 @@
 (defmethod driver/process-query-in-context :h2 [_ qp]
   (comp qp check-native-query-not-using-default-user))
 
-
 (defmethod driver/date-add :h2 [driver dt amount unit]
   (if (= unit :quarter)
     (recur driver dt (hx/* amount 3) :month)
     (hsql/call :dateadd (hx/literal unit) amount dt)))
-
 
 (defmethod driver/humanize-connection-error-message :h2 [_ message]
   (condp re-matches message
@@ -256,3 +257,8 @@
 
 (defmethod sql-jdbc.sync/active-tables :h2 [& args]
   (apply sql-jdbc.sync/post-filtered-active-tables args))
+
+;; return a normal `java.sql.Timestamp` instead of `org.h2.api.TimestampWithTimeZone`
+(defmethod sql-jdbc.execute/read-column [:h2 Types/TIMESTAMP_WITH_TIMEZONE]
+  [_ _, ^ResultSet resultset, _, ^Integer i]
+  (.getTimestamp resultset i))

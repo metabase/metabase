@@ -2,7 +2,9 @@
   "HTTP client for making API calls against the Metabase API. For test/REPL purposes."
   (:require [cheshire.core :as json]
             [clj-http.client :as client]
-            [clojure.string :as str]
+            [clojure
+             [string :as str]
+             [test :as t]]
             [clojure.tools.logging :as log]
             [metabase
              [config :as config]
@@ -95,16 +97,20 @@
   "If an `expected-status-code` was passed to the client, check that the actual status code matches, or throw an
   exception."
   [method-name url body expected-status-code actual-status-code]
+  (when (and (= actual-status-code 401)
+             (not= expected-status-code 401))
+    (let [message (format "%s %s expected a status code of %d, got %d."
+                          method-name url expected-status-code actual-status-code)
+          body    (try
+                    (json/parse-string body keyword)
+                    (catch Throwable _
+                      body))]
+      (throw (ex-info message {:status-code actual-status-code}))))
+  ;; all other status codes should be test assertions against the expected status code if one was specified
   (when expected-status-code
-    (when (not= actual-status-code expected-status-code)
-      (let [message (format "%s %s expected a status code of %d, got %d."
-                            method-name url expected-status-code actual-status-code)
-            body    (try
-                      (json/parse-string body keyword)
-                      (catch Throwable _
-                        body))]
-        (println (u/pprint-to-str 'red body))
-        (throw (ex-info message {:status-code actual-status-code}))))))
+    (t/is (= actual-status-code expected-status-code)
+          (format "%s %s expected a status code of %d, got %d."
+                  method-name url expected-status-code actual-status-code))))
 
 (def ^:private method->request-fn
   {:get    client/get

@@ -1,5 +1,5 @@
-import { useSharedAdminLogin, createTestStore } from "__support__/e2e_tests";
-import { click } from "__support__/enzyme_utils";
+import { useSharedAdminLogin, createTestStore } from "__support__/e2e";
+import { click } from "__support__/enzyme";
 
 import { mount } from "enzyme";
 

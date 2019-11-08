@@ -61,7 +61,7 @@ import Tables from "metabase/entities/tables";
 import Databases from "metabase/entities/databases";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { clearRequestState } from "metabase/redux/requests";
+import { setRequestUnloaded } from "metabase/redux/requests";
 
 import type { Card } from "metabase/meta/types/Card";
 
@@ -537,11 +537,11 @@ export const loadMetadataForCard = createThunkAction(
       const query = new Question(card, getMetadata(getState())).query();
       if (query instanceof StructuredQuery) {
         try {
-          const rootTable = query.rootTable();
-          if (rootTable) {
+          const rootTableId = query.rootTableId();
+          if (rootTableId != null) {
             await Promise.all([
-              dispatch(Tables.actions.fetchTableMetadata(rootTable)),
-              dispatch(Tables.actions.fetchForeignKeys(rootTable)),
+              dispatch(Tables.actions.fetchTableMetadata({ id: rootTableId })),
+              dispatch(Tables.actions.fetchForeignKeys({ id: rootTableId })),
             ]);
           }
           await Promise.all(
@@ -820,7 +820,7 @@ export const apiCreateQuestion = question => {
     // remove the databases in the store that are used to populate the QB databases list.
     // This is done when saving a Card because the newly saved card will be eligible for use as a source query
     // so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
-    dispatch(clearRequestState({ statePath: ["entities", "databases"] }));
+    dispatch(setRequestUnloaded(["entities", "databases"]));
 
     dispatch(updateUrl(createdQuestion.card(), { dirty: false }));
     MetabaseAnalytics.trackEvent(
@@ -857,7 +857,7 @@ export const apiUpdateQuestion = question => {
     // remove the databases in the store that are used to populate the QB databases list.
     // This is done when saving a Card because the newly saved card will be eligible for use as a source query
     // so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
-    dispatch(clearRequestState({ statePath: ["entities", "databases"] }));
+    dispatch(setRequestUnloaded(["entities", "databases"]));
 
     dispatch(updateUrl(updatedQuestion.card(), { dirty: false }));
     MetabaseAnalytics.trackEvent(

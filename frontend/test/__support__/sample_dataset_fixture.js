@@ -31,14 +31,14 @@ function aliasTablesAndFields(metadata) {
   }
 }
 
-export function createMetadata(updateState) {
+export function createMetadata(updateState = state => state) {
   const stateModified = updateState(chain(state)).value();
   const metadata = getMetadata(stateModified);
   aliasTablesAndFields(metadata);
   return metadata;
 }
 
-export const metadata = createMetadata(state => state);
+export const metadata = createMetadata();
 
 export const SAMPLE_DATASET = metadata.database(SAMPLE_DATASET_ID);
 export const ANOTHER_DATABASE = metadata.database(ANOTHER_DATABASE_ID);
@@ -71,7 +71,7 @@ export function makeMetadata(metadata) {
   // convienence for filling in missing bits
   for (const objects of Object.values(metadata)) {
     for (const [id, object] of Object.entries(objects)) {
-      object.id = parseInt(id);
+      object.id = /^\d+$/.test(id) ? parseInt(id) : id;
       if (!object.name && object.display_name) {
         object.name = object.display_name;
       }

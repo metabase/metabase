@@ -134,9 +134,7 @@ class Overworld extends React.Component {
                         key={`${pin.model}-${pin.id}`}
                       >
                         <Link
-                          data-metabase-event={`Homepage;Pinned Item Click;Pin Type ${
-                            pin.model
-                          }`}
+                          data-metabase-event={`Homepage;Pinned Item Click;Pin Type ${pin.model}`}
                           to={Urls.dashboard(pin.id)}
                           hover={{ color: color("brand") }}
                         >
@@ -182,12 +180,8 @@ class Overworld extends React.Component {
                 </Box>
                 <h3 className="text-medium">
                   {user.is_superuser
-                    ? t`Save dashboards, questions, and collections in "${
-                        ROOT_COLLECTION.name
-                      }"`
-                    : t`Access dashboards, questions, and collections in "${
-                        ROOT_COLLECTION.name
-                      }"`}
+                    ? t`Save dashboards, questions, and collections in "${ROOT_COLLECTION.name}"`
+                    : t`Access dashboards, questions, and collections in "${ROOT_COLLECTION.name}"`}
                 </h3>
               </Box>
             )}
@@ -224,9 +218,7 @@ class Overworld extends React.Component {
                         <Link
                           to={`browse/${database.id}`}
                           hover={{ color: color("brand") }}
-                          data-metabase-event={`Homepage;Browse DB Clicked; DB Type ${
-                            database.engine
-                          }`}
+                          data-metabase-event={`Homepage;Browse DB Clicked; DB Type ${database.engine}`}
                         >
                           <Box
                             p={3}

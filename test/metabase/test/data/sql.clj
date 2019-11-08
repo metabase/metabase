@@ -188,14 +188,15 @@
     (format "CREATE TABLE %s (%s, %s %s, PRIMARY KEY (%s)) %s;"
             (qualify-and-quote driver database-name table-name)
             (str/join
-             " ,"
+             ", "
              (for [{:keys [field-name base-type field-comment]} field-definitions]
-               (format "%s %s %s"
-                       (quot field-name)
-                       (if (map? base-type)
-                         (:native base-type)
-                         (field-base-type->sql-type driver base-type))
-                       (or (inline-column-comment-sql driver field-comment) ""))))
+               (str (format "%s %s"
+                            (quot field-name)
+                            (if (map? base-type)
+                              (:native base-type)
+                              (field-base-type->sql-type driver base-type)))
+                    (when-let [comment (inline-column-comment-sql driver field-comment)]
+                      (str " " comment)))))
             pk-field-name (pk-sql-type driver)
             pk-field-name
             (or (inline-table-comment-sql driver table-comment) ""))))
@@ -228,7 +229,11 @@
     (format "ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s (%s);"
             (qualify-and-quote driver database-name table-name)
             ;; limit FK constraint name to 30 chars since Oracle doesn't support names longer than that
-            (quot :constraint (apply str (take 30 (format "fk_%s_%s_%s" table-name field-name dest-table-name))))
+            (let [fk-name (format "fk_%s_%s_%s_%s" database-name table-name field-name dest-table-name)
+                  fk-name (if (> (count fk-name) 30)
+                            (str/join (take-last 30 (str fk-name \_ (hash fk-name))))
+                            fk-name)]
+              (quot :constraint fk-name))
             (quot :field field-name)
             (qualify-and-quote driver database-name dest-table-name)
             (quot :field (pk-field-name driver)))))
