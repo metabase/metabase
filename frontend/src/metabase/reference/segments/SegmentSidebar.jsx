@@ -33,7 +33,7 @@ const SegmentSidebar = ({ segment, user, style, className }) => (
         <SidebarItem
           key={`/reference/segments/${segment.id}/fields`}
           href={`/reference/segments/${segment.id}/fields`}
-          icon="fields"
+          icon="field"
           name={t`Fields in this segment`}
         />
         <SidebarItem

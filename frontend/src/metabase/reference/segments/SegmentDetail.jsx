@@ -5,7 +5,6 @@ import { connect } from "react-redux";
 import { reduxForm } from "redux-form";
 import { t } from "ttag";
 import S from "../components/Detail.css";
-import cx from "classnames";
 import List from "metabase/components/List";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
@@ -208,18 +207,17 @@ export default class SegmentDetail extends Component {
             <div className="wrapper">
               <div className="pl4 pr3 pt4 mb4 mb1 bg-white rounded bordered">
                 <List>
-                  {/*table && (
-                    <li>
-                      <div className={cx(S.detail)}>
-                        <div className={S.detailBody}>
-                          <div>
-                            <div className={S.detailTitle}>
-                              {t`Table this is based on`}
-                            </div>
+                  <li>
+                    <div className={S.detail}>
+                      <div className={S.detailBody}>
+                        <div>
+                          <div className={S.detailTitle}>
+                            {t`Table this is based on`}
+                          </div>
+                          {table && (
                             <div>
                               <Link
-                                className="text-brand text-bold"
-                                style="fontSize: 16px"
+                                className="text-brand text-bold text-paragraph pt2"
                                 to={`/reference/databases/${
                                   table.db_id
                                 }/tables/${table.id}`}
@@ -227,11 +225,11 @@ export default class SegmentDetail extends Component {
                                 <span>{table.display_name}</span>
                               </Link>
                             </div>
-                          </div>
+                          )}
                         </div>
                       </div>
-                    </li>
-                  )*/}
+                    </div>
+                  </li>
                   <li className="relative">
                     <Detail
                       id="description"

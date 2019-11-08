@@ -11,7 +11,7 @@ import Icon from "metabase/components/Icon";
 const QueryButton = ({ className, text, icon, iconClass, onClick, link }) => (
   <div className={className}>
     <Link
-      className={cx(S.queryButton, "bg-light-hover")}
+      className={cx(S.queryButton, "bg-light-hover px1 rounded")}
       onClick={onClick}
       to={link}
     >

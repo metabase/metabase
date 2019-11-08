@@ -14,7 +14,6 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import Detail from "metabase/reference/components/Detail";
 import FieldTypeDetail from "metabase/reference/components/FieldTypeDetail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
-import Card from "metabase/components/Card";
 
 import { getQuestionUrl } from "../utils";
 
@@ -204,7 +203,7 @@ export default class SegmentFieldDetail extends Component {
         >
           {() => (
             <div className="wrapper">
-              <Card px={3} pt={3} mb={4}>
+              <div className="pl3 py2 mb4 bg-white bordered">
                 <List>
                   <li className="relative">
                     <Detail
@@ -276,7 +275,7 @@ export default class SegmentFieldDetail extends Component {
                     </li>
                   )}
                 </List>
-              </Card>
+              </div>
             </div>
           )}
         </LoadingAndErrorWrapper>

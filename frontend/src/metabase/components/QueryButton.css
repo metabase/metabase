@@ -3,6 +3,6 @@
 }
 
 :local(.queryButtonText) {
-  composes: flex-full mx2 from "style";
+  composes: flex-full ml2 from "style";
   max-width: 100%;
 }

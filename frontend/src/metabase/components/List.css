@@ -2,6 +2,7 @@
   --title-color: var(--color-text-dark);
   --subtitle-color: var(--color-text-medium);
   --muted-color: var(--color-text-light);
+  --blue-color: var(--color-text-brand);
 }
 
 :local(.list) {
