@@ -164,7 +164,8 @@
                (sad-toucan-result (default-timezone-parse-fn :utc) default-format-fn)
 
                ;; There's a bug here where we are reading in the UTC time as pacific, so we're 7 hours off
-               (qp.test/tz-shifted-driver-bug? driver/*driver*)
+               ;; (This is fixed for Oracle now)
+               (and (qp.test/tz-shifted-driver-bug? driver/*driver*) (not= driver/*driver* :oracle))
                (sad-toucan-result (default-timezone-parse-fn :pacific) (results-timezone-format-fn :pacific))
 
                ;; When the reporting timezone is applied, the same datetime value is returned, but set in the pacific
@@ -183,11 +184,11 @@
                (= :sqlite driver/*driver*)
                (sad-toucan-result (default-timezone-parse-fn :utc) default-format-fn)
 
-               (qp.test/tz-shifted-driver-bug? driver/*driver*)
+               (and (qp.test/tz-shifted-driver-bug? driver/*driver*) (not= driver/*driver* :oracle))
                (sad-toucan-result (default-timezone-parse-fn :eastern) (results-timezone-format-fn :eastern))
 
                ;; The time instant is the same as UTC (or pacific) but should be offset by the eastern timezone
-               (qp.test/supports-report-timezone? driver/*driver*)
+               (and (qp.test/tz-shifted-driver-bug? driver/*driver*) (not= driver/*driver* :oracle))
                (sad-toucan-result (default-timezone-parse-fn :utc) (results-timezone-format-fn :eastern))
 
                ;; The change in report timezone has no affect on this group
