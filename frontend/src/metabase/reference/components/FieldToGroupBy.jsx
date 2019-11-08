@@ -6,6 +6,7 @@ import cx from "classnames";
 import S from "./FieldToGroupBy.css";
 import Q from "metabase/components/QueryButton.css";
 
+import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 
 const FieldToGroupBy = ({
@@ -19,13 +20,12 @@ const FieldToGroupBy = ({
 }) => (
   <div className={className}>
     <a className={Q.queryButton} onClick={onClick}>
-      <span className={S.fieldToGroupByText}>
-        <span>{`${metric.name} ` + t`by` + ` `}</span>
-        <span className="text-brand">{field.display_name}</span>
-      </span>
+      <div className={S.fieldToGroupByText}>
+        <div className="text-brand text-bold">{field.display_name}</div>
+      </div>
       <Icon
-        className={cx(iconClass, "ml4 pl4")}
-        tooltip={t`Look up this field`}
+        className={cx(iconClass, "pr1")}
+        tooltip={field.description ? field.description : t`Look up this field`}
         size={16}
         name="reference"
         onClick={secondaryOnClick}
