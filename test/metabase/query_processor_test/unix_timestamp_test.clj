@@ -1,13 +1,13 @@
 (ns metabase.query-processor-test.unix-timestamp-test
   "Tests for UNIX timestamp support."
-  (:require [metabase
+  (:require [clojure.test :refer :all]
+            [metabase
              [driver :as driver]
-             [query-processor-test :refer :all :as qp.test]]
-            [clojure.test :refer :all]
-            [metabase.test.data.datasets :as datasets]
+             [query-processor-test :as qp.test :refer :all]]
             [metabase.test
              [data :as data]
-             [util :as tu]]))
+             [util :as tu]]
+            [metabase.test.data.datasets :as datasets]))
 
 (deftest filter-test
   (datasets/test-drivers (qp.test/normal-drivers)

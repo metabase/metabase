@@ -9,6 +9,7 @@
 .DS_Store
 .\#*
 .eastwood
+.eastwood
 .idea/
 .idea/
 .nrepl-port
@@ -23,6 +24,7 @@
 /.lein-failures
 /.lein-plugins
 /.lein-repl-history
+/.sqlite.db
 /backend-checksums.txt
 /build.xml
 /checkouts

@@ -1,6 +1,5 @@
 (ns metabase.driver.sql-jdbc-test
   (:require [clojure.test :refer :all]
-            [expectations :refer [expect]]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
@@ -16,7 +15,6 @@
              [env :as tx.env]
              [interface :as tx]]
             [metabase.test.util.log :as tu.log]
-            [java-time :as t]
             [metabase.util.date :as du]))
 
 (defonce ^:private sql-jdbc-drivers*
