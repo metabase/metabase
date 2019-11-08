@@ -946,8 +946,7 @@ msgstr "Rimuovere questo gruppo?"
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:60
 msgid "Are you sure? All members of this group will lose any permissions settings they have based on this group.\n"
 "This can't be undone."
-msgstr "Sei sicuro? Tutti i membri di questo gruppo perderanno tutti i permessi basati su di esso.\n"
-"Operazione irreversibile."
+msgstr "Sei sicuro? Tutti i membri di questo gruppo perderanno tutti i permessi basati su di esso. Operazione irreversibile."
 
 #: frontend/src/metabase/admin/people/components/GroupsListing.jsx:71
 #: frontend/src/metabase/admin/tasks/containers/JobTriggersModal.jsx:43
@@ -6584,8 +6583,7 @@ msgstr "Formattazione condizionale"
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:193
 msgid "You can add rules to make the cells in this table change color if\n"
 "they meet certain conditions."
-msgstr "Puoi aggiungere regole per fare in modo che le celle di questa tabella cambino colore\n"
-"se soddisfano determinate condizioni."
+msgstr "Puoi aggiungere regole per fare in modo che le celle di questa tabella cambino colore se soddisfano determinate condizioni."
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingsTableFormatting.jsx:203
 msgid "Add a rule"
@@ -13078,7 +13076,6 @@ msgstr "Caricamento database di esempio..."
 #: src/metabase/sample_data.clj
 msgid "Failed to load sample dataset"
 msgstr "Caricamento del database di esempio fallito"
-""
 
 #: src/metabase/sync/sync_metadata/tables.clj
 msgid "Found new tables:"
@@ -13086,7 +13083,7 @@ msgstr "Trovate nuove tabelle:"
 
 #: src/metabase/sync/sync_metadata/tables.clj
 msgid "Marking tables as inactive:"
-msgstr ""
+msgstr "Marking tables as inactive:"
 
 #: src/metabase/sync/sync_metadata/tables.clj
 msgid "Updating description for tables:"
@@ -13115,7 +13112,6 @@ msgstr ""
 #: src/metabase/util/schema.clj
 msgid "All elements must be distinct."
 msgstr "All elements must be distinct."
-""
 
 #:
 msgctxt "Modal for selecting columns in source data or when doing a join."
@@ -13124,7 +13120,7 @@ msgstr "Scegli le colonne che desideri includere"
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:320
 msgid "When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
-msgstr ""
+msgstr "When this is on, Metabase will automatically run queries when users do simple explorations with the Summarize and Filter buttons when viewing a table or chart. You can turn this off if querying this database is slow. This setting doesn’t affect drill-throughs or SQL queries."
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/JoinStep.jsx:97
 msgid "Change join type"
@@ -13132,7 +13128,7 @@ msgstr "Cambia tipo di join"
 
 #: src/metabase/driver/sql/util.clj
 msgid "Don't know how to alias {0}, expected an Identifier."
-msgstr ""
+msgstr "Don't know how to alias {0}, expected an Identifier."
 
 #: src/metabase/integrations/common.clj
 msgid "Error adding User {0} to Group {1}"
@@ -13142,20 +13138,20 @@ msgstr "Errore nell' aggiungere l' Utente {0} al Gruppo {1}"
 #. TODO: Should we do this in a background thread because it is potentially slow?
 #: src/metabase/models/humanization.clj
 msgid "Changing Table & Field names humanization strategy from ''{0}'' to ''{1}''"
-msgstr ""
+msgstr "Changing Table & Field names humanization strategy from ''{0}'' to ''{1}''"
 
 #: src/metabase/query_processor.clj
 msgid "Infinite loop detected: recursively preprocessed query {0} times."
-msgstr ""
+msgstr "Infinite loop detected: recursively preprocessed query {0} times."
 
 #: src/metabase/query_processor/middleware/add_implicit_clauses.clj
 msgid "Warning: cannot determine fields for an explicit `source-query` unless you also include `source-metadata`."
-msgstr ""
+msgstr "Warning: cannot determine fields for an explicit `source-query` unless you also include `source-metadata`."
 
 #: src/metabase/query_processor/middleware/add_source_metadata.clj
 msgid "Error determining expected columns for query"
-msgstr ""
+msgstr "Error determining expected columns for query"
 
 #: src/metabase/query_processor/middleware/async.clj
 msgid "Unhandled exception, expected `catch-exceptions` middleware to handle it."
-msgstr ""
+msgstr "Unhandled exception, expected `catch-exceptions` middleware to handle it."
