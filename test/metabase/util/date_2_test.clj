@@ -91,7 +91,7 @@
 
 ;; TODO - more tests!
 (deftest format-test
-  (is (= "2019-11-01 18:39:00.000-07:00"
+  (is (= "2019-11-01 18:39:00-07:00"
          (u.date/format-sql (t/zoned-date-time "2019-11-01T18:39:00-07:00[US/Pacific]")))))
 
 (deftest format-sql-test

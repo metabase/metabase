@@ -5,15 +5,9 @@
   methods from here) let's rename this `metabase.driver.sql.unprepare` when we get a chance."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [honeysql
-             [core :as hsql]
-             [format :as hformat]]
             [java-time :as t]
             [metabase.driver :as driver]
-            [metabase.util
-             [date :as du]
-             [honeysql-extensions :as hx]
-             [i18n :refer [trs]]])
+            [metabase.util.i18n :refer [trs]])
   (:import [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
 (defmulti unprepare-value
@@ -47,13 +41,6 @@
 (defmethod unprepare-value [:sql Number]
   [_ value]
   (str value))
-
-(defn unprepare-date-with-iso-8601-fn
-  "Convert a Date to appropriate raw SQL by passing an ISO-8601 literal string to the function named by `iso-8601-fn`.
-  You can use this function to create implementations of `unprepare-value` for Date values."
-  [iso-8601-fn value]
-  (hformat/to-sql
-   (hsql/call iso-8601-fn (hx/literal (du/date->iso-8601 value)))))
 
 (defmethod unprepare-value [:sql LocalDate]
   [_ t]

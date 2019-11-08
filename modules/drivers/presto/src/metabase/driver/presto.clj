@@ -254,16 +254,19 @@
   [_ [_ value]]
   (hx/cast :time (time->str value (driver/report-timezone))))
 
-(defmethod unprepare/unprepare-value [:presto Date] [_ value]
-  (unprepare/unprepare-date-with-iso-8601-fn :from_iso8601_timestamp value))
+;; TIMEZONE FIXME
+(defmethod unprepare/unprepare-value [:presto Date]
+  [_ value]
+  (format "from_iso8601_timestamp('%s')" (du/->iso-8601-datetime value nil)))
 
 (prefer-method unprepare/unprepare-value [:sql Time] [:presto Date])
 
-(defmethod driver/execute-query :presto [driver {database-id                  :database
-                                                 :keys                        [settings]
-                                                 {sql :query, params :params} :native
-                                                 query-type                   :type
-                                                 :as                          outer-query}]
+(defmethod driver/execute-query :presto
+  [driver {database-id                  :database
+           :keys                        [settings]
+           {sql :query, params :params} :native
+           query-type                   :type
+           :as                          outer-query}]
   (let [sql                    (str "-- "
                                     (qputil/query->remark outer-query) "\n"
                                     (unprepare/unprepare driver (cons sql params)))
