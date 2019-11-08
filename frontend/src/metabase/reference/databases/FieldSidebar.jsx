@@ -32,12 +32,8 @@ const FieldSidebar = ({ database, table, field, style, className }) => (
       </div>
       <ol className="mx3">
         <SidebarItem
-          key={`/reference/databases/${database.id}/tables/${table.id}/fields/${
-            field.id
-          }`}
-          href={`/reference/databases/${database.id}/tables/${
-            table.id
-          }/fields/${field.id}`}
+          key={`/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`}
+          href={`/reference/databases/${database.id}/tables/${table.id}/fields/${field.id}`}
           icon="document"
           name={t`Details`}
         />

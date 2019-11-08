@@ -147,7 +147,7 @@ export default class FieldList extends Component {
           {() =>
             Object.keys(entities).length > 0 ? (
               <div className="wrapper">
-                <Card pl={4} py={2} mb={4}>
+                <div className="pl4 pb2 mb4 bg-white rounded bordered">
                   <div className={S.item}>
                     <div className={R.columnHeader}>
                       <div className={cx(S.itemTitle, F.fieldNameTitle)}>
@@ -182,7 +182,7 @@ export default class FieldList extends Component {
                         ),
                     )}
                   </List>
-                </Card>
+                </div>
               </div>
             ) : (
               <div className={S.empty}>

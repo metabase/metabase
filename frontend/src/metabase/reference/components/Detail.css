@@ -24,10 +24,12 @@
   white-space: pre-wrap;
   font-size: 16px;
   line-height: 24px;
+  padding-top: 6px;
 }
 
 :local(.detailSubtitleLight) {
   composes: text-light from "style";
+  padding-top: 6px;
 }
 
 :local(.detailTextarea) {
