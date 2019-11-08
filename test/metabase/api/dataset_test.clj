@@ -311,7 +311,7 @@
            (tu/with-temporary-setting-values [report-timezone "US/Pacific"]
              (let [results ((test-users/user->client :rasta) :post 200 "dataset" (data/mbql-query checkins
                                                                                    {:aggregation [[:count]]}))]
-                   (-> results
-                     :data
-                     (select-keys [:requested_timezone :results_timezone]))))
-        "expected (desired) and actual timezone should be returned as part of query results"))))
+               (-> results
+                   :data
+                   (select-keys [:requested_timezone :results_timezone])))))
+        "expected (desired) and actual timezone should be returned as part of query results")))
