@@ -1,6 +1,5 @@
 :root {
   --title-color: var(--color-text-medium);
-  --icon-width: calc(48px + 1rem);
 }
 
 :local(.headerBody) {
@@ -39,7 +38,6 @@
 
 :local(.headerSchema) {
   composes: text-light absolute from "style";
-  left: var(--icon-width);
   top: -10px;
   font-size: 12px;
 }

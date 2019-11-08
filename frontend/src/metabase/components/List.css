@@ -1,8 +1,7 @@
 :root {
-  --title-color: var(--color-text-medium);
+  --title-color: var(--color-text-dark);
   --subtitle-color: var(--color-text-medium);
   --muted-color: var(--color-text-light);
-  --blue-color: var(--color-brand);
 }
 
 :local(.list) {
@@ -26,7 +25,7 @@
 }
 
 :local(.headerBody) {
-  composes: flex flex-full pb2 border-bottom from "style";
+  composes: flex flex-full border-bottom from "style";
   align-items: center;
   height: 100%;
   border-color: var(--color-border);
@@ -53,37 +52,30 @@
 }
 
 :local(.itemBody) {
-  composes: border-top mb3 from "style";
   composes: flex-full from "style";
   max-width: 100%;
-  border-color: var(--color-border);
 }
 
 :local(.itemTitle) {
-  composes: text-bold inline-block from "style";
+  composes: text-bold from "style";
   max-width: 100%;
   overflow: hidden;
-  color: var(--title-color);
 }
 
 :local(.itemName) {
-  composes: mr1 from "style";
-  composes: inline-block from "style";
+  composes: text-brand-hover mr1 from "style";
   max-width: 100%;
   overflow: hidden;
-}
-
-:local(.itemName):hover {
-  color: var(--blue-color);
 }
 
 :local(.itemSubtitle) {
   color: var(--subtitle-color);
+  max-width: 600px;
   font-size: 14px;
 }
 
 :local(.itemSubtitleLight) {
-  color: var(--subtitle-color);
+  composes: text-light from "style";
   font-size: 14px;
 }
 

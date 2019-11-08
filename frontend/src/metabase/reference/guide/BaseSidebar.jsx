@@ -36,7 +36,7 @@ const BaseSidebar = ({ style, className }) => (
         key="/reference/databases"
         href="/reference/databases"
         icon="database"
-        name={t`Databases and tables`}
+        name={t`Our data`}
       />
     </ol>
   </div>

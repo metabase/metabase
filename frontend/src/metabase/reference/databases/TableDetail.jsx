@@ -186,7 +186,7 @@ export default class TableDetail extends Component {
         >
           {() => (
             <div className="wrapper">
-              <Card px={3} pt={3} mb={4}>
+              <Card flat className="px3 pt3 mb4 mb1">
                 <List>
                   <li className="relative">
                     <Detail
