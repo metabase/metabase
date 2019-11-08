@@ -27,7 +27,7 @@ export default function SortStep({
           }}
         >
           <Icon
-            name={sort[0] === "asc" ? "up_arrow" : "down_arrow"}
+            name={sort[0] === "asc" ? "arrow_up" : "arrow_down"}
             className="text-white mr1"
           />
           <SortName sort={sort} query={query} />

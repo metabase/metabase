@@ -608,7 +608,11 @@
   ([output-name]
    {:type :count, :name output-name})
   ([field output-name]
-   (ag:filtered (filter:not (filter:nil? field)) (ag:count output-name))))
+   (if (isa? (:base-type field) :type/DruidHyperUnique)
+     {:type      :hyperUnique
+      :name      output-name
+      :fieldName (->rvalue field)}
+     (ag:filtered (filter:not (filter:nil? field)) (ag:count output-name)))))
 
 (defn- ag:countWhere
   [pred output-name]

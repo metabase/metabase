@@ -48,7 +48,6 @@
   tx/dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-
 (defn- add-extra-metadata!
   "Add extra metadata like Field base-type, etc."
   [{:keys [table-definitions], :as database-definition} db]
@@ -71,20 +70,20 @@
             (log/debug (format "SET SPECIAL TYPE %s.%s -> %s" table-name field-name special-type))
             (db/update! Field (:id @field) :special_type (u/qualified-name special-type))))))))
 
-(def ^:private create-database-timeout
+(def ^:private create-database-timeout-ms
   "Max amount of time to wait for driver text extensions to create a DB and load test data."
-  (* 4 60 1000)) ; 4 minutes
+  (du/minutes->ms 4)) ; 4 minutes
 
-(def ^:private sync-timeout
+(def ^:private sync-timeout-ms
   "Max amount of time to wait for sync to complete."
-  (* 5 60 1000)) ; five minutes
+  (du/minutes->ms 5)) ; five minutes
 
 (defn- create-database! [driver {:keys [database-name], :as database-definition}]
   {:pre [(seq database-name)]}
   (try
     ;; Create the database and load its data
     ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests
-    (u/with-timeout create-database-timeout
+    (u/with-timeout create-database-timeout-ms
       (tu.tz/with-jvm-tz "UTC"
         (tx/create-db! driver database-definition)))
     ;; Add DB object to Metabase DB
@@ -93,7 +92,7 @@
                :engine  (name driver)
                :details (tx/dbdef->connection-details driver :db database-definition))]
       ;; sync newly added DB
-      (u/with-timeout sync-timeout
+      (u/with-timeout sync-timeout-ms
         (du/profile (format "Sync %s Database %s" driver database-name)
           (sync/sync-database! db)
           ;; add extra metadata for fields
@@ -109,7 +108,6 @@
       (when config/is-test?
         (System/exit -1)))))
 
-
 (defmethod get-or-create-database! :default [driver dbdef]
   (initialize/initialize-if-needed! :plugins :db)
   (let [dbdef (tx/get-dataset-definition dbdef)]
@@ -118,7 +116,14 @@
      (locking (driver->create-database-lock driver)
        (or
         (tx/metabase-instance dbdef driver)
-        (create-database! driver dbdef))))))
+        ;; make sure report timezone isn't bound, possibly causing weird things to happen when data is loaded -- this
+        ;; code may run inside of some other block that sets report timezone
+        ;;
+        ;; require/resolve used here to avoid circular refs
+        (require 'metabase.test.util)
+        ((resolve 'metabase.test.util/do-with-temporary-setting-value)
+         :report-timezone nil
+         #(create-database! driver dbdef)))))))
 
 (defn- get-or-create-test-data-db!
   "Get or create the Test Data database for `driver`, which defaults to `driver/*driver*`, or `:h2` if that is unbound."
@@ -127,8 +132,8 @@
 
 (def ^:dynamic *get-db*
   "Implementation of `db` function that should return the current working test database when called, always with no
-  arguments. By default, this is `get-or-create-test-data-db!` for the current driver/`*driver*`, which does exactly what it
-  suggests."
+  arguments. By default, this is `get-or-create-test-data-db!` for the current driver/`*driver*`, which does exactly
+  what it suggests."
   get-or-create-test-data-db!)
 
 (defn do-with-db
@@ -248,12 +253,16 @@
   "Impl for `data/dataset` macro."
   {:style/indent 1}
   [dataset-definition f]
-  (let [dbdef (tx/get-dataset-definition dataset-definition)]
-    (binding [db/*disable-db-logging* true]
-      (let [db (get-or-create-database! (tx/driver) dbdef)]
-        (assert db)
-        (assert (db/exists? Database :id (u/get-id db)))
-        (do-with-db db f)))))
+  (let [dbdef             (tx/get-dataset-definition dataset-definition)
+        get-db-for-driver (memoize
+                           (fn [driver]
+                             (binding [db/*disable-db-logging* true]
+                               (let [db (get-or-create-database! driver dbdef)]
+                                 (assert db)
+                                 (assert (db/exists? Database :id (u/get-id db)))
+                                 db))))]
+    (binding [*get-db* #(get-db-for-driver (tx/driver))]
+      (f))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

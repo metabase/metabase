@@ -110,7 +110,7 @@
 
 (s/defn sync-fields! :- (s/maybe {:updated-fields su/IntGreaterThanOrEqualToZero
                                   :total-fields   su/IntGreaterThanOrEqualToZero})
-  "Sync the Fields in the Metabase application database for all the Tables in a DATABASE."
+  "Sync the Fields in the Metabase application database for all the Tables in a `database`."
   [database :- i/DatabaseInstance]
   (let [tables (sync-util/db->sync-tables database)]
     (apply merge-with + (for [table tables]

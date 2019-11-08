@@ -2,14 +2,14 @@ import {
   useSharedAdminLogin,
   createTestStore,
   eventually,
-} from "__support__/e2e_tests";
+} from "__support__/e2e";
 
 import {
   clickButton,
   setInputValue,
   click,
   dispatchBrowserEvent,
-} from "__support__/enzyme_utils";
+} from "__support__/enzyme";
 
 import { metadata as staticFixtureMetadata } from "__support__/sample_dataset_fixture";
 

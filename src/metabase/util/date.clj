@@ -23,9 +23,9 @@
   *report-timezone*)
 
 (def ^{:dynamic true
-       :doc     "The timezone of the data being queried. Today this is the same as the database timezone."
+       :doc     "The timezone of the database currently being queried."
        :tag     TimeZone}
-  *data-timezone*)
+  *database-timezone*)
 
 (defprotocol ^:private ITimeZoneCoercible
   "Coerce object to `java.util.TimeZone`"
@@ -49,12 +49,12 @@
   (delay (coerce-to-timezone (System/getProperty "user.timezone"))))
 
 (defn- warn-on-timezone-conflict
-  "Attempts to check the combination of report-timezone, jvm-timezone and data-timezone to determine of we have a
+  "Attempts to check the combination of report-timezone, jvm-timezone and database-timezone to determine of we have a
   possible conflict. If one is found, warn the user."
-  [driver db ^TimeZone report-timezone ^TimeZone jvm-timezone ^TimeZone data-timezone]
-  ;; No need to check this if we don't have a data-timezone
-  (when (and data-timezone driver)
-    (let [jvm-data-tz-conflict? (not (.hasSameRules jvm-timezone data-timezone))]
+  [driver db ^TimeZone report-timezone ^TimeZone jvm-timezone ^TimeZone database-timezone]
+  ;; No need to check this if we don't have a database-timezone
+  (when (and database-timezone driver)
+    (let [jvm-data-tz-conflict? (not (.hasSameRules jvm-timezone database-timezone))]
       (if ((resolve 'metabase.driver/supports?) driver :set-timezone)
         ;; This database could have a report-timezone configured, if it doesn't and the JVM and data timezones don't
         ;; match, we should suggest that the user configure a report timezone
@@ -63,7 +63,7 @@
           (log/warn (str (deferred-trs "Possible timezone conflict found on database {0}." (:name db))
                          " "
                          (deferred-trs "JVM timezone is {0} and detected database timezone is {1}."
-                                   (.getID jvm-timezone) (.getID data-timezone))
+                                   (.getID jvm-timezone) (.getID database-timezone))
                          " "
                          (deferred-trs "Configure a report timezone to ensure proper date and time conversions."))))
         ;; This database doesn't support a report timezone, check the JVM and data timezones, if they don't match,
@@ -72,10 +72,10 @@
           (log/warn (str (deferred-trs "Possible timezone conflict found on database {0}." (:name db))
                          " "
                          (deferred-trs "JVM timezone is {0} and detected database timezone is {1}."
-                                   (.getID jvm-timezone) (.getID data-timezone)))))))))
+                                   (.getID jvm-timezone) (.getID database-timezone)))))))))
 
 (defn call-with-effective-timezone
-  "Invokes `f` with `*report-timezone*` and `*data-timezone*` bound for the given `db`"
+  "Invokes `f` with `*report-timezone*` and `*database-timezone*` bound for the given `db`"
   [db f]
   (let [driver    ((resolve 'metabase.driver.util/database->driver) db)
         report-tz (when-let [report-tz-id (and driver ((resolve 'metabase.driver.util/report-timezone-if-supported) driver))]
@@ -84,11 +84,11 @@
         jvm-tz    @jvm-timezone]
     (warn-on-timezone-conflict driver db report-tz jvm-tz data-tz)
     (binding [*report-timezone* (or report-tz jvm-tz)
-              *data-timezone*   data-tz]
+              *database-timezone*   data-tz]
       (f))))
 
 (defmacro with-effective-timezone
-  "Runs `body` with `*report-timezone*` and `*data-timezone*` configured using the given `db`"
+  "Runs `body` with `*report-timezone*` and `*database-timezone*` configured using the given `db`"
   [db & body]
   `(call-with-effective-timezone ~db (fn [] ~@body)))
 
@@ -478,3 +478,18 @@
   [begin-time :- (s/protocol coerce/ICoerce)
    end-time :- (s/protocol coerce/ICoerce)]
   (- (coerce/to-long end-time) (coerce/to-long begin-time)))
+
+(defn seconds->ms
+  "Convert `seconds` to milliseconds. More readable than doing this math inline."
+  [seconds]
+  (* seconds 1000))
+
+(defn minutes->seconds
+  "Convert `minutes` to seconds. More readable than doing this math inline."
+  [minutes]
+  (* 60 minutes))
+
+(defn minutes->ms
+  "Convert `minutes` to milliseconds. More readable than doing this math inline."
+  [minutes]
+  (-> minutes minutes->seconds seconds->ms))

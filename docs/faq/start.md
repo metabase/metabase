@@ -9,6 +9,7 @@ Here is a list of some frequently asked questions about Metabase.
 - [Can I request a new feature?](general/can-i-request-a-new-feature.md)
 - [Does Metabase do X?](general/does-metabase-do-x.md)
 - [Does Metabase have access to my data?](general/does-metabase-have-access-to-my-companys-data.md)
+- [Is Metabase accessible or 508 compliant?](general/is-metabase-508-compliant.md)
 - [Do we need a Data Processing Agreement with Metabase to comply with GDPR?](general/do-we-need-a-data-processing-agreement.md)
 
 ## Set-up and Admin Questions
