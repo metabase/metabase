@@ -115,6 +115,8 @@
 ;;; |                                                 Setting Params                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; TODO - would a more general method to convert a parameter to the desired class (and maybe JDBC type) be more
+;; useful? Then we can actually do things like log what transformations are taking place
 (defmulti set-parameter
   "Set the `PreparedStatement` parameter at index `i` to `object`. Dispatches on driver and class of `object`. By
   default, this calls `.setObject`, but drivers can override this method to convert the object to a different class or

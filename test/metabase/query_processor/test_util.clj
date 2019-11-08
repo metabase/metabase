@@ -78,7 +78,6 @@
   (when-let [field-ids (seq (mbql.u/match query [:field-id id] id))]
     (qp.store/fetch-and-store-fields! field-ids)))
 
-
 (defn store-contents
   "Fetch the names of all the objects currently in the QP Store."
   []

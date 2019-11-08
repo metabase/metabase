@@ -66,10 +66,10 @@
   (normal-drivers-without-feature feature))
 
 (defmacro ^:deprecated expect-with-non-timeseries-dbs
-  "DEPRECATED — Use `deftest` + `test-drivers` + `non-timeseries-drivers` instead.
+  "DEPRECATED — Use `deftest` + `test-drivers` + `normal-drivers` instead.
 
     (deftest my-test
-      (datasets/test-drivers @qp.test/non-timeseries-drivers
+      (datasets/test-drivers (qp.test/normal-drivers)
         (is (= ...))))"
   {:style/indent 0}
   [expected actual]

@@ -66,25 +66,27 @@
   [_ {:keys [user password db host port instance domain ssl]
       :or   {user "dbuser", password "dbpassword", db "", host "localhost"}
       :as   details}]
-  (-> {:applicationName config/mb-app-id-string
-       :subprotocol     "sqlserver"
+  (-> {:applicationName    config/mb-app-id-string
+       :subprotocol        "sqlserver"
        ;; it looks like the only thing that actually needs to be passed as the `subname` is the host; everything else
        ;; can be passed as part of the Properties
-       :subname         (str "//" host)
+       :subname            (str "//" host)
        ;; everything else gets passed as `java.util.Properties` to the JDBC connection.  (passing these as Properties
        ;; instead of part of the `:subname` is preferable because they support things like passwords with special
        ;; characters)
-       :database        db
-       :password        password
+       :database           db
+       :password           password
        ;; Wait up to 10 seconds for connection success. If we get no response by then, consider the connection failed
-       :loginTimeout    10
+       :loginTimeout       10
        ;; apparently specifying `domain` with the official SQLServer driver is done like `user:domain\user` as opposed
        ;; to specifying them seperately as with jTDS see also:
        ;; https://social.technet.microsoft.com/Forums/sqlserver/en-US/bc1373f5-cb40-479d-9770-da1221a0bc95/connecting-to-sql-server-in-a-different-domain-using-jdbc-driver?forum=sqldataaccess
-       :user            (str (when domain (str domain "\\"))
-                             user)
-       :instanceName    instance
-       :encrypt         (boolean ssl)}
+       :user               (str (when domain (str domain "\\"))
+                                user)
+       :instanceName       instance
+       :encrypt            (boolean ssl)
+       ;; only crazy people would want this. Seehttps://docs.microsoft.com/en-us/sql/connect/jdbc/configuring-how-java-sql-time-values-are-sent-to-the-server?view=sql-server-ver15
+       :sendTimeAsDatetime false}
       ;; only include `port` if it is specified; leave out for dynamic port: see
       ;; https://github.com/metabase/metabase/issues/7597
       (merge (when port {:port port}))
@@ -290,6 +292,17 @@
   (format "DateTime2FromParts(%d, %d, %d, %d, %d, %d, %d, 7)"
           (.getYear t) (.getMonthValue t) (.getDayOfMonth t)
           (.getHour t) (.getMinute t) (.getSecond t) (long (/ (.getNano t) 100))))
+
+;; SQL Server doesn't support TIME WITH TIME ZONE so convert OffsetTimes to LocalTimes in UTC. Otherwise SQL Server
+;; will try to convert it to a `DATETIMEOFFSET` which of course is not comparable to `TIME` columns
+;;
+;; TIMEZONE FIXME — does it make sense to convert this to UTC? Shouldn't we convert it to the report timezone? Figure
+;; this mystery out
+(defmethod sql-jdbc.execute/set-parameter [:sqlserver OffsetTime]
+  [driver prepared-statement index t]
+  (println "t:" t "->" (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))) ; NOCOMMIT
+  (sql-jdbc.execute/set-parameter driver prepared-statement index
+                                  (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
 
 ;; instead of default `microsoft.sql.DateTimeOffset`
 (defmethod sql-jdbc.execute/read-column [:sqlserver microsoft.sql.Types/DATETIMEOFFSET]

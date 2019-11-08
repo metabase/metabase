@@ -627,6 +627,7 @@
   "Same as `db-test-env-var` but will throw an exception if the variable is `nil`."
   ([driver env-var]
    (db-test-env-var-or-throw driver env-var nil))
+
   ([driver env-var default]
    (or (db-test-env-var driver env-var default)
        (throw (Exception. (format "In order to test %s, you must specify the env var MB_%s_TEST_%s."

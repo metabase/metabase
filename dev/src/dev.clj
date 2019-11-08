@@ -7,12 +7,14 @@
              [driver :as driver]
              [handler :as handler]
              [plugins :as pluguns]
-             [server :as server]]
+             [server :as server]
+             [util :as u]]
             [metabase.api.common :as api-common]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]]
-            [metabase.test.data :as data]))
+            [metabase.test.data :as data]
+            [metabase.test.data.impl :as data.impl]))
 
 (defn init!
   []
@@ -39,17 +41,23 @@
   and want to make sure you didn't miss a reference or when you redefine a multimethod.
 
     (ns-unmap-all *ns*)"
-  [a-namespace]
-  (doseq [[symb] (ns-interns a-namespace)]
-    (ns-unmap a-namespace symb)))
+  ([]
+   (ns-unmap-all *ns*))
+
+  ([a-namespace]
+   (doseq [[symb] (ns-interns a-namespace)]
+     (ns-unmap a-namespace symb))))
 
 (defn ns-unalias-all
   "Remove all aliases for other namespaces from the current namespace.
 
     (ns-unalias-all *ns*)"
-  [a-namespace]
-  (doseq [[symb] (ns-aliases a-namespace)]
-    (ns-unalias a-namespace symb)))
+  ([]
+   (ns-unalias-all *ns*))
+
+  ([a-namespace]
+   (doseq [[symb] (ns-aliases a-namespace)]
+     (ns-unalias a-namespace symb))))
 
 (defmacro require-model
   "Rather than requiring all models inn the ns declaration, make it easy to require the ones you need for your current
@@ -70,12 +78,31 @@
   `sql-args` can be either a SQL string or a tuple with a SQL string followed by any prepared statement args. By
   default this method uses the same methods to set prepared statement args and read columns from results as used by
   the `:sql-jdbc` Query Processor, but you pass the optional third arg `options`, as `nil` to use the driver's default
-  behavior."
-  ([driver sql-args]
-   (query-jdbc-db driver sql-args {:read-columns   (partial sql-jdbc.execute/read-columns driver)
-                                   :set-parameters (partial sql-jdbc.execute/set-parameters driver)}))
+  behavior.
 
-  ([driver sql-args options]
-   (driver/with-driver driver
-     (let [spec (sql-jdbc.conn/db->pooled-connection-spec (data/db))]
-       (jdbc/query spec sql-args options)))))
+  You can query against a dataset other than the default test data DB by passing in a `[driver dataset]` tuple as the
+  first arg:
+
+    (dev/query-jdbc-db
+     [:sqlserver 'test-data-with-time]
+     [\"SELECT * FROM dbo.users WHERE dbo.users.last_login_time > ?\" (java-time/offset-time \"16:00Z\")])"
+  {:arglists     '([driver sql-args]         [[driver dataset] sql-args]
+                   [driver sql-args options] [[driver dataset] sql-args options])}
+  ([driver-or-driver+dataset sql-args]
+   (let [[driver dataset] (u/one-or-many driver-or-driver+dataset)]
+     (query-jdbc-db
+      driver-or-driver+dataset
+      sql-args
+      {:read-columns   (partial sql-jdbc.execute/read-columns driver)
+       :set-parameters (partial sql-jdbc.execute/set-parameters driver)})))
+
+
+  ([driver-or-driver+dataset sql-args options]
+   (let [[driver dataset] (u/one-or-many driver-or-driver+dataset)]
+     (driver/with-driver driver
+       (letfn [(thunk []
+                 (let [spec (sql-jdbc.conn/db->pooled-connection-spec (data/db))]
+                   (jdbc/query spec sql-args options)))]
+         (if dataset
+           (data.impl/do-with-dataset (data.impl/resolve-dataset-definition *ns* dataset) thunk)
+           dataset))))))
