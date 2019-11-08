@@ -29,7 +29,7 @@ const EditableReferenceHeader = ({
 }) => (
   <div className="wrapper">
     <div className={cx("relative", L.header)}>
-      <div className="flex align-center mr2">
+      <div className="flex align-center mr1">
         {headerIcon && (
           <Icon className="text-light" name={headerIcon} size={21} />
         )}

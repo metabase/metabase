@@ -89,7 +89,7 @@
 :local(.leftIcons) {
   composes: flex-no-shrink flex align-self-start mr2 from "style";
   composes: icons;
-  padding-top: 2px;
+  padding-top: 4px;
 }
 :local(.rightIcons) {
   composes: icons;

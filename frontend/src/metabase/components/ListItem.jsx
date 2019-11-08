@@ -26,11 +26,11 @@ const ListItem = ({ index, name, description, placeholder, url, icon }) => (
               tooltip={name}
               tooltipMaxWidth="100%"
             >
-              {name}
+              <h3>{name}</h3>
             </Ellipsified>
           </div>
           {(description || placeholder) && (
-            <div className={cx(S.itemSubtitle, "mt1")}>
+            <div className={cx(S.itemSubtitle)}>
               {description || placeholder}
             </div>
           )}

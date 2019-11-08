@@ -14,7 +14,6 @@ import EditableReferenceHeader from "metabase/reference/components/EditableRefer
 import Detail from "metabase/reference/components/Detail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import Formula from "metabase/reference/components/Formula";
-import Card from "metabase/components/Card";
 import Link from "metabase/components/Link";
 
 import { getQuestionUrl } from "../utils";
@@ -207,7 +206,7 @@ export default class SegmentDetail extends Component {
         >
           {() => (
             <div className="wrapper">
-              <Card px={3} pt={3} mb={4}>
+              <div className="pl4 pr3 pt4 mb4 mb1 bg-white rounded bordered">
                 <List>
                   {/*table && (
                     <li>
@@ -286,7 +285,7 @@ export default class SegmentDetail extends Component {
                     </li>
                   )}
                 </List>
-              </Card>
+              </div>
             </div>
           )}
         </LoadingAndErrorWrapper>

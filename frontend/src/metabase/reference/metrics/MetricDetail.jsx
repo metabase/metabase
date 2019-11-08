@@ -14,7 +14,6 @@ import Detail from "metabase/reference/components/Detail";
 import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy";
 import Formula from "metabase/reference/components/Formula";
 import MetricImportantFieldsDetail from "metabase/reference/components/MetricImportantFieldsDetail";
-import Card from "metabase/components/Card";
 
 import { getQuestionUrl } from "../utils";
 
@@ -201,7 +200,7 @@ export default class MetricDetail extends Component {
         >
           {() => (
             <div className="wrapper">
-              <Card px={3} pt={3} mb={4}>
+              <div className="pl4 pr3 pt4 mb4 mb1 bg-white rounded bordered">
                 <List>
                   <li className="relative">
                     <Detail
@@ -303,7 +302,7 @@ export default class MetricDetail extends Component {
                     </li>
                   )}
                 </List>
-              </Card>
+              </div>
             </div>
           )}
         </LoadingAndErrorWrapper>

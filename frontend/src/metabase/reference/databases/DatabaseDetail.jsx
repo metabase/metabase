@@ -11,7 +11,6 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import EditHeader from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import Detail from "metabase/reference/components/Detail";
-import Card from "metabase/components/Card";
 
 import {
   getDatabase,
@@ -153,7 +152,7 @@ export default class DatabaseDetail extends Component {
         >
           {() => (
             <div className="wrapper">
-              <Card px={3} pt={3} mb={4}>
+              <div className="pl4 pr3 pt4 mb4 mb1 bg-white rounded bordered">
                 <List>
                   <li className="relative">
                     <Detail
@@ -186,7 +185,7 @@ export default class DatabaseDetail extends Component {
                     />
                   </li>
                 </List>
-              </Card>
+              </div>
             </div>
           )}
         </LoadingAndErrorWrapper>

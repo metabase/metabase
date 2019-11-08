@@ -14,7 +14,6 @@ import EditHeader from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
 import Detail from "metabase/reference/components/Detail";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
-import Card from "metabase/components/Card";
 
 import { getQuestionUrl } from "../utils";
 
@@ -186,7 +185,7 @@ export default class TableDetail extends Component {
         >
           {() => (
             <div className="wrapper">
-              <Card flat className="px3 pt3 mb4 mb1">
+              <div className="pl4 pr3 pt4 mb4 mb1 bg-white rounded bordered">
                 <List>
                   <li className="relative">
                     <Detail
@@ -236,7 +235,7 @@ export default class TableDetail extends Component {
                     </li>
                   )}
                 </List>
-              </Card>
+              </div>
             </div>
           )}
         </LoadingAndErrorWrapper>
