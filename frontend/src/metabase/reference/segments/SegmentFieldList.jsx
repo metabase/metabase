@@ -12,6 +12,7 @@ import Field from "metabase/reference/components/Field";
 import List from "metabase/components/List";
 import EmptyState from "metabase/components/EmptyState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import Card from "metabase/components/Card";
 
 import EditHeader from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
@@ -146,39 +147,43 @@ export default class SegmentFieldList extends Component {
         >
           {() =>
             Object.keys(entities).length > 0 ? (
-              <div className="wrapper wrapper--trim">
-                <div className={S.item}>
-                  <div className={R.columnHeader}>
-                    <div className={cx(S.itemTitle, F.fieldNameTitle)}>
-                      {t`Field name`}
-                    </div>
-                    <div className={cx(S.itemTitle, F.fieldType)}>
-                      {t`Field type`}
-                    </div>
-                    <div className={cx(S.itemTitle, F.fieldDataType)}>
-                      {t`Data type`}
+              <div className="wrapper">
+                <Card pl={4} py={2} mb={4}>
+                  <div className={S.item}>
+                    <div className={R.columnHeader}>
+                      <div className={cx(S.itemTitle, F.fieldNameTitle)}>
+                        {t`Field name`}
+                      </div>
+                      <div className={cx(S.itemTitle, F.fieldType)}>
+                        {t`Field type`}
+                      </div>
+                      <div className={cx(S.itemTitle, F.fieldDataType)}>
+                        {t`Data type`}
+                      </div>
                     </div>
                   </div>
-                </div>
-                <List>
-                  {Object.values(entities).map(
-                    entity =>
-                      entity &&
-                      entity.id &&
-                      entity.name && (
-                        <li className="relative" key={entity.id}>
-                          <Field
-                            field={entity}
-                            foreignKeys={foreignKeys}
-                            url={`/reference/segments/${segment.id}/fields/${entity.id}`}
-                            icon={getIconForField(entity)}
-                            isEditing={isEditing}
-                            formField={fields[entity.id]}
-                          />
-                        </li>
-                      ),
-                  )}
-                </List>
+                  <List>
+                    {Object.values(entities).map(
+                      entity =>
+                        entity &&
+                        entity.id &&
+                        entity.name && (
+                          <li className="relative" key={entity.id}>
+                            <Field
+                              field={entity}
+                              foreignKeys={foreignKeys}
+                              url={`/reference/segments/${segment.id}/fields/${
+                                entity.id
+                              }`}
+                              icon={getIconForField(entity)}
+                              isEditing={isEditing}
+                              formField={fields[entity.id]}
+                            />
+                          </li>
+                        ),
+                    )}
+                  </List>
+                </Card>
               </div>
             ) : (
               <div className={S.empty}>

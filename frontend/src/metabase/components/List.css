@@ -129,7 +129,6 @@
 }
 :local(.icon):hover {
   color: var(--blue-color);
-  transition: color 0.3s linear;
 }
 
 /* ITEM CHECKBOX */

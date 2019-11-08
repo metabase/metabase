@@ -216,7 +216,7 @@ export default class MetricDetail extends Component {
                   <li className="relative">
                     <Detail
                       id="points_of_interest"
-                      name={t`Why this Metric is interesting`}
+                      name={t`Why this metric is interesting`}
                       description={entity.points_of_interest}
                       placeholder={t`Nothing interesting yet`}
                       isEditing={isEditing}
@@ -226,7 +226,7 @@ export default class MetricDetail extends Component {
                   <li className="relative">
                     <Detail
                       id="caveats"
-                      name={t`Things to be aware of about this Metric`}
+                      name={t`Things to be aware of about this metric`}
                       description={entity.caveats}
                       placeholder={t`Nothing to be aware of yet`}
                       isEditing={isEditing}
@@ -236,7 +236,7 @@ export default class MetricDetail extends Component {
                   <li className="relative">
                     <Detail
                       id="how_is_this_calculated"
-                      name={t`How this Metric is calculated`}
+                      name={t`How this metric is calculated`}
                       description={entity.how_is_this_calculated}
                       placeholder={t`Nothing on how it's calculated yet`}
                       isEditing={isEditing}
@@ -275,7 +275,7 @@ export default class MetricDetail extends Component {
                     />
                   </li>
                   {!isEditing && (
-                    <li className="relative">
+                    <li className="relative mt4">
                       <FieldsToGroupBy
                         fields={table.fields
                           .filter(

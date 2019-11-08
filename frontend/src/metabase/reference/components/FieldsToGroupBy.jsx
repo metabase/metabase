@@ -47,7 +47,7 @@ export default class FieldsToGroupBy extends Component {
     } = this.props;
 
     return (
-      <div className={cx(D.detail)}>
+      <div className={D.detail}>
         <div className={D.detailBody}>
           <div className={D.detailTitle}>
             <span className={D.detailName}>{title}</span>
@@ -57,7 +57,7 @@ export default class FieldsToGroupBy extends Component {
               Object.values(fields).map((field, index, fields) => (
                 <FieldToGroupBy
                   key={field.id}
-                  className={cx("border-bottom", "pt1", "pb1")}
+                  className="px1 mb1 rounded bg-light-hover"
                   iconClass={L.icon}
                   field={field}
                   metric={metric}
@@ -75,7 +75,9 @@ export default class FieldsToGroupBy extends Component {
                   secondaryOnClick={event => {
                     event.stopPropagation();
                     onChangeLocation(
-                      `/reference/databases/${databaseId}/tables/${field.table_id}/fields/${field.id}`,
+                      `/reference/databases/${databaseId}/tables/${
+                        field.table_id
+                      }/fields/${field.id}`,
                     );
                   }}
                 />

@@ -2,6 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import pure from "recompose/pure";
 import { t } from "ttag";
+import cx from "classnames";
 import S from "./FieldToGroupBy.css";
 import Q from "metabase/components/QueryButton.css";
 
@@ -20,11 +21,12 @@ const FieldToGroupBy = ({
     <a className={Q.queryButton} onClick={onClick}>
       <span className={S.fieldToGroupByText}>
         <span>{`${metric.name} ` + t`by` + ` `}</span>
-        <span className="ml1 text-brand">{field.display_name}</span>
+        <span className="text-brand">{field.display_name}</span>
       </span>
       <Icon
-        className={iconClass}
-        size={20}
+        className={cx(iconClass, "ml4 pl4")}
+        tooltip={t`Look up this field`}
+        size={16}
         name="reference"
         onClick={secondaryOnClick}
       />
