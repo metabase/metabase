@@ -157,7 +157,7 @@
 
 (deftest group-by-default-test
   (datasets/test-drivers (qp.test/normal-drivers)
-    (testing "Testing Pacific timezone"
+    (testing "Pacific timezone"
       (is (= (cond
                ;; Timezone is omitted by these databases
                (= :sqlite driver/*driver*)
@@ -188,7 +188,7 @@
                (sad-toucan-result (default-timezone-parse-fn :eastern) (results-timezone-format-fn :eastern))
 
                ;; The time instant is the same as UTC (or pacific) but should be offset by the eastern timezone
-               (and (qp.test/tz-shifted-driver-bug? driver/*driver*) (not= driver/*driver* :oracle))
+               (qp.test/supports-report-timezone? driver/*driver*)
                (sad-toucan-result (default-timezone-parse-fn :utc) (results-timezone-format-fn :eastern))
 
                ;; The change in report timezone has no affect on this group
@@ -207,10 +207,10 @@
                (= :sqlite driver/*driver*)
                (sad-toucan-result (default-timezone-parse-fn :utc) default-format-fn)
 
-               (qp.test/tz-shifted-driver-bug? driver/*driver*)
+               (and (qp.test/tz-shifted-driver-bug? driver/*driver*) (not= driver/*driver* :oracle))
                (sad-toucan-result (default-timezone-parse-fn :eastern) (results-timezone-format-fn :eastern))
 
-               ;; The JVM timezone should have no impact on a database that uses a report timezone
+               ;; The JVM timezone should have no impact on results from a database that uses a report timezone
                (qp.test/supports-report-timezone? driver/*driver*)
                (sad-toucan-result (default-timezone-parse-fn :utc) (results-timezone-format-fn :eastern))
 
