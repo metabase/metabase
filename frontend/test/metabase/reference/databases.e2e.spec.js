@@ -28,7 +28,6 @@ import ReferenceHeader from "metabase/reference/components/ReferenceHeader";
 import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import Detail from "metabase/reference/components/Detail";
-import EditButton from "metabase/reference/components/EditButton";
 import EditHeader from "metabase/reference/components/EditHeader";
 import QueryButton from "metabase/components/QueryButton";
 import { INITIALIZE_QB, QUERY_COMPLETED } from "metabase/query_builder/actions";
@@ -113,8 +112,7 @@ describe("The Reference Section", () => {
       await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING]);
 
       // switch to edit view
-      const editButton = app.find(EditButton);
-      expect(editButton.text()).toBe("Edit");
+      const editButton = app.find("Edit");
       click(editButton);
 
       // update "caveats" and save
