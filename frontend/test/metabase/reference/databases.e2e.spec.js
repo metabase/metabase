@@ -112,8 +112,12 @@ describe("The Reference Section", () => {
       await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING]);
 
       // switch to edit view
-      const editButton = app.find("Edit");
-      click(editButton);
+      clickButton(
+        app
+          .find(EditHeader)
+          .find("button")
+          .at(1),
+      );
 
       // update "caveats" and save
       const textarea = app
