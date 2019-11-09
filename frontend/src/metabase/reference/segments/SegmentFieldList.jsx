@@ -171,9 +171,7 @@ export default class SegmentFieldList extends Component {
                             <Field
                               field={entity}
                               foreignKeys={foreignKeys}
-                              url={`/reference/segments/${segment.id}/fields/${
-                                entity.id
-                              }`}
+                              url={`/reference/segments/${segment.id}/fields/${entity.id}`}
                               icon={getIconForField(entity)}
                               isEditing={isEditing}
                               formField={fields[entity.id]}
