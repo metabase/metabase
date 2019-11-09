@@ -12,7 +12,6 @@ import Field from "metabase/reference/components/Field";
 import List from "metabase/components/List";
 import EmptyState from "metabase/components/EmptyState";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import Card from "metabase/components/Card";
 
 import EditHeader from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";

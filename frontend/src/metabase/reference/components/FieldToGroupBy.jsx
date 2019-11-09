@@ -6,7 +6,6 @@ import cx from "classnames";
 import S from "./FieldToGroupBy.css";
 import Q from "metabase/components/QueryButton.css";
 
-import Ellipsified from "metabase/components/Ellipsified";
 import Icon from "metabase/components/Icon";
 
 const FieldToGroupBy = ({

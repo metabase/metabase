@@ -2,7 +2,6 @@
   --title-color: var(--color-text-dark);
   --subtitle-color: var(--color-text-medium);
   --muted-color: var(--color-text-light);
-  --blue-color: var(--color-text-brand);
 }
 
 :local(.list) {
@@ -29,7 +28,7 @@
   composes: flex flex-full border-bottom from "style";
   align-items: center;
   height: 100%;
-  border-color: var(--color-border);
+  border-color: var(--color-brand);
 }
 
 :local(.headerLink) {
@@ -124,7 +123,7 @@
   visibility: visible;
 }
 :local(.icon):hover {
-  color: var(--blue-color);
+  color: var(--color-brand);
 }
 
 /* ITEM CHECKBOX */
@@ -139,7 +138,7 @@
   display: inline;
 }
 :local(.item.selected) :local(.itemCheckbox) {
-  color: var(--blue-color);
+  color: var(--color-brand);
 }
 
 /* ITEM ICON */
@@ -166,23 +165,6 @@
 :local(.archiveIcon) {
   composes: icon;
   composes: mx1 from "style";
-}
-
-/* TAG */
-:local(.open) :local(.tagIcon) {
-  visibility: visible;
-  color: var(--blue-color);
-}
-
-/* FAVORITE */
-:local(.item.favorite) :local(.favoriteIcon) {
-  visibility: visible;
-  color: var(--blue-color);
-}
-
-/* ARCHIVE */
-:local(.item.archived) :local(.archiveIcon) {
-  color: var(--blue-color);
 }
 
 :local(.trigger) {

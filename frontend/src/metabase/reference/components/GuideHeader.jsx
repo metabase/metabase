@@ -1,5 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
+import pure from "recompose/pure";
 import { t } from "ttag";
 import Button from "metabase/components/Button";
 
@@ -31,4 +32,4 @@ GuideHeader.propTypes = {
   isSuperuser: PropTypes.bool,
 };
 
-export default GuideHeader;
+export default pure(GuideHeader);

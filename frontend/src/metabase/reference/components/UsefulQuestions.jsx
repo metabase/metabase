@@ -1,6 +1,5 @@
 import React from "react";
 import PropTypes from "prop-types";
-import cx from "classnames";
 import pure from "recompose/pure";
 import { t } from "ttag";
 import S from "./UsefulQuestions.css";

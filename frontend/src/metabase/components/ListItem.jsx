@@ -3,7 +3,6 @@ import React from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import S from "./List.css";
-import { t } from "ttag";
 import Icon from "./Icon";
 import Ellipsified from "./Ellipsified";
 

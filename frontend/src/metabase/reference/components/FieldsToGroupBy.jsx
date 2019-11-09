@@ -1,5 +1,4 @@
 import React, { Component } from "react";
-import cx from "classnames";
 import { connect } from "react-redux";
 
 import S from "./UsefulQuestions.css";

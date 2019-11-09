@@ -5,7 +5,6 @@ import { t } from "ttag";
 import { getIn } from "icepick";
 
 import S from "metabase/components/List.css";
-import R from "metabase/reference/Reference.css";
 
 import * as metadataActions from "metabase/redux/metadata";
 import { assignUserColors } from "metabase/lib/formatting";
