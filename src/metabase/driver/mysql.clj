@@ -260,6 +260,11 @@
   [driver ps i t]
   (sql-jdbc.execute/set-parameter driver ps i (t/offset-date-time t)))
 
+(defmethod sql-jdbc.execute/set-parameter [:mysql OffsetTime]
+  [driver ps i t]
+  ;; convert to a LocalTime so MySQL doesn't get F U S S Y
+  (sql-jdbc.execute/set-parameter driver ps i (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
+
 (defmethod unprepare/unprepare-value [:mysql OffsetTime]
   [_ t]
   ;; MySQL doesn't support timezone offsets in literals so pass in a local time literal wrapped in a call to convert

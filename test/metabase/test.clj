@@ -76,6 +76,7 @@
   format-rows-by
   formatted-rows
   normal-drivers
+  normal-drivers-except
   normal-drivers-with-feature
   normal-drivers-without-feature
   rows
@@ -106,6 +107,7 @@
   scheduler-current-tasks
   throw-if-called
   with-log-messages
+  with-log-messages-for-level
   with-log-level
   with-model-cleanup
   with-non-admin-groups-no-root-collection-perms

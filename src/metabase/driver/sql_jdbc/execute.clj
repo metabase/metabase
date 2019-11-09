@@ -128,9 +128,12 @@
 
 (defn- set-object
   ([^PreparedStatement prepared-statement, ^Integer index, object]
+   (log/trace (format "(set-object prepared-statement %d ^%s %s)" index (.getName (class object)) (pr-str object)))
    (.setObject prepared-statement index object))
 
   ([^PreparedStatement prepared-statement, ^Integer index, object, ^Integer target-sql-type]
+   (log/trace (format "(set-object prepared-statement %d ^%s %s java.sql.Types/%s)" index (.getName (class object))
+                      (pr-str object) (.getName (java.sql.JDBCType/valueOf target-sql-type))))
    (.setObject prepared-statement index object target-sql-type)))
 
 (defmethod set-parameter :default
@@ -180,7 +183,7 @@
     (jdbc/query spec sql {:set-parameters (partial set-parameters driver)})"
   [driver prepared-statement params]
   (doseq [[i param] (map-indexed vector params)]
-    (log/debug (tru "set query parameter {0} to {1} {2}" (inc i) (class param) param))
+    (log/trace (format "Query parameter %d is ^%s %s" (inc i) (.getName (class param)) (pr-str param)))
     (set-parameter driver prepared-statement (inc i) param)))
 
 

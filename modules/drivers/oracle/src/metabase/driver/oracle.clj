@@ -301,6 +301,7 @@
         ^C3P0ProxyConnection proxy-conn (.. rs getStatement getConnection)
         conn                            (.unwrap proxy-conn OracleConnection)]
     ;; TIMEZONE FIXME - we need to warn if the Oracle JDBC driver is `ojdbc7.jar`, which probably won't have this method
+    ;; I think we can call `(oracle.jdbc.OracleDriver/getJDBCVersion)` and check whether it returns 4.2+
     (.offsetDateTimeValue t conn)))
 
 (defmethod unprepare/unprepare-value [:oracle OffsetDateTime]

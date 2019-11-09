@@ -47,7 +47,8 @@
         (DateTimeZone/setDefault orig-dtz)
         (System/setProperty "user.timezone" orig-tz-prop)))))
 
-(defmacro with-jvm-tz
-  "Invokes `body` with the JVM timezone set to `dtz`"
+(defmacro ^:deprecated with-jvm-tz
+  "Invokes `body` with the JVM timezone set to `dtz`. DEPRECATED because this uses Joda-Time. We should switch
+  everything to use `java.time`!"
   [^DateTimeZone dtz & body]
   `(call-with-jvm-tz ~dtz (fn [] ~@body)))

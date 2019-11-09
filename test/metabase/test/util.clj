@@ -360,7 +360,7 @@
 
 (def level-kwd->level
   "Conversion from a keyword log level to the Log4J constance mapped to that log level.
-   Not intended for use outside of the `with-log-level` macro."
+   Not intended for use outside of the `with-log-messages-for-level` macro."
   {:error org.apache.log4j.Level/ERROR
    :warn  org.apache.log4j.Level/WARN
    :info  org.apache.log4j.Level/INFO
@@ -369,11 +369,29 @@
 
 (defn ^Logger metabase-logger
   "Gets the root logger for all metabase namespaces. Not intended for use outside of the
-  `with-log-level` macro."
+  `with-log-messages-for-level` macro."
   []
   (Logger/getLogger "metabase"))
 
+(defn do-with-log-messages-for-level [level thunk]
+  (let [original-mb-log-level (.getLevel (metabase-logger))
+        new-level             (get level-kwd->level (keyword level))]
+    (try
+      (.setLevel (metabase-logger) new-level)
+      (thunk)
+      (finally
+        (.setLevel (metabase-logger) original-mb-log-level)))))
+
 (defmacro with-log-level
+  "Sets the log level (e.g. `:debug` or `:trace`) while executing `body`. Not thread safe! But good for debugging from
+  the REPL or for tests.
+
+    (with-log-level :debug
+      (do-something))"
+  [level & body]
+  `(do-with-log-messages-for-level ~level (fn [] ~@body)))
+
+(defmacro with-log-messages-for-level
   "Executes `body` with the metabase logging level set to `level-kwd`. This is needed when the logging level is set at a
   higher threshold than the log messages you're wanting to example. As an example if the metabase logging level is set
   to `ERROR` in the log4j.properties file and you are looking for a `WARN` message, it won't show up in the
@@ -382,12 +400,9 @@
   invoke `with-log-messages`, then set the level back to what it was before the invocation. This allows testing log
   messages even if the threshold is higher than the message you are looking for."
   [level-kwd & body]
-  `(let  [orig-log-level# (.getLevel (metabase-logger))]
-     (try
-       (.setLevel (metabase-logger) (get level-kwd->level ~level-kwd))
-       (with-log-messages ~@body)
-       (finally
-         (.setLevel (metabase-logger) orig-log-level#)))))
+  `(with-log-level ~level-kwd
+     (with-log-messages
+       ~@body)))
 
 (defn- update-in-if-present
   "If the path `KS` is found in `M`, call update-in with the original
