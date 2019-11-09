@@ -1,11 +1,13 @@
 (defproject metabase/oracle-driver "1.0.0"
   :min-lein-version "2.5.0"
 
-  :include-drivers-dependencies [#"^ojdbc\d+\.jar$"]
-
   :profiles
   {:provided
-   {:dependencies [[metabase-core "1.0.0-SNAPSHOT"]]}
+   {:dependencies
+    ;; can't ship it as part of MB!
+    ;; TODO - see whether we can add this to the `:dev` profile as well
+    [[com.oracle.ojdbc/ojdbc8 "19.3.0.0"]
+     [metabase-core "1.0.0-SNAPSHOT"]]}
 
    :uberjar
    {:auto-clean    true
