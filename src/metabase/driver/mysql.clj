@@ -272,6 +272,13 @@
    ;; strip off " UNSIGNED" from end if present
    (keyword (str/replace (name database-type) #"\sUNSIGNED$" ""))))
 
+(defmethod sql-jdbc.sync/column->special-type :mysql
+  [_ database-type _]
+  ;; Used when syncing. If it's :JSON type then it's :type/SerializedJSON special-type
+  (case database-type
+    "JSON" :type/SerializedJSON
+    nil))
+
 (def ^:private default-connection-args
   "Map of args for the MySQL/MariaDB JDBC connection string."
   { ;; 0000-00-00 dates are valid in MySQL; convert these to `null` when they come back because they're illegal in Java
