@@ -250,6 +250,7 @@
     :FLOAT      :type/Float
     :INT        :type/Integer
     :INTEGER    :type/Integer
+    :JSON       :type/Text
     :LONGBLOB   :type/*
     :LONGTEXT   :type/Text
     :MEDIUMBLOB :type/*
