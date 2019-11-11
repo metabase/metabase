@@ -283,22 +283,18 @@
   [_ t]
   ;; MySQL doesn't support timezone offsets in literals so pass in a local time literal wrapped in a call to convert
   ;; it to the appropriate timezone
-  (format "convert_tz('%s', '%s', @@session.time_zone);"
+  (format "convert_tz('%s', '%s', @@session.time_zone)"
           (t/format "HH:mm:ss.SSS" t)
           (format-offset t)))
 
 (defmethod unprepare/unprepare-value [:mysql OffsetDateTime]
   [_ t]
-  (format "convert_tz('%s', '%s', @@session.time_zone);"
+  (format "convert_tz('%s', '%s', @@session.time_zone)"
           (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)
           (format-offset t)))
 
 (defmethod unprepare/unprepare-value [:mysql ZonedDateTime]
   [_ t]
-  (format "convert_tz('%s', '%s', @@session.time_zone);"
+  (format "convert_tz('%s', '%s', @@session.time_zone)"
           (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)
           (str (t/zone-id t))))
-
-(defmethod unprepare/unprepare-value [:mysql Instant]
-  [driver t]
-  (unprepare/unprepare-value driver (t/zoned-date-time t (t/zone-id "UTC"))))

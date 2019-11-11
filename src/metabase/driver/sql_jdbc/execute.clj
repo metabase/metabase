@@ -19,6 +19,9 @@
   (:import [java.sql PreparedStatement ResultSet ResultSetMetaData SQLException Types]
            [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
+;; method impls for JDBC drivers that aren't fully JDBC 4.2 compliant/don't support the new `java.time` methods
+(driver/register! ::use-legacy-classes-for-read-and-set, :abstract? true)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Interface (Multimethods)                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -84,6 +87,22 @@
   [_ _ rs _ i]
   (get-object-of-class rs i OffsetTime))
 
+(defn- utc-calendar ^java.util.Calendar []
+  (java.util.Calendar/getInstance (java.util.TimeZone/getTimeZone "UTC")))
+
+;; legacy impls
+
+(defmethod read-column [:use-legacy-classes-for-read-and-set Types/TIME]
+  [_ _ ^ResultSet rs rsmeta ^Integer i]
+  (t/offset-time (t/local-time (.getTime rs i (utc-calendar))) (t/zone-offset 0)))
+
+(defmethod read-column [::use-legacy-classes-for-read-and-set Types/DATE]
+  [_ _ ^ResultSet rs rsmeta ^Integer i]
+  (t/zoned-date-time (t/local-date (.getDate rs i (utc-calendar))) (t/local-time 0) (t/zone-id "UTC")))
+
+(defmethod read-column [::use-legacy-classes-for-read-and-set Types/TIMESTAMP]
+  [_ _ ^ResultSet rs rsmeta ^Integer i]
+  (t/zoned-date-time (t/local-date-time (.getTimestamp rs i (utc-calendar))) (t/zone-id "UTC")))
 
 (defmulti read-columns
   "Return a function that will be used to read a row from a ResultSet, passed to Clojure JDBC as the `:read-columns`
@@ -173,11 +192,37 @@
   [driver prepared-statement i t]
   (set-parameter driver prepared-statement i (t/offset-date-time t (t/zone-offset 0))))
 
+;; legacy impls
+
+(defmethod set-parameter [::use-legacy-classes-for-read-and-set LocalDate]
+  [driver ps i t]
+  (set-parameter driver ps i (t/sql-date t)))
+
+(defmethod set-parameter [::use-legacy-classes-for-read-and-set LocalDateTime]
+  [driver ps i t]
+  (set-parameter driver ps i (t/sql-timestamp t)))
+
+(defmethod set-parameter [::use-legacy-classes-for-read-and-set LocalTime]
+  [driver ps i t]
+  (set-parameter driver ps i (t/sql-time t)))
+
+(defmethod set-parameter [::use-legacy-classes-for-read-and-set OffsetDateTime]
+  [driver ps i t]
+  (set-parameter driver ps i (t/sql-timestamp t)))
+
+(defmethod set-parameter [::use-legacy-classes-for-read-and-set OffsetTime]
+  [driver ps i t]
+  (set-parameter driver ps i (t/sql-time t)))
+
+(defmethod set-parameter [::use-legacy-classes-for-read-and-set ZonedDateTime]
+  [driver ps i t]
+  (set-parameter driver ps i (t/sql-timestamp t)))
+
 ;; TODO - this might not be needed for all drivers. It is at least needed for H2 and Postgres. Not sure which, if any
 ;; JDBC drivers support `ZonedDateTime`.
 (defmethod set-parameter [::driver/driver ZonedDateTime]
   [driver prepared-statement i t]
-    (set-parameter driver prepared-statement i (t/offset-date-time t)))
+  (set-parameter driver prepared-statement i (t/offset-date-time t)))
 
 (defn set-parameters
   "Set a sequence of `prepared-statement` `params`. This method calls `set-parameter` for each param; `set-parameter`
@@ -254,9 +299,9 @@
   ;; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]' sometimes
   ;; the user already knows the SQL, and error code is meaningless
   ;; so just return the part of the exception that is relevant
-  (->> (.getMessage e)
-       (re-find #"^(.*);")
-       second))
+  (some->> (.getMessage e)
+           (re-find #"^(.*);")
+           second))
 
 (defn do-with-try-catch
   "Tries to run the function `f`, catching and printing exception chains if SQLException is thrown,

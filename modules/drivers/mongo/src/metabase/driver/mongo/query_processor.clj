@@ -20,27 +20,22 @@
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.util :as u]
             [metabase.util
-             [date :as du]
+             [date-2 :as u.date]
              [i18n :as ui18n :refer [deferred-tru tru]]
              [schema :as su]]
             [monger
              [collection :as mc]
              [operators :refer :all]]
+            [java-time :as t]
+            monger.json
             [schema.core :as s])
-  (:import java.sql.Timestamp
-           [java.util Date TimeZone]
-           metabase.models.field.FieldInstance
-           org.bson.types.ObjectId
-           org.joda.time.DateTime))
+  (:import metabase.models.field.FieldInstance
+           org.bson.types.ObjectId))
 
-;; See http://clojuremongodb.info/articles/integration.html
-;; Loading these namespaces will load appropriate Monger integrations with JODA Time and Cheshire respectively
-;;
-;; These are loaded here and not in the `:require` above because they tend to get automatically removed by
-;; `cljr-clean-ns` and also cause Eastwood to complain about unused namespaces
-(when-not *compile-files*
-  (classloader/require 'monger.joda-time
-                       'monger.json))
+;; See http://clojuremongodb.info/articles/integration.html Loading this namespace will load appropriate Monger
+;; integrations with Cheshire. The comment below is to fool `cljr-clean-ns` into keeping the namespace in the
+;; `:require` form above
+(comment monger.json/keep-me)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Schema                                                     |
@@ -90,7 +85,7 @@
 
 (defn- log-aggregation-pipeline [form]
   (when-not i/*disable-qp-logging*
-    (log/debug (u/format-color 'green (str "\n" (deferred-tru "MONGO AGGREGATION PIPELINE:") "\n%s\n")
+    (log/trace (u/format-color 'green (str "\n" (deferred-tru "MONGO AGGREGATION PIPELINE:") "\n%s\n")
                  (->> form
                       ;; strip namespace qualifiers from Monger form
                       (walk/postwalk #(if (symbol? %) (symbol (name %)) %))
@@ -236,15 +231,17 @@
     value))
 
 
-(defmethod ->rvalue :absolute-datetime [[_ ^java.sql.Timestamp value, unit]]
-  (let [stringify (fn stringify
-                    ([format-string]
-                     (stringify format-string value))
-                    ([format-string v]
-                     {:___date (du/format-date format-string v)}))
-        extract   #(du/date-extract % value)]
+(defmethod ->rvalue :absolute-datetime
+  [[_ t unit]]
+  (letfn [(stringify
+            ([format-string]
+             (stringify format-string t))
+            ([format-string t]
+             {:___date (t/format format-string t)}))
+          (extract [unit]
+            (u.date/extract t unit))]
     (case (or unit :default)
-      :default         value
+      :default         t
       :minute          (stringify "yyyy-MM-dd'T'HH:mm:00")
       :minute-of-hour  (extract :minute)
       :hour            (stringify "yyyy-MM-dd'T'HH:00:00")
@@ -253,18 +250,19 @@
       :day-of-week     (extract :day-of-week)
       :day-of-month    (extract :day-of-month)
       :day-of-year     (extract :day-of-year)
-      :week            (stringify "yyyy-MM-dd" (du/date-trunc :week value))
+      :week            (stringify "yyyy-MM-dd" (u.date/truncate t :week))
       :week-of-year    (extract :week-of-year)
       :month           (stringify "yyyy-MM")
       :month-of-year   (extract :month-of-year)
-      :quarter         (stringify "yyyy-MM" (du/date-trunc :quarter value))
+      :quarter         (stringify "yyyy-MM" (u.date/truncate t :quarter))
       :quarter-of-year (extract :quarter-of-year)
       :year            (stringify "yyyy"))))
 
 
 ;; TODO - where's the part where we handle include-current?
-(defmethod ->rvalue :relative-datetime [[_ amount unit]]
-  (->rvalue [:absolute-datetime (du/relative-date (or unit :day) amount) unit]))
+(defmethod ->rvalue :relative-datetime
+  [[_ amount unit]]
+  (->rvalue [:absolute-datetime (u.date/add (or unit :day) amount) unit]))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -630,7 +628,7 @@
      (for [[k v] row]
        [k (if (and (map? v)
                    (contains? v :___date))
-            (du/->Timestamp (:___date v) (TimeZone/getDefault))
+            (u.date/parse (:___date v))
             v)]))))
 
 
@@ -641,19 +639,19 @@
 ;;
 ;; 1) Convert forms like ISODate(...) to valid JSON forms like ["___ISODate", ...]
 ;; 2) Parse Normally
-;; 3) Walk the parsed JSON and convert forms like [:___ISODate ...] to JodaTime dates, and [:___ObjectId ...] to BSON
+;; 3) Walk the parsed JSON and convert forms like [:___ISODate ...] to temporal objects and [:___ObjectId ...] to BSON
 ;;    IDs
 
 ;; See https://docs.mongodb.com/manual/core/shell-types/ for a list of different supported types
 (def ^:private fn-name->decoder
   {:ISODate    (fn [arg]
-                 (DateTime. arg))
+                 (u.date/parse arg))
    :ObjectId   (fn [^String arg]
                  (ObjectId. arg))
    ;; it looks like Date() just ignores any arguments return a date string formatted the same way the Mongo console
    ;; does
    :Date       (fn [& _]
-                 (du/format-date "EEE MMM dd yyyy HH:mm:ss z"))
+                 (t/format "EEE MMM dd yyyy HH:mm:ss z"))
    :NumberLong (fn [^String s]
                  (Long/parseLong s))
    :NumberInt  (fn [^String s]

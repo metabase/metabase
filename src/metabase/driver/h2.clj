@@ -261,11 +261,6 @@
 (defmethod sql-jdbc.sync/active-tables :h2 [& args]
   (apply sql-jdbc.sync/post-filtered-active-tables args))
 
-;; return a normal `java.sql.Timestamp` instead of `org.h2.api.TimestampWithTimeZone`
-#_(defmethod sql-jdbc.execute/read-column [:h2 Types/TIMESTAMP_WITH_TIMEZONE]
-  [_ _, ^ResultSet resultset, _, ^Integer i]
-  (.getTimestamp resultset i))
-
 (defmethod sql-jdbc.execute/set-parameter [:h2 OffsetTime]
   [driver prepared-statement i t]
   (let [local-time (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))]

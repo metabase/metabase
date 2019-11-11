@@ -39,6 +39,7 @@
              [date :as du]
              [date-2 :as u.date]]
             [potemkin.types :as p.types]
+            [metabase.test.initialize :as initialize]
             [pretty.core :as pretty]
             [toucan.db :as db])
   (:import [java.time LocalDate LocalDateTime]
@@ -98,6 +99,7 @@
         (qp.test/format-rows-by [->long-if-number int])))
 
   ([unit timezone-id]
+   (initialize/initialize-if-needed! :db)
    (qp.timezone/with-report-timezone-id (->timezone-id timezone-id)
      (sad-toucan-incidents-with-bucketing unit))))
 

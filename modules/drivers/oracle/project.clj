@@ -1,12 +1,10 @@
 (defproject metabase/oracle-driver "1.0.0"
   :min-lein-version "2.5.0"
 
-  :profiles
-  {:dev
-   {:dependencies
-    [[com.oracle.ojdbc/ojdbc8 "19.3.0.0"]]}
+  :include-drivers-dependencies [#"^ojdbc\d+\.jar$"]
 
-   :provided
+  :profiles
+  {:provided
    {:dependencies
     ;; can't ship it as part of MB!
     [[com.oracle.ojdbc/ojdbc8 "19.3.0.0"]

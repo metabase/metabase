@@ -120,7 +120,8 @@
        (trs "Loading driver {0} {1}" (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
       (try
         (apply classloader/require expected-ns require-options)
-        (catch Throwable _
+        (catch Throwable e
+          (log/error e (tru "Error loading driver namespace"))
           (throw (Exception. (tru "Could not find {0} driver." driver))))))))
 
 (defn- load-driver-namespace-if-needed!

@@ -3,6 +3,7 @@
 
   TIMEZONE FIXME - we should rework this namespace to use `java-time ` instead of `clj-time`."
   (:require [clj-time.core :as t]
+            [clojure.test :refer :all]
             [expectations :refer [expect]]
             [java-time :as jt]
             [metabase
@@ -24,7 +25,7 @@
              [schema :as su]]
             [schema.core :as s]))
 
-;;; ------------------------------------------ simple substitution -- {{x}} ------------------------------------------
+;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
 
 (defn- substitute-e2e {:style/indent 1} [sql params]
   (let [[query params] (driver/with-driver :h2
@@ -52,7 +53,7 @@
   (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}"
     {"toucans_are_cool" true}))
 
-;;; ---------------------------------- optional substitution -- [[ ... {{x}} ... ]] ----------------------------------
+;;; ---------------------------------- optional substitution — [[ ... {{x}} ... ]] ----------------------------------
 
 (expect
   {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
@@ -290,133 +291,97 @@
          expand*
          (dissoc :template-tags)))))
 
-;; dimension (date/single)
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ?;"
-   :params [(jt/local-date "2016-07-01")]}
-  (expand-with-field-filter-param {:type :date/single, :value "2016-07-01"}))
-
-;; dimension (date/range)
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-   :params [(jt/local-date "2016-07-01")
-            (jt/local-date "2016-08-01")]}
-  (expand-with-field-filter-param {:type :date/range, :value "2016-07-01~2016-08-01"}))
-
-;; dimension (date/month-year)
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-   :params [(jt/local-date "2016-07-01")
-            (jt/local-date "2016-07-31")]}
-  (expand-with-field-filter-param {:type :date/month-year, :value "2016-07"}))
-
-;; dimension (date/quarter-year)
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-   :params [(jt/local-date "2016-01-01")
-            (jt/local-date "2016-03-31")]}
-  (expand-with-field-filter-param {:type :date/quarter-year, :value "Q1-2016"}))
-
-;; dimension (date/all-options, before)
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) < ?;"
-   :params [(jt/local-date "2016-07-01")]}
-  (expand-with-field-filter-param {:type :date/all-options, :value "~2016-07-01"}))
-
-;; dimension (date/all-options, after)
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) > ?;"
-   :params [(jt/local-date "2016-07-01")]}
-  (expand-with-field-filter-param {:type :date/all-options, :value "2016-07-01~"}))
-
-;; relative date -- "yesterday"
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ?;"
-   :params [(jt/local-date "2016-06-06")]}
-  (expand-with-field-filter-param {:type :date/range, :value "yesterday"}))
-
-;; relative date -- "past7days"
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-   :params [(jt/local-date "2016-05-31")
-            (jt/local-date "2016-06-06")]}
-  (expand-with-field-filter-param {:type :date/range, :value "past7days"}))
-
-;; relative date -- "past30days"
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-   :params [(jt/local-date "2016-05-08")
-            (jt/local-date "2016-06-06")]}
-  (expand-with-field-filter-param {:type :date/range, :value "past30days"}))
-
-;; relative date -- "thisweek"
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-   :params [(jt/local-date "2016-06-05")
-            (jt/local-date "2016-06-11")]}
-  (expand-with-field-filter-param {:type :date/range, :value "thisweek"}))
-
-;; relative date -- "thismonth"
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-   :params [(jt/local-date "2016-06-01")
-            (jt/local-date "2016-06-30")]}
-  (expand-with-field-filter-param {:type :date/range, :value "thismonth"}))
-
-;; relative date -- "thisyear"
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-   :params [(jt/local-date "2016-01-01")
-            (jt/local-date "2016-12-31")]}
-  (expand-with-field-filter-param {:type :date/range, :value "thisyear"}))
-
-;; relative date -- "lastweek"
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-   :params [(jt/local-date "2016-05-29")
-            (jt/local-date "2016-06-04")]}
-  (expand-with-field-filter-param {:type :date/range, :value "lastweek"}))
-
-;; relative date -- "lastmonth"
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-   :params [(jt/local-date "2016-05-01")
-            (jt/local-date "2016-05-31")]}
-  (expand-with-field-filter-param {:type :date/range, :value "lastmonth"}))
-
-;; relative date -- "lastyear"
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-   :params [(jt/local-date "2015-01-01")
-            (jt/local-date "2015-12-31")]}
-  (expand-with-field-filter-param {:type :date/range, :value "lastyear"}))
-
-;; dimension with no value -- just replace with an always true clause (e.g. "WHERE 1 = 1")
-(expect
-  {:query  "SELECT * FROM checkins WHERE 1 = 1;"
-   :params []}
-  (expand-with-field-filter-param nil))
-
-;; dimension -- number -- should get parsed to Number
-(expect
-  {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = 100;"
-   :params []}
-  (expand-with-field-filter-param {:type :number, :value "100"}))
-
-;; dimension -- text
-(expect
-  {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = ?;"
-   :params ["100"]}
-  (expand-with-field-filter-param {:type :text, :value "100"}))
-
-;; *OPTIONAL* Field Filter params should not get replaced with 1 = 1 if the param is not present (#5541, #9489).
-;; *Optional params should be emitted entirely.
-(expect
-  {:query  "SELECT * FROM ORDERS WHERE TOTAL > 100  AND CREATED_AT < now()"
-   :params []}
-  (expand-with-field-filter-param
-   "SELECT * FROM ORDERS WHERE TOTAL > 100 [[AND {{created}} #]] AND CREATED_AT < now()"
-   nil))
+(deftest expand-field-filters-test
+  (testing "dimension (date/single)"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ?;"
+            :params [(jt/local-date "2016-07-01")]}
+           (expand-with-field-filter-param {:type :date/single, :value "2016-07-01"}))))
+  (testing "dimension (date/range)"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+            :params [(jt/local-date "2016-07-01")
+                     (jt/local-date "2016-08-01")]}
+           (expand-with-field-filter-param {:type :date/range, :value "2016-07-01~2016-08-01"}))))
+  (testing "dimension (date/month-year)"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+            :params [(jt/local-date "2016-07-01")
+                     (jt/local-date "2016-07-31")]}
+           (expand-with-field-filter-param {:type :date/month-year, :value "2016-07"}))))
+  (testing "dimension (date/quarter-year)"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+            :params [(jt/local-date "2016-01-01")
+                     (jt/local-date "2016-03-31")]}
+           (expand-with-field-filter-param {:type :date/quarter-year, :value "Q1-2016"}))))
+  (testing "dimension (date/all-options, before)"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) < ?;"
+            :params [(jt/local-date "2016-07-01")]}
+           (expand-with-field-filter-param {:type :date/all-options, :value "~2016-07-01"}))))
+  (testing "dimension (date/all-options, after)"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) > ?;"
+            :params [(jt/local-date "2016-07-01")]}
+           (expand-with-field-filter-param {:type :date/all-options, :value "2016-07-01~"}))))
+  (testing "relative date — 'yesterday'"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ?;"
+            :params [(jt/local-date "2016-06-06")]}
+           (expand-with-field-filter-param {:type :date/range, :value "yesterday"}))))
+  (testing "relative date — 'past7days'"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+            :params [(jt/local-date "2016-05-31")
+                     (jt/local-date "2016-06-06")]}
+           (expand-with-field-filter-param {:type :date/range, :value "past7days"}))))
+  (testing "relative date — 'past30days'"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+            :params [(jt/local-date "2016-05-08")
+                     (jt/local-date "2016-06-06")]}
+           (expand-with-field-filter-param {:type :date/range, :value "past30days"}))))
+  (testing "relative date — 'thisweek'"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+            :params [(jt/local-date "2016-06-05")
+                     (jt/local-date "2016-06-11")]}
+           (expand-with-field-filter-param {:type :date/range, :value "thisweek"}))))
+  (testing "relative date — 'thismonth'"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+            :params [(jt/local-date "2016-06-01")
+                     (jt/local-date "2016-06-30")]}
+           (expand-with-field-filter-param {:type :date/range, :value "thismonth"}))))
+  (testing "relative date — 'thisyear'"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+            :params [(jt/local-date "2016-01-01")
+                     (jt/local-date "2016-12-31")]}
+           (expand-with-field-filter-param {:type :date/range, :value "thisyear"}))))
+  (testing "relative date — 'lastweek'"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+            :params [(jt/local-date "2016-05-29")
+                     (jt/local-date "2016-06-04")]}
+           (expand-with-field-filter-param {:type :date/range, :value "lastweek"}))))
+  (testing "relative date — 'lastmonth'"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+            :params [(jt/local-date "2016-05-01")
+                     (jt/local-date "2016-05-31")]}
+           (expand-with-field-filter-param {:type :date/range, :value "lastmonth"}))))
+  (testing "relative date — 'lastyear'"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+            :params [(jt/local-date "2015-01-01")
+                     (jt/local-date "2015-12-31")]}
+           (expand-with-field-filter-param {:type :date/range, :value "lastyear"}))))
+  (testing "dimension with no value — just replace with an always true clause (e.g. 'WHERE 1 = 1')"
+    (is (= {:query  "SELECT * FROM checkins WHERE 1 = 1;"
+            :params []}
+           (expand-with-field-filter-param nil))))
+  (testing "dimension — number — should get parsed to Number"
+    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = 100;"
+            :params []}
+           (expand-with-field-filter-param {:type :number, :value "100"}))))
+  (testing "dimension — text"
+    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = ?;"
+            :params ["100"]}
+           (expand-with-field-filter-param {:type :text, :value "100"}))))
+  (testing (str "*OPTIONAL* Field Filter params should not get replaced with 1 = 1 if the param is not present "
+                "(#5541, #9489). *Optional params should be emitted entirely.")
+    (is (= {:query  "SELECT * FROM ORDERS WHERE TOTAL > 100  AND CREATED_AT < now()"
+            :params []}
+           (expand-with-field-filter-param
+            "SELECT * FROM ORDERS WHERE TOTAL > 100 [[AND {{created}} #]] AND CREATED_AT < now()"
+            nil)))))
 
 
 ;;; -------------------------------------------- "REAL" END-TO-END-TESTS ---------------------------------------------
@@ -429,15 +394,15 @@
     (second (re-find #"FROM\s([^\s()]+)" sql))))
 
 ;; as with the MBQL parameters tests Redshift fail for unknown reasons; disable their tests for now
-(def ^:private sql-parameters-engines
-  (delay (disj (qp.test/non-timeseries-drivers-with-feature :native-parameters) :redshift)))
+(defn- sql-parameters-engines []
+  (disj (qp.test/normal-drivers-with-feature :native-parameters) :redshift))
 
 (defn- process-native {:style/indent 0} [& kvs]
   (du/with-effective-timezone (data/db)
     (qp/process-query
       (apply assoc {:database (data/id), :type :native, :settings {:report-timezone "UTC"}} kvs))))
 
-(datasets/expect-with-drivers @sql-parameters-engines
+(datasets/expect-with-drivers (sql-parameters-engines)
   [29]
   (qp.test/first-row
     (qp.test/format-rows-by [int]
@@ -451,8 +416,8 @@
                       :target [:dimension [:template-tag "checkin_date"]]
                       :value  "2015-04-01~2015-05-01"}]))))
 
-;; no parameter -- should give us a query with "WHERE 1 = 1"
-(datasets/expect-with-drivers @sql-parameters-engines
+;; no parameter — should give us a query with "WHERE 1 = 1"
+(datasets/expect-with-drivers (sql-parameters-engines)
   [1000]
   (qp.test/first-row
     (qp.test/format-rows-by [int]
@@ -466,7 +431,7 @@
 
 ;; test that relative dates work correctly. It should be enough to try just one type of relative date here, since
 ;; handling them gets delegated to the functions in `metabase.query-processor.parameters`, which is fully-tested :D
-(datasets/expect-with-drivers @sql-parameters-engines
+(datasets/expect-with-drivers (sql-parameters-engines)
   [0]
   (qp.test/first-row
     (qp.test/format-rows-by [int]
@@ -480,7 +445,7 @@
 
 
 ;; test that multiple filters applied to the same variable combine into `AND` clauses (#3539)
-(datasets/expect-with-drivers @sql-parameters-engines
+(datasets/expect-with-drivers (sql-parameters-engines)
   [4]
   (qp.test/first-row
     (qp.test/format-rows-by [int]
@@ -493,37 +458,38 @@
         :parameters [{:type :date/range, :target [:dimension [:template-tag "checkin_date"]], :value "2015-01-01~2016-09-01"}
                      {:type :date/single, :target [:dimension [:template-tag "checkin_date"]], :value "2015-07-01"}]))))
 
-;; Test that native dates are parsed with the report timezone (when supported)
-(datasets/expect-with-drivers (disj @sql-parameters-engines :sqlite)
-  [(cond
-     (= :presto driver/*driver*)
-     "2018-04-18"
+(deftest parse-native-dates-test
+  (datasets/test-drivers (disj (sql-parameters-engines) :sqlite)
+    (is (= [(cond
+              (= :presto driver/*driver*)
+              "2018-04-18"
 
-     ;; Snowflake appears to have a bug in their JDBC driver when including the target timezone along with the SQL
-     ;; date parameter. The below value is not correct, but is what the driver returns right now. This bug is written
-     ;; up as https://github.com/metabase/metabase/issues/8804 and when fixed this should be removed as it should
-     ;; return the same value as the other drivers that support a report timezone
-     (= :snowflake driver/*driver*)
-     "2018-04-16T17:00:00-07:00"
+              ;; Snowflake appears to have a bug in their JDBC driver when including the target timezone along with
+              ;; the SQL date parameter. The below value is not correct, but is what the driver returns right now.
+              ;; This bug is written up as https://github.com/metabase/metabase/issues/8804 and when fixed this should
+              ;; be removed as it should return the same value as the other drivers that support a report timezone
+              (= :snowflake driver/*driver*)
+              "2018-04-16T17:00:00-07:00"
 
-     (qp.test/supports-report-timezone? driver/*driver*)
-     "2018-04-18T00:00:00-07:00"
+              (qp.test/supports-report-timezone? driver/*driver*)
+              "2018-04-18T00:00:00-07:00"
 
-     :else
-     "2018-04-18T00:00:00Z")]
-  (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-    (qp.test/first-row
-      (process-native
-        :native     {:query         (case driver/*driver*
-                                      :bigquery
-                                      "SELECT {{date}} as date"
+              :else
+              "2018-04-18T00:00:00Z")]
+           (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
+             (qp.test/first-row
+               (process-native
+                 :native     {:query (case driver/*driver*
+                                       :bigquery
+                                       "SELECT {{date}} as date"
 
-                                      :oracle
-                                      "SELECT cast({{date}} as date) from dual"
+                                       :oracle
+                                       "SELECT cast({{date}} as date) from dual"
 
-                                      "SELECT cast({{date}} as date)")
-                     :template-tags {"date" {:name "date" :display-name "Date" :type :date}}}
-        :parameters [{:type :date/single :target [:variable [:template-tag "date"]] :value "2018-04-18"}]))))
+                                       "SELECT cast({{date}} as date)")
+                              :template-tags {"date" {:name "date" :display-name "Date" :type :date}}}
+                 :parameters [{:type :date/single :target [:variable [:template-tag "date"]] :value "2018-04-18"}])))))
+    "Native dates should be parsed with the report timezone (where supported)"))
 
 ;; Some random end-to-end param expansion tests added as part of the SQL Parameters 2.0 rewrite
 

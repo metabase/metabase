@@ -105,4 +105,4 @@
                    (jdbc/query spec sql-args options)))]
          (if dataset
            (data.impl/do-with-dataset (data.impl/resolve-dataset-definition *ns* dataset) thunk)
-           dataset))))))
+           (thunk)))))))
