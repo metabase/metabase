@@ -19,7 +19,8 @@
                  (when-not i/*disable-qp-logging*
                    (log/error (tru "Error transforming MBQL query to native:") "\n" (u/pprint-to-str query)))
                  (throw e))))
-    (log/trace (u/format-color 'green "NATIVE FORM: %s\n%s\n" (u/emoji "😳") (u/pprint-to-str <>)))))
+    (when-not i/*disable-qp-logging*
+      (log/trace (u/format-color 'green "Native form: %s\n%s\n" (u/emoji "😳") (u/pprint-to-str <>))))))
 
 (defn mbql->native
   "Middleware that handles conversion of MBQL queries to native (by calling driver QP methods) so the queries

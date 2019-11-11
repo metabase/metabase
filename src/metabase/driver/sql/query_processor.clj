@@ -21,7 +21,7 @@
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.util
              [honeysql-extensions :as hx]
-             [i18n :refer [deferred-tru tru]]
+             [i18n :refer [deferred-tru]]
              [schema :as su]]
             [potemkin.types :as p.types]
             [pretty.core :refer [PrettyPrintable]]
@@ -706,7 +706,7 @@
   [driver, {inner-query :query} :- su/Map]
   (u/prog1 (apply-clauses driver {} inner-query)
     (when-not i/*disable-qp-logging*
-      (log/debug (tru "HoneySQL Form:") (u/emoji "🍯") "\n" (u/pprint-to-str 'cyan <>)))))
+      (log/tracef "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

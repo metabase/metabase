@@ -104,10 +104,15 @@
   You can pass this method to `clojure.java.jdbc/query` and related functions as the `:read-columns` option:
 
     (jdbc/query spec sql {:read-columns (partial :read-columns driver)})"
-  [driver rs rsmeta indexes]
+  [driver rs ^ResultSetMetaData rsmeta indexes]
   (mapv
-   (fn [i]
-     (read-column driver nil rs rsmeta i))
+   (fn [^Integer i]
+     (let [result (read-column driver nil rs rsmeta i)]
+       (log/tracef "(read-column %s nil rs rsmeta %d) %s %s -> ^%s %s"
+                   driver i
+                   (.getColumnName rsmeta i) (.getName (java.sql.JDBCType/valueOf (.getColumnType rsmeta i)))
+                   (.getName (class result)) (pr-str result))
+       result))
    indexes))
 
 
@@ -128,12 +133,12 @@
 
 (defn- set-object
   ([^PreparedStatement prepared-statement, ^Integer index, object]
-   (log/trace (format "(set-object prepared-statement %d ^%s %s)" index (.getName (class object)) (pr-str object)))
+   (log/tracef "(set-object prepared-statement %d ^%s %s)" index (.getName (class object)) (pr-str object))
    (.setObject prepared-statement index object))
 
   ([^PreparedStatement prepared-statement, ^Integer index, object, ^Integer target-sql-type]
-   (log/trace (format "(set-object prepared-statement %d ^%s %s java.sql.Types/%s)" index (.getName (class object))
-                      (pr-str object) (.getName (java.sql.JDBCType/valueOf target-sql-type))))
+   (log/tracef "(set-object prepared-statement %d ^%s %s java.sql.Types/%s)" index (.getName (class object))
+               (pr-str object) (.getName (java.sql.JDBCType/valueOf target-sql-type)))
    (.setObject prepared-statement index object target-sql-type)))
 
 (defmethod set-parameter :default
@@ -183,7 +188,7 @@
     (jdbc/query spec sql {:set-parameters (partial set-parameters driver)})"
   [driver prepared-statement params]
   (doseq [[i param] (map-indexed vector params)]
-    (log/trace (format "Query parameter %d is ^%s %s" (inc i) (.getName (class param)) (pr-str param)))
+    (log/tracef "Query parameter %d is ^%s %s" (inc i) (.getName (class param)) (pr-str param))
     (set-parameter driver prepared-statement (inc i) param)))
 
 

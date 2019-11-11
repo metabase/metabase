@@ -84,7 +84,6 @@
                  (data/run-mbql-query users
                    {:filter [:between $last_login "2014-08-02T10:00:00.000000Z" "2014-08-02T13:00:00.000000Z"]})))
             "MBQL datetime literal strings that include timezone should be parsed in it regardless of report timezone")))
-
     (testing "UTC timezone"
       (let [run-query   (fn []
                           (qp.test/formatted-rows [int identity identity]

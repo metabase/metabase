@@ -3,6 +3,7 @@
   `java.sql.*`, and Joda-Time."
   (:refer-clojure :exclude [format range])
   (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [java-time :as t]
             [java-time.core :as t.core]
             [metabase.util.date-2
@@ -17,12 +18,12 @@
   (condp instance? t
     LocalDateTime (t/zoned-date-time t (t/zone-id timezone-id))
     LocalDate     (t/zoned-date-time t (t/local-time 0) (t/zone-id timezone-id))
-    ;; don't attempt to convert local times to offset times because we have no idea what the offset actually should
-    ;; be, since we don't know the date. Since it's not an exact instant in time we're not using it to make ranges in
-    ;; MBQL filter clauses anyway
+    ;; don't attempt to convert local times to offset times because we have no idea what the offset
+    ;; actually should be, since we don't know the date. Since it's not an exact instant in time we're
+    ;; not using it to make ranges in MBQL filter clauses anyway
     ;;
     ;; TIMEZONE FIXME - not sure we even want to be adding zone-id info for the timestamps above either
-    #_LocalTime     #_(t/offset-time t (t/zone-id timezone-id))
+    #_LocalTime   #_ (t/offset-time t (t/zone-id timezone-id))
     t))
 
 (defn parse
@@ -33,8 +34,14 @@
    (parse/parse s))
 
   ([s default-timezone-id]
-   (cond-> (parse s)
-     default-timezone-id (add-zone-to-local default-timezone-id))))
+   (let [result (parse s)]
+     (if-not default-timezone-id
+       result
+       (let [result-with-timezone (add-zone-to-local result default-timezone-id)]
+         (when-not (= result result-with-timezone)
+           (log/tracef "Applying default timezone %s to temporal literal without timezone '%s' -> %s"
+                       default-timezone-id s (pr-str result-with-timezone)))
+         result-with-timezone)))))
 
 (defn- temporal->iso-8601-formatter [t]
   (condp instance? t

@@ -17,6 +17,7 @@
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util
              [honeysql-extensions :as hx]
              [i18n :refer [trs]]
@@ -250,20 +251,33 @@
   [_]
   "SET @@session.time_zone = %s;")
 
+(defmethod sql-jdbc.execute/set-parameter [:mysql OffsetTime]
+  [driver ps i t]
+  ;; convert to a LocalTime so MySQL doesn't get F U S S Y
+  (sql-jdbc.execute/set-parameter driver ps i (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
+
+;; Regardless of session timezone it seems to be the case that OffsetDateTimes get normalized to UTC inside MySQL
+;;
+;; Since MySQL TIMESTAMPs aren't timezone-aware this means comparisons are done between timestamps in the report
+;; timezone and the local datetime portion of the parameter, in UTC. Bad!
+;;
+;; Convert it to a LocalDateTime, in the report timezone, so comparisions will work correctly.
+;;
+;; See also — https://dev.mysql.com/doc/refman/5.5/en/datetime.html
+;;
+;; TIMEZONE FIXME — not 100% sure this behavior makes sense
+(defmethod sql-jdbc.execute/set-parameter [:mysql OffsetDateTime]
+  [driver ^java.sql.PreparedStatement ps ^Integer i t]
+  (let [zone   (t/zone-id (qp.timezone/results-timezone-id))
+        offset (.. zone getRules (getOffset (t/instant t)))
+        t      (t/local-date-time (t/with-offset-same-instant t offset))]
+    (sql-jdbc.execute/set-parameter driver ps i t)))
+
 (defn- format-offset [t]
   (let [offset (t/format "ZZZZZ" (t/zone-offset t))]
     (if (= offset "Z")
       "UTC"
       offset)))
-
-(defmethod sql-jdbc.execute/set-parameter [:mysql ZonedDateTime]
-  [driver ps i t]
-  (sql-jdbc.execute/set-parameter driver ps i (t/offset-date-time t)))
-
-(defmethod sql-jdbc.execute/set-parameter [:mysql OffsetTime]
-  [driver ps i t]
-  ;; convert to a LocalTime so MySQL doesn't get F U S S Y
-  (sql-jdbc.execute/set-parameter driver ps i (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
 
 (defmethod unprepare/unprepare-value [:mysql OffsetTime]
   [_ t]
