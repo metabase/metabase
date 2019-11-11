@@ -1,6 +1,5 @@
 (ns metabase.driver.bigquery
-  (:require [clj-time.core :as time]
-            [clojure
+  (:require [clojure
              [set :as set]
              [string :as str]]
             [metabase
@@ -13,18 +12,16 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor
              [store :as qp.store]
+             [timezone :as qp.timezone]
              [util :as qputil]]
-            [metabase.util
-             [date :as du]
-             [schema :as su]]
+            [metabase.util.schema :as su]
             [schema.core :as s])
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            com.google.api.client.http.HttpRequestInitializer
            [com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes]
            [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema TableList
             TableList$Tables TableReference TableRow TableSchema]
-           java.sql.Time
-           [java.util Collections Date]))
+           java.util.Collections))
 
 (driver/register! :bigquery, :parent #{:google :sql})
 
@@ -172,7 +169,7 @@
            (for [^TableFieldSchema field (.getFields schema)
                  :let                    [column-type (.getType field)
                                           method (get-method bigquery.qp/parse-result-of-type column-type)]]
-             (partial method column-type bigquery.common/*bigquery-timezone*)))
+             (partial method column-type bigquery.common/*bigquery-timezone-id*)))
 
           columns
           (for [column (table-schema->metabase-field-info schema)]
@@ -210,16 +207,15 @@
   (u/auto-retry 1
     (post-process-native (execute-bigquery database query-string))))
 
-(defn- effective-query-timezone [database]
-  (if-let [^java.util.TimeZone jvm-tz (and (get-in database [:details :use-jvm-timezone])
-                                           @du/jvm-timezone)]
-    (time/time-zone-for-id (.getID jvm-tz))
-    time/utc))
+(defn- effective-query-timezone-id [database]
+  (if (get-in database [:details :use-jvm-timezone])
+    (qp.timezone/system-timezone-id)
+    "UTC"))
 
 (defmethod driver/execute-query :bigquery
   [driver {{sql :query, params :params, :keys [table-name mbql?]} :native, :as outer-query}]
   (let [database (qp.store/database)]
-    (binding [bigquery.common/*bigquery-timezone* (effective-query-timezone database)]
+    (binding [bigquery.common/*bigquery-timezone-id* (effective-query-timezone-id database)]
       (let [sql (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
                                                                      (unprepare/unprepare driver (cons sql params))
                                                                      sql))]

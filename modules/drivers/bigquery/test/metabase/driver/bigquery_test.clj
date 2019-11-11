@@ -93,7 +93,7 @@
     (testing "BigQuery does not support report-timezone, so setting it should not affect results"
       (doseq [timezone ["UTC" "US/Pacific"]]
         (tu/with-temporary-setting-values [report-timezone timezone]
-          (is (= [[37 "2015-11-19T00:00:00.000Z"]]
+          (is (= [[37 "2015-11-19T00:00:00Z"]]
                  (qp.test/rows
                    (data/run-mbql-query checkins
                      {:fields   [$id $date]

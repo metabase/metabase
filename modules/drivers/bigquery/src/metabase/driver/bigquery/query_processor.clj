@@ -1,28 +1,25 @@
 (ns metabase.driver.bigquery.query-processor
-  (:require [clj-time
-             [coerce :as tcoerce]
-             [format :as tformat]]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [honeysql
              [core :as hsql]
              [helpers :as h]]
+            [java-time :as t]
             [metabase
              [driver :as driver]
              [util :as u]]
-            [metabase.driver.bigquery.common :as bigquery.common]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.table :as table]
             [metabase.query-processor.store :as qp.store]
             [metabase.util
-             [date :as du]
+             [date-2 :as u.date]
              [honeysql-extensions :as hx]
              [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import java.sql.Time
-           java.util.Date
+  (:import [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            metabase.util.honeysql_extensions.Identifier))
 
 (defn- valid-bigquery-identifier?
@@ -50,7 +47,7 @@
 
 (defmulti parse-result-of-type
   "Parse the values that come back in results of a BigQuery query based on their column type."
-  {:arglists '([column-type timezone v])}
+  {:arglists '([column-type timezone-id v])}
   (fn [column-type _ _] column-type))
 
 (defmethod parse-result-of-type :default
@@ -73,40 +70,28 @@
   [_ _ v]
   (bigdec v))
 
-(defn- parse-timestamp-str [timezone s]
+(defn- parse-timestamp-str [timezone-id s]
   ;; Timestamp strings either come back as ISO-8601 strings or Unix timestamps in µs, e.g. "1.3963104E9"
-  (or
-   (du/->Timestamp s timezone)
-   ;; If parsing as ISO-8601 fails parse as a double then convert to ms. This is ms since epoch in UTC. By using
-   ;; `->Timestamp`, it will convert from ms in UTC to a timestamp object in the JVM timezone
-   (du/->Timestamp (* (Double/parseDouble s) 1000))))
+  (log/tracef "Parse timestamp string '%s' (default timezone ID = %s)" s timezone-id)
+  (if-let [seconds (u/ignore-exceptions (Double/parseDouble s))]
+    (t/zoned-date-time (t/instant (* seconds 1000)) (t/zone-id timezone-id))
+    (u.date/parse s timezone-id)))
 
 (defmethod parse-result-of-type "DATE"
-  [_ timezone s]
-  (parse-timestamp-str timezone s))
+  [_ timezone-id s]
+  (parse-timestamp-str timezone-id s))
 
 (defmethod parse-result-of-type "DATETIME"
-  [_ timezone s]
-  (parse-timestamp-str timezone s))
+  [_ timezone-id s]
+  (parse-timestamp-str timezone-id s))
 
 (defmethod parse-result-of-type "TIMESTAMP"
-  [_ timezone s]
-  (parse-timestamp-str timezone s))
-
-(defn- bigquery-time-format [timezone]
-  (tformat/formatter "HH:mm:SS" timezone))
-
-(defn- unparse-bigquery-time [timezone coercible-to-dt]
-  (->> coercible-to-dt
-       tcoerce/to-date-time
-       (tformat/unparse (bigquery-time-format timezone))))
+  [_ timezone-id s]
+  (parse-timestamp-str timezone-id s))
 
 (defmethod parse-result-of-type "TIME"
-  [_ timezone s]
-  (->> s
-       (tformat/parse (bigquery-time-format timezone))
-       tcoerce/to-long
-       Time.))
+  [_ timezone-id s]
+  (u.date/parse s timezone-id))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -199,6 +184,9 @@
 
 ;; These provide implementations of `->honeysql` that prevent HoneySQL from converting forms to prepared statement
 ;; parameters (`?` symbols)
+;;
+;; TODO - these should probably be impls of `unprepare-value` instead, but it effectively ends up doing the same thing
+;; either way
 (defmethod sql.qp/->honeysql [:bigquery String]
   [_ s]
   (hx/literal s))
@@ -207,17 +195,38 @@
   [_ bool]
   (hsql/raw (if bool "TRUE" "FALSE")))
 
-(defmethod sql.qp/->honeysql [:bigquery Date]
-  [_ date]
-  (hsql/call :timestamp (hx/literal (du/date->iso-8601 date))))
+;; See:
+;;
+;; *  https://cloud.google.com/bigquery/docs/reference/standard-sql/timestamp_functions
+;; *  https://cloud.google.com/bigquery/docs/reference/standard-sql/time_functions
+;; *  https://cloud.google.com/bigquery/docs/reference/standard-sql/date_functions
+;; *  https://cloud.google.com/bigquery/docs/reference/standard-sql/datetime_functions
 
-(defmethod sql.qp/->honeysql [:bigquery :time]
-  [driver [_ value unit]]
-  (->> value
-       (unparse-bigquery-time bigquery.common/*bigquery-timezone*)
-       (sql.qp/->honeysql driver)
-       (sql.qp/date driver unit)
-       hx/->time))
+(defmethod unprepare/unprepare-value [:bigquery LocalTime]
+  [_ t]
+  (format "time \"%s\"" (u.date/format-sql t)))
+
+(defmethod unprepare/unprepare-value [:bigquery LocalDate]
+  [_ t]
+  (format "date \"%s\"" (u.date/format-sql t)))
+
+(defmethod unprepare/unprepare-value [:bigquery LocalDateTime]
+  [_ t]
+  (format "datetime \"%s\"" (u.date/format-sql t)))
+
+(defmethod unprepare/unprepare-value [:bigquery OffsetTime]
+  [_ t]
+  ;; convert to a LocalTime in UTC
+  (let [local-time (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))]
+    (format "time \"%s\"" (u.date/format-sql local-time))))
+
+(defmethod unprepare/unprepare-value [:bigquery OffsetDateTime]
+  [_ t]
+  (format "timestamp \"%s\"" (u.date/format-sql t)))
+
+(defmethod unprepare/unprepare-value [:bigquery ZonedDateTime]
+  [_ t]
+  (format "timestamp \"%s %s\"" (u.date/format-sql (t/local-date-time t)) (.getId (t/zone-id t))))
 
 (defmethod sql.qp/field->identifier :bigquery
   [_ {table-id :table_id, field-name :name, :as field}]
@@ -280,7 +289,9 @@
        :mbql?      true})))
 
 (defmethod sql.qp/current-datetime-fn :bigquery
-  [_] :%current_timestamp)
+  [_]
+  :%current_timestamp)
 
 (defmethod sql.qp/quote-style :bigquery
-  [_] :mysql)
+  [_]
+  :mysql)

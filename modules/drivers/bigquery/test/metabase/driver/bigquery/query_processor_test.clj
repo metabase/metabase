@@ -142,11 +142,11 @@
 
 (deftest parsed-date-timezone-handling-test
   (datasets/test-driver :bigquery
-    (is (= "2018-08-31T00:00:00.000Z"
+    (is (= "2018-08-31T00:00:00Z"
            (native-timestamp-query (data/id) "2018-08-31 00:00:00" "UTC"))
         "A UTC date is returned, we should read/return it as UTC")
 
-    (is (= "2018-08-31T00:00:00.000-05:00"
+    (is (= "2018-08-31T00:00:00-05:00"
            (tu.tz/with-jvm-tz (time/time-zone-for-id "America/Chicago")
              (tt/with-temp* [Database [db {:engine  :bigquery
                                            :details (assoc (:details (data/db))
@@ -156,7 +156,7 @@
              "is already in the JVM's timezone. The test puts the JVM's timezone into America/Chicago an ensures that "
              "the correct date is compared"))
 
-    (is (= "2018-08-31T00:00:00.000+07:00"
+    (is (= "2018-08-31T00:00:00+07:00"
            (tu.tz/with-jvm-tz (time/time-zone-for-id "Asia/Jakarta")
              (tt/with-temp* [Database [db {:engine  :bigquery
                                            :details (assoc (:details (data/db))
