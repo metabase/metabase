@@ -36,14 +36,16 @@
 }
 
 :local(.tableActualName) {
-  font-family: monospace;
-  color: var(--color-accent3);
+  font-family: "Lucida Console", Monaco, monospace;
+  font-size: 13px;
+  line-height: 1.4em;
+  letter-spacing: 1px;
+  white-space: pre-wrap;
+  color: var(--color-text-medium);
   background-color: var(--color-bg-light);
+  border: 1px solid var(--color-text-light);
   border-radius: 4px;
   padding: 0.2em 0.4em;
-  line-height: 1.4em;
-  white-space: pre-wrap;
-  font-size: 13px;
 }
 
 :local(.guideLeftPadded) {
