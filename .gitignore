@@ -63,3 +63,4 @@ target/checksum.txt
 *.iml
 .idea/
 /local/src
+/cypress
