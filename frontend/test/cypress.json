@@ -1,5 +1,6 @@
 {
 	"testFiles": "**/*.cy.spec.js",
 	"pluginsFile": "frontend/test/cypress-plugins.js",
-	"integrationFolder": "frontend/test"
+	"integrationFolder": "frontend/test",
+	"supportFile": false
 }
