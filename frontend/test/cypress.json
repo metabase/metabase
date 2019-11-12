@@ -1,0 +1,4 @@
+{
+	"testFiles": "**/*.cy.spec.js",
+	"integrationFolder": "frontend/test"
+}
