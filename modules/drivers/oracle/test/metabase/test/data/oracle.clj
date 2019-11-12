@@ -172,8 +172,6 @@
 
 (defmethod tx/before-run :oracle
   [_]
-  ;; if this fails something is wacky NOCOMMIT
-  #_(Class/forName "oracle.net.nt.Clock" true (classloader/the-classloader))
   (drop-user! session-schema)
   (create-user! session-schema))
 

@@ -6,7 +6,7 @@
 
 (defn- log-query* [query]
   (u/prog1 query
-    (log/trace (u/format-color 'blue "\nQUERY: %s\n%s"  (u/emoji "😎") (u/pprint-to-str query)))))
+    (log/trace (u/format-color 'blue "\nQuery (before preprocessing): %s\n%s"  (u/emoji "😎") (u/pprint-to-str query)))))
 
 (defn log-query
   "Middleware that logs the query that will be ran."

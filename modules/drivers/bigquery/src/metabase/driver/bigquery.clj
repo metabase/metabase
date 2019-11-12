@@ -2,6 +2,7 @@
   (:require [clojure
              [set :as set]
              [string :as str]]
+            [clojure.tools.logging :as log]
             [metabase
              [driver :as driver]
              [util :as u]]
@@ -216,6 +217,7 @@
   [driver {{sql :query, params :params, :keys [table-name mbql?]} :native, :as outer-query}]
   (let [database (qp.store/database)]
     (binding [bigquery.common/*bigquery-timezone-id* (effective-query-timezone-id database)]
+      (log/tracef "Running BigQuery query in %s timezone" bigquery.common/*bigquery-timezone-id*)
       (let [sql (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
                                                                      (unprepare/unprepare driver (cons sql params))
                                                                      sql))]

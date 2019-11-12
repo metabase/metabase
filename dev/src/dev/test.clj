@@ -1,4 +1,4 @@
-(ns metabase.test
+(ns dev.test
   "The stuff you need to write almost every test, all in one place. Nice!"
   (:require [metabase
              [driver :as driver]

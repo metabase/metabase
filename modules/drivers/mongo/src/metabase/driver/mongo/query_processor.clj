@@ -136,7 +136,6 @@
   {:arglists '([field])}
   mbql.u/dispatch-by-clause-name-or-class)
 
-
 (defn- field->name
   "Return a single string name for `field`. For nested fields, this creates a combined qualified name."
   ^String [^FieldInstance field, ^String separator]
@@ -153,9 +152,25 @@
                    ~@body)}})
 
 
-(defmethod ->lvalue         (class Field) [this] (field->name this "___"))
-(defmethod ->initial-rvalue (class Field) [this] (str \$ (field->name this ".")))
-(defmethod ->rvalue         (class Field) [this] (str \$ (->lvalue this)))
+(defmethod ->lvalue (class Field)
+  [field]
+  (field->name field "___"))
+
+(defmethod ->initial-rvalue (class Field)
+  [{special-type :special_type, :as field}]
+  (let [field-name (str \$ (field->name field "."))]
+    (cond
+      (isa? (:special_type field) :type/UNIXTimestampMilliseconds)
+      {$add [(java.util.Date. 0) field-name]}
+
+      (isa? (:special_type field) :type/UNIXTimestampSeconds)
+      {$add [(java.util.Date. 0) {$multiply [field-name 1000]}]}
+
+      :else field-name)))
+
+(defmethod ->rvalue (class Field)
+  [field]
+  (str \$ (->lvalue field)))
 
 (defmethod ->lvalue         :field-id [[_ field-id]] (->lvalue          (qp.store/field field-id)))
 (defmethod ->initial-rvalue :field-id [[_ field-id]] (->initial-rvalue  (qp.store/field field-id)))
@@ -184,15 +199,7 @@
   (let [field-id (mbql.u/field-clause->id-or-literal field-clause)
         field    (when (integer? field-id)
                    (qp.store/field field-id))]
-    (mongo-let [column (let [initial-rvalue (->initial-rvalue field-clause)]
-                         (cond
-                           (isa? (:special_type field) :type/UNIXTimestampMilliseconds)
-                           {$add [(java.util.Date. 0) initial-rvalue]}
-
-                           (isa? (:special_type field) :type/UNIXTimestampSeconds)
-                           {$add [(java.util.Date. 0) {$multiply [initial-rvalue 1000]}]}
-
-                           :else initial-rvalue))]
+    (mongo-let [column (->initial-rvalue field-clause)]
       (letfn [(stringify
                 ([format-string]
                  (stringify format-string column))

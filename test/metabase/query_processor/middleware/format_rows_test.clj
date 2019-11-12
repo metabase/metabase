@@ -15,20 +15,20 @@
 
 ;; TIMEZONE FIXME
 (def ^:private dbs-exempt-from-format-rows-tests
-  "DBs to skip the tests below for. TODO - why are so many databases not running these tests? Most of these should be
-  able to pass with a few tweaks."
+  "DBs to skip the tests below for. TIMEZONE FIXME — why are so many databases not running these tests? Most of these
+  should be able to pass with a few tweaks."
   #{:oracle :mongo :redshift :presto :sparksql :snowflake})
 
 (deftest format-rows-test
   (datasets/test-drivers (qp.test/normal-drivers-except dbs-exempt-from-format-rows-tests)
     (testing "without report timezone"
-      (is (= (if (= :sqlite driver/*driver*)
-               [[1 "Plato Yeshua"        "2014-04-01 00:00:00" "08:30:00"]
-                [2 "Felipinho Asklepios" "2014-12-05 00:00:00" "15:15:00"]
-                [3 "Kaneonuskatew Eiran" "2014-11-06 00:00:00" "16:15:00"]
-                [4 "Simcha Yan"          "2014-01-01 00:00:00" "08:30:00"]
-                [5 "Quentin Sören"       "2014-10-03 00:00:00" "17:30:00"]]
-
+      (is (= (if (= driver/*driver* :sqlite)
+               ;; TIMEZONE FIXME
+               [[1 "Plato Yeshua"        "2014-04-01T00:00:00Z" "08:30:00"]
+                [2 "Felipinho Asklepios" "2014-12-05T00:00:00Z" "15:15:00"]
+                [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00Z" "16:15:00"]
+                [4 "Simcha Yan"          "2014-01-01T00:00:00Z" "08:30:00"]
+                [5 "Quentin Sören"       "2014-10-03T00:00:00Z" "17:30:00"]]
                [[1 "Plato Yeshua"        "2014-04-01T00:00:00Z" "08:30:00Z"]
                 [2 "Felipinho Asklepios" "2014-12-05T00:00:00Z" "15:15:00Z"]
                 [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00Z" "16:15:00Z"]
@@ -42,12 +42,12 @@
     (testing "with report timezone"
       (qp.timezone/with-report-timezone-id "America/Los_Angeles"
         (is (= (cond
-                 (= :sqlite driver/*driver*)
-                 [[1 "Plato Yeshua"        "2014-04-01 00:00:00" "08:30:00"]
-                  [2 "Felipinho Asklepios" "2014-12-05 00:00:00" "15:15:00"]
-                  [3 "Kaneonuskatew Eiran" "2014-11-06 00:00:00" "16:15:00"]
-                  [4 "Simcha Yan"          "2014-01-01 00:00:00" "08:30:00"]
-                  [5 "Quentin Sören"       "2014-10-03 00:00:00" "17:30:00"]]
+                 (= driver/*driver* :sqlite)
+                 [[1 "Plato Yeshua"        "2014-04-01T00:00:00Z" "08:30:00"]
+                  [2 "Felipinho Asklepios" "2014-12-05T00:00:00Z" "15:15:00"]
+                  [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00Z" "16:15:00"]
+                  [4 "Simcha Yan"          "2014-01-01T00:00:00Z" "08:30:00"]
+                  [5 "Quentin Sören"       "2014-10-03T00:00:00Z" "17:30:00"]]
 
                  (qp.test/supports-report-timezone? driver/*driver*)
                  [[1 "Plato Yeshua"        "2014-04-01T00:00:00-07:00" "08:30:00-08:00"]

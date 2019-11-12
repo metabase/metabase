@@ -12,21 +12,24 @@
              [sql :as sql]]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
+             [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util
              [date-2 :as u.date]
              [honeysql-extensions :as hx]]
             [schema.core :as s])
-  (:import java.sql.Time
-           [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
+  (:import [java.sql ResultSet Types]
+           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            java.time.temporal.Temporal))
 
 (driver/register! :sqlite, :parent :sql-jdbc)
 
-(defmethod sql-jdbc.conn/connection-details->spec :sqlite [_ {:keys [db]
-                                                              :or   {db "sqlite.db"}
-                                                              :as   details}]
+(defmethod sql-jdbc.conn/connection-details->spec :sqlite
+  [_ {:keys [db]
+      :or   {db "sqlite.db"}
+      :as   details}]
   (merge {:subprotocol "sqlite"
           :subname     db}
          (dissoc details :db)))
@@ -52,12 +55,14 @@
     [#"DATE"     :type/Date]
     [#"TIME"     :type/Time]]))
 
-(defmethod sql-jdbc.sync/database-type->base-type :sqlite [_ database-type]
+(defmethod sql-jdbc.sync/database-type->base-type :sqlite
+  [_ database-type]
   (database-type->base-type database-type))
 
 ;; register the SQLite concatnation operator `||` with HoneySQL as `sqlite-concat`
 ;; (hsql/format (hsql/call :sqlite-concat :a :b)) -> "(a || b)"
-(defmethod hformat/fn-handler "sqlite-concat" [_ & args]
+(defmethod hformat/fn-handler "sqlite-concat"
+  [_ & args]
   (str "(" (str/join " || " (map hformat/to-sql args)) ")"))
 
 (def ^:private ->date     (partial hsql/call :date))
@@ -184,8 +189,8 @@
   [_ _ expr]
   (->datetime expr (hx/literal "unixepoch")))
 
-;; SQLite doesn't like things like Timestamps getting passed in as prepared statement args, so we need to convert them
-;; to date literal strings instead to get things to work
+;; SQLite doesn't like Temporal values getting passed in as prepared statement args, so we need to convert them to
+;; date literal strings instead to get things to work
 ;;
 ;; TODO - not sure why this doesn't need to be done in `->honeysql` as well? I think it's because the MBQL date values
 ;; are funneled through the `date` family of functions above
@@ -202,17 +207,15 @@
   [_ bool]
   (if bool 1 0))
 
-(defmethod sql.qp/->honeysql [:sqlite Instant]
-  [_ t]
-  (hsql/call :time (hx/literal (u.date/format-sql t))))
+;; See https://sqlite.org/lang_datefunc.html
 
 (defmethod sql.qp/->honeysql [:sqlite LocalDate]
   [_ t]
-  (hsql/call :time (hx/literal (u.date/format-sql t))))
+  (hsql/call :date (hx/literal (u.date/format-sql t))))
 
 (defmethod sql.qp/->honeysql [:sqlite LocalDateTime]
   [_ t]
-  (hsql/call :time (hx/literal (u.date/format-sql t))))
+  (hsql/call :datetime (hx/literal (u.date/format-sql t))))
 
 (defmethod sql.qp/->honeysql [:sqlite LocalTime]
   [_ t]
@@ -220,7 +223,7 @@
 
 (defmethod sql.qp/->honeysql [:sqlite OffsetDateTime]
   [_ t]
-  (hsql/call :time (hx/literal (u.date/format-sql t))))
+  (hsql/call :datetime (hx/literal (u.date/format-sql t))))
 
 (defmethod sql.qp/->honeysql [:sqlite OffsetTime]
   [_ t]
@@ -228,7 +231,7 @@
 
 (defmethod sql.qp/->honeysql [:sqlite ZonedDateTime]
   [_ t]
-  (hsql/call :time (hx/literal (u.date/format-sql t))))
+  (hsql/call :datetime (hx/literal (u.date/format-sql t))))
 
 ;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made case-sensitive. So let people know
 ;; we have this 'feature' so the frontend doesn't try to present the option to you.
@@ -242,17 +245,30 @@
 (defmethod driver/supports? [:sqlite :foreign-keys] [_ _] (not config/is-test?))
 
 ;; SQLite defaults everything to UTC
-(defmethod driver.common/current-db-time-date-formatters :sqlite [_]
+(defmethod driver.common/current-db-time-date-formatters :sqlite
+  [_]
   (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss"))
 
-(defmethod driver.common/current-db-time-native-query :sqlite [_]
+(defmethod driver.common/current-db-time-native-query :sqlite
+  [_]
   "select cast(datetime('now') as text);")
 
-(defmethod driver/current-db-time :sqlite [& args]
+(defmethod driver/current-db-time :sqlite
+  [& args]
   (apply driver.common/current-db-time args))
 
-(defmethod sql-jdbc.sync/active-tables :sqlite [& args]
+(defmethod sql-jdbc.sync/active-tables :sqlite
+  [& args]
   (apply sql-jdbc.sync/post-filtered-active-tables args))
 
 (defmethod sql.qp/current-datetime-fn :sqlite [_]
   (hsql/call :datetime (hx/literal :now)))
+
+;; (.getObject rs i LocalDate) doesn't seem to work, nor does `(.getDate)`; and it seems to be the case that
+;; timestamps come back as `Types/DATE` as well? Fetch them as a String and then parse them
+(defmethod sql-jdbc.execute/read-column [:sqlite Types/DATE]
+  [_ _ ^ResultSet rs _ i]
+  (try
+    (t/local-date (.getDate rs i))
+    (catch Throwable _
+      (u.date/parse (.getString rs i) (qp.timezone/results-timezone-id)))))

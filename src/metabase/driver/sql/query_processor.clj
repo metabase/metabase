@@ -68,7 +68,7 @@
 
 (defmethod current-datetime-fn :sql [_] :%now)
 
-
+;; TODO - rename this to `date-bucket` or something that better describes what it actually does
 (defmulti date
   "Return a HoneySQL form for truncating a date or timestamp field or value to a given resolution, or extracting a date
   component."

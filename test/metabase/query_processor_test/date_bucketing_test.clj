@@ -71,9 +71,17 @@
                          [5 "2015-06-20T01:45:00Z" 3]]]
         (doseq [timezone [:pacific :utc :eastern]]
           (testing "Results should be returned in report timezone, if supported by driver."
-            (let [local-results (if (or (= timezone :utc)
-                                        (not (driver/supports? driver/*driver* :set-timezone)))
+            (let [local-results (cond
+
+                                  (= driver/*driver* :sqlite)
+                                  (for [[id s cnt] utc-results]
+                                    [id (u.date/format-sql (t/local-date-time (u.date/parse s))) cnt])
+
+                                  (or (= timezone :utc)
+                                      (not (driver/supports? driver/*driver* :set-timezone)))
                                   utc-results
+
+                                  :else
                                   (for [[id s cnt] utc-results]
                                     (let [zone-id (t/zone-id (->timezone-id timezone))
                                           t       (t/offset-date-time (t/with-zone-same-instant (u.date/parse s) zone-id))
@@ -104,9 +112,6 @@
    (qp.timezone/with-report-timezone-id (->timezone-id timezone-id)
      (sad-toucan-incidents-with-bucketing unit))))
 
-(defn- default-parse-fn [s]
-  (u.date/parse s))
-
 (defn- default-timezone-parse-fn
   "Create a date formatter, interpretting the datestring as being in `tz`"
   [default-timezone-id]
@@ -114,20 +119,16 @@
     (fn [s]
       (u.date/parse s timezone-id))))
 
-(defn- results-timezone-format-fn
+(defn- format-in-timezone-fn
   "Create a formatter for converting a date to `tz` and in the format that the query processor would return"
   [results-timezone-id]
   (let [zone-id (-> results-timezone-id ->timezone-id t/zone-id)]
     (fn [t]
       (format-rows/format-value t zone-id))))
 
-(defn- default-format-fn
-  "sqlite returns date strings that do not include their timezone, this formatter is useful for those DBs"
-  [t]
-  (u.date/format t))
-
-(defn- date-without-time-format-fn  [t]
+(defn- date-without-time-format-fn
   "sqlite returns dates that do not include their time, this formatter is useful for those DBs"
+  [t]
   (condp instance? t
     LocalDate     (t/format :iso-local-date t)
     LocalDateTime (t/format :iso-local-date t)
@@ -162,41 +163,43 @@
   (datasets/test-drivers (qp.test/normal-drivers)
     (testing "Pacific timezone"
       (is (= (cond
-               ;; Timezone is omitted by these databases
+               ;; Timezone is omitted by these databases HACK - SQLite returns datetimes as strings, and we don't
+               ;; re-parse them or do anything smart with them; we just return them directly. This is less than ideal.
+               ;; TIMEZONE FIXME
                (= :sqlite driver/*driver*)
-               (sad-toucan-result (default-timezone-parse-fn :utc) default-format-fn)
+               (sad-toucan-result (default-timezone-parse-fn :utc) (comp u.date/format-sql t/local-date-time))
 
                ;; There's a bug here where we are reading in the UTC time as pacific, so we're 7 hours off
                ;; (This is fixed for Oracle now)
                (and (qp.test/tz-shifted-driver-bug? driver/*driver*) (not= driver/*driver* :oracle))
-               (sad-toucan-result (default-timezone-parse-fn :pacific) (results-timezone-format-fn :pacific))
+               (sad-toucan-result (default-timezone-parse-fn :pacific) (format-in-timezone-fn :pacific))
 
                ;; When the reporting timezone is applied, the same datetime value is returned, but set in the pacific
                ;; timezone
                (qp.test/supports-report-timezone? driver/*driver*)
-               (sad-toucan-result (default-timezone-parse-fn :utc) (results-timezone-format-fn :pacific))
+               (sad-toucan-result (default-timezone-parse-fn :utc) (format-in-timezone-fn :pacific))
 
                ;; Databases that don't support report timezone will always return the time using the JVM's timezone
                ;; setting Our tests force UTC time, so this should always be UTC
                :else
-               (sad-toucan-result (default-timezone-parse-fn :utc) (results-timezone-format-fn :utc)))
+               (sad-toucan-result (default-timezone-parse-fn :utc) (format-in-timezone-fn :utc)))
              (sad-toucan-incidents-with-bucketing :default :pacific))))
     (testing "Eastern timezone"
       (is (= (cond
                ;; These databases are always in UTC so aren't impacted by changes in report-timezone
                (= :sqlite driver/*driver*)
-               (sad-toucan-result (default-timezone-parse-fn :utc) default-format-fn)
+               (sad-toucan-result (default-timezone-parse-fn :utc) (comp u.date/format-sql t/local-date-time))
 
                (and (qp.test/tz-shifted-driver-bug? driver/*driver*) (not= driver/*driver* :oracle))
-               (sad-toucan-result (default-timezone-parse-fn :eastern) (results-timezone-format-fn :eastern))
+               (sad-toucan-result (default-timezone-parse-fn :eastern) (format-in-timezone-fn :eastern))
 
                ;; The time instant is the same as UTC (or pacific) but should be offset by the eastern timezone
                (qp.test/supports-report-timezone? driver/*driver*)
-               (sad-toucan-result (default-timezone-parse-fn :utc) (results-timezone-format-fn :eastern))
+               (sad-toucan-result (default-timezone-parse-fn :utc) (format-in-timezone-fn :eastern))
 
                ;; The change in report timezone has no affect on this group
                :else
-               (sad-toucan-result (default-timezone-parse-fn :utc) (results-timezone-format-fn :utc)))
+               (sad-toucan-result (default-timezone-parse-fn :utc) (format-in-timezone-fn :utc)))
              (sad-toucan-incidents-with-bucketing :default :eastern)))))
   ;; Changes the JVM timezone from UTC to Pacific, this test isn't run on H2 as the database stores it's timezones in
   ;; the JVM timezone (UTC on startup). When we change that timezone, it then assumes the data was also stored in that
@@ -208,17 +211,17 @@
     (testing "Change JVM timezone from UTC to Pacific"
       (is (= (cond
                (= :sqlite driver/*driver*)
-               (sad-toucan-result (default-timezone-parse-fn :utc) default-format-fn)
+               (sad-toucan-result (default-timezone-parse-fn :utc) (comp u.date/format-sql t/local-date-time))
 
                (and (qp.test/tz-shifted-driver-bug? driver/*driver*) (not= driver/*driver* :oracle))
-               (sad-toucan-result (default-timezone-parse-fn :eastern) (results-timezone-format-fn :eastern))
+               (sad-toucan-result (default-timezone-parse-fn :eastern) (format-in-timezone-fn :eastern))
 
                ;; The JVM timezone should have no impact on results from a database that uses a report timezone
                (qp.test/supports-report-timezone? driver/*driver*)
-               (sad-toucan-result (default-timezone-parse-fn :utc) (results-timezone-format-fn :eastern))
+               (sad-toucan-result (default-timezone-parse-fn :utc) (format-in-timezone-fn :eastern))
 
                :else
-               (sad-toucan-result (default-timezone-parse-fn :utc) (results-timezone-format-fn :pacific)))
+               (sad-toucan-result (default-timezone-parse-fn :utc) (format-in-timezone-fn :pacific)))
              (tu.tz/with-jvm-tz (timezone :pacific)
                (sad-toucan-incidents-with-bucketing :default :eastern)))))))
 
@@ -227,16 +230,16 @@
     (datasets/test-drivers (qp.test/normal-drivers)
       (is (= (cond
                (= :sqlite driver/*driver*)
-               (sad-toucan-result (default-timezone-parse-fn :utc) default-format-fn)
+               (sad-toucan-result (default-timezone-parse-fn :utc) (comp u.date/format-sql t/local-date-time))
 
                (qp.test/tz-shifted-driver-bug? driver/*driver*)
-               (sad-toucan-result (default-timezone-parse-fn :pacific) (results-timezone-format-fn :pacific))
+               (sad-toucan-result (default-timezone-parse-fn :pacific) (format-in-timezone-fn :pacific))
 
                (qp.test/supports-report-timezone? driver/*driver*)
-               (sad-toucan-result (default-timezone-parse-fn :utc) (results-timezone-format-fn :pacific))
+               (sad-toucan-result (default-timezone-parse-fn :utc) (format-in-timezone-fn :pacific))
 
                :else
-               (sad-toucan-result (default-timezone-parse-fn :utc) (results-timezone-format-fn :utc)))
+               (sad-toucan-result (default-timezone-parse-fn :utc) (format-in-timezone-fn :utc)))
              (sad-toucan-incidents-with-bucketing :minute :pacific))))))
 
 (deftest group-by-minute-of-hour-test
@@ -283,17 +286,16 @@
   (datasets/test-drivers (qp.test/normal-drivers)
     (is (= (cond
              (= :sqlite driver/*driver*)
-             (results-by-hour (default-timezone-parse-fn :utc)
-                              default-format-fn)
+             (results-by-hour (default-timezone-parse-fn :utc) (comp u.date/format-sql t/local-date-time))
 
              (qp.test/tz-shifted-driver-bug? driver/*driver*)
-             (results-by-hour (default-timezone-parse-fn :pacific) (results-timezone-format-fn :pacific))
+             (results-by-hour (default-timezone-parse-fn :pacific) (format-in-timezone-fn :pacific))
 
              (qp.test/supports-report-timezone? driver/*driver*)
-             (results-by-hour (default-timezone-parse-fn :utc) (results-timezone-format-fn :pacific))
+             (results-by-hour (default-timezone-parse-fn :utc) (format-in-timezone-fn :pacific))
 
              :else
-             (results-by-hour (default-timezone-parse-fn :utc) (results-timezone-format-fn :utc)))
+             (results-by-hour (default-timezone-parse-fn :utc) (format-in-timezone-fn :utc)))
            (sad-toucan-incidents-with-bucketing :hour :pacific)))))
 
 ;; The counts are affected by timezone as the times are shifted back by 7 hours. These count changes can be validated
@@ -384,49 +386,49 @@
   (datasets/test-drivers (qp.test/normal-drivers)
     (testing "UTC timezone"
       (is (= (if (= :sqlite driver/*driver*)
-               (results-by-day default-parse-fn date-without-time-format-fn [6 10 4 9 9 8 8 9 7 9])
-               (results-by-day default-parse-fn (results-timezone-format-fn :utc) [6 10 4 9 9 8 8 9 7 9]))
+               (results-by-day u.date/parse date-without-time-format-fn [6 10 4 9 9 8 8 9 7 9])
+               (results-by-day u.date/parse (format-in-timezone-fn :utc) [6 10 4 9 9 8 8 9 7 9]))
              (sad-toucan-incidents-with-bucketing :day :utc))))
     (testing "Pacific timezone"
       (is (= (cond
                (= :sqlite driver/*driver*)
-               (results-by-day default-parse-fn
+               (results-by-day u.date/parse
                                date-without-time-format-fn
                                [6 10 4 9 9 8 8 9 7 9])
 
                (qp.test/tz-shifted-driver-bug? driver/*driver*)
                (results-by-day (default-timezone-parse-fn :pacific)
-                               (results-timezone-format-fn :pacific)
+                               (format-in-timezone-fn :pacific)
                                [6 10 4 9 9 8 8 9 7 9])
 
                (qp.test/supports-report-timezone? driver/*driver*)
                (results-by-day (default-timezone-parse-fn :pacific)
-                               (results-timezone-format-fn :pacific)
+                               (format-in-timezone-fn :pacific)
                                [8 9 9 4 11 8 6 10 6 10])
 
                :else
                (results-by-day (default-timezone-parse-fn :utc)
-                               (results-timezone-format-fn :utc)
+                               (format-in-timezone-fn :utc)
                                [6 10 4 9 9 8 8 9 7 9]))
              (sad-toucan-incidents-with-bucketing :day :pacific))))
     (testing "Eastern timezone"
       (is (= (cond
                (= :sqlite driver/*driver*)
-               (results-by-day default-parse-fn date-without-time-format-fn [6 10 4 9 9 8 8 9 7 9])
+               (results-by-day u.date/parse date-without-time-format-fn [6 10 4 9 9 8 8 9 7 9])
 
                (qp.test/tz-shifted-driver-bug? driver/*driver*)
                (results-by-day (default-timezone-parse-fn :eastern)
-                               (results-timezone-format-fn :eastern)
+                               (format-in-timezone-fn :eastern)
                                [6 10 4 9 9 8 8 9 7 9])
 
                (qp.test/supports-report-timezone? driver/*driver*)
                (results-by-day (default-timezone-parse-fn :eastern)
-                               (results-timezone-format-fn :eastern)
+                               (format-in-timezone-fn :eastern)
                                [7 9 7 6 12 6 7 9 8 10])
 
                :else
-               (results-by-day default-parse-fn
-                               (results-timezone-format-fn :utc)
+               (results-by-day u.date/parse
+                               (format-in-timezone-fn :utc)
                                [6 10 4 9 9 8 8 9 7 9]))
              (sad-toucan-incidents-with-bucketing :day :eastern)))))
   (testing "With JVM timezone set to Pacific time"
@@ -442,21 +444,21 @@
     (datasets/test-drivers (qp.test/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo})
       (is (= (cond
                (= :sqlite driver/*driver*)
-               (results-by-day default-parse-fn date-without-time-format-fn [6 10 4 9 9 8 8 9 7 9])
+               (results-by-day u.date/parse date-without-time-format-fn [6 10 4 9 9 8 8 9 7 9])
 
                (qp.test/tz-shifted-driver-bug? driver/*driver*)
                (results-by-day (default-timezone-parse-fn :pacific)
-                               (results-timezone-format-fn :pacific)
+                               (format-in-timezone-fn :pacific)
                                [6 10 4 9 9 8 8 9 7 9])
 
                (qp.test/supports-report-timezone? driver/*driver*)
                (results-by-day (default-timezone-parse-fn :pacific)
-                               (results-timezone-format-fn :pacific)
+                               (format-in-timezone-fn :pacific)
                                [8 9 9 4 11 8 6 10 6 10])
 
                :else
                (results-by-day (default-timezone-parse-fn :utc)
-                               (results-timezone-format-fn :pacific)
+                               (format-in-timezone-fn :pacific)
                                [6 10 4 9 9 8 8 9 7 9]))
              (tu.tz/with-jvm-tz (timezone :pacific)
                (sad-toucan-incidents-with-bucketing :day :pacific)))))))
@@ -502,7 +504,7 @@
   [date-str tz]
   (let [date-obj    (tformat/parse (tformat/formatters :date) date-str)
         next-week   (time/plus date-obj (time/days 7))
-        unparse-utc #(tformat/unparse (results-timezone-format-fn :utc) %)]
+        unparse-utc #(tformat/unparse (format-in-timezone-fn :utc) %)]
     (-
      ;; Once the time is shifted to `TZ`, how many new events will this add
      (find-events-in-range (unparse-utc next-week) (unparse-utc (offset-time tz next-week)))
@@ -558,33 +560,33 @@
   (datasets/test-drivers (qp.test/normal-drivers)
     (testing "UTC timezone"
       (is (= (if (= :sqlite driver/*driver*)
-               (results-by-week default-parse-fn
+               (results-by-week u.date/parse
                                 date-without-time-format-fn
                                 [46 47 40 60 7])
-               (results-by-week default-parse-fn
-                                (results-timezone-format-fn :utc)
+               (results-by-week u.date/parse
+                                (format-in-timezone-fn :utc)
                                 [46 47 40 60 7]))
              (sad-toucan-incidents-with-bucketing :week :utc))))
     (testing "Pacific timezone"
       (is (= (cond
                (= :sqlite driver/*driver*)
-               (results-by-week default-parse-fn
+               (results-by-week u.date/parse
                                 date-without-time-format-fn
                                 [46 47 40 60 7])
 
                (qp.test/tz-shifted-driver-bug? driver/*driver*)
                (results-by-week (default-timezone-parse-fn :pacific)
-                                (results-timezone-format-fn :pacific)
+                                (format-in-timezone-fn :pacific)
                                 [46 47 40 60 7])
 
                (qp.test/supports-report-timezone? driver/*driver*)
                (results-by-week (default-timezone-parse-fn :pacific)
-                                (results-timezone-format-fn :pacific)
+                                (format-in-timezone-fn :pacific)
                                 [49 47 39 58 7])
 
                :else
-               (results-by-week default-parse-fn
-                                (results-timezone-format-fn :utc)
+               (results-by-week u.date/parse
+                                (format-in-timezone-fn :utc)
                                 [46 47 40 60 7]))
 
              (sad-toucan-incidents-with-bucketing :week :pacific))))
@@ -594,23 +596,23 @@
       (datasets/test-drivers (qp.test/normal-drivers)
         (is (= (cond
                  (= :sqlite driver/*driver*)
-                 (results-by-week default-parse-fn
+                 (results-by-week u.date/parse
                                   date-without-time-format-fn
                                   [46 47 40 60 7])
 
                  (qp.test/tz-shifted-driver-bug? driver/*driver*)
                  (results-by-week (default-timezone-parse-fn :eastern)
-                                  (results-timezone-format-fn :eastern)
+                                  (format-in-timezone-fn :eastern)
                                   [46 47 40 60 7])
 
                  (qp.test/supports-report-timezone? driver/*driver*)
                  (results-by-week (default-timezone-parse-fn :eastern)
-                                  (results-timezone-format-fn :eastern)
+                                  (format-in-timezone-fn :eastern)
                                   [47 48 39 59 7])
 
                  :else
-                 (results-by-week default-parse-fn
-                                  (results-timezone-format-fn :utc)
+                 (results-by-week u.date/parse
+                                  (format-in-timezone-fn :utc)
                                   [46 47 40 60 7]))
 
                (sad-toucan-incidents-with-bucketing :week :eastern))))))
@@ -618,28 +620,29 @@
   ;; begin/end of the week
   ;;
   ;; The exclusions here are databases that give incorrect answers when the JVM timezone doesn't match the databases
-  ;; timezone
+  ;; timezone (TIMEZONE FIXME)
   (testing "JVM timezone set to Pacific"
-    (datasets/test-drivers (qp.test/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo})
+    (datasets/test-drivers (qp.test/normal-drivers-except #{:h2 :sqlserver :redshift :sparksql :mongo :bigquery})
       (is (= (cond
                (= :sqlite driver/*driver*)
-               (results-by-week default-parse-fn
+               (results-by-week u.date/parse
                                 date-without-time-format-fn
                                 [46 47 40 60 7])
 
+               ;; TODO - these results are the same as the `:else` results
                (qp.test/tz-shifted-driver-bug? driver/*driver*)
                (results-by-week (default-timezone-parse-fn :pacific)
-                                (results-timezone-format-fn :pacific)
+                                (format-in-timezone-fn :pacific)
                                 [46 47 40 60 7])
 
                (qp.test/supports-report-timezone? driver/*driver*)
                (results-by-week (default-timezone-parse-fn :pacific)
-                                (results-timezone-format-fn :pacific)
+                                (format-in-timezone-fn :pacific)
                                 [49 47 39 58 7])
 
                :else
-               (results-by-week default-parse-fn
-                                (results-timezone-format-fn :pacific)
+               (results-by-week u.date/parse
+                                (format-in-timezone-fn :pacific)
                                 [46 47 40 60 7]))
              (tu.tz/with-jvm-tz (timezone :pacific)
                (sad-toucan-incidents-with-bucketing :week :pacific)))))))

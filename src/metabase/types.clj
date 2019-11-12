@@ -82,11 +82,16 @@
 
 ;; TODO - Consider renaming the parent of temporal types to `:type/Temporal`, and making `:type/DateTime` a sibling of
 ;; `:type/Time` and `:type/Date` rather than its parent
+;; TIMEZONE FIXME
 (derive :type/DateTime :type/*)
 (derive :type/DateTimeWithTZ :type/DateTime)
 (derive :type/Time :type/DateTime)
 (derive :type/TimeWithTZ :type/Time)
 (derive :type/Date :type/DateTime)
+;; TODO - what about Date with timezone?
+;;
+;; TODO - should we differentiate between timezone offset vs ID, and what Oracle calls `TIMESTAMP WITH LOCAL TIME
+;; ZONE` (normalized to UTC when stored) vs columns that actually store offset?
 
 (derive :type/UNIXTimestamp :type/DateTime)
 (derive :type/UNIXTimestamp :type/Integer)
