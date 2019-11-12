@@ -32,7 +32,7 @@ const QueryDownloadWidget = ({
   <PopoverWithTrigger
     triggerElement={
       <Tooltip tooltip={t`Download full results`}>
-        <Icon title={t`Download this data`} name={icon} size={16} />
+        <Icon title={t`Download this data`} name={icon} size={20} />
       </Tooltip>
     }
     triggerClasses={cx(className, "text-brand-hover")}
