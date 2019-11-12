@@ -71,6 +71,11 @@
   (format "timestamp with time zone '%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ"
                                                     (t/offset-date-time t (t/zone-offset 0)))))
 
+;; for legacy situtations
+(defmethod unprepare-value [:sql java.util.Date]
+  [driver t]
+  (unprepare-value driver (t/instant t)))
+
 
 ;; TODO - I think a name like `deparameterize` would be more appropriate here
 (defmulti ^String unprepare

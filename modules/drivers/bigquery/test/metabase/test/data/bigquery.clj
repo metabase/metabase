@@ -1,8 +1,6 @@
 (ns metabase.test.data.bigquery
-  (:require [clj-time
-             [coerce :as tcoerce]
-             [format :as tformat]]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
+            [java-time :as t]
             [medley.core :as m]
             [metabase
              [config :as config]
@@ -11,7 +9,6 @@
             [metabase.driver
              [bigquery :as bigquery]
              [google :as google]]
-            [metabase.driver.bigquery.query-processor :as bigquery.qp]
             [metabase.test.data :as data]
             [metabase.test.data
              [interface :as tx]
@@ -20,12 +17,11 @@
              [date :as du]
              [date-2 :as u.date]
              [schema :as su]]
-            [java-time :as t]
             [schema.core :as s])
   (:import com.google.api.client.util.DateTime
            com.google.api.services.bigquery.Bigquery
-           [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest QueryResponse Table
-            TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableFieldSchema TableReference TableRow
+           [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest QueryResponse
+            Table TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableFieldSchema TableReference TableRow
             TableSchema]
            java.sql.Time))
 

@@ -17,7 +17,8 @@
              [date :as du]
              [honeysql-extensions :as hx]]
             [toucan.db :as db])
-  (:import [java.sql PreparedStatement ResultSet Types]))
+  (:import [java.sql PreparedStatement ResultSet Types]
+           java.util.Date))
 
 (driver/register! :hive-like
   :parent #{:sql-jdbc ::sql-jdbc.execute/use-legacy-classes-for-read-and-set}

@@ -8,12 +8,12 @@
              [walk :as walk]]
             [clojure.tools.logging :as log]
             [flatland.ordered.map :as ordered-map]
+            [java-time :as t]
             [metabase.driver.mongo.util :refer [*mongo-connection*]]
             [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.models.field :refer [Field]]
-            [metabase.plugins.classloader :as classloader]
             [metabase.query-processor
              [interface :as i]
              [store :as qp.store]]
@@ -21,13 +21,12 @@
             [metabase.util :as u]
             [metabase.util
              [date-2 :as u.date]
-             [i18n :as ui18n :refer [deferred-tru tru]]
+             [i18n :as ui18n :refer [tru]]
              [schema :as su]]
-            [monger
+            [monger json
              [collection :as mc]
+             [conversion :as m.conversion]
              [operators :refer :all]]
-            [java-time :as t]
-            monger.json
             [schema.core :as s])
   (:import metabase.models.field.FieldInstance
            org.bson.types.ObjectId))
@@ -75,6 +74,26 @@
   column names in the query (?)"
   [s/Keyword])
 
+;; TIMEZONE FIXME — or use codecs — https://mongodb.github.io/mongo-java-driver/3.0/bson/codecs/
+#_(extend-protocol m.conversion/ConvertToDBObject
+  java.time.LocalDate
+  (to-db-object [t])
+  java.time.LocalTime
+  java.time.LocalDateTime
+  java.time.OffsetTime
+  java.time.OffsetDateTime
+  java.time.ZonedDateTime)
+
+(extend-protocol m.conversion/ConvertFromDBObject
+  java.util.Date
+  (from-db-object [t _]
+    (t/instant t))
+  #_java.time.LocalTime
+  #_java.time.LocalDateTime
+  #_java.time.OffsetTime
+  #_java.time.OffsetDateTime
+  #_java.time.ZonedDateTime)
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    QP Impl                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -85,11 +104,8 @@
 
 (defn- log-aggregation-pipeline [form]
   (when-not i/*disable-qp-logging*
-    (log/trace (u/format-color 'green (str "\n" (deferred-tru "MONGO AGGREGATION PIPELINE:") "\n%s\n")
-                 (->> form
-                      ;; strip namespace qualifiers from Monger form
-                      (walk/postwalk #(if (symbol? %) (symbol (name %)) %))
-                      u/pprint-to-str) "\n"))))
+    (log/tracef "\nMongo aggregation pipeline:\n%s\n"
+                (u/pprint-to-str 'green (walk/postwalk #(if (symbol? %) (symbol (name %)) %) form)))))
 
 
 ;;; # STRUCTURED QUERY PROCESSOR
@@ -122,7 +138,7 @@
 
 
 (defn- field->name
-  "Return a single string name for FIELD. For nested fields, this creates a combined qualified name."
+  "Return a single string name for `field`. For nested fields, this creates a combined qualified name."
   ^String [^FieldInstance field, ^String separator]
   (if-let [parent-id (:parent_id field)]
     (str/join separator [(field->name (qp.store/field parent-id) separator)
@@ -149,7 +165,6 @@
 (defmethod ->initial-rvalue :field-literal [[_ field-name]] (str \$ (name field-name)))
 (defmethod ->rvalue         :field-literal [[_ field-name]] (str \$ (name field-name))) ; TODO - not sure if right?
 
-
 ;; Don't think this needs to implement `->lvalue` because you can't assign something to an aggregation e.g.
 ;;
 ;;    aggregations[0] = 20
@@ -160,10 +175,12 @@
 ;; TODO - does this need to implement `->lvalue` and `->initial-rvalue` ?
 
 
-(defmethod ->lvalue :datetime-field [[_ field-clause unit]]
+(defmethod ->lvalue :datetime-field
+  [[_ field-clause unit]]
   (str (->lvalue field-clause) "~~~" (name unit)))
 
-(defmethod ->initial-rvalue :datetime-field [[_ field-clause unit]]
+(defmethod ->initial-rvalue :datetime-field
+  [[_ field-clause unit]]
   (let [field-id (mbql.u/field-clause->id-or-literal field-clause)
         field    (when (integer? field-id)
                    (qp.store/field field-id))]
@@ -176,12 +193,12 @@
                            {$add [(java.util.Date. 0) {$multiply [initial-rvalue 1000]}]}
 
                            :else initial-rvalue))]
-      (let [stringify (fn stringify
-                        ([format-string]
-                         (stringify format-string column))
-                        ([format-string fld]
-                         {:___date {:$dateToString {:format format-string
-                                                    :date   fld}}}))]
+      (letfn [(stringify
+                ([format-string]
+                 (stringify format-string column))
+                ([format-string fld]
+                 {:___date {:$dateToString {:format format-string
+                                            :date   fld}}}))]
         (case unit
           :default         column
           :minute          (stringify "%Y-%m-%dT%H:%M:00")
@@ -216,20 +233,19 @@
           :year            (stringify "%Y"))))))
 
 
-(defmethod ->rvalue :datetime-field [this]
+(defmethod ->rvalue :datetime-field
+  [this]
   (str \$ (->lvalue this)))
-
 
 ;; Values clauses below; they only need to implement `->rvalue`
 
 (defmethod ->rvalue nil [_] nil)
 
-
-(defmethod ->rvalue :value [[_ value {base-type :base_type}]]
+(defmethod ->rvalue :value
+  [[_ value {base-type :base_type}]]
   (if (isa? base-type :type/MongoBSONID)
     (ObjectId. (str value))
     value))
-
 
 (defmethod ->rvalue :absolute-datetime
   [[_ t unit]]
@@ -241,7 +257,7 @@
           (extract [unit]
             (u.date/extract t unit))]
     (case (or unit :default)
-      :default         t
+      :default         (t/to-java-date t)
       :minute          (stringify "yyyy-MM-dd'T'HH:mm:00")
       :minute-of-hour  (extract :minute)
       :hour            (stringify "yyyy-MM-dd'T'HH:00:00")
@@ -257,7 +273,6 @@
       :quarter         (stringify "yyyy-MM" (u.date/truncate t :quarter))
       :quarter-of-year (extract :quarter-of-year)
       :year            (stringify "yyyy"))))
-
 
 ;; TODO - where's the part where we handle include-current?
 (defmethod ->rvalue :relative-datetime
@@ -738,7 +753,6 @@
   (let [query      (if (string? query)
                      (decode-fncalls (json/parse-string (encode-fncalls query) keyword))
                      query)
-        ;; query *secret-query*
         results    (mc/aggregate *mongo-connection* collection query
                                  :allow-disk-use true
                                  ;; options that control the creation of the cursor object. Empty map means use default

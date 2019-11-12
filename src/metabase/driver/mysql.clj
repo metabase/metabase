@@ -22,7 +22,7 @@
              [honeysql-extensions :as hx]
              [i18n :refer [trs]]
              [ssh :as ssh]])
-  (:import [java.time Instant OffsetDateTime OffsetTime ZonedDateTime]))
+  (:import [java.time OffsetDateTime OffsetTime ZonedDateTime]))
 
 (driver/register! :mysql, :parent :sql-jdbc)
 

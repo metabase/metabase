@@ -18,16 +18,11 @@
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor.store :as qp.store]
-            [java-time :as t]
             [metabase.util
              [honeysql-extensions :as hx]
              [i18n :refer [tru]]])
   (:import metabase.util.honeysql_extensions.Identifier
-           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
-           java.sql.Types
-           java.sql.ResultSet
            net.snowflake.client.jdbc.SnowflakeSQLException))
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::sql-jdbc.execute/use-legacy-classes-for-read-and-set})

@@ -30,7 +30,9 @@
             [metabase.models.database :refer [Database]]
             [metabase.query-processor.middleware.format-rows :as format-rows]
             [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [initialize :as initialize]]
             [metabase.test.data
              [datasets :as datasets]
              [interface :as tx]]
@@ -39,7 +41,6 @@
              [date :as du]
              [date-2 :as u.date]]
             [potemkin.types :as p.types]
-            [metabase.test.initialize :as initialize]
             [pretty.core :as pretty]
             [toucan.db :as db])
   (:import [java.time LocalDate LocalDateTime]
