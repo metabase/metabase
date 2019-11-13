@@ -268,10 +268,9 @@
      [[jonase/eastwood "0.3.6" :exclusions [org.clojure/clojure]]]
 
      :eastwood
-     {:exclude-namespaces [:test-paths dev]
+     {:exclude-namespaces [:test-paths dev dev.test]
       :config-files       ["./test_resources/eastwood-config.clj"]
       :add-linters        [:unused-private-vars
-                           :unused-namespaces
                            ;; These linters are pretty useful but give a few false positives and can't be selectively
                            ;; disabled (yet)
                            ;;
@@ -285,7 +284,9 @@
       :exclude-linters    [; Turn this off temporarily until we finish removing self-deprecated functions & macros
                            :deprecations
                            ;; this has a fit in libs that use Potemin `import-vars` such as `java-time`
-                           :implicit-dependencies]}}]
+                           :implicit-dependencies
+                           ;; too many false positives for now
+                           :unused-ret-vals]}}]
 
    ;; run ./bin/reflection-linter to check for reflection warnings
    :reflection-warnings

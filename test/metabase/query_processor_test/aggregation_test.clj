@@ -1,6 +1,7 @@
 (ns metabase.query-processor-test.aggregation-test
   "Tests for MBQL aggregations."
   (:require [expectations :refer [expect]]
+            [clojure.test :refer :all]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor-test :as qp.test]
             [metabase.test
@@ -37,15 +38,14 @@
       (data/run-mbql-query venues
         {:aggregation [[:avg $latitude]]}))))
 
-
-;; distinct count aggregation
-(qp.test/expect-with-non-timeseries-dbs
-  {:rows [[15]]
-   :cols [(qp.test/aggregate-col :distinct :checkins :user_id)]}
-  (qp.test/rows-and-cols
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query checkins
-        {:aggregation [[:distinct $user_id]]}))))
+(deftest distinct-count-test
+  (datasets/test-drivers (qp.test/normal-drivers)
+    (is (= {:rows [[15]]
+            :cols [(qp.test/aggregate-col :distinct :checkins :user_id)]}
+           (qp.test/rows-and-cols
+             (qp.test/format-rows-by [int]
+               (data/run-mbql-query checkins
+                 {:aggregation [[:distinct $user_id]]})))))))
 
 ;; Test that no aggregation (formerly known as a 'rows' aggregation in MBQL '95) just returns rows as-is.
 (qp.test/expect-with-non-timeseries-dbs

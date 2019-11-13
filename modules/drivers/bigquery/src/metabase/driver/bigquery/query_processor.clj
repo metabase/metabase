@@ -142,7 +142,7 @@
       (:mbql/temporal-type (meta x))))
 
 (defmulti ^:private ->temporal-type
-  {:arglists '([type x])}
+  {:arglists '([target-type x])}
   (fn [t-type x]
     [t-type (mbql.u/dispatch-by-clause-name-or-class x)]))
 

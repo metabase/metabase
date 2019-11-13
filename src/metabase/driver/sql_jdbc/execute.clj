@@ -84,18 +84,6 @@
   [_ _ rs _ i]
   (get-object-of-class rs i OffsetTime))
 
-(defmulti read-columns
-  "Return a function that will be used to read a row from a ResultSet, passed to Clojure JDBC as the `:read-columns`
-  argument. Returned function should take three args: `rs`, `rsmeta`, and `indexes`, and return a
-  sequence of results. Default implementation calls `read-column` and passes results to `jdbc/rs-read-column`.
-
-  This method provides a low-level opportunity to transform the shape of the results as a whole, e.g. by removing
-  extraneous columns from the results or adding missing ones. If you only want to override behavior for a single
-  type (e.g., convert bits to booleans), implement `read-column` instead."
-  {:arglists '([driver calendar])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
-
 (defn read-columns
   "Read columns from a JDBC `ResultSet` for the current row. This function uses `read-column` to read each individual
   value; `read-column` dispatches on `driver` and the JDBC type of each column — override this as needed.

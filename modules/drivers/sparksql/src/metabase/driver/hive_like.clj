@@ -15,13 +15,11 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.table :refer [Table]]
             [metabase.util
-             [date :as du]
              [date-2 :as u.date]
              [honeysql-extensions :as hx]]
             [toucan.db :as db])
   (:import [java.sql PreparedStatement ResultSet Types]
-           [java.time LocalDate OffsetDateTime ZonedDateTime]
-           java.util.Date))
+           [java.time LocalDate OffsetDateTime ZonedDateTime]))
 
 (driver/register! :hive-like
   :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set}
@@ -152,11 +150,6 @@
 (defmethod unprepare/unprepare-value [:hive-like String]
   [_ value]
   (str \' (str/replace value "'" "\\\\'") \'))
-
-;; TIMEZONE FIXME — I think this is still needed for some of the test extensions
-(defmethod unprepare/unprepare-value [:hive-like Date]
-  [_ value]
-  (format "timestamp '%s'" (du/format-date "yyyy-MM-dd HH:mm:ss.SSS"  value)))
 
 ;; Hive/Spark SQL doesn't seem to like DATEs so convert it to a DATETIME first
 (defmethod unprepare/unprepare-value [:hive-like LocalDate]

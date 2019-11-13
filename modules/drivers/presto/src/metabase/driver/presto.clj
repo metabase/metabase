@@ -19,11 +19,12 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor
              [store :as qp.store]
+             [timezone :as qp.timezone]
              [util :as qputil]]
             [metabase.util
              [date-2 :as u.date]
              [honeysql-extensions :as hx]
-             [i18n :refer [trs]]
+             [i18n :refer [trs tru]]
              [schema :as su]
              [ssh :as ssh]]
             [schema.core :as s])
@@ -45,12 +46,12 @@
   (str (if ssl "https" "http") "://" host ":" port
        path))
 
-(defn- details->request [{:keys [user password catalog report-timezone]}]
+(defn- details->request [{:keys [user password catalog]}]
   (merge {:headers (merge {"X-Presto-Source" "metabase"
                            "X-Presto-User"   user}
                           (when catalog
                             {"X-Presto-Catalog" catalog})
-                          (when report-timezone
+                          (when-let [report-timezone (qp.timezone/report-timezone-id-if-supported)]
                             {"X-Presto-Time-Zone" report-timezone}))}
          (when password
            {:basic-auth [user password]})))
@@ -60,33 +61,34 @@
   ;; break SSH tunneling as the host in the cancel-uri is different if it's enabled
   (str/replace cancel-uri (str host ":" port) (get (str/split info-uri #"/") 2)))
 
-(defn- field-type->parser [report-timezone field-type]
+(defn- field-type->parser [field-type]
   (condp re-matches field-type
     #"decimal.*"                bigdec
-    #"time"                     u.date/parse
-    #"time with time zone"      u.date/parse
-    #"timestamp"                u.date/parse
-    #"timestamp with time zone" u.date/parse
+    #"time"                     #(u.date/parse % (qp.timezone/results-timezone-id))
+    #"time with time zone"      #(u.date/parse % (qp.timezone/results-timezone-id))
+    #"timestamp"                #(u.date/parse % (qp.timezone/results-timezone-id))
+    #"timestamp with time zone" #(u.date/parse % (qp.timezone/results-timezone-id))
     #".*"                       identity))
 
-(defn- parse-presto-results [report-timezone columns data]
-  (let [parsers (map (comp #(field-type->parser report-timezone %) :type) columns)]
+(defn- parse-presto-results [columns data]
+  (let [parsers (map (comp field-type->parser :type) columns)]
     (for [row data]
       (vec
        (for [[value parser] (partition 2 (interleave row parsers))]
-         (when (some? value)
-           (parser value)))))))
+         (u/prog1 (when (some? value)
+                    (parser value))
+           (log/tracef "Parse %s -> %s" (pr-str value) (pr-str <>))))))))
 
 (defn- fetch-presto-results! [details {prev-columns :columns, prev-rows :rows} uri]
   (let [{{:keys [columns data nextUri error]} :body} (http/get uri (assoc (details->request details) :as :json))]
     (when error
-      (throw (ex-info (or (:message error) "Error running query.") error)))
-    (let [rows    (parse-presto-results (:report-timezone details) columns data)
+      (throw (ex-info (or (:message error) (tru "Error running query.")) error)))
+    (let [rows    (parse-presto-results columns data)
           results {:columns (or columns prev-columns)
                    :rows    (vec (concat prev-rows rows))}]
       (if (nil? nextUri)
         results
-        (do (Thread/sleep 100) ; Might not be the best way, but the pattern is that we poll Presto at intervals
+        (do (Thread/sleep 100)        ; Might not be the best way, but the pattern is that we poll Presto at intervals
             (fetch-presto-results! details results nextUri))))))
 
 (defn- execute-presto-query!
@@ -100,7 +102,7 @@
                              :body query, :as :json, :redirect-strategy :lax))]
       (when error
         (throw (ex-info (or (:message error) "Error preparing query.") error)))
-      (let [rows    (parse-presto-results (:report-timezone details) (or columns []) (or data []))
+      (let [rows    (parse-presto-results (or columns []) (or data []))
             results {:columns (or columns [])
                      :rows    rows}]
         (if (nil? nextUri)

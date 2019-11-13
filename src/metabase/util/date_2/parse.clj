@@ -1,5 +1,6 @@
 (ns metabase.util.date-2.parse
-  (:require [java-time :as t]
+  (:require [clojure.string :as str]
+            [java-time :as t]
             [metabase.util.date-2.parse.builder :as b])
   (:import [java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset]
            java.time.format.DateTimeFormatter
@@ -64,7 +65,12 @@
   [^String s]
   {:pre [((some-fn string? nil?) s)]}
   (when (seq s)
-    (let [temporal-accessor (.parse formatter s)
+    ;; HACK - haven't figured out how to get the parser builder to allow offsets with no columns yet, so add one in
+    ;; there if we have a pattern with no colons
+    (let [s                 (-> s
+                                (str/replace #"([+-]\d{2})(\d{2})$" "$1:$2")
+                                (str/replace #"UTC$" "Z"))
+          temporal-accessor (.parse formatter s)
           local-date        (query temporal-accessor :local-date)
           local-time        (query temporal-accessor :local-time)
           zone-offset       (query temporal-accessor :zone-offset)

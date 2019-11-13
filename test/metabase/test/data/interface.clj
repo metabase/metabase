@@ -357,8 +357,8 @@
     :source       :aggregation
     :field_ref    [:aggregation 0]})
 
-  ([driver aggregation-type {field-id :id, :keys [base_type special_type table_id]}]
-   {:pre [base_type special_type]}
+  ([driver aggregation-type {field-id :id, :keys [table_id]}]
+   {:pre [table_id]}
    (driver/with-driver driver
      (qp.store/with-store
        (qp.store/fetch-and-store-database! (db/select-one-field :db_id Table :id table_id))
