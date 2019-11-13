@@ -94,11 +94,13 @@
         ;; default timezone ID should be ignored; because `Z` means UTC we should return ZonedDateTimes instead of
         ;; OffsetDateTime
         (is-parsed? expected s "US/Pacific"))))
-  (testing "Hacky support for weird offsets"
+  (testing "Weird formats"
     (is (= (t/offset-date-time "2014-08-01T10:00-07:00")
            (u.date/parse "2014-08-01 10:00:00.000 -0700")))
     (is (= (t/zoned-date-time "2014-08-01T10:00Z[UTC]")
-           (u.date/parse "2014-08-01 10:00:00.000 UTC")))))
+           (u.date/parse "2014-08-01 10:00:00.000 UTC")))
+    (is (= (t/zoned-date-time "2014-08-02T00:00+08:00[Asia/Hong_Kong]")
+           (u.date/parse "2014-08-02 00:00:00.000 Asia/Hong_Kong")))))
 
 ;; TODO - more tests!
 (deftest format-test

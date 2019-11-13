@@ -36,7 +36,8 @@
 (def ^:private ^DateTimeFormatter offset-formatter*
   (b/formatter
    (b/optional " ")
-   (b/zone-offset)
+   (b/optional
+    (b/zone-offset))
    (b/optional
     (b/zone-id))))
 
@@ -67,9 +68,7 @@
   (when (seq s)
     ;; HACK - haven't figured out how to get the parser builder to allow offsets with no columns yet, so add one in
     ;; there if we have a pattern with no colons
-    (let [s                 (-> s
-                                (str/replace #"([+-]\d{2})(\d{2})$" "$1:$2")
-                                (str/replace #"UTC$" "Z"))
+    (let [s                 (str/replace s #"([+-]\d{2})(\d{2})$" "$1:$2")
           temporal-accessor (.parse formatter s)
           local-date        (query temporal-accessor :local-date)
           local-time        (query temporal-accessor :local-time)

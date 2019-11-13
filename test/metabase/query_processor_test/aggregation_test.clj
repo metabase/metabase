@@ -1,7 +1,7 @@
 (ns metabase.query-processor-test.aggregation-test
   "Tests for MBQL aggregations."
-  (:require [expectations :refer [expect]]
-            [clojure.test :refer :all]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor-test :as qp.test]
             [metabase.test

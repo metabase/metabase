@@ -131,10 +131,10 @@
   []
   (strict
    (case-sensitive
-    "["
+    (optional "[")
     (fn [^DateTimeFormatterBuilder builder]
       (.appendZoneRegionId builder))
-    "]")))
+    (optional "]"))))
 
 (defn formatter
   "Return a new `DateTimeFormatter` from `sections`. See examples in `metabase.util.date-2.parse` for more details.

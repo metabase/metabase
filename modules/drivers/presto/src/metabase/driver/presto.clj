@@ -120,7 +120,7 @@
                     (try
                       (let [tunneledUri (details->uri details-with-tunnel (str "/v1/query/" id))
                             adjustedUri (create-cancel-url tunneledUri (get details :host) (get details :port) infoUri)]
-                        (http/delete adjustedUri(details->request details-with-tunnel)))
+                        (http/delete adjustedUri (details->request details-with-tunnel)))
                       ;; If we fail to cancel the query, log it but propogate the interrupted exception, instead of
                       ;; covering it up with a failed cancel
                       (catch Exception e
