@@ -10,16 +10,16 @@
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.util
              [date :as du]
+             [date-2 :as u.date]
              [honeysql-extensions :as hx]
              [i18n :refer [trs]]])
-  (:import java.sql.Time
-           java.util.Date))
+  (:import [java.sql ResultSet Types]))
 
-(driver/register! :vertica, :parent #{:sql-jdbc ::sql-jdbc.execute/use-legacy-classes-for-read-and-set})
+(driver/register! :vertica, :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set})
 
 (defmethod sql-jdbc.sync/database-type->base-type :vertica [_ database-type]
   ({:Boolean                   :type/Boolean
@@ -126,8 +126,16 @@
 
 (defmethod sql-jdbc.execute/set-timezone-sql :vertica [_] "SET TIME ZONE TO %s;")
 
-(defmethod unprepare/unprepare-value [:vertica Date]
-  [_ value]
-  (format "timestamp '%s'" (du/date->iso-8601 value)))
+(defmethod sql-jdbc.execute/read-column [:vertica Types/TIME]
+  [_ _ ^ResultSet rs _ ^Integer i]
+  (let [s (.getString rs i)
+        t (u.date/parse s)]
+    (log/tracef "(.getString rs %d) [TIME] -> %s -> %s" i s t)
+    t))
 
-(prefer-method unprepare/unprepare-value [:sql Time] [:vertica Date])
+(defmethod sql-jdbc.execute/read-column [:vertica Types/TIME_WITH_TIMEZONE]
+  [_ _ ^ResultSet rs _ ^Integer i]
+  (let [s (.getString rs i)
+        t (u.date/parse s)]
+    (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
+    t))

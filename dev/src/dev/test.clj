@@ -12,7 +12,8 @@
              [util :as tu]]
             [metabase.test.data
              [datasets :as datasets]
-             [env :as tx.env]]
+             [env :as tx.env]
+             [users :as test-users]]
             [metabase.test.util
              [log :as tu.log]
              [timezone :as tu.tz]]
@@ -30,6 +31,7 @@
   qp.test-util/keep-me
   qp.test/keep-me
   sql-jdbc-test/keep-me
+  [test-users/keep-me]
   tt/keep-me
   tu/keep-me
   tu.log/keep-me
@@ -87,6 +89,11 @@
 
  [sql-jdbc-test
   sql-jdbc-drivers]
+
+ [test-users
+  user->id
+  user->client
+  with-test-user]
 
  [tt
   with-temp

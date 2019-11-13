@@ -394,13 +394,13 @@
     (second (re-find #"FROM\s([^\s()]+)" sql))))
 
 ;; as with the MBQL parameters tests Redshift fail for unknown reasons; disable their tests for now
+;; TIMEZONE FIXME
 (defn- sql-parameters-engines []
   (disj (qp.test/normal-drivers-with-feature :native-parameters) :redshift))
 
 (defn- process-native {:style/indent 0} [& kvs]
-  (du/with-effective-timezone (data/db)
-    (qp/process-query
-      (apply assoc {:database (data/id), :type :native, :settings {:report-timezone "UTC"}} kvs))))
+  (qp/process-query
+    (apply assoc {:database (data/id), :type :native} kvs)))
 
 (deftest e2e-basic-test
   (datasets/test-drivers (sql-parameters-engines)

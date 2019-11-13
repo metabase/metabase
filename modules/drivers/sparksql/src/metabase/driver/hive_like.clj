@@ -10,6 +10,7 @@
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.table :refer [Table]]
@@ -19,10 +20,11 @@
              [honeysql-extensions :as hx]]
             [toucan.db :as db])
   (:import [java.sql PreparedStatement ResultSet Types]
-           [java.time OffsetDateTime ZonedDateTime]))
+           [java.time LocalDate OffsetDateTime ZonedDateTime]
+           java.util.Date))
 
 (driver/register! :hive-like
-  :parent #{:sql-jdbc ::sql-jdbc.execute/use-legacy-classes-for-read-and-set}
+  :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set}
   :abstract? true)
 
 (defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :hive-like
@@ -156,6 +158,11 @@
   [_ value]
   (format "timestamp '%s'" (du/format-date "yyyy-MM-dd HH:mm:ss.SSS"  value)))
 
+;; Hive/Spark SQL doesn't seem to like DATEs so convert it to a DATETIME first
+(defmethod unprepare/unprepare-value [:hive-like LocalDate]
+  [driver t]
+  (unprepare/unprepare-value driver (t/local-date-time t (t/local-time 0))))
+
 (defmethod unprepare/unprepare-value [:hive-like OffsetDateTime]
   [_ t]
   (format "to_utc_timestamp('%s', '%s')" (u.date/format-sql (t/local-date-time t)) (t/zone-offset t)))
@@ -163,6 +170,11 @@
 (defmethod unprepare/unprepare-value [:hive-like ZonedDateTime]
   [_ t]
   (format "to_utc_timestamp('%s', '%s')" (u.date/format-sql (t/local-date-time t)) (t/zone-id t)))
+
+;; Hive/Spark SQL doesn't seem to like DATEs so convert it to a DATETIME first
+(defmethod sql-jdbc.execute/set-parameter [:hive-like LocalDate]
+  [driver ps i t]
+  (sql-jdbc.execute/set-parameter driver ps i (t/local-date-time t (t/local-time 0))))
 
 ;; TIMEZONE FIXME — not sure what timezone the results actually come back as
 (defmethod sql-jdbc.execute/read-column [:hive-like Types/TIME]

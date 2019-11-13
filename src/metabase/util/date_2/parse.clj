@@ -34,6 +34,7 @@
 
 (def ^:private ^DateTimeFormatter offset-formatter*
   (b/formatter
+   (b/optional " ")
    (b/zone-offset)
    (b/optional
     (b/zone-id))))

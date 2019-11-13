@@ -33,13 +33,12 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmulti ->prepared-substitution
-  "Returns a `PreparedStatementSubstitution` for `x` and the given driver. This allows driver specific parameters and
-  SQL replacement text (usually just ?). The param value is already prepared and ready for inlcusion in the query,
-  such as what's needed for SQLite and timestamps."
+  "Returns a `PreparedStatementSubstitution` (see schema below) for `x` and the given driver. This allows driver
+  specific parameters and SQL replacement text (usually just ?). The param value is already prepared and ready for
+  inlcusion in the query, such as what's needed for SQLite and timestamps."
   {:arglists '([driver x])}
   (fn [driver x] [(driver/dispatch-on-initialized-driver driver) (class x)])
   :hierarchy #'driver/hierarchy)
-
 
 (def PreparedStatementSubstitution
   "Represents the SQL string replace value (usually ?) and the typed parameter value"

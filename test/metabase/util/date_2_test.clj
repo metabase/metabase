@@ -8,8 +8,8 @@
 (deftest parse-test
   (letfn [(message [expected s default-timezone-id]
             (if default-timezone-id
-              (format "parsing '%s' with default timezone id '%s' should give you %s" s default-timezone-id expected)
-              (format "parsing '%s' should give you %s" s expected)))
+              (format "parsing '%s' with default timezone id '%s' should give you %s" s default-timezone-id (pr-str expected))
+              (format "parsing '%s' should give you %s" s (pr-str expected))))
           (is-parsed? [expected s default-timezone-id]
             {:pre [(string? s)]}
             (testing "ISO-8601-style literal"
@@ -21,7 +21,13 @@
                 (let [s (str/replace s #"T" " ")]
                   (is (= expected
                          (u.date/parse s default-timezone-id))
-                      (message expected s default-timezone-id))))))]
+                      (message expected s default-timezone-id))
+                  (when-let [[_ before-offset offset] (re-find #"(.*)((?:(?:[+-]\d{2}:\d{2})|Z).*$)" s)]
+                    (let [s (format "%s %s" before-offset offset)]
+                      (testing "w/ space before offset"
+                        (is (= expected
+                               (u.date/parse s default-timezone-id))
+                            (message expected s default-timezone-id)))))))))]
     (testing "literals without timezone"
       (doseq [[s expected]
               {"2019"                    (t/local-date 2019 1 1)

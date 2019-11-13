@@ -111,10 +111,13 @@
     (prepared-ts-subs \> start)
 
     :else
-    ;; TIMEZONE FIXME - this is WRONG WRONG WRONG because date ranges should be inclusive for start and *exclusive* for end
-    (let [params (map (comp #(sql/->prepared-substitution driver/*driver* %) maybe-parse-temporal-literal) [start end])]
-      {:replacement-snippet     (apply format "BETWEEN %s AND %s" (map :sql-string params)),
-       :prepared-statement-args (vec (mapcat :param-values params))})))
+    ;; TIMEZONE FIXME - this is WRONG WRONG WRONG because date ranges should be inclusive for start and *exclusive*
+    ;; for end
+    (let [[start end] (map (fn [s]
+                             (sql/->prepared-substitution driver/*driver* (maybe-parse-temporal-literal s)))
+                           [start end])]
+      {:replacement-snippet     (format "BETWEEN %s AND %s" (:sql-string start) (:sql-string end))
+       :prepared-statement-args (concat (:param-values start) (:param-values end))})))
 
 
 ;;; ------------------------------------- Field Filter replacement snippet info --------------------------------------
