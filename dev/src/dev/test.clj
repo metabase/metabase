@@ -13,6 +13,7 @@
             [metabase.test.data
              [datasets :as datasets]
              [env :as tx.env]
+             [interface :as tx]
              [users :as test-users]]
             [metabase.test.util
              [log :as tu.log]
@@ -36,6 +37,7 @@
   tu/keep-me
   tu.log/keep-me
   tu.tz/keep-me
+  tx/keep-me
   tx.env/keep-me)
 
 ;; Add more stuff here as needed
@@ -128,6 +130,17 @@
 
  [tu.tz
   with-jvm-tz]
+
+ [tx
+  dataset-definition
+  db-qualified-table-name
+  db-test-env-var
+  db-test-env-var-or-throw
+  dbdef->connection-details
+  get-dataset-definition
+  has-questionable-timezone-support?
+  has-test-extensions?
+  metabase-instance]
 
  [tx.env
   set-test-drivers!

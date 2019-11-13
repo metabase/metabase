@@ -12,6 +12,7 @@
             [honeysql
              [core :as hsql]
              [helpers :as h]]
+            [java-time :as t]
             [metabase
              [driver :as driver]
              [util :as u]]
@@ -30,8 +31,7 @@
              [schema :as su]
              [ssh :as ssh]]
             [schema.core :as s])
-  (:import java.sql.Time
-           java.util.Date))
+  (:import [java.time OffsetDateTime ZonedDateTime]))
 
 (driver/register! :presto, :parent :sql)
 
@@ -254,12 +254,15 @@
   [_ [_ value]]
   (hx/cast :time (time->str value (driver/report-timezone))))
 
-;; TIMEZONE FIXME
-(defmethod unprepare/unprepare-value [:presto Date]
-  [_ value]
-  (format "from_iso8601_timestamp('%s')" (du/->iso-8601-datetime value nil)))
+;; See https://prestodb.io/docs/current/functions/datetime.html
 
-(prefer-method unprepare/unprepare-value [:sql Time] [:presto Date])
+(defmethod unprepare/unprepare-value [:presto OffsetDateTime]
+  [_ t]
+  (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-offset t)))
+
+(defmethod unprepare/unprepare-value [:presto ZonedDateTime]
+  [_ t]
+  (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-id t)))
 
 (defmethod driver/execute-query :presto
   [driver {database-id                  :database
@@ -285,8 +288,8 @@
      (when (= query-type :native)
        {:cols columns}))))
 
-
-(defmethod driver/humanize-connection-error-message :presto [_ message]
+(defmethod driver/humanize-connection-error-message :presto
+  [_ message]
   (condp re-matches message
     #"^java.net.ConnectException: Connection refused.*$"
     (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
@@ -300,10 +303,10 @@
     #".*" ; default
     message))
 
+;;; `:sql-driver` methods
 
-;;; ISQLDriver implementation
-
-(defmethod sql.qp/apply-top-level-clause [:presto :page] [_ _ honeysql-query {{:keys [items page]} :page}]
+(defmethod sql.qp/apply-top-level-clause [:presto :page]
+  [_ _ honeysql-query {{:keys [items page]} :page}]
   (let [offset (* (dec page) items)]
     (if (zero? offset)
       ;; if there's no offset we can simply use limit
@@ -330,14 +333,16 @@
 (defmethod sql.qp/date [:presto :day-of-year]     [_ _ expr] (hsql/call :day_of_year expr))
 
 ;; Similar to DoW, sicne Presto is ISO compliant the week starts on Monday, we need to shift that to Sunday
-(defmethod sql.qp/date [:presto :week]            [_ _ expr]
+(defmethod sql.qp/date [:presto :week]
+  [_ _ expr]
   (hsql/call :date_add
     (hx/literal :day) -1 (hsql/call :date_trunc
                            (hx/literal :week) (hsql/call :date_add
                                                 (hx/literal :day) 1 expr))))
 
 ;; Offset by one day forward to "fake" a Sunday starting week
-(defmethod sql.qp/date [:presto :week-of-year]    [_ _ expr]
+(defmethod sql.qp/date [:presto :week-of-year]
+  [_ _ expr]
   (hsql/call :week (hsql/call :date_add (hx/literal :day) 1 expr)))
 
 (defmethod sql.qp/date [:presto :month]           [_ _ expr] (hsql/call :date_trunc (hx/literal :month) expr))
@@ -348,7 +353,6 @@
 
 (defmethod sql.qp/unix-timestamp->timestamp [:presto :seconds] [_ _ expr]
   (hsql/call :from_unixtime expr))
-
 
 (defmethod driver.common/current-db-time-date-formatters :presto [_]
   (driver.common/create-db-time-formatters "yyyy-MM-dd'T'HH:mm:ss.SSSZ"))

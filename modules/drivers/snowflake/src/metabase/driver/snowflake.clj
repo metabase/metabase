@@ -6,6 +6,7 @@
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase
              [driver :as driver]
              [util :as u]]
@@ -19,11 +20,13 @@
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor.store :as qp.store]
             [metabase.util
              [honeysql-extensions :as hx]
              [i18n :refer [tru]]])
-  (:import metabase.util.honeysql_extensions.Identifier
+  (:import [java.time OffsetDateTime ZonedDateTime]
+           metabase.util.honeysql_extensions.Identifier
            net.snowflake.client.jdbc.SnowflakeSQLException))
 
 (driver/register! :snowflake, :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set})
@@ -87,7 +90,7 @@
     :TIMESTAMP                  :type/DateTime
     :TIMESTAMPLTZ               :type/DateTime
     :TIMESTAMPNTZ               :type/DateTime
-    :TIMESTAMPTZ                :type/DateTime
+    :TIMESTAMPTZ                :type/DateTimeWithTZ
     :VARIANT                    :type/*
     ;; Maybe also type *
     :OBJECT                     :type/Dictionary
@@ -255,22 +258,10 @@
              (log/error e (tru "Snowflake Database does not exist."))
              false)))))
 
-;; applying the Calendar to `.getTimestamp` seems to give the wrong results :shrug:
-#_(defmethod sql-jdbc.execute/read-column [:snowflake java.sql.Types/TIMESTAMP]
-  [_ _ ^java.sql.ResultSet rs _ ^Integer i]
-  (let [utc-cal     (java.util.Calendar/getInstance (java.util.TimeZone/getTimeZone "UTC"))
-        results-cal (java.util.Calendar/getInstance (java.util.TimeZone/getTimeZone (metabase.query-processor.timezone/results-timezone-id)))]
-    (let [result-no-tz (.getTimestamp rs i)
-          result-utc   (.getTimestamp rs i utc-cal)
-          result-rtz   (.getTimestamp rs i results-cal)]
-      (log/tracef "(.getTimestamp rs %d) -> %s" i (pr-str result-no-tz))
-      (log/tracef "(.getTimestamp rs %d <UTC Calendar>) -> %s" i (pr-str result-utc))
-      (log/tracef "(.getTimestamp rs %d <%s Calendar>)  -> %s" i (metabase.query-processor.timezone/results-timezone-id) (pr-str result-rtz))
-      (doseq [[get-timestamp-tz t] [["no timezone" result-no-tz]
-                                    ["utc" result-utc]
-                                    ["results timezone" result-rtz]]
-              local-zone           [(qp.timezone/results-timezone-id)
-                                    "UTC"]]
-        (let [result (t/zoned-date-time (t/local-date-time t) (t/zone-id local-zone))]
-          (log/tracef "Result [%s -> %s]: %s" get-timestamp-tz local-zone result)))
-      (t/zoned-date-time (t/local-date-time result-utc) (t/zone-id (metabase.query-processor.timezone/results-timezone-id))))))
+(defmethod unprepare/unprepare-value [:snowflake OffsetDateTime]
+  [_ t]
+  (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-offset t)))
+
+(defmethod unprepare/unprepare-value [:snowflake ZonedDateTime]
+  [driver t]
+  (unprepare/unprepare-value driver (t/offset-date-time t)))

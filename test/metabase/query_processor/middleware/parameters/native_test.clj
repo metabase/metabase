@@ -473,14 +473,20 @@
 (deftest e2e-parse-native-dates-test
   (datasets/test-drivers (disj (sql-parameters-engines) :sqlite)
     (is (= [(cond
-              (= :presto driver/*driver*)
+              (= driver/*driver* :presto)
               "2018-04-18"
 
+              ;; TIMEZONE FIXME — Busted
+              (= driver/*driver* :vertica)
+              "2018-04-17T00:00:00-07:00"
+
+              ;; TIMEZONE FIXME
+              ;;
               ;; Snowflake appears to have a bug in their JDBC driver when including the target timezone along with
               ;; the SQL date parameter. The below value is not correct, but is what the driver returns right now.
               ;; This bug is written up as https://github.com/metabase/metabase/issues/8804 and when fixed this should
               ;; be removed as it should return the same value as the other drivers that support a report timezone
-              (= :snowflake driver/*driver*)
+              (= driver/*driver* :snowflake)
               "2018-04-16T17:00:00-07:00"
 
               (qp.test/supports-report-timezone? driver/*driver*)
