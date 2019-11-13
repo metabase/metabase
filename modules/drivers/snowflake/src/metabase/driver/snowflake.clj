@@ -23,9 +23,11 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor.store :as qp.store]
             [metabase.util
+             [date-2 :as u.date]
              [honeysql-extensions :as hx]
              [i18n :refer [tru]]])
-  (:import [java.time OffsetDateTime ZonedDateTime]
+  (:import [java.sql ResultSet Types]
+           [java.time OffsetDateTime ZonedDateTime]
            metabase.util.honeysql_extensions.Identifier
            net.snowflake.client.jdbc.SnowflakeSQLException))
 
@@ -265,3 +267,19 @@
 (defmethod unprepare/unprepare-value [:snowflake ZonedDateTime]
   [driver t]
   (unprepare/unprepare-value driver (t/offset-date-time t)))
+
+;; Like Vertica, Snowflake doesn't seem to be able to return a LocalTime/OffsetTime like everyone else, but it can
+;; return a String that we can parse
+(defmethod sql-jdbc.execute/read-column [:snowflake Types/TIME]
+  [_ _ ^ResultSet rs _ ^Integer i]
+  (let [s (.getString rs i)
+        t (u.date/parse s)]
+    (log/tracef "(.getString rs %d) [TIME] -> %s -> %s" i s t)
+    t))
+
+(defmethod sql-jdbc.execute/read-column [:snowflake Types/TIME_WITH_TIMEZONE]
+  [_ _ ^ResultSet rs _ ^Integer i]
+  (let [s (.getString rs i)
+        t (u.date/parse s)]
+    (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
+    t))

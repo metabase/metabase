@@ -6,7 +6,6 @@
             [java-time :as t]
             [metabase.driver :as driver]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.date-2 :as u.date])
   (:import [java.sql PreparedStatement ResultSet Types]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
@@ -37,48 +36,22 @@
   [_ ^PreparedStatement ps ^Integer i t]
   (let [cal (Calendar/getInstance (TimeZone/getTimeZone (t/zone-id t)))
         t   (t/sql-time t)]
-    (log/tracef "(.setTime %d ^%s %s ^Calendar %s)" i (.getName (class t)) (pr-str t) cal)
+    (log/tracef "(.setTime %d ^%s %s <%s Calendar>)" i (.getName (class t)) (pr-str t) (.. cal getTimeZone getID))
     (.setTime ps i t cal)))
 
 (defmethod sql-jdbc.execute/set-parameter [::use-legacy-classes-for-read-and-set OffsetDateTime]
   [_ ^PreparedStatement ps ^Integer i t]
   (let [cal (Calendar/getInstance (TimeZone/getTimeZone (t/zone-id t)))
         t   (t/sql-timestamp t)]
-    (log/tracef "(.setTimestamp %d ^%s %s ^Calendar %s)" i (.getName (class t)) (pr-str t) cal)
+    (log/tracef "(.setTimestamp %d ^%s %s <%s Calendar>)" i (.getName (class t)) (pr-str t) (.. cal getTimeZone getID))
     (.setTimestamp ps i t cal)))
 
 (defmethod sql-jdbc.execute/set-parameter [::use-legacy-classes-for-read-and-set ZonedDateTime]
   [_ ^PreparedStatement ps ^Integer i t]
   (let [cal (Calendar/getInstance (TimeZone/getTimeZone (t/zone-id t)))
         t   (t/sql-timestamp t)]
-    (log/tracef "(.setTimestamp %d ^%s %s ^Calendar %s)" i (.getName (class t)) (pr-str t) cal)
+    (log/tracef "(.setTimestamp %d ^%s %s <%s Calendar>)" i (.getName (class t)) (pr-str t) (.. cal getTimeZone getID))
     (.setTimestamp ps i t cal)))
-
-(defn- results-calendar ^java.util.Calendar []
-  (Calendar/getInstance (TimeZone/getTimeZone (qp.timezone/results-timezone-id))))
-
-;; (defmethod sql-jdbc.execute/read-column [:use-legacy-classes-for-read-and-set Types/TIME]
-;;   [_ _ ^ResultSet rs _ ^Integer i]
-;;   (log/tracef "(.getTime rs %d <%s Calendar>)" i (qp.timezone/results-timezone-id))
-;;   (t/local-time (.getTime rs i (results-calendar))))
-
-;; (defmethod sql-jdbc.execute/read-column [::use-legacy-classes-for-read-and-set Types/DATE]
-;;   [_ _ ^ResultSet rs _ ^Integer i]
-;;   (log/tracef "(.getDate rs %d <%s Calendar>)" i (qp.timezone/results-timezone-id))
-;;   (t/zoned-date-time
-;;    (t/local-date (.getDate rs i (results-calendar)))
-;;    (t/local-time 0)
-;;    (t/zone-id (qp.timezone/results-timezone-id))))
-
-;; (defmethod sql-jdbc.execute/read-column [::use-legacy-classes-for-read-and-set Types/TIMESTAMP]
-;;   [_ _ ^ResultSet rs _ ^Integer i]
-;;   (log/tracef "(.getTimestamp rs %d <%s Calendar>)" i (qp.timezone/results-timezone-id))
-;;   (t/zoned-date-time
-;;    (t/local-date-time (.getTimestamp rs i (results-calendar)))
-;;    (t/zone-id (qp.timezone/results-timezone-id))))
-
-;; (defn- utc-calendar ^java.util.Calendar []
-;;   (Calendar/getInstance (TimeZone/getTimeZone "UTC")))
 
 (defmethod sql-jdbc.execute/read-column [:use-legacy-classes-for-read-and-set Types/TIME]
   [_ _ ^ResultSet rs _ ^Integer i]

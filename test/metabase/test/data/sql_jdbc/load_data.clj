@@ -1,6 +1,7 @@
 (ns metabase.test.data.sql-jdbc.load-data
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase
              [driver :as driver]
@@ -99,6 +100,7 @@
   [driver dbdef tabledef]
   (let [fields-for-insert (mapv (comp keyword :field-name)
                                 (:field-definitions tabledef))]
+    ;; TIMEZONE FIXME
     (for [row (:rows tabledef)]
       (zipmap fields-for-insert (for [v row]
                                   (if (and (not (instance? java.sql.Time v))
@@ -125,6 +127,7 @@
         (.setAutoCommit (jdbc/get-connection conn) false)
         (let [insert! (insert-middleware (make-insert! driver conn dbdef tabledef))
               rows    (load-data-get-rows driver dbdef tabledef)]
+          (log/tracef "Inserting rows like: %s" (first rows))
           (insert! rows))))))
 
 

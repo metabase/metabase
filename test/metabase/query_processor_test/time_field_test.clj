@@ -62,19 +62,6 @@
              [[1 "Plato Yeshua" "08:30:00"]
               [4 "Simcha Yan" "08:30:00"]]
 
-             ;; This is the correct "answer" to this query, though it doesn't
-             ;; pass through JDBC. The 08:00 is adjusted to UTC (16:00), which
-             ;; should yield the third item
-             (= :presto driver/*driver*)
-             [[3 "Kaneonuskatew Eiran" "00:15:00-08:00"]]
-
-             ;; It looks like Snowflake is doing this conversion correctly. Snowflake's time field is stored as wall
-             ;; clock time (vs. PG and others storing it without a timezone). Originally, this time is 16:15 in UTC,
-             ;; which is 8:15 in pacific time. The other report timezone databases are not doing this timezone
-             ;; conversion.
-             (= :snowflake driver/*driver*)
-             [[3 "Kaneonuskatew Eiran" "08:15:00-08:00"]]
-
              ;; Databases like PostgreSQL ignore timezone information when
              ;; using a time field, the result below is what happens when the
              ;; 08:00 time is interpreted as UTC, then not adjusted to Pacific

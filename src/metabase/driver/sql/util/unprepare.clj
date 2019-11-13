@@ -68,11 +68,22 @@
 
 ;; TODO - pretty sure we can remove this
 (defmethod unprepare-value [:sql Instant]
-  [_ t]
-  (format "timestamp with time zone '%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ"
-                                                    (t/offset-date-time t (t/zone-offset 0)))))
+  [driver t]
+  (unprepare-value driver (t/offset-date-time t (t/zone-offset 0))))
 
 ;; for legacy situtations
+(defmethod unprepare-value [:sql java.sql.Time]
+  [driver t]
+  (unprepare-value driver (t/local-time t)))
+
+(defmethod unprepare-value [:sql java.sql.Date]
+  [driver t]
+  (unprepare-value driver (t/local-date t)))
+
+(defmethod unprepare-value [:sql java.sql.Timestamp]
+  [driver t]
+  (unprepare-value driver (t/local-date-time t)))
+
 (defmethod unprepare-value [:sql java.util.Date]
   [driver t]
   (unprepare-value driver (t/instant t)))

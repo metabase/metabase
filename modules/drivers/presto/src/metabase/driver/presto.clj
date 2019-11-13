@@ -1,10 +1,6 @@
 (ns metabase.driver.presto
   "Presto driver. See https://prestodb.io/docs/current/ for complete dox."
   (:require [clj-http.client :as http]
-            [clj-time
-             [coerce :as tcoerce]
-             [core :as time]
-             [format :as tformat]]
             [clojure
              [set :as set]
              [string :as str]]
@@ -25,13 +21,14 @@
              [store :as qp.store]
              [util :as qputil]]
             [metabase.util
-             [date :as du]
+             [date-2 :as u.date]
              [honeysql-extensions :as hx]
              [i18n :refer [trs]]
              [schema :as su]
              [ssh :as ssh]]
             [schema.core :as s])
-  (:import [java.time OffsetDateTime ZonedDateTime]))
+  (:import java.sql.Time
+           [java.time OffsetDateTime ZonedDateTime]))
 
 (driver/register! :presto, :parent :sql)
 
@@ -63,39 +60,13 @@
   ;; break SSH tunneling as the host in the cancel-uri is different if it's enabled
   (str/replace cancel-uri (str host ":" port) (get (str/split info-uri #"/") 2)))
 
-(defn- parse-time-with-tz [s]
-  ;; Try parsing with offset first then with full ZoneId
-  (or (u/ignore-exceptions (du/parse-date "HH:mm:ss.SSS ZZ" s))
-      (du/parse-date "HH:mm:ss.SSS ZZZ" s)))
-
-(defn- parse-timestamp-with-tz [s]
-  ;; Try parsing with offset first then with full ZoneId
-  (or (u/ignore-exceptions (du/parse-date "yyyy-MM-dd HH:mm:ss.SSS ZZ" s))
-      (du/parse-date "yyyy-MM-dd HH:mm:ss.SSS ZZZ" s)))
-
-(def ^:private presto-date-time-formatter
-  (du/->DateTimeFormatter "yyyy-MM-dd HH:mm:ss.SSS"))
-
-(defn- parse-presto-time
-  "Parsing time from presto using a specific formatter rather than the utility functions as this will be called on each
-  row returned, so performance is important"
-  [time-str]
-  (->> time-str
-       (du/parse-date :hour-minute-second-ms)
-       tcoerce/to-long
-       Time.))
-
 (defn- field-type->parser [report-timezone field-type]
   (condp re-matches field-type
     #"decimal.*"                bigdec
-    #"time"                     parse-presto-time
-    #"time with time zone"      parse-time-with-tz
-    #"timestamp"                (partial du/parse-date
-                                         (if-let [report-tz (and report-timezone
-                                                                 (time/time-zone-for-id report-timezone))]
-                                           (tformat/with-zone presto-date-time-formatter report-tz)
-                                           presto-date-time-formatter))
-    #"timestamp with time zone" parse-timestamp-with-tz
+    #"time"                     u.date/parse
+    #"time with time zone"      u.date/parse
+    #"timestamp"                u.date/parse
+    #"timestamp with time zone" u.date/parse
     #".*"                       identity))
 
 (defn- parse-presto-results [report-timezone columns data]
@@ -233,28 +204,20 @@
   [_ bool]
   (hsql/raw (if bool "TRUE" "FALSE")))
 
-(defmethod sql.qp/->honeysql [:presto Date]
-  [_ date]
-  (hsql/call :from_iso8601_timestamp (hx/literal (du/date->iso-8601 date))))
-
 (defmethod sql.qp/->honeysql [:presto :stddev]
   [driver [_ field]]
   (hsql/call :stddev_samp (sql.qp/->honeysql driver field)))
 
-(def ^:private time-format (tformat/formatter "HH:mm:SS.SSS"))
-
-(defn- time->str
-  ([t]
-   (time->str t nil))
-  ([t tz-id]
-   (let [tz (time/time-zone-for-id tz-id)]
-     (tformat/unparse (tformat/with-zone time-format tz) (tcoerce/to-date-time t)))))
-
 (defmethod sql.qp/->honeysql [:presto :time]
-  [_ [_ value]]
-  (hx/cast :time (time->str value (driver/report-timezone))))
+  [_ [_ t]]
+  (hx/cast :time (u.date/format-sql (t/local-time t))))
 
 ;; See https://prestodb.io/docs/current/functions/datetime.html
+
+;; This is only needed for test purposes, because some of the sample data still uses legacy types
+(defmethod unprepare/unprepare-value [:presto Time]
+  [driver t]
+  (unprepare/unprepare-value driver (t/local-time t)))
 
 (defmethod unprepare/unprepare-value [:presto OffsetDateTime]
   [_ t]

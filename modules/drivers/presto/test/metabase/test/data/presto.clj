@@ -1,6 +1,7 @@
 (ns metabase.test.data.presto
   "Presto driver test extensions."
   (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [honeysql
              [core :as hsql]
              [helpers :as h]]
@@ -83,6 +84,9 @@
                                                     (sql.tx/qualified-name-components driver database-name table-name)))
                               (h/values rows)
                               (hsql/format :allow-dashed-names? true, :quoting :ansi))]
+    (log/trace "Inserting Presto rows")
+    (doseq [row rows]
+      (log/trace (str/join ", " (map #(format "^%s %s" (.getName (class %)) (pr-str %)) row))))
     (if (nil? params)
       query
       (unprepare/unprepare :presto (cons query params)))))
