@@ -1,6 +1,7 @@
 (ns metabase.test.data.dataset-definitions
   "Definitions of various datasets for use in tests with `data/dataset` and the like."
-  (:require [medley.core :as m]
+  (:require [java-time :as t]
+            [medley.core :as m]
             [metabase.test.data.interface :as tx])
   (:import java.sql.Time
            [java.util Calendar TimeZone]))
@@ -141,3 +142,47 @@
           [username last-login password-text (if (zero? idx)
                                                1
                                                idx)])))))
+
+(tx/defdataset ^:private attempted-murders
+  "A dataset for testing temporal values with and without timezones. Records of number of crow counts spoted and the
+  date/time when they spotting occured in several different column types."
+  [["attempts"
+    [{:field-name "num-crows",       :base-type :type/Integer}
+     {:field-name "date",            :base-type :type/Date}
+     {:field-name "time",            :base-type :type/Time}
+     {:field-name "time-ltz",        :base-type :type/TimeWithLocalTZ}
+     {:field-name "time-tz",         :base-type :type/TimeWithZoneOffset}
+     {:field-name "timestamp",       :base-type :type/DateTime}
+     {:field-name "timestamp-ltz",   :base-type :type/DateTimeWithLocalTZ}
+     {:field-name "timestamp-tz",    :base-type :type/DateTimeWithZoneOffset}
+     {:field-name "timestamp-tz-id", :base-type :type/DateTimeWithZoneID}]
+    (for [[cnt s] [[6 "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"]
+                   [8 "2019-11-02T00:14:14.246-07:00[America/Los_Angeles]"]
+                   [6 "2019-11-03T23:35:17.906-08:00[America/Los_Angeles]"]
+                   [7 "2019-11-04T01:04:09.593-08:00[America/Los_Angeles]"]
+                   [8 "2019-11-05T14:23:46.411-08:00[America/Los_Angeles]"]
+                   [4 "2019-11-06T18:51:16.270-08:00[America/Los_Angeles]"]
+                   [6 "2019-11-07T02:45:34.443-08:00[America/Los_Angeles]"]
+                   [4 "2019-11-08T19:51:39.753-08:00[America/Los_Angeles]"]
+                   [3 "2019-11-09T09:59:10.483-08:00[America/Los_Angeles]"]
+                   [1 "2019-11-10T08:41:35.860-08:00[America/Los_Angeles]"]
+                   [5 "2019-11-11T08:09:08.892-08:00[America/Los_Angeles]"]
+                   [3 "2019-11-12T07:36:16.088-08:00[America/Los_Angeles]"]
+                   [2 "2019-11-13T04:28:40.489-08:00[America/Los_Angeles]"]
+                   [9 "2019-11-14T09:52:17.242-08:00[America/Los_Angeles]"]
+                   [7 "2019-11-15T16:07:25.292-08:00[America/Los_Angeles]"]
+                   [7 "2019-11-16T13:32:16.936-08:00[America/Los_Angeles]"]
+                   [1 "2019-11-17T14:11:38.076-08:00[America/Los_Angeles]"]
+                   [3 "2019-11-18T20:47:27.902-08:00[America/Los_Angeles]"]
+                   [5 "2019-11-19T00:35:23.146-08:00[America/Los_Angeles]"]
+                   [1 "2019-11-20T20:09:55.752-08:00[America/Los_Angeles]"]]
+          :let    [t (t/zoned-date-time s)]]
+      [cnt                              ; num-crows
+       (t/local-date t)                 ; date
+       (t/local-time t)                 ; time
+       (t/offset-time t)                ; time-ltz
+       (t/offset-time t)                ; time-tz
+       (t/local-date-time t)            ; timestamp
+       (t/offset-date-time t)           ; timestamp-ltz
+       (t/offset-date-time t)           ; timestamp-tz
+       t])]])                           ; timestamp-tz-id

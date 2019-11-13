@@ -80,19 +80,24 @@
 
 ;;; DateTime Types
 
-;; TODO - Consider renaming the parent of temporal types to `:type/Temporal`, and making `:type/DateTime` a sibling of
-;; `:type/Time` and `:type/Date` rather than its parent
-;; TIMEZONE FIXME
-(derive :type/DateTime :type/*)
-(derive :type/DateTimeWithTZ :type/DateTime)
-(derive :type/Time :type/DateTime)
-(derive :type/TimeWithTZ :type/Time)
-(derive :type/Date :type/DateTime)
-;; TODO - what about Date with timezone?
-;;
-;; TODO - should we differentiate between timezone offset vs ID, and what Oracle calls `TIMESTAMP WITH LOCAL TIME
-;; ZONE` (normalized to UTC when stored) vs columns that actually store offset?
+(derive :type/Temporal :type/*)
 
+(derive :type/Date :type/Temporal)
+;; You could have Dates with TZ info but it's not supported by JSR-310 so we'll not worry about that for now.
+
+(derive :type/Time :type/Temporal)
+(derive :type/TimeWithTZ :type/Time)
+(derive :type/TimeWithLocalTZ :type/TimeWithTZ)    ; a column that is timezone-aware, but normalized to UTC or another offset at rest.
+(derive :type/TimeWithZoneOffset :type/TimeWithTZ) ; a column that stores its timezone offset
+
+(derive :type/DateTime :type/Temporal)
+(derive :type/DateTimeWithTZ :type/DateTime)
+(derive :type/DateTimeWithLocalTZ :type/DateTimeWithTZ)    ; a column that is timezone-aware, but normalized to UTC or another offset at rest.
+(derive :type/DateTimeWithZoneOffset :type/DateTimeWithTZ) ; a column that stores its timezone offset, e.g. `-08:00`
+(derive :type/DateTimeWithZoneID :type/DateTimeWithTZ)     ; a column that stores its timezone ID, e.g. `US/Pacific`
+
+;; isn't this technically a :type/DateTimeWithLocalTZ? Since it's normalized to UTC
+;; TODO - consider whether it makes sense to have a separate `type/Instant` type
 (derive :type/UNIXTimestamp :type/DateTime)
 (derive :type/UNIXTimestamp :type/Integer)
 (derive :type/UNIXTimestampSeconds :type/UNIXTimestamp)
@@ -105,7 +110,7 @@
 (derive :type/CreationDate :type/CreationTimestamp)
 
 (derive :type/JoinTimestamp :type/DateTime)
-(derive :type/JoinTime :type/Date)
+(derive :type/JoinTime :type/Date) ; TODO - shouldn't this be derived from `:type/Time` ?
 (derive :type/JoinTime :type/JoinTimestamp)
 (derive :type/JoinDate :type/Date)
 (derive :type/JoinDate :type/JoinTimestamp)
