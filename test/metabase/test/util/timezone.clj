@@ -1,12 +1,13 @@
 (ns metabase.test.util.timezone
   (:require [clj-time.core :as time]
+            [clojure.test :as t]
             [metabase.driver :as driver]
             [metabase.test.initialize :as initialize]
             [metabase.util.date :as du])
   (:import java.util.TimeZone
            org.joda.time.DateTimeZone))
 
-(defn- ->datetimezone ^DateTimeZone [timezone]
+(defn- ^:deprecated ->datetimezone ^DateTimeZone [timezone]
   (cond
     (instance? DateTimeZone timezone)
     timezone
@@ -14,7 +15,7 @@
     (string? timezone)
     (DateTimeZone/forID timezone)
 
-    (instance? TimeZone)
+    (instance? TimeZone timezone)
     (DateTimeZone/forTimeZone timezone)))
 
 (defn call-with-jvm-tz
@@ -37,7 +38,8 @@
       ;; We read the system property directly when formatting results, so this needs to be changed
       (System/setProperty "user.timezone" (.getID dtz))
       (with-redefs [du/jvm-timezone (delay (.toTimeZone dtz))]
-        (thunk))
+        (t/testing (format "JVM timezone set to %s" (.getID dtz))
+          (thunk)))
       (finally
         ;; We need to ensure we always put the timezones back the way
         ;; we found them as it will cause test failures
@@ -45,7 +47,8 @@
         (DateTimeZone/setDefault orig-dtz)
         (System/setProperty "user.timezone" orig-tz-prop)))))
 
-(defmacro with-jvm-tz
-  "Invokes `BODY` with the JVM timezone set to `DTZ`"
+(defmacro ^:deprecated with-jvm-tz
+  "Invokes `body` with the JVM timezone set to `dtz`. DEPRECATED because this uses Joda-Time. We should switch
+  everything to use `java.time`!"
   [^DateTimeZone dtz & body]
   `(call-with-jvm-tz ~dtz (fn [] ~@body)))

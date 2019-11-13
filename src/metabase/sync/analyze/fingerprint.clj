@@ -9,13 +9,12 @@
              [util :as u]]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.models.field :refer [Field]]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.sync
              [interface :as i]
              [util :as sync-util]]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
-            [metabase.util
-             [date :as du]
-             [schema :as su]]
+            [metabase.util.schema :as su]
             [redux.core :as redux]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -166,9 +165,10 @@
   [database :- i/DatabaseInstance
    tables :- [i/TableInstance]
    log-progress-fn]
-  (du/with-effective-timezone database
+  ;; database timezone is bound so it can be used in date coercion logic
+  (qp.timezone/with-database-timezone-id (:timezone database)
     (apply merge-with + (for [table tables
-                              :let [result (fingerprint-fields! table)]]
+                              :let  [result (fingerprint-fields! table)]]
                           (do
                             (log-progress-fn "fingerprint-fields" table)
                             result)))))

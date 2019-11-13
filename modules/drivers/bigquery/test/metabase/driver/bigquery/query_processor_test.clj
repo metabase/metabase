@@ -2,6 +2,7 @@
   (:require [clj-time.core :as time]
             [clojure.test :refer :all]
             [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
@@ -12,7 +13,9 @@
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]]
-            [metabase.query-processor.test-util :as qp.test-util]
+            [metabase.query-processor
+             [store :as qp.store]
+             [test-util :as qp.test-util]]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -142,11 +145,11 @@
 
 (deftest parsed-date-timezone-handling-test
   (datasets/test-driver :bigquery
-    (is (= "2018-08-31T00:00:00.000Z"
+    (is (= "2018-08-31T00:00:00Z"
            (native-timestamp-query (data/id) "2018-08-31 00:00:00" "UTC"))
         "A UTC date is returned, we should read/return it as UTC")
 
-    (is (= "2018-08-31T00:00:00.000-05:00"
+    (is (= "2018-08-31T00:00:00-05:00"
            (tu.tz/with-jvm-tz (time/time-zone-for-id "America/Chicago")
              (tt/with-temp* [Database [db {:engine  :bigquery
                                            :details (assoc (:details (data/db))
@@ -156,7 +159,7 @@
              "is already in the JVM's timezone. The test puts the JVM's timezone into America/Chicago an ensures that "
              "the correct date is compared"))
 
-    (is (= "2018-08-31T00:00:00.000+07:00"
+    (is (= "2018-08-31T00:00:00+07:00"
            (tu.tz/with-jvm-tz (time/time-zone-for-id "Asia/Jakarta")
              (tt/with-temp* [Database [db {:engine  :bigquery
                                            :details (assoc (:details (data/db))
@@ -213,3 +216,63 @@
                            :params ["Red Medicine"]}})))
         (str "Do we properly unprepare, and can we execute, queries that still have parameters for one reason or "
              "another? (EE #277)"))))
+
+(deftest between-test
+  (testing "Make sure :between clauses reconcile the temporal types of their args"
+    (letfn [(between->sql [clause]
+              (sql.qp/format-honeysql :bigquery
+                {:where (sql.qp/->honeysql :bigquery clause)}))]
+      (testing "Should look for `:mbql/temporal-type` metadata"
+        (is (= ["WHERE field BETWEEN ? AND ?"
+                (t/local-date-time "2019-11-11T00:00")
+                (t/local-date-time "2019-11-12T00:00")]
+               (between->sql [:between
+                              (with-meta (hsql/raw "field") {:mbql/temporal-type :datetime})
+                              (t/local-date "2019-11-11")
+                              (t/local-date "2019-11-12")]))))
+      (testing "If first arg has no temporal-type info, should look at next arg"
+        (is (= ["WHERE CAST(field AS date) BETWEEN ? AND ?"
+                (t/local-date "2019-11-11")
+                (t/local-date "2019-11-12")]
+               (between->sql [:between
+                              (hsql/raw "field")
+                              (t/local-date "2019-11-11")
+                              (t/local-date "2019-11-12")]))))
+      (testing "No need to cast if args agree on temporal type"
+        (is (= ["WHERE field BETWEEN ? AND ?"
+                (t/local-date "2019-11-11")
+                (t/local-date "2019-11-12")]
+               (between->sql [:between
+                              (with-meta (hsql/raw "field") {:mbql/temporal-type :date})
+                              (t/local-date "2019-11-11")
+                              (t/local-date "2019-11-12")]))))
+      (datasets/test-driver :bigquery
+        (qp.test-util/with-everything-store
+          (let [expected ["WHERE `test_data.checkins`.`date` BETWEEN ? AND ?"
+                          (t/local-date-time "2019-11-11T00:00")
+                          (t/local-date-time "2019-11-12T00:00")]]
+            (testing "Should be able to get temporal type from a FieldInstance"
+              (is (= expected
+                     (between->sql [:between
+                                    (qp.store/field (data/id :checkins :date))
+                                    (t/local-date "2019-11-11")
+                                    (t/local-date "2019-11-12")]))))
+            (testing "Should be able to get temporal type from a :field-id"
+              (is (= expected
+                     (between->sql [:between
+                                    [:field-id (data/id :checkins :date)]
+                                    (t/local-date "2019-11-11")
+                                    (t/local-date "2019-11-12")]))))
+            (testing "Should be able to get temporal type from a wrapped field-id"
+              (is (= (cons "WHERE timestamp_trunc(CAST(`test_data.checkins`.`date` AS timestamp), day) BETWEEN ? AND ?"
+                           (rest expected))
+                     (between->sql [:between
+                                    [:datetime-field [:field-id (data/id :checkins :date)] :day]
+                                    (t/local-date "2019-11-11")
+                                    (t/local-date "2019-11-12")]))))
+            (testing "Should work with a field literal"
+              (is (= ["WHERE `date` BETWEEN ? AND ?" (t/local-date "2019-11-11") (t/local-date "2019-11-12")]
+                     (between->sql [:between
+                                    [:field-literal "date" :type/Date]
+                                    (t/local-date-time "2019-11-11T12:00:00")
+                                    (t/local-date-time "2019-11-12T12:00:00")]))))))))))

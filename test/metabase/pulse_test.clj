@@ -898,7 +898,7 @@
                                                 :collection_id (:id coll)}]]
                 (perms/revoke-collection-permissions! (group/all-users) coll)
                 (pulse.tu/send-pulse-created-by-user! user-kw card)))]
-      (is (= [[1 "2014-04-07T00:00:00.000Z" 5 12]]
+      (is (= [[1 "2014-04-07T00:00:00Z" 5 12]]
              (send-pulse-created-by-user! :crowberto)))
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo #"^You do not have permissions to view Card \d+\."

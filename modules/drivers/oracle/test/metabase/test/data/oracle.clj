@@ -7,6 +7,7 @@
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [sync :as sql-jdbc.sync]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.test.data
              [interface :as tx]
              [sql :as sql.tx]
@@ -169,9 +170,11 @@
   (u/ignore-exceptions
    (execute! "DROP USER %s CASCADE" username)))
 
-(defmethod tx/before-run :oracle [_]
+(defmethod tx/before-run :oracle
+  [_]
   (drop-user! session-schema)
   (create-user! session-schema))
 
-(defmethod tx/after-run :oracle [_]
+(defmethod tx/after-run :oracle
+  [_]
   (drop-user! session-schema))

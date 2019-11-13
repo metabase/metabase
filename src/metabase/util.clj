@@ -14,6 +14,7 @@
             [flatland.ordered.map :refer [ordered-map]]
             [medley.core :as m]
             [metabase.config :as config]
+            [metabase.plugins.classloader :as classloader]
             [metabase.util.i18n :refer [trs tru]]
             [ring.util.codec :as codec]
             [weavejester.dependency :as dep])
@@ -60,9 +61,11 @@
 
 ;;; ## Etc
 
-(defprotocol ^:private IClobToStr
-  (jdbc-clob->str ^String [this]
-   "Convert a Postgres/H2/SQLServer JDBC Clob to a string. (If object isn't a Clob, this function returns it as-is.)"))
+(defprotocol ^:private ^:deprecated IClobToStr
+  (^:deprecated jdbc-clob->str ^String [this]
+   "Convert a Postgres/H2/SQLServer JDBC Clob to a string. (If object isn't a Clob, this function returns it as-is.)
+   DEPRECATED — we should convert CLOBS to strings as they're read out of the database, instead of doing it after the
+   fact."))
 
 (extend-protocol IClobToStr
   nil     (jdbc-clob->str [_]    nil)
@@ -488,6 +491,13 @@
   (or (id object-or-id)
       (throw (Exception. (tru "Not something with an ID: {0}" object-or-id)))))
 
+(defn- namespace-symbs* []
+  (for [ns-symb (ns-find/find-namespaces (concat (classpath/system-classpath)
+                                                 (classpath/classpath (classloader/the-classloader))))
+        :when   (and (.startsWith (name ns-symb) "metabase.")
+                     (not (.contains (name ns-symb) "test")))]
+    ns-symb))
+
 (def metabase-namespace-symbols
   "Delay to a vector of symbols of all Metabase namespaces, excluding test namespaces.
    This is intended for use by various routines that load related namespaces, such as task and events initialization.
@@ -496,10 +506,7 @@
   ;; We want to give JARs in the ./plugins directory a chance to load. At one point we have this as a future so it
   ;; start looking for things in the background while other stuff is happening but that meant plugins couldn't
   ;; introduce new Metabase namespaces such as drivers.
-  (delay (vec (for [ns-symb (ns-find/find-namespaces (classpath/system-classpath))
-                    :when   (and (.startsWith (name ns-symb) "metabase.")
-                                 (not (.contains (name ns-symb) "test")))]
-                ns-symb))))
+  (delay (vec (namespace-symbs*))))
 
 (def ^java.util.regex.Pattern uuid-regex
   "A regular expression for matching canonical string representations of UUIDs."

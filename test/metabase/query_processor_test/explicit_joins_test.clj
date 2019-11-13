@@ -249,9 +249,9 @@
         (is (= (mapv data/format-name ["id" "name" "last_login" "id_2" "date" "user_id" "venue_id"])
                columns))
         ;; not sure why only Oracle seems to do this
-        (is (= [[1 "Plato Yeshua"        "2014-04-01T08:30:00.000Z" 1 "2014-04-07T00:00:00.000Z" 5 12]
-                [2 "Felipinho Asklepios" "2014-12-05T15:15:00.000Z" 2 "2014-09-18T00:00:00.000Z" 1 31]
-                [3 "Kaneonuskatew Eiran" "2014-11-06T16:15:00.000Z" 3 "2014-09-15T00:00:00.000Z" 8 56]]
+        (is (= [[1 "Plato Yeshua"        "2014-04-01T08:30:00Z" 1 "2014-04-07T00:00:00Z" 5 12]
+                [2 "Felipinho Asklepios" "2014-12-05T15:15:00Z" 2 "2014-09-18T00:00:00Z" 1 31]
+                [3 "Kaneonuskatew Eiran" "2014-11-06T16:15:00Z" 3 "2014-09-15T00:00:00Z" 8 56]]
                rows))))))
 
 (deftest select-*-source-query-test
@@ -314,16 +314,16 @@
 ;; you include `:source-metadata`)
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
   {:rows
-   [["2013-01-01T00:00:00.000Z"  8 "2013-01-01T00:00:00.000Z"  8]
-    ["2013-02-01T00:00:00.000Z" 11 "2013-02-01T00:00:00.000Z" 11]
-    ["2013-03-01T00:00:00.000Z" 21 "2013-03-01T00:00:00.000Z" 21]
-    ["2013-04-01T00:00:00.000Z" 26 "2013-04-01T00:00:00.000Z" 26]
-    ["2013-05-01T00:00:00.000Z" 23 "2013-05-01T00:00:00.000Z" 23]
-    ["2013-06-01T00:00:00.000Z" 26 "2013-06-01T00:00:00.000Z" 26]
-    ["2013-07-01T00:00:00.000Z" 20 "2013-07-01T00:00:00.000Z" 20]
-    ["2013-08-01T00:00:00.000Z" 22 "2013-08-01T00:00:00.000Z" 22]
-    ["2013-09-01T00:00:00.000Z" 13 "2013-09-01T00:00:00.000Z" 13]
-    ["2013-10-01T00:00:00.000Z" 26 "2013-10-01T00:00:00.000Z" 26]]
+   [["2013-01-01T00:00:00Z"  8 "2013-01-01T00:00:00Z"  8]
+    ["2013-02-01T00:00:00Z" 11 "2013-02-01T00:00:00Z" 11]
+    ["2013-03-01T00:00:00Z" 21 "2013-03-01T00:00:00Z" 21]
+    ["2013-04-01T00:00:00Z" 26 "2013-04-01T00:00:00Z" 26]
+    ["2013-05-01T00:00:00Z" 23 "2013-05-01T00:00:00Z" 23]
+    ["2013-06-01T00:00:00Z" 26 "2013-06-01T00:00:00Z" 26]
+    ["2013-07-01T00:00:00Z" 20 "2013-07-01T00:00:00Z" 20]
+    ["2013-08-01T00:00:00Z" 22 "2013-08-01T00:00:00Z" 22]
+    ["2013-09-01T00:00:00Z" 13 "2013-09-01T00:00:00Z" 13]
+    ["2013-10-01T00:00:00Z" 26 "2013-10-01T00:00:00Z" 26]]
    :columns [(data/format-name "date") "count" (data/format-name "date_2") "count_2"]}
   (qp.test/format-rows-by [identity int identity int]
     (qp.test/rows+column-names
@@ -347,14 +347,14 @@
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
   ;; for whatever reason H2 gives slightly different answers :unamused:
   {:rows    (let [driver-avg #(if (= metabase.driver/*driver* :h2) %1 %2)]
-              [["2014-01-01T00:00:00.000Z" 77]
-               ["2014-02-01T00:00:00.000Z" 81]
-               ["2014-04-01T00:00:00.000Z" (driver-avg 50 49)]
-               ["2014-07-01T00:00:00.000Z" (driver-avg 69 68)]
-               ["2014-08-01T00:00:00.000Z" 64]
-               ["2014-10-01T00:00:00.000Z" (driver-avg 66 65)]
-               ["2014-11-01T00:00:00.000Z" (driver-avg 75 74)]
-               ["2014-12-01T00:00:00.000Z" 70]])
+              [["2014-01-01T00:00:00Z" 77]
+               ["2014-02-01T00:00:00Z" 81]
+               ["2014-04-01T00:00:00Z" (driver-avg 50 49)]
+               ["2014-07-01T00:00:00Z" (driver-avg 69 68)]
+               ["2014-08-01T00:00:00Z" 64]
+               ["2014-10-01T00:00:00Z" (driver-avg 66 65)]
+               ["2014-11-01T00:00:00Z" (driver-avg 75 74)]
+               ["2014-12-01T00:00:00Z" 70]])
    :columns [(data/format-name "last_login") "avg"]}
   (qp.test/format-rows-by [identity int]
     (qp.test/rows+column-names
@@ -372,9 +372,9 @@
 
 ;; NEW! Can we still get all of our columns, even if we *DON'T* specify the metadata?
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
-  {:rows    [["2013-01-01T00:00:00.000Z"  8 "2013-01-01T00:00:00.000Z"  8]
-             ["2013-02-01T00:00:00.000Z" 11 "2013-02-01T00:00:00.000Z" 11]
-             ["2013-03-01T00:00:00.000Z" 21 "2013-03-01T00:00:00.000Z" 21]]
+  {:rows    [["2013-01-01T00:00:00Z"  8 "2013-01-01T00:00:00Z"  8]
+             ["2013-02-01T00:00:00Z" 11 "2013-02-01T00:00:00Z" 11]
+             ["2013-03-01T00:00:00Z" 21 "2013-03-01T00:00:00Z" 21]]
    :columns [(data/format-name "date") "count" (data/format-name "date_2") "count_2"]}
   (tt/with-temp Card [{card-id               :id
                        {source-query :query} :dataset_query
@@ -417,11 +417,11 @@
               "id_2"   "name"   "last_login"                                   ; users
               "id_2_2" "name_2" "category_id" "latitude" "longitude" "price"]) ; venues
    :rows
-   [[1 "2014-04-07T00:00:00.000Z" 5 12
-     5 "Quentin Sören" "2014-10-03T17:30:00.000Z"
+   [[1 "2014-04-07T00:00:00Z" 5 12
+     5 "Quentin Sören" "2014-10-03T17:30:00Z"
      5 "Brite Spot Family Restaurant" 20 34.078 -118.261 2]
-    [2 "2014-09-18T00:00:00.000Z" 1 31
-     1 "Plato Yeshua" "2014-04-01T08:30:00.000Z"
+    [2 "2014-09-18T00:00:00Z" 1 31
+     1 "Plato Yeshua" "2014-04-01T08:30:00Z"
      1 "Red Medicine" 4 10.065 -165.374 3]]}
   (qp.test/rows+column-names
     (qp.test/format-rows-by [int    ; checkins.id
@@ -453,8 +453,8 @@
 
 ;; we should be able to use a SQL question as a source query in a Join
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :left-join)
-  [[1 "2014-04-07T00:00:00.000Z" 5 12 12 "The Misfit Restaurant + Bar" 2 34.0154 -118.497 2]
-   [2 "2014-09-18T00:00:00.000Z" 1 31 31 "Bludso's BBQ"                5 33.8894 -118.207 2]]
+  [[1 "2014-04-07T00:00:00Z" 5 12 12 "The Misfit Restaurant + Bar" 2 34.0154 -118.497 2]
+   [2 "2014-09-18T00:00:00Z" 1 31 31 "Bludso's BBQ"                5 33.8894 -118.207 2]]
   (tt/with-temp Card [{card-id :id, :as card} (qp.test-util/card-with-source-metadata-for-query
                                                (data/native-query (qp/query->native (data/mbql-query venues))))]
     (qp.test/formatted-rows [int identity int int int identity int 4.0 4.0 int]

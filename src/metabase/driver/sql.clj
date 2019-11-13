@@ -6,6 +6,7 @@
             [schema.core :as s])
   (:import clojure.lang.Keyword
            honeysql.types.SqlCall
+           java.time.temporal.Temporal
            java.util.Date))
 
 (driver/register! :sql, :abstract? true)
@@ -32,13 +33,12 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmulti ->prepared-substitution
-  "Returns a `PreparedStatementSubstitution` for `x` and the given driver. This allows driver specific parameters and
-  SQL replacement text (usually just ?). The param value is already prepared and ready for inlcusion in the query,
-  such as what's needed for SQLite and timestamps."
+  "Returns a `PreparedStatementSubstitution` (see schema below) for `x` and the given driver. This allows driver
+  specific parameters and SQL replacement text (usually just ?). The param value is already prepared and ready for
+  inlcusion in the query, such as what's needed for SQLite and timestamps."
   {:arglists '([driver x])}
   (fn [driver x] [(driver/dispatch-on-initialized-driver driver) (class x)])
   :hierarchy #'driver/hierarchy)
-
 
 (def PreparedStatementSubstitution
   "Represents the SQL string replace value (usually ?) and the typed parameter value"
@@ -81,6 +81,11 @@
   [driver sql-call]
   (honeysql->prepared-stmt-subs driver sql-call))
 
+;; TIMEZONE FIXME - remove this since we aren't using `Date` anymore
 (s/defmethod ->prepared-substitution [:sql Date] :- PreparedStatementSubstitution
   [driver date]
   (make-stmt-subs "?" [date]))
+
+(s/defmethod ->prepared-substitution [:sql Temporal] :- PreparedStatementSubstitution
+  [driver t]
+  (make-stmt-subs "?" [t]))

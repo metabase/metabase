@@ -3,9 +3,10 @@
   for JDBC-based drivers."
   (:require [clojure
              [set :as set]
-            [string :as str]]
+             [string :as str]]
             [clojure.java.jdbc :as jdbc]
             [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase.db.spec :as db.spec]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
@@ -20,7 +21,8 @@
              [date :as du]
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
-  (:import java.sql.Time
+  (:import [java.sql ResultSet ResultSetMetaData Time Types]
+           [java.time LocalDateTime OffsetDateTime OffsetTime]
            [java.util Date UUID]))
 
 (driver/register! :postgres, :parent :sql-jdbc)
@@ -277,3 +279,18 @@
 (defmethod sql-jdbc.execute/set-timezone-sql :postgres
   [_]
   "SET SESSION TIMEZONE TO %s;")
+
+;; for some reason postgres `TIMESTAMP WITH TIME ZONE` columns still come back as `Type/TIMESTAMP`, which seems like a
+;; bug with the JDBC driver?
+(defmethod sql-jdbc.execute/read-column [:postgres Types/TIMESTAMP]
+  [_ _ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (let [^Class klass (if (= (str/lower-case (.getColumnTypeName rsmeta i)) "timestamptz")
+                       OffsetDateTime
+                       LocalDateTime)]
+    (.getObject rs i klass)))
+
+;; Postgres doesn't support OffsetTime
+(defmethod sql-jdbc.execute/set-parameter [:postgres OffsetTime]
+  [driver prepared-statement i t]
+  (let [local-time (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))]
+    (sql-jdbc.execute/set-parameter driver prepared-statement i local-time)))
