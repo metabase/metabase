@@ -15,10 +15,11 @@
             [metabase.models.table :refer [Table]]
             [metabase.util
              [date :as du]
+             [date-2 :as u.date]
              [honeysql-extensions :as hx]]
             [toucan.db :as db])
   (:import [java.sql PreparedStatement ResultSet Types]
-           java.util.Date))
+           [java.time OffsetDateTime ZonedDateTime]))
 
 (driver/register! :hive-like
   :parent #{:sql-jdbc ::sql-jdbc.execute/use-legacy-classes-for-read-and-set}
@@ -153,7 +154,15 @@
 ;; TIMEZONE FIXME — I think this is still needed for some of the test extensions
 (defmethod unprepare/unprepare-value [:hive-like Date]
   [_ value]
-  (format "timestamp '%s'" (du/format-date "yyyy-MM-dd HH:mm:ss.SSS" value)))
+  (format "timestamp '%s'" (du/format-date "yyyy-MM-dd HH:mm:ss.SSS"  value)))
+
+(defmethod unprepare/unprepare-value [:hive-like OffsetDateTime]
+  [_ t]
+  (format "to_utc_timestamp('%s', '%s')" (u.date/format-sql (t/local-date-time t)) (t/zone-offset t)))
+
+(defmethod unprepare/unprepare-value [:hive-like ZonedDateTime]
+  [_ t]
+  (format "to_utc_timestamp('%s', '%s')" (u.date/format-sql (t/local-date-time t)) (t/zone-id t)))
 
 ;; TIMEZONE FIXME — not sure what timezone the results actually come back as
 (defmethod sql-jdbc.execute/read-column [:hive-like Types/TIME]

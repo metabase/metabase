@@ -23,9 +23,10 @@
              [date-2 :as u.date]
              [i18n :as ui18n :refer [tru]]
              [schema :as su]]
-            [monger json
+            [monger
              [collection :as mc]
              [conversion :as m.conversion]
+             json
              [operators :refer :all]]
             [schema.core :as s])
   (:import metabase.models.field.FieldInstance

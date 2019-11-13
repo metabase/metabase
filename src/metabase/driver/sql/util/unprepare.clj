@@ -66,6 +66,7 @@
   [_ t]
   (format "timestamp with time zone '%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
 
+;; TODO - pretty sure we can remove this
 (defmethod unprepare-value [:sql Instant]
   [_ t]
   (format "timestamp with time zone '%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ"

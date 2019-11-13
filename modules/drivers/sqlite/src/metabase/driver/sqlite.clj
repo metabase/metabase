@@ -267,7 +267,7 @@
 ;; (.getObject rs i LocalDate) doesn't seem to work, nor does `(.getDate)`; and it seems to be the case that
 ;; timestamps come back as `Types/DATE` as well? Fetch them as a String and then parse them
 (defmethod sql-jdbc.execute/read-column [:sqlite Types/DATE]
-  [_ _ ^ResultSet rs _ i]
+  [_ _ ^ResultSet rs _ ^Integer i]
   (try
     (t/local-date (.getDate rs i))
     (catch Throwable _
