@@ -116,7 +116,7 @@
    [org.flatland/ordered "1.5.7"]                                     ; ordered maps & sets
    [org.liquibase/liquibase-core "3.6.3"                              ; migration management (Java lib)
     :exclusions [ch.qos.logback/logback-classic]]
-   [org.mariadb.jdbc/mariadb-java-client "2.5.1"]                     ; MySQL/MariaDB driver 
+   [org.mariadb.jdbc/mariadb-java-client "2.5.1"]                     ; MySQL/MariaDB driver
    [org.postgresql/postgresql "42.2.5"]                               ; Postgres driver
    [org.slf4j/slf4j-log4j12 "1.7.25"]                                 ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
    [org.tcrawley/dynapath "1.0.0"]                                    ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
@@ -243,7 +243,10 @@
 
    :include-all-drivers
    [:with-include-drivers-middleware
-    {:include-drivers :all}]
+   {:include-drivers :all
+    :injections
+    [(require 'metabase.plugins)
+     (metabase.plugins/load-plugins!)]}]
 
    :repl
    [:include-all-drivers
@@ -257,13 +260,12 @@
    :eastwood
    [:include-all-drivers
     {:plugins
-     [[jonase/eastwood "0.3.1" :exclusions [org.clojure/clojure]]]
+     [[jonase/eastwood "0.3.6" :exclusions [org.clojure/clojure]]]
 
      :eastwood
-     {:exclude-namespaces [:test-paths dev]
+     {:exclude-namespaces [:test-paths dev dev.test]
       :config-files       ["./test_resources/eastwood-config.clj"]
       :add-linters        [:unused-private-vars
-                           :unused-namespaces
                            ;; These linters are pretty useful but give a few false positives and can't be selectively
                            ;; disabled (yet)
                            ;;
@@ -274,8 +276,12 @@
                            ;; get them to work
                            #_:unused-fn-args
                            #_:unused-locals]
-      ;; Turn this off temporarily until we finish removing self-deprecated functions & macros
-      :exclude-linters    [:deprecations]}}]
+      :exclude-linters    [; Turn this off temporarily until we finish removing self-deprecated functions & macros
+                           :deprecations
+                           ;; this has a fit in libs that use Potemin `import-vars` such as `java-time`
+                           :implicit-dependencies
+                           ;; too many false positives for now
+                           :unused-ret-vals]}}]
 
    ;; run ./bin/reflection-linter to check for reflection warnings
    :reflection-warnings
