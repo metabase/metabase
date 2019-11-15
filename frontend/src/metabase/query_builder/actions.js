@@ -5,7 +5,7 @@ declare var ace: any;
 
 import { createAction } from "redux-actions";
 import _ from "underscore";
-import { assocIn, updateIn } from "icepick";
+import { assocIn, getIn, updateIn } from "icepick";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -307,8 +307,9 @@ export const initializeQB = (location, params) => {
     };
 
     // always start the QB by loading up the databases for the application
+    let databaseFetch;
     try {
-      dispatch(
+      databaseFetch = dispatch(
         Databases.actions.fetchList({
           include_tables: true,
           include_cards: true,
@@ -447,11 +448,16 @@ export const initializeQB = (location, params) => {
     }
     // Fetch the question metadata (blocking)
     if (card) {
+      // ensure that the database fetch completed before getting the tables
+      if (databaseFetch) {
+        await databaseFetch;
+      }
       const { tables } = getMetadata(getState());
+      const tableId = getIn(card, ["dataset_query", "query", "source-table"]);
       // Only fetch the table metadata if the table was returned in the earlier
       // call to fetch databases and tables. Otherwise, this user doesn't have
       // permissions and the call will fail.
-      if (tables[card.table_id] != null) {
+      if (tables[tableId] != null) {
         await dispatch(loadMetadataForCard(card));
       }
     }
