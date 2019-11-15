@@ -40,7 +40,6 @@ import {
   getResultsMetadata,
   getFirstQueryResult,
   getIsPreviewing,
-  getTables,
   getTableForeignKeys,
   getQueryBuilderMode,
   getIsShowingTemplateTagsEditor,
