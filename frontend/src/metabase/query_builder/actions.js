@@ -40,6 +40,7 @@ import {
   getResultsMetadata,
   getFirstQueryResult,
   getIsPreviewing,
+  getTables,
   getTableForeignKeys,
   getQueryBuilderMode,
   getIsShowingTemplateTagsEditor,
@@ -447,7 +448,13 @@ export const initializeQB = (location, params) => {
     }
     // Fetch the question metadata (blocking)
     if (card) {
-      await dispatch(loadMetadataForCard(card));
+      const { tables } = getMetadata(getState());
+      // Only fetch the table metadata if the table was returned in the earlier
+      // call to fetch databases and tables. Otherwise, this user doesn't have
+      // permissions and the call will fail.
+      if (tables[card.table_id] != null) {
+        await dispatch(loadMetadataForCard(card));
+      }
     }
 
     // Update the question to Redux state together with the initial state of UI controls
