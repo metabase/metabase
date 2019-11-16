@@ -79,43 +79,43 @@
 (def ^:private col-defaults
   {:base_type :type/Text})
 
-;; test druid native queries
-(datasets/expect-with-driver :druid
-  {:row_count 2
-   :status    :completed
-   :data      {:rows             [["2013-01-03T08:00:00Z" "931" "Simcha Yan" "1" "Kinaree Thai Bistro"       1]
-                                  ["2013-01-10T08:00:00Z" "285" "Kfir Caj"   "2" "Ruen Pair Thai Restaurant" 1]]
-               :cols             (mapv #(merge col-defaults %)
-                                       [{:name         "timestamp"
-                                         :source       :native
-                                         :display_name "timestamp"
-                                         :field_ref    [:field-literal "timestamp" :type/DateTimeWithTZ]
-                                         :base_type    :type/DateTimeWithTZ}
-                                        {:name         "id"
-                                         :source       :native
-                                         :display_name "id"
-                                         :field_ref    [:field-literal "id" :type/Text]}
-                                        {:name         "user_name"
-                                         :source       :native
-                                         :display_name "user_name"
-                                         :field_ref    [:field-literal "user_name" :type/Text]}
-                                        {:name         "venue_price"
-                                         :source       :native
-                                         :display_name "venue_price"
-                                         :field_ref    [:field-literal "venue_price" :type/Text]}
-                                        {:name         "venue_name"
-                                         :source       :native
-                                         :display_name "venue_name"
-                                         :field_ref    [:field-literal "venue_name" :type/Text]}
-                                        {:name         "count"
-                                         :source       :native
-                                         :display_name "count"
-                                         :base_type    :type/Integer
-                                         :field_ref    [:field-literal "count" :type/Integer]}])
-               :native_form      {:query native-query-1}
-               :results_timezone "UTC"}}
-  (-> (process-native-query native-query-1)
-      (m/dissoc-in [:data :insights])))
+(deftest native-query-test
+  (datasets/test-driver :druid
+    (is (= {:row_count 2
+            :status    :completed
+            :data      {:rows             [["2013-01-03T08:00:00Z" "931" "Simcha Yan" "1" "Kinaree Thai Bistro"       1]
+                                           ["2013-01-10T08:00:00Z" "285" "Kfir Caj"   "2" "Ruen Pair Thai Restaurant" 1]]
+                        :cols             (mapv #(merge col-defaults %)
+                                                [{:name         "timestamp"
+                                                  :source       :native
+                                                  :display_name "timestamp"
+                                                  :field_ref    [:field-literal "timestamp" :type/DateTimeWithZoneID]
+                                                  :base_type    :type/DateTimeWithZoneID}
+                                                 {:name         "id"
+                                                  :source       :native
+                                                  :display_name "id"
+                                                  :field_ref    [:field-literal "id" :type/Text]}
+                                                 {:name         "user_name"
+                                                  :source       :native
+                                                  :display_name "user_name"
+                                                  :field_ref    [:field-literal "user_name" :type/Text]}
+                                                 {:name         "venue_price"
+                                                  :source       :native
+                                                  :display_name "venue_price"
+                                                  :field_ref    [:field-literal "venue_price" :type/Text]}
+                                                 {:name         "venue_name"
+                                                  :source       :native
+                                                  :display_name "venue_name"
+                                                  :field_ref    [:field-literal "venue_name" :type/Text]}
+                                                 {:name         "count"
+                                                  :source       :native
+                                                  :display_name "count"
+                                                  :base_type    :type/Integer
+                                                  :field_ref    [:field-literal "count" :type/Integer]}])
+                        :native_form      {:query native-query-1}
+                        :results_timezone "UTC"}}
+           (-> (process-native-query native-query-1)
+               (m/dissoc-in [:data :insights]))))))
 
 
 ;; make sure we can run a native :timeseries query. This was throwing an Exception -- see #3409
@@ -460,3 +460,26 @@
      :breakout   [$venue_category_name $user_name]
      :order-by   [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]
      :limit      5}))
+
+(deftest sync-test
+  (datasets/test-driver :druid
+    (tqpt/with-flattened-dbdef
+      (testing "describe-database"
+        (is (= {:tables #{{:schema nil, :name "checkins"}}}
+               (driver/describe-database :druid (data/db)))))
+      (testing "describe-table"
+        (is (= {:schema nil
+                :name "checkins"
+                :fields
+                #{{:name "count",               :base-type :type/Integer, :database-type "LONG"}
+                  {:name "id",                  :base-type :type/Text,    :database-type "STRING"}
+                  {:name "timestamp",           :base-type :type/Instant, :database-type "timestamp", :pk? true}
+                  {:name "user_last_login",     :base-type :type/Text,    :database-type "STRING"}
+                  {:name "user_name",           :base-type :type/Text,    :database-type "STRING"}
+                  {:name "user_password",       :base-type :type/Text,    :database-type "STRING"}
+                  {:name "venue_category_name", :base-type :type/Text,    :database-type "STRING"}
+                  {:name "venue_latitude",      :base-type :type/Text,    :database-type "STRING"}
+                  {:name "venue_longitude",     :base-type :type/Text,    :database-type "STRING"}
+                  {:name "venue_name",          :base-type :type/Text,    :database-type "STRING"}
+                  {:name "venue_price",         :base-type :type/Text,    :database-type "STRING"}}}
+               (driver/describe-table :druid (data/db) {:name "checkins"})))))))
