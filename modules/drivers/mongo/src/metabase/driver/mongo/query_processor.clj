@@ -88,12 +88,7 @@
 (extend-protocol m.conversion/ConvertFromDBObject
   java.util.Date
   (from-db-object [t _]
-    (t/instant t))
-  #_java.time.LocalTime
-  #_java.time.LocalDateTime
-  #_java.time.OffsetTime
-  #_java.time.OffsetDateTime
-  #_java.time.ZonedDateTime)
+    (t/instant t)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    QP Impl                                                     |

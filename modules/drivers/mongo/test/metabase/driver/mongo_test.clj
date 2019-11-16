@@ -175,11 +175,11 @@
   [[{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
     {:special_type :type/Name,      :base_type :type/Text,     :name "name"}]
    [{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-    {:special_type nil,             :base_type :type/DateTime, :name "date"}
+    {:special_type nil,             :base_type :type/Instant,  :name "date"}
     {:special_type :type/Category,  :base_type :type/Integer,  :name "user_id"}
     {:special_type nil,             :base_type :type/Integer,  :name "venue_id"}]
    [{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-    {:special_type nil,             :base_type :type/DateTime, :name "last_login"}
+    {:special_type nil,             :base_type :type/Instant,  :name "last_login"}
     {:special_type :type/Name,      :base_type :type/Text,     :name "name"}
     {:special_type :type/Category,  :base_type :type/Text,     :name "password"}]
    [{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}

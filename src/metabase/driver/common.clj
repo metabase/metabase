@@ -253,8 +253,12 @@
     java.time.LocalDate            :type/Date
     java.time.LocalTime            :type/Time
     java.time.LocalDateTime        :type/DateTime
+    ;; `OffsetTime` and `OffsetDateTime` should be mapped to one of `type/TimeWithLocalTZ`/`type/TimeWithZoneOffset`
+    ;; and `type/DateTimeWithLocalTZ`/`type/DateTimeWithZoneOffset` respectively. We can't really tell how they're
+    ;; stored in the DB based on class alone, so drivers should return more specific types where possible. See
+    ;; discussion in the `metabase.types` namespace.
     java.time.OffsetTime           :type/TimeWithTZ
-    java.time.OffsetDateTime       :type/DateTimeWithZoneOffset
+    java.time.OffsetDateTime       :type/DateTimeWithTZ
     java.time.ZonedDateTime        :type/DateTimeWithZoneID
     java.time.Instant              :type/Instant
     ;; TODO - this should go in the Postgres driver implementation of this method rather than here
