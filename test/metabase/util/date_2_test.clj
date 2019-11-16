@@ -123,7 +123,12 @@
   (testing "nil"
     (is (= nil
            (u.date/parse nil))
-        "Passing `nil` should return `nil`")))
+        "Passing `nil` should return `nil`"))
+  (testing "blank strings"
+    (is (= nil
+           (u.date/parse ""))
+        (= nil
+           (u.date/parse "   ")))))
 
 ;; TODO - more tests!
 (deftest format-test

@@ -72,7 +72,7 @@
   "Parse a string into a `java.time` object."
   [^String s]
   {:pre [((some-fn string? nil?) s)]}
-  (when (seq s)
+  (when-not (str/blank? s)
     (let [s                 (normalize s)
           temporal-accessor (.parse formatter s)
           local-date        (query temporal-accessor :local-date)
