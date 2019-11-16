@@ -152,10 +152,10 @@
      {:field-name "time",            :base-type :type/Time}
      {:field-name "time-ltz",        :base-type :type/TimeWithLocalTZ}
      {:field-name "time-tz",         :base-type :type/TimeWithZoneOffset}
-     {:field-name "timestamp",       :base-type :type/DateTime}
-     {:field-name "timestamp-ltz",   :base-type :type/DateTimeWithLocalTZ}
-     {:field-name "timestamp-tz",    :base-type :type/DateTimeWithZoneOffset}
-     {:field-name "timestamp-tz-id", :base-type :type/DateTimeWithZoneID}]
+     {:field-name "datetime",       :base-type :type/DateTime}
+     {:field-name "datetime-ltz",   :base-type :type/DateTimeWithLocalTZ}
+     {:field-name "datetime-tz",    :base-type :type/DateTimeWithZoneOffset}
+     {:field-name "datetime-tz-id", :base-type :type/DateTimeWithZoneID}]
     (for [[cnt s] [[6 "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"]
                    [8 "2019-11-02T00:14:14.246-07:00[America/Los_Angeles]"]
                    [6 "2019-11-03T23:35:17.906-08:00[America/Los_Angeles]"]
@@ -182,7 +182,7 @@
        (t/local-time t)                 ; time
        (t/offset-time t)                ; time-ltz
        (t/offset-time t)                ; time-tz
-       (t/local-date-time t)            ; timestamp
-       (t/offset-date-time t)           ; timestamp-ltz
-       (t/offset-date-time t)           ; timestamp-tz
-       t])]])                           ; timestamp-tz-id
+       (t/local-date-time t)            ; datetime
+       (t/offset-date-time t)           ; datetime-ltz
+       (t/offset-date-time t)           ; datetime-tz
+       t])]])                           ; datetime-tz-id

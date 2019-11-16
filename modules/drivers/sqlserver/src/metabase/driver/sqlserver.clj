@@ -32,7 +32,7 @@
     :date             :type/Date
     :datetime         :type/DateTime
     :datetime2        :type/DateTime
-    :datetimeoffset   :type/DateTime
+    :datetimeoffset   :type/DateTimeWithZoneOffset
     :decimal          :type/Decimal
     :float            :type/Float
     :geography        :type/*

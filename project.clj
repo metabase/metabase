@@ -182,9 +182,15 @@
      (try (require 'metabase.test.redefs)
           (catch Throwable _))]
 
-    :env      {:mb-run-mode       "dev"
-               :mb-test-setting-1 "ABCDEFG"}
-    :jvm-opts ["-Dlogfile.path=target/log"]}
+    :env
+    {:mb-run-mode       "dev"
+     :mb-test-setting-1 "ABCDEFG"}
+
+    :jvm-opts
+    ["-Dlogfile.path=target/log"]
+
+    :repl-options
+    {:init-ns user}} ; starting in the user namespace is a lot faster than metabase.core since it has less deps
 
    :ci
    {:jvm-opts ["-Xmx2500m"]}

@@ -54,12 +54,12 @@
        s/Keyword         s/Any}]
   (boolean
    (and (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility-type)))
-        (not (isa? (keyword base-type) :type/DateTime))
+        (not (isa? (keyword base-type) :type/Temporal))
         (#{:list :auto-list} (keyword has-field-values)))))
 
 
 (defn- values-less-than-total-max-length?
-  "`true` if the combined length of all the values in DISTINCT-VALUES is below the threshold for what we'll allow in a
+  "`true` if the combined length of all the values in `distinct-values` is below the threshold for what we'll allow in a
   FieldValues entry. Does some logging as well."
   [distinct-values]
   (let [total-length (reduce + (map (comp count str)

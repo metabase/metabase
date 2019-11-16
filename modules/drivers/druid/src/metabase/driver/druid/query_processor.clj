@@ -16,6 +16,7 @@
              [timezone :as qp.timezone]]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.util :as u]
+            [metabase.types :as types]
             [metabase.util
              [date-2 :as u.date]
              [i18n :as ui18n :refer [tru]]]
@@ -999,12 +1000,12 @@
                                                                             :desc :descending
                                                                             :asc  :ascending)}))))
 (defn- datetime-field?
-  "Similar to `mbql.u/datetime-field?` but works on field ids wrapped in a datetime or on fields that happen to be a
+  "Similar to `types/temporal-field?` but works on field ids wrapped in a datetime or on fields that happen to be a
   datetime"
   [field]
   (when field
     (or (mbql.u/is-clause? :datetime-field field)
-        (mbql.u/datetime-field? (qp.store/field (second field))))))
+        (types/temporal-field? (qp.store/field (second field))))))
 
 ;; Handle order by timstamp field
 (defn- handle-order-by-timestamp

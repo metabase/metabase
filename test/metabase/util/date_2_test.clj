@@ -96,11 +96,20 @@
         (is-parsed? expected s "US/Pacific"))))
   (testing "Weird formats"
     (is (= (t/offset-date-time "2014-08-01T10:00-07:00")
-           (u.date/parse "2014-08-01 10:00:00.000 -0700")))
-    (is (= (t/zoned-date-time "2014-08-01T10:00Z[UTC]")
-           (u.date/parse "2014-08-01 10:00:00.000 UTC")))
-    (is (= (t/zoned-date-time "2014-08-02T00:00+08:00[Asia/Hong_Kong]")
-           (u.date/parse "2014-08-02 00:00:00.000 Asia/Hong_Kong")))))
+           (u.date/parse "2014-08-01 10:00:00.000 -0700"))
+        "Should be able to parse SQL-style literals where Zone offset is separated by a space, with no colons between hour and minute")
+    (testing "Should be able to parse SQL-style literals where Zone ID is separated by a space, without brackets"
+      (is (= (t/zoned-date-time "2014-08-01T10:00Z[UTC]")
+             (u.date/parse "2014-08-01 10:00:00.000 UTC")))
+      (is (= (t/zoned-date-time "2014-08-02T00:00+08:00[Asia/Hong_Kong]")
+             (u.date/parse "2014-08-02 00:00:00.000 Asia/Hong_Kong"))))
+    (is (= (t/offset-time "07:23:18.331Z")
+           (u.date/parse "07:23:18.331+00"))
+        "Should be able to parse strings with '+00' (hour-only) offsets"))
+  (testing "nil"
+    (is (= nil
+           (u.date/parse nil))
+        "Passing `nil` should return `nil`")))
 
 ;; TODO - more tests!
 (deftest format-test

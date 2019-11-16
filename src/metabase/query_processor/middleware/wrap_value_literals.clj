@@ -8,6 +8,7 @@
             [metabase.query-processor
              [store :as qp.store]
              [timezone :as qp.timezone]]
+            [metabase.types :as types]
             [metabase.util.date-2 :as u.date])
   (:import [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
@@ -28,7 +29,7 @@
      field-info
      ;; add in a default unit for this Field so we know to wrap datetime strings in `absolute-datetime` below based on
      ;; its presence. It will get replaced by `:datetime-field` unit if we're wrapped by one
-     (when (mbql.u/datetime-field? field-info)
+     (when (types/temporal-field? field-info)
        {:unit :default}))))
 
 (defmethod type-info :field-id [[_ field-id]]

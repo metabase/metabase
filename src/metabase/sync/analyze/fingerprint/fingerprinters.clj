@@ -56,12 +56,16 @@
 
 (defmulti fingerprinter
   "Return a fingerprinter transducer for a given field based on the field's type."
-   (fn [{:keys [base_type special_type unit] :as field}]
-     [(cond
-        (du/date-extract-units unit)  :type/Integer
-        (field/unix-timestamp? field) :type/DateTime
-        :else                         base_type)
-      (or special_type :type/*)]))
+  {:arglists '([field])}
+  (fn [{:keys [base_type special_type unit] :as field}]
+    [(cond
+       (du/date-extract-units unit)    :type/Integer
+       (field/unix-timestamp? field)   :type/DateTime
+       ;; for historical reasons the Temporal fingerprinter is still called `:type/DateTime` so anything that derives
+       ;; from `Temporal` (such as DATEs and TIMEs) should still use the `:type/DateTime` fingerprinter
+       (isa? base_type :type/Temporal) :type/DateTime
+       :else                           base_type)
+     (or special_type :type/*)]))
 
 (def ^:private global-fingerprinter
   (redux/post-complete
@@ -169,6 +173,8 @@
 (extend-protocol IDateCoercible
   nil                         (->date [_] nil)
   String                      (->date [this] (-> this du/str->date-time t.coerce/to-date))
+  ;; TIMEZONE FIXME — update the fingerprint code to use new `java.time` classes directly, and remove support for
+  ;; `java.util.Date` and Joda-Time types
   java.util.Date              (->date [this] this)
   org.joda.time.DateTime      (->date [this] (t.coerce/to-date this))
   Long                        (->date [^Long this] (java.util.Date. this))

@@ -96,9 +96,16 @@
 (derive :type/DateTimeWithZoneOffset :type/DateTimeWithTZ) ; a column that stores its timezone offset, e.g. `-08:00`
 (derive :type/DateTimeWithZoneID :type/DateTimeWithTZ)     ; a column that stores its timezone ID, e.g. `US/Pacific`
 
-;; isn't this technically a :type/DateTimeWithLocalTZ? Since it's normalized to UTC
-;; TODO - consider whether it makes sense to have a separate `type/Instant` type
-(derive :type/UNIXTimestamp :type/DateTime)
+;; An `Instant` is a timestamp in (milli-)seconds since the epoch, UTC. Since it doesn't store TZ information, but is
+;; normalized to UTC, it is a DateTimeWithLocalTZ
+;;
+;; `Instant` if differentiated from other `DateTimeWithLocalTZ` columns in the same way `java.time.Instant` is
+;; different from `java.time.OffsetDateTime`
+;;
+;; TIMEZONE FIXME — not 100% sure this distinction is needed or makes sense.
+(derive :type/Instant :type/DateTimeWithLocalTZ)
+
+(derive :type/UNIXTimestamp :type/Instant)
 (derive :type/UNIXTimestamp :type/Integer)
 (derive :type/UNIXTimestampSeconds :type/UNIXTimestamp)
 (derive :type/UNIXTimestampMilliseconds :type/UNIXTimestamp)
@@ -186,8 +193,17 @@
 
 (defn types->parents
   "Return a map of various types to their parent types.
-   This is intended for export to the frontend as part of `MetabaseBootstrap` so it can build its own implementation of `isa?`."
+
+  This is intended for export to the frontend as part of `MetabaseBootstrap` so it can build its own implementation of
+  `isa?`."
   ([] (types->parents :type/*))
   ([root]
    (into {} (for [t (descendants root)]
               {t (parents t)}))))
+
+(defn temporal-field?
+  "True if a Metabase `Field` instance has a temporal base or special type, i.e. if this Field represents a value
+  relating to a moment in time."
+  {:arglists '([field])}
+  [{base-type :base_type, special-type :special_type}]
+  (some #(isa? % :type/Temporal) [base-type special-type]))
