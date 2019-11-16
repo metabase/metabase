@@ -61,14 +61,19 @@
     (fn [^TemporalAccessor temporal-accessor query]
       (.query temporal-accessor (queries query)))))
 
+(defn- normalize [s]
+  (-> s
+      ;; HACK - haven't figured out how to get the parser builder to allow HHmm offsets (i.e., no colons) yet, so add
+      ;; one in there if needed. TODO - what about HH:mm:ss offsets? Will we ever see those?
+      (str/replace #"([+-][0-2]\d)([0-5]\d)$" "$1:$2")
+      (str/replace #"([0-2]\d:[0-5]\d(?::[0-5]\d(?:\.\d{1,9})?)?[+-][0-2]\d$)" "$1:00")))
+
 (defn parse
   "Parse a string into a `java.time` object."
   [^String s]
   {:pre [((some-fn string? nil?) s)]}
   (when (seq s)
-    ;; HACK - haven't figured out how to get the parser builder to allow offsets with no columns yet, so add one in
-    ;; there if we have a pattern with no colons
-    (let [s                 (str/replace s #"([+-]\d{2})(\d{2})$" "$1:$2")
+    (let [s                 (normalize s)
           temporal-accessor (.parse formatter s)
           local-date        (query temporal-accessor :local-date)
           local-time        (query temporal-accessor :local-time)

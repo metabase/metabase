@@ -6,6 +6,9 @@
             [clojure.tools.logging :as log]
             [flatland.ordered.map :as ordered-map]
             [java-time :as t]
+            [metabase
+             [types :as types]
+             [util :as u]]
             [metabase.driver.druid.js :as js]
             [metabase.mbql
              [schema :as mbql.s]
@@ -15,8 +18,6 @@
              [store :as qp.store]
              [timezone :as qp.timezone]]
             [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.util :as u]
-            [metabase.types :as types]
             [metabase.util
              [date-2 :as u.date]
              [i18n :as ui18n :refer [tru]]]
