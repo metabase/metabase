@@ -244,7 +244,7 @@
     ;; java.sql types and Joda-Time types should be considered DEPRECATED
     java.sql.Date                  :type/Date
     java.sql.Timestamp             :type/DateTime
-    java.util.Date                 :type/DateTime
+    java.util.Date                 :type/Date
     DateTime                       :type/DateTime
     ;; shouldn't this be :type/UUID ?
     java.util.UUID                 :type/Text
@@ -253,10 +253,14 @@
     java.time.LocalDate            :type/Date
     java.time.LocalTime            :type/Time
     java.time.LocalDateTime        :type/DateTime
-    java.time.OffsetTime           :type/Time
+    ;; `OffsetTime` and `OffsetDateTime` should be mapped to one of `type/TimeWithLocalTZ`/`type/TimeWithZoneOffset`
+    ;; and `type/DateTimeWithLocalTZ`/`type/DateTimeWithZoneOffset` respectively. We can't really tell how they're
+    ;; stored in the DB based on class alone, so drivers should return more specific types where possible. See
+    ;; discussion in the `metabase.types` namespace.
+    java.time.OffsetTime           :type/TimeWithTZ
     java.time.OffsetDateTime       :type/DateTimeWithTZ
-    java.time.ZonedDateTime        :type/DateTimeWithTZ
-    java.time.Instant              :type/DateTime
+    java.time.ZonedDateTime        :type/DateTimeWithZoneID
+    java.time.Instant              :type/Instant
     ;; TODO - this should go in the Postgres driver implementation of this method rather than here
     org.postgresql.util.PGobject   :type/*
     ;; all-NULL columns in DBs like Mongo w/o explicit types

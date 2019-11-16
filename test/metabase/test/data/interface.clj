@@ -420,7 +420,22 @@
                           (dataset-table-definition table))})))
 
 (defmacro defdataset
-  "Define a new dataset to test against."
+  "Define a new dataset to test against. Definition should be of the format
+
+    [table-def+]
+
+  Where each table-def is of the format
+
+    [table-name [field-def+] [row+]]
+
+  e.g.
+
+  [[\"bird_species\"
+    [{:field-name \"name\", :base-type :type/Text}]
+    [[\"House Finch\"]
+     [\"Mourning Dove\"]]]]
+
+  Refer to the EDN definitions (e.g. `test-data.edn`) for more examples."
   ([dataset-name definition]
    `(defdataset ~dataset-name nil ~definition))
 

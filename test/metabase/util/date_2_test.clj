@@ -95,12 +95,40 @@
         ;; OffsetDateTime
         (is-parsed? expected s "US/Pacific"))))
   (testing "Weird formats"
-    (is (= (t/offset-date-time "2014-08-01T10:00-07:00")
-           (u.date/parse "2014-08-01 10:00:00.000 -0700")))
-    (is (= (t/zoned-date-time "2014-08-01T10:00Z[UTC]")
-           (u.date/parse "2014-08-01 10:00:00.000 UTC")))
-    (is (= (t/zoned-date-time "2014-08-02T00:00+08:00[Asia/Hong_Kong]")
-           (u.date/parse "2014-08-02 00:00:00.000 Asia/Hong_Kong")))))
+    (testing "Should be able to parse SQL-style literals where Zone offset is separated by a space, with no colons between hour and minute"
+      (is (= (t/offset-date-time "2014-08-01T10:00-07:00")
+             (u.date/parse "2014-08-01 10:00:00.000 -0700")))
+      (is (= (t/offset-date-time "2014-08-01T10:00-07:00")
+             (u.date/parse "2014-08-01 10:00:00 -0700")))
+      (is (= (t/offset-date-time "2014-08-01T10:00-07:00")
+             (u.date/parse "2014-08-01 10:00 -0700"))))
+    (testing "Should be able to parse SQL-style literals where Zone ID is separated by a space, without brackets"
+      (is (= (t/zoned-date-time "2014-08-01T10:00Z[UTC]")
+             (u.date/parse "2014-08-01 10:00:00.000 UTC")))
+      (is (= (t/zoned-date-time "2014-08-02T00:00+08:00[Asia/Hong_Kong]")
+             (u.date/parse "2014-08-02 00:00:00.000 Asia/Hong_Kong"))))
+    (testing "Should be able to parse strings with hour-only offsets e.g. '+00'"
+      (is (= (t/offset-time "07:23:18.331Z")
+             (u.date/parse "07:23:18.331-00")))
+      (is (= (t/offset-time "07:23:18.000Z")
+             (u.date/parse "07:23:18-00")))
+      (is (= (t/offset-time "07:23:00.000Z")
+             (u.date/parse "07:23-00")))
+      (is (= (t/offset-time "07:23:18.331-08:00")
+             (u.date/parse "07:23:18.331-08")))
+      (is (= (t/offset-time "07:23:18.000-08:00")
+             (u.date/parse "07:23:18-08")))
+      (is (= (t/offset-time "07:23:00.000-08:00")
+             (u.date/parse "07:23-08")))))
+  (testing "nil"
+    (is (= nil
+           (u.date/parse nil))
+        "Passing `nil` should return `nil`"))
+  (testing "blank strings"
+    (is (= nil
+           (u.date/parse ""))
+        (= nil
+           (u.date/parse "   ")))))
 
 ;; TODO - more tests!
 (deftest format-test
@@ -117,8 +145,7 @@
                                           :times     [(t/local-time  14 3 40 (* 555 1000000))
                                                       (t/offset-time 14 3 40 (* 555 1000000) (t/zone-offset -7))]
                                           :datetimes [(t/offset-date-time 2019 10 27 14 3 40 (* 555 1000000) (t/zone-offset -7))
-                                                      (t/zoned-date-time  2019 10 27 14 3 40 (* 555 1000000) (t/zone-id "America/Los_Angeles"))
-                                                      #_(t/instant (t/zoned-date-time  2019 10 27 14 3 40 (* 555 1000000) (t/zone-id "UTC")))]}]
+                                                      (t/zoned-date-time  2019 10 27 14 3 40 (* 555 1000000) (t/zone-id "America/Los_Angeles"))]}]
     (doseq [[categories unit->expected] {#{:times :datetimes} {:minute-of-hour 3
                                                                :hour-of-day    14}
                                          #{:dates :datetimes} {:day-of-week      1

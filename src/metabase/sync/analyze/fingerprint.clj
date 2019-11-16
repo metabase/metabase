@@ -14,14 +14,16 @@
              [interface :as i]
              [util :as sync-util]]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [i18n :refer [trs]]
+             [schema :as su]]
             [redux.core :as redux]
             [schema.core :as s]
             [toucan.db :as db]))
 
 (s/defn ^:private save-fingerprint!
   [field :- i/FieldInstance, fingerprint :- (s/maybe i/Fingerprint)]
-  (log/debug (format "Saving fingerprint for %s" (sync-util/name-for-logging field)))
+  (log/debug (trs "Saving fingerprint for {0}" (sync-util/name-for-logging field)))
   ;; All Fields who get new fingerprints should get marked as having the latest fingerprint version, but we'll
   ;; clear their values for `last_analyzed`. This way we know these fields haven't "completed" analysis for the
   ;; latest fingerprints.

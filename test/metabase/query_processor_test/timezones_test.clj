@@ -3,6 +3,7 @@
              [set :as set]
              [test :refer :all]]
             [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
@@ -183,3 +184,54 @@
                           {:database (data/id)
                            :type     :native}
                           query))))))))))))
+
+
+
+;; Make sure TIME values are handled consistently (#10366)
+(defn- attempts []
+  (zipmap
+   [:date :time :datetime :time-ltz :time-tz :datetime-ltz :datetime-tz :datetime-tz-id]
+   (qp.test/first-row
+     (qp/process-query
+       (data/query attempts
+         {:query      {:fields [$date $time $datetime $time-ltz $time-tz $datetime-ltz $datetime-tz $datetime-tz-id]
+                       :filter [:= $id 1]}
+          :middleware {:format-rows? false}})))))
+
+(defn- driver-distinguishes-between-base-types?
+  "True if the current distinguishes between two base types when loading data in test datasets.
+  TODO — how is this supposed to work for MongoDB?"
+  [base-type-1 base-type-2]
+  (not= (sql.tx/field-base-type->sql-type driver/*driver* base-type-1)
+        (sql.tx/field-base-type->sql-type driver/*driver* base-type-2)))
+
+(defn- supports-time-with-time-zone?   [] (driver-distinguishes-between-base-types? :type/TimeWithTZ :type/Time))
+(defn- supports-time-with-offset?      [] (driver-distinguishes-between-base-types? :type/TimeWithZoneOffset :type/TimeWithTZ))
+(defn- supports-datetime-with-offset?  [] (driver-distinguishes-between-base-types? :type/DateTimeWithZoneOffset :type/DateTimeWithTZ))
+(defn- supports-datetime-with-zone-id? [] (driver-distinguishes-between-base-types? :type/DateTimeWithZoneID :type/DateTimeWithTZ))
+
+(defn- expected-attempts []
+  (merge
+   {:date         (t/local-date "2019-11-01")
+    :time         (t/local-time "00:23:18.331")
+    :datetime     (t/local-date-time "2019-11-01T00:23:18.331")
+    :datetime-ltz (t/offset-date-time "2019-11-01T07:23:18.331Z")}
+   (when (supports-time-with-time-zone?)
+     {:time-ltz (t/offset-time "07:23:18.331Z")})
+   (when (supports-time-with-offset?)
+     {:time-tz (t/offset-time "00:23:18.331-07:00")})
+   (when (supports-datetime-with-offset?)
+     {:datetime-tz (t/offset-date-time "2019-11-01T00:23:18.331-07:00")})
+   (when (supports-datetime-with-zone-id?)
+     {:datetime-tz-id (t/zoned-date-time "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]")})))
+
+(deftest time-timezone-handling-test
+  ;; Actual value : "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"
+  ;; Oracle doesn't have a time type
+  (datasets/test-drivers (set-timezone-drivers)
+    (data/dataset attempted-murders
+      (doseq [timezone [nil "US/Pacific" "US/Eastern" "Asia/Hong_Kong"]]
+        (tu/with-temporary-setting-values [report-timezone timezone]
+          (let [expected (expected-attempts)]
+            (is (= expected
+                   (select-keys (attempts) (keys expected))))))))))

@@ -16,7 +16,7 @@
              [timezone :as qp.timezone]
              [util :as qputil]]
             [metabase.util.i18n :refer [tru]])
-  (:import [java.sql PreparedStatement ResultSet ResultSetMetaData SQLException Types]
+  (:import [java.sql JDBCType PreparedStatement ResultSet ResultSetMetaData SQLException Types]
            [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -25,9 +25,10 @@
 
 (defmulti set-timezone-sql
   "Return a format string containing a SQL statement to be used to set the timezone for the current transaction.
-  The `%s` will be replaced with a string literal for a timezone, e.g. `US/Pacific.`
+  The `%s` will be replaced with a string literal for a timezone, e.g. `US/Pacific.` (Timezone ID will come already
+  wrapped in single quotes.)
 
-    \"SET @@session.timezone = %s;\""
+    \"SET @@session.time_zone = %s;\""
   {:arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -94,12 +95,17 @@
   [driver rs ^ResultSetMetaData rsmeta indexes]
   (mapv
    (fn [^Integer i]
-     (let [result (read-column driver nil rs rsmeta i)]
-       (log/tracef "(read-column %s nil rs rsmeta %d) %s %s -> ^%s %s"
-                   driver i
-                   (.getColumnName rsmeta i) (.getName (java.sql.JDBCType/valueOf (.getColumnType rsmeta i)))
-                   (.getName (class result)) (pr-str result))
-       result))
+     (try
+       (let [result (read-column driver nil rs rsmeta i)]
+         (log/tracef "(read-column %s nil rs rsmeta %d) \"%s\" [JDBC Type: %s; DB type: %s] -> ^%s %s"
+                     driver i
+                     (.getColumnName rsmeta i) (.getName (JDBCType/valueOf (.getColumnType rsmeta i))) (.getColumnTypeName rsmeta i)
+                     (.getName (class result)) (pr-str result))
+         result)
+       (catch Throwable e
+         (log/errorf e "Error reading %s column %d %s %s"
+                     driver i (.getColumnName rsmeta i) (.getName (JDBCType/valueOf (.getColumnType rsmeta i))))
+         nil)))
    indexes))
 
 
@@ -125,7 +131,7 @@
 
   ([^PreparedStatement prepared-statement, ^Integer index, object, ^Integer target-sql-type]
    (log/tracef "(set-object prepared-statement %d ^%s %s java.sql.Types/%s)" index (.getName (class object))
-               (pr-str object) (.getName (java.sql.JDBCType/valueOf target-sql-type)))
+               (pr-str object) (.getName (JDBCType/valueOf target-sql-type)))
    (.setObject prepared-statement index object target-sql-type)))
 
 (defmethod set-parameter :default

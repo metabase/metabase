@@ -22,7 +22,8 @@
              [honeysql-extensions :as hx]
              [i18n :refer [trs]]
              [ssh :as ssh]])
-  (:import [java.time OffsetDateTime OffsetTime ZonedDateTime]))
+  (:import [java.sql ResultSet ResultSetMetaData Types]
+           [java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime]))
 
 (driver/register! :mysql, :parent :sql-jdbc)
 
@@ -163,7 +164,8 @@
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod sql-jdbc.sync/database-type->base-type :mysql [_ database-type]
+(defmethod sql-jdbc.sync/database-type->base-type :mysql
+  [_ database-type]
   ({:BIGINT     :type/BigInteger
     :BINARY     :type/*
     :BIT        :type/Boolean
@@ -188,7 +190,7 @@
     :SMALLINT   :type/Integer
     :TEXT       :type/Text
     :TIME       :type/Time
-    :TIMESTAMP  :type/DateTime
+    :TIMESTAMP  :type/DateTimeWithLocalTZ ; stored as UTC in the database
     :TINYBLOB   :type/*
     :TINYINT    :type/Integer
     :TINYTEXT   :type/Text
@@ -272,6 +274,18 @@
         offset (.. zone getRules (getOffset (t/instant t)))
         t      (t/local-date-time (t/with-offset-same-instant t offset))]
     (sql-jdbc.execute/set-parameter driver ps i t)))
+
+;; MySQL TIMESTAMPS are actually TIMESTAMP WITH LOCAL TIME ZONE, i.e. they are stored normalized to UTC when stored.
+;; However, MySQL returns them in the report time zone in an effort to make our lives horrible.
+;;
+;; Check and see if the column type is `TIMESTAMP` (as opposed to `DATETIME`, which is the equivalent of
+;; LocalDateTime), and normalize it to a UTC timestamp if so.
+(defmethod sql-jdbc.execute/read-column [:mysql Types/TIMESTAMP]
+  [_ _ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (let [t (.getObject rs i LocalDateTime)]
+    (if (= (.getColumnTypeName rsmeta i) "TIMESTAMP")
+      (t/with-offset-same-instant (t/offset-date-time t (t/zone-id (qp.timezone/results-timezone-id))) (t/zone-offset 0))
+      t)))
 
 (defn- format-offset [t]
   (let [offset (t/format "ZZZZZ" (t/zone-offset t))]

@@ -2,9 +2,7 @@
   "Classifier that infers the special type of a Field based on its name and base type."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase
-             [config :as config]
-             [util :as u]]
+            [metabase.config :as config]
             [metabase.models.database :refer [Database]]
             [metabase.sync
              [interface :as i]
@@ -118,7 +116,7 @@
 (when-not config/is-prod?
   (doseq [[name-pattern base-types special-type] pattern+base-types+special-type]
     (assert (instance? java.util.regex.Pattern name-pattern))
-    (assert (every? (u/rpartial isa? :type/*) base-types))
+    (assert (every? #(isa? % :type/*) base-types))
     (assert (isa? special-type :type/*))))
 
 
@@ -140,7 +138,7 @@
    s/Any                          s/Any})
 
 (s/defn infer-special-type :- (s/maybe s/Keyword)
-  "Classifer that infers the special type of a FIELD based on its name and base type."
+  "Classifer that infers the special type of a `field` based on its name and base type."
   [field-or-column :- FieldOrColumn]
   ;; Don't overwrite keys, else we're ok with overwriting as a new more precise type might have
   ;; been added.

@@ -21,7 +21,8 @@
 
 (driver/register! :vertica, :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set})
 
-(defmethod sql-jdbc.sync/database-type->base-type :vertica [_ database-type]
+(defmethod sql-jdbc.sync/database-type->base-type :vertica
+  [_ database-type]
   ({:Boolean                   :type/Boolean
      :Integer                   :type/Integer
      :Bigint                    :type/BigInteger
@@ -35,9 +36,9 @@
      :Float                     :type/Float
      :Date                      :type/Date
      :Time                      :type/Time
-     :TimeTz                    :type/Time
+     :TimeTz                    :type/TimeWithLocalTZ
      :Timestamp                 :type/DateTime
-     :TimestampTz               :type/DateTime
+     :TimestampTz               :type/DateTimeWithLocalTZ
      :AUTO_INCREMENT            :type/Integer
      (keyword "Long Varchar")   :type/Text
      (keyword "Long Varbinary") :type/*} database-type))

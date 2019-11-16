@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.add-implicit-clauses-test
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.middleware.add-implicit-clauses :as add-implicit-clauses]
             [metabase.query-processor.test-util :as qp.test-util]
@@ -11,23 +12,23 @@
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
-;; check we fetch Fields in the right order
-(expect
-  [ ;; sorted first because it has lowest positon
-   {:position -1, :name "PRICE",       :special_type :type/Category}
-   ;; PK
-   {:position 0,  :name "ID",          :special_type :type/PK}
-   ;; Name
-   {:position 0,  :name "NAME",        :special_type :type/Name}
-   ;; The rest are sorted by name
-   {:position 0,  :name "CATEGORY_ID", :special_type :type/FK}
-   {:position 0,  :name "LATITUDE",    :special_type :type/Latitude}
-   {:position 0,  :name "LONGITUDE",   :special_type :type/Longitude}]
-  (tu/with-temp-vals-in-db Field (data/id :venues :price) {:position -1}
-    (let [ids       (map second (#'add-implicit-clauses/sorted-implicit-fields-for-table (data/id :venues)))
-          id->field (u/key-by :id (db/select [Field :id :position :name :special_type] :id [:in ids]))]
-      (for [id ids]
-        (into {} (dissoc (id->field id) :id))))))
+(deftest ordering-test
+  (testing "check we fetch Fields in the right order"
+    (is (= [ ;; sorted first because it has lowest positon
+            {:position -1, :name "PRICE", :special_type :type/Category}
+            ;; PK
+            {:position 0, :name "ID", :special_type :type/PK}
+            ;; Name
+            {:position 0, :name "NAME", :special_type :type/Name}
+            ;; The rest are sorted by name
+            {:position 0, :name "CATEGORY_ID", :special_type :type/FK}
+            {:position 0, :name "LATITUDE", :special_type :type/Latitude}
+            {:position 0, :name "LONGITUDE", :special_type :type/Longitude}]
+           (tu/with-temp-vals-in-db Field (data/id :venues :price) {:position -1}
+             (let [ids       (map second (#'add-implicit-clauses/sorted-implicit-fields-for-table (data/id :venues)))
+                   id->field (u/key-by :id (db/select [Field :id :position :name :special_type] :id [:in ids]))]
+               (for [id ids]
+                 (into {} (dissoc (id->field id) :id)))))))))
 
 ;; we should add order-bys for breakout clauses
 (expect
@@ -101,18 +102,19 @@
                [:field-id (u/get-id field-2)]]}))
   (#'add-implicit-clauses/add-implicit-fields (:query (data/mbql-query venues))))
 
-;; datetime Fields should get default bucketing of :day
-(tt/expect-with-temp [Field [field {:table_id (data/id :venues), :position 0, :name "aaaaa", :base_type :type/DateTime}]]
-  (:query
-   (data/mbql-query venues
-     {:fields [[:field-id (data/id :venues :id)]
-               [:field-id (data/id :venues :name)]
-               [:datetime-field [:field-id (u/get-id field)] :default]
-               [:field-id (data/id :venues :category_id)]
-               [:field-id (data/id :venues :latitude)]
-               [:field-id (data/id :venues :longitude)]
-               [:field-id (data/id :venues :price)]]}))
-  (#'add-implicit-clauses/add-implicit-fields (:query (data/mbql-query venues))))
+(deftest default-bucketing-test
+  (testing "datetime Fields should get default bucketing of :day"
+    (tt/with-temp* [Field [field {:table_id (data/id :venues), :position 0, :name "aaaaa", :base_type :type/DateTime}]]
+      (is (= (:query
+              (data/mbql-query venues
+                {:fields [[:field-id (data/id :venues :id)]
+                          [:field-id (data/id :venues :name)]
+                          [:datetime-field [:field-id (u/get-id field)] :default]
+                          [:field-id (data/id :venues :category_id)]
+                          [:field-id (data/id :venues :latitude)]
+                          [:field-id (data/id :venues :longitude)]
+                          [:field-id (data/id :venues :price)]]}))
+             (#'add-implicit-clauses/add-implicit-fields (:query (data/mbql-query venues))))))))
 
 ;; We should add implicit Fields for source queries that have source-metadata as appropriate
 (tu/expect-schema

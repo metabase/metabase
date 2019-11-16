@@ -135,7 +135,7 @@
                      ;; every Druid table is an event stream w/ a timestamp field
                      [{:name          "timestamp"
                        :database-type "timestamp"
-                       :base-type     :type/DateTime
+                       :base-type     :type/Instant
                        :pk?           true}]
                      (for [[field-name field-info] (dissoc columns :__time)]
                        (describe-table-field field-name field-info))))})))
