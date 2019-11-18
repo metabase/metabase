@@ -31,9 +31,7 @@ describe("query builder", () => {
       await app.async.findByText("Simple question").click();
 
       await waitForAllRequestsToComplete(); // race condition in DataSelector with loading metadata
-      try {
-        await app.async.findByText("Sample Dataset").click(); // not needed if there's only one database
-      } catch (e) {}
+      await maybeClickSampleDataset(app);
       await app.async.findByText("Orders").click();
       await app.async.findByText("37.65");
     });
@@ -47,9 +45,7 @@ describe("query builder", () => {
       await app.async.findByText("Custom question").click();
 
       await waitForAllRequestsToComplete(); // race condition in DataSelector with loading metadata
-      try {
-        await app.async.findByText("Sample Dataset").click(); // not needed if there's only one database
-      } catch (e) {}
+      await maybeClickSampleDataset(app);
       await app.async.findByText("Orders").click();
       await app.async.findByText("Visualize").click();
       await app.async.findByText("37.65");
@@ -62,9 +58,7 @@ describe("query builder", () => {
       await app.async.findByText("Custom question").click();
 
       await waitForAllRequestsToComplete(); // race condition in DataSelector with loading metadata
-      try {
-        await app.async.findByText("Sample Dataset").click(); // not needed if there's only one database
-      } catch (e) {}
+      await maybeClickSampleDataset(app);
       await app.async.findByText("Orders").click();
       await app.async.findByText("Pick the metric you want to see").click();
       await app.async.findByText("Count of rows").click();
@@ -103,3 +97,14 @@ describe("query builder", () => {
     });
   });
 });
+
+// This isn't needed if there's only one db. In that case, clicking "Sample
+// Dataset" will actually take you back to select a db again.
+async function maybeClickSampleDataset(app) {
+  try {
+    const sampleDataset = await app.async.findByText("Sample Dataset");
+    if (sampleDataset.hasClass("List-section-title")) {
+      sampleDataset.click();
+    }
+  } catch (e) {}
+}
