@@ -54,10 +54,14 @@
   `(call-with-jvm-tz ~dtz (fn [] ~@body)))
 
 (defn do-with-system-timezone-id [^String timezone-id thunk]
+  ;; only if the app DB is already set up, we need to make sure plugins are loaded and kill any connection pools that
+  ;; might exist
+  (when (initialize/initialized? :db)
+    (initialize/initialize-if-needed! :plugins)
+    (#'driver/notify-all-databases-updated))
   (let [original-time-zone       (TimeZone/getDefault)
         original-system-property (System/getProperty "user.timezone")]
     (try
-      (#'driver/notify-all-databases-updated)
       (TimeZone/setDefault (TimeZone/getTimeZone timezone-id))
       (System/setProperty "user.timezone" timezone-id)
       (t/testing (format "JVM timezone set to %s" timezone-id)
