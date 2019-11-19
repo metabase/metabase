@@ -130,7 +130,7 @@
   Values are returned as numbers (currently, always and integers, but this may change if we add support for
   `:fraction-of-second` in the future.)"
   ([unit]
-   (extract unit (t/zoned-date-time)))
+   (extract (t/zoned-date-time) unit))
 
   ([t :- Temporal, unit :- (apply s/enum extract-units)]
    (t/as t (case unit
@@ -218,61 +218,68 @@
      (truncate-units unit) (truncate t unit)
      :else                 (throw (Exception. (tru "Invalid unit: {0}" unit))))))
 
-(defn range
-  "Get a start (inclusive) and end (exclusive) pair of instants for a `unit` span of time containing `t`. e.g.
+(s/defn range :- {:start Temporal, :end Temporal}
+  "Get a start (by default, inclusive) and end (by default, exclusive) pair of instants for a `unit` span of time
+  containing `t`. e.g.
 
     (range (t/zoned-date-time \"2019-11-01T15:29:00Z[UTC]\") :week)
     ->
     {:start (t/zoned-date-time \"2019-10-27T00:00Z[UTC]\")
      :end   (t/zoned-date-time \"2019-11-03T00:00Z[UTC]\")}"
-  [t unit]
-  (let [t (truncate t unit)]
-    {:start t, :end (add t unit 1)}))
+  ([unit]
+   (range (t/zoned-date-time) unit))
 
-(defn date-range
-  "Return a date range with `:start` (inclusive) and `:end` (exclusive) points, either of which may be relative to the
-  other if passed as a pair of `[n unit]`. With three args, both `start` and `end` can be relative to some instant
-  `t`.
+  ([t unit]
+   (range t unit nil))
 
-    (date-range (t/local-date \"2019-03-25\") (t/local-date \"2019-03-31\"))
-    ->
-    {:start (t/local-date \"2019-03-25\"), :end (t/local-date \"2019-03-31\")}
+  ([t :- Temporal, unit :- (apply s/enum add-units), {:keys [start end resolution]
+                                                      :or   {start      :inclusive
+                                                             end        :exclusive
+                                                             resolution :millisecond}}]
+   (let [t (truncate t unit)]
+     {:start (case start
+               :inclusive t
+               :exclusive (add t resolution -1))
+      :end   (case end
+               :inclusive (add (add t unit 1) resolution -1)
+               :exclusive (add t unit 1))})))
 
-    ;; get the month starting with `2019-11-01`, i.e. the entire month of November 2019
-    (date-range (t/local-date \"2019-11-01\") [1 :month])
-    ->
-    {:start (t/local-date \"2019-11-01\"), :end (t/local-date \"2019-12-01\")}
+(defn comparison-range
+  "Generate an range that of instants that when bucketed by `unit` would be `=`, `<`, `<=`, `>`, or `>=` to the value of
+  an instant `t` bucketed by `unit`. (`comparison-type` is one of `:=`, `:<`, `:<=`, `:>`, or `:>=`.) By default, the
+  start of the resulting range is inclusive, and the end exclusive; this can be tweaked by passing `options`.
 
-    ;; get the month prior to `2019-11-01`
-    (date-range [-1 :month] (t/local-date \"2019-11-01\"))
-    ->
-    {:start (t/local-date \"2019-10-01\"), :end (t/local-date \"2019-11-01\")}
+    ;; Generate range off instants that have the same MONTH as Nov 18th
+    (comparison-range (t/local-date \"2019-11-18\") :month := {:resolution :day})
+    ;; -> {:start (t/local-date \"2019-11-01\"), :end (t/local-date \"2019-12-01\")}"
+  ([unit comparison-type]
+   (comparison-range (t/zoned-date-time) unit comparison-type))
 
-    ;; get a span from two months before `2019-11-05` to the next two months after
-    (date-range [-2 :month] (t/local-date \"2019-11-05\") [2 :month])
-    ->
-    {:start (t/local-date \"2019-09-05\"), :end (t/local-date \"2020-01-05\")}"
-  {:arglists '([start end] [start [n unit]] [[n unit] end] [[n unit] t [n unit]])}
-  ([start end]
-   (cond
-     (and (instance? Temporal start) (instance? Temporal end))
-     {:start (truncate start :day), :end (truncate end :day)}
+  ([t unit comparison-type]
+   (comparison-range t unit comparison-type nil))
 
-     (instance? Temporal start)
-     (date-range nil start end)
-
-     (instance? Temporal end)
-     (date-range start end nil)))
-
-  ([[start-n start-unit :as start] t [end-n end-unit :as end]]
-   {:pre [(instance? Temporal t)]}
-   (date-range
-    (if start
-      (add t start-unit start-n)
-      t)
-    (if end
-      (add t end-unit end-n)
-      t))))
+  ([t unit comparison-type {:keys [start end resolution]
+                            :or   {start      :inclusive
+                                   end        :exclusive
+                                   resolution :millisecond}
+                            :as   options}]
+   (case comparison-type
+     :<  {:end (case end
+                 :inclusive (add (truncate t unit) resolution -1)
+                 :exclusive (truncate t unit))}
+     :<= {:end (let [t (add (truncate t unit) unit 1)]
+                 (case end
+                   :inclusive (add t resolution -1)
+                   :exclusive t))}
+     :>  {:start (let [t (add (truncate t unit) unit 1)]
+                   (case start
+                     :inclusive t
+                     :exclusive (add t resolution -1)))}
+     :>= {:start (let [t (truncate t unit)]
+                   (case start
+                     :inclusive t
+                     :exclusive (add t resolution -1)))}
+     :=  (range t unit options))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -304,6 +311,6 @@
                         OffsetDateTime 't/offset-date-time
                         OffsetTime     't/offset-time
                         ZonedDateTime  't/zoned-date-time}]
-  (defmethod print-method klass
-    [t writer]
-    (print-method (list f-symb (str t)) writer)))
+(defmethod print-method klass
+  [t writer]
+  (print-method (list f-symb (str t)) writer)))
