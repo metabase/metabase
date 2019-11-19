@@ -71,6 +71,17 @@
         (System/setProperty "user.timezone" original-system-property)))))
 
 (defmacro with-system-timezone-id
-  "Execute `body` with the system time zone temporarily changed to the time zone named by `timezone-id`."
+  "Execute `body` with the system time zone temporarily changed to the time zone named by `timezone-id`.
+
+  TODO — consider deprecating this as well. You can do something like
+
+    (t/with-clock (t/mock-clock (t/instant (t/zoned-date-time
+                                            (t/local-date \"2019-11-18\")
+                                            (t/local-time 0)
+                                            (t/zone-id \"US/Pacific\")))
+                                (t/zone-id \"US/Pacific\"))
+      ...)
+
+  almost everywhere you'd use this."
   [timezone-id & body]
   `(do-with-system-timezone-id ~timezone-id (fn [] ~@body)))

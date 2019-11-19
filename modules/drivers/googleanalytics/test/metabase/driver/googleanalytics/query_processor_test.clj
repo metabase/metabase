@@ -33,7 +33,7 @@
           (is (= expected
                  (#'ga.qp/parse-filter:interval filter-clause)))))))
   (testing "relative datetimes"
-    (t/with-clock (t/mock-clock (t/instant "2019-11-18T14:31:00-08:00"))
+    (t/with-clock (t/mock-clock (t/instant "2019-11-18T22:31:00Z"))
       (doseq [[filter-type {:keys [expected message]}]
               {:=  {:message  "`=` filter — Month is 4 months ago, i.e. July 2019"
                     :expected {:start-date "2019-07-01", :end-date "2019-07-31"}}

@@ -99,7 +99,8 @@
       (t/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                               (t/local-date "2019-11-18")
                                               (t/local-time 0)
-                                              (t/zone-id system-timezone-id))))
+                                              (t/zone-id system-timezone-id)))
+                                  (t/zone-id system-timezone-id))
         (testing "last month"
           (is (= (ga-query {:start-date "2019-10-01"
                             :end-date   "2019-10-31"})
@@ -155,7 +156,7 @@
 ;;; ----------------------------------------------- (Almost) E2E tests -----------------------------------------------
 
 (defn- do-with-some-fields [thunk]
-  (tt/with-temp* [Database [db                 {:engine :googleanalytics}]
+  (tt/with-temp* [Database [db                 {:engine "googleanalytics"}]
                   Table    [table              {:name "98765432", :db_id (u/get-id db)}]
                   Field    [event-action-field {:name "ga:eventAction", :base_type "type/Text", :table_id (u/get-id table)}]
                   Field    [event-label-field  {:name "ga:eventLabel", :base_type "type/Text", :table_id (u/get-id table)}]
@@ -221,7 +222,8 @@
       (t/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                               (t/local-date "2019-11-18")
                                               (t/local-time 0)
-                                              (t/zone-id system-timezone-id))))
+                                              (t/zone-id system-timezone-id)))
+                                  (t/zone-id system-timezone-id))
         (is (= expected-ga-query
                (do-with-some-fields
                 (fn [{:keys [db table event-action-field event-label-field date-field], :as objects}]
@@ -251,7 +253,8 @@
       (t/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                               (t/local-date "2019-11-18")
                                               (t/local-time 0)
-                                              (t/zone-id system-timezone-id))))
+                                              (t/zone-id system-timezone-id)))
+                                  (t/zone-id system-timezone-id))
         (is (= expected-ga-query
                (do-with-some-fields
                 (comp qp/query->native query-with-some-fields))))))))
@@ -266,7 +269,8 @@
       (t/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                               (t/local-date "2019-11-18")
                                               (t/local-time 0)
-                                              (t/zone-id system-timezone-id))))
+                                              (t/zone-id system-timezone-id)))
+                                  (t/zone-id system-timezone-id))
         (with-redefs [ga/memoized-column-metadata (fn [_ column-name]
                                                     {:display_name column-name
                                                      :description  (str "This is " column-name)
@@ -311,7 +315,8 @@
         (t/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                                 (t/local-date "2019-11-18")
                                                 (t/local-time 0)
-                                                (t/zone-id system-timezone-id))))
+                                                (t/zone-id system-timezone-id)))
+                                    (t/zone-id system-timezone-id))
           (do-with-some-fields
            (fn [{:keys [db table date-field]}]
              (is (= {:metrics    "ga:users"
