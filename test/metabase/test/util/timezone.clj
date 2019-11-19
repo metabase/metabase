@@ -18,7 +18,7 @@
     (instance? TimeZone timezone)
     (DateTimeZone/forTimeZone timezone)))
 
-(defn call-with-jvm-tz
+(defn ^:deprecated call-with-jvm-tz
   "Invokes the thunk `F` with the JVM timezone set to `DTZ` (String or instance of TimeZone or DateTimeZone), puts the
   various timezone settings back the way it found it when it exits."
   [dtz thunk]
@@ -48,7 +48,25 @@
         (System/setProperty "user.timezone" orig-tz-prop)))))
 
 (defmacro ^:deprecated with-jvm-tz
-  "Invokes `body` with the JVM timezone set to `dtz`. DEPRECATED because this uses Joda-Time. We should switch
-  everything to use `java.time`!"
+  "Invokes `body` with the JVM timezone set to `dtz`. DEPRECATED because this uses Joda-Time. Use
+  `with-system-timezone-id` instead!"
   [^DateTimeZone dtz & body]
   `(call-with-jvm-tz ~dtz (fn [] ~@body)))
+
+(defn do-with-system-timezone-id [^String timezone-id thunk]
+  (let [original-time-zone       (TimeZone/getDefault)
+        original-system-property (System/getProperty "user.timezone")]
+    (try
+      (#'driver/notify-all-databases-updated)
+      (TimeZone/setDefault (TimeZone/getTimeZone timezone-id))
+      (System/setProperty "user.timezone" timezone-id)
+      (t/testing (format "JVM timezone set to %s" timezone-id)
+        (thunk))
+      (finally
+        (TimeZone/setDefault original-time-zone)
+        (System/setProperty "user.timezone" original-system-property)))))
+
+(defmacro with-system-timezone-id
+  "Execute `body` with the system time zone temporarily changed to the time zone named by `timezone-id`."
+  [timezone-id & body]
+  `(do-with-system-timezone-id ~timezone-id (fn [] ~@body)))

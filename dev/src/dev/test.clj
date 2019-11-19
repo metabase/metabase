@@ -129,7 +129,7 @@
   suppress-output]
 
  [tu.tz
-  with-jvm-tz]
+  with-system-timezone-id]
 
  [tx
   dataset-definition

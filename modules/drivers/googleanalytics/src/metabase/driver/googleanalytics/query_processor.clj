@@ -3,10 +3,12 @@
   See https://developers.google.com/analytics/devguides/reporting/core/v3"
   (:require [clojure.string :as str]
             [clojure.tools.reader.edn :as edn]
+            [java-time :as t]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.store :as qp.store]
             [metabase.util
              [date :as du]
+             [date-2 :as u.date]
              [i18n :as ui18n :refer [deferred-tru tru]]
              [schema :as su]]
             [schema.core :as s])
@@ -26,37 +28,44 @@
    "CURRENCY"    :type/Float
    "US_CURRENCY" :type/Float})
 
-
 (defmulti ^:private ->rvalue mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod ->rvalue nil [_] nil)
 
 (defmethod ->rvalue Object [this] this)
 
-(defmethod ->rvalue :field-id [[_ field-id]]
+(defmethod ->rvalue :field-id
+  [[_ field-id]]
   (:name (qp.store/field field-id)))
 
-(defmethod ->rvalue :field-literal [[_ field-name]]
+(defmethod ->rvalue :field-literal
+  [[_ field-name]]
   field-name)
 
-(defmethod ->rvalue :datetime-field [[_ field]]
+(defmethod ->rvalue :datetime-field
+  [[_ field]]
   (->rvalue field))
 
-(defmethod ->rvalue :absolute-datetime [[_ timestamp unit]]
-  (du/format-date "yyyy-MM-dd" (du/date-trunc unit timestamp)))
+;; TODO - I think these next two methods are no longer used, since `->date-range` handles these clauses
+(defmethod ->rvalue :absolute-datetime
+  [[_ t unit]]
+  (t/format "yyyy-MM-dd" (u.date/truncate t unit)))
 
-(defmethod ->rvalue :relative-datetime [[_ amount unit]]
+(defmethod ->rvalue :relative-datetime
+  [[_ amount unit]]
   (cond
     (and (= unit :day) (= amount 0))  "today"
     (and (= unit :day) (= amount -1)) "yesterday"
     (and (= unit :day) (< amount -1)) (str (- amount) "daysAgo")
-    :else                             (du/format-date
-                                        "yyyy-MM-dd"
-                                        (du/date-trunc unit (du/relative-date unit amount)))))
 
-(defmethod ->rvalue :value [[_ value _]]
+    :else
+    (t/format
+     "yyyy-MM-dd"
+     (u.date/truncate (u.date/add unit amount) unit))))
+
+(defmethod ->rvalue :value
+  [[_ value _]]
   value)
-
 
 (defn- char-escape-map
   "Generate a map of characters to escape to their escaped versions."
@@ -98,7 +107,8 @@
     :day            "ga:date"
     :day-of-week    "ga:dayOfWeek"
     :day-of-month   "ga:day"
-    :week           "ga:isoYearIsoWeek"
+    :week           "ga:yearWeek"
+    :iso-week       "ga:isoYearIsoWeek"
     :week-of-year   "ga:week"
     :month          "ga:yearMonth"
     :month-of-year  "ga:month"
@@ -120,45 +130,58 @@
 (defmethod parse-filter nil [& _]
   nil)
 
-(defmethod parse-filter :contains [[_ field value {:keys [case-sensitive], :or {case-sensitive true}}]]
+(defmethod parse-filter :contains
+  [[_ field value {:keys [case-sensitive], :or {case-sensitive true}}]]
   (ga-filter (->rvalue field) "=~" (if case-sensitive "(?-i)" "(?i)") (escape-for-regex (->rvalue value))))
 
-(defmethod parse-filter :starts-with [[_ field value {:keys [case-sensitive], :or {case-sensitive true}}]]
+(defmethod parse-filter :starts-with
+  [[_ field value {:keys [case-sensitive], :or {case-sensitive true}}]]
   (ga-filter (->rvalue field) "=~" (if case-sensitive "(?-i)" "(?i)") \^ (escape-for-regex (->rvalue value))))
 
-(defmethod parse-filter :ends-with [[_ field value {:keys [case-sensitive], :or {case-sensitive true}}]]
+(defmethod parse-filter :ends-with
+  [[_ field value {:keys [case-sensitive], :or {case-sensitive true}}]]
   (ga-filter (->rvalue field) "=~" (if case-sensitive "(?-i)" "(?i)") (escape-for-regex (->rvalue value)) \$))
 
-(defmethod parse-filter := [[_ field value]]
+(defmethod parse-filter :=
+  [[_ field value]]
   (ga-filter (->rvalue field) "==" (->rvalue value)))
 
-(defmethod parse-filter :!= [[_ field value]]
+(defmethod parse-filter :!=
+  [[_ field value]]
   (ga-filter (->rvalue field) "!=" (->rvalue value)))
 
-(defmethod parse-filter :> [[_ field value]]
+(defmethod parse-filter :>
+  [[_ field value]]
   (ga-filter (->rvalue field) ">" (->rvalue value)))
 
-(defmethod parse-filter :< [[_ field value]]
+(defmethod parse-filter :<
+  [[_ field value]]
   (ga-filter (->rvalue field) "<" (->rvalue value)))
 
-(defmethod parse-filter :>= [[_ field value]]
+(defmethod parse-filter :>=
+  [[_ field value]]
   (ga-filter (->rvalue field) ">=" (->rvalue value)))
 
-(defmethod parse-filter :<= [[_ field value]]
+(defmethod parse-filter :<=
+  [[_ field value]]
   (ga-filter (->rvalue field) "<=" (->rvalue value)))
 
-(defmethod parse-filter :between [[_ field min-val max-val]]
+(defmethod parse-filter :between
+  [[_ field min-val max-val]]
   (str (ga-filter (->rvalue field) ">=" (->rvalue min-val))
        ";"
        (ga-filter (->rvalue field) "<=" (->rvalue max-val))))
 
-(defmethod parse-filter :and [[_ & clauses]]
+(defmethod parse-filter :and
+  [[_ & clauses]]
   (str/join ";" (filter some? (map parse-filter clauses))))
 
-(defmethod parse-filter :or [[_ & clauses]]
+(defmethod parse-filter :or
+  [[_ & clauses]]
   (str/join "," (filter some? (map parse-filter clauses))))
 
-(defmethod parse-filter :not [[_ clause]]
+(defmethod parse-filter :not
+  [[_ clause]]
   (str "!" (parse-filter clause)))
 
 (defn- handle-filter:filters [{filter-clause :filter}]
@@ -177,56 +200,89 @@
 
 ;;; ----------------------------------------------- filter (intervals) -----------------------------------------------
 
-(defn- date-add-days
-  "Add `n-days` to a datetime clause (`:absolute-datetime` or `:relative-datetime`) Done to fix off-by-one issues with
-  GA. See #9904"
-  [[clause-name time-component unit, :as datetime-clause] n-days]
-  (case clause-name
-    :absolute-datetime
-    [:absolute-datetime (du/relative-date :day n-days (du/date-trunc unit time-component)) unit]
+(defn- format-range [{:keys [start end]}]
+  (merge
+   (when start
+     {:start-date (t/format "yyyy-MM-dd" start)})
+   (when end
+     {:end-date (t/format "yyyy-MM-dd" end)})))
 
-    :relative-datetime
-    (if (= unit :day)
-      [clause-name (+ time-component n-days) unit]
-      [:absolute-datetime
-       (du/relative-date :day n-days (du/date-trunc unit (du/relative-date unit time-component))) :day])
+(defmulti ^:private ->date-range
+  {:arglists '([unit comparison-type x])}
+  (fn [_ _ x]
+    (mbql.u/dispatch-by-clause-name-or-class x)))
 
-    datetime-clause))
+(defmethod ->date-range :default
+  [_ _ x]
+  {:start-date (->rvalue x), :end-date (->rvalue x)})
 
-(defn- date-sub-day [datetime-clause]
-  (date-add-days datetime-clause -1))
+(defmethod ->date-range :relative-datetime
+  [unit comparison-type [_ n relative-datetime-unit]]
+  (or (when (= relative-datetime-unit :day)
+        ;; since GA is normally inclusive add 1 to `:<` or `:>` filters so it starts and ends on the correct date
+        ;; e.g [:> ... [:relative-datetime -30 :day]] -> {:start-date "29daysago)}
+        ;; (include events whose day is > 30 days ago, i.e., >= 29 days ago)
+        (let [n (case comparison-type
+                  (:< :>) (inc n)
+                  n)]
+          (when-not (pos? n)
+            (let [special-amount (cond
+                                   (zero? n) "today"
+                                   (= n -1)  "yesterday"
+                                   (neg? n)  (format "%ddaysAgo" (- n)))]
+              (case comparison-type
+                (:< :<=) {:end-date special-amount}
+                (:> :>=) {:start-date special-amount}
+                :=       {:start-date special-amount, :end-date special-amount}
+                nil)))))
+      (let [t (u.date/add relative-datetime-unit n)]
+        (format-range (u.date/comparison-range t unit comparison-type {:end :inclusive, :resolution :day})))))
 
-(defn- date-add-day [datetime-clause]
-  (date-add-days datetime-clause 1))
+(defmethod ->date-range :absolute-datetime
+  [unit comparison-type [_ t]]
+  (format-range (u.date/comparison-range t unit comparison-type {:end :inclusive, :resolution :day})))
 
+(defn- field->unit [field]
+  (or (mbql.u/match-one field
+        [:datetime-field _ unit] unit)
+      :day))
 
-(defmulti ^:private parse-filter:interval mbql.u/dispatch-by-clause-name-or-class)
+(defmulti ^:private parse-filter:interval
+  {:arglists '([filter-clause])}
+  mbql.u/dispatch-by-clause-name-or-class)
 
 (defmethod parse-filter:interval :default [_] nil)
 
-(defmethod parse-filter:interval :between [[_ field min-val max-val]]
-  {:start-date (->rvalue min-val), :end-date (->rvalue max-val)})
+(defmethod parse-filter:interval :>
+  [[_ field x]]
+  (select-keys (->date-range (field->unit field) :> x) [:start-date]))
 
-(defmethod parse-filter:interval :> [[_ field value]]
-  {:start-date (->rvalue (date-add-day value))})
+(defmethod parse-filter:interval :<
+  [[_ field x]]
+  (select-keys (->date-range (field->unit field) :< x) [:end-date]))
 
-(defmethod parse-filter:interval :< [[_ field value]]
-  {:end-date (->rvalue (date-sub-day value))})
+(defmethod parse-filter:interval :>=
+  [[_ field x]]
+  (select-keys (->date-range (field->unit field) :>= x) [:start-date]))
 
-(defmethod parse-filter:interval :>= [[_ field value]]
-  {:start-date (->rvalue value)})
+(defmethod parse-filter:interval :<=
+  [[_ field x]]
+  (select-keys (->date-range (field->unit field) :<= x) [:end-date]))
 
-(defmethod parse-filter:interval :<= [[_ field value]]
-  {:end-date (->rvalue value)})
+(defmethod parse-filter:interval :=
+  [[_ field x]]
+  (->date-range (field->unit field) := x))
 
-(defmethod parse-filter:interval := [[_ field value]]
-  {:start-date (->rvalue value)
-   :end-date   (->rvalue
-                (cond-> value
-                  ;; for relative datetimes, inc the end date so we'll get a proper date range once everything is
-                  ;; bucketed
-                  (mbql.u/is-clause? :relative-datetime value)
-                  (mbql.u/add-datetime-units 1)))})
+
+;; MBQL :between is INCLUSIVE just like SQL !!!
+(defmethod parse-filter:interval :between
+  [[_ field min-val max-val]]
+  (merge
+   (parse-filter:interval [:>= field min-val])
+   (parse-filter:interval [:<= field max-val])))
+
+
+;;; Compound filters
 
 (defn- maybe-get-only-filter-or-throw [filters]
   (when-let [filters (seq (filter some? filters))]
@@ -239,16 +295,19 @@
     (fn [_ _] (throw (Exception. (str (deferred-tru "Multiple date filters are not supported in filters: ") filter1 filter2))))
     filter1 filter2))
 
-(defmethod parse-filter:interval :and [[_ & subclauses]]
+(defmethod parse-filter:interval :and
+  [[_ & subclauses]]
   (let [filters (map parse-filter:interval subclauses)]
     (if (= (count filters) 2)
       (try-reduce-filters filters)
       (maybe-get-only-filter-or-throw filters))))
 
-(defmethod parse-filter:interval :or [[_ & subclauses]]
+(defmethod parse-filter:interval :or
+  [[_ & subclauses]]
   (maybe-get-only-filter-or-throw (map parse-filter:interval subclauses)))
 
-(defmethod parse-filter:interval :not [[& _]]
+(defmethod parse-filter:interval :not
+  [[& _]]
   (throw (Exception. (tru ":not is not yet implemented"))))
 
 (defn- remove-non-datetime-filter-clauses
@@ -269,7 +328,6 @@
   "Replace all unsupported datetime units with the default"
   [filter-clause]
   (mbql.u/replace filter-clause
-
     [:datetime-field field unit]        [:datetime-field field (normalize-unit unit)]
     [:absolute-datetime timestamp unit] [:absolute-datetime timestamp (normalize-unit unit)]
     [:relative-datetime amount unit]    [:relative-datetime amount (normalize-unit unit)]))

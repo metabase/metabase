@@ -168,4 +168,9 @@
             :params [(t/zoned-date-time (t/local-date 2019  9 1) (t/local-time 0) "UTC")
                      (t/zoned-date-time (t/local-date 2019 11 1) (t/local-time 0) "UTC")]}
            (data/$ids checkins
-             (filter->sql [:between !month.date "2019-09-02T12:00:00.000Z" "2019-10-05T12:00:00.000Z"]))))))
+             (filter->sql [:between !month.date "2019-09-02T12:00:00.000Z" "2019-10-05T12:00:00.000Z"]))))
+    (is (= {:query "WHERE (CHECKINS.DATE >= ? AND CHECKINS.DATE < ?)"
+            :params           [(t/zoned-date-time "2019-09-01T00:00Z[UTC]")
+                               (t/zoned-date-time "2019-10-02T00:00Z[UTC]")]}
+           (data/$ids checkins
+             (filter->sql [:between !day.date "2019-09-01" "2019-10-01"]))))))
