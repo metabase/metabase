@@ -44,7 +44,7 @@
        (defonce ~delay-symb
          (delay
            (log-init-message ~(keyword task-name))
-           (swap! initialized? conj ~(keyword task-name))
+           (swap! initialized conj ~(keyword task-name))
            ~@body
            nil))
        (defmethod initialize-if-needed! ~(keyword task-name)

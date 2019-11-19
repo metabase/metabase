@@ -206,7 +206,7 @@
             :iso-week (t/offset-date-time 2019 10 21 0  0  0 0 (t/zone-offset -7))
             :month    (t/offset-date-time 2019 10  1 0  0  0 0 (t/zone-offset -7))
             :quarter  (t/offset-date-time 2019 10  1 0  0  0 0 (t/zone-offset -7))
-            :year     (t/offset-date-time 2019  1  1 0  0  0 0 (t/zone-offset -7))   }
+            :year     (t/offset-date-time 2019  1  1 0  0  0 0 (t/zone-offset -7))}
 
            (t/zoned-date-time  2019 10 27 14 3 40 (* 555 1000000) (t/zone-id "America/Los_Angeles"))
            {:second   (t/zoned-date-time  2019 10 27 14 3 40 0 (t/zone-id "America/Los_Angeles"))
