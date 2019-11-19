@@ -132,7 +132,7 @@
 
 (def ^:private FieldOrColumn
   "Schema that allows a `metabase.model.field/Field` or a column from a query resultset"
-  {:name                          su/NonBlankString
+  {:name                          s/Str ; Some DBs such as MSSQL can return columns with blank name
    :base_type                     s/Keyword
    (s/optional-key :special_type) (s/maybe s/Keyword)
    s/Any                          s/Any})
@@ -142,7 +142,8 @@
   [field-or-column :- FieldOrColumn]
   ;; Don't overwrite keys, else we're ok with overwriting as a new more precise type might have
   ;; been added.
-  (when (not-any? (partial isa? (:special_type field-or-column)) [:type/PK :type/FK])
+  (when-not (or (some (partial isa? (:special_type field-or-column)) [:type/PK :type/FK])
+                (str/blank? (:name field-or-column)))
     (special-type-for-name-and-base-type (:name field-or-column) (:base_type field-or-column))))
 
 (s/defn infer-and-assoc-special-type  :- (s/maybe FieldOrColumn)
