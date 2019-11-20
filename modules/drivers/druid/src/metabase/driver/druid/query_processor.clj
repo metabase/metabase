@@ -606,7 +606,8 @@
   ([output-name]
    {:type :count, :name output-name})
   ([field output-name]
-   (if (hyper-unique? field)
+   (if (and (mbql.u/is-clause? #{:field-id} field)
+            (hyper-unique? field))
      {:type      :hyperUnique
       :name      output-name
       :fieldName (->rvalue field)}
