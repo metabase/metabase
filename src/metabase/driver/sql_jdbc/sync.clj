@@ -157,16 +157,22 @@
     (set
      (for [[idx {database-type :type_name
                  column-name   :column_name
+                 data-type     :data_type
                  remarks       :remarks}] (m/indexed (jdbc/metadata-result rs))]
-       (merge
-        {:name              column-name
-         :database-type     database-type
-         :base-type         (database-type->base-type-or-warn driver database-type)
-         :database-position idx}
-        (when (not (str/blank? remarks))
-          {:field-comment remarks})
-        (when-let [special-type (calculated-special-type driver column-name database-type)]
-          {:special-type special-type}))))))
+       ;; For some reason sometimes `:column_name` is blank, in that case get type from
+       ;; `JDBCType` enum via `:data_type`.
+       (let [database-type (if (str/blank? database-type)
+                             (.getName (java.sql.JDBCType/valueOf (Integer/parseInt data-type)))
+                             database-type)]
+         (merge
+          {:name              column-name
+           :database-type     database-type
+           :base-type         (database-type->base-type-or-warn driver database-type)
+           :database-position idx}
+          (when (not (str/blank? remarks))
+            {:field-comment remarks})
+          (when-let [special-type (calculated-special-type driver column-name database-type)]
+            {:special-type special-type})))))))
 
 (defn add-table-pks
   "Using `metadata` find any primary keys for `table` and assoc `:pk?` to true for those columns."
