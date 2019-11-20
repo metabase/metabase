@@ -113,7 +113,7 @@
   vs 60)."
   [driver ^DatabaseMetaData metadata & [db-name-or-nil]]
   (with-open [rs (.getSchemas metadata)]
-    (let [all-schemas (set (map :table_schem (jdbc/result-set-seq rs)))
+    (let [all-schemas (set (map :table_schem (jdbc/metadata-result rs)))
           schemas     (set/difference all-schemas (excluded-schemas driver))]
       (set (for [schema schemas
                  table  (get-tables metadata schema db-name-or-nil)]
