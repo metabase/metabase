@@ -245,6 +245,46 @@ function onRenderVoronoiHover(chart) {
     .order();
 }
 
+// TODO - this is a total hack just to get things rolling
+function onRenderValueLabels(chart) {
+  if (!chart.settings["graph.show_values"]) {
+    return false;
+  }
+  const parent = chart.svg().select("svg > g");
+
+  const isNth = chart.settings["graph.label_value_frequency"] === "nth";
+
+  // grab all the bars
+  const data = chart
+    .svg()
+    .selectAll(".bar")
+    .map(d =>
+      d.map((data, index) => {
+        return data.attributes;
+      }),
+    );
+
+  console.log("data length", data[0].length);
+
+  parent
+    .append("svg:g")
+    .classed("value-labels", true)
+    .selectAll("text.bar")
+    .data(data[0])
+    .enter()
+    .append("text")
+    .attr("class", "bar")
+    .attr("text-anchor", "middle")
+    .attr("x", d => d.x.value)
+    .attr("y", d => d.y.value)
+    .text(function(d) {
+      console.log(d);
+      return d.y.value;
+    });
+
+  //parent.append("svg:g").classed("value-labels").
+}
+
 function onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis) {
   // remove dots
   chart.selectAll(".goal .dot, .trend .dot").remove();
@@ -387,6 +427,7 @@ function onRender(chart, onGoalHover, isSplitAxis, isStacked) {
   onRenderEnableDots(chart);
   onRenderVoronoiHover(chart);
   onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis); // do this before hiding x-axis
+  onRenderValueLabels(chart);
   onRenderHideDisabledLabels(chart);
   onRenderHideDisabledAxis(chart);
   onRenderHideBadAxis(chart);

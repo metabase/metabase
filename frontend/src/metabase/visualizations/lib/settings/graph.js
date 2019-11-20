@@ -311,6 +311,29 @@ export const GRAPH_GOAL_SETTINGS = {
   },
 };
 
+export const GRAPH_DISPLAY_VALUES_SETTINGS = {
+  "graph.show_values": {
+    section: t`Display`,
+    title: t`Label values`,
+    widget: "toggle",
+    default: false,
+  },
+  "graph.label_value_frequency": {
+    section: t`Display`,
+    title: t`Label frequency`, // TODO better copy here
+    widget: "radio",
+    getHidden: (series, vizSettings) =>
+      vizSettings["graph.show_values"] !== true,
+    props: {
+      options: [
+        { name: t`All ticks`, value: "all" },
+        { name: t`Every nth`, value: "nth" }, // TODO - this option needs to allow for the user to set a value and should have a default value based on the chart density, similar to how we handle x-axis ticks
+      ],
+    },
+    readDependencies: ["graph.show_values"],
+  },
+};
+
 export const GRAPH_COLORS_SETTINGS = {
   // DEPRECATED: replaced with "color" series setting
   "graph.colors": {},
