@@ -989,16 +989,21 @@ export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
 export const queryCompleted = (question, queryResults, initialRun) => {
   return async (dispatch, getState) => {
     const sensibleDisplays = getSensibleDisplays(queryResults[0].data);
-    if (!initialRun) {
+    if (initialRun) {
       question = question
-        .setDisplay(getDisplayTypeForCard(question.card(), queryResults))
-        .setSensibleDisplays(sensibleDisplays)
-        .setDefaultDisplay();
-    }
+        // .setDisplay(getDisplayTypeForCard(question.card(), queryResults))
+        // .setSensibleDisplays(sensibleDisplays)
+        .setSelectedDisplay(question.display());
+    } //else {
+    question = question
+      .setDisplay(getDisplayTypeForCard(question.card(), queryResults))
+      .setSensibleDisplays(sensibleDisplays)
+      .setDefaultDisplay();
+    // }
     dispatch.action(QUERY_COMPLETED, {
       card: question.card(),
-      sensibleDisplays,
-      cardDisplay: question.display(),
+      // sensibleDisplays,
+      // cardDisplay: question.display(),
       queryResults,
     });
   };
@@ -1030,7 +1035,6 @@ export const QUERY_ERRORED = "metabase/qb/QUERY_ERRORED";
 export const queryErrored = createThunkAction(
   QUERY_ERRORED,
   (startTime, error) => {
-    console.log("queryErrored", error);
     return async (dispatch, getState) => {
       if (error && error.isCancelled) {
         // cancelled, do nothing

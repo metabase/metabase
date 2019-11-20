@@ -276,24 +276,30 @@ export default class Question {
     return this.setCard(assoc(this.card(), "display", display));
   }
 
-  setSensibleDisplays(displays) {
-    return this.setCard(assoc(this.card(), "sensibleDisplays", displays));
-  }
-
-  shouldNotSetDisplay(): boolean {
-    const { selectedDisplay, sensibleDisplays } = this._card;
-    console.log("shouldSetDisplay", { selectedDisplay, sensibleDisplays });
-    return (
-      sensibleDisplays &&
-      selectedDisplay &&
-      sensibleDisplays.includes(selectedDisplay)
-    );
-  }
-
-  setSelectedDisplay(display) {
+  // The selected display is set when the user explicitly chooses a
+  // visualization type. Having it set prevents auto selecting a new type,
+  // unless the selected type isn't sensible.
+  setSelectedDisplay(display): Question {
     return this.setCard(
       assoc(this.card(), "selectedDisplay", display),
     ).setDisplay(display);
+  }
+
+  // This feels a bit hacky because it stores result-dependent info on card. We
+  // use the list of sensible displays to override a user-selected display if it
+  // no longer makes sense for the data.
+  setSensibleDisplays(displays): Question {
+    return this.setCard(assoc(this.card(), "sensibleDisplays", displays));
+  }
+
+  // This determines whether `setDefaultDisplay` should replace the current
+  // display. If we have a list of sensibleDisplays and the user-selected
+  // display is one of them, we won't overwrite it in `setDefaultDisplay`. If
+  // the user hasn't selected a display or `sensibleDisplays` hasn't been set,
+  // we can let `setDefaultDisplay` choose a display type.
+  shouldNotSetDisplay(): boolean {
+    const { selectedDisplay, sensibleDisplays = [] } = this._card;
+    return sensibleDisplays.includes(selectedDisplay);
   }
 
   setDefaultDisplay(): Question {
