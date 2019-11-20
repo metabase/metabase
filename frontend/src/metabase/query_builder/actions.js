@@ -53,6 +53,7 @@ import querystring from "querystring";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import { getSensibleDisplays } from "metabase/visualizations";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
@@ -467,7 +468,9 @@ export const initializeQB = (location, params) => {
         setTimeout(
           () =>
             // TODO Atte Keinänen 5/31/17: Check if it is dangerous to create a question object without metadata
-            dispatch(runQuestionQuery({ shouldUpdateUrl: false })),
+            dispatch(
+              runQuestionQuery({ shouldUpdateUrl: false, initialRun: true }),
+            ),
           0,
         );
       }
@@ -669,7 +672,7 @@ export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
 
     // Update the card and originalCard before running the actual query
     dispatch.action(SET_CARD_AND_RUN, { card, originalCard });
-    dispatch(runQuestionQuery({ shouldUpdateUrl }));
+    dispatch(runQuestionQuery({ initialRun: true, shouldUpdateUrl }));
 
     // Load table & database metadata for the current question
     dispatch(loadMetadataForCard(card));
@@ -883,6 +886,7 @@ export const RUN_QUERY = "metabase/qb/RUN_QUERY";
 export const runQuestionQuery = ({
   shouldUpdateUrl = true,
   ignoreCache = false,
+  initialRun = false,
   overrideWithCard,
 }: RunQueryParams = {}) => {
   return async (dispatch, getState) => {
@@ -922,7 +926,7 @@ export const runQuestionQuery = ({
         isDirty: cardIsDirty,
       })
       .then(queryResults =>
-        dispatch(queryCompleted(question.card(), queryResults)),
+        dispatch(queryCompleted(question, queryResults, initialRun)),
       )
       .catch(error => dispatch(queryErrored(startTime, error)));
 
@@ -982,11 +986,19 @@ const getDisplayTypeForCard = (card, queryResults) => {
 };
 
 export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
-export const queryCompleted = (card, queryResults) => {
+export const queryCompleted = (question, queryResults, initialRun) => {
   return async (dispatch, getState) => {
+    const sensibleDisplays = getSensibleDisplays(queryResults[0].data);
+    if (!initialRun) {
+      question = question
+        .setDisplay(getDisplayTypeForCard(question.card(), queryResults))
+        .setSensibleDisplays(sensibleDisplays)
+        .setDefaultDisplay();
+    }
     dispatch.action(QUERY_COMPLETED, {
-      card,
-      cardDisplay: getDisplayTypeForCard(card, queryResults),
+      card: question.card(),
+      sensibleDisplays,
+      cardDisplay: question.display(),
       queryResults,
     });
   };
@@ -1018,6 +1030,7 @@ export const QUERY_ERRORED = "metabase/qb/QUERY_ERRORED";
 export const queryErrored = createThunkAction(
   QUERY_ERRORED,
   (startTime, error) => {
+    console.log("queryErrored", error);
     return async (dispatch, getState) => {
       if (error && error.isCancelled) {
         // cancelled, do nothing

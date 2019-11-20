@@ -276,7 +276,30 @@ export default class Question {
     return this.setCard(assoc(this.card(), "display", display));
   }
 
+  setSensibleDisplays(displays) {
+    return this.setCard(assoc(this.card(), "sensibleDisplays", displays));
+  }
+
+  shouldNotSetDisplay(): boolean {
+    const { selectedDisplay, sensibleDisplays } = this._card;
+    console.log("shouldSetDisplay", { selectedDisplay, sensibleDisplays });
+    return (
+      sensibleDisplays &&
+      selectedDisplay &&
+      sensibleDisplays.includes(selectedDisplay)
+    );
+  }
+
+  setSelectedDisplay(display) {
+    return this.setCard(
+      assoc(this.card(), "selectedDisplay", display),
+    ).setDisplay(display);
+  }
+
   setDefaultDisplay(): Question {
+    if (this.shouldNotSetDisplay()) {
+      return this;
+    }
     const query = this.query();
     if (query instanceof StructuredQuery) {
       // TODO: move to StructuredQuery?
