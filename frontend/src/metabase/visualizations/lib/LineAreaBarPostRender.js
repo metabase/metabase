@@ -245,16 +245,22 @@ function onRenderVoronoiHover(chart) {
     .order();
 }
 
-// TODO - this is a total hack just to get things rolling
+// NOTE- this is a total hack just to get things rolling, not sure if this is the right place
+// to do this or not
 function onRenderValueLabels(chart) {
+  // Do nothing if there is nothing to do
   if (!chart.settings["graph.show_values"]) {
     return false;
   }
-  const parent = chart.svg().select("svg > g");
 
-  const isNth = chart.settings["graph.label_value_frequency"] === "nth";
+  // use the chart body so things line up properly
+  const parent = chart.svg().select(".chart-body");
 
-  // grab all the bars
+  // Eventually use this to determine if we show all or some nth frequency
+  // const isNth = chart.settings["graph.label_value_frequency"] === "nth";
+
+  // So this is obviously a bad way to do this cause we're not working with the
+  // actual data values as a result, but I used the bars in the interim since it was an easy proxy
   const data = chart
     .svg()
     .selectAll(".bar")
@@ -264,25 +270,22 @@ function onRenderValueLabels(chart) {
       }),
     );
 
-  console.log("data length", data[0].length);
-
   parent
     .append("svg:g")
     .classed("value-labels", true)
     .selectAll("text.bar")
-    .data(data[0])
+    .data(data[0]) // TODO - make this less eww
     .enter()
     .append("text")
     .attr("class", "bar")
+    // TODO - I wonder if we should move as much of this as possible to CSS land to make it
+    // easier to
     .attr("text-anchor", "middle")
-    .attr("x", d => d.x.value)
-    .attr("y", d => d.y.value)
+    .attr("x", d => Number(d.x.value) + Number(d.width.value) / 2) // This is obviously gross and should be removed.
+    .attr("y", d => Number(d.y.value) - 8)
     .text(function(d) {
-      console.log(d);
-      return d.y.value;
+      return d.height.value; // The wrong value, but gives us something to work with
     });
-
-  //parent.append("svg:g").classed("value-labels").
 }
 
 function onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis) {
