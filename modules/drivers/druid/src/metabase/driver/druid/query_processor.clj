@@ -578,6 +578,10 @@
   [filtr aggregator]
   {:type :filtered, :filter filtr, :aggregator aggregator})
 
+(defn- hyper-unique?
+  [[_ field-id]]
+  (-> field-id qp.store/field :base_type (isa? :type/DruidHyperUnique)))
+
 (defn- ag:distinct
   [field output-name]
   (cond
@@ -587,7 +591,7 @@
      :fieldNames (mapv ->rvalue (rest field))
      :byRow      true
      :round      true}
-    (isa? (:base-type field) :type/DruidHyperUnique)
+    (hyper-unique? field)
     {:type      :hyperUnique
      :name      output-name
      :fieldName (->rvalue field)}
@@ -602,7 +606,7 @@
   ([output-name]
    {:type :count, :name output-name})
   ([field output-name]
-   (if (isa? (:base-type field) :type/DruidHyperUnique)
+   (if (hyper-unique? field)
      {:type      :hyperUnique
       :name      output-name
       :fieldName (->rvalue field)}
