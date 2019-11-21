@@ -958,49 +958,34 @@ export const runQuestionQuery = ({
 export const CLEAR_QUERY_RESULT = "metabase/query_builder/CLEAR_QUERY_RESULT";
 export const clearQueryResult = createAction(CLEAR_QUERY_RESULT);
 
-const getDisplayTypeForCard = (card, queryResults) => {
-  // TODO Atte Keinänen 6/1/17: Make a holistic decision based on all queryResults, not just one
-  // This method seems to has been a candidate for a rewrite anyway
-  const queryResult = queryResults[0];
-
-  let cardDisplay = card.display;
-
-  // try a little logic to pick a smart display for the data
-  // TODO: less hard-coded rules for picking chart type
+// Most of display-type auto-selection lives in Question. This takes place
+// *after* that, uses the column/row count, and also affects SQL questions. It's
+// used to switch between table and scalar.
+const getDisplayTypeForCard = (display, { cols, rows = [] }) => {
   const isScalarVisualization =
-    card.display === "scalar" ||
-    card.display === "progress" ||
-    card.display === "gauge";
-  if (
-    !isScalarVisualization &&
-    queryResult.data.rows &&
-    queryResult.data.rows.length === 1 &&
-    queryResult.data.cols.length === 1
-  ) {
+    display === "scalar" || display === "progress" || display === "gauge";
+  if (!isScalarVisualization && rows.length === 1 && cols.length === 1) {
     // if we have a 1x1 data result then this should always be viewed as a scalar
-    cardDisplay = "scalar";
-  } else if (
-    isScalarVisualization &&
-    queryResult.data.rows &&
-    (queryResult.data.rows.length > 1 || queryResult.data.cols.length > 1)
-  ) {
+    return "scalar";
+  } else if (isScalarVisualization && (rows.length > 1 || cols.length > 1)) {
     // any time we were a scalar and now have more than 1x1 data switch to table view
-    cardDisplay = "table";
-  } else if (!card.display) {
+    return "table";
+  } else if (display == null) {
     // if our query aggregation is "rows" then ALWAYS set the display to "table"
-    cardDisplay = "table";
+    return "table";
   }
-
-  return cardDisplay;
+  return display;
 };
 
 export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
 export const queryCompleted = (question, queryResults) => {
   return async (dispatch, getState) => {
+    const [{ data }] = queryResults;
+    question = question
+      .setSensibleDisplays(getSensibleDisplays(data))
+      .setDefaultDisplay();
     const card = question
-      .setDisplay(getDisplayTypeForCard(question.card(), queryResults))
-      .setSensibleDisplays(getSensibleDisplays(queryResults[0].data))
-      .setDefaultDisplay()
+      .setDisplay(getDisplayTypeForCard(question.display(), data))
       .card();
     dispatch.action(QUERY_COMPLETED, { card, queryResults });
   };
