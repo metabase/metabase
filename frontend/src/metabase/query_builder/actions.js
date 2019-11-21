@@ -451,14 +451,20 @@ export const initializeQB = (location, params) => {
       await dispatch(loadMetadataForCard(card));
     }
 
+    let question = card && new Question(card, getMetadata(getState()));
+    if (params.cardId) {
+      // loading a saved question prevents auto-viz selection
+      question = question.setSelectedDisplay(question.display());
+    }
+
+    card = question.card();
+
     // Update the question to Redux state together with the initial state of UI controls
     dispatch.action(INITIALIZE_QB, {
       card,
       originalCard,
       uiControls,
     });
-
-    const question = card && new Question(card, getMetadata(getState()));
 
     // if we have loaded up a card that we can run then lets kick that off as well
     // but don't bother for "notebook" mode
@@ -468,9 +474,7 @@ export const initializeQB = (location, params) => {
         setTimeout(
           () =>
             // TODO Atte Keinänen 5/31/17: Check if it is dangerous to create a question object without metadata
-            dispatch(
-              runQuestionQuery({ shouldUpdateUrl: false, initialRun: true }),
-            ),
+            dispatch(runQuestionQuery({ shouldUpdateUrl: false })),
           0,
         );
       }
@@ -672,7 +676,7 @@ export const setCardAndRun = (nextCard, shouldUpdateUrl = true) => {
 
     // Update the card and originalCard before running the actual query
     dispatch.action(SET_CARD_AND_RUN, { card, originalCard });
-    dispatch(runQuestionQuery({ initialRun: true, shouldUpdateUrl }));
+    dispatch(runQuestionQuery({ shouldUpdateUrl }));
 
     // Load table & database metadata for the current question
     dispatch(loadMetadataForCard(card));
@@ -832,7 +836,15 @@ export const apiCreateQuestion = question => {
       createdQuestion.query().datasetQuery().type,
     );
 
-    dispatch.action(API_CREATE_QUESTION, createdQuestion.card());
+    // Saving a card, locks in the current display as though it had been
+    // selected in the UI. We also copy over `sensibleDisplays` since those were
+    // not persisted onto `createdQuestion`.
+    const card = createdQuestion
+      .setSensibleDisplays(question.sensibleDisplays())
+      .setSelectedDisplay(question.display())
+      .card();
+
+    dispatch.action(API_CREATE_QUESTION, card);
   };
 };
 
@@ -886,7 +898,6 @@ export const RUN_QUERY = "metabase/qb/RUN_QUERY";
 export const runQuestionQuery = ({
   shouldUpdateUrl = true,
   ignoreCache = false,
-  initialRun = false,
   overrideWithCard,
 }: RunQueryParams = {}) => {
   return async (dispatch, getState) => {
@@ -925,9 +936,7 @@ export const runQuestionQuery = ({
         ignoreCache: ignoreCache,
         isDirty: cardIsDirty,
       })
-      .then(queryResults =>
-        dispatch(queryCompleted(question, queryResults, initialRun)),
-      )
+      .then(queryResults => dispatch(queryCompleted(question, queryResults)))
       .catch(error => dispatch(queryErrored(startTime, error)));
 
     MetabaseAnalytics.trackEvent(
@@ -986,26 +995,14 @@ const getDisplayTypeForCard = (card, queryResults) => {
 };
 
 export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
-export const queryCompleted = (question, queryResults, initialRun) => {
+export const queryCompleted = (question, queryResults) => {
   return async (dispatch, getState) => {
-    const sensibleDisplays = getSensibleDisplays(queryResults[0].data);
-    if (initialRun) {
-      question = question
-        // .setDisplay(getDisplayTypeForCard(question.card(), queryResults))
-        // .setSensibleDisplays(sensibleDisplays)
-        .setSelectedDisplay(question.display());
-    } //else {
-    question = question
+    const card = question
       .setDisplay(getDisplayTypeForCard(question.card(), queryResults))
-      .setSensibleDisplays(sensibleDisplays)
-      .setDefaultDisplay();
-    // }
-    dispatch.action(QUERY_COMPLETED, {
-      card: question.card(),
-      // sensibleDisplays,
-      // cardDisplay: question.display(),
-      queryResults,
-    });
+      .setSensibleDisplays(getSensibleDisplays(queryResults[0].data))
+      .setDefaultDisplay()
+      .card();
+    dispatch.action(QUERY_COMPLETED, { card, queryResults });
   };
 };
 

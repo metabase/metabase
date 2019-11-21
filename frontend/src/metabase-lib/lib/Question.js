@@ -284,12 +284,18 @@ export default class Question {
       assoc(this.card(), "selectedDisplay", display),
     ).setDisplay(display);
   }
+  selectedDisplay(): string {
+    return this._card && this._card.selectedDisplay;
+  }
 
   // This feels a bit hacky because it stores result-dependent info on card. We
   // use the list of sensible displays to override a user-selected display if it
   // no longer makes sense for the data.
   setSensibleDisplays(displays): Question {
     return this.setCard(assoc(this.card(), "sensibleDisplays", displays));
+  }
+  sensibleDisplays(): string[] {
+    return (this._card && this._card.sensibleDisplays) || [];
   }
 
   // This determines whether `setDefaultDisplay` should replace the current
@@ -298,8 +304,7 @@ export default class Question {
   // the user hasn't selected a display or `sensibleDisplays` hasn't been set,
   // we can let `setDefaultDisplay` choose a display type.
   shouldNotSetDisplay(): boolean {
-    const { selectedDisplay, sensibleDisplays = [] } = this._card;
-    return sensibleDisplays.includes(selectedDisplay);
+    return this.sensibleDisplays().includes(this.selectedDisplay());
   }
 
   setDefaultDisplay(): Question {
