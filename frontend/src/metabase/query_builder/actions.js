@@ -454,10 +454,10 @@ export const initializeQB = (location, params) => {
     let question = card && new Question(card, getMetadata(getState()));
     if (params.cardId) {
       // loading a saved question prevents auto-viz selection
-      question = question.setSelectedDisplay(question.display());
+      question = question && question.setSelectedDisplay(question.display());
     }
 
-    card = question.card();
+    card = question && question.card();
 
     // Update the question to Redux state together with the initial state of UI controls
     dispatch.action(INITIALIZE_QB, {
