@@ -307,6 +307,26 @@ export default class Question {
     return this.sensibleDisplays().includes(this.selectedDisplay());
   }
 
+  // Switches display based on data shape. For 1x1 data, we show a scalar. If
+  // our display was a 1x1 type, but the data isn't 1x1, we show a table.
+  switchTableScalar({ rows = [], cols }): Question {
+    const display = this.display();
+    const isScalar = ["scalar", "progress", "gauge"].includes(display);
+    const isOneByOne = rows.length === 1 && cols.length === 1;
+
+    const newDisplay =
+      !isScalar && isOneByOne
+        ? // if we have a 1x1 data result then this should always be viewed as a scalar
+          "scalar"
+        : isScalar && !isOneByOne
+        ? // any time we were a scalar and now have more than 1x1 data switch to table view
+          "table"
+        : // otherwise leave the display unchanged
+          display;
+
+    return this.setDisplay(newDisplay);
+  }
+
   setDefaultDisplay(): Question {
     if (this.shouldNotSetDisplay()) {
       return this;
