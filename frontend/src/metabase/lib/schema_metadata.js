@@ -370,10 +370,10 @@ const FILTER_OPERATORS_BY_TYPE_ORDERED = {
     { name: "not-null", verboseName: t`Not empty` },
   ],
   [STRING]: [
-    { name: "=", verboseName: t`Is` },
-    { name: "!=", verboseName: t`Is not` },
     { name: "contains", verboseName: t`Contains` },
     { name: "does-not-contain", verboseName: t`Does not contain` },
+    { name: "=", verboseName: t`Is` },
+    { name: "!=", verboseName: t`Is not` },
     { name: "is-null", verboseName: t`Is empty` },
     { name: "not-null", verboseName: t`Not empty` },
     { name: "starts-with", verboseName: t`Starts with` },
