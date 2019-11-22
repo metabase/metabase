@@ -187,8 +187,10 @@ export default class NativeQueryEditor extends Component {
   }
 
   handleSelectionChange = () => {
-    const selectedText = this._editor.getSelectedText();
-    this.setState({ hasTextSelected: Boolean(selectedText) });
+    const hasTextSelected = Boolean(this._editor.getSelectedText());
+    if (this.state.hasTextSelected !== hasTextSelected) {
+      this.setState({ hasTextSelected });
+    }
   };
 
   handleKeyDown = (e: KeyboardEvent) => {
