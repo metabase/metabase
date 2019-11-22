@@ -180,6 +180,7 @@
                 :column_name (.getColumnName metadata i)}))))
         result))))
 
+
 (defn describe-table-fields
   "Returns a set of column metadata for `schema` and `table-name` using `metadata`. "
   [^DatabaseMetaData metadata, driver, table, & [^String db-name-or-nil]]
