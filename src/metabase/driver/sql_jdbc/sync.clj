@@ -5,10 +5,12 @@
              [string :as str]]
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
+            [honeysql.core :as h]
             [medley.core :as m]
             [metabase
              [driver :as driver]
              [util :as u]]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn])
   (:import java.sql.DatabaseMetaData))
 
@@ -150,29 +152,44 @@
       (str "Invalid type: " special-type))
     special-type))
 
+(defn- fields-metadata
+  [^DatabaseMetaData metadata, driver, {^String schema :schema, ^String table-name :name :as table}, & [^String db-name-or-nil]]
+  (with-open [rs (.getColumns metadata db-name-or-nil schema table-name nil)]
+    (let [result (jdbc/metadata-result rs)]
+      ;; In some rare cases `:column_name` is blank (eg. SQLite's FTSs),
+      ;; fallback to sniffing the type from a SELECT * query
+      (if (some (comp str/blank? :type_name) result)
+        (jdbc/with-db-connection [conn (->spec (metabase.models.database/Database (:db_id table)))]
+          (let [metadata (->> (sql.qp/apply-top-level-clause driver :limit
+                                {:select [:*]
+                                 :from   [(sql.qp/->honeysql driver table)]}
+                                {:limit 1})
+                              h/format
+                              first
+                              (.executeQuery (.createStatement (:connection conn)))
+                              (.getMetaData))]
+            (doall
+             (for [i (range 1 (inc (.getColumnCount metadata)))]
+               {:type_name (.getColumnTypeName metadata i)
+                :column_name (.getColumnName metadata i)}))))
+        result))))
+
 (defn describe-table-fields
   "Returns a set of column metadata for `schema` and `table-name` using `metadata`. "
-  [^DatabaseMetaData metadata, driver, {^String schema :schema, ^String table-name :name}, & [^String db-name-or-nil]]
-  (with-open [rs (.getColumns metadata db-name-or-nil schema table-name nil)]
-    (set
-     (for [[idx {database-type :type_name
-                 column-name   :column_name
-                 data-type     :data_type
-                 remarks       :remarks}] (m/indexed (jdbc/metadata-result rs))]
-       ;; For some reason sometimes `:column_name` is blank, in that case get type from
-       ;; `JDBCType` enum via `:data_type`.
-       (let [database-type (if (str/blank? database-type)
-                             (.getName (java.sql.JDBCType/valueOf (Integer/parseInt data-type)))
-                             database-type)]
-         (merge
-          {:name              column-name
-           :database-type     database-type
-           :base-type         (database-type->base-type-or-warn driver database-type)
-           :database-position idx}
-          (when (not (str/blank? remarks))
-            {:field-comment remarks})
-          (when-let [special-type (calculated-special-type driver column-name database-type)]
-            {:special-type special-type})))))))
+  [^DatabaseMetaData metadata, driver, table, & [^String db-name-or-nil]]
+  (set
+   (for [[idx {database-type :type_name
+               column-name   :column_name
+               remarks       :remarks}] (m/indexed (fields-metadata metadata driver table db-name-or-nil))]
+     (merge
+      {:name              column-name
+       :database-type     database-type
+       :base-type         (database-type->base-type-or-warn driver database-type)
+       :database-position idx}
+      (when (not (str/blank? remarks))
+        {:field-comment remarks})
+      (when-let [special-type (calculated-special-type driver column-name database-type)]
+        {:special-type special-type})))))
 
 (defn add-table-pks
   "Using `metadata` find any primary keys for `table` and assoc `:pk?` to true for those columns."
