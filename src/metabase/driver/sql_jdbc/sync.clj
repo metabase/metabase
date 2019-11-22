@@ -10,9 +10,9 @@
             [metabase
              [driver :as driver]
              [util :as u]]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn])
-  (:import java.sql.DatabaseMetaData))
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql.query-processor :as sql.qp])
+  (:import (java.sql Connection DatabaseMetaData ResultSetMetaData Statement)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Interface (Multimethods)                                            |
@@ -165,14 +165,15 @@
       ;; fallback to sniffing the type from a SELECT * query
       (if (some (comp str/blank? :type_name) result)
         (jdbc/with-db-connection [conn (->spec (metabase.models.database/Database (:db_id table)))]
-          (let [metadata (->> (sql.qp/apply-top-level-clause driver :limit
-                                {:select [:*]
-                                 :from   [(sql.qp/->honeysql driver table)]}
-                                {:limit 1})
-                              h/format
-                              first
-                              (.executeQuery (.createStatement (:connection conn)))
-                              (.getMetaData))]
+          (let [^Connection conn            (:connection conn)
+                ^ResultSetMetaData metadata (->> (sql.qp/apply-top-level-clause driver :limit
+                                                   {:select [:*]
+                                                    :from   [(sql.qp/->honeysql driver table)]}
+                                                   {:limit 1})
+                                                 h/format
+                                                 first
+                                                 (.executeQuery (.createStatement conn))
+                                                 (.getMetaData))]
             (doall
              (for [i (range 1 (inc (.getColumnCount metadata)))]
                {:type_name (.getColumnTypeName metadata i)
