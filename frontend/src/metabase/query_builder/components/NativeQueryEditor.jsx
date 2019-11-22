@@ -431,10 +431,12 @@ export default class NativeQueryEditor extends Component {
           height={this.state.initialHeight}
           minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
           axis="y"
+          handle={<div className="NativeQueryEditorDragHandle"></div>}
           onResizeStop={(e, data) => {
             this.props.handleResize();
             this._editor.resize();
           }}
+          resizeHandles={["s"]}
         >
           <div className="flex-full" id="id_sql" ref="editor" />
           <div className="flex flex-column border-left">
