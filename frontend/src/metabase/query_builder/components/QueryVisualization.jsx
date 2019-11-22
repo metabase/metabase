@@ -39,6 +39,7 @@ type Props = {
   isAdmin: boolean,
   isResultDirty: boolean,
   isObjectDetail: boolean,
+  isNativeEditorOpen: boolean,
   runQuestionQuery: any => void,
   cancelQuery?: any => void,
   className: string,

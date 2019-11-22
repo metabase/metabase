@@ -82,9 +82,16 @@ type Props = {
 
   isNativeEditorOpen: boolean,
   setIsNativeEditorOpen: (isOpen: boolean) => void,
+
+  isRunnable: boolean,
+  isRunning: boolean,
+  isResultDirty: boolean,
+  isPreviewing: boolean,
+  isNativeEditorOpen: boolean,
 };
 type State = {
   initialHeight: number,
+  hasTextSelected: boolean,
   firstRun: boolean,
 };
 
@@ -109,6 +116,7 @@ export default class NativeQueryEditor extends Component {
     this.state = {
       initialHeight: getEditorLineHeight(lines),
       firstRun: true,
+      hasTextSelected: false,
     };
 
     // Ace sometimes fires mutliple "change" events in rapid succession
