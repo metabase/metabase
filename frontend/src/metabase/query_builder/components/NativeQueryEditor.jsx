@@ -58,7 +58,7 @@ import {
   SchemaAndTableDataSelector,
 } from "metabase/query_builder/components/DataSelector";
 
-import RunButton from "./RunButton";
+import RunButtonWithTooltip from "./RunButtonWithTooltip";
 import DataReferenceButton from "./view/DataReferenceButton";
 import NativeVariablesButton from "./view/NativeVariablesButton";
 
@@ -128,6 +128,7 @@ export default class NativeQueryEditor extends Component {
 
   componentDidMount() {
     this.loadAceEditor();
+    document.addEventListener("selectionchange", this.handleSelectionChange);
     document.addEventListener("keydown", this.handleKeyDown);
   }
 
@@ -173,29 +174,33 @@ export default class NativeQueryEditor extends Component {
   }
 
   componentWillUnmount() {
+    document.removeEventListener("selectionchange", this.handleSelectionChange);
     document.removeEventListener("keydown", this.handleKeyDown);
   }
+
+  handleSelectionChange = () => {
+    const selectedText = this._editor.getSelectedText();
+    this.setState({ hasTextSelected: Boolean(selectedText) });
+  };
 
   handleKeyDown = (e: KeyboardEvent) => {
     const { query, runQuestionQuery } = this.props;
 
     const ENTER_KEY = 13;
-    if (e.keyCode === ENTER_KEY && (e.metaKey || e.ctrlKey) && query.canRun()) {
-      const { query } = this.props;
-      if (e.altKey) {
-        // run just the selected text, if any
-        const selectedText = this._editor.getSelectedText();
-        if (selectedText) {
-          const temporaryCard = query
-            .setQueryText(selectedText)
-            .question()
-            .card();
-          runQuestionQuery({
-            overrideWithCard: temporaryCard,
-            shouldUpdateUrl: false,
-          });
-        }
-      } else {
+    if (e.keyCode === ENTER_KEY && (e.metaKey || e.ctrlKey)) {
+      // if any text is selected, just run that
+      const selectedText = this._editor.getSelectedText();
+      console.log("selectedText", selectedText);
+      if (selectedText) {
+        const temporaryCard = query
+          .setQueryText(selectedText)
+          .question()
+          .card();
+        runQuestionQuery({
+          overrideWithCard: temporaryCard,
+          shouldUpdateUrl: false,
+        });
+      } else if (query.canRun()) {
         runQuestionQuery();
       }
     }
@@ -431,7 +436,7 @@ export default class NativeQueryEditor extends Component {
           height={this.state.initialHeight}
           minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
           axis="y"
-          handle={<div className="NativeQueryEditorDragHandle"></div>}
+          handle={<div className="NativeQueryEditorDragHandle" />}
           onResizeStop={(e, data) => {
             this.props.handleResize();
             this._editor.resize();
@@ -443,7 +448,7 @@ export default class NativeQueryEditor extends Component {
             {[DataReferenceButton, NativeVariablesButton].map(Button => (
               <Button {...this.props} size={ICON_SIZE} className="mx3 mt3" />
             ))}
-            <RunButton
+            <RunButtonWithTooltip
               // The button disappears when it's not runnable.
               // In this location we want it to remain but be disabled.
               isRunnable={true}
@@ -454,6 +459,11 @@ export default class NativeQueryEditor extends Component {
               onRun={runQuestionQuery}
               compact
               className="mx2 mb2 mt-auto"
+              getTooltip={() =>
+                this.state.hasTextSelected
+                  ? t`Run selected text (⌘ + enter)`
+                  : t`Run query (⌘ + enter)`
+              }
             />
           </div>
         </ResizableBox>
