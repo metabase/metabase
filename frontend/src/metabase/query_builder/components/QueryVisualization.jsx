@@ -95,6 +95,7 @@ export default class QueryVisualization extends Component {
       isRunning,
       isObjectDetail,
       isResultDirty,
+      isNativeEditorOpen,
       result,
     } = this.props;
 
@@ -103,7 +104,7 @@ export default class QueryVisualization extends Component {
         {isRunning ? <VisualizationRunningState className="spread z2" /> : null}
         <VisualizationDirtyState
           {...this.props}
-          hidden={!isResultDirty || isRunning}
+          hidden={!isResultDirty || isRunning || isNativeEditorOpen}
           className="spread z2"
         />
         {!isObjectDetail && (

@@ -68,6 +68,7 @@ export class ViewTitleHeader extends React.Component {
       isRunning,
       isResultDirty,
       isPreviewing,
+      isNativeEditorOpen,
       runQuestionQuery,
       cancelQuery,
       isShowingSummarySidebar,
@@ -259,7 +260,7 @@ export class ViewTitleHeader extends React.Component {
               />
             </Box>
           )}
-          {isRunnable && (
+          {isRunnable && !isNativeEditorOpen && (
             <RunButtonWithTooltip
               className={cx("text-brand-hover hide", {
                 "sm-show": !isShowingNotebook || isNative,

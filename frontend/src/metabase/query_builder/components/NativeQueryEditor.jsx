@@ -3,6 +3,7 @@
 
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
+import cx from "classnames";
 
 import "./NativeQueryEditor.css";
 
@@ -36,7 +37,7 @@ import Parameters from "metabase/parameters/components/Parameters";
 const SCROLL_MARGIN = 8;
 const LINE_HEIGHT = 16;
 
-const MIN_HEIGHT_LINES = 1;
+const MIN_HEIGHT_LINES = 10;
 const MAX_AUTO_SIZE_LINES = 12;
 
 const ICON_SIZE = 18;
@@ -57,6 +58,7 @@ import {
   SchemaAndTableDataSelector,
 } from "metabase/query_builder/components/DataSelector";
 
+import RunButton from "./RunButton";
 import DataReferenceButton from "./view/DataReferenceButton";
 import NativeVariablesButton from "./view/NativeVariablesButton";
 
@@ -96,9 +98,12 @@ export default class NativeQueryEditor extends Component {
   constructor(props: Props) {
     super(props);
 
-    const lines = Math.min(
-      MAX_AUTO_SIZE_LINES,
-      (props.query && props.query.lineCount()) || MAX_AUTO_SIZE_LINES,
+    const lines = Math.max(
+      Math.min(
+        MAX_AUTO_SIZE_LINES,
+        (props.query && props.query.lineCount()) || MAX_AUTO_SIZE_LINES,
+      ),
+      MIN_HEIGHT_LINES,
     );
 
     this.state = {
@@ -262,7 +267,8 @@ export default class NativeQueryEditor extends Component {
     const newHeight = getEditorLineHeight(doc.getLength());
     if (
       (allowShrink || newHeight > element.offsetHeight) &&
-      newHeight <= getEditorLineHeight(MAX_AUTO_SIZE_LINES)
+      newHeight <= getEditorLineHeight(MAX_AUTO_SIZE_LINES) &&
+      newHeight >= getEditorLineHeight(MIN_HEIGHT_LINES)
     ) {
       element.style.height = newHeight + "px";
       this._editor.resize();
@@ -318,6 +324,11 @@ export default class NativeQueryEditor extends Component {
       setParameterValue,
       location,
       isNativeEditorOpen,
+      isRunnable,
+      isRunning,
+      isResultDirty,
+      isPreviewing,
+      runQuestionQuery,
     } = this.props;
 
     const database = query.database();
@@ -377,15 +388,11 @@ export default class NativeQueryEditor extends Component {
       );
     }
 
-    let editorClasses, toggleEditorText, toggleEditorIcon;
+    let toggleEditorText, toggleEditorIcon;
     if (isNativeEditorOpen) {
-      editorClasses = "";
-      toggleEditorText = query.hasWritePermission()
-        ? t`Hide Editor`
-        : t`Hide Query`;
+      toggleEditorText = null;
       toggleEditorIcon = "contract";
     } else {
-      editorClasses = "hide";
       toggleEditorText = query.hasWritePermission()
         ? t`Open Editor`
         : t`Show Query`;
@@ -407,18 +414,6 @@ export default class NativeQueryEditor extends Component {
             commitImmediately
           />
           <div className="flex-align-right flex align-center text-medium pr1">
-            {isNativeEditorOpen &&
-              DataReferenceButton.shouldRender(this.props) && (
-                <DataReferenceButton {...this.props} size={ICON_SIZE} />
-              )}
-            {isNativeEditorOpen &&
-              NativeVariablesButton.shouldRender(this.props) && (
-                <NativeVariablesButton
-                  {...this.props}
-                  size={ICON_SIZE}
-                  className="mx3 flex align-center"
-                />
-              )}
             <a
               className="Query-label no-decoration flex align-center mx3 text-brand-hover transition-all"
               onClick={this.toggleEditor}
@@ -432,7 +427,7 @@ export default class NativeQueryEditor extends Component {
         </div>
         <ResizableBox
           ref="resizeBox"
-          className={"border-top " + editorClasses}
+          className={cx("border-top flex ", { hide: !isNativeEditorOpen })}
           height={this.state.initialHeight}
           minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
           axis="y"
@@ -441,7 +436,21 @@ export default class NativeQueryEditor extends Component {
             this._editor.resize();
           }}
         >
-          <div id="id_sql" ref="editor" />
+          <div className="flex-full" id="id_sql" ref="editor" />
+          <div className="flex flex-column border-left">
+            {[DataReferenceButton, NativeVariablesButton].map(Button => (
+              <Button {...this.props} size={ICON_SIZE} className="mx3 mt3" />
+            ))}
+            <RunButton
+              isRunnable={isRunnable}
+              isRunning={isRunning}
+              isDirty={isResultDirty}
+              isPreviewing={isPreviewing}
+              onRun={runQuestionQuery}
+              compact
+              className="mx2 mb2 mt-auto"
+            />
+          </div>
         </ResizableBox>
       </div>
     );
