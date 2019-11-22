@@ -83,6 +83,11 @@
           (re-find pattern column-type) base-type
           (seq more)                    (recur more))))))
 
+(defn- ->spec [db-or-id-or-spec]
+  (if (u/id db-or-id-or-spec)
+    (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
+    db-or-id-or-spec))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                   Sync Impl                                                    |
@@ -206,11 +211,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                            Default SQL JDBC metabase.driver impls for sync methods                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- ->spec [db-or-id-or-spec]
-  (if (u/id db-or-id-or-spec)
-    (sql-jdbc.conn/db->pooled-connection-spec db-or-id-or-spec)
-    db-or-id-or-spec))
 
 (defn describe-database
   "Default implementation of `driver/describe-database` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
