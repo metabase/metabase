@@ -454,9 +454,9 @@ export default class NativeQueryEditor extends Component {
           resizeHandles={["s"]}
         >
           <div className="flex-full" id="id_sql" ref="editor" />
-          <div className="flex flex-column border-left">
+          <div className="flex flex-column align-center border-left">
             {[DataReferenceButton, NativeVariablesButton].map(Button => (
-              <Button {...this.props} size={ICON_SIZE} className="mx3 mt3" />
+              <Button {...this.props} size={ICON_SIZE} className="mt3" />
             ))}
             <RunButtonWithTooltip
               // The button disappears when it's not runnable.
@@ -468,7 +468,7 @@ export default class NativeQueryEditor extends Component {
               isPreviewing={isPreviewing}
               onRun={runQuestionQuery}
               compact
-              className="mx2 mb2 mt-auto"
+              className="mx2 mb2 mt-auto p2"
               getTooltip={() =>
                 this.state.hasTextSelected
                   ? t`Run selected text (⌘ + enter)`
