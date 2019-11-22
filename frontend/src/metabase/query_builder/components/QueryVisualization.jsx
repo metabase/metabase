@@ -146,9 +146,9 @@ export default class QueryVisualization extends Component {
 }
 
 export const VisualizationEmptyState = ({ className }) => (
-  <div
-    className={cx(className, "flex flex-column layout-centered text-light")}
-  />
+  <div className={cx(className, "flex flex-column layout-centered text-light")}>
+    <h3>{t`Here's where your results will appear`}</h3>
+  </div>
 );
 
 export const VisualizationRunningState = ({ className }) => (
