@@ -18,8 +18,9 @@
              [fixtures :as fixtures]
              [util :as tu :refer [random-name]]]
             [metabase.test.data.users :as test-users]
-            [toucan.db :as db]
-            [toucan.hydrate :refer [hydrate]]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]
             [toucan.util.test :as tt]))
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))

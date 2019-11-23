@@ -1013,7 +1013,9 @@
 ;;; |                                              Personal Collections                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn format-personal-collection-name [first-name last-name]
+(defn format-personal-collection-name
+  "Constructs the personal collection name from user name."
+  [first-name last-name]
   (tru "{0} {1}''s Personal Collection" first-name last-name))
 
 (s/defn ^:private user->personal-collection-name :- su/NonBlankString
