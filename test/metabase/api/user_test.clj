@@ -334,8 +334,6 @@
   (db/select-one-field
       :name Collection :id (:personal_collection_id user)))
 
-(toucan.hydrate/flush-hydration-key-caches!)
-
 ;; Test that admins can edit other Users
 (expect
   {:before   {:first_name "Cam",
