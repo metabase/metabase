@@ -14,7 +14,7 @@ To find the map settings:
 ### Map Tile Server
 
 As mentioned above, Metabase uses the OpenStreetMaps tile server. However, if your organization requires a different look or level of detail in your map visualizations, you can change the map tile server by adding the map tile server URL to the first field on the page.
-
+E.g. for Mapbox Tile Server URL you can use `https://api.mapbox.com/styles/v1/mapbox/[style]/tiles/{z}/{x}/{y}?access_token=***` where `[style]` must be replaced by values from [here](https://docs.mapbox.com/api/maps/#styles) (e.g. 'satellite-streets-v11').
 ### Custom Region Maps
 
 If you need a map that focuses on a specific region, you may want to upload a custom GeoJSON map. 
