@@ -271,7 +271,6 @@ export class ViewTitleHeader extends React.Component {
               ml={1}
               compact
               result={result}
-              isRunnable={isRunnable}
               isRunning={isRunning}
               isDirty={isResultDirty}
               isPreviewing={isPreviewing}

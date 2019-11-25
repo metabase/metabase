@@ -188,7 +188,7 @@ export const VisualizationDirtyState = ({
       py={2}
       px={3}
       result={result}
-      isRunnable={isRunnable}
+      hidden={!isRunnable}
       isRunning={isRunning}
       isDirty={isResultDirty}
       onRun={() => runQuestionQuery({ ignoreCache: true })}

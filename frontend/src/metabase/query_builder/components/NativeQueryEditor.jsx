@@ -458,9 +458,6 @@ export default class NativeQueryEditor extends Component {
               <Button {...this.props} size={ICON_SIZE} className="mt3" />
             ))}
             <RunButtonWithTooltip
-              // The button disappears when it's not runnable.
-              // In this location we want it to remain but be disabled.
-              isRunnable={true}
               disabled={!isRunnable}
               isRunning={isRunning}
               isDirty={isResultDirty}
