@@ -200,7 +200,6 @@ export default class NativeQueryEditor extends Component {
     if (e.keyCode === ENTER_KEY && (e.metaKey || e.ctrlKey)) {
       // if any text is selected, just run that
       const selectedText = this._editor.getSelectedText();
-      console.log("selectedText", selectedText);
       if (selectedText) {
         const temporaryCard = query
           .setQueryText(selectedText)
