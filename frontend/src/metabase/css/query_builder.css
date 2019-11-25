@@ -490,7 +490,7 @@
 }
 
 .NativeQueryEditorDragHandle {
-  background: var(--color-border);
+  background: color(var(--color-border) blackness(+ 3%));
   position: absolute;
   bottom: 0;
   left: 50%;
