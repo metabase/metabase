@@ -267,6 +267,25 @@ describe("Question", () => {
         expect(scalarQuestion.display()).toBe("scalar");
       });
     });
+    describe("setDefaultDisplay", () => {
+      it("sets display to 'scalar' for order count", () => {
+        const question = new Question(
+          orders_count_card,
+          metadata,
+        ).setDefaultDisplay();
+
+        expect(question.display()).toBe("scalar");
+      });
+
+      it("should not set the display to scalar table was selected", () => {
+        const question = new Question(orders_count_card, metadata)
+          .setSelectedDisplay("table")
+          .setSensibleDisplays(["table", "scalar"])
+          .setDefaultDisplay();
+
+        expect(question.display()).toBe("table");
+      });
+    });
   });
 
   // TODO: These are mode-dependent and should probably be tied to modes
