@@ -338,7 +338,7 @@ export default class DashboardHeader extends Component {
             to={location.pathname + "/copy"}
             data-metabase-event={"Dashboard;Copy"}
           >
-            <Icon className="text-brand-hover" name="clone" size={18} />
+            <Icon className="text-brand-hover" name="copy" size={18} />
           </Link>
         </Tooltip>,
       );
