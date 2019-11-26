@@ -18,14 +18,24 @@
              [command :as cmd]
              [conversion :as conv]
              [db :as mdb]]
-            [schema.core :as s])
+            [schema.core :as s]
+            [taoensso.nippy :as nippy])
   (:import com.mongodb.DB
-           org.bson.BsonUndefined))
+           org.bson.BsonUndefined
+           org.bson.types.ObjectId))
 
 ;; JSON Encoding (etc.)
 
 ;; Encode BSON undefined like `nil`
 (json.generate/add-encoder org.bson.BsonUndefined json.generate/encode-nil)
+
+(nippy/extend-freeze ObjectId :mongodb/ObjectId
+  [^ObjectId oid data-output]
+  (.writeUTF data-output (.toHexString oid)))
+
+(nippy/extend-thaw :mongodb/ObjectId
+  [data-input]
+  (ObjectId. (.readUTF data-input)))
 
 (driver/register! :mongo)
 

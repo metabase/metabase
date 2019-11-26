@@ -21,6 +21,7 @@
             [metabase.test.data
              [datasets :as datasets]
              [interface :as tx]]
+            [taoensso.nippy :as nippy]
             [toucan.db :as db]
             [toucan.util.test :as tt])
   (:import org.bson.types.ObjectId))
@@ -293,3 +294,9 @@
         :limit    3})
      qp.t/data
      (select-keys [:columns :rows]))))
+
+
+;; Make sure we correctly (un-)freeze BSON IDs
+(deftest ObjectId-serialization
+  (let [oid (ObjectId. "012345678901234567890123")]
+    (is (= oid (nippy/thaw (nippy/freeze oid))))))
