@@ -247,7 +247,7 @@ function onRenderVoronoiHover(chart) {
 
 // NOTE- this is a total hack just to get things rolling, not sure if this is the right place
 // to do this or not
-function onRenderValueLabels(chart) {
+function onRenderValueLabels(chart, formatYValue) {
   // Do nothing if there is nothing to do
   if (!chart.settings["graph.show_values"]) {
     return false;
@@ -259,33 +259,28 @@ function onRenderValueLabels(chart) {
   // Eventually use this to determine if we show all or some nth frequency
   // const isNth = chart.settings["graph.label_value_frequency"] === "nth";
 
-  // So this is obviously a bad way to do this cause we're not working with the
-  // actual data values as a result, but I used the bars in the interim since it was an easy proxy
   const data = chart
     .svg()
     .selectAll(".bar")
-    .map(d =>
-      d.map((data, index) => {
-        return data.attributes;
-      }),
-    );
+    .data();
+
+  const xScale = chart.x();
+  const yScale = chart.y();
 
   parent
     .append("svg:g")
     .classed("value-labels", true)
     .selectAll("text.bar")
-    .data(data[0]) // TODO - make this less eww
+    .data(data)
     .enter()
     .append("text")
     .attr("class", "bar")
     // TODO - I wonder if we should move as much of this as possible to CSS land to make it
     // easier to
     .attr("text-anchor", "middle")
-    .attr("x", d => Number(d.x.value) + Number(d.width.value) / 2) // This is obviously gross and should be removed.
-    .attr("y", d => Number(d.y.value) - 8)
-    .text(function(d) {
-      return d.height.value; // The wrong value, but gives us something to work with
-    });
+    .attr("x", d => xScale(d.x))
+    .attr("y", d => yScale(d.y) - 8)
+    .text(d => formatYValue(d.y, { compact: true }));
 }
 
 function onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis) {
@@ -421,7 +416,10 @@ function onRenderAddExtraClickHandlers(chart) {
 }
 
 // the various steps that get called
-function onRender(chart, onGoalHover, isSplitAxis, isStacked) {
+function onRender(
+  chart,
+  { onGoalHover, isSplitAxis, isStacked, formatYValue },
+) {
   onRenderRemoveClipPath(chart);
   onRenderMoveContentToTop(chart);
   onRenderReorderCharts(chart);
@@ -430,7 +428,7 @@ function onRender(chart, onGoalHover, isSplitAxis, isStacked) {
   onRenderEnableDots(chart);
   onRenderVoronoiHover(chart);
   onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis); // do this before hiding x-axis
-  onRenderValueLabels(chart);
+  onRenderValueLabels(chart, formatYValue);
   onRenderHideDisabledLabels(chart);
   onRenderHideDisabledAxis(chart);
   onRenderHideBadAxis(chart);
@@ -656,13 +654,11 @@ function beforeRender(chart) {
 /// once chart has rendered and we can access the SVG, do customizations to axis labels / etc that you can't do through dc.js
 export default function lineAndBarOnRender(
   chart,
-  onGoalHover,
-  isSplitAxis,
-  isStacked,
+  { onGoalHover, isSplitAxis, isStacked, formatYValue },
 ) {
   beforeRender(chart);
   chart.on("renderlet.on-render", () =>
-    onRender(chart, onGoalHover, isSplitAxis, isStacked),
+    onRender(chart, { onGoalHover, isSplitAxis, isStacked, formatYValue }),
   );
   chart.render();
 }
