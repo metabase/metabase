@@ -1,6 +1,6 @@
 ## Authenticating with SAML
 
-The open source edition of Metabase includes the option to [set up SSO with Google Sign-in or LDAP](../administration-guide/10-single-sign-on.md), but the Enterprise edition of Metabase additionally lets you connect your SAML- or JWT-based SSO. Integrating your SSO with Metabase allows you to:
+The open source edition of Metabase includes the option to set up single sign-on (SSO) with [Google Sign-in or LDAP](../administration-guide/10-single-sign-on.md), but the Enterprise edition of Metabase additionally lets you connect your SAML- or JWT-based SSO. Integrating your SSO with Metabase allows you to:
 
 - automatically pass user attributes from your SSO to Metabase in order to power data sandboxes
 - let your users access Metabase without re-authenticating.
@@ -15,7 +15,7 @@ To get started, head over to the Settings section of the Admin Panel, then click
 
 ![SAML form](images/saml-form.png)
 
-At the top, **make sure to click the toggle to enable SAML authentication**, otherwise things won't won't work even if all of your settings are right.
+At the top, **make sure to click the toggle to enable SAML authentication**, otherwise things won't work even if all of your settings are right.
 
 The form itself is broken up into three parts: information about Metabase that you'll have to input into your identity provider (IdP); information about your IdP that you'll need to tell Metabase about; and some optional settings at the bottom.
 
@@ -77,7 +77,7 @@ contain attributes for each user's first name, last name, and email. The asserti
 </saml2:Assertion>
 ```
 
-Most SAML identity providers we've used already include these assertions by default, but some (such as Okta) must be configured to include them. Here's an example of what your assertions configuration should look like in Okta. (You can find this page by going to `Admin > Applications > Metabase > General > SAML Settings [Edit]`).
+Most SAML identity providers we've used already include these assertions by default, but some (such as Okta) must be configured to include them. Here's an example of what your assertions configuration should look like in Okta. (You can find this page by going to Admin > Applications > Metabase > General > SAML Settings > Edit).
 
 ![Okta SAML Integration](images/saml-okta-setup.png)
 
@@ -146,7 +146,7 @@ After that, you will need to add an additional SAML attribute to the ones we add
 
 Once you've gotten everything set up in your SAML provider, there are just a few simple steps on the Metabase side.
 
-To start, make sure the toggle is set to "Enabled." Then, click Edit Mappings -> Create a Mapping. Enter in the name of one of the groups you entered as your `metabaseGroups` attribute values, then click the Add button. Next click the dropdown that appears under the `Groups` heading to select the Metabase group(s) that users with this particular `metabaseGroups` value should be added to. Then click Save.
+To start, make sure the toggle to synchronize group memberships is set to "Enabled." Then, click Edit Mappings > Create a Mapping. Enter in the name of one of the groups you entered as your `metabaseGroups` attribute values, then click the Add button. Next click the dropdown that appears under the `Groups` heading to select the Metabase group(s) that users with this particular `metabaseGroups` value should be added to. Then click Save.
 
 After that, type in the name of the user attribute you added in your SAML provider. In this case, we told Okta that the `metabaseGroups` attribute should be named `MetabaseGroupName`, so that's what we'll enter in the Group Attribute Name field in Metabase.
 
@@ -159,11 +159,11 @@ Here are a few things to double check if you're experiencing issues setting up y
 - Verify that the application you created in your IdP supports SAML. Sometimes other options are presented during the app creation process.
 - Read all field labels and tooltips carefully. Since SAML providers each use different labeling for their fields, it's important to make sure the correct information is being placed into the correct fields.
 - Set your attributes and check your assertions! Many SAML providers make this pretty easy to do - just look for a button marked "Preview the SAML assertion."
-- Verify that the Single Sign On URL (or equivalent) that you enter on your SAML provider's website has "/auth/sso" appended to it. For instance, if you want your users to end up at `https://metabase.mycompany.com`, the full url should be `https://metabase.mycompany.com/auth/sso`
+- Verify that the Single Sign On URL (or equivalent) that you enter on your SAML provider's website has "/auth/sso" appended to it. For instance, if you want your users to end up at `https://metabase.mycompany.com`, the full URL should be `https://metabase.mycompany.com/auth/sso`.
 
 ### Disabling password log-in
 
-Once you have configured SAML authentication, you can choose to disable the option for users to log in via email and password. To do this, return to the main Authentication settings page and scroll to the bottom. A toggle will now be visible allowing you to disable email+password log-in.
+Once you have configured SAML authentication, you can choose to disable the option for users to log in via email and password. To do this, return to the main Authentication settings page and scroll to the bottom. A toggle will now be visible allowing you to disable password authentication.
 
 ![Password disable](images/password-disable.png)
 
