@@ -6,7 +6,9 @@ import chalk from "chalk";
 const BackendResource = require("./backend.js").BackendResource;
 
 // Backend that uses a test fixture database
-const serverWithTestDbFixture = BackendResource.get({});
+const serverWithTestDbFixture = BackendResource.get({
+  dbKey: "frontend/test/__runner__/cypress_db_fixture.db",
+});
 const testFixtureBackendHost = serverWithTestDbFixture.host;
 
 const userArgs = process.argv.slice(2);
