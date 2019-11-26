@@ -48,6 +48,7 @@ describe("admin/settings", () => {
     // check the new formatting in a question
     cy.visit("/question/new");
     cy.contains("Simple question").click();
+    cy.contains("Sample Dataset").click();
     cy.contains("Orders").click();
     cy.contains(/^February 11, 2019, 21:40$/).debug();
 
@@ -59,6 +60,7 @@ describe("admin/settings", () => {
     // check the reset formatting in a question
     cy.visit("/question/new");
     cy.contains("Simple question").click();
+    cy.contains("Sample Dataset").click();
     cy.contains("Orders").click();
     cy.contains(/^February 11, 2019, 9:40 PM$/);
   });

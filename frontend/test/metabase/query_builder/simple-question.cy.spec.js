@@ -6,6 +6,7 @@ describe("new question", () => {
   it("should count all orders", () => {
     cy.visit("/question/new");
     cy.contains("Simple question").click();
+    cy.contains("Sample Dataset").click();
     cy.contains("Orders").click();
     cy.contains("Showing first 2,000 rows");
     cy.contains("Summarize").click();
@@ -16,6 +17,7 @@ describe("new question", () => {
   it("should show orders by year and product category", () => {
     cy.visit("/question/new");
     cy.contains("Simple question").click();
+    cy.contains("Sample Dataset").click();
     cy.contains("Orders").click();
     cy.contains("Showing first 2,000 rows");
     cy.contains("Summarize").click();
