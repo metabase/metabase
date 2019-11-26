@@ -11,7 +11,7 @@
              [util :as u]]
             [metabase.middleware.session :as mw.session]
             [metabase.test.initialize :as initialize]
-            [metabase.util.date :as du]
+            [metabase.util.date-2 :as u.date]
             [schema.core :as s]))
 
 ;;; build-url
@@ -40,14 +40,14 @@
 
 (defn- auto-deserialize-dates
   "Automatically recurse over `response` and look for keys that are known to correspond to dates. Parse their values and
-  convert to `java.sql.Timestamps`."
+  convert to java temporal types."
   [response]
   (cond (sequential? response) (map auto-deserialize-dates response)
         (map? response) (->> response
                              (map (fn [[k v]]
                                     {k (cond
                                          ;; Our tests only run in UTC, parsing timestamp strings as UTC
-                                         (contains? auto-deserialize-dates-keys k) (du/->Timestamp v du/utc)
+                                         (contains? auto-deserialize-dates-keys k) (u.date/parse v "UTC")
                                          (coll? v) (auto-deserialize-dates v)
                                          :else v)}))
                              (into {}))

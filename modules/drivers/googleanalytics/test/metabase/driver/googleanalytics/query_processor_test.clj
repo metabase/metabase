@@ -18,7 +18,7 @@
 
 (deftest iso-year-iso-week-test
   (testing "Make sure we properly parse isoYearIsoWeeks (#9244)"
-    (is (= #inst "2018-12-31T00:00:00.000000000-00:00"
+    (is (= #t "2018-12-31T00:00:00.000000000-00:00"
            ((#'ga.qp/ga-dimension->date-format-fn "ga:isoYearIsoWeek") "201901")))))
 
 (deftest filter-test

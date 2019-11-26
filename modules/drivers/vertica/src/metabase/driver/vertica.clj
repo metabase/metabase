@@ -13,7 +13,6 @@
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.util
-             [date :as du]
              [date-2 :as u.date]
              [honeysql-extensions :as hx]
              [i18n :refer [trs]]])
@@ -57,14 +56,15 @@
   [_ _ expr]
   (hsql/call :to_timestamp expr))
 
-(defn- cast-timestamp
-  "Vertica requires stringified timestamps (what Date/DateTime/Timestamps are converted to) to be cast as timestamps
+;; TODO - not sure if needed or not
+#_(defn- cast-timestamp
+    "Vertica requires stringified timestamps (what Date/DateTime/Timestamps are converted to) to be cast as timestamps
   before date operations can be performed. This function will add that cast if it is a timestamp, otherwise this is a
-  noop."
-  [expr]
-  (if (du/is-temporal? expr)
-    (hx/cast :timestamp expr)
-    expr))
+  no-op."
+    [expr]
+    (if (instance? java.time.temporal.Temporal expr)
+      (hx/cast :timestamp expr)
+      expr))
 
 (defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (cast-timestamp expr)))
 (defn- extract    [unit expr] (hsql/call :extract    unit              expr))

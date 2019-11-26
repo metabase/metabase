@@ -11,7 +11,6 @@
              [task-history :refer [TaskHistory]]]
             [metabase.sync.util :as sync-util :refer :all]
             [metabase.test.util :as tu]
-            [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -61,20 +60,20 @@
   TaskHistory rows. This is useful to validate that the metadata and history is correct as the message might not be
   logged at all (depending on the logging level) or not stored."
   [f]
-  (let [step-info-atom (atom [])
+  (let [step-info-atom           (atom [])
         created-task-history-ids (atom [])
-        orig-log-fn (var-get #'metabase.sync.util/log-sync-summary)
-        orig-store-fn (var-get #'metabase.sync.util/store-sync-summary!)]
-    (with-redefs [metabase.sync.util/log-sync-summary (fn [operation database {:keys [steps] :as operation-metadata}]
-                                                        (swap! step-info-atom conj operation-metadata)
-                                                        (orig-log-fn operation database operation-metadata))
+        orig-log-fn              (var-get #'metabase.sync.util/log-sync-summary)
+        orig-store-fn            (var-get #'metabase.sync.util/store-sync-summary!)]
+    (with-redefs [metabase.sync.util/log-sync-summary    (fn [operation database {:keys [steps] :as operation-metadata}]
+                                                           (swap! step-info-atom conj operation-metadata)
+                                                           (orig-log-fn operation database operation-metadata))
                   metabase.sync.util/store-sync-summary! (fn [operation database operation-metadata]
                                                            (let [result (orig-store-fn operation database operation-metadata)]
                                                              (swap! created-task-history-ids concat result)
                                                              result))]
       (f))
     {:operation-results @step-info-atom
-     :task-history-ids @created-task-history-ids}))
+     :task-history-ids  @created-task-history-ids}))
 
 (defn sync-database!
   "Calls `sync-database!` and returns the the metadata for `step` as the result along with the `TaskHistory` for that
@@ -94,9 +93,8 @@
   [step-info]
   (dissoc step-info :start-time :end-time :log-summary-fn))
 
-(defn- validate-times [m]
-  (and (-> m :start-time du/is-temporal?)
-       (-> m :end-time du/is-temporal?)))
+(defn- validate-times [{:keys [start-time end-time]}]
+  (every? (partial instance? java.time.temporal.Temporal) [start-time end-time]))
 
 (def ^:private default-task-history
   {:id true, :db_id true, :started_at true, :ended_at true})

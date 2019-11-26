@@ -105,11 +105,11 @@
   bucketed datetime fields. Rewrites those filter clauses as logically equivalent filter clauses that do not use
   bucketing (i.e., their datetime unit is `:default`, meaning no bucketing functions need be applied).
 
-    [:= [:datetime-field [:field-id 1] :month] [:absolute-datetime #inst \"2019-09-01\" :month]]
+    [:= [:datetime-field [:field-id 1] :month] [:absolute-datetime #t \"2019-09-01\" :month]]
     ->
     [:and
-     [:>= [:datetime-field [:field-id 1] :default] [:absolute-datetime #inst \"2019-09-01\" :month]]
-     [:<  [:datetime-field [:field-id 1] :default] [:absolute-datetime #inst \"2019-10-01\" :month]]]
+     [:>= [:datetime-field [:field-id 1] :default] [:absolute-datetime #t \"2019-09-01\" :month]]
+     [:<  [:datetime-field [:field-id 1] :default] [:absolute-datetime #t \"2019-10-01\" :month]]]
 
   The equivalent SQL, before and after, looks like:
 

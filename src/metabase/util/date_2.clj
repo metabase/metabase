@@ -286,23 +286,6 @@
 ;;; |                                                      Etc                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; TIMEZONE FIXME - I think these actually belong in `metabase.util`
-
-(defn seconds->ms
-  "Convert `seconds` to milliseconds. More readable than doing this math inline."
-  [seconds]
-  (* seconds 1000))
-
-(defn minutes->seconds
-  "Convert `minutes` to seconds. More readable than doing this math inline."
-  [minutes]
-  (* 60 minutes))
-
-(defn minutes->ms
-  "Convert `minutes` to milliseconds. More readable than doing this math inline."
-  [minutes]
-  (-> minutes minutes->seconds seconds->ms))
-
 ;; Mainly for REPL usage. Have various temporal types print as a `java-time` function call you can use
 (doseq [[klass f-symb] {Instant        't/instant
                         LocalDate      't/local-date
@@ -311,6 +294,19 @@
                         OffsetDateTime 't/offset-date-time
                         OffsetTime     't/offset-time
                         ZonedDateTime  't/zoned-date-time}]
-(defmethod print-method klass
-  [t writer]
-  (print-method (list f-symb (str t)) writer)))
+  (defmethod print-method klass
+    [t writer]
+    (print-method (list f-symb (str t)) writer))
+
+  (defmethod print-dup klass
+    [t writer]
+    (print-dup (clojure.core/format "#t \"%s\"" (str t)) writer)))
+
+;; mark everything in the `clj-time` namespaces as `:deprecated`, if they're loaded. If not, we don't care
+(doseq [a-namespace '[clj-time.core clj-time.coerce clj-time.format]]
+  (try
+    (let [a-namespace (the-ns a-namespace)]
+      (alter-meta! a-namespace assoc :deprecated true)
+      (doseq [[_ varr] (ns-publics a-namespace)]
+        (alter-meta! varr assoc :deprecated true)))
+    (catch Throwable _)))

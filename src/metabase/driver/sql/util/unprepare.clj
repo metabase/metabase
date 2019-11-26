@@ -71,23 +71,6 @@
   [driver t]
   (unprepare-value driver (t/offset-date-time t (t/zone-offset 0))))
 
-;; for legacy situtations
-(defmethod unprepare-value [:sql java.sql.Time]
-  [driver t]
-  (unprepare-value driver (t/local-time t)))
-
-(defmethod unprepare-value [:sql java.sql.Date]
-  [driver t]
-  (unprepare-value driver (t/local-date t)))
-
-(defmethod unprepare-value [:sql java.sql.Timestamp]
-  [driver t]
-  (unprepare-value driver (t/local-date-time t)))
-
-(defmethod unprepare-value [:sql java.util.Date]
-  [driver t]
-  (unprepare-value driver (t/instant t)))
-
 
 ;; TODO - I think a name like `deparameterize` would be more appropriate here
 (defmulti ^String unprepare

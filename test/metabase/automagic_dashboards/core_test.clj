@@ -1,10 +1,8 @@
 (ns metabase.automagic-dashboards.core-test
-  (:require [clj-time
-             [core :as t]
-             [format :as t.format]]
-            [clojure.core.async :as a]
+  (:require [clojure.core.async :as a]
             [clojure.test :refer :all]
             [expectations :refer :all]
+            [java-time :as t]
             [metabase.automagic-dashboards
              [core :as magic :refer :all]
              [rules :as rules]]
@@ -24,7 +22,7 @@
              [data :as data]
              [util :as tu]]
             [metabase.util
-             [date :as date]
+             [date-2 :as u.date]
              [i18n :refer [tru]]]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -475,32 +473,30 @@
 
 ;;; ------------------- Datetime humanization (for chart and dashboard titles) -------------------
 
-(let [tz                     (-> date/jvm-timezone deref ^TimeZone .getID)
-      dt                     (t/from-time-zone (t/date-time 1990 9 9 12 30)
-                                               (t/time-zone-for-id tz))
-      unparse-with-formatter (fn [formatter dt]
-                               (t.format/unparse
-                                (t.format/formatter formatter (t/time-zone-for-id tz)) dt))]
+(let [tz                     "UTC"
+      dt                     #t "1990-09-09T12:30"
+      unparse-with-formatter (fn [format-str t]
+                               (t/format format-str t))]
   (expect
     (map str [(tru "at {0}" (unparse-with-formatter "h:mm a, MMMM d, YYYY" dt))
               (tru "at {0}" (unparse-with-formatter "h a, MMMM d, YYYY" dt))
               (tru "on {0}" (unparse-with-formatter "MMMM d, YYYY" dt))
               (tru "in {0} week - {1}"
-                   (#'magic/pluralize (date/date-extract :week-of-year dt tz))
-                   (str (date/date-extract :year dt tz)))
+                   (#'magic/pluralize (u.date/extract dt :week-of-year))
+                   (str (u.date/extract dt :year)))
               (tru "in {0}" (unparse-with-formatter "MMMM YYYY" dt))
               (tru "in Q{0} - {1}"
-                   (date/date-extract :quarter-of-year dt tz)
-                   (str (date/date-extract :year dt tz)))
+                   (u.date/extract dt :quarter-of-year)
+                   (str (u.date/extract dt :year)))
               (unparse-with-formatter "YYYY" dt)
               (unparse-with-formatter "EEEE" dt)
               (tru "at {0}" (unparse-with-formatter "h a" dt))
               (unparse-with-formatter "MMMM" dt)
-              (tru "Q{0}" (date/date-extract :quarter-of-year dt tz))
-              (date/date-extract :minute-of-hour dt tz)
-              (date/date-extract :day-of-month dt tz)
-              (date/date-extract :week-of-year dt tz)])
-    (let [dt (t.format/unparse (t.format/formatters :date-hour-minute-second) dt)]
+              (tru "Q{0}" (u.date/extract dt :quarter-of-year))
+              (u.date/extract dt :minute-of-hour)
+              (u.date/extract dt :day-of-month)
+              (u.date/extract dt :week-of-year)])
+    (let [dt (t/format :date-hour-minute-second dt)]
       (map (comp str (partial #'magic/humanize-datetime dt)) [:minute
                                                               :hour
                                                               :day
@@ -527,6 +523,6 @@
 
 (deftest handlers-test
   (testing "Make sure we have handlers for all the units available"
-    (doseq [unit (concat date/date-extract-units date/date-trunc-units)]
+    (doseq [unit (concat u.date/extract-units u.date/truncate-units)]
       (testing unit
         (is (some? (#'magic/humanize-datetime "1990-09-09T12:30:00" unit)))))))

@@ -167,7 +167,6 @@
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:card])
           :types          (constantly {:dataset_query          :metabase-query
-                                       :description            :clob
                                        :display                :keyword
                                        :embedding_params       :json
                                        :query_type             :keyword

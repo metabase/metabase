@@ -1,5 +1,6 @@
 (ns metabase.sync.analyze-test
   (:require [expectations :refer :all]
+            [java-time :as t]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]
@@ -10,12 +11,11 @@
              [sync-metadata :as sync-metadata]]
             [metabase.test.data :as data]
             [metabase.util :as u]
-            [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
 (def ^:private fake-analysis-completion-date
-  (du/->Timestamp #inst "2017-08-01"))
+  #t "2017-08-01")
 
 ;; Check that Fields do *not* get analyzed if they're not newly created and fingerprint version is current
 (expect
@@ -61,24 +61,24 @@
 ;; Make sure that only the correct Fields get marked as recently analyzed
 (expect
   #{"Current fingerprint, not analyzed"}
-  (with-redefs [i/latest-fingerprint-version Short/MAX_VALUE
-                du/new-sql-timestamp         (constantly (du/->Timestamp #inst "1999-01-01"))]
-    (tt/with-temp* [Table [table]
-                    Field [_ {:table_id            (u/get-id table)
-                              :name                "Current fingerprint, not analyzed"
-                              :fingerprint_version Short/MAX_VALUE
-                              :last_analyzed       nil}]
-                    Field [_ {:table_id            (u/get-id table)
-                              :name                "Current fingerprint, already analzed"
-                              :fingerprint_version Short/MAX_VALUE
-                              :last_analyzed       (du/->Timestamp #inst "2017-08-09")}]
-                    Field [_ {:table_id            (u/get-id table)
-                              :name                "Old fingerprint, not analyzed"
-                              :fingerprint_version (dec Short/MAX_VALUE)
-                              :last_analyzed       nil}]
-                    Field [_ {:table_id            (u/get-id table)
-                              :name                "Old fingerprint, already analzed"
-                              :fingerprint_version (dec Short/MAX_VALUE)
-                              :last_analyzed       (du/->Timestamp #inst "2017-08-09")}]]
-      (#'analyze/update-fields-last-analyzed! table)
-      (db/select-field :name Field :last_analyzed (du/new-sql-timestamp)))))
+  (t/with-clock (t/mock-clock (t/offset-date-time "1999-01-01T00:00:00Z"))
+    (with-redefs [i/latest-fingerprint-version Short/MAX_VALUE]
+      (tt/with-temp* [Table [table]
+                      Field [_ {:table_id            (u/get-id table)
+                                :name                "Current fingerprint, not analyzed"
+                                :fingerprint_version Short/MAX_VALUE
+                                :last_analyzed       nil}]
+                      Field [_ {:table_id            (u/get-id table)
+                                :name                "Current fingerprint, already analzed"
+                                :fingerprint_version Short/MAX_VALUE
+                                :last_analyzed       #t "2017-08-09T00:00Z"}]
+                      Field [_ {:table_id            (u/get-id table)
+                                :name                "Old fingerprint, not analyzed"
+                                :fingerprint_version (dec Short/MAX_VALUE)
+                                :last_analyzed       nil}]
+                      Field [_ {:table_id            (u/get-id table)
+                                :name                "Old fingerprint, already analzed"
+                                :fingerprint_version (dec Short/MAX_VALUE)
+                                :last_analyzed       #t "2017-08-09T00:00Z"}]]
+        (#'analyze/update-fields-last-analyzed! table)
+        (db/select-field :name Field :last_analyzed :%now)))))

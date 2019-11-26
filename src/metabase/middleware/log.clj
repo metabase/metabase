@@ -10,7 +10,6 @@
             [metabase.middleware.util :as middleware.u]
             [metabase.query-processor.middleware.async :as qp.middleware.async]
             [metabase.util
-             [date :as du]
              [i18n :refer [trs]]]
             [toucan.db :as db])
   (:import clojure.core.async.impl.channels.ManyToManyChannel
@@ -36,7 +35,7 @@
      (format " [ASYNC: %s]" async-status))))
 
 (defn- format-performance-info [{:keys [start-time call-count-fn]}]
-  (let [elapsed-time (du/format-nanoseconds (- (System/nanoTime) start-time))
+  (let [elapsed-time (u/format-nanoseconds (- (System/nanoTime) start-time))
         db-calls     (call-count-fn)]
     (format "%s (%d DB calls)" elapsed-time db-calls)))
 

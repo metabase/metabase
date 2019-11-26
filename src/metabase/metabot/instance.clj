@@ -25,11 +25,8 @@
              [config :refer [local-process-uuid]]
              [util :as u]]
             [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util
-             [date :as du]
-             [i18n :refer [trs]]]
-            [toucan.db :as db])
-  (:import java.sql.Timestamp))
+            [metabase.util.i18n :refer [trs]]
+            [toucan.db :as db]))
 
 (defsetting ^:private metabot-instance-uuid
   "UUID of the active MetaBot instance (the Metabase process currently handling MetaBot duties.)"
@@ -52,7 +49,7 @@
   "Fetch the current timestamp from the DB. Why do this from the DB? It's not safe to assume multiple instances have
   clocks exactly in sync; but since each instance is using the same application DB, we can use it as a cannonical
   source of truth."
-  ^Timestamp []
+  ^java.time.temporal.Temporal []
   (-> (db/query {:select [[(hsql/raw "current_timestamp") :current_timestamp]]})
       first
       :current_timestamp))
@@ -71,7 +68,7 @@
     (u/prog1 (-> (- (.getTime (current-timestamp-from-db))
                     (.getTime last-checkin))
                  (/ 1000))
-      (log/debug (u/format-color 'magenta (trs "Last MetaBot checkin was {0} ago." (du/format-seconds <>)))))))
+      (log/debug (u/format-color 'magenta (trs "Last MetaBot checkin was {0} ago." (u/format-seconds <>)))))))
 
 (def ^:private ^Integer recent-checkin-timeout-interval-seconds
   "Number of seconds since the last MetaBot checkin that we will consider the MetaBot job to be 'up for grabs',

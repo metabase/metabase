@@ -136,7 +136,7 @@
                             t timezone-id lower upper))))))))))
 
 (deftest skip-optimization-test
-  (let [clause [:= [:datetime-field [:field-id 1] :day] [:absolute-datetime #inst "2019-01-01" :month]]]
+  (let [clause [:= [:datetime-field [:field-id 1] :day] [:absolute-datetime #t "2019-01-01" :month]]]
     (is (= clause
            (optimize-datetime-filters clause))
         "Filters with different units in the datetime field and absolute-datetime shouldn't get optimized")))

@@ -1,6 +1,7 @@
 (ns metabase.middleware.session
   "Ring middleware related to session (binding current user and permissions)."
   (:require [clojure.string :as str]
+            [java-time :as t]
             [metabase
              [config :as config]
              [db :as mdb]]
@@ -12,8 +13,7 @@
             [ring.util.response :as resp]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import java.util.UUID
-           org.joda.time.DateTime))
+  (:import java.util.UUID))
 
 ;; How do authenticated API requests work? Metabase first looks for a cookie called `metabase.SESSION`. This is the
 ;; normal way of doing things; this cookie gets set automatically upon login. `metabase.SESSION` is an HttpOnly
@@ -32,7 +32,7 @@
 (def ^:private ^String metabase-session-header        "x-metabase-session")
 
 (defn- clear-cookie [response cookie-name]
-  (resp/set-cookie response cookie-name nil {:expires (DateTime. 0), :path "/"}))
+  (resp/set-cookie response cookie-name nil {:expires (t/format :rfc-1123-date-time (t/offset-date-time 0)), :path "/"}))
 
 (defn- wrap-body-if-needed
   "You can't add a cookie (by setting the `:cookies` key of a response) if the response is an unwrapped JSON response;
@@ -131,7 +131,8 @@
     (db/qualify Session :id) session-id))
 
 (defn- session-age-ms [session]
-  (- (System/currentTimeMillis) (or (when-let [^java.util.Date created-at (:created_at session)]
+  (- (System/currentTimeMillis) (or (when-let [created-at (:created_at session)]
+
                                       (.getTime created-at))
                                     0)))
 

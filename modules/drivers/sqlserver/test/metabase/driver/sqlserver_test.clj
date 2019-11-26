@@ -148,7 +148,7 @@
 ;; Make sure datetime bucketing functions work properly with languages that format dates like yyyy-dd-MM instead of
 ;; yyyy-MM-dd (i.e. not American English) (#9057)
 (datasets/expect-with-driver :sqlserver
-  [{:my-date #inst "2019-02-01T00:00:00.000-00:00"}]
+  [{:my-date #t "2019-02-01T00:00:00.000-00:00"}]
   ;; we're doing things here with low-level calls to HoneySQL (emulating what the QP does) instead of using normal QP
   ;; pathways because `SET LANGUAGE` doesn't seem to persist to subsequent executions so to test that things are
   ;; working we need to add to in from of the query we're trying to check
@@ -156,7 +156,7 @@
                                       (tx/dbdef->connection-details :sqlserver :db {:database-name "test-data"}))]
     (try
       (jdbc/execute! t-conn "CREATE TABLE temp (d DATETIME2);")
-      (jdbc/execute! t-conn ["INSERT INTO temp (d) VALUES (?)" #inst "2019-02-08T00:00:00Z"])
+      (jdbc/execute! t-conn ["INSERT INTO temp (d) VALUES (?)" #t "2019-02-08T00:00:00Z"])
       (jdbc/query t-conn (let [[sql & args] (hsql/format {:select [[(sql.qp/date :sqlserver :month :temp.d) :my-date]]
                                                           :from   [:temp]}
                                               :quoting :ansi, :allow-dashed-names? true)]

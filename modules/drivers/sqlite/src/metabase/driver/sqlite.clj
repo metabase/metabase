@@ -194,10 +194,12 @@
 ;;
 ;; TODO - not sure why this doesn't need to be done in `->honeysql` as well? I think it's because the MBQL date values
 ;; are funneled through the `date` family of functions above
-;; TIMESTAMP FIXME
+;;
+;; TIMESTAMP FIXME — this doesn't seem like the correct thing to do for non-Dates. I think params only support dates
+;; rn however
 (s/defmethod sql/->prepared-substitution [:sqlite Temporal] :- sql/PreparedStatementSubstitution
   [_ date]
-  ;; for anything that's a Date (usually a java.sql.Timestamp) convert it to a yyyy-MM-dd formatted date literal
+  ;; for anything that's a Temporal value convert it to a yyyy-MM-dd formatted date literal
   ;; string For whatever reason the SQL generated from parameters ends up looking like `WHERE date(some_field) = ?`
   ;; sometimes so we need to use just the date rather than a full ISO-8601 string
   (sql/make-stmt-subs "?" [(t/format "yyyy-MM-dd" date)]))

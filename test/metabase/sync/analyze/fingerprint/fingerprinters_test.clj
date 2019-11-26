@@ -1,28 +1,27 @@
 (ns metabase.sync.analyze.fingerprint.fingerprinters-test
   (:require [expectations :refer :all]
             [metabase.models.field :as field]
-            [metabase.sync.analyze.fingerprint.fingerprinters :refer :all]
-            [metabase.util.date :as du]))
+            [metabase.sync.analyze.fingerprint.fingerprinters :refer :all]))
 
 (expect
   {:global {:distinct-count 3
             :nil%           0.0}
-   :type {:type/DateTime {:earliest (du/date->iso-8601 #inst "2013")
-                          :latest   (du/date->iso-8601 #inst "2018")}}}
+   :type {:type/DateTime {:earliest "2013-01-01T00:00:00Z"
+                          :latest   "2018-01-01T00:00:00Z"}}}
   (transduce identity
              (fingerprinter (field/map->FieldInstance {:base_type :type/DateTime}))
-             [#inst "2013" #inst "2018" #inst "2015"]))
+             [#t "2013" #t "2018" #t "2015"]))
 
 ;; Correctly disambiguate multiple competing multimethods
 (expect
   {:global {:distinct-count 3
             :nil%           0.0}
-   :type {:type/DateTime {:earliest (du/date->iso-8601 #inst "2013")
-                          :latest   (du/date->iso-8601 #inst "2018")}}}
+   :type {:type/DateTime {:earliest "2013-01-01T00:00:00Z"
+                          :latest   "2018-01-01T00:00:00Z"}}}
   (transduce identity
              (fingerprinter (field/map->FieldInstance {:base_type    :type/DateTime
                                                        :special_type :type/FK}))
-             [#inst "2013" #inst "2018" #inst "2015"]))
+             [#t "2013" #t "2018" #t "2015"]))
 
 (expect
   {:global {:distinct-count 1

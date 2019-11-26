@@ -7,6 +7,7 @@
             [metabase.util :as u]
             [metabase.util.schema :as su]
             [schema.core :as s]
+            [metabase.util.date-2 :as u.date]
             [toucan.db :as db]))
 
 (def ^:private FieldReference
@@ -54,7 +55,7 @@
 (defn datetime?
   "Does `field` represent a temporal value, i.e. a date, time, or datetime?"
   [field]
-  (and (not ((disj metabase.util.date/date-extract-units :year) (:unit field)))
+  (and (not ((disj u.date/extract-units :year) (:unit field)))
        (or (isa? (:base_type field) :type/Temporal)
            (field/unix-timestamp? field))))
 

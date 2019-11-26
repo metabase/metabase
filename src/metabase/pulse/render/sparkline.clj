@@ -5,12 +5,11 @@
              [style :as style]]
             [metabase.types :as types]
             [metabase.util
-             [date :as du]
+             [date-2 :as u.date]
              [i18n :refer [tru]]])
   (:import [java.awt BasicStroke Color RenderingHints]
            java.awt.image.BufferedImage
            java.io.ByteArrayOutputStream
-           java.util.Date
            javax.imageio.ImageIO))
 
 (def ^:private ^:const dot-radius 6)
@@ -59,18 +58,18 @@
       (.toByteArray os))))
 
 ;; TIMEZONE FIXME
-(defn- format-val-fn [timezone cols x-axis-rowfn]
+(defn- format-val-fn [timezone-id cols x-axis-rowfn]
   (if (types/temporal-field? (x-axis-rowfn cols))
-    #(.getTime ^Date (du/->Timestamp % timezone))
+    #(java-time/to-millis-from-epoch (u.date/parse % timezone-id))
     identity))
 
 (defn sparkline-image-bundle
   "Render a sparkline chart to an image bundle."
-  [render-type timezone card {:keys [rows cols] :as data}]
+  [render-type timezone-id card {:keys [rows cols] :as data}]
   ;; `x-axis-rowfn` and `y-axis-rowfn` are functions that get whatever is at the corresponding index
   (let [[x-axis-rowfn
          y-axis-rowfn] (common/graphing-column-row-fns card data)
-        format-val     (format-val-fn timezone cols x-axis-rowfn)
+        format-val     (format-val-fn timezone-id cols x-axis-rowfn)
         x-axis-values  (let [x-axis-values (map (comp format-val x-axis-rowfn) rows)
                              xmin          (apply min x-axis-values)
                              xmax          (apply max x-axis-values)
@@ -91,10 +90,11 @@
 
 (defn sparkline-rows
   "Get sorted rows from query results, with nils removed, appropriate for rendering as a sparkline."
-  [timezone card {:keys [rows cols], :as data}]
+  [timezone-id card {:keys [rows cols], :as data}]
+  {:pre [((some-fn nil? string?) timezone-id)]}
   (let [[x-axis-rowfn
          y-axis-rowfn] (common/graphing-column-row-fns card data)
-        format-val     (format-val-fn timezone cols x-axis-rowfn)]
+        format-val     (format-val-fn timezone-id cols x-axis-rowfn)]
     (common/non-nil-rows
      x-axis-rowfn
      y-axis-rowfn

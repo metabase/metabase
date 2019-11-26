@@ -19,7 +19,6 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.util
-             [date :as du]
              [date-2 :as u.date]
              [honeysql-extensions :as hx]
              [ssh :as ssh]])
@@ -163,7 +162,7 @@
 
 (defmethod unprepare/unprepare-value [:postgres Date]
   [_ value]
-  (format "'%s'::timestamp" (du/date->iso-8601 value)))
+  (format "'%s'::timestamp" (u.date/format value)))
 
 (prefer-method unprepare/unprepare-value [:sql Time] [:postgres Date])
 

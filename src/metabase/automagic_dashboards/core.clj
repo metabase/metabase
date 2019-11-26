@@ -3,14 +3,12 @@
    heuristics."
   (:require [buddy.core.codecs :as codecs]
             [cheshire.core :as json]
-            [clj-time
-             [core :as t]
-             [format :as t.format]]
             [clojure
              [string :as str]
              [walk :as walk]]
             [clojure.math.combinatorics :as combo]
             [clojure.tools.logging :as log]
+            [java-time :as t]
             [kixi.stats
              [core :as stats]
              [math :as math]]
@@ -39,12 +37,11 @@
             [metabase.query-processor.util :as qp.util]
             [metabase.sync.analyze.classify :as classify]
             [metabase.util
-             [date :as date]
+             [date-2 :as u.date]
              [i18n :as ui18n :refer [deferred-tru trs tru]]]
             [ring.util.codec :as codec]
             [schema.core :as s]
-            [toucan.db :as db])
-  (:import java.util.TimeZone))
+            [toucan.db :as db]))
 
 (def ^:private public-endpoint "/auto/dashboard/")
 
@@ -287,8 +284,10 @@
                                       :type
                                       :type/DateTime
                                       ((juxt :earliest :latest))
-                                      (map date/str->date-time))]
-    (condp > (t/in-hours (t/interval earliest latest))
+                                      (map u.date/parse))]
+    (condp > (let [t1 earliest
+                   t2 latest]
+               (.between java.time.temporal.ChronoUnit/HOURS t1 t2))
       3               :minute
       (* 24 7)        :hour
       (* 24 30 6)     :day
@@ -1070,7 +1069,7 @@
 
 (defn- pluralize
   [x]
-  (case (mod x 10)
+  (case (int (mod x 10))
     1 (tru "{0}st" x)
     2 (tru "{0}nd" x)
     3 (tru "{0}rd" x)
@@ -1078,33 +1077,29 @@
 
 (defn- humanize-datetime
   [dt unit]
-  (let [dt                     (date/str->date-time dt)
-        tz                     (.getID ^TimeZone @date/jvm-timezone)
-        unparse-with-formatter (fn [formatter dt]
-                                 (t.format/unparse
-                                  (t.format/formatter formatter (t/time-zone-for-id tz))
-                                  dt))]
+  (let [dt                     (u.date/parse dt)
+        unparse-with-formatter #(t/format % dt)]
     (case unit
       :second          (tru "at {0}" (unparse-with-formatter "h:mm:ss a, MMMM d, YYYY" dt))
       :minute          (tru "at {0}" (unparse-with-formatter "h:mm a, MMMM d, YYYY" dt))
       :hour            (tru "at {0}" (unparse-with-formatter "h a, MMMM d, YYYY" dt))
       :day             (tru "on {0}" (unparse-with-formatter "MMMM d, YYYY" dt))
       :week            (tru "in {0} week - {1}"
-                            (pluralize (date/date-extract :week-of-year dt tz))
-                            (str (date/date-extract :year dt tz)))
+                            (pluralize (u.date/extract dt :week-of-year))
+                            (str (u.date/extract dt :year)))
       :month           (tru "in {0}" (unparse-with-formatter "MMMM YYYY" dt))
       :quarter         (tru "in Q{0} - {1}"
-                            (date/date-extract :quarter-of-year dt tz)
-                            (str (date/date-extract :year dt tz)))
+                            (u.date/extract dt :quarter-of-year)
+                            (str (u.date/extract dt :year)))
       :year            (unparse-with-formatter "YYYY" dt)
       :day-of-week     (unparse-with-formatter "EEEE" dt)
       :hour-of-day     (tru "at {0}" (unparse-with-formatter "h a" dt))
       :month-of-year   (unparse-with-formatter "MMMM" dt)
-      :quarter-of-year (tru "Q{0}" (date/date-extract :quarter-of-year dt tz))
+      :quarter-of-year (tru "Q{0}" (u.date/extract dt :quarter-of-year))
       (:minute-of-hour
        :day-of-month
        :day-of-year
-       :week-of-year)  (date/date-extract unit dt tz))))
+       :week-of-year)  (u.date/extract dt unit))))
 
 (defn- field-reference->field
   [root field-reference]
@@ -1136,7 +1131,7 @@
    (->> field-reference (field-reference->field root) field-name))
   ([{:keys [display_name unit] :as field}]
    (cond->> display_name
-     (some-> unit date/date-extract-units) (tru "{0} of {1}" (unit-name unit)))))
+     (some-> unit u.date/extract-units) (tru "{0} of {1}" (unit-name unit)))))
 
 (defmethod humanize-filter-value :=
   [root [_ field-reference value]]

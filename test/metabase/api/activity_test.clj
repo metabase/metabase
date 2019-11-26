@@ -11,7 +11,6 @@
             [metabase.test.data.users :as test-users]
             [metabase.test.fixtures :as fixtures]
             [metabase.util :as u]
-            [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -41,19 +40,19 @@
 ;; NOTE: timestamp matching was being a real PITA so I cheated a bit.  ideally we'd fix that
 (tt/expect-with-temp [Activity [activity1 {:topic     "install"
                                            :details   {}
-                                           :timestamp (du/->Timestamp #inst "2015-09-09T12:13:14.888Z")}]
+                                           :timestamp #t "2015-09-09T12:13:14.888Z"}]
                       Activity [activity2 {:topic     "dashboard-create"
                                            :user_id   (test-users/user->id :crowberto)
                                            :model     "dashboard"
                                            :model_id  1234
                                            :details   {:description "Because I can!"
                                                        :name        "Bwahahaha"}
-                                           :timestamp (du/->Timestamp #inst "2015-09-10T18:53:01.632Z")}]
+                                           :timestamp #t "2015-09-10T18:53:01.632Z"}]
                       Activity [activity3 {:topic     "user-joined"
                                            :user_id   (test-users/user->id :rasta)
                                            :model     "user"
                                            :details   {}
-                                           :timestamp (du/->Timestamp #inst "2015-09-10T05:33:43.641Z")}]]
+                                           :timestamp #t "2015-09-10T05:33:43.641Z"}]]
   (let [activity-ids (fn [activity]
                        (db/select-one [Activity :id :user_id :details :model :model_id] :id (u/get-id activity)))]
     [(merge
@@ -92,7 +91,7 @@
     :user_id  user
     :model    model
     :model_id model-id
-    :timestamp (du/new-sql-timestamp))
+    :timestamp :%now)
   ;; we sleep a bit to ensure no events have the same timestamp
   ;; sadly, MySQL doesn't support milliseconds so we have to wait a second
   ;; otherwise our records are out of order and this test fails :(
@@ -194,7 +193,7 @@
   (db/delete! Activity)
   (-> (tt/with-temp Activity [activity {:topic     "user-joined"
                                         :details   {}
-                                        :timestamp (du/->Timestamp #inst "2019-02-15T11:55:00.000Z")}]
+                                        :timestamp #t "2019-02-15T11:55:00.000Z"}]
         ((test-users/user->client user) :get 200 "activity"))
       seq
       boolean))

@@ -64,7 +64,6 @@
                  commons-io
                  slingshot]]
    [clojure.java-time "0.3.2"]                                        ; Java 8 java.time wrapper
-   [clj-time "0.15.1"]                                                ; Joda-Time wrapper
    [clojurewerkz/quartzite "2.1.0"                                    ; scheduling library
     :exclusions [c3p0]]
    [colorize "0.1.1" :exclusions [org.clojure/clojure]]               ; string output with ANSI color codes (for logging)
@@ -320,14 +319,6 @@
    :uberjar
    {:auto-clean true
     :aot        :all}
-
-   ;; generate sample dataset with `lein generate-sample-dataset`
-   :generate-sample-dataset
-   {:dependencies
-    [[faker "0.3.2"]                                                     ; Fake data generator -- port of Perl/Ruby library
-     [jdistlib "0.5.1" :exclusions [com.github.wendykierp/JTransforms]]] ; Distribution statistic tests
-    :source-paths                                                        ["lein-commands/sample-dataset"]
-    :main                                                                ^:skip-aot metabase.sample-dataset.generate}
 
    ;; lein strip-and-compress my-plugin.jar [path/to/metabase.jar]
    ;; strips classes from my-plugin.jar that already exist in other JAR and recompresses with higher compression ratio.

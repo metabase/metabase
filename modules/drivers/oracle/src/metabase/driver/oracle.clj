@@ -74,12 +74,7 @@
                       (when sid
                         (str ":" sid))
                       (when service-name
-                        (str "/" service-name)))
-    ;; By default the Oracle JDBC driver isn't compliant with JDBC standards -- instead of returning types like
-    ;; java.sql.Timestamp it returns wacky types like oracle.sql.TIMESTAMPT. By setting this property the JDBC driver
-    ;; will return the appropriate types. See this page for more details:
-    ;; http://docs.oracle.com/database/121/JJDBC/datacc.htm#sthref437
-    :oracle.jdbc.J2EE13Compliant true}
+                        (str "/" service-name)))}
    (dissoc details :host :port :sid :service-name)))
 
 (defmethod driver/can-connect? :oracle

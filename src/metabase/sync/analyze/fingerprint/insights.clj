@@ -1,12 +1,13 @@
 (ns metabase.sync.analyze.fingerprint.insights
   "Deeper statistical analysis of results."
-  (:require [kixi.stats
+  (:require [java-time :as t]
+            [kixi.stats
              [core :as stats]
              [math :as math]]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :as field]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
-            [metabase.util.date :as du]
+            [metabase.util.date-2 :as u.date]
             [redux.core :as redux]))
 
 (defn- last-n
@@ -178,8 +179,8 @@
         xfn        #(some-> %
                             (nth x-position)
                             ;; at this point in the pipeline, dates are still stings
-                            f/->date
-                            (.getTime)
+                            f/->temporal
+                            t/to-millis-from-epoch
                             ms->day)]
     (apply redux/juxt
            (for [number-col numbers]
@@ -217,7 +218,7 @@
                                       (cond
                                         (#{:type/FK :type/PK} special_type) :others
                                         (= unit :year)                      :datetimes
-                                        (du/date-extract-units unit)        :numbers
+                                        (u.date/extract-units unit)         :numbers
                                         (field/unix-timestamp? field)       :datetimes
                                         (isa? base_type :type/Number)       :numbers
                                         (isa? base_type :type/Temporal)     :datetimes

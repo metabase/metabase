@@ -122,16 +122,6 @@
   [_ _ expr]
   (date-part :hour expr))
 
-;; jTDS is wack; I sense an ongoing theme here. It returns DATEs as strings instead of as java.sql.Dates like every
-;; other SQL DB we support. Work around that by casting to DATE for truncation then back to DATETIME so we get the
-;; type we want.
-;;
-;; TODO - I'm not sure we still need to do this now that we're using the official Microsoft JDBC driver. Maybe we can
-;; simplify this now?
-(defmethod sql.qp/date [:sqlserver :day]
-  [_ _ expr]
-  (hx/->datetime (hx/->date expr)))
-
 (defmethod sql.qp/date [:sqlserver :day-of-week]
   [_ _ expr]
   (date-part :weekday expr))

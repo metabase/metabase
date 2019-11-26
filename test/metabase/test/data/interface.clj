@@ -21,9 +21,7 @@
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.query-processor.store :as qp.store]
             [metabase.test.initialize :as initialize]
-            [metabase.util
-             [date :as du]
-             [schema :as su]]
+            [metabase.util.schema :as su]
             [potemkin.types :as p.types]
             [pretty.core :as pretty]
             [schema.core :as s]
@@ -130,7 +128,7 @@
   (when-not (contains? @has-loaded-extensions driver)
     (locking has-loaded-extensions
       (when-not (contains? @has-loaded-extensions driver)
-        (du/profile (format "Load %s test extensions" driver)
+        (u/profile (format "Load %s test extensions" driver)
           (require-driver-test-extensions-ns driver)
           ;; if it doesn't have test extensions yet, it may be because it's relying on a parent driver to add them (e.g.
           ;; Redshift uses Postgres' test extensions). Load parents as appropriate and try again

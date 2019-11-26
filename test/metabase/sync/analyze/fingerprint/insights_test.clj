@@ -52,40 +52,40 @@
 
 (expect
   true
-  (valid-period? #inst "2015-01" #inst "2015-02"))
+  (valid-period? #t "2015-01" #t "2015-02"))
 (expect
   true
-  (valid-period? #inst "2015-02" #inst "2015-03"))
+  (valid-period? #t "2015-02" #t "2015-03"))
 (expect
   false
-  (valid-period? #inst "2015-01" #inst "2015-03"))
+  (valid-period? #t "2015-01" #t "2015-03"))
 (expect
   false
-  (valid-period? #inst "2015-01" nil))
+  (valid-period? #t "2015-01" nil))
 (expect
   true
-  (valid-period? #inst "2015-01-01" #inst "2015-01-02"))
+  (valid-period? #t "2015-01-01" #t "2015-01-02"))
 (expect
   true
-  (valid-period? #inst "2015-01-01" #inst "2015-01-08"))
+  (valid-period? #t "2015-01-01" #t "2015-01-08"))
 (expect
   true
-  (valid-period? #inst "2015-01-01" #inst "2015-04-03"))
+  (valid-period? #t "2015-01-01" #t "2015-04-03"))
 (expect
   true
-  (valid-period? #inst "2015" #inst "2016"))
+  (valid-period? #t "2015" #t "2016"))
 (expect
   false
-  (valid-period? #inst "2015-01-01" #inst "2015-01-09"))
+  (valid-period? #t "2015-01-01" #t "2015-01-09"))
 (expect
   true
-  (valid-period? #inst "2015-01-01" #inst "2015-04-03" :quarter))
+  (valid-period? #t "2015-01-01" #t "2015-04-03" :quarter))
 (expect
   false
-  (valid-period? #inst "2015-01-01" #inst "2015-04-03" :month))
+  (valid-period? #t "2015-01-01" #t "2015-04-03" :month))
 (expect
   false
-  (valid-period? #inst "2015-01" #inst "2015-02" nil))
+  (valid-period? #t "2015-01" #t "2015-02" nil))
 
 
 ;; Make sure we don't return nosense results like infinitiy coeficients

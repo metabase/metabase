@@ -1,8 +1,6 @@
 (ns metabase.query-processor-test.expressions-test
   "Tests for expressions (calculated columns)."
-  (:require [clj-time
-             [coerce :as tcoerce]
-             [core :as time]]
+  (:require [clj-time.core :as time]
             [clojure.test :refer :all]
             [java-time :as t]
             [metabase
@@ -12,9 +10,7 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data.datasets :as datasets]
-            [metabase.util
-             [date :as du]
-             [date-2 :as u.date]]))
+            [metabase.util.date-2 :as u.date]))
 
 ;; Do a basic query including an expression
 (datasets/expect-with-drivers (qp.test/normal-drivers-with-feature :expressions)
@@ -30,17 +26,18 @@
          :limit       5
          :order-by    [[:asc $id]]}))))
 
-;; Make sure FLOATING POINT division is done
-(datasets/expect-with-drivers (qp.test/normal-drivers-with-feature :expressions)
-  [[1 "Red Medicine"           4 10.0646 -165.374 3 1.5] ; 3 / 2 SHOULD BE 1.5, NOT 1 (!)
-   [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 1.0]
-   [3 "The Apple Pan"         11 34.0406 -118.428 2 1.0]]
-  (qp.test/format-rows-by [int str int 4.0 4.0 int float]
-    (qp.test/rows
-      (data/run-mbql-query venues
-        {:expressions {:my-cool-new-field [:/ $price 2]}
-         :limit       3
-         :order-by    [[:asc $id]]}))))
+(deftest floating-point-division-test
+  (datasets/test-drivers (qp.test/normal-drivers-with-feature :expressions)
+    (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3 1.5] ; 3 / 2 SHOULD BE 1.5, NOT 1 (!)
+            [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 1.0]
+            [3 "The Apple Pan"         11 34.0406 -118.428 2 1.0]]
+           (qp.test/format-rows-by [int str int 4.0 4.0 int float]
+             (qp.test/rows
+               (data/run-mbql-query venues
+                 {:expressions {:my-cool-new-field [:/ $price 2]}
+                  :limit       3
+                  :order-by    [[:asc $id]]}))))
+        "Make sure FLOATING POINT division is done")))
 
 ;; Can we do NESTED EXPRESSIONS ?
 (datasets/expect-with-drivers (qp.test/normal-drivers-with-feature :expressions)
@@ -205,7 +202,7 @@
 (defn- maybe-truncate
   [dt]
   (if (= :sqlite driver/*driver*)
-    (->> dt (du/date-trunc :day) tcoerce/from-sql-date)
+    (u.date/truncate dt :day)
     dt))
 
 (defn- robust-dates

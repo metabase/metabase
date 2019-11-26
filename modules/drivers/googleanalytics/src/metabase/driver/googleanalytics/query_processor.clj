@@ -7,10 +7,10 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.store :as qp.store]
             [metabase.util
-             [date :as du]
              [date-2 :as u.date]
              [i18n :as ui18n :refer [deferred-tru tru]]
              [schema :as su]]
+            [metabase.util.date-2.parse :as u.date.parse]
             [schema.core :as s])
   (:import [com.google.api.services.analytics.model GaData GaData$ColumnHeaders]))
 
@@ -409,14 +409,14 @@
 
 (def ^:private ga-dimension->date-format-fn
   {"ga:minute"         parse-number
-   "ga:dateHour"       (partial du/parse-date "yyyyMMddHH")
+   "ga:dateHour"       (partial u.date.parse/parse-with-formatter "yyyyMMddHH")
    "ga:hour"           parse-number
-   "ga:date"           (partial du/parse-date "yyyyMMdd")
+   "ga:date"           (partial u.date.parse/parse-with-formatter "yyyyMMdd")
    "ga:dayOfWeek"      (comp inc parse-number)
    "ga:day"            parse-number
-   "ga:isoYearIsoWeek" (partial du/parse-date "xxxxww")
+   "ga:isoYearIsoWeek" (partial u.date.parse/parse-with-formatter "xxxxww")
    "ga:week"           parse-number
-   "ga:yearMonth"      (partial du/parse-date "yyyyMM")
+   "ga:yearMonth"      (partial u.date.parse/parse-with-formatter "yyyyMM")
    "ga:month"          parse-number
    "ga:year"           parse-number})
 

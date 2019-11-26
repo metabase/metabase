@@ -8,9 +8,9 @@
             [metabase.test.data.users :as test-users]
             [ring.mock.request :as mock]
             [toucan.db :as db]
+            [java-time :as t]
             [toucan.util.test :as tt])
-  (:import java.sql.Timestamp
-           java.util.UUID))
+  (:import java.util.UUID))
 
 ;; create a simple example of our middleware wrapped around a handler that simply returns the request
 (defn- auth-enforced-handler [request]
@@ -60,7 +60,7 @@
     (tt/with-temp Session [_ {:id      session-id
                               :user_id (test-users/user->id :rasta)}]
       (db/update-where! Session {:id session-id}
-        :created_at (Timestamp. 0))
+        :created_at (t/instant 0))
       (auth-enforced-handler
        (request-with-session-id session-id)))))
 
