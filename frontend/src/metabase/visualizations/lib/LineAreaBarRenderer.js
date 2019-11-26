@@ -896,6 +896,7 @@ export default function lineAreaBar(
     isSplitAxis: yAxisProps.isSplit,
     isStacked: isStacked(parent.settings, datas),
     formatYValue: getYValueFormatter(parent, series, yAxisProps.yExtent),
+    datas,
   });
 
   // only ordinal axis can display "null" values
