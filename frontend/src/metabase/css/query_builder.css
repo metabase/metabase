@@ -674,3 +674,11 @@
 .ParameterValuePickerNoPopover input::-webkit-input-placeholder {
   color: var(--color-text-medium);
 }
+
+/* TEMP - spot for value labels */
+text.value-label {
+  font-weight: 900;
+  paint-order: stroke;
+  stroke-width: 4px;
+  stroke: white;
+}

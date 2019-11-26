@@ -265,11 +265,11 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
   parent
     .append("svg:g")
     .classed("value-labels", true)
-    .selectAll("text.bar")
+    .selectAll("text.value-label")
     .data(data)
     .enter()
     .append("text")
-    .attr("class", "bar")
+    .attr("class", "value-label")
     // TODO - I wonder if we should move as much of this as possible to CSS land to make it
     // easier to
     .attr("text-anchor", "middle")
