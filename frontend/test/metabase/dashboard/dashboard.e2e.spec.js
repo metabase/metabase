@@ -358,5 +358,42 @@ describe("Dashboard", () => {
       await store.waitForActions([FETCH_DASHBOARD]);
       expect(app.find(".DashCard")).toHaveLength(1);
     });
+
+    it("displays the correct embed snippets", async () => {
+      checkDashboardWasCreated();
+
+      const store = await createTestStore();
+      const dashboardUrl = Urls.dashboard(dashboardId);
+      store.pushPath(dashboardUrl);
+      const app = mount(store.getAppContainer());
+      await store.waitForActions([FETCH_DASHBOARD]);
+      app.findByIcon("share").click();
+      app.findByText("Embed this dashboard in an application").click();
+      app.findByText("Code").click();
+      const [js, html] = app.find("TextEditor").map(n => n.prop("value"));
+      expect(js)
+        .toBe(`// you will need to install via 'npm install jsonwebtoken' or in your package.json
+
+var jwt = require("jsonwebtoken");
+
+var METABASE_SITE_URL = "http://localhost:4000";
+var METABASE_SECRET_KEY = "35e56b52a8dd9e806c8007865f300c078e1bb5ed18d5f9d3731a7a01d80a86f4";
+
+var payload = {
+  resource: { dashboard: ${dashboardId} },
+  params: {},
+  exp: Math.round(Date.now() / 1000) + (10 * 60) // 10 minute expiration
+};
+var token = jwt.sign(payload, METABASE_SECRET_KEY);
+
+var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=true&titled=true";`);
+      expect(html).toBe(`<iframe
+    src="{{iframeUrl}}"
+    frameborder="0"
+    width="800"
+    height="600"
+    allowtransparency
+></iframe>`);
+    });
   });
 });
