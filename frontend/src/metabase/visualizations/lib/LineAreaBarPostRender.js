@@ -260,6 +260,7 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
   const { display } = chart.settings.series(chart.series[0]);
 
   const MIN_LABEL_WIDTH = 10;
+  // $FlowFixMe
   const { width: chartWidth } = document
     .querySelector(".axis.x")
     .getBoundingClientRect();
@@ -297,24 +298,27 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
         (i === 0 || data[i - 1][1] > y) &&
         // last point point or next is greater than y
         (i === data.length - 1 || data[i + 1][1] > y);
-      const shouldShowBelow = isLocalMin && display == "line";
+      const shouldShowBelow = isLocalMin && display === "line";
       return yScale(y) + (shouldShowBelow ? 14 : -10);
     })
     .text(([, y]) => formatYValue(y, { compact: true }));
 
-  const totalWidth = [...document.querySelectorAll(".value-label")].reduce(
-    (sum, label) => sum + label.getBoundingClientRect().width,
-    0,
-  );
+  let totalWidth = 0;
+  for (const label of document.querySelectorAll(".value-label")) {
+    totalWidth += label.getBoundingClientRect().width;
+  }
 
+  const valueLabels = document.querySelector(".value-labels");
   if (totalWidth > chartWidth) {
     // This checks whether the labels are too crowded. It's an arbitrary cutoff
     // that probably let's them get a bit too crowded before removing them.
-    document.querySelector(".value-labels").remove();
+    // $FlowFixMe
+    valueLabels.remove();
   } else {
     // If they're not too crowded and we're keeping them, move the containing
     // '.chart-body' element to the top.
-    moveToTop(document.querySelector(".value-labels").parentNode);
+    // $FlowFixMe
+    moveToTop(valueLabels.parentNode);
   }
 }
 
