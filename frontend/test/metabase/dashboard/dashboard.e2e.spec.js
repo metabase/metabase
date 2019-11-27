@@ -29,6 +29,8 @@ import Question from "metabase/entities/questions";
 import Search from "metabase/entities/search";
 import Revisions from "metabase/entities/revisions";
 
+import { updateSetting } from "metabase/admin/settings/settings";
+
 import EditBar from "metabase/components/EditBar";
 
 import { delay } from "metabase/lib/promise";
@@ -363,11 +365,22 @@ describe("Dashboard", () => {
       checkDashboardWasCreated();
 
       const store = await createTestStore();
+      await store.dispatch(
+        updateSetting({ key: "enable-embedding", value: true }),
+      );
+
+      await store.dispatch(
+        updateSetting({
+          key: "embedding-secret-key",
+          value:
+            "2547733eb6a2fc0ff405f43ca94433b90b8f49aa2c667c39d3c7ce8750fcf1af",
+        }),
+      );
+
       const dashboardUrl = Urls.dashboard(dashboardId);
       store.pushPath(dashboardUrl);
       const app = mount(store.getAppContainer());
       await store.waitForActions([FETCH_DASHBOARD]);
-      await delay(1000);
       app.findByIcon("share").click();
       app.findByText("Embed this dashboard in an application").click();
       app.findByText("Code").click();
@@ -378,7 +391,7 @@ describe("Dashboard", () => {
 var jwt = require("jsonwebtoken");
 
 var METABASE_SITE_URL = "http://localhost:4000";
-var METABASE_SECRET_KEY = "35e56b52a8dd9e806c8007865f300c078e1bb5ed18d5f9d3731a7a01d80a86f4";
+var METABASE_SECRET_KEY = "2547733eb6a2fc0ff405f43ca94433b90b8f49aa2c667c39d3c7ce8750fcf1af";
 
 var payload = {
   resource: { dashboard: ${dashboardId} },
@@ -395,6 +408,10 @@ var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=tru
     height="600"
     allowtransparency
 ></iframe>`);
+
+      await store.dispatch(
+        updateSetting({ key: "enable-embedding", value: false }),
+      );
     });
   });
 });
