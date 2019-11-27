@@ -250,7 +250,17 @@ function onRenderVoronoiHover(chart) {
 function onRenderValueLabels(chart, formatYValue, [data]) {
   // Do nothing if there is nothing to do
   if (!chart.settings["graph.show_values"]) {
-    return false;
+    return;
+  }
+
+  const MIN_LABEL_WIDTH = 10;
+  const { width: chartWidth } = document
+    .querySelector(".chart-body")
+    .getBoundingClientRect();
+  // We check the acutal rendered labels for density later. Here we avoid
+  // rendering the labels at all if there's less than 10px per data point.
+  if (data.length * MIN_LABEL_WIDTH > chartWidth) {
+    return;
   }
 
   // use the chart body so things line up properly
@@ -276,6 +286,21 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
     .attr("x", ([x]) => xScale(x))
     .attr("y", ([, y]) => yScale(y) - 8)
     .text(([, y]) => formatYValue(y, { compact: true }));
+
+  const totalWidth = [...document.querySelectorAll(".value-label")].reduce(
+    (sum, label) => sum + label.getBoundingClientRect().width,
+    0,
+  );
+
+  if (totalWidth > chartWidth) {
+    // This checks whether the labels are too crowded. It's an arbitrary cutoff
+    // that probably let's them get a bit too crowded before removing them.
+    document.querySelector(".value-labels").remove();
+  } else {
+    // If they're not too crowded and we're keeping them, move the containing
+    // '.chart-body' element to the top.
+    moveToTop(document.querySelector(".value-labels").parentNode);
+  }
 }
 
 function onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis) {
