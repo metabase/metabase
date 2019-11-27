@@ -253,9 +253,15 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
     return;
   }
 
+  // Only show lables on single series
+  if (chart.series.length > 1) {
+    return;
+  }
+  const { display } = chart.settings.series(chart.series[0]);
+
   const MIN_LABEL_WIDTH = 10;
   const { width: chartWidth } = document
-    .querySelector(".chart-body")
+    .querySelector(".axis.x")
     .getBoundingClientRect();
   // We check the acutal rendered labels for density later. Here we avoid
   // rendering the labels at all if there's less than 10px per data point.
@@ -283,8 +289,17 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
     // TODO - I wonder if we should move as much of this as possible to CSS land to make it
     // easier to
     .attr("text-anchor", "middle")
+    .attr("alignment-baseline", "middle")
     .attr("x", ([x]) => xScale(x))
-    .attr("y", ([, y]) => yScale(y) - 8)
+    .attr("y", ([, y], i) => {
+      const isLocalMin =
+        // first point or prior is greater than y
+        (i === 0 || data[i - 1][1] > y) &&
+        // last point point or next is greater than y
+        (i === data.length - 1 || data[i + 1][1] > y);
+      const shouldShowBelow = isLocalMin && display == "line";
+      return yScale(y) + (shouldShowBelow ? 14 : -10);
+    })
     .text(([, y]) => formatYValue(y, { compact: true }));
 
   const totalWidth = [...document.querySelectorAll(".value-label")].reduce(
