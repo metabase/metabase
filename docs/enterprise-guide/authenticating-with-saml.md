@@ -29,11 +29,9 @@ So, first you'll need to make sure things are configured correctly with your IdP
 
 The top portion of the form in Metabase has some of the information you'll need, with buttons to make copying the information easy.
 
-**URL the IdP should redirect back to**
-This is called something different in each IdP. Okta calls it "Single Sign On URL," Auth0 calls it the "Application Callback URL," and OneLogin calls it the "ACS (Consumer) URL." This is the URL that your IdP should redirect users back to after they authenticate, and it needs to be the URL where Metabase is hosted, with `/auth/sso` at the end.
+**URL the IdP should redirect back to:** this is called something different in each IdP. Okta calls it "Single Sign On URL," Auth0 calls it the "Application Callback URL," and OneLogin calls it the "ACS (Consumer) URL." This is the URL that your IdP should redirect users back to after they authenticate, and it needs to be the URL where Metabase is hosted, with `/auth/sso` at the end.
 
-**SAML attributes**
-Metabase will automatically log in users authenticated with your SAML
+**SAML attributes:** Metabase will automatically log in users authenticated with your SAML
 identity provider, but in order to do so the SAML assertion _must_
 contain attributes for each user's first name, last name, and email. The assertion should look something like the following:
 
@@ -91,17 +89,15 @@ We've pulled the attributes out of the XML above for easy copy/pasting into your
 | `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress` | user.email     |
 | `http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname`      | user.lastName  |
 
-**Important note**
-The email address _attribute_ is used to log in an end-user into a corresponding Metabase account (creating it if needed). So it's extremely critical that this email address **must not be editable** by end-users themselves. Otherwise they could potentially access Metabase accounts other than their own by changing their email address.
+**Important note:** the email address _attribute_ is used to log in an end-user into a corresponding Metabase account (creating it if needed). So it's extremely critical that this email address **must not be editable** by end-users themselves. Otherwise they could potentially access Metabase accounts other than their own by changing their email address.
 
-That should be all the info you'll need to get from Metabase while setting up SAML in your IdP, but keep your IdP open for the next step — you'll need to get some information from there to put into Metabase now.
+That should be all the info you'll need to get from Metabase while setting up SAML in your IdP, but keep your IdP open for the next step — you'll need to get some information there to put into Metabase now.
 
 ### Enabling SAML authentication in Metabase
 
-Metabase now will need to know some things about your IdP. Here's a breakdown of each of the settings:
+Metabase will now need to know some things about your IdP. Here's a breakdown of each of the settings:
 
-**SAML Identity Provider URL**
-This is where Metabase will redirect login requests. That is, it's where your users go to log in to your SSO. Your IdP may label it a little differently. Here are some of the names we've found:
+**SAML Identity Provider URL:** This is where Metabase will redirect login requests. That is, it's where your users go to log in to your SSO. Your IdP may label it a little differently. Here are some of the names we've found:
 
 | Provider | Name                                 |
 | -------- | ------------------------------------ |
@@ -109,8 +105,7 @@ This is where Metabase will redirect login requests. That is, it's where your us
 | Okta     | Identity Provider Single-Sign On URL |
 | OneLogin | Issuer URL                           |
 
-**SAML Identity Provider Certificate**
-This is an encoded certificate that Metabase will use when connecting to the IdP URI. This will look like a big blob of text that you'll want to copy and paste carefully — the spacing is important! Your IdP might have you download this certificate as a file, which you'll then need to open up in a text editor in order to copy the contents to then paste into the box in Metabase. Again, different providers may have slightly different labels for this:
+**SAML Identity Provider Certificate:** This is an encoded certificate that Metabase will use when connecting to the IdP URI. This will look like a big blob of text that you'll want to copy and paste carefully — the spacing is important! Your IdP might have you download this certificate as a file, which you'll then need to open up in a text editor in order to copy the contents to then paste into the box in Metabase. Again, different providers may have slightly different labels for this:
 
 | Provider | Name                |
 | -------- | ------------------- |
@@ -130,7 +125,7 @@ These are additional settings you can fill in to sign SSO requests to ensure the
 
 ### Synchronizing group membership with your IdP
 
-This setting allows you to assign users to Metabase groups based on an attribute of your users in your IdP. Please note that this may not correlate to group functionality provided by your IdP - you may need to create a separate attribute on your users to set their Metabase group, like `metabaseGroups`.
+This setting allows you to assign users to Metabase groups based on an attribute of your users in your IdP. Please note that this may not correlate to group functionality provided by your IdP — you may need to create a separate attribute on your users to set their Metabase group, like `metabaseGroups`.
 
 #### Configuring the group schema in your IdP
 
@@ -159,7 +154,7 @@ Here are a few things to double check if you're experiencing issues setting up y
 - Verify that the application you created in your IdP supports SAML. Sometimes other options are presented during the app creation process.
 - Read all field labels and tooltips carefully. Since SAML providers each use different labeling for their fields, it's important to make sure the correct information is being placed into the correct fields.
 - Set your attributes and check your assertions! Many SAML providers make this pretty easy to do - just look for a button marked "Preview the SAML assertion."
-- Verify that the Single Sign On URL (or equivalent) that you enter on your SAML provider's website has "/auth/sso" appended to it. For instance, if you want your users to end up at `https://metabase.mycompany.com`, the full URL should be `https://metabase.mycompany.com/auth/sso`.
+- Verify that the Single Sign On URL (or equivalent) that you enter on your SAML provider's website has `/auth/sso` appended to it. For instance, if you want your users to end up at `https://metabase.mycompany.com`, the full URL should be `https://metabase.mycompany.com/auth/sso`
 
 ### Disabling password log-in
 
