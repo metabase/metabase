@@ -367,7 +367,7 @@ describe("Dashboard", () => {
       store.pushPath(dashboardUrl);
       const app = mount(store.getAppContainer());
       await store.waitForActions([FETCH_DASHBOARD]);
-      await delay(100);
+      await delay(1000);
       app.findByIcon("share").click();
       app.findByText("Embed this dashboard in an application").click();
       app.findByText("Code").click();
