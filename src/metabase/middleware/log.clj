@@ -101,7 +101,8 @@
 
 (defn- log-info [{{:keys [status]} :response, :as info}]
   (try
-    (let [{:keys [color log-fn], :as opts} (some #(when ((:status-pred %) status)
+    (let [{:keys [color log-fn], :as opts} (some #(when (and (some? status)
+                                                             ((:status-pred %) status))
                                                     %)
                                                  log-options)]
       (log-fn (u/format-color color (format-info info opts))))
