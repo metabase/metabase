@@ -19,7 +19,8 @@
    "test"                              ["with-profile" "+test" "test"]
    "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed"
                                         "--max-line-length" "205"
-                                        "--exclude-profiles" "compare-h2-dbs"]
+                                        ;; see https://github.com/dakrone/lein-bikeshed/issues/41
+                                        "--exclude-profiles" "compare-h2-dbs,dev"]
    "check-namespace-decls"             ["with-profile" "+check-namespace-decls" "check-namespace-decls"]
    "eastwood"                          ["with-profile" "+eastwood" "eastwood"]
    "check-reflection-warnings"         ["with-profile" "+reflection-warnings" "check"]
@@ -103,12 +104,11 @@
                  javax.jms/jms
                  com.sun.jdmk/jmxtools
                  com.sun.jmx/jmxri]]
-   [me.raynes/fs "1.4.6"]                                   ; FS tools
+   [me.raynes/fs "1.4.6"]                                             ; Filesystem tools
    [medley "1.2.0"]                                                   ; lightweight lib of useful functions
    [metabase/connection-pool "1.0.3"]                                 ; simple wrapper around C3P0. JDBC connection pools
    [metabase/mbql "1.3.6"]                                            ; MBQL language schema & util fns
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
-   [methodical "0.9.4-alpha"]
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
    [org.apache.commons/commons-lang3 "3.9"]                           ; helper methods for working with java.lang stuff
    [org.clojars.pntblnk/clj-ldap "0.0.16"]                            ; LDAP client
@@ -116,7 +116,7 @@
    [org.flatland/ordered "1.5.7"]                                     ; ordered maps & sets
    [org.liquibase/liquibase-core "3.6.3"                              ; migration management (Java lib)
     :exclusions [ch.qos.logback/logback-classic]]
-   [org.mariadb.jdbc/mariadb-java-client "2.3.0"]                     ; MySQL/MariaDB driver
+   [org.mariadb.jdbc/mariadb-java-client "2.5.1"]                     ; MySQL/MariaDB driver
    [org.postgresql/postgresql "42.2.5"]                               ; Postgres driver
    [org.slf4j/slf4j-log4j12 "1.7.25"]                                 ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
    [org.tcrawley/dynapath "1.0.0"]                                    ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
@@ -130,7 +130,7 @@
    [ring/ring-jetty-adapter "1.7.1"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
    [ring/ring-json "0.4.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
-   [toucan "1.14.0" :exclusions [org.clojure/java.jdbc honeysql]]     ; Model layer, hydration, and DB utilities
+   [toucan "1.15.0" :exclusions [org.clojure/java.jdbc honeysql]]     ; Model layer, hydration, and DB utilities
    [weavejester/dependency "0.2.1"]                                   ; Dependency graphs and topological sorting
    ]
 
@@ -164,6 +164,7 @@
 
     :dependencies
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
+     [methodical "0.9.4-alpha"]
      [pjstadig/humane-test-output "0.9.0"]
      [ring/ring-mock "0.3.2"]]
 
@@ -242,7 +243,10 @@
 
    :include-all-drivers
    [:with-include-drivers-middleware
-    {:include-drivers :all}]
+   {:include-drivers :all
+    :injections
+    [(require 'metabase.plugins)
+     (metabase.plugins/load-plugins!)]}]
 
    :repl
    [:include-all-drivers
@@ -251,18 +255,17 @@
    :bikeshed
    [:include-all-drivers
     {:plugins
-     [[lein-bikeshed "0.4.1"]]}]
+     [[lein-bikeshed "0.5.2"]]}]
 
    :eastwood
    [:include-all-drivers
     {:plugins
-     [[jonase/eastwood "0.3.1" :exclusions [org.clojure/clojure]]]
+     [[jonase/eastwood "0.3.6" :exclusions [org.clojure/clojure]]]
 
      :eastwood
-     {:exclude-namespaces [:test-paths dev]
+     {:exclude-namespaces [:test-paths dev dev.test]
       :config-files       ["./test_resources/eastwood-config.clj"]
       :add-linters        [:unused-private-vars
-                           :unused-namespaces
                            ;; These linters are pretty useful but give a few false positives and can't be selectively
                            ;; disabled (yet)
                            ;;
@@ -273,8 +276,12 @@
                            ;; get them to work
                            #_:unused-fn-args
                            #_:unused-locals]
-      ;; Turn this off temporarily until we finish removing self-deprecated functions & macros
-      :exclude-linters    [:deprecations]}}]
+      :exclude-linters    [; Turn this off temporarily until we finish removing self-deprecated functions & macros
+                           :deprecations
+                           ;; this has a fit in libs that use Potemin `import-vars` such as `java-time`
+                           :implicit-dependencies
+                           ;; too many false positives for now
+                           :unused-ret-vals]}}]
 
    ;; run ./bin/reflection-linter to check for reflection warnings
    :reflection-warnings

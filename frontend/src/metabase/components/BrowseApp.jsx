@@ -152,9 +152,7 @@ export class TableBrowser extends React.Component {
                                   </Link>
                                 ),
                                 <Link
-                                  to={`reference/databases/${dbId}/tables/${
-                                    table.id
-                                  }`}
+                                  to={`reference/databases/${dbId}/tables/${table.id}`}
                                   data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;Reference Click`}
                                   className="link--icon ml1"
                                 >

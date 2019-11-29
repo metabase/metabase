@@ -990,7 +990,7 @@
 
 (deftest additional-unit-filtering-tests
   (testing "Additional tests for filtering against various datetime bucketing units that aren't tested above"
-    (datasets/test-drivers qp.test/non-timeseries-drivers
+    (datasets/test-drivers @qp.test/non-timeseries-drivers
       (doseq [[expected-count unit filter-value] addition-unit-filtering-vals]
         (testing unit
           (let [result (count-of-checkins unit filter-value)]

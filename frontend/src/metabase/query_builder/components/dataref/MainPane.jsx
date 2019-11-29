@@ -12,6 +12,7 @@ const MainPane = ({ databases, show }) => (
     <ul>
       {databases &&
         databases
+          .filter(db => !db.is_saved_questions)
           .filter(db => db.tables && db.tables.length > 0)
           .map(database => (
             <li className="mb2" key={database.id}>

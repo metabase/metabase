@@ -5,7 +5,7 @@ declare var ace: any;
 
 import { createAction } from "redux-actions";
 import _ from "underscore";
-import { assocIn, updateIn } from "icepick";
+import { assocIn, getIn, updateIn } from "icepick";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -61,7 +61,7 @@ import Tables from "metabase/entities/tables";
 import Databases from "metabase/entities/databases";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { clearRequestState } from "metabase/redux/requests";
+import { setRequestUnloaded } from "metabase/redux/requests";
 
 import type { Card } from "metabase/meta/types/Card";
 
@@ -307,8 +307,9 @@ export const initializeQB = (location, params) => {
     };
 
     // always start the QB by loading up the databases for the application
+    let databaseFetch;
     try {
-      dispatch(
+      databaseFetch = dispatch(
         Databases.actions.fetchList({
           include_tables: true,
           include_cards: true,
@@ -447,7 +448,18 @@ export const initializeQB = (location, params) => {
     }
     // Fetch the question metadata (blocking)
     if (card) {
-      await dispatch(loadMetadataForCard(card));
+      // ensure that the database fetch completed before getting the tables
+      if (databaseFetch) {
+        await databaseFetch;
+      }
+      const { tables } = getMetadata(getState());
+      const tableId = getIn(card, ["dataset_query", "query", "source-table"]);
+      // Only fetch the table metadata if the table was returned in the earlier
+      // call to fetch databases and tables. Otherwise, this user doesn't have
+      // permissions and the call will fail.
+      if (tables[tableId] != null) {
+        await dispatch(loadMetadataForCard(card));
+      }
     }
 
     // Update the question to Redux state together with the initial state of UI controls
@@ -537,11 +549,11 @@ export const loadMetadataForCard = createThunkAction(
       const query = new Question(card, getMetadata(getState())).query();
       if (query instanceof StructuredQuery) {
         try {
-          const rootTable = query.rootTable();
-          if (rootTable) {
+          const rootTableId = query.rootTableId();
+          if (rootTableId != null) {
             await Promise.all([
-              dispatch(Tables.actions.fetchTableMetadata(rootTable)),
-              dispatch(Tables.actions.fetchForeignKeys(rootTable)),
+              dispatch(Tables.actions.fetchTableMetadata({ id: rootTableId })),
+              dispatch(Tables.actions.fetchForeignKeys({ id: rootTableId })),
             ]);
           }
           await Promise.all(
@@ -820,7 +832,7 @@ export const apiCreateQuestion = question => {
     // remove the databases in the store that are used to populate the QB databases list.
     // This is done when saving a Card because the newly saved card will be eligible for use as a source query
     // so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
-    dispatch(clearRequestState({ statePath: ["entities", "databases"] }));
+    dispatch(setRequestUnloaded(["entities", "databases"]));
 
     dispatch(updateUrl(createdQuestion.card(), { dirty: false }));
     MetabaseAnalytics.trackEvent(
@@ -857,7 +869,7 @@ export const apiUpdateQuestion = question => {
     // remove the databases in the store that are used to populate the QB databases list.
     // This is done when saving a Card because the newly saved card will be eligible for use as a source query
     // so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
-    dispatch(clearRequestState({ statePath: ["entities", "databases"] }));
+    dispatch(setRequestUnloaded(["entities", "databases"]));
 
     dispatch(updateUrl(updatedQuestion.card(), { dirty: false }));
     MetabaseAnalytics.trackEvent(

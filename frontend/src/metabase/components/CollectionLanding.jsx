@@ -591,9 +591,7 @@ const PinnedItem = ({ item, index, collection }) => (
           <Box
             ml="auto"
             className="hover-child"
-            data-metabase-event={`${ANALYTICS_CONTEXT};Pinned Item;Unpin;${
-              item.model
-            }`}
+            data-metabase-event={`${ANALYTICS_CONTEXT};Pinned Item;Unpin;${item.model}`}
             onClick={ev => {
               ev.preventDefault();
               item.setPinned(false);

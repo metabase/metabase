@@ -2,7 +2,7 @@
 
 import { createSelector } from "reselect";
 import _ from "underscore";
-import { getIn } from "icepick";
+import { getIn, updateIn } from "icepick";
 
 // Needed due to wrong dependency resolution order
 // eslint-disable-next-line no-unused-vars
@@ -149,10 +149,36 @@ export const getIsResultDirty = createSelector(
     getNextRunDatasetQuery,
     getLastRunParameterValues,
     getNextRunParameterValues,
+    getTableMetadata,
   ],
-  (lastDatasetQuery, nextDatasetQuery, lastParameters, nextParameters) =>
-    !Utils.equals(lastDatasetQuery, nextDatasetQuery) ||
-    !Utils.equals(lastParameters, nextParameters),
+  (
+    lastDatasetQuery,
+    nextDatasetQuery,
+    lastParameters,
+    nextParameters,
+    tableMetadata,
+  ) => {
+    // this function sorts fields so that reordering doesn't dirty the result
+    const queryWithSortedFields = query =>
+      query && query.query && tableMetadata
+        ? updateIn(query, ["query", "fields"], fields => {
+            fields = fields
+              ? // if the query has fields, copy them before sorting
+                [...fields]
+              : // if the fields aren't set, we get them from the table metadata
+                tableMetadata.fields.map(({ id }) => ["field-id", id]);
+            return fields.sort((a, b) =>
+              JSON.stringify(b).localeCompare(JSON.stringify(a)),
+            );
+          })
+        : query;
+    lastDatasetQuery = queryWithSortedFields(lastDatasetQuery);
+    nextDatasetQuery = queryWithSortedFields(nextDatasetQuery);
+    return (
+      !Utils.equals(lastDatasetQuery, nextDatasetQuery) ||
+      !Utils.equals(lastParameters, nextParameters)
+    );
+  },
 );
 
 export const getQuestion = createSelector(

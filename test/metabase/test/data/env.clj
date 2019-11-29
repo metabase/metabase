@@ -14,11 +14,12 @@
             [metabase.test.data.env.impl :as impl]
             [metabase.test.initialize :as initialize]))
 
-(defonce ^{:doc (str "Set of names of drivers we should run tests against. By default, this only contains `:h2` but can"
-                     " be overriden by setting env var `DRIVERS`.")}
+(defonce ^{:doc "Set of names of drivers we should run tests against. By default, this only contains `:h2` but can be
+  overriden by setting env var `DRIVERS`."}
   test-drivers
-  (let [drivers (impl/get-test-drivers)]
-    (log/info (color/cyan "Running QP tests against these drivers: " drivers))
-    (when-not (= drivers #{:h2})
-      (initialize/initialize-if-needed! :plugins))
-    drivers))
+  (delay
+    (let [drivers (impl/get-test-drivers)]
+      (log/info (color/cyan "Running QP tests against these drivers: " drivers))
+      (when-not (= drivers #{:h2})
+        (initialize/initialize-if-needed! :plugins))
+      drivers)))

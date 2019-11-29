@@ -1,22 +1,32 @@
 (ns metabase.test.data.datasets
-  "Interface + implementations for loading test datasets for different drivers, and getting information about the
-  dataset's tables, fields, etc.
+  "Utility functions and macros for running tests against multiple drivers. When writing a test, you normally define all
+  the drivers it *can* run against, e.g.
 
-  TODO - rename this to `metabase.driver.test-extensions.expect` or `metabase.driver.test` or something like that"
+    (deftest my-test
+      ;; run tests against all drivers except Druid
+      (datasets/test-drivers qp.test/non-timeseries-drivers
+        ...))
+
+  When the test suite is ran, those tests will be ran against the subset of those drivers that are present in the
+  `DRIVERS` env var.
+
+  TODO - this namespace name really doesn't make a lot of sense. How about `metabase.test.driver` or something like
+  that?"
   (:require [clojure.test :as t]
+            [colorize.core :as colorize]
             [metabase.driver :as driver]
             [metabase.test.data
              [env :as tx.env]
              [interface :as tx]]))
 
-;; # Helper Macros
-
 (defn do-when-testing-driver
-  "Call function `f` (always with no arguments) *only* if we are currently testing against `driver`.
-   (This does NOT bind `*driver*`; use `driver/with-driver` if you want to do that.)"
+  "Call function `f` (always with no arguments) *only* if we are currently testing against `driver` (i.e., if `driver`
+  is listed in the `DRIVERS` env var.)
+
+  (This does NOT bind `*driver*`; use `driver/with-driver` if you want to do that.)"
   {:style/indent 1}
   [driver f]
-  (when (contains? tx.env/test-drivers driver)
+  (when (contains? @tx.env/test-drivers driver)
     (f)))
 
 (defmacro when-testing-driver
@@ -41,7 +51,7 @@
   {:style/indent 1}
   [driver & body]
   `(with-driver-when-testing ~driver
-     (t/testing ~driver
+     (t/testing (colorize/cyan ~driver)
        ~@body)))
 
 (defmacro test-drivers
@@ -89,7 +99,7 @@
   "Execute body (presumably containing tests) against all drivers we're currently testing against."
   {:style/indent 0}
   [& body]
-  `(test-drivers tx.env/test-drivers ~@body))
+  `(test-drivers @tx.env/test-drivers ~@body))
 
 (defmacro ^:deprecated expect-with-all-drivers
   "Generate unit tests for all drivers specified in env var `DRIVERS`. `*driver*` is bound to the current driver inside
@@ -102,4 +112,4 @@
         (is (= ...))))"
   {:style/indent 0}
   [expected actual]
-  `(expect-with-drivers tx.env/test-drivers ~expected ~actual))
+  `(expect-with-drivers @tx.env/test-drivers ~expected ~actual))

@@ -9,12 +9,12 @@ import {
   restorePreviousLogin,
   waitForRequestToComplete,
   eventually,
-} from "__support__/e2e_tests";
+} from "__support__/e2e";
 
 import _ from "underscore";
 import jwt from "jsonwebtoken";
 
-import { click, clickButton, setInputValue } from "__support__/enzyme_utils";
+import { click, clickButton, setInputValue } from "__support__/enzyme";
 
 import { mount } from "enzyme";
 
@@ -64,8 +64,7 @@ import PreviewPane from "metabase/public/components/widgets/PreviewPane";
 import CopyWidget from "metabase/components/CopyWidget";
 import ListSearchField from "metabase/components/ListSearchField";
 import * as Urls from "metabase/lib/urls";
-import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
-import EmbedWidget from "metabase/public/components/widgets/EmbedWidget";
+import { QuestionEmbedWidgetTrigger } from "metabase/query_builder/containers/QuestionEmbedWidget";
 
 import { CardApi, DashboardApi, SettingsApi } from "metabase/services";
 
@@ -242,7 +241,7 @@ describe("public/embedded", () => {
       await delay(500);
 
       // open sharing panel
-      click(app.find(QuestionEmbedWidget).find(EmbedWidget));
+      click(app.find(QuestionEmbedWidgetTrigger));
 
       // "Embed this question in an application"
       click(

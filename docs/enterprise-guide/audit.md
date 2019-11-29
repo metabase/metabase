@@ -1,18 +1,18 @@
 ## Audit Logs
 
-As an administrator of Metabase, you already know the importance of using data to understand your users. With the Audit tool, you can use Metabase to understand your Metabase user's usage. It's, well, meta!
+As an administrator of Metabase, you already know the importance of using data to understand your users. With the Audit tool, you can use Metabase to understand your Metabase users' usage. It's, well, meta! 
 
-Access the tool by clicking the gear icon in the upper right and then clicking Audit in the top navigation. There's a lot of data available, not only about your people, but also about your questions, dashboard, databases and more! We'll walk you through each of the sections below.
+Access the tool by clicking the gear icon in the upper right and then clicking Audit in the top navigation. There's a lot of data available, not only about your people, but also about your questions, dashboards, databases and more! We'll walk you through each of the sections below.
 
 ### People
 
-Use the People section to gain a better understanding of how your end-users are interacting with Metabase. You'll want to pay attention to the Overview Tab, especially when you first launch Metabase at your organization - it will give you data around how many active and newly created users you have each day. Further down the page, you'll see charts showing you which of your users are most engaged. Use these charts to find your power users!
+Use the People section to gain a better understanding of how your end-users are interacting with Metabase. You'll want to pay attention to the Overview tab, especially when you first launch Metabase at your organization — it will give you data around how many active and newly created users you have each day. Further down the page, you'll see charts showing you which of your users are most engaged. Use these charts to find your power users!
 
 ![Team Members](./images/audit-team.png)
 
-The Team members panel has a view other options for viewing your team's usage data. The All members tab will give you a list of your team members, and stats about their activity, such as when they were last active.
+The Team Members panel has a view of other options for viewing your team's usage data. The All Members tab will give you a list of your team members, and stats about their activity, such as when they were last active.
 
-The Audit log tab will display, in chronological order, each query, who viewed it, and when. Note that if the user did not save their query, the Name will be listed as Ad-hoc. Each query name can be clicked to view more details about your user's interactions with it, including a full revision history. You will also be able to view the query in Metabase. Note that this link will always show the latest version of the query - use the revision history to see changes over time.
+The Audit Log tab will display, in chronological order, each query, who viewed it, and when. Note that if the user did not save their query, its name will be listed as `Ad-hoc`. Each query name can be clicked to view more details about your users' interactions with it, including a full revision history. You will also be able to view the query in Metabase. Note that this link will always show the latest version of the query - use the revision history to see changes over time.
 
 #### Drilling In
 
@@ -38,7 +38,7 @@ The Items section focuses on questions, dashboards and downloads, and is divided
 
 The Questions section will show you your most popular queries, as well as your slowest queries. If queries you think are important aren't appearing on your most popular queries list, you may want to make sure your team is focusing on the right things.
 
-If important queries are appearing on the list of slowest queries, you will want to look at optimizing them. One option is to adjust your [caching settings](../administration-guide/14-caching.md), but there are plenty of other options as well. To help you determine if your optimization efforts are heading in the right direction, use the Query views and speed per day visualization at the bottom of the page.
+If important queries are appearing on the list of slowest queries, you will want to look at optimizing them. One option is to adjust your [caching settings](../administration-guide/14-caching.md), but there are plenty of other options as well. To help you determine if your optimization efforts are heading in the right direction, use the `Query views and speed per day` visualization at the bottom of the page.
 
 ![Items](./images/audit-questions.png)
 
@@ -62,4 +62,4 @@ A list of all of your dashboards is available as well, and you can see various d
 
 #### Downloads
 
-Use the Downloads section to understand which of your users are downloading (or exporting data) and the size (number of rows) of the downloads they're performing. This section contains some visualizations, as well as a list of all of all downloads.
+Use the Downloads section to understand which of your users are downloading (or exporting) data and the size (number of rows) of the downloads they're performing. This section contains some visualizations, as well as a list of all downloads.

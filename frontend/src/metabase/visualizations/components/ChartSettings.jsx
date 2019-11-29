@@ -136,7 +136,13 @@ class ChartSettings extends Component {
   }
 
   render() {
-    const { question, addField, noPreview, children } = this.props;
+    const {
+      question,
+      addField,
+      noPreview,
+      children,
+      setSidebarPropsOverride,
+    } = this.props;
     const { currentWidget } = this.state;
 
     const settings = this._getSettings();
@@ -208,6 +214,7 @@ class ChartSettings extends Component {
         key={`${widget.id}`}
         {...widget}
         {...extraWidgetProps}
+        setSidebarPropsOverride={setSidebarPropsOverride}
       />
     ));
 
@@ -225,10 +232,19 @@ class ChartSettings extends Component {
       });
     }
 
+    const showSectionPicker =
+      // don't show section tabs for a single section
+      sectionNames.length > 1 &&
+      // hide the section picker if the only widget is column_settings
+      !(
+        visibleWidgets.length === 1 &&
+        visibleWidgets[0].id === "column_settings"
+      );
+
     // default layout with visualization
     return (
       <div>
-        {sectionNames.length > 1 && (
+        {showSectionPicker && (
           <div className="flex flex-no-shrink pl4 pt2 pb1">{sectionPicker}</div>
         )}
         {noPreview ? (

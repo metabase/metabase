@@ -1,5 +1,5 @@
-import { useSharedAdminLogin, createTestStore } from "__support__/e2e_tests";
-import { click, clickButton, setInputValue } from "__support__/enzyme_utils";
+import { useSharedAdminLogin, createTestStore } from "__support__/e2e";
+import { click, clickButton, setInputValue } from "__support__/enzyme";
 
 import React from "react";
 import { mount } from "enzyme";

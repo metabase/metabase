@@ -97,7 +97,7 @@ export default class Aggregation extends MBQLClause {
       const metric = aggregation.metric();
       if (metric) {
         // delegate to the metric's definition
-        return metric.aggregation().columnName();
+        return metric.columnName();
       }
     } else if (aggregation.isStandard()) {
       const short = this.short();

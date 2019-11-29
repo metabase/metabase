@@ -20,6 +20,7 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.query-processor.store :as qp.store]
+            [metabase.test.initialize :as initialize]
             [metabase.util
              [date :as du]
              [schema :as su]]
@@ -153,6 +154,7 @@
   "Like `driver/the-driver`, but guaranteed to return a driver with test extensions loaded, throwing an Exception
   otherwise. Loads driver and test extensions automatically if not already done."
   [driver]
+  (initialize/initialize-if-needed! :plugins)
   (let [driver (driver/the-initialized-driver driver)]
     (load-test-extensions-namespace-if-needed driver)
     driver))

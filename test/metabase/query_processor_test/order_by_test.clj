@@ -78,7 +78,7 @@
          :order-by    [[:asc [:aggregation 0]]]}))))
 
 (deftest order-by-average-aggregation-test
-  (datasets/test-drivers qp.test/non-timeseries-drivers
+  (datasets/test-drivers @qp.test/non-timeseries-drivers
     (let [{:keys [rows cols]}    (qp.test/rows-and-cols
                                    (qp.test/format-rows-by [int 1.0]
                                      (data/run-mbql-query venues

@@ -7,9 +7,8 @@ import moment from "moment";
 
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { formatValue } from "metabase/lib/formatting";
-import { parseTimestamp } from "metabase/lib/time";
 
-import { computeTimeseriesTicksInterval } from "./timeseries";
+import { computeTimeseriesTicksInterval, timeseriesScale } from "./timeseries";
 import { isMultipleOf, getModuloScaleFactor } from "./numeric";
 import { getFriendlyName } from "./utils";
 import { isHistogram } from "./renderer_utils";
@@ -96,10 +95,6 @@ export function applyChartTimeseriesXAxis(
   // setup an x-axis where the dimension is a timeseries
   let dimensionColumn = firstSeries.data.cols[0];
 
-  // get the data's timezone offset from the first row
-  const dataOffset =
-    parseTimestamp(firstSeries.data.rows[0][0]).utcOffset() / 60;
-
   // compute the data interval
   const dataInterval = xInterval;
   let tickInterval = dataInterval;
@@ -120,6 +115,9 @@ export function applyChartTimeseriesXAxis(
       dimensionColumn = { ...dimensionColumn, unit: dataInterval.interval };
     }
 
+    // extract xInterval timezone for updating tickInterval
+    const { timezone } = tickInterval;
+
     // special handling for weeks
     // TODO: are there any other cases where we should do this?
     let tickFormatUnit = dimensionColumn.unit;
@@ -135,18 +133,15 @@ export function applyChartTimeseriesXAxis(
         newTickInterval.count !== tickInterval.count
       ) {
         tickFormatUnit = "month";
-        tickInterval = { interval: "month", count: 1 };
+        tickInterval = { interval: "month", count: 1, timezone };
       }
     }
 
     chart.xAxis().tickFormat(timestamp => {
-      // timestamp is a plain Date object which discards the timezone,
-      // so add it back in so it's formatted correctly
-      const timestampFixed = moment(timestamp)
-        .utcOffset(dataOffset)
-        .format();
-      const { column, columnSettings } = chart.settings.column(dimensionColumn);
-      return formatValue(timestampFixed, {
+      const { column, ...columnSettings } = chart.settings.column(
+        dimensionColumn,
+      );
+      return formatValue(timestamp, {
         ...columnSettings,
         column: { ...column, unit: tickFormatUnit },
         type: "axis",
@@ -155,21 +150,17 @@ export function applyChartTimeseriesXAxis(
     });
 
     // Compute a sane interval to display based on the data granularity, domain, and chart width
-    tickInterval = computeTimeseriesTicksInterval(
-      xDomain,
-      tickInterval,
-      chart.width(),
-    );
-    chart.xAxis().ticks(tickInterval.rangeFn, tickInterval.count);
-  } else {
-    chart.xAxis().ticks(0);
+    tickInterval = {
+      ...computeTimeseriesTicksInterval(xDomain, tickInterval, chart.width()),
+      timezone,
+    };
   }
 
   // pad the domain slightly to prevent clipping
   xDomain = stretchTimeseriesDomain(xDomain, dataInterval);
 
   // set the x scale
-  chart.x(d3.time.scale.utc().domain(xDomain)); //.nice(d3.time[dataInterval.interval]));
+  chart.x(timeseriesScale(tickInterval).domain(xDomain));
 
   // set the x units (used to compute bar size)
   chart.xUnits((start, stop) =>

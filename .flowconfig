@@ -15,6 +15,7 @@
 .*/node_modules/libnpx/.*
 .*/node_modules/@babel/standalone/.*
 .*/node_modules/@testing-library/jest-dom/.*
+.*/node_modules/.*/node_modules/chalk/.*
 
 [include]
 .*/frontend/.*
