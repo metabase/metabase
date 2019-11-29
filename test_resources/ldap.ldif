@@ -34,6 +34,18 @@ uid: sbrown20
 mail: sally.brown@metabase.com
 userPassword: 1234
 
+dn: cn=Fred Taylor,ou=People,dc=metabase,dc=com
+objectClass: top
+objectClass: person
+objectClass: organizationalPerson
+objectClass: inetOrgPerson
+cn: Fred Taylor
+sN: Taylor
+givenname: Fred
+uid: ftaylor300
+mAiL: fred.taylor@metabase.com
+userpassword: unh4ck4bl3
+
 dn: ou=Birds,dc=metabase,dc=com
 objectClass: top
 objectClass: organizationalUnit

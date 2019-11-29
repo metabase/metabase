@@ -105,6 +105,16 @@
   (ldap.test/with-ldap-server
     (ldap/find-user "John.Smith@metabase.com")))
 
+;; Find by email should also work (also given our default settings and fixtures)
+(expect
+  {:dn         "cn=Fred Taylor,ou=People,dc=metabase,dc=com"
+   :first-name "Fred"
+   :last-name  "Taylor"
+   :email      "fred.taylor@metabase.com"
+   :groups     []}
+  (ldap.test/with-ldap-server
+    (ldap/find-user "fred.taylor@metabase.com")))
+
 ;; LDAP group matching should identify Metabase groups using DN equality rules
 (expect
   #{1 2 3}
