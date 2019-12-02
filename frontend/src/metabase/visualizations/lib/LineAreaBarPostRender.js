@@ -252,12 +252,25 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
   if (!chart.settings["graph.show_values"]) {
     return;
   }
+  const showNth = chart.settings["graph.label_value_frequency"] === "nth";
 
   // Only show lables on single series
   if (chart.series.length > 1) {
     return;
   }
   const { display } = chart.settings.series(chart.series[0]);
+
+  // Update `data` to use named x/y and include `showLabelBelow`.
+  // We need to do that before data is filtered to show every nth value.
+  data = data.map(([x, y], i) => {
+    const isLocalMin =
+      // first point or prior is greater than y
+      (i === 0 || data[i - 1][1] > y) &&
+      // last point point or next is greater than y
+      (i === data.length - 1 || data[i + 1][1] > y);
+    const showLabelBelow = isLocalMin && display === "line";
+    return { x, y, showLabelBelow };
+  });
 
   const MIN_LABEL_WIDTH = 10;
   // $FlowFixMe
@@ -266,7 +279,7 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
     .getBoundingClientRect();
   // We check the acutal rendered labels for density later. Here we avoid
   // rendering the labels at all if there's less than 10px per data point.
-  if (data.length * MIN_LABEL_WIDTH > chartWidth) {
+  if (!showNth && data.length * MIN_LABEL_WIDTH > chartWidth) {
     return;
   }
 
@@ -279,37 +292,50 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
   const xScale = chart.x();
   const yScale = chart.y();
 
-  parent
-    .append("svg:g")
-    .classed("value-labels", true)
-    .selectAll("text.value-label")
-    .data(data)
-    .enter()
-    .append("text")
-    .attr("class", "value-label")
-    // TODO - I wonder if we should move as much of this as possible to CSS land to make it
-    // easier to
-    .attr("text-anchor", "middle")
-    .attr("alignment-baseline", "middle")
-    .attr("x", ([x]) => xScale(x))
-    .attr("y", ([, y], i) => {
-      const isLocalMin =
-        // first point or prior is greater than y
-        (i === 0 || data[i - 1][1] > y) &&
-        // last point point or next is greater than y
-        (i === data.length - 1 || data[i + 1][1] > y);
-      const shouldShowBelow = isLocalMin && display === "line";
-      return yScale(y) + (shouldShowBelow ? 14 : -10);
-    })
-    .text(([, y]) => formatYValue(y, { compact: true }));
+  const addLabels = data =>
+    parent
+      .append("svg:g")
+      .classed("value-labels", true)
+      .selectAll("text.value-label")
+      .data(data)
+      .enter()
+      .append("text")
+      .attr("class", "value-label")
+      // TODO - I wonder if we should move as much of this as possible to CSS land to make it
+      // easier to
+      .attr("text-anchor", "middle")
+      .attr("alignment-baseline", "middle")
+      .attr("x", ({ x }) => xScale(x))
+      .attr(
+        "y",
+        ({ y, showLabelBelow }, i) => yScale(y) + (showLabelBelow ? 14 : -10),
+      )
+      .text(({ y }) => formatYValue(y, { compact: true }));
 
-  let totalWidth = 0;
-  for (const label of document.querySelectorAll(".value-label")) {
-    totalWidth += label.getBoundingClientRect().width;
+  const getTotalWidth = () => {
+    let totalWidth = 0;
+    for (const label of document.querySelectorAll(".value-label")) {
+      totalWidth += label.getBoundingClientRect().width;
+    }
+    return totalWidth;
+  };
+
+  let nth = 1;
+  const LABEL_PADDING = 4;
+  const MAX_SAMPLE_SIZE = 10;
+
+  if (showNth) {
+    // render a sample of rows to estimate label size
+    const sampleSize = Math.min(data.length, MAX_SAMPLE_SIZE);
+    addLabels(_.sample(data, sampleSize));
+    const labelWidth = getTotalWidth() / sampleSize + LABEL_PADDING;
+    // $FlowFixMe
+    document.querySelector(".value-labels").remove();
+    nth = Math.ceil((labelWidth * data.length) / chartWidth);
   }
-
+  addLabels(data.filter((d, i) => i % nth === 0));
   const valueLabels = document.querySelector(".value-labels");
-  if (totalWidth > chartWidth) {
+  if (getTotalWidth() > chartWidth) {
     // This checks whether the labels are too crowded. It's an arbitrary cutoff
     // that probably let's them get a bit too crowded before removing them.
     // $FlowFixMe
