@@ -317,13 +317,14 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     title: t`Label values`,
     widget: "toggle",
     default: false,
+    getHidden: (series, vizSettings) => series.length > 1,
   },
   "graph.label_value_frequency": {
     section: t`Display`,
     title: t`Label frequency`, // TODO better copy here
     widget: "radio",
     getHidden: (series, vizSettings) =>
-      vizSettings["graph.show_values"] !== true,
+      series.length > 1 || vizSettings["graph.show_values"] !== true,
     props: {
       options: [
         { name: t`Auto fit`, value: "fit" },
