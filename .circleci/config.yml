@@ -380,6 +380,7 @@ jobs:
             - /home/circleci/.yarn-cache
             - /home/circleci/metabase/metabase/node_modules
             - /home/circleci/yarn.lock.checksum
+            - /home/circleci/.cache/Cypress
 
   fe-linter-eslint:
     executor: node
