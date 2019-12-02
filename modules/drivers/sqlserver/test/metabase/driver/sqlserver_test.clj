@@ -1,15 +1,21 @@
 (ns metabase.driver.sqlserver-test
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [expectations :refer [expect]]
+  (:require [clojure
+             [string :as str]
+             [test :refer :all]]
+            [clojure.java.jdbc :as jdbc]
+            [colorize.core :as colorize]
             [honeysql.core :as hsql]
+            [java-time :as t]
             [medley.core :as m]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :as qp.test]]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc
+             [connection :as sql-jdbc.conn]
+             [execute :as sql-jdbc.execute]]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test
              [data :as data]
@@ -36,28 +42,29 @@
         (data/run-mbql-query genetic-data))
       :data :rows obj->json->obj)) ; convert to JSON + back so the Clob gets stringified
 
-;;; Test that additional connection string options work (#5296)
-(expect
-  {:subprotocol     "sqlserver"
-   :applicationName "Metabase <version>"
-   :subname         "//localhost;trustServerCertificate=false"
-   :database        "birddb"
-   :port            1433
-   :instanceName    nil
-   :user            "cam"
-   :password        "toucans"
-   :encrypt         false
-   :loginTimeout    10}
-  (-> (sql-jdbc.conn/connection-details->spec
-       :sqlserver
-       {:user               "cam"
-        :password           "toucans"
-        :db                 "birddb"
-        :host               "localhost"
-        :port               1433
-        :additional-options "trustServerCertificate=false"})
-      ;; the MB version Is subject to change between test runs, so replace the part like `v.0.25.0` with `<version>`
-      (update :applicationName #(str/replace % #"\s.*$" " <version>"))))
+(deftest connection-spec-test
+  (testing "Test that additional connection string options work (#5296)"
+    (is (= {:applicationName    "Metabase <version>"
+            :database           "birddb"
+            :encrypt            false
+            :instanceName       nil
+            :loginTimeout       10
+            :password           "toucans"
+            :port               1433
+            :sendTimeAsDatetime false
+            :subname            "//localhost;trustServerCertificate=false"
+            :subprotocol        "sqlserver"
+            :user               "cam"}
+           (-> (sql-jdbc.conn/connection-details->spec :sqlserver
+                 {:user               "cam"
+                  :password           "toucans"
+                  :db                 "birddb"
+                  :host               "localhost"
+                  :port               1433
+                  :additional-options "trustServerCertificate=false"})
+               ;; the MB version Is subject to change between test runs, so replace the part like `v.0.25.0` with
+               ;; `<version>`
+               (update :applicationName #(str/replace % #"\s.*$" " <version>")))))))
 
 (datasets/expect-with-driver :sqlserver
   "UTC"
@@ -156,3 +163,32 @@
                            (cons (str "SET LANGUAGE Italian; " sql) args)))
       ;; rollback transaction so `temp` table gets discarded
       (finally (.rollback (jdbc/get-connection t-conn))))))
+
+(defn- query [sql-args]
+  (jdbc/query
+   (sql-jdbc.conn/db->pooled-connection-spec (data/db))
+   sql-args
+   {:read-columns (partial sql-jdbc.execute/read-columns driver/*driver*)}))
+
+(deftest unprepare-test
+  (datasets/test-driver :sqlserver
+    (let [date (t/local-date 2019 11 5)
+          time (t/local-time 19 27)]
+      ;; various types should come out the same as they went in (1 value per tuple) or something functionally
+      ;; equivalent (2 values)
+      (doseq [[t expected] [[date]
+                            [time]
+                            [(t/local-date-time date time)]
+                            ;; SQL server doesn't support OffsetTime, so we should convert it to UTC and then to a
+                            ;; LocalTime (?)
+                            [(t/offset-time time (t/zone-offset -8)) (t/local-time 3 27)]
+                            [(t/offset-date-time (t/local-date-time date time) (t/zone-offset -8))]
+                            ;; since SQL Server doesn't support timezone IDs it should be converted to an offset in the literal
+                            [(t/zoned-date-time  date time (t/zone-id "America/Los_Angeles"))
+                             (t/offset-date-time (t/local-date-time date time) (t/zone-offset -8))]]]
+        (let [expected (or expected t)]
+          (testing (format "Convert %s to SQL literal" (colorize/magenta (with-out-str (pr t))))
+            (let [sql (format "SELECT %s AS t;" (unprepare/unprepare-value :sqlserver t))]
+              (is (= expected
+                     (-> (query sql) first :t))
+                  (format "SQL %s should return %s" (colorize/blue sql) (colorize/green expected))))))))))

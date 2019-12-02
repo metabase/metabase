@@ -572,7 +572,7 @@ workflows:
           requires:
             - be-tests
           jdbc-driver-source: ORACLE_JDBC_JAR
-          jdbc-driver-dest: ojdbc7.jar
+          jdbc-driver-dest: ojdbc8.jar
           driver: oracle
 
       - test-driver:

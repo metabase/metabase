@@ -40,7 +40,6 @@
         (log/error (trs "Failed to connect to database: {0}" (.getMessage e)))
         false))))
 
-
 (defn report-timezone-if-supported
   "Returns the report-timezone if `driver` supports setting it's timezone and a report-timezone has been specified by
   the user."

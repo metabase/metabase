@@ -1,6 +1,5 @@
 (ns metabase.pulse.render.body
   (:require [hiccup.core :refer [h]]
-            [metabase.mbql.util :as mbql.u]
             [metabase.pulse.render
              [color :as color]
              [common :as common]
@@ -9,6 +8,7 @@
              [sparkline :as sparkline]
              [style :as style]
              [table :as table]]
+            [metabase.types :as types]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]))
 
@@ -43,9 +43,9 @@
 (defn- format-cell
   [timezone value col]
   (cond
-    (mbql.u/datetime-field? col)                             (datetime/format-timestamp timezone value col)
-    (and (number? value) (not (mbql.u/datetime-field? col))) (common/format-number value)
-    :else                                                    (str value)))
+    (types/temporal-field? col)                             (datetime/format-timestamp timezone value col)
+    (and (number? value) (not (types/temporal-field? col))) (common/format-number value)
+    :else                                                   (str value)))
 
 ;;; --------------------------------------------------- Rendering ----------------------------------------------------
 

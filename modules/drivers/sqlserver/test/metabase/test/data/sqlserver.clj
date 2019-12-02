@@ -24,7 +24,8 @@
   (defmethod sql.tx/field-base-type->sql-type [:sqlserver base-type] [_ _] database-type))
 
 
-(defmethod tx/dbdef->connection-details :sqlserver [_ context {:keys [database-name]}]
+(defmethod tx/dbdef->connection-details :sqlserver
+  [_ context {:keys [database-name]}]
   {:host     (tx/db-test-env-var-or-throw :sqlserver :host)
    :port     (Integer/parseInt (tx/db-test-env-var-or-throw :sqlserver :port "1433"))
    :user     (tx/db-test-env-var-or-throw :sqlserver :user)
@@ -35,7 +36,6 @@
 (defmethod sql.tx/drop-db-if-exists-sql :sqlserver
   [_ {:keys [database-name]}]
   ;; Kill all open connections to the DB & drop it
-  (println "database-name:" database-name) ; NOCOMMIT
   (apply format "IF EXISTS (SELECT name FROM master.dbo.sysdatabases WHERE name = N'%s')
                  BEGIN
                      ALTER DATABASE \"%s\" SET SINGLE_USER WITH ROLLBACK IMMEDIATE;

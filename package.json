@@ -59,7 +59,7 @@
     "react-markdown": "^3.0.0-rc3",
     "react-motion": "^0.4.5",
     "react-redux": "^5.0.4",
-    "react-resizable": "^1.0.1",
+    "react-resizable": "^1.9.0",
     "react-retina-image": "^2.0.5",
     "react-router": "3",
     "react-router-redux": "^4.0.8",

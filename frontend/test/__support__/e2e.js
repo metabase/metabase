@@ -52,7 +52,7 @@ let hasFinishedCreatingStore = false;
 let loginSession = null; // Stores the current login session
 let previousLoginSession = null;
 let simulateOfflineMode = false;
-let apiRequestCompletedCallback = null;
+let apiRequestCompletedCallbacks = [];
 let skippedApiRequests = [];
 
 // load files that are loaded at the top if app.js
@@ -460,16 +460,23 @@ export const waitForRequestToComplete = (
             ) || "No requests"}`,
         ),
       );
+      removeCallback();
     }, timeout);
-
-    apiRequestCompletedCallback = (requestMethod, requestUrl) => {
+    const callback = (requestMethod, requestUrl) => {
       if (requestMethod === method && urlRegex.test(requestUrl)) {
         clearTimeout(completionTimeoutId);
+        removeCallback();
         resolve();
       } else {
         skippedApiRequests.push(`${requestMethod} ${requestUrl}`);
       }
     };
+    const removeCallback = () => {
+      apiRequestCompletedCallbacks = apiRequestCompletedCallbacks.filter(
+        f => f !== callback,
+      );
+    };
+    apiRequestCompletedCallbacks.push(callback);
   });
 };
 
@@ -664,8 +671,9 @@ api._makeRequest = async (method, url, headers, requestBody, data, options) => {
       resultBody = JSON.parse(resultBody);
     } catch (e) {}
 
-    apiRequestCompletedCallback &&
-      setTimeout(() => apiRequestCompletedCallback(method, url), 0);
+    apiRequestCompletedCallbacks.forEach(f =>
+      setTimeout(() => f(method, url), 0),
+    );
 
     events.emit("request", { method, url });
 

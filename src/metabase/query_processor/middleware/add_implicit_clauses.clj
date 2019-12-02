@@ -4,6 +4,7 @@
             [honeysql.core :as hsql]
             [metabase
              [db :as mdb]
+             [types :as types]
              [util :as u]]
             [metabase.mbql
              [schema :as mbql.s]
@@ -28,9 +29,9 @@
    [:position :asc]
    ;; or if that's the same, sort PKs first, followed by names, followed by everything else
    [(hsql/call :case
-      (mdb/isa :special_type :type/PK)   0
-      (mdb/isa :special_type :type/Name) 1
-      :else                              2)
+               (mdb/isa :special_type :type/PK)   0
+               (mdb/isa :special_type :type/Name) 1
+               :else                              2)
     :asc]
    ;; finally, sort by name (case-insensitive)
    [:%lower.name :asc]])
@@ -49,7 +50,7 @@
   in `metabase.query-processor.sort`, for all the Fields in a given Table."
   [table-id :- su/IntGreaterThanZero]
   (for [field (table->sorted-fields table-id)]
-    (if (mbql.u/datetime-field? field)
+    (if (types/temporal-field? field)
       ;; implicit datetime Fields get bucketing of `:default`. This is so other middleware doesn't try to give it
       ;; default bucketing of `:day`
       [:datetime-field [:field-id (u/get-id field)] :default]
