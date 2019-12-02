@@ -71,6 +71,7 @@ export default class DashboardEmbedWidget extends Component {
           className={className}
           resource={dashboard}
           resourceParameters={dashboard && dashboard.parameters}
+          resourceType="dashboard"
           onCreatePublicLink={() => createPublicLink(dashboard)}
           onDisablePublicLink={() => deletePublicLink(dashboard)}
           onUpdateEnableEmbedding={enableEmbedding =>
