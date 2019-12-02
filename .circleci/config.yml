@@ -457,6 +457,19 @@ jobs:
                 name: Generate version file
                 command: ./bin/build version
 
+  fe-tests-cypress:
+    executor: clojure-and-node
+    steps:
+      - run-yarn-command:
+          command-name: Run Cypress tests
+          command: run test-cypress-no-build
+          before-steps:
+            - restore_cache:
+                keys:
+                  - uberjar-{{ checksum "./backend-checksums.txt" }}
+            - run:
+                name: Generate version file
+                command: ./bin/build version
 
 ########################################################################################################################
 #                                                   DEPLOYMENT, ETC.                                                   #
@@ -674,6 +687,10 @@ workflows:
           requires:
             - be-deps
       - fe-tests-e2e:
+          requires:
+            - build-uberjar
+            - fe-deps
+      - fe-tests-cypress:
           requires:
             - build-uberjar
             - fe-deps
