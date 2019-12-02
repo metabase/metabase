@@ -326,10 +326,11 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
       vizSettings["graph.show_values"] !== true,
     props: {
       options: [
-        { name: t`All ticks`, value: "all" },
-        { name: t`Every nth`, value: "nth" }, // TODO - this option needs to allow for the user to set a value and should have a default value based on the chart density, similar to how we handle x-axis ticks
+        { name: t`Auto fit`, value: "fit" },
+        { name: t`Show all`, value: "all" },
       ],
     },
+    default: "fit",
     readDependencies: ["graph.show_values"],
   },
 };

@@ -252,7 +252,7 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
   if (!chart.settings["graph.show_values"]) {
     return;
   }
-  const showNth = chart.settings["graph.label_value_frequency"] === "nth";
+  const showAll = chart.settings["graph.label_value_frequency"] === "all";
 
   // Only show lables on single series
   if (chart.series.length > 1) {
@@ -272,22 +272,8 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
     return { x, y, showLabelBelow };
   });
 
-  const MIN_LABEL_WIDTH = 10;
-  // $FlowFixMe
-  const { width: chartWidth } = document
-    .querySelector(".axis.x")
-    .getBoundingClientRect();
-  // We check the acutal rendered labels for density later. Here we avoid
-  // rendering the labels at all if there's less than 10px per data point.
-  if (!showNth && data.length * MIN_LABEL_WIDTH > chartWidth) {
-    return;
-  }
-
   // use the chart body so things line up properly
   const parent = chart.svg().select(".chart-body");
-
-  // Eventually use this to determine if we show all or some nth frequency
-  // const isNth = chart.settings["graph.label_value_frequency"] === "nth";
 
   const xScale = chart.x();
   const yScale = chart.y();
@@ -312,40 +298,39 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
       )
       .text(({ y }) => formatYValue(y, { compact: true }));
 
-  const getTotalWidth = () => {
+  let nth;
+  if (showAll) {
+    // show all
+    nth = 1;
+  } else {
+    // auto fit
+    // Render a sample of rows to estimate average label size.
+    // We use that estimate to compute the label interval.
+    const LABEL_PADDING = 4;
+    const MAX_SAMPLE_SIZE = 10;
+    const sampleSize = Math.min(data.length, MAX_SAMPLE_SIZE);
+    // $FlowFixMe
+    addLabels(_.sample(data, sampleSize));
     let totalWidth = 0;
     for (const label of document.querySelectorAll(".value-label")) {
       totalWidth += label.getBoundingClientRect().width;
     }
-    return totalWidth;
-  };
+    const labelWidth = totalWidth / sampleSize + LABEL_PADDING;
 
-  let nth = 1;
-  const LABEL_PADDING = 4;
-  const MAX_SAMPLE_SIZE = 10;
+    // $FlowFixMe
+    const { width: chartWidth } = document
+      .querySelector(".axis.x")
+      .getBoundingClientRect();
 
-  if (showNth) {
-    // render a sample of rows to estimate label size
-    const sampleSize = Math.min(data.length, MAX_SAMPLE_SIZE);
-    addLabels(_.sample(data, sampleSize));
-    const labelWidth = getTotalWidth() / sampleSize + LABEL_PADDING;
     // $FlowFixMe
     document.querySelector(".value-labels").remove();
     nth = Math.ceil((labelWidth * data.length) / chartWidth);
   }
+
   addLabels(data.filter((d, i) => i % nth === 0));
-  const valueLabels = document.querySelector(".value-labels");
-  if (getTotalWidth() > chartWidth) {
-    // This checks whether the labels are too crowded. It's an arbitrary cutoff
-    // that probably let's them get a bit too crowded before removing them.
-    // $FlowFixMe
-    valueLabels.remove();
-  } else {
-    // If they're not too crowded and we're keeping them, move the containing
-    // '.chart-body' element to the top.
-    // $FlowFixMe
-    moveToTop(valueLabels.parentNode);
-  }
+
+  // $FlowFixMe
+  moveToTop(document.querySelector(".value-labels").parentNode);
 }
 
 function onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis) {
