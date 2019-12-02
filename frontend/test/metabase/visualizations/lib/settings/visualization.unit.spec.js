@@ -91,7 +91,7 @@ describe("visualization_settings", () => {
         expect(settings["graph.y_axis.title_text"]).toBe("some title");
       });
 
-      it("should use the metric name all series match", () => {
+      it("should use the metric name if all series match", () => {
         const card = { visualization_settings: {}, display: "bar" };
         const settings = getComputedSettingsForSeries([
           { card, data },
