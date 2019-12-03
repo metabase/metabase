@@ -786,3 +786,9 @@
   `Locale/US` locale."
   [^CharSequence s]
   (.. s toString (toLowerCase (Locale/US))))
+
+(defn lower-case-map-keys
+  "Changes the keys of a given map to lower case."
+  [m]
+  (into {} (for [[k v] m]
+             [(-> k name lower-case-en keyword) v])))
