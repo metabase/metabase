@@ -250,7 +250,10 @@ function onRenderVoronoiHover(chart) {
 // to do this or not
 function onRenderValueLabels(chart, formatYValue, [data]) {
   // Do nothing if there is nothing to do
-  if (!chart.settings["graph.show_values"]) {
+  if (
+    !chart.settings["graph.show_values"] ||
+    chart.settings["stackable.stack_type"] === "normalized"
+  ) {
     return;
   }
   const showAll = chart.settings["graph.label_value_frequency"] === "all";
