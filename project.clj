@@ -118,7 +118,7 @@
    [org.liquibase/liquibase-core "3.6.3"                              ; migration management (Java lib)
     :exclusions [ch.qos.logback/logback-classic]]
    [org.mariadb.jdbc/mariadb-java-client "2.5.1"]                     ; MySQL/MariaDB driver
-   [org.postgresql/postgresql "42.2.5"]                               ; Postgres driver
+   [org.postgresql/postgresql "42.2.8"]                               ; Postgres driver
    [org.slf4j/slf4j-log4j12 "1.7.25"]                                 ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
    [org.tcrawley/dynapath "1.0.0"]                                    ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
    [org.threeten/threeten-extra "1.5.0"]                               ; extra Java 8 java.time classes like DayOfMonth and Quarter
