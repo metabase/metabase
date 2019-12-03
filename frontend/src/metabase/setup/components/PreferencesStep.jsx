@@ -34,7 +34,6 @@ export default class PreferencesStep extends Component {
 
     // okay, this is the big one.  we actually submit everything to the api now and complete the process.
     const { payload } = await this.props.submitSetup();
-    console.log("payload", payload);
     // a successful payload is null
     const errorMessage =
       payload && payload.data ? getErrorMessage(payload.data) : null;
