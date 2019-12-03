@@ -1,22 +1,8 @@
-:root {
-  --item-padding: 45px;
-}
-
-:local(.sidebar-padding) {
-  padding-left: var(--item-padding);
-  padding-right: var(--item-padding);
-}
-
-:local(.sidebar-margin) {
-  margin-left: var(--item-padding);
-  margin-right: var(--item-padding);
-}
-
 :local(.sidebar) {
   composes: py2 from "style";
-  width: 345px;
+  width: 30%;
+  max-width: 500px;
   background-color: var(--color-bg-light);
-  border-right: 1px solid var(--color-border);
   color: var(--color-text-medium);
 }
 
@@ -24,20 +10,14 @@
   text-decoration: none;
 }
 
-:local(.breadcrumbs) {
-  composes: sidebar-padding;
-}
-
 :local(.item),
 :local(.sectionTitle) {
   composes: flex align-center from "style";
-  composes: py2 from "style";
-  composes: sidebar-padding;
+  composes: py1 mb1 from "style";
 }
 
 :local(.item) {
-  composes: transition-color from "style";
-  composes: transition-background from "style";
+  composes: rounded pl2 from "style";
   font-size: 1em;
   color: var(--color-text-light);
 }
@@ -52,19 +32,25 @@
   font-size: 16px;
 }
 
-:local(.item.selected),
-:local(.item.selected) :local(.icon),
-:local(.sectionTitle.selected),
 :local(.item):hover,
 :local(.sectionTitle):hover {
   background-color: var(--color-bg-medium);
   color: var(--color-brand);
 }
 
+:local(.item.selected),
+:local(.item.selected) :local(.icon),
+:local(.sectionTitle.selected) {
+  color: var(--color-brand);
+}
+:local(.item.selected),
+:local(.sectionTitle.selected) {
+  background-color: rgba(80, 158, 227, 0.15);
+}
+
 :local(.divider) {
   composes: my2 from "style";
   composes: border-bottom from "style";
-  composes: sidebar-margin;
 }
 
 :local(.name) {
@@ -89,5 +75,4 @@
   composes: text-centered from "style";
   composes: p2 my3 from "style";
   composes: text-brand-light from "style";
-  composes: sidebar-margin;
 }

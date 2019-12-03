@@ -402,6 +402,7 @@ export default class PieChart extends Component {
           onHoverChange(d && { ...d, ...hoverForIndex(d.index) })
         }
         showLegend={settings["pie.show_legend"]}
+        isDashboard={this.props.isDashboard}
       >
         <div className={styles.ChartAndDetail}>
           <div ref="detail" className={styles.Detail}>

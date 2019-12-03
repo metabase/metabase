@@ -1,7 +1,11 @@
 (ns metabase.query-processor.middleware.parameters.native-test
-  "E2E tests for SQL param substitution."
+  "E2E tests for SQL param substitution.
+
+  TIMEZONE FIXME - we should rework this namespace to use `java-time ` instead of `clj-time`."
   (:require [clj-time.core :as t]
+            [clojure.test :refer :all]
             [expectations :refer [expect]]
+            [java-time :as jt]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
@@ -11,6 +15,7 @@
             [metabase.query-processor.middleware.parameters.native
              [parse :as parse]
              [substitute :as substitute]]
+            [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -20,11 +25,12 @@
              [schema :as su]]
             [schema.core :as s]))
 
-;;; ------------------------------------------ simple substitution -- {{x}} ------------------------------------------
+;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
 
 (defn- substitute-e2e {:style/indent 1} [sql params]
   (let [[query params] (driver/with-driver :h2
-                         (#'substitute/substitute (parse/parse sql) (into {} params)))]
+                         (qp.test-util/with-everything-store
+                           (#'substitute/substitute (parse/parse sql) (into {} params))))]
     {:query query, :params (vec params)}))
 
 (expect
@@ -47,7 +53,7 @@
   (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}"
     {"toucans_are_cool" true}))
 
-;;; ---------------------------------- optional substitution -- [[ ... {{x}} ... ]] ----------------------------------
+;;; ---------------------------------- optional substitution — [[ ... {{x}} ... ]] ----------------------------------
 
 (expect
   {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
@@ -206,8 +212,9 @@
   "Expand parameters inside a top-level native `query`. Not recursive. "
   [{:keys [parameters], inner :native, :as query}]
   (driver/with-driver :h2
-    (let [inner' (native/expand-inner (update inner :parameters #(concat parameters %)))]
-      (assoc query :native inner'))))
+    (qp.test-util/with-everything-store
+      (let [inner' (native/expand-inner (update inner :parameters #(concat parameters %)))]
+        (assoc query :native inner')))))
 
 (defn- expand* [query]
   (-> (with-h2-db-timezone
@@ -250,7 +257,7 @@
 ;; specified param (date/single)
 (expect
   {:query  "SELECT * FROM orders WHERE created_at > ?;"
-   :params [#inst "2016-07-19T00:00:00.000000000-00:00"]}
+   :params [(jt/local-date "2016-07-19")]}
   (expand* {:native     {:query         "SELECT * FROM orders WHERE created_at > {{created_at}};"
                          :template-tags {"created_at" {:name "created_at", :display-name "Created At", :type "date"}}}
             :parameters [{:type :date/single, :target [:variable [:template-tag "created_at"]], :value "2016-07-19"}]}))
@@ -271,6 +278,7 @@
    (expand-with-field-filter-param "SELECT * FROM checkins WHERE {{date}};" field-filter-param))
 
   ([sql field-filter-param]
+   ;; TIMEZONE FIXME
    (with-redefs [t/now (constantly (t/date-time 2016 06 07 12 0 0))]
      (-> {:native     {:query         sql
                        :template-tags {"date" {:name         "date"
@@ -283,133 +291,97 @@
          expand*
          (dissoc :template-tags)))))
 
-;; dimension (date/single)
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ?;"
-   :params [#inst "2016-07-01T00:00:00.000000000-00:00"]}
-  (expand-with-field-filter-param {:type :date/single, :value "2016-07-01"}))
-
-;; dimension (date/range)
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-   :params [#inst "2016-07-01T00:00:00.000000000-00:00"
-            #inst "2016-08-01T00:00:00.000000000-00:00"]}
-  (expand-with-field-filter-param {:type :date/range, :value "2016-07-01~2016-08-01"}))
-
-;; dimension (date/month-year)
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-   :params [#inst "2016-07-01T00:00:00.000000000-00:00"
-            #inst "2016-07-31T00:00:00.000000000-00:00"]}
-  (expand-with-field-filter-param {:type :date/month-year, :value "2016-07"}))
-
-;; dimension (date/quarter-year)
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-   :params [#inst "2016-01-01T00:00:00.000000000-00:00"
-            #inst "2016-03-31T00:00:00.000000000-00:00"]}
-  (expand-with-field-filter-param {:type :date/quarter-year, :value "Q1-2016"}))
-
-;; dimension (date/all-options, before)
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) < ?;"
-   :params [#inst "2016-07-01T00:00:00.000000000-00:00"]}
-  (expand-with-field-filter-param {:type :date/all-options, :value "~2016-07-01"}))
-
-;; dimension (date/all-options, after)
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) > ?;"
-   :params [#inst "2016-07-01T00:00:00.000000000-00:00"]}
-  (expand-with-field-filter-param {:type :date/all-options, :value "2016-07-01~"}))
-
-;; relative date -- "yesterday"
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ?;"
-   :params [#inst "2016-06-06T00:00:00.000000000-00:00"]}
-  (expand-with-field-filter-param {:type :date/range, :value "yesterday"}))
-
-;; relative date -- "past7days"
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-   :params [#inst "2016-05-31T00:00:00.000000000-00:00"
-            #inst "2016-06-06T00:00:00.000000000-00:00"]}
-  (expand-with-field-filter-param {:type :date/range, :value "past7days"}))
-
-;; relative date -- "past30days"
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-   :params [#inst "2016-05-08T00:00:00.000000000-00:00"
-            #inst "2016-06-06T00:00:00.000000000-00:00"]}
-  (expand-with-field-filter-param {:type :date/range, :value "past30days"}))
-
-;; relative date -- "thisweek"
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-   :params [#inst "2016-06-05T00:00:00.000000000-00:00"
-            #inst "2016-06-11T00:00:00.000000000-00:00"]}
-  (expand-with-field-filter-param {:type :date/range, :value "thisweek"}))
-
-;; relative date -- "thismonth"
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-   :params [#inst "2016-06-01T00:00:00.000000000-00:00"
-            #inst "2016-06-30T00:00:00.000000000-00:00"]}
-  (expand-with-field-filter-param {:type :date/range, :value "thismonth"}))
-
-;; relative date -- "thisyear"
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-   :params [#inst "2016-01-01T00:00:00.000000000-00:00"
-            #inst "2016-12-31T00:00:00.000000000-00:00"]}
-  (expand-with-field-filter-param {:type :date/range, :value "thisyear"}))
-
-;; relative date -- "lastweek"
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-   :params [#inst "2016-05-29T00:00:00.000000000-00:00"
-            #inst "2016-06-04T00:00:00.000000000-00:00"]}
-  (expand-with-field-filter-param {:type :date/range, :value "lastweek"}))
-
-;; relative date -- "lastmonth"
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-   :params [#inst "2016-05-01T00:00:00.000000000-00:00"
-            #inst "2016-05-31T00:00:00.000000000-00:00"]}
-  (expand-with-field-filter-param {:type :date/range, :value "lastmonth"}))
-
-;; relative date -- "lastyear"
-(expect
-  {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-   :params [#inst "2015-01-01T00:00:00.000000000-00:00"
-            #inst "2015-12-31T00:00:00.000000000-00:00"]}
-  (expand-with-field-filter-param {:type :date/range, :value "lastyear"}))
-
-;; dimension with no value -- just replace with an always true clause (e.g. "WHERE 1 = 1")
-(expect
-  {:query  "SELECT * FROM checkins WHERE 1 = 1;"
-   :params []}
-  (expand-with-field-filter-param nil))
-
-;; dimension -- number -- should get parsed to Number
-(expect
-  {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = 100;"
-   :params []}
-  (expand-with-field-filter-param {:type :number, :value "100"}))
-
-;; dimension -- text
-(expect
-  {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = ?;"
-   :params ["100"]}
-  (expand-with-field-filter-param {:type :text, :value "100"}))
-
-;; *OPTIONAL* Field Filter params should not get replaced with 1 = 1 if the param is not present (#5541, #9489).
-;; *Optional params should be emitted entirely.
-(expect
-  {:query  "SELECT * FROM ORDERS WHERE TOTAL > 100  AND CREATED_AT < now()"
-   :params []}
-  (expand-with-field-filter-param
-   "SELECT * FROM ORDERS WHERE TOTAL > 100 [[AND {{created}} #]] AND CREATED_AT < now()"
-   nil))
+(deftest expand-field-filters-test
+  (testing "dimension (date/single)"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ?;"
+            :params [(jt/local-date "2016-07-01")]}
+           (expand-with-field-filter-param {:type :date/single, :value "2016-07-01"}))))
+  (testing "dimension (date/range)"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+            :params [(jt/local-date "2016-07-01")
+                     (jt/local-date "2016-08-01")]}
+           (expand-with-field-filter-param {:type :date/range, :value "2016-07-01~2016-08-01"}))))
+  (testing "dimension (date/month-year)"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+            :params [(jt/local-date "2016-07-01")
+                     (jt/local-date "2016-07-31")]}
+           (expand-with-field-filter-param {:type :date/month-year, :value "2016-07"}))))
+  (testing "dimension (date/quarter-year)"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+            :params [(jt/local-date "2016-01-01")
+                     (jt/local-date "2016-03-31")]}
+           (expand-with-field-filter-param {:type :date/quarter-year, :value "Q1-2016"}))))
+  (testing "dimension (date/all-options, before)"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) < ?;"
+            :params [(jt/local-date "2016-07-01")]}
+           (expand-with-field-filter-param {:type :date/all-options, :value "~2016-07-01"}))))
+  (testing "dimension (date/all-options, after)"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) > ?;"
+            :params [(jt/local-date "2016-07-01")]}
+           (expand-with-field-filter-param {:type :date/all-options, :value "2016-07-01~"}))))
+  (testing "relative date — 'yesterday'"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ?;"
+            :params [(jt/local-date "2016-06-06")]}
+           (expand-with-field-filter-param {:type :date/range, :value "yesterday"}))))
+  (testing "relative date — 'past7days'"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+            :params [(jt/local-date "2016-05-31")
+                     (jt/local-date "2016-06-06")]}
+           (expand-with-field-filter-param {:type :date/range, :value "past7days"}))))
+  (testing "relative date — 'past30days'"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+            :params [(jt/local-date "2016-05-08")
+                     (jt/local-date "2016-06-06")]}
+           (expand-with-field-filter-param {:type :date/range, :value "past30days"}))))
+  (testing "relative date — 'thisweek'"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+            :params [(jt/local-date "2016-06-05")
+                     (jt/local-date "2016-06-11")]}
+           (expand-with-field-filter-param {:type :date/range, :value "thisweek"}))))
+  (testing "relative date — 'thismonth'"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+            :params [(jt/local-date "2016-06-01")
+                     (jt/local-date "2016-06-30")]}
+           (expand-with-field-filter-param {:type :date/range, :value "thismonth"}))))
+  (testing "relative date — 'thisyear'"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+            :params [(jt/local-date "2016-01-01")
+                     (jt/local-date "2016-12-31")]}
+           (expand-with-field-filter-param {:type :date/range, :value "thisyear"}))))
+  (testing "relative date — 'lastweek'"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+            :params [(jt/local-date "2016-05-29")
+                     (jt/local-date "2016-06-04")]}
+           (expand-with-field-filter-param {:type :date/range, :value "lastweek"}))))
+  (testing "relative date — 'lastmonth'"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+            :params [(jt/local-date "2016-05-01")
+                     (jt/local-date "2016-05-31")]}
+           (expand-with-field-filter-param {:type :date/range, :value "lastmonth"}))))
+  (testing "relative date — 'lastyear'"
+    (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
+            :params [(jt/local-date "2015-01-01")
+                     (jt/local-date "2015-12-31")]}
+           (expand-with-field-filter-param {:type :date/range, :value "lastyear"}))))
+  (testing "dimension with no value — just replace with an always true clause (e.g. 'WHERE 1 = 1')"
+    (is (= {:query  "SELECT * FROM checkins WHERE 1 = 1;"
+            :params []}
+           (expand-with-field-filter-param nil))))
+  (testing "dimension — number — should get parsed to Number"
+    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = 100;"
+            :params []}
+           (expand-with-field-filter-param {:type :number, :value "100"}))))
+  (testing "dimension — text"
+    (is (= {:query  "SELECT * FROM checkins WHERE \"PUBLIC\".\"CHECKINS\".\"DATE\" = ?;"
+            :params ["100"]}
+           (expand-with-field-filter-param {:type :text, :value "100"}))))
+  (testing (str "*OPTIONAL* Field Filter params should not get replaced with 1 = 1 if the param is not present "
+                "(#5541, #9489). *Optional params should be emitted entirely.")
+    (is (= {:query  "SELECT * FROM ORDERS WHERE TOTAL > 100  AND CREATED_AT < now()"
+            :params []}
+           (expand-with-field-filter-param
+            "SELECT * FROM ORDERS WHERE TOTAL > 100 [[AND {{created}} #]] AND CREATED_AT < now()"
+            nil)))))
 
 
 ;;; -------------------------------------------- "REAL" END-TO-END-TESTS ---------------------------------------------
@@ -422,157 +394,164 @@
     (second (re-find #"FROM\s([^\s()]+)" sql))))
 
 ;; as with the MBQL parameters tests Redshift fail for unknown reasons; disable their tests for now
-(def ^:private sql-parameters-engines
-  (delay (disj (qp.test/non-timeseries-drivers-with-feature :native-parameters) :redshift)))
+;; TIMEZONE FIXME
+(defn- sql-parameters-engines []
+  (disj (qp.test/normal-drivers-with-feature :native-parameters) :redshift))
 
 (defn- process-native {:style/indent 0} [& kvs]
-  (du/with-effective-timezone (data/db)
-    (qp/process-query
-      (apply assoc {:database (data/id), :type :native, :settings {:report-timezone "UTC"}} kvs))))
+  (qp/process-query
+    (apply assoc {:database (data/id), :type :native} kvs)))
 
-(datasets/expect-with-drivers @sql-parameters-engines
-  [29]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (process-native
-        :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
-                     :template-tags {"checkin_date" {:name         "checkin_date"
-                                                     :display-name "Checkin Date"
-                                                     :type         :dimension
-                                                     :dimension    [:field-id (data/id :checkins :date)]}}}
-        :parameters [{:type   :date/range
-                      :target [:dimension [:template-tag "checkin_date"]]
-                      :value  "2015-04-01~2015-05-01"}]))))
+(deftest e2e-basic-test
+  (datasets/test-drivers (sql-parameters-engines)
+    (is (= [29]
+           (qp.test/first-row
+             (qp.test/format-rows-by [int]
+               (process-native
+                 :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
+                              :template-tags {"checkin_date" {:name         "checkin_date"
+                                                              :display-name "Checkin Date"
+                                                              :type         :dimension
+                                                              :dimension    [:field-id (data/id :checkins :date)]}}}
+                 :parameters [{:type   :date/range
+                               :target [:dimension [:template-tag "checkin_date"]]
+                               :value  "2015-04-01~2015-05-01"}])))))))
 
-;; no parameter -- should give us a query with "WHERE 1 = 1"
-(datasets/expect-with-drivers @sql-parameters-engines
-  [1000]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (process-native
-        :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
-                     :template-tags {"checkin_date" {:name         "checkin_date"
-                                                     :display-name "Checkin Date"
-                                                     :type         :dimension
-                                                     :dimension    [:field-id (data/id :checkins :date)]}}}
-        :parameters []))))
+(deftest e2e-no-parameter-test
+  (datasets/test-drivers (sql-parameters-engines)
+    (testing "no parameter — should give us a query with \"WHERE 1 = 1\""
+      (is (= [1000]
+             (qp.test/first-row
+               (qp.test/format-rows-by [int]
+                 (process-native
+                   :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
+                                :template-tags {"checkin_date" {:name         "checkin_date"
+                                                                :display-name "Checkin Date"
+                                                                :type         :dimension
+                                                                :dimension    [:field-id (data/id :checkins :date)]}}}
+                   :parameters []))))))))
 
-;; test that relative dates work correctly. It should be enough to try just one type of relative date here, since
-;; handling them gets delegated to the functions in `metabase.query-processor.parameters`, which is fully-tested :D
-(datasets/expect-with-drivers @sql-parameters-engines
-  [0]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (process-native
-        :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
-                     :template-tags {"checkin_date" {:name         "checkin_date"
-                                                     :display-name "Checkin Date"
-                                                     :type         :dimension
-                                                     :dimension    [:field-id (data/id :checkins :date)]}}}
-        :parameters [{:type :date/relative, :target [:dimension [:template-tag "checkin_date"]], :value "thismonth"}]))))
+(deftest e2e-relative-dates-test
+  (datasets/test-drivers (sql-parameters-engines)
+    (testing (str "test that relative dates work correctly. It should be enough to try just one type of relative date "
+                  "here, since handling them gets delegated to the functions in `metabase.query-processor.parameters`, "
+                  "which is fully-tested :D")
+      (is (= [0]
+             (qp.test/first-row
+               (qp.test/format-rows-by [int]
+                 (process-native
+                   :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
+                                                       (checkins-identifier))
+                                :template-tags {"checkin_date" {:name         "checkin_date"
+                                                                :display-name "Checkin Date"
+                                                                :type         :dimension
+                                                                :dimension    [:field-id (data/id :checkins :date)]}}}
+                   :parameters [{:type   :date/relative
+                                 :target [:dimension [:template-tag "checkin_date"]]
+                                 :value  "thismonth"}]))))))))
 
+(deftest e2e-combine-multiple-filters-test
+  (datasets/test-drivers (sql-parameters-engines)
+    (testing "test that multiple filters applied to the same variable combine into `AND` clauses (#3539)"
+      (is (= [4]
+             (qp.test/first-row
+               (qp.test/format-rows-by [int]
+                 (process-native
+                   :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
+                                                       (checkins-identifier))
+                                :template-tags {"checkin_date" {:name         "checkin_date"
+                                                                :display-name "Checkin Date"
+                                                                :type         :dimension
+                                                                :dimension    [:field-id (data/id :checkins :date)]}}}
+                   :parameters [{:type   :date/range
+                                 :target [:dimension [:template-tag "checkin_date"]]
+                                 :value  "2015-01-01~2016-09-01"}
+                                {:type   :date/single
+                                 :target [:dimension [:template-tag "checkin_date"]]
+                                 :value  "2015-07-01"}]))))))))
 
-;; test that multiple filters applied to the same variable combine into `AND` clauses (#3539)
-(datasets/expect-with-drivers @sql-parameters-engines
-  [4]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (process-native
-        :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
-                     :template-tags {"checkin_date" {:name         "checkin_date"
-                                                     :display-name "Checkin Date"
-                                                     :type         :dimension
-                                                     :dimension    [:field-id (data/id :checkins :date)]}}}
-        :parameters [{:type :date/range, :target [:dimension [:template-tag "checkin_date"]], :value "2015-01-01~2016-09-01"}
-                     {:type :date/single, :target [:dimension [:template-tag "checkin_date"]], :value "2015-07-01"}]))))
+(deftest e2e-parse-native-dates-test
+  (datasets/test-drivers (disj (sql-parameters-engines) :sqlite)
+    (is (= [(cond
+              (= driver/*driver* :presto)
+              "2018-04-18"
 
-;; Test that native dates are parsed with the report timezone (when supported)
-(datasets/expect-with-drivers (disj @sql-parameters-engines :sqlite)
-  [(cond
-     (= :presto driver/*driver*)
-     "2018-04-18"
+              ;; TIMEZONE FIXME — Busted
+              (#{:snowflake :vertica} driver/*driver*)
+              "2018-04-17T00:00:00-07:00"
 
-     ;; Snowflake appears to have a bug in their JDBC driver when including the target timezone along with the SQL
-     ;; date parameter. The below value is not correct, but is what the driver returns right now. This bug is written
-     ;; up as https://github.com/metabase/metabase/issues/8804 and when fixed this should be removed as it should
-     ;; return the same value as the other drivers that support a report timezone
-     (= :snowflake driver/*driver*)
-     "2018-04-16T17:00:00.000-07:00"
+              (qp.test/supports-report-timezone? driver/*driver*)
+              "2018-04-18T00:00:00-07:00"
 
-     (qp.test/supports-report-timezone? driver/*driver*)
-     "2018-04-18T00:00:00.000-07:00"
+              :else
+              "2018-04-18T00:00:00Z")]
+           (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
+             (qp.test/first-row
+               (process-native
+                 :native     {:query (case driver/*driver*
+                                       :bigquery
+                                       "SELECT {{date}} as date"
 
-     :else
-     "2018-04-18T00:00:00.000Z")]
-  (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-    (qp.test/first-row
-      (process-native
-        :native     {:query         (case driver/*driver*
-                                      :bigquery
-                                      "SELECT {{date}} as date"
+                                       :oracle
+                                       "SELECT cast({{date}} as date) from dual"
 
-                                      :oracle
-                                      "SELECT cast({{date}} as date) from dual"
-
-                                      "SELECT cast({{date}} as date)")
-                     :template-tags {"date" {:name "date" :display-name "Date" :type :date}}}
-        :parameters [{:type :date/single :target [:variable [:template-tag "date"]] :value "2018-04-18"}]))))
+                                       "SELECT cast({{date}} as date)")
+                              :template-tags {"date" {:name "date" :display-name "Date" :type :date}}}
+                 :parameters [{:type :date/single :target [:variable [:template-tag "date"]] :value "2018-04-18"}])))))
+    "Native dates should be parsed with the report timezone (where supported)"))
 
 ;; Some random end-to-end param expansion tests added as part of the SQL Parameters 2.0 rewrite
-
-(expect
-  {:query  "SELECT count(*) FROM CHECKINS WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?",
-   :params [#inst "2017-03-01T00:00:00.000000000-00:00"
-            #inst "2017-03-31T00:00:00.000000000-00:00"]}
-  (expand* {:native     {:query         "SELECT count(*) FROM CHECKINS WHERE {{created_at}}"
-                         :template-tags {"created_at" {:name         "created_at"
-                                                       :display-name "Created At"
-                                                       :type         :dimension
-                                                       :dimension    [:field-id (data/id :checkins :date)]}}}
-            :parameters [{:type :date/month-year, :target [:dimension [:template-tag "created_at"]], :value "2017-03"}]}))
-
-(expect
-  {:query  "SELECT count(*) FROM ORDERS"
-   :params []}
-  (expand* {:native {:query         "SELECT count(*) FROM ORDERS [[WHERE price > {{price}}]]"
-                     :template-tags {"price" {:name "price", :display-name "Price", :type :number, :required false}}}}))
-
-(expect
-  {:query  "SELECT count(*) FROM ORDERS WHERE price > 100"
-   :params []}
-  (expand* {:native     {:query         "SELECT count(*) FROM ORDERS [[WHERE price > {{price}}]]"
-                         :template-tags {"price" {:name "price", :display-name "Price", :type :number, :required false}}}
-            :parameters [{:type "category", :target [:variable [:template-tag "price"]], :value "100"}]}))
-
-(expect
-  {:query  "SELECT count(*) FROM PRODUCTS WHERE TITLE LIKE ?"
-   :params ["%Toucan%"]}
-  (expand* {:native     {:query         "SELECT count(*) FROM PRODUCTS WHERE TITLE LIKE {{x}}",
-                         :template-tags {"x" {:name         "x"
-                                              :display-name "X"
-                                              :type         :text
-                                              :required     true
-                                              :default      "%Toucan%"}}}
-            :parameters [{:type "category", :target [:variable [:template-tag "x"]]}]}))
-
-;; make sure that you can use the same parameter multiple times (#4659)
-(expect
-  {:query  "SELECT count(*) FROM products WHERE title LIKE ? AND subtitle LIKE ?"
-   :params ["%Toucan%" "%Toucan%"]}
-  (expand* {:native     {:query         "SELECT count(*) FROM products WHERE title LIKE {{x}} AND subtitle LIKE {{x}}",
-                         :template-tags {"x" {:name         "x"
-                                              :display-name "X"
-                                              :type         :text
-                                              :required     true
-                                              :default      "%Toucan%"}}}
-            :parameters [{:type "category", :target [:variable [:template-tag "x"]]}]}))
-
-(expect
-  {:query  "SELECT * FROM ORDERS WHERE true  AND ID = ? OR USER_ID = ?"
-   :params ["2" "2"]}
-  (expand* {:native     {:query         "SELECT * FROM ORDERS WHERE true [[ AND ID = {{id}} OR USER_ID = {{id}} ]]"
-                         :template-tags {"id" {:name "id", :display-name "ID", :type :text}}}
-            :parameters [{:type "category", :target [:variable [:template-tag "id"]], :value "2"}]}))
+(deftest param-expansion-test
+  (is (= {:query  "SELECT count(*) FROM CHECKINS WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?",
+          :params [(jt/local-date "2017-03-01")
+                   (jt/local-date "2017-03-31")]}
+         (expand* {:native     {:query         "SELECT count(*) FROM CHECKINS WHERE {{created_at}}"
+                                :template-tags {"created_at" {:name         "created_at"
+                                                              :display-name "Created At"
+                                                              :type         :dimension
+                                                              :dimension    [:field-id (data/id :checkins :date)]}}}
+                   :parameters [{:type   :date/month-year
+                                 :target [:dimension [:template-tag "created_at"]]
+                                 :value  "2017-03"}]})))
+  (is (= {:query  "SELECT count(*) FROM ORDERS"
+          :params []}
+         (expand* {:native {:query         "SELECT count(*) FROM ORDERS [[WHERE price > {{price}}]]"
+                            :template-tags {"price" {:name         "price"
+                                                     :display-name "Price"
+                                                     :type         :number
+                                                     :required     false}}}})))
+  (is (= {:query  "SELECT count(*) FROM ORDERS WHERE price > 100"
+          :params []}
+         (expand* {:native     {:query         "SELECT count(*) FROM ORDERS [[WHERE price > {{price}}]]"
+                                :template-tags {"price" {:name         "price"
+                                                         :display-name "Price"
+                                                         :type         :number
+                                                         :required     false}}}
+                   :parameters [{:type "category", :target [:variable [:template-tag "price"]], :value "100"}]})))
+  (is (= {:query  "SELECT count(*) FROM PRODUCTS WHERE TITLE LIKE ?"
+          :params ["%Toucan%"]}
+         (expand* {:native     {:query         "SELECT count(*) FROM PRODUCTS WHERE TITLE LIKE {{x}}",
+                                :template-tags {"x" {:name         "x"
+                                                     :display-name "X"
+                                                     :type         :text
+                                                     :required     true
+                                                     :default      "%Toucan%"}}}
+                   :parameters [{:type "category", :target [:variable [:template-tag "x"]]}]})))
+  (testing "make sure that you can use the same parameter multiple times (#4659)"
+    (is (= {:query  "SELECT count(*) FROM products WHERE title LIKE ? AND subtitle LIKE ?"
+            :params ["%Toucan%" "%Toucan%"]}
+           (expand* {:native     {:query         "SELECT count(*) FROM products WHERE title LIKE {{x}} AND subtitle LIKE {{x}}",
+                                  :template-tags {"x" {:name         "x"
+                                                       :display-name "X"
+                                                       :type         :text
+                                                       :required     true
+                                                       :default      "%Toucan%"}}}
+                     :parameters [{:type "category", :target [:variable [:template-tag "x"]]}]})))
+    (is (= {:query  "SELECT * FROM ORDERS WHERE true  AND ID = ? OR USER_ID = ?"
+            :params ["2" "2"]}
+           (expand* {:native     {:query         "SELECT * FROM ORDERS WHERE true [[ AND ID = {{id}} OR USER_ID = {{id}} ]]"
+                                  :template-tags {"id" {:name "id", :display-name "ID", :type :text}}}
+                     :parameters [{:type "category", :target [:variable [:template-tag "id"]], :value "2"}]})))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -585,8 +564,8 @@
                 "FROM CHECKINS "
                 "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ? "
                 "GROUP BY \"DATE\"")
-   :params [#inst "2017-10-31T00:00:00.000000000-00:00"
-            #inst "2017-11-04T00:00:00.000000000-00:00"]}
+   :params [(jt/local-date "2017-10-31")
+            (jt/local-date "2017-11-04")]}
   (with-redefs [t/now (constantly (t/date-time 2017 11 05 12 0 0))]
     (expand* {:native     {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
                                                "FROM CHECKINS "
@@ -607,8 +586,8 @@
                 "FROM CHECKINS "
                 "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ? "
                 "GROUP BY \"DATE\"")
-   :params [#inst "2017-10-31T00:00:00.000000000-00:00"
-            #inst "2017-11-04T00:00:00.000000000-00:00"]}
+   :params [(jt/local-date "2017-10-31")
+            (jt/local-date "2017-11-04")]}
   (with-redefs [t/now (constantly (t/date-time 2017 11 05 12 0 0))]
     (expand* {:native {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
                                            "FROM CHECKINS "
@@ -627,7 +606,7 @@
                 "FROM CHECKINS "
                 "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ? "
                 "GROUP BY \"DATE\"")
-   :params [#inst "2017-11-14T00:00:00.000000000-00:00"]}
+   :params [(jt/local-date "2017-11-14")]}
   (expand* {:native {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
                                          "FROM CHECKINS "
                                          "WHERE {{checkin_date}} "
@@ -642,45 +621,40 @@
 
 ;;; ------------------------------- Multiple Value Support (comma-separated or array) --------------------------------
 
-;; Make sure using commas in numeric params treats them as separate IDs (#5457)
-(expect
-  "SELECT * FROM USERS where id IN (1, 2, 3)"
-  (-> (qp/process-query
-        {:database   (data/id)
-         :type       "native"
-         :native     {:query         "SELECT * FROM USERS [[where id IN ({{ids_list}})]]"
-                      :template-tags {"ids_list" {:name         "ids_list"
-                                                  :display-name "Ids list"
-                                                  :type         :number}}}
-         :parameters [{:type   "category"
-                       :target [:variable [:template-tag "ids_list"]]
-                       :value  "1,2,3"}]})
-      :data :native_form :query))
-
-
-;; make sure you can now also pass multiple values in by passing an array of values
-(expect
-  {:query  "SELECT * FROM CATEGORIES where name IN (?, ?, ?)"
-   :params ["BBQ" "Bakery" "Bar"]}
-  (expand*
-   {:native     {:query         "SELECT * FROM CATEGORIES [[where name IN ({{names_list}})]]"
-                 :template-tags {"names_list" {:name         "names_list"
-                                               :display-name "Names List"
-                                               :type         :text}}}
-    :parameters [{:type   "category"
-                  :target [:variable [:template-tag "names_list"]]
-                  :value  ["BBQ", "Bakery", "Bar"]}]}))
-
-;; Make sure arrays of values also work for 'field filter' params
-(expect
-  {:query  "SELECT * FROM CATEGORIES WHERE \"PUBLIC\".\"USERS\".\"ID\" IN (?, ?, ?)",
-   :params ["BBQ" "Bakery" "Bar"]}
-  (expand*
-   {:native     {:query         "SELECT * FROM CATEGORIES WHERE {{names_list}}"
-                 :template-tags {"names_list" {:name         "names_list"
-                                               :display-name "Names List"
-                                               :type         :dimension
-                                               :dimension    [:field-id (data/id :users :id)]}}}
-    :parameters [{:type   :text
-                  :target [:dimension [:template-tag "names_list"]]
-                  :value  ["BBQ", "Bakery", "Bar"]}]}))
+(deftest multiple-value-test
+  (testing "Make sure using commas in numeric params treats them as separate IDs (#5457)"
+    (is (= "SELECT * FROM USERS where id IN (1, 2, 3)"
+           (-> (qp/process-query
+                 {:database   (data/id)
+                  :type       "native"
+                  :native     {:query         "SELECT * FROM USERS [[where id IN ({{ids_list}})]]"
+                               :template-tags {"ids_list" {:name         "ids_list"
+                                                           :display-name "Ids list"
+                                                           :type         :number}}}
+                  :parameters [{:type   "category"
+                                :target [:variable [:template-tag "ids_list"]]
+                                :value  "1,2,3"}]})
+               :data :native_form :query))))
+  (testing "make sure you can now also pass multiple values in by passing an array of values"
+    (is (= {:query  "SELECT * FROM CATEGORIES where name IN (?, ?, ?)"
+            :params ["BBQ" "Bakery" "Bar"]}
+           (expand*
+            {:native     {:query         "SELECT * FROM CATEGORIES [[where name IN ({{names_list}})]]"
+                          :template-tags {"names_list" {:name         "names_list"
+                                                        :display-name "Names List"
+                                                        :type         :text}}}
+             :parameters [{:type   "category"
+                           :target [:variable [:template-tag "names_list"]]
+                           :value  ["BBQ", "Bakery", "Bar"]}]}))))
+  (testing "Make sure arrays of values also work for 'field filter' params"
+    (is (= {:query  "SELECT * FROM CATEGORIES WHERE \"PUBLIC\".\"USERS\".\"ID\" IN (?, ?, ?)",
+            :params ["BBQ" "Bakery" "Bar"]}
+           (expand*
+            {:native     {:query         "SELECT * FROM CATEGORIES WHERE {{names_list}}"
+                          :template-tags {"names_list" {:name         "names_list"
+                                                        :display-name "Names List"
+                                                        :type         :dimension
+                                                        :dimension    [:field-id (data/id :users :id)]}}}
+             :parameters [{:type   :text
+                           :target [:dimension [:template-tag "names_list"]]
+                           :value  ["BBQ", "Bakery", "Bar"]}]})))))

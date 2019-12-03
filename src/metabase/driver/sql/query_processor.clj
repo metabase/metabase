@@ -21,7 +21,7 @@
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.util
              [honeysql-extensions :as hx]
-             [i18n :refer [deferred-tru tru]]
+             [i18n :refer [deferred-tru]]
              [schema :as su]]
             [potemkin.types :as p.types]
             [pretty.core :refer [PrettyPrintable]]
@@ -68,7 +68,7 @@
 
 (defmethod current-datetime-fn :sql [_] :%now)
 
-
+;; TODO - rename this to `date-bucket` or something that better describes what it actually does
 (defmulti date
   "Return a HoneySQL form for truncating a date or timestamp field or value to a given resolution, or extracting a date
   component."
@@ -214,6 +214,22 @@
   [driver [_ alias field]]
   (binding [*table-alias* alias]
     (->honeysql driver field)))
+
+;; (p.types/defrecord+ AtTimezone [expr timezone-id]
+;;   PrettyPrintable
+;;   (pretty [_]
+;;     (list 'at-timezone expr timezone-id))
+
+;;   hformat/ToSql
+;;   (to-sql [_]
+;;     (format "(%s at time zone '%s')" (hformat/to-sql expr) timezone-id)))
+
+;; (defn at-timezone
+;;   ([expr]
+;;    (at-timezone expr (qp.timezone/results-timezone-id)))
+
+;;   ([expr timezone-id]
+;;    (AtTimezone. expr timezone-id)))
 
 (defmethod ->honeysql [:sql :datetime-field]
   [driver [_ field unit]]
@@ -690,7 +706,7 @@
   [driver, {inner-query :query} :- su/Map]
   (u/prog1 (apply-clauses driver {} inner-query)
     (when-not i/*disable-qp-logging*
-      (log/debug (tru "HoneySQL Form:") (u/emoji "🍯") "\n" (u/pprint-to-str 'cyan <>)))))
+      (log/tracef "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

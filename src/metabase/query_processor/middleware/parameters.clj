@@ -86,7 +86,7 @@
     (when (and (not i/*disable-qp-logging*)
                (not= <> query))
       (when-let [diff (second (data/diff query <>))]
-        (log/debug (u/format-color 'cyan "\n\nPARAMS/SUBSTITUTED: %s\n%s" (u/emoji "😻") (u/pprint-to-str diff)))))))
+        (log/tracef "\n\nSubstituted params:\n%s\n" (u/pprint-to-str 'cyan diff))))))
 
 (defn substitute-parameters
   "Substitute Dashboard or Card-supplied parameters in a query, replacing the param placeholers with appropriate values

@@ -1,12 +1,13 @@
 (ns metabase.test.util.timezone
   (:require [clj-time.core :as time]
+            [clojure.test :as t]
             [metabase.driver :as driver]
             [metabase.test.initialize :as initialize]
             [metabase.util.date :as du])
   (:import java.util.TimeZone
            org.joda.time.DateTimeZone))
 
-(defn- ->datetimezone ^DateTimeZone [timezone]
+(defn- ^:deprecated ->datetimezone ^DateTimeZone [timezone]
   (cond
     (instance? DateTimeZone timezone)
     timezone
@@ -14,10 +15,10 @@
     (string? timezone)
     (DateTimeZone/forID timezone)
 
-    (instance? TimeZone)
+    (instance? TimeZone timezone)
     (DateTimeZone/forTimeZone timezone)))
 
-(defn call-with-jvm-tz
+(defn ^:deprecated call-with-jvm-tz
   "Invokes the thunk `F` with the JVM timezone set to `DTZ` (String or instance of TimeZone or DateTimeZone), puts the
   various timezone settings back the way it found it when it exits."
   [dtz thunk]
@@ -37,7 +38,8 @@
       ;; We read the system property directly when formatting results, so this needs to be changed
       (System/setProperty "user.timezone" (.getID dtz))
       (with-redefs [du/jvm-timezone (delay (.toTimeZone dtz))]
-        (thunk))
+        (t/testing (format "JVM timezone set to %s" (.getID dtz))
+          (thunk)))
       (finally
         ;; We need to ensure we always put the timezones back the way
         ;; we found them as it will cause test failures
@@ -45,7 +47,41 @@
         (DateTimeZone/setDefault orig-dtz)
         (System/setProperty "user.timezone" orig-tz-prop)))))
 
-(defmacro with-jvm-tz
-  "Invokes `BODY` with the JVM timezone set to `DTZ`"
+(defmacro ^:deprecated with-jvm-tz
+  "Invokes `body` with the JVM timezone set to `dtz`. DEPRECATED because this uses Joda-Time. Use
+  `with-system-timezone-id` instead!"
   [^DateTimeZone dtz & body]
   `(call-with-jvm-tz ~dtz (fn [] ~@body)))
+
+(defn do-with-system-timezone-id [^String timezone-id thunk]
+  ;; only if the app DB is already set up, we need to make sure plugins are loaded and kill any connection pools that
+  ;; might exist
+  (when (initialize/initialized? :db)
+    (initialize/initialize-if-needed! :plugins)
+    (#'driver/notify-all-databases-updated))
+  (let [original-time-zone       (TimeZone/getDefault)
+        original-system-property (System/getProperty "user.timezone")]
+    (try
+      (TimeZone/setDefault (TimeZone/getTimeZone timezone-id))
+      (System/setProperty "user.timezone" timezone-id)
+      (t/testing (format "JVM timezone set to %s" timezone-id)
+        (thunk))
+      (finally
+        (TimeZone/setDefault original-time-zone)
+        (System/setProperty "user.timezone" original-system-property)))))
+
+(defmacro with-system-timezone-id
+  "Execute `body` with the system time zone temporarily changed to the time zone named by `timezone-id`.
+
+  TODO — consider deprecating this as well. You can do something like
+
+    (t/with-clock (t/mock-clock (t/instant (t/zoned-date-time
+                                            (t/local-date \"2019-11-18\")
+                                            (t/local-time 0)
+                                            (t/zone-id \"US/Pacific\")))
+                                (t/zone-id \"US/Pacific\"))
+      ...)
+
+  almost everywhere you'd use this."
+  [timezone-id & body]
+  `(do-with-system-timezone-id ~timezone-id (fn [] ~@body)))

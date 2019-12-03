@@ -61,6 +61,68 @@ describe("visualization_settings", () => {
           }),
         ));
     });
+    describe("graph.y_axis.title_text", () => {
+      const data = {
+        cols: [
+          DateTimeColumn({ unit: "month", name: "col1" }),
+          NumberColumn({ name: "col2" }),
+        ],
+        rows: [[0, 0]],
+      };
+      it("should use the card name if there's one series", () => {
+        const card = {
+          visualization_settings: {},
+          display: "bar",
+          name: "card name",
+        };
+        const settings = getComputedSettingsForSeries([{ card, data }]);
+        expect(settings["graph.y_axis.title_text"]).toBe("card name");
+      });
+
+      it("should use the series title if set", () => {
+        const card = {
+          visualization_settings: {
+            series_settings: { foo: { title: "some title" } },
+          },
+          display: "bar",
+          name: "foo",
+        };
+        const settings = getComputedSettingsForSeries([{ card, data }]);
+        expect(settings["graph.y_axis.title_text"]).toBe("some title");
+      });
+
+      it("should use the metric name if all series match", () => {
+        const card = { visualization_settings: {}, display: "bar" };
+        const settings = getComputedSettingsForSeries([
+          { card, data },
+          { card, data },
+        ]);
+        expect(settings["graph.y_axis.title_text"]).toBe("col2");
+      });
+
+      it("should use the metric name if all series match", () => {
+        const card = { visualization_settings: {}, display: "bar" };
+        const data1 = {
+          cols: [
+            DateTimeColumn({ unit: "month", name: "col1" }),
+            NumberColumn({ name: "col2a" }),
+          ],
+          rows: [[0, 0]],
+        };
+        const data2 = {
+          cols: [
+            DateTimeColumn({ unit: "month", name: "col1" }),
+            NumberColumn({ name: "col2b" }),
+          ],
+          rows: [[0, 0]],
+        };
+        const settings = getComputedSettingsForSeries([
+          { card, data: data1 },
+          { card, data: data2 },
+        ]);
+        expect(settings["graph.y_axis.title_text"]).toBe(null);
+      });
+    });
   });
 
   describe("getStoredSettingsForSeries", () => {

@@ -15,7 +15,10 @@ Once you do, you'll see a set of options:
 
 * **Embedding secret key:** You can ignore this setting, which is only for standalone chart or dashboard embeds.
 
-* **Embedding the entire metabase app:** Here's where you'll enter the base URL of the web application that you want to allow to embed Metabase. Only include the protocol and the host. For example, `http://my-web-app.example.com/`. If you're a fancy person, you can specify this URL in the environment variable `MB_EMBEDDING_APP_ORIGIN`.
+* **Embedding the entire Metabase app:** Here's where you'll enter the base URLs of the web applications that you want to allow to embed Metabase.
+  This value will be used to populate the `Content-Security-Policy` HTTP header's [`frame-ancestors` directive](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/frame-ancestors), and should follow the same format.
+  For example, `https://*.metabase.com http://my-web-app.example.com:8080/`. Leaving this empty will default to a `frame-ancestors` value of `'none'`.
+  If you're a fancy person, you can specify this URL in the environment variable `MB_EMBEDDING_APP_ORIGIN`.
 
 ### Setting things up in your web app
 To give you a picture of what you'll need to do in your app, we've created this [reference app](https://github.com/metabase/sso-examples/tree/master/app-embed-example). If you use React in your application, [this React component](https://github.com/metabase/sso-examples/blob/master/app-embed-example/src/MetabaseAppEmbed.js) may be helpful.

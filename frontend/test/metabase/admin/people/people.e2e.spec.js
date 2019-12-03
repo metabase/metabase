@@ -4,13 +4,15 @@ import {
   useSharedAdminLogin,
   BROWSER_HISTORY_PUSH,
   BROWSER_HISTORY_POP,
-} from "__support__/e2e_tests";
+} from "__support__/e2e";
+
 import {
   click,
   clickButton,
   setInputValue,
   findButtonByText,
-} from "__support__/enzyme_utils";
+} from "__support__/enzyme";
+
 import { mount } from "enzyme";
 import {
   CREATE_MEMBERSHIP,

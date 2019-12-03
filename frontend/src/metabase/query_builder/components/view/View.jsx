@@ -249,7 +249,7 @@ export default class View extends React.Component {
                 "hide sm-show": isSidebarOpen,
               })}
             >
-              {query instanceof NativeQuery && (
+              {isNative && (
                 <div className="z2 hide sm-show border-bottom mb2">
                   <NativeQueryEditor
                     {...this.props}

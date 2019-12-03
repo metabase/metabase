@@ -5,7 +5,6 @@ import { t } from "ttag";
 import { getIn } from "icepick";
 
 import S from "metabase/components/List.css";
-import R from "metabase/reference/Reference.css";
 
 import * as metadataActions from "metabase/redux/metadata";
 import { assignUserColors } from "metabase/lib/formatting";
@@ -97,26 +96,28 @@ export default class SegmentRevisions extends Component {
         >
           {() =>
             Object.keys(revisions).length > 0 && tables[entity.table_id] ? (
-              <div className="wrapper wrapper--trim">
-                <div className={R.revisionsWrapper}>
-                  {Object.values(revisions)
-                    .map(revision =>
-                      revision && revision.diff ? (
-                        <Revision
-                          key={revision.id}
-                          revision={revision || {}}
-                          tableMetadata={tables[entity.table_id] || {}}
-                          objectName={entity.name}
-                          currentUser={user || {}}
-                          userColor={
-                            userColorAssignments[
-                              getIn(revision, ["user", "id"])
-                            ]
-                          }
-                        />
-                      ) : null,
-                    )
-                    .reverse()}
+              <div className="wrapper">
+                <div className="px3 py3 mb4 bg-white bordered">
+                  <div>
+                    {Object.values(revisions)
+                      .map(revision =>
+                        revision && revision.diff ? (
+                          <Revision
+                            key={revision.id}
+                            revision={revision || {}}
+                            tableMetadata={tables[entity.table_id] || {}}
+                            objectName={entity.name}
+                            currentUser={user || {}}
+                            userColor={
+                              userColorAssignments[
+                                getIn(revision, ["user", "id"])
+                              ]
+                            }
+                          />
+                        ) : null,
+                      )
+                      .reverse()}
+                  </div>
                 </div>
               </div>
             ) : (

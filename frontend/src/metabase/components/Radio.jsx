@@ -62,6 +62,12 @@ export default class Radio extends Component {
       ? [UnderlinedList, UnderlinedItem]
       : [NormalList, NormalItem];
 
+    if (underlined && value === undefined) {
+      console.warn(
+        "Radio can't underline selected option when no value is given.",
+      );
+    }
+
     return (
       <List {...props} vertical={vertical} showButtons={showButtons}>
         {options.map((option, index) => {

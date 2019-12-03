@@ -1410,7 +1410,7 @@ msgstr "این یک عدد صحیح معتبر نیست"
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:161
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:223
 msgid "Changes saved!"
-msgstr "!تغییرات ذخیره شد"
+msgstr "تغییرات ذخیره شد!"
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:157
 #: frontend/src/metabase/admin/settings/components/SettingsSlackForm.jsx:132
@@ -1423,11 +1423,11 @@ msgstr "ارسال ایمیل آزمایشی"
 
 #: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:13
 msgid "Sending..."
-msgstr "…درحال ارسال"
+msgstr "درحال ارسال..."
 
 #: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:14
 msgid "Sent!"
-msgstr "!ارسال شد"
+msgstr "ارسال شد!"
 
 #: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:82
 msgid "Clear"
@@ -1545,7 +1545,7 @@ msgstr "پاک کردن"
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:148
 #: frontend/src/metabase/query_builder/components/template_tags/TagEditorParam.jsx:189
 msgid "Select…"
-msgstr "…اتخاب"
+msgstr "اتخاب..."
 
 #: frontend/src/metabase/admin/settings/components/widgets/CustomGeoJSONWidget.jsx:243
 msgid "Sample values:"
@@ -9805,7 +9805,7 @@ msgstr "فقط یک بخش Google Analytics به طور همزمان مجاز ا
 
 #: src/metabase/driver/mongo/query_processor.clj
 msgid "MONGO AGGREGATION PIPELINE:"
-msgstr ":خط لوله مونگو"
+msgstr "MONGO AGGREGATION PIPELINE:"
 
 #: src/metabase/driver/mongo/query_processor.clj
 msgid "Error: mismatched columns in results! Expected: {0} Got: {1}"
@@ -12533,7 +12533,7 @@ msgstr "تجمیع"
 
 #: frontend/src/metabase/query_builder/components/notebook/NotebookStep.jsx:68
 msgid "Breakout"
-msgstr "برک آوت"
+msgstr "Breakout"
 
 #: frontend/src/metabase/query_builder/components/notebook/steps/AggregateStep.jsx:18
 msgid "Pick the metric you want to see"
@@ -12684,7 +12684,7 @@ msgstr "این معمولاً خیلی سریع است اما به نظر می �
 
 #: frontend/src/metabase/visualizations/visualizations/ComboChart.jsx:16
 msgid "Combo"
-msgstr "ترکیب"
+msgstr "Combo"
 
 #: frontend/src/metabase/visualizations/visualizations/RowChart.jsx:13
 msgid "Row"
@@ -12696,7 +12696,7 @@ msgstr "روند"
 
 #: frontend/src/metabase-lib/lib/DimensionOptions.js:129
 msgid "Boolean"
-msgstr "بول"
+msgstr "Boolean"
 
 #: frontend/src/metabase-lib/lib/queries/structured/Filter.js:59
 msgid "Unknown Segment"
@@ -12930,15 +12930,15 @@ msgstr "جمع {0}"
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "SD of {0}"
-msgstr "{0} انحراف استاندارد از"
+msgstr "SD of {0}"
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "Min of {0}"
-msgstr "{0} حداقل از"
+msgstr "Min of {0}"
 
 #: src/metabase/query_processor/middleware/annotate.clj
 msgid "Max of {0}"
-msgstr "{0} حداکثر از"
+msgstr "Max of {0}"
 
 #. until we have a way to generate good names for filters we'll just have to say 'matching condition' for now
 #: src/metabase/query_processor/middleware/annotate.clj
@@ -12963,7 +12963,7 @@ msgstr "به طور غیر منتظره پاسخ 'nil' پردازنده Query ر
 
 #: src/metabase/query_processor/middleware/async.clj
 msgid "Got InterruptedException. Canceling query."
-msgstr "InterruptedException در حال لغو پرس و جو"
+msgstr "InterpreException در حال لغو پرس و جو"
 
 #: src/metabase/query_processor/middleware/async.clj
 msgid "Unhandled exception, exepected `catch-exceptions` middleware to handle it."
@@ -13055,11 +13055,11 @@ msgstr "الگوی '' {0} '' بارگیری نشد. یادتان هست که ج�
 
 #: src/metabase/sample_data.clj
 msgid "Sample dataset DB file ''{0}'' cannot be found."
-msgstr "نمونه پرونده داده DB ''{0}'' یافت نشد."
+msgstr "نمونه پرونده داده {DB '' {0'' یافت نشد."
 
 #: src/metabase/sample_data.clj
 msgid "Loading sample dataset..."
-msgstr "…بارگیری مجموعه داده نمونه"
+msgstr "بارگیری مجموعه داده نمونه ..."
 
 #: src/metabase/sample_data.clj
 msgid "Failed to load sample dataset"
@@ -13067,15 +13067,15 @@ msgstr "بارگیری مجموعه داده نمونه انجام نشد"
 
 #: src/metabase/sync/sync_metadata/tables.clj
 msgid "Found new tables:"
-msgstr ":جداول جدید یافت"
+msgstr "جداول جدید یافت:"
 
 #: src/metabase/sync/sync_metadata/tables.clj
 msgid "Marking tables as inactive:"
-msgstr ":علامت گذاری جداول به عنوان غیرفعال"
+msgstr "علامت گذاری جداول به عنوان غیرفعال:"
 
 #: src/metabase/sync/sync_metadata/tables.clj
-msgid "Updating description for tables"
-msgstr ":به روزرسانی توضیحات برای جداول:"
+msgid "Updating description for tables:"
+msgstr "به روزرسانی توضیحات برای جداول:"
 
 #: src/metabase/task.clj
 msgid "Rescheduling job {0}"
@@ -13099,7 +13099,7 @@ msgstr "برنامه ریزی وظایف برای بانک اطلاعات {0} ا
 
 #: src/metabase/util/schema.clj
 msgid "All elements must be distinct."
-msgstr ".همه عناصر باید مشخص باشند"
+msgstr "همه عناصر باید مشخص باشند."
 
 #:
 msgctxt "Modal for selecting columns in source data or when doing a join."

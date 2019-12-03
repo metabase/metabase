@@ -1,11 +1,14 @@
 (ns metabase.test.data.sql-jdbc.load-data
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase
              [driver :as driver]
              [util :as u]]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.test.data
              [interface :as tx]
              [sql :as sql.tx]]
@@ -99,6 +102,7 @@
   [driver dbdef tabledef]
   (let [fields-for-insert (mapv (comp keyword :field-name)
                                 (:field-definitions tabledef))]
+    ;; TIMEZONE FIXME
     (for [row (:rows tabledef)]
       (zipmap fields-for-insert (for [v row]
                                   (if (and (not (instance? java.sql.Time v))
@@ -125,6 +129,7 @@
         (.setAutoCommit (jdbc/get-connection conn) false)
         (let [insert! (insert-middleware (make-insert! driver conn dbdef tabledef))
               rows    (load-data-get-rows driver dbdef tabledef)]
+          (log/tracef "Inserting rows like: %s" (first rows))
           (insert! rows))))))
 
 
@@ -177,14 +182,21 @@
 (defmethod do-insert! :sql-jdbc/test-extensions
   [driver spec table-identifier row-or-rows]
   (let [statements (ddl/insert-rows-ddl-statements driver table-identifier row-or-rows)]
-    (try
-      ;; TODO - why don't we use `execute/execute-sql!` here like we do below?
-      (doseq [sql+args statements]
-        (jdbc/execute! spec sql+args))
-      (catch SQLException e
-        (println (u/format-color 'red "INSERT FAILED: \n%s\n" statements))
-        (jdbc/print-sql-exception-chain e)
-        (throw e)))))
+    ;; `set-parameters` might try to look at DB timezone; we don't want to do that while loading the data because the
+    ;; DB hasn't been synced yet
+    (when-let [set-timezone-format-string (sql-jdbc.execute/set-timezone-sql driver)]
+      (let [set-timezone-sql (format set-timezone-format-string "'UTC'")]
+        (log/debugf "Setting timezone to UTC before inserting data with SQL \"%s\"" set-timezone-sql)
+        (jdbc/execute! spec [set-timezone-sql])))
+    (qp.timezone/with-database-timezone-id nil
+      (try
+        ;; TODO - why don't we use `execute/execute-sql!` here like we do below?
+        (doseq [sql+args statements]
+          (jdbc/execute! spec sql+args {:set-parameters (partial sql-jdbc.execute/set-parameters driver)}))
+        (catch SQLException e
+          (println (u/format-color 'red "INSERT FAILED: \n%s\n" statements))
+          (jdbc/print-sql-exception-chain e)
+          (throw e))))))
 
 (defn create-db!
   "Default implementation of `create-db!` for SQL drivers."
