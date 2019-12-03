@@ -21,19 +21,17 @@ export const BackendResource = createSharedResource("BackendResource", {
   },
   create({ dbKey = DEFAULT_DB_KEY }) {
     const dbFile = getDbFile();
-    if (!dbKey) {
-      dbKey = dbFile;
-    }
+    const absoluteDbKey = dbKey ? __dirname + dbKey : dbFile;
     if (process.env["E2E_HOST"] && dbKey === DEFAULT_DB_KEY) {
       return {
-        dbKey: __dirname + dbKey,
+        dbKey: absoluteDbKey,
         host: process.env["E2E_HOST"],
         process: { kill: () => {} },
       };
     } else {
       const port = getPort();
       return {
-        dbKey: __dirname + dbKey,
+        dbKey: absoluteDbKey,
         dbFile: dbFile,
         host: `http://localhost:${port}`,
         port: port,
