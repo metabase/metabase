@@ -330,26 +330,34 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
     const sampleSize = Math.min(data.length, MAX_SAMPLE_SIZE);
     // $FlowFixMe
     addLabels(_.sample(data, sampleSize));
-    let totalWidth = 0;
-    for (const label of document.querySelectorAll(".value-label")) {
-      totalWidth += label.getBoundingClientRect().width;
-    }
+    const totalWidth = chart
+      .svg()
+      .selectAll(".value-label")
+      .flat()
+      .reduce((sum, label) => sum + label.getBoundingClientRect().width, 0);
     const labelWidth = totalWidth / sampleSize + LABEL_PADDING;
 
-    // $FlowFixMe
-    const { width: chartWidth } = document
-      .querySelector(".axis.x")
+    const { width: chartWidth } = chart
+      .svg()
+      .select(".axis.x")
+      .node()
       .getBoundingClientRect();
 
-    // $FlowFixMe
-    document.querySelector(".value-labels").remove();
+    chart
+      .svg()
+      .select(".value-labels")
+      .remove();
     nth = Math.ceil((labelWidth * data.length) / chartWidth);
   }
 
   addLabels(data.filter((d, i) => i % nth === 0));
 
-  // $FlowFixMe
-  moveToTop(document.querySelector(".value-labels").parentNode);
+  moveToTop(
+    chart
+      .svg()
+      .select(".value-labels")
+      .node().parentNode,
+  );
 }
 
 function onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis) {
