@@ -1,8 +1,10 @@
 (ns metabase.sync.util-test
   "Tests for the utility functions shared by all parts of sync, such as the duplicate ops guard."
-  (:require [clj-time.core :as time]
-            [clojure.string :as str]
-            [expectations :refer :all]
+  (:require [clojure
+             [string :as str]
+             [test :refer :all]]
+            [expectations :refer [expect]]
+            [java-time :as t]
             [metabase
              [driver :as driver]
              [sync :as sync]]
@@ -31,28 +33,28 @@
 
 (defmethod driver/describe-table ::concurrent-sync-test [& _] nil)
 
-;; only one sync should be going on at a time
-(expect
- ;; describe-database gets called twice during a single sync process, once for syncing tables and a second time for
- ;; syncing the _metabase_metadata table
- 2
- (tt/with-temp* [Database [db {:engine ::concurrent-sync-test}]]
-   (reset! calls-to-describe-database 0)
-   ;; start a sync processes in the background. It should take 1000 ms to finish
-   (let [f1 (future (sync/sync-database! db))
-         f2 (do
-              ;; wait 200 ms to make sure everything is going
-              (Thread/sleep 200)
-              ;; Start another in the background. Nothing should happen here because the first is already running
-              (future (sync/sync-database! db)))]
-     ;; Start another in the foreground. Again, nothing should happen here because the original should still be
-     ;; running
-     (sync/sync-database! db)
-     ;; make sure both of the futures have finished
-     (deref f1)
-     (deref f2)
-     ;; Check the number of syncs that took place. Should be 2 (just the first)
-     @calls-to-describe-database)))
+(deftest concurrent-sync-test
+  (testing "only one sync process be going on at a time"
+    ;; describe-database gets called twice during a single sync process, once for syncing tables and a second time for
+    ;; syncing the _metabase_metadata table
+    (tt/with-temp* [Database [db {:engine ::concurrent-sync-test}]]
+      (reset! calls-to-describe-database 0)
+      ;; start a sync processes in the background. It should take 1000 ms to finish
+      (let [f1 (future (sync/sync-database! db))
+            f2 (do
+                 ;; wait 200 ms to make sure everything is going
+                 (Thread/sleep 200)
+                 ;; Start another in the background. Nothing should happen here because the first is already running
+                 (future (sync/sync-database! db)))]
+        ;; Start another in the foreground. Again, nothing should happen here because the original should still be
+        ;; running
+        (sync/sync-database! db)
+        ;; make sure both of the futures have finished
+        (deref f1)
+        (deref f2)
+        ;; Check the number of syncs that took place. Should be 2 (just the first)
+        (is (= 2
+               @calls-to-describe-database))))))
 
 (defn- call-with-operation-info
   "Call `f` with `log-sync-summary` and `store-sync-summary!` redef'd. For `log-sync-summary`, it intercepts the step
@@ -62,8 +64,8 @@
   [f]
   (let [step-info-atom           (atom [])
         created-task-history-ids (atom [])
-        orig-log-fn              (var-get #'metabase.sync.util/log-sync-summary)
-        orig-store-fn            (var-get #'metabase.sync.util/store-sync-summary!)]
+        orig-log-fn              @#'metabase.sync.util/log-sync-summary
+        orig-store-fn            @#'metabase.sync.util/store-sync-summary!]
     (with-redefs [metabase.sync.util/log-sync-summary    (fn [operation database {:keys [steps] :as operation-metadata}]
                                                            (swap! step-info-atom conj operation-metadata)
                                                            (orig-log-fn operation database operation-metadata))
@@ -132,54 +134,60 @@
        :step-2-history            (fetch-task-history-row step-2-name)})))
 
 (defn- create-test-sync-summary [step-name log-summary-fn]
-  (let [start (time/now)]
+  (let [start (t/zoned-date-time)]
     {:start-time start
-     :end-time (time/plus start (time/seconds 5))
-     :steps [[step-name {:start-time start
-                         :end-time (time/plus start (time/seconds 4))
-                         :log-summary-fn log-summary-fn}]]}))
+     :end-time   (t/plus start (t/seconds 5))
+     :steps      [[step-name {:start-time     start
+                              :end-time       (t/plus start (t/seconds 4))
+                              :log-summary-fn log-summary-fn}]]}))
 
-;; Test that we can create the log summary message. This is a big string blob, so validate that it contains the
-;; important parts and it doesn't throw an exception
-(expect
-  {:has-operation?          true
-   :has-db-name?            true
-   :has-operation-duration? true
-   :has-step-name?          true
-   :has-step-duration?      true
-   :has-log-summary-text?   true}
-  (let [operation     (tu/random-name)
-        db-name       (tu/random-name)
-        step-name     (tu/random-name)
-        step-log-text (tu/random-name)
-        results       (#'sync-util/make-log-sync-summary-str operation
-                                                             (mdb/map->DatabaseInstance {:name db-name})
-                                                             (create-test-sync-summary step-name
-                                                                                       (fn [step-info]
-                                                                                         step-log-text)))]
-    {:has-operation?          (str/includes? results operation)
-     :has-db-name?            (str/includes? results db-name)
-     :has-operation-duration? (str/includes? results "5.0 s")
-     :has-step-name?          (str/includes? results step-name)
-     :has-step-duration?      (str/includes? results "4.0 s")
-     :has-log-summary-text?   (str/includes? results step-log-text)}))
-
-;; The `log-summary-fn` part of step info is optional as not all steps have it. Validate that we properly handle that
-;; case
-(expect
-  {:has-operation?          true
-   :has-db-name?            true
-   :has-operation-duration? true
-   :has-step-name?          true
-   :has-step-duration?      true}
+(deftest log-summary-message-test
   (let [operation (tu/random-name)
         db-name   (tu/random-name)
-        step-name (tu/random-name)
-        results   (#'sync-util/make-log-sync-summary-str operation
-                                                         (mdb/map->DatabaseInstance {:name db-name})
-                                                         (create-test-sync-summary step-name nil))]
-    {:has-operation?          (str/includes? results operation)
-     :has-db-name?            (str/includes? results db-name)
-     :has-operation-duration? (str/includes? results "5.0 s")
-     :has-step-name?          (str/includes? results step-name)
-     :has-step-duration?      (str/includes? results "4.0 s")}))
+        step-name (tu/random-name)]
+    (testing (str "Test that we can create the log summary message. This is a big string blob, so validate that it"
+                  " contains the important parts and it doesn't throw an exception")
+      (let [step-log-text (tu/random-name)
+            results       (#'sync-util/make-log-sync-summary-str operation
+                                                                 (mdb/map->DatabaseInstance {:name db-name})
+                                                                 (create-test-sync-summary step-name
+                                                                                           (fn [step-info]
+                                                                                             step-log-text)))]
+        (testing "has-operation?"
+          (is (= true
+                 (str/includes? results operation))))
+        (testing "has-db-name?"
+          (is (= true
+                 (str/includes? results db-name))))
+        (testing "has-operation-duration?"
+          (is (= true
+                 (str/includes? results "5.0 s"))))
+        (testing "has-step-name?"
+          (is (= true
+                 (str/includes? results step-name))))
+        (testing "has-step-duration?"
+          (is (= true
+                 (str/includes? results "4.0 s"))))
+        (testing "has-log-summary-text?"
+          (is (= true
+                 (str/includes? results step-log-text))))))
+    (testing (str "The `log-summary-fn` part of step info is optional as not all steps have it. Validate that we"
+                  " properly handle that case")
+      (let [results (#'sync-util/make-log-sync-summary-str operation
+                                                           (mdb/map->DatabaseInstance {:name db-name})
+                                                           (create-test-sync-summary step-name nil))]
+        (testing "has-operation?"
+          (is (= true
+                 (str/includes? results operation))))
+        (testing "has-db-name?"
+          (is (= true
+                 (str/includes? results db-name))))
+        (testing "has-operation-duration?"
+          (is (= true
+                 (str/includes? results "5.0 s"))))
+        (testing "has-step-name?"
+          (is (= true
+                 (str/includes? results step-name))))
+        (testing "has-step-duration?"
+          (is (= true
+                 (str/includes? results "4.0 s"))))))))

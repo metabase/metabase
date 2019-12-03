@@ -1,15 +1,19 @@
 (ns metabase.pulse.render.sparkline
-  (:require [metabase.pulse.render
+  (:require [java-time :as t]
+            [metabase.pulse.render
              [common :as common]
              [image-bundle :as image-bundle]
              [style :as style]]
             [metabase.types :as types]
             [metabase.util
              [date-2 :as u.date]
-             [i18n :refer [tru]]])
+             [i18n :refer [tru]]]
+            [schema.core :as s])
   (:import [java.awt BasicStroke Color RenderingHints]
            java.awt.image.BufferedImage
            java.io.ByteArrayOutputStream
+           [java.time LocalDate LocalDateTime LocalTime OffsetTime]
+           java.time.temporal.Temporal
            javax.imageio.ImageIO))
 
 (def ^:private ^:const dot-radius 6)
@@ -57,10 +61,17 @@
         (throw (Exception. (tru "No appropriate image writer found!"))))
       (.toByteArray os))))
 
-;; TIMEZONE FIXME
 (defn- format-val-fn [timezone-id cols x-axis-rowfn]
   (if (types/temporal-field? (x-axis-rowfn cols))
-    #(java-time/to-millis-from-epoch (u.date/parse % timezone-id))
+    (fn f [x]
+      (cond
+        (string? x)                 (f (u.date/parse x timezone-id))
+        (instance? LocalDate x)     (f (t/local-date-time x (t/local-time 0)))
+        (instance? LocalTime x)     (f (t/local-date-time (t/local-date "1970-01-01") x))
+        (instance? LocalDateTime x) (f (t/offset-date-time x (t/zone-offset 0)))
+        (instance? OffsetTime x)    (f (t/offset-date-time (t/local-date "1970-01-01") x (t/zone-offset x)))
+        (instance? Temporal x)      (java-time/to-millis-from-epoch x)
+        :else                       x))
     identity))
 
 (defn sparkline-image-bundle
@@ -88,10 +99,9 @@
     (image-bundle/make-image-bundle render-type (render-sparkline-to-png x-axis-values y-axis-values))))
 
 
-(defn sparkline-rows
+(s/defn sparkline-rows
   "Get sorted rows from query results, with nils removed, appropriate for rendering as a sparkline."
-  [timezone-id card {:keys [rows cols], :as data}]
-  {:pre [((some-fn nil? string?) timezone-id)]}
+  [timezone-id :- (s/maybe s/Str) card {:keys [rows cols], :as data}]
   (let [[x-axis-rowfn
          y-axis-rowfn] (common/graphing-column-row-fns card data)
         format-val     (format-val-fn timezone-id cols x-axis-rowfn)]

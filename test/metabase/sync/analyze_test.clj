@@ -1,6 +1,6 @@
 (ns metabase.sync.analyze-test
-  (:require [expectations :refer :all]
-            [java-time :as t]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]
@@ -15,7 +15,7 @@
             [toucan.util.test :as tt]))
 
 (def ^:private fake-analysis-completion-date
-  #t "2017-08-01")
+  #t "2017-08-01T00:00")
 
 ;; Check that Fields do *not* get analyzed if they're not newly created and fingerprint version is current
 (expect
@@ -58,10 +58,8 @@
     (set (for [field (db/select [Field :name :special_type :last_analyzed] :table_id (u/get-id table))]
            (into {} (update field :last_analyzed boolean))))))
 
-;; Make sure that only the correct Fields get marked as recently analyzed
-(expect
-  #{"Current fingerprint, not analyzed"}
-  (t/with-clock (t/mock-clock (t/offset-date-time "1999-01-01T00:00:00Z"))
+(deftest mark-fields-as-analyzed-test
+  (testing "Make sure that only the correct Fields get marked as recently analyzed"
     (with-redefs [i/latest-fingerprint-version Short/MAX_VALUE]
       (tt/with-temp* [Table [table]
                       Field [_ {:table_id            (u/get-id table)
@@ -81,4 +79,5 @@
                                 :fingerprint_version (dec Short/MAX_VALUE)
                                 :last_analyzed       #t "2017-08-09T00:00Z"}]]
         (#'analyze/update-fields-last-analyzed! table)
-        (db/select-field :name Field :last_analyzed :%now)))))
+        (is (= #{"Current fingerprint, not analyzed"}
+               (db/select-field :name Field :table_id (u/get-id table), :last_analyzed [:> #t "2018-01-01"])))))))

@@ -1,6 +1,5 @@
 (ns metabase.test.initialize.web-server
-  (:require [clojure.tools.logging :as log]
-            [metabase
+  (:require [metabase
              [config :as config]
              [handler :as handler]
              [server :as server]]
@@ -11,7 +10,8 @@
   (try
     (server/start-web-server! #'handler/app)
     (catch Throwable e
-      (log/error e "Web server failed to start")
+      (println "Web server failed to start")
+      (println e)
       (when config/is-test?
         (System/exit -2))))
   (init-status/set-complete!)

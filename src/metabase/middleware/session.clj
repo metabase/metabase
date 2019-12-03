@@ -10,10 +10,12 @@
             [metabase.models
              [session :refer [Session]]
              [user :as user :refer [User]]]
+            [metabase.util.date-2 :as u.date]
             [ring.util.response :as resp]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import java.util.UUID))
+  (:import java.time.temporal.Temporal
+           java.util.UUID))
 
 ;; How do authenticated API requests work? Metabase first looks for a cookie called `metabase.SESSION`. This is the
 ;; normal way of doing things; this cookie gets set automatically upon login. `metabase.SESSION` is an HttpOnly
@@ -32,7 +34,7 @@
 (def ^:private ^String metabase-session-header        "x-metabase-session")
 
 (defn- clear-cookie [response cookie-name]
-  (resp/set-cookie response cookie-name nil {:expires (t/format :rfc-1123-date-time (t/offset-date-time 0)), :path "/"}))
+  (resp/set-cookie response cookie-name nil {:expires "Thu, 1 Jan 1970 00:00:00 GMT", :path "/"}))
 
 (defn- wrap-body-if-needed
   "You can't add a cookie (by setting the `:cookies` key of a response) if the response is an unwrapped JSON response;
@@ -123,25 +125,24 @@
     (handler (wrap-session-id* request) respond raise)))
 
 (defn- session-with-id
-  "Fetch a session with SESSION-ID, and include the User ID and superuser status associated with it."
+  "Fetch a session with `session-id`, and include the User ID and superuser status associated with it."
   [session-id]
   (db/select-one [Session :created_at :user_id (db/qualify User :is_superuser)]
     (mdb/join [Session :user_id] [User :id])
     (db/qualify User :is_active) true
     (db/qualify Session :id) session-id))
 
-(defn- session-age-ms [session]
-  (- (System/currentTimeMillis) (or (when-let [created-at (:created_at session)]
+(s/defn ^:private session-expired?
+  ([session]
+   (session-expired? session (config/config-int :max-session-age)))
 
-                                      (.getTime created-at))
-                                    0)))
-
-(defn- session-age-minutes [session]
-  (quot (session-age-ms session) 60000))
-
-(defn- session-expired? [session]
-  (> (session-age-minutes session)
-     (config/config-int :max-session-age)))
+  ([{created-at :created_at} :- {(s/optional-key :created_at) (s/maybe Temporal), s/Keyword s/Any}
+    max-age-minutes          :- s/Int]
+   (or
+    (not created-at)
+    (u.date/greater-than-period-duration?
+     (u.date/period-duration created-at (t/offset-date-time))
+     (t/minutes max-age-minutes)))))
 
 (defn- current-user-info-for-session
   "Return User ID and superuser status for Session with `session-id` if it is valid and not expired."

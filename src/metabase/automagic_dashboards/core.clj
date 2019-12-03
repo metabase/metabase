@@ -285,13 +285,12 @@
                                       :type/DateTime
                                       ((juxt :earliest :latest))
                                       (map u.date/parse))]
-    (condp > (let [t1 earliest
-                   t2 latest]
-               (.between java.time.temporal.ChronoUnit/HOURS t1 t2))
-      3               :minute
-      (* 24 7)        :hour
-      (* 24 30 6)     :day
-      (* 24 30 12 10) :month
+    ;; e.g. if 3 hours > [duration between earliest and latest] then use `:minute` resolution
+    (condp u.date/greater-than-period-duration? (u.date/period-duration earliest latest)
+      (t/hours 3)  :minute
+      (t/days 7)   :hour
+      (t/months 6) :day
+      (t/years 10) :month
       :year)
     :day))
 
@@ -1069,6 +1068,7 @@
 
 (defn- pluralize
   [x]
+  ;; the `int` cast here is to fix performance warnings if `*warn-on-reflection*` is enabled
   (case (int (mod x 10))
     1 (tru "{0}st" x)
     2 (tru "{0}nd" x)
@@ -1076,25 +1076,24 @@
     (tru "{0}th" x)))
 
 (defn- humanize-datetime
-  [dt unit]
-  (let [dt                     (u.date/parse dt)
-        unparse-with-formatter #(t/format % dt)]
+  [t-str unit]
+  (let [dt (u.date/parse t-str)]
     (case unit
-      :second          (tru "at {0}" (unparse-with-formatter "h:mm:ss a, MMMM d, YYYY" dt))
-      :minute          (tru "at {0}" (unparse-with-formatter "h:mm a, MMMM d, YYYY" dt))
-      :hour            (tru "at {0}" (unparse-with-formatter "h a, MMMM d, YYYY" dt))
-      :day             (tru "on {0}" (unparse-with-formatter "MMMM d, YYYY" dt))
+      :second          (tru "at {0}" (t/format "h:mm:ss a, MMMM d, YYYY" dt))
+      :minute          (tru "at {0}" (t/format "h:mm a, MMMM d, YYYY" dt))
+      :hour            (tru "at {0}" (t/format "h a, MMMM d, YYYY" dt))
+      :day             (tru "on {0}" (t/format "MMMM d, YYYY" dt))
       :week            (tru "in {0} week - {1}"
                             (pluralize (u.date/extract dt :week-of-year))
                             (str (u.date/extract dt :year)))
-      :month           (tru "in {0}" (unparse-with-formatter "MMMM YYYY" dt))
+      :month           (tru "in {0}" (t/format "MMMM YYYY" dt))
       :quarter         (tru "in Q{0} - {1}"
                             (u.date/extract dt :quarter-of-year)
                             (str (u.date/extract dt :year)))
-      :year            (unparse-with-formatter "YYYY" dt)
-      :day-of-week     (unparse-with-formatter "EEEE" dt)
-      :hour-of-day     (tru "at {0}" (unparse-with-formatter "h a" dt))
-      :month-of-year   (unparse-with-formatter "MMMM" dt)
+      :year            (t/format "YYYY" dt)
+      :day-of-week     (t/format "EEEE" dt)
+      :hour-of-day     (tru "at {0}" (t/format "h a" dt))
+      :month-of-year   (t/format "MMMM" dt)
       :quarter-of-year (tru "Q{0}" (u.date/extract dt :quarter-of-year))
       (:minute-of-hour
        :day-of-month

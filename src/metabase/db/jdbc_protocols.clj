@@ -22,9 +22,10 @@
   (.setObject stmt index object target-sql-type))
 
 (extend-protocol jdbc/ISQLParameter
+  ;; DB's don't seem to handle Instant correctly so convert it to an OffsetDateTime with zone offset = 0
   Instant
   (set-parameter [t stmt i]
-    (jdbc/set-parameter (t/offset-date-time t (t/zone-offset 0)) stmt t))
+    (jdbc/set-parameter (t/offset-date-time t (t/zone-offset 0)) stmt i))
 
   LocalDate
   (set-parameter [t stmt i]
@@ -40,8 +41,7 @@
 
   OffsetDateTime
   (set-parameter [t stmt i]
-    (case @db-type
-      :mysql
+    (if (= @db-type :mysql)
       ;; Regardless of session timezone it seems to be the case that OffsetDateTimes get normalized to UTC inside MySQL
       ;;
       ;; Since MySQL TIMESTAMPs aren't timezone-aware this means comparisons are done between timestamps in the report
@@ -53,18 +53,18 @@
       (let [offset (.. (t/zone-id) getRules (getOffset (t/instant t)))
             t      (t/local-date-time (t/with-offset-same-instant t offset))]
         (set-object stmt i t Types/TIMESTAMP))
-
       ;; h2 and Postgres work as expected
       (set-object stmt i t Types/TIMESTAMP_WITH_TIMEZONE)))
 
+  ;; MySQL, Postgres, and H2 all don't support OffsetTime
   OffsetTime
   (set-parameter [t stmt i]
-    ;; MySQL, Postgres, and H2 all don't support OffsetTime
     (set-object stmt i (t/local-time (t/with-offset-same-instant t (t/zone-offset 0))) Types/TIME))
 
+  ;; Similarly, none of them handle ZonedDateTime out of the box either, so convert it to an OffsetDateTime first
   ZonedDateTime
   (set-parameter [t stmt i]
-    (set-object stmt i t Types/TIMESTAMP_WITH_TIMEZONE)))
+    (jdbc/set-parameter (t/offset-date-time t) stmt i)))
 
 (extend-protocol jdbc/IResultSetReadColumn
   org.postgresql.util.PGobject
@@ -97,8 +97,8 @@
   [^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (case @db-type
     :postgres
-    ;; for some reason postgres `TIMESTAMP WITH TIME ZONE` columns still come back as `Type/TIMESTAMP`, which seems like a
-    ;; bug with the JDBC driver?
+    ;; for some reason postgres `TIMESTAMP WITH TIME ZONE` columns still come back as `Type/TIMESTAMP`, which seems
+    ;; like a bug with the JDBC driver?
     (let [^Class klass (if (= (str/lower-case (.getColumnTypeName rsmeta i)) "timestamptz")
                          OffsetDateTime
                          LocalDateTime)]

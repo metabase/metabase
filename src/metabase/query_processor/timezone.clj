@@ -67,10 +67,6 @@
   (or *report-timezone-id-override*
       (driver/report-timezone)))
 
-(defn- database-timezone-id* []
-  (or *database-timezone-id-override*
-      (:timezone (qp.store/database))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Public Interface                                                |
@@ -79,15 +75,22 @@
 (defn report-timezone-id-if-supported
   "Timezone ID for the report timezone, if the current driver supports it. (If the current driver supports it, this is
   bound by the `bind-effective-timezone` middleware.)"
-  ^String []
-  (when (driver/supports? driver/*driver* :set-timezone)
-    (valid-timezone-id (report-timezone-id*))))
+  (^String []
+   (report-timezone-id-if-supported driver/*driver*))
+
+  (^String [driver]
+   (when (driver/supports? driver :set-timezone)
+     (valid-timezone-id (report-timezone-id*)))))
 
 (defn database-timezone-id
   "The timezone that the current database is in, as determined by the most recent sync."
-  ^String []
-  (valid-timezone-id
-   (database-timezone-id*)))
+  (^String []
+   (database-timezone-id ::db-from-store))
+
+  (^String [database]
+   (valid-timezone-id
+    (or *database-timezone-id-override*
+        (:timezone (if (= database ::db-from-store) (qp.store/database) database))))))
 
 (defn system-timezone-id
   "The system timezone of this Metabase instance."
@@ -105,12 +108,20 @@
   "The timezone that a query is actually ran in -- report timezone, if set and supported by the current driver;
   otherwise the timezone of the database (if known), otherwise the system timezone. Guaranteed to always return a
   timezone ID — never returns `nil`."
-  ^String []
-  (valid-timezone-id
-   (or *results-timezone-id-override*
-       (report-timezone-id-if-supported)
-       (database-timezone-id)
-       ;; NOTE: if we don't have an explicit report-timezone then use the JVM timezone
-       ;;       this ensures alignment between the way dates are processed by JDBC and our returned data
-       ;;       GH issues: #2282, #2035
-       (system-timezone-id))))
+  (^String []
+   (results-timezone-id driver/*driver* ::db-from-store))
+
+  (^String [database]
+   (results-timezone-id (:engine database) database))
+
+  (^String [driver database]
+   (valid-timezone-id
+    (or *results-timezone-id-override*
+        (report-timezone-id-if-supported driver)
+        ;; don't actually fetch DB from store unless needed — that way if `*results-timezone-id-override*` is set we
+        ;; don't need to init a store during tests
+        (database-timezone-id database)
+        ;; NOTE: if we don't have an explicit report-timezone then use the JVM timezone
+        ;;       this ensures alignment between the way dates are processed by JDBC and our returned data
+        ;;       GH issues: #2282, #2035
+        (system-timezone-id)))))

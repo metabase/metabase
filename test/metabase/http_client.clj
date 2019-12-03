@@ -6,6 +6,7 @@
              [string :as str]
              [test :as t]]
             [clojure.tools.logging :as log]
+            [java-time :as java-time]
             [metabase
              [config :as config]
              [util :as u]]
@@ -23,7 +24,7 @@
 (defn build-url
   "Build an API URL for `localhost` and `MB_JETTY_PORT` with `url-param-kwargs`.
 
-     (build-url \"db/1\" {:x true}) -> \"http://localhost:3000/api/db/1?x=true\""
+    (build-url \"db/1\" {:x true}) -> \"http://localhost:3000/api/db/1?x=true\""
   [url url-param-kwargs]
   {:pre [(string? url) (u/maybe? map? url-param-kwargs)]}
   (str *url-prefix* url (when (seq url-param-kwargs)
@@ -42,16 +43,34 @@
   "Automatically recurse over `response` and look for keys that are known to correspond to dates. Parse their values and
   convert to java temporal types."
   [response]
-  (cond (sequential? response) (map auto-deserialize-dates response)
-        (map? response) (->> response
-                             (map (fn [[k v]]
-                                    {k (cond
-                                         ;; Our tests only run in UTC, parsing timestamp strings as UTC
-                                         (contains? auto-deserialize-dates-keys k) (u.date/parse v "UTC")
-                                         (coll? v) (auto-deserialize-dates v)
-                                         :else v)}))
-                             (into {}))
-        :else response))
+  (cond (sequential? response)
+        (map auto-deserialize-dates response)
+
+        (map? response)
+        (->> response
+             (map (fn [[k v]]
+                    {k (cond
+                         ;; `u.date/parse` converts OffsetDateTimes with `Z` offset to
+                         ;; `ZonedDateTime` automatically (for better or worse) since this
+                         ;; won't match what's actually in the DB convert it back to an `OffsetDateTime`
+                         (contains? auto-deserialize-dates-keys k)
+                         (try
+                           (let [parsed (u.date/parse v)]
+                             (if (java-time/zoned-date-time? parsed)
+                               (java-time/offset-date-time parsed)
+                               parsed))
+                           (catch Throwable _
+                             v))
+
+                         (coll? v)
+                         (auto-deserialize-dates v)
+
+                         :else
+                         v)}))
+             (into {}))
+
+        :else
+        response))
 
 (defn- parse-response
   "Deserialize the JSON response or return as-is if that fails."
@@ -60,7 +79,7 @@
     body
     (try
       (auto-deserialize-dates (json/parse-string body keyword))
-      (catch Throwable _
+      (catch Throwable e
         (when-not (str/blank? body)
           body)))))
 
@@ -69,7 +88,7 @@
 
 (declare client)
 
-(s/defn authenticate
+(s/defn authenticate :- s/Str
   "Authenticate a test user with `username` and `password`, returning their Metabase Session token; or throw an
   Exception if that fails."
   [credentials :- {:username s/Str, :password s/Str}]

@@ -91,7 +91,7 @@
       (:include_xls card)))
 
 (s/defn ^:private render-pulse-card-body :- common/RenderedPulseCard
-  [render-type timezone-id card {:keys [data error], :as results}]
+  [render-type timezone-id :- (s/maybe s/Str) card {:keys [data error], :as results}]
   (try
     (when error
       (let [^String msg (tru "Card has errors: {0}" error)]
@@ -111,7 +111,7 @@
 
 (s/defn ^:private render-pulse-card :- common/RenderedPulseCard
   "Render a single `card` for a `Pulse` to Hiccup HTML. `result` is the QP results."
-  [render-type timezone-id card results]
+  [render-type timezone-id :- (s/maybe s/Str) card results]
   (let [{title :content title-attachments :attachments} (make-title-if-needed render-type card)
         {pulse-body :content body-attachments :attachments} (render-pulse-card-body render-type timezone-id card results)]
     {:attachments (merge title-attachments body-attachments)
@@ -151,8 +151,7 @@
                                                  :box-shadow       "0 1px 2px rgba(0, 0, 0, .08)"})))}
                    content]}))
 
-(defn render-pulse-card-to-png
+(s/defn render-pulse-card-to-png :- bytes
   "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result (I think...)"
-  ^bytes [timezone-id pulse-card result]
-  {:pre [((some-fn nil? string?) timezone-id)]}
+  [timezone-id :- (s/maybe s/Str) pulse-card result]
   (png/render-html-to-png (render-pulse-card :inline timezone-id pulse-card result) card-width))

@@ -40,9 +40,8 @@
 
 ;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
-(defn- format-cell
-  [timezone-id value col]
-  {:pre [((some-fn nil? string?) timezone-id)]}
+(s/defn ^:private format-cell
+  [timezone-id :- (s/maybe s/Str) value col]
   (cond
     (types/temporal-field? col)                             (datetime/format-temporal-str timezone-id value col)
     (and (number? value) (not (types/temporal-field? col))) (common/format-number value)
@@ -81,9 +80,9 @@
             column-name))
    :bar-width (when include-bar? 99)})
 
-(defn- query-results->row-seq
+(s/defn ^:private query-results->row-seq
   "Returns a seq of stringified formatted rows that can be rendered into HTML"
-  [timezone-id remapping-lookup cols rows bar-column max-value]
+  [timezone-id :- (s/maybe s/Str) remapping-lookup cols rows bar-column max-value]
   (for [row rows]
     {:bar-width (when-let [bar-value (and bar-column (bar-column row))]
                   ;; cast to double to avoid "Non-terminating decimal expansion" errors
@@ -97,10 +96,10 @@
                                        [maybe-remapped-col maybe-remapped-row-cell])]]
             (format-cell timezone-id row-cell col))}))
 
-(defn- prep-for-html-rendering
+(s/defn ^:private prep-for-html-rendering
   "Convert the query results (`cols` and `rows`) into a formatted seq of rows (list of strings) that can be rendered as
   HTML"
-  [timezone-id cols rows bar-column max-value column-limit]
+  [timezone-id :- (s/maybe s/Str) cols rows bar-column max-value column-limit]
   (let [remapping-lookup (create-remapping-lookup cols)
         limited-cols (take column-limit cols)]
     (cons
@@ -161,9 +160,8 @@
   {:arglists '([chart-type render-type timezone-id card data])}
   (fn [chart-type _ _ _ _] chart-type))
 
-
 (s/defmethod render :table :- common/RenderedPulseCard
-  [_ render-type timezone-id card {:keys [cols rows] :as data}]
+  [_ render-type timezone-id :- (s/maybe s/Str) card {:keys [cols rows] :as data}]
   (let [table-body [:div
                     (table/render-table
                      (color/make-color-selector data (:visualization_settings card))
@@ -179,7 +177,7 @@
        (list table-body))}))
 
 (s/defmethod render :bar :- common/RenderedPulseCard
-  [_ _ timezone-id card {:keys [cols] :as data}]
+  [_ _ timezone-id :- (s/maybe s/Str) card {:keys [cols] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
         rows                        (common/non-nil-rows x-axis-rowfn y-axis-rowfn (:rows data))
         max-value                   (apply max (map y-axis-rowfn rows))]

@@ -7,7 +7,6 @@
              [core :as stats]
              [math :as math]]
             [metabase.models.field :as field]
-            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.sync.analyze.classifiers.name :as classify.name]
             [metabase.sync.util :as sync-util]
             [metabase.util :as u]
@@ -16,7 +15,8 @@
              [i18n :refer [trs]]]
             [redux.core :as redux])
   (:import com.bigml.histogram.Histogram
-           com.clearspring.analytics.stream.cardinality.HyperLogLogPlus))
+           com.clearspring.analytics.stream.cardinality.HyperLogLogPlus
+           java.time.temporal.Temporal))
 
 (defn col-wise
   "Apply reducing functinons `rfs` coll-wise to a seq of seqs."
@@ -136,45 +136,34 @@
          (trs "Error generating fingerprint for {0}" (sync-util/name-for-logging field#))))))
 
 (defn- earliest
-  ([] (t/instant Long/MAX_VALUE))
+  ([] nil)
   ([acc]
-   (when (not= acc (earliest))
-     (u.date/format acc)))
-  ([^java.time.temporal.Temporal acc dt]
-   (if dt
-     (if (t/before? dt acc)
-       dt
-       acc)
-     acc)))
+   (some-> acc u.date/format))
+  ([acc t]
+   (if (and t acc (t/before? t acc))
+     t
+     (or acc t))))
 
 (defn- latest
-  ([] (t/instant 0))
+  ([] nil)
   ([acc]
-   (when (not= acc (latest))
-     (u.date/format acc)))
-  ([^java.time.temporal.Temporal acc dt]
-   (if dt
-     (if (t/after? dt acc)
-       dt
-       acc)
-     acc)))
+   (some-> acc u.date/format))
+  ([acc t]
+   (if (and t acc (t/after? t acc))
+     t
+     (or acc t))))
 
 (defprotocol ^:private ITemporalCoerceable
   "Protocol for converting objects in resultset to a `java.time` temporal type."
   (->temporal ^java.time.temporal.Temporal [this]
     "Coerce object to a `java.time` temporal type."))
 
-(defn- date-coercion-timezone-id []
-  ;; TODO - if `database-timezone-id` isn't bound we should probably throw an Exception or at the very least log a
-  ;; warning
-  (t/zone-id (or (qp.timezone/database-timezone-id) "UTC")))
-
 (extend-protocol ITemporalCoerceable
-  nil                         (->temporal [_]    nil)
-  String                      (->temporal [this] (u.date/parse this))
-  Long                        (->temporal [this] (t/instant this))
-  Integer                     (->temporal [this] (t/instant this))
-  java.time.temporal.Temporal (->temporal [this] this))
+  nil      (->temporal [_]    nil)
+  String   (->temporal [this] (u.date/parse this))
+  Long     (->temporal [this] (t/instant this))
+  Integer  (->temporal [this] (t/instant this))
+  Temporal (->temporal [this] this))
 
 (deffingerprinter :type/DateTime
   ((map ->temporal)

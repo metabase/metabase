@@ -8,7 +8,8 @@
             [metabase.models.field :as field]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
             [metabase.util.date-2 :as u.date]
-            [redux.core :as redux]))
+            [redux.core :as redux])
+  (:import [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
 (defn- last-n
   [n]
@@ -172,6 +173,19 @@
   (when (and from to unit)
     (about= (- to from) (unit->duration unit))))
 
+(defn- ->millis-from-epoch [t]
+  (when t
+    (condp instance? t
+      Instant        (t/to-millis-from-epoch t)
+      OffsetDateTime (t/to-millis-from-epoch t)
+      ZonedDateTime  (t/to-millis-from-epoch t)
+      ;; TODO - really not convinced this behavior makes sense. Not sure what `xfn` below is actually supposed to be
+      ;; doing? This roughly matches the old behavior when we were using `java.util.Date`.
+      LocalDate      (->millis-from-epoch (t/offset-date-time t (t/local-time 0) (t/zone-offset 0)))
+      LocalDateTime  (->millis-from-epoch (t/offset-date-time t (t/zone-offset 0)))
+      LocalTime      (->millis-from-epoch (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset 0)))
+      OffsetTime     (->millis-from-epoch (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset t))))))
+
 (defn- timeseries-insight
   [{:keys [numbers datetimes]}]
   (let [datetime   (first datetimes)
@@ -180,7 +194,7 @@
                             (nth x-position)
                             ;; at this point in the pipeline, dates are still stings
                             f/->temporal
-                            t/to-millis-from-epoch
+                            ->millis-from-epoch
                             ms->day)]
     (apply redux/juxt
            (for [number-col numbers]

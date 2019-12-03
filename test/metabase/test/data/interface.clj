@@ -21,7 +21,9 @@
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.query-processor.store :as qp.store]
             [metabase.test.initialize :as initialize]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [date-2 :as u.date]
+             [schema :as su]]
             [potemkin.types :as p.types]
             [pretty.core :as pretty]
             [schema.core :as s]
@@ -63,6 +65,7 @@
     :table-definitions [ValidTableDefinition]}
    (partial instance? DatabaseDefinition)))
 
+;; TODO - this should probably be a protocol instead
 (defmulti ^DatabaseDefinition get-dataset-definition
   "Return a definition of a dataset, so a test database can be created from it."
   {:arglists '([this])}
@@ -463,7 +466,9 @@
   directory. (Filename should be `dataset-name` + `.edn`.)"
   [dataset-name :- su/NonBlankString]
   (let [get-def (delay
-                  (let [file-contents (edn/read-string (slurp (str edn-definitions-dir dataset-name ".edn")))]
+                  (let [file-contents (edn/read-string
+                                       {:eof nil, :readers {'t #'u.date/parse}}
+                                       (slurp (str edn-definitions-dir dataset-name ".edn")))]
                     (apply dataset-definition dataset-name file-contents)))]
     (EDNDatasetDefinition. dataset-name get-def)))
 

@@ -288,7 +288,7 @@
 (s/defn calculate-duration-str :- s/Str
   "Given two datetimes, caculate the time between them, return the result as a string"
   [begin-time :- Temporal, end-time :- Temporal]
-  (u/format-nanoseconds (.getNano (t/duration begin-time end-time))))
+  (u/format-nanoseconds (.toNanos (t/duration begin-time end-time))))
 
 (def StepSpecificMetadata
   "A step function can return any metadata and is used by the related LogSummaryFunction to provide step-specific
@@ -406,7 +406,7 @@
    :db_id      (u/get-id database)
    :started_at start-time
    :ended_at   end-time
-   :duration   (t/duration start-time end-time)})
+   :duration   (.toMillis (t/duration start-time end-time))})
 
 (s/defn ^:private store-sync-summary!
   [operation :- s/Str

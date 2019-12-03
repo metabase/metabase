@@ -539,7 +539,7 @@
         (output (var-get #'render.body/attached-results-text))]))))
 
 (defn- produces-bytes? [{:keys [attachment-bytes-thunk]}]
-  (< 0 (alength (attachment-bytes-thunk))))
+  (< 0 (alength ^bytes (attachment-bytes-thunk))))
 
 ;; Basic slack test, 2 cards, 1 recipient channel
 (tt/expect-with-temp [Card         [{card-id-1 :id} (checkins-query {:breakout [["datetime-field" (data/id :checkins :date) "hour"]]})]
@@ -578,12 +578,12 @@
      [(thunk->boolean slack-data)
       (every? produces-bytes? (:attachments slack-data))])))
 
-(defn- email-body? [{message-type :type content :content}]
+(defn- email-body? [{message-type :type, ^String content :content}]
   (and (= "text/html; charset=utf-8" message-type)
        (string? content)
        (.startsWith content "<html>")))
 
-(defn- attachment? [{message-type :type content-type :content-type content :content}]
+(defn- attachment? [{message-type :type, content-type :content-type, content :content}]
   (and (= :inline message-type)
        (= "image/png" content-type)
        (instance? java.net.URL content)))

@@ -2,6 +2,9 @@
   "Logic for initializing different components that need to be initialized when running tests."
   (:require [clojure.string :as str]
             [colorize.core :as colorize]
+            [metabase
+             [config :as config]
+             [util :as u]]
             [metabase.plugins.classloader :as classloader]))
 
 (defmulti initialize-if-needed!
@@ -25,31 +28,56 @@
 
 (defmethod initialize-if-needed! :many
   [& args]
-  (doseq [k args]
-    (initialize-if-needed! k)))
+  (doseq [result (pmap (fn [k]
+                         (try
+                           (initialize-if-needed! k)
+                           (catch Throwable e
+                             e)))
+                       args)]
+    (when (instance? Throwable result)
+      (throw result))))
 
 (defn- log-init-message [task-name]
   (let [body   (format "| Initializing %s... |" task-name)
-        border (str \+ (str/join (repeat (- (count body) 2) \-)) \+)]
-    (println
-     (colorize/blue
-      (str "\n"
-           (str/join "\n" [border body border])
-           "\n")))))
+        border (str \+ (str/join (repeat (- (count body) 2) \-)) \+)
+        msg    (colorize/blue
+                (str "\n"
+                     (str/join "\n" [border body border])
+                     "\n"))]
+    (locking log-init-message
+      (println msg))))
 
+(def ^:private init-task-timeout-ms
+  "Max amount of time to wait for an initialization task to complete."
+  30000)
+
+(defonce ^:private started-initialization (atom #{}))
+
+(defn- do-initialization [task-name thunk]
+  (letfn [(thunk' []
+            (log-init-message task-name)
+            (u/with-timeout init-task-timeout-ms (thunk))
+            (swap! initialized conj task-name)
+            task-name)]
+    (when-not (initialized? task-name)
+      (let [[old] (swap-vals! started-initialization conj task-name)]
+        (when-not (get old task-name)
+          (try
+            (thunk')
+            (catch Throwable e
+              (swap! started-initialization disj task-name)
+              (when config/is-test?
+                (println "Failed to initialize" task-name)
+                (println e)
+                (System/exit -1))
+              (throw e))))))))
+
+;; Basic idea is we create a delay that contains the actual logic for initialization, then when you call
+;; `initialize-if-needed!` it derefs the delay.
 (defmacro ^:private define-initialization [task-name & body]
-  (let [delay-symb (vary-meta (symbol (format "init-%s-%d" (name task-name) (hash &form)))
-                              assoc :private true)]
-    `(do
-       (defonce ~delay-symb
-         (delay
-           (log-init-message ~(keyword task-name))
-           (swap! initialized conj ~(keyword task-name))
-           ~@body
-           nil))
-       (defmethod initialize-if-needed! ~(keyword task-name)
-         [~'_]
-         @~delay-symb))))
+  `(defmethod initialize-if-needed! ~(keyword task-name)
+     [~'_]
+     (do-initialization ~(keyword task-name) (fn [] ~@body))))
 
 (define-initialization :plugins
   (classloader/require 'metabase.test.initialize.plugins)
@@ -76,5 +104,5 @@
   (classloader/require 'metabase.test.initialize.test-users-personal-collections)
   ((resolve 'metabase.test.initialize.test-users-personal-collections/init!)))
 
-(alter-meta! #'initialize-if-needed! assoc :arglists (list (into ['&] (sort (disj (set (keys (methods initialize-if-needed!)))
-                                                                                  :many)))))
+(let [init-method-keys (disj (set (keys (methods initialize-if-needed!))) :many)]
+  (alter-meta! #'initialize-if-needed! assoc :arglists (list (into ['&] (sort init-method-keys)))))

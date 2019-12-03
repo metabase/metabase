@@ -884,9 +884,8 @@
 (def ^:private checkins:1-per-day    (dataset-def-with-timestamps (* 24 (u/minutes->seconds 60))))
 
 (defn- checkins-db-is-old? [max-age-seconds]
-  (let [created-at (t/instant (:created_at (data/db)))
-        age        (t/duration created-at (t/instant))]
-    (> (.getSeconds age) max-age-seconds)))
+  (u.date/greater-than-period-duration? (u.date/period-duration (:created_at (data/db)) (t/zoned-date-time))
+                                        (t/seconds max-age-seconds)))
 
 (def ^:private ^:dynamic *recreate-db-if-stale?* true)
 

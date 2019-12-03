@@ -136,12 +136,22 @@
 
 ;; TODO - more tests!
 (deftest format-test
-  (is (= "2019-11-01 18:39:00-07:00"
-         (u.date/format-sql (t/zoned-date-time "2019-11-01T18:39:00-07:00[US/Pacific]")))))
+  (testing "ZonedDateTime"
+    (is (= "2019-11-01T18:39:00-07:00"
+           (u.date/format (t/zoned-date-time "2019-11-01T18:39:00-07:00[US/Pacific]")))
+        "should get formatted as the same way as an OffsetDateTime"))
+  (testing "Instant"
+    (is (= "1970-01-01T00:00:00Z"
+           (u.date/format (t/instant "1970-01-01T00:00:00Z"))))))
 
 (deftest format-sql-test
-  (is (= "2019-11-05 19:27:00"
-         (u.date/format-sql (t/local-date-time "2019-11-05T19:27")))))
+  (testing "LocalDateTime"
+    (is (= "2019-11-05 19:27:00"
+           (u.date/format-sql (t/local-date-time "2019-11-05T19:27")))))
+  (testing "ZonedDateTime"
+    (is (= "2019-11-01 18:39:00-07:00"
+           (u.date/format-sql (t/zoned-date-time "2019-11-01T18:39:00-07:00[US/Pacific]")))
+        "should get formatted as the same way as an OffsetDateTime")))
 
 (deftest extract-test
   (testing "u.date/extract with 2 args"
@@ -341,3 +351,14 @@
         (testing "exclusive start"
           (is (= {:start (t/local-date-time "2019-11-17T23:59")}
                  (comparison-range :>= {:start :exclusive}))))))))
+
+(deftest period-duration-test
+  (testing "Creating a period duration from a string"
+    (is (= (org.threeten.extra.PeriodDuration/of (t/duration "PT59S"))
+           (u.date/period-duration "PT59S"))))
+  (testing "Creating a period duration out of two temporal types of the same class"
+    (is (= (u.date/period-duration "PT1S")
+           (u.date/period-duration (t/offset-date-time "2019-12-03T02:30:05Z") (t/offset-date-time "2019-12-03T02:30:06Z")))))
+  (testing "Creating a period duration out of two different temporal types"
+    (is (= (u.date/period-duration "PT59S")
+           (u.date/period-duration (t/instant "2019-12-03T02:30:27Z") (t/offset-date-time "2019-12-03T02:31:26Z"))))))

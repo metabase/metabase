@@ -581,7 +581,7 @@
                 "GROUP BY \"DATE\"")
    :params [#t "2017-10-31"
             #t "2017-11-04"]}
-  (t/with-clock (t/mock-clock #t "2017-11-05T12:00" (t/zone-id "UTC"))
+  (t/with-clock (t/mock-clock #t "2017-11-05T12:00Z" (t/zone-id "UTC"))
     (expand* {:native {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
                                            "FROM CHECKINS "
                                            "WHERE {{checkin_date}} "
