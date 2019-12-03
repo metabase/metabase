@@ -7,7 +7,7 @@ const BackendResource = require("./backend.js").BackendResource;
 
 // Backend that uses a test fixture database
 const serverWithTestDbFixture = BackendResource.get({
-  dbKey: "frontend/test/__runner__/cypress_db_fixture.db",
+  dbKey: "/cypress_db_fixture.db",
 });
 const testFixtureBackendHost = serverWithTestDbFixture.host;
 
