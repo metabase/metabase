@@ -6,6 +6,7 @@ import _ from "underscore";
 import { color } from "metabase/lib/colors";
 import { clipPathReference } from "metabase/lib/dom";
 import { adjustYAxisTicksIfNeeded } from "./apply_axis";
+import { isHistogramBar } from "./renderer_utils";
 
 const X_LABEL_MIN_SPACING = 2; // minimum space we want to leave between labels
 const X_LABEL_ROTATE_90_THRESHOLD = 24; // tick width breakpoint for switching from 45° to 90°
@@ -278,6 +279,21 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
   const xScale = chart.x();
   const yScale = chart.y();
 
+  // Ordinal bar charts and histograms need extra logic to center the label.
+  let xShift = 0;
+  if (xScale.rangeBand) {
+    xShift += xScale.rangeBand() / 2;
+  }
+  if (isHistogramBar({ settings: chart.settings, chartType: display })) {
+    // this has to match the logic in `doHistogramBarStuff`
+    const [x1, x2] = chart
+      .svg()
+      .selectAll("rect")[0]
+      .map(r => parseFloat(r.getAttribute("x")));
+    const barWidth = x2 - x1;
+    xShift += barWidth / 2;
+  }
+
   const addLabels = data =>
     parent
       .append("svg:g")
@@ -291,7 +307,7 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
       // easier to
       .attr("text-anchor", "middle")
       .attr("alignment-baseline", "middle")
-      .attr("x", ({ x }) => xScale(x))
+      .attr("x", ({ x }) => xShift + xScale(x))
       .attr(
         "y",
         ({ y, showLabelBelow }, i) => yScale(y) + (showLabelBelow ? 14 : -10),
