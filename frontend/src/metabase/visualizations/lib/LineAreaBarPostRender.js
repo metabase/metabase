@@ -246,22 +246,15 @@ function onRenderVoronoiHover(chart) {
     .order();
 }
 
-// NOTE- this is a total hack just to get things rolling, not sure if this is the right place
-// to do this or not
 function onRenderValueLabels(chart, formatYValue, [data]) {
-  // Do nothing if there is nothing to do
   if (
-    !chart.settings["graph.show_values"] ||
-    chart.settings["stackable.stack_type"] === "normalized"
+    !chart.settings["graph.show_values"] || // setting is off
+    chart.settings["stackable.stack_type"] === "normalized" || // no normalized
+    chart.series.length > 1 // no multiseries
   ) {
     return;
   }
   const showAll = chart.settings["graph.label_value_frequency"] === "all";
-
-  // Only show lables on single series
-  if (chart.series.length > 1) {
-    return;
-  }
   const { display } = chart.settings.series(chart.series[0]);
 
   // Update `data` to use named x/y and include `showLabelBelow`.
@@ -291,7 +284,8 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
     // this has to match the logic in `doHistogramBarStuff`
     const [x1, x2] = chart
       .svg()
-      .selectAll("rect")[0]
+      .selectAll("rect")
+      .flat()
       .map(r => parseFloat(r.getAttribute("x")));
     const barWidth = x2 - x1;
     xShift += barWidth / 2;
@@ -306,8 +300,6 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
       .enter()
       .append("text")
       .attr("class", "value-label")
-      // TODO - I wonder if we should move as much of this as possible to CSS land to make it
-      // easier to
       .attr("text-anchor", "middle")
       .attr("alignment-baseline", "middle")
       .attr("x", ({ x }) => xShift + xScale(x))

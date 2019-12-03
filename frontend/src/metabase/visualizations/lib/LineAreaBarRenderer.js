@@ -614,8 +614,6 @@ function addGoalChartAndGetOnGoalHover(
   const goalGroup = goalDimension
     .group()
     .reduce((p, d) => d[1], (p, d) => p, () => 0);
-
-  console.log("goalGroup", goalGroup);
   const goalIndex = charts.length;
 
   const goalChart = dc
@@ -865,8 +863,6 @@ export default function lineAreaBar(
   );
   addTrendlineChart(props, xAxisProps, yAxisProps, parent, charts);
 
-  addValueLabeledChart(props, xAxisProps, yAxisProps, parent, charts);
-
   parent.compose(charts);
 
   if (groups.length > 1 && !props.isScalarSeries) {
@@ -915,30 +911,6 @@ export default function lineAreaBar(
   return () => {
     dc.chartRegistry.deregister(parent);
   };
-}
-
-function addValueLabeledChart(
-  { settings },
-  xAxisProps,
-  yAxisProps,
-  parent,
-  charts,
-) {
-  if (!settings["graph.show_values"]) {
-    return () => {};
-  }
-
-  const frequency = settings["graph.label_value_frequency"];
-
-  console.log("xAxisPropsx", xAxisProps);
-  console.log("yAxisPropsx", yAxisProps);
-  console.log("label frequency", frequency);
-  console.log("parent", parent);
-  console.log("charts", charts);
-
-  //const valueLabeledChart = dc.lineChart(parent);
-
-  //charts.push(valueLabeledChart);
 }
 
 export const lineRenderer = (element, props) =>
