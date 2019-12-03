@@ -1,5 +1,6 @@
 (ns metabase.middleware.auth-test
   (:require [expectations :refer [expect]]
+            [java-time :as t]
             [metabase.middleware
              [auth :as mw.auth]
              [session :as mw.session]
@@ -8,7 +9,6 @@
             [metabase.test.data.users :as test-users]
             [ring.mock.request :as mock]
             [toucan.db :as db]
-            [java-time :as t]
             [toucan.util.test :as tt])
   (:import java.util.UUID))
 

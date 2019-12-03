@@ -92,7 +92,7 @@
       (merge (when port {:port port}))
       (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
 
-
+;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/datepart-transact-sql?view=sql-server-ver15
 (defn- date-part [unit expr]
   (hsql/call :datepart (hsql/raw (name unit)) expr))
 
@@ -121,6 +121,10 @@
 (defmethod sql.qp/date [:sqlserver :hour-of-day]
   [_ _ expr]
   (date-part :hour expr))
+
+(defmethod sql.qp/date [:sqlserver :day]
+  [_ _ expr]
+  (date-part :day expr))
 
 (defmethod sql.qp/date [:sqlserver :day-of-week]
   [_ _ expr]

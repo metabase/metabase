@@ -9,8 +9,7 @@
             [metabase.async.util :as async.u]
             [metabase.middleware.util :as middleware.u]
             [metabase.query-processor.middleware.async :as qp.middleware.async]
-            [metabase.util
-             [i18n :refer [trs]]]
+            [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
   (:import clojure.core.async.impl.channels.ManyToManyChannel
            org.eclipse.jetty.util.thread.QueuedThreadPool))

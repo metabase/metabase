@@ -68,8 +68,6 @@
    :this-interval-name (tru "This month")
    :last-interval-name (tru "Last month")})
 
-(defn- start-of-this-quarter []
-  (u.date/truncate :quarter))
 (s/defmethod renderable-interval :quarter :- RenderableInterval
   [_]
   {:interval-start     (u.date/truncate :quarter)

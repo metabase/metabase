@@ -5,9 +5,10 @@
             [metabase.models.field :as field :refer [Field]]
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [date-2 :as u.date]
+             [schema :as su]]
             [schema.core :as s]
-            [metabase.util.date-2 :as u.date]
             [toucan.db :as db]))
 
 (def ^:private FieldReference

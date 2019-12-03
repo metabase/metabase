@@ -9,6 +9,7 @@
 (defn init! []
   (try
     (server/start-web-server! #'handler/app)
+    (printf "Started test server on port %d\n" (config/config-int :mb-jetty-port))
     (catch Throwable e
       (println "Web server failed to start")
       (println e)

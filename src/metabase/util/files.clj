@@ -9,8 +9,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.util :as u]
-            [metabase.util
-             [i18n :refer [trs]]])
+            [metabase.util.i18n :refer [trs]])
   (:import java.io.FileNotFoundException
            java.net.URL
            [java.nio.file CopyOption Files FileSystem FileSystems LinkOption OpenOption Path StandardCopyOption]

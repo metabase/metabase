@@ -7,6 +7,22 @@
              [util :as u]]
             [metabase.plugins.classloader :as classloader]))
 
+
+;; (def ^:private ^:dynamic *require-chain* nil)
+
+;; (defonce new-require
+;;   (let [orig-require (var-get #'clojure.core/require)]
+;;     (orig-require 'clojure.pprint)
+;;     (fn [& args]
+;;       (binding [*require-chain* (conj (vec *require-chain*) (ns-name *ns*))]
+;;         (let [require-chain-description (apply str (interpose " -> " *require-chain*))]
+;;           (println "\nin" require-chain-description)
+;;           ((resolve 'clojure.pprint/pprint) (cons 'require args))
+;;           (apply orig-require args)
+;;           (println "finished" require-chain-description))))))
+
+;; (intern 'clojure.core 'require new-require)
+
 (defmulti initialize-if-needed!
   "Initialize one or more components.
 
@@ -28,56 +44,50 @@
 
 (defmethod initialize-if-needed! :many
   [& args]
-  (doseq [result (pmap (fn [k]
-                         (try
-                           (initialize-if-needed! k)
-                           (catch Throwable e
-                             e)))
-                       args)]
-    (when (instance? Throwable result)
-      (throw result))))
+  (doseq [k args]
+    (initialize-if-needed! k)))
 
 (defn- log-init-message [task-name]
   (let [body   (format "| Initializing %s... |" task-name)
-        border (str \+ (str/join (repeat (- (count body) 2) \-)) \+)
-        msg    (colorize/blue
-                (str "\n"
-                     (str/join "\n" [border body border])
-                     "\n"))]
-    (locking log-init-message
-      (println msg))))
+        border (str \+ (str/join (repeat (- (count body) 2) \-)) \+)]
+    (println
+     (colorize/blue
+      (str "\n"
+           (str/join "\n" [border body border])
+           "\n")))))
 
-(def ^:private init-task-timeout-ms
-  "Max amount of time to wait for an initialization task to complete."
-  30000)
+(def ^:private init-timeout-ms (* 30 1000))
 
-(defonce ^:private started-initialization (atom #{}))
+(def ^:private ^:dynamic *initializing* [])
 
-(defn- do-initialization [task-name thunk]
-  (letfn [(thunk' []
-            (log-init-message task-name)
-            (u/with-timeout init-task-timeout-ms (thunk))
-            (swap! initialized conj task-name)
-            task-name)]
-    (when-not (initialized? task-name)
-      (let [[old] (swap-vals! started-initialization conj task-name)]
-        (when-not (get old task-name)
-          (try
-            (thunk')
-            (catch Throwable e
-              (swap! started-initialization disj task-name)
-              (when config/is-test?
-                (println "Failed to initialize" task-name)
-                (println e)
-                (System/exit -1))
-              (throw e))))))))
+(defn- deref-init-delay [task-name a-delay]
+  (try
+    (when (contains? (set *initializing*) task-name)
+      (throw (Exception. (format "Circular initialization dependencies! %s"
+                                 (str/join " -> " (conj *initializing* task-name))))))
+    (binding [*initializing* (conj *initializing* task-name)]
+      (u/with-timeout init-timeout-ms
+        @a-delay))
+    (catch Throwable e
+      (println "Error initializing" task-name)
+      (println e)
+      (when config/is-test?
+        (System/exit -1))
+      (throw e))))
 
-;; Basic idea is we create a delay that contains the actual logic for initialization, then when you call
-;; `initialize-if-needed!` it derefs the delay.
 (defmacro ^:private define-initialization [task-name & body]
-  `(defmethod initialize-if-needed! ~(keyword task-name)
-     [~'_]
-     (do-initialization ~(keyword task-name) (fn [] ~@body))))
+  (let [delay-symb (-> (symbol (format "init-%s-%d" (name task-name) (hash &form)))
+                       (with-meta {:private true}))]
+    `(do
+       (defonce ~delay-symb
+         (delay
+           (log-init-message ~(keyword task-name))
+           (swap! initialized conj ~(keyword task-name))
+           ~@body
+           ~(keyword task-name)))
+       (defmethod initialize-if-needed! ~(keyword task-name)
+         [~'_]
+         (deref-init-delay ~(keyword task-name) ~delay-symb)))))
 
 (define-initialization :plugins
   (classloader/require 'metabase.test.initialize.plugins)
@@ -104,5 +114,5 @@
   (classloader/require 'metabase.test.initialize.test-users-personal-collections)
   ((resolve 'metabase.test.initialize.test-users-personal-collections/init!)))
 
-(let [init-method-keys (disj (set (keys (methods initialize-if-needed!))) :many)]
-  (alter-meta! #'initialize-if-needed! assoc :arglists (list (into ['&] (sort init-method-keys)))))
+(alter-meta! #'initialize-if-needed! assoc :arglists (list (into ['&] (sort (disj (set (keys (methods initialize-if-needed!)))
+                                                                                  :many)))))

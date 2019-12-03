@@ -36,7 +36,7 @@
 
 ;;; parse-response
 
-(def ^:private ^:const auto-deserialize-dates-keys
+(def ^:private auto-deserialize-dates-keys
   #{:created_at :updated_at :last_login :date_joined :started_at :finished_at :last_analyzed})
 
 (defn- auto-deserialize-dates
@@ -169,11 +169,14 @@
         [body [& {:as url-param-kwargs}]] (u/optional map? args)]
     [credentials method expected-status url body url-param-kwargs request-options]))
 
+(def ^:private response-timeout-ms (* 15 1000))
+
 (defn client-full-response
   "Identical to `client` except returns the full HTTP response map, not just the body of the response"
   {:arglists '([credentials? method expected-status-code? url request-options? http-body-map? & url-kwargs])}
   [& args]
-  (apply -client (parse-http-client-args args)))
+  (u/with-timeout response-timeout-ms
+    (apply -client (parse-http-client-args args))))
 
 (defn client
   "Perform an API call and return the response (for test purposes).

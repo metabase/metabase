@@ -2,7 +2,6 @@
   "Tests for /api/activity endpoints."
   (:require [clojure.test :refer :all]
             [expectations :refer [expect]]
-            [java-time :as t]
             [metabase
              [db :as mdb]
              [util :as u]]

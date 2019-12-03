@@ -5,7 +5,6 @@
              [email :as email]
              [query-processor :as qp]
              [util :as u]]
-            [metabase.driver.util :as driver.u]
             [metabase.email.messages :as messages]
             [metabase.integrations.slack :as slack]
             [metabase.middleware.session :as session]
@@ -14,12 +13,12 @@
              [database :refer [Database]]
              [pulse :as pulse :refer [Pulse]]]
             [metabase.pulse.render :as render]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util
              [i18n :refer [deferred-tru trs tru]]
              [ui-logic :as ui]
              [urls :as urls]]
             [schema.core :as s]
-            [metabase.query-processor.timezone :as qp.timezone]
             [toucan.db :as db])
   (:import metabase.models.card.CardInstance))
 

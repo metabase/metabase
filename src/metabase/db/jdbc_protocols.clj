@@ -17,7 +17,7 @@
     (classloader/require 'metabase.db)
     ((resolve 'metabase.db/db-type))))
 
-(defn set-object
+(defn- set-object
   [^PreparedStatement stmt ^Integer index object ^Integer target-sql-type]
   (.setObject stmt index object target-sql-type))
 

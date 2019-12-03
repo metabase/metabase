@@ -10,7 +10,6 @@
             [metabase.models
              [session :refer [Session]]
              [user :as user :refer [User]]]
-            [metabase.util.date-2 :as u.date]
             [ring.util.response :as resp]
             [schema.core :as s]
             [toucan.db :as db])
@@ -140,9 +139,8 @@
     max-age-minutes          :- s/Int]
    (or
     (not created-at)
-    (u.date/greater-than-period-duration?
-     (u.date/period-duration created-at (t/offset-date-time))
-     (t/minutes max-age-minutes)))))
+    ;; session is expired if it was created before (now - max age minutes)
+    (t/before? (t/instant created-at) (t/minus (t/instant) (t/minutes max-age-minutes))))))
 
 (defn- current-user-info-for-session
   "Return User ID and superuser status for Session with `session-id` if it is valid and not expired."

@@ -11,8 +11,12 @@
              [i18n :as ui18n :refer [deferred-tru tru]]
              [schema :as su]]
             [metabase.util.date-2.parse :as u.date.parse]
+            [metabase.util.date-2.parse.builder :as u.date.parse.builder]
             [schema.core :as s])
-  (:import [com.google.api.services.analytics.model GaData GaData$ColumnHeaders]))
+  (:import [com.google.api.services.analytics.model GaData GaData$ColumnHeaders]
+           java.time.DayOfWeek
+           java.time.format.DateTimeFormatter
+           org.threeten.extra.YearWeek))
 
 (def ^:private ^:const earliest-date "2005-01-01")
 (def ^:private ^:const latest-date "today")
@@ -407,6 +411,16 @@
 (defn- parse-number [s]
   (edn/read-string (str/replace s #"^0+(.+)$" "$1")))
 
+(def ^:private ^DateTimeFormatter iso-year-week-formatter
+  (u.date.parse.builder/formatter
+   (u.date.parse.builder/value :iso/week-based-year 4)
+   (u.date.parse.builder/value :iso/week-of-week-based-year 2)))
+
+(defn- parse-iso-year-week [^String s]
+  (when s
+    (-> (YearWeek/from (.parse iso-year-week-formatter s))
+        (.atDay DayOfWeek/MONDAY))))
+
 (def ^:private ga-dimension->date-format-fn
   {"ga:minute"         parse-number
    "ga:dateHour"       (partial u.date.parse/parse-with-formatter "yyyyMMddHH")
@@ -414,7 +428,7 @@
    "ga:date"           (partial u.date.parse/parse-with-formatter "yyyyMMdd")
    "ga:dayOfWeek"      (comp inc parse-number)
    "ga:day"            parse-number
-   "ga:isoYearIsoWeek" (partial u.date.parse/parse-with-formatter "xxxxww")
+   "ga:isoYearIsoWeek" parse-iso-year-week
    "ga:week"           parse-number
    "ga:yearMonth"      (partial u.date.parse/parse-with-formatter "yyyyMM")
    "ga:month"          parse-number

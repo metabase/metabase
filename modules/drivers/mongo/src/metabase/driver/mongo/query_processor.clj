@@ -75,21 +75,6 @@
   column names in the query (?)"
   [s/Keyword])
 
-;; TIMEZONE FIXME — or use codecs — https://mongodb.github.io/mongo-java-driver/3.0/bson/codecs/
-#_(extend-protocol m.conversion/ConvertToDBObject
-  java.time.LocalDate
-  (to-db-object [t])
-  java.time.LocalTime
-  java.time.LocalDateTime
-  java.time.OffsetTime
-  java.time.OffsetDateTime
-  java.time.ZonedDateTime)
-
-(extend-protocol m.conversion/ConvertFromDBObject
-  java.util.Date
-  (from-db-object [t _]
-    (t/instant t)))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                    QP Impl                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+

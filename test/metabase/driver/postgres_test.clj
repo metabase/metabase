@@ -325,12 +325,12 @@
         (sync/sync-database! database)
         (is (= {"start_time" {:global {:distinct-count 1
                                        :nil%           0.0}
-                              :type   {:type/DateTime {:earliest "1970-01-01T22:00:00.000Z"
-                                                       :latest   "1970-01-01T22:00:00.000Z"}}}
+                              :type   {:type/DateTime {:earliest "22:00:00"
+                                                       :latest   "22:00:00"}}}
                 "end_time"   {:global {:distinct-count 1
                                        :nil%           0.0}
-                              :type   {:type/DateTime {:earliest "1970-01-01T09:00:00.000Z"
-                                                       :latest   "1970-01-01T09:00:00.000Z"}}}
+                              :type   {:type/DateTime {:earliest "09:00:00"
+                                                       :latest   "09:00:00"}}}
                 "reason"     {:global {:distinct-count 1
                                        :nil%           0.0}
                               :type   {:type/Text {:percent-json   0.0

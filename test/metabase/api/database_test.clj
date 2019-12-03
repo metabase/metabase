@@ -32,9 +32,7 @@
              [env :as tx.env]
              [users :as test-users]]
             [metabase.test.util.log :as tu.log]
-            [metabase.util
-             [date-2 :as u.date]
-             [schema :as su]]
+            [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.util.test :as tt]))

@@ -14,31 +14,24 @@
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
-(def ^:private fake-analysis-completion-date
-  #t "2017-08-01T00:00")
-
-;; Check that Fields do *not* get analyzed if they're not newly created and fingerprint version is current
-(expect
-  ;; PK is ok because it gets marked as part of metadata sync
-  #{{:name "LONGITUDE",   :special_type nil,      :last_analyzed fake-analysis-completion-date}
-    {:name "CATEGORY_ID", :special_type nil,      :last_analyzed fake-analysis-completion-date}
-    {:name "PRICE",       :special_type nil,      :last_analyzed fake-analysis-completion-date}
-    {:name "LATITUDE",    :special_type nil,      :last_analyzed fake-analysis-completion-date}
-    {:name "NAME",        :special_type nil,      :last_analyzed fake-analysis-completion-date}
-    {:name "ID",          :special_type :type/PK, :last_analyzed fake-analysis-completion-date}}
-  (tt/with-temp* [Database [db    {:engine "h2", :details (:details (data/db))}]
-                  Table    [table {:name "VENUES", :db_id (u/get-id db)}]]
-    ;; sync the metadata, but DON't do analysis YET
-    (sync-metadata/sync-table-metadata! table)
-    ;; now mark all the Tables as analyzed with so they won't be subject to analysis
-    (db/update-where! Field {:table_id (u/get-id table)}
-      :last_analyzed       fake-analysis-completion-date
-      :fingerprint_version Short/MAX_VALUE)
-    ;; ok, NOW run the analysis process
-    (analyze/analyze-table! table)
-    ;; check and make sure all the Fields don't have special types and their last_analyzed date didn't change
-    (set (for [field (db/select [Field :name :special_type :last_analyzed] :table_id (u/get-id table))]
-           (into {} field)))))
+(deftest skip-analysis-of-fields-with-current-fingerprint-version-test
+  (testing "Check that Fields do *not* get analyzed if they're not newly created and fingerprint version is current"
+    (data/with-temp-copy-of-db
+      ;; mark all the Fields as analyzed with so they won't be subject to analysis
+      (db/update-where! Field {:table_id (data/id :venues)}
+        :last_analyzed       #t "2017-08-01T00:00"
+        :special_type        nil
+        :fingerprint_version Short/MAX_VALUE)
+      ;; the type of the value that comes back may differ a bit between different application DBs
+      (let [analysis-date (db/select-one-field :last_analyzed Field :table_id (data/id :venues))]
+        ;; ok, NOW run the analysis process
+        (analyze/analyze-table! (Table (data/id :venues)))
+        ;; check and make sure all the Fields don't have special types and their last_analyzed date didn't change
+        ;; PK is ok because it gets marked as part of metadata sync
+        (is (= (zipmap ["CATEGORY_ID" "ID" "LATITUDE" "LONGITUDE" "NAME" "PRICE"]
+                       (repeat {:special_type nil, :last_analyzed analysis-date}))
+               (into {} (for [field (db/select [Field :name :special_type :last_analyzed] :table_id (data/id :venues))]
+                          [(:name field) (into {} (dissoc field :name))]))))))))
 
 ;; ...but they *SHOULD* get analyzed if they ARE newly created (expcept for PK which we skip)
 (expect
