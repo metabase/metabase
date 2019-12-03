@@ -80,6 +80,10 @@
   "Generic ancestor type for all unexpected errors (e.g., uncaught Exceptions) in QP code."
   :parent server)
 
+(deferror driver
+  "Generic ancestor type for all errors related to bad drivers and uncaught Exceptions in driver code."
+  :parent qp)
+
 ;;;; #### Data Warehouse (DB) Errors
 
 (deferror db

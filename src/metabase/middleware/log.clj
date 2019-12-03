@@ -29,13 +29,19 @@
 
 ;; These functions take parts of the info map and convert it into formatted strings.
 
-(defn- format-status-info [{:keys [async-status], {:keys [request-method uri]} :request, {:keys [status]} :response}]
+(defn- format-status-info
+  [{:keys [async-status]
+    {:keys [request-method uri] :or {request-method :XXX}} :request
+    {:keys [status]} :response}]
   (str
    (format "%s %s %d" (str/upper-case (name request-method)) uri status)
    (when async-status
      (format " [ASYNC: %s]" async-status))))
 
-(defn- format-performance-info [{:keys [start-time call-count-fn]}]
+(defn- format-performance-info
+  [{:keys [start-time call-count-fn]
+    :or {start-time    (System/nanoTime)
+         call-count-fn (constantly -1)}}]
   (let [elapsed-time (du/format-nanoseconds (- (System/nanoTime) start-time))
         db-calls     (call-count-fn)]
     (format "%s (%d DB calls)" elapsed-time db-calls)))
@@ -99,11 +105,15 @@
     :log-fn         #(log/debug %)
     :include-stats? true}])
 
-(defn- log-info [{{:keys [status]} :response, :as info}]
+(defn- log-info
+  [{{:keys [status] :or {status -1}} :response, :as info}]
   (try
-    (let [{:keys [color log-fn], :as opts} (some #(when ((:status-pred %) status)
-                                                    %)
-                                                 log-options)]
+    (let [{:keys [color log-fn]
+           :or {color  :default-color
+                log-fn identity}
+           :as opts}
+          (some #(when ((:status-pred %) status) %)
+                log-options)]
       (log-fn (u/format-color color (format-info info opts))))
     (catch Throwable e
       (log/error e (trs "Error logging API request")))))

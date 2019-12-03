@@ -2,7 +2,7 @@
   "Middlware that optimizes equality (`=` and `!=`) and comparison (`<`, `between`, etc.) filter clauses against
   bucketed datetime fields. See docstring for `optimize-datetime-filters` for more details."
   (:require [metabase.mbql.util :as mbql.u]
-            [metabase.util.date :as du]))
+            [metabase.util.date-2 :as u.date]))
 
 (def ^:private optimizable-units
   #{:second :minute :hour :day :week :month :quarter :year})
@@ -33,11 +33,11 @@
      [:absolute-datetime _ (unit-2 :guard optimizable-units)]]
     (= (datetime-field-unit field) unit-1 unit-2)))
 
-(defn- lower-bound [unit inst report-timezone]
-  (du/date-trunc unit inst (or report-timezone "UTC")))
+(defn- lower-bound [unit t]
+  (:start (u.date/range t unit)))
 
-(defn- upper-bound [unit inst report-timezone]
-  (du/relative-date unit 1 (lower-bound unit inst report-timezone)))
+(defn- upper-bound [unit t]
+  (:end (u.date/range t unit)))
 
 (defn- change-datetime-field-unit-to-default [field]
   (mbql.u/replace field
@@ -45,59 +45,59 @@
     [:datetime-field wrapped :default]))
 
 (defmulti ^:private optimize-filter
-  {:arglists '([clause report-timezone])}
-  (fn [clause _]
+  {:arglists '([clause])}
+  (fn [clause]
     (mbql.u/dispatch-by-clause-name-or-class clause)))
 
 (defmethod optimize-filter :=
-  [[_ field [_ inst unit]] report-timezone]
+  [[_ field [_ inst unit]]]
   (let [[_ _ datetime-field-unit] (mbql.u/match-one field :datetime-field)]
     (when (= unit datetime-field-unit)
       (let [field' (change-datetime-field-unit-to-default field)]
         [:and
-         [:>= field' [:absolute-datetime (lower-bound unit inst report-timezone) :default]]
-         [:< field'  [:absolute-datetime (upper-bound unit inst report-timezone) :default]]]))))
+         [:>= field' [:absolute-datetime (lower-bound unit inst) :default]]
+         [:< field'  [:absolute-datetime (upper-bound unit inst) :default]]]))))
 
 (defmethod optimize-filter :!=
-  [filter-clause report-timezone]
-  (mbql.u/negate-filter-clause ((get-method optimize-filter :=) filter-clause report-timezone)))
+  [filter-clause]
+  (mbql.u/negate-filter-clause ((get-method optimize-filter :=) filter-clause)))
 
 (defn- optimize-comparison-filter
-  [trunc-fn [filter-type field [_ inst unit]] report-timezone]
+  [trunc-fn [filter-type field [_ inst unit]]]
   [filter-type
    (change-datetime-field-unit-to-default field)
-   [:absolute-datetime (trunc-fn unit inst report-timezone) :default]])
+   [:absolute-datetime (trunc-fn unit inst) :default]])
 
 (defmethod optimize-filter :<
-  [filter-clause report-timezone]
-  (optimize-comparison-filter lower-bound filter-clause report-timezone))
+  [filter-clause]
+  (optimize-comparison-filter lower-bound filter-clause))
 
 (defmethod optimize-filter :<=
-  [filter-clause report-timezone]
-  (optimize-comparison-filter lower-bound filter-clause report-timezone))
+  [filter-clause]
+  (optimize-comparison-filter lower-bound filter-clause))
 
 (defmethod optimize-filter :>
-  [filter-clause report-timezone]
-  (optimize-comparison-filter upper-bound filter-clause report-timezone))
+  [filter-clause]
+  (optimize-comparison-filter upper-bound filter-clause))
 
 (defmethod optimize-filter :>=
-  [filter-clause report-timezone]
-  (optimize-comparison-filter upper-bound filter-clause report-timezone))
+  [filter-clause]
+  (optimize-comparison-filter upper-bound filter-clause))
 
 (defmethod optimize-filter :between
-  [[_ field [_ lower unit] [_ upper]] report-timezone]
+  [[_ field [_ lower unit] [_ upper]]]
   (let [field' (change-datetime-field-unit-to-default field)]
     [:and
-     [:>= field' [:absolute-datetime (lower-bound unit lower report-timezone) :default]]
-     [:<  field' [:absolute-datetime (upper-bound unit upper report-timezone) :default]]]))
+     [:>= field' [:absolute-datetime (lower-bound unit lower) :default]]
+     [:<  field' [:absolute-datetime (upper-bound unit upper) :default]]]))
 
-(defn- optimize-datetime-filters* [{query-type :type, {:keys [report-timezone]} :settings, :as query}]
+(defn- optimize-datetime-filters* [{query-type :type, :as query}]
   (if (not= query-type :query)
     query
     (mbql.u/replace query
       (_ :guard (partial mbql.u/is-clause? (set (keys (methods optimize-filter)))))
       (if (can-optimize-filter? &match)
-        (optimize-filter &match report-timezone)
+        (optimize-filter &match)
         &match))))
 
 (defn optimize-datetime-filters

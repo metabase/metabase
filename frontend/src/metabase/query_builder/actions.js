@@ -53,6 +53,7 @@ import querystring from "querystring";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import { getSensibleDisplays } from "metabase/visualizations";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
@@ -462,14 +463,20 @@ export const initializeQB = (location, params) => {
       }
     }
 
+    let question = card && new Question(card, getMetadata(getState()));
+    if (params.cardId) {
+      // loading a saved question prevents auto-viz selection
+      question = question && question.setSelectedDisplay(question.display());
+    }
+
+    card = question && question.card();
+
     // Update the question to Redux state together with the initial state of UI controls
     dispatch.action(INITIALIZE_QB, {
       card,
       originalCard,
       uiControls,
     });
-
-    const question = card && new Question(card, getMetadata(getState()));
 
     // if we have loaded up a card that we can run then lets kick that off as well
     // but don't bother for "notebook" mode
@@ -841,7 +848,15 @@ export const apiCreateQuestion = question => {
       createdQuestion.query().datasetQuery().type,
     );
 
-    dispatch.action(API_CREATE_QUESTION, createdQuestion.card());
+    // Saving a card, locks in the current display as though it had been
+    // selected in the UI. We also copy over `sensibleDisplays` since those were
+    // not persisted onto `createdQuestion`.
+    const card = createdQuestion
+      .setSensibleDisplays(question.sensibleDisplays())
+      .setSelectedDisplay(question.display())
+      .card();
+
+    dispatch.action(API_CREATE_QUESTION, card);
   };
 };
 
@@ -933,9 +948,7 @@ export const runQuestionQuery = ({
         ignoreCache: ignoreCache,
         isDirty: cardIsDirty,
       })
-      .then(queryResults =>
-        dispatch(queryCompleted(question.card(), queryResults)),
-      )
+      .then(queryResults => dispatch(queryCompleted(question, queryResults)))
       .catch(error => dispatch(queryErrored(startTime, error)));
 
     MetabaseAnalytics.trackEvent(
@@ -957,50 +970,16 @@ export const runQuestionQuery = ({
 export const CLEAR_QUERY_RESULT = "metabase/query_builder/CLEAR_QUERY_RESULT";
 export const clearQueryResult = createAction(CLEAR_QUERY_RESULT);
 
-const getDisplayTypeForCard = (card, queryResults) => {
-  // TODO Atte Keinänen 6/1/17: Make a holistic decision based on all queryResults, not just one
-  // This method seems to has been a candidate for a rewrite anyway
-  const queryResult = queryResults[0];
-
-  let cardDisplay = card.display;
-
-  // try a little logic to pick a smart display for the data
-  // TODO: less hard-coded rules for picking chart type
-  const isScalarVisualization =
-    card.display === "scalar" ||
-    card.display === "progress" ||
-    card.display === "gauge";
-  if (
-    !isScalarVisualization &&
-    queryResult.data.rows &&
-    queryResult.data.rows.length === 1 &&
-    queryResult.data.cols.length === 1
-  ) {
-    // if we have a 1x1 data result then this should always be viewed as a scalar
-    cardDisplay = "scalar";
-  } else if (
-    isScalarVisualization &&
-    queryResult.data.rows &&
-    (queryResult.data.rows.length > 1 || queryResult.data.cols.length > 1)
-  ) {
-    // any time we were a scalar and now have more than 1x1 data switch to table view
-    cardDisplay = "table";
-  } else if (!card.display) {
-    // if our query aggregation is "rows" then ALWAYS set the display to "table"
-    cardDisplay = "table";
-  }
-
-  return cardDisplay;
-};
-
 export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
-export const queryCompleted = (card, queryResults) => {
+export const queryCompleted = (question, queryResults) => {
   return async (dispatch, getState) => {
-    dispatch.action(QUERY_COMPLETED, {
-      card,
-      cardDisplay: getDisplayTypeForCard(card, queryResults),
-      queryResults,
-    });
+    const [{ data }] = queryResults;
+    const card = question
+      .setSensibleDisplays(getSensibleDisplays(data))
+      .setDefaultDisplay()
+      .switchTableScalar(data)
+      .card();
+    dispatch.action(QUERY_COMPLETED, { card, queryResults });
   };
 };
 

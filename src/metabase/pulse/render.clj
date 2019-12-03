@@ -1,13 +1,13 @@
 (ns metabase.pulse.render
   (:require [clojure.tools.logging :as log]
             [hiccup.core :refer [h]]
-            [metabase.mbql.util :as mbql.u]
             [metabase.pulse.render
              [body :as body]
              [common :as common]
              [image-bundle :as image-bundle]
              [png :as png]
              [style :as style]]
+            [metabase.types :as types]
             [metabase.util
              [i18n :refer [trs tru]]
              [urls :as urls]]
@@ -75,7 +75,7 @@
 
       (and (= col-count 2)
            (> row-count 1)
-           (mbql.u/datetime-field? col-1)
+           (types/temporal-field? col-1)
            (number-field? col-2))
       :sparkline
 

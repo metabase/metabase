@@ -10,7 +10,8 @@
   :profiles
   {:provided
    {:dependencies
-    [[metabase-core "1.0.0-SNAPSHOT"]]}
+    [[org.clojure/clojure "1.10.1"]
+     [metabase-core "1.0.0-SNAPSHOT"]]}
 
    :install-for-building-drivers
    {:auto-clean true

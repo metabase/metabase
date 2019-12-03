@@ -523,7 +523,7 @@
       ->
      (db/select Field :special_type [:in #{\"type/URL\" \"type/ImageURL\" \"type/AvatarURL\"}])
 
-   Also accepts optional EXPR for use directly in a HoneySQL `where`:
+   Also accepts optional `expr` for use directly in a HoneySQL `where`:
 
      (db/select Field {:where (mdb/isa :special_type :type/URL)})
      ->

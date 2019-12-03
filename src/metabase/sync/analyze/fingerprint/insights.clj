@@ -6,6 +6,7 @@
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :as field]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
+            [metabase.util.date :as du]
             [redux.core :as redux]))
 
 (defn- last-n
@@ -214,13 +215,13 @@
                                          (assoc col :position idx)))
                           (group-by (fn [{:keys [base_type special_type unit] :as field}]
                                       (cond
-                                        (#{:type/FK :type/PK} special_type)          :others
-                                        (= unit :year)                               :datetimes
-                                        (metabase.util.date/date-extract-units unit) :numbers
-                                        (field/unix-timestamp? field)                :datetimes
-                                        (isa? base_type :type/Number)                :numbers
-                                        (isa? base_type :type/DateTime)              :datetimes
-                                        :else                                        :others))))]
+                                        (#{:type/FK :type/PK} special_type) :others
+                                        (= unit :year)                      :datetimes
+                                        (du/date-extract-units unit)        :numbers
+                                        (field/unix-timestamp? field)       :datetimes
+                                        (isa? base_type :type/Number)       :numbers
+                                        (isa? base_type :type/Temporal)     :datetimes
+                                        :else                               :others))))]
     (cond
       (timeseries? cols-by-type) (timeseries-insight cols-by-type)
       :else                      (f/constant-fingerprinter nil))))

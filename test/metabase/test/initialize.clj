@@ -12,6 +12,17 @@
     ([k]        (keyword k))
     ([k & more] :many)))
 
+(defonce ^:private initialized (atom #{}))
+
+(defn initialized?
+  "Has this component been initialized?"
+  ([k]
+   (contains? @initialized k))
+
+  ([k & more]
+   (and (initialized? k)
+        (apply initialized? more))))
+
 (defmethod initialize-if-needed! :many
   [& args]
   (doseq [k args]
@@ -33,6 +44,7 @@
        (defonce ~delay-symb
          (delay
            (log-init-message ~(keyword task-name))
+           (swap! initialized conj ~(keyword task-name))
            ~@body
            nil))
        (defmethod initialize-if-needed! ~(keyword task-name)

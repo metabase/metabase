@@ -1,5 +1,9 @@
-(ns metabase.util.date
-  "Utility functions for working with datetimes of different types, and other related tasks."
+(ns ^:deprecated metabase.util.date
+  "Utility functions for working with datetimes of different types, and other related tasks. Deprecated: use
+  `metabase.util.date-2` instead.
+
+  TIMEZONE FIXME - remove this namespace entirely
+"
   (:require [clj-time
              [coerce :as coerce]
              [core :as t]
@@ -17,15 +21,16 @@
            [org.joda.time DateTime DateTimeZone]
            org.joda.time.format.DateTimeFormatter))
 
-(def ^{:tag     TimeZone
-       :dynamic true
-       :doc     "Timezone to be used when formatting timestamps for display or for the data (pre aggregation)"}
+(alter-meta! *ns* assoc :deprecated true)
+
+;; TODO - move this stuff to `metabase.query-processor.timestamp` -- it's QP specific and doesn't really belong here
+(def ^:dynamic ^:deprecated ^TimeZone ^{:doc "Timezone to be used when formatting timestamps for display or
+ for the data (pre aggregation). Deprecated — use `metabase.query-processor.timezone/results-timezone-id` instead."}
   *report-timezone*)
 
-(def ^{:dynamic true
-       :doc     "The timezone of the database currently being queried."
-       :tag     TimeZone}
-  *database-timezone*)
+(def ^:dynamic ^:deprecated ^TimeZone ^{:doc "The timezone of the database currently being queried.
+ Deprecated — you shouldn't need to use this directly; use `metabase.query-processor.timezone/results-timezone-id`
+ instead."} *database-timezone*)
 
 (defprotocol ^:private ITimeZoneCoercible
   "Coerce object to `java.util.TimeZone`"
@@ -75,7 +80,8 @@
                                    (.getID jvm-timezone) (.getID database-timezone)))))))))
 
 (defn call-with-effective-timezone
-  "Invokes `f` with `*report-timezone*` and `*database-timezone*` bound for the given `db`"
+  "Invokes `f` with `*report-timezone*` and `*database-timezone*` bound for the given `db`. Deprecated — use functions
+  in `metabase.query-processor.timezone` instead."
   [db f]
   (let [driver    ((resolve 'metabase.driver.util/database->driver) db)
         report-tz (when-let [report-tz-id (and driver ((resolve 'metabase.driver.util/report-timezone-if-supported) driver))]
@@ -83,12 +89,13 @@
         data-tz   (some-> db :timezone coerce-to-timezone)
         jvm-tz    @jvm-timezone]
     (warn-on-timezone-conflict driver db report-tz jvm-tz data-tz)
-    (binding [*report-timezone* (or report-tz jvm-tz)
-              *database-timezone*   data-tz]
+    (binding [*report-timezone*   (or report-tz jvm-tz)
+              *database-timezone* data-tz]
       (f))))
 
 (defmacro with-effective-timezone
-  "Runs `body` with `*report-timezone*` and `*database-timezone*` configured using the given `db`"
+  "Runs `body` with `*report-timezone*` and `*database-timezone*` configured using the given `db`. Deprecated — use
+  functions in `metabase.query-processor.timezone` instead."
   [db & body]
   `(call-with-effective-timezone ~db (fn [] ~@body)))
 
@@ -183,10 +190,11 @@
 
 (def ^:private ^{:arglists '([timezone-id])} time-formatter
   ;; memoize this because the formatters are static. They must be distinct per timezone though.
-  (memoize (fn [timezone-id]
-             (if timezone-id
-               (time/with-zone (time/formatters :time) (t/time-zone-for-id timezone-id))
-               (time/formatters :time)))))
+  (memoize
+   (fn [timezone-id]
+     (if timezone-id
+       (time/with-zone (time/formatters :time) (t/time-zone-for-id timezone-id))
+       (time/formatters :time)))))
 
 (defn format-time
   "Returns a string representation of the time found in `t`"
@@ -493,3 +501,9 @@
   "Convert `minutes` to milliseconds. More readable than doing this math inline."
   [minutes]
   (-> minutes minutes->seconds seconds->ms))
+
+;; deprecate this entire namespace and `clj-time` as well!
+(doseq [a-namespace (cons *ns* '[clj-time.core clj-time.coerce clj-time.format])]
+  (alter-meta! (the-ns a-namespace) assoc :deprecated true)
+  (doseq [[_ varr] (ns-publics a-namespace)]
+    (alter-meta! varr assoc :deprecated true)))

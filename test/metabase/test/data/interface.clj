@@ -357,8 +357,8 @@
     :source       :aggregation
     :field_ref    [:aggregation 0]})
 
-  ([driver aggregation-type {field-id :id, :keys [base_type special_type table_id]}]
-   {:pre [base_type special_type]}
+  ([driver aggregation-type {field-id :id, :keys [table_id]}]
+   {:pre [table_id]}
    (driver/with-driver driver
      (qp.store/with-store
        (qp.store/fetch-and-store-database! (db/select-one-field :db_id Table :id table_id))
@@ -420,7 +420,22 @@
                           (dataset-table-definition table))})))
 
 (defmacro defdataset
-  "Define a new dataset to test against."
+  "Define a new dataset to test against. Definition should be of the format
+
+    [table-def+]
+
+  Where each table-def is of the format
+
+    [table-name [field-def+] [row+]]
+
+  e.g.
+
+  [[\"bird_species\"
+    [{:field-name \"name\", :base-type :type/Text}]
+    [[\"House Finch\"]
+     [\"Mourning Dove\"]]]]
+
+  Refer to the EDN definitions (e.g. `test-data.edn`) for more examples."
   ([dataset-name definition]
    `(defdataset ~dataset-name nil ~definition))
 
@@ -627,6 +642,7 @@
   "Same as `db-test-env-var` but will throw an exception if the variable is `nil`."
   ([driver env-var]
    (db-test-env-var-or-throw driver env-var nil))
+
   ([driver env-var default]
    (or (db-test-env-var driver env-var default)
        (throw (Exception. (format "In order to test %s, you must specify the env var MB_%s_TEST_%s."

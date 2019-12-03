@@ -21,59 +21,81 @@
 
 ;;; ---------------------------------------------- Helper Fns + Macros -----------------------------------------------
 
-;; TODO - now that we've added Google Analytics to this, `timeseries-drivers` doesn't really make sense anymore.
-;; Perhaps we should rename it to `abnormal-drivers`
-
 ;; Event-Based DBs aren't tested here, but in `event-query-processor-test` instead.
-(def ^:private timeseries-drivers #{:druid :googleanalytics})
+(def ^:private abnormal-drivers
+  "Drivers that are so weird that we can't run the normal driver tests against them."
+  #{:druid :googleanalytics})
+
+(defn normal-drivers
+  "Drivers that are reasonably normal in the sense that they can participate in the shared driver tests."
+  []
+  (set/difference (tx.env/test-drivers) abnormal-drivers))
 
 ;; TODO - we should make this a function instead to facilitate rebinding with macros like `dev/with-test-drivers`
-(def non-timeseries-drivers
-  "Set of engines for non-timeseries DBs (i.e., every driver except `:druid`)."
-  (delay
-    (set/difference @tx.env/test-drivers timeseries-drivers)))
+(def ^:deprecated non-timeseries-drivers
+  "Set of engines for non-timeseries DBs (i.e., every driver except `:druid`). DEPRECATED — Use `normal-drivers`
+  instead."
+  (reify
+    clojure.lang.IDeref
+    (deref [_]
+      (normal-drivers))))
 
-(defn non-timeseries-drivers-with-feature
+(defn normal-drivers-with-feature
   "Set of engines that support a given `feature`. If additional features are given, it will ensure all features are
   supported."
   [feature & more-features]
   (let [features (set (cons feature more-features))]
-    (set (for [driver @non-timeseries-drivers
+    (set (for [driver (normal-drivers)
                :let   [driver (tx/the-driver-with-test-extensions driver)]
                :when  (set/subset? features (driver.u/features driver))]
            driver))))
 
-(defn non-timeseries-drivers-without-feature
+(defn ^:deprecated non-timeseries-drivers-with-feature
+  "DEPRECATED — use `normal-drivers-with-feature` instead."
+  [feature & more-features]
+  (apply normal-drivers-with-feature feature more-features))
+
+(defn normal-drivers-without-feature
   "Return a set of all non-timeseries engines (e.g., everything except Druid) that DO NOT support `feature`."
   [feature]
-  (set/difference @non-timeseries-drivers (non-timeseries-drivers-with-feature feature)))
+  (set/difference (normal-drivers) (normal-drivers-with-feature feature)))
+
+(defn ^:deprecated non-timeseries-drivers-without-feature
+  "DEPRECATED — use `normal-drivers-without-feature` instead."
+  [feature]
+  (normal-drivers-without-feature feature))
 
 (defmacro ^:deprecated expect-with-non-timeseries-dbs
-  "DEPRECATED — Use `deftest` + `test-drivers` + `non-timeseries-drivers` instead.
+  "DEPRECATED — Use `deftest` + `test-drivers` + `normal-drivers` instead.
 
     (deftest my-test
-      (datasets/test-drivers @qp.test/non-timeseries-drivers
+      (datasets/test-drivers (qp.test/normal-drivers)
         (is (= ...))))"
   {:style/indent 0}
   [expected actual]
-  `(datasets/expect-with-drivers @non-timeseries-drivers
+  `(datasets/expect-with-drivers (normal-drivers)
      ~expected
      ~actual))
 
-(defn non-timeseries-drivers-except
+(defn normal-drivers-except
   "Return the set of all drivers except Druid, Google Analytics, and those in `excluded-drivers`."
   [excluded-drivers]
-  (set/difference @non-timeseries-drivers (set excluded-drivers)))
+  (set/difference (normal-drivers) (set excluded-drivers)))
+
+(defn ^:deprecated non-timeseries-drivers-except
+  "DEPRECATED — Use `normal-drivers-except` instead."
+  [excluded-drivers]
+  (normal-drivers-except excluded-drivers))
 
 (defmacro ^:deprecated expect-with-non-timeseries-dbs-except
-  "DEPRECATED — Use `deftest` + `test-drivers` + `non-timeseries-drivers-except` instead.
+  "DEPRECATED — Use `deftest` + `test-drivers` + `normal-drivers-except` instead.
 
     (deftest my-test
-      (datasets/test-drivers (qp.test/non-timeseries-drivers-except #{:snowflake})
+      (datasets/test-drivers (qp.test/normal-drivers-except #{:snowflake})
         (is (= ...))))"
   {:style/indent 1}
   [excluded-drivers expected actual]
-  `(datasets/expect-with-drivers (non-timeseries-drivers-except ~excluded-drivers)
+  `(datasets/expect-with-drivers (normal-drivers-except ~excluded-drivers)
      ~expected
      ~actual))
 
@@ -84,7 +106,7 @@
   `qp.test/rows-and-columns` instead.
 
   DEPRECATED x2 - You also shouldn't use this because it ultimately uses `expectations`-style `expect` -- see
-  docstring for `expect-with-non-timeseries-dbs for suggested alternative."
+  docstring for `expect-with-non-timeseries-dbs` for suggested alternative."
   {:style/indent 0}
   [data query-form & post-process-fns]
   `(expect-with-non-timeseries-dbs
@@ -317,7 +339,7 @@
                       (try
                         (f v)
                         (catch Throwable e
-                          (throw (ex-info (printf "format-rows-by failed (f = %s, value = %s %s): %s" f (.getName (class v)) v (.getMessage e))
+                          (throw (ex-info (format "format-rows-by failed (f = %s, value = %s %s): %s" f (.getName (class v)) v (.getMessage e))
                                    {:f f, :v v}
                                    e)))))))))
 
@@ -389,4 +411,5 @@
   differentiate Oracle from the other report-timezone databases until that bug can get fixed. Redshift and Snowflake
   also have this issue."
   [driver]
+  ;; TIMEZONE FIXME — remove this and fix the drivers
   (contains? #{:snowflake :oracle :redshift} driver))
