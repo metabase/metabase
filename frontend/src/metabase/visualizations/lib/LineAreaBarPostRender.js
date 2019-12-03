@@ -291,23 +291,33 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
     xShift += barWidth / 2;
   }
 
-  const addLabels = data =>
-    parent
+  const addLabels = data => {
+    // Safari had an issue with rendering paint-order: stroke. To work around
+    // that, we create two text labels: one for the the black text and another
+    // for the white outline behind it.
+    const labelGroups = parent
       .append("svg:g")
       .classed("value-labels", true)
-      .selectAll("text.value-label")
+      .selectAll("g")
       .data(data)
       .enter()
-      .append("text")
-      .attr("class", "value-label")
-      .attr("text-anchor", "middle")
-      .attr("alignment-baseline", "middle")
-      .attr("x", ({ x }) => xShift + xScale(x))
+      .append("g")
       .attr(
-        "y",
-        ({ y, showLabelBelow }, i) => yScale(y) + (showLabelBelow ? 14 : -10),
-      )
-      .text(({ y }) => formatYValue(y, { compact: true }));
+        "transform",
+        ({ x, y, showLabelBelow }) =>
+          `translate(${xShift + xScale(x)}, ${yScale(y) +
+            (showLabelBelow ? 14 : -10)})`,
+      );
+
+    ["value-label-outline", "value-label"].forEach(klass =>
+      labelGroups
+        .append("text")
+        .attr("class", klass)
+        .attr("text-anchor", "middle")
+        .attr("alignment-baseline", "middle")
+        .text(({ y }) => formatYValue(y, { compact: true })),
+    );
+  };
 
   let nth;
   if (showAll) {
@@ -324,7 +334,7 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
     addLabels(_.sample(data, sampleSize));
     const totalWidth = chart
       .svg()
-      .selectAll(".value-label")
+      .selectAll(".value-label-outline")
       .flat()
       .reduce((sum, label) => sum + label.getBoundingClientRect().width, 0);
     const labelWidth = totalWidth / sampleSize + LABEL_PADDING;
