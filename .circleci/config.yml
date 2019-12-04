@@ -431,7 +431,7 @@ jobs:
       - restore-be-deps-cache
       - restore_cache:
           keys:
-            - uberjar-{{ checksum "./backend-checksums.txt" }}
+            - uberjar-{{ checksum "./backend-checksums.txt" }}-{{ checksum "yarn.lock" }}
       - run:
           name: Build uberjar if needed
           command: >
@@ -440,7 +440,7 @@ jobs:
             fi
           no_output_timeout: 5m
       - save_cache:
-          key: uberjar-{{ checksum "./backend-checksums.txt" }}
+          key: uberjar-{{ checksum "./backend-checksums.txt" }}-{{ checksum "yarn.lock" }}
           paths:
             - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
 
