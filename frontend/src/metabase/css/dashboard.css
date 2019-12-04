@@ -71,7 +71,7 @@
 }
 
 .Dashboard.Dashboard--night .DashCard .Card svg text {
-  fill: color(var(--color-text-white) alpha(-14%)) !important;
+  fill: color(var(--color-text-white) alpha(-14%));
 }
 
 .Dashboard.Dashboard--night .DashCard .Card {
