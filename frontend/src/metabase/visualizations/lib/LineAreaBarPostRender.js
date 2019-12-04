@@ -247,10 +247,12 @@ function onRenderVoronoiHover(chart) {
 }
 
 function onRenderValueLabels(chart, formatYValue, [data]) {
+  const hasDuplicateX = new Set(data.map(([x]) => x)).size < data.length;
   if (
     !chart.settings["graph.show_values"] || // setting is off
     chart.settings["stackable.stack_type"] === "normalized" || // no normalized
-    chart.series.length > 1 // no multiseries
+    chart.series.length > 1 || // no multiseries
+    hasDuplicateX // need unique x values
   ) {
     return;
   }
