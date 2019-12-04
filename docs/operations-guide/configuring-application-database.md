@@ -55,7 +55,7 @@ This will tell Metabase to look for its application database using the supplied 
 
 #### [MySQL](https://www.mysql.com/) or [MariaDB](https://www.mariadb.org/)
 
-If you prefer to use MySQL or MariaDB we've got you covered. The minimum recommended version is MySQL 5.7.7 and MariaDB 10.2.2, while `utf8mb4` character set is required. You can change the application database to use MySQL using these environment variables. For example:
+If you prefer to use MySQL or MariaDB we've got you covered. The minimum recommended version is MySQL 5.7.7 or MariaDB 10.2.2, and the `utf8mb4` character set is required. You can change the application database to use MySQL using environment variables like this:
 
     export MB_DB_TYPE=mysql
     export MB_DB_DBNAME=metabase
