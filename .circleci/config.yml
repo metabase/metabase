@@ -436,7 +436,7 @@ jobs:
           name: Build uberjar if needed
           command: >
             if [ ! -f './target/uberjar/metabase.jar' ];
-              then ./bin/build version uberjar;
+              then ./bin/build version frontend uberjar;
             fi
           no_output_timeout: 5m
       - save_cache:
