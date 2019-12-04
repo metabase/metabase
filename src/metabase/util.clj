@@ -278,6 +278,7 @@
          (some->> last-mb-frame (str "--> "))
          frames-before-last-mb))))})
 
+(declare format-milliseconds)
 
 (defn deref-with-timeout
   "Call `deref` on a something derefable (e.g. a future or promise), and throw an exception if it takes more than
@@ -287,7 +288,7 @@
     (when (= result ::timeout)
       (when (instance? java.util.concurrent.Future reff)
         (future-cancel reff))
-      (throw (TimeoutException. (tru "Timed out after {0} milliseconds." timeout-ms))))
+      (throw (TimeoutException. (tru "Timed out after {0}" (format-milliseconds timeout-ms)))))
     result))
 
 (defn do-with-timeout

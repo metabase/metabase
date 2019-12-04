@@ -299,14 +299,11 @@
      (and (instance? Period x) (instance? Duration y))
      (PeriodDuration/of x y)
 
-     (= (class x) (class y))
-     (PeriodDuration/between x y)
-
      (instance? Instant x)
-     (PeriodDuration/between (t/offset-date-time x (t/zone-offset 0)) y)
+     (period-duration (t/offset-date-time x (t/zone-offset 0)) y)
 
      (instance? Instant y)
-     (PeriodDuration/between x (t/offset-date-time y (t/zone-offset 0)))
+     (period-duration x (t/offset-date-time y (t/zone-offset 0)))
 
      :else
      (PeriodDuration/between x y))))
@@ -339,6 +336,30 @@
   "True if period/duration `d1` is longer than period/duration `d2`."
   [d1 d2]
   (pos? (compare-period-durations d1 d2)))
+
+(defn- now-of-same-class
+  "Return a temporal value representing *now* of the same class as `t`, e.g. for comparison purposes."
+  ^Temporal [t]
+  (when t
+    (condp instance? t
+      Instant        (t/instant)
+      LocalDate      (t/local-date)
+      LocalTime      (t/local-time)
+      LocalDateTime  (t/local-date-time)
+      OffsetTime     (t/offset-time)
+      OffsetDateTime (t/offset-date-time)
+      ZonedDateTime  (t/zoned-date-time))))
+
+(defn older-than?
+  "True if temporal value `t` happened before some period/duration ago. Prefer this over using `t/before?`
+  because it is incredibly fussy about the classes of arguments it is passed.
+
+    ;; did `t` happen more than 2 months ago?
+    (older-than? t (t/months 2))"
+  [t duration]
+  (greater-than-period-duration?
+   (period-duration t (now-of-same-class t))
+   duration))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

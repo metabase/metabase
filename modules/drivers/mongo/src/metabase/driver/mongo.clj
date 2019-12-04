@@ -26,6 +26,9 @@
            [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            org.bson.BsonUndefined))
 
+;; we want to load this to get the Cheshire protocol defs; the comment is here to fool `cljr-clean-ns`
+(comment monger.json/keep-me)
+
 ;; JSON Encoding (etc.)
 
 ;; Encode BSON undefined like `nil`
@@ -207,7 +210,11 @@
 
   LocalDateTime
   (to-db-object [t]
-    (m.conversion/to-db-object (t/instant t (t/zone-id (qp.timezone/results-timezone-id)))))
+    ;; QP store won't be bound when loading test data for example.
+    (m.conversion/to-db-object (t/instant t (t/zone-id (try
+                                                         (qp.timezone/results-timezone-id)
+                                                         (catch Throwable _
+                                                           "UTC"))))))
 
   LocalTime
   (to-db-object [t]

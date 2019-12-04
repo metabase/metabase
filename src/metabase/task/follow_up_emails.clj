@@ -16,7 +16,9 @@
              [setting :as setting]
              [user :as user :refer [User]]
              [view-log :refer [ViewLog]]]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util
+             [date-2 :as u.date]
+             [i18n :refer [trs]]]
             [schema.core :as s]
             [toucan.db :as db])
   (:import java.time.temporal.Temporal))
@@ -60,9 +62,8 @@
   (when-not (follow-up-email-sent)
     ;; figure out when we consider the instance created
     (when-let [instance-created (instance-creation-timestamp)]
-      ;; we need to be 2+ weeks (14 days) from creation to send the follow up
-      (when (< (* 14 24 60 60 1000)
-               (- (System/currentTimeMillis) (.getTime instance-created)))
+      ;; we need to be 2+ weeks from creation to send the follow up
+      (when (u.date/older-than? instance-created (t/weeks 2))
         (send-follow-up-email!)))))
 
 (def ^:private follow-up-emails-job-key     "metabase.task.follow-up-emails.job")
@@ -92,44 +93,46 @@
   :internal? true)
 
 (s/defn ^:private should-send-abandoment-email?
-  [last-user :- (s/maybe Temporal) last-activity :- (s/maybe Temporal) last-view :- (s/maybe Temporal)]
-  (let [two-weeks-ago         (t/minus (t/instant) (t/weeks 2))
-        before-two-weeks-ago? (fn [t]
-                                (or (not t)
-                                    (t/before? (t/instant t) two-weeks-ago)))]
-    (every? before-two-weeks-ago? [last-user last-activity last-view])))
+  ([]
+   (should-send-abandoment-email?
+    (instance-creation-timestamp)
+    (db/select-one [User [:%max.date_joined :last-user]])
+    (db/select-one [Activity [:%max.timestamp :last-activity]])
+    (db/select-one [ViewLog [:%max.timestamp :last-view]])))
 
-(defn- send-abandonment-email!
+  ([instance-creation :- (s/maybe Temporal)
+    last-user         :- (s/maybe Temporal)
+    last-activity     :- (s/maybe Temporal)
+    last-view         :- (s/maybe Temporal)]
+   (boolean
+    (and instance-creation
+         (u.date/older-than? instance-creation (t/weeks 4))
+         (or (not last-user)     (u.date/older-than? last-user     (t/weeks 2)))
+         (or (not last-activity) (u.date/older-than? last-activity (t/weeks 2)))
+         (or (not last-view)     (u.date/older-than? last-view     (t/weeks 2)))))))
+
+(defn- send-abandoment-email-if-needed!
   "Send an email to the instance admin about why Metabase usage has died down."
   []
   ;; grab the oldest admins email address, that's who we'll send to
   (when-let [admin-email (db/select-one-field :email User :is_superuser true, {:order-by [:date_joined]})]
-    (let [{:keys [last-user]}     (db/select-one [User [:%max.date_joined :last-user]])
-          {:keys [last-activity]} (db/select-one [Activity [:%max.timestamp :last-activity]])
-          {:keys [last-view]}     (db/select-one [ViewLog [:%max.timestamp :last-view]])]
-      (when (should-send-abandoment-email? last-user last-activity last-view)
-        (log/info (trs "Sending abandoment email because last user was {0}, last activity was {1}, and last view was {2}"
-                       last-user last-activity last-view))
-        (try
-          (messages/send-follow-up-email! admin-email "abandon")
-          (catch Throwable e
-            (log/error e (trs "Problem sending abandonment email")))
-          (finally
-            (abandonment-email-sent true)))))))
+    (when (should-send-abandoment-email?)
+      (log/info (trs "Sending abandoment email!"))
+      (try
+        (messages/send-follow-up-email! admin-email "abandon")
+        (catch Throwable e
+          (log/error e (trs "Problem sending abandonment email")))
+        (finally
+          (abandonment-email-sent true))))))
 
 ;; this sends out an email any time after 30 days if the instance has stopped being used for 14 days
 (jobs/defjob AbandonmentEmail [_]
   ;; if we've already sent the abandonment email then we are done
   (when-not (abandonment-email-sent)
-    ;; figure out when we consider the instance created
-    (when-let [instance-created (instance-creation-timestamp)]
-      ;; we need to be 4+ weeks (30 days) from creation to send the follow up
-      (when (< (* 30 24 60 60 1000)
-               (- (System/currentTimeMillis) (.getTime instance-created)))
-        ;; we need access to email AND the instance must be opted into anonymous tracking
-        (when (and (email/email-configured?)
-                   (public-settings/anon-tracking-enabled))
-          (send-abandonment-email!))))))
+    ;; we need access to email AND the instance must be opted into anonymous tracking
+    (when (and (email/email-configured?)
+               (public-settings/anon-tracking-enabled))
+      (send-abandoment-email-if-needed!))))
 
 (def ^:private abandonment-emails-job-key     "metabase.task.abandonment-emails.job")
 (def ^:private abandonment-emails-trigger-key "metabase.task.abandonment-emails.trigger")

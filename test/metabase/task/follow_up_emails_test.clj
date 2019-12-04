@@ -22,14 +22,17 @@
 
 (deftest should-send-abandoment-email-test
   (testing "Conditions where abandonment emails should be sent"
-    (doseq [now           [(t/zoned-date-time) (t/offset-date-time) (t/instant)]
-            last-user     [0 1 3 nil]
-            last-activity [0 1 3 nil]
-            last-view     [0 1 3 nil]]
-      (testing (format "classes = %s, last-user = %d weeks ago, last-activity = %d weeks ago, last-view = %d weeks ago"
-                       (.getName (class now)) last-user last-activity last-view)
-        (is (= (every? #(contains? #{nil 3} %) [last-user last-activity last-view])
+    (doseq [now               [(t/zoned-date-time) (t/offset-date-time) (t/instant)]
+            instance-creation [0 1 5 nil]
+            last-user         [0 1 3 nil]
+            last-activity     [0 1 3 nil]
+            last-view         [0 1 3 nil]]
+      (testing (format "classes = %s, instance creation = %d weeks ago, last-user = %d weeks ago, last-activity = %d weeks ago, last-view = %d weeks ago"
+                       (.getName (class now)) instance-creation last-user last-activity last-view)
+        (is (= (and (= instance-creation 5)
+                    (every? #(contains? #{nil 3} %) [last-user last-activity last-view]))
                (#'follow-up-emails/should-send-abandoment-email?
-                (when last-user     (t/minus now (t/weeks last-user)))
-                (when last-activity (t/minus now (t/weeks last-activity)))
-                (when last-view     (t/minus now (t/weeks last-view))))))))))
+                (when instance-creation (t/minus now (t/weeks instance-creation)))
+                (when last-user         (t/minus now (t/weeks last-user)))
+                (when last-activity     (t/minus now (t/weeks last-activity)))
+                (when last-view         (t/minus now (t/weeks last-view))))))))))
