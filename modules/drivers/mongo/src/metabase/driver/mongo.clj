@@ -13,10 +13,11 @@
             [metabase.driver.mongo
              [query-processor :as qp]
              [util :refer [with-mongo-connection]]]
+            [metabase.plugins.classloader :as classloader]
             [metabase.query-processor
              [store :as qp.store]
              [timezone :as qp.timezone]]
-            [monger json
+            [monger
              [collection :as mc]
              [command :as cmd]
              [conversion :as m.conversion]
@@ -26,8 +27,9 @@
            [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            org.bson.BsonUndefined))
 
-;; we want to load this to get the Cheshire protocol defs; the comment is here to fool `cljr-clean-ns`
-(comment monger.json/keep-me)
+;; See http://clojuremongodb.info/articles/integration.html Loading this namespace will load appropriate Monger
+;; integrations with Cheshire.
+(classloader/require 'monger.json)
 
 ;; JSON Encoding (etc.)
 

@@ -85,7 +85,7 @@
                                 user)
        :instanceName       instance
        :encrypt            (boolean ssl)
-       ;; only crazy people would want this. Seehttps://docs.microsoft.com/en-us/sql/connect/jdbc/configuring-how-java-sql-time-values-are-sent-to-the-server?view=sql-server-ver15
+       ;; only crazy people would want this. See https://docs.microsoft.com/en-us/sql/connect/jdbc/configuring-how-java-sql-time-values-are-sent-to-the-server?view=sql-server-ver15
        :sendTimeAsDatetime false}
       ;; only include `port` if it is specified; leave out for dynamic port: see
       ;; https://github.com/metabase/metabase/issues/7597
@@ -124,7 +124,7 @@
 
 (defmethod sql.qp/date [:sqlserver :day]
   [_ _ expr]
-  (date-part :day expr))
+  (hx/->date expr))
 
 (defmethod sql.qp/date [:sqlserver :day-of-week]
   [_ _ expr]
@@ -177,8 +177,8 @@
   [_ _ expr]
   (hsql/call :datefromparts (hx/year expr) 1 1))
 
-
-(defmethod driver/date-add :sqlserver [_ dt amount unit]
+(defmethod driver/date-add :sqlserver
+  [_ dt amount unit]
   (date-add unit amount dt))
 
 (defmethod sql.qp/unix-timestamp->timestamp [:sqlserver :seconds]
@@ -188,10 +188,12 @@
   ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
   (date-add :minute (hx// expr 60) (hx/literal "1970-01-01")))
 
-(defmethod sql.qp/apply-top-level-clause [:sqlserver :limit] [_ _ honeysql-form {value :limit}]
+(defmethod sql.qp/apply-top-level-clause [:sqlserver :limit]
+  [_ _ honeysql-form {value :limit}]
   (assoc honeysql-form :modifiers [(format "TOP %d" value)]))
 
-(defmethod sql.qp/apply-top-level-clause [:sqlserver :page] [_ _ honeysql-form {{:keys [items page]} :page}]
+(defmethod sql.qp/apply-top-level-clause [:sqlserver :page]
+  [_ _ honeysql-form {{:keys [items page]} :page}]
   (assoc honeysql-form :offset (hsql/raw (format "%d ROWS FETCH NEXT %d ROWS ONLY"
                                                  (* items (dec page))
                                                  items))))

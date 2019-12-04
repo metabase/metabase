@@ -18,8 +18,11 @@
   "Impl for `with-report-timezone-id`."
   [timezone-id thunk]
   {:pre [((some-fn nil? string?) timezone-id)]}
-  ;; TODO - HACKY. Not sure if we want this.
-  (#'driver/notify-all-databases-updated)
+  ;; This will fail if the app DB isn't initialized yet. That's fine — there's no DBs to notify if the app DB isn't
+  ;; set up.
+  (try
+    (#'driver/notify-all-databases-updated)
+    (catch Throwable _))
   (binding [*report-timezone-id-override* (or timezone-id ::nil)]
     (thunk)))
 

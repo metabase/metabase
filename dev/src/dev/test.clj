@@ -106,7 +106,6 @@
   call-with-paused-query
   discard-setting-changes
   doall-recursive
-  exception-and-message
   is-uuid-string?
   metabase-logger
   postwalk-pred

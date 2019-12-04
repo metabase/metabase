@@ -3,7 +3,9 @@
              [set :as set]
              [string :as str]
              [test :refer :all]]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [test :as mt]]
             [metabase.models.table :refer [Table]]
             [metabase.test
              [data :as data]
@@ -90,11 +92,12 @@
 
 (deftest can-connect-test
   (datasets/test-driver :snowflake
-    (let [can-connect? (fn [details]
-                         (driver/can-connect? :snowflake details))]
+    (letfn [(can-connect? [details]
+              (driver/can-connect? :snowflake details))]
       (is (= true
              (can-connect? (:details (data/db))))
           "can-connect? should return true for normal Snowflake DB details")
       (is (= false
-             (can-connect? (assoc (:details (data/db)) :db (tu/random-name))))
+             (mt/suppress-output
+               (can-connect? (assoc (:details (data/db)) :db (tu/random-name)))))
           "can-connect? should return false for Snowflake databases that don't exist (#9041)"))))

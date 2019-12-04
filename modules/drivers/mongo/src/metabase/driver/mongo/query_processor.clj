@@ -23,17 +23,12 @@
              [date-2 :as u.date]
              [i18n :as ui18n :refer [tru]]
              [schema :as su]]
-            [monger json
+            [monger
              [collection :as mc]
              [operators :refer :all]]
             [schema.core :as s])
   (:import metabase.models.field.FieldInstance
            org.bson.types.ObjectId))
-
-;; See http://clojuremongodb.info/articles/integration.html Loading this namespace will load appropriate Monger
-;; integrations with Cheshire. The comment below is to fool `cljr-clean-ns` into keeping the namespace in the
-;; `:require` form above
-(comment monger.json/keep-me)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Schema                                                     |
