@@ -3438,7 +3438,7 @@ Object {
       "display_name": "Body",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 1111,
+          "distinct-count": 1112,
           "nil%": 0,
         },
         "type": Object {
