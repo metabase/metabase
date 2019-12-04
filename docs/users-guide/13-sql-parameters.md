@@ -76,7 +76,7 @@ If you input a default value for your field filter, this value will be selected 
 
 You can also define default values directly in your query, which is useful for complex default values. Note that the hash (`#`) might need to be replaced by the comment syntax of the database you're using. Some databases use double-dashes (`--`) as comment syntax.
 
-Current date example for Date filter:
+Current example for a Date filter:
 
 ```
 SELECT p.*
