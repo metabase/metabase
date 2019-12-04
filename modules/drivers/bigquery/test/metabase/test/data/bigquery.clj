@@ -14,7 +14,6 @@
              [interface :as tx]
              [sql :as sql.tx]]
             [metabase.util
-             [date :as du]
              [date-2 :as u.date]
              [schema :as su]]
             [schema.core :as s])
@@ -130,7 +129,7 @@
   "Convert the HoneySQL form we normally use to wrap a `Timestamp` to a Google `DateTime`."
   [{[{s :literal}] :args}]
   {:pre [(string? s) (seq s)]}
-  (DateTime. (du/->Timestamp (str/replace s #"'" ""))))
+  (DateTime. (t/to-java-date (u.date/parse (str/replace s #"'" "")))))
 
 
 (defn- insert-data! [^String dataset-id, ^String table-id, row-maps]

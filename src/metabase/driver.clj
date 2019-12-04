@@ -12,7 +12,6 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util
-             [date :as du]
              [i18n :refer [deferred-tru trs tru]]
              [schema :as su]]
             [schema.core :as s]
@@ -135,7 +134,7 @@
   [driver]
   (when-not *compile-files*
     (when-not (registered? driver)
-      (du/profile (trs "Load driver {0}" driver)
+      (u/profile (trs "Load driver {0}" driver)
         (require-driver-ns driver)
         ;; ok, hopefully it was registered now. If not, try again, but reload the entire driver namespace
         (when-not (registered? driver)

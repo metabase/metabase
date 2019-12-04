@@ -22,7 +22,7 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.test.initialize :as initialize]
             [metabase.util
-             [date :as du]
+             [date-2 :as u.date]
              [schema :as su]]
             [potemkin.types :as p.types]
             [pretty.core :as pretty]
@@ -65,6 +65,7 @@
     :table-definitions [ValidTableDefinition]}
    (partial instance? DatabaseDefinition)))
 
+;; TODO - this should probably be a protocol instead
 (defmulti ^DatabaseDefinition get-dataset-definition
   "Return a definition of a dataset, so a test database can be created from it."
   {:arglists '([this])}
@@ -130,7 +131,7 @@
   (when-not (contains? @has-loaded-extensions driver)
     (locking has-loaded-extensions
       (when-not (contains? @has-loaded-extensions driver)
-        (du/profile (format "Load %s test extensions" driver)
+        (u/profile (format "Load %s test extensions" driver)
           (require-driver-test-extensions-ns driver)
           ;; if it doesn't have test extensions yet, it may be because it's relying on a parent driver to add them (e.g.
           ;; Redshift uses Postgres' test extensions). Load parents as appropriate and try again
@@ -465,7 +466,9 @@
   directory. (Filename should be `dataset-name` + `.edn`.)"
   [dataset-name :- su/NonBlankString]
   (let [get-def (delay
-                  (let [file-contents (edn/read-string (slurp (str edn-definitions-dir dataset-name ".edn")))]
+                  (let [file-contents (edn/read-string
+                                       {:eof nil, :readers {'t #'u.date/parse}}
+                                       (slurp (str edn-definitions-dir dataset-name ".edn")))]
                     (apply dataset-definition dataset-name file-contents)))]
     (EDNDatasetDefinition. dataset-name get-def)))
 

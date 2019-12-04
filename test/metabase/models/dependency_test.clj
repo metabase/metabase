@@ -5,7 +5,6 @@
             [metabase.test
              [fixtures :as fixtures]
              [util :as tu]]
-            [metabase.util.date :as du]
             [toucan
              [db :as db]
              [models :as models]]
@@ -55,12 +54,12 @@
                                  :model_id           4
                                  :dependent_on_model "test"
                                  :dependent_on_id    1
-                                 :created_at         (du/new-sql-timestamp)}]
+                                 :created_at         :%now}]
                   Dependency [_ {:model              "Mock"
                                  :model_id           4
                                  :dependent_on_model "foobar"
                                  :dependent_on_id    13
-                                 :created_at         (du/new-sql-timestamp)}]]
+                                 :created_at         :%now}]]
     (format-dependencies (dep/retrieve-dependencies Mock 4))))
 
 
@@ -105,7 +104,7 @@
                                :model_id           1
                                :dependent_on_model "test"
                                :dependent_on_id    5
-                               :created_at         (du/new-sql-timestamp)}]
+                               :created_at         :%now}]
     (tu/with-model-cleanup [Dependency]
       (dep/update-dependencies! Mock 1 {:test [1 2]})
       (format-dependencies (db/select Dependency, :model "Mock", :model_id 1)))))

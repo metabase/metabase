@@ -16,9 +16,7 @@
              [execute :as execute]
              [spec :as spec]]
             [metabase.test.data.sql.ddl :as ddl]
-            [metabase.util
-             [date :as du]
-             [honeysql-extensions :as hx]])
+            [metabase.util.honeysql-extensions :as hx])
   (:import java.sql.SQLException))
 
 (defmulti load-data!
@@ -104,11 +102,7 @@
                                 (:field-definitions tabledef))]
     ;; TIMEZONE FIXME
     (for [row (:rows tabledef)]
-      (zipmap fields-for-insert (for [v row]
-                                  (if (and (not (instance? java.sql.Time v))
-                                           (instance? java.util.Date v))
-                                    (du/->Timestamp v du/utc)
-                                    v))))))
+      (zipmap fields-for-insert row))))
 
 (defn- make-insert!
   "Used by `make-load-data-fn`; creates the actual `insert!` function that gets passed to the `insert-middleware-fns`
@@ -211,5 +205,5 @@
     (execute/execute-sql! driver :db dbdef (str/join ";\n" statements)))
   ;; Now load the data for each Table
   (doseq [tabledef table-definitions]
-    (du/profile (format "load-data for %s %s %s" (name driver) (:database-name dbdef) (:table-name tabledef))
+    (u/profile (format "load-data for %s %s %s" (name driver) (:database-name dbdef) (:table-name tabledef))
       (load-data! driver dbdef tabledef))))

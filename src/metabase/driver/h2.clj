@@ -17,9 +17,7 @@
             [metabase.util
              [honeysql-extensions :as hx]
              [i18n :refer [deferred-tru tru]]])
-  (:import java.sql.Time
-           java.time.OffsetTime
-           java.util.Date))
+  (:import java.time.OffsetTime))
 
 (driver/register! :h2, :parent :sql-jdbc)
 

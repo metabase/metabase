@@ -1,6 +1,5 @@
 (ns metabase.driver.bigquery.query-processor-test
-  (:require [clj-time.core :as time]
-            [clojure.test :refer :all]
+  (:require [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [java-time :as t]
             [metabase
@@ -150,7 +149,7 @@
         "A UTC date is returned, we should read/return it as UTC")
 
     (is (= "2018-08-31T00:00:00-05:00"
-           (tu.tz/with-jvm-tz (time/time-zone-for-id "America/Chicago")
+           (tu.tz/with-system-timezone-id "America/Chicago"
              (tt/with-temp* [Database [db {:engine  :bigquery
                                            :details (assoc (:details (data/db))
                                                            :use-jvm-timezone true)}]]
@@ -160,7 +159,7 @@
              "the correct date is compared"))
 
     (is (= "2018-08-31T00:00:00+07:00"
-           (tu.tz/with-jvm-tz (time/time-zone-for-id "Asia/Jakarta")
+           (tu.tz/with-system-timezone-id "Asia/Jakarta"
              (tt/with-temp* [Database [db {:engine  :bigquery
                                            :details (assoc (:details (data/db))
                                                            :use-jvm-timezone true)}]]

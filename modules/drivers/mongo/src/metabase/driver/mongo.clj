@@ -4,6 +4,7 @@
              [core :as json]
              [generate :as json.generate]]
             [clojure.tools.logging :as log]
+            [java-time :as t]
             [metabase
              [driver :as driver]
              [util :as u]]
@@ -12,17 +13,25 @@
             [metabase.driver.mongo
              [query-processor :as qp]
              [util :refer [with-mongo-connection]]]
-            [metabase.query-processor.store :as qp.store]
+            [metabase.plugins.classloader :as classloader]
+            [metabase.query-processor
+             [store :as qp.store]
+             [timezone :as qp.timezone]]
             [monger
              [collection :as mc]
              [command :as cmd]
-             [conversion :as conv]
+             [conversion :as m.conversion]
              [db :as mdb]]
             [schema.core :as s]
             [taoensso.nippy :as nippy])
   (:import com.mongodb.DB
+           [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            org.bson.BsonUndefined
            org.bson.types.ObjectId))
+
+;; See http://clojuremongodb.info/articles/integration.html Loading this namespace will load appropriate Monger
+;; integrations with Cheshire.
+(classloader/require 'monger.json)
 
 ;; JSON Encoding (etc.)
 
@@ -43,7 +52,7 @@
   [_ details]
   (with-mongo-connection [^DB conn, details]
     (= (float (-> (cmd/db-stats conn)
-                  (conv/from-db-object :keywordize)
+                  (m.conversion/from-db-object :keywordize)
                   :ok))
        1.0)))
 
@@ -199,3 +208,43 @@
 (defmethod driver/execute-query :mongo
   [_ query]
   (qp/execute-query query))
+
+;; It seems to be the case that the only thing BSON supports is DateTime which is basically the equivalent of Instant;
+;; for the rest of the types, we'll have to fake it
+(extend-protocol m.conversion/ConvertToDBObject
+  Instant
+  (to-db-object [t]
+    (org.bson.BsonDateTime. (t/to-millis-from-epoch t)))
+
+  LocalDate
+  (to-db-object [t]
+    (m.conversion/to-db-object (t/local-date-time t (t/local-time 0))))
+
+  LocalDateTime
+  (to-db-object [t]
+    ;; QP store won't be bound when loading test data for example.
+    (m.conversion/to-db-object (t/instant t (t/zone-id (try
+                                                         (qp.timezone/results-timezone-id)
+                                                         (catch Throwable _
+                                                           "UTC"))))))
+
+  LocalTime
+  (to-db-object [t]
+    (m.conversion/to-db-object (t/local-date-time (t/local-date "1970-01-01") t)))
+
+  OffsetDateTime
+  (to-db-object [t]
+    (m.conversion/to-db-object (t/instant t)))
+
+  OffsetTime
+  (to-db-object [t]
+    (m.conversion/to-db-object (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset t))))
+
+  ZonedDateTime
+  (to-db-object [t]
+    (m.conversion/to-db-object (t/instant t))))
+
+(extend-protocol m.conversion/ConvertFromDBObject
+  java.util.Date
+  (from-db-object [t _]
+    (t/instant t)))

@@ -37,9 +37,7 @@
              [datasets :as datasets]
              [interface :as tx]]
             [metabase.test.util.timezone :as tu.tz]
-            [metabase.util
-             [date :as du]
-             [date-2 :as u.date]]
+            [metabase.util.date-2 :as u.date]
             [potemkin.types :as p.types]
             [pretty.core :as pretty]
             [toucan.db :as db])
@@ -298,7 +296,7 @@
 
                :else
                (sad-toucan-result (default-timezone-parse-fn :utc) (format-in-timezone-fn :pacific)))
-             (tu.tz/with-jvm-tz (timezone :pacific)
+             (tu.tz/with-system-timezone-id (timezone :pacific)
                (sad-toucan-incidents-with-bucketing :default :eastern)))))))
 
 (deftest group-by-minute-test
@@ -566,7 +564,7 @@
                (results-by-day (default-timezone-parse-fn :utc)
                                (format-in-timezone-fn :pacific)
                                [6 10 4 9 9 8 8 9 7 9]))
-             (tu.tz/with-jvm-tz (timezone :pacific)
+             (tu.tz/with-system-timezone-id (timezone :pacific)
                (sad-toucan-incidents-with-bucketing :day :pacific)))))))
 
 (deftest group-by-day-of-week-test
@@ -750,7 +748,7 @@
                (results-by-week u.date/parse
                                 (format-in-timezone-fn :pacific)
                                 [46 47 40 60 7]))
-             (tu.tz/with-jvm-tz (timezone :pacific)
+             (tu.tz/with-system-timezone-id (timezone :pacific)
                (sad-toucan-incidents-with-bucketing :week :pacific)))))))
 
 ;; TODO — Group by `:iso-week` test!
@@ -865,28 +863,29 @@
        [{:field-name "timestamp"
          :base-type  :type/DateTime}]
        (vec (for [i (range -15 15)]
+              ;; TIMESTAMP FIXME — not sure if still needed
+              ;;
               ;; Create timestamps using relative dates (e.g. `DATEADD(second, -195, GETUTCDATE())` instead of
-              ;; generating `java.sql.Timestamps` here so they'll be in the DB's native timezone. Some DBs refuse to use
+              ;; generating Java classes here so they'll be in the DB's native timezone. Some DBs refuse to use
               ;; the same timezone we're running the tests from *cough* SQL Server *cough*
               [(u/prog1 (if (isa? driver/hierarchy driver/*driver* :sql)
                           (driver/date-add driver/*driver*
                                            (sql.qp/current-datetime-fn driver/*driver*)
                                            (* i interval-seconds)
                                            :second)
-                          (du/relative-date :second (* i interval-seconds)))
+                          (u.date/add :second (* i interval-seconds)))
                  (assert <>))]))])))
 
 (defn- dataset-def-with-timestamps [interval-seconds]
   (TimestampDatasetDef. interval-seconds))
 
 (def ^:private checkins:4-per-minute (dataset-def-with-timestamps 15))
-(def ^:private checkins:4-per-hour   (dataset-def-with-timestamps (u.date/minutes->seconds 15)))
-(def ^:private checkins:1-per-day    (dataset-def-with-timestamps (* 24 (u.date/minutes->seconds 60))))
+(def ^:private checkins:4-per-hour   (dataset-def-with-timestamps (u/minutes->seconds 15)))
+(def ^:private checkins:1-per-day    (dataset-def-with-timestamps (* 24 (u/minutes->seconds 60))))
 
 (defn- checkins-db-is-old? [max-age-seconds]
-  (let [created-at (t/instant (:created_at (data/db)))
-        age        (t/duration created-at (t/instant))]
-    (> (.getSeconds age) max-age-seconds)))
+  (u.date/greater-than-period-duration? (u.date/period-duration (:created_at (data/db)) (t/zoned-date-time))
+                                        (t/seconds max-age-seconds)))
 
 (def ^:private ^:dynamic *recreate-db-if-stale?* true)
 
@@ -1007,7 +1006,7 @@
                (data/dataset checkins:1-per-day
                  (data/run-mbql-query checkins
                    {:aggregation [[:count]]
-                    :filter      [:= [:field-id $timestamp] (du/format-date "yyyy-MM-dd" (du/date-trunc :day))]})))))))
+                    :filter      [:= [:field-id $timestamp] (t/format "yyyy-MM-dd" (u.date/truncate :day))]})))))))
   ;; this is basically the same test as above, but using the office-checkins dataset instead of the dynamically
   ;; created checkins DBs so we can run it against Snowflake and BigQuery as well.
   (datasets/test-drivers (qp.test/normal-drivers)
@@ -1037,7 +1036,7 @@
                (qp.test/rows
                  (data/run-mbql-query checkins
                    {:aggregation [[:count]]
-                    :filter      [:= [:field-id $timestamp] (str (du/format-date "yyyy-MM-dd" (du/date-trunc :day))
+                    :filter      [:= [:field-id $timestamp] (str (t/format "yyyy-MM-dd" (u.date/truncate :day))
                                                                  "T14:16:00Z")]})))))))))
 
 (def ^:private addition-unit-filtering-vals

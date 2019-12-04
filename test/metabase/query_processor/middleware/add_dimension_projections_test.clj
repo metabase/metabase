@@ -1,7 +1,11 @@
 (ns metabase.query-processor.middleware.add-dimension-projections-test
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dim-projections]
+            [metabase.test.fixtures :as fixtures]
             [toucan.hydrate :as hydrate]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 ;;; ----------------------------------------- add-fk-remaps (pre-processing) -----------------------------------------
 

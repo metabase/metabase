@@ -32,6 +32,9 @@
   (:import com.fasterxml.jackson.core.JsonGenerator))
 
 (defn- format-response [m]
+  (when-not (map? m)
+    (throw (ex-info (format "Expected results to be a map! Got: %s" (u/pprint-to-str m))
+             {:results m})))
   (into
    {}
    (for [[k v] (-> m
