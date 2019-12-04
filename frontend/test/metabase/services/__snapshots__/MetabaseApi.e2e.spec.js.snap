@@ -434,8 +434,8 @@ Object {
         },
         "type": Object {
           "type/DateTime": Object {
-            "earliest": "2016-05-01T01:56:13.352Z",
-            "latest": "2020-04-19T21:07:15.657Z",
+            "earliest": "2016-04-30T18:56:13.352",
+            "latest": "2020-04-19T14:07:15.657",
           },
         },
       },
@@ -3438,7 +3438,7 @@ Object {
       "display_name": "Body",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 1111,
+          "distinct-count": 1112,
           "nil%": 0,
         },
         "type": Object {

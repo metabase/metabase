@@ -3,9 +3,7 @@
              [set :as set]
              [string :as str]
              [test :refer :all]]
-            [metabase
-             [driver :as driver]
-             [test :as mt]]
+            [metabase.driver :as driver]
             [metabase.models.table :refer [Table]]
             [metabase.test
              [data :as data]
@@ -15,7 +13,8 @@
              [datasets :as datasets :refer [expect-with-driver]]
              [interface :as tx]
              [sql :as sql.tx]]
-            [metabase.test.data.sql.ddl :as ddl]))
+            [metabase.test.data.sql.ddl :as ddl]
+            [metabase.test.util.log :as tu.log]))
 
 ;; make sure we didn't break the code that is used to generate DDL statements when we add new test datasets
 (deftest ddl-statements-test
@@ -98,6 +97,6 @@
              (can-connect? (:details (data/db))))
           "can-connect? should return true for normal Snowflake DB details")
       (is (= false
-             (mt/suppress-output
+             (tu.log/suppress-output
                (can-connect? (assoc (:details (data/db)) :db (tu/random-name)))))
           "can-connect? should return false for Snowflake databases that don't exist (#9041)"))))
