@@ -12,7 +12,6 @@
             [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
             [metabase.sync.interface :as i]
             [metabase.test.data :as data]
-            [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -219,7 +218,7 @@
                               :table_id            (data/id :venues)
                               :fingerprint         nil
                               :fingerprint_version 1
-                              :last_analyzed       (du/->Timestamp #inst "2017-08-09")}]
+                              :last_analyzed       #t "2017-08-09T00:00:00"}]
     (with-redefs [i/latest-fingerprint-version       3
                   metadata-queries/table-rows-sample (constantly [[1] [2] [3] [4] [5]])
                   fingerprinters/fingerprinter       (constantly (fingerprinters/constant-fingerprinter {:experimental {:fake-fingerprint? true}}))]

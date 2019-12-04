@@ -1,14 +1,14 @@
 (ns metabase.test.util
   "Helper functions and macros for writing unit tests."
   (:require [cheshire.core :as json]
-            [clj-time.core :as time]
             [clojure
              [string :as str]
-             [test :as t]
+             [test :refer :all]
              [walk :as walk]]
             [clojure.tools.logging :as log]
             [clojurewerkz.quartzite.scheduler :as qs]
             [colorize.core :as colorize]
+            [java-time :as t]
             [metabase
              [driver :as driver]
              [task :as task]
@@ -37,7 +37,6 @@
             [metabase.test
              [data :as data]
              [initialize :as initialize]]
-            [metabase.util.date :as du]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.util.test :as tt])
@@ -45,13 +44,13 @@
            org.apache.log4j.Logger
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
-(defmethod t/assert-expr 'schema=
+(defmethod assert-expr 'schema=
   [message form]
   (let [[_ schema actual] form]
     `(let [schema# ~schema
            actual# ~actual
            pass?#  (nil? (s/check schema# actual#))]
-       (t/do-report
+       (do-report
         {:type     (if pass?# :pass :fail)
          :message  ~message
          :expected (s/explain schema#)
@@ -64,9 +63,9 @@
   {:style/indent 0}
   [expected actual]
   (let [symb (symbol (format "expect-schema-%d" (hash &form)))]
-    `(t/deftest ~symb
-       (t/testing (format ~(str (ns-name *ns*) ":%s") (:line (meta (var ~symb))))
-         (t/is (~'schema= ~expected ~actual))))))
+    `(deftest ~symb
+       (testing (format ~(str (ns-name *ns*) ":%s") (:line (meta (var ~symb))))
+         (is (~'schema= ~expected ~actual))))))
 
 (defn- random-uppercase-letter []
   (char (+ (int \A) (rand-int 26))))
@@ -207,13 +206,13 @@
 (u/strict-extend (class TaskHistory)
   tt/WithTempDefaults
   {:with-temp-defaults (fn [_]
-                         (let [started (time/now)
-                               ended   (time/plus started (time/millis 10))]
+                         (let [started (t/zoned-date-time)
+                               ended   (t/plus started (t/millis 10))]
                            {:db_id      (data/id)
                             :task       (random-name)
-                            :started_at (du/->Timestamp started)
-                            :ended_at   (du/->Timestamp ended)
-                            :duration   (du/calculate-duration started ended)}))})
+                            :started_at started
+                            :ended_at   ended
+                            :duration   (.toMillis (t/duration started ended))}))})
 
 (u/strict-extend (class User)
   tt/WithTempDefaults
@@ -269,7 +268,7 @@
                          (setting/get setting-k))]
     (try
       (setting/set! setting-k value)
-      (t/testing (colorize/blue (format "Setting %s = %s" (keyword setting-k) value))
+      (testing (colorize/blue (format "Setting %s = %s" (keyword setting-k) value))
         (f))
       (finally
         (setting/set! setting-k original-value)))))

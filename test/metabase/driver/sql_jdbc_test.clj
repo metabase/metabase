@@ -3,7 +3,8 @@
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :as qp.test]]
+             [query-processor-test :as qp.test]
+             [util :as u]]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver.util :as driver.u]
             [metabase.models
@@ -14,12 +15,11 @@
              [datasets :as datasets]
              [env :as tx.env]
              [interface :as tx]]
-            [metabase.test.util.log :as tu.log]
-            [metabase.util.date :as du]))
+            [metabase.test.util.log :as tu.log]))
 
 (defonce ^:private sql-jdbc-drivers*
   (delay
-    (du/profile "resolve sql-jdbc-drivers"
+    (u/profile "resolve sql-jdbc-drivers"
       (set
        (for [driver (tx.env/test-drivers)
              :when  (isa? driver/hierarchy (driver/the-driver driver) (driver/the-driver :sql-jdbc))]
@@ -77,34 +77,34 @@
             :dest-column-name "ID"}}
          (driver/describe-table-fks :h2 (data/db) (Table (data/id :venues))))))
 
-;;; TABLE-ROWS-SAMPLE
-(datasets/expect-with-drivers (sql-jdbc-drivers)
-  [["20th Century Cafe"]
-   ["25°"]
-   ["33 Taps"]
-   ["800 Degrees Neapolitan Pizzeria"]
-   ["BCD Tofu House"]]
-  (->> (metadata-queries/table-rows-sample (Table (data/id :venues))
-         [(Field (data/id :venues :name))])
-       ;; since order is not guaranteed do some sorting here so we always get the same results
-       (sort-by first)
-       (take 5)))
+(deftest table-rows-sample-test
+  (datasets/test-drivers (sql-jdbc-drivers)
+    (is (= [["20th Century Cafe"]
+            ["25°"]
+            ["33 Taps"]
+            ["800 Degrees Neapolitan Pizzeria"]
+            ["BCD Tofu House"]]
+           (->> (metadata-queries/table-rows-sample (Table (data/id :venues))
+                  [(Field (data/id :venues :name))])
+                ;; since order is not guaranteed do some sorting here so we always get the same results
+                (sort-by first)
+                (take 5))))))
 
-;;; TABLE-ROWS-SEQ
-(datasets/expect-with-drivers (sql-jdbc-drivers)
-  [{:name "Red Medicine",                 :price 3, :category_id  4, :id 1}
-   {:name "Stout Burgers & Beers",        :price 2, :category_id 11, :id 2}
-   {:name "The Apple Pan",                :price 2, :category_id 11, :id 3}
-   {:name "Wurstküche",                   :price 2, :category_id 29, :id 4}
-   {:name "Brite Spot Family Restaurant", :price 2, :category_id 20, :id 5}]
-  (for [row (take 5 (sort-by :id (driver/table-rows-seq driver/*driver*
-                                                        (data/db)
-                                                        (Table (data/id :venues)))))]
-    ;; different DBs use different precisions for these
-    (-> (dissoc row :latitude :longitude)
-        (update :price int)
-        (update :category_id int)
-        (update :id int))))
+(deftest table-rows-seq-test
+  (datasets/test-drivers (sql-jdbc-drivers)
+    (is (= [{:name "Red Medicine", :price 3, :category_id 4, :id 1}
+            {:name "Stout Burgers & Beers", :price 2, :category_id 11, :id 2}
+            {:name "The Apple Pan", :price 2, :category_id 11, :id 3}
+            {:name "Wurstküche", :price 2, :category_id 29, :id 4}
+            {:name "Brite Spot Family Restaurant", :price 2, :category_id 20, :id 5}]
+           (for [row (take 5 (sort-by :id (driver/table-rows-seq driver/*driver*
+                                                                 (data/db)
+                                                                 (Table (data/id :venues)))))]
+             ;; different DBs use different precisions for these
+             (-> (dissoc row :latitude :longitude)
+                 (update :price int)
+                 (update :category_id int)
+                 (update :id int)))))))
 
 ;;; Make sure invalid ssh credentials are detected if a direct connection is possible
 (datasets/expect-with-driver :postgres

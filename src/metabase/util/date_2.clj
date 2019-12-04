@@ -11,8 +11,9 @@
              [parse :as parse]]
             [metabase.util.i18n :refer [tru]]
             [schema.core :as s])
-  (:import [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
-           [java.time.temporal Temporal TemporalAdjuster WeekFields]))
+  (:import [java.time Duration Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime Period ZonedDateTime]
+           [java.time.temporal Temporal TemporalAdjuster WeekFields]
+           org.threeten.extra.PeriodDuration))
 
 (defn- add-zone-to-local [t timezone-id]
   (condp instance? t
@@ -45,6 +46,7 @@
 
 (defn- temporal->iso-8601-formatter [t]
   (condp instance? t
+    Instant        :iso-offset-date-time
     LocalDate      :iso-local-date
     LocalTime      :iso-local-time
     LocalDateTime  :iso-local-date-time
@@ -281,27 +283,88 @@
                      :exclusive (add t resolution -1)))}
      :=  (range t unit options))))
 
+(defn ^PeriodDuration period-duration
+  "Return the Duration between two temporal values `x` and `y`."
+  {:arglists '([s] [period] [duration] [period duration] [start end])}
+  ([x]
+   (when x
+     (condp instance? x
+       PeriodDuration x
+       CharSequence   (PeriodDuration/parse x)
+       Period         (PeriodDuration/of ^Period x)
+       Duration       (PeriodDuration/of ^Duration x))))
+
+  ([x y]
+   (cond
+     (and (instance? Period x) (instance? Duration y))
+     (PeriodDuration/of x y)
+
+     (instance? Instant x)
+     (period-duration (t/offset-date-time x (t/zone-offset 0)) y)
+
+     (instance? Instant y)
+     (period-duration x (t/offset-date-time y (t/zone-offset 0)))
+
+     :else
+     (PeriodDuration/between x y))))
+
+(defn compare-period-durations
+  "With two args: Compare two periods/durations. Returns a negative value if `d1` is shorter than `d2`, zero if they are
+  equal, or positive if `d1` is longer than `d2`.
+
+    (u.date/compare-period-durations \"P1Y\" \"P11M\") ; -> 1 (i.e., 1 year is longer than 11 months)
+
+  You can combine this with `period-duration` to compare the duration between two temporal values against another
+  duration:
+
+    (u.date/compare-period-durations (u.date/period-duration #t \"2019-01-01\" #t \"2019-07-01\") \"P11M\") ; -> -1
+
+  Note that this calculation is inexact, since it calclates relative to a fixed point in time, but should be
+  sufficient for most if not all use cases."
+  [d1 d2]
+  (when (and d1 d2)
+    (let [t (t/offset-date-time "1970-01-01T00:00Z")]
+      (compare (.addTo (period-duration d1) t)
+               (.addTo (period-duration d2) t)))))
+
+(defn less-than-period-duration?
+  "True if period/duration `d1` is shorter than period/duration `d2`."
+  [d1 d2]
+  (neg? (compare-period-durations d1 d2)))
+
+(defn greater-than-period-duration?
+  "True if period/duration `d1` is longer than period/duration `d2`."
+  [d1 d2]
+  (pos? (compare-period-durations d1 d2)))
+
+(defn- now-of-same-class
+  "Return a temporal value representing *now* of the same class as `t`, e.g. for comparison purposes."
+  ^Temporal [t]
+  (when t
+    (condp instance? t
+      Instant        (t/instant)
+      LocalDate      (t/local-date)
+      LocalTime      (t/local-time)
+      LocalDateTime  (t/local-date-time)
+      OffsetTime     (t/offset-time)
+      OffsetDateTime (t/offset-date-time)
+      ZonedDateTime  (t/zoned-date-time))))
+
+(defn older-than?
+  "True if temporal value `t` happened before some period/duration ago. Prefer this over using `t/before?`
+  because it is incredibly fussy about the classes of arguments it is passed.
+
+    ;; did `t` happen more than 2 months ago?
+    (older-than? t (t/months 2))"
+  [t duration]
+  (greater-than-period-duration?
+   (period-duration t (now-of-same-class t))
+   duration))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      Etc                                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; TIMEZONE FIXME - I think these actually belong in `metabase.util`
-
-(defn seconds->ms
-  "Convert `seconds` to milliseconds. More readable than doing this math inline."
-  [seconds]
-  (* seconds 1000))
-
-(defn minutes->seconds
-  "Convert `minutes` to seconds. More readable than doing this math inline."
-  [minutes]
-  (* 60 minutes))
-
-(defn minutes->ms
-  "Convert `minutes` to milliseconds. More readable than doing this math inline."
-  [minutes]
-  (-> minutes minutes->seconds seconds->ms))
 
 ;; Mainly for REPL usage. Have various temporal types print as a `java-time` function call you can use
 (doseq [[klass f-symb] {Instant        't/instant
@@ -311,6 +374,35 @@
                         OffsetDateTime 't/offset-date-time
                         OffsetTime     't/offset-time
                         ZonedDateTime  't/zoned-date-time}]
-(defmethod print-method klass
-  [t writer]
-  (print-method (list f-symb (str t)) writer)))
+  (defmethod print-method klass
+    [t writer]
+    (print-method (list f-symb (str t)) writer))
+
+  (defmethod print-dup klass
+    [t ^java.io.Writer writer]
+    (.write writer (clojure.core/format "#t \"%s\"" (str t)))))
+
+(defmethod print-method PeriodDuration
+  [d writer]
+  (print-method (list 'u.date/period-duration (str d)) writer))
+
+(defmethod print-dup PeriodDuration
+  [d ^java.io.Writer writer]
+  (.write writer (clojure.core/format "(metabase.util.date-2/period-duration \"%s\")" (str d))))
+
+(defmethod print-method Period
+  [d writer]
+  (print-method (list 't/period (str d)) writer))
+
+(defmethod print-method Duration
+  [d writer]
+  (print-method (list 't/duration (str d)) writer))
+
+;; mark everything in the `clj-time` namespaces as `:deprecated`, if they're loaded. If not, we don't care
+(doseq [a-namespace '[clj-time.core clj-time.coerce clj-time.format]]
+  (try
+    (let [a-namespace (the-ns a-namespace)]
+      (alter-meta! a-namespace assoc :deprecated true)
+      (doseq [[_ varr] (ns-publics a-namespace)]
+        (alter-meta! varr assoc :deprecated true)))
+    (catch Throwable _)))

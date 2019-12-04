@@ -144,8 +144,6 @@
           :types          (constantly {:base_type        :keyword
                                        :special_type     :keyword
                                        :visibility_type  :keyword
-                                       :description      :clob
-                                       :database_type    :clob
                                        :has_field_values :keyword
                                        :fingerprint      :json-for-fingerprints
                                        :settings         :json})

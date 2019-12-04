@@ -33,7 +33,6 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data.users :as test-users]
-            [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt])
   (:import java.io.ByteArrayInputStream
@@ -207,15 +206,15 @@
                   ;; 3 was viewed most recently, followed by 4, then 1. Card 2 was viewed by a different user so
                   ;; shouldn't be returned
                   ViewLog [_ {:model "card", :model_id (u/get-id card-1), :user_id (test-users/user->id :rasta)
-                              :timestamp (du/->Timestamp #inst "2015-12-01")}]
+                              :timestamp #t "2015-12-01"}]
                   ViewLog [_ {:model "card", :model_id (u/get-id card-2), :user_id (test-users/user->id :trashbird)
-                              :timestamp (du/->Timestamp #inst "2016-01-01")}]
+                              :timestamp #t "2016-01-01"}]
                   ViewLog [_ {:model "card", :model_id (u/get-id card-3), :user_id (test-users/user->id :rasta)
-                              :timestamp (du/->Timestamp #inst "2016-02-01")}]
+                              :timestamp #t "2016-02-01"}]
                   ViewLog [_ {:model "card", :model_id (u/get-id card-4), :user_id (test-users/user->id :rasta)
-                              :timestamp (du/->Timestamp #inst "2016-03-01")}]
+                              :timestamp #t "2016-03-01"}]
                   ViewLog [_ {:model "card", :model_id (u/get-id card-3), :user_id (test-users/user->id :rasta)
-                              :timestamp (du/->Timestamp #inst "2016-04-01")}]]
+                              :timestamp #t "2016-04-01"}]]
     (with-cards-in-readable-collection [card-1 card-2 card-3 card-4]
       (map :name ((test-users/user->client :rasta) :get 200 "card", :f :recent)))))
 

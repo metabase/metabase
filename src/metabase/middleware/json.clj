@@ -3,7 +3,6 @@
   (:require [cheshire
              [core :as json]
              [generate :as json.generate]]
-            [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [ring.middleware.json :as ring.json]
             [ring.util
@@ -41,14 +40,6 @@
 ;; *  `java.sql.Date`                   (SQL Dates -- .toString returns YYYY-MM-DD)
 (json.generate/add-encoder Object json.generate/encode-str)
 
-(defn- ^:deprecated encode-jdbc-clob [clob json-generator]
-  (write-string! json-generator (u/jdbc-clob->str clob)))
-
-;; TODO - we should add logic to convert CLOBs to strings when they come out of the database instead of doing it at
-;; JSON serialization time. Once that's done we can remove this stuff
-(json.generate/add-encoder org.h2.jdbc.JdbcClob         encode-jdbc-clob) ; H2
-(json.generate/add-encoder org.postgresql.util.PGobject encode-jdbc-clob) ; Postgres
-
 ;; Binary arrays ("[B") -- hex-encode their first four bytes, e.g. "0xC42360D7"
 (json.generate/add-encoder
  (Class/forName "[B")
@@ -80,7 +71,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- streamed-json-response
-  "Write `RESPONSE-SEQ` to a PipedOutputStream as JSON, returning the connected PipedInputStream"
+  "Write `response-seq` to a PipedOutputStream as JSON, returning the connected PipedInputStream"
   [response-seq opts]
   (rui/piped-input-stream
    (fn [^OutputStream output-stream]

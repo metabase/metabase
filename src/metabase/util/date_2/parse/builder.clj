@@ -9,8 +9,7 @@
 
   TODO - this is a prime library candidate."
   (:require [metabase.util.date-2.common :as common])
-  (:import [java.time.format DateTimeFormatter DateTimeFormatterBuilder SignStyle]
-           java.time.temporal.ChronoField))
+  (:import [java.time.format DateTimeFormatter DateTimeFormatterBuilder SignStyle] java.time.temporal.TemporalField))
 
 (defprotocol ^:private Section
   (^:private apply-section [this builder]))
@@ -87,37 +86,42 @@
   [& sections]
   (with-option-section :case-sensitivity :case-insensitive sections))
 
-(def ^:private ^ChronoField chrono-field
-  (common/static-instances ChronoField))
-
 (def ^:private ^SignStyle sign-style
   (common/static-instances SignStyle))
 
+(defn- temporal-field ^TemporalField [x]
+  (let [field (if (keyword? x)
+                (common/temporal-field x)
+                x)]
+    (assert (instance? TemporalField field)
+      (format "Invalid TemporalField: %s" (pr-str field)))
+    field))
+
 (defn value
   "Define a section for a specific field such as `:hour-of-day` or `:minute-of-hour`."
-  ([chrono-field-name]
+  ([temporal-field-name]
    (fn [^DateTimeFormatterBuilder builder]
-     (.appendValue builder (chrono-field chrono-field-name))))
+     (.appendValue builder (temporal-field temporal-field-name))))
 
-  ([chrono-field-name width]
+  ([temporal-field-name width]
    (fn [^DateTimeFormatterBuilder builder]
-     (.appendValue builder (chrono-field chrono-field-name) width)))
+     (.appendValue builder (temporal-field temporal-field-name) width)))
 
-  ([chrono-field-name min-val max-val sign-style-name]
+  ([temporal-field-name min-val max-val sign-style-name]
    (fn [^DateTimeFormatterBuilder builder]
-     (.appendValue builder (chrono-field chrono-field-name) min-val max-val (sign-style sign-style-name)))))
+     (.appendValue builder (temporal-field temporal-field-name) min-val max-val (sign-style sign-style-name)))))
 
 (defn default-value
   "Define a section that sets a default value for a field like `:minute-of-hour`."
-  [chrono-field-name default-value]
+  [temporal-field-name default-value]
   (fn [^DateTimeFormatterBuilder builder]
-    (.parseDefaulting builder (chrono-field chrono-field-name) default-value)))
+    (.parseDefaulting builder (temporal-field temporal-field-name) default-value)))
 
 (defn fraction
   "Define a section for a fractional value, e.g. milliseconds or nanoseconds."
-  [chrono-field-name min-val-width max-val-width & {:keys [decimal-point?]}]
+  [temporal-field-name min-val-width max-val-width & {:keys [decimal-point?]}]
   (fn [^DateTimeFormatterBuilder builder]
-    (.appendFraction builder (chrono-field chrono-field-name) 0 9 (boolean decimal-point?))))
+    (.appendFraction builder (temporal-field temporal-field-name) 0 9 (boolean decimal-point?))))
 
 (defn zone-offset
   "Define a section for a timezone offset. e.g. `-08:00`."

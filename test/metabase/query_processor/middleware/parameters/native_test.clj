@@ -1,11 +1,8 @@
 (ns metabase.query-processor.middleware.parameters.native-test
-  "E2E tests for SQL param substitution.
-
-  TIMEZONE FIXME - we should rework this namespace to use `java-time ` instead of `clj-time`."
-  (:require [clj-time.core :as t]
-            [clojure.test :refer :all]
+  "E2E tests for SQL param substitution."
+  (:require [clojure.test :refer :all]
             [expectations :refer [expect]]
-            [java-time :as jt]
+            [java-time :as t]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
@@ -20,9 +17,7 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data.datasets :as datasets]
-            [metabase.util
-             [date :as du]
-             [schema :as su]]
+            [metabase.util.schema :as su]
             [schema.core :as s]))
 
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
@@ -198,15 +193,12 @@
 
 ;;; ------------------------------------------- expansion tests: variables -------------------------------------------
 
-(defmacro ^:private with-h2-db-timezone
+;; REMOVE ME ?
+(defmacro ^:deprecated ^:private with-h2-db-timezone
   "This macro is useful when testing pieces of the query pipeline (such as expand) where it's a basic unit test not
   involving a database, but does need to parse dates"
   [& body]
-  `(du/with-effective-timezone {:engine   :h2
-                                :timezone "UTC"
-                                :name     "mock_db"
-                                :id       1}
-     ~@body))
+  `(do ~@body))
 
 (defn- expand**
   "Expand parameters inside a top-level native `query`. Not recursive. "
@@ -257,7 +249,7 @@
 ;; specified param (date/single)
 (expect
   {:query  "SELECT * FROM orders WHERE created_at > ?;"
-   :params [(jt/local-date "2016-07-19")]}
+   :params [#t "2016-07-19"]}
   (expand* {:native     {:query         "SELECT * FROM orders WHERE created_at > {{created_at}};"
                          :template-tags {"created_at" {:name "created_at", :display-name "Created At", :type "date"}}}
             :parameters [{:type :date/single, :target [:variable [:template-tag "created_at"]], :value "2016-07-19"}]}))
@@ -279,8 +271,9 @@
 
   ([sql field-filter-param]
    ;; TIMEZONE FIXME
-   (with-redefs [t/now (constantly (t/date-time 2016 06 07 12 0 0))]
-     (-> {:native     {:query         sql
+   (t/with-clock (t/mock-clock #t "2016-06-07T12:00-00:00" (t/zone-id "UTC"))
+     (-> {:native     {:query
+                       sql
                        :template-tags {"date" {:name         "date"
                                                :display-name "Checkin Date"
                                                :type         :dimension
@@ -294,74 +287,74 @@
 (deftest expand-field-filters-test
   (testing "dimension (date/single)"
     (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ?;"
-            :params [(jt/local-date "2016-07-01")]}
+            :params [#t "2016-07-01"]}
            (expand-with-field-filter-param {:type :date/single, :value "2016-07-01"}))))
   (testing "dimension (date/range)"
     (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-            :params [(jt/local-date "2016-07-01")
-                     (jt/local-date "2016-08-01")]}
+            :params [#t "2016-07-01"
+                     #t "2016-08-01"]}
            (expand-with-field-filter-param {:type :date/range, :value "2016-07-01~2016-08-01"}))))
   (testing "dimension (date/month-year)"
     (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-            :params [(jt/local-date "2016-07-01")
-                     (jt/local-date "2016-07-31")]}
+            :params [#t "2016-07-01"
+                     #t "2016-07-31"]}
            (expand-with-field-filter-param {:type :date/month-year, :value "2016-07"}))))
   (testing "dimension (date/quarter-year)"
     (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-            :params [(jt/local-date "2016-01-01")
-                     (jt/local-date "2016-03-31")]}
+            :params [#t "2016-01-01"
+                     #t "2016-03-31"]}
            (expand-with-field-filter-param {:type :date/quarter-year, :value "Q1-2016"}))))
   (testing "dimension (date/all-options, before)"
     (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) < ?;"
-            :params [(jt/local-date "2016-07-01")]}
+            :params [#t "2016-07-01"]}
            (expand-with-field-filter-param {:type :date/all-options, :value "~2016-07-01"}))))
   (testing "dimension (date/all-options, after)"
     (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) > ?;"
-            :params [(jt/local-date "2016-07-01")]}
+            :params [#t "2016-07-01"]}
            (expand-with-field-filter-param {:type :date/all-options, :value "2016-07-01~"}))))
   (testing "relative date — 'yesterday'"
     (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ?;"
-            :params [(jt/local-date "2016-06-06")]}
+            :params [#t "2016-06-06"]}
            (expand-with-field-filter-param {:type :date/range, :value "yesterday"}))))
   (testing "relative date — 'past7days'"
     (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-            :params [(jt/local-date "2016-05-31")
-                     (jt/local-date "2016-06-06")]}
+            :params [#t "2016-05-31"
+                     #t "2016-06-06"]}
            (expand-with-field-filter-param {:type :date/range, :value "past7days"}))))
   (testing "relative date — 'past30days'"
     (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-            :params [(jt/local-date "2016-05-08")
-                     (jt/local-date "2016-06-06")]}
+            :params [#t "2016-05-08"
+                     #t "2016-06-06"]}
            (expand-with-field-filter-param {:type :date/range, :value "past30days"}))))
   (testing "relative date — 'thisweek'"
     (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-            :params [(jt/local-date "2016-06-05")
-                     (jt/local-date "2016-06-11")]}
+            :params [#t "2016-06-05"
+                     #t "2016-06-11"]}
            (expand-with-field-filter-param {:type :date/range, :value "thisweek"}))))
   (testing "relative date — 'thismonth'"
     (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-            :params [(jt/local-date "2016-06-01")
-                     (jt/local-date "2016-06-30")]}
+            :params [#t "2016-06-01"
+                     #t "2016-06-30"]}
            (expand-with-field-filter-param {:type :date/range, :value "thismonth"}))))
   (testing "relative date — 'thisyear'"
     (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-            :params [(jt/local-date "2016-01-01")
-                     (jt/local-date "2016-12-31")]}
+            :params [#t "2016-01-01"
+                     #t "2016-12-31"]}
            (expand-with-field-filter-param {:type :date/range, :value "thisyear"}))))
   (testing "relative date — 'lastweek'"
     (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-            :params [(jt/local-date "2016-05-29")
-                     (jt/local-date "2016-06-04")]}
+            :params [#t "2016-05-29"
+                     #t "2016-06-04"]}
            (expand-with-field-filter-param {:type :date/range, :value "lastweek"}))))
   (testing "relative date — 'lastmonth'"
     (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-            :params [(jt/local-date "2016-05-01")
-                     (jt/local-date "2016-05-31")]}
+            :params [#t "2016-05-01"
+                     #t "2016-05-31"]}
            (expand-with-field-filter-param {:type :date/range, :value "lastmonth"}))))
   (testing "relative date — 'lastyear'"
     (is (= {:query  "SELECT * FROM checkins WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?;"
-            :params [(jt/local-date "2015-01-01")
-                     (jt/local-date "2015-12-31")]}
+            :params [#t "2015-01-01"
+                     #t "2015-12-31"]}
            (expand-with-field-filter-param {:type :date/range, :value "lastyear"}))))
   (testing "dimension with no value — just replace with an always true clause (e.g. 'WHERE 1 = 1')"
     (is (= {:query  "SELECT * FROM checkins WHERE 1 = 1;"
@@ -503,8 +496,8 @@
 ;; Some random end-to-end param expansion tests added as part of the SQL Parameters 2.0 rewrite
 (deftest param-expansion-test
   (is (= {:query  "SELECT count(*) FROM CHECKINS WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ?",
-          :params [(jt/local-date "2017-03-01")
-                   (jt/local-date "2017-03-31")]}
+          :params [#t "2017-03-01"
+                   #t "2017-03-31"]}
          (expand* {:native     {:query         "SELECT count(*) FROM CHECKINS WHERE {{created_at}}"
                                 :template-tags {"created_at" {:name         "created_at"
                                                               :display-name "Created At"
@@ -564,9 +557,9 @@
                 "FROM CHECKINS "
                 "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ? "
                 "GROUP BY \"DATE\"")
-   :params [(jt/local-date "2017-10-31")
-            (jt/local-date "2017-11-04")]}
-  (with-redefs [t/now (constantly (t/date-time 2017 11 05 12 0 0))]
+   :params [#t "2017-10-31"
+            #t "2017-11-04"]}
+  (t/with-clock (t/mock-clock #t "2017-11-05T12:00Z" (t/zone-id "UTC"))
     (expand* {:native     {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
                                                "FROM CHECKINS "
                                                "WHERE {{checkin_date}} "
@@ -586,9 +579,9 @@
                 "FROM CHECKINS "
                 "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ? "
                 "GROUP BY \"DATE\"")
-   :params [(jt/local-date "2017-10-31")
-            (jt/local-date "2017-11-04")]}
-  (with-redefs [t/now (constantly (t/date-time 2017 11 05 12 0 0))]
+   :params [#t "2017-10-31"
+            #t "2017-11-04"]}
+  (t/with-clock (t/mock-clock #t "2017-11-05T12:00Z" (t/zone-id "UTC"))
     (expand* {:native {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
                                            "FROM CHECKINS "
                                            "WHERE {{checkin_date}} "
@@ -606,7 +599,7 @@
                 "FROM CHECKINS "
                 "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ? "
                 "GROUP BY \"DATE\"")
-   :params [(jt/local-date "2017-11-14")]}
+   :params [#t "2017-11-14"]}
   (expand* {:native {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
                                          "FROM CHECKINS "
                                          "WHERE {{checkin_date}} "

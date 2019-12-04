@@ -64,7 +64,6 @@
                  commons-io
                  slingshot]]
    [clojure.java-time "0.3.2"]                                        ; Java 8 java.time wrapper
-   [clj-time "0.15.1"]                                                ; Joda-Time wrapper
    [clojurewerkz/quartzite "2.1.0"                                    ; scheduling library
     :exclusions [c3p0]]
    [colorize "0.1.1" :exclusions [org.clojure/clojure]]               ; string output with ANSI color codes (for logging)
@@ -118,7 +117,7 @@
    [org.liquibase/liquibase-core "3.6.3"                              ; migration management (Java lib)
     :exclusions [ch.qos.logback/logback-classic]]
    [org.mariadb.jdbc/mariadb-java-client "2.5.1"]                     ; MySQL/MariaDB driver
-   [org.postgresql/postgresql "42.2.5"]                               ; Postgres driver
+   [org.postgresql/postgresql "42.2.8"]                               ; Postgres driver
    [org.slf4j/slf4j-log4j12 "1.7.25"]                                 ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
    [org.tcrawley/dynapath "1.0.0"]                                    ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
    [org.threeten/threeten-extra "1.5.0"]                               ; extra Java 8 java.time classes like DayOfMonth and Quarter
@@ -320,14 +319,6 @@
    :uberjar
    {:auto-clean true
     :aot        :all}
-
-   ;; generate sample dataset with `lein generate-sample-dataset`
-   :generate-sample-dataset
-   {:dependencies
-    [[faker "0.3.2"]                                                     ; Fake data generator -- port of Perl/Ruby library
-     [jdistlib "0.5.1" :exclusions [com.github.wendykierp/JTransforms]]] ; Distribution statistic tests
-    :source-paths                                                        ["lein-commands/sample-dataset"]
-    :main                                                                ^:skip-aot metabase.sample-dataset.generate}
 
    ;; lein strip-and-compress my-plugin.jar [path/to/metabase.jar]
    ;; strips classes from my-plugin.jar that already exist in other JAR and recompresses with higher compression ratio.

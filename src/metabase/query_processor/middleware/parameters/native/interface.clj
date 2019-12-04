@@ -14,7 +14,7 @@
 ;; *  A map contianing the value and type info for the value, e.g.
 ;;
 ;;    {:type   :date/single
-;;     :value  #inst "2019-09-20T19:52:00.000-07:00"}
+;;     :value  #t "2019-09-20T19:52:00.000-07:00"}
 ;;
 ;; *  A vector of maps like the one above (for multiple values)
 (p.types/defrecord+ FieldFilter [field value]

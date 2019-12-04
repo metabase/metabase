@@ -130,9 +130,9 @@
   "Run the query itself."
   [driver {sql :query, :keys [params remark max-rows]} connection]
   (let [sql     (str "-- " remark "\n" sql)
-        options {:identifiers identity
-                 :as-arrays?  true
-                 :max-rows    max-rows
+        options {:identifiers    identity
+                 :as-arrays?     true
+                 :max-rows       max-rows
                  :read-columns   (partial sql-jdbc.execute/read-columns driver)
                  :set-parameters (partial sql-jdbc.execute/set-parameters driver)}]
     (with-open [connection (jdbc/get-connection connection)]

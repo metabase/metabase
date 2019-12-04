@@ -18,6 +18,7 @@ export const TEMPORAL = "TEMPORAL";
 export const LOCATION = "LOCATION";
 export const COORDINATE = "COORDINATE";
 export const FOREIGN_KEY = "FOREIGN_KEY";
+export const PRIMARY_KEY = "PRIMARY_KEY";
 
 // other types used for various purporses
 export const ENTITY = "ENTITY";
@@ -59,6 +60,9 @@ const TYPES = {
   },
   [FOREIGN_KEY]: {
     special: [TYPE.FK],
+  },
+  [PRIMARY_KEY]: {
+    special: [TYPE.PK],
   },
   [SUMMABLE]: {
     include: [NUMBER],
@@ -119,6 +123,7 @@ export function getFieldType(field) {
     LOCATION,
     COORDINATE,
     FOREIGN_KEY,
+    PRIMARY_KEY,
     NUMBER,
     STRING,
     STRING_LIKE,
@@ -410,6 +415,7 @@ const FILTER_OPERATORS_BY_TYPE_ORDERED = {
     { name: "not-null", verboseName: t`Not empty` },
   ],
   [FOREIGN_KEY]: DEFAULT_FILTER_OPERATORS,
+  [PRIMARY_KEY]: DEFAULT_FILTER_OPERATORS,
   [UNKNOWN]: DEFAULT_FILTER_OPERATORS,
 };
 

@@ -111,5 +111,6 @@
 
 (defmethod tx/id-field-type :snowflake [_] :type/Number)
 
-(defmethod load-data/load-data! :snowflake [& args]
+(defmethod load-data/load-data! :snowflake
+  [& args]
   (apply load-data/load-data-add-ids! args))

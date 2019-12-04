@@ -160,7 +160,8 @@
   [driver _ expr]
   (->date (sql.qp/->honeysql driver expr) (hx/literal "start of year")))
 
-(defmethod driver/date-add :sqlite [driver dt amount unit]
+(defmethod driver/date-add :sqlite
+  [driver dt amount unit]
   (let [[multiplier sqlite-unit] (case unit
                                    :second  [1 "seconds"]
                                    :minute  [1 "minutes"]
@@ -194,10 +195,12 @@
 ;;
 ;; TODO - not sure why this doesn't need to be done in `->honeysql` as well? I think it's because the MBQL date values
 ;; are funneled through the `date` family of functions above
-;; TIMESTAMP FIXME
+;;
+;; TIMESTAMP FIXME — this doesn't seem like the correct thing to do for non-Dates. I think params only support dates
+;; rn however
 (s/defmethod sql/->prepared-substitution [:sqlite Temporal] :- sql/PreparedStatementSubstitution
   [_ date]
-  ;; for anything that's a Date (usually a java.sql.Timestamp) convert it to a yyyy-MM-dd formatted date literal
+  ;; for anything that's a Temporal value convert it to a yyyy-MM-dd formatted date literal
   ;; string For whatever reason the SQL generated from parameters ends up looking like `WHERE date(some_field) = ?`
   ;; sometimes so we need to use just the date rather than a full ISO-8601 string
   (sql/make-stmt-subs "?" [(t/format "yyyy-MM-dd" date)]))
@@ -209,29 +212,46 @@
 
 ;; See https://sqlite.org/lang_datefunc.html
 
+;; MEGA HACK
+;;
+;; if the time portion is zeroed out generate a date() instead, because SQLite isn't smart enough to compare DATEs
+;; and DATETIMEs in a way that could be considered to make any sense whatsoever, e.g.
+;;
+;; date('2019-12-03') < datetime('2019-12-03 00:00')
+(defn- zero-time? [t]
+  (= (t/local-time t) (t/local-time 0)))
+
 (defmethod sql.qp/->honeysql [:sqlite LocalDate]
   [_ t]
   (hsql/call :date (hx/literal (u.date/format-sql t))))
 
 (defmethod sql.qp/->honeysql [:sqlite LocalDateTime]
-  [_ t]
-  (hsql/call :datetime (hx/literal (u.date/format-sql t))))
+  [driver t]
+  (if (zero-time? t)
+    (sql.qp/->honeysql driver (t/local-date t))
+    (hsql/call :datetime (hx/literal (u.date/format-sql t)))))
 
 (defmethod sql.qp/->honeysql [:sqlite LocalTime]
   [_ t]
   (hsql/call :time (hx/literal (u.date/format-sql t))))
 
 (defmethod sql.qp/->honeysql [:sqlite OffsetDateTime]
-  [_ t]
-  (hsql/call :datetime (hx/literal (u.date/format-sql t))))
+  [driver t]
+  (if (zero-time? t)
+    (sql.qp/->honeysql driver (t/local-date t))
+    (hsql/call :datetime (hx/literal (u.date/format-sql t)))))
 
 (defmethod sql.qp/->honeysql [:sqlite OffsetTime]
   [_ t]
   (hsql/call :time (hx/literal (u.date/format-sql t))))
 
 (defmethod sql.qp/->honeysql [:sqlite ZonedDateTime]
-  [_ t]
-  (hsql/call :datetime (hx/literal (u.date/format-sql t))))
+  [driver t]
+  (println "t:" t) ; NOCOMMIT
+  (println "(t/local-date t):" (t/local-date t)) ; NOCOMMIT
+  (if (zero-time? t)
+    (sql.qp/->honeysql driver (t/local-date t))
+    (hsql/call :datetime (hx/literal (u.date/format-sql t)))))
 
 ;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made case-sensitive. So let people know
 ;; we have this 'feature' so the frontend doesn't try to present the option to you.
