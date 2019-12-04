@@ -179,11 +179,11 @@ export default class ChartClickActions extends Component {
             {sections.map(([key, actions]) => (
               <div
                 key={key}
-                className="border-row-divider p1 mr1 flex align-center"
+                className="border-row-divider flex align-center"
               >
                 <Icon
                   name={(SECTIONS[key] && SECTIONS[key].icon) || "unknown"}
-                  className="p1 mr1 text-medium"
+                  className="mr1 pl2 text-medium"
                   size={16}
                 />
                 {actions.map((action, index) => (
@@ -212,7 +212,7 @@ export const ChartClickAction = ({
   isLastItem: any,
   handleClickAction: any,
 }) => {
-  const className = "text-brand-hover cursor-pointer no-decoration p1 mr1";
+  const className = "text-brand-hover cursor-pointer no-decoration p2 flex-auto";
   // NOTE: Tom Robinson 4/16/2018: disabling <Link> for `question` click actions
   // for now since on dashboards currently they need to go through
   // navigateToNewCardFromDashboard to merge in parameters.,
