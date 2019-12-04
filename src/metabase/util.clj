@@ -750,6 +750,12 @@
   [^CharSequence s]
   (.. s toString (toLowerCase (Locale/US))))
 
+(defn lower-case-map-keys
+  "Changes the keys of a given map to lower case."
+  [m]
+  (into {} (for [[k v] m]
+             [(-> k name lower-case-en keyword) v])))
+
 (defn format-nanoseconds
   "Format a time interval in nanoseconds to something more readable. (µs/ms/etc.)"
   ^String [nanoseconds]

@@ -4,11 +4,10 @@ ENV FC_LANG en-US
 ENV LC_CTYPE en_US.UTF-8
 
 # dependencies
-RUN apk add --update bash ttf-dejavu fontconfig
+RUN apk add --no-cache bash ttf-dejavu fontconfig
 
 # add Metabase jar
 COPY ./metabase.jar /app/
-RUN chmod o+r /app/metabase.jar
 
 # add our run script to the image
 COPY ./run_metabase.sh /app/

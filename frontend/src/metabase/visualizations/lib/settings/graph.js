@@ -507,9 +507,24 @@ export const GRAPH_AXIS_SETTINGS = {
     widget: "input",
     getHidden: (series, vizSettings) =>
       vizSettings["graph.y_axis.labels_enabled"] === false,
-    getDefault: (series, vizSettings) =>
-      series.length === 1 ? vizSettings.series(series[0]).title : null,
-    readDependencies: ["series"],
+    getDefault: (series, vizSettings) => {
+      if (series.length === 1) {
+        return vizSettings.series(series[0]).title;
+      }
+      // If there are multiple series, we check if the metric names match.
+      // If they do, we use that as the default y axis label.
+      const [metric] = vizSettings["graph.metrics"];
+      const metricNames = Array.from(
+        new Set(
+          series.map(({ data: { cols } }) => {
+            const metricCol = cols.find(c => c.name === metric);
+            return metricCol && metricCol.display_name;
+          }),
+        ),
+      );
+      return metricNames.length === 1 ? metricNames[0] : null;
+    },
+    readDependencies: ["series", "graph.metrics"],
   },
   // DEPRECATED" replaced with "label" series setting
   "graph.series_labels": {},

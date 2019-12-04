@@ -22,10 +22,12 @@
              [command :as cmd]
              [conversion :as m.conversion]
              [db :as mdb]]
-            [schema.core :as s])
+            [schema.core :as s]
+            [taoensso.nippy :as nippy])
   (:import com.mongodb.DB
            [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
-           org.bson.BsonUndefined))
+           org.bson.BsonUndefined
+           org.bson.types.ObjectId))
 
 ;; See http://clojuremongodb.info/articles/integration.html Loading this namespace will load appropriate Monger
 ;; integrations with Cheshire.
@@ -35,6 +37,14 @@
 
 ;; Encode BSON undefined like `nil`
 (json.generate/add-encoder org.bson.BsonUndefined json.generate/encode-nil)
+
+(nippy/extend-freeze ObjectId :mongodb/ObjectId
+  [^ObjectId oid data-output]
+  (.writeUTF data-output (.toHexString oid)))
+
+(nippy/extend-thaw :mongodb/ObjectId
+  [data-input]
+  (ObjectId. (.readUTF data-input)))
 
 (driver/register! :mongo)
 
