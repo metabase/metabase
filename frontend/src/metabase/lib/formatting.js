@@ -10,7 +10,7 @@ import { ngettext, msgid } from "ttag";
 import Mustache from "mustache";
 import ReactMarkdown from "react-markdown";
 
-import ExternalLink from "metabase/components/ExternalLink.jsx";
+import ExternalLink from "metabase/components/ExternalLink";
 
 import {
   isDate,
@@ -681,7 +681,7 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
     // TODO: get rid of one of these two code paths?
   }
 
-  if (value == undefined) {
+  if (value == null) {
     return null;
   } else if (column && isa(column.special_type, TYPE.URL)) {
     return formatUrl(value, options);

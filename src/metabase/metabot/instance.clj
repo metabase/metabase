@@ -14,26 +14,22 @@
 
   How do we uniquiely identify each instance?
 
-  `local-process-uuid` is randomly-generated upon launch and used to identify this specific Metabase instance during
-  this specifc run. Restarting the server will change this UUID, and each server in a hortizontal cluster will have
-  its own ID, making this different from the `site-uuid` Setting. The local process UUID is used to differentiate
-  different horizontally clustered MB instances so we can determine which of them will handle MetaBot duties.
-
-  TODO - if we ever want to use this elsewhere, we need to move it to `metabase.config` or somewhere else central like
-  that."
+  `metabase.public-settings/local-process-uuid` is randomly-generated upon launch and used to identify this specific
+  Metabase instance during this specifc run. Restarting the server will change this UUID, and each server in a
+  hortizontal cluster will have its own ID, making this different from the `site-uuid` Setting. The local process UUID
+  is used to differentiate different horizontally clustered MB instances so we can determine which of them will handle
+  MetaBot duties."
   (:require [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
+            [metabase
+             [config :refer [local-process-uuid]]
+             [util :as u]]
             [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util :as u]
             [metabase.util
              [date :as du]
              [i18n :refer [trs]]]
             [toucan.db :as db])
-  (:import java.sql.Timestamp
-           java.util.UUID))
-
-(defonce ^:private local-process-uuid
-  (str (UUID/randomUUID)))
+  (:import java.sql.Timestamp))
 
 (defsetting ^:private metabot-instance-uuid
   "UUID of the active MetaBot instance (the Metabase process currently handling MetaBot duties.)"

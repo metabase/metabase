@@ -42,6 +42,25 @@ export function getTableCellClickedObject(
   }
 }
 
+export function getTableHeaderClickedObject(
+  data: DatasetData,
+  columnIndex: number,
+  isPivoted: boolean,
+): ?ClickObject {
+  const column = data.cols[columnIndex];
+  if (isPivoted) {
+    // if it's a pivot table, the first column is
+    if (columnIndex >= 0 && column) {
+      // $FlowFixMe: _dimension
+      return column._dimension;
+    } else {
+      return null; // FIXME?
+    }
+  } else {
+    return { column };
+  }
+}
+
 /*
  * Returns whether the column should be right-aligned in a table.
  * Includes numbers and lat/lon coordinates, but not zip codes, IDs, etc.

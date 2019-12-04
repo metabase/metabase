@@ -25,5 +25,5 @@
   (merge models/IModelDefaults
          {:types       (constantly {:json_query :json, :status :keyword, :context :keyword, :error :clob})
           :pre-insert  pre-insert
-          :pre-update  (fn [& _] (throw (Exception. (str (tru "You cannot update a QueryExecution!")))))
+          :pre-update  (fn [& _] (throw (Exception. (tru "You cannot update a QueryExecution!"))))
           :post-select post-select}))

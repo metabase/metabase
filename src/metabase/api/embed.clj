@@ -28,6 +28,7 @@
              [card :refer [Card]]
              [dashboard :refer [Dashboard]]
              [dashboard-card :refer [DashboardCard]]]
+            [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.util :as u]
             [metabase.util
              [embed :as eu]
@@ -66,8 +67,8 @@
 
 (defn- validate-param-sets
   "Validate that sets of params passed as part of the JWT token and by the user (as query params, i.e. as part of the
-  URL) are valid for the OBJECT-EMBEDDING-PARAMS. TOKEN-PARAMS and USER-PARAMS should be sets of all valid param keys
-  specified in the JWT or by the user, respectively."
+  URL) are valid for the `object-embedding-params`. `token-params` and `user-params` should be sets of all valid param
+  keys specified in the JWT or by the user, respectively."
   [object-embedding-params token-params user-params]
   ;; TODO - maybe make this log/debug once embedding is wrapped up
   (log/debug "Validating params for embedded object:\n"
@@ -107,7 +108,7 @@
     param))
 
 (s/defn ^:private remove-locked-and-disabled-params
-  "Remove the `:parameters` for DASHBOARD-OR-CARD that listed as `disabled` or `locked` in the `embedding-params`
+  "Remove the `:parameters` for `dashboard-or-card` that listed as `disabled` or `locked` in the `embedding-params`
   whitelist, or not present in the whitelist. This is done so the frontend doesn't display widgets for params the user
   can't set."
   [dashboard-or-card, embedding-params :- su/EmbeddingParams]
@@ -143,7 +144,7 @@
      :default (:default tag)}))
 
 (defn- add-implicit-card-parameters
-  "Add template tag parameter information to CARD's `:parameters`."
+  "Add template tag parameter information to `card`'s `:parameters`."
   [card]
   (update card :parameters concat (template-tag-parameters card)))
 
@@ -196,8 +197,8 @@
 ;;; ---------------------------- Card Fns used by both /api/embed and /api/preview_embed -----------------------------
 
 (defn card-for-unsigned-token
-  "Return the info needed for embedding about Card specified in TOKEN.
-   Additional CONSTRAINTS can be passed to the `public-card` function that fetches the Card."
+  "Return the info needed for embedding about Card specified in `token`. Additional `constraints` can be passed to the
+  `public-card` function that fetches the Card."
   {:style/indent 1}
   [unsigned-token & {:keys [embedding-params constraints]}]
   (let [card-id        (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :question])
@@ -236,13 +237,16 @@
 (defn dashcard-results-async
   "Return results for running the query belonging to a DashboardCard."
   {:style/indent 0}
-  [& {:keys [dashboard-id dashcard-id card-id embedding-params token-params query-params]}]
+  [& {:keys [dashboard-id dashcard-id card-id embedding-params token-params query-params constraints]
+      :or   {constraints constraints/default-query-constraints}}]
   {:pre [(integer? dashboard-id) (integer? dashcard-id) (integer? card-id) (u/maybe? map? embedding-params)
          (map? token-params) (map? query-params)]}
   (let [parameter-values (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters       (apply-parameter-values (resolve-dashboard-parameters dashboard-id dashcard-id card-id)
                                                  parameter-values)]
-    (public-api/public-dashcard-results-async dashboard-id card-id parameters, :context :embedded-dashboard)))
+    (public-api/public-dashcard-results-async dashboard-id card-id parameters
+      :context     :embedded-dashboard
+      :constraints constraints)))
 
 
 ;;; ------------------------------------- Other /api/embed-specific utility fns --------------------------------------
@@ -328,7 +332,6 @@
     (dashboard-for-unsigned-token unsigned, :constraints {:enable_embedding true})))
 
 
-
 (defn- card-for-signed-token-async
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
    `embedding-secret-key`.
@@ -340,7 +343,8 @@
 
    Additional dashboard parameters can be provided in the query string, but params in the JWT token take precedence."
   {:style/indent 1}
-  [token dashcard-id card-id query-params]
+  [token dashcard-id card-id query-params & {:keys [constraints]
+                                             :or   {constraints constraints/default-query-constraints}}]
   (let [unsigned-token (eu/unsign token)
         dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (check-embedding-enabled-for-dashboard dashboard-id)
@@ -350,7 +354,8 @@
       :card-id          card-id
       :embedding-params (db/select-one-field :embedding_params Dashboard :id dashboard-id)
       :token-params     (eu/get-in-unsigned-token-or-throw unsigned-token [:params])
-      :query-params     query-params)))
+      :query-params     query-params
+      :constraints      constraints)))
 
 (api/defendpoint GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
@@ -439,7 +444,8 @@
     (card-for-signed-token-async token
       (Integer/parseUnsignedInt dashcard-id)
       (Integer/parseUnsignedInt card-id)
-      (m/map-keys keyword query-params))))
+      (m/map-keys keyword query-params)
+      :constraints nil)))
 
 
 (api/define-routes)

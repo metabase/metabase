@@ -69,15 +69,16 @@
     (-> metadata
         serialize-metadata-for-hashing
         hash/md5
-        codec/base64-encode)))
+        codec/base64-encode
+        encryption/maybe-encrypt)))
 
 (defn valid-checksum?
   "Is the `checksum` the right one for this column `metadata`?"
   [metadata checksum]
   (and metadata
        checksum
-       (= (encryption/maybe-decrypt (metadata-checksum metadata))
-          (encryption/maybe-decrypt checksum))))
+       (= (encryption/maybe-decrypt (metadata-checksum metadata) :log-errors? false)
+          (encryption/maybe-decrypt checksum                     :log-errors? false))))
 
 (defn record-and-return-metadata!
   "Middleware that records metadata about the columns returned when running the query."

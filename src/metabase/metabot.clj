@@ -5,10 +5,10 @@
              [instance :as metabot.instance]
              [websocket :as metabot.websocket]]
             [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util.i18n :refer [trs]]))
+            [metabase.util.i18n :refer [deferred-trs trs]]))
 
 (defsetting metabot-enabled
-  (trs "Enable MetaBot, which lets you search for and view your saved questions directly via Slack.")
+  (deferred-trs "Enable MetaBot, which lets you search for and view your saved questions directly via Slack.")
   :type    :boolean
   :default false)
 

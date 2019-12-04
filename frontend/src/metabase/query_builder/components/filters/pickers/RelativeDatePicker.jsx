@@ -3,7 +3,7 @@
 import React, { Component } from "react";
 import cx from "classnames";
 
-import NumericInput from "metabase/components/NumericInput.jsx";
+import NumericInput from "metabase/components/NumericInput";
 import DateUnitSelector from "../DateUnitSelector";
 
 import { assoc } from "icepick";

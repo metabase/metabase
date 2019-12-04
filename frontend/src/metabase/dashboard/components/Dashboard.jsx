@@ -6,11 +6,11 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Box } from "grid-styled";
 
-import DashboardHeader from "../components/DashboardHeader.jsx";
-import DashboardGrid from "../components/DashboardGrid.jsx";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import DashboardHeader from "../components/DashboardHeader";
+import DashboardGrid from "../components/DashboardGrid";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { t } from "ttag";
-import Parameters from "metabase/parameters/components/Parameters.jsx";
+import Parameters from "metabase/parameters/components/Parameters";
 import EmptyState from "metabase/components/EmptyState";
 
 import DashboardControls from "../hoc/DashboardControls";
@@ -52,7 +52,7 @@ type Props = {
 
   isAdmin: boolean,
   isEditable: boolean,
-  isEditing: boolean,
+  isEditing: false | DashboardWithCards,
   isEditingParameter: boolean,
 
   parameters: Parameter[],
@@ -75,7 +75,7 @@ type Props = {
   cancelFetchDashboardCardData: () => Promise<void>,
 
   setEditingParameter: (parameterId: ?ParameterId) => void,
-  setEditingDashboard: (isEditing: boolean) => void,
+  setEditingDashboard: (isEditing: false | DashboardWithCards) => void,
 
   addParameter: (option: ParameterOption) => Promise<Parameter>,
   removeParameter: (parameterId: ParameterId) => void,
@@ -90,7 +90,7 @@ type Props = {
   editingParameter: ?Parameter,
 
   refreshPeriod: number,
-  refreshElapsed: number,
+  setRefreshElapsedHook: Function,
   isFullscreen: boolean,
   isNightMode: boolean,
   hideParameters: ?string,
@@ -128,7 +128,8 @@ export default class Dashboard extends Component {
 
   static propTypes = {
     isEditable: PropTypes.bool,
-    isEditing: PropTypes.bool.isRequired,
+    isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
+      .isRequired,
     isEditingParameter: PropTypes.bool.isRequired,
 
     dashboard: PropTypes.object,
@@ -191,7 +192,7 @@ export default class Dashboard extends Component {
       if (addCardOnLoad != null) {
         // we have to load our cards before we can add one
         await fetchCards();
-        this.setEditing(true);
+        this.setEditing(this.props.dashboard);
         addCardToDashboard({ dashId: dashboardId, cardId: addCardOnLoad });
       }
     } catch (error) {
@@ -204,7 +205,7 @@ export default class Dashboard extends Component {
     }
   }
 
-  setEditing = (isEditing: boolean) => {
+  setEditing = (isEditing: false | DashboardWithCards) => {
     this.props.onRefreshPeriodChange(null);
     this.props.setEditingDashboard(isEditing);
   };

@@ -106,7 +106,7 @@ describe("metabase/meta/Card", () => {
         {
           card_id: 1,
           parameter_id: 4,
-          target: ["dimension", ["fk->", 4, 5]],
+          target: ["dimension", ["fk->", ["field-id", 4], ["field-id", 5]]],
         },
       ];
       it("should return question URL with no parameters", () => {
@@ -215,7 +215,15 @@ describe("metabase/meta/Card", () => {
             ["dataset_query", "query", "filter"],
             [
               "and",
-              ["=", ["datetime-field", ["fk->", 4, 5], "month"], "2017-05-01"],
+              [
+                "=",
+                [
+                  "datetime-field",
+                  ["fk->", ["field-id", 4], ["field-id", 5]],
+                  "month",
+                ],
+                "2017-05-01",
+              ],
             ],
           ),
         });

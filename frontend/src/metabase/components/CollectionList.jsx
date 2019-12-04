@@ -6,7 +6,7 @@ import { connect } from "react-redux";
 import * as Urls from "metabase/lib/urls";
 
 import CollectionItem from "metabase/components/CollectionItem";
-import { normal } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { Grid, GridItem } from "metabase/components/Grid";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
@@ -97,8 +97,8 @@ class CollectionList extends React.Component {
             <GridItem w={w}>
               <Link
                 to={Urls.newCollection(currentCollection.id)}
-                color={normal.grey2}
-                hover={{ color: normal.blue }}
+                color={color("text-medium")}
+                hover={{ color: color("brand") }}
                 p={w === 1 ? [1, 2] : 0}
                 data-metabase-event={`${analyticsContext};Collection List; New Collection Click`}
               >

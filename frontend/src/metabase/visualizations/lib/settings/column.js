@@ -58,7 +58,7 @@ type ColumnSettingDef = SettingDef & {
 export function columnSettings({
   getColumns = DEFAULT_GET_COLUMNS,
   ...def
-}: ColumnSettingDef) {
+}: ColumnSettingDef = {}) {
   return nestedSettings("column_settings", {
     section: t`Formatting`,
     objectName: "column",

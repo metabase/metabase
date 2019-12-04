@@ -1,5 +1,5 @@
 import React from "react";
-import LegendHeader from "./LegendHeader.jsx";
+import LegendHeader from "./LegendHeader";
 import _ from "underscore";
 
 export const TitleLegendHeader = ({

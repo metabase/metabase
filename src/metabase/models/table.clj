@@ -39,8 +39,12 @@
   (db/delete! 'Card       :table_id id)
   (db/delete! Permissions :object [:like (str (perms/object-path db_id schema id) "%")]))
 
-(defn- perms-objects-set [table _]
-  #{(perms/object-path (:db_id table) (:schema table) (:id table))})
+(defn- perms-objects-set [table read-or-write]
+  ;; To read (e.g., fetch metadata) a Table you (predictably) have read permissions; to write a Table (e.g. update its
+  ;; metadata) you must have *full* permissions.
+  #{(case read-or-write
+      :read  (perms/table-read-path table)
+      :write (perms/object-path (:db_id table) (:schema table) (:id table)))})
 
 (u/strict-extend (class Table)
   models/IModel

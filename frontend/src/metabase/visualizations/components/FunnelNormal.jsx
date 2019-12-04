@@ -5,7 +5,7 @@ import React, { Component } from "react";
 import cx from "classnames";
 import styles from "./FunnelNormal.css";
 
-import Ellipsified from "metabase/components/Ellipsified.jsx";
+import Ellipsified from "metabase/components/Ellipsified";
 import { formatValue } from "metabase/lib/formatting";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
@@ -239,9 +239,7 @@ const GraphSection = ({
       <polygon
         opacity={1 - index * (0.9 / (infos.length + 1))}
         fill={DEFAULT_COLORS[0]}
-        points={`0 ${info.graph.startBottom}, 0 ${info.graph.startTop}, 1 ${
-          info.graph.endTop
-        }, 1 ${info.graph.endBottom}`}
+        points={`0 ${info.graph.startBottom}, 0 ${info.graph.startTop}, 1 ${info.graph.endTop}, 1 ${info.graph.endBottom}`}
       />
     </svg>
   );

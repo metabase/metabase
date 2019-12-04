@@ -4,7 +4,7 @@ import { t, jt } from "ttag";
 import _ from "underscore";
 
 import { formatNumber, formatValue } from "metabase/lib/formatting";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
 
@@ -92,12 +92,6 @@ export default class Smart extends React.Component {
     const lastRow = rows[rows.length - 1];
     const value = lastRow && lastRow[metricIndex];
     const column = cols[metricIndex];
-    const dimensionColumn = cols[dimensionIndex];
-
-    const granularity =
-      dimensionColumn && dimensionColumn.unit
-        ? formatBucketing(dimensionColumn.unit).toLowerCase()
-        : null;
 
     const insights =
       rawSeries && rawSeries[0].data && rawSeries[0].data.insights;
@@ -106,20 +100,21 @@ export default class Smart extends React.Component {
       return null;
     }
 
+    const granularity = formatBucketing(insight["unit"]).toLowerCase();
+
     const lastChange = insight["last-change"];
     const previousValue = insight["previous-value"];
 
     const change = formatNumber(lastChange * 100);
     const isNegative = (change && Math.sign(change) < 0) || false;
-
-    let color = isNegative ? colors["error"] : colors["success"];
+    const isSwapped = settings["scalar.switch_positive_negative"];
 
     // if the number is negative but thats been identified as a good thing (e.g. decreased latency somehow?)
-    if (isNegative && settings["scalar.switch_positive_negative"]) {
-      color = colors["success"];
-    } else if (!isNegative && settings["scalar.switch_positive_negative"]) {
-      color = colors["error"];
-    }
+    const changeColor = (isSwapped
+    ? !isNegative
+    : isNegative)
+      ? color("error")
+      : color("success");
 
     const changeDisplay = (
       <span style={{ fontWeight: 900 }}>{Math.abs(change)}%</span>
@@ -127,7 +122,7 @@ export default class Smart extends React.Component {
     const separator = (
       <span
         style={{
-          color: colors["text-light"],
+          color: color("text-light"),
           fontSize: "0.7rem",
           marginLeft: 4,
           marginRight: 4,
@@ -185,11 +180,11 @@ export default class Smart extends React.Component {
           {!lastChange || !previousValue ? (
             <Box
               className="text-centered text-bold mt1"
-              color={colors["text-medium"]}
+              color={color("text-medium")}
             >{jt`Nothing to compare for the previous ${granularity}.`}</Box>
           ) : (
             <Flex align="center" mt={1} flexWrap="wrap">
-              <Flex align="center" color={color}>
+              <Flex align="center" color={changeColor}>
                 <Icon name={isNegative ? "arrow_down" : "arrow_up"} />
                 {changeDisplay}
               </Flex>
@@ -197,7 +192,7 @@ export default class Smart extends React.Component {
                 id="SmartScalar-PreviousValue"
                 className="flex align-center hide lg-show"
                 style={{
-                  color: colors["text-medium"],
+                  color: color("text-medium"),
                 }}
               >
                 {!isFullscreen &&

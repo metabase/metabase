@@ -21,10 +21,10 @@ describe("query_time", () => {
 
     it("supports the legacy DatetimeField format", () => {
       expect(
-        parseFieldBucketing(["datetime-field", ["field-id", 3], "as", "week"]),
+        parseFieldBucketing(["datetime-field", ["field-id", 3], "as", "week"]), // deprecated
       ).toBe("week");
       expect(
-        parseFieldBucketing(["datetime-field", ["field-id", 3], "day"]),
+        parseFieldBucketing(["datetime-field", ["field-id", 3], "as", "day"]), // deprecated
       ).toBe("day");
     });
     it("returns the default unit for FK reference", () => {
@@ -41,19 +41,29 @@ describe("query_time", () => {
   describe("expandTimeIntervalFilter", () => {
     it('translate ["current" "month"] correctly', () => {
       expect(
-        expandTimeIntervalFilter(["time-interval", 100, "current", "month"]),
+        expandTimeIntervalFilter([
+          "time-interval",
+          ["field-id", 100],
+          "current",
+          "month",
+        ]),
       ).toEqual([
         "=",
-        ["datetime-field", 100, "as", "month"],
+        ["datetime-field", ["field-id", 100], "month"],
         ["relative-datetime", "current"],
       ]);
     });
     it('translate [-30, "day"] correctly', () => {
       expect(
-        expandTimeIntervalFilter(["time-interval", 100, -30, "day"]),
+        expandTimeIntervalFilter([
+          "time-interval",
+          ["field-id", 100],
+          -30,
+          "day",
+        ]),
       ).toEqual([
         "between",
-        ["datetime-field", 100, "as", "day"],
+        ["datetime-field", ["field-id", 100], "day"],
         ["relative-datetime", -31, "day"],
         ["relative-datetime", -1, "day"],
       ]);
@@ -283,7 +293,7 @@ describe("query_time", () => {
         );
       });
       // it ('should handle "last week"', () => {
-      //     let [start, end] = computeFilterTimeRange(["time-interval", 1, "last", "week"]);
+      //     let [start, end] = computeFilterTimeRange(["time-interval", ["field-id", 1], "last", "week"]);
       //     expect(start.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().subtract(1, "week").startOf("week").format("YYYY-MM-DD 00:00:00"));
       //     expect(end.format("YYYY-MM-DD HH:mm:ss")).toEqual(moment().subtract(1, "week").endOf("week")..format("YYYY-MM-DD 23:59:59"));
       // });

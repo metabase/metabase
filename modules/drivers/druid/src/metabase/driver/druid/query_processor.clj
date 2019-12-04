@@ -1,29 +1,27 @@
 (ns metabase.driver.druid.query-processor
   (:require [cheshire.core :as json]
-            [clj-time
-             [coerce :as tcoerce]
-             [core :as time]
-             [format :as tformat]]
             [clojure.core.match :refer [match]]
             [clojure.math.numeric-tower :as math]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [flatland.ordered.map :as ordered-map]
+            [java-time :as t]
+            [metabase
+             [types :as types]
+             [util :as u]]
             [metabase.driver.druid.js :as js]
             [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.query-processor
              [interface :as i]
-             [store :as qp.store]]
+             [store :as qp.store]
+             [timezone :as qp.timezone]]
             [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.util :as u]
             [metabase.util
-             [date :as du]
+             [date-2 :as u.date]
              [i18n :as ui18n :refer [tru]]]
-            [schema.core :as s])
-  (:import java.util.TimeZone
-           org.joda.time.DateTimeZone))
+            [schema.core :as s]))
 
 (def ^:private ^:const topN-max-results
   "Maximum number of rows the topN query in Druid should return. Huge values cause significant issues with the engine.
@@ -51,10 +49,6 @@
   "The INNER part of the query currently being processed.
    (`:settings` is merged in from the outer query as well so we can access timezone info)."
   nil)
-
-(defn- get-timezone-id
-  []
-  (or (get-in *query* [:settings :report-timezone]) "UTC"))
 
 (defn- query-type-dispatch-fn
   [query-type & _]
@@ -84,7 +78,8 @@
     :distinct___count
 
     (= ag-type :aggregation-options)
-    (recur (second ag))
+    (let [[_ wrapped-ag options] ag]
+      (or (:name options) (recur wrapped-ag)))
 
     ag-type
     ag-type
@@ -105,17 +100,20 @@
   (->rvalue field))
 
 (defmethod ->rvalue :absolute-datetime
-  [[_ timestamp unit]]
-  (du/date->iso-8601 (du/date-trunc unit timestamp (get-timezone-id))))
+  [[_ t unit]]
+  (u.date/format
+   (if (= unit :default)
+     t
+     (u.date/truncate t unit))))
 
 ;; TODO - not 100% sure how to handle times here, just treating it exactly like a date will have to do for now
 (defmethod ->rvalue :time
-  [[_ time unit]]
-  (du/date->iso-8601 (du/date-trunc unit time (get-timezone-id))))
+  [[_ t unit]]
+  (u.date/format (u.date/truncate t unit)))
 
 (defmethod ->rvalue :relative-datetime
   [[_ amount unit]]
-  (du/date->iso-8601 (du/date-trunc unit (du/relative-date unit amount) (get-timezone-id))))
+  (u.date/format (u.date/truncate (u.date/add unit amount) unit)))
 
 (defmethod ->rvalue :value
   [[_ value]]
@@ -315,78 +313,146 @@
 
 (defmethod parse-filter :and
   [[_ & args]]
-  {:type :and, :fields (filterv identity (map parse-filter args))})
+  (when-let [fields (seq (keep identity (map parse-filter args)))]
+    {:type :and, :fields (vec fields)}))
 
 (defmethod parse-filter :or
   [[_ & args]]
-  {:type :or, :fields (filterv identity (map parse-filter args))})
+  (when-let [fields (seq (keep identity (map parse-filter args)))]
+    {:type :or, :fields (vec fields)}))
 
 (defmethod parse-filter :not
   [[_ subclause]]
   (when-let [subclause (parse-filter subclause)]
     (filter:not subclause)))
 
+(defn- add-datetime-units
+  "Adding `n` `:default` units doesn't make sense. So if an `:absoulte-datetime` has `:default` as its unit, add `n`
+  milliseconds, because that is the smallest unit Druid supports."
+  [clause n]
+  (mbql.u/replace clause
+    [:absolute-datetime t :default]
+    [:absolute-datetime (u.date/add t :millisecond n) :millisecond]
 
-(defn- make-intervals
-  "Make a value for the `:intervals` in a Druid query.
+    _
+    (mbql.u/add-datetime-units clause n)))
 
-     ;; Return results in 2012 or 2015
-     (make-intervals 2012 2013 2015 2016) -> [\"2012/2013\" \"2015/2016\"]"
-  [interval-min interval-max & more]
-  (vec (concat [(str (or (->rvalue interval-min) -5000) "/" (or (->rvalue interval-max) 5000))]
-               (when (seq more)
-                 (apply make-intervals more)))))
+(defn- ->absolute-timestamp ^java.time.temporal.Temporal [clause]
+  (mbql.u/match-one clause
+    [:absolute-datetime t :default]
+    t
 
-(defn- parse-filter-subclause:intervals
-  [[filter-type field value maybe-max-value]]
-  (when (mbql.u/is-clause? :datetime-field field)
-    (case filter-type
-      ;; BETWEEN "2015-12-09", "2015-12-11" -> ["2015-12-09/2015-12-12"], because BETWEEN is inclusive
-      :between (make-intervals value (mbql.u/add-datetime-units maybe-max-value 1))
-      ;; =  "2015-12-11" -> ["2015-12-11/2015-12-12"]
-      :=       (make-intervals value (mbql.u/add-datetime-units value 1))
-      ;; != "2015-12-11" -> ["-5000/2015-12-11", "2015-12-12/5000"]
-      :!=      (make-intervals nil value, (mbql.u/add-datetime-units value 1) nil)
-      ;; >  "2015-12-11" -> ["2015-12-12/5000"]
-      :>       (make-intervals (mbql.u/add-datetime-units value 1) nil)
-      ;; >= "2015-12-11" -> ["2015-12-11/5000"]
-      :>=      (make-intervals value nil)
-      ;; <  "2015-12-11" -> ["-5000/2015-12-11"]
-      :<       (make-intervals nil value)
-      ;; <= "2015-12-11" -> ["-5000/2015-12-12"]
-      :<=      (make-intervals nil (mbql.u/add-datetime-units value 1)))))
+    [:absolute-datetime t unit]
+    (u.date/truncate t unit)
 
-(defn- parse-filter-clause:intervals
-  [[compound-type & subclauses, :as clause]]
-  (if-not (#{:and :or :not} compound-type)
-    (parse-filter-subclause:intervals clause)
-    (let [subclauses (filterv identity (mapcat parse-filter-clause:intervals subclauses))]
-      (when (seq subclauses)
-        (case compound-type
-          ;; A date can't be in more than one interval, so ANDing them together doesn't really make sense. In this
-          ;; situation, just ignore all intervals after the first
-          :and (do
-                 (when (> (count subclauses) 1)
-                   (log/warn
-                    (u/format-color 'red
-                        (str
-                         (tru "WARNING: A date can't belong to multiple discrete intervals, so ANDing them together doesn't make sense.")
-                         "\n"
-                         (tru "Ignoring these intervals: {0}" (rest subclauses))) )))
-                 [(first subclauses)])
-          ;; Ok to specify multiple intervals for OR
-          :or  subclauses
-          ;; We should never get to this point since the all non-string negations should get automatically rewritten
-          ;; by the query expander.
-          :not (log/warn (u/format-color 'red (tru "WARNING: Don't know how to negate: {0}" clause))))))))
+    [:relative-datetime amount unit]
+    (u.date/truncate (u.date/add unit amount) unit)
 
+    _
+    nil))
+
+(defmulti ^:private filter-clause->intervals
+  "Generate query intervals as appropriate from a `filter-clause` containing a `:datetime-field`. `:intervals` are
+  specified seperately from other things we think of as filter clauses in Druid. For temporal filter clauses, this
+  returns a sequence of min/max datetime tuples; like `[#t 2019-01-01 #t 2019-10-01]`; for irrelevant filter
+  clauses, the methods are skipped entirely."
+  {:arglists '([filter-clause])}
+  (fn [clause]
+    (when (mbql.u/match-one clause :datetime-field)
+      (mbql.u/dispatch-by-clause-name-or-class clause))))
+
+(defmethod filter-clause->intervals :default
+  [_]
+  nil)
+
+;; BETWEEN "2015-12-09", "2015-12-11" -> ["2015-12-09/2015-12-12"], because BETWEEN is inclusive
+(defmethod filter-clause->intervals :between
+  [[_ _ min-value max-value]]
+  [[(->absolute-timestamp min-value) (->absolute-timestamp (add-datetime-units max-value 1))]])
+
+(defmethod filter-clause->intervals :=
+  [[_ _ v]]
+  [[(->absolute-timestamp v) (->absolute-timestamp (add-datetime-units v 1))]])
+
+(defmethod filter-clause->intervals :!=
+  [[_ _ v]]
+  [[nil (->absolute-timestamp v)] [(->absolute-timestamp (add-datetime-units v 1)) nil]])
+
+(defmethod filter-clause->intervals :>
+  [[_ _ v]]
+  [[(->absolute-timestamp (add-datetime-units v 1)) nil]])
+
+(defmethod filter-clause->intervals :>=
+  [[_ _ v]]
+  [[(->absolute-timestamp v) nil]])
+
+(defmethod filter-clause->intervals :<
+  [[_ _ v]]
+  [[nil (->absolute-timestamp v)]])
+
+(defmethod filter-clause->intervals :<=
+  [[_ _ v]]
+  [[nil (->absolute-timestamp (add-datetime-units v 1))]])
+
+;; When you're anding together multiple intervals we have to combine them into a single interval that is the
+;; logical equivalent of all the intervals. e.g.
+;;
+;; `[:and [:>= x 2018] [:< x 2019]]` should get converted to a `2018/2019` interval.
+(defn- combine-intervals [[min-1 max-1] [min-2 max-2]]
+  (let [datetime-max (fn [x y] (if (pos? (compare x y)) x y))
+        datetime-min (fn [x y] (if (neg? (compare x y)) x y))]
+    [(if (and min-1 min-2)
+       (datetime-max min-1 min-2)
+       (or min-1 min-2))
+     (if (and max-1 max-2)
+       (datetime-min max-1 max-2)
+       (or max-1 max-2))]))
+
+(defmethod filter-clause->intervals :and
+  [[_ & subclauses]]
+  (let [subclause-intervals           (map filter-clause->intervals subclauses)
+        flattened-subclause-intervals (apply concat (filter #(= (count %) 1) subclause-intervals))]
+    ;; log a warning about all the intervals we filtered out above
+    (doseq [intervals subclause-intervals
+            :when     (> (count intervals) 1)]
+      (log/warn (tru "WARNING: Don't know how to combine these intervals into a single interval.")
+                "\n"
+                (tru "Ignoring intervals: {0}" intervals)))
+    (reduce
+     (fn [[acc] interval]
+       [(combine-intervals acc interval)])
+     nil
+     flattened-subclause-intervals)))
+
+(defmethod filter-clause->intervals :or
+  [[_ & subclauses]]
+  (mapcat filter-clause->intervals subclauses))
+
+(defmethod filter-clause->intervals :not
+  [[_ subclause]]
+  ;; first, check and see if the subclause is actually something that will produce intervals (i.e., if it is a
+  ;; temporal filter). If it is, then negate the logic and use the intervals for that. We don't want to call negate
+  ;; without checking first because some filters like string `:contains` can't be negated without using a `:not`
+  ;; filter and we don't want to stack overflow
+  (when (seq (filter-clause->intervals subclause))
+    (filter-clause->intervals (mbql.u/negate-filter-clause subclause))))
+
+(defn- compile-intervals
+  "Compile the interval pairs generated by `filter-clause->intervals` into the format expected by Druid (`min/max`
+  strings)."
+  [intervals]
+  (when-let [intervals (seq (filter some? intervals))]
+    (for [[min-value max-value] intervals]
+      (format "%s/%s"
+              (or (some-> min-value u.date/format) "-5000")
+              (or (some-> max-value u.date/format) "5000")))))
 
 (defn- handle-filter
   [_ {filter-clause :filter} updated-query]
   (if-not filter-clause
     updated-query
     (let [filter    (parse-filter    filter-clause)
-          intervals (parse-filter-clause:intervals filter-clause)]
+          intervals (compile-intervals (filter-clause->intervals filter-clause))]
       (cond-> updated-query
         (seq filter)    (assoc-in [:query :filter] filter)
         (seq intervals) (assoc-in [:query :intervals] intervals)))))
@@ -512,21 +578,40 @@
   [filtr aggregator]
   {:type :filtered, :filter filtr, :aggregator aggregator})
 
+(defn- hyper-unique?
+  [[_ field-id]]
+  (-> field-id qp.store/field :base_type (isa? :type/DruidHyperUnique)))
+
 (defn- ag:distinct
   [field output-name]
-  (if (isa? (:base-type field) :type/DruidHyperUnique)
+  (cond
+    (mbql.u/is-clause? #{:+} field)
+    {:type       :cardinality
+     :name       output-name
+     :fieldNames (mapv ->rvalue (rest field))
+     :byRow      true
+     :round      true}
+    (hyper-unique? field)
     {:type      :hyperUnique
      :name      output-name
      :fieldName (->rvalue field)}
+    :else
     {:type       :cardinality
      :name       output-name
-     :fieldNames [(->rvalue field)]}))
+     :fieldNames [(->rvalue field)]
+     :byRow      true
+     :round      true}))
 
 (defn- ag:count
   ([output-name]
    {:type :count, :name output-name})
   ([field output-name]
-   (ag:filtered (filter:not (filter:nil? field)) (ag:count output-name))))
+   (if (and (mbql.u/is-clause? #{:field-id} field)
+            (hyper-unique? field))
+     {:type      :hyperUnique
+      :name      output-name
+      :fieldName (->rvalue field)}
+     (ag:filtered (filter:not (filter:nil? field)) (ag:count output-name)))))
 
 (defn- ag:countWhere
   [pred output-name]
@@ -624,6 +709,15 @@
     [(clause :guard #{:count :avg :distinct :stddev :sum :min :max}) & _]
     [:aggregation-options &match {:name (aggregation-unique-identifier clause)}]))
 
+(defn- post-aggregator-type
+  "Complex aggregators like `cardinality` and ``hyperUnique` (which we use to implement MBQL
+  `:distinct`) require finalizing their return value.
+  https://druid.apache.org/docs/latest/querying/post-aggregations.html"
+  [[op & _]]
+  (if (= :distinct op)
+    :finalizingFieldAccess
+    :fieldAccess))
+
 (defn- expression-post-aggregation
   [[operator & args, :as expression]]
   (mbql.u/match-one expression
@@ -641,15 +735,15 @@
                       number?
                       {:type :constant, :name (str &match), :value &match}
 
-                      [:aggregation-options _ (options :guard :name)]
-                      {:type :fieldAccess, :fieldName (:name options)}
+                      [:aggregation-options ag (options :guard :name)]
+                      {:type (post-aggregator-type ag), :fieldName (:name options)}
 
                       #{:+ :- :/ :*}
                       (expression-post-aggregation &match)
 
                       ;; we should never get here unless our code is B U S T E D
                       _
-                      (throw (ex-info (str (tru "Expected :aggregation-options, constant, or expression."))
+                      (throw (ex-info (tru "Expected :aggregation-options, constant, or expression.")
                                {:type :bug, :input arg})))))}))
 
 
@@ -734,7 +828,7 @@
     :minute-of-hour  (extract:timeFormat "mm")
     :hour            (extract:timeFormat "yyyy-MM-dd'T'HH:00:00ZZ")
     :hour-of-day     (extract:timeFormat "HH")
-    :day             (extract:timeFormat "yyyy-MM-ddZZ")
+    :day             (extract:timeFormat "yyyy-MM-dd'T'00:00:00ZZ")
     :day-of-week     (extract:js "function (timestamp) {"
                                  "  var date = new Date(timestamp);"
                                  "  return date.getDay() + 1;"
@@ -761,7 +855,7 @@
                                  "  var date = new Date(timestamp);"
                                  "  return Math.floor((date.getMonth() + 3) / 3);"
                                  "}")
-    :year            (extract:timeFormat "yyyy")))
+    :year            (extract:timeFormat "yyyy-01-01")))
 
 (defn- unit->granularity
   [unit]
@@ -774,7 +868,7 @@
                       :month   "P1M"
                       :quarter "P3M"
                       :year    "P1Y")
-          :timeZone (get-timezone-id)}
+          :timeZone (qp.timezone/results-timezone-id)}
          ;; Druid uses Monday for the start of its weekly calculations. Metabase uses Sundays. When grouping by week,
          ;; the origin keypair will use the date specified as it's start of the week. The below date is the first
          ;; Sunday after Epoch. The date itself isn't significant, it just uses it to figure out what day it should
@@ -783,7 +877,7 @@
            {:origin "1970-01-04T00:00:00Z"})))
 
 (def ^:private units-that-need-post-processing-int-parsing
-  "`extract:timeFormat` always returns a string; there are cases where we'd like to return an integer instead, such as
+  "`extract:timeFormat` always returns a string; there are cases where we'd like to return an integer tead, such as
   `:day-of-month`. There's no simple way to do this in Druid -- Druid 0.9.0+ *does* let you combine extraction
   functions with `:cascade`, but we're still supporting 0.8.x. Instead, we will perform the conversions in
   Clojure-land during post-processing. If we need to perform the extra post-processing step, we'll name the resulting
@@ -795,8 +889,7 @@
     :day-of-year
     :week-of-year
     :month-of-year
-    :quarter-of-year
-    :year})
+    :quarter-of-year})
 
 (defmethod ->dimension-rvalue nil
   [_]
@@ -814,7 +907,7 @@
   [[_ _ unit]]
   {:type         :extraction
    :dimension    :__time
-   ;; :timestamp is a special case, and we need to do an 'extraction' against the secret special value :__time to get
+   ;; :timestamp is a special case, and we need to do an 'extraction' agat the secret special value :__time to get
    ;; at it
    :outputName   (if (contains? units-that-need-post-processing-int-parsing unit)
                    :timestamp___int
@@ -889,6 +982,9 @@
                             :distinct
                             :distinct___count
 
+                            [:aggregation-options _ (options :guard :name)]
+                            (:name options)
+
                             [:aggregation-options wrapped-ag _]
                             (recur wrapped-ag)
 
@@ -910,12 +1006,12 @@
                                                                             :desc :descending
                                                                             :asc  :ascending)}))))
 (defn- datetime-field?
-  "Similar to `mbql.u/datetime-field?` but works on field ids wrapped in a datetime or on fields that happen to be a
+  "Similar to `types/temporal-field?` but works on field ids wrapped in a datetime or on fields that happen to be a
   datetime"
   [field]
   (when field
     (or (mbql.u/is-clause? :datetime-field field)
-        (mbql.u/datetime-field? (qp.store/field (second field))))))
+        (types/temporal-field? (qp.store/field (second field))))))
 
 ;; Handle order by timstamp field
 (defn- handle-order-by-timestamp
@@ -958,7 +1054,7 @@
       (cond
         ;; If you specify nil or empty `:dimensions` or `:metrics` Druid will just return all of the ones available.
         ;; In cases where we don't want anything to be returned in one or the other, we'll ask for a `:___dummy`
-        ;; column instead. Druid happily returns `nil` for the column in every row, and it will get auto-filtered out
+        ;; column tead. Druid happily returns `nil` for the column in every row, and it will get auto-filtered out
         ;; of the results so the User will never see it.
         (nil? field)
         (-> updated-query
@@ -1008,7 +1104,8 @@
 (defmethod handle-limit ::groupBy
   [_ {limit :limit} updated-query]
   (if-not limit
-    updated-query
+    (-> updated-query
+        (assoc-in [:query :limitSpec :type]  :default))
     (-> updated-query
         (assoc-in [:query :limitSpec :type]  :default)
         (assoc-in [:query :limitSpec :limit] limit))))
@@ -1078,70 +1175,42 @@
   {:arglists '([query-type projections timezone-and-middleware-settings results])}
   query-type-dispatch-fn)
 
-(defn- post-process-map
-  [projections results]
-  {:projections projections
-   :results     results})
-
-(def ^:private druid-ts-format (tformat/formatters :date-time))
-
-(def ^:private ^{:arglists '([timestamp])} parse-timestamp
-  (comp tcoerce/to-date (partial tformat/parse druid-ts-format)))
-
-(defn- reformat-timestamp
-  [timestamp target-formatter]
-  (->> timestamp
-       (tformat/parse druid-ts-format)
-       (tformat/unparse target-formatter)))
-
 (defmethod post-process ::select
-  [_ projections {:keys [timezone middleware]} results]
-  (let [target-formater (some->> timezone (tformat/with-zone druid-ts-format))
-        update-ts-fn    (cond
-                          (not (:format-rows? middleware true))
-                          #(update % :timestamp parse-timestamp)
-
-                          target-formater
-                          #(update % :timestamp reformat-timestamp target-formater)
-
-                          :else
-                          identity)]
-    (->> results
-         first
-         :result
-         :events
-         (map (comp update-ts-fn :event))
-         (post-process-map projections))))
+  [_ projections {:keys [middleware]} [{{:keys [events]} :result} first-result]]
+  {:projections projections
+   :results     (for [event (map :event events)]
+                  (update event :timestamp u.date/parse))})
 
 (defmethod post-process ::total
   [_ projections _ results]
-  (post-process-map projections (map :result results)))
+  {:projections projections
+   :results     (map :result results)})
 
 (defmethod post-process ::topN
   [_ projections {:keys [middleware]} results]
-  (post-process-map projections
-                    (let [results (-> results first :result)]
-                      (if (:format-rows? middleware true)
-                        results
-                        (map #(u/update-when % :timestamp parse-timestamp) results)))))
+  {:projections projections
+   :results     (let [results (-> results first :result)]
+                  (if (:format-rows? middleware true)
+                    results
+                    (map #(u/update-when % :timestamp u.date/parse) results)))})
 
 (defmethod post-process ::groupBy
   [_ projections {:keys [middleware]} results]
-  (post-process-map projections
-                    (if (:format-rows? middleware true)
-                      (map :event results)
-                      (map (comp #(u/update-when % :timestamp parse-timestamp)
-                                 :event)
-                           results))))
+  {:projections projections
+   :results     (if (:format-rows? middleware true)
+                  (map :event results)
+                  (map (comp #(u/update-when % :timestamp u.date/parse)
+                             :event)
+                       results))})
 
 (defmethod post-process ::timeseries
   [_ projections {:keys [middleware]} results]
-  (post-process-map (conj projections :timestamp)
-                    (let [ts-getter (if (:format-rows? middleware true)
-                                      :timestamp
-                                      (comp parse-timestamp :timestamp))]
-                      (for [event results]
-                        (merge {:timestamp (ts-getter event)} (:result event))))))
+  {:projections (conj projections :timestamp)
+   :results     (let [ts-getter (if (:format-rows? middleware true)
+                                  :timestamp
+                                  (comp u.date/parse :timestamp))]
+                  (for [event results]
+                    (merge {:timestamp (ts-getter event)} (:result event))))})
 
 (defn- remove-bonus-keys
   "Remove keys that start with `___` from the results -- they were temporary, and we don't want to return them."
@@ -1181,19 +1250,12 @@
                                   k)
           k)])))
 
-(defn- utc?
-  "There are several timezone ids that mean UTC. This will create a TimeZone object from `TIMEZONE` and check to see if
-  it's a UTC timezone"
-  [^DateTimeZone timezone]
-  (.hasSameRules (TimeZone/getTimeZone "UTC") (.toTimeZone timezone)))
-
 (defn- resolve-timezone
   "Returns the timezone object (either report-timezone or JVM timezone). Returns nil if the timezone is UTC as the
   timestamps from Druid are already in UTC and don't need to be converted"
-  [{:keys [settings]}]
-  (let [tz (time/time-zone-for-id (:report-timezone settings (System/getProperty "user.timezone")))]
-    (when-not (utc? tz)
-      tz)))
+  [_]
+  (when-not (= (t/zone-id (qp.timezone/results-timezone-id)) (t/zone-id "UTC"))
+    (qp.timezone/results-timezone-id)))
 
 (defn execute-query
   "Execute a query for a Druid DB."
@@ -1223,14 +1285,14 @@
     ;; Leave `:rows` as a sequence of maps and the `annotate` middleware will take care of converting them to vectors
     ;; in the correct column order
     {:rows (for [row (:results post-proc-map)]
-             ;; use ordered-map to preseve the column ordering because for native queries results are returned in whatever
-             ;; order the keys come out when calling `keys`
+             ;; use ordered-map to preseve the column ordering because for native queries results are returned in
+             ;; whatever order the keys come out when calling `keys`
              (into
               (ordered-map/ordered-map)
               (for [[column getter] column->getter]
-                ;; rename any occurances of `:timestamp___int` to `:timestamp` in the results so the user doesn't know about
-                ;; our behind-the-scenes conversion and apply any other post-processing on the value such as parsing some
-                ;; units to int and rounding up approximate cardinality values.
+                ;; rename any occurances of `:timestamp___int` to `:timestamp` in the results so the user doesn't know
+                ;; about our behind-the-scenes conversion and apply any other post-processing on the value such as
+                ;; parsing some units to int and rounding up approximate cardinality values.
                 [(case column
                    :timestamp___int  :timestamp
                    :distinct___count :count

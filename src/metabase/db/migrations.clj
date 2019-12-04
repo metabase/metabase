@@ -42,8 +42,8 @@
 (models/defmodel DataMigrations :data_migrations)
 
 (defn- run-migration-if-needed!
-  "Run migration defined by MIGRATION-VAR if needed.
-   RAN-MIGRATIONS is a set of migrations names that have already been run.
+  "Run migration defined by `migration-var` if needed. `ran-migrations` is a set of migrations names that have already
+  been run.
 
      (run-migration-if-needed! #{\"migrate-base-types\"} #'set-card-database-and-table-ids)"
   [ran-migrations migration-var]
@@ -337,9 +337,9 @@
     (doseq [group-id non-admin-group-ids]
       (perms/grant-collection-readwrite-permissions! group-id collection/root-collection))
     ;; 2. Create the new collections.
-    (doseq [[model new-collection-name] {Dashboard (str (trs "Migrated Dashboards"))
-                                         Pulse     (str (trs "Migrated Pulses"))
-                                         Card      (str (trs "Migrated Questions"))}
+    (doseq [[model new-collection-name] {Dashboard (trs "Migrated Dashboards")
+                                         Pulse     (trs "Migrated Pulses")
+                                         Card      (trs "Migrated Questions")}
             :when                       (db/exists? model :collection_id nil)
             :let                        [new-collection (db/insert! Collection
                                                           :name  new-collection-name
@@ -348,7 +348,7 @@
       (doseq [group-id non-admin-group-ids]
         (perms/revoke-collection-permissions! group-id new-collection))
       ;; 4. move everything not in this Collection to a new Collection
-      (log/info (trs "Moving instances of {0} that aren't in a Collection to {1} Collection {2}"
+      (log/info (trs "Moving instances of {0} that aren''t in a Collection to {1} Collection {2}"
                      (name model) new-collection-name (u/get-id new-collection)))
       (db/update-where! model {:collection_id nil}
         :collection_id (u/get-id new-collection)))))

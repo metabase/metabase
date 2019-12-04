@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 
 import title from "metabase/hoc/Title";
 
-import PulseEdit from "../components/PulseEdit.jsx";
+import PulseEdit from "../components/PulseEdit";
 
 import Collections from "metabase/entities/collections";
 import Pulses from "metabase/entities/pulses";

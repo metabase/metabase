@@ -26,6 +26,18 @@ export const IFRAMED_IN_SELF = (function() {
   }
 })();
 
+// check if we have access to localStorage to avoid handling "access denied"
+// exceptions
+export const HAS_LOCAL_STORAGE = (function() {
+  try {
+    window.localStorage; // This will trigger an exception if access is denied.
+    return true;
+  } catch (e) {
+    console.warn("localStorage not available:", e);
+    return false;
+  }
+})();
+
 export function isObscured(element, offset) {
   if (!document.elementFromPoint) {
     return false;

@@ -3,7 +3,7 @@
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util :as u]
             [metabase.util
-             [i18n :refer [trs tru]]
+             [i18n :refer [deferred-tru trs tru]]
              [schema :as su]]
             [postal
              [core :as postal]
@@ -14,26 +14,26 @@
 ;;; CONFIG
 
 (defsetting email-from-address
-  (tru "Email address you want to use as the sender of Metabase.")
+  (deferred-tru "Email address you want to use as the sender of Metabase.")
   :default "notifications@metabase.com")
 
 (defsetting email-smtp-host
-  (tru "The address of the SMTP server that handles your emails."))
+  (deferred-tru "The address of the SMTP server that handles your emails."))
 
 (defsetting email-smtp-username
-  (tru "SMTP username."))
+  (deferred-tru "SMTP username."))
 
 (defsetting email-smtp-password
-  (tru "SMTP password.")
+  (deferred-tru "SMTP password.")
   :sensitive? true)
 
 ;; TODO - smtp-port should be switched to type :integer
 (defsetting email-smtp-port
-  (tru "The port your SMTP server uses for outgoing emails."))
+  (deferred-tru "The port your SMTP server uses for outgoing emails."))
 
 (defsetting email-smtp-security
-  (tru "SMTP secure connection protocol. (tls, ssl, starttls, or none)")
-  :default (tru "none")
+  (deferred-tru "SMTP secure connection protocol. (tls, ssl, starttls, or none)")
+  :default (deferred-tru "none")
   :setter  (fn [new-value]
              (when (some? new-value)
                (assert (contains? #{"tls" "ssl" "none" "starttls"} new-value)))
@@ -87,7 +87,7 @@
   {:style/indent 0}
   [{:keys [subject recipients message-type message]} :- EmailMessage]
   (when-not (email-smtp-host)
-    (let [^String msg (str (tru "SMTP host is not set."))]
+    (let [^String msg (tru "SMTP host is not set.")]
       (throw (Exception. msg))))
   ;; Now send the email
   (send-email! (smtp-settings)

@@ -19,7 +19,7 @@ const EntitySegments = ({ question }) => {
       {segments.map(segment => {
         const link = question
           .query()
-          .addFilter(["segment", segment.id])
+          .filter(["segment", segment.id])
           .question()
           .getUrl();
         return <Link to={link}>{segment.name}</Link>;

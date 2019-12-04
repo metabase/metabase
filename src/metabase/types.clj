@@ -80,13 +80,32 @@
 
 ;;; DateTime Types
 
-(derive :type/DateTime :type/*)
+(derive :type/Temporal :type/*)
 
-(derive :type/Time :type/DateTime)
-(derive :type/Date :type/DateTime)
+(derive :type/Date :type/Temporal)
+;; You could have Dates with TZ info but it's not supported by JSR-310 so we'll not worry about that for now.
+
+(derive :type/Time :type/Temporal)
+(derive :type/TimeWithTZ :type/Time)
+(derive :type/TimeWithLocalTZ :type/TimeWithTZ)    ; a column that is timezone-aware, but normalized to UTC or another offset at rest.
+(derive :type/TimeWithZoneOffset :type/TimeWithTZ) ; a column that stores its timezone offset
+
+(derive :type/DateTime :type/Temporal)
 (derive :type/DateTimeWithTZ :type/DateTime)
+(derive :type/DateTimeWithLocalTZ :type/DateTimeWithTZ)    ; a column that is timezone-aware, but normalized to UTC or another offset at rest.
+(derive :type/DateTimeWithZoneOffset :type/DateTimeWithTZ) ; a column that stores its timezone offset, e.g. `-08:00`
+(derive :type/DateTimeWithZoneID :type/DateTimeWithTZ)     ; a column that stores its timezone ID, e.g. `US/Pacific`
 
-(derive :type/UNIXTimestamp :type/DateTime)
+;; An `Instant` is a timestamp in (milli-)seconds since the epoch, UTC. Since it doesn't store TZ information, but is
+;; normalized to UTC, it is a DateTimeWithLocalTZ
+;;
+;; `Instant` if differentiated from other `DateTimeWithLocalTZ` columns in the same way `java.time.Instant` is
+;; different from `java.time.OffsetDateTime`
+;;
+;; TIMEZONE FIXME — not 100% sure this distinction is needed or makes sense.
+(derive :type/Instant :type/DateTimeWithLocalTZ)
+
+(derive :type/UNIXTimestamp :type/Instant)
 (derive :type/UNIXTimestamp :type/Integer)
 (derive :type/UNIXTimestampSeconds :type/UNIXTimestamp)
 (derive :type/UNIXTimestampMilliseconds :type/UNIXTimestamp)
@@ -98,10 +117,22 @@
 (derive :type/CreationDate :type/CreationTimestamp)
 
 (derive :type/JoinTimestamp :type/DateTime)
-(derive :type/JoinTime :type/Date)
-(derive :type/JoinTime :type/CreationTimestamp)
+(derive :type/JoinTime :type/Date) ; TODO - shouldn't this be derived from `:type/Time` ?
+(derive :type/JoinTime :type/JoinTimestamp)
 (derive :type/JoinDate :type/Date)
-(derive :type/JoinDate :type/CreationTimestamp)
+(derive :type/JoinDate :type/JoinTimestamp)
+
+(derive :type/CancelationTimestamp :type/DateTime)
+(derive :type/CancelationTime :type/Date)
+(derive :type/CancelationTime :type/CancelationTimestamp)
+(derive :type/CancelationDate :type/Date)
+(derive :type/CancelationDate :type/CancelationTimestamp)
+
+(derive :type/DeletionTimestamp :type/DateTime)
+(derive :type/DeletionTime :type/Date)
+(derive :type/DeletionTime :type/DeletionTimestamp)
+(derive :type/DeletionDate :type/Date)
+(derive :type/DeletionDate :type/DeletionTimestamp)
 
 (derive :type/Birthdate :type/Date)
 
@@ -162,8 +193,17 @@
 
 (defn types->parents
   "Return a map of various types to their parent types.
-   This is intended for export to the frontend as part of `MetabaseBootstrap` so it can build its own implementation of `isa?`."
+
+  This is intended for export to the frontend as part of `MetabaseBootstrap` so it can build its own implementation of
+  `isa?`."
   ([] (types->parents :type/*))
   ([root]
    (into {} (for [t (descendants root)]
               {t (parents t)}))))
+
+(defn temporal-field?
+  "True if a Metabase `Field` instance has a temporal base or special type, i.e. if this Field represents a value
+  relating to a moment in time."
+  {:arglists '([field])}
+  [{base-type :base_type, special-type :special_type}]
+  (some #(isa? % :type/Temporal) [base-type special-type]))

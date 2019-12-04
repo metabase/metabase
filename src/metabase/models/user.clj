@@ -15,7 +15,7 @@
              [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]]
             [metabase.util
              [date :as du]
-             [i18n :refer [trs tru]]
+             [i18n :refer [trs]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -176,9 +176,8 @@
     (email/send-new-user-email! new-user invitor join-url)))
 
 (def LoginAttributes
-  "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON"
-  (su/with-api-error-message {su/KeywordOrString (s/cond-pre s/Str s/Num)}
-    (tru "value must be a map with each value either a string or number.")))
+  "Login attributes, currently not collected for LDAP or Google Auth. Will ultimately be stored as JSON."
+  {su/KeywordOrString s/Any})
 
 (def NewUser
   "Required/optionals parameters needed to create a new user (for any backend)"
@@ -220,10 +219,11 @@
   "Convenience for creating a new user via LDAP. This account is considered active immediately; thus all active admins
   will receive an email right away."
   [new-user :- NewUser]
-  (insert-new-user! (-> new-user
-                        ;; We should not store LDAP passwords
-                        (dissoc :password)
-                        (assoc :ldap_auth true))))
+  (insert-new-user!
+   (-> new-user
+       ;; We should not store LDAP passwords
+       (dissoc :password)
+       (assoc :ldap_auth true))))
 
 (defn set-password!
   "Updates the stored password for a specified `User` by hashing the password with a random salt."

@@ -1,28 +1,39 @@
 (ns metabase.pulse.render.table
   (:require [hiccup.core :refer [h]]
             [medley.core :as m]
+            [metabase.plugins.classloader :as classloader]
             [metabase.pulse.render
              [color :as color]
              [style :as style]])
-  (:import jdk.nashorn.api.scripting.JSObject
-           metabase.pulse.render.common.NumericWrapper))
+  (:import jdk.nashorn.api.scripting.JSObject))
+
+;; Our 'helpful' NS declaration linter will complain that common is unused. But we need to require it so
+;; NumericWrapper exists in the first place.
+(classloader/require 'metabase.pulse.render.common)
+(import 'metabase.pulse.render.common.NumericWrapper)
 
 (defn- bar-th-style []
-  (merge (style/font-style) {:font-size :14.22px
-                             :font-weight     700
-                             :color           style/color-gray-4
-                             :border-bottom   (str "1px solid " style/color-row-border)
-                             :padding-top     :20px
-                             :padding-bottom  :5px}))
+  (merge
+   (style/font-style)
+   {:font-size :12.5px
+    :font-weight     700
+    :color           style/color-text-medium
+    :border-bottom   (str "1px solid " style/color-header-row-border)
+    :padding-top     :20px
+    :padding-bottom  :5px}))
 
 (defn- bar-td-style []
-  (merge (style/font-style) {:font-size      :14.22px
-                       :font-weight    400
-                       :text-align     :left
-                       :padding-right  :0.5em
-                       :padding-left   :0.5em
-                       :padding-top    :4px
-                       :padding-bottom :4px}))
+  (merge
+   (style/font-style)
+   {:font-size      :12.5px
+    :font-weight    700
+    :text-align     :left
+    :color          style/color-text-dark
+    :border-bottom  (str "1px solid " style/color-body-row-border)
+    :height         :36px
+    :width          :106px
+    :padding-right  :0.5em
+    :padding-left   :0.5em}))
 
 (defn- bar-th-style-numeric []
   (merge (style/font-style) (bar-th-style) {:text-align :right}))
@@ -70,7 +81,7 @@
          (h cell)])
       (when bar-width
         [:td {:style (style/style (bar-td-style) {:width :99%})}
-         [:div {:style (style/style {:background-color style/color-purple
+         [:div {:style (style/style {:background-color (style/primary-color)
                                      :max-height       :10px
                                      :height           :10px
                                      :border-radius    :2px

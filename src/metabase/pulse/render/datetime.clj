@@ -57,8 +57,8 @@
   [_]
   {:interval-start     (t/date-midnight (year) (month) (day))
    :interval           (t/days 1)
-   :this-interval-name (str (tru "Today"))
-   :last-interval-name (str (tru "Yesterday"))})
+   :this-interval-name (tru "Today")
+   :last-interval-name (tru "Yesterday")})
 
 (defn- start-of-this-week []
   (-> (org.joda.time.LocalDate. (t/now)) .weekOfWeekyear .roundFloorCopy .toDateTimeAtStartOfDay))
@@ -67,15 +67,15 @@
   [_]
   {:interval-start     (start-of-this-week)
    :interval           (t/weeks 1)
-   :this-interval-name (str (tru "This week"))
-   :last-interval-name (str (tru "Last week"))})
+   :this-interval-name (tru "This week")
+   :last-interval-name (tru "Last week")})
 
 (s/defmethod renderable-interval :month :- RenderableInterval
   [_]
   {:interval-start     (t/date-midnight (year) (month))
    :interval           (t/months 1)
-   :this-interval-name (str (tru "This month"))
-   :last-interval-name (str (tru "Last month"))})
+   :this-interval-name (tru "This month")
+   :last-interval-name (tru "Last month")})
 
 (defn- start-of-this-quarter []
   (t/date-midnight (year) (inc (* 3 (Math/floor (/ (dec (month))
@@ -84,15 +84,15 @@
   [_]
   {:interval-start     (start-of-this-quarter)
    :interval           (t/months 3)
-   :this-interval-name (str (tru "This quarter"))
-   :last-interval-name (str (tru "Last quarter"))})
+   :this-interval-name (tru "This quarter")
+   :last-interval-name (tru "Last quarter")})
 
 (s/defmethod renderable-interval :year :- RenderableInterval
   [_]
   {:interval-start     (t/date-midnight (year))
    :interval           (t/years 1)
-   :this-interval-name (str (tru "This year"))
-   :last-interval-name (str (tru "Last year"))})
+   :this-interval-name (tru "This year")
+   :last-interval-name (tru "Last year")})
 
 (s/defn ^:private date->interval-name :- (s/maybe su/NonBlankString)
   [date :- (s/maybe DateTime), unit :- (s/maybe s/Keyword)]

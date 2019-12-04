@@ -1,5 +1,7 @@
 import React from "react";
 
+import { t } from "ttag";
+
 import Input from "metabase/components/Input";
 
 import { NotebookCell } from "../NotebookCell";
@@ -18,7 +20,7 @@ export default function LimitStep({
         className="mb1"
         type="number"
         value={query.limit() == null ? "" : query.limit()}
-        placeholder="Enter a limit"
+        placeholder={t`Enter a limit`}
         onChange={e => {
           const limit = parseInt(e.target.value, 0);
           if (limit >= 1) {

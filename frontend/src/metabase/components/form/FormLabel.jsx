@@ -1,6 +1,5 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import cx from "classnames";
 
 export default class FormLabel extends Component {
   static propTypes = {
@@ -9,12 +8,8 @@ export default class FormLabel extends Component {
     message: PropTypes.string,
   };
 
-  static defaultProps = {
-    offset: true,
-  };
-
   render() {
-    let { fieldName, formError, message, offset, title } = this.props;
+    let { fieldName, formError, message, title } = this.props;
 
     if (!message) {
       message =
@@ -24,7 +19,7 @@ export default class FormLabel extends Component {
     }
 
     return (
-      <label className={cx("Form-label", { "Form-offset": offset })}>
+      <label className="Form-label">
         {title} {message !== undefined ? <span>: {message}</span> : null}
       </label>
     );

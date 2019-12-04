@@ -1,7 +1,9 @@
 (ns metabase.driver.druid-test
   (:require [cheshire.core :as json]
             [clj-time.core :as time]
+            [clojure.test :refer :all]
             [expectations :refer [expect]]
+            [java-time :as t]
             [medley.core :as m]
             [metabase
              [driver :as driver]
@@ -27,13 +29,7 @@
             [toucan.util.test :as tt]))
 
 ;;; table-rows-sample
-(datasets/expect-with-driver :druid
-  ;; druid returns a timestamp along with the query, but that shouldn't really matter here :D
-  [["1"    "The Misfit Restaurant + Bar" #inst "2014-04-07T07:00:00.000Z"]
-   ["10"   "Dal Rae Restaurant"          #inst "2015-08-22T07:00:00.000Z"]
-   ["100"  "PizzaHacker"                 #inst "2014-07-26T07:00:00.000Z"]
-   ["1000" "Tito's Tacos"                #inst "2014-06-03T07:00:00.000Z"]
-   ["101"  "Golden Road Brewing"         #inst "2015-09-04T07:00:00.000Z"]]
+(defn- table-rows-sample []
   (->> (metadata-queries/table-rows-sample (Table (data/id :checkins))
          [(Field (data/id :checkins :id))
           (Field (data/id :checkins :venue_name))
@@ -41,35 +37,23 @@
        (sort-by first)
        (take 5)))
 
-(datasets/expect-with-driver :druid
-  ;; druid returns a timestamp along with the query, but that shouldn't really matter here :D
-  [["1"    "The Misfit Restaurant + Bar" #inst "2014-04-07T00:00:00.000-07:00"]
-   ["10"   "Dal Rae Restaurant"          #inst "2015-08-22T00:00:00.000-07:00"]
-   ["100"  "PizzaHacker"                 #inst "2014-07-26T00:00:00.000-07:00"]
-   ["1000" "Tito's Tacos"                #inst "2014-06-03T00:00:00.000-07:00"]
-   ["101"  "Golden Road Brewing"         #inst "2015-09-04T00:00:00.000-07:00"]]
-  (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-    (->> (metadata-queries/table-rows-sample (Table (data/id :checkins))
-           [(Field (data/id :checkins :id))
-            (Field (data/id :checkins :venue_name))
-            (Field (data/id :checkins :timestamp))])
-         (sort-by first)
-         (take 5))))
-
-(datasets/expect-with-driver :druid
-  ;; druid returns a timestamp along with the query, but that shouldn't really matter here :D
-  [["1"    "The Misfit Restaurant + Bar" #inst "2014-04-07T02:00:00.000-05:00"]
-   ["10"   "Dal Rae Restaurant"          #inst "2015-08-22T02:00:00.000-05:00"]
-   ["100"  "PizzaHacker"                 #inst "2014-07-26T02:00:00.000-05:00"]
-   ["1000" "Tito's Tacos"                #inst "2014-06-03T02:00:00.000-05:00"]
-   ["101"  "Golden Road Brewing"         #inst "2015-09-04T02:00:00.000-05:00"]]
-  (tu.tz/with-jvm-tz (time/time-zone-for-id "America/Chicago")
-    (->> (metadata-queries/table-rows-sample (Table (data/id :checkins))
-           [(Field (data/id :checkins :id))
-            (Field (data/id :checkins :venue_name))
-            (Field (data/id :checkins :timestamp))])
-         (sort-by first)
-         (take 5))))
+(deftest table-rows-sample-test
+  (datasets/test-driver :druid
+    (testing "Druid driver doesn't need to convert results to the expected timezone for us. QP middleware can handle that."
+      (let [expected [["1"    "The Misfit Restaurant + Bar" (t/zoned-date-time "2014-04-07T07:00:00Z[UTC]")]
+                      ["10"   "Dal Rae Restaurant"          (t/zoned-date-time "2015-08-22T07:00:00Z[UTC]")]
+                      ["100"  "PizzaHacker"                 (t/zoned-date-time "2014-07-26T07:00:00Z[UTC]")]
+                      ["1000" "Tito's Tacos"                (t/zoned-date-time "2014-06-03T07:00:00Z[UTC]")]
+                      ["101"  "Golden Road Brewing"         (t/zoned-date-time "2015-09-04T07:00:00Z[UTC]")]]]
+        (testing "UTC timezone"
+          (is (= expected
+                 (table-rows-sample))))
+        (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
+          (is (= expected
+                 (table-rows-sample))))
+        (tu.tz/with-jvm-tz (time/time-zone-for-id "America/Chicago")
+          (is (= expected
+                 (table-rows-sample))))))))
 
 (def ^:private ^String native-query-1
   (json/generate-string
@@ -95,64 +79,60 @@
 (def ^:private col-defaults
   {:base_type :type/Text})
 
-;; test druid native queries
-(datasets/expect-with-driver :druid
-  {:row_count 2
-   :status    :completed
-   :data      {:rows        [["2013-01-03T08:00:00.000Z" "931" "Simcha Yan" "1" "Kinaree Thai Bistro"       1]
-                             ["2013-01-10T08:00:00.000Z" "285" "Kfir Caj"   "2" "Ruen Pair Thai Restaurant" 1]]
-               :cols        (mapv #(merge col-defaults %)
-                                  [{:name         "timestamp"
-                                    :source       :native
-                                    :display_name "timestamp"
-                                    :field_ref    [:field-literal "timestamp" :type/Text]}
-                                   {:name         "id"
-                                    :source       :native
-                                    :display_name "id"
-                                    :field_ref    [:field-literal "id" :type/Text]}
-                                   {:name         "user_name"
-                                    :source       :native
-                                    :display_name "user_name"
-                                    :field_ref    [:field-literal "user_name" :type/Text]}
-                                   {:name         "venue_price"
-                                    :source       :native
-                                    :display_name "venue_price"
-                                    :field_ref    [:field-literal "venue_price" :type/Text]}
-                                   {:name         "venue_name"
-                                    :source       :native
-                                    :display_name "venue_name"
-                                    :field_ref    [:field-literal "venue_name" :type/Text]}
-                                   {:name         "count"
-                                    :source       :native
-                                    :display_name "count"
-                                    :base_type    :type/Integer
-                                    :field_ref    [:field-literal "count" :type/Integer]}])
-               :native_form {:query native-query-1}}}
-  (-> (process-native-query native-query-1)
-      (m/dissoc-in [:data :insights])))
+(deftest native-query-test
+  (datasets/test-driver :druid
+    (is (= {:row_count 2
+            :status    :completed
+            :data      {:rows             [["2013-01-03T08:00:00Z" "931" "Simcha Yan" "1" "Kinaree Thai Bistro"       1]
+                                           ["2013-01-10T08:00:00Z" "285" "Kfir Caj"   "2" "Ruen Pair Thai Restaurant" 1]]
+                        :cols             (mapv #(merge col-defaults %)
+                                                [{:name         "timestamp"
+                                                  :source       :native
+                                                  :display_name "timestamp"
+                                                  :field_ref    [:field-literal "timestamp" :type/DateTimeWithZoneID]
+                                                  :base_type    :type/DateTimeWithZoneID}
+                                                 {:name         "id"
+                                                  :source       :native
+                                                  :display_name "id"
+                                                  :field_ref    [:field-literal "id" :type/Text]}
+                                                 {:name         "user_name"
+                                                  :source       :native
+                                                  :display_name "user_name"
+                                                  :field_ref    [:field-literal "user_name" :type/Text]}
+                                                 {:name         "venue_price"
+                                                  :source       :native
+                                                  :display_name "venue_price"
+                                                  :field_ref    [:field-literal "venue_price" :type/Text]}
+                                                 {:name         "venue_name"
+                                                  :source       :native
+                                                  :display_name "venue_name"
+                                                  :field_ref    [:field-literal "venue_name" :type/Text]}
+                                                 {:name         "count"
+                                                  :source       :native
+                                                  :display_name "count"
+                                                  :base_type    :type/Integer
+                                                  :field_ref    [:field-literal "count" :type/Integer]}])
+                        :native_form      {:query native-query-1}
+                        :results_timezone "UTC"}}
+           (-> (process-native-query native-query-1)
+               (m/dissoc-in [:data :insights]))))))
 
 
 ;; make sure we can run a native :timeseries query. This was throwing an Exception -- see #3409
 (def ^:private ^String native-query-2
   (json/generate-string
-    {:intervals    ["1900-01-01/2100-01-01"]
-     :granularity  {:type     :period
-                    :period   :P1M
-                    :timeZone :UTC}
-     :queryType    :timeseries
-     :dataSource   :checkins
-     :aggregations [{:type :count
-                     :name :count}]}))
+   {:intervals    ["1900-01-01/2100-01-01"]
+    :granularity  {:type     :period
+                   :period   :P1M
+                   :timeZone :UTC}
+    :queryType    :timeseries
+    :dataSource   :checkins
+    :aggregations [{:type :count
+                    :name :count}]}))
 
 (datasets/expect-with-driver :druid
   :completed
   (:status (process-native-query native-query-2)))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                            EXPRESSION AGGREGATIONS                                             |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 
 (defmacro ^:private druid-query {:style/indent 0} [& body]
   `(tqpt/with-flattened-dbdef
@@ -162,15 +142,16 @@
 (defmacro ^:private druid-query-returning-rows {:style/indent 0} [& body]
   `(qp.test/rows (druid-query ~@body)))
 
-;; Count the number of events in the given week. Metabase uses Sunday as the start of the week, Druid by default will
-;; use Monday.All of the below events should happen in one week. Using Druid's default grouping, 3 of the events would
-;; have counted for the previous week
-(datasets/expect-with-driver :druid
-  [["2015-10-04" 9]]
-  (druid-query-returning-rows
-    {:filter      [:between [:datetime-field $timestamp :day] "2015-10-04" "2015-10-10"]
-     :aggregation [[:count $id]]
-     :breakout    [[:datetime-field $timestamp :week]]}))
+(deftest start-of-week-test
+  (datasets/test-driver :druid
+    (is (= [["2015-10-04" 9]]
+           (druid-query-returning-rows
+             {:filter      [:between [:datetime-field $timestamp :day] "2015-10-04" "2015-10-10"]
+              :aggregation [[:count $id]]
+              :breakout    [[:datetime-field $timestamp :week]]}))
+        (str "Count the number of events in the given week. Metabase uses Sunday as the start of the week, Druid by "
+             "default will use Monday. All of the below events should happen in one week. Using Druid's default "
+             "grouping, 3 of the events would have counted for the previous week."))))
 
 ;; sum, *
 (datasets/expect-with-driver :druid
@@ -340,6 +321,15 @@
       {:aggregation [[:aggregation-options [:- [:sum $venue_price] 41] {:name "Sum-41"}]]
        :breakout    [$venue_price]})))
 
+;; distinct count of two dimensions
+(datasets/expect-with-driver :druid
+   {:rows [[98]]
+    :columns ["count"]}
+   (qp.test/rows+column-names
+    (druid-query
+     {:aggregation [[:distinct [:+  $checkins.venue_category_name
+                                    $checkins.venue_name]]]})))
+
 ;; check that we can handle METRICS (ick) inside expression aggregation clauses
 (datasets/expect-with-driver :druid
   [["2" 1231.0]
@@ -349,12 +339,9 @@
     (tt/with-temp Metric [metric {:definition {:aggregation [:sum [:field-id (data/id :checkins :venue_price)]]
                                                :filter      [:> [:field-id (data/id :checkins :venue_price)] 1]}}]
       (qp.test/rows
-        (qp/process-query
-          {:database (data/id)
-           :type     :query
-           :query    {:source-table (data/id :checkins)
-                      :aggregation  [:+ [:metric (u/get-id metric)] 1]
-                      :breakout     [[:field-id (data/id :checkins :venue_price)]]}})))))
+        (data/run-mbql-query checkins
+          {:aggregation [:+ [:metric (u/get-id metric)] 1]
+           :breakout    [$venue_price]})))))
 
 (expect
   com.jcraft.jsch.JSchException
@@ -420,7 +407,7 @@
           "venue_name"
           "venue_price"]
    :rows [["931"
-           "2013-01-03T08:00:00.000Z"
+           "2013-01-03T08:00:00Z"
            1
            "2014-01-01T08:30:00.000Z"
            "Simcha Yan"
@@ -430,12 +417,69 @@
            "Kinaree Thai Bistro"
            "1"]]}
   (tqpt/with-flattened-dbdef
-    (let [results (qp/process-query
-                    {:database (data/id)
-                     :type     :query
-                     :query    {:source-table (data/id :checkins)
-                                :limit        1}})]
+    (let [results (data/run-mbql-query checkins
+                    {:limit 1})]
       (assert (= (:status results) :completed)
         (u/pprint-to-str 'red results))
       {:cols (->> results :data :cols (map :name))
        :rows (-> results :data :rows)})))
+
+(datasets/expect-with-driver :druid
+  [["Bar" "Felipinho Asklepios"      8]
+   ["Bar" "Spiros Teofil"            8]
+   ["Japanese" "Felipinho Asklepios" 7]
+   ["Japanese" "Frans Hevel"         7]
+   ["Mexican" "Shad Ferdynand"       7]]
+  (druid-query-returning-rows
+    {:aggregation [[:aggregation-options [:distinct $checkins.venue_name] {:name "__count_0"}]]
+     :breakout    [$venue_category_name $user_name]
+     :order-by    [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]
+     :limit       5}))
+
+(datasets/expect-with-driver :druid
+  [["American" "Rüstem Hebel"    1]
+   ["Artisan"  "Broen Olujimi"   1]
+   ["Artisan"  "Conchúr Tihomir" 1]
+   ["Artisan"  "Dwight Gresham"  1]
+   ["Artisan"  "Plato Yeshua"    1]]
+  (druid-query-returning-rows
+    {:aggregation [[:aggregation-options [:distinct $checkins.venue_name] {:name "__count_0"}]]
+     :breakout   [$venue_category_name $user_name]
+     :order-by   [[:asc [:aggregation 0]] [:asc $checkins.venue_category_name]]
+     :limit      5}))
+
+;; Do we generate the correct count clause for HLL fields?
+(datasets/expect-with-driver :druid
+  [["Bar" "Szymon Theutrich" 13]
+   ["Mexican" "Dwight Gresham" 12]
+   ["American" "Spiros Teofil" 10]
+   ["Bar" "Felipinho Asklepios" 10]
+   ["Bar" "Kaneonuskatew Eiran" 10]]
+  (druid-query-returning-rows
+    {:aggregation [[:aggregation-options [:count $checkins.user_name] {:name "unique_users"}]]
+     :breakout   [$venue_category_name $user_name]
+     :order-by   [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]
+     :limit      5}))
+
+(deftest sync-test
+  (datasets/test-driver :druid
+    (tqpt/with-flattened-dbdef
+      (testing "describe-database"
+        (is (= {:tables #{{:schema nil, :name "checkins"}}}
+               (driver/describe-database :druid (data/db)))))
+      (testing "describe-table"
+        (is (= {:schema nil
+                :name "checkins"
+                :fields
+                #{{:name "count",               :base-type :type/Integer, :database-type "LONG"}
+                  {:name "id",                  :base-type :type/Text,    :database-type "STRING"}
+                  {:name "timestamp",           :base-type :type/Instant, :database-type "timestamp", :pk? true}
+                  {:name "user_last_login",     :base-type :type/Text,    :database-type "STRING"}
+                  {:name "user_name",           :base-type :type/Text,    :database-type "STRING"}
+                  {:name "user_password",       :base-type :type/Text,    :database-type "STRING"}
+                  {:name "venue_category_name", :base-type :type/Text,    :database-type "STRING"}
+                  {:name "venue_latitude",      :base-type :type/Text,    :database-type "STRING"}
+                  {:name "venue_longitude",     :base-type :type/Text,    :database-type "STRING"}
+                  {:name "venue_name",          :base-type :type/Text,    :database-type "STRING"}
+                  {:name "venue_price",         :base-type :type/Text,    :database-type "STRING"}}}
+               (driver/describe-table :druid (data/db) {:name "checkins"})))))))

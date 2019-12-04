@@ -9,12 +9,12 @@
              [util :as u]]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.util
-             [i18n :refer [tru]]
+             [i18n :refer [deferred-tru]]
              [schema :as su]]
             [schema.core :as s]))
 
 ;; Define a setting which captures our Slack api token
-(defsetting slack-token (tru "Slack API bearer token obtained from https://api.slack.com/web#authentication"))
+(defsetting slack-token (deferred-tru "Slack API bearer token obtained from https://api.slack.com/web#authentication"))
 
 (def ^:private ^String slack-api-base-url "https://slack.com/api")
 (def ^:private ^String files-channel-name "metabase_files")

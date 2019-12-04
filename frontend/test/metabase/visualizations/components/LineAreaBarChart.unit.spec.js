@@ -3,7 +3,7 @@
 // HACK: Needed because of conflicts caused by circular dependencies
 import "metabase/visualizations/components/Visualization";
 
-import LineAreaBarChart from "metabase/visualizations/components/LineAreaBarChart";
+import LineAreaBarChart from "metabase/visualizations/components/LineAreaBarChart.jsx";
 
 const millisecondCard = {
   card: {

@@ -13,9 +13,10 @@
              [interface :as i]
              [permissions-group :as group]
              [permissions-revision :as perms-revision :refer [PermissionsRevision]]]
+            [metabase.models.permissions.parse :as perms-parse]
             [metabase.util
              [honeysql-extensions :as hx]
-             [i18n :as ui18n :refer [trs tru]]
+             [i18n :as ui18n :refer [deferred-tru trs tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -41,17 +42,21 @@
 
 ;;; --------------------------------------------------- Validation ---------------------------------------------------
 
+(def segmented-perm-regex
+  "Regex that matches a segmented permission"
+  #"^/db/(\d+)/schema/([^\\/]*)/table/(\d+)/query/segmented/$")
+
 (def ^:private valid-object-path-patterns
-  [#"^/db/\d+/$"                                          ; permissions for the entire DB -- native and all schemas
-   #"^/db/\d+/native/$"                                   ; permissions to create new native queries for the DB
-   #"^/db/\d+/schema/$"                                   ; permissions for all schemas in the DB
-   #"^/db/\d+/schema/[^/]*/$"                             ; permissions for a specific schema
-   #"^/db/\d+/schema/[^/]*/table/\d+/$"                   ; FULL permissions for a specific table
-   #"^/db/\d+/schema/[^/]*/table/\d+/read/$"              ; Permissions to fetch the Metadata for a specific Table
-   #"^/db/\d+/schema/[^/]*/table/\d+/query/$"             ; Permissions to run any sort of query against a Table
-   #"^/db/\d+/schema/[^/]*/table/\d+/query/segmented/$"   ; Permissions to run a query against a Table using GTAP
-   #"^/collection/\d+/$"                                  ; readwrite permissions for a collection
-   #"^/collection/\d+/read/$"                             ; read permissions for a collection
+  [#"^/db/(\d+)/$"                                        ; permissions for the entire DB -- native and all schemas
+   #"^/db/(\d+)/native/$"                                 ; permissions to create new native queries for the DB
+   #"^/db/(\d+)/schema/$"                                 ; permissions for all schemas in the DB
+   #"^/db/(\d+)/schema/([^/]*)/$"                         ; permissions for a specific schema
+   #"^/db/(\d+)/schema/([^/]*)/table/(\d+)/$"             ; FULL permissions for a specific table
+   #"^/db/(\d+)/schema/([^/]*)/table/(\d+)/read/$"        ; Permissions to fetch the Metadata for a specific Table
+   #"^/db/(\d+)/schema/([^/]*)/table/(\d+)/query/$"       ; Permissions to run any sort of query against a Table
+   segmented-perm-regex                                   ; Permissions to run a query against a Table using GTAP
+   #"^/collection/(\d+)/$"                                ; readwrite permissions for a collection
+   #"^/collection/(\d+)/read/$"                           ; read permissions for a collection
    #"^/collection/root/$"                                 ; readwrite permissions for the 'Root' Collection (things with `nil` collection_id)
    #"^/collection/root/read/$"])                          ; read permissions for the 'Root' Collection
 
@@ -79,7 +84,7 @@
   [{:keys [group_id]}]
   (when (and (= group_id (:id (group/admin)))
              (not *allow-admin-permissions-changes*))
-    (throw (ui18n/ex-info (tru "You cannot create or revoke permissions for the ''Admin'' group.")
+    (throw (ex-info (tru "You cannot create or revoke permissions for the ''Admin'' group.")
              {:status-code 400}))))
 
 (defn- assert-valid-object
@@ -89,7 +94,7 @@
              (not (valid-object-path? object))
              (or (not= object "/")
                  (not *allow-root-entries*)))
-    (throw (ex-info (str (tru "Invalid permissions object path: ''{0}''." object))
+    (throw (ex-info (tru "Invalid permissions object path: ''{0}''." object)
              {:status-code 400, :path object}))))
 
 (defn- assert-valid-metabot-permissions
@@ -98,7 +103,7 @@
   [{:keys [object group_id]}]
   (when (and (= group_id (:id (group/metabot)))
              (not (str/starts-with? object "/collection/")))
-    (throw (ex-info (str (tru "MetaBot can only have Collection permissions."))
+    (throw (ex-info (tru "MetaBot can only have Collection permissions.")
              {:status-code 400}))))
 
 (defn- assert-valid
@@ -151,6 +156,33 @@
   "Return the permissions path for *read* access for a `collection-or-id`."
   [collection-or-id :- MapOrID]
   (str (collection-readwrite-path collection-or-id) "read/"))
+
+(defn table-read-path
+  "Return the permissions path required to fetch the Metadata for a Table."
+  (^String [table]
+   (table-read-path (:db_id table) (:schema table) table))
+  (^String [database-or-id schema-name table-or-id]
+   {:post [(valid-object-path? %)]}
+   (str (object-path (u/get-id database-or-id) schema-name (u/get-id table-or-id)) "read/")))
+
+(defn table-query-path
+  "Return the permissions path for *full* query access for a Table. Full query access means you can run any (MBQL) query
+  you wish against a given Table, with no GTAP-specified mandatory query alterations."
+  (^String [table]
+   (table-query-path (:db_id table) (:schema table) table))
+  (^String [database-or-id schema-name table-or-id]
+   {:post [(valid-object-path? %)]}
+   (str (object-path (u/get-id database-or-id) schema-name (u/get-id table-or-id)) "query/")))
+
+(defn table-segmented-query-path
+  "Return the permissions path for *segmented* query access for a Table. Segmented access means running queries against
+  the Table will automatically replace the Table with a GTAP-specified question as the new source of the query,
+  obstensibly limiting access to the results."
+  (^String [table]
+   (table-segmented-query-path (:db_id table) (:schema table) table))
+  (^String [database-or-id schema-name table-or-id]
+   {:post [(valid-object-path? %)]}
+   (str (object-path (u/get-id database-or-id) schema-name (u/get-id table-or-id)) "query/segmented/")))
 
 
 ;;; -------------------------------------------- Permissions Checking Fns --------------------------------------------
@@ -245,8 +277,8 @@
     (log/debug (u/format-color 'green "Granting permissions for group %d: %s" (:group_id permissions) (:object permissions)))))
 
 (defn- pre-update [_]
-  (throw (Exception. (str (tru "You cannot update a permissions entry!")
-                          (tru "Delete it and create a new one.")))))
+  (throw (Exception. (str (deferred-tru "You cannot update a permissions entry!")
+                          (deferred-tru "Delete it and create a new one.")))))
 
 (defn- pre-delete [permissions]
   (log/debug (u/format-color 'red "Revoking permissions for group %d: %s" (:group_id permissions) (:object permissions)))
@@ -269,26 +301,42 @@
 ;; `metabase.models.collection` to `metabase.models.permissions-graph.collection` (?)
 
 (def ^:private TablePermissionsGraph
-  (s/enum :none :all))
+  (s/named
+    (s/cond-pre (s/enum :none :all)
+                (s/constrained
+                  {(s/optional-key :read)  (s/enum :all :none)
+                   (s/optional-key :query) (s/enum :all :segmented :none)}
+                  not-empty))
+    "Valid perms graph for a Table"))
 
 (def ^:private SchemaPermissionsGraph
-  (s/cond-pre (s/enum :none :all)
-              {su/IntGreaterThanZero TablePermissionsGraph}))
+  (s/named
+   (s/cond-pre (s/enum :none :all)
+               {su/IntGreaterThanZero TablePermissionsGraph})
+   "Valid perms graph for a schema"))
 
 (def ^:private NativePermissionsGraph
-  (s/enum :write :none))
+  (s/named
+   (s/enum :write :none)
+   "Valid native perms option for a database"))
 
 (def ^:private DBPermissionsGraph
-  {(s/optional-key :native)  NativePermissionsGraph
-   (s/optional-key :schemas) (s/cond-pre (s/enum :all :none)
-                                         {s/Str SchemaPermissionsGraph})})
+  (s/named
+   {(s/optional-key :native)  NativePermissionsGraph
+    (s/optional-key :schemas) (s/cond-pre (s/enum :all :none)
+                                          {s/Str SchemaPermissionsGraph})}
+   "Valid perms graph for a Database"))
 
 (def ^:private GroupPermissionsGraph
-  {su/IntGreaterThanZero DBPermissionsGraph})
+  (s/named
+   {su/IntGreaterThanZero DBPermissionsGraph}
+   "Valid perms graph for a PermissionsGroup"))
 
 (def ^:private PermissionsGraph
-  {:revision s/Int
-   :groups   {su/IntGreaterThanZero GroupPermissionsGraph}})
+  (s/named
+   {:revision s/Int
+    :groups   {su/IntGreaterThanZero GroupPermissionsGraph}}
+   "Valid perms graph"))
 
 ;; The "Strict" versions of the various graphs below are intended for schema checking when *updating* the permissions
 ;; graph. In other words, we shouldn't be stopped from returning the graph if it violates the "strict" rules, but we
@@ -323,60 +371,29 @@
 ;;; |                                                  GRAPH FETCH                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- permissions-for-path
-  "Given a `permissions-set` of all allowed permissions paths for a Group, return the corresponding permissions status
-   for an object with PATH."
-  [permissions-set path]
-  (u/prog1 (cond
-             (set-has-full-permissions? permissions-set path)    :all
-             (set-has-partial-permissions? permissions-set path) :some
-             :else                                               :none)))
+(defn all-permissions
+  "Handle '/' permission"
+  [db-ids]
+  (reduce (fn [g db-id]
+            (assoc g db-id {:native  :write
+                            :schemas :all}))
+          {}
+          db-ids))
 
-(defn- table->adhoc-native-query-path [table] (adhoc-native-query-path (:db_id table)))
-(defn- table->schema-object-path      [table] (object-path (:db_id table) (:schema table)))
-(defn- table->table-object-path       [table] (object-path (:db_id table) (:schema table) (:id table)))
-(defn- table->all-schemas-path        [table] (all-schemas-path (:db_id table)))
-
-
-(s/defn ^:private schema-graph :- SchemaPermissionsGraph [permissions-set tables]
-  (case (permissions-for-path permissions-set (table->schema-object-path (first tables)))
-    :all  :all
-    :none :none
-    :some (into {} (for [table tables]
-                     {(u/get-id table) (permissions-for-path permissions-set (table->table-object-path table))}))))
-
-(s/defn ^:private db-graph :- DBPermissionsGraph [permissions-set tables]
-  {:native
-   (case (permissions-for-path permissions-set (table->adhoc-native-query-path (first tables)))
-     :all  :write
-     :some :read
-     :none :none)
-
-   :schemas
-   (case (permissions-for-path permissions-set (table->all-schemas-path (first tables)))
-     :all  :all
-     :none :none
-     (into {} (for [[schema tables] (group-by :schema tables)]
-                ;; if schema is nil, replace it with an empty string, since that's how it will get encoded in JSON :D
-                {(str schema) (schema-graph permissions-set tables)})))})
-
-(s/defn ^:private group-graph :- GroupPermissionsGraph [permissions-set tables]
-  (m/map-vals (partial db-graph permissions-set)
-              tables))
-
-;; TODO - if a DB has no tables, then it won't show up in the permissions graph!
 (s/defn graph :- PermissionsGraph
   "Fetch a graph representing the current permissions status for every Group and all permissioned databases."
   []
   (let [permissions (db/select [Permissions :group_id :object], :group_id [:not= (:id (group/metabot))])
-        tables      (group-by :db_id (db/select ['Table :schema :id :db_id]))]
+        db-ids      (db/select-ids 'Database)]
     {:revision (perms-revision/latest-id)
-     :groups   (into {} (for [group-id (db/select-ids 'PermissionsGroup, :id [:not= (:id (group/metabot))])]
-                          (let [group-permissions-set (set (for [perms permissions
-                                                                 :when (= (:group_id perms) group-id)]
-                                                             (:object perms)))]
-                            {group-id (group-graph group-permissions-set tables)})))}))
-
+     :groups   (->> permissions
+                    (filter (comp #(re-find #"(^/db|^/$)" %) :object))
+                    (group-by :group_id)
+                    (m/map-vals (fn [group-permissions]
+                                  (let [permissions-graph (perms-parse/permissions->graph (map :object group-permissions))]
+                                    (if (= :all permissions-graph)
+                                      (all-permissions db-ids)
+                                      (:db permissions-graph))))))}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -490,7 +507,7 @@
            (if (map? collection-or-id)
              collection-or-id
              (db/select-one 'Collection :id (u/get-id collection-or-id))))
-      (throw (Exception. (str (tru "You cannot edit permissions for a Personal Collection or its descendants.")))))))
+      (throw (Exception. (tru "You cannot edit permissions for a Personal Collection or its descendants."))))))
 
 (defn revoke-collection-permissions!
   "Revoke all access for `group-or-id` to a Collection."
@@ -513,15 +530,47 @@
 
 ;;; ----------------------------------------------- Graph Updating Fns -----------------------------------------------
 
+(s/defn ^:private update-table-read-perms!
+  [group-id       :- su/IntGreaterThanZero
+   db-id          :- su/IntGreaterThanZero
+   schema         :- s/Str
+   table-id       :- su/IntGreaterThanZero
+   new-read-perms :- (s/enum :all :none)]
+  ((case new-read-perms
+     :all  grant-permissions!
+     :none revoke-permissions!) group-id (table-read-path db-id schema table-id)))
+
+(s/defn ^:private update-table-query-perms!
+  [group-id        :- su/IntGreaterThanZero
+   db-id           :- su/IntGreaterThanZero
+   schema          :- s/Str
+   table-id        :- su/IntGreaterThanZero
+   new-query-perms :- (s/enum :all :segmented :none)]
+  (case new-query-perms
+    :all       (grant-permissions!  group-id (table-query-path           db-id schema table-id))
+    :segmented (grant-permissions!  group-id (table-segmented-query-path db-id schema table-id))
+    :none      (revoke-permissions! group-id (table-query-path           db-id schema table-id))))
+
 (s/defn ^:private update-table-perms!
   [group-id        :- su/IntGreaterThanZero
    db-id           :- su/IntGreaterThanZero
    schema          :- s/Str
    table-id        :- su/IntGreaterThanZero
-   new-table-perms :- SchemaPermissionsGraph]
-  (case new-table-perms
-    :all  (grant-permissions! group-id db-id schema table-id)
-    :none (revoke-permissions! group-id db-id schema table-id)))
+   new-table-perms :- TablePermissionsGraph]
+  (cond
+    (= new-table-perms :all)
+    (grant-permissions! group-id db-id schema table-id)
+
+    (= new-table-perms :none)
+    (revoke-permissions! group-id db-id schema table-id)
+
+    (map? new-table-perms)
+    (let [{new-read-perms :read, new-query-perms :query} new-table-perms]
+      ;; clear out any existing permissions
+      (revoke-permissions! group-id db-id schema table-id)
+      ;; then grant/revoke read and query perms as appropriate
+      (when new-read-perms  (update-table-read-perms!  group-id db-id schema table-id new-read-perms))
+      (when new-query-perms (update-table-query-perms! group-id db-id schema table-id new-query-perms)))))
 
 (s/defn ^:private update-schema-perms!
   [group-id         :- su/IntGreaterThanZero
@@ -574,9 +623,9 @@
    Return a 409 (Conflict) if the numbers don't match up."
   [old-graph new-graph]
   (when (not= (:revision old-graph) (:revision new-graph))
-    (throw (ui18n/ex-info (str (tru "Looks like someone else edited the permissions and your data is out of date.")
+    (throw (ex-info (str (deferred-tru "Looks like someone else edited the permissions and your data is out of date.")
                                " "
-                               (tru "Please fetch new data and try again."))
+                               (deferred-tru "Please fetch new data and try again."))
              {:status-code 409}))))
 
 (defn- save-perms-revision!
@@ -608,7 +657,8 @@
    returns the newly created `PermissionsRevision` entry."
   ([new-graph :- StrictPermissionsGraph]
    (let [old-graph (graph)
-         [old new] (data/diff (:groups old-graph) (:groups new-graph))]
+         [old new] (data/diff (:groups old-graph) (:groups new-graph))
+         old       (or old {})]
      (when (or (seq old) (seq new))
        (log-permissions-changes old new)
        (check-revision-numbers old-graph new-graph)

@@ -5,8 +5,8 @@ import {
   forBothAdminsAndNormalUsers,
   useSharedAdminLogin,
   useSharedNormalLogin,
-} from "__support__/e2e_tests";
-import { click, clickButton } from "__support__/enzyme_utils";
+} from "__support__/e2e";
+import { click, clickButton } from "__support__/enzyme";
 
 import { fetchTableMetadata } from "metabase/redux/metadata";
 import { mount } from "enzyme";
@@ -110,7 +110,7 @@ describe("Alerts", () => {
     rawDataQuestion = await createSavedQuestion(
       Question.create({ databaseId: 1, tableId: 1, metadata })
         .query()
-        .addFilter(["=", ["field-id", 4], 123456])
+        .filter(["=", ["field-id", 4], 123456])
         .question()
         .setDisplayName("Just raw, untamed data")
         .setCollectionId(collection.id),
@@ -119,8 +119,8 @@ describe("Alerts", () => {
     timeSeriesQuestion = await createSavedQuestion(
       Question.create({ databaseId: 1, tableId: 1, metadata })
         .query()
-        .addAggregation(["count"])
-        .addBreakout(["datetime-field", ["field-id", 1], "month"])
+        .aggregate(["count"])
+        .breakout(["datetime-field", ["field-id", 1], "month"])
         .question()
         .setDisplay("line")
         .setSettings({
@@ -134,8 +134,8 @@ describe("Alerts", () => {
     timeSeriesWithGoalQuestion = await createSavedQuestion(
       Question.create({ databaseId: 1, tableId: 1, metadata })
         .query()
-        .addAggregation(["count"])
-        .addBreakout(["datetime-field", ["field-id", 1], "month"])
+        .aggregate(["count"])
+        .breakout(["datetime-field", ["field-id", 1], "month"])
         .question()
         .setDisplay("line")
         .setSettings({
@@ -151,9 +151,9 @@ describe("Alerts", () => {
     timeMultiSeriesWithGoalQuestion = await createSavedQuestion(
       Question.create({ databaseId: 1, tableId: 1, metadata })
         .query()
-        .addAggregation(["count"])
-        .addAggregation(["sum", ["field-id", 6]])
-        .addBreakout(["datetime-field", ["field-id", 1], "month"])
+        .aggregate(["count"])
+        .aggregate(["sum", ["field-id", 6]])
+        .breakout(["datetime-field", ["field-id", 1], "month"])
         .question()
         .setDisplay("line")
         .setSettings({
@@ -169,7 +169,7 @@ describe("Alerts", () => {
     progressBarQuestion = await createSavedQuestion(
       Question.create({ databaseId: 1, tableId: 1, metadata })
         .query()
-        .addAggregation(["count"])
+        .aggregate(["count"])
         .question()
         .setDisplay("progress")
         .setSettings({ "progress.goal": 50 })

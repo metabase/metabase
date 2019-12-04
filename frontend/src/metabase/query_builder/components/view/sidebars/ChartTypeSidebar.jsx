@@ -23,6 +23,7 @@ const ChartTypeSidebar = ({
   onOpenChartSettings,
   onCloseChartType,
   isShowingChartTypeSidebar,
+  setUIControls,
   ...props
 }) => {
   const other = Array.from(visualizations)
@@ -59,8 +60,11 @@ const ChartTypeSidebar = ({
                     visualization.isSensible(result.data)
                   }
                   onClick={() => {
-                    question.setDisplay(type).update(null, { reload: false });
+                    question
+                      .setSelectedDisplay(type)
+                      .update(null, { reload: false });
                     onOpenChartSettings({ section: t`Data` });
+                    setUIControls({ isShowingRawTable: false });
                   }}
                 />
               )

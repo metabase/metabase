@@ -69,7 +69,7 @@ export function expandTimeIntervalFilter(filter) {
     n = 1;
   }
 
-  field = ["datetime-field", field, "as", unit];
+  field = ["datetime-field", field, unit];
 
   if (n < -1) {
     return [

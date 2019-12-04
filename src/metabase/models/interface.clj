@@ -8,7 +8,7 @@
              [cron :as cron-util]
              [date :as du]
              [encryption :as encryption]
-             [i18n :refer [tru]]]
+             [i18n :refer [trs tru]]]
             [potemkin.types :as p.types]
             [schema.core :as s]
             [taoensso.nippy :as nippy]
@@ -36,7 +36,11 @@
 (defn- json-out [obj keywordize-keys?]
   (let [s (u/jdbc-clob->str obj)]
     (if (string? s)
-      (json/parse-string s keywordize-keys?)
+      (try
+        (json/parse-string s keywordize-keys?)
+        (catch Throwable e
+          (log/error e (str (trs "Error parsing JSON")))
+          s))
       obj)))
 
 (defn json-out-with-keywordization

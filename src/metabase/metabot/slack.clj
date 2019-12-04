@@ -30,7 +30,7 @@
 (defn format-exception
   "Format a `Throwable` the way we'd like for posting it on Slack."
   [^Throwable e]
-  (str (tru "Uh oh! :cry:\n> {0}" (.getMessage e))))
+  (tru "Uh oh! :cry:\n> {0}" (.getMessage e)))
 
 ;; TODO - this stuff should be implemented with an agent or something. Or with core.async
 (defn do-async

@@ -149,15 +149,15 @@
 
               ;; Otherwise if we've been waiting longer than `absolute-max-keepalive-ms` it's time to call it quits
               exceeded-absolute-max-keepalive?
-              (a/>! output-chan (TimeoutException. (str (trs "No response after waiting {0}. Canceling request."
-                                                             (du/format-milliseconds absolute-max-keepalive-ms)))))
+              (a/>! output-chan (TimeoutException. (trs "No response after waiting {0}. Canceling request."
+                                                        (du/format-milliseconds absolute-max-keepalive-ms))))
 
               ;; if input-chan was unexpectedly closed log a message to that effect and return an appropriate error
               ;; rather than letting people wait forever
               input-chan-closed?
               (do
                 (log/error (trs "Input channel unexpectedly closed."))
-                (a/>! output-chan (InterruptedException. (str (trs "Input channel unexpectedly closed."))))))
+                (a/>! output-chan (InterruptedException. (trs "Input channel unexpectedly closed.")))))
             (finally
               (a/close! output-chan)
               (a/close! input-chan))))))))

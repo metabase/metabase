@@ -1,5 +1,9 @@
-(ns metabase.util.date
-  "Utility functions for working with datetimes of different types, and other related tasks."
+(ns ^:deprecated metabase.util.date
+  "Utility functions for working with datetimes of different types, and other related tasks. Deprecated: use
+  `metabase.util.date-2` instead.
+
+  TIMEZONE FIXME - remove this namespace entirely
+"
   (:require [clj-time
              [coerce :as coerce]
              [core :as t]
@@ -8,7 +12,7 @@
             [clojure.tools.logging :as log]
             [metabase.util :as u]
             [metabase.util
-             [i18n :refer [trs]]
+             [i18n :refer [deferred-trs]]
              [schema :as su]]
             [schema.core :as s])
   (:import clojure.lang.Keyword
@@ -17,15 +21,16 @@
            [org.joda.time DateTime DateTimeZone]
            org.joda.time.format.DateTimeFormatter))
 
-(def ^{:tag     TimeZone
-       :dynamic true
-       :doc     "Timezone to be used when formatting timestamps for display or for the data (pre aggregation)"}
+(alter-meta! *ns* assoc :deprecated true)
+
+;; TODO - move this stuff to `metabase.query-processor.timestamp` -- it's QP specific and doesn't really belong here
+(def ^:dynamic ^:deprecated ^TimeZone ^{:doc "Timezone to be used when formatting timestamps for display or
+ for the data (pre aggregation). Deprecated — use `metabase.query-processor.timezone/results-timezone-id` instead."}
   *report-timezone*)
 
-(def ^{:dynamic true
-       :doc     "The timezone of the data being queried. Today this is the same as the database timezone."
-       :tag     TimeZone}
-  *data-timezone*)
+(def ^:dynamic ^:deprecated ^TimeZone ^{:doc "The timezone of the database currently being queried.
+ Deprecated — you shouldn't need to use this directly; use `metabase.query-processor.timezone/results-timezone-id`
+ instead."} *database-timezone*)
 
 (defprotocol ^:private ITimeZoneCoercible
   "Coerce object to `java.util.TimeZone`"
@@ -49,33 +54,34 @@
   (delay (coerce-to-timezone (System/getProperty "user.timezone"))))
 
 (defn- warn-on-timezone-conflict
-  "Attempts to check the combination of report-timezone, jvm-timezone and data-timezone to determine of we have a
+  "Attempts to check the combination of report-timezone, jvm-timezone and database-timezone to determine of we have a
   possible conflict. If one is found, warn the user."
-  [driver db ^TimeZone report-timezone ^TimeZone jvm-timezone ^TimeZone data-timezone]
-  ;; No need to check this if we don't have a data-timezone
-  (when (and data-timezone driver)
-    (let [jvm-data-tz-conflict? (not (.hasSameRules jvm-timezone data-timezone))]
+  [driver db ^TimeZone report-timezone ^TimeZone jvm-timezone ^TimeZone database-timezone]
+  ;; No need to check this if we don't have a database-timezone
+  (when (and database-timezone driver)
+    (let [jvm-data-tz-conflict? (not (.hasSameRules jvm-timezone database-timezone))]
       (if ((resolve 'metabase.driver/supports?) driver :set-timezone)
         ;; This database could have a report-timezone configured, if it doesn't and the JVM and data timezones don't
         ;; match, we should suggest that the user configure a report timezone
         (when (and (not report-timezone)
                    jvm-data-tz-conflict?)
-          (log/warn (str (trs "Possible timezone conflict found on database {0}." (:name db))
+          (log/warn (str (deferred-trs "Possible timezone conflict found on database {0}." (:name db))
                          " "
-                         (trs "JVM timezone is {0} and detected database timezone is {1}."
-                              (.getID jvm-timezone) (.getID data-timezone))
+                         (deferred-trs "JVM timezone is {0} and detected database timezone is {1}."
+                                   (.getID jvm-timezone) (.getID database-timezone))
                          " "
-                         (trs "Configure a report timezone to ensure proper date and time conversions."))))
+                         (deferred-trs "Configure a report timezone to ensure proper date and time conversions."))))
         ;; This database doesn't support a report timezone, check the JVM and data timezones, if they don't match,
         ;; warn the user
         (when jvm-data-tz-conflict?
-          (log/warn (str (trs "Possible timezone conflict found on database {0}." (:name db))
+          (log/warn (str (deferred-trs "Possible timezone conflict found on database {0}." (:name db))
                          " "
-                         (trs "JVM timezone is {0} and detected database timezone is {1}."
-                              (.getID jvm-timezone) (.getID data-timezone)))))))))
+                         (deferred-trs "JVM timezone is {0} and detected database timezone is {1}."
+                                   (.getID jvm-timezone) (.getID database-timezone)))))))))
 
 (defn call-with-effective-timezone
-  "Invokes `f` with `*report-timezone*` and `*data-timezone*` bound for the given `db`"
+  "Invokes `f` with `*report-timezone*` and `*database-timezone*` bound for the given `db`. Deprecated — use functions
+  in `metabase.query-processor.timezone` instead."
   [db f]
   (let [driver    ((resolve 'metabase.driver.util/database->driver) db)
         report-tz (when-let [report-tz-id (and driver ((resolve 'metabase.driver.util/report-timezone-if-supported) driver))]
@@ -83,12 +89,13 @@
         data-tz   (some-> db :timezone coerce-to-timezone)
         jvm-tz    @jvm-timezone]
     (warn-on-timezone-conflict driver db report-tz jvm-tz data-tz)
-    (binding [*report-timezone* (or report-tz jvm-tz)
-              *data-timezone*   data-tz]
+    (binding [*report-timezone*   (or report-tz jvm-tz)
+              *database-timezone* data-tz]
       (f))))
 
 (defmacro with-effective-timezone
-  "Runs `body` with `*report-timezone*` and `*data-timezone*` configured using the given `db`"
+  "Runs `body` with `*report-timezone*` and `*database-timezone*` configured using the given `db`. Deprecated — use
+  functions in `metabase.query-processor.timezone` instead."
   [db & body]
   `(call-with-effective-timezone ~db (fn [] ~@body)))
 
@@ -183,10 +190,11 @@
 
 (def ^:private ^{:arglists '([timezone-id])} time-formatter
   ;; memoize this because the formatters are static. They must be distinct per timezone though.
-  (memoize (fn [timezone-id]
-             (if timezone-id
-               (time/with-zone (time/formatters :time) (t/time-zone-for-id timezone-id))
-               (time/formatters :time)))))
+  (memoize
+   (fn [timezone-id]
+     (if timezone-id
+       (time/with-zone (time/formatters :time) (t/time-zone-for-id timezone-id))
+       (time/formatters :time)))))
 
 (defn format-time
   "Returns a string representation of the time found in `t`"
@@ -273,19 +281,20 @@
   (^java.sql.Timestamp [unit amount date]
    (let [cal               (->Calendar date)
          [unit multiplier] (case unit
-                             :second  [Calendar/SECOND 1]
-                             :minute  [Calendar/MINUTE 1]
-                             :hour    [Calendar/HOUR   1]
-                             :day     [Calendar/DATE   1]
-                             :week    [Calendar/DATE   7]
-                             :month   [Calendar/MONTH  1]
-                             :quarter [Calendar/MONTH  3]
-                             :year    [Calendar/YEAR   1])]
+                             :millisecond [Calendar/MILLISECOND 1]
+                             :second      [Calendar/SECOND 1]
+                             :minute      [Calendar/MINUTE 1]
+                             :hour        [Calendar/HOUR   1]
+                             :day         [Calendar/DATE   1]
+                             :week        [Calendar/DATE   7]
+                             :month       [Calendar/MONTH  1]
+                             :quarter     [Calendar/MONTH  3]
+                             :year        [Calendar/YEAR   1])]
      (.set cal unit (+ (.get cal unit)
                        (* amount multiplier)))
      (->Timestamp cal))))
 
-(def ^:const date-extract-units
+(def date-extract-units
   "Units which return a (numerical, periodic) component of a date"
   #{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year :month-of-year :quarter-of-year
     :year})
@@ -315,9 +324,9 @@
                                   3)))
        :year            (.get cal Calendar/YEAR)))))
 
-(def ^:const date-trunc-units
+(def date-trunc-units
   "Valid date bucketing units"
-  #{:minute :hour :day :week :month :quarter :year})
+  #{:second :minute :hour :day :week :month :quarter :year})
 
 (defn- trunc-with-format [format-string date timezone-id]
   (->Timestamp (format-date (time/with-zone (time/formatter format-string)
@@ -347,18 +356,22 @@
      ;; -> #inst \"2015-11-01T00:00:00\""
   (^java.sql.Timestamp [unit]
    (date-trunc unit (System/currentTimeMillis) "UTC"))
+
   (^java.sql.Timestamp [unit date]
    (date-trunc unit date "UTC"))
+
   (^java.sql.Timestamp [unit date timezone-id]
    (case unit
      ;; For minute and hour truncation timezone should not be taken into account
-     :minute  (trunc-with-floor date (* 60 1000))
-     :hour    (trunc-with-floor date (* 60 60 1000))
-     :day     (trunc-with-format "yyyy-MM-dd'T'ZZ" date timezone-id)
-     :week    (trunc-with-format "yyyy-MM-dd'T'ZZ" (->first-day-of-week date timezone-id) timezone-id)
-     :month   (trunc-with-format "yyyy-MM-01'T'ZZ" date timezone-id)
-     :quarter (trunc-with-format (format-string-for-quarter date timezone-id) date timezone-id)
-     :year    (trunc-with-format "yyyy-01-01'T'ZZ" date timezone-id))))
+     :millisecond (trunc-with-floor date 1)
+     :second      (trunc-with-floor date 1000)
+     :minute      (trunc-with-floor date (* 60 1000))
+     :hour        (trunc-with-floor date (* 60 60 1000))
+     :day         (trunc-with-format "yyyy-MM-dd'T'ZZ" date timezone-id)
+     :week        (trunc-with-format "yyyy-MM-dd'T'ZZ" (->first-day-of-week date timezone-id) timezone-id)
+     :month       (trunc-with-format "yyyy-MM-01'T'ZZ" date timezone-id)
+     :quarter     (trunc-with-format (format-string-for-quarter date timezone-id) date timezone-id)
+     :year        (trunc-with-format "yyyy-01-01'T'ZZ" date timezone-id))))
 
 (defn date-trunc-or-extract
   "Apply date bucketing with `unit` to `date`. `date` defaults to now."
@@ -380,11 +393,12 @@
   "Format a time interval in nanoseconds to something more readable (µs/ms/etc.)
    Useful for logging elapsed time when using `(System/nanotime)`"
   ^String [nanoseconds]
-  (loop [n nanoseconds, [[unit divisor] & more] [[:ns 1000] [:µs 1000] [:ms 1000] [:s 60] [:mins 60] [:hours Integer/MAX_VALUE]]]
+  (loop [n nanoseconds, [[unit divisor] & more] [[:ns 1000] [:µs 1000] [:ms 1000] [:s 60] [:mins 60] [:hours 24]
+                                                 [:days 7] [:weeks Integer/MAX_VALUE]]]
     (if (and (> n divisor)
              (seq more))
       (recur (/ n divisor) more)
-      (format "%.0f %s" (double n) (name unit)))))
+      (format "%.1f %s" (double n) (name unit)))))
 
 (defn format-microseconds
   "Format a time interval in microseconds into something more readable."
@@ -472,3 +486,24 @@
   [begin-time :- (s/protocol coerce/ICoerce)
    end-time :- (s/protocol coerce/ICoerce)]
   (- (coerce/to-long end-time) (coerce/to-long begin-time)))
+
+(defn seconds->ms
+  "Convert `seconds` to milliseconds. More readable than doing this math inline."
+  [seconds]
+  (* seconds 1000))
+
+(defn minutes->seconds
+  "Convert `minutes` to seconds. More readable than doing this math inline."
+  [minutes]
+  (* 60 minutes))
+
+(defn minutes->ms
+  "Convert `minutes` to milliseconds. More readable than doing this math inline."
+  [minutes]
+  (-> minutes minutes->seconds seconds->ms))
+
+;; deprecate this entire namespace and `clj-time` as well!
+(doseq [a-namespace (cons *ns* '[clj-time.core clj-time.coerce clj-time.format])]
+  (alter-meta! (the-ns a-namespace) assoc :deprecated true)
+  (doseq [[_ varr] (ns-publics a-namespace)]
+    (alter-meta! varr assoc :deprecated true)))

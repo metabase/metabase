@@ -1,5 +1,7 @@
 import _ from "underscore";
 
+import Dimension from "metabase-lib/lib/Dimension";
+
 import { VALID_OPERATORS, VALID_AGGREGATIONS } from "./config";
 export { VALID_OPERATORS, VALID_AGGREGATIONS } from "./config";
 
@@ -15,15 +17,22 @@ export function getAggregationFromName(name) {
   return AGG_NAMES_MAP.get(name.toLowerCase());
 }
 
+export function getDimensionFromName(name, query) {
+  return query
+    .dimensionOptions()
+    .all()
+    .find(d => getDimensionName(d) === name);
+}
+
 export function isReservedWord(word) {
   return !!getAggregationFromName(word);
 }
 
-export function formatAggregationName(aggregationOption) {
-  return VALID_AGGREGATIONS.get(aggregationOption.short);
+export function formatAggregationName(aggregationOperator) {
+  return VALID_AGGREGATIONS.get(aggregationOperator.short);
 }
 
-function formatIdentifier(name) {
+export function formatIdentifier(name) {
   return /^\w+$/.test(name) && !isReservedWord(name)
     ? name
     : JSON.stringify(name);
@@ -33,12 +42,12 @@ export function formatMetricName(metric) {
   return formatIdentifier(metric.name);
 }
 
-export function formatFieldName(field) {
-  return formatIdentifier(field.display_name);
+export function formatDimensionName(dimension) {
+  return formatIdentifier(getDimensionName(dimension));
 }
 
-export function formatExpressionName(name) {
-  return formatIdentifier(name);
+export function getDimensionName(dimension) {
+  return dimension.render();
 }
 
 // move to query lib
@@ -47,19 +56,13 @@ export function isExpression(expr) {
   return (
     isMath(expr) ||
     isAggregation(expr) ||
-    isField(expr) ||
-    isMetric(expr) ||
-    isExpressionReference(expr)
+    isFieldReference(expr) ||
+    isMetric(expr)
   );
 }
 
-export function isField(expr) {
-  return (
-    Array.isArray(expr) &&
-    expr.length === 2 &&
-    expr[0] === "field-id" &&
-    typeof expr[1] === "number"
-  );
+export function isFieldReference(expr) {
+  return !!Dimension.parseMBQL(expr);
 }
 
 export function isMetric(expr) {
@@ -88,15 +91,6 @@ export function isAggregation(expr) {
   );
 }
 
-export function isExpressionReference(expr) {
-  return (
-    Array.isArray(expr) &&
-    expr.length === 2 &&
-    expr[0] === "expression" &&
-    typeof expr[1] === "string"
-  );
-}
-
 export function isValidArg(arg) {
-  return isExpression(arg) || isField(arg) || typeof arg === "number";
+  return isExpression(arg) || isFieldReference(arg) || typeof arg === "number";
 }

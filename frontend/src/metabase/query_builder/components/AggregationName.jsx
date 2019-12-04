@@ -8,7 +8,7 @@ import { t } from "ttag";
 import * as Q_DEPRECATED from "metabase/lib/query";
 import * as A_DEPRECATED from "metabase/lib/query_aggregation";
 
-import { getAggregator } from "metabase/lib/schema_metadata";
+import { getAggregationOperator } from "metabase/lib/schema_metadata";
 import { format } from "metabase/lib/expressions/formatter";
 
 import FieldName from "./FieldName";
@@ -50,6 +50,7 @@ const AggregationName = ({
   }
   return A_DEPRECATED.isCustom(aggregation) ? (
     <CustomAggregation
+      query={query}
       aggregation={aggregation}
       tableMetadata={tableMetadata}
       customFields={customFields}
@@ -76,15 +77,12 @@ const NamedAggregation = ({ aggregation, className }) => (
 );
 
 const CustomAggregation = ({
+  query,
   aggregation,
   tableMetadata,
   customFields,
   className,
-}) => (
-  <span className={className}>
-    {format(aggregation, { tableMetadata, customFields })}
-  </span>
-);
+}) => <span className={className}>{format(aggregation, { query })}</span>;
 
 const MetricAggregation = ({ aggregation, tableMetadata, className }) => {
   const metricId = A_DEPRECATED.getMetric(aggregation);
@@ -108,13 +106,13 @@ const StandardAggregation = ({
 }) => {
   const fieldId = A_DEPRECATED.getField(aggregation);
 
-  const selectedAggregation = getAggregator(
+  const selectedAggregation = getAggregationOperator(
     A_DEPRECATED.getOperator(aggregation),
   );
   // if this table doesn't support the selected aggregation, prompt the user to select a different one
   if (
     selectedAggregation &&
-    _.findWhere(tableMetadata.aggregation_options, {
+    _.findWhere(tableMetadata.aggregation_operators, {
       short: selectedAggregation.short,
     })
   ) {

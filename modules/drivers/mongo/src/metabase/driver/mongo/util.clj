@@ -131,7 +131,7 @@
    Docs to generate URI string: https://docs.mongodb.com/manual/reference/connection-string/#dns-seedlist-connection-format"
   [{:keys [host port user authdb pass dbname ssl additional-options]}]
   (if-not (fqdn? host)
-    (throw (ex-info (str (tru "Using DNS SRV requires a FQDN for host" ))
+    (throw (ex-info (tru "Using DNS SRV requires a FQDN for host")
                     {:host host}))
     (let [conn-opts (connection-options-builder :ssl? ssl, :additional-options additional-options)
           authdb (if (seq authdb)
@@ -177,7 +177,7 @@
   (let [mongo-client (MongoClient. uri)]
     (if-let [db-name (.getDatabase uri)]
       [mongo-client (.getDB mongo-client db-name)]
-      (throw (ex-info (str (tru "No database name specified in URI. Monger requires a database to be explicitly configured." ))
+      (throw (ex-info (tru "No database name specified in URI. Monger requires a database to be explicitly configured.")
                       {:hosts (-> uri .getHosts)
                        :uri   (-> uri .getURI)
                        :opts  (-> uri .getOptions)})))))

@@ -25,12 +25,9 @@ export default function Notebook({ className, ...props }) {
           primary
           style={{ minWidth: 220 }}
           onClick={async () => {
-            let cleanQuestion = question
-              .query()
-              .clean()
-              .question();
+            let cleanQuestion = question.setQuery(question.query().clean());
             if (cleanQuestion.display() === "table") {
-              cleanQuestion = cleanQuestion.setDisplayDefault();
+              cleanQuestion = cleanQuestion.setDefaultDisplay();
             }
             await cleanQuestion.update();
             // switch mode before running otherwise URL update may cause it to switch back to notebook mode

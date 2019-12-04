@@ -1,7 +1,7 @@
 import React from "react";
 import cx from "classnames";
 
-import CheckBox from "metabase/components/CheckBox.jsx";
+import CheckBox from "metabase/components/CheckBox";
 
 const OFFSET = 4;
 

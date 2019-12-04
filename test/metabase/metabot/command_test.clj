@@ -106,7 +106,7 @@
 
 ;; If you try to show a Card with an ID that doesn't exist, you should get a Not Found message.
 (expect
-  {:response (list 'Exception. (str (tru "Card {0} not found." Integer/MAX_VALUE)))
+  {:response (list 'Exception. (tru "Card {0} not found." Integer/MAX_VALUE))
    :messages []}
   (command "show" Integer/MAX_VALUE))
 

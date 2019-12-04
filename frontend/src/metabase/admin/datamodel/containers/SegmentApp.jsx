@@ -4,7 +4,7 @@ import { push } from "react-router-redux";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
-import SegmentForm from "./SegmentForm.jsx";
+import SegmentForm from "./SegmentForm";
 
 import { updatePreviewSummary } from "../datamodel";
 import { getPreviewSummary } from "../selectors";

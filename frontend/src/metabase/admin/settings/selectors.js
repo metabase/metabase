@@ -2,14 +2,14 @@ import _ from "underscore";
 import { createSelector } from "reselect";
 import MetabaseSettings from "metabase/lib/settings";
 import { t } from "ttag";
-import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget.jsx";
+import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
 import {
   PublicLinksDashboardListing,
   PublicLinksQuestionListing,
   EmbeddedQuestionListing,
   EmbeddedDashboardListing,
-} from "./components/widgets/PublicLinksListing.jsx";
-import SecretKeyWidget from "./components/widgets/SecretKeyWidget.jsx";
+} from "./components/widgets/PublicLinksListing";
+import SecretKeyWidget from "./components/widgets/SecretKeyWidget";
 import EmbeddingLegalese from "./components/widgets/EmbeddingLegalese";
 import EmbeddingLevel from "./components/widgets/EmbeddingLevel";
 import LdapGroupMappingsWidget from "./components/widgets/LdapGroupMappingsWidget";

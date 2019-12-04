@@ -22,6 +22,7 @@ import {
   QUERY_COMPLETED,
   QUERY_ERRORED,
   LOAD_OBJECT_DETAIL_FK_REFERENCES,
+  CLEAR_OBJECT_DETAIL_FK_REFERENCES,
   SET_CURRENT_STATE,
   CREATE_PUBLIC_LINK,
   DELETE_PUBLIC_LINK,
@@ -198,7 +199,9 @@ export const card = handleActions(
     [QUERY_COMPLETED]: {
       next: (state, { payload }) => ({
         ...state,
-        display: payload.cardDisplay,
+        sensibleDisplays: payload.card.sensibleDisplays,
+        selectedDisplay: payload.card.selectedDisplay,
+        display: payload.card.display,
       }),
     },
 
@@ -257,6 +260,7 @@ export const tableForeignKeyReferences = handleActions(
     [LOAD_OBJECT_DETAIL_FK_REFERENCES]: {
       next: (state, { payload }) => payload,
     },
+    [CLEAR_OBJECT_DETAIL_FK_REFERENCES]: () => null,
   },
   null,
 );

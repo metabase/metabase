@@ -5,7 +5,7 @@ declare var ace: any;
 
 import { createAction } from "redux-actions";
 import _ from "underscore";
-import { assocIn, updateIn } from "icepick";
+import { assocIn, getIn, updateIn } from "icepick";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -53,6 +53,7 @@ import querystring from "querystring";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import { getSensibleDisplays } from "metabase/visualizations";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
@@ -61,7 +62,7 @@ import Tables from "metabase/entities/tables";
 import Databases from "metabase/entities/databases";
 
 import { getMetadata } from "metabase/selectors/metadata";
-import { clearRequestState } from "metabase/redux/requests";
+import { setRequestUnloaded } from "metabase/redux/requests";
 
 import type { Card } from "metabase/meta/types/Card";
 
@@ -216,9 +217,9 @@ export const updateUrl = createThunkAction(
       card = getCard(getState());
       question = getQuestion(getState());
     } else {
-      question = new Question(getMetadata(getState()), card);
+      question = new Question(card, getMetadata(getState()));
     }
-    if (dirty == undefined) {
+    if (dirty == null) {
       const originalQuestion = getOriginalQuestion(getState());
       dirty =
         !originalQuestion ||
@@ -264,7 +265,7 @@ export const updateUrl = createThunkAction(
       return;
     }
 
-    if (replaceState == undefined) {
+    if (replaceState == null) {
       // if the serialized card is identical replace the previous state instead of adding a new one
       // e.x. when saving a new card we want to replace the state and URL with one with the new card ID
       replaceState = isSameCard && isSameMode;
@@ -307,8 +308,9 @@ export const initializeQB = (location, params) => {
     };
 
     // always start the QB by loading up the databases for the application
+    let databaseFetch;
     try {
-      await dispatch(
+      databaseFetch = dispatch(
         Databases.actions.fetchList({
           include_tables: true,
           include_cards: true,
@@ -413,16 +415,16 @@ export const initializeQB = (location, params) => {
 
       // initialize parts of the query based on optional parameters supplied
       if (card.dataset_query.query) {
-        if (options.table != undefined) {
+        if (options.table != null) {
           card.dataset_query.query["source-table"] = parseInt(options.table);
         }
-        if (options.segment != undefined) {
+        if (options.segment != null) {
           card.dataset_query.query.filter = [
             "segment",
             parseInt(options.segment),
           ];
         }
-        if (options.metric != undefined) {
+        if (options.metric != null) {
           // show the summarize sidebar for metrics
           uiControls.isShowingSummarySidebar = true;
           card.dataset_query.query.aggregation = [
@@ -441,20 +443,40 @@ export const initializeQB = (location, params) => {
 
     /**** All actions are dispatched here ****/
 
+    // Fetch alerts for the current question if the question is saved
+    if (card && card.id != null) {
+      dispatch(fetchAlertsForQuestion(card.id));
+    }
+    // Fetch the question metadata (blocking)
+    if (card) {
+      // ensure that the database fetch completed before getting the tables
+      if (databaseFetch) {
+        await databaseFetch;
+      }
+      const { tables } = getMetadata(getState());
+      const tableId = getIn(card, ["dataset_query", "query", "source-table"]);
+      // Only fetch the table metadata if the table was returned in the earlier
+      // call to fetch databases and tables. Otherwise, this user doesn't have
+      // permissions and the call will fail.
+      if (tables[tableId] != null) {
+        await dispatch(loadMetadataForCard(card));
+      }
+    }
+
+    let question = card && new Question(card, getMetadata(getState()));
+    if (params.cardId) {
+      // loading a saved question prevents auto-viz selection
+      question = question && question.setSelectedDisplay(question.display());
+    }
+
+    card = question && question.card();
+
     // Update the question to Redux state together with the initial state of UI controls
     dispatch.action(INITIALIZE_QB, {
       card,
       originalCard,
       uiControls,
     });
-
-    // Fetch alerts for the current question if the question is saved
-    card && card.id && dispatch(fetchAlertsForQuestion(card.id));
-
-    // Fetch the question metadata
-    card && dispatch(loadMetadataForCard(card));
-
-    const question = card && new Question(getMetadata(getState()), card);
 
     // if we have loaded up a card that we can run then lets kick that off as well
     // but don't bother for "notebook" mode
@@ -531,14 +553,14 @@ export const loadMetadataForCard = createThunkAction(
       if (!card || !card.dataset_query) {
         return;
       }
-      const query = new Question(getMetadata(getState()), card).query();
+      const query = new Question(card, getMetadata(getState())).query();
       if (query instanceof StructuredQuery) {
         try {
-          const sourceTable = query.sourceTable();
-          if (sourceTable) {
+          const rootTableId = query.rootTableId();
+          if (rootTableId != null) {
             await Promise.all([
-              dispatch(Tables.actions.fetchTableMetadata(sourceTable)),
-              dispatch(Tables.actions.fetchForeignKeys(sourceTable)),
+              dispatch(Tables.actions.fetchTableMetadata({ id: rootTableId })),
+              dispatch(Tables.actions.fetchForeignKeys({ id: rootTableId })),
             ]);
           }
           await Promise.all(
@@ -761,13 +783,26 @@ export const updateQuestion = (
       dispatch(setIsShowingTemplateTagsEditor(false));
     }
 
-    if (
-      !_.isEqual(
-        oldQuestion.query().dependentTableIds(),
-        newQuestion.query().dependentTableIds(),
-      )
-    ) {
-      dispatch(loadMetadataForCard(newQuestion.card()));
+    try {
+      if (
+        !_.isEqual(
+          oldQuestion.query().dependentTableIds(),
+          newQuestion.query().dependentTableIds(),
+        )
+      ) {
+        await dispatch(loadMetadataForCard(newQuestion.card()));
+      }
+
+      // setDefaultQuery requires metadata be loaded, need getQuestion to use new metadata
+      const question = getQuestion(getState());
+      const questionWithDefaultQuery = question.setDefaultQuery();
+      if (!questionWithDefaultQuery.isEqual(question)) {
+        await dispatch.action(UPDATE_QUESTION, {
+          card: questionWithDefaultQuery.setDefaultDisplay().card(),
+        });
+      }
+    } catch (e) {
+      // this will fail if user doesn't have data permissions but thats ok
     }
 
     // run updated query
@@ -804,7 +839,7 @@ export const apiCreateQuestion = question => {
     // remove the databases in the store that are used to populate the QB databases list.
     // This is done when saving a Card because the newly saved card will be eligible for use as a source query
     // so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
-    dispatch(clearRequestState({ statePath: ["entities", "databases"] }));
+    dispatch(setRequestUnloaded(["entities", "databases"]));
 
     dispatch(updateUrl(createdQuestion.card(), { dirty: false }));
     MetabaseAnalytics.trackEvent(
@@ -813,7 +848,15 @@ export const apiCreateQuestion = question => {
       createdQuestion.query().datasetQuery().type,
     );
 
-    dispatch.action(API_CREATE_QUESTION, createdQuestion.card());
+    // Saving a card, locks in the current display as though it had been
+    // selected in the UI. We also copy over `sensibleDisplays` since those were
+    // not persisted onto `createdQuestion`.
+    const card = createdQuestion
+      .setSensibleDisplays(question.sensibleDisplays())
+      .setSelectedDisplay(question.display())
+      .card();
+
+    dispatch.action(API_CREATE_QUESTION, card);
   };
 };
 
@@ -841,7 +884,7 @@ export const apiUpdateQuestion = question => {
     // remove the databases in the store that are used to populate the QB databases list.
     // This is done when saving a Card because the newly saved card will be eligible for use as a source query
     // so we want the databases list to be re-fetched next time we hit "New Question" so it shows up
-    dispatch(clearRequestState({ statePath: ["entities", "databases"] }));
+    dispatch(setRequestUnloaded(["entities", "databases"]));
 
     dispatch(updateUrl(updatedQuestion.card(), { dirty: false }));
     MetabaseAnalytics.trackEvent(
@@ -870,8 +913,8 @@ export const runQuestionQuery = ({
   overrideWithCard,
 }: RunQueryParams = {}) => {
   return async (dispatch, getState) => {
-    const questionFromCard = (c: Card): Question =>
-      c && new Question(getMetadata(getState()), c);
+    const questionFromCard = (card: Card): Question =>
+      card && new Question(card, getMetadata(getState()));
 
     let question: Question = overrideWithCard
       ? questionFromCard(overrideWithCard)
@@ -905,9 +948,7 @@ export const runQuestionQuery = ({
         ignoreCache: ignoreCache,
         isDirty: cardIsDirty,
       })
-      .then(queryResults =>
-        dispatch(queryCompleted(question.card(), queryResults)),
-      )
+      .then(queryResults => dispatch(queryCompleted(question, queryResults)))
       .catch(error => dispatch(queryErrored(startTime, error)));
 
     MetabaseAnalytics.trackEvent(
@@ -929,50 +970,16 @@ export const runQuestionQuery = ({
 export const CLEAR_QUERY_RESULT = "metabase/query_builder/CLEAR_QUERY_RESULT";
 export const clearQueryResult = createAction(CLEAR_QUERY_RESULT);
 
-const getDisplayTypeForCard = (card, queryResults) => {
-  // TODO Atte Keinänen 6/1/17: Make a holistic decision based on all queryResults, not just one
-  // This method seems to has been a candidate for a rewrite anyway
-  const queryResult = queryResults[0];
-
-  let cardDisplay = card.display;
-
-  // try a little logic to pick a smart display for the data
-  // TODO: less hard-coded rules for picking chart type
-  const isScalarVisualization =
-    card.display === "scalar" ||
-    card.display === "progress" ||
-    card.display === "gauge";
-  if (
-    !isScalarVisualization &&
-    queryResult.data.rows &&
-    queryResult.data.rows.length === 1 &&
-    queryResult.data.cols.length === 1
-  ) {
-    // if we have a 1x1 data result then this should always be viewed as a scalar
-    cardDisplay = "scalar";
-  } else if (
-    isScalarVisualization &&
-    queryResult.data.rows &&
-    (queryResult.data.rows.length > 1 || queryResult.data.cols.length > 1)
-  ) {
-    // any time we were a scalar and now have more than 1x1 data switch to table view
-    cardDisplay = "table";
-  } else if (!card.display) {
-    // if our query aggregation is "rows" then ALWAYS set the display to "table"
-    cardDisplay = "table";
-  }
-
-  return cardDisplay;
-};
-
 export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
-export const queryCompleted = (card, queryResults) => {
+export const queryCompleted = (question, queryResults) => {
   return async (dispatch, getState) => {
-    dispatch.action(QUERY_COMPLETED, {
-      card,
-      cardDisplay: getDisplayTypeForCard(card, queryResults),
-      queryResults,
-    });
+    const [{ data }] = queryResults;
+    const card = question
+      .setSensibleDisplays(getSensibleDisplays(data))
+      .setDefaultDisplay()
+      .switchTableScalar(data)
+      .card();
+    dispatch.action(QUERY_COMPLETED, { card, queryResults });
   };
 };
 
@@ -1068,6 +1075,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
   LOAD_OBJECT_DETAIL_FK_REFERENCES,
   () => {
     return async (dispatch, getState) => {
+      dispatch.action(CLEAR_OBJECT_DETAIL_FK_REFERENCES);
       // TODO Atte Keinänen 6/1/17: Should use `queryResults` instead
       const {
         qb: { card },
@@ -1128,10 +1136,23 @@ export const loadObjectDetailFKReferences = createThunkAction(
         fkReferences[fk.origin.id] = info;
       }
 
+      // It's possible that while we were running those queries, the object
+      // detail id changed. If so, these fk reference are stale and we shouldn't
+      // put them in state.
+      const updatedQueryResult = getFirstQueryResult(getState());
+      if (
+        getObjectDetailIdValue(queryResult.data) !==
+        getObjectDetailIdValue(updatedQueryResult.data)
+      ) {
+        return null;
+      }
       return fkReferences;
     };
   },
 );
+
+export const CLEAR_OBJECT_DETAIL_FK_REFERENCES =
+  "metabase/qb/CLEAR_OBJECT_DETAIL_FK_REFERENCES";
 
 // DEPRECATED: use metabase/entities/questions
 export const ARCHIVE_QUESTION = "metabase/qb/ARCHIVE_QUESTION";

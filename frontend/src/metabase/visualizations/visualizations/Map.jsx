@@ -4,8 +4,8 @@ import React, { Component } from "react";
 import { t } from "ttag";
 import ChoroplethMap, {
   getColorplethColorScale,
-} from "../components/ChoroplethMap.jsx";
-import PinMap from "../components/PinMap.jsx";
+} from "../components/ChoroplethMap";
+import PinMap from "../components/PinMap";
 
 import { ChartSettingsError } from "metabase/visualizations/lib/errors";
 import {
@@ -45,7 +45,10 @@ export default class Map extends Component {
   static minSize = { width: 4, height: 4 };
 
   static isSensible({ cols, rows }) {
-    return true;
+    return (
+      PinMap.isSensible({ cols, rows }) ||
+      ChoroplethMap.isSensible({ cols, rows })
+    );
   }
 
   static placeholderSeries = [

@@ -11,14 +11,14 @@
             [clojure.tools.logging :as log]
             [metabase.models.setting :refer [defsetting]]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util.i18n :refer [deferred-trs trs]]
             [schema.core :as s])
   (:import clojure.lang.Var
            [java.util.concurrent Executors ExecutorService]
            org.apache.commons.lang3.concurrent.BasicThreadFactory$Builder))
 
 (defsetting max-simultaneous-queries-per-db
-  (trs "Maximum number of simultaneous queries to allow per connected Database.")
+  (deferred-trs "Maximum number of simultaneous queries to allow per connected Database.")
   :type    :integer
   :default 15)
 

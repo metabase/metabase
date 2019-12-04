@@ -2,8 +2,8 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
-import StepTitle from "./StepTitle.jsx";
-import CollapsedStep from "./CollapsedStep.jsx";
+import StepTitle from "./StepTitle";
+import CollapsedStep from "./CollapsedStep";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 

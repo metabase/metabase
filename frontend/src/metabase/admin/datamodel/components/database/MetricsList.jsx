@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 import { t } from "ttag";
-import MetricItem from "./MetricItem.jsx";
+import MetricItem from "./MetricItem";
 
 export default class MetricsList extends Component {
   static propTypes = {
@@ -12,7 +12,8 @@ export default class MetricsList extends Component {
 
   render() {
     const { onRetire, tableMetadata } = this.props;
-    const { metrics = [] } = tableMetadata;
+    const { metrics: allMetrics = [] } = tableMetadata;
+    const metrics = allMetrics.filter(m => !m.googleAnalyics);
 
     return (
       <div id="MetricsList" className="my3">

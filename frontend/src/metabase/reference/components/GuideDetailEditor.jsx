@@ -6,9 +6,9 @@ import cx from "classnames";
 import { t } from "ttag";
 import S from "./GuideDetailEditor.css";
 
-import Select from "metabase/components/Select.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
+import Select from "metabase/components/Select";
+import Icon from "metabase/components/Icon";
+import Tooltip from "metabase/components/Tooltip";
 
 import { typeToBgClass } from "../utils.js";
 import { SchemaTableAndSegmentDataSelector } from "metabase/query_builder/components/DataSelector";

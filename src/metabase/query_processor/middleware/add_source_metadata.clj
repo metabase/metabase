@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.add-source-metadata
   (:require [clojure.tools.logging :as log]
             [clojure.walk :as walk]
+            [metabase.api.common :as api]
             [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
@@ -46,11 +47,16 @@
 (s/defn ^:private mbql-source-query->metadata :- [mbql.s/SourceQueryMetadata]
   "Preprocess a `source-query` so we can determine the result columns."
   [source-query]
-  (let [cols ((resolve 'metabase.query-processor/query->expected-cols) {:database (:id (qp.store/database))
-                                                                        :type     :query
-                                                                        :query    source-query})]
-    (for [col cols]
-      (select-keys col [:name :id :table_id :display_name :base_type :special_type :unit :fingerprint :settings]))))
+  (try
+    (let [cols (binding [api/*current-user-id* nil]
+                 ((resolve 'metabase.query-processor/query->expected-cols) {:database (:id (qp.store/database))
+                                                                            :type     :query
+                                                                            :query    source-query}))]
+      (for [col cols]
+        (select-keys col [:name :id :table_id :display_name :base_type :special_type :unit :fingerprint :settings])))
+    (catch Throwable e
+      (log/error #_e (str (trs "Error determining expected columns for query")))
+      nil)))
 
 (s/defn ^:private add-source-metadata :- {:source-metadata [mbql.s/SourceQueryMetadata], s/Keyword s/Any}
   [{{native-source-query? :native, :as source-query} :source-query, :as inner-query}]

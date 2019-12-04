@@ -14,10 +14,17 @@ import { color } from "metabase/lib/colors";
 const FilterPill = props => <ViewPill color={color("filter")} {...props} />;
 
 const FilterButton = props => (
-  <ViewButton medium icon="filter" color={color("filter")} {...props} />
+  <ViewButton
+    medium
+    icon="filter"
+    color={color("filter")}
+    labelBreakpoint="sm"
+    {...props}
+  />
 );
 
 export default function QuestionFilters({
+  className,
   question,
   expanded,
   onExpand,
@@ -25,52 +32,58 @@ export default function QuestionFilters({
 }) {
   const query = question.query();
   const filters = query.topLevelFilters();
-  return filters.length === 0 ? null : expanded ? (
-    <div className="flex flex-wrap align-center mbn1">
-      <Tooltip tooltip={t`Hide filters`}>
-        <FilterPill
-          invert
-          icon="filter"
-          className="mr1 mb1"
-          onClick={onCollapse}
-        />
-      </Tooltip>
-      {filters.map((filter, index) => (
-        <PopoverWithTrigger
-          key={index}
-          triggerElement={
-            <FilterPill
-              onRemove={() => filter.remove().update(null, { run: true })}
-            >
-              {filter.displayName()}
-            </FilterPill>
-          }
-          triggerClasses="flex flex-no-shrink align-center mr1 mb1"
-          sizeToFit
-        >
-          <FilterPopover
-            isTopLevel
-            query={query}
-            filter={filter}
-            onChangeFilter={newFilter =>
-              newFilter.replace().update(null, { run: true })
+  if (filters.length === 0) {
+    return null;
+  }
+  return (
+    <div className={className}>
+      <div className="flex flex-wrap align-center mbn1 mrn1">
+        <Tooltip tooltip={expanded ? t`Hide filters` : t`Show filters`}>
+          <FilterPill
+            invert
+            icon="filter"
+            className="mr1 mb1 cursor-pointer"
+            onClick={expanded ? onCollapse : onExpand}
+            data-metabase-event={
+              expanded
+                ? `View Mode; Header Filters Collapse Click`
+                : `View Mode; Header Filters Expand Click`
             }
-            className="scroll-y"
-          />
-        </PopoverWithTrigger>
-      ))}
+          >
+            {expanded ? null : filters.length}
+          </FilterPill>
+        </Tooltip>
+        {expanded &&
+          filters.map((filter, index) => (
+            <PopoverWithTrigger
+              key={index}
+              triggerElement={
+                <FilterPill
+                  onRemove={() => filter.remove().update(null, { run: true })}
+                >
+                  {filter.displayName()}
+                </FilterPill>
+              }
+              triggerClasses="flex flex-no-shrink align-center mr1 mb1"
+              sizeToFit
+            >
+              <FilterPopover
+                isTopLevel
+                query={query}
+                filter={filter}
+                onChangeFilter={newFilter =>
+                  newFilter.replace().update(null, { run: true })
+                }
+                className="scroll-y"
+              />
+            </PopoverWithTrigger>
+          ))}
+      </div>
     </div>
-  ) : (
-    <Tooltip tooltip={`Show filters`}>
-      <FilterPill invert icon="filter" onClick={onExpand}>
-        {filters.length}
-      </FilterPill>
-    </Tooltip>
   );
 }
 
 export function QuestionFilterWidget({
-  query,
   isShowingFilterSidebar,
   onAddFilter,
   onCloseFilter,
@@ -90,11 +103,12 @@ export function QuestionFilterWidget({
 QuestionFilters.shouldRender = ({ question, queryBuilderMode }) =>
   queryBuilderMode === "view" &&
   question.isStructured() &&
+  question.query().isEditable() &&
   question.query().topLevelFilters().length > 0 &&
   !question.isObjectDetail();
 
 QuestionFilterWidget.shouldRender = ({ question, queryBuilderMode }) =>
   queryBuilderMode === "view" &&
   question.isStructured() &&
-  question.query().table() &&
+  question.query().isEditable() &&
   !question.isObjectDetail();

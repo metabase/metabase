@@ -1,4 +1,4 @@
-import { useSharedAdminLogin, createTestStore } from "__support__/e2e_tests";
+import { useSharedAdminLogin, createTestStore } from "__support__/e2e";
 
 import React from "react";
 import { mount } from "enzyme";
@@ -41,7 +41,7 @@ describe("The Reference Section", () => {
     description: "I did it!",
     table_id: 1,
     show_in_getting_started: true,
-    definition: { database: 1, query: { aggregation: ["count"] } },
+    definition: { database: 1, query: { aggregation: [["count"]] } },
   };
 
   const anotherMetricDef = {
@@ -49,7 +49,7 @@ describe("The Reference Section", () => {
     description: "I did it again!",
     table_id: 1,
     show_in_getting_started: true,
-    definition: { database: 1, query: { aggregation: ["count"] } },
+    definition: { database: 1, query: { aggregation: [["count"]] } },
   };
 
   // Scaffolding

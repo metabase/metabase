@@ -12,8 +12,8 @@ export default function SummarizeStep({
   ...props
 }) {
   return (
-    <Flex align="center">
-      <Box width={1 / 2}>
+    <Flex align="center" flexDirection={["column", "row"]}>
+      <Box width={[1, 1 / 2]}>
         <AggregateStep
           color={color}
           query={query}
@@ -21,10 +21,10 @@ export default function SummarizeStep({
           {...props}
         />
       </Box>
-      <Box mx={2} style={{ color }} className="text-bold">
+      <Box mx={[0, 2]} my={[1, 0]} style={{ color }} className="text-bold">
         by
       </Box>
-      <Box width={1 / 2}>
+      <Box width={[1, 1 / 2]}>
         <BreakoutStep color={color} query={query} {...props} />
       </Box>
     </Flex>

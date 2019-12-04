@@ -1,6 +1,8 @@
 (ns metabase.api.collection-test
   "Tests for /api/collection endpoints."
-  (:require [clojure.string :as str]
+  (:require [clojure
+             [string :as str]
+             [test :refer :all]]
             [expectations :refer :all]
             [metabase
              [email-test :as et]
@@ -17,10 +19,14 @@
              [pulse-card :refer [PulseCard]]
              [pulse-channel :refer [PulseChannel]]
              [pulse-channel-recipient :refer [PulseChannelRecipient]]]
+            [metabase.test
+             [fixtures :as fixtures]
+             [util :as tu]]
             [metabase.test.data.users :refer [user->client user->id]]
-            [metabase.test.util :as tu]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
+
+(use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                GET /collection                                                 |
@@ -39,10 +45,7 @@
 (expect
   ["Our analytics"
    "Lucky Pigeon's Personal Collection"]
-  (do
-    (collection-test/force-create-personal-collections!)
-    ;; now fetch those Collections as the Lucky bird
-    (map :name ((user->client :lucky) :get 200 "collection"))))
+  (map :name ((user->client :lucky) :get 200 "collection")))
 
 ;; ...unless we are *admins*
 (expect
@@ -51,10 +54,7 @@
    "Lucky Pigeon's Personal Collection"
    "Rasta Toucan's Personal Collection"
    "Trash Bird's Personal Collection"]
-  (do
-    (collection-test/force-create-personal-collections!)
-    ;; now fetch those Collections as a superuser
-    (map :name ((user->client :crowberto) :get 200 "collection"))))
+  (map :name ((user->client :crowberto) :get 200 "collection")))
 
 ;; check that we don't see collections if we don't have permissions for them
 (expect
@@ -65,7 +65,6 @@
     (tt/with-temp* [Collection [collection-1 {:name "Collection 1"}]
                     Collection [collection-2 {:name "Collection 2"}]]
       (perms/grant-collection-read-permissions! (group/all-users) collection-1)
-      (collection-test/force-create-personal-collections!)
       (map :name ((user->client :rasta) :get 200 "collection")))))
 
 ;; check that we don't see collections if they're archived
@@ -77,7 +76,6 @@
                   Collection [collection-2 {:name "Regular Collection"}]]
     (perms/grant-collection-read-permissions! (group/all-users) collection-1)
     (perms/grant-collection-read-permissions! (group/all-users) collection-2)
-    (collection-test/force-create-personal-collections!)
     (map :name ((user->client :rasta) :get 200 "collection"))))
 
 ;; Check that if we pass `?archived=true` we instead see archived cards
@@ -87,7 +85,6 @@
                   Collection [collection-2 {:name "Regular Collection"}]]
     (perms/grant-collection-read-permissions! (group/all-users) collection-1)
     (perms/grant-collection-read-permissions! (group/all-users) collection-2)
-    (collection-test/force-create-personal-collections!)
     (map :name ((user->client :rasta) :get 200 "collection" :archived :true))))
 
 
@@ -127,7 +124,6 @@
    ((user->client :crowberto) :get 200 (str "collection/" (u/get-id collection) "/items"))))
 
 (defn- do-with-some-children-of-collection [collection-or-id-or-nil f]
-  (collection-test/force-create-personal-collections!)
   (tu/with-non-admin-groups-no-root-collection-perms
     (let [collection-id-or-nil (when collection-or-id-or-nil
                                  (u/get-id collection-or-id-or-nil))]
@@ -389,9 +385,7 @@
     :description nil
     :model       "collection"
     :can_write   true}]
-  (do
-    (collection-test/force-create-personal-collections!)
-    ((user->client :rasta) :get 200 "collection/root/items")))
+  ((user->client :rasta) :get 200 "collection/root/items"))
 
 ;; And for admins, only return our own Personal Collection (!)
 (expect
@@ -400,9 +394,7 @@
     :description nil
     :model       "collection"
     :can_write   true}]
-  (do
-    (collection-test/force-create-personal-collections!)
-    ((user->client :crowberto) :get 200 "collection/root/items")))
+  ((user->client :crowberto) :get 200 "collection/root/items"))
 
 ;; That includes sub-collections of Personal Collections! I shouldn't see them!
 (expect
@@ -411,12 +403,10 @@
     :description nil
     :model       "collection"
     :can_write   true}]
-  (do
-    (collection-test/force-create-personal-collections!)
-    (tt/with-temp Collection [_ {:name     "Lucky's Sub-Collection"
-                                 :location (collection/children-location
-                                            (collection/user->personal-collection (user->id :lucky)))}]
-      ((user->client :crowberto) :get 200 "collection/root/items"))))
+  (tt/with-temp Collection [_ {:name     "Lucky's Sub-Collection"
+                               :location (collection/children-location
+                                          (collection/user->personal-collection (user->id :lucky)))}]
+    ((user->client :crowberto) :get 200 "collection/root/items")))
 
 ;; Can we look for `archived` stuff with this endpoint?
 (expect
@@ -427,7 +417,6 @@
     :favorite            false
     :model               "card"}]
   (tt/with-temp Card [card {:name "Business Card", :archived true}]
-    (collection-test/force-create-personal-collections!)
     (for [item ((user->client :crowberto) :get 200 "collection/root/items?archived=true")]
       (dissoc item :id))))
 
@@ -438,7 +427,6 @@
   "Call the API with Rasta to fetch the 'Root' Collection and put the `:effective_` results in a nice format for the
   tests below."
   [& additional-get-params]
-  (collection-test/force-create-personal-collections!)
   [(format-ancestors-and-children ((user->client :rasta) :get 200 "collection/root"))
    (tu/boolean-ids-and-timestamps (apply (user->client :rasta) :get 200 "collection/root/items" additional-get-params))])
 

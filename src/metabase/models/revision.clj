@@ -84,7 +84,7 @@
   (merge models/IModelDefaults
          {:types       (constantly {:object :json, :message :clob})
           :pre-insert  pre-insert
-          :pre-update  (fn [& _] (throw (Exception. (str (tru "You cannot update a Revision!")))))
+          :pre-update  (fn [& _] (throw (Exception. (tru "You cannot update a Revision!"))))
           :post-select do-post-select-for-object}))
 
 

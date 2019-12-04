@@ -5,7 +5,8 @@
             [clojure.string :as str]
             [environ.core :as environ]
             [metabase.plugins.classloader :as classloader])
-  (:import clojure.lang.Keyword))
+  (:import clojure.lang.Keyword
+           java.util.UUID))
 
 (def ^Boolean is-windows?
   "Are we running on a Windows machine?"
@@ -100,6 +101,12 @@
    with database connections so admins can identify them as Metabase ones.
    Looks something like `Metabase v0.25.0.RC1`."
   (str "Metabase " (mb-version-info :tag)))
+
+(defonce ^{:doc "This UUID is randomly-generated upon launch and used to identify this specific Metabase instance during
+                this specifc run. Restarting the server will change this UUID, and each server in a horizontal cluster
+                will have its own ID, making this different from the `site-uuid` Setting."}
+  local-process-uuid
+  (str (UUID/randomUUID)))
 
 
 ;; This only affects dev:

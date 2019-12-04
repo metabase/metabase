@@ -26,7 +26,7 @@
 ;;; ---------------------------------------------- Setting up the Store ----------------------------------------------
 
 (def ^:private uninitialized-store
-  (delay (throw (Exception. (str (tru "Error: Query Processor store is not initialized."))))))
+  (delay (throw (Exception. (tru "Error: Query Processor store is not initialized.")))))
 
 (def ^:private ^:dynamic *store*
   "Dynamic var used as the QP store for a given query execution."
@@ -140,7 +140,7 @@
 (s/defn ^:private db-id :- su/IntGreaterThanZero
   []
   (or (get-in @*store* [:database :id])
-      (throw (Exception. (str (tru "Cannot store Tables or Fields before Database is stored."))))))
+      (throw (Exception. (tru "Cannot store Tables or Fields before Database is stored.")))))
 
 (s/defn fetch-and-store-database!
   "Fetch the Database this query will run against from the application database, and store it in the QP Store for the
@@ -150,12 +150,12 @@
   (if-let [existing-db-id (get-in @*store* [:database :id])]
     ;; if there's already a DB in the Store, double-check it has the same ID as the one that we were asked to fetch
     (when-not (= existing-db-id database-id)
-      (throw (ex-info (str (tru "Attempting to fetch second Database. Queries can only reference one Database."))
+      (throw (ex-info (tru "Attempting to fetch second Database. Queries can only reference one Database.")
                {:existing-id existing-db-id, :attempted-to-fetch database-id})))
     ;; if there's no DB, fetch + save
     (store-database!
      (or (db/select-one (into [Database] database-columns-to-fetch) :id database-id)
-         (throw (ex-info (str (tru "Database {0} does not exist." (str database-id)))
+         (throw (ex-info (tru "Database {0} does not exist." (str database-id))
                   {:database database-id}))))))
 
 (def ^:private IDs
@@ -179,7 +179,7 @@
       (doseq [id ids-to-fetch]
         (when-not (fetched-ids id)
           (throw
-           (ex-info (str (tru "Failed to fetch Table {0}: Table does not exist, or belongs to a different Database." id))
+           (ex-info (tru "Failed to fetch Table {0}: Table does not exist, or belongs to a different Database." id)
              {:table id, :database (db-id)}))))
       ;; ok, now store them all in the Store
       (doseq [table fetched-tables]
@@ -207,7 +207,7 @@
       (doseq [id ids-to-fetch]
         (when-not (fetched-ids id)
           (throw
-           (ex-info (str (tru "Failed to fetch Field {0}: Field does not exist, or belongs to a different Database." id))
+           (ex-info (tru "Failed to fetch Field {0}: Field does not exist, or belongs to a different Database." id)
              {:field id, :database (db-id)}))))
       ;; ok, now store them all in the Store
       (doseq [field fetched-fields]
@@ -221,16 +221,65 @@
   returned."
   []
   (or (:database @*store*)
-      (throw (Exception. (str (tru "Error: Database is not present in the Query Processor Store."))))))
+      (throw (Exception. (tru "Error: Database is not present in the Query Processor Store.")))))
 
 (s/defn table :- TableInstanceWithRequiredStoreKeys
   "Fetch Table with `table-id` from the QP Store. Throws an Exception if valid item is not returned."
   [table-id :- su/IntGreaterThanZero]
   (or (get-in @*store* [:tables table-id])
-      (throw (Exception. (str (tru "Error: Table {0} is not present in the Query Processor Store." table-id))))))
+      (throw (Exception. (tru "Error: Table {0} is not present in the Query Processor Store." table-id)))))
 
 (s/defn field :- FieldInstanceWithRequiredStorekeys
   "Fetch Field with `field-id` from the QP Store. Throws an Exception if valid item is not returned."
   [field-id :- su/IntGreaterThanZero]
   (or (get-in @*store* [:fields field-id])
-      (throw (Exception. (str (tru "Error: Field {0} is not present in the Query Processor Store." field-id))))))
+      (throw (Exception. (tru "Error: Field {0} is not present in the Query Processor Store." field-id)))))
+
+
+;;; ------------------------------------------ Caching Miscellaneous Values ------------------------------------------
+
+(s/defn store-miscellaneous-value!
+  "Store a miscellaneous value in a the cache. Persists for the life of this QP invocation, including for recursive
+  calls."
+  [ks v]
+  (swap! *store* assoc-in (cons :misc ks) v))
+
+(s/defn miscellaneous-value
+  "Fetch a miscellaneous value from the cache. Unlike other Store functions, does not throw if value is not found."
+  ([ks]
+   (miscellaneous-value ks nil))
+
+  ([ks not-found]
+   (get-in @*store* (cons :misc ks) not-found)))
+
+(defn cached-fn
+  "Attempt to fetch a miscellaneous value from the cache using key sequence `ks`; if not found, runs `thunk` to get the
+  value, stores it in the cache, and returns the value. You can use this to ensure a given function is only ran once
+  during the duration of a QP execution.
+
+  See also `cached` macro."
+  {:style/indent 1}
+  [ks thunk]
+  (let [cached-value (miscellaneous-value ks ::not-found)]
+    (if-not (= cached-value ::not-found)
+      cached-value
+      (let [v (thunk)]
+        (store-miscellaneous-value! ks v)
+        v))))
+
+(defmacro cached
+  "Cache the value of `body` for key(s) for the duration of this QP execution. (Body is only evaluated the once per QP
+  run; subsequent calls return the cached result.)
+
+  Note that each use of `cached` generates its own unique first key for cache keyseq; thus while it is not possible to
+  share values between multiple `cached` forms, you do not need to worry about conflicts with other places using this
+  macro.
+
+    ;; cache lookups of Card.dataset_query
+    (qp.store/cached card-id
+      (db/select-one-field :dataset_query Card :id card-id))"
+  {:style/indent 1}
+  [k-or-ks & body]
+  ;; for the unique key use a gensym prefixed by the namespace to make for easier store debugging if needed
+  (let [ks (into [(list 'quote (gensym (str (name (ns-name *ns*)) "/misc-cache-")))] (u/one-or-many k-or-ks))]
+    `(cached-fn ~ks (fn [] ~@body))))

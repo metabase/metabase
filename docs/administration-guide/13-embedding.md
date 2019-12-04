@@ -13,7 +13,7 @@ SQL based questions with template variables can also accept parameters for each 
 ```
 SELECT count(*)
 FROM orders
-WHERE product_id = {{productID}}
+WHERE product_id = {% raw %}{{productID}}{% endraw %}
 ```
 you could specify a specific productID when embedding the question.
 

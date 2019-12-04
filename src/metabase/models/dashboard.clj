@@ -225,7 +225,13 @@
 
 (defn- save-card!
   [card]
-  (when (-> card :dataset_query not-empty)
+  (cond
+    ;; If this is a pre-existing card, just return it
+    (and (integer? (:id card)) (Card (:id card)))
+    card
+
+    ;; Don't save text cards
+    (-> card :dataset_query not-empty)
     (let [card (db/insert! 'Card
                  (-> card
                      (update :result_metadata #(or % (-> card

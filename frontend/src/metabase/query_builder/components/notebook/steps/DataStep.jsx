@@ -1,19 +1,25 @@
 import React from "react";
-
+import { connect } from "react-redux";
 import { t } from "ttag";
 
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 import { NotebookCell, NotebookCellItem } from "../NotebookCell";
 
-export default function DataStep({ color, query, updateQuery }) {
+import { getDatabasesList } from "metabase/query_builder/selectors";
+
+function DataStep({ color, query, databases, updateQuery }) {
+  const table = query.table();
   return (
     <NotebookCell color={color}>
       <DatabaseSchemaAndTableDataSelector
-        databases={query.metadata().databasesList()}
+        databases={databases}
         selectedDatabaseId={query.databaseId()}
         selectedTableId={query.tableId()}
         setSourceTableFn={tableId =>
-          query.setTableId(tableId).update(updateQuery)
+          query
+            .setTableId(tableId)
+            .setDefaultQuery()
+            .update(updateQuery)
         }
         isInitiallyOpen={!query.tableId()}
         triggerElement={
@@ -23,14 +29,14 @@ export default function DataStep({ color, query, updateQuery }) {
             </NotebookCellItem>
           ) : (
             <NotebookCellItem color={color} icon="table2">
-              {query.table().displayName()}
+              {table && table.displayName()}
             </NotebookCellItem>
           )
         }
       />
-      {query.table() && query.isRaw() && (
+      {table && query.isRaw() && (
         <DataFieldsPicker
-          className="ml-auto mb1"
+          className="ml-auto mb1 text-bold"
           query={query}
           updateQuery={updateQuery}
         />
@@ -38,6 +44,10 @@ export default function DataStep({ color, query, updateQuery }) {
     </NotebookCell>
   );
 }
+
+export default connect(state => ({ databases: getDatabasesList(state) }))(
+  DataStep,
+);
 
 import FieldsPicker from "./FieldsPicker";
 

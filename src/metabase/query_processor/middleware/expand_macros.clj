@@ -14,8 +14,9 @@
              [metric :refer [Metric]]
              [segment :refer [Segment]]]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
-            [puppetlabs.i18n.core :refer [trs tru]]
+            [metabase.util
+             [i18n :refer [trs tru]]
+             [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -31,7 +32,7 @@
   (mbql.u/replace-in outer-query [:query]
     [:segment (segment-id :guard (complement mbql.u/ga-id?))]
     (or (:filter (segment-id->definition segment-id))
-        (throw (IllegalArgumentException. (str (tru "Segment {0} does not exist, or is invalid." segment-id)))))))
+        (throw (IllegalArgumentException. (tru "Segment {0} does not exist, or is invalid." segment-id))))))
 
 (s/defn ^:private expand-segments :- mbql.s/Query
   [{inner-query :query, :as outer-query} :- mbql.s/Query]
@@ -96,7 +97,7 @@
 (defn- replace-metrics-aggregations [query metric-id->info]
   (let [metric (fn [metric-id]
                  (or (get metric-id->info metric-id)
-                     (throw (ex-info (str (tru "Metric {0} does not exist, or is invalid." metric-id))
+                     (throw (ex-info (tru "Metric {0} does not exist, or is invalid." metric-id)
                               {:type :invalid-query, :metric metric-id}))))]
     (mbql.u/replace-in query [:query]
       ;; if metric is wrapped in aggregation options that give it a display name, expand the metric but do not name it

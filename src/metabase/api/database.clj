@@ -31,7 +31,7 @@
              [sync-metadata :as sync-metadata]]
             [metabase.util
              [cron :as cron-util]
-             [i18n :refer [tru]]
+             [i18n :refer [deferred-tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -45,7 +45,7 @@
                               su/NonBlankString
                               #(u/ignore-exceptions (driver/the-driver %))
                               "Valid database engine")
-    (tru "value must be a valid database engine.")))
+    (deferred-tru "value must be a valid database engine.")))
 
 
 ;;; ----------------------------------------------- GET /api/database ------------------------------------------------
@@ -94,9 +94,10 @@
    would be ambiguous. Too many things break when attempting to use a query like this. In the future, this may be
    supported, but it will likely require rewriting the source SQL query to add appropriate aliases (this is even
    trickier if the source query uses `SELECT *`)."
-  [{result-metadata :result_metadata}]
-  (some (partial re-find #"_2$")
-        (map (comp name :name) result-metadata)))
+  [{result-metadata :result_metadata, dataset-query :dataset_query}]
+  (and (= (:type dataset-query) :native)
+       (some (partial re-find #"_2$")
+             (map (comp name :name) result-metadata))))
 
 (defn- card-uses-unnestable-aggregation?
   "Since cumulative count and cumulative sum aggregations are done in Clojure-land we can't use Cards that

@@ -2,16 +2,16 @@
   "Helper functions for various query processor tests. The tests themselves can be found in various
   `metabase.query-processor-test.*` namespaces; there are so many that it is no longer feasible to keep them all in
   this one. Event-based DBs such as Druid are tested in `metabase.driver.event-query-processor-test`."
-  (:require [clojure.set :as set]
+  (:require [clojure
+             [set :as set]
+             [string :as str]]
             [medley.core :as m]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
              [util :as u]]
             [metabase.driver.util :as driver.u]
-            [metabase.models
-             [field :refer [Field]]
-             [table :refer [Table]]]
+            [metabase.models.field :refer [Field]]
             [metabase.test.data :as data]
             [metabase.test.data
              [datasets :as datasets]
@@ -21,50 +21,92 @@
 
 ;;; ---------------------------------------------- Helper Fns + Macros -----------------------------------------------
 
-;; TODO - now that we've added Google Analytics to this, `timeseries-drivers` doesn't really make sense anymore.
-;; Perhaps we should rename it to `abnormal-drivers`
-
 ;; Event-Based DBs aren't tested here, but in `event-query-processor-test` instead.
-(def ^:private timeseries-drivers #{:druid :googleanalytics})
+(def ^:private abnormal-drivers
+  "Drivers that are so weird that we can't run the normal driver tests against them."
+  #{:druid :googleanalytics})
 
-(def non-timeseries-drivers
-  "Set of engines for non-timeseries DBs (i.e., every driver except `:druid`)."
-  (set/difference tx.env/test-drivers timeseries-drivers))
+(defn normal-drivers
+  "Drivers that are reasonably normal in the sense that they can participate in the shared driver tests."
+  []
+  (set/difference (tx.env/test-drivers) abnormal-drivers))
 
-(defn non-timeseries-drivers-with-feature
+;; TODO - we should make this a function instead to facilitate rebinding with macros like `dev/with-test-drivers`
+(def ^:deprecated non-timeseries-drivers
+  "Set of engines for non-timeseries DBs (i.e., every driver except `:druid`). DEPRECATED — Use `normal-drivers`
+  instead."
+  (reify
+    clojure.lang.IDeref
+    (deref [_]
+      (normal-drivers))))
+
+(defn normal-drivers-with-feature
   "Set of engines that support a given `feature`. If additional features are given, it will ensure all features are
   supported."
   [feature & more-features]
   (let [features (set (cons feature more-features))]
-    (set (for [engine non-timeseries-drivers
-               :when  (set/subset? features (driver.u/features engine))]
-           engine))))
+    (set (for [driver (normal-drivers)
+               :let   [driver (tx/the-driver-with-test-extensions driver)]
+               :when  (set/subset? features (driver.u/features driver))]
+           driver))))
 
-(defn non-timeseries-drivers-without-feature
+(defn ^:deprecated non-timeseries-drivers-with-feature
+  "DEPRECATED — use `normal-drivers-with-feature` instead."
+  [feature & more-features]
+  (apply normal-drivers-with-feature feature more-features))
+
+(defn normal-drivers-without-feature
   "Return a set of all non-timeseries engines (e.g., everything except Druid) that DO NOT support `feature`."
   [feature]
-  (set/difference non-timeseries-drivers (non-timeseries-drivers-with-feature feature)))
+  (set/difference (normal-drivers) (normal-drivers-with-feature feature)))
 
-;; TODO - should be renamed to `expect-with-non-timeseries-drivers`
-(defmacro expect-with-non-timeseries-dbs
+(defn ^:deprecated non-timeseries-drivers-without-feature
+  "DEPRECATED — use `normal-drivers-without-feature` instead."
+  [feature]
+  (normal-drivers-without-feature feature))
+
+(defmacro ^:deprecated expect-with-non-timeseries-dbs
+  "DEPRECATED — Use `deftest` + `test-drivers` + `normal-drivers` instead.
+
+    (deftest my-test
+      (datasets/test-drivers (qp.test/normal-drivers)
+        (is (= ...))))"
   {:style/indent 0}
   [expected actual]
-  `(datasets/expect-with-drivers non-timeseries-drivers
+  `(datasets/expect-with-drivers (normal-drivers)
      ~expected
      ~actual))
 
-(defmacro expect-with-non-timeseries-dbs-except
+(defn normal-drivers-except
+  "Return the set of all drivers except Druid, Google Analytics, and those in `excluded-drivers`."
+  [excluded-drivers]
+  (set/difference (normal-drivers) (set excluded-drivers)))
+
+(defn ^:deprecated non-timeseries-drivers-except
+  "DEPRECATED — Use `normal-drivers-except` instead."
+  [excluded-drivers]
+  (normal-drivers-except excluded-drivers))
+
+(defmacro ^:deprecated expect-with-non-timeseries-dbs-except
+  "DEPRECATED — Use `deftest` + `test-drivers` + `normal-drivers-except` instead.
+
+    (deftest my-test
+      (datasets/test-drivers (qp.test/normal-drivers-except #{:snowflake})
+        (is (= ...))))"
   {:style/indent 1}
-  [excluded-engines expected actual]
-  `(datasets/expect-with-drivers (set/difference non-timeseries-drivers (set ~excluded-engines))
+  [excluded-drivers expected actual]
+  `(datasets/expect-with-drivers (normal-drivers-except ~excluded-drivers)
      ~expected
      ~actual))
 
 (defmacro ^:deprecated qp-expect-with-all-drivers
   "Wraps `expected` form in the 'wrapped' query results (includes `:status` and `:row_count`.)
 
-  DEPRECATED -- If you don't care about `:status` and `:row_count` (you usually don't) use `qp.test/rows` or
-  `qp.test/rows-and-columns` instead."
+  DEPRECATED — If you don't care about `:status` and `:row_count` (you usually don't) use `qp.test/rows` or
+  `qp.test/rows-and-columns` instead.
+
+  DEPRECATED x2 - You also shouldn't use this because it ultimately uses `expectations`-style `expect` -- see
+  docstring for `expect-with-non-timeseries-dbs` for suggested alternative."
   {:style/indent 0}
   [data query-form & post-process-fns]
   `(expect-with-non-timeseries-dbs
@@ -168,12 +210,10 @@
 (defn fk-col
   "Return expected `:cols` info for a Field that came in via an implicit join (i.e, via an `fk->` clause)."
   [source-table-kw source-field-kw, dest-table-kw dest-field-kw]
-  (let [source-col              (col source-table-kw source-field-kw)
-        dest-col                (col dest-table-kw dest-field-kw)
-        dest-table-display-name (db/select-one-field :display_name Table :id (data/id dest-table-kw))
-        dest-table-name         (db/select-one-field :name Table :id (data/id dest-table-kw))]
+  (let [source-col (col source-table-kw source-field-kw)
+        dest-col   (col dest-table-kw dest-field-kw)]
     (-> dest-col
-        (update :display_name (partial format "%s → %s" (or dest-table-display-name dest-table-name)))
+        (update :display_name (partial format "%s → %s" (str/replace (:display_name source-col) #"(?i)\sid$" "")))
         (assoc :field_ref   [:fk-> [:field-id (:id source-col)] [:field-id (:id dest-col)]]
                :fk_field_id (:id source-col)))))
 
@@ -211,14 +251,40 @@
       (m/dissoc-in [:data :results_metadata])
       (m/dissoc-in [:data :insights])))
 
-(defn- default-format-rows-by-fns [table-kw]
-  (case table-kw
-    :categories [int identity]
-    :checkins   [int identity int int]
-    :users      [int identity identity]
-    :venues     [int identity int 4.0 4.0 int]
-    (throw
-     (IllegalArgumentException. (format "Sorry, we don't have default format-rows-by fns for Table %s." table-kw)))))
+(defmulti format-rows-fns
+  "Return vector of functions (or floating-point numbers, for rounding; see `format-rows-by`) to use to format result
+  rows with `format-rows-by` or `formatted-rows`. The first arg to these macros is converted to a sequence of
+  functions by calling this function.
+
+  Sequential args are assumed to already be a sequence of functions and are returned as-is. Keywords can be thought of
+  as aliases and map to a pre-defined sequence of functions. The usual test data tables have predefined fn sequences;
+  you can add addition ones for use locally by adding more implementations for this method.
+
+    (format-rows-fns [int identity]) ;-> [int identity]
+    (format-rows-fns :venues)        ;-> [int identity int 4.0 4.0 int]"
+  {:arglists '([keyword-or-fns-seq])}
+  (fn [x]
+    (if (keyword? x) x (class x))))
+
+(defmethod format-rows-fns clojure.lang.Sequential
+  [this]
+  this)
+
+(defmethod format-rows-fns :categories
+  [_]
+  [int identity])
+
+(defmethod format-rows-fns :checkins
+  [_]
+  [int identity int int])
+
+(defmethod format-rows-fns :users
+  [_]
+  [int identity identity])
+
+(defmethod format-rows-fns :venues
+  [_]
+  [int identity int 4.0 4.0 int])
 
 (defn- format-rows-fn
   "Handle a value formatting function passed to `format-rows-by`."
@@ -254,11 +320,7 @@
      (println "Error running query:" (u/pprint-to-str 'red response))
      (throw (ex-info (:error response) response)))
 
-   (let [format-fns (map
-                     format-rows-fn
-                     (if (keyword? format-fns)
-                       (default-format-rows-by-fns format-fns)
-                       format-fns))]
+   (let [format-fns (map format-rows-fn (format-rows-fns format-fns))]
      (-> response
          ((fn format-rows [rows]
             (cond
@@ -277,7 +339,7 @@
                       (try
                         (f v)
                         (catch Throwable e
-                          (throw (ex-info (printf "format-rows-by failed (f = %s, value = %s %s): %s" f (.getName (class v)) v (.getMessage e))
+                          (throw (ex-info (format "format-rows-by failed (f = %s, value = %s %s): %s" f (.getName (class v)) v (.getMessage e))
                                    {:f f, :v v}
                                    e)))))))))
 
@@ -325,7 +387,7 @@
   "Return the result `:cols` from query `results`, or throw an Exception if they're missing."
   {:style/indent 0}
   [results]
-  (or (some-> (data results) :cols vec)
+  (or (some->> (data results) :cols (mapv #(into {} %)))
       (throw (ex-info "Query does not have any :cols in results." results))))
 
 (defn rows-and-cols
@@ -349,4 +411,5 @@
   differentiate Oracle from the other report-timezone databases until that bug can get fixed. Redshift and Snowflake
   also have this issue."
   [driver]
+  ;; TIMEZONE FIXME — remove this and fix the drivers
   (contains? #{:snowflake :oracle :redshift} driver))

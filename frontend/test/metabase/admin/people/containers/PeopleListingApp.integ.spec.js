@@ -1,9 +1,9 @@
 import React from "react";
 import mock from "xhr-mock";
-import { mountWithStore } from "__support__/integration_tests";
-import { click } from "__support__/enzyme_utils";
+import { mountWithStore } from "__support__/integration";
+import { click } from "__support__/enzyme";
 import { refreshCurrentUser } from "metabase/redux/user";
-import UserAvatar from "metabase/components/UserAvatar.jsx";
+import UserAvatar from "metabase/components/UserAvatar";
 import Radio from "metabase/components/Radio";
 import EntityMenu from "metabase/components/EntityMenu";
 import EntityMenuItem from "metabase/components/EntityMenuItem";

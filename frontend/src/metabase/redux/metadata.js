@@ -105,7 +105,7 @@ export const fetchDatabaseMetadata = (dbId, reload = false) => {
 export const updateDatabase = database => {
   deprecated("metabase/redux/metadata updateDatabase");
   const slimDatabase = _.omit(database, "tables", "tables_lookup");
-  return database.actions.update(slimDatabase);
+  return Databases.actions.update(slimDatabase);
 };
 
 export const updateTable = table => {
@@ -114,8 +114,7 @@ export const updateTable = table => {
     table,
     "fields",
     "fields_lookup",
-    "aggregation_options",
-    "breakout_options",
+    "aggregation_operators",
     "metrics",
     "segments",
   );
@@ -165,7 +164,7 @@ export const addFields = fieldMaps => {
 export const UPDATE_FIELD = Fields.actions.update.toString();
 export const updateField = field => {
   deprecated("metabase/redux/metadata updateField");
-  const slimField = _.omit(field, "operators_lookup");
+  const slimField = _.omit(field, "filter_operators_lookup");
   return Fields.actions.update(slimField);
 };
 

@@ -444,7 +444,7 @@ function setFetchCardDataCancel(card_id, dashcard_id, deferred) {
 export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
   card,
   dashcard,
-  { reload, clear } = {},
+  { reload, clear, ignoreCache } = {},
 ) {
   return async function(dispatch, getState) {
     // If the dataset_query was filtered then we don't have permisison to view this card, so
@@ -529,6 +529,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
             parameters: datasetQuery.parameters
               ? JSON.stringify(datasetQuery.parameters)
               : undefined,
+            ignore_cache: ignoreCache,
           },
           queryOptions,
         ),
@@ -541,18 +542,26 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
             dashcardId: dashcard.id,
             cardId: card.id,
             ...getParametersBySlug(dashboard.parameters, parameterValues),
+            ignore_cache: ignoreCache,
           },
           queryOptions,
         ),
       );
     } else if (dashboardType === "transient") {
       result = await fetchDataOrError(
-        MetabaseApi.dataset(datasetQuery, queryOptions),
+        MetabaseApi.dataset(
+          { ...datasetQuery, ignore_cache: ignoreCache },
+          queryOptions,
+        ),
       );
     } else {
       result = await fetchDataOrError(
         CardApi.query(
-          { cardId: card.id, parameters: datasetQuery.parameters },
+          {
+            cardId: card.id,
+            parameters: datasetQuery.parameters,
+            ignore_cache: ignoreCache,
+          },
           queryOptions,
         ),
       );
@@ -926,6 +935,35 @@ const cardList = handleActions(
   null,
 );
 
+export function syncParametersAndEmbeddingParams(before, after) {
+  if (after.parameters && before.embedding_params) {
+    return Object.keys(before.embedding_params).reduce((memo, embedSlug) => {
+      const slugParam = _.find(before.parameters, param => {
+        return param.slug === embedSlug;
+      });
+      if (slugParam) {
+        const slugParamId = slugParam && slugParam.id;
+        const newParam = _.findWhere(after.parameters, { id: slugParamId });
+        if (newParam) {
+          memo[newParam.slug] = before.embedding_params[embedSlug];
+        }
+      }
+      return memo;
+    }, {});
+  } else {
+    return before.embedding_params;
+  }
+}
+
+function newDashboard(before, after) {
+  return {
+    ...before,
+    ...after,
+    embedding_params: syncParametersAndEmbeddingParams(before, after),
+    isDirty: true,
+  };
+}
+
 const dashboards = handleActions(
   {
     [FETCH_DASHBOARD]: {
@@ -935,10 +973,12 @@ const dashboards = handleActions(
       }),
     },
     [SET_DASHBOARD_ATTRIBUTES]: {
-      next: (state, { payload: { id, attributes } }) => ({
-        ...state,
-        [id]: { ...state[id], ...attributes, isDirty: true },
-      }),
+      next: (state, { payload: { id, attributes } }) => {
+        return {
+          ...state,
+          [id]: newDashboard(state[id], attributes),
+        };
+      },
     },
     [ADD_CARD_TO_DASH]: (state, { payload: dashcard }) => ({
       ...state,

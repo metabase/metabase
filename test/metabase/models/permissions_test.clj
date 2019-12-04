@@ -1,13 +1,14 @@
 (ns metabase.models.permissions-test
-  (:require [expectations :refer :all]
+  (:require [expectations :refer [expect]]
             [metabase.models
              [collection :as collection :refer [Collection]]
-             [collection-test :as collection-test]
              [database :refer [Database]]
              [permissions :as perms :refer [Permissions]]
              [permissions-group :as group :refer [PermissionsGroup]]
              [table :refer [Table]]]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [initialize :as initialize]]
             [metabase.test.data.users :as test-users]
             [metabase.util :as u]
             [toucan.db :as db]
@@ -555,8 +556,8 @@
 
 ;; Test that setting partial permissions for a table retains permissions for other tables -- #3888
 (expect
-  [{(data/id :categories) :none, (data/id :checkins) :none, (data/id :users) :none, (data/id :venues) :all}
-   {(data/id :categories) :all,  (data/id :checkins) :none, (data/id :users) :none, (data/id :venues) :all}]
+  [{(data/id :venues) :all}
+   {(data/id :categories) :all, (data/id :venues) :all}]
   (tt/with-temp PermissionsGroup [group]
     ;; first, graph permissions only for VENUES
     (perms/grant-permissions! group (perms/object-path (data/id) "PUBLIC" (data/id :venues)))
@@ -590,6 +591,37 @@
                     Permissions [perms {:group_id (u/get-id (group/metabot)), :object (perms/object-path db)}]]
       (contains? (:groups (perms/graph)) (u/get-id (group/metabot))))))
 
+;; Make sure we can set the new broken-out read/query perms for a Table and the graph works as we'd expect
+(expect
+  {(data/id :venues) {:read :all}}
+  (tt/with-temp PermissionsGroup [group]
+    (perms/grant-permissions! group (perms/table-read-path (Table (data/id :venues))))
+    (test-data-graph group)))
+
+(expect
+  {(data/id :venues) {:query :segmented}}
+  (tt/with-temp PermissionsGroup [group]
+    (perms/grant-permissions! group (perms/table-segmented-query-path (Table (data/id :venues))))
+    (test-data-graph group)))
+
+(expect
+  {(data/id :venues) {:read  :all
+                      :query :segmented}}
+  (tt/with-temp PermissionsGroup [group]
+    (perms/update-graph! [(u/get-id group) (data/id) :schemas]
+                         {"PUBLIC"
+                          {(data/id :venues)
+                           {:read :all, :query :segmented}}})
+    (test-data-graph group)))
+
+;; A "/" permission grants all dataset permissions
+(tt/expect-with-temp [Database [{db_id :id}]]
+  {db_id {:native  :write
+          :schemas :all}}
+  (let [{:keys [group_id]} (db/select-one 'Permissions {:object "/"})]
+    (-> (perms/graph)
+        (get-in [:groups group_id])
+        (select-keys [db_id]))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                 Granting/Revoking Permissions Helper Functions                                 |
@@ -599,10 +631,10 @@
 (expect
   Exception
   (do
-    (collection-test/force-create-personal-collections!)
+    (initialize/initialize-if-needed! :test-users-personal-collections)
     (perms/revoke-collection-permissions!
-     (group/all-users)
-     (u/get-id (db/select-one 'Collection :personal_owner_id (test-users/user->id :lucky))))))
+      (group/all-users)
+      (u/get-id (db/select-one 'Collection :personal_owner_id (test-users/user->id :lucky))))))
 
 ;; (should apply to descendants as well)
 (expect
@@ -618,7 +650,7 @@
 (expect
   Exception
   (do
-    (collection-test/force-create-personal-collections!)
+    (initialize/initialize-if-needed! :test-users-personal-collections)
     (perms/grant-collection-read-permissions!
      (group/all-users)
      (u/get-id (db/select-one 'Collection :personal_owner_id (test-users/user->id :lucky))))))
@@ -638,7 +670,7 @@
 (expect
   Exception
   (do
-    (collection-test/force-create-personal-collections!)
+    (initialize/initialize-if-needed! :test-users-personal-collections)
     (perms/grant-collection-readwrite-permissions!
      (group/all-users)
      (u/get-id (db/select-one 'Collection :personal_owner_id (test-users/user->id :lucky))))))

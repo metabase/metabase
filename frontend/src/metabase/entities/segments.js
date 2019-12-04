@@ -3,8 +3,10 @@
 import { createEntity } from "metabase/lib/entities";
 
 import { SegmentSchema } from "metabase/schema";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import * as Urls from "metabase/lib/urls";
+
+import { getMetadata } from "metabase/selectors/metadata";
 
 const Segments = createEntity({
   name: "segments",
@@ -24,6 +26,10 @@ const Segments = createEntity({
     delete: null,
   },
 
+  selectors: {
+    getObject: (state, { entityId }) => getMetadata(state).segment(entityId),
+  },
+
   objectSelectors: {
     getName: segment => segment && segment.name,
     getUrl: segment =>
@@ -33,7 +39,7 @@ const Segments = createEntity({
         null,
         segment.id,
       ),
-    getColor: segment => colors["accent7"],
+    getColor: segment => color("accent7"),
     getIcon: segment => "segment",
   },
 

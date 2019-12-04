@@ -205,6 +205,22 @@ jobs:
           command: ./node_modules/.bin/yamllint `find resources -name '*.yaml'`
           no_output_timeout: 2m
 
+  verify-i18n-files:
+    executor: node
+    steps:
+      - attach-workspace
+      - restore-fe-deps-cache
+      - run:
+          name: Update apt
+          command: sudo apt-get update
+      - run:
+          name: Install gettext
+          command: sudo apt-get install gettext
+      - run:
+          name: Verify i18n .po files
+          command: ./bin/i18n/build-translation-resources
+          no_output_timeout: 2m
+
 
 ########################################################################################################################
 #                                                       BACKEND                                                        #
@@ -329,12 +345,12 @@ jobs:
       - attach-workspace
       - restore-be-deps-cache
       - run:
-          name: Test migrating from H2 -> << parameters.db-type >>
+          name: Test migrating from H2 -> << parameters.db-type >> -> H2
           environment:
             MB_DB_TYPE: << parameters.db-type >>
             MB_DB_HOST: localhost
           command: >
-            lein run load-from-h2 ./frontend/test/__runner__/test_db_fixture.db
+            ./bin/test-load-and-dump.sh
           no_output_timeout: 5m
 
 
@@ -407,6 +423,13 @@ jobs:
           command-name: Run frontend integration tests
           command: run test-integration
 
+  fe-tests-timezones:
+    executor: node
+    steps:
+      - run-yarn-command:
+          command-name: Run frontend timezone tests
+          command: run test-timezones
+
   build-uberjar:
     executor: clojure-and-node
     steps:
@@ -466,6 +489,11 @@ workflows:
       - yaml-linter:
           requires:
             - checkout
+
+      - verify-i18n-files:
+          requires:
+            - checkout
+            - fe-deps
 
       - be-deps:
           requires:
@@ -551,7 +579,7 @@ workflows:
           requires:
             - be-tests
           jdbc-driver-source: ORACLE_JDBC_JAR
-          jdbc-driver-dest: ojdbc7.jar
+          jdbc-driver-dest: ojdbc8.jar
           driver: oracle
 
       - test-driver:
@@ -649,6 +677,9 @@ workflows:
       - fe-tests-integration:
           requires:
             - fe-deps
+      - fe-tests-timezones:
+          requires:
+            - fe-deps
       - build-uberjar:
           requires:
             - be-deps
@@ -660,6 +691,7 @@ workflows:
       - deploy-master:
           requires:
             - yaml-linter
+            - verify-i18n-files
 
             - be-linter-bikeshed
             - be-linter-docstring-checker
@@ -694,6 +726,7 @@ workflows:
 
             - fe-tests-e2e
             - fe-tests-integration
+            - fe-tests-timezones
             - fe-tests-karma
             - fe-tests-unit
           filters:

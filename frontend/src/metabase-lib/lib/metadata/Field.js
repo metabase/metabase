@@ -3,12 +3,11 @@
 import Base from "./Base";
 import Table from "./Table";
 
-import _ from "underscore";
 import moment from "moment";
 
-import { FieldIDDimension, FieldLiteralDimension } from "../Dimension";
+import Dimension from "../Dimension";
 
-import { formatField } from "metabase/lib/formatting";
+import { formatField, stripId } from "metabase/lib/formatting";
 import { getFieldValues } from "metabase/lib/query/field";
 import {
   isDate,
@@ -19,6 +18,7 @@ import {
   isString,
   isSummable,
   isCategory,
+  isAddress,
   isState,
   isCountry,
   isCoordinate,
@@ -29,7 +29,7 @@ import {
   isFK,
   isEntityName,
   getIconForField,
-  getOperators,
+  getFilterOperators,
 } from "metabase/lib/schema_metadata";
 
 import type { FieldValues } from "metabase/meta/types/Field";
@@ -73,6 +73,10 @@ export default class Field extends Base {
     return displayName;
   }
 
+  targetDisplayName() {
+    return stripId(this.display_name);
+  }
+
   isDate() {
     return isDate(this);
   }
@@ -90,6 +94,9 @@ export default class Field extends Base {
   }
   isString() {
     return isString(this);
+  }
+  isAddress() {
+    return isAddress(this);
   }
   isState() {
     return isState(this);
@@ -150,15 +157,16 @@ export default class Field extends Base {
   }
 
   dimension() {
-    if (Array.isArray(this.id) && this.id[0] === "field-literal") {
-      return new FieldLiteralDimension(
-        null,
-        this.id.slice(1),
+    if (Array.isArray(this.id)) {
+      // if ID is an array, it's a MBQL field reference, typically "field-literal"
+      return Dimension.parseMBQL(this.id, this.metadata, this.query);
+    } else {
+      return Dimension.parseMBQL(
+        ["field-id", this.id],
         this.metadata,
         this.query,
       );
     }
-    return new FieldIDDimension(null, [this.id], this.metadata, this.query);
   }
 
   sourceField() {
@@ -166,21 +174,21 @@ export default class Field extends Base {
     return d && d.field();
   }
 
-  operator(operatorName) {
-    if (this.operators_lookup) {
-      return this.operators_lookup[operatorName];
+  filterOperator(operatorName) {
+    if (this.filter_operators_lookup) {
+      return this.filter_operators_lookup[operatorName];
     } else {
-      return this.operatorOptions().find(o => o.name === operatorName);
+      return this.filterOperators().find(o => o.name === operatorName);
     }
   }
 
-  operatorOptions() {
-    return this.operators || getOperators(this, this.table);
+  filterOperators() {
+    return this.filter_operators || getFilterOperators(this, this.table);
   }
 
-  aggregations() {
+  aggregationOperators() {
     return this.table
-      ? this.table.aggregation_options.filter(
+      ? this.table.aggregation_operators.filter(
           aggregation =>
             aggregation.validFieldsFilters[0] &&
             aggregation.validFieldsFilters[0]([this]).length === 1,
@@ -290,14 +298,14 @@ export default class Field extends Base {
     }
   }
 
-  column() {
-    return _.pick(
-      this.getPlainObject(),
-      "id",
-      "name",
-      "display_name",
-      "base_type",
-      "special_type",
-    );
+  column(extra = {}) {
+    return this.dimension().column({ source: "fields", ...extra });
+  }
+
+  /**
+   * Returns a FKDimension for this field and the provided field
+   */
+  foreign(foreignField: Field): Dimension {
+    return this.dimension().foreign(foreignField.dimension());
   }
 }

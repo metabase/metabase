@@ -1,5 +1,5 @@
 import React from "react";
-import LegendVertical from "metabase/visualizations/components/LegendVertical.jsx";
+import LegendVertical from "metabase/visualizations/components/LegendVertical";
 import { mount } from "enzyme";
 
 describe("LegendVertical", () => {

@@ -13,7 +13,7 @@
             [metabase.util :as u]
             [metabase.util
              [date :as du]
-             [i18n :refer [trs tru]]
+             [i18n :refer [deferred-tru trs tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db])
@@ -36,7 +36,7 @@
         (log/error e (trs "Failed to notify {0} Database {1} updated" driver id))))))
 
 (defsetting report-timezone
-  (tru "Connection timezone to use when executing queries. Defaults to system timezone.")
+  (deferred-tru "Connection timezone to use when executing queries. Defaults to system timezone.")
   :setter
   (fn [new-value]
     (setting/set-string! :report-timezone new-value)
@@ -52,14 +52,13 @@
   below. The QP binds the driver this way in the `bind-driver` middleware."
   nil)
 
+(declare the-driver)
+
 (defn do-with-driver
   "Impl for `with-driver`."
   [driver f]
-  ;; it's substantially faster not to call `binding` in the first place if it's already bound
-  (if (= *driver* driver)
-    (f)
-    (binding [*driver* driver]
-      (f))))
+  (binding [*driver* (the-driver driver)]
+    (f)))
 
 (defmacro with-driver
   "Bind current driver to `driver` and execute `body`.
@@ -121,8 +120,9 @@
        (trs "Loading driver {0} {1}" (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
       (try
         (apply classloader/require expected-ns require-options)
-        (catch Throwable _
-          (throw (Exception. (str (tru "Could not find {0} driver." driver)))))))))
+        (catch Throwable e
+          (log/error e (tru "Error loading driver namespace"))
+          (throw (Exception. (tru "Could not find {0} driver." driver))))))))
 
 (defn- load-driver-namespace-if-needed!
   "Load the expected namespace for a `driver` if it has not already been registed. This only works for core Metabase
@@ -142,11 +142,13 @@
           (require-driver-ns driver :reload)
           ;; if *still* not registered, throw an Exception
           (when-not (registered? driver)
-            (throw (Exception. (str (tru "Driver not registered after loading: {0}" driver))))))))))
+            (throw (Exception. (tru "Driver not registered after loading: {0}" driver)))))))))
 
-(s/defn the-driver
+(defn the-driver
   "Like Clojure core `the-ns`. Converts argument to a keyword, then loads and registers the driver if not already done,
-  throwing an Exception if it fails or is invalid. Returns keyword.
+  throwing an Exception if it fails or is invalid. Returns keyword. Note that this does not neccessarily mean the
+  driver is initialized (e.g., its full implementation and deps might not be loaded into memory) -- see also
+  `the-initialized-driver`.
 
   This is useful in several cases:
 
@@ -161,7 +163,8 @@
 
     (the-driver :postgres) ; -> :postgres
     (the-driver :baby)     ; -> Exception"
-  [driver :- (s/cond-pre s/Str s/Keyword)]
+  [driver]
+  {:pre [((some-fn keyword? string?) driver)]}
   (classloader/the-classloader)
   (let [driver (keyword driver)]
     (load-driver-namespace-if-needed! driver)
@@ -174,8 +177,8 @@
     (let [old-abstract? (boolean (abstract? driver))
           new-abstract? (boolean new-abstract?)]
       (when (not= old-abstract? new-abstract?)
-        (throw (Exception. (str (tru "Error: attempting to change {0} property `:abstract?` from {1} to {2}."
-                                     driver old-abstract? new-abstract?))))))))
+        (throw (Exception. (tru "Error: attempting to change {0} property `:abstract?` from {1} to {2}."
+                                driver old-abstract? new-abstract?)))))))
 
 (defn add-parent!
   "Add a new parent to `driver`."
@@ -220,7 +223,7 @@
       (when abstract?
         (doseq [parent parents
                 :when  (concrete? parent)]
-          (throw (ex-info (str (trs "Abstract drivers cannot derive from concrete parent drivers."))
+          (throw (ex-info (trs "Abstract drivers cannot derive from concrete parent drivers.")
                    {:driver driver, :parent parent}))))
       ;; validate that the registration isn't stomping on things
       (check-abstractness-hasnt-changed driver abstract?)
@@ -268,7 +271,6 @@
   "Has `driver` been initialized? (See `initialize!` below for a discussion of what exactly this means.)"
   [driver]
   (@initialized-drivers driver))
-
 
 (declare initialize!)
 
@@ -544,7 +546,7 @@
   {:arglists '([driver feature])}
   (fn [driver feature]
     (when-not (driver-features feature)
-      (throw (Exception. (str (tru "Invalid driver feature: {0}" feature)))))
+      (throw (Exception. (tru "Invalid driver feature: {0}" feature))))
     [(dispatch-on-initialized-driver driver) feature])
   :hierarchy #'hierarchy)
 
@@ -581,9 +583,12 @@
   custom-field-name)
 
 
-(defmulti ^String humanize-connection-error-message
-  "Return a humanized (user-facing) version of an connection error message string. Generic error messages are provided
-  in `metabase.driver.common/connection-error-messages`; return one of these whenever possible."
+(defmulti humanize-connection-error-message
+  "Return a humanized (user-facing) version of an connection error message.
+  Generic error messages are provided in `metabase.driver.common/connection-error-messages`; return one of these
+  whenever possible.
+  Error messages can be strings, or localized strings, as returned by `metabase.util.i18n/trs` and
+  `metabase.util.i18n/tru`."
   {:arglists '([this message])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -696,11 +701,25 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti ^DateTime current-db-time
-  "Return the current time and timezone from the perspective of `database`. You can use
-  `metabase.driver.common/current-db-time` to implement this. This should return a Joda-Time `DateTime`."
-  {:arglists '([driver database])}
+(defmulti db-default-timezone
+  "Return the *system* timezone ID name of this database, i.e. the timezone that local dates/times/datetimes are
+  considered to be in by default. Ideally, this method should return a timezone ID like `America/Los_Angeles`, but an
+  offset formatted like `-08:00` is acceptable in cases where the actual ID cannot be provided."
+  {:arglists '(^java.lang.String [driver database])}
   dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod db-default-timezone ::driver [_ _] nil)
+
+;; TIMEZONE FIXME — remove this method entirely
+(defmulti ^:deprecated current-db-time
+  "Return the current time and timezone from the perspective of `database`. You can use
+  `metabase.driver.common/current-db-time` to implement this. This should return a Joda-Time `DateTime`.
+
+  DEPRECATED — the only thing this method is ultimately used for is to determine the DB's system timezone.
+  `db-default-timezone` has been introduced as an intended replacement for this method; implement it instead. This method
+  will be removed in a future release."
+  {:arglists '(^org.joda.time.DateTime [driver database])} dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
 (defmethod current-db-time ::driver [_ _] nil)

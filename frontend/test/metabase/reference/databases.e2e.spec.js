@@ -1,10 +1,10 @@
-import { useSharedAdminLogin, createTestStore } from "__support__/e2e_tests";
-import { click } from "__support__/enzyme_utils";
+import { useSharedAdminLogin, createTestStore } from "__support__/e2e";
+import { click, clickButton, setInputValue } from "__support__/enzyme";
 
 import React from "react";
 import { mount } from "enzyme";
 
-import { CardApi } from "metabase/services";
+import { CardApi, MetabaseApi } from "metabase/services";
 
 import {
   FETCH_DATABASE_METADATA,
@@ -22,14 +22,16 @@ import FieldListContainer from "metabase/reference/databases/FieldListContainer"
 import FieldDetailContainer from "metabase/reference/databases/FieldDetailContainer";
 
 import DatabaseList from "metabase/reference/databases/DatabaseList";
-import List from "metabase/components/List.jsx";
-import ListItem from "metabase/components/ListItem.jsx";
-import ReferenceHeader from "metabase/reference/components/ReferenceHeader.jsx";
-import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState.jsx";
+import List from "metabase/components/List";
+import ListItem from "metabase/components/ListItem";
+import ReferenceHeader from "metabase/reference/components/ReferenceHeader";
+import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
+import Detail from "metabase/reference/components/Detail";
 import QueryButton from "metabase/components/QueryButton";
 import { INITIALIZE_QB, QUERY_COMPLETED } from "metabase/query_builder/actions";
 import { getQuestion } from "metabase/query_builder/selectors";
+import { delay } from "metabase/lib/promise";
 
 describe("The Reference Section", () => {
   // Test data
@@ -39,7 +41,7 @@ describe("The Reference Section", () => {
     dataset_query: {
       database: 1,
       type: "query",
-      query: { "source-table": 1, aggregation: ["count"] },
+      query: { "source-table": 1, aggregation: [["count"]] },
     },
     visualization_settings: {},
   };
@@ -95,6 +97,51 @@ describe("The Reference Section", () => {
       store.pushPath("/reference/databases/1");
       mount(store.connectContainer(<DatabaseDetailContainer />));
       await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING]);
+    });
+
+    // database update
+    it("should update the sample database", async () => {
+      // create a new db by cloning #1
+      const d1 = await MetabaseApi.db_get({ dbId: 1 });
+      const { id } = await MetabaseApi.db_create(d1);
+
+      // go to that db's reference page
+      const store = await createTestStore();
+      store.pushPath(`/reference/databases/${id}`);
+      const app = mount(store.connectContainer(<DatabaseDetailContainer />));
+      await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING]);
+
+      // switch to edit view
+      const editButton = app.find(".Button");
+
+      clickButton(editButton);
+
+      // update "caveats" and save
+      const textarea = app
+        .find(Detail)
+        .at(2)
+        .find("textarea");
+      setInputValue(textarea, "v important thing");
+
+      const doneButton = app.find(".Button--primary");
+
+      clickButton(doneButton);
+      await store.waitForActions(END_LOADING);
+      // unfortunately this is required?
+      await delay(200);
+
+      // check that the field was updated
+      const savedText = app
+        .find(Detail)
+        .at(2)
+        .find("span")
+        .at(1)
+        .text();
+
+      expect(savedText).toBe("v important thing");
+
+      // clean up
+      await MetabaseApi.db_delete({ dbId: id });
     });
 
     // table list

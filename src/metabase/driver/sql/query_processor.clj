@@ -21,8 +21,10 @@
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.util
              [honeysql-extensions :as hx]
-             [i18n :refer [tru]]
+             [i18n :refer [deferred-tru]]
              [schema :as su]]
+            [potemkin.types :as p.types]
+            [pretty.core :refer [PrettyPrintable]]
             [schema.core :as s])
   (:import metabase.util.honeysql_extensions.Identifier))
 
@@ -39,6 +41,21 @@
   Each nested query increments this counter by 1."
   0)
 
+(p.types/deftype+ SQLSourceQuery [sql params]
+  hformat/ToSql
+  (to-sql [_]
+    (dorun (map hformat/add-anon-param params))
+    ;; strip off any trailing semicolons
+    (str "(" (str/replace sql #";+\s*$" "") ")"))
+  PrettyPrintable
+  (pretty [_]
+    (list 'SQLSourceQuery. sql params))
+  Object
+  (equals [_ other]
+    (and (instance? SQLSourceQuery other)
+         (= sql    (.sql ^SQLSourceQuery other))
+         (= params (.params ^SQLSourceQuery other)))))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            Interface (Multimethods)                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -51,7 +68,7 @@
 
 (defmethod current-datetime-fn :sql [_] :%now)
 
-
+;; TODO - rename this to `date-bucket` or something that better describes what it actually does
 (defmulti date
   "Return a HoneySQL form for truncating a date or timestamp field or value to a given resolution, or extracting a date
   component."
@@ -197,6 +214,22 @@
   [driver [_ alias field]]
   (binding [*table-alias* alias]
     (->honeysql driver field)))
+
+;; (p.types/defrecord+ AtTimezone [expr timezone-id]
+;;   PrettyPrintable
+;;   (pretty [_]
+;;     (list 'at-timezone expr timezone-id))
+
+;;   hformat/ToSql
+;;   (to-sql [_]
+;;     (format "(%s at time zone '%s')" (hformat/to-sql expr) timezone-id)))
+
+;; (defn at-timezone
+;;   ([expr]
+;;    (at-timezone expr (qp.timezone/results-timezone-id)))
+
+;;   ([expr timezone-id]
+;;    (AtTimezone. expr timezone-id)))
 
 (defmethod ->honeysql [:sql :datetime-field]
   [driver [_ field unit]]
@@ -476,8 +509,14 @@
 (defmethod join-source :sql
   [driver {:keys [source-table source-query]}]
   (binding [*table-alias* nil]
-    (if source-query
+    (cond
+      (and source-query (:native source-query))
+      (SQLSourceQuery. (:native source-query) (:params source-query))
+
+      source-query
       (build-honeysql-form driver {:query source-query})
+
+      :else
       (->honeysql driver (qp.store/table source-table)))))
 
 (def ^:private HoneySQLJoin
@@ -572,7 +611,10 @@
   (sort-by (fn [clause] [(get top-level-clause-application-order clause Integer/MAX_VALUE) clause])
            (keys inner-query)))
 
-(defn- format-honeysql [driver honeysql-form]
+(defn format-honeysql
+  "Convert `honeysql-form` to a vector of SQL string and params, like you'd pass to JDBC."
+  {:style/indent 1}
+  [driver honeysql-form]
   (try
     (binding [hformat/*subquery?* false]
       (hsql/format honeysql-form
@@ -581,7 +623,7 @@
     (catch Throwable e
       (try
         (log/error (u/format-color 'red
-                       (str (tru "Invalid HoneySQL form:")
+                       (str (deferred-tru "Invalid HoneySQL form:")
                             "\n"
                             (u/pprint-to-str honeysql-form))))
         (finally
@@ -629,13 +671,13 @@
 (defn- apply-source-query
   "Handle a `:source-query` clause by adding a recursive `SELECT` or native query. At the time of this writing, all
   source queries are aliased as `source`."
-  [driver honeysql-form {{:keys [native], :as source-query} :source-query}]
+  [driver honeysql-form {{:keys [native params], :as source-query} :source-query}]
   (assoc honeysql-form
-    :from [[(if native
-              (hsql/raw (str "(" (str/replace native #";+\s*$" "") ")")) ; strip off any trailing slashes
-              (binding [*nested-query-level* (inc *nested-query-level*)]
-                (apply-clauses driver {} source-query)))
-            (->honeysql driver (hx/identifier :table-alias source-query-alias))]]))
+         :from [[(if native
+                   (SQLSourceQuery. native params)
+                   (binding [*nested-query-level* (inc *nested-query-level*)]
+                     (apply-clauses driver {} source-query)))
+                 (->honeysql driver (hx/identifier :table-alias source-query-alias))]]))
 
 (defn- apply-clauses-with-aliased-source-query-table
   "For queries that have a source query that is a normal MBQL query with a source table, temporarily swap the name of
@@ -664,19 +706,12 @@
   [driver, {inner-query :query} :- su/Map]
   (u/prog1 (apply-clauses driver {} inner-query)
     (when-not i/*disable-qp-logging*
-      (log/debug (tru "HoneySQL Form:") (u/emoji "🍯") "\n" (u/pprint-to-str 'cyan <>)))))
+      (log/tracef "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 MBQL -> Native                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-(s/defn honeysql-form->sql+args
-  "Convert `honeysql-form` to a vector of SQL string and params, like you'd pass to JDBC."
-  {:style/indent 1}
-  [driver, honeysql-form :- su/Map]
-  (let [[sql & args] (format-honeysql driver honeysql-form)]
-    (into [sql] args)))
 
 (defn- mbql->honeysql [driver outer-query]
   (binding [*query* outer-query]
@@ -684,8 +719,8 @@
 
 (defn mbql->native
   "Transpile MBQL query into a native SQL statement."
+  {:style/indent 1}
   [driver {inner-query :query, database :database, :as outer-query}]
   (let [honeysql-form (mbql->honeysql driver outer-query)
-        [sql & args]  (honeysql-form->sql+args driver honeysql-form)]
-    {:query  sql
-     :params args}))
+        [sql & args]  (format-honeysql driver honeysql-form)]
+    {:query sql, :params args}))

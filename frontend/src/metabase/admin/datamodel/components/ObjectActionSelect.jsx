@@ -2,11 +2,11 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
 
-import Icon from "metabase/components/Icon.jsx";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
+import Icon from "metabase/components/Icon";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
 import { t } from "ttag";
-import ObjectRetireModal from "./ObjectRetireModal.jsx";
+import ObjectRetireModal from "./ObjectRetireModal";
 
 import { capitalize } from "metabase/lib/formatting";
 

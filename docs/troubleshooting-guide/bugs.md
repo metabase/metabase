@@ -22,4 +22,4 @@ Metabase will send debugging information and errors to your browser's developer 
 * [Chrome](https://developers.google.com/web/tools/chrome-devtools/open#console)
 * [Firefox](https://developer.mozilla.org/en-US/docs/Tools/Web_Console/Opening_the_Web_Console)
 * [Safari](https://support.apple.com/guide/safari-developer/develop-menu-dev39df999c1/mac)
-* [Edge](https://docs.microsoft.com/en-us/microsoft-edge/devtools-guide-chromium](https://docs.microsoft.com/en-us/microsoft-edge/devtools-guide-chromium)
+* [Edge](https://docs.microsoft.com/en-us/microsoft-edge/devtools-guide-chromium)

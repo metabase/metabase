@@ -3,12 +3,12 @@ import cx from "classnames";
 import { assocIn } from "icepick";
 import _ from "underscore";
 import { t } from "ttag";
-import Warnings from "metabase/query_builder/components/Warnings.jsx";
+import Warnings from "metabase/query_builder/components/Warnings";
 
 import Button from "metabase/components/Button";
 import Radio from "metabase/components/Radio";
 
-import Visualization from "metabase/visualizations/components/Visualization.jsx";
+import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSettingsWidget from "./ChartSettingsWidget";
 
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -136,7 +136,14 @@ class ChartSettings extends Component {
   }
 
   render() {
-    const { question, addField, noPreview, children } = this.props;
+    const {
+      className,
+      question,
+      addField,
+      noPreview,
+      children,
+      setSidebarPropsOverride,
+    } = this.props;
     const { currentWidget } = this.state;
 
     const settings = this._getSettings();
@@ -208,6 +215,7 @@ class ChartSettings extends Component {
         key={`${widget.id}`}
         {...widget}
         {...extraWidgetProps}
+        setSidebarPropsOverride={setSidebarPropsOverride}
       />
     ));
 
@@ -225,10 +233,19 @@ class ChartSettings extends Component {
       });
     }
 
+    const showSectionPicker =
+      // don't show section tabs for a single section
+      sectionNames.length > 1 &&
+      // hide the section picker if the only widget is column_settings
+      !(
+        visibleWidgets.length === 1 &&
+        visibleWidgets[0].id === "column_settings"
+      );
+
     // default layout with visualization
     return (
-      <div>
-        {sectionNames.length > 1 && (
+      <div className={cx(className, "flex flex-column")}>
+        {showSectionPicker && (
           <div className="flex flex-no-shrink pl4 pt2 pb1">{sectionPicker}</div>
         )}
         {noPreview ? (
@@ -236,38 +253,36 @@ class ChartSettings extends Component {
             {widgetList}
           </div>
         ) : (
-          <div className="full-height relative">
-            <div className="Grid spread">
-              <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4">
-                {widgetList}
-              </div>
-              <div className="Grid-cell flex flex-column pt2">
-                <div className="mx4 flex flex-column">
-                  <Warnings
-                    className="mx2 align-self-end text-gold"
-                    warnings={this.state.warnings}
-                    size={20}
-                  />
-                </div>
-                <div className="mx4 flex-full relative">
-                  <Visualization
-                    className="spread"
-                    rawSeries={rawSeries}
-                    showTitle
-                    isEditing
-                    isDashboard
-                    isSettings
-                    showWarnings
-                    onUpdateVisualizationSettings={this.handleChangeSettings}
-                    onUpdateWarnings={warnings => this.setState({ warnings })}
-                  />
-                </div>
-                <ChartSettingsFooter
-                  onDone={this.handleDone}
-                  onCancel={this.handleCancel}
-                  onReset={onReset}
+          <div className="Grid flex-full">
+            <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4">
+              {widgetList}
+            </div>
+            <div className="Grid-cell flex flex-column pt2">
+              <div className="mx4 flex flex-column">
+                <Warnings
+                  className="mx2 align-self-end text-gold"
+                  warnings={this.state.warnings}
+                  size={20}
                 />
               </div>
+              <div className="mx4 flex-full relative">
+                <Visualization
+                  className="spread"
+                  rawSeries={rawSeries}
+                  showTitle
+                  isEditing
+                  isDashboard
+                  isSettings
+                  showWarnings
+                  onUpdateVisualizationSettings={this.handleChangeSettings}
+                  onUpdateWarnings={warnings => this.setState({ warnings })}
+                />
+              </div>
+              <ChartSettingsFooter
+                onDone={this.handleDone}
+                onCancel={this.handleCancel}
+                onReset={onReset}
+              />
             </div>
           </div>
         )}

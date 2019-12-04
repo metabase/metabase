@@ -5,10 +5,11 @@
             [environ.core :as env]
             [metabase.plugins
              [classloader :as classloader]
-             [files :as files]
              [initialize :as initialize]]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [trs]]
+            [metabase.util
+             [files :as files]
+             [i18n :refer [trs]]]
             [yaml.core :as yaml])
   (:import [java.nio.file Files Path]))
 
@@ -25,7 +26,7 @@
        (u/prog1 (files/get-path filename)
          (files/create-dir-if-not-exists! <>)
          (assert (Files/isWritable <>)
-           (str (trs "Metabase does not have permissions to write to plugins directory {0}" filename))))
+           (trs "Metabase does not have permissions to write to plugins directory {0}" filename)))
        ;; If we couldn't create the directory, or the directory is not writable, fall back to a temporary directory
        ;; rather than failing to launch entirely. Log instructions for what should be done to fix the problem.
        (catch Throwable e
@@ -40,7 +41,7 @@
          ;; gracefully proceed here. Throw an Exception detailing the critical issues.
          (u/prog1 (files/get-path (System/getProperty "java.io.tmpdir"))
            (assert (Files/isWritable <>)
-             (str (trs "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase.")))))))))
+             (trs "Metabase cannot write to temporary directory. Please set MB_PLUGINS_DIR to a writable directory and restart Metabase."))))))))
 
 ;; Actual logic is wrapped in a delay rather than a normal function so we don't log the error messages more than once
 ;; in cases where we have to fall back to the system temporary directory
@@ -118,6 +119,14 @@
       (catch Throwable e
         (log/error e (u/format-color 'red (trs "Failied to initialize plugin {0}" (.getFileName path))))))))
 
+(defn- load! []
+  (log/info (u/format-color 'magenta (trs "Loading plugins in {0}..." (str (plugins-dir)))))
+  (extract-system-modules!)
+  (let [paths (plugins-paths)]
+    (init-plugins! paths)))
+
+(defonce ^:private load!* (delay (load!)))
+
 (defn load-plugins!
   "Load Metabase plugins. The are JARs shipped as part of Metabase itself, under the `resources/modules` directory (the
   source for these JARs is under the `modules` directory); and others manually added by users to the Metabase plugins
@@ -128,10 +137,12 @@
   *  Metabase creates the plugins directory if it does not already exist.
   *  Any plugins that are shipped as part of Metabase itself are extracted from the Metabase uberjar (or `resources`
      directory when running with `lein`) into the plugins directory.
-  *  Each JAR in the plugins directory is added to the classpath.
-  *  For JARs that include a Metabase plugin manifest (a `metabase-plugin.yaml` file), "
+  *  Each JAR in the plugins directory that *does not* include a Metabase plugin manifest is added to the classpath.
+  *  For JARs that include a Metabase plugin manifest (a `metabase-plugin.yaml` file), a lazy-loading Metabase driver
+     is registered; when the driver is initialized (automatically, when certain methods are called) the JAR is added
+     to the classpath and the driver namespace is loaded
+
+  This function will only perform loading steps the first time it is called — it is safe to call this function more
+  than once."
   []
-  (log/info (u/format-color 'magenta (trs "Loading plugins in {0}..." (str (plugins-dir)))))
-  (extract-system-modules!)
-  (let [paths (plugins-paths)]
-    (init-plugins! paths)))
+  @load!*)

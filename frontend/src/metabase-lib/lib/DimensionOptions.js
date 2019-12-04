@@ -15,12 +15,12 @@ export default class DimensionOptions {
     Object.assign(this, o);
   }
 
-  allDimensions() {
+  all() {
     return [].concat(this.dimensions, ...this.fks.map(fk => fk.dimensions));
   }
 
   hasDimension(dimension: Dimension): boolean {
-    for (const d of this.allDimensions()) {
+    for (const d of this.all()) {
       if (dimension.isSameBaseDimension(d)) {
         return true;
       }

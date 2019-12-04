@@ -48,7 +48,7 @@
                                                  (apply min user-maxes))
                                                global-max)]
     (when-not (and min-value max-value)
-      (throw (ex-info (str (tru "Unable to bin Field without a min/max value"))
+      (throw (ex-info (tru "Unable to bin Field without a min/max value")
                {:field-id field-id, :fingerprint fingerprint})))
     {:min-value min-value, :max-value max-value}))
 
@@ -167,7 +167,7 @@
     (do
       ;; make sure source-metadata exists
       (when-not source-metadata
-        (throw (ex-info (str (tru "Cannot update binned field: query is missing source-metadata"))
+        (throw (ex-info (tru "Cannot update binned field: query is missing source-metadata")
                  {:field-literal field-id-or-name})))
       ;; try to find field in source-metadata with matching name
       (or
@@ -176,8 +176,8 @@
           (when (= (:name metadata) field-id-or-name)
             metadata))
         source-metadata)
-       (throw (ex-info (str (tru "Cannot update binned field: could not find matching source metadata for Field ''{0}''"
-                                 field-id-or-name))
+       (throw (ex-info (tru "Cannot update binned field: could not find matching source metadata for Field ''{0}''"
+                            field-id-or-name)
                 {:field-literal field-id-or-name, :resolved-metadata source-metadata}))))))
 
 (s/defn ^:private update-binned-field :- mbql.s/binning-strategy

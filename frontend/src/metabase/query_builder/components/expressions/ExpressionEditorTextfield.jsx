@@ -18,9 +18,9 @@ import {
   KEYCODE_DOWN,
 } from "metabase/lib/keyboard";
 
-import Popover from "metabase/components/Popover.jsx";
+import Popover from "metabase/components/Popover";
 
-import TokenizedInput from "./TokenizedInput.jsx";
+import TokenizedInput from "./TokenizedInput";
 
 import { isExpression } from "metabase/lib/expressions";
 
@@ -49,8 +49,6 @@ export default class ExpressionEditorTextfield extends Component {
 
   static propTypes = {
     expression: PropTypes.array, // should be an array like [parsedExpressionObj, expressionString]
-    tableMetadata: PropTypes.object.isRequired,
-    customFields: PropTypes.object,
     onChange: PropTypes.func.isRequired,
     onError: PropTypes.func.isRequired,
     startRule: PropTypes.string.isRequired,
@@ -65,8 +63,7 @@ export default class ExpressionEditorTextfield extends Component {
 
   _getParserInfo(props = this.props) {
     return {
-      tableMetadata: props.tableMetadata,
-      customFields: props.customFields || {},
+      query: props.query,
       startRule: props.startRule,
     };
   }
@@ -76,12 +73,8 @@ export default class ExpressionEditorTextfield extends Component {
   }
 
   componentWillReceiveProps(newProps) {
-    // we only refresh our state if we had no previous state OR if our expression or table has changed
-    if (
-      !this.state ||
-      this.props.expression != newProps.expression ||
-      this.props.tableMetadata != newProps.tableMetadata
-    ) {
+    // we only refresh our state if we had no previous state OR if our expression changed
+    if (!this.state || this.props.expression !== newProps.expression) {
       const parserInfo = this._getParserInfo(newProps);
       const parsedExpression = newProps.expression;
       const expressionString = format(newProps.expression, parserInfo);
@@ -347,19 +340,21 @@ export default class ExpressionEditorTextfield extends Component {
                     )}
                     onMouseDownCapture={e => this.onSuggestionMouseDown(e, i)}
                   >
-                    {suggestion.prefixLength ? (
+                    {suggestion.range ? (
                       <span>
+                        {suggestion.name.slice(0, suggestion.range[0])}
                         <span
                           className={cx("text-brand text-bold", {
                             "text-white bg-brand":
                               i === this.state.highlightedSuggestion,
                           })}
                         >
-                          {suggestion.name.slice(0, suggestion.prefixLength)}
+                          {suggestion.name.slice(
+                            suggestion.range[0],
+                            suggestion.range[1],
+                          )}
                         </span>
-                        <span>
-                          {suggestion.name.slice(suggestion.prefixLength)}
-                        </span>
+                        {suggestion.name.slice(suggestion.range[1])}
                       </span>
                     ) : (
                       suggestion.name

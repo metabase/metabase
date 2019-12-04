@@ -1,7 +1,7 @@
 import React from "react";
 import cx from "classnames";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
 const Clearable = ({ onClear, children, className }) => (
   <span className={cx("flex align-center", className)}>

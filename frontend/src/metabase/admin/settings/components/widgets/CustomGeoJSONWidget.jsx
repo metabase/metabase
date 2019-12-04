@@ -3,19 +3,19 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import Utils from "metabase/lib/utils";
-import Select, { Option } from "metabase/components/Select.jsx";
-import Confirm from "metabase/components/Confirm.jsx";
-import Ellipsified from "metabase/components/Ellipsified.jsx";
-import Modal from "metabase/components/Modal.jsx";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import Select, { Option } from "metabase/components/Select";
+import Confirm from "metabase/components/Confirm";
+import Ellipsified from "metabase/components/Ellipsified";
+import Modal from "metabase/components/Modal";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import SettingHeader from "../SettingHeader.jsx";
+import SettingHeader from "../SettingHeader";
 
 import { SettingsApi, GeoJSONApi } from "metabase/services";
 
 import cx from "classnames";
 
-import LeafletChoropleth from "metabase/visualizations/components/LeafletChoropleth.jsx";
+import LeafletChoropleth from "metabase/visualizations/components/LeafletChoropleth";
 
 import pure from "recompose/pure";
 

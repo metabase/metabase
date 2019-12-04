@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import { SetupApi } from "metabase/services";
 
-import SidebarSection from "./SidebarSection.jsx";
+import SidebarSection from "./SidebarSection";
 
 export default class NextStep extends Component {
   constructor(props, context) {

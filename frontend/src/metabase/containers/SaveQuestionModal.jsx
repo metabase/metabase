@@ -3,9 +3,9 @@ import PropTypes from "prop-types";
 
 import { CSSTransitionGroup } from "react-transition-group";
 
-import FormField from "metabase/components/form/FormField.jsx";
-import ModalContent from "metabase/components/ModalContent.jsx";
-import Radio from "metabase/components/Radio.jsx";
+import FormField from "metabase/components/form/FormField";
+import ModalContent from "metabase/components/ModalContent";
+import Radio from "metabase/components/Radio";
 import Button from "metabase/components/Button";
 import CollectionSelect from "metabase/containers/CollectionSelect";
 
@@ -172,9 +172,7 @@ export default class SaveQuestionModal extends Component {
             onChange={value => this.onChange("saveType", value)}
             options={[
               {
-                name: t`Replace original question, "${
-                  this.props.originalCard.name
-                }"`,
+                name: t`Replace original question, "${this.props.originalCard.name}"`,
                 value: "overwrite",
               },
               { name: t`Save as new question`, value: "create" },

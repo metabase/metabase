@@ -161,9 +161,9 @@
                                                                                          step-log-text)))]
     {:has-operation?          (str/includes? results operation)
      :has-db-name?            (str/includes? results db-name)
-     :has-operation-duration? (str/includes? results "5 s")
+     :has-operation-duration? (str/includes? results "5.0 s")
      :has-step-name?          (str/includes? results step-name)
-     :has-step-duration?      (str/includes? results "4 s")
+     :has-step-duration?      (str/includes? results "4.0 s")
      :has-log-summary-text?   (str/includes? results step-log-text)}))
 
 ;; The `log-summary-fn` part of step info is optional as not all steps have it. Validate that we properly handle that
@@ -182,6 +182,6 @@
                                                          (create-test-sync-summary step-name nil))]
     {:has-operation?          (str/includes? results operation)
      :has-db-name?            (str/includes? results db-name)
-     :has-operation-duration? (str/includes? results "5 s")
+     :has-operation-duration? (str/includes? results "5.0 s")
      :has-step-name?          (str/includes? results step-name)
-     :has-step-duration?      (str/includes? results "4 s")}))
+     :has-step-duration?      (str/includes? results "4.0 s")}))

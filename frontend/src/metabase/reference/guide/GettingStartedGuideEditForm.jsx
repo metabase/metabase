@@ -6,17 +6,17 @@ import { reduxForm } from "redux-form";
 import { t } from "ttag";
 import cx from "classnames";
 
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
-import CreateDashboardModal from "metabase/components/CreateDashboardModal.jsx";
-import Modal from "metabase/components/Modal.jsx";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import CreateDashboardModal from "metabase/components/CreateDashboardModal";
+import Modal from "metabase/components/Modal";
 
-import EditHeader from "metabase/reference/components/EditHeader.jsx";
-import GuideEditSection from "metabase/reference/components/GuideEditSection.jsx";
-import GuideDetailEditor from "metabase/reference/components/GuideDetailEditor.jsx";
+import EditHeader from "metabase/reference/components/EditHeader";
+import GuideEditSection from "metabase/reference/components/GuideEditSection";
+import GuideDetailEditor from "metabase/reference/components/GuideDetailEditor";
 
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
-import { clearRequestState } from "metabase/redux/requests";
+import { setRequestUnloaded } from "metabase/redux/requests";
 
 import MetabaseSettings from "metabase/lib/settings";
 
@@ -120,7 +120,7 @@ const mapDispatchToProps = {
   updateDashboard: Dashboards.actions.update,
   createDashboard: Dashboards.actions.create,
   updateSetting,
-  clearRequestState,
+  setRequestUnloaded,
   ...metadataActions,
   ...actions,
 };

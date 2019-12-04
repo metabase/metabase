@@ -6,11 +6,7 @@ import ColumnItem from "./ColumnItem";
 import { SortableContainer, SortableElement } from "react-sortable-hoc";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import {
-  keyForColumn,
-  fieldRefForColumn,
-  findColumnForColumnSetting,
-} from "metabase/lib/dataset";
+import { keyForColumn, findColumnForColumnSetting } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 
 import _ from "underscore";
@@ -100,10 +96,9 @@ export default class ChartSettingOrderedColumns extends Component {
 
     let additionalFieldOptions = { count: 0 };
     if (columns && query instanceof StructuredQuery) {
-      const fieldRefs = columns.map(column => fieldRefForColumn(column));
       additionalFieldOptions = query.fieldsOptions(dimension => {
-        return !_.find(fieldRefs, fieldRef =>
-          dimension.isSameBaseDimension(fieldRef),
+        return !_.find(columns, column =>
+          dimension.isSameBaseDimension(column.field_ref),
         );
       });
     }

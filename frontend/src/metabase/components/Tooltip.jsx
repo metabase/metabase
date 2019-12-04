@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
-import TooltipPopover from "./TooltipPopover.jsx";
+import TooltipPopover from "./TooltipPopover";
 
 // TOOLTIP_STACK and related functions are to ensure only the most recent tooltip is visible
 
@@ -73,9 +73,7 @@ export default class Tooltip extends Component {
       elem.addEventListener("mouseup", this._onMouseUp, true);
     } else {
       console.warn(
-        `Tooltip::componentDidMount: no DOM node for tooltip ${
-          this.props.tooltip
-        }`,
+        `Tooltip::componentDidMount: no DOM node for tooltip ${this.props.tooltip}`,
       );
     }
 
@@ -114,9 +112,7 @@ export default class Tooltip extends Component {
       elem.removeEventListener("mouseup", this._onMouseUp, true);
     } else {
       console.warn(
-        `Tooltip::componentWillUnmount: no DOM node for tooltip ${
-          this.props.tooltip
-        }`,
+        `Tooltip::componentWillUnmount: no DOM node for tooltip ${this.props.tooltip}`,
       );
     }
     if (this._element) {

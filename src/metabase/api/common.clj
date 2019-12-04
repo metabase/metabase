@@ -11,7 +11,7 @@
             [metabase.api.common.internal :refer :all]
             [metabase.models.interface :as mi]
             [metabase.util
-             [i18n :as ui18n :refer [trs tru]]
+             [i18n :as ui18n :refer [deferred-trs deferred-tru tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -41,11 +41,20 @@
 
 ;;; ---------------------------------------- Precondition checking helper fns ----------------------------------------
 
+(defn- check-one [condition code message]
+  (when-not condition
+    (let [[message info] (if (and (map? message)
+                                  (not (ui18n/localized-string? message)))
+                           [(:message message) message]
+                           [message])]
+      (throw (ex-info (str message) (assoc info :status-code code)))))
+  condition)
+
 (defn check
   "Assertion mechanism for use inside API functions.
   Checks that `test` is true, or throws an `ExceptionInfo` with `status-code` and `message`.
 
-  MESSAGE can be either a plain string error message, or a map including the key `:message` and any additional
+  `message` can be either a plain string error message, or a map including the key `:message` and any additional
   details, such as an `:error_code`.
 
   This exception is automatically caught in the body of `defendpoint` functions, and the appropriate HTTP response is
@@ -63,18 +72,15 @@
 
     (check test1 code1 message1
            test2 code2 message2)"
-  {:style/indent 1}
-  ([tst code-or-code-message-pair & rest-args]
-   (let [[[code message] rest-args] (if (vector? code-or-code-message-pair)
-                                      [code-or-code-message-pair rest-args]
-                                      [[code-or-code-message-pair (first rest-args)] (rest rest-args)])]
-     (when-not tst
-       (throw (if (and (map? message)
-                       (not (ui18n/localized-string? message)))
-                (ui18n/ex-info (:message message) (assoc message :status-code code))
-                (ui18n/ex-info message            {:status-code code}))))
-     (if (empty? rest-args) tst
-         (recur (first rest-args) (second rest-args) (drop 2 rest-args))))))
+  {:style/indent 1, :arglists '([condition [code message] & more] [condition code message & more])}
+  [condition & args]
+  (let [[code message & more] (if (sequential? (first args))
+                                (concat (first args) (rest args))
+                                args)]
+    (check-one condition code message)
+    (if (seq more)
+      (recur (first more) (rest more))
+      condition)))
 
 (defn check-exists?
   "Check that object with ID (or other key/values) exists in the DB, or throw a 404."
@@ -95,7 +101,7 @@
 (defn throw-invalid-param-exception
   "Throw an `ExceptionInfo` that contains information about an invalid API params in the expected format."
   [field-name message]
-  (throw (ui18n/ex-info (tru "Invalid field: {0}" field-name)
+  (throw (ex-info (tru "Invalid field: {0}" field-name)
            {:status-code 400
             :errors      {(keyword field-name) message}})))
 
@@ -144,7 +150,7 @@
 
 ;; #### GENERIC 400 RESPONSE HELPERS
 (def ^:private generic-400
-  [400 (tru "Invalid Request.")])
+  [400 (deferred-tru "Invalid Request.")])
 
 (defn check-400
   "Throw a `400` if `arg` is `false` or `nil`, otherwise return as-is."
@@ -159,7 +165,7 @@
 
 ;; #### GENERIC 404 RESPONSE HELPERS
 (def ^:private generic-404
-  [404 (tru "Not found.")])
+  [404 (deferred-tru "Not found.")])
 
 (defn check-404
   "Throw a `404` if `arg` is `false` or `nil`, otherwise return as-is."
@@ -191,12 +197,12 @@
 (defn throw-403
   "Throw a generic 403 (no permissions) error response."
   []
-  (throw (ui18n/ex-info (tru "You don''t have permissions to do that.") {:status-code 403})))
+  (throw (ex-info (tru "You don''t have permissions to do that.") {:status-code 403})))
 
 ;; #### GENERIC 500 RESPONSE HELPERS
 ;; For when you don't feel like writing something useful
 (def ^:private generic-500
-  [500 (tru "Internal server error.")])
+  [500 (deferred-tru "Internal server error.")])
 
 (defn check-500
   "Throw a `500` if `arg` is `false` or `nil`, otherwise return as-is."
@@ -245,7 +251,7 @@
         [arg->schema body]     (u/optional (every-pred map? #(every? symbol? (keys %))) more)
         validate-param-calls   (validate-params arg->schema)]
     (when-not docstr
-      (log/warn (trs "Warning: endpoint {0}/{1} does not have a docstring." (ns-name *ns*) fn-name)))
+      (log/warn (deferred-trs "Warning: endpoint {0}/{1} does not have a docstring." (ns-name *ns*) fn-name)))
     `(def ~(vary-meta fn-name assoc
                       ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
                       ;; their API error messages
@@ -266,7 +272,7 @@
         [arg->schema body]     (u/optional (every-pred map? #(every? symbol? (keys %))) more)
         validate-param-calls   (validate-params arg->schema)]
     (when-not docstr
-      (log/warn (trs "Warning: endpoint {0}/{1} does not have a docstring." (ns-name *ns*) fn-name)))
+      (log/warn (deferred-trs "Warning: endpoint {0}/{1} does not have a docstring." (ns-name *ns*) fn-name)))
     `(def ~(vary-meta fn-name assoc
                       ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
                       ;; their API error messages
@@ -314,9 +320,18 @@
 
      (api/+check-superuser routes)"
   [handler]
-  (fn [request]
-    (check-superuser)
-    (handler request)))
+  (fn
+    ([request]
+     (check-superuser)
+     (handler request))
+    ([request respond raise]
+     (if-let [e (try
+                  (check-superuser)
+                  nil
+                  (catch Throwable e
+                    e))]
+       (raise e)
+       (handler request respond raise)))))
 
 
 ;;; ---------------------------------------- PERMISSIONS CHECKING HELPER FNS -----------------------------------------

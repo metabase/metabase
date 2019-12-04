@@ -4,7 +4,7 @@ Enabling Google Sign-In or LDAP lets your team log in with a click instead of us
 
 ![Authentication](./images/authentication.png)
 
-If you'd like to have your users authenticate with SAML, we offer a paid feature that lets you do just that. [Learn more about authenticating with SAML](16-authenticating-with-saml.md)
+If you'd like to have your users authenticate with SAML, we offer a paid feature that lets you do just that. [Learn more about authenticating with SAML](../enterprise-guide/authenticating-with-saml.md)
 
 As time goes on we may add other auth providers. If you have a service you’d like to see work with Metabase please let us know by [filing an issue](http://github.com/metabase/metabase/issues/new).
 

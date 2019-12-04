@@ -6,10 +6,10 @@ import { t } from "ttag";
 import { parse as urlParse } from "url";
 import querystring from "querystring";
 
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import DownloadButton from "metabase/components/DownloadButton.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import Icon from "metabase/components/Icon";
+import DownloadButton from "metabase/components/DownloadButton";
+import Tooltip from "metabase/components/Tooltip";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -32,7 +32,7 @@ const QueryDownloadWidget = ({
   <PopoverWithTrigger
     triggerElement={
       <Tooltip tooltip={t`Download full results`}>
-        <Icon title={t`Download this data`} name={icon} size={16} />
+        <Icon title={t`Download this data`} name={icon} size={20} />
       </Tooltip>
     }
     triggerClasses={cx(className, "text-brand-hover")}
@@ -154,9 +154,7 @@ const DashboardEmbedQueryButton = ({
 }) => (
   <DownloadButton
     method="GET"
-    url={`api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${
-      card.id
-    }/${type}`}
+    url={`api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${card.id}/${type}`}
     extensions={[type]}
     params={params}
   >

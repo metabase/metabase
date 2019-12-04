@@ -1,9 +1,9 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import FilterList from "./FilterList.jsx";
-import AggregationName from "./AggregationName.jsx";
-import FieldSet from "metabase/components/FieldSet.jsx";
+import FilterList from "./FilterList";
+import AggregationName from "./AggregationName";
+import FieldSet from "metabase/components/FieldSet";
 
 import * as Q_DEPRECATED from "metabase/lib/query";
 import { t } from "ttag";

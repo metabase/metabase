@@ -2,7 +2,7 @@ import React from "react";
 import cx from "classnames";
 import pure from "recompose/pure";
 
-import Popover from "./Popover.jsx";
+import Popover from "./Popover";
 
 // if the tooltip is passed a long description we'll want to conditionally
 // format it to make it easier to read.

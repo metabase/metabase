@@ -141,6 +141,36 @@ export const field_special_types = [
     section: t`Common`,
   },
   {
+    id: TYPE.CancelationTimestamp,
+    name: t`Cancelation timestamp`,
+    section: t`Common`,
+  },
+  {
+    id: TYPE.CancelationTime,
+    name: t`Cancelation time`,
+    section: t`Common`,
+  },
+  {
+    id: TYPE.CancelationDate,
+    name: t`Cancelation date`,
+    section: t`Common`,
+  },
+  {
+    id: TYPE.DeletionTimestamp,
+    name: t`Deletion timestamp`,
+    section: t`Common`,
+  },
+  {
+    id: TYPE.DeletionTime,
+    name: t`Deletion time`,
+    section: t`Common`,
+  },
+  {
+    id: TYPE.DeletionDate,
+    name: t`Deletion date`,
+    section: t`Common`,
+  },
+  {
     id: TYPE.Product,
     name: t`Product`,
     section: t`Common`,
@@ -251,12 +281,12 @@ export const field_visibility_types = [
   },
   {
     id: "details-only",
-    name: t`Only in Detail Views`,
+    name: t`Only in detail views`,
     description: t`This field will only be displayed when viewing the details of a single record. Use this for information that's lengthy or that isn't useful in a table or chart.`,
   },
   {
     id: "sensitive",
-    name: t`Do Not Include`,
-    description: t`Metabase will never retrieve this field. Use this for sensitive or irrelevant information.`,
+    name: t`Do not include`,
+    description: t`This field won't be visible or selectable in questions created with the GUI interfaces. It will still be accessible in SQL/native queries.`,
   },
 ];

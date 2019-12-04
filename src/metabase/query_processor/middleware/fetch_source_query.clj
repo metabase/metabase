@@ -89,12 +89,12 @@
         (log/info (trs "Trimming trailing comment from card with id {0}" card-id))
         trimmed-string))))
 
-(s/defn ^:private card-id->source-query-and-metadata :- SourceQueryAndMetadata
+(s/defn card-id->source-query-and-metadata :- SourceQueryAndMetadata
   "Return the source query info for Card with `card-id`."
   [card-id :- su/IntGreaterThanZero]
   (let [card
         (or (db/select-one [Card :dataset_query :database_id :result_metadata] :id card-id)
-            (throw (ex-info (str (tru "Card {0} does not exist." card-id))
+            (throw (ex-info (tru "Card {0} does not exist." card-id)
                      {:card-id card-id})))
 
         {{mbql-query                     :query
@@ -109,7 +109,7 @@
             (when native-query
               (cond-> {:native (trim-query card-id native-query)}
                 (seq template-tags) (assoc :template-tags template-tags)))
-            (throw (ex-info (str (tru "Missing source query in Card {0}" card-id))
+            (throw (ex-info (tru "Missing source query in Card {0}" card-id)
                      {:card card})))]
     ;; log the query at this point, it's useful for some purposes
     ;;
@@ -225,8 +225,8 @@
       copy-source-query-database-ids
       remove-unneeded-database-ids))
 
-
 (s/defn ^:private resolve-card-id-source-tables* :- FullyResolvedQuery
+  "Resolve `card__n`-style `:source-tables` in `query`."
   [{inner-query :query, :as outer-query} :- mbql.s/Query]
   (if-not inner-query
     ;; for non-MBQL queries there's nothing to do since they have nested queries

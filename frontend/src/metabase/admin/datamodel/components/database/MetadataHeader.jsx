@@ -2,11 +2,11 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link, withRouter } from "react-router";
 import { t } from "ttag";
-import SaveStatus from "metabase/components/SaveStatus.jsx";
-import Toggle from "metabase/components/Toggle.jsx";
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import ColumnarSelector from "metabase/components/ColumnarSelector.jsx";
-import Icon from "metabase/components/Icon.jsx";
+import SaveStatus from "metabase/components/SaveStatus";
+import Toggle from "metabase/components/Toggle";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import ColumnarSelector from "metabase/components/ColumnarSelector";
+import Icon from "metabase/components/Icon";
 import Databases from "metabase/entities/databases";
 
 @withRouter
@@ -91,7 +91,7 @@ export default class MetadataHeader extends Component {
     return (
       <span className="ml4 mr3">
         <Link to={`${this.props.location.pathname}/settings`}>
-          <Icon name="gear" />
+          <Icon name="gear" className="text-brand-hover" />
         </Link>
       </span>
     );
@@ -106,7 +106,7 @@ export default class MetadataHeader extends Component {
         </div>
         <div className="MetadataEditor-headerSection flex flex-align-right align-center flex-no-shrink">
           <SaveStatus ref="status" />
-          <span className="mr1">{t`Show original schema`}</span>
+          <div className="mr1 text-medium">{t`Show original schema`}</div>
           <Toggle
             value={this.props.isShowingSchema}
             onChange={this.props.toggleShowSchema}

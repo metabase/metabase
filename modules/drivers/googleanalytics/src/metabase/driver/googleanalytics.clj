@@ -88,7 +88,7 @@
   (google/execute (.list (.columns (.metadata client)) "ga")))
 
 (defn- column-attribute
-  "Get the value of ATTRIBUTE-NAME for COLUMN."
+  "Get the value of `attribute-name` for `column`."
   [^Column column, attribute-name]
   (get (.getAttributes column) (name attribute-name)))
 
@@ -204,6 +204,7 @@
                  (json/parse-string query keyword)
                  query)
         client (database->client database)]
+    ;; `end-date` is inclusive!!!
     (u/prog1 (.get (.ga (.data client))
                    (:ids query)
                    (:start-date query)
@@ -229,8 +230,8 @@
   ;; if we get a big long message about how we need to enable the GA API, then replace it with a short message about
   ;; how we need to enable the API
   (if-let [[_ enable-api-url] (re-find #"Enable it by visiting ([^\s]+) then retry." message)]
-    (str (tru "You must enable the Google Analytics API. Use this link to go to the Google Developers Console: {0}"
-              enable-api-url))
+    (tru "You must enable the Google Analytics API. Use this link to go to the Google Developers Console: {0}"
+         enable-api-url)
     message))
 
 (defmethod driver/mbql->native :googleanalytics [_ query]

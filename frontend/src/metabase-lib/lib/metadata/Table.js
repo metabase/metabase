@@ -14,6 +14,8 @@ import { titleize, humanize } from "metabase/lib/formatting";
 
 import Dimension from "../Dimension";
 
+import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+
 type EntityType = string; // TODO: move somewhere central
 
 import _ from "underscore";
@@ -39,26 +41,26 @@ export default class Table extends Base {
   }
 
   newQuestion(): Question {
-    let question = Question.create({
-      databaseId: this.db_id,
+    return this.question()
+      .setDefaultQuery()
+      .setDefaultDisplay();
+  }
+
+  question(): Question {
+    return Question.create({
+      databaseId: this.db.id,
       tableId: this.id,
       metadata: this.metadata,
     });
-    // NOTE: special case for Google Analytics which doesn't allow raw queries:
-    if (this.entity_type === "entity/GoogleAnalyticsTable") {
-      const dateField = _.findWhere(this.fields, { name: "ga:date" });
-      if (dateField) {
-        question = question
-          .query()
-          .addFilter(["time-interval", ["field-id", dateField.id], -365, "day"])
-          .addAggregation(["metric", "ga:users"])
-          .addAggregation(["metric", "ga:pageviews"])
-          .addBreakout(["datetime-field", ["field-id", dateField.id], "week"])
-          .question()
-          .setDisplay("line");
-      }
-    }
-    return question;
+  }
+
+  query(query = {}): StructuredQuery {
+    return (
+      this.question()
+        .query()
+        // $FlowFixMe: we know question returns a StructuredQuery but flow doesn't
+        .updateQuery(q => ({ ...q, ...query }))
+    );
   }
 
   dimensions(): Dimension[] {
@@ -77,11 +79,11 @@ export default class Table extends Base {
     return this.fields.filter(field => field.isDate());
   }
 
-  aggregations() {
-    return this.aggregation_options || [];
+  aggregationOperators() {
+    return this.aggregation_operators || [];
   }
 
   aggregation(agg) {
-    return _.findWhere(this.aggregations(), { short: agg });
+    return _.findWhere(this.aggregationOperators(), { short: agg });
   }
 }

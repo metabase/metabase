@@ -4,10 +4,10 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { t, jt } from "ttag";
 import DirectionalButton from "metabase/components/DirectionalButton";
-import ExpandableString from "metabase/query_builder/components/ExpandableString.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import IconBorder from "metabase/components/IconBorder.jsx";
-import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
+import ExpandableString from "metabase/query_builder/components/ExpandableString";
+import Icon from "metabase/components/Icon";
+import IconBorder from "metabase/components/IconBorder";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import {
   isID,
@@ -97,7 +97,9 @@ export class ObjectDetail extends Component {
 
   componentDidMount() {
     // load up FK references
-    this.props.loadObjectDetailFKReferences();
+    if (this.props.tableForeignKeys) {
+      this.props.loadObjectDetailFKReferences();
+    }
     window.addEventListener("keydown", this.onKeyDown, true);
   }
 
@@ -106,8 +108,10 @@ export class ObjectDetail extends Component {
   }
 
   componentWillReceiveProps(nextProps) {
-    // if the card has changed then reload fk references
-    if (this.props.data != nextProps.data) {
+    // if the card changed or table metadata loaded then reload fk references
+    const tableFKsJustLoaded =
+      nextProps.tableForeignKeys && !this.props.tableForeignKeys;
+    if (this.props.data !== nextProps.data || tableFKsJustLoaded) {
       this.props.loadObjectDetailFKReferences();
     }
   }
@@ -358,7 +362,7 @@ export class ObjectDetail extends Component {
               }}
             >
               <DirectionalButton
-                direction="back"
+                direction="left"
                 onClick={this.props.viewPreviousObjectDetail}
               />
             </div>
@@ -370,7 +374,7 @@ export class ObjectDetail extends Component {
               }}
             >
               <DirectionalButton
-                direction="forward"
+                direction="right"
                 onClick={this.props.viewNextObjectDetail}
               />
             </div>

@@ -1,6 +1,5 @@
 (ns metabase.pulse.render.body
   (:require [hiccup.core :refer [h]]
-            [metabase.mbql.util :as mbql.u]
             [metabase.pulse.render
              [color :as color]
              [common :as common]
@@ -9,6 +8,7 @@
              [sparkline :as sparkline]
              [style :as style]
              [table :as table]]
+            [metabase.types :as types]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]))
 
@@ -43,9 +43,9 @@
 (defn- format-cell
   [timezone value col]
   (cond
-    (mbql.u/datetime-field? col)                             (datetime/format-timestamp timezone value col)
-    (and (number? value) (not (mbql.u/datetime-field? col))) (common/format-number value)
-    :else                                                    (str value)))
+    (types/temporal-field? col)                             (datetime/format-timestamp timezone value col)
+    (and (number? value) (not (types/temporal-field? col))) (common/format-number value)
+    :else                                                   (str value)))
 
 ;;; --------------------------------------------------- Rendering ----------------------------------------------------
 
@@ -148,7 +148,7 @@
                  (< rows-limit (count rows))))
     [:div {:style (style/style {:color         style/color-gray-2
                                 :margin-bottom :16px})}
-     (str (trs "More results have been included as a file attachment"))]))
+     (trs "More results have been included as a file attachment")]))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -223,7 +223,7 @@
              :src   (:image-src image-bundle)}]
       [:table
        [:tr
-        [:td {:style (style/style {:color         style/color-brand
+        [:td {:style (style/style {:color         (style/primary-color)
                                    :font-size     :24px
                                    :font-weight   700
                                    :padding-right :16px})}
@@ -233,7 +233,7 @@
                                    :font-weight 700})}
          (second values)]]
        [:tr
-        [:td {:style (style/style {:color         style/color-brand
+        [:td {:style (style/style {:color         (style/primary-color)
                                    :font-size     :16px
                                    :font-weight   700
                                    :padding-right :16px})}
@@ -257,7 +257,7 @@
                      (style/font-style)
                      {:margin-top :8px
                       :color      style/color-gray-4})}
-       (str (trs "No results"))]]}))
+       (trs "No results")]]}))
 
 
 (s/defmethod render :attached :- common/RenderedPulseCard
@@ -274,7 +274,7 @@
                      (style/font-style)
                      {:margin-top :8px
                       :color      style/color-gray-4})}
-       (str (trs "This question has been included as a file attachment"))]]}))
+       (trs "This question has been included as a file attachment")]]}))
 
 
 (s/defmethod render :unknown :- common/RenderedPulseCard
@@ -287,9 +287,9 @@
                   (style/font-style)
                   {:color       style/color-gold
                    :font-weight 700})}
-    (str (trs "We were unable to display this Pulse."))
+    (trs "We were unable to display this Pulse.")
     [:br]
-    (str (trs "Please view this card in Metabase."))]})
+    (trs "Please view this card in Metabase.")]})
 
 
 (s/defmethod render :error :- common/RenderedPulseCard
@@ -303,4 +303,4 @@
                   {:color       style/color-error
                    :font-weight 700
                    :padding     :16px})}
-    (str (trs "An error occurred while displaying this card."))]})
+    (trs "An error occurred while displaying this card.")]})

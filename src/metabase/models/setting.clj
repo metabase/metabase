@@ -32,6 +32,7 @@
   (:require [cheshire.core :as json]
             [clojure
              [core :as core]
+             [data :as data]
              [string :as str]]
             [clojure.data.csv :as csv]
             [clojure.tools.logging :as log]
@@ -43,7 +44,7 @@
             [metabase.models.setting.cache :as cache]
             [metabase.util
              [date :as du]
-             [i18n :as ui18n :refer [trs tru]]]
+             [i18n :as ui18n :refer [deferred-trs deferred-tru trs tru]]]
             [schema.core :as s]
             [toucan
              [db :as db]
@@ -82,7 +83,12 @@
    :tag         (s/maybe Class)  ; type annotation, e.g. ^String, to be applied. Defaults to tag based on :type
    :sensitive?  s/Bool           ; is this sensitive (never show in plaintext), like a password? (default: false)
    :internal?   s/Bool           ; should the API never return this setting? (default: false)
-   :cache?      s/Bool})         ; should the getter always fetch this value "fresh" from the DB? (default: false)
+   :cache?      s/Bool           ; should the getter always fetch this value "fresh" from the DB? (default: false)
+
+  ;; called whenever setting value changes, whether from update-setting! or a cache refresh. used to handle cases
+  ;; where a change to the cache necessitates a change to some value outside the cache, like when a change the
+  ;; `:site-locale` setting requires a call to `java.util.Locale/setDefault`
+  :on-change   (s/maybe clojure.lang.IFn)})
 
 
 (defonce ^:private registered-settings
@@ -95,8 +101,20 @@
     (let [k (keyword setting-or-name)]
       (or (@registered-settings k)
           (throw (Exception.
-                  (str (tru "Setting {0} does not exist.\nFound: {1}" k (sort (keys @registered-settings))))))))))
+                  (tru "Setting {0} does not exist.\nFound: {1}" k (sort (keys @registered-settings)))))))))
 
+
+(defn- call-on-change
+  "Cache watcher that applies `:on-change` callback for all settings that have changed."
+  [_key _ref old new]
+  (let [rs      @registered-settings
+        [d1 d2] (data/diff old new)]
+    (doseq [changed-setting (into (set (keys d1))
+                                  (set (keys d2)))]
+      (when-let [on-change (get-in rs [(keyword changed-setting) :on-change])]
+        (on-change (clojure.core/get old changed-setting) (clojure.core/get new changed-setting))))))
+
+(add-watch @#'cache/cache* :call-on-change call-on-change)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      get                                                       |
@@ -156,7 +174,7 @@
       "true"  true
       "false" false
       (throw (Exception.
-              (str (tru "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive).")))))))
+              (tru "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive)."))))))
 
 (defn get-boolean
   "Get boolean value of (presumably `:boolean`) `setting-or-name`. This is the default getter for `:boolean` settings.
@@ -238,9 +256,9 @@
        ;; and there's actually a row in the DB that's not in the cache for some reason. Go ahead and update the
        ;; existing value and log a warning
        (catch Throwable e
-         (log/warn (tru "Error inserting a new Setting:") "\n"
+         (log/warn (deferred-tru "Error inserting a new Setting:") "\n"
                    (.getMessage e) "\n"
-                   (tru "Assuming Setting already exists in DB and updating existing value."))
+                   (deferred-tru "Assuming Setting already exists in DB and updating existing value."))
          (update-setting! setting-name new-value))))
 
 (defn- obfuscated-value? [v]
@@ -262,7 +280,7 @@
     (if obfuscated?
       (log/info (trs "Attempted to set Setting {0} to obfuscated value. Ignoring change." setting-name))
       (do
-        (cache/restore-cache-if-needed!)
+        (cache/restore-cache!)
         ;; write to DB
         (cond
           (nil? new-value)
@@ -316,6 +334,7 @@
 
 (defn set-json!
   "Serialize `new-value` for `setting-or-name` as a JSON string and save it."
+  {:style/indent 1}
   [setting-or-name new-value]
   (set-string! setting-or-name (some-> new-value json/generate-string)))
 
@@ -382,6 +401,7 @@
                :description nil
                :type        setting-type
                :default     default
+               :on-change   nil
                :getter      (partial (default-getter-for-type setting-type) setting-name)
                :setter      (partial (default-setter-for-type setting-type) setting-name)
                :tag         (default-tag-for-type setting-type)
@@ -444,7 +464,7 @@
     ((set symbols) (first expression))))
 
 (defn- valid-trs-or-tru? [desc]
-  (is-expression? #{'trs 'tru `trs `tru} desc))
+  (is-expression? #{'deferred-trs 'deferred-tru `deferred-trs `deferred-tru} desc))
 
 (defn- valid-str-of-trs-or-tru? [maybe-str-expr]
   (when (is-expression? #{'str `str} maybe-str-expr)
@@ -462,15 +482,15 @@
   (when-not (or (valid-trs-or-tru? desc)
                 (valid-str-of-trs-or-tru? desc))
     (throw (IllegalArgumentException.
-            (str (trs "defsetting descriptions strings must be `:internal?` or internationalized, found: `{0}`"
-                      (pr-str desc))))))
+             (trs "defsetting descriptions strings must be `:internal?` or internationalized, found: `{0}`"
+                  (pr-str desc)))))
   desc)
 
 (defmacro defsetting
   "Defines a new Setting that will be added to the DB at some point in the future.
    Conveniently can be used as a getter/setter as well:
 
-     (defsetting mandrill-api-key \"API key for Mandrill.\")
+     (defsetting mandrill-api-key (trs \"API key for Mandrill.\"))
      (mandrill-api-key)           ; get the value
      (mandrill-api-key new-value) ; update the value
      (mandrill-api-key nil)       ; delete the value
@@ -585,7 +605,7 @@
      :env_name       (env-var-name setting)
      :description    (str description)
      :default        (if set-via-env-var?
-                       (str (tru "Using value of env var {0}" (str \$ (env-var-name setting))))
+                       (tru "Using value of env var {0}" (str \$ (env-var-name setting)))
                        default)}))
 
 (defn all

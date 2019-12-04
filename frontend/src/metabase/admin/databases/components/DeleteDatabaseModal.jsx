@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import Button from "metabase/components/Button";
-import ModalContent from "metabase/components/ModalContent.jsx";
+import ModalContent from "metabase/components/ModalContent";
 
 export default class DeleteDatabaseModal extends Component {
   constructor(props, context) {

@@ -1,4 +1,4 @@
-import { useSharedAdminLogin, createTestStore } from "__support__/e2e_tests";
+import { useSharedAdminLogin, createTestStore } from "__support__/e2e";
 
 import React from "react";
 import { mount } from "enzyme";
@@ -56,7 +56,7 @@ describe("The Reference Section", () => {
       type: "query",
       query: {
         "source-table": 1,
-        aggregation: ["count"],
+        aggregation: [["count"]],
         filter: ["segment", 1],
       },
     },

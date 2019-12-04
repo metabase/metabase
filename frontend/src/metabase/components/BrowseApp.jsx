@@ -152,9 +152,7 @@ export class TableBrowser extends React.Component {
                                   </Link>
                                 ),
                                 <Link
-                                  to={`reference/databases/${dbId}/tables/${
-                                    table.id
-                                  }`}
+                                  to={`reference/databases/${dbId}/tables/${table.id}`}
                                   data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;Reference Click`}
                                   className="link--icon ml1"
                                 >
@@ -241,7 +239,7 @@ function BrowseHeader({ crumbs }) {
             <div className="flex align-center text-medium text-brand-hover">
               <Icon className="flex align-center" size={14} name="reference" />
               <Link className="ml1 flex align-center text-bold">
-                Learn about our data
+                {t`Learn about our data`}
               </Link>
             </div>
           </Link>

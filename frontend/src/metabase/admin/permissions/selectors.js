@@ -7,7 +7,7 @@ import { push } from "react-router-redux";
 import TogglePropagateAction from "./containers/TogglePropagateAction";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import colors, { alpha } from "metabase/lib/colors";
+import { color, alpha } from "metabase/lib/colors";
 
 import { t } from "ttag";
 
@@ -119,16 +119,10 @@ function getPermissionWarning(
   const perm = value || getter(permissions, groupId, entityId);
   const defaultPerm = getter(permissions, defaultGroup.id, entityId);
   if (perm === "controlled" && defaultPerm === "controlled") {
-    return t`The "${
-      defaultGroup.name
-    }" group may have access to a different set of ${entityType} than this group, which may give this group additional access to some ${entityType}.`;
+    return t`The "${defaultGroup.name}" group may have access to a different set of ${entityType} than this group, which may give this group additional access to some ${entityType}.`;
   }
   if (hasGreaterPermissions(defaultPerm, perm)) {
-    return t`The "${
-      defaultGroup.name
-    }" group has a higher level of access than this, which will override this setting. You should limit or revoke the "${
-      defaultGroup.name
-    }" group's access to this item.`;
+    return t`The "${defaultGroup.name}" group has a higher level of access than this, which will override this setting. You should limit or revoke the "${defaultGroup.name}" group's access to this item.`;
   }
   return null;
 }
@@ -234,18 +228,18 @@ const BG_ALPHA = 0.15;
 
 const OPTION_GREEN = {
   icon: "check",
-  iconColor: colors["success"],
-  bgColor: alpha(colors["success"], BG_ALPHA),
+  iconColor: color("success"),
+  bgColor: alpha(color("success"), BG_ALPHA),
 };
 const OPTION_YELLOW = {
   icon: "eye",
-  iconColor: colors["warning"],
-  bgColor: alpha(colors["warning"], BG_ALPHA),
+  iconColor: color("warning"),
+  bgColor: alpha(color("warning"), BG_ALPHA),
 };
 const OPTION_RED = {
   icon: "close",
-  iconColor: colors["error"],
-  bgColor: alpha(colors["error"], BG_ALPHA),
+  iconColor: color("error"),
+  bgColor: alpha(color("error"), BG_ALPHA),
 };
 
 const OPTION_ALL = {
@@ -305,7 +299,7 @@ export const getTablesPermissionsGrid = createSelector(
     databaseId: DatabaseId,
     schemaName: SchemaName,
   ) => {
-    const database = metadata.databases[databaseId];
+    const database = metadata.database(databaseId);
 
     if (!groups || !permissions || !database) {
       return null;
@@ -411,7 +405,7 @@ export const getSchemasPermissionsGrid = createSelector(
     permissions: GroupsPermissions,
     databaseId: DatabaseId,
   ) => {
-    const database = metadata.databases[databaseId];
+    const database = metadata.database(databaseId);
 
     if (!groups || !permissions || !database) {
       return null;
@@ -515,7 +509,7 @@ export const getDatabasesPermissionsGrid = createSelector(
       return null;
     }
 
-    const databases = Object.values(metadata.databases);
+    const databases = metadata.databasesList({ savedQuestions: false });
     const defaultGroup = _.find(groups, isDefaultGroup);
 
     return {
@@ -543,7 +537,7 @@ export const getDatabasesPermissionsGrid = createSelector(
           },
           postAction(groupId, { databaseId }, value) {
             if (value === "controlled") {
-              const database = metadata.databases[databaseId];
+              const database = metadata.database(databaseId);
               const schemas = database ? database.schemaNames() : [];
               if (
                 schemas.length === 0 ||

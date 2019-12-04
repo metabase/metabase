@@ -16,6 +16,8 @@ import { defer } from "metabase/lib/promise";
 import { debounce } from "underscore";
 import { stripId } from "metabase/lib/formatting";
 
+import Fields from "metabase/entities/fields";
+
 import type Field from "metabase-lib/lib/metadata/Field";
 import type { FieldId } from "metabase/meta/types/Field";
 import type { Value } from "metabase/meta/types/Dataset";
@@ -28,6 +30,12 @@ const mapDispatchToProps = {
   addRemappings,
   fetchFieldValues,
 };
+
+function mapStateToProps(state, { field }) {
+  return {
+    field: field && Fields.selectors.getObject(state, { entityId: field.id }),
+  };
+}
 
 type Props = {
   value: Value[],
@@ -380,6 +388,6 @@ const OptionsMessage = ({ message }) => (
 );
 
 export default connect(
-  null,
+  mapStateToProps,
   mapDispatchToProps,
 )(FieldValuesWidget);

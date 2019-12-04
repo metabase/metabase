@@ -21,7 +21,6 @@
              [async :as async]
              [async-wait :as async-wait]
              [auto-bucket-datetimes :as bucket-datetime]
-             [bind-effective-timezone :as bind-timezone]
              [binning :as binning]
              [cache :as cache]
              [catch-exceptions :as catch-exceptions]
@@ -38,6 +37,7 @@
              [log :as log-query]
              [mbql-to-native :as mbql-to-native]
              [normalize-query :as normalize]
+             [optimize-datetime-filters :as optimize-datetime-filters]
              [parameters :as parameters]
              [permissions :as perms]
              [pre-alias-aggregations :as pre-alias-ags]
@@ -65,9 +65,8 @@
   "The pivotal stage of the `process-query` pipeline where the query is actually executed by the driver's Query
   Processor methods. This function takes the fully pre-processed query, runs it, and returns the results, which then
   run through the various post-processing steps."
-  [query :- {:driver   s/Keyword
-             s/Keyword s/Any}]
-  (driver/execute-query (:driver query) query))
+  [query :- (s/pred map?)]
+  (driver/execute-query driver/*driver* query))
 
 ;; The way these functions are applied is actually straight-forward; it matches the middleware pattern used by
 ;; Ring.
@@ -107,6 +106,7 @@
   [#'mbql-to-native/mbql->native
    #'annotate/result-rows-maps->vectors
    #'check-features/check-features
+   #'optimize-datetime-filters/optimize-datetime-filters
    #'wrap-value-literals/wrap-value-literals
    #'annotate/add-column-info
    #'perms/check-query-permissions
@@ -145,7 +145,6 @@
    ;; TODO - `resolve-driver` and `resolve-database` can be combined into a single step, so we don't need to fetch
    ;; DB twice
    #'resolve-driver/resolve-driver
-   #'bind-timezone/bind-effective-timezone
    #'resolve-database/resolve-database
    #'fetch-source-query/resolve-card-id-source-tables
    #'store/initialize-store
@@ -231,29 +230,39 @@
                 ;; query failed instead of giving people a failure response and trying to get results from that. So do
                 ;; everyone a favor and throw an Exception
                 (let [results (m/dissoc-in results [:query :results-promise])]
-                  (throw (ex-info (str (tru "Error preprocessing query")) results)))))))]
+                  (throw (ex-info (tru "Error preprocessing query") results)))))))]
     (receive-native-query (build-pipeline deliver-native-query))))
+
+(def ^:private ^:dynamic *preprocessing-level* 0)
+
+(def ^:private ^:const max-preprocessing-level 20)
 
 (defn query->preprocessed
   "Return the fully preprocessed form for `query`, the way it would look immediately before `mbql->native` is called.
   Especially helpful for debugging or testing driver QP implementations."
   {:style/indent 0}
   [query]
-  (-> (update query :middleware assoc :disable-mbql->native? true)
-      preprocess
-      (m/dissoc-in [:middleware :disable-mbql->native?])))
+  ;; record the number of recursive preprocesses taking place to prevent infinite preprocessing loops.
+  (binding [*preprocessing-level* (inc *preprocessing-level*)]
+    (when (>= *preprocessing-level* max-preprocessing-level)
+      (throw (ex-info (str (tru "Infinite loop detected: recursively preprocessed query {0} times."
+                                max-preprocessing-level))
+               {:type :bug})))
+    (-> query        (update :middleware assoc :disable-mbql->native? true)
+        (update :preprocessing-level (fnil inc 0))
+        preprocess
+        (m/dissoc-in [:middleware :disable-mbql->native?]))))
 
 (defn query->expected-cols
   "Return the `:cols` you would normally see in MBQL query results by preprocessing the query amd calling `annotate` on
   it."
   [{query-type :type, :as query}]
   (when-not (= query-type :query)
-    (throw (Exception. (str (tru "Can only determine expected columns for MBQL queries.")))))
-  (let [results (qp.store/with-store
-                  ((annotate/add-column-info (constantly nil))
-                   (query->preprocessed query)))]
-    (or (seq (:cols results))
-        (throw (ex-info (str (tru "No columns returned.")) results)))))
+    (throw (Exception. (tru "Can only determine expected columns for MBQL queries."))))
+  (qp.store/with-store
+    (let [preprocessed (query->preprocessed query)
+          results      ((annotate/add-column-info (constantly nil)) preprocessed)]
+      (seq (:cols results)))))
 
 (defn query->native
   "Return the native form for `query` (e.g. for a MBQL query on Postgres this would return a map containing the compiled
@@ -266,7 +275,7 @@
   (perms/check-current-user-has-adhoc-native-query-perms query)
   (let [results (preprocess query)]
     (or (get results :native)
-        (throw (ex-info (str (tru "No native form returned."))
+        (throw (ex-info (tru "No native form returned.")
                  (or results {}))))))
 
 (defn query->native-with-spliced-params

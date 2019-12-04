@@ -12,7 +12,7 @@
   [feature]
   (when driver/*driver*
     (when-not (driver/supports? driver/*driver* feature)
-      (throw (Exception. (str (tru "{0} is not supported by this driver." (name feature))))))))
+      (throw (Exception. (tru "{0} is not supported by this driver." (name feature)))))))
 
 ;; TODO - definitely a little incomplete. It would be cool if we cool look at the metadata in the schema namespace and
 ;; auto-generate this logic

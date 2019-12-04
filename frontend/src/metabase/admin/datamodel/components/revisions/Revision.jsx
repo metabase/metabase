@@ -1,9 +1,9 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import RevisionDiff from "./RevisionDiff.jsx";
+import RevisionDiff from "./RevisionDiff";
 import { t } from "ttag";
-import UserAvatar from "metabase/components/UserAvatar.jsx";
+import UserAvatar from "metabase/components/UserAvatar";
 
 import moment from "moment";
 
