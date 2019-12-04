@@ -329,8 +329,8 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
     // auto fit
     // Render a sample of rows to estimate average label size.
     // We use that estimate to compute the label interval.
-    const LABEL_PADDING = 4;
-    const MAX_SAMPLE_SIZE = 10;
+    const LABEL_PADDING = 6;
+    const MAX_SAMPLE_SIZE = 30;
     const sampleSize = Math.min(data.length, MAX_SAMPLE_SIZE);
     // $FlowFixMe
     addLabels(_.sample(data, sampleSize));

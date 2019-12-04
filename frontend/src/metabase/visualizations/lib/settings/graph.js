@@ -311,14 +311,18 @@ export const GRAPH_GOAL_SETTINGS = {
   },
 };
 
+// with more than this many rows, don't display values on top of bars by default
+const AUTO_SHOW_VALUES_MAX_ROWS = 25;
+
 export const GRAPH_DISPLAY_VALUES_SETTINGS = {
   "graph.show_values": {
     section: t`Display`,
     title: t`Label values`,
     widget: "toggle",
-    default: false,
     getHidden: (series, vizSettings) =>
       series.length > 1 || vizSettings["stackable.stack_type"] === "normalized",
+    getDefault: ([{ card, data }]) =>
+      card.display === "bar" && data.rows.length < AUTO_SHOW_VALUES_MAX_ROWS,
   },
   "graph.label_value_frequency": {
     section: t`Display`,
