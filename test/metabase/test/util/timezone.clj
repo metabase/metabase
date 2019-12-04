@@ -1,25 +1,28 @@
 (ns metabase.test.util.timezone
   (:require [clojure.test :as t]
             [metabase.driver :as driver]
-            [metabase.test.initialize :as initialize])
+            [metabase.test
+             [initialize :as initialize]
+             [synchronize :as test.sync]])
   (:import java.util.TimeZone))
 
 (defn do-with-system-timezone-id [^String timezone-id thunk]
-  ;; only if the app DB is already set up, we need to make sure plugins are loaded and kill any connection pools that
-  ;; might exist
-  (when (initialize/initialized? :db)
-    (initialize/initialize-if-needed! :plugins)
-    (#'driver/notify-all-databases-updated))
   (let [original-time-zone       (TimeZone/getDefault)
         original-system-property (System/getProperty "user.timezone")]
-    (try
-      (TimeZone/setDefault (TimeZone/getTimeZone timezone-id))
-      (System/setProperty "user.timezone" timezone-id)
-      (t/testing (format "JVM timezone set to %s" timezone-id)
-        (thunk))
-      (finally
-        (TimeZone/setDefault original-time-zone)
-        (System/setProperty "user.timezone" original-system-property)))))
+    (test.sync/synchronized
+      ;; only if the app DB is already set up, we need to make sure plugins are loaded and kill any connection pools that
+      ;; might exist
+      (when (initialize/initialized? :db)
+        (initialize/initialize-if-needed! :plugins)
+        (#'driver/notify-all-databases-updated))
+      (try
+        (TimeZone/setDefault (TimeZone/getTimeZone timezone-id))
+        (System/setProperty "user.timezone" timezone-id)
+        (t/testing (format "JVM timezone set to %s" timezone-id)
+          (thunk))
+        (finally
+          (TimeZone/setDefault original-time-zone)
+          (System/setProperty "user.timezone" original-system-property))))))
 
 (defmacro with-system-timezone-id
   "Execute `body` with the system time zone temporarily changed to the time zone named by `timezone-id`.

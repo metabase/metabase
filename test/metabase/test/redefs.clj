@@ -1,6 +1,7 @@
 (ns metabase.test.redefs
   (:require [clojure.test :as t]
             [metabase.plugins.classloader :as classloader]
+            [metabase.test.synchronize :as test.sync]
             [toucan.util.test :as tt]))
 
 ;; wrap `do-with-temp` so it initializes the DB before doing the other stuff it usually does
@@ -27,3 +28,24 @@
        :message  ~msg
        :expected pattern#
        :actual   s#})))
+
+(defonce orig-with-redefs (var-get #'with-redefs))
+
+(def ^:macro with-redefs*
+  (fn [&form &env bindings & body]
+    `(test.sync/synchronized
+       ~(apply orig-with-redefs &form &env bindings body))))
+
+(alter-var-root #'with-redefs (constantly (var-get #'with-redefs*)))
+
+(defonce orig-deftest (var-get #'t/deftest))
+
+(def ^:macro deftest*
+  (fn [&form &env name & body]
+    (orig-deftest &form &env name (if (:pure (meta name))
+                                    (do
+                                      (printf "%s/%s is a PURE test. Nice!\n" (ns-name *ns*) name)
+                                      `(do ~@body))
+                                    `(test.sync/parallel ~@body)))))
+
+(alter-var-root #'t/deftest (constantly (var-get #'deftest*)))

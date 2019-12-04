@@ -1,5 +1,6 @@
 (ns metabase.test.util.log
   "Utils for controlling the logging that goes on when running tests."
+  (:require [metabase.test.synchronize :as test.sync])
   (:import java.io.PrintStream
            [org.apache.commons.io.output NullOutputStream NullWriter]
            [org.apache.log4j Level Logger LogManager]))
@@ -18,21 +19,22 @@
                           (enumeration-seq (LogManager/getCurrentLoggers)))
         logger+old-level (vec (for [^Logger logger loggers]
                                 [logger (.getLevel logger)]))]
-    (try
-      (System/setOut null-stream)
-      (System/setErr null-stream)
-      (doseq [^Logger logger loggers]
-        (.setLevel logger Level/OFF))
-      (binding [*out* null-writer
-                *err* null-writer]
-        (f))
-      (finally
-        (System/setOut orig-out)
-        (System/setErr orig-err)
-        (.close null-stream)            ; not 100% sure this is necessary
-        (.close null-writer)
-        (doseq [[^Logger logger, ^Level old-level] logger+old-level]
-          (.setLevel logger old-level))))))
+    (test.sync/synchronized
+     (try
+       (System/setOut null-stream)
+       (System/setErr null-stream)
+       (doseq [^Logger logger loggers]
+         (.setLevel logger Level/OFF))
+       (binding [*out* null-writer
+                 *err* null-writer]
+         (f))
+       (finally
+         (System/setOut orig-out)
+         (System/setErr orig-err)
+         (.close null-stream)            ; not 100% sure this is necessary
+         (.close null-writer)
+         (doseq [[^Logger logger, ^Level old-level] logger+old-level]
+           (.setLevel logger old-level)))))))
 
 (defmacro suppress-output
   "Execute `body` with all logging/`*out*`/`*err*` messages suppressed. Useful for avoiding cluttering up test output

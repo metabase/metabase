@@ -11,32 +11,18 @@
              [field :as field :refer [Field]]
              [table :refer [Table]]]
             [metabase.plugins.classloader :as classloader]
+            [metabase.test
+             [initialize :as initialize]
+             [synchronize :as test.sync]]
             [metabase.test.data
              [dataset-definitions :as defs]
              [interface :as tx]]
-            [metabase.test.initialize :as initialize]
             [metabase.test.util.timezone :as tu.tz]
             [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          get-or-create-database!; db                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-
-(defonce ^:private ^{:arglists '([driver]), :doc "We'll have a very bad time if any sort of test runs that calls
-  `data/db` for the first time calls it multiple times in parallel -- for example my Oracle test that runs 30 sync
-  calls at the same time to make sure nothing explodes and cursors aren't leaked. To make sure this doesn't happen
-  we'll keep a map of driver->lock and only allow a given driver to create one Database at a time. Because each DB has
-  its own lock we can still create different DBs for different drivers at the same time."}
-  driver->create-database-lock
-  (let [locks (atom {})]
-    (fn [driver]
-      (let [driver (driver/the-driver driver)]
-        (or
-         (@locks driver)
-         (do
-           (swap! locks update driver #(or % (Object.)))
-           (@locks driver)))))))
 
 (defmulti get-or-create-database!
   "Create DBMS database associated with `database-definition`, create corresponding Metabase Databases/Tables/Fields,
@@ -107,12 +93,20 @@
       (when config/is-test?
         (System/exit -1)))))
 
+(let [locks (atom {})]
+  (defn- create-db-lock [driver db-def]
+    (let [lock-path [driver (hash db-def)]]
+      (let [locks (swap! (atom {}) update-in lock-path #(or % (Object.)))
+            lock  (get-in locks lock-path)]
+        (println "create-db-lock for %s %s = %s" driver (pr-str db-def) lock)
+        lock))))
+
 (defmethod get-or-create-database! :default [driver dbdef]
   (initialize/initialize-if-needed! :plugins :db)
   (let [dbdef (tx/get-dataset-definition dbdef)]
     (or
      (tx/metabase-instance dbdef driver)
-     (locking (driver->create-database-lock driver)
+     (locking (create-db-lock driver dbdef)
        (or
         (tx/metabase-instance dbdef driver)
         ;; make sure report timezone isn't bound, possibly causing weird things to happen when data is loaded -- this
@@ -278,8 +272,9 @@
   will be deleted after `body-fn` finishes"
   [data-load-fn body-fn]
   (let [result-instances (data-load-fn)]
-    (try
-      (body-fn)
-      (finally
-        (doseq [instance result-instances]
-          (delete-model-instance! instance))))))
+    (test.sync/synchronized
+      (try
+        (body-fn)
+        (finally
+          (doseq [instance result-instances]
+            (delete-model-instance! instance)))))))

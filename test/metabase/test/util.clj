@@ -36,7 +36,8 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.test
              [data :as data]
-             [initialize :as initialize]]
+             [initialize :as initialize]
+             [synchronize :as test.sync]]
             [schema.core :as s]
             [toucan.db :as db]
             [toucan.util.test :as tt])
@@ -266,12 +267,13 @@
         original-value (when (or (#'setting/db-or-cache-value setting)
                                  (#'setting/env-var-value setting))
                          (setting/get setting-k))]
-    (try
-      (setting/set! setting-k value)
-      (testing (colorize/blue (format "Setting %s = %s" (keyword setting-k) value))
-        (f))
-      (finally
-        (setting/set! setting-k original-value)))))
+    (test.sync/synchronized
+      (try
+        (setting/set! setting-k value)
+        (testing (colorize/blue (format "Setting %s = %s" (keyword setting-k) value))
+          (f))
+        (finally
+          (setting/set! setting-k original-value))))))
 
 (defmacro with-temporary-setting-values
   "Temporarily bind the values of one or more `Settings`, execute body, and re-establish the original values. This
@@ -319,15 +321,16 @@
                                             :where  [:= :id (u/get-id object-or-id)]})]
     (assert original-column->value
       (format "%s %d not found." (name model) (u/get-id object-or-id)))
-    (try
-      (db/update! model (u/get-id object-or-id)
-                  column->temp-value)
-      (f)
-      (finally
-        (db/execute!
-         {:update model
-          :set    original-column->value
-          :where  [:= :id (u/get-id object-or-id)]})))))
+    (test.sync/synchronized
+      (try
+        (db/update! model (u/get-id object-or-id)
+          column->temp-value)
+        (f)
+        (finally
+          (db/execute!
+           {:update model
+            :set    original-column->value
+            :where  [:= :id (u/get-id object-or-id)]}))))))
 
 (defmacro with-temp-vals-in-db
   "Temporary set values for an `object-or-id` in the application database, execute `body`, and then restore the
@@ -383,11 +386,12 @@
 (defn do-with-log-messages-for-level [level thunk]
   (let [original-mb-log-level (.getLevel (metabase-logger))
         new-level             (get level-kwd->level (keyword level))]
-    (try
-      (.setLevel (metabase-logger) new-level)
-      (thunk)
-      (finally
-        (.setLevel (metabase-logger) original-mb-log-level)))))
+    (test.sync/synchronized
+      (try
+        (.setLevel (metabase-logger) new-level)
+        (thunk)
+        (finally
+          (.setLevel (metabase-logger) original-mb-log-level))))))
 
 (defmacro with-log-level
   "Sets the log level (e.g. `:debug` or `:trace`) while executing `body`. Not thread safe! But good for debugging from
@@ -483,8 +487,9 @@
 ;; in place and then check the tasks that get scheduled
 
 (defn do-with-scheduler [scheduler thunk]
-  (with-redefs [task/scheduler (constantly scheduler)]
-    (thunk)))
+  (test.sync/synchronized
+    (with-redefs [task/scheduler (constantly scheduler)]
+      (thunk))))
 
 (defmacro with-scheduler
   "Temporarily bind the Metabase Quartzite scheduler to `scheulder` and run `body`."
@@ -566,11 +571,12 @@
   (db/delete! Collection :personal_owner_id nil))
 
 (defn do-with-model-cleanup [model-seq f]
-  (try
-    (f)
-    (finally
-      (doseq [model model-seq]
-        (do-model-cleanup! (db/resolve-model model))))))
+  (test.sync/synchronized
+    (try
+      (f)
+      (finally
+        (doseq [model model-seq]
+          (do-model-cleanup! (db/resolve-model model)))))))
 
 (defmacro with-model-cleanup
   "This will delete all rows found for each model in `model-seq`. By default, this calls `delete!`, so if the model has
@@ -632,16 +638,17 @@
 
 (defn do-with-non-admin-groups-no-root-collection-perms [f]
   (initialize/initialize-if-needed! :db)
-  (try
-    (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
-      (perms/revoke-collection-permissions! group-id collection/root-collection))
-    (f)
-    (finally
+  (test.sync/synchronized
+    (try
       (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
-        (when-not (db/exists? Permissions
-                    :group_id group-id
-                    :object   (perms/collection-readwrite-path collection/root-collection))
-          (perms/grant-collection-readwrite-permissions! group-id collection/root-collection))))))
+        (perms/revoke-collection-permissions! group-id collection/root-collection))
+      (f)
+      (finally
+        (doseq [group-id (db/select-ids PermissionsGroup :id [:not= (u/get-id (group/admin))])]
+          (when-not (db/exists? Permissions
+                      :group_id group-id
+                      :object   (perms/collection-readwrite-path collection/root-collection))
+            (perms/grant-collection-readwrite-permissions! group-id collection/root-collection)))))))
 
 (defmacro with-non-admin-groups-no-root-collection-perms
   "Temporarily remove Root Collection perms for all Groups besides the Admin group (which cannot have them removed). By

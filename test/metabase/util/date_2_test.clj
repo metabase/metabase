@@ -135,7 +135,7 @@
                (u.date/parse "   ")))))))
 
 ;; TODO - more tests!
-(deftest format-test
+(deftest ^:pure format-test
   (testing "ZonedDateTime"
     (is (= "2019-11-01T18:39:00-07:00"
            (u.date/format (t/zoned-date-time "2019-11-01T18:39:00-07:00[US/Pacific]")))
@@ -144,7 +144,7 @@
     (is (= "1970-01-01T00:00:00Z"
            (u.date/format (t/instant "1970-01-01T00:00:00Z"))))))
 
-(deftest format-sql-test
+(deftest ^:pure format-sql-test
   (testing "LocalDateTime"
     (is (= "2019-11-05 19:27:00"
            (u.date/format-sql (t/local-date-time "2019-11-05T19:27")))))
@@ -153,7 +153,7 @@
            (u.date/format-sql (t/zoned-date-time "2019-11-01T18:39:00-07:00[US/Pacific]")))
         "should get formatted as the same way as an OffsetDateTime")))
 
-(deftest extract-test
+(deftest ^:pure extract-test
   (testing "u.date/extract with 2 args"
     ;; everything is at `Sunday October 27th 2019 2:03:40.555 PM` or subset thereof
     (let [temporal-category->sample-values {:dates     [(t/local-date 2019 10 27)]
@@ -183,7 +183,7 @@
            (t/with-clock (t/mock-clock (t/instant "2019-11-18T22:31:00Z"))
              (u.date/extract :day-of-week))))))
 
-(deftest truncate-test
+(deftest ^:pure truncate-test
   (testing "u.date/truncate with 2 args"
     (let [t->unit->expected
           {(t/local-date 2019 10 27)
@@ -238,7 +238,7 @@
            (t/with-clock (t/mock-clock (t/instant "2019-11-18T22:31:00Z"))
              (u.date/truncate :day))))))
 
-(deftest add-test
+(deftest ^:pure add-test
   (testing "with 2 args (datetime relative to now)"
     (is (= (t/zoned-date-time "2019-11-20T22:31Z[UTC]")
            (t/with-clock (t/mock-clock (t/instant "2019-11-18T22:31:00Z"))
@@ -257,7 +257,7 @@
                (u.date/add t unit n))
             (format "%s plus %d %ss should be %s" t n unit expected))))))
 
-(deftest range-test
+(deftest ^:pure range-test
   (testing "with 1 arg (range relative to now)"
     (is (= {:start (t/zoned-date-time "2019-11-17T00:00Z[UTC]")
             :end   (t/zoned-date-time "2019-11-24T00:00Z[UTC]")}
@@ -278,7 +278,7 @@
       (is (= {:start (t/local-date "2019-11-01"), :end (t/local-date "2019-11-30")}
              (u.date/range (t/local-date "2019-11-18") :month {:end :inclusive, :resolution :day}))))))
 
-(deftest comparison-range-test
+(deftest ^:pure comparison-range-test
   (testing "Comparing MONTH"
     (letfn [(comparison-range [comparison-type options]
               (u.date/comparison-range (t/local-date "2019-11-18") :month comparison-type (merge {:resolution :day} options)))]
@@ -352,7 +352,7 @@
           (is (= {:start (t/local-date-time "2019-11-17T23:59")}
                  (comparison-range :>= {:start :exclusive}))))))))
 
-(deftest period-duration-test
+(deftest ^:pure period-duration-test
   (testing "Creating a period duration from a string"
     (is (= (org.threeten.extra.PeriodDuration/of (t/duration "PT59S"))
            (u.date/period-duration "PT59S"))))
