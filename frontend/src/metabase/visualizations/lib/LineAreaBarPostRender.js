@@ -317,7 +317,6 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
         .attr("class", klass)
         .attr("text-anchor", "middle")
         .attr("alignment-baseline", "middle")
-        .style("fill", "black")
         .text(({ y }) => formatYValue(y, { compact: true })),
     );
   };

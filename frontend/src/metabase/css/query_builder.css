@@ -679,9 +679,13 @@
 text.value-label-outline {
   font-weight: 900;
   stroke-width: 4px;
-  stroke: white;
+  stroke: var(--color-text-white);
 }
 
 text.value-label {
   font-weight: 900;
+}
+
+.Dashboard--night text.value-label-outline {
+  stroke: var(--night-mode-card);
 }
