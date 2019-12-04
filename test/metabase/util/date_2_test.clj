@@ -364,7 +364,7 @@
            (u.date/period-duration (t/instant "2019-12-03T02:30:27Z") (t/offset-date-time "2019-12-03T02:31:26Z"))))))
 
 (deftest older-than-test
-  (let [now (t/instant "2019-12-03T16:45:00-08:00")]
+  (let [now (t/instant "2019-12-04T00:45:00Z")]
     (t/with-clock (t/mock-clock  (t/zone-id "America/Los_Angeles"))
       (testing (str "now = " now)
         (doseq [t ((juxt t/instant t/local-date t/local-date-time t/offset-date-time identity)
