@@ -278,7 +278,7 @@ export const STACKABLE_SETTINGS = {
 export const GRAPH_GOAL_SETTINGS = {
   "graph.show_goal": {
     section: t`Display`,
-    title: t`Show goal`,
+    title: t`Goal line`,
     widget: "toggle",
     default: false,
   },
@@ -300,7 +300,7 @@ export const GRAPH_GOAL_SETTINGS = {
   },
   "graph.show_trendline": {
     section: t`Display`,
-    title: t`Show trend line`,
+    title: t`Trend line`,
     widget: "toggle",
     default: false,
     getHidden: (series, vizSettings) => {
@@ -317,7 +317,7 @@ const AUTO_SHOW_VALUES_MAX_ROWS = 25;
 export const GRAPH_DISPLAY_VALUES_SETTINGS = {
   "graph.show_values": {
     section: t`Display`,
-    title: t`Label values`,
+    title: t`Show values on data points`,
     widget: "toggle",
     getHidden: (series, vizSettings) =>
       series.length > 1 || vizSettings["stackable.stack_type"] === "normalized",
@@ -326,7 +326,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
   },
   "graph.label_value_frequency": {
     section: t`Display`,
-    title: t`Label frequency`, // TODO better copy here
+    title: t`Values to show`,
     widget: "radio",
     getHidden: (series, vizSettings) =>
       series.length > 1 ||
@@ -334,8 +334,8 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
       vizSettings["stackable.stack_type"] === "normalized",
     props: {
       options: [
-        { name: t`Auto fit`, value: "fit" },
-        { name: t`Show all`, value: "all" },
+        { name: t`As many as can fit nicely`, value: "fit" },
+        { name: t`All`, value: "all" },
       ],
     },
     default: "fit",
