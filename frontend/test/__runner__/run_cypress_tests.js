@@ -11,6 +11,9 @@ const serverWithTestDbFixture = BackendResource.get({
 });
 const testFixtureBackendHost = serverWithTestDbFixture.host;
 
+const serverWithPlainDb = BackendResource.get({ dbKey: "" });
+const plainBackendHost = serverWithPlainDb.host;
+
 const userArgs = process.argv.slice(2);
 const isOpenMode = userArgs[0] === "--open";
 
@@ -83,22 +86,37 @@ const init = async () => {
   }
 
   console.log(
-    chalk.bold("1/3 Starting first backend with test H2 database fixture"),
+    chalk.bold("1/4 Starting first backend with test H2 database fixture"),
   );
   console.log(
     chalk.cyan(
-      "You can update the fixture by running a local instance against it:\n`MB_DB_TYPE=h2 MB_DB_FILE=frontend/test/__runner__/test_db_fixture.db lein run`",
+      "You can update the fixture by running a local instance against it:\n`MB_DB_TYPE=h2 MB_DB_FILE=frontend/test/__runner__/cypress_db_fixture.db lein run`",
     ),
   );
   await BackendResource.start(serverWithTestDbFixture);
 
-  console.log(chalk.bold("2/3 Creating a shared login session for backend 1"));
+  console.log(chalk.bold("2/4 Starting second backend with plain database"));
+  await BackendResource.start(serverWithPlainDb);
+
+  console.log(chalk.bold("3/4 Creating a shared login session for backend 1"));
   const sharedAdminLoginSession = await login(testFixtureBackendHost, {
     username: "bob@metabase.com",
     password: "12341234",
   });
+  const sharedNormalLoginSession = await login(testFixtureBackendHost, {
+    username: "robert@metabase.com",
+    password: "12341234",
+  });
 
-  console.log(chalk.bold("3/3 Starting Cypress"));
+  console.log(chalk.bold("4/4 Starting Cypress"));
+
+  const serializedEnv = Object.entries({
+    TEST_FIXTURE_SHARED_ADMIN_LOGIN_SESSION_ID: sharedAdminLoginSession.id,
+    TEST_FIXTURE_SHARED_NORMAL_LOGIN_SESSION_ID: sharedNormalLoginSession.id,
+    PLAIN_DB_HOST: plainBackendHost,
+  })
+    .map(a => a.join("="))
+    .join(",");
 
   const cypressProcess = spawn(
     "yarn",
@@ -110,7 +128,7 @@ const init = async () => {
       "--config",
       `baseUrl=${testFixtureBackendHost}`,
       "--env",
-      `TEST_FIXTURE_SHARED_ADMIN_LOGIN_SESSION_ID=${sharedAdminLoginSession.id}`,
+      serializedEnv,
     ],
     { stdio: "inherit" },
   );
@@ -123,6 +141,7 @@ const init = async () => {
 const cleanup = async (exitCode = 0) => {
   console.log(chalk.bold("Cleaning up..."));
   await BackendResource.stop(serverWithTestDbFixture);
+  await BackendResource.stop(serverWithPlainDb);
   process.exit(exitCode);
 };
 
