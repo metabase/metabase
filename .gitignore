@@ -67,3 +67,8 @@ profiles.clj
 target/checksum.txt
 xcshareddata
 xcuserdata
+/resources/frontend_client/app/locales
+*.iml
+.idea/
+/local/src
+/cypress

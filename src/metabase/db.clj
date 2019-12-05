@@ -11,10 +11,11 @@
              [config :as config]
              [connection-pool :as connection-pool]
              [util :as u]]
-            [metabase.db.spec :as dbspec]
+            [metabase.db
+             [jdbc-protocols :as db.jdbc-protocols]
+             [spec :as db.spec]]
             [metabase.plugins.classloader :as classloader]
             [metabase.util
-             [date :as du]
              [i18n :refer [trs]]
              [schema :as su]]
             [ring.util.codec :as codec]
@@ -40,7 +41,7 @@
         ;; MVStore engine anyway so this only affects people still with legacy PageStore databases
         ;;
         ;; Tell H2 to defrag when Metabase is shut down -- can reduce DB size by multiple GIGABYTES -- see #6510
-        options      ";DB_CLOSE_DELAY=-1;MVCC=TRUE;DEFRAG_ALWAYS=TRUE"]
+        options ";DB_CLOSE_DELAY=-1;MVCC=TRUE;DEFRAG_ALWAYS=TRUE"]
     ;; H2 wants file path to always be absolute
     (str "file:"
          (.getAbsolutePath (io/file db-file-name))
@@ -146,9 +147,9 @@
    {:pre [(map? db-details)]}
    ;; TODO: it's probably a good idea to put some more validation here and be really strict about what's in `db-details`
    (case (:type db-details)
-     :h2       (dbspec/h2       db-details)
-     :mysql    (dbspec/mysql    (assoc db-details :db (:dbname db-details)))
-     :postgres (dbspec/postgres (assoc db-details :db (:dbname db-details))))))
+     :h2       (db.spec/h2       db-details)
+     :mysql    (db.spec/mysql    (assoc db-details :db (:dbname db-details)))
+     :postgres (db.spec/postgres (assoc db-details :db (:dbname db-details))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -371,7 +372,8 @@
                                    :postgres :ansi
                                    :h2       :h2
                                    :mysql    :mysql))
-  (db/set-default-db-connection! (new-connection-pool spec)))
+  (db/set-default-db-connection! (new-connection-pool spec))
+  (db/set-default-jdbc-options! {:read-columns db.jdbc-protocols/read-columns}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -474,12 +476,12 @@
 (defn setup-db!*
   "Connects to db and runs migrations."
   [db-details auto-migrate]
-  (du/profile (trs "Database setup")
-              (u/with-us-locale
-                (verify-db-connection db-details)
-                (run-schema-migrations! auto-migrate db-details)
-                (create-connection-pool! (jdbc-details db-details))
-                (run-data-migrations!)))
+  (u/profile (trs "Database setup")
+    (u/with-us-locale
+      (verify-db-connection db-details)
+      (run-schema-migrations! auto-migrate db-details)
+      (create-connection-pool! (jdbc-details db-details))
+      (run-data-migrations!)))
   nil)
 
 (defn- setup-db-from-env!* []

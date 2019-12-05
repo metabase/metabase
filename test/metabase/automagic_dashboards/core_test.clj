@@ -1,10 +1,8 @@
 (ns metabase.automagic-dashboards.core-test
-  (:require [clj-time
-             [core :as t]
-             [format :as t.format]]
-            [clojure.core.async :as a]
+  (:require [clojure.core.async :as a]
             [clojure.test :refer :all]
             [expectations :refer :all]
+            [java-time :as t]
             [metabase.automagic-dashboards
              [core :as magic :refer :all]
              [rules :as rules]]
@@ -24,7 +22,7 @@
              [data :as data]
              [util :as tu]]
             [metabase.util
-             [date :as date]
+             [date-2 :as u.date]
              [i18n :refer [tru]]]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -442,79 +440,51 @@
 
 ;;; ------------------- Datetime resolution inference -------------------
 
-(expect
-  :month
-  (#'magic/optimal-datetime-resolution
-   {:fingerprint {:type {:type/DateTime {:earliest "2015"
-                                         :latest   "2017"}}}}))
-
-(expect
-  :day
-  (#'magic/optimal-datetime-resolution
-   {:fingerprint {:type {:type/DateTime {:earliest "2017-01-01"
-                                         :latest   "2017-03-04"}}}}))
-
-(expect
-  :year
-  (#'magic/optimal-datetime-resolution
-   {:fingerprint {:type {:type/DateTime {:earliest "2005"
-                                         :latest   "2017"}}}}))
-
-(expect
-  :hour
-  (#'magic/optimal-datetime-resolution
-   {:fingerprint {:type {:type/DateTime {:earliest "2017-01-01"
-                                         :latest   "2017-01-02"}}}}))
-
-(expect
-  :minute
-  (#'magic/optimal-datetime-resolution
-   {:fingerprint {:type {:type/DateTime {:earliest "2017-01-01T00:00:00"
-                                         :latest   "2017-01-01T00:02:00"}}}}))
+(deftest optimal-datetime-resolution-test
+  (doseq [[m expected] [[{:earliest "2015"
+                          :latest   "2017"}
+                         :month]
+                        [{:earliest "2017-01-01"
+                          :latest   "2017-03-04"}
+                         :day]
+                        [{:earliest "2005"
+                          :latest   "2017"}
+                         :year]
+                        [{:earliest "2017-01-01"
+                          :latest   "2017-01-02"}
+                         :hour]
+                        [{:earliest "2017-01-01T00:00:00"
+                          :latest   "2017-01-01T00:02:00"}
+                         :minute]]
+          :let         [fingerprint {:type {:type/DateTime m}}]]
+    (testing (format "fingerprint = %s" (pr-str fingerprint))
+      (is (= expected
+             (#'magic/optimal-datetime-resolution {:fingerprint fingerprint}))))))
 
 
 ;;; ------------------- Datetime humanization (for chart and dashboard titles) -------------------
 
-(let [tz                     (-> date/jvm-timezone deref ^TimeZone .getID)
-      dt                     (t/from-time-zone (t/date-time 1990 9 9 12 30)
-                                               (t/time-zone-for-id tz))
-      unparse-with-formatter (fn [formatter dt]
-                               (t.format/unparse
-                                (t.format/formatter formatter (t/time-zone-for-id tz)) dt))]
-  (expect
-    (map str [(tru "at {0}" (unparse-with-formatter "h:mm a, MMMM d, YYYY" dt))
-              (tru "at {0}" (unparse-with-formatter "h a, MMMM d, YYYY" dt))
-              (tru "on {0}" (unparse-with-formatter "MMMM d, YYYY" dt))
-              (tru "in {0} week - {1}"
-                   (#'magic/pluralize (date/date-extract :week-of-year dt tz))
-                   (str (date/date-extract :year dt tz)))
-              (tru "in {0}" (unparse-with-formatter "MMMM YYYY" dt))
-              (tru "in Q{0} - {1}"
-                   (date/date-extract :quarter-of-year dt tz)
-                   (str (date/date-extract :year dt tz)))
-              (unparse-with-formatter "YYYY" dt)
-              (unparse-with-formatter "EEEE" dt)
-              (tru "at {0}" (unparse-with-formatter "h a" dt))
-              (unparse-with-formatter "MMMM" dt)
-              (tru "Q{0}" (date/date-extract :quarter-of-year dt tz))
-              (date/date-extract :minute-of-hour dt tz)
-              (date/date-extract :day-of-month dt tz)
-              (date/date-extract :week-of-year dt tz)])
-    (let [dt (t.format/unparse (t.format/formatters :date-hour-minute-second) dt)]
-      (map (comp str (partial #'magic/humanize-datetime dt)) [:minute
-                                                              :hour
-                                                              :day
-                                                              :week
-                                                              :month
-                                                              :quarter
-                                                              :year
-                                                              :day-of-week
-                                                              :hour-of-day
-                                                              :month-of-year
-                                                              :quarter-of-year
-                                                              :minute-of-hour
-                                                              :day-of-month
-                                                              :week-of-year]))))
+(deftest temporal-humanization-test
+  (let [tz    "UTC"
+        dt    #t "1990-09-09T12:30"
+        t-str "1990-09-09T12:30:00"]
+    (doseq [[unit expected] {:minute          (tru "at {0}" (t/format "h:mm a, MMMM d, YYYY" dt))
+                             :hour            (tru "at {0}" (t/format "h a, MMMM d, YYYY" dt))
+                             :day             (tru "on {0}" (t/format "MMMM d, YYYY" dt))
+                             :week            (tru "in {0} week - {1}" (#'magic/pluralize (u.date/extract dt :week-of-year)) (str (u.date/extract dt :year)))
+                             :month           (tru "in {0}" (t/format "MMMM YYYY" dt))
+                             :quarter         (tru "in Q{0} - {1}" (u.date/extract dt :quarter-of-year) (str (u.date/extract dt :year)))
+                             :year            (t/format "YYYY" dt)
+                             :day-of-week     (t/format "EEEE" dt)
+                             :hour-of-day     (tru "at {0}" (t/format "h a" dt))
+                             :month-of-year   (t/format "MMMM" dt)
+                             :quarter-of-year (tru "Q{0}" (u.date/extract dt :quarter-of-year))
+                             :minute-of-hour  (u.date/extract dt :minute-of-hour)
+                             :day-of-month    (u.date/extract dt :day-of-month)
+                             :week-of-year    (u.date/extract dt :week-of-year)}]
+      (testing (format "unit = %s" unit)
+        (is (= (str expected)
+               (str (#'magic/humanize-datetime t-str unit))))))))
 
 (deftest pluralize-test
   (are [expected n] (= (str expected)
@@ -527,6 +497,7 @@
 
 (deftest handlers-test
   (testing "Make sure we have handlers for all the units available"
-    (doseq [unit (concat date/date-extract-units date/date-trunc-units)]
+    (doseq [unit (disj (set (concat u.date/extract-units u.date/truncate-units))
+                       :iso-day-of-week :iso-day-of-year :iso-week :iso-week-of-year :millisecond)]
       (testing unit
         (is (some? (#'magic/humanize-datetime "1990-09-09T12:30:00" unit)))))))

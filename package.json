@@ -91,6 +91,7 @@
   },
   "devDependencies": {
     "@babel/standalone": "^7.4.5",
+    "@cypress/webpack-preprocessor": "^4.1.0",
     "@slack/client": "^3.5.4",
     "@testing-library/jest-dom": "^4.0.0",
     "@testing-library/react": "^8.0.6",
@@ -113,6 +114,7 @@
     "color-diff": "^1.1.0",
     "concurrently": "^3.1.0",
     "css-loader": "^0.28.7",
+    "cypress": "^3.7.0",
     "documentation": "^4.0.0-rc.1",
     "enzyme": "^3.8.0",
     "enzyme-2": "npm:enzyme@2",
@@ -120,6 +122,7 @@
     "eslint": "^3.5.0",
     "eslint-import-resolver-webpack": "^0.8.3",
     "eslint-loader": "^1.9.0",
+    "eslint-plugin-cypress": "^2.7.0",
     "eslint-plugin-flowtype": "^2.22.0",
     "eslint-plugin-import": "^2.2.0",
     "eslint-plugin-jasmine": "^2.2.0",
@@ -206,7 +209,10 @@
     "docs": "documentation serve --watch frontend/src/metabase-lib/lib/**",
     "ci": "yarn ci-frontend && yarn ci-backend",
     "ci-frontend": "yarn lint && yarn flow && yarn test",
-    "ci-backend": "lein docstring-checker && lein bikeshed && lein eastwood && lein test"
+    "ci-backend": "lein docstring-checker && lein bikeshed && lein eastwood && lein test",
+    "test-cypress": "./bin/build-for-test && yarn test-cypress-no-build",
+    "test-cypress-open": "yarn test-cypress --open",
+    "test-cypress-no-build": "yarn && babel-node ./frontend/test/__runner__/run_cypress_tests.js"
   },
   "lint-staged": {
     "frontend/**/*.{js,jsx,css}": [

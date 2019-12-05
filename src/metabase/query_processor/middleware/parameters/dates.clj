@@ -3,15 +3,14 @@
 
   TIMEZONE FIXME - this whole thing should be rewritten to use `java-time` and the new date util namespace. I started
   implementing this in `metabase.query-processor.middleware.parameters.dates-2`, but it is not yet finished."
-  (:require [clj-time
-             [core :as t]
-             [format :as tf]]
+  (:require [java-time :as t]
             [medley.core :as m]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.params :as params]
-            [metabase.util.schema :as su]
-            [schema.core :as s])
-  (:import [org.joda.time DateTime DateTimeConstants]))
+            [metabase.util
+             [date-2 :as u.date]
+             [schema :as su]]
+            [schema.core :as s]))
 
 (s/defn date-type?
   "Is param type `:date` or some subtype like `:date/month-year`?"
@@ -27,38 +26,36 @@
 ;; hour/minute granularity in field parameter queries.
 
 (defn- day-range
-  [^DateTime start, ^DateTime end]
-  {:end   end
-   :start start})
+  [start end]
+  {:start start, :end end})
 
-(defn- week-range
-  [^DateTime start, ^DateTime end]
-    ;; weeks always start on SUNDAY and end on SATURDAY
-    ;; NOTE: in Joda the week starts on Monday and ends on Sunday, so to get the right Sunday we rollback 1 week
-   {:end   (.withDayOfWeek end DateTimeConstants/SATURDAY)
-    :start (.withDayOfWeek ^DateTime (t/minus start (t/weeks 1)) DateTimeConstants/SUNDAY)})
+(defn- comparison-range
+  ([t unit]
+   (comparison-range t t unit))
 
-(defn- month-range
-  [^DateTime start, ^DateTime end]
-  {:end   (t/last-day-of-the-month end)
-   :start (t/first-day-of-the-month start)})
+  ([start end unit]
+   (merge
+    (u.date/comparison-range start unit :>= {:resolution :day})
+    (u.date/comparison-range end   unit :<= {:resolution :day, :end :inclusive}))))
 
-(defn- year-range
-  [^DateTime start, ^DateTime end]
-  {:end   (t/last-day-of-the-month  (.withMonthOfYear end DateTimeConstants/DECEMBER))
-   :start (t/first-day-of-the-month (.withMonthOfYear start DateTimeConstants/JANUARY))})
+(defn- week-range [start end]
+  (comparison-range start end :week))
 
-(defn- start-of-quarter [quarter year]
-  (t/first-day-of-the-month (.withMonthOfYear (t/date-time year) (case quarter
-                                                                   "Q1" DateTimeConstants/JANUARY
-                                                                   "Q2" DateTimeConstants/APRIL
-                                                                   "Q3" DateTimeConstants/JULY
-                                                                   "Q4" DateTimeConstants/OCTOBER))))
+(defn- month-range [start end]
+  (comparison-range start end :month))
+
+(defn- year-range [start end]
+  (comparison-range start end :year))
+
 (defn- quarter-range
   [quarter year]
-  (let [dt (start-of-quarter quarter year)]
-    {:end   (t/last-day-of-the-month (t/plus dt (t/months 2)))
-     :start (t/first-day-of-the-month dt)}))
+  (let [year-quarter (t/year-quarter year (case quarter
+                                            "Q1" 1
+                                            "Q2" 2
+                                            "Q3" 3
+                                            "Q4" 4))]
+    {:start (.atDay year-quarter 1)
+     :end   (.atEndOfQuarter year-quarter)}))
 
 (def ^:private operations-by-date-unit
   {"day"   {:unit-range day-range
@@ -69,10 +66,6 @@
             :to-period  t/months}
    "year"  {:unit-range year-range
             :to-period  t/years}})
-
-(defn- parse-absolute-date
-  [date]
-  (tf/parse (tf/formatters :date-opt-time) date))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -87,7 +80,7 @@
     :unit (conj (seq (get operations-by-date-unit group-value))
                 [group-label group-value])
     :int-value [[group-label (Integer/parseInt group-value)]]
-    (:date :date-1 :date-2) [[group-label (parse-absolute-date group-value)]]
+    (:date :date-1 :date-2) [[group-label (u.date/parse group-value)]]
     [[group-label group-value]]))
 
 
@@ -152,13 +145,13 @@
     :filter (fn [{:keys [unit]} field]
               [:time-interval field :current (keyword unit)])}])
 
-(defn- day->iso8601 [date]
-  (tf/unparse (tf/formatters :year-month-day) date))
+(defn- ->iso-8601-date [t]
+  (t/format :iso-local-date t))
 
 ;; TODO - using `range->filter` so much below seems silly. Why can't we just bucket the field and use `:=` clauses?
 (defn- range->filter
   [{:keys [start end]} field]
-  [:between [:datetime-field field :day] (day->iso8601 start) (day->iso8601 end)])
+  [:between [:datetime-field field :day] (->iso-8601-date start) (->iso-8601-date end)])
 
 (def ^:private absolute-date-string-decoders
   ;; year and month
@@ -179,26 +172,26 @@
     :range  (fn [{:keys [date]} _]
               {:start date, :end date})
     :filter (fn [{:keys [date]} field-id-clause]
-              (let [iso8601date (day->iso8601 date)]
+              (let [iso8601date (->iso-8601-date date)]
                 [:= [:datetime-field field-id-clause :day] iso8601date]))}
    ;; day range
    {:parser (regex->parser #"([0-9-T:]+)~([0-9-T:]+)" [:date-1 :date-2])
     :range  (fn [{:keys [date-1 date-2]} _]
               {:start date-1, :end date-2})
     :filter (fn [{:keys [date-1 date-2]} field-id-clause]
-              [:between [:datetime-field field-id-clause :day] (day->iso8601 date-1) (day->iso8601 date-2)])}
+              [:between [:datetime-field field-id-clause :day] (->iso-8601-date date-1) (->iso-8601-date date-2)])}
    ;; before day
    {:parser (regex->parser #"~([0-9-T:]+)" [:date])
     :range  (fn [{:keys [date]} _]
               {:end date})
     :filter (fn [{:keys [date]} field-id-clause]
-              [:< [:datetime-field field-id-clause :day] (day->iso8601 date)])}
+              [:< [:datetime-field field-id-clause :day] (->iso-8601-date date)])}
    ;; after day
    {:parser (regex->parser #"([0-9-T:]+)~" [:date])
     :range  (fn [{:keys [date]} _]
               {:start date})
     :filter (fn [{:keys [date]} field-id-clause]
-              [:> [:datetime-field field-id-clause :day] (day->iso8601 date)])}])
+              [:> [:datetime-field field-id-clause :day] (->iso-8601-date date)])}])
 
 (def ^:private all-date-string-decoders
   (concat relative-date-string-decoders absolute-date-string-decoders))
@@ -215,19 +208,18 @@
 (defn date-string->range
   "Takes a string description of a date range such as 'lastmonth' or '2016-07-15~2016-08-6' and return a MAP with
   `:start` and `:end` as iso8601 string formatted dates, respecting the given timezone."
-  [date-string report-timezone]
-  (let [tz                 (t/time-zone-for-id report-timezone)
-        formatter-local-tz (tf/formatter "yyyy-MM-dd" tz)
-        formatter-no-tz    (tf/formatter "yyyy-MM-dd")
-        today              (.withTimeAtStartOfDay (t/to-time-zone (t/now) tz))]
+  [date-string report-timezone-id]
+  (let [#_formatter-local-tz #_ (u.date/parse % report-timezone-id)
+        #_formatter-no-tz    #_ (tf/formatter "yyyy-MM-dd")
+        today                (t/local-date)]
     ;; Relative dates respect the given time zone because a notion like "last 7 days" might mean a different range of
     ;; days depending on the user timezone
     (or (->> (execute-decoders relative-date-string-decoders :range today date-string)
-             (m/map-vals (partial tf/unparse formatter-local-tz)))
+             (m/map-vals u.date/format #_(partial tf/unparse formatter-local-tz)))
         ;; Absolute date ranges don't need the time zone conversion because in SQL the date ranges are compared
         ;; against the db field value that is casted granularity level of a day in the db time zone
         (->> (execute-decoders absolute-date-string-decoders :range nil date-string)
-             (m/map-vals (partial tf/unparse formatter-no-tz))))))
+             (m/map-vals u.date/format #_(partial tf/unparse formatter-no-tz))))))
 
 (s/defn date-string->filter :- mbql.s/Filter
   "Takes a string description of a *date* (not datetime) range such as 'lastmonth' or '2016-07-15~2016-08-6' and

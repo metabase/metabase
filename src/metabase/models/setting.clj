@@ -43,7 +43,7 @@
              [util :as u]]
             [metabase.models.setting.cache :as cache]
             [metabase.util
-             [date :as du]
+             [date-2 :as u.date]
              [i18n :as ui18n :refer [deferred-trs deferred-tru trs tru]]]
             [schema.core :as s]
             [toucan
@@ -71,7 +71,7 @@
    :boolean   Boolean
    :integer   Long
    :double    Double
-   :timestamp java.sql.Timestamp})
+   :timestamp java.time.temporal.Temporal})
 
 (def ^:private SettingDefinition
   {:name        s/Keyword
@@ -204,7 +204,7 @@
 (defn get-timestamp
   "Get the string value of `setting-or-name` and parse it as an ISO-8601-formatted string, returning a Timestamp."
   [setting-or-name]
-  (du/->Timestamp (get-string setting-or-name) :no-timezone))
+  (u.date/parse (get-string setting-or-name)))
 
 (defn get-csv
   "Get the string value of `setting-or-name` and parse it as CSV, returning a sequence of exploded strings."
@@ -341,7 +341,7 @@
 (defn set-timestamp!
   "Serialize `new-value` for `setting-or-name` as a ISO 8601-encoded timestamp string and save it."
   [setting-or-name new-value]
-  (set-string! setting-or-name (some-> new-value du/date->iso-8601)))
+  (set-string! setting-or-name (some-> new-value u.date/format)))
 
 (defn- serialize-csv [value]
   (cond

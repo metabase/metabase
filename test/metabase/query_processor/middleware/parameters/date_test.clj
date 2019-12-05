@@ -1,51 +1,49 @@
 (ns metabase.query-processor.middleware.parameters.date-test
   "Tests for datetime parameters."
-  (:require [clj-time.core :as t]
-            [expectations :refer :all]
-            [metabase.query-processor.middleware.parameters.dates :refer :all]))
+  (:require [clojure.test :refer :all]
+            [java-time :as t]
+            [metabase.query-processor.middleware.parameters.dates :as dates]))
 
-;; we hard code "now" to a specific point in time so that we can control the test output
-(defn- test-date->range [value]
-  (with-redefs [t/now (constantly (t/date-time 2016 06 07 12 0 0))]
-    (date-string->range value nil)))
-
-(expect {:end "2016-03-31", :start "2016-01-01"} (test-date->range "Q1-2016"))
-(expect {:end "2016-02-29", :start "2016-02-01"} (test-date->range "2016-02"))
-(expect {:end "2016-04-18", :start "2016-04-18"} (test-date->range "2016-04-18"))
-(expect {:end "2016-04-23", :start "2016-04-18"} (test-date->range "2016-04-18~2016-04-23"))
-(expect {:end "2016-04-23", :start "2016-04-18"} (test-date->range "2016-04-18~2016-04-23"))
-(expect {:start "2016-04-18"}                    (test-date->range "2016-04-18~"))
-(expect {:end "2016-04-18"}                      (test-date->range "~2016-04-18"))
-
-(expect {:end "2016-06-06", :start "2016-06-04"} (test-date->range "past3days"))
-(expect {:end "2016-06-07", :start "2016-06-04"} (test-date->range "past3days~"))
-(expect {:end "2016-06-06", :start "2016-05-31"} (test-date->range "past7days"))
-(expect {:end "2016-06-06", :start "2016-05-08"} (test-date->range "past30days"))
-(expect {:end "2016-05-31", :start "2016-04-01"} (test-date->range "past2months"))
-(expect {:end "2016-06-30", :start "2016-04-01"} (test-date->range "past2months~"))
-(expect {:end "2016-05-31", :start "2015-05-01"} (test-date->range "past13months"))
-(expect {:end "2015-12-31", :start "2015-01-01"} (test-date->range "past1years"))
-(expect {:end "2016-12-31", :start "2015-01-01"} (test-date->range "past1years~"))
-(expect {:end "2015-12-31", :start "2000-01-01"} (test-date->range "past16years"))
-
-(expect {:end "2016-06-10", :start "2016-06-08"} (test-date->range "next3days"))
-(expect {:end "2016-06-10", :start "2016-06-07"} (test-date->range "next3days~"))
-(expect {:end "2016-06-14", :start "2016-06-08"} (test-date->range "next7days"))
-(expect {:end "2016-07-07", :start "2016-06-08"} (test-date->range "next30days"))
-(expect {:end "2016-08-31", :start "2016-07-01"} (test-date->range "next2months"))
-(expect {:end "2016-08-31", :start "2016-06-01"} (test-date->range "next2months~"))
-(expect {:end "2017-07-31", :start "2016-07-01"} (test-date->range "next13months"))
-(expect {:end "2017-12-31", :start "2017-01-01"} (test-date->range "next1years"))
-(expect {:end "2017-12-31", :start "2016-01-01"} (test-date->range "next1years~"))
-(expect {:end "2032-12-31", :start "2017-01-01"} (test-date->range "next16years"))
-
-(expect {:end "2016-06-07", :start "2016-06-07"} (test-date->range "thisday"))
-(expect {:end "2016-06-11", :start "2016-06-05"} (test-date->range "thisweek"))
-(expect {:end "2016-06-30", :start "2016-06-01"} (test-date->range "thismonth"))
-(expect {:end "2016-12-31", :start "2016-01-01"} (test-date->range "thisyear"))
-
-(expect {:end "2016-06-04", :start "2016-05-29"} (test-date->range "lastweek"))
-(expect {:end "2016-05-31", :start "2016-05-01"} (test-date->range "lastmonth"))
-(expect {:end "2015-12-31", :start "2015-01-01"} (test-date->range "lastyear"))
-(expect {:end "2016-06-06", :start "2016-06-06"} (test-date->range "yesterday"))
-(expect {:end "2016-06-07", :start "2016-06-07"} (test-date->range "today"))
+(deftest date-string->range-test
+  (t/with-clock (t/mock-clock #t "2016-06-07T12:00Z")
+    (doseq [[group s->expected]
+            {"absolute datetimes"         {"Q1-2016"               {:end "2016-03-31", :start "2016-01-01"}
+                                           "2016-02"               {:end "2016-02-29", :start "2016-02-01"}
+                                           "2016-04-18"            {:end "2016-04-18", :start "2016-04-18"}
+                                           "2016-04-18~2016-04-23" {:end "2016-04-23", :start "2016-04-18"}
+                                           "2016-04-18~"           {:start "2016-04-18"}
+                                           "~2016-04-18"           {:end "2016-04-18"}}
+             "relative (past)"            {"past3days"    {:end "2016-06-06", :start "2016-06-04"}
+                                           "past3days~"   {:end "2016-06-07", :start "2016-06-04"}
+                                           "past7days"    {:end "2016-06-06", :start "2016-05-31"}
+                                           "past30days"   {:end "2016-06-06", :start "2016-05-08"}
+                                           "past2months"  {:end "2016-05-31", :start "2016-04-01"}
+                                           "past2months~" {:end "2016-06-30", :start "2016-04-01"}
+                                           "past13months" {:end "2016-05-31", :start "2015-05-01"}
+                                           "past1years"   {:end "2015-12-31", :start "2015-01-01"}
+                                           "past1years~"  {:end "2016-12-31", :start "2015-01-01"}
+                                           "past16years"  {:end "2015-12-31", :start "2000-01-01"}}
+             "relative (next)"            {"next3days"    {:end "2016-06-10", :start "2016-06-08"}
+                                           "next3days~"   {:end "2016-06-10", :start "2016-06-07"}
+                                           "next7days"    {:end "2016-06-14", :start "2016-06-08"}
+                                           "next30days"   {:end "2016-07-07", :start "2016-06-08"}
+                                           "next2months"  {:end "2016-08-31", :start "2016-07-01"}
+                                           "next2months~" {:end "2016-08-31", :start "2016-06-01"}
+                                           "next13months" {:end "2017-07-31", :start "2016-07-01"}
+                                           "next1years"   {:end "2017-12-31", :start "2017-01-01"}
+                                           "next1years~"  {:end "2017-12-31", :start "2016-01-01"}
+                                           "next16years"  {:end "2032-12-31", :start "2017-01-01"}}
+             "relative (this)"            {"thisday"   {:end "2016-06-07", :start "2016-06-07"}
+                                           "thisweek"  {:end "2016-06-11", :start "2016-06-05"}
+                                           "thismonth" {:end "2016-06-30", :start "2016-06-01"}
+                                           "thisyear"  {:end "2016-12-31", :start "2016-01-01"}}
+             "relative (last)"            {"lastweek"  {:end "2016-06-04", :start "2016-05-29"}
+                                           "lastmonth" {:end "2016-05-31", :start "2016-05-01"}
+                                           "lastyear"  {:end "2015-12-31", :start "2015-01-01"}}
+             "relative (today/yesterday)" {"yesterday" {:end "2016-06-06", :start "2016-06-06"}
+                                           "today"     {:end "2016-06-07", :start "2016-06-07"}}}]
+      (testing group
+        (doseq [[s expected] s->expected]
+          (is (= expected
+                 (dates/date-string->range s nil))
+              (format "%s should parse to %s" (pr-str s) (pr-str expected))))))))

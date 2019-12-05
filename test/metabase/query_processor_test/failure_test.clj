@@ -56,7 +56,7 @@
 ;; running via `process-query-and-save-execution!` should return similar info and a bunch of other nonsense too
 (tu/expect-schema
   {:database_id  (s/eq (data/id))
-   :started_at   java.util.Date
+   :started_at   (s/eq :%now)
    :json_query   (assoc-in (bad-query-schema) [:middleware :userland-query?] (s/eq true))
    :native       bad-query-native-schema
    :status       (s/eq :failed)

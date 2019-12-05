@@ -495,8 +495,8 @@
                           :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
                           :fingerprint              {:global {:distinct-count 15
                                                               :nil%           0.0},
-                                                     :type   {:type/DateTime {:earliest "2014-01-01T08:30:00.000Z",
-                                                                              :latest   "2014-12-05T15:15:00.000Z"}}}}]})
+                                                     :type   {:type/DateTime {:earliest "2014-01-01T08:30:00"
+                                                                              :latest   "2014-12-05T15:15:00"}}}}]})
   (do
     ;; run the Card which will populate its result_metadata column
     ((test-users/user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))

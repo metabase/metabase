@@ -7,7 +7,6 @@
 (def ^:private plugins-with-unsatisfied-deps
   (atom #{}))
 
-
 (defn- dependency-type [{classname :class, plugin :plugin}]
   (cond
     classname :class

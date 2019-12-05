@@ -63,7 +63,7 @@
   models/IModel
   (merge models/IModelDefaults
          {:properties  (constantly {:timestamped? true})
-          :types       (constantly {:description :clob, :parameters :json, :embedding_params :json})
+          :types       (constantly {:parameters :json, :embedding_params :json})
           :pre-delete  pre-delete
           :pre-insert  pre-insert
           :post-select public-settings/remove-public-uuid-if-public-sharing-is-disabled})

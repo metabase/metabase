@@ -1,6 +1,5 @@
 (ns metabase.driver.druid-test
   (:require [cheshire.core :as json]
-            [clj-time.core :as time]
             [clojure.test :refer :all]
             [expectations :refer [expect]]
             [java-time :as t]
@@ -51,7 +50,7 @@
         (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
           (is (= expected
                  (table-rows-sample))))
-        (tu.tz/with-jvm-tz (time/time-zone-for-id "America/Chicago")
+        (tu.tz/with-system-timezone-id "America/Chicago"
           (is (= expected
                  (table-rows-sample))))))))
 

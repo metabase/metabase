@@ -1,80 +1,46 @@
 (ns metabase.pulse.render.datetime-test
-  (:require [clj-time.core :as t]
-            [expectations :refer [expect]]
-            [metabase.pulse.render.datetime :as datetime]
-            [metabase.util.date :as du])
-  (:import java.util.TimeZone))
+  (:require [clojure.test :refer :all]
+            [java-time :as t]
+            [metabase.pulse.render.datetime :as datetime]))
 
-(def ^:private now "2020-07-16T18:04:00Z")
+(def ^:private now "2020-07-16T18:04:00Z[UTC]")
 
-(defn- utc [] (TimeZone/getTimeZone "UTC"))
-
-(defn- format-timestamp-pair
+(defn- format-temporal-string-pair
   [unit datetime-str-1 datetime-str-2]
-  (with-redefs [t/now (constantly (du/str->date-time now (utc)))]
-    (datetime/format-timestamp-pair (utc) [datetime-str-1 datetime-str-2] {:unit unit})))
-
-;; check that we can render relative timestamps for the various units we support
+  (t/with-clock (t/mock-clock (t/zoned-date-time now) (t/zone-id "UTC"))
+    (datetime/format-temporal-string-pair "UTC" [datetime-str-1 datetime-str-2] {:unit unit})))
 
 ;; I don't know what exactly this is used for but we should at least make sure it's working correctly, see (#10326)
-
-(expect
-  ["Yesterday" "Previous day"]
-  (format-timestamp-pair :day "2020-07-15T18:04:00Z" nil))
-
-(expect
-  ["Today" "Previous day"]
-  (format-timestamp-pair :day now nil))
-
-(expect
-  ["Jul 18, 2020" "Jul 20, 2020"]
-  (format-timestamp-pair :day "2020-07-18T18:04:00Z" "2020-07-20T18:04:00Z"))
-
-(expect
-  ["Last week" "Previous week"]
-  (format-timestamp-pair :week "2020-07-09T18:04:00Z" nil))
-
-(expect
-  ["This week" "Previous week"]
-  (format-timestamp-pair :week now nil))
-
-(expect
-  ["Week 5 - 2020" "Week 13 - 2020"]
-  (format-timestamp-pair :week "2020-02-01T18:04:00Z" "2020-03-25T18:04:00Z"))
-
-(expect
-  ["This month" "Previous month"]
-  (format-timestamp-pair :month "2020-07-16T18:04:00Z" nil))
-
-(expect
-  ["This month" "Previous month"]
-  (format-timestamp-pair :month now nil))
-
-(expect
-  ["July 2021" "July 2022"]
-  (format-timestamp-pair :month "2021-07-16T18:04:00Z" "2022-07-16T18:04:00Z"))
-
-(expect
-  ["Last quarter" "Previous quarter"]
-  (format-timestamp-pair :quarter "2020-05-16T18:04:00Z" nil))
-
-(expect
-  ["This quarter" "Previous quarter"]
-  (format-timestamp-pair :quarter now nil))
-
-(expect
-  ["Q3 - 2018" "Q3 - 2019"]
-  (format-timestamp-pair :quarter "2018-07-16T18:04:00Z" "2019-07-16T18:04:00Z"))
-
-(expect
-  ["Last year" "Previous year"]
-  (format-timestamp-pair :year "2019-07-16T18:04:00Z" nil))
-
-(expect
-  ["This year" "Previous year"]
-  (format-timestamp-pair :year now nil))
-
-;; No special formatting for year? :shrug:
-(expect
-  ["2018-07-16T18:04:00Z" "2021-07-16T18:04:00Z"]
-  (format-timestamp-pair :year "2018-07-16T18:04:00Z" "2021-07-16T18:04:00Z"))
+(deftest format-temporal-string-pair-test
+  (testing "check that we can render relative timestamps for the various units we support"
+    (is (= ["Yesterday" "Previous day"]
+           (format-temporal-string-pair :day "2020-07-15T18:04:00Z" nil)))
+    (is (= ["Today" "Previous day"]
+           (format-temporal-string-pair :day now nil)))
+    (is (= ["Jul 18, 2020" "Jul 20, 2020"]
+           (format-temporal-string-pair :day "2020-07-18T18:04:00Z" "2020-07-20T18:04:00Z")))
+    (is (= ["Last week" "Previous week"]
+           (format-temporal-string-pair :week "2020-07-09T18:04:00Z" nil)))
+    (is (= ["This week" "Previous week"]
+           (format-temporal-string-pair :week now nil)))
+    (is (= ["Week 5 - 2020" "Week 13 - 2020"]
+           (format-temporal-string-pair :week "2020-02-01T18:04:00Z" "2020-03-25T18:04:00Z")))
+    (is (= ["This month" "Previous month"]
+           (format-temporal-string-pair :month "2020-07-16T18:04:00Z" nil)))
+    (is (= ["This month" "Previous month"]
+           (format-temporal-string-pair :month now nil)))
+    (is (= ["July 2021" "July 2022"]
+           (format-temporal-string-pair :month "2021-07-16T18:04:00Z" "2022-07-16T18:04:00Z")))
+    (is (= ["Last quarter" "Previous quarter"]
+           (format-temporal-string-pair :quarter "2020-05-16T18:04:00Z" nil)))
+    (is (= ["This quarter" "Previous quarter"]
+           (format-temporal-string-pair :quarter now nil)))
+    (is (= ["Q3 - 2018" "Q3 - 2019"]
+           (format-temporal-string-pair :quarter "2018-07-16T18:04:00Z" "2019-07-16T18:04:00Z")))
+    (is (= ["Last year" "Previous year"]
+           (format-temporal-string-pair :year "2019-07-16T18:04:00Z" nil)))
+    (is (= ["This year" "Previous year"]
+           (format-temporal-string-pair :year now nil)))
+    (testing "No special formatting for year? :shrug:"
+      (is (= ["2018-07-16T18:04:00Z" "2021-07-16T18:04:00Z"]
+             (format-temporal-string-pair :year "2018-07-16T18:04:00Z" "2021-07-16T18:04:00Z"))))))

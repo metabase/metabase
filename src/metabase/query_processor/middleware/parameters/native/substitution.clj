@@ -5,7 +5,7 @@
     {;; appropriate SQL that should be used to replace the param snippet, e.g. {{x}}
      :replacement-snippet     \"= ?\"
      ;; ; any prepared statement args (values for `?` placeholders) needed for the replacement snippet
-     :prepared-statement-args [#inst \"2017-01-01\"]}"
+     :prepared-statement-args [#t \"2017-01-01\"]}"
   (:require [clojure.string :as str]
             [honeysql.core :as hsql]
             [metabase.driver :as driver]

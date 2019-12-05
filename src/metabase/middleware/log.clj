@@ -9,9 +9,7 @@
             [metabase.async.util :as async.u]
             [metabase.middleware.util :as middleware.u]
             [metabase.query-processor.middleware.async :as qp.middleware.async]
-            [metabase.util
-             [date :as du]
-             [i18n :refer [trs]]]
+            [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
   (:import clojure.core.async.impl.channels.ManyToManyChannel
            org.eclipse.jetty.util.thread.QueuedThreadPool))
@@ -42,7 +40,7 @@
   [{:keys [start-time call-count-fn]
     :or {start-time    (System/nanoTime)
          call-count-fn (constantly -1)}}]
-  (let [elapsed-time (du/format-nanoseconds (- (System/nanoTime) start-time))
+  (let [elapsed-time (u/format-nanoseconds (- (System/nanoTime) start-time))
         db-calls     (call-count-fn)]
     (format "%s (%d DB calls)" elapsed-time db-calls)))
 
