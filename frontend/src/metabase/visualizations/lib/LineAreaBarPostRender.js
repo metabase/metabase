@@ -304,12 +304,16 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
       .data(data)
       .enter()
       .append("g")
-      .attr(
-        "transform",
-        ({ x, y, showLabelBelow }) =>
-          `translate(${xShift + xScale(x)}, ${yScale(y) +
-            (showLabelBelow ? 14 : -10)})`,
-      );
+      .attr("transform", ({ x, y, showLabelBelow }) => {
+        const xPos = xShift + xScale(x);
+        let yPos = yScale(y) + (showLabelBelow ? 14 : -10);
+        // if the yPos is below the x axis, move it to be above the data point
+        const [yMax] = yScale.range();
+        if (yPos > yMax) {
+          yPos = yScale(y) - 10;
+        }
+        return `translate(${xPos}, ${yPos})`;
+      });
 
     ["value-label-outline", "value-label"].forEach(klass =>
       labelGroups
