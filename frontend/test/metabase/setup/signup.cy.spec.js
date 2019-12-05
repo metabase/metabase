@@ -1,18 +1,7 @@
 import path from "path";
 import { plainDbHost } from "__support__/cypress";
 
-console.log("projectRoot", Cypress.config("fileServerFolder"));
-const dbPath = path.resolve(
-  Cypress.config("fileServerFolder"),
-  "frontend/test/__runner__/empty.db",
-);
-
 describe("setup wizard", () => {
-  const store = null;
-  const app = null;
-
-  const strongPassword = "QJbHYJN3tPW[";
-
   before(() => {
     Cypress.config("baseUrl", plainDbHost);
   });
@@ -45,6 +34,7 @@ describe("setup wizard", () => {
     cy.contains("Next").should("be.disabled");
 
     // now try a strong password that doesn't match
+    const strongPassword = "QJbHYJN3tPW[";
     cy.get('input[name="password"]')
       .clear()
       .type(strongPassword);
@@ -85,6 +75,10 @@ describe("setup wizard", () => {
     cy.get("input[name='name']").type("Metabase H2");
     cy.contains("Next").should("be.disabled");
 
+    const dbPath = path.resolve(
+      Cypress.config("fileServerFolder"),
+      "frontend/test/__runner__/empty.db",
+    );
     cy.get("input[name='db']").type(`file:${dbPath}`);
     cy.contains("Next")
       .should("not.be.disabled")
