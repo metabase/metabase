@@ -28,167 +28,150 @@
                            (#'substitute/substitute (parse/parse sql) (into {} params))))]
     {:query query, :params (vec params)}))
 
-(expect
-  {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
-   :params []}
-  (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}}"
-    {"toucans_are_cool" true}))
+(deftest basic-substitution-test
+  (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
+          :params []}
+         (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}}"
+           {"toucans_are_cool" true})))
 
-(expect Exception
-  (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}}"
-    nil))
+  (is (thrown?
+       Exception
+       (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}}"
+         nil)))
 
-(expect
-  {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE AND bird_type = ?"
-   :params ["toucan"]}
-  (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}"
-    {"toucans_are_cool" true, "bird_type" "toucan"}))
+  (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE AND bird_type = ?"
+          :params ["toucan"]}
+         (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}"
+           {"toucans_are_cool" true, "bird_type" "toucan"})))
 
-(expect Exception
-  (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}"
-    {"toucans_are_cool" true}))
+  (testing "Should throw an Exception if a required param is missing"
+    (is (thrown?
+         Exception
+         (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}"
+           {"toucans_are_cool" true})))))
+
 
 ;;; ---------------------------------- optional substitution — [[ ... {{x}} ... ]] ----------------------------------
 
-(expect
-  {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
-   :params []}
-  (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}}]]"
-    {"toucans_are_cool" true}))
+(deftest optional-substitution-test
+  (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
+          :params []}
+         (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}}]]"
+                         {"toucans_are_cool" true})))
 
-(expect
-  {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
-   :params []}
-  (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{ toucans_are_cool }}]]"
-    {"toucans_are_cool" true}))
+  (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
+          :params []}
+         (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{ toucans_are_cool }}]]"
+                         {"toucans_are_cool" true})))
 
-(expect
-  {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
-   :params []}
-  (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool }}]]"
-    {"toucans_are_cool" true}))
+  (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
+          :params []}
+         (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool }}]]"
+                         {"toucans_are_cool" true})))
 
-(expect
-  {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
-   :params []}
-  (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{ toucans_are_cool}}]]"
-    {"toucans_are_cool" true}))
+  (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
+          :params []}
+         (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{ toucans_are_cool}}]]"
+                         {"toucans_are_cool" true})))
 
-(expect
-  {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
-   :params []}
-  (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool_2}}]]"
-    {"toucans_are_cool_2" true}))
+  (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE"
+          :params []}
+         (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool_2}}]]"
+                         {"toucans_are_cool_2" true})))
 
-(expect
-  {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE AND bird_type = 'toucan'"
-   :params []}
-  (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = 'toucan']]"
-    {"toucans_are_cool" true}))
+  (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE AND bird_type = 'toucan'"
+          :params []}
+         (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = 'toucan']]"
+                         {"toucans_are_cool" true})))
 
-;; Two parameters in an optional
-(expect
-  {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE AND bird_type = ?"
-   :params ["toucan"]}
-  (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}]]"
-    {"toucans_are_cool" true, "bird_type" "toucan"}))
+  (testing "Two parameters in an optional"
+    (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE AND bird_type = ?"
+            :params ["toucan"]}
+           (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}]]"
+                           {"toucans_are_cool" true, "bird_type" "toucan"}))))
 
-(expect
-  {:query  "SELECT * FROM bird_facts"
-   :params []}
-  (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}}]]"
-    nil))
+  (is (= {:query  "SELECT * FROM bird_facts"
+          :params []}
+         (substitute-e2e "SELECT * FROM bird_facts [[WHERE toucans_are_cool = {{toucans_are_cool}}]]"
+                         nil)))
 
-(expect
-  {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > 5"
-   :params []}
-  (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
-    {"num_toucans" 5}))
+  (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > 5"
+          :params []}
+         (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
+                         {"num_toucans" 5})))
 
-;; make sure nil gets substitute-e2ed in as `NULL`
-(expect
-  {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > NULL"
-   :params []}
-  (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
-    {"num_toucans" nil}))
+  (testing "make sure nil gets substitute-e2ed in as `NULL`"
+    (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > NULL"
+            :params []}
+           (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
+                           {"num_toucans" nil}))))
 
-(expect
-  {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > TRUE"
-   :params []}
-  (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
-    {"num_toucans" true}))
+  (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > TRUE"
+          :params []}
+         (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
+                         {"num_toucans" true})))
 
-(expect
-  {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > FALSE"
-   :params []}
-  (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
-    {"num_toucans" false}))
+  (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > FALSE"
+          :params []}
+         (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
+                         {"num_toucans" false})))
 
-(expect
-  {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > ?"
-   :params ["abc"]}
-  (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
-    {"num_toucans" "abc"}))
+  (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > ?"
+          :params ["abc"]}
+         (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
+                         {"num_toucans" "abc"})))
 
-(expect
-  {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > ?"
-   :params ["yo' mama"]}
-  (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
-    {"num_toucans" "yo' mama"}))
+  (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > ?"
+          :params ["yo' mama"]}
+         (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
+                         {"num_toucans" "yo' mama"})))
 
-(expect
-  {:query  "SELECT * FROM toucanneries WHERE TRUE"
-   :params []}
-  (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
-    nil))
+  (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE"
+          :params []}
+         (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]]"
+                         nil)))
 
-(expect
-  {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > 2 AND total_birds > 5"
-   :params []}
-  (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
-    {"num_toucans" 2, "total_birds" 5}))
+  (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > 2 AND total_birds > 5"
+          :params []}
+         (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
+                         {"num_toucans" 2, "total_birds" 5})))
 
-(expect
-  {:query  "SELECT * FROM toucanneries WHERE TRUE  AND total_birds > 5"
-   :params []}
-  (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
-    {"total_birds" 5}))
+  (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE  AND total_birds > 5"
+          :params []}
+         (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
+                         {"total_birds" 5})))
 
-(expect
-  {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > 3"
-   :params []}
-  (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
-    {"num_toucans" 3}))
+  (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > 3"
+          :params []}
+         (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
+                         {"num_toucans" 3})))
 
-(expect
-  {:query  "SELECT * FROM toucanneries WHERE TRUE"
-   :params []}
-  (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
-    nil))
+  (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE"
+          :params []}
+         (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
+                         nil)))
 
-(expect
-  {:query  "SELECT * FROM toucanneries WHERE bird_type = ? AND num_toucans > 2 AND total_birds > 5"
-   :params ["toucan"]}
-  (substitute-e2e "SELECT * FROM toucanneries WHERE bird_type = {{bird_type}} [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
-    {"bird_type" "toucan", "num_toucans" 2, "total_birds" 5}))
+  (is (= {:query  "SELECT * FROM toucanneries WHERE bird_type = ? AND num_toucans > 2 AND total_birds > 5"
+          :params ["toucan"]}
+         (substitute-e2e "SELECT * FROM toucanneries WHERE bird_type = {{bird_type}} [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
+                         {"bird_type" "toucan", "num_toucans" 2, "total_birds" 5})))
 
-(expect
-  Exception
-  (substitute-e2e "SELECT * FROM toucanneries WHERE bird_type = {{bird_type}} [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
-    {"num_toucans" 2, "total_birds" 5}))
+  (testing "should throw an Exception if a required param is missing"
+    (is (thrown?
+         Exception
+         (substitute-e2e "SELECT * FROM toucanneries WHERE bird_type = {{bird_type}} [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
+           {"num_toucans" 2, "total_birds" 5}))))
 
-(expect
-  {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > 5 AND num_toucans < 5"
-   :params []}
-  (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND num_toucans < {{num_toucans}}]]"
-    {"num_toucans" 5}))
+  (is (= {:query  "SELECT * FROM toucanneries WHERE TRUE AND num_toucans > 5 AND num_toucans < 5"
+          :params []}
+         (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND num_toucans < {{num_toucans}}]]"
+                         {"num_toucans" 5})))
 
-;; Make sure that substiutions still work if the subsitution contains brackets inside it (#3657)
-(expect
-  {:query  "select * from foobars  where foobars.id in (string_to_array(100, ',')::integer[])"
-   :params []}
-  (substitute-e2e "select * from foobars [[ where foobars.id in (string_to_array({{foobar_id}}, ',')::integer[]) ]]"
-    {"foobar_id" 100}))
+  (testing "Make sure that substiutions still work if the subsitution contains brackets inside it (#3657)"
+    (is (= {:query  "select * from foobars  where foobars.id in (string_to_array(100, ',')::integer[])"
+            :params []}
+           (substitute-e2e "select * from foobars [[ where foobars.id in (string_to_array({{foobar_id}}, ',')::integer[]) ]]"
+                           {"foobar_id" 100})))))
 
 
 ;;; ------------------------------------------- expansion tests: variables -------------------------------------------
@@ -215,52 +198,48 @@
       (select-keys [:query :params :template-tags])
       (update :params vec)))
 
-;; unspecified optional param
-(expect
-  {:query  "SELECT * FROM orders ;"
-   :params []}
-  (expand* {:native     {:query         "SELECT * FROM orders [[WHERE id = {{id}}]];"
-                         :template-tags {"id" {:name "id", :display-name "ID", :type :number}}}
-            :parameters []}))
+(deftest expand-variables-test
+  ;; unspecified optional param
+  (is (= {:query  "SELECT * FROM orders ;"
+          :params []}
+         (expand* {:native     {:query         "SELECT * FROM orders [[WHERE id = {{id}}]];"
+                                :template-tags {"id" {:name "id", :display-name "ID", :type :number}}}
+                   :parameters []})))
 
-;; unspecified *required* param
-(expect
-  Exception
-  (expand** {:native  {:query         "SELECT * FROM orders [[WHERE id = {{id}}]];"
-                       :template-tags {"id" {:name "id", :display-name "ID", :type :number, :required true}}}
-             :parameters []}))
+  (testing "unspecified *required* param"
+    (is (thrown?
+         Exception
+         (expand** {:native     {:query         "SELECT * FROM orders [[WHERE id = {{id}}]];"
+                                 :template-tags {"id" {:name "id", :display-name "ID", :type :number, :required true}}}
+                    :parameters []}))))
 
-;; default value
-(expect
-  {:query  "SELECT * FROM orders WHERE id = 100;"
-   :params []}
-  (expand* {:native     {:query         "SELECT * FROM orders WHERE id = {{id}};"
-                         :template-tags {"id" {:name "id", :display-name "ID", :type :number, :required true, :default "100"}}}
-            :parameters []}))
+  (testing "default value"
+    (is (= {:query  "SELECT * FROM orders WHERE id = 100;"
+            :params []}
+           (expand* {:native     {:query         "SELECT * FROM orders WHERE id = {{id}};"
+                                  :template-tags {"id" {:name "id", :display-name "ID", :type :number, :required true, :default "100"}}}
+                     :parameters []}))))
 
-;; specified param (numbers)
-(expect
-  {:query  "SELECT * FROM orders WHERE id = 2;"
-   :params []}
-  (expand* {:native     {:query         "SELECT * FROM orders WHERE id = {{id}};"
-                         :template-tags {"id" {:name "id", :display-name "ID", :type :number, :required true, :default "100"}}}
-            :parameters [{:type "category", :target [:variable [:template-tag "id"]], :value "2"}]}))
+  (testing "specified param (numbers)"
+    (is (= {:query  "SELECT * FROM orders WHERE id = 2;"
+            :params []}
+           (expand* {:native     {:query         "SELECT * FROM orders WHERE id = {{id}};"
+                                  :template-tags {"id" {:name "id", :display-name "ID", :type :number, :required true, :default "100"}}}
+                     :parameters [{:type "category", :target [:variable [:template-tag "id"]], :value "2"}]}))))
 
-;; specified param (date/single)
-(expect
-  {:query  "SELECT * FROM orders WHERE created_at > ?;"
-   :params [#t "2016-07-19"]}
-  (expand* {:native     {:query         "SELECT * FROM orders WHERE created_at > {{created_at}};"
-                         :template-tags {"created_at" {:name "created_at", :display-name "Created At", :type "date"}}}
-            :parameters [{:type :date/single, :target [:variable [:template-tag "created_at"]], :value "2016-07-19"}]}))
+  (testing "specified param (date/single)"
+    (is (= {:query  "SELECT * FROM orders WHERE created_at > ?;"
+            :params [#t "2016-07-19"]}
+           (expand* {:native     {:query         "SELECT * FROM orders WHERE created_at > {{created_at}};"
+                                  :template-tags {"created_at" {:name "created_at", :display-name "Created At", :type "date"}}}
+                     :parameters [{:type :date/single, :target [:variable [:template-tag "created_at"]], :value "2016-07-19"}]}))))
 
-;; specified param (text)
-(expect
-  {:query  "SELECT * FROM products WHERE category = ?;"
-   :params ["Gizmo"]}
-  (expand* {:native     {:query         "SELECT * FROM products WHERE category = {{category}};"
-                         :template-tags {"category" {:name "category", :display-name "Category", :type :text}}}
-            :parameters [{:type "category", :target [:variable [:template-tag "category"]], :value "Gizmo"}]}))
+  (testing "specified param (text)"
+    (is (= {:query  "SELECT * FROM products WHERE category = ?;"
+            :params ["Gizmo"]}
+           (expand* {:native     {:query         "SELECT * FROM products WHERE category = {{category}};"
+                                  :template-tags {"category" {:name "category", :display-name "Category", :type :text}}}
+                     :parameters [{:type "category", :target [:variable [:template-tag "category"]], :value "Gizmo"}]})))))
 
 
 ;;; ----------------------------------------- expansion tests: field filters -----------------------------------------

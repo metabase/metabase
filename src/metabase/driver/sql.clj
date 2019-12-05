@@ -11,18 +11,22 @@
 
 (driver/register! :sql, :abstract? true)
 
-(defmethod driver/supports? [:sql :standard-deviation-aggregations] [_ _] true)
-(defmethod driver/supports? [:sql :foreign-keys]                    [_ _] true)
-(defmethod driver/supports? [:sql :expressions]                     [_ _] true)
-(defmethod driver/supports? [:sql :expression-aggregations]         [_ _] true)
-(defmethod driver/supports? [:sql :native-parameters]               [_ _] true)
-(defmethod driver/supports? [:sql :nested-queries]                  [_ _] true)
-(defmethod driver/supports? [:sql :binning]                         [_ _] true)
+(doseq [feature [:standard-deviation-aggregations
+                 :foreign-keys
+                 :expressions
+                 :expression-aggregations
+                 :native-parameters
+                 :nested-queries
+                 :binning]]
+  (defmethod driver/supports? [:sql feature] [_ _] true))
 
-(defmethod driver/supports? [:sql :left-join]  [driver _] (driver/supports? driver :foreign-keys))
-(defmethod driver/supports? [:sql :right-join] [driver _] (driver/supports? driver :foreign-keys))
-(defmethod driver/supports? [:sql :inner-join] [driver _] (driver/supports? driver :foreign-keys))
-(defmethod driver/supports? [:sql :full-join]  [driver _] (driver/supports? driver :foreign-keys))
+(doseq [join-feature [:left-join
+                      :right-join
+                      :inner-join
+                      :full-join]]
+  (defmethod driver/supports? [:sql join-feature]
+    [driver _]
+    (driver/supports? driver :foreign-keys)))
 
 (defmethod driver/mbql->native :sql [driver query]
   (sql.qp/mbql->native driver query))

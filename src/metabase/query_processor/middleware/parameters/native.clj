@@ -7,7 +7,7 @@
 
   The Basics:
 
-  *  Things like `{{x}}` (required params) get subsituted with the value of `:x`, which can be a literal used in a
+  *  Things like `{{x}}` (required params) get substituted with the value of `:x`, which can be a literal used in a
      clause (e.g. in a clause like `value = {{x}}`) or a \"field filter\" that handles adding the clause itself
      (e.g. `{{timestamp}}` might become `timestamp BETWEEN ? AND ?`).
 

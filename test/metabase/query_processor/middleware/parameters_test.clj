@@ -5,6 +5,8 @@
             [metabase.query-processor.middleware.parameters :as parameters]
             [metabase.test.data :as data]))
 
+;; TODO — These are all really SQL-specific
+
 (expect
   {:type   :native
    :native {:query "WOW", :parameters ["My Param"]}}

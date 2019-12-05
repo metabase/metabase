@@ -7,7 +7,8 @@
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :as qp.t :refer [rows]]]
+             [query-processor-test :as qp.t :refer [rows]]
+             [test :as mt]]
             [metabase.automagic-dashboards.core :as magic]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver
@@ -37,7 +38,7 @@
 
 ;; ## Tests for connection functions
 (deftest can-connect-test?
-  (datasets/test-driver :mongo
+  (mt/test-driver :mongo
     (doseq [{:keys [details expected message]} [{:details  {:host   "localhost"
                                                             :port   3000
                                                             :dbname "bad-db-name"}
@@ -72,7 +73,7 @@
     {\"$project\": {\"_id\": false, \"count\": true}}]")
 
 (deftest native-query-test
-  (datasets/test-driver :mongo
+  (mt/test-driver :mongo
     (is (= {:status    :completed
             :row_count 1
             :data      {:rows             [[1]]
@@ -93,7 +94,7 @@
 ;; ## Tests for individual syncing functions
 
 (deftest describe-database-test
-  (datasets/test-driver :mongo
+  (mt/test-driver :mongo
     (is (= {:tables #{{:schema nil, :name "checkins"}
                       {:schema nil, :name "categories"}
                       {:schema nil, :name "users"}
@@ -101,7 +102,7 @@
            (driver/describe-database :mongo (data/db))))))
 
 (deftest describe-table-tets
-  (datasets/test-driver :mongo
+  (mt/test-driver :mongo
     (is (= {:schema nil
             :name   "venues"
             :fields #{{:name          "name"
@@ -160,7 +161,7 @@
 
 ;; ## Big-picture tests for the way data should look post-sync
 (deftest table-sync-test
-  (datasets/test-driver :mongo
+  (mt/test-driver :mongo
     (is (= [{:active true, :name "categories"}
             {:active true, :name "checkins"}
             {:active true, :name "users"}
@@ -205,7 +206,7 @@
       ["Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]]])
 
 (deftest bson-ids-test
-  (datasets/test-driver :mongo
+  (mt/test-driver :mongo
     (is (= [[2 "Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]
            (rows (data/dataset with-bson-ids
                    (data/run-mbql-query birds
@@ -300,3 +301,19 @@
 (deftest ObjectId-serialization
   (let [oid (ObjectId. "012345678901234567890123")]
     (is (= oid (nippy/thaw (nippy/freeze oid))))))
+
+(deftest native-query-nil-test
+  (testing "Nil values (like {_id nil} below) should not get removed from native queries"
+    (mt/test-driver :mongo
+      (is (= [[27]]
+             (mt/rows
+               (qp/process-query
+                 {:database (data/id)
+                  :type     :native
+                  :native   {:projections [:count]
+                             :query       [{"$project" {"price" "$price"}}
+                                           {"$match" {"price" {"$eq" 1}}}
+                                           {"$group" {"_id" nil, "count" {"$sum" 1}}}
+                                           {"$sort" {"_id" 1}}
+                                           {"$project" {"_id" false, "count" true}}]
+                             :collection  "venues"}})))))))

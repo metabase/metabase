@@ -247,8 +247,6 @@
 
 (defmethod sql.qp/->honeysql [:sqlite ZonedDateTime]
   [driver t]
-  (println "t:" t) ; NOCOMMIT
-  (println "(t/local-date t):" (t/local-date t)) ; NOCOMMIT
   (if (zero-time? t)
     (sql.qp/->honeysql driver (t/local-date t))
     (hsql/call :datetime (hx/literal (u.date/format-sql t)))))

@@ -198,8 +198,10 @@
        :fields (set (for [[field info] column-info]
                       (describe-table-field field info)))})))
 
-(defmethod driver/supports? [:mongo :basic-aggregations] [_ _] true)
-(defmethod driver/supports? [:mongo :nested-fields]      [_ _] true)
+(doseq [feature [:basic-aggregations
+                 :nested-fields
+                 :native-parameters]]
+  (defmethod driver/supports? [:mongo feature] [_ _] true))
 
 (defmethod driver/mbql->native :mongo
   [_ query]
