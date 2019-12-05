@@ -412,6 +412,11 @@ export default class NativeQueryEditor extends Component {
         : t`Show Query`;
       toggleEditorIcon = "expand";
     }
+    const dragHandle = (
+      <div className="NativeQueryEditorDragHandleWrapper">
+        <div className="NativeQueryEditorDragHandle" />
+      </div>
+    );
 
     return (
       <div className="NativeQueryEditor bg-light full">
@@ -445,7 +450,7 @@ export default class NativeQueryEditor extends Component {
           height={this.state.initialHeight}
           minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
           axis="y"
-          handle={<div className="NativeQueryEditorDragHandle" />}
+          handle={dragHandle}
           onResizeStop={(e, data) => {
             this.props.handleResize();
             this._editor.resize();

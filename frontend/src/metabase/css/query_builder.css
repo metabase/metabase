@@ -489,17 +489,20 @@
   border-right: none;
 }
 
+.NativeQueryEditorDragHandleWrapper {
+  position: absolute;
+  height: 5px;
+  width: 100%;
+  bottom: -2.5px;
+  cursor: row-resize;
+  display: flex;
+  justify-content: center;
+}
+
 .NativeQueryEditorDragHandle {
   background: color(var(--color-border) blackness(+ 3%));
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  height: 5px;
   width: 100px;
   border-radius: 4px;
-  cursor: row-resize;
-  margin-left: -50px;
-  margin-bottom: -2.5px;
 }
 
 /* VISUALIZATION SETTINGS */
