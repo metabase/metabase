@@ -203,63 +203,66 @@ class Overworld extends React.Component {
           </Box>
         </Box>
 
-        <Database.ListLoader>
-          {({ databases }) => {
-            if (databases.length === 0) {
-              return null;
-            }
-            return (
-              <Box pt={2} px={PAGE_PADDING}>
-                <SectionHeading>{t`Our data`}</SectionHeading>
-                <Box mb={4}>
-                  <Grid>
-                    {databases.map(database => (
-                      <GridItem w={[1, 1 / 3]} key={database.id}>
-                        <Link
-                          to={`browse/${database.id}`}
-                          hover={{ color: color("brand") }}
-                          data-metabase-event={`Homepage;Browse DB Clicked; DB Type ${database.engine}`}
-                        >
-                          <Box
-                            p={3}
-                            bg={color("bg-medium")}
-                            className="hover-parent hover--visibility"
+        {// this.props.collections represents the collections inside of the root collection. if there are any then we should hide the our data section
+        this.props.collections.length === 0 && (
+          <Database.ListLoader>
+            {({ databases }) => {
+              if (databases.length === 0) {
+                return null;
+              }
+              return (
+                <Box pt={2} px={PAGE_PADDING}>
+                  <SectionHeading>{t`Our data`}</SectionHeading>
+                  <Box mb={4}>
+                    <Grid>
+                      {databases.map(database => (
+                        <GridItem w={[1, 1 / 3]} key={database.id}>
+                          <Link
+                            to={`browse/${database.id}`}
+                            hover={{ color: color("brand") }}
+                            data-metabase-event={`Homepage;Browse DB Clicked; DB Type ${database.engine}`}
                           >
-                            <Icon
-                              name="database"
-                              color={color("database")}
-                              mb={3}
-                              size={28}
-                            />
-                            <Flex align="center">
-                              <h3 className="text-wrap">{database.name}</h3>
-                              <Box ml="auto" mr={1} className="hover-child">
-                                <Flex align="center">
-                                  <Tooltip
-                                    tooltip={t`Learn about this database`}
-                                  >
-                                    <Link
-                                      to={`reference/databases/${database.id}`}
+                            <Box
+                              p={3}
+                              bg={color("bg-medium")}
+                              className="hover-parent hover--visibility"
+                            >
+                              <Icon
+                                name="database"
+                                color={color("database")}
+                                mb={3}
+                                size={28}
+                              />
+                              <Flex align="center">
+                                <h3 className="text-wrap">{database.name}</h3>
+                                <Box ml="auto" mr={1} className="hover-child">
+                                  <Flex align="center">
+                                    <Tooltip
+                                      tooltip={t`Learn about this database`}
                                     >
-                                      <Icon
-                                        name="reference"
-                                        color={color("text-light")}
-                                      />
-                                    </Link>
-                                  </Tooltip>
-                                </Flex>
-                              </Box>
-                            </Flex>
-                          </Box>
-                        </Link>
-                      </GridItem>
-                    ))}
-                  </Grid>
+                                      <Link
+                                        to={`reference/databases/${database.id}`}
+                                      >
+                                        <Icon
+                                          name="reference"
+                                          color={color("text-light")}
+                                        />
+                                      </Link>
+                                    </Tooltip>
+                                  </Flex>
+                                </Box>
+                              </Flex>
+                            </Box>
+                          </Link>
+                        </GridItem>
+                      ))}
+                    </Grid>
+                  </Box>
                 </Box>
-              </Box>
-            );
-          }}
-        </Database.ListLoader>
+              );
+            }}
+          </Database.ListLoader>
+        )}
       </Box>
     );
   }
