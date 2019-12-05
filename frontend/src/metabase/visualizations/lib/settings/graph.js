@@ -278,7 +278,7 @@ export const STACKABLE_SETTINGS = {
 export const GRAPH_GOAL_SETTINGS = {
   "graph.show_goal": {
     section: t`Display`,
-    title: t`Show goal`,
+    title: t`Goal line`,
     widget: "toggle",
     default: false,
   },
@@ -300,7 +300,7 @@ export const GRAPH_GOAL_SETTINGS = {
   },
   "graph.show_trendline": {
     section: t`Display`,
-    title: t`Show trend line`,
+    title: t`Trend line`,
     widget: "toggle",
     default: false,
     getHidden: (series, vizSettings) => {
@@ -308,6 +308,38 @@ export const GRAPH_GOAL_SETTINGS = {
       return !insights || insights.length === 0;
     },
     useRawSeries: true,
+  },
+};
+
+// with more than this many rows, don't display values on top of bars by default
+const AUTO_SHOW_VALUES_MAX_ROWS = 25;
+
+export const GRAPH_DISPLAY_VALUES_SETTINGS = {
+  "graph.show_values": {
+    section: t`Display`,
+    title: t`Show values on data points`,
+    widget: "toggle",
+    getHidden: (series, vizSettings) =>
+      series.length > 1 || vizSettings["stackable.stack_type"] === "normalized",
+    getDefault: ([{ card, data }]) =>
+      card.display === "bar" && data.rows.length < AUTO_SHOW_VALUES_MAX_ROWS,
+  },
+  "graph.label_value_frequency": {
+    section: t`Display`,
+    title: t`Values to show`,
+    widget: "radio",
+    getHidden: (series, vizSettings) =>
+      series.length > 1 ||
+      vizSettings["graph.show_values"] !== true ||
+      vizSettings["stackable.stack_type"] === "normalized",
+    props: {
+      options: [
+        { name: t`As many as can fit nicely`, value: "fit" },
+        { name: t`All`, value: "all" },
+      ],
+    },
+    default: "fit",
+    readDependencies: ["graph.show_values"],
   },
 };
 

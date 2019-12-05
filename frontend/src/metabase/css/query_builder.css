@@ -687,3 +687,18 @@
 .ParameterValuePickerNoPopover input::-webkit-input-placeholder {
   color: var(--color-text-medium);
 }
+
+/* TEMP - spot for value labels */
+text.value-label-outline {
+  font-weight: 900;
+  stroke-width: 4px;
+  stroke: var(--color-text-white);
+}
+
+text.value-label {
+  font-weight: 900;
+}
+
+.Dashboard--night text.value-label-outline {
+  stroke: var(--night-mode-card);
+}
