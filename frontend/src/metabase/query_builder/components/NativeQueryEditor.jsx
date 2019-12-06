@@ -148,7 +148,6 @@ export default class NativeQueryEditor extends Component {
 
   componentDidMount() {
     this.loadAceEditor();
-    document.addEventListener("selectionchange", this.handleSelectionChange);
     document.addEventListener("keydown", this.handleKeyDown);
   }
 
@@ -194,7 +193,6 @@ export default class NativeQueryEditor extends Component {
   }
 
   componentWillUnmount() {
-    document.removeEventListener("selectionchange", this.handleSelectionChange);
     document.removeEventListener("keydown", this.handleKeyDown);
   }
 
@@ -246,6 +244,7 @@ export default class NativeQueryEditor extends Component {
 
     // listen to onChange events
     this._editor.getSession().on("change", this.onChange);
+    this._editor.on("changeSelection", this.handleSelectionChange);
 
     // initialize the content
     this._editor.setValue(query ? query.queryText() : "");
