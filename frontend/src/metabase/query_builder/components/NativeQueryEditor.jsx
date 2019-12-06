@@ -95,7 +95,6 @@ type Props = {
 type State = {
   initialHeight: number,
   hasTextSelected: boolean,
-  firstRun: boolean,
 };
 
 export default class NativeQueryEditor extends Component {
@@ -118,7 +117,6 @@ export default class NativeQueryEditor extends Component {
 
     this.state = {
       initialHeight: getEditorLineHeight(lines),
-      firstRun: true,
       hasTextSelected: false,
     };
 
@@ -183,13 +181,6 @@ export default class NativeQueryEditor extends Component {
       if (aceMode.indexOf("sql") >= 0) {
         this._editor.getSession().$mode.$behaviour = new SQLBehaviour();
       }
-    }
-  }
-
-  componentWillReceiveProps(nextProps: Props) {
-    if (this.state.firstRun && nextProps.isRunning && !this.props.isRunning) {
-      this.setState({ firstRun: false });
-      this._updateSize(true);
     }
   }
 
@@ -295,7 +286,7 @@ export default class NativeQueryEditor extends Component {
     });
   }
 
-  _updateSize(allowShrink: boolean = false) {
+  _updateSize() {
     const doc = this._editor.getSession().getDocument();
     const element = ReactDOM.findDOMNode(this.refs.resizeBox);
     // set the newHeight based on the line count, but ensure it's within
@@ -306,7 +297,7 @@ export default class NativeQueryEditor extends Component {
         MIN_HEIGHT_LINES,
       ),
     );
-    if (allowShrink || newHeight > element.offsetHeight) {
+    if (newHeight > element.offsetHeight) {
       element.style.height = newHeight + "px";
       this._editor.resize();
     }
