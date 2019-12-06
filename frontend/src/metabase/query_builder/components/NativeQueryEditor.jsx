@@ -206,24 +206,28 @@ export default class NativeQueryEditor extends Component {
   };
 
   handleKeyDown = (e: KeyboardEvent) => {
-    const { query, runQuestionQuery } = this.props;
-
     const ENTER_KEY = 13;
     if (e.keyCode === ENTER_KEY && (e.metaKey || e.ctrlKey)) {
-      // if any text is selected, just run that
-      const selectedText = this._editor.getSelectedText();
-      if (selectedText) {
-        const temporaryCard = query
-          .setQueryText(selectedText)
-          .question()
-          .card();
-        runQuestionQuery({
-          overrideWithCard: temporaryCard,
-          shouldUpdateUrl: false,
-        });
-      } else if (query.canRun()) {
-        runQuestionQuery();
-      }
+      this.runQuery();
+    }
+  };
+
+  runQuery = () => {
+    const { query, runQuestionQuery } = this.props;
+
+    // if any text is selected, just run that
+    const selectedText = this._editor.getSelectedText();
+    if (selectedText) {
+      const temporaryCard = query
+        .setQueryText(selectedText)
+        .question()
+        .card();
+      runQuestionQuery({
+        overrideWithCard: temporaryCard,
+        shouldUpdateUrl: false,
+      });
+    } else if (query.canRun()) {
+      runQuestionQuery();
     }
   };
 
@@ -357,7 +361,6 @@ export default class NativeQueryEditor extends Component {
       isRunning,
       isResultDirty,
       isPreviewing,
-      runQuestionQuery,
     } = this.props;
 
     const database = query.database();
@@ -482,7 +485,7 @@ export default class NativeQueryEditor extends Component {
               isRunning={isRunning}
               isDirty={isResultDirty}
               isPreviewing={isPreviewing}
-              onRun={runQuestionQuery}
+              onRun={this.runQuery}
               compact
               className="mx2 mb2 mt-auto p2"
               getTooltip={() =>
