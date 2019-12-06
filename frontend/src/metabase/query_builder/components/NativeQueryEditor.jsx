@@ -38,11 +38,11 @@ const SCROLL_MARGIN = 8;
 const LINE_HEIGHT = 16;
 
 const MIN_HEIGHT_LINES = 10;
-const MAX_AUTO_SIZE_LINES = 12;
 
 const ICON_SIZE = 18;
 
 const getEditorLineHeight = lines => lines * LINE_HEIGHT + 2 * SCROLL_MARGIN;
+const getLinesForHeight = height => (height - 2 * SCROLL_MARGIN) / LINE_HEIGHT;
 
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
@@ -88,6 +88,8 @@ type Props = {
   isResultDirty: boolean,
   isPreviewing: boolean,
   isNativeEditorOpen: boolean,
+
+  viewHeight: number,
 };
 type State = {
   initialHeight: number,
@@ -107,8 +109,8 @@ export default class NativeQueryEditor extends Component {
 
     const lines = Math.max(
       Math.min(
-        MAX_AUTO_SIZE_LINES,
-        (props.query && props.query.lineCount()) || MAX_AUTO_SIZE_LINES,
+        this.maxAutoSizeLines(),
+        (props.query && props.query.lineCount()) || this.maxAutoSizeLines(),
       ),
       MIN_HEIGHT_LINES,
     );
@@ -123,6 +125,16 @@ export default class NativeQueryEditor extends Component {
     // e.x. https://github.com/metabase/metabase/issues/2801
     // $FlowFixMe
     this.onChange = _.debounce(this.onChange.bind(this), 1);
+  }
+
+  maxAutoSizeLines() {
+    // This determines the max height that the editor *automatically* takes.
+    // - On load, long queries will be capped at this length
+    // - When loading an empty query, this is the height
+    // - When the editor grows during typing this is the max height
+    const FRACTION_OF_TOTAL_VIEW_HEIGHT = 0.4;
+    const pixelHeight = this.props.viewHeight * FRACTION_OF_TOTAL_VIEW_HEIGHT;
+    return Math.ceil(getLinesForHeight(pixelHeight));
   }
 
   static defaultProps = {
@@ -278,12 +290,15 @@ export default class NativeQueryEditor extends Component {
   _updateSize(allowShrink: boolean = false) {
     const doc = this._editor.getSession().getDocument();
     const element = ReactDOM.findDOMNode(this.refs.resizeBox);
-    const newHeight = getEditorLineHeight(doc.getLength());
-    if (
-      (allowShrink || newHeight > element.offsetHeight) &&
-      newHeight <= getEditorLineHeight(MAX_AUTO_SIZE_LINES) &&
-      newHeight >= getEditorLineHeight(MIN_HEIGHT_LINES)
-    ) {
+    // set the newHeight based on the line count, but ensure it's within
+    // [MIN_HEIGHT_LINES, this.maxAutoSizeLines()]
+    const newHeight = getEditorLineHeight(
+      Math.max(
+        Math.min(doc.getLength(), this.maxAutoSizeLines()),
+        MIN_HEIGHT_LINES,
+      ),
+    );
+    if (allowShrink || newHeight > element.offsetHeight) {
       element.style.height = newHeight + "px";
       this._editor.resize();
     }
