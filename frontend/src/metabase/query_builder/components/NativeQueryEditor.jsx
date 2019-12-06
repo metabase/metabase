@@ -26,6 +26,7 @@ import "ace/snippets/sqlserver";
 import "ace/snippets/json";
 import { t } from "ttag";
 
+import { isMac } from "metabase/lib/browser";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 
 import _ from "underscore";
@@ -38,11 +39,11 @@ const SCROLL_MARGIN = 8;
 const LINE_HEIGHT = 16;
 
 const MIN_HEIGHT_LINES = 10;
-const MAX_AUTO_SIZE_LINES = 12;
 
 const ICON_SIZE = 18;
 
 const getEditorLineHeight = lines => lines * LINE_HEIGHT + 2 * SCROLL_MARGIN;
+const getLinesForHeight = height => (height - 2 * SCROLL_MARGIN) / LINE_HEIGHT;
 
 import Question from "metabase-lib/lib/Question";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
@@ -88,11 +89,12 @@ type Props = {
   isResultDirty: boolean,
   isPreviewing: boolean,
   isNativeEditorOpen: boolean,
+
+  viewHeight: number,
 };
 type State = {
   initialHeight: number,
   hasTextSelected: boolean,
-  firstRun: boolean,
 };
 
 export default class NativeQueryEditor extends Component {
@@ -107,15 +109,14 @@ export default class NativeQueryEditor extends Component {
 
     const lines = Math.max(
       Math.min(
-        MAX_AUTO_SIZE_LINES,
-        (props.query && props.query.lineCount()) || MAX_AUTO_SIZE_LINES,
+        this.maxAutoSizeLines(),
+        (props.query && props.query.lineCount()) || this.maxAutoSizeLines(),
       ),
       MIN_HEIGHT_LINES,
     );
 
     this.state = {
       initialHeight: getEditorLineHeight(lines),
-      firstRun: true,
       hasTextSelected: false,
     };
 
@@ -123,6 +124,16 @@ export default class NativeQueryEditor extends Component {
     // e.x. https://github.com/metabase/metabase/issues/2801
     // $FlowFixMe
     this.onChange = _.debounce(this.onChange.bind(this), 1);
+  }
+
+  maxAutoSizeLines() {
+    // This determines the max height that the editor *automatically* takes.
+    // - On load, long queries will be capped at this length
+    // - When loading an empty query, this is the height
+    // - When the editor grows during typing this is the max height
+    const FRACTION_OF_TOTAL_VIEW_HEIGHT = 0.4;
+    const pixelHeight = this.props.viewHeight * FRACTION_OF_TOTAL_VIEW_HEIGHT;
+    return Math.ceil(getLinesForHeight(pixelHeight));
   }
 
   static defaultProps = {
@@ -136,7 +147,6 @@ export default class NativeQueryEditor extends Component {
 
   componentDidMount() {
     this.loadAceEditor();
-    document.addEventListener("selectionchange", this.handleSelectionChange);
     document.addEventListener("keydown", this.handleKeyDown);
   }
 
@@ -174,44 +184,44 @@ export default class NativeQueryEditor extends Component {
     }
   }
 
-  componentWillReceiveProps(nextProps: Props) {
-    if (this.state.firstRun && nextProps.isRunning && !this.props.isRunning) {
-      this.setState({ firstRun: false });
-      this._updateSize(true);
-    }
-  }
-
   componentWillUnmount() {
-    document.removeEventListener("selectionchange", this.handleSelectionChange);
     document.removeEventListener("keydown", this.handleKeyDown);
   }
 
-  handleSelectionChange = () => {
+  // Debouncing this avoids race condition between checking the current version
+  // of state and asynchronously setting state. We could pass a function to
+  // setState, but then we'd risk calling setState too much as this event is
+  // triggered multiple times per user-perceived selection.
+  handleSelectionChange = _.debounce(() => {
     const hasTextSelected = Boolean(this._editor.getSelectedText());
     if (this.state.hasTextSelected !== hasTextSelected) {
       this.setState({ hasTextSelected });
     }
-  };
+  }, 100);
 
   handleKeyDown = (e: KeyboardEvent) => {
-    const { query, runQuestionQuery } = this.props;
-
     const ENTER_KEY = 13;
     if (e.keyCode === ENTER_KEY && (e.metaKey || e.ctrlKey)) {
-      // if any text is selected, just run that
-      const selectedText = this._editor.getSelectedText();
-      if (selectedText) {
-        const temporaryCard = query
-          .setQueryText(selectedText)
-          .question()
-          .card();
-        runQuestionQuery({
-          overrideWithCard: temporaryCard,
-          shouldUpdateUrl: false,
-        });
-      } else if (query.canRun()) {
-        runQuestionQuery();
-      }
+      this.runQuery();
+    }
+  };
+
+  runQuery = () => {
+    const { query, runQuestionQuery } = this.props;
+
+    // if any text is selected, just run that
+    const selectedText = this._editor && this._editor.getSelectedText();
+    if (selectedText) {
+      const temporaryCard = query
+        .setQueryText(selectedText)
+        .question()
+        .card();
+      runQuestionQuery({
+        overrideWithCard: temporaryCard,
+        shouldUpdateUrl: false,
+      });
+    } else if (query.canRun()) {
+      runQuestionQuery();
     }
   };
 
@@ -230,6 +240,7 @@ export default class NativeQueryEditor extends Component {
 
     // listen to onChange events
     this._editor.getSession().on("change", this.onChange);
+    this._editor.on("changeSelection", this.handleSelectionChange);
 
     // initialize the content
     this._editor.setValue(query ? query.queryText() : "");
@@ -275,15 +286,18 @@ export default class NativeQueryEditor extends Component {
     });
   }
 
-  _updateSize(allowShrink: boolean = false) {
+  _updateSize() {
     const doc = this._editor.getSession().getDocument();
     const element = ReactDOM.findDOMNode(this.refs.resizeBox);
-    const newHeight = getEditorLineHeight(doc.getLength());
-    if (
-      (allowShrink || newHeight > element.offsetHeight) &&
-      newHeight <= getEditorLineHeight(MAX_AUTO_SIZE_LINES) &&
-      newHeight >= getEditorLineHeight(MIN_HEIGHT_LINES)
-    ) {
+    // set the newHeight based on the line count, but ensure it's within
+    // [MIN_HEIGHT_LINES, this.maxAutoSizeLines()]
+    const newHeight = getEditorLineHeight(
+      Math.max(
+        Math.min(doc.getLength(), this.maxAutoSizeLines()),
+        MIN_HEIGHT_LINES,
+      ),
+    );
+    if (newHeight > element.offsetHeight) {
       element.style.height = newHeight + "px";
       this._editor.resize();
     }
@@ -342,7 +356,6 @@ export default class NativeQueryEditor extends Component {
       isRunning,
       isResultDirty,
       isPreviewing,
-      runQuestionQuery,
     } = this.props;
 
     const database = query.database();
@@ -412,6 +425,11 @@ export default class NativeQueryEditor extends Component {
         : t`Show Query`;
       toggleEditorIcon = "expand";
     }
+    const dragHandle = (
+      <div className="NativeQueryEditorDragHandleWrapper">
+        <div className="NativeQueryEditorDragHandle" />
+      </div>
+    );
 
     return (
       <div className="NativeQueryEditor bg-light full">
@@ -445,7 +463,7 @@ export default class NativeQueryEditor extends Component {
           height={this.state.initialHeight}
           minConstraints={[Infinity, getEditorLineHeight(MIN_HEIGHT_LINES)]}
           axis="y"
-          handle={<div className="NativeQueryEditorDragHandle" />}
+          handle={dragHandle}
           onResizeStop={(e, data) => {
             this.props.handleResize();
             this._editor.resize();
@@ -462,13 +480,15 @@ export default class NativeQueryEditor extends Component {
               isRunning={isRunning}
               isDirty={isResultDirty}
               isPreviewing={isPreviewing}
-              onRun={runQuestionQuery}
+              onRun={this.runQuery}
               compact
               className="mx2 mb2 mt-auto p2"
               getTooltip={() =>
-                this.state.hasTextSelected
-                  ? t`Run selected text (⌘ + enter)`
-                  : t`Run query (⌘ + enter)`
+                (this.state.hasTextSelected
+                  ? t`Run selected text`
+                  : t`Run query`) +
+                " " +
+                (isMac() ? t`(⌘ + enter)` : t`(Ctrl + enter)`)
               }
             />
           </div>
