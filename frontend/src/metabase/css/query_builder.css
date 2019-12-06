@@ -491,17 +491,19 @@
 
 .NativeQueryEditorDragHandleWrapper {
   position: absolute;
-  height: 5px;
+  height: 8px;
   width: 100%;
-  bottom: -2.5px;
+  bottom: -4px;
   cursor: row-resize;
   display: flex;
   justify-content: center;
+  align-items: center;
 }
 
 .NativeQueryEditorDragHandle {
   background: color(var(--color-border) blackness(+ 3%));
   width: 100px;
+  height: 5px;
   border-radius: 4px;
 }
 
