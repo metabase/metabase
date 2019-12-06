@@ -189,10 +189,25 @@ By default, Metabase will automatically choose a good way to bin your results. B
 
 These three charting types have very similar options, which are broken up into the following:
 
-- **Data** — choose the fields you want to plot on your x and y axes. This is mostly useful if your table or result set contains more than two columns, like if you're trying to graph fields from an unaggregated table. You can also add additional metrics to your chart by clicking the `Add another series` link below the y-axis dropdown, or break your current metric out by an additional dimension by clicking the `Add a series breakout` link below the x-axis dropdown (note that you can't add an additional series breakout if you have more than one metric/series).
-- **Display** — here's where you can make some cosmetic changes, like setting colors, and stacking bar or area charts. With line and area charts, you can also change the line style (line, curve, or step). You can also set a goal line for your chart, display a trend line, or configure how your chart deals with x-axis points that have missing y-axis values.
-- **Axes** — this is where you can hide axis markers or change their ranges, and turn split axes on or off. You can also configure the way your axes are scaled, if you're into that kind of thing.
-- **Labels** — if you want to hide axis labels or customize them, here's where to go.
+**Data**
+
+Here's where you can choose the columns you want to plot on your x and y axes. This is mostly useful if your table or result set contains more than two columns, like if you're trying to graph fields from an unaggregated table. You can also add additional metrics to your chart by clicking the `Add another series` link below the y-axis dropdown, or break your current metric out by an additional dimension by clicking the `Add a series breakout` link below the x-axis dropdown (note that you can't add an additional series breakout if you have more than one metric/series).
+
+**Display**
+
+There's quite a bit you can do on this tab:
+
+- Set the colors and labels for the series on your chart
+- Change the style of your lines for Line and Area charts, and choose whether or not to display dots on them
+- Use the "Replace missing values with…" setting to change how your chart deals with missing values. You can user linear interpolation, or display those points as zero or as nothing.
+- Add a goal line. This can be used in conjunction with [alerts](15-alerts.md) to send an email or a Slack message when your metric cross this line.
+- If you're looking at a time series chart, you can turn on a trend line to show where things are heading.
+- Show values on data points. The default setting will try and fit as many values on your chart as will fit nicely, but you can also force Metabase to show the values for each and every data point, which it will do begrudgingly.
+
+**Axes**
+
+This is where you can hide axis tick marks or change axis ranges, or turn split axes on or off. You can also configure the way your axes are scaled, if you're into that kind of thing.
+**Labels** — if you want to hide axis labels or customize them, here's where to go.
 
 #### Scatterplots and bubble charts
 
