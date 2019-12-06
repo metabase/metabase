@@ -26,6 +26,7 @@ import "ace/snippets/sqlserver";
 import "ace/snippets/json";
 import { t } from "ttag";
 
+import { isMac } from "metabase/lib/browser";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 
 import _ from "underscore";
@@ -196,12 +197,16 @@ export default class NativeQueryEditor extends Component {
     document.removeEventListener("keydown", this.handleKeyDown);
   }
 
-  handleSelectionChange = () => {
+  // Debouncing this avoids race condition between checking the current version
+  // of state and asynchronously setting state. We could pass a function to
+  // setState, but then we'd risk calling setState too much as this event is
+  // triggered multiple times per user-perceived selection.
+  handleSelectionChange = _.debounce(() => {
     const hasTextSelected = Boolean(this._editor.getSelectedText());
     if (this.state.hasTextSelected !== hasTextSelected) {
       this.setState({ hasTextSelected });
     }
-  };
+  }, 100);
 
   handleKeyDown = (e: KeyboardEvent) => {
     const ENTER_KEY = 13;
@@ -488,9 +493,11 @@ export default class NativeQueryEditor extends Component {
               compact
               className="mx2 mb2 mt-auto p2"
               getTooltip={() =>
-                this.state.hasTextSelected
-                  ? t`Run selected text (⌘ + enter)`
-                  : t`Run query (⌘ + enter)`
+                (this.state.hasTextSelected
+                  ? t`Run selected text`
+                  : t`Run query`) +
+                " " +
+                (isMac() ? t`(⌘ + enter)` : t`(Ctrl + enter)`)
               }
             />
           </div>
