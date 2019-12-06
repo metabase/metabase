@@ -219,7 +219,7 @@ export default class NativeQueryEditor extends Component {
     const { query, runQuestionQuery } = this.props;
 
     // if any text is selected, just run that
-    const selectedText = this._editor.getSelectedText();
+    const selectedText = this._editor && this._editor.getSelectedText();
     if (selectedText) {
       const temporaryCard = query
         .setQueryText(selectedText)
