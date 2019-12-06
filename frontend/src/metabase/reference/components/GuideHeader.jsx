@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import pure from "recompose/pure";
 import { t } from "ttag";
-import EditButton from "metabase/reference/components/EditButton";
+import Button from "metabase/components/Button";
 
 const GuideHeader = ({ startEditing, isSuperuser }) => (
   <div>
@@ -13,7 +13,9 @@ const GuideHeader = ({ startEditing, isSuperuser }) => (
         </h1>
         {isSuperuser && (
           <span className="ml-auto">
-            <EditButton startEditing={startEditing} />
+            <Button primary icon="pencil" onClick={startEditing}>
+              {t`Edit`}
+            </Button>
           </span>
         )}
       </div>

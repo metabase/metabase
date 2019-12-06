@@ -28,6 +28,12 @@ visualizations.get = function(key) {
   return Map.prototype.get.call(this, key) || aliases.get(key) || Table;
 };
 
+export function getSensibleDisplays(data) {
+  return Array.from(visualizations)
+    .filter(([, viz]) => viz.isSensible && viz.isSensible(data))
+    .map(([display]) => display);
+}
+
 export function registerVisualization(visualization) {
   if (visualization == null) {
     throw new Error(t`Visualization is null`);

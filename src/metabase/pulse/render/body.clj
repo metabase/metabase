@@ -1,6 +1,5 @@
 (ns metabase.pulse.render.body
   (:require [hiccup.core :refer [h]]
-            [metabase.mbql.util :as mbql.u]
             [metabase.pulse.render
              [color :as color]
              [common :as common]
@@ -9,6 +8,7 @@
              [sparkline :as sparkline]
              [style :as style]
              [table :as table]]
+            [metabase.types :as types]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]))
 
@@ -40,12 +40,12 @@
 
 ;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
-(defn- format-cell
-  [timezone value col]
+(s/defn ^:private format-cell
+  [timezone-id :- (s/maybe s/Str) value col]
   (cond
-    (mbql.u/datetime-field? col)                             (datetime/format-timestamp timezone value col)
-    (and (number? value) (not (mbql.u/datetime-field? col))) (common/format-number value)
-    :else                                                    (str value)))
+    (types/temporal-field? col)                             (datetime/format-temporal-str timezone-id value col)
+    (and (number? value) (not (types/temporal-field? col))) (common/format-number value)
+    :else                                                   (str value)))
 
 ;;; --------------------------------------------------- Rendering ----------------------------------------------------
 
@@ -80,9 +80,9 @@
             column-name))
    :bar-width (when include-bar? 99)})
 
-(defn- query-results->row-seq
+(s/defn ^:private query-results->row-seq
   "Returns a seq of stringified formatted rows that can be rendered into HTML"
-  [timezone remapping-lookup cols rows bar-column max-value]
+  [timezone-id :- (s/maybe s/Str) remapping-lookup cols rows bar-column max-value]
   (for [row rows]
     {:bar-width (when-let [bar-value (and bar-column (bar-column row))]
                   ;; cast to double to avoid "Non-terminating decimal expansion" errors
@@ -94,17 +94,17 @@
                                        [(nth cols (get remapping-lookup (:name maybe-remapped-col)))
                                         (nth row (get remapping-lookup (:name maybe-remapped-col)))]
                                        [maybe-remapped-col maybe-remapped-row-cell])]]
-            (format-cell timezone row-cell col))}))
+            (format-cell timezone-id row-cell col))}))
 
-(defn- prep-for-html-rendering
+(s/defn ^:private prep-for-html-rendering
   "Convert the query results (`cols` and `rows`) into a formatted seq of rows (list of strings) that can be rendered as
   HTML"
-  [timezone cols rows bar-column max-value column-limit]
+  [timezone-id :- (s/maybe s/Str) cols rows bar-column max-value column-limit]
   (let [remapping-lookup (create-remapping-lookup cols)
         limited-cols (take column-limit cols)]
     (cons
      (query-results->header-row remapping-lookup limited-cols bar-column)
-     (query-results->row-seq timezone remapping-lookup limited-cols (take rows-limit rows) bar-column max-value))))
+     (query-results->row-seq timezone-id remapping-lookup limited-cols (take rows-limit rows) bar-column max-value))))
 
 (defn- strong-limit-text [number]
   [:strong {:style (style/style {:color style/color-gray-3})} (h (common/format-number number))])
@@ -157,17 +157,16 @@
 
 (defmulti render
   "Render a Pulse as `chart-type` (e.g. `:bar`, `:scalar`, etc.) and `render-type` (either `:inline` or `:attachment`)."
-  {:arglists '([chart-type render-type timezone card data])}
+  {:arglists '([chart-type render-type timezone-id card data])}
   (fn [chart-type _ _ _ _] chart-type))
 
-
 (s/defmethod render :table :- common/RenderedPulseCard
-  [_ render-type timezone card {:keys [cols rows] :as data}]
+  [_ render-type timezone-id :- (s/maybe s/Str) card {:keys [cols rows] :as data}]
   (let [table-body [:div
                     (table/render-table
                      (color/make-color-selector data (:visualization_settings card))
                      (mapv :name (:cols data))
-                     (prep-for-html-rendering timezone cols rows nil nil cols-limit))
+                     (prep-for-html-rendering timezone-id cols rows nil nil cols-limit))
                     (render-truncation-warning cols-limit (count-displayed-columns cols) rows-limit (count rows))]]
     {:attachments
      nil
@@ -178,7 +177,7 @@
        (list table-body))}))
 
 (s/defmethod render :bar :- common/RenderedPulseCard
-  [_ _ timezone card {:keys [cols] :as data}]
+  [_ _ timezone-id :- (s/maybe s/Str) card {:keys [cols] :as data}]
   (let [[x-axis-rowfn y-axis-rowfn] (common/graphing-column-row-fns card data)
         rows                        (common/non-nil-rows x-axis-rowfn y-axis-rowfn (:rows data))
         max-value                   (apply max (map y-axis-rowfn rows))]
@@ -189,29 +188,28 @@
      [:div
       (table/render-table (color/make-color-selector data (:visualization_settings card))
                           (mapv :name cols)
-                          (prep-for-html-rendering timezone cols rows y-axis-rowfn max-value 2))
+                          (prep-for-html-rendering timezone-id cols rows y-axis-rowfn max-value 2))
       (render-truncation-warning 2 (count-displayed-columns cols) rows-limit (count rows))]}))
 
-
 (s/defmethod render :scalar :- common/RenderedPulseCard
-  [_ _ timezone card {:keys [cols rows]}]
+  [_ _ timezone-id card {:keys [cols rows]}]
   {:attachments
    nil
 
    :content
    [:div {:style (style/style (style/scalar-style))}
-    (h (format-cell timezone (ffirst rows) (first cols)))]})
+    (h (format-cell timezone-id (ffirst rows) (first cols)))]})
 
 (s/defmethod render :sparkline :- common/RenderedPulseCard
-  [_ render-type timezone card {:keys [rows cols] :as data}]
+  [_ render-type timezone-id card {:keys [rows cols] :as data}]
   (let [[x-axis-rowfn
          y-axis-rowfn] (common/graphing-column-row-fns card data)
-        rows           (sparkline/sparkline-rows timezone card data)
+        rows           (sparkline/sparkline-rows timezone-id card data)
         last-rows      (reverse (take-last 2 rows))
         values         (for [row last-rows]
                          (some-> row y-axis-rowfn common/format-number))
-        labels         (datetime/format-timestamp-pair timezone (map x-axis-rowfn last-rows) (x-axis-rowfn cols))
-        image-bundle   (sparkline/sparkline-image-bundle render-type timezone card {:rows rows, :cols cols})]
+        labels         (datetime/format-temporal-string-pair timezone-id (map x-axis-rowfn last-rows) (x-axis-rowfn cols))
+        image-bundle   (sparkline/sparkline-image-bundle render-type timezone-id card {:rows rows, :cols cols})]
     {:attachments
      (when image-bundle
        (image-bundle/image-bundle->attachment image-bundle))
@@ -242,7 +240,6 @@
                                    :font-size :16px})}
          (second labels)]]]]}))
 
-
 (s/defmethod render :empty :- common/RenderedPulseCard
   [_ render-type _ _ _]
   (let [image-bundle (image-bundle/no-results-image-bundle render-type)]
@@ -258,7 +255,6 @@
                      {:margin-top :8px
                       :color      style/color-gray-4})}
        (trs "No results")]]}))
-
 
 (s/defmethod render :attached :- common/RenderedPulseCard
   [_ render-type _ _ _]
@@ -276,7 +272,6 @@
                       :color      style/color-gray-4})}
        (trs "This question has been included as a file attachment")]]}))
 
-
 (s/defmethod render :unknown :- common/RenderedPulseCard
   [_ _ _ _ _]
   {:attachments
@@ -290,7 +285,6 @@
     (trs "We were unable to display this Pulse.")
     [:br]
     (trs "Please view this card in Metabase.")]})
-
 
 (s/defmethod render :error :- common/RenderedPulseCard
   [_ _ _ _ _]

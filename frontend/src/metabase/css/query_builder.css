@@ -489,6 +489,19 @@
   border-right: none;
 }
 
+.NativeQueryEditorDragHandle {
+  background: color(var(--color-border) blackness(+ 3%));
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  height: 5px;
+  width: 100px;
+  border-radius: 4px;
+  cursor: row-resize;
+  margin-left: -50px;
+  margin-bottom: -2.5px;
+}
+
 /* VISUALIZATION SETTINGS */
 
 .VisualizationSettings .GuiBuilder-section {
@@ -673,4 +686,19 @@
 
 .ParameterValuePickerNoPopover input::-webkit-input-placeholder {
   color: var(--color-text-medium);
+}
+
+/* TEMP - spot for value labels */
+text.value-label-outline {
+  font-weight: 900;
+  stroke-width: 4px;
+  stroke: var(--color-text-white);
+}
+
+text.value-label {
+  font-weight: 900;
+}
+
+.Dashboard--night text.value-label-outline {
+  stroke: var(--night-mode-card);
 }

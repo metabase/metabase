@@ -19,7 +19,7 @@
 ;; should fall back to :type/* if no better type is found
 (expect
   :type/*
-  (driver.common/values->base-type [(Object.)]))
+  (driver.common/values->base-type [(Object.)]) )
 
 ;; Should work with initial nils even if sequence is lazy
 (expect

@@ -19,7 +19,8 @@
             [toucan.db :as db])
   (:import java.text.NumberFormat
            java.util.UUID
-           [metabase.query_processor.middleware.parameters.native.interface CommaSeparatedNumbers FieldFilter MultipleValues]))
+           [metabase.query_processor.middleware.parameters.native.interface CommaSeparatedNumbers FieldFilter
+            MultipleValues]))
 
 (def ^:private ParamType
   (s/enum :number
@@ -106,7 +107,7 @@
                ;; `value-info` will look something like after we remove `:target` which is not needed after this point
                ;;
                ;;    {:type   :date/single
-               ;;     :value  #inst "2019-09-20T19:52:00.000-07:00"}
+               ;;     :value  #t "2019-09-20T19:52:00.000-07:00"}
                ;;
                ;; (or it will be a vector of these maps for multiple values)
                (cond
@@ -220,7 +221,7 @@
 
     (query->params-map some-query)
     ->
-    {:checkin_date #inst \"2019-09-19T23:30:42.233-07:00\"}"
+    {:checkin_date #t \"2019-09-19T23:30:42.233-07:00\"}"
   [{tags :template-tags, params :parameters}]
   (into {} (for [[k tag] tags
                  :let    [v (value-for-tag tag params)]

@@ -123,7 +123,7 @@ export default class NotebookStep extends React.Component {
             mr={isLastStep ? 2 : 1}
             mt={isLastStep ? 2 : null}
             large={largeActionButtons}
-            {...STEP_UI[action.type] || {}}
+            {...(STEP_UI[action.type] || {})}
             onClick={() => action.action({ query: step.query, openStep })}
           />
         ),

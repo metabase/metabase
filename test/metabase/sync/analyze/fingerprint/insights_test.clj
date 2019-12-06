@@ -1,38 +1,29 @@
 (ns metabase.sync.analyze.fingerprint.insights-test
-  (:require [expectations :refer :all]
+  (:require [clojure.test :refer :all]
+            [expectations :refer :all]
             [metabase.sync.analyze.fingerprint.insights :as i :refer :all]))
 
 (def ^:private cols [{:base_type :type/DateTime} {:base_type :type/Number}])
 
-(expect
-  700
-  (-> (transduce identity (insights cols) [["2014" 100]
-                                           ["2015" 200]
-                                           ["2016" nil]
-                                           [nil 300]
-                                           [nil nil]
-                                           ["2017" 700]])
-      first
-      :last-value))
-
-(expect
-  700
-  (-> (transduce identity (insights cols) [["2017" 700]])
-      first
-      :last-value))
-
-;; Here we just make sure we don't blow up on empty input
-(expect
-  nil
-  (-> (transduce identity (insights cols) [])
-      first
-      :last-value))
-
-(expect
-  nil
-  (-> (transduce identity (insights cols) [[nil nil]])
-      first
-      :last-value))
+(deftest last-value-test
+  (doseq [{:keys [rows expected]} [{:rows     [["2014" 100]
+                                               ["2015" 200]
+                                               ["2016" nil]
+                                               [nil 300]
+                                               [nil nil]
+                                               ["2017" 700]]
+                                    :expected 700}
+                                   {:rows     [["2017" 700]]
+                                    :expected 700}
+                                   {:rows     []
+                                    :expected nil}
+                                   {:rows     [[nil nil]]
+                                    :expected nil}]]
+    (testing (format "rows = %s" rows)
+      (is (= expected
+             (-> (transduce identity (insights cols) rows)
+                 first
+                 :last-value))))))
 
 (expect
   (transduce identity
@@ -42,50 +33,39 @@
               ["2015-01-01T00:00:00Z" 200]]))
 
 (defn- inst->day
-  [inst]
-  (some-> inst (.getTime) (#'i/ms->day)))
+  [t]
+  (some-> t (#'i/->millis-from-epoch) (#'i/ms->day)))
 
 (defn- valid-period?
   ([from to] (valid-period? from to (#'i/infer-unit (inst->day from) (inst->day to))))
   ([from to period]
    (boolean (#'i/valid-period? (inst->day from) (inst->day to) period))))
 
-(expect
-  true
-  (valid-period? #inst "2015-01" #inst "2015-02"))
-(expect
-  true
-  (valid-period? #inst "2015-02" #inst "2015-03"))
-(expect
-  false
-  (valid-period? #inst "2015-01" #inst "2015-03"))
-(expect
-  false
-  (valid-period? #inst "2015-01" nil))
-(expect
-  true
-  (valid-period? #inst "2015-01-01" #inst "2015-01-02"))
-(expect
-  true
-  (valid-period? #inst "2015-01-01" #inst "2015-01-08"))
-(expect
-  true
-  (valid-period? #inst "2015-01-01" #inst "2015-04-03"))
-(expect
-  true
-  (valid-period? #inst "2015" #inst "2016"))
-(expect
-  false
-  (valid-period? #inst "2015-01-01" #inst "2015-01-09"))
-(expect
-  true
-  (valid-period? #inst "2015-01-01" #inst "2015-04-03" :quarter))
-(expect
-  false
-  (valid-period? #inst "2015-01-01" #inst "2015-04-03" :month))
-(expect
-  false
-  (valid-period? #inst "2015-01" #inst "2015-02" nil))
+(deftest valid-period-test
+  (is (= true
+         (valid-period? #t "2015-01" #t "2015-02")))
+  (is (= true
+         (valid-period? #t "2015-02" #t "2015-03")))
+  (is (= false
+         (valid-period? #t "2015-01" #t "2015-03")))
+  (is (= false
+         (valid-period? #t "2015-01" nil)))
+  (is (= true
+         (valid-period? #t "2015-01-01" #t "2015-01-02")))
+  (is (= true
+         (valid-period? #t "2015-01-01" #t "2015-01-08")))
+  (is (= true
+         (valid-period? #t "2015-01-01" #t "2015-04-03")))
+  (is (= true
+         (valid-period? #t "2015" #t "2016")))
+  (is (= false
+         (valid-period? #t "2015-01-01" #t "2015-01-09")))
+  (is (= true
+         (valid-period? #t "2015-01-01" #t "2015-04-03" :quarter)))
+  (is (= false
+         (valid-period? #t "2015-01-01" #t "2015-04-03" :month)))
+  (is (= false
+         (valid-period? #t "2015-01" #t "2015-02" nil))))
 
 
 ;; Make sure we don't return nosense results like infinitiy coeficients

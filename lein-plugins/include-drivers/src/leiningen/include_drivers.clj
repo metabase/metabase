@@ -38,7 +38,7 @@
         (println
          (colorize/color
           :red
-          (format " [include-drivers middleware]Not including %s because not all dependencies matching %s found in /plugins"
+          (format "[include-drivers middleware] Not including %s because not all dependencies matching %s found in /plugins"
                   driver (set include-drivers-dependencies)))))
     (println
      (colorize/color

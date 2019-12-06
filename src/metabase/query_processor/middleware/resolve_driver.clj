@@ -19,4 +19,4 @@
                      (throw (ex-info (tru "Unable to resolve driver for query: Database {0} does not exist." database)
                               {:database database})))]
       (binding [driver/*driver* driver]
-        (qp (assoc query :driver driver))))))
+        (qp query)))))

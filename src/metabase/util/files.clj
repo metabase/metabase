@@ -9,9 +9,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.util :as u]
-            [metabase.util
-             [date :as du]
-             [i18n :refer [trs]]])
+            [metabase.util.i18n :refer [trs]])
   (:import java.io.FileNotFoundException
            java.net.URL
            [java.nio.file CopyOption Files FileSystem FileSystems LinkOption OpenOption Path StandardCopyOption]
@@ -76,7 +74,7 @@
 (defn- copy-file! [^Path source, ^Path dest]
   (when (or (not (exists? dest))
             (pos? (.compareTo (last-modified-time source) (last-modified-time dest))))
-    (du/profile (trs "Extract file {0} -> {1}" source dest)
+    (u/profile (trs "Extract file {0} -> {1}" source dest)
       (Files/copy source dest (u/varargs CopyOption [StandardCopyOption/REPLACE_EXISTING])))))
 
 (defn copy-files!

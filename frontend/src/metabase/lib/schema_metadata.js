@@ -14,10 +14,11 @@ export const NUMBER = "NUMBER";
 export const STRING = "STRING";
 export const STRING_LIKE = "STRING_LIKE";
 export const BOOLEAN = "BOOLEAN";
-export const DATE_TIME = "DATE_TIME";
+export const TEMPORAL = "TEMPORAL";
 export const LOCATION = "LOCATION";
 export const COORDINATE = "COORDINATE";
 export const FOREIGN_KEY = "FOREIGN_KEY";
+export const PRIMARY_KEY = "PRIMARY_KEY";
 
 // other types used for various purporses
 export const ENTITY = "ENTITY";
@@ -30,9 +31,9 @@ export const UNKNOWN = "UNKNOWN";
 // define various type hierarchies
 // NOTE: be sure not to create cycles using the "other" types
 const TYPES = {
-  [DATE_TIME]: {
-    base: [TYPE.DateTime],
-    special: [TYPE.DateTime],
+  [TEMPORAL]: {
+    base: [TYPE.Temporal],
+    special: [TYPE.Temporal],
   },
   [NUMBER]: {
     base: [TYPE.Number],
@@ -60,9 +61,12 @@ const TYPES = {
   [FOREIGN_KEY]: {
     special: [TYPE.FK],
   },
+  [PRIMARY_KEY]: {
+    special: [TYPE.PK],
+  },
   [SUMMABLE]: {
     include: [NUMBER],
-    exclude: [ENTITY, LOCATION, DATE_TIME],
+    exclude: [ENTITY, LOCATION, TEMPORAL],
   },
   [CATEGORY]: {
     base: [TYPE.Boolean],
@@ -71,7 +75,7 @@ const TYPES = {
   },
   // NOTE: this is defunct right now.  see definition of isDimension below.
   [DIMENSION]: {
-    include: [DATE_TIME, CATEGORY, ENTITY],
+    include: [TEMPORAL, CATEGORY, ENTITY],
   },
 };
 
@@ -115,10 +119,11 @@ export function isFieldType(type, field) {
 export function getFieldType(field) {
   // try more specific types first, then more generic types
   for (const type of [
-    DATE_TIME,
+    TEMPORAL,
     LOCATION,
     COORDINATE,
     FOREIGN_KEY,
+    PRIMARY_KEY,
     NUMBER,
     STRING,
     STRING_LIKE,
@@ -130,7 +135,7 @@ export function getFieldType(field) {
   }
 }
 
-export const isDate = isFieldType.bind(null, DATE_TIME);
+export const isDate = isFieldType.bind(null, TEMPORAL);
 export const isNumeric = isFieldType.bind(null, NUMBER);
 export const isBoolean = isFieldType.bind(null, BOOLEAN);
 export const isString = isFieldType.bind(null, STRING);
@@ -385,7 +390,7 @@ const FILTER_OPERATORS_BY_TYPE_ORDERED = {
     { name: "is-null", verboseName: t`Is empty` },
     { name: "not-null", verboseName: t`Not empty` },
   ],
-  [DATE_TIME]: [
+  [TEMPORAL]: [
     { name: "=", verboseName: t`Is` },
     { name: "<", verboseName: t`Before` },
     { name: ">", verboseName: t`After` },
@@ -410,6 +415,7 @@ const FILTER_OPERATORS_BY_TYPE_ORDERED = {
     { name: "not-null", verboseName: t`Not empty` },
   ],
   [FOREIGN_KEY]: DEFAULT_FILTER_OPERATORS,
+  [PRIMARY_KEY]: DEFAULT_FILTER_OPERATORS,
   [UNKNOWN]: DEFAULT_FILTER_OPERATORS,
 };
 
@@ -634,7 +640,7 @@ export function foreignKeyCountsByOriginTable(fks) {
 }
 
 export const ICON_MAPPING = {
-  [DATE_TIME]: "calendar",
+  [TEMPORAL]: "calendar",
   [LOCATION]: "location",
   [COORDINATE]: "location",
   [STRING]: "string",

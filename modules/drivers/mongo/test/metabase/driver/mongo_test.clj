@@ -2,6 +2,7 @@
   "Tests for Mongo driver."
   (:require [clojure.test :refer :all]
             [expectations :refer [expect]]
+            [java-time :as t]
             [medley.core :as m]
             [metabase
              [driver :as driver]
@@ -20,10 +21,10 @@
             [metabase.test.data
              [datasets :as datasets]
              [interface :as tx]]
+            [taoensso.nippy :as nippy]
             [toucan.db :as db]
             [toucan.util.test :as tt])
-  (:import org.bson.types.ObjectId
-           org.joda.time.DateTime))
+  (:import org.bson.types.ObjectId))
 
 ;; ## Constants + Helper Fns/Macros
 ;; TODO - move these to metabase.test-data ?
@@ -72,59 +73,57 @@
 
 (deftest native-query-test
   (datasets/test-driver :mongo
-    (is (= {:status            :completed
-            :row_count         1
-            :data              {:rows        [[1]]
-                                :cols        [{:name         "count"
-                                               :display_name "count"
-                                               :base_type    :type/Integer
-                                               :source       :native
-                                               :field_ref    [:field-literal "count" :type/Integer]}]
-                                :native_form {:collection "venues"
-                                              :query      native-query}}
-            :expected_timezone "UTC"
-            :actual_timezone   "UTC"}
+    (is (= {:status    :completed
+            :row_count 1
+            :data      {:rows             [[1]]
+                        :cols             [{:name         "count"
+                                            :display_name "count"
+                                            :base_type    :type/Integer
+                                            :source       :native
+                                            :field_ref    [:field-literal "count" :type/Integer]}]
+                        :native_form      {:collection "venues"
+                                           :query      native-query}
+                        :results_timezone "UTC"}}
            (-> (qp/process-query {:native   {:query      native-query
                                              :collection "venues"}
                                   :type     :native
                                   :database (data/id)})
-               (m/dissoc-in [:data :results_metadata])
-               (m/dissoc-in [:data :insights]))))))
+               (m/dissoc-in [:data :results_metadata] [:data :insights]))))))
 
 ;; ## Tests for individual syncing functions
 
-;; DESCRIBE-DATABASE
-(datasets/expect-with-driver :mongo
-  {:tables #{{:schema nil, :name "checkins"}
-             {:schema nil, :name "categories"}
-             {:schema nil, :name "users"}
-             {:schema nil, :name "venues"}}}
-  (driver/describe-database :mongo (data/db)))
+(deftest describe-database-test
+  (datasets/test-driver :mongo
+    (is (= {:tables #{{:schema nil, :name "checkins"}
+                      {:schema nil, :name "categories"}
+                      {:schema nil, :name "users"}
+                      {:schema nil, :name "venues"}}}
+           (driver/describe-database :mongo (data/db))))))
 
-;; DESCRIBE-TABLE
-(datasets/expect-with-driver :mongo
-  {:schema nil
-   :name   "venues"
-   :fields #{{:name          "name"
-              :database-type "java.lang.String"
-              :base-type     :type/Text}
-             {:name          "latitude"
-              :database-type "java.lang.Double"
-              :base-type     :type/Float}
-             {:name          "longitude"
-              :database-type "java.lang.Double"
-              :base-type     :type/Float}
-             {:name          "price"
-              :database-type "java.lang.Long"
-              :base-type     :type/Integer}
-             {:name          "category_id"
-              :database-type "java.lang.Long"
-              :base-type     :type/Integer}
-             {:name          "_id"
-              :database-type "java.lang.Long"
-              :base-type     :type/Integer
-              :pk?           true}}}
-  (driver/describe-table :mongo (data/db) (Table (data/id :venues))))
+(deftest describe-table-tets
+  (datasets/test-driver :mongo
+    (is (= {:schema nil
+            :name   "venues"
+            :fields #{{:name          "name"
+                       :database-type "java.lang.String"
+                       :base-type     :type/Text}
+                      {:name          "latitude"
+                       :database-type "java.lang.Double"
+                       :base-type     :type/Float}
+                      {:name          "longitude"
+                       :database-type "java.lang.Double"
+                       :base-type     :type/Float}
+                      {:name          "price"
+                       :database-type "java.lang.Long"
+                       :base-type     :type/Integer}
+                      {:name          "category_id"
+                       :database-type "java.lang.Long"
+                       :base-type     :type/Integer}
+                      {:name          "_id"
+                       :database-type "java.lang.Long"
+                       :base-type     :type/Integer
+                       :pk?           true}}}
+           (driver/describe-table :mongo (data/db) (Table (data/id :venues)))))))
 
 ;; Make sure that all-NULL columns work and are synced correctly (#6875)
 (tx/defdataset ^:private all-null-columns
@@ -177,11 +176,11 @@
   [[{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
     {:special_type :type/Name,      :base_type :type/Text,     :name "name"}]
    [{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-    {:special_type nil,             :base_type :type/DateTime, :name "date"}
+    {:special_type nil,             :base_type :type/Instant,  :name "date"}
     {:special_type :type/Category,  :base_type :type/Integer,  :name "user_id"}
     {:special_type nil,             :base_type :type/Integer,  :name "venue_id"}]
    [{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-    {:special_type nil,             :base_type :type/DateTime, :name "last_login"}
+    {:special_type nil,             :base_type :type/Instant,  :name "last_login"}
     {:special_type :type/Name,      :base_type :type/Text,     :name "name"}
     {:special_type :type/Category,  :base_type :type/Text,     :name "password"}]
    [{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
@@ -218,34 +217,30 @@
 ;;; |                             ISODate(...) AND ObjectId(...) HANDLING (#3741, #4448)                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(expect
-  "[{\"$match\":{\"date\":{\"$gte\":[\"___ISODate\", \"2012-01-01\"]}}}]"
-  (#'mongo-qp/encode-fncalls "[{\"$match\":{\"date\":{\"$gte\":ISODate(\"2012-01-01\")}}}]"))
+(deftest encode-function-calls-test
+  (is (= "[{\"$match\":{\"date\":{\"$gte\":[\"___ISODate\", \"2012-01-01\"]}}}]"
+         (#'mongo-qp/encode-fncalls "[{\"$match\":{\"date\":{\"$gte\":ISODate(\"2012-01-01\")}}}]")))
+  (is (= "[{\"$match\":{\"entityId\":{\"$eq\":[\"___ObjectId\", \"583327789137b2700a1621fb\"]}}}]"
+         (#'mongo-qp/encode-fncalls "[{\"$match\":{\"entityId\":{\"$eq\":ObjectId(\"583327789137b2700a1621fb\")}}}]")))
+  (testing "make sure fn calls with no arguments work as well (#4996)"
+    (is (= "[{\"$match\":{\"date\":{\"$eq\":[\"___ISODate\"]}}}]"
+           (#'mongo-qp/encode-fncalls "[{\"$match\":{\"date\":{\"$eq\":ISODate()}}}]")))))
 
-(expect
-  "[{\"$match\":{\"entityId\":{\"$eq\":[\"___ObjectId\", \"583327789137b2700a1621fb\"]}}}]"
-  (#'mongo-qp/encode-fncalls "[{\"$match\":{\"entityId\":{\"$eq\":ObjectId(\"583327789137b2700a1621fb\")}}}]"))
-
-;; make sure fn calls with no arguments work as well (#4996)
-(expect
-  "[{\"$match\":{\"date\":{\"$eq\":[\"___ISODate\"]}}}]"
-  (#'mongo-qp/encode-fncalls "[{\"$match\":{\"date\":{\"$eq\":ISODate()}}}]"))
-
-(expect
-  (DateTime. "2012-01-01")
-  (#'mongo-qp/maybe-decode-fncall ["___ISODate" "2012-01-01"]))
-
-(expect
-  (ObjectId. "583327789137b2700a1621fb")
-  (#'mongo-qp/maybe-decode-fncall ["___ObjectId" "583327789137b2700a1621fb"]))
-
-(expect
-  [{:$match {:date {:$gte (DateTime. "2012-01-01")}}}]
-  (#'mongo-qp/decode-fncalls [{:$match {:date {:$gte ["___ISODate" "2012-01-01"]}}}]))
-
-(expect
-  [{:$match {:entityId {:$eq (ObjectId. "583327789137b2700a1621fb")}}}]
-  (#'mongo-qp/decode-fncalls [{:$match {:entityId {:$eq ["___ObjectId" "583327789137b2700a1621fb"]}}}]))
+(deftest decode-function-calls-test
+  (testing "ISODate()"
+    (is (=
+         (t/local-date "2012-01-01")
+         (#'mongo-qp/maybe-decode-fncall ["___ISODate" "2012-01-01"])))
+    (is (=
+         [{:$match {:date {:$gte (t/local-date "2012-01-01")}}}]
+         (#'mongo-qp/decode-fncalls [{:$match {:date {:$gte ["___ISODate" "2012-01-01"]}}}]))))
+  (testing "ObjectID()"
+    (is (=
+         (ObjectId. "583327789137b2700a1621fb")
+         (#'mongo-qp/maybe-decode-fncall ["___ObjectId" "583327789137b2700a1621fb"])))
+    (is (=
+         [{:$match {:entityId {:$eq (ObjectId. "583327789137b2700a1621fb")}}}]
+         (#'mongo-qp/decode-fncalls [{:$match {:entityId {:$eq ["___ObjectId" "583327789137b2700a1621fb"]}}}])))))
 
 (datasets/expect-with-driver :mongo
   5
@@ -299,3 +294,9 @@
         :limit    3})
      qp.t/data
      (select-keys [:columns :rows]))))
+
+
+;; Make sure we correctly (un-)freeze BSON IDs
+(deftest ObjectId-serialization
+  (let [oid (ObjectId. "012345678901234567890123")]
+    (is (= oid (nippy/thaw (nippy/freeze oid))))))
