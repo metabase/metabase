@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.parameters.native.interface
+(ns metabase.driver.common.parameters
   "Various record types below are used as a convenience for differentiating the different param types."
   (:require [metabase.util.schema :as su]
             [potemkin.types :as p.types]
@@ -28,6 +28,8 @@
   (instance? FieldFilter x))
 
 ;; as in a literal date, defined by date-string S
+;;
+;; TODO - why don't we just parse this into a Temporal type and let drivers handle it.
 (p.types/defrecord+ Date [^String s]
   PrettyPrintable
   (pretty [_]
@@ -85,12 +87,12 @@
 (p.types/defrecord+ Param [k]
   PrettyPrintable
   (pretty [_]
-          (list 'param k)))
+    (list 'param k)))
 
 (p.types/defrecord+ Optional [args]
   PrettyPrintable
   (pretty [_]
-          (cons 'optional args)))
+    (cons 'optional args)))
 
 ;; `Param?` and `Optional?` exist mostly so you don't have to try to import the classes from this namespace which can
 ;; cause problems if the ns isn't loaded first

@@ -213,62 +213,30 @@
                      {:filter [:= $bird_id "abcdefabcdefabcdefabcdef"]}))))
         "Check that we support Mongo BSON ID and can filter by it (#1367)")))
 
+(deftest bson-fn-call-forms-test
+  (mt/test-driver :mongo
+    (testing "Make sure we can handle arbitarty BSON fn-call forms like ISODate() (#3741, #4448)"
+      (letfn [(rows-count [query]
+                (count (rows (qp/process-query {:native   query
+                                                :type     :native
+                                                :database (data/id)}))))]
+        (data/dataset with-bson-ids
+          (is (= 1
+                 (rows-count {:query      "[{\"$match\": {\"bird_id\": ObjectId(\"abcdefabcdefabcdefabcdef\")}}]"
+                              :collection "birds"}))))
+        (is (= 22
+               (rows-count {:query      "[{$match: {price: {$numberInt: \"1\"}}}]"
+                            :collection "venues"})))
+        (is (= 5
+               (rows-count {:query      "[{$match: {date: {$gte: ISODate(\"2015-12-20\")}}}]"
+                            :collection "checkins"})))))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                             ISODate(...) AND ObjectId(...) HANDLING (#3741, #4448)                             |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(deftest encode-function-calls-test
-  (is (= "[{\"$match\":{\"date\":{\"$gte\":[\"___ISODate\", \"2012-01-01\"]}}}]"
-         (#'mongo-qp/encode-fncalls "[{\"$match\":{\"date\":{\"$gte\":ISODate(\"2012-01-01\")}}}]")))
-  (is (= "[{\"$match\":{\"entityId\":{\"$eq\":[\"___ObjectId\", \"583327789137b2700a1621fb\"]}}}]"
-         (#'mongo-qp/encode-fncalls "[{\"$match\":{\"entityId\":{\"$eq\":ObjectId(\"583327789137b2700a1621fb\")}}}]")))
-  (testing "make sure fn calls with no arguments work as well (#4996)"
-    (is (= "[{\"$match\":{\"date\":{\"$eq\":[\"___ISODate\"]}}}]"
-           (#'mongo-qp/encode-fncalls "[{\"$match\":{\"date\":{\"$eq\":ISODate()}}}]")))))
-
-(deftest decode-function-calls-test
-  (testing "ISODate()"
-    (is (=
-         (t/local-date "2012-01-01")
-         (#'mongo-qp/maybe-decode-fncall ["___ISODate" "2012-01-01"])))
-    (is (=
-         [{:$match {:date {:$gte (t/local-date "2012-01-01")}}}]
-         (#'mongo-qp/decode-fncalls [{:$match {:date {:$gte ["___ISODate" "2012-01-01"]}}}]))))
-  (testing "ObjectID()"
-    (is (=
-         (ObjectId. "583327789137b2700a1621fb")
-         (#'mongo-qp/maybe-decode-fncall ["___ObjectId" "583327789137b2700a1621fb"])))
-    (is (=
-         [{:$match {:entityId {:$eq (ObjectId. "583327789137b2700a1621fb")}}}]
-         (#'mongo-qp/decode-fncalls [{:$match {:entityId {:$eq ["___ObjectId" "583327789137b2700a1621fb"]}}}])))))
-
-(datasets/expect-with-driver :mongo
-  5
-  (count (rows (qp/process-query {:native   {:query      "[{\"$match\": {\"date\": {\"$gte\": ISODate(\"2015-12-20\")}}}]"
-                                             :collection "checkins"}
-                                  :type     :native
-                                  :database (data/id)}))))
-
-(datasets/expect-with-driver :mongo
-  0
-  ;; this query shouldn't match anything, so we're just checking that it completes successfully
-  (count (rows (qp/process-query {:native   {:query      "[{\"$match\": {\"_id\": {\"$eq\": ObjectId(\"583327789137b2700a1621fb\")}}}]"
-                                             :collection "venues"}
-                                  :type     :native
-                                  :database (data/id)}))))
-
-
-;; tests for `most-common-object-type`
-(expect
-  String
-  (#'mongo/most-common-object-type [[Float 20] [Integer 10] [String 30]]))
-
-;; make sure it handles `nil` types correctly as well (#6880)
-(expect
-  nil
-  (#'mongo/most-common-object-type [[Float 20] [nil 40] [Integer 10] [String 30]]))
-
+(deftest most-common-object-type-test
+  (is (= String
+         (#'mongo/most-common-object-type [[Float 20] [Integer 10] [String 30]])))
+  (testing "make sure it handles `nil` types correctly as well (#6880)"
+    (is (= nil
+           (#'mongo/most-common-object-type [[Float 20] [nil 40] [Integer 10] [String 30]])))))
 
 ;; make sure x-rays don't use features that the driver doesn't support
 (datasets/expect-with-driver :mongo
@@ -295,7 +263,6 @@
         :limit    3})
      qp.t/data
      (select-keys [:columns :rows]))))
-
 
 ;; Make sure we correctly (un-)freeze BSON IDs
 (deftest ObjectId-serialization

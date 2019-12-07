@@ -6,7 +6,7 @@
             [metabase.models
              [field :refer [Field]]
              [params :as params]]
-            [metabase.query-processor.middleware.parameters.dates :as date-params]
+            [metabase.driver.common.parameters.dates :as date-params]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))

@@ -1,11 +1,11 @@
 (ns metabase.query-processor.middleware.parameters-test
+  "Testings to make sure the parameter substitution middleware works as expected. Even though the below tests are
+  SQL-specific, they still confirm that the middleware itself is working correctly."
   (:require [expectations :refer [expect]]
             [metabase.driver :as driver]
             [metabase.mbql.normalize :as normalize]
             [metabase.query-processor.middleware.parameters :as parameters]
             [metabase.test.data :as data]))
-
-;; TODO — These are all really SQL-specific
 
 (expect
   {:type   :native

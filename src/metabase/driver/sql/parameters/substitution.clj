@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.parameters.native.substitution
+(ns metabase.driver.sql.parameters.substitution
   "These functions take the info for a param fetched by the functions above and add additional info about how that param
   should be represented as SQL. (Specifically, they return information in this format:
 
@@ -9,10 +9,9 @@
   (:require [clojure.string :as str]
             [honeysql.core :as hsql]
             [metabase.driver :as driver]
-            [metabase.driver.sql :as sql]
+            [metabase.driver.common.parameters :as i]
+            [metabase.driver.common.parameters.dates :as date-params]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.query-processor.middleware.parameters.dates :as date-params]
-            [metabase.query-processor.middleware.parameters.native.interface :as i]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util
              [date-2 :as u.date]
@@ -23,11 +22,74 @@
            honeysql.types.SqlCall
            java.time.temporal.Temporal
            java.util.UUID
-           [metabase.query_processor.middleware.parameters.native.interface CommaSeparatedNumbers Date DateRange
-            FieldFilter MultipleValues]))
+           [metabase.driver.common.parameters CommaSeparatedNumbers Date DateRange FieldFilter MultipleValues]))
+
+
+;;; ------------------------------------ ->prepared-substitution & default impls -------------------------------------
+
+(defmulti ->prepared-substitution
+  "Returns a `PreparedStatementSubstitution` (see schema below) for `x` and the given driver. This allows driver
+  specific parameters and SQL replacement text (usually just ?). The param value is already prepared and ready for
+  inlcusion in the query, such as what's needed for SQLite and timestamps."
+  {:arglists '([driver x])}
+  (fn [driver x] [(driver/dispatch-on-initialized-driver driver) (class x)])
+  :hierarchy #'driver/hierarchy)
+
+(def PreparedStatementSubstitution
+  "Represents the SQL string replace value (usually ?) and the typed parameter value"
+  {:sql-string   s/Str
+   :param-values [s/Any]})
+
+(s/defn make-stmt-subs :- PreparedStatementSubstitution
+  "Create a `PreparedStatementSubstitution` map for `sql-string` and the `param-seq`"
+  [sql-string param-seq]
+  {:sql-string   sql-string
+   :param-values param-seq})
+
+(s/defn ^:private honeysql->prepared-stmt-subs
+  "Convert X to a replacement snippet info map by passing it to HoneySQL's `format` function."
+  [driver x]
+  (let [[snippet & args] (hsql/format x, :quoting (sql.qp/quote-style driver), :allow-dashed-names? true)]
+    (make-stmt-subs snippet args)))
+
+(s/defmethod ->prepared-substitution [:sql nil] :- PreparedStatementSubstitution
+  [driver _]
+  (honeysql->prepared-stmt-subs driver nil))
+
+(s/defmethod ->prepared-substitution [:sql Object] :- PreparedStatementSubstitution
+  [driver obj]
+  (honeysql->prepared-stmt-subs driver (str obj)))
+
+(s/defmethod ->prepared-substitution [:sql Number] :- PreparedStatementSubstitution
+  [driver num]
+  (honeysql->prepared-stmt-subs driver num))
+
+(s/defmethod ->prepared-substitution [:sql Boolean] :- PreparedStatementSubstitution
+  [driver b]
+  (honeysql->prepared-stmt-subs driver b))
+
+(s/defmethod ->prepared-substitution [:sql Keyword] :- PreparedStatementSubstitution
+  [driver kwd]
+  (honeysql->prepared-stmt-subs driver kwd))
+
+(s/defmethod ->prepared-substitution [:sql SqlCall] :- PreparedStatementSubstitution
+  [driver sql-call]
+  (honeysql->prepared-stmt-subs driver sql-call))
+
+;; TIMEZONE FIXME - remove this since we aren't using `Date` anymore
+(s/defmethod ->prepared-substitution [:sql Date] :- PreparedStatementSubstitution
+  [driver date]
+  (make-stmt-subs "?" [date]))
+
+(s/defmethod ->prepared-substitution [:sql Temporal] :- PreparedStatementSubstitution
+  [driver t]
+  (make-stmt-subs "?" [t]))
+
+
+;;; ------------------------------------------- ->replacement-snippet-info -------------------------------------------
 
 (def ^:private ParamSnippetInfo
-  {(s/optional-key :replacement-snippet)     s/Str     ; allowed to be blank if this is an optional param
+  {(s/optional-key :replacement-snippet)     s/Str ; allowed to be blank if this is an optional param
    (s/optional-key :prepared-statement-args) [s/Any]})
 
 (defmulti ->replacement-snippet-info
@@ -39,7 +101,7 @@
   class)
 
 (defn- create-replacement-snippet [nil-or-obj]
-  (let [{:keys [sql-string param-values]} (sql/->prepared-substitution driver/*driver* nil-or-obj)]
+  (let [{:keys [sql-string param-values]} (->prepared-substitution driver/*driver* nil-or-obj)]
     {:replacement-snippet     sql-string
      :prepared-statement-args param-values}))
 
@@ -94,7 +156,7 @@
   (create-replacement-snippet (maybe-parse-temporal-literal s)))
 
 (defn- prepared-ts-subs [operator date-str]
-  (let [{:keys [sql-string param-values]} (sql/->prepared-substitution driver/*driver* (maybe-parse-temporal-literal date-str))]
+  (let [{:keys [sql-string param-values]} (->prepared-substitution driver/*driver* (maybe-parse-temporal-literal date-str))]
     {:replacement-snippet     (str operator " " sql-string)
      :prepared-statement-args param-values}))
 
@@ -114,7 +176,7 @@
     ;; TIMEZONE FIXME - this is WRONG WRONG WRONG because date ranges should be inclusive for start and *exclusive*
     ;; for end
     (let [[start end] (map (fn [s]
-                             (sql/->prepared-substitution driver/*driver* (maybe-parse-temporal-literal s)))
+                             (->prepared-substitution driver/*driver* (maybe-parse-temporal-literal s)))
                            [start end])]
       {:replacement-snippet     (format "BETWEEN %s AND %s" (:sql-string start) (:sql-string end))
        :prepared-statement-args (concat (:param-values start) (:param-values end))})))

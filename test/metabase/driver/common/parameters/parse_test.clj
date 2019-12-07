@@ -1,8 +1,7 @@
-(ns metabase.query-processor.middleware.parameters.native.parse-test
+(ns metabase.driver.common.parameters.parse-test
   (:require [expectations :refer [expect]]
-            [metabase.query-processor.middleware.parameters.native
-             [interface :as i]
-             [parse :as parse]]))
+            [metabase.driver.common.parameters :as i]
+            [metabase.driver.common.parameters.parse :as parse]))
 
 (def ^:private param (var-get #'parse/param))
 (def ^:private optional (var-get #'parse/optional))

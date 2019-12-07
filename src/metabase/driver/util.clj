@@ -7,6 +7,7 @@
              [config :as config]
              [driver :as driver]
              [util :as u]]
+            [metabase.driver.impl :as impl]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))
 
@@ -87,7 +88,7 @@
           :when   (not (#{:common :util :query-processor :google}
                         driver))]
     (try
-      (#'driver/load-driver-namespace-if-needed! driver)
+      (impl/load-driver-namespace-if-needed! driver)
       (catch Throwable e
         (log/error e (trs "Error loading namespace"))))))
 
