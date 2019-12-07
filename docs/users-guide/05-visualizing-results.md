@@ -5,7 +5,7 @@ While tables are useful for looking up information or finding specific numbers, 
 In Metabase, an answer to a question can be visualized in a number of ways:
 
 - [Number](#numbers)
-- [Trend](#smart-numbers)
+- [Trend](#trends)
 - [Progress bar](#progress-bars)
 - [Gauge](#gauges)
 - [Table](#tables)
@@ -41,11 +41,11 @@ This option is for displaying a single number, nice and big. The options for num
 
 The Trend visualization is great for displaying how a single number has changed over time. To use this visualization, you'll need to have a single number grouped by a Time field, like the Count of Orders by Created At. The Trend will show you the value of the number during the most recent period, and below that you'll see how much the number has increased or decreased compared to its value in the period before that. The period is determined by your group-by field: if you're grouping by Day, the Trend will show you the most recent day compared to the day before that.
 
-![Smart Number](images/visualizations/smart-number.png)
+![Trend](images/visualizations/trend.png)
 
 By default, Trends will display increases as green (i.e. "good") and decreases as red ("bad"). If your number is something where an increase is bad and a decrease is good (such as Bounce Rate, or Costs), you can reverse this behavior in the visualization settings:
 
-![Smart Number settings](images/visualizations/smart-scalar-settings.png)
+![Trend settings](images/visualizations/trend-settings.png)
 
 #### Progress bars
 
