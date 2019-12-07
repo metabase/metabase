@@ -206,8 +206,15 @@ There's quite a bit you can do on this tab:
 
 **Axes**
 
-This is where you can hide axis tick marks or change axis ranges, or turn split axes on or off. You can also configure the way your axes are scaled, if you're into that kind of thing.
-**Labels** — if you want to hide axis labels or customize them, here's where to go.
+There are three main things you can do here:
+
+- Change the scale for your axes. If you're looking at a time series chart, your x-axis can use a time series scale or an ordinal one. Your y-axis can use a linear, power, or logarithmic scale.
+- Hide or show the tick marks on your axes. You can also choose to rotate the tick marks on the x-axis to help them fit better.
+- Edit the range of your y-axis. Metabase sets an automatic range by default, but you can toggle that off and input a custom minimum and maximum value for the y-axis if you'd like.
+
+**Labels**
+
+Here's where you can choose to hide the label for your x- or y-axis. You can also customize the text for your axis labels here.
 
 #### Scatterplots and bubble charts
 
