@@ -324,7 +324,7 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     getDefault: ([{ card, data }]) =>
       // small bar graphs should have this turned on by default,
       // but bar graphs that were saved without this feature shouldn't
-      card.id == null &&
+      card.original_card_id == null &&
       card.display === "bar" &&
       data.rows.length < AUTO_SHOW_VALUES_MAX_ROWS,
     persistDefault: true,
