@@ -210,8 +210,8 @@
     "ci": "yarn ci-frontend && yarn ci-backend",
     "ci-frontend": "yarn lint && yarn flow && yarn test",
     "ci-backend": "lein docstring-checker && lein bikeshed && lein eastwood && lein test",
-    "test-cypress": "./bin/build-for-test && yarn test-cypress-no-build",
-    "test-cypress-open": "yarn test-cypress --open",
+    "test-cypress-headless": "yarn build && ./bin/build-for-test && yarn test-cypress-no-build",
+    "test-cypress-open": "./bin/build-for-test && yarn test-cypress-no-build --open",
     "test-cypress-no-build": "yarn && babel-node ./frontend/test/__runner__/run_cypress_tests.js"
   },
   "lint-staged": {
