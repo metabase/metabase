@@ -155,8 +155,6 @@
   [driver]
   (@initialized-drivers driver))
 
-(declare initialize!)
-
 (defonce ^:private initialization-lock (Object.))
 
 (defn initialize-if-needed!

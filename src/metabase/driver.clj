@@ -570,6 +570,20 @@
 (defmethod current-db-time ::driver [_ _] nil)
 
 (defmulti substitue-native-parameters
+  "For drivers that support `:native-parameters`. Substitute parameters in a normalized 'inner' native query.
+
+    {:query \"SELECT count(*) FROM table WHERE id = {{param}}\"
+     :template-tags {:param {:name \"param\", :display-name \"Param\", :type :number}}
+     :parameters    [{:type   :number
+                      :target [:variable [:template-tag \"param\"]]
+                      :value  2}]}
+    ->
+    {:query \"SELECT count(*) FROM table WHERE id = 2\"}
+
+  Much of the implementation for this method is shared across drivers and lives in the
+  `metabase.driver.common.parameters.*` namespaces. See the `:sql` and `:mongo` drivers for sample implementations of
+  this method.`Driver-agnostic end-to-end native parameter tests live in
+  `metabase.query-processor-test.parameters-test` and other namespaces."
   {:arglists '([driver inner-query])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

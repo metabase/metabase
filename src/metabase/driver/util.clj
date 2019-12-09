@@ -85,7 +85,7 @@
           :let    [driver (keyword (-> (last (str/split (name ns-symb) #"\."))
                                        (str/replace #"_" "-")))]
           ;; let's go ahead and ignore namespaces we know for a fact do not contain drivers
-          :when   (not (#{:common :util :query-processor :google}
+          :when   (not (#{:common :util :query-processor :google :impl}
                         driver))]
     (try
       (impl/load-driver-namespace-if-needed! driver)

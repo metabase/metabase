@@ -30,7 +30,7 @@
   [driver table field->type+value]
   (let [mbql-query      (mt/mbql-query nil
                           {:source-table (mt/id table)
-                           :aggregagtion [[:count]]
+                           :aggregation  [[:count]]
                            :filter       (into [:and]
                                                (for [[i [field]] (map-indexed vector field->type+value)]
                                                  [:= (mt/id table field) i]))})

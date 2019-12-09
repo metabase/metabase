@@ -8,7 +8,6 @@
              [parse :as parse]
              [values :as values]]
             [metabase.query-processor.error-type :as error-type]
-            [metabase.driver.mongo.query-processor :as mongo.qp]
             [metabase.util :as u]
             [metabase.util
              [date-2 :as u.date]
@@ -77,6 +76,8 @@
       (when-not (= x <>)
         (log/debug (tru "Substituted {0} -> {1}" (pr-str x) (pr-str <> )))))))
 
-(defn substitute-native-parameters [driver inner-query]
+(defn substitute-native-parameters
+  "Implementation of `driver/substitue-native-parameters` for MongoDB."
+  [driver inner-query]
   (let [param->value (values/query->params-map inner-query)]
     (update inner-query :query (partial walk/postwalk (partial parse-and-substitute param->value)))))
