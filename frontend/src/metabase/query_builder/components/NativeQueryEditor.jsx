@@ -19,6 +19,7 @@ import "ace/mode-pgsql";
 import "ace/mode-sqlserver";
 import "ace/mode-json";
 
+import "ace/snippets/text";
 import "ace/snippets/sql";
 import "ace/snippets/mysql";
 import "ace/snippets/pgsql";
@@ -472,9 +473,16 @@ export default class NativeQueryEditor extends Component {
         >
           <div className="flex-full" id="id_sql" ref="editor" />
           <div className="flex flex-column align-center border-left">
-            {[DataReferenceButton, NativeVariablesButton].map(Button => (
-              <Button {...this.props} size={ICON_SIZE} className="mt3" />
-            ))}
+            <DataReferenceButton
+              {...this.props}
+              size={ICON_SIZE}
+              className="mt3"
+            />
+            <NativeVariablesButton
+              {...this.props}
+              size={ICON_SIZE}
+              className="mt3"
+            />
             <RunButtonWithTooltip
               disabled={!isRunnable}
               isRunning={isRunning}
