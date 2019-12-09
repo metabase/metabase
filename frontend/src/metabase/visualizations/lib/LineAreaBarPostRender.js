@@ -294,6 +294,8 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
   }
 
   const addLabels = data => {
+    // make sure we don't add .value-lables multiple times
+    parent.select(".value-labels").remove();
     // Safari had an issue with rendering paint-order: stroke. To work around
     // that, we create two text labels: one for the the black text and another
     // for the white outline behind it.
@@ -306,11 +308,11 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
       .append("g")
       .attr("transform", ({ x, y, showLabelBelow }) => {
         const xPos = xShift + xScale(x);
-        let yPos = yScale(y) + (showLabelBelow ? 14 : -10);
+        let yPos = yScale(y) + (showLabelBelow ? 18 : -8);
         // if the yPos is below the x axis, move it to be above the data point
         const [yMax] = yScale.range();
         if (yPos > yMax) {
-          yPos = yScale(y) - 10;
+          yPos = yScale(y) - 8;
         }
         return `translate(${xPos}, ${yPos})`;
       });
@@ -320,7 +322,6 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
         .append("text")
         .attr("class", klass)
         .attr("text-anchor", "middle")
-        .attr("alignment-baseline", "middle")
         .text(({ y }) => formatYValue(y, { compact: true })),
     );
   };
@@ -335,15 +336,15 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
     // We use that estimate to compute the label interval.
     const LABEL_PADDING = 6;
     const MAX_SAMPLE_SIZE = 30;
-    const sampleSize = Math.min(data.length, MAX_SAMPLE_SIZE);
-    // $FlowFixMe
-    addLabels(_.sample(data, sampleSize));
+    const sampleStep = Math.ceil(data.length / MAX_SAMPLE_SIZE);
+    const sample = data.filter((d, i) => i % sampleStep === 0);
+    addLabels(sample);
     const totalWidth = chart
       .svg()
       .selectAll(".value-label-outline")
       .flat()
       .reduce((sum, label) => sum + label.getBoundingClientRect().width, 0);
-    const labelWidth = totalWidth / sampleSize + LABEL_PADDING;
+    const labelWidth = totalWidth / sample.length + LABEL_PADDING;
 
     const { width: chartWidth } = chart
       .svg()
@@ -351,10 +352,6 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
       .node()
       .getBoundingClientRect();
 
-    chart
-      .svg()
-      .select(".value-labels")
-      .remove();
     nth = Math.ceil((labelWidth * data.length) / chartWidth);
   }
 

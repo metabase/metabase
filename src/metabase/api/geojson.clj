@@ -97,8 +97,8 @@
 (def ^:private ^:const builtin-geojson
   {:us_states       {:name        "United States"
                      :url         "app/assets/geojson/us-states.json"
-                     :region_key  "name"
-                     :region_name "name"
+                     :region_key  "STATE"
+                     :region_name "NAME"
                      :builtin     true}
    :world_countries {:name        "World"
                      :url         "app/assets/geojson/world.json"
