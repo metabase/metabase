@@ -226,6 +226,8 @@
                               :collection "birds"}))))
         (is (= 22
                (rows-count {:query      "[{$match: {price: {$numberInt: \"1\"}}}]"
+                            :collection "venues"})
+               (rows-count {:query      "[{$match: {price: NumberInt(\"1\")}}]"
                             :collection "venues"})))
         (is (= 5
                (rows-count {:query      "[{$match: {date: {$gte: ISODate(\"2015-12-20\")}}}]"
@@ -272,7 +274,7 @@
 (deftest native-query-nil-test
   (testing "Nil values (like {_id nil} below) should not get removed from native queries"
     (mt/test-driver :mongo
-      (is (= [[27]]
+      (is (= [[22]]
              (mt/rows
                (qp/process-query
                  {:database (data/id)

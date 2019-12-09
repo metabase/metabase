@@ -19,6 +19,7 @@
                  :expressions
                  :expression-aggregations
                  :native-parameters
+                 :native-parameters-field-filters
                  :nested-queries
                  :binning]]
   (defmethod driver/supports? [:sql feature] [_ _] true))

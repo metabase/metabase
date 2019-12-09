@@ -355,8 +355,21 @@
     ;; Does this driver support expressions (e.g. adding the values of 2 columns together)?
     :expressions
 
-    ;; Does the driver support parameter substitution on native queries?
+    ;; Does this driver support parameter substitution in native queries, where parameter expressions are replaced
+    ;; with a single value? e.g.
+    ;;
+    ;;    SELECT * FROM table WHERE field = {{param}}
+    ;;    ->
+    ;;    SELECT * FROM table WHERE field = 1
     :native-parameters
+
+    ;; Does this driver support parameter substitution in native queries, where parameter expressions are replaced
+    ;; with entire conditional expressions? e.g.
+    ;;
+    ;;    SELECT * FROM table WHERE {{param}}
+    ;;    ->
+    ;;    SELECT * FROM table WHERE field = 1
+    :native-parameters-field-filters
 
     ;; Does the driver support using expressions inside aggregations? e.g. something like \"sum(x) + count(y)\" or
     ;; \"avg(x + y)\"

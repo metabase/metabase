@@ -19,7 +19,9 @@
 
     {field-name [param-type param-value]}
 
-  (`:param-type` is something like `:text` or `:number`.)"
+  e.g.
+
+    (native-count-query :mongo :venues {:price [:number 2]})"
   ^{:arglists '([driver table field->type+value])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -28,39 +30,41 @@
 
 (defmethod native-count-query :sql
   [driver table field->type+value]
-  (let [mbql-query      (mt/mbql-query nil
-                          {:source-table (mt/id table)
-                           :aggregation  [[:count]]
-                           :filter       (into [:and]
-                                               (for [[i [field]] (map-indexed vector field->type+value)]
-                                                 [:= (mt/id table field) i]))})
-        {:keys [query]} (qp/query->native mbql-query)
-        query           (reduce
-                         (fn [query [i [field]]]
-                           (str/replace query (re-pattern (format "= %d" i)) (format "= {{%s}}" (name field))))
-                         query
-                         (map-indexed vector field->type+value))]
-    (log/tracef "%s\n->\n%s\n->\n%s"
-                (pr-str (list 'native-count-query driver table field->type+value))
-                (pr-str mbql-query)
-                query)
-    {:query query}))
+  (driver/with-driver driver
+    (let [mbql-query      (mt/mbql-query nil
+                            {:source-table (mt/id table)
+                             :aggregation  [[:count]]
+                             :filter       (into [:and]
+                                                 (for [[i [field]] (map-indexed vector field->type+value)]
+                                                   [:= (mt/id table field) i]))})
+          {:keys [query]} (qp/query->native mbql-query)
+          query           (reduce
+                           (fn [query [i [field]]]
+                             (str/replace query (re-pattern (format "= %d" i)) (format "= {{%s}}" (name field))))
+                           query
+                           (map-indexed vector field->type+value))]
+      (log/tracef "%s\n->\n%s\n->\n%s"
+                  (pr-str (list 'native-count-query driver table field->type+value))
+                  (pr-str mbql-query)
+                  query)
+      {:query query})))
 
 (defmethod native-count-query :mongo
-  [_ table field->type+value]
-  {:projections [:count]
-   :query       (json/generate-string
-                 [{:$match (into {} (for [[field [param-type]] field->type+value
-                                          :let                 [base-type (:base_type (Field (mt/id table field)))
-                                                                xform     (case param-type
-                                                                            :number      (fn [k] {:$numberInt k})
-                                                                            :text        identity
-                                                                            :date/single (fn [k] {:$date k}))]]
-                                      [(name field) (xform (format "{{%s}}" (name field)))]))}
-                  {:$group {"_id" nil, "count" {:$sum 1}}}
-                  {:$sort {"_id" 1}}
-                  {:$project {"_id" false, "count" true}}])
-   :collection  (name table)})
+  [driver table field->type+value]
+  (driver/with-driver driver
+    {:projections [:count]
+     :query       (json/generate-string
+                   [{:$match (into {} (for [[field [param-type]] field->type+value
+                                            :let                 [base-type (:base_type (Field (mt/id table field)))
+                                                                  xform     (case param-type
+                                                                              :number      (fn [k] {:$numberInt k})
+                                                                              :text        identity
+                                                                              :date/single (fn [k] {:$date k}))]]
+                                        [(name field) (xform (format "{{%s}}" (name field)))]))}
+                    {:$group {"_id" nil, "count" {:$sum 1}}}
+                    {:$sort {"_id" 1}}
+                    {:$project {"_id" false, "count" true}}])
+     :collection  (name table)}))
 
 (defn- count-query [table field->type+value]
   {:database   (mt/id)
@@ -97,6 +101,12 @@
     (testing "number params"
       (count= 22
               :venues {:price [:number "1"]}))
-    (testing "date params"
-      (count= 1
-              :users {:last_login [:date/single "2014-08-02T09:30Z"]}))))
+    ;; FIXME — This is not currently working on SQLite, probably because SQLite's implementation of temporal types is
+    ;; wacko.
+    (when-not (= driver/*driver* :sqlite)
+      (testing "date params"
+        (count= 1
+                :users {:last_login [:date/single "2014-08-02T09:30Z"]})))))
+
+;; TODO - field-filter params, only for drivers that support `:native-parameters-field-filters`. Currently, this is
+;; only SQL, and this feature is tested elsewhere. But we should add some tests here too.

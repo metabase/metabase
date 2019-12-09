@@ -22,8 +22,6 @@
              [date-2 :as u.date]
              [i18n :as ui18n :refer [tru]]
              [schema :as su]]
-            [cheshire.core :as json]
-            [clojure.core.protocols :refer [Datafiable datafy]]
             [monger
              [collection :as mc]
              [operators :refer :all]]

@@ -476,7 +476,10 @@
 ;; as with the MBQL parameters tests Redshift fail for unknown reasons; disable their tests for now
 ;; TIMEZONE FIXME
 (defn- sql-parameters-engines []
-  (disj (qp.test/normal-drivers-with-feature :native-parameters) :redshift))
+  (set (for [driver (qp.test/normal-drivers-with-feature :native-parameters)
+             :when  (and (isa? driver/hierarchy driver :sql)
+                         (not= driver :redshift))]
+         driver)))
 
 (defn- process-native {:style/indent 0} [& kvs]
   (qp/process-query
