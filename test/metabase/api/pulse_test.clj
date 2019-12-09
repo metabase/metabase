@@ -28,6 +28,7 @@
              [util :as tu]]
             [metabase.test.data.users :refer :all]
             [metabase.test.mock.util :refer [pulse-channel-defaults]]
+            [clojure.test :refer :all]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -845,10 +846,7 @@
 ;;; |                                              POST /api/pulse/test                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(expect
-  {:response {:ok true}
-   :emails   (et/email-to :rasta {:subject "Pulse: Daily Sad Toucans"
-                                  :body    {"Daily Sad Toucans" true}})}
+(deftest create-pulse-test
   (tu/with-non-admin-groups-no-root-collection-perms
     (tu/with-model-cleanup [Pulse]
       (et/with-fake-inbox
@@ -860,23 +858,22 @@
                                                                         :aggregation  [[:count]]}}}]]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             (card-api-test/with-cards-in-readable-collection [card]
-              (array-map
-               :response
-               ((user->client :rasta) :post 200 "pulse/test" {:name          "Daily Sad Toucans"
-                                                              :collection_id (u/get-id collection)
-                                                              :cards         [{:id          (u/get-id card)
-                                                                               :include_csv false
-                                                                               :include_xls false}]
-                                                              :channels      [{:enabled       true
-                                                                               :channel_type  "email"
-                                                                               :schedule_type "daily"
-                                                                               :schedule_hour 12
-                                                                               :schedule_day  nil
-                                                                               :recipients    [(fetch-user :rasta)]}]
-                                                              :skip_if_empty false})
-
-               :emails
-               (et/regex-email-bodies #"Daily Sad Toucans")))))))))
+              (is (= {:ok true}
+                     ((user->client :rasta) :post 200 "pulse/test" {:name          "Daily Sad Toucans"
+                                                                    :collection_id (u/get-id collection)
+                                                                    :cards         [{:id          (u/get-id card)
+                                                                                     :include_csv false
+                                                                                     :include_xls false}]
+                                                                    :channels      [{:enabled       true
+                                                                                     :channel_type  "email"
+                                                                                     :schedule_type "daily"
+                                                                                     :schedule_hour 12
+                                                                                     :schedule_day  nil
+                                                                                     :recipients    [(fetch-user :rasta)]}]
+                                                                    :skip_if_empty false})))
+              (is (= (et/email-to :rasta {:subject "Pulse: Daily Sad Toucans"
+                                          :body    {"Daily Sad Toucans" true}})
+                     (et/regex-email-bodies #"Daily Sad Toucans"))))))))))
 
 ;; This test follows a flow that the user/UI would follow by first creating a pulse, then making a small change to
 ;; that pulse and testing it. The primary purpose of this test is to ensure tha the pulse/test endpoint accepts data

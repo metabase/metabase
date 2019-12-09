@@ -106,7 +106,6 @@
   (tt/with-temp* [Card      [card1 {:name                   "rand-name"
                                     :creator_id             (test-users/user->id :crowberto)
                                     :display                "table"
-                                    :dataset_query          {}
                                     :visualization_settings {}}]
                   Dashboard [dash1 {:name        "rand-name"
                                     :description "rand-name"
@@ -114,7 +113,6 @@
                   Card      [card2 {:name                   "rand-name"
                                     :creator_id             (test-users/user->id :crowberto)
                                     :display                "table"
-                                    :dataset_query          {}
                                     :visualization_settings {}}]]
     (create-view! (test-users/user->id :crowberto) "card"      (:id card2))
     (create-view! (test-users/user->id :crowberto) "dashboard" (:id dash1))

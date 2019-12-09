@@ -1,25 +1,32 @@
 (ns metabase.query-processor-test.parameters-test
   "Tests for support for parameterized queries in drivers that support it. (There are other tests for parameter support
   in various places; these are mainly for high-level verification that parameters are working.)"
-  (:require [clojure
+  (:require [cheshire.core :as json]
+            [clojure
              [string :as str]
              [test :refer :all]]
-            [honeysql
-             [core :as hsql]
-             [format :as h.format]]
+            [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
              [test :as mt]
              [util :as u]]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.models
-             [field :refer [Field]]
-             [table :refer [Table]]]
+            [metabase.models :refer [Field Table]]
             [metabase.test.data.sql :as sql.tx]
             [metabase.util.honeysql-extensions :as hx]
-            [cheshire.core :as json]
             [toucan.db :as db]))
+
+(defmulti native-count-query
+  "Generate a native query for the count of rows in `table` matching a set of conditions defined by `field->type+value`,
+  which looks like
+
+    {field-name [param-type param-value]}
+
+  (`:param-type` is something like `:text` or `:number`.)"
+  ^{:arglists '([driver table field->type+value])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
 
 (defn- table-identifier [table-key]
   (let [table-name (db/select-one-field :name Table, :id (mt/id table-key))]
@@ -32,20 +39,6 @@
 
 (defn- honeysql->sql [honeysql]
   (first (sql.qp/format-honeysql driver/*driver* honeysql)))
-
-(extend-protocol h.format/ToSql
-  Param
-  (to-sql [{:keys [param-name]}]
-    (format "{{%s}}" (name param-name)))
-
-  FieldName
-  (to-sql [{:keys [table-name field-name]}]
-    (h.format/to-sql (field-identifier table-name field-name))))
-
-(defmulti native-count-query
-  ^{:arglists '([driver table field->type+value])}
-  driver/dispatch-on-initialized-driver
-  :hierarchy #'driver/hierarchy)
 
 ;; TODO - these should go in test extensions namespaces, not here
 
@@ -111,7 +104,4 @@
               :venues {:price [:number "1"]}))
     (testing "date params"
       (count= 1
-              :users {:last_login [:date/single "2014-08-02T09:30Z"]}))
-    (testing "optional params"
-      ;; TODO
-      )))
+              :users {:last_login [:date/single "2014-08-02T09:30Z"]}))))

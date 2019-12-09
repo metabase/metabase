@@ -1,66 +1,37 @@
-(ns metabase.driver.common.parameters.date-test
+(ns metabase.driver.common.parameters.dates-test
   (:require [clojure.test :refer :all]
-            [expectations :refer [expect]]
             [java-time :as t]
             [metabase.driver.common.parameters.dates :as dates]))
 
-;; year and month
-(expect
-  {:end "2019-04-30", :start "2019-04-01"}
-  (dates/date-string->range "2019-04" "UTC"))
-
-(expect
-  [:between
-   [:datetime-field [:field-literal "field" :type/DateTime] :day]
-   "2019-04-01"
-   "2019-04-30"]
-  (dates/date-string->filter "2019-04" [:field-literal "field" :type/DateTime]))
-
-;; quarter year
-(expect
-  {:start "2019-04-01", :end "2019-06-30"}
-  (dates/date-string->range "Q2-2019" "UTC"))
-
-(expect
- [:between
-  [:datetime-field [:field-literal "field" :type/DateTime] :day]
-  "2019-04-01"
-  "2019-06-30"]
- (dates/date-string->filter "Q2-2019" [:field-literal "field" :type/DateTime]))
-
-;; single day
-(expect
-  {:start "2019-04-01", :end "2019-04-01"}
-  (dates/date-string->range "2019-04-01" "UTC"))
-
-(expect
-  [:=
-   [:datetime-field [:field-literal "field" :type/DateTime] :day]
-   "2019-04-01"]
-  (dates/date-string->filter "2019-04-01" [:field-literal "field" :type/DateTime]))
-
-;; day range
-(expect
-  {:start "2019-04-01", :end "2019-04-03"}
-  (dates/date-string->range "2019-04-01~2019-04-03" "UTC"))
-
-(expect
-  [:between
-   [:datetime-field [:field-literal "field" :type/DateTime] :day]
-   "2019-04-01"
-   "2019-04-03"]
-  (dates/date-string->filter "2019-04-01~2019-04-03" [:field-literal "field" :type/DateTime]))
-
-;; after day
-(expect
- {:start "2019-04-01"}
- (dates/date-string->range "2019-04-01~" "UTC"))
-
-(expect
-  [:>
-   [:datetime-field [:field-literal "field" :type/DateTime] :day]
-   "2019-04-01"]
-  (dates/date-string->filter "2019-04-01~" [:field-literal "field" :type/DateTime]))
+(deftest date-string->filter-test)
+(testing "year and month"
+  (is (= [:between
+          [:datetime-field [:field-literal "field" :type/DateTime] :day]
+          "2019-04-01"
+          "2019-04-30"]
+         (dates/date-string->filter "2019-04" [:field-literal "field" :type/DateTime])))
+  (testing "quarter year"
+    (is (= [:between
+            [:datetime-field [:field-literal "field" :type/DateTime] :day]
+            "2019-04-01"
+            "2019-06-30"]
+           (dates/date-string->filter "Q2-2019" [:field-literal "field" :type/DateTime]))))
+  (testing "single day"
+    (is (= [:=
+            [:datetime-field [:field-literal "field" :type/DateTime] :day]
+            "2019-04-01"]
+           (dates/date-string->filter "2019-04-01" [:field-literal "field" :type/DateTime]))))
+  (testing "day range"
+    (is (= [:between
+            [:datetime-field [:field-literal "field" :type/DateTime] :day]
+            "2019-04-01"
+            "2019-04-03"]
+           (dates/date-string->filter "2019-04-01~2019-04-03" [:field-literal "field" :type/DateTime]))))
+  (testing "after day"
+    (is (= [:>
+            [:datetime-field [:field-literal "field" :type/DateTime] :day]
+            "2019-04-01"]
+           (dates/date-string->filter "2019-04-01~" [:field-literal "field" :type/DateTime])))))
 
 (deftest date-string->range-test
   (t/with-clock (t/mock-clock #t "2016-06-07T12:00Z")
