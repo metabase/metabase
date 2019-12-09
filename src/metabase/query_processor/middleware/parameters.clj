@@ -38,9 +38,6 @@
     (cond-> expanded
       (join? m) move-join-condition-to-source-query)))
 
-(defn- expand-native-params [_ m]
-  (params.native/expand-inner m))
-
 (defn- expand-one
   "Expand `:parameters` in one inner-query-style map that contains them."
   [outer-query {:keys [source-table source-query parameters], :as m}]

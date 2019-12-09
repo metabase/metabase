@@ -2,7 +2,6 @@
   "Internal implementation functions for `metabase.driver`. These functions live in a separate namespace to reduce the
   clutter in `metabase.driver` itself."
   (:require [clojure.tools.logging :as log]
-            [metabase.driver.impl :as impl]
             [metabase.plugins.classloader :as classloader]
             [metabase.util :as u]
             [metabase.util.i18n :refer [trs tru]]
@@ -70,75 +69,6 @@
           (when-not (registered? driver)
             (throw (Exception. (tru "Driver not registered after loading: {0}" driver)))))))))
 
-
-;;; -------------------------------------------------- Registration --------------------------------------------------
-
-(defn check-abstractness-hasnt-changed
-  "Check to make sure we're not trying to change the abstractness of an already registered driver"
-  [driver new-abstract?]
-  (when (registered? driver)
-    (let [old-abstract? (boolean (abstract? driver))
-          new-abstract? (boolean new-abstract?)]
-      (when (not= old-abstract? new-abstract?)
-        (throw (Exception. (tru "Error: attempting to change {0} property `:abstract?` from {1} to {2}."
-                                driver old-abstract? new-abstract?)))))))
-
-(defn register!
-  "Register a driver.
-
-    (register! :sql, :abstract? true)
-
-    (register! :postgres, :parent :sql-jdbc)
-
-  Valid options are:
-
-  ###### `:parent` (default = none)
-
-  Parent driver(s) to derive from. Drivers inherit method implementations from their parents similar to the way
-  inheritance works in OOP. Specify multiple direct parents by passing a collection of parents.
-
-  You can add additional parents to a driver using `add-parent!` below; this is how test extensions are implemented.
-
-  ###### `:abstract?` (default = false)
-
-  Is this an abstract driver (i.e. should we hide it in the admin interface, and disallow running queries with it)?
-
-  Note that because concreteness is implemented as part of our keyword hierarchy it is not currently possible to
-  create an abstract driver with a concrete driver as its parent, since it would still ultimately derive from
-  `::concrete`."
-  {:style/indent 1}
-  [driver & {:keys [parent abstract?]}]
-  {:pre [(keyword? driver)]}
-  ;; no-op during compilation.
-  (when-not *compile-files*
-    (let [parents (filter some? (u/one-or-many parent))]
-      ;; load parents as needed; if this is an abstract driver make sure parents aren't concrete
-      (doseq [parent parents]
-        (load-driver-namespace-if-needed! parent))
-      (when abstract?
-        (doseq [parent parents
-                :when  (concrete? parent)]
-          (throw (ex-info (trs "Abstract drivers cannot derive from concrete parent drivers.")
-                   {:driver driver, :parent parent}))))
-      ;; validate that the registration isn't stomping on things
-      (check-abstractness-hasnt-changed driver abstract?)
-      ;; ok, if that was successful we can derive the driver from `:metabase.driver/driver`/`::concrete` and parent(s)
-      (let [derive! (partial alter-var-root #'hierarchy derive driver)]
-        (derive! :metabase.driver/driver)
-        (when-not abstract?
-          (derive! ::concrete))
-        (doseq [parent parents]
-          (derive! parent)))
-      ;; ok, log our great success
-      (log/info
-       (u/format-color 'blue
-           (if (metabase.driver.impl/abstract? driver)
-             (trs "Registered abstract driver {0}" driver)
-             (trs "Registered driver {0}" driver)))
-       (if (seq parents)
-         (trs "(parents: {0})" (vec parents))
-         "")
-       (u/emoji "🚚")))))
 
 ;;; -------------------------------------------------- Registration --------------------------------------------------
 

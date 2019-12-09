@@ -11,12 +11,10 @@
             [metabase.driver.impl :as impl]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
-            [potemkin :as po]
-            [potemkin :as p]
             [metabase.util
              [i18n :refer [deferred-tru trs tru]]
              [schema :as su]]
+            [potemkin :as p]
             [schema.core :as s]
             [toucan.db :as db])
   (:import org.joda.time.DateTime))

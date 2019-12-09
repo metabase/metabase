@@ -1,6 +1,5 @@
 (ns metabase.driver.common.parameters.parse-test
   (:require [clojure.test :refer :all]
-            [metabase.driver.common.parameters :as i]
             [metabase.driver.common.parameters.parse :as parse]))
 
 (def ^:private ^{:arglists '([field-name])} param    (var-get #'parse/param))

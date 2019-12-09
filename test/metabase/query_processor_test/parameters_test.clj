@@ -5,17 +5,13 @@
             [clojure
              [string :as str]
              [test :refer :all]]
-            [honeysql.core :as hsql]
+            [clojure.tools.logging :as log]
             [metabase
              [driver :as driver]
+             [models :refer [Field]]
              [query-processor :as qp]
              [test :as mt]
-             [util :as u]]
-            [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.models :refer [Field Table]]
-            [metabase.test.data.sql :as sql.tx]
-            [metabase.util.honeysql-extensions :as hx]
-            [toucan.db :as db]))
+             [util :as u]]))
 
 (defmulti native-count-query
   "Generate a native query for the count of rows in `table` matching a set of conditions defined by `field->type+value`,
@@ -28,28 +24,27 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defn- table-identifier [table-key]
-  (let [table-name (db/select-one-field :name Table, :id (mt/id table-key))]
-    (apply hx/identifier :table (sql.tx/qualified-name-components driver/*driver* (:name (mt/db)) table-name))))
-
-(defn- field-identifier [table-key field-key]
-  (let [table-name (db/select-one-field :name Table, :id (mt/id table-key))
-        field-name (db/select-one-field :name Field, :id (mt/id table-key field-key))]
-    (apply hx/identifier :field (sql.tx/qualified-name-components driver/*driver* (:name (mt/db)) table-name field-name))))
-
-(defn- honeysql->sql [honeysql]
-  (first (sql.qp/format-honeysql driver/*driver* honeysql)))
-
 ;; TODO - these should go in test extensions namespaces, not here
 
 (defmethod native-count-query :sql
   [driver table field->type+value]
-  (driver/with-driver driver
-    {:query (honeysql->sql
-             {:select [[:%count.* :count]]
-              :from   [(table-identifier table)]
-              :where  (into [:and] (for [[field] field->type+value]
-                                     [:= (field-identifier table field) (hsql/raw (format "{{%s}}" (name field)))]))})}))
+  (let [mbql-query      (mt/mbql-query nil
+                          {:source-table (mt/id table)
+                           :aggregagtion [[:count]]
+                           :filter       (into [:and]
+                                               (for [[i [field]] (map-indexed vector field->type+value)]
+                                                 [:= (mt/id table field) i]))})
+        {:keys [query]} (qp/query->native mbql-query)
+        query           (reduce
+                         (fn [query [i [field]]]
+                           (str/replace query (re-pattern (format "= %d" i)) (format "= {{%s}}" (name field))))
+                         query
+                         (map-indexed vector field->type+value))]
+    (log/tracef "%s\n->\n%s\n->\n%s"
+                (pr-str (list 'native-count-query driver table field->type+value))
+                (pr-str mbql-query)
+                query)
+    {:query query}))
 
 (defmethod native-count-query :mongo
   [_ table field->type+value]

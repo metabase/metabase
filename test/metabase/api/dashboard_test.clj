@@ -8,7 +8,6 @@
             [medley.core :as m]
             [metabase
              [http-client :as http]
-             [test :as mt]
              [util :as u]]
             [metabase.api
              [card-test :as card-api-test]

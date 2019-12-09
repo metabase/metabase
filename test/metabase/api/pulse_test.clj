@@ -1,6 +1,7 @@
 (ns metabase.api.pulse-test
   "Tests for /api/pulse endpoints."
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase
              [email-test :as et]
              [http-client :as http]
@@ -28,7 +29,6 @@
              [util :as tu]]
             [metabase.test.data.users :refer :all]
             [metabase.test.mock.util :refer [pulse-channel-defaults]]
-            [clojure.test :refer :all]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
