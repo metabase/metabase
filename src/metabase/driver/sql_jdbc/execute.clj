@@ -95,17 +95,22 @@
   [driver rs ^ResultSetMetaData rsmeta indexes]
   (mapv
    (fn [^Integer i]
-     (try
-       (let [result (read-column driver nil rs rsmeta i)]
-         (log/tracef "(read-column %s nil rs rsmeta %d) \"%s\" [JDBC Type: %s; DB type: %s] -> ^%s %s"
-                     driver i
-                     (.getColumnName rsmeta i) (.getName (JDBCType/valueOf (.getColumnType rsmeta i))) (.getColumnTypeName rsmeta i)
-                     (.getName (class result)) (pr-str result))
-         result)
-       (catch Throwable e
-         (log/errorf e "Error reading %s column %d %s %s"
-                     driver i (.getColumnName rsmeta i) (.getName (JDBCType/valueOf (.getColumnType rsmeta i))))
-         nil)))
+     ;; JDBCType/valueOf won't work for custom driver-specific enums
+     (let [jdbc-type      (.getColumnType rsmeta i)
+           jdbc-type-name (or (u/ignore-exceptions
+                                (.getName (JDBCType/valueOf jdbc-type)))
+                              jdbc-type)]
+       (try
+         (let [result (read-column driver nil rs rsmeta i)]
+           (log/tracef "(read-column %s nil rs rsmeta %d) \"%s\" [JDBC Type: %s; DB type: %s] -> ^%s %s"
+                       driver i
+                       (.getColumnName rsmeta i) jdbc-type-name (.getColumnTypeName rsmeta i)
+                       (.getName (class result)) (pr-str result))
+           result)
+         (catch Throwable e
+           (log/errorf e "Error reading %s column %d %s %s"
+                       driver i (.getColumnName rsmeta i) jdbc-type-name)
+           nil))))
    indexes))
 
 

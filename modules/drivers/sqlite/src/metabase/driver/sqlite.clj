@@ -14,6 +14,7 @@
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql.parameters.substitution :as params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util
@@ -203,7 +204,7 @@
   ;; for anything that's a Temporal value convert it to a yyyy-MM-dd formatted date literal
   ;; string For whatever reason the SQL generated from parameters ends up looking like `WHERE date(some_field) = ?`
   ;; sometimes so we need to use just the date rather than a full ISO-8601 string
-  (sql/make-stmt-subs "?" [(t/format "yyyy-MM-dd" date)]))
+  (params.substitution/make-stmt-subs "?" [(t/format "yyyy-MM-dd" date)]))
 
 ;; SQLite doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:sqlite Boolean]
@@ -247,8 +248,6 @@
 
 (defmethod sql.qp/->honeysql [:sqlite ZonedDateTime]
   [driver t]
-  (println "t:" t) ; NOCOMMIT
-  (println "(t/local-date t):" (t/local-date t)) ; NOCOMMIT
   (if (zero-time? t)
     (sql.qp/->honeysql driver (t/local-date t))
     (hsql/call :datetime (hx/literal (u.date/format-sql t)))))

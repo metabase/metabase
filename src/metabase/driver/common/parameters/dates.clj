@@ -1,8 +1,5 @@
-(ns metabase.query-processor.middleware.parameters.dates
-  "Shared code for handling datetime parameters, used by both MBQL and native params implementations.
-
-  TIMEZONE FIXME - this whole thing should be rewritten to use `java-time` and the new date util namespace. I started
-  implementing this in `metabase.query-processor.middleware.parameters.dates-2`, but it is not yet finished."
+(ns metabase.driver.common.parameters.dates
+  "Shared code for handling datetime parameters, used by both MBQL and native params implementations."
   (:require [java-time :as t]
             [medley.core :as m]
             [metabase.mbql.schema :as mbql.s]

@@ -77,8 +77,11 @@
   (into {} (for [c chars-to-escape]
              {c (str "\\" c)})))
 
-(def ^:private ^{:arglists '([s])} escape-for-regex         #(str/escape % (char-escape-map ".\\+*?[^]$(){}=!<>|:-")))
-(def ^:private ^{:arglists '([s])} escape-for-filter-clause #(str/escape % (char-escape-map ",;\\")))
+(defn- escape-for-regex [s]
+  (str/escape s (char-escape-map ".\\+*?[^]$(){}=!<>|:-")))
+
+(defn- escape-for-filter-clause [s]
+  (str/escape s (char-escape-map ",;\\")))
 
 (defn- ga-filter ^String [& parts]
   (escape-for-filter-clause (apply str parts)))

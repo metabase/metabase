@@ -361,18 +361,12 @@
 ;;; |                                      CONNECTION POOLS & TRANSACTION STUFF                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- new-connection-pool
-  "Create a C3P0 connection pool for the given database `spec`. Default c3p0 properties can be found in the
-  c3p0.properties file and are there so users may override them from the system if desired."
-  [spec]
-  (connection-pool/connection-pool-spec spec))
-
 (defn- create-connection-pool! [spec]
   (db/set-default-quoting-style! (case (db-type)
                                    :postgres :ansi
                                    :h2       :h2
                                    :mysql    :mysql))
-  (db/set-default-db-connection! (new-connection-pool spec))
+  (db/set-default-db-connection! (connection-pool/connection-pool-spec spec))
   (db/set-default-jdbc-options! {:read-columns db.jdbc-protocols/read-columns}))
 
 
@@ -418,7 +412,6 @@
              ((resolve 'metabase.driver.util/can-connect-with-details?) driver details :throw-exceptions))
      (trs "Unable to connect to Metabase {0} DB." (name driver)))
    (log/info (trs "Verify Database Connection ... ") (u/emoji "✅"))))
-
 
 (def ^:dynamic ^Boolean *disable-data-migrations*
   "Should we skip running data migrations when setting up the DB? (Default is `false`).

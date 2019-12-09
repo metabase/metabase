@@ -1,8 +1,7 @@
-(ns metabase.query-processor.middleware.parameters.native.values-test
+(ns metabase.driver.common.parameters.values-test
   (:require [expectations :refer [expect]]
-            [metabase.query-processor.middleware.parameters.native
-             [interface :as i]
-             [values :as values]]
+            [metabase.driver.common.parameters :as i]
+            [metabase.driver.common.parameters.values :as values]
             [metabase.test.data :as data]))
 
 ;; variable -- specified

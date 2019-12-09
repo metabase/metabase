@@ -1,4 +1,4 @@
-(ns metabase.query-processor.middleware.parameters.native.values
+(ns metabase.driver.common.parameters.values
   "These functions build a map of information about the types and values of the params used in a query. (These functions
   don't parse the query itself, but instead look at the values of `:template-tags` and `:parameters` passed along with
   the query.)
@@ -9,9 +9,9 @@
                                      :target [\"dimension\" [\"template-tag\" \"checkin_date\"]]
                                      :value  \"2015-01-01~2016-09-01\"}}}"
   (:require [clojure.string :as str]
+            [metabase.driver.common.parameters :as i]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.parameters.native.interface :as i]
             [metabase.util
              [i18n :as ui18n :refer [tru]]
              [schema :as su]]
@@ -19,8 +19,7 @@
             [toucan.db :as db])
   (:import java.text.NumberFormat
            java.util.UUID
-           [metabase.query_processor.middleware.parameters.native.interface CommaSeparatedNumbers FieldFilter
-            MultipleValues]))
+           [metabase.driver.common.parameters CommaSeparatedNumbers FieldFilter MultipleValues]))
 
 (def ^:private ParamType
   (s/enum :number
