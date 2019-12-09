@@ -322,7 +322,12 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     getHidden: (series, vizSettings) =>
       series.length > 1 || vizSettings["stackable.stack_type"] === "normalized",
     getDefault: ([{ card, data }]) =>
-      card.display === "bar" && data.rows.length < AUTO_SHOW_VALUES_MAX_ROWS,
+      // small bar graphs should have this turned on by default,
+      // but bar graphs that were saved without this feature shouldn't
+      card.id == null &&
+      card.display === "bar" &&
+      data.rows.length < AUTO_SHOW_VALUES_MAX_ROWS,
+    persistDefault: true,
   },
   "graph.label_value_frequency": {
     section: t`Display`,
