@@ -27,8 +27,13 @@ import Database from "metabase/entities/databases";
 import Search from "metabase/entities/search";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
 
+import { updateSetting } from "metabase/admin/settings/settings";
+
 import { getUser } from "metabase/home/selectors";
-import { getXraysEnabled } from "metabase/selectors/settings";
+import {
+  getXraysEnabled,
+  getShowHomepageData,
+} from "metabase/selectors/settings";
 
 const PAGE_PADDING = [1, 2, 4];
 
@@ -60,15 +65,19 @@ const getParitionedCollections = createSelector(
   query: { collection: "root" },
   wrapped: true,
 })
-@connect((state, props) => ({
-  // split out collections, pinned, and unpinned since bulk actions only apply to unpinned
-  ...getParitionedCollections(state, props),
-  user: getUser(state, props),
-  xraysEnabled: getXraysEnabled(state),
-}))
+@connect(
+  (state, props) => ({
+    // split out collections, pinned, and unpinned since bulk actions only apply to unpinned
+    ...getParitionedCollections(state, props),
+    user: getUser(state, props),
+    xraysEnabled: getXraysEnabled(state),
+    showHomepageData: getShowHomepageData(state),
+  }),
+  { updateSetting },
+)
 class Overworld extends React.Component {
   render() {
-    const { user, xraysEnabled } = this.props;
+    const { user, xraysEnabled, showHomepageData, updateSetting } = this.props;
     return (
       <Box>
         <Flex px={PAGE_PADDING} pt={3} pb={1} align="center">
@@ -203,8 +212,7 @@ class Overworld extends React.Component {
           </Box>
         </Box>
 
-        {// this.props.collections represents the collections inside of the root collection. if there are any then we should hide the our data section
-        this.props.collections.length === 0 && (
+        {showHomepageData && (
           <Database.ListLoader>
             {({ databases }) => {
               if (databases.length === 0) {
@@ -212,7 +220,24 @@ class Overworld extends React.Component {
               }
               return (
                 <Box pt={2} px={PAGE_PADDING}>
-                  <SectionHeading>{t`Our data`}</SectionHeading>
+                  <Flex align="center" className="hover-parent">
+                    <SectionHeading>{t`Our data`}</SectionHeading>
+                    {user.is_superuser && (
+                      <Tooltip tooltip={t`Hide this section`}>
+                        <Icon
+                          ml="1"
+                          name="close"
+                          className="hover-child text-brand-hover"
+                          onClick={() =>
+                            updateSetting({
+                              key: "show-homepage-data",
+                              value: false,
+                            })
+                          }
+                        />
+                      </Tooltip>
+                    )}
+                  </Flex>
                   <Box mb={4}>
                     <Grid>
                       {databases.map(database => (

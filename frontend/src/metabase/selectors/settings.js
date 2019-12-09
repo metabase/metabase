@@ -6,6 +6,9 @@ export const getIsApplicationEmbeddingEnabled = state =>
 // Whether or not xrays are enabled on the instance
 export const getXraysEnabled = state => state.settings.values["enable_xrays"];
 
+export const getShowHomepageData = state =>
+  state.settings.values["show-homepage-data"];
+
 // NOTE: these are admin-only settings
 export const getSiteUrl = state => state.settings.values["site-url"];
 export const getEmbeddingSecretKey = state =>
