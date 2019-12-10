@@ -173,8 +173,12 @@
   :default true)
 
 (defsetting show-homepage-data
-  (deferred-tru "Whether or not to display data on the homepage. Admins might turn this off in order to direct users to
-                better content than raw data")
+  (deferred-tru "Whether or not to display data on the homepage. Admins might turn this off in order to direct users to better content than raw data")
+  :type    :boolean
+  :default true)
+
+(defsetting show-homepage-xrays
+  (deferred-tru "Whether or not to display x-ray suggestions on the homepage. They will also be hidden if any dashboards are pinned. Admins might hide this to direct users to better content than raw data")
   :type    :boolean
   :default true)
 
@@ -240,6 +244,7 @@
    :report_timezone       (resolve-setting 'metabase.driver 'report-timezone)
    :setup_token           (resolve-setting 'metabase.setup 'token-value)
    :show_homepage_data    (show-homepage-data)
+   :show_homepage_xrays   (show-homepage-xrays)
    :site_name             (site-name)
    :site_url              (site-url)
    :timezone_short        (short-timezone-name (setting/get :report-timezone))
