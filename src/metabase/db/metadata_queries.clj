@@ -68,6 +68,7 @@
    (field-distinct-values field absolute-max-distinct-values-limit))
   ([field, max-results :- su/IntGreaterThanZero]
    (mapv first (field-query field {:breakout [[:field-id (u/get-id field)]]
+                                   :filter [:not-null [:field-id (u/get-id field)]]
                                    :limit    max-results}))))
 
 (defn field-distinct-count
