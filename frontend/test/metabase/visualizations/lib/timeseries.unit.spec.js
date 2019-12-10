@@ -391,6 +391,68 @@ describe("visualization.lib.timeseries", () => {
         "2000-01-30T00:00:00.000Z",
       );
     });
+
+    it("should evenly space months", () => {
+      const scale = timeseriesScale({
+        interval: "month",
+        count: 1,
+        timezone: "Etc/UTC",
+      })
+        .domain([
+          moment("2018-11-01T00:00:00.000Z"),
+          moment("2019-02-01T00:00:00.000Z"),
+        ])
+        .range([0, 30]);
+
+      expect(
+        ["2018-11-01", "2018-12-01", "2019-01-01", "2019-02-01"].map(d =>
+          scale(moment(`${d}T00:00:00.000Z`)),
+        ),
+      ).toEqual([0, 10, 20, 30]);
+    });
+
+    it("should not evenly space years", () => {
+      // 2020 is a leap year and 2019 is not. With the total width set to the
+      // total number of days, each year should have one pixel per day.
+      const scale = timeseriesScale({
+        interval: "year",
+        count: 1,
+        timezone: "Etc/UTC",
+      })
+        .domain([
+          moment("2019-01-01T00:00:00.000Z"),
+          moment("2021-01-01T00:00:00.000Z"),
+        ])
+        .range([0, 731]);
+
+      expect(
+        ["2019-01-01", "2020-01-01", "2021-01-01"].map(d =>
+          scale(moment(`${d}T00:00:00.000Z`)),
+        ),
+      ).toEqual([0, 365, 731]);
+    });
+
+    it("should not evenly space days", () => {
+      // 2019-11-03 is a 25 hour day in US/Pacific
+      const scale = timeseriesScale({
+        interval: "day",
+        count: 1,
+        timezone: "US/Pacific",
+      })
+        .domain([
+          moment("2019-11-02T00:00:00.000-07"),
+          moment("2019-11-04T00:00:00.000-08"),
+        ])
+        .range([0, 49]);
+
+      expect(
+        [
+          "2019-11-02T00:00:00.000-07",
+          "2019-11-03T00:00:00.000-07",
+          "2019-11-04T00:00:00.000-08",
+        ].map(d => scale(moment(d))),
+      ).toEqual([0, 24, 49]);
+    });
   });
   describe("getTimezone", () => {
     const series = [

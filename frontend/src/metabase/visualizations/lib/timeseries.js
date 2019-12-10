@@ -213,12 +213,32 @@ export const timeseriesScale = (
     if (x === undefined) {
       return linear.domain().map(t => moment(t).tz(timezone));
     }
-    linear.domain(x.map(ms));
+    if (interval === "month") {
+      linear.domain(ticksForRange(x.map(t => moment(t).tz(timezone))).map(ms));
+    } else {
+      linear.domain(x.map(ms));
+    }
     return s;
   };
-  s.ticks = () => {
-    const [start, end] = s.domain();
+  s.range = x => {
+    if (x === undefined) {
+      return linear.range();
+    }
+    if (interval === "month") {
+      const [start, stop] = x;
+      const step = (stop - start) / (s.domain().length - 1);
+      linear.range(d3.range(start, stop, step));
+    } else {
+      linear.range(x);
+    }
+    return s;
+  };
+  s.ticks = () =>
+    interval === "month" ? s.domain() : ticksForRange(s.domain());
 
+  // s.ticks = () => {
+  //   const [start, end] = s.domain();
+  const ticksForRange = ([start, end]) => {
     const ticks = [];
     let tick = start
       .clone()
@@ -240,7 +260,7 @@ export const timeseriesScale = (
     return ticks;
   };
   s.copy = () => timeseriesScale({ count, interval, timezone }, linear);
-  d3.rebind(s, linear, "range", "rangeRound", "interpolate", "clamp", "invert");
+  d3.rebind(s, linear, "rangeRound", "interpolate", "clamp", "invert");
   return s;
 };
 
