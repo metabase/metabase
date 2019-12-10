@@ -113,47 +113,47 @@ class Overworld extends React.Component {
                       <Box mx={PAGE_PADDING} mt={[1, 3]}>
                         {user.is_superuser && <AdminPinMessage />}
                         <Box mt={[1, 3]}>
-                          <Flex
-                            align="center"
-                            className="hover-parent hover--visibility"
-                          >
-                            <SectionHeading>
+                          <SectionHeading>
+                            <Flex
+                              align="center"
+                              className="hover-parent hover--visibility"
+                            >
                               {t`Try these x-rays based on your data.`}
-                            </SectionHeading>
-                            {user.is_superuser && (
-                              <ModalWithTrigger
-                                triggerElement={
-                                  <Tooltip
-                                    tooltip={t`Remove these suggestions`}
-                                  >
-                                    <Icon
-                                      ml="1"
-                                      name="close"
-                                      className="hover-child text-brand-hover"
-                                    />
-                                  </Tooltip>
-                                }
-                                title={t`Remove these suggestions?`}
-                                footer={
-                                  <Button
-                                    danger
-                                    onClick={onClose => {
-                                      updateSetting({
-                                        key: "show-homepage-xrays",
-                                        value: false,
-                                      });
-                                    }}
-                                  >
-                                    {t`Remove`}
-                                  </Button>
-                                }
-                              >
-                                <Box>
-                                  {t`These won’t show up on the homepage for any of your users anymore, but you can always get to x-rays by clicking on Browse Data in the main navigation, then clicking on the lightning bolt :zap: icon on one of your tables.`}
-                                </Box>
-                              </ModalWithTrigger>
-                            )}
-                          </Flex>
+                              {user.is_superuser && (
+                                <ModalWithTrigger
+                                  triggerElement={
+                                    <Tooltip
+                                      tooltip={t`Remove these suggestions`}
+                                    >
+                                      <Icon
+                                        ml="2"
+                                        name="close"
+                                        className="hover-child text-brand-hover"
+                                      />
+                                    </Tooltip>
+                                  }
+                                  title={t`Remove these suggestions?`}
+                                  footer={
+                                    <Button
+                                      danger
+                                      onClick={onClose => {
+                                        updateSetting({
+                                          key: "show-homepage-xrays",
+                                          value: false,
+                                        });
+                                      }}
+                                    >
+                                      {t`Remove`}
+                                    </Button>
+                                  }
+                                >
+                                  <Box>
+                                    {t`These won’t show up on the homepage for any of your users anymore, but you can always get to x-rays by clicking on Browse Data in the main navigation, then clicking on the lightning bolt :zap: icon on one of your tables.`}
+                                  </Box>
+                                </ModalWithTrigger>
+                              )}
+                            </Flex>
+                          </SectionHeading>
                           <Box>
                             <ExplorePane
                               candidates={candidates}
@@ -263,43 +263,45 @@ class Overworld extends React.Component {
               }
               return (
                 <Box pt={2} px={PAGE_PADDING}>
-                  <Flex
-                    align="center"
-                    className="hover-parent hover--visibility"
-                  >
-                    <SectionHeading>{t`Our data`}</SectionHeading>
-                    {user.is_superuser && (
-                      <ModalWithTrigger
-                        triggerElement={
-                          <Tooltip tooltip={t`Hide this section`}>
-                            <Icon
-                              ml="1"
-                              name="close"
-                              className="hover-child text-brand-hover"
-                            />
-                          </Tooltip>
-                        }
-                        title={t`Remove this section?`}
-                        footer={
-                          <Button
-                            danger
-                            onClick={onClose => {
-                              updateSetting({
-                                key: "show-homepage-data",
-                                value: false,
-                              });
-                            }}
-                          >
-                            {t`Remove`}
-                          </Button>
-                        }
-                      >
-                        <Box>
-                          {t`Our Data” won’t show up on the homepage for any of your users anymore, but you can always browse through your databases and tables by clicking Browse Data in the main navigation.`}
-                        </Box>
-                      </ModalWithTrigger>
-                    )}
-                  </Flex>
+                  <SectionHeading>
+                    <Flex
+                      align="center"
+                      className="hover-parent hover--visibility"
+                    >
+                      {t`Our data`}
+                      {user.is_superuser && (
+                        <ModalWithTrigger
+                          triggerElement={
+                            <Tooltip tooltip={t`Hide this section`}>
+                              <Icon
+                                ml="4"
+                                name="close"
+                                className="block hover-child text-brand-hover"
+                              />
+                            </Tooltip>
+                          }
+                          title={t`Remove this section?`}
+                          footer={
+                            <Button
+                              danger
+                              onClick={onClose => {
+                                updateSetting({
+                                  key: "show-homepage-data",
+                                  value: false,
+                                });
+                              }}
+                            >
+                              {t`Remove`}
+                            </Button>
+                          }
+                        >
+                          <Box>
+                            {t`Our Data” won’t show up on the homepage for any of your users anymore, but you can always browse through your databases and tables by clicking Browse Data in the main navigation.`}
+                          </Box>
+                        </ModalWithTrigger>
+                      )}
+                    </Flex>
+                  </SectionHeading>
                   <Box mb={4}>
                     <Grid>
                       {databases.map(database => (
