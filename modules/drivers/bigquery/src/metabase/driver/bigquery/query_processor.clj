@@ -395,8 +395,9 @@
 (defmethod sql.qp/->honeysql [:bigquery :asc]  [driver clause] (alias-order-by-field driver clause))
 (defmethod sql.qp/->honeysql [:bigquery :desc] [driver clause] (alias-order-by-field driver clause))
 
-;; be careful that the temporal types line up for the filter clauses that can have them
-(defn reconcile-temporal-types [[clause-type f & args :as clause]]
+(defn- reconcile-temporal-types
+  "Make sure the temporal types of fields and values in filter clauses line up."
+  [[clause-type f & args :as clause]]
   (if-let [target-type (or (temporal-type f) (some temporal-type args))]
     (do
       (log/tracef "Coercing args in %s to temporal type %s" (binding [*print-meta* true] (pr-str clause)) target-type)

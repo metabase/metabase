@@ -12,6 +12,7 @@
             [metabase.driver.bigquery :as bigquery]
             [metabase.driver.bigquery.query-processor :as bigquery.qp]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.query-processor.store :as qp.store]
             [metabase.test.util.timezone :as tu.tz]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.util.test :as tt]))
