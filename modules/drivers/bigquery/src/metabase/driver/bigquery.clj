@@ -102,7 +102,7 @@
     "STRING"    :type/Text
     "DATE"      :type/Date
     "DATETIME"  :type/DateTime
-    "TIMESTAMP" :type/DateTime
+    "TIMESTAMP" :type/DateTimeWithLocalTZ
     "TIME"      :type/Time
     "NUMERIC"   :type/Decimal
     :type/*))
