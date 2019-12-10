@@ -11,6 +11,8 @@ import ExplorePane from "metabase/components/ExplorePane";
 import Tooltip from "metabase/components/Tooltip";
 import MetabotLogo from "metabase/components/MetabotLogo";
 import CollectionList from "metabase/components/CollectionList";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import Button from "metabase/components/Button";
 
 import Card from "metabase/components/Card";
 import { Grid, GridItem } from "metabase/components/Grid";
@@ -223,19 +225,35 @@ class Overworld extends React.Component {
                   <Flex align="center" className="hover-parent">
                     <SectionHeading>{t`Our data`}</SectionHeading>
                     {user.is_superuser && (
-                      <Tooltip tooltip={t`Hide this section`}>
-                        <Icon
-                          ml="1"
-                          name="close"
-                          className="hover-child text-brand-hover"
-                          onClick={() =>
-                            updateSetting({
-                              key: "show-homepage-data",
-                              value: false,
-                            })
-                          }
-                        />
-                      </Tooltip>
+                      <ModalWithTrigger
+                        triggerElement={
+                          <Tooltip tooltip={t`Hide this section`}>
+                            <Icon
+                              ml="1"
+                              name="close"
+                              className="hover-child text-brand-hover"
+                            />
+                          </Tooltip>
+                        }
+                        title={t`Remove this section?`}
+                        footer={
+                          <Button
+                            danger
+                            onClick={onClose => {
+                              updateSetting({
+                                key: "show-homepage-data",
+                                value: false,
+                              });
+                            }}
+                          >
+                            {t`Remove`}
+                          </Button>
+                        }
+                      >
+                        <Box>
+                          {t`Our Data” won’t show up on the homepage for any of your users anymore, but you can always browse through your databases and tables by clicking Browse Data in the main navigation.`}
+                        </Box>
+                      </ModalWithTrigger>
                     )}
                   </Flex>
                   <Box mb={4}>
