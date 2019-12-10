@@ -14,8 +14,8 @@
              [util :as mbql.u]]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor
-             [interface :as i]
              [error-type :as error-type]
+             [interface :as i]
              [store :as qp.store]]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.util :as u]

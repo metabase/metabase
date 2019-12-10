@@ -1,12 +1,13 @@
 (ns metabase.query-processor-test.parameters-test
   "Tests for support for parameterized queries in drivers that support it. (There are other tests for parameter support
   in various places; these are mainly for high-level verification that parameters are working.)"
-  (:require [cheshire.core :as json]
+  (:require [cheshire
+             [core :as json]
+             [generate :as json.generate]]
             [clojure
              [string :as str]
              [test :refer :all]]
             [clojure.tools.logging :as log]
-            [cheshire.generate :as json.generate]
             [metabase
              [driver :as driver]
              [models :refer [Field]]

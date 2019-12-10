@@ -18,7 +18,7 @@
 (defn- param-value->str [x]
   (condp instance? x
     ;; Date = the Parameters Date type, not an actual Temporal type
-    Date     (->str (u.date/parse (:s x)))
+    Date     (param-value->str (u.date/parse (:s x)))
     ;; convert temporal types to ISODate("2019-12-09T...") (etc.)
     Temporal (format "ISODate(\"%s\")" (u.date/format x))
     ;; for everything else, splice it in as its string representation
