@@ -9,10 +9,10 @@ export const getIsApplicationEmbeddingEnabled = state =>
 export const getXraysEnabled = state => state.settings.values["enable_xrays"];
 
 export const getShowHomepageData = state =>
-  state.settings.values["show-homepage-data"];
+  state.settings.values["show_homepage_data"];
 
 export const getShowHomepageXrays = createSelector(
-  [getXraysEnabled, state => state.settings.values["show-homepage-xrays"]],
+  [getXraysEnabled, state => state.settings.values["show_homepage_xrays"]],
   (enabled, show) => enabled && show,
 );
 
