@@ -27,7 +27,6 @@ const NativeVariablesButton = ({
 
 NativeVariablesButton.shouldRender = ({ question }) =>
   question.query() instanceof NativeQuery &&
-  question.database() &&
-  question.database().hasFeature("native-parameters");
+  question.query().supportsNativeParameters();
 
 export default NativeVariablesButton;

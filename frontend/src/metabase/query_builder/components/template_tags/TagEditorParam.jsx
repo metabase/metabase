@@ -125,6 +125,11 @@ export default class TagEditorParam extends Component {
     const hasSelectedDimensionField =
       isDimension && Array.isArray(tag.dimension);
     const hasWidgetOptions = widgetOptions && widgetOptions.length > 0;
+    const supportsFieldFilters = _.contains(
+      database && database.features,
+      "native-parameters-field-filters",
+    );
+
     return (
       <div className="pb2 mb2 border-bottom border-dark">
         <h3 className="pb2">{tag.name}</h3>
@@ -154,7 +159,9 @@ export default class TagEditorParam extends Component {
             <Option value="text">{t`Text`}</Option>
             <Option value="number">{t`Number`}</Option>
             <Option value="date">{t`Date`}</Option>
-            <Option value="dimension">{t`Field Filter`}</Option>
+            {supportsFieldFilters && (
+              <Option value="dimension">{t`Field Filter`}</Option>
+            )}
           </Select>
         </div>
 

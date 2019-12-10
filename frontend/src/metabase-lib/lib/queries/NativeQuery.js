@@ -142,6 +142,14 @@ export default class NativeQuery extends AtomicQuery {
     );
   }
 
+  supportsFieldFilters(): boolean {
+    const database = this.database();
+    return (
+      database != null &&
+      _.contains(database.features, "native-parameters-field-filters")
+    );
+  }
+
   table(): ?Table {
     const database = this.database();
     const collection = this.collection();

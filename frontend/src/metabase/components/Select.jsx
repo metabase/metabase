@@ -97,7 +97,7 @@ class BrowserSelect extends Component {
       multiple,
     } = this.props;
 
-    let children = _.flatten(this.props.children);
+    let children = _.flatten(this.props.children).filter(child => !!child);
 
     let selectedNames = children
       .filter(child => this.isSelected(child.props.value))
