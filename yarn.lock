@@ -12071,12 +12071,13 @@ react-dom@15:
     object-assign "^4.1.0"
     prop-types "^15.5.10"
 
-react-draggable@^2.2.3:
-  version "2.2.6"
-  resolved "https://registry.yarnpkg.com/react-draggable/-/react-draggable-2.2.6.tgz#3a806e10f2da6babfea4136be6510e89b0d76901"
-  integrity sha1-OoBuEPLaa6v+pBNr5lEOibDXaQE=
+react-draggable@^3.3.2:
+  version "3.3.2"
+  resolved "https://registry.yarnpkg.com/react-draggable/-/react-draggable-3.3.2.tgz#966ef1d90f2387af3c2d8bd3516f601ea42ca359"
+  integrity sha512-oaz8a6enjbPtx5qb0oDWxtDNuybOylvto1QLydsXgKmwT7e3GXC2eMVDwEMIUYJIFqVG72XpOv673UuuAq6LhA==
   dependencies:
     classnames "^2.2.5"
+    prop-types "^15.6.0"
 
 react-draggable@^4.0.3:
   version "4.1.0"
