@@ -33,8 +33,8 @@ import { updateSetting } from "metabase/admin/settings/settings";
 
 import { getUser } from "metabase/home/selectors";
 import {
-  getXraysEnabled,
   getShowHomepageData,
+  getShowHomepageXrays,
 } from "metabase/selectors/settings";
 
 const PAGE_PADDING = [1, 2, 4];
@@ -72,14 +72,19 @@ const getParitionedCollections = createSelector(
     // split out collections, pinned, and unpinned since bulk actions only apply to unpinned
     ...getParitionedCollections(state, props),
     user: getUser(state, props),
-    xraysEnabled: getXraysEnabled(state),
     showHomepageData: getShowHomepageData(state),
+    showHomepageXrays: getShowHomepageXrays(state),
   }),
   { updateSetting },
 )
 class Overworld extends React.Component {
   render() {
-    const { user, xraysEnabled, showHomepageData, updateSetting } = this.props;
+    const {
+      user,
+      showHomepageData,
+      showHomepageXrays,
+      updateSetting,
+    } = this.props;
     return (
       <Box>
         <Flex px={PAGE_PADDING} pt={3} pb={1} align="center">
@@ -96,7 +101,7 @@ class Overworld extends React.Component {
               d => d.model === "dashboard" && d.collection_position != null,
             );
 
-            if (xraysEnabled && !pinnedDashboards.length > 0) {
+            if (showHomepageXrays && !pinnedDashboards.length > 0) {
               return (
                 <CandidateListLoader>
                   {({ candidates, sampleCandidates, isSample }) => {
@@ -108,10 +113,46 @@ class Overworld extends React.Component {
                       <Box mx={PAGE_PADDING} mt={[1, 3]}>
                         {user.is_superuser && <AdminPinMessage />}
                         <Box mt={[1, 3]}>
-                          <Flex align="center">
+                          <Flex
+                            align="center"
+                            className="hover-parent hover--visibility"
+                          >
                             <SectionHeading>
                               {t`Try these x-rays based on your data.`}
                             </SectionHeading>
+                            {user.is_superuser && (
+                              <ModalWithTrigger
+                                triggerElement={
+                                  <Tooltip
+                                    tooltip={t`Remove these suggestions`}
+                                  >
+                                    <Icon
+                                      ml="1"
+                                      name="close"
+                                      className="hover-child text-brand-hover"
+                                    />
+                                  </Tooltip>
+                                }
+                                title={t`Remove these suggestions?`}
+                                footer={
+                                  <Button
+                                    danger
+                                    onClick={onClose => {
+                                      updateSetting({
+                                        key: "show-homepage-xrays",
+                                        value: false,
+                                      });
+                                    }}
+                                  >
+                                    {t`Remove`}
+                                  </Button>
+                                }
+                              >
+                                <Box>
+                                  {t`These won’t show up on the homepage for any of your users anymore, but you can always get to x-rays by clicking on Browse Data in the main navigation, then clicking on the lightning bolt :zap: icon on one of your tables.`}
+                                </Box>
+                              </ModalWithTrigger>
+                            )}
                           </Flex>
                           <Box>
                             <ExplorePane
@@ -222,7 +263,10 @@ class Overworld extends React.Component {
               }
               return (
                 <Box pt={2} px={PAGE_PADDING}>
-                  <Flex align="center" className="hover-parent">
+                  <Flex
+                    align="center"
+                    className="hover-parent hover--visibility"
+                  >
                     <SectionHeading>{t`Our data`}</SectionHeading>
                     {user.is_superuser && (
                       <ModalWithTrigger

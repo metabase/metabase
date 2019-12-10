@@ -2,23 +2,56 @@ import { signInAsAdmin, signInAsNormalUser } from "__support__/cypress";
 
 describe("homepage", () => {
   describe("content management", () => {
-    beforeEach(() => {
-      signInAsAdmin();
-      // Be sure that the relevant app settings are in the right state to start
-      cy.request("PUT", "api/setting/show-homepage-data", { value: true });
+    describe("as admin", () => {
+      beforeEach(() => {
+        signInAsAdmin();
+        cy.request("PUT", "api/setting/show-homepage-data", { value: true });
+        cy.request("PUT", "api/setting/show-homepage-xrays", { value: true });
+      });
+      it('should be possible for an admin to hide the "Our data" section', () => {
+        cy.server();
+        cy.route("PUT", "**/show-homepage-data").as("hideData");
+        cy.visit("/");
+        cy.contains("Sample Dataset");
+        cy.contains("Our data")
+          .parent()
+          .trigger("mouseover")
+          .get(".Icon-close")
+          .click();
+        cy.get(".Button--danger").click();
+        cy.wait("@hideData");
+        cy.contains("Sample Dataset").should("have.length", 0);
+        // cleanup
+        cy.request("PUT", "api/setting/show-homepage-data", { value: true });
+      });
+      it('should be possible for an admin to hide the "xrays" section', () => {
+        cy.server();
+        cy.route("PUT", "**/show-homepage-xrays").as("hideXrays");
+        cy.visit("/");
+        cy.contains("based on")
+          .parent()
+          .trigger("mouseover")
+          .get(".Icon-close")
+          .click();
+        cy.get(".Button--danger").click();
+        cy.wait("@hideXrays");
+        // clean up
+        cy.request("PUT", "api/setting/show-homepage-xrays", { value: true });
+      });
     });
-    it('should be possible for an admin to hide the "Our data" section', () => {
-      cy.server();
-      cy.route("PUT", "**/show-homepage-data").as("hideData");
-      cy.visit("/");
-      cy.contains("Sample Dataset");
-      cy.contains("Our data")
-        .parent()
-        .get(".Icon-close")
-        .click();
-      cy.get(".Button").click();
-      cy.wait("@hideData");
-      cy.contains("Sample Dataset").should("have.length", 0);
+    describe("as regular folk", () => {
+      beforeEach(signInAsNormalUser);
+      it("should not be possible for them to see the controls", () => {
+        cy.visit("/");
+        cy.contains("Our data")
+          .parent()
+          .get(".Icon-close")
+          .should("have.length", 0);
+        cy.contains("x-ray")
+          .parent()
+          .get(".Icon-close")
+          .should("have.length", 0);
+      });
     });
   });
 });
