@@ -15,6 +15,15 @@
   (:import java.time.temporal.Temporal
            metabase.driver.common.parameters.Date))
 
+(defn- param-value->str [x]
+  (condp instance? x
+    ;; Date = the Parameters Date type, not an actual Temporal type
+    Date     (->str (u.date/parse (:s x)))
+    ;; convert temporal types to ISODate("2019-12-09T...") (etc.)
+    Temporal (format "ISODate(\"%s\")" (u.date/format x))
+    ;; for everything else, splice it in as its string representation
+    (pr-str x)))
+
 (defn- substitute-param [param->value [acc missing] in-optional? {:keys [k]}]
   (if-not (contains? param->value k)
     [acc (conj missing k)]
@@ -24,7 +33,7 @@
                  {:type error-type/invalid-query})))
       (if (= params/no-value v)
         [acc (conj missing k)]
-        [(conj acc v) missing]))))
+        [(conj acc (param-value->str v)) missing]))))
 
 (declare substitute*)
 
@@ -55,26 +64,20 @@
    [[] nil]
    xs))
 
-(defn- ->str [x]
-  (condp instance? x
-    Temporal (u.date/format x)
-    Date     (->str (u.date/parse (:s x)))
-    x))
-
 (defn- substitute [param->value xs]
   (let [[replaced missing] (substitute* param->value xs false)]
     (when (seq missing)
       (throw (ex-info (tru "Cannot run query: missing required parameters: {0}" (set missing))
                {:type error-type/invalid-query})))
     (when (seq replaced)
-      (str/join (map ->str replaced)))))
+      (str/join replaced))))
 
 (defn- parse-and-substitute [param->value x]
   (if-not (string? x)
     x
     (u/prog1 (substitute param->value (parse/parse x))
       (when-not (= x <>)
-        (log/debug (tru "Substituted {0} -> {1}" (pr-str x) (pr-str <> )))))))
+        (log/debug (tru "Substituted {0} -> {1}" (pr-str x) (pr-str <>)))))))
 
 (defn substitute-native-parameters
   "Implementation of `driver/substitue-native-parameters` for MongoDB."

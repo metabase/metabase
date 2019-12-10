@@ -15,6 +15,7 @@
             [metabase.models.field :refer [Field]]
             [metabase.query-processor
              [interface :as i]
+             [error-type :as error-type]
              [store :as qp.store]]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.util :as u]
@@ -659,8 +660,14 @@
 (defn parse-query-string
   "Parse a serialized native query. Like a normal JSON parse, but handles BSON/MongoDB extended JSON forms."
   [^String s]
-  (for [^org.bson.BsonValue v (org.bson.BsonArray/parse s)]
-    (com.mongodb.BasicDBObject. (.asDocument v))))
+  (try
+    (for [^org.bson.BsonValue v (org.bson.BsonArray/parse s)]
+      (com.mongodb.BasicDBObject. (.asDocument v)))
+    (catch Throwable e
+      (throw (ex-info (tru "Unable to parse query. Query should be an array of aggregation pipeline stages.")
+               {:type  error-type/invalid-query
+                :query s}
+               e)))))
 
 (defn execute-query
   "Process and run a native MongoDB query."
