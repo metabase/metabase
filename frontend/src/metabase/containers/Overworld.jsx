@@ -112,12 +112,12 @@ class Overworld extends React.Component {
                     return (
                       <Box mx={PAGE_PADDING} mt={[1, 3]}>
                         {user.is_superuser && <AdminPinMessage />}
-                        <Box mt={[1, 3]}>
+                        <Box
+                          mt={[1, 3]}
+                          className="hover-parent hover--visibility"
+                        >
                           <SectionHeading>
-                            <Flex
-                              align="center"
-                              className="hover-parent hover--visibility"
-                            >
+                            <Flex align="center">
                               {t`Try these x-rays based on your data.`}
                               {user.is_superuser && (
                                 <ModalWithTrigger
@@ -210,7 +210,6 @@ class Overworld extends React.Component {
             );
           }}
         </CollectionItemsLoader>
-
         <Box px={PAGE_PADDING} my={3}>
           <SectionHeading>{ROOT_COLLECTION.name}</SectionHeading>
           <Box p={[1, 2]} mt={2} bg={color("bg-medium")}>
@@ -254,7 +253,6 @@ class Overworld extends React.Component {
             </Link>
           </Box>
         </Box>
-
         {showHomepageData && (
           <Database.ListLoader>
             {({ databases }) => {
@@ -262,12 +260,13 @@ class Overworld extends React.Component {
                 return null;
               }
               return (
-                <Box pt={2} px={PAGE_PADDING}>
+                <Box
+                  pt={2}
+                  px={PAGE_PADDING}
+                  className="hover-parent hover--visibility"
+                >
                   <SectionHeading>
-                    <Flex
-                      align="center"
-                      className="hover-parent hover--visibility"
-                    >
+                    <Flex align="center">
                       {t`Our data`}
                       {user.is_superuser && (
                         <ModalWithTrigger
