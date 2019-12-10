@@ -33,6 +33,7 @@ import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
+import ExplicitSize from "metabase/components/ExplicitSize";
 
 import Parameters from "metabase/parameters/components/Parameters";
 
@@ -98,6 +99,7 @@ type State = {
   hasTextSelected: boolean,
 };
 
+@ExplicitSize()
 export default class NativeQueryEditor extends Component {
   props: Props;
   state: State;
@@ -151,7 +153,7 @@ export default class NativeQueryEditor extends Component {
     document.addEventListener("keydown", this.handleKeyDown);
   }
 
-  componentDidUpdate() {
+  componentDidUpdate(prevProps) {
     const { query } = this.props;
     if (!query || !this._editor) {
       return;
@@ -182,6 +184,10 @@ export default class NativeQueryEditor extends Component {
       if (aceMode.indexOf("sql") >= 0) {
         this._editor.getSession().$mode.$behaviour = new SQLBehaviour();
       }
+    }
+
+    if (this.props.width !== prevProps.width && this._editor) {
+      this._editor.resize();
     }
   }
 
