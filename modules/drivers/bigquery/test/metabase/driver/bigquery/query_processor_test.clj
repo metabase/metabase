@@ -8,6 +8,7 @@
              [query-processor-test :as qp.test]
              [util :as u]]
             [metabase.driver.bigquery :as bigquery]
+            [metabase.driver.bigquery.query-processor :as bigquery.qp]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models
              [database :refer [Database]]
@@ -215,6 +216,17 @@
                            :params ["Red Medicine"]}})))
         (str "Do we properly unprepare, and can we execute, queries that still have parameters for one reason or "
              "another? (EE #277)"))))
+
+(deftest reconcile-temporal-types-test
+  (letfn [(reconcile [clause]
+            (#'bigquery.qp/reconcile-temporal-types clause))]
+    (is (= [:=
+            [:field-literal "date" :type/DateTime]
+            [:absolute-datetime (t/local-date-time "2020-01-01T00:00") :default]]
+           (reconcile
+            [:=
+             [:field-literal "date" :type/DateTime]
+             [:absolute-datetime (t/zoned-date-time "2020-01-01T00:00Z[UTC]") :default]])))))
 
 (deftest between-test
   (testing "Make sure :between clauses reconcile the temporal types of their args"

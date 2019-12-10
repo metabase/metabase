@@ -2,13 +2,11 @@
   (:require [clojure.test :refer :all]
             [metabase
              [driver :as driver]
+             [models :refer [Field Table]]
              [query-processor :as qp]
              [query-processor-test :as qp.test]
              [sync :as sync]]
             [metabase.db.metadata-queries :as metadata-queries]
-            [metabase.models
-             [field :refer [Field]]
-             [table :refer [Table]]]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -99,3 +97,45 @@
                      {:fields   [$id $date]
                       :filter   [:= $date "2015-11-19"]
                       :order-by [[:asc $id]]})))))))))
+
+(defn- do-with-datetime-timestamp-table [f]
+  (driver/with-driver :bigquery
+    (let [table-name (name (munge (gensym "table_")))]
+      (data/with-temp-copy-of-db
+        (try
+          (bigquery.tx/execute!
+           (format "CREATE TABLE `test_data.%s` ( ts TIMESTAMP, dt DATETIME )" table-name))
+          (bigquery.tx/execute!
+           (format "INSERT INTO `test_data.%s` (ts, dt) VALUES (TIMESTAMP \"2020-01-01 00:00:00 UTC\", DATETIME \"2020-01-01 00:00:00\")"
+                   table-name))
+          (sync/sync-database! (data/db))
+          (f table-name)
+          (finally
+            (bigquery.tx/execute! "DROP TABLE IF EXISTS `test_data.%s`" table-name)))))))
+
+(deftest filter-by-datetime-timestamp-test
+  (datasets/test-driver :bigquery
+    (testing "Make sure we can filter against different types of BigQuery temporal columns (#11222)"
+      (do-with-datetime-timestamp-table
+       (fn [table-name]
+         (doseq [column [:ts :dt]]
+           (testing (format "Filtering against %s column" column)
+             (doseq [->clause     [(fn [f x] [:= f x])
+                                   (fn [f x] [:>= f x])
+                                   (fn [f x] [:<= f x])
+                                   ;; TODO - we should also test `:<`, `:>`, and `:!=`
+                                   (fn [f x] [:between f x x])]
+                     field-clause [[:field-id (data/id table-name column)]
+                                   [:datetime-field [:field-id (data/id table-name column)] :default]
+                                   [:datetime-field [:field-id (data/id table-name column)] :day]
+                                   [:datetime-field [:field-id (data/id table-name column)] :month]
+                                   [:datetime-field [:field-id (data/id table-name column)] :year]]
+                     s            ["2020-01-01" "2020-01-01T00:00:00"]
+                     :let         [filter-clause (->clause field-clause s)]]
+               (println (format "MBQL filter clause = %s" (pr-str filter-clause))) ; NOCOMMIT
+               (testing (format "MBQL filter clause = %s" (pr-str filter-clause))
+                 (is (= [["2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z"]]
+                        (qp.test/rows
+                          (data/run-mbql-query nil
+                            {:source-table (data/id table-name)
+                             :filter       filter-clause})))))))))))))

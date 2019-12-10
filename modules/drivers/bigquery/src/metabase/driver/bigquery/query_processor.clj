@@ -146,24 +146,24 @@
   (fn [t-type x]
     [t-type (mbql.u/dispatch-by-clause-name-or-class x)]))
 
-(defmethod ->temporal-type [:date LocalDate]          [_ t] t)
-(defmethod ->temporal-type [:time LocalDate]          [_ t] (throw (UnsupportedOperationException. (tru "Cannot convert date to time"))))
-(defmethod ->temporal-type [:datetime LocalDate]      [_ t] (t/local-date-time t (t/local-time 0)))
-(defmethod ->temporal-type [:date LocalTime]          [_ t] (throw (UnsupportedOperationException. (tru "Cannot convert time to a date"))))
-(defmethod ->temporal-type [:time LocalTime]          [_ t] t)
-(defmethod ->temporal-type [:datetime LocalTime]      [_ t] (throw (UnsupportedOperationException. (tru "Cannot convert time to a datetime"))))
-(defmethod ->temporal-type [:date OffsetTime]         [_ t] (t/local-date t))
-(defmethod ->temporal-type [:time OffsetTime]         [_ t] (t/local-time t))
-(defmethod ->temporal-type [:datetime OffsetTime]     [_ t] t)
 (defmethod ->temporal-type [:date LocalDateTime]      [_ t] (t/local-date t))
-(defmethod ->temporal-type [:time LocalDateTime]      [_ t] (t/local-time t))
-(defmethod ->temporal-type [:datetime LocalDateTime]  [_ t] t)
+(defmethod ->temporal-type [:date LocalDate]          [_ t] t)
+(defmethod ->temporal-type [:date LocalTime]          [_ t] (throw (UnsupportedOperationException. (tru "Cannot convert time to a date"))))
 (defmethod ->temporal-type [:date OffsetDateTime]     [_ t] (t/local-date t))
-(defmethod ->temporal-type [:time OffsetDateTime]     [_ t] (t/local-time t))
-(defmethod ->temporal-type [:datetime OffsetDateTime] [_ t] t)
+(defmethod ->temporal-type [:date OffsetTime]         [_ t] (throw (UnsupportedOperationException. (tru "Cannot convert time to a date"))))
 (defmethod ->temporal-type [:date ZonedDateTime]      [_ t] (t/local-date t))
+(defmethod ->temporal-type [:time LocalDateTime]      [_ t] (t/local-time t))
+(defmethod ->temporal-type [:time LocalDate]          [_ t] (throw (UnsupportedOperationException. (tru "Cannot convert date to time"))))
+(defmethod ->temporal-type [:time LocalTime]          [_ t] t)
+(defmethod ->temporal-type [:time OffsetDateTime]     [_ t] (t/local-time t))
+(defmethod ->temporal-type [:time OffsetTime]         [_ t] (t/local-time t))
 (defmethod ->temporal-type [:time ZonedDateTime]      [_ t] (t/local-time t))
-(defmethod ->temporal-type [:datetime ZonedDateTime]  [_ t] t)
+(defmethod ->temporal-type [:datetime LocalDateTime]  [_ t] t)
+(defmethod ->temporal-type [:datetime LocalDate]      [_ t] (t/local-date-time t (t/local-time 0)))
+(defmethod ->temporal-type [:datetime LocalTime]      [_ t] (throw (UnsupportedOperationException. (tru "Cannot convert time to a datetime"))))
+(defmethod ->temporal-type [:datetime OffsetDateTime] [_ t] (t/local-date-time t))
+(defmethod ->temporal-type [:datetime OffsetTime]     [_ t] (throw (UnsupportedOperationException. (tru "Cannot convert time to a datetime"))))
+(defmethod ->temporal-type [:datetime ZonedDateTime]  [_ t] (t/local-date-time t))
 
 (defmethod ->temporal-type :default
   [t-type x]
@@ -174,6 +174,18 @@
       :date     (vary-meta (hx/cast :date      (sql.qp/->honeysql :bigquery x)) assoc :mbql/temporal-type :date)
       :time     (vary-meta (hx/cast :time      (sql.qp/->honeysql :bigquery x)) assoc :mbql/temporal-type :time)
       :datetime (vary-meta (hx/cast :timestamp (sql.qp/->honeysql :bigquery x)) assoc :mbql/temporal-type :timestamp))))
+
+(defmethod ->temporal-type [:date :absolute-datetime]
+  [_ [_ t unit]]
+  [:absolute-datetime (->temporal-type :date t) unit])
+
+(defmethod ->temporal-type [:time :absolute-datetime]
+  [_ [_ t unit]]
+  [:absolute-datetime (->temporal-type :time t) unit])
+
+(defmethod ->temporal-type [:datetime :absolute-datetime]
+  [_ [_ t unit]]
+  [:absolute-datetime (->temporal-type :datetime t) unit])
 
 (defn- trunc
   "Generate a SQL call to `timestamp_truc`, `date_trunc`, or `time_trunc` (depending on the `temporal-type` of `expr`)."
@@ -353,16 +365,55 @@
 (defmethod sql.qp/->honeysql [:bigquery :asc]  [driver clause] (alias-order-by-field driver clause))
 (defmethod sql.qp/->honeysql [:bigquery :desc] [driver clause] (alias-order-by-field driver clause))
 
-;; because between clauses are generated for SQL params we need to be careful that the temporal types line up
+;; be careful that the temporal types line up for the filter clauses that can have them
+(defn reconcile-temporal-types [[clause-type f & args :as clause]]
+  (if-let [f-type (or (temporal-type f) (some temporal-type args))]
+    (do
+      (log/tracef "Coercing args in %s to temporal type %s" (binding [*print-meta* true] (pr-str clause)) f-type)
+      (into [clause-type] (map (partial ->temporal-type f-type) (cons f args))))
+    clause))
+
 (defmethod sql.qp/->honeysql [:bigquery :between]
-  [driver [_ f x y :as clause]]
+  [driver clause]
   ((get-method sql.qp/->honeysql [:sql :between])
    driver
-   (if-let [f-type (or (temporal-type f) (temporal-type x))]
-     (do
-       (log/tracef "Coercing args in %s to temporal type %s" (binding [*print-meta* true] (pr-str clause)) f-type)
-       [:between (->temporal-type f-type f) (->temporal-type f-type x) (->temporal-type f-type y)])
-     clause)))
+   (reconcile-temporal-types clause)))
+
+(defmethod sql.qp/->honeysql [:bigquery :>]
+  [driver clause]
+  ((get-method sql.qp/->honeysql [:sql :>])
+   driver
+   (reconcile-temporal-types clause)))
+
+(defmethod sql.qp/->honeysql [:bigquery :<]
+  [driver clause]
+  ((get-method sql.qp/->honeysql [:sql :<])
+   driver
+   (reconcile-temporal-types clause)))
+
+(defmethod sql.qp/->honeysql [:bigquery :>=]
+  [driver clause]
+  ((get-method sql.qp/->honeysql [:sql :>=])
+   driver
+   (reconcile-temporal-types clause)))
+
+(defmethod sql.qp/->honeysql [:bigquery :<=]
+  [driver clause]
+  ((get-method sql.qp/->honeysql [:sql :<=])
+   driver
+   (reconcile-temporal-types clause)))
+
+(defmethod sql.qp/->honeysql [:bigquery :=]
+  [driver clause]
+  ((get-method sql.qp/->honeysql [:sql :=])
+   driver
+   (reconcile-temporal-types clause)))
+
+(defmethod sql.qp/->honeysql [:bigquery :!=]
+  [driver clause]
+  ((get-method sql.qp/->honeysql [:sql :!=])
+   driver
+   (reconcile-temporal-types clause)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
