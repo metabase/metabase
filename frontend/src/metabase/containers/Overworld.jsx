@@ -148,7 +148,7 @@ class Overworld extends React.Component {
                                   }
                                 >
                                   <Box>
-                                    {t`These won’t show up on the homepage for any of your users anymore, but you can always get to x-rays by clicking on Browse Data in the main navigation, then clicking on the lightning bolt :zap: icon on one of your tables.`}
+                                    {t`These won’t show up on the homepage for any of your users anymore, but you can always get to x-rays by clicking on Browse Data in the main navigation, then clicking on the lightning bolt icon on one of your tables.`}
                                   </Box>
                                 </ModalWithTrigger>
                               )}
@@ -295,7 +295,7 @@ class Overworld extends React.Component {
                           }
                         >
                           <Box>
-                            {t`Our Data” won’t show up on the homepage for any of your users anymore, but you can always browse through your databases and tables by clicking Browse Data in the main navigation.`}
+                            {t`"Our Data" won’t show up on the homepage for any of your users anymore, but you can always browse through your databases and tables by clicking Browse Data in the main navigation.`}
                           </Box>
                         </ModalWithTrigger>
                       )}
