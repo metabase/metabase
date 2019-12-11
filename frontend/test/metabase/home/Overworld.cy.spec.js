@@ -12,7 +12,7 @@ describe("homepage", () => {
         cy.request("PUT", "api/setting/show-homepage-data", { value: true });
         cy.request("PUT", "api/setting/show-homepage-xrays", { value: true });
       });
-      xit('should be possible for an admin to hide the "Our data" section', () => {
+      it('should be possible for an admin to hide the "Our data" section', () => {
         cy.server();
         cy.route("PUT", "**/show-homepage-data").as("hideData");
         cy.visit("/");
@@ -25,7 +25,7 @@ describe("homepage", () => {
         cy.contains("Sample Dataset").should("have.length", 0);
         // cleanup
       });
-      xit('should be possible for an admin to hide the "xrays" section', () => {
+      it('should be possible for an admin to hide the "xrays" section', () => {
         cy.server();
         cy.route("PUT", "**/show-homepage-xrays").as("hideXrays");
         cy.visit("/");
@@ -38,7 +38,7 @@ describe("homepage", () => {
     });
     describe("as regular folk", () => {
       beforeEach(signInAsNormalUser);
-      xit("should not be possible for them to see the controls", () => {
+      it("should not be possible for them to see the controls", () => {
         cy.visit("/");
         cy.contains("Our data")
           .find(".Icon-close")
