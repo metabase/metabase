@@ -16,10 +16,19 @@
     (is (= "ga::B"
            (#'ga.qp/built-in-segment {:filter [:and [:segment 100] [:segment "ga::B"]]})))))
 
-(deftest iso-year-iso-week-test
+(deftest parse-year-week-test
   (testing "Make sure we properly parse isoYearIsoWeeks (#9244)"
-    (is (= #t "2018-12-31"
-           ((#'ga.qp/ga-dimension->date-format-fn "ga:isoYearIsoWeek") "201901")))))
+    (let [f (#'ga.qp/ga-dimension->date-format-fn "ga:isoYearIsoWeek")]
+      (is (= #t "2018-12-31"
+             (f "201901")))
+      (is (= #t "2019-12-09"
+             (f "201950")))))
+  (testing "Make sure we properly parse (non-ISO) yearWeeks"
+    (let [f (#'ga.qp/ga-dimension->date-format-fn "ga:yearWeek")]
+      (is (= #t "2018-12-30"
+             (f "201901")))
+      (is (= #t "2019-12-08"
+             (f "201950"))))))
 
 (deftest filter-test
   (testing "absolute datetimes"

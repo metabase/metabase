@@ -153,6 +153,22 @@
            (u.date/format-sql (t/zoned-date-time "2019-11-01T18:39:00-07:00[US/Pacific]")))
         "should get formatted as the same way as an OffsetDateTime")))
 
+(deftest adjuster-test
+  (let [now (t/zoned-date-time "2019-12-10T17:17:00-08:00[US/Pacific]")]
+    (testing "adjust temporal value to first day of week (Sunday)"
+      (is (= (t/zoned-date-time "2019-12-08T17:17-08:00[US/Pacific]")
+             (t/adjust now (u.date/adjuster :first-day-of-week)))))
+    (testing "adjust temporal value to first day of ISO week (Monday)"
+      (is (= (t/zoned-date-time "2019-12-09T17:17-08:00[US/Pacific]")
+             (t/adjust now (u.date/adjuster :first-day-of-iso-week)))))
+    (testing "adjust temporal value to first day of first week of year (previous or same Sunday as first day of year)"
+      (is (= (t/zoned-date-time "2018-12-30T17:17-08:00[US/Pacific]")
+             (t/adjust now (u.date/adjuster :first-week-of-year))
+             (t/adjust now (u.date/adjuster :week-of-year 1)))))
+    (testing "adjust temporal value to the 50th week of the year"
+      (is (= (t/zoned-date-time "2019-12-08T17:17-08:00[US/Pacific]")
+             (t/adjust now (u.date/adjuster :week-of-year 50)))))))
+
 (deftest extract-test
   (testing "u.date/extract with 2 args"
     ;; everything is at `Sunday October 27th 2019 2:03:40.555 PM` or subset thereof
