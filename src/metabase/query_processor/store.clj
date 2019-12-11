@@ -116,7 +116,7 @@
 
 ;;; ------------------------------------------ Saving objects in the Store -------------------------------------------
 
-(s/defn ^:private store-database!
+(s/defn store-database!
   "Store the Database referenced by this query for the duration of the current query execution. Throws an Exception if
   database is invalid or doesn't have all the required keys."
   [database :- DatabaseInstanceWithRequiredStoreKeys]

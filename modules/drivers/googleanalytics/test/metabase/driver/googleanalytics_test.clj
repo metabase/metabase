@@ -4,22 +4,18 @@
             [java-time :as t]
             [medley.core :as m]
             [metabase
+             [models :refer [Card Database Field Table]]
              [query-processor :as qp]
+             [test :as mt]
              [util :as u]]
             [metabase.driver.googleanalytics :as ga]
             [metabase.driver.googleanalytics.query-processor :as ga.qp]
-            [metabase.models
-             [card :refer [Card]]
-             [database :refer [Database]]
-             [field :refer [Field]]
-             [table :refer [Table]]]
             [metabase.query-processor.store :as qp.store]
             [metabase.test
              [data :as data]
              [fixtures :as fixtures]
              [util :as tu]]
             [metabase.test.data.users :as users]
-            [metabase.test.util.timezone :as tu.timezone]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -93,60 +89,61 @@
                                            [:> (ga-date-field :day) [:absolute-datetime (t/local-date "2016-09-09") :day]]]}})))))
 
 (deftest filter-by-relative-date-test
-  ;; system timezone should not affect the queries that get generated
-  (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-    (tu.timezone/with-system-timezone-id system-timezone-id
-      (t/with-clock (t/mock-clock (t/instant (t/zoned-date-time
-                                              (t/local-date "2019-11-18")
-                                              (t/local-time 0)
-                                              (t/zone-id system-timezone-id)))
-                                  (t/zone-id system-timezone-id))
-        (testing "last month"
-          (is (= (ga-query {:start-date "2019-10-01"
-                            :end-date   "2019-10-31"})
-                 (mbql->native {:query {:filter [:= (ga-date-field :month) [:relative-datetime -1 :month]]}}))))
-        (testing "this month"
-          (is (= (ga-query {:start-date "2019-11-01"
-                            :end-date   "2019-11-30"})
-                 (mbql->native {:query {:filter [:= (ga-date-field :month) [:relative-datetime 0 :month]]}}))))
-        (testing "next month"
-          (is (= (ga-query {:start-date "2019-12-01"
-                            :end-date   "2019-12-31"})
-                 (mbql->native {:query {:filter [:= (ga-date-field :month) [:relative-datetime 1 :month]]}}))))
-        (testing "month is 2 months from current month"
-          (is (= (ga-query {:start-date "2020-01-01"
-                            :end-date   "2020-01-31"})
-                 (mbql->native {:query {:filter [:= (ga-date-field :month) [:relative-datetime 2 :month]]}}))))
-        (testing "last year"
-          (is (= (ga-query {:start-date "2018-01-01"
-                            :end-date   "2018-12-31"})
-                 (mbql->native {:query {:filter [:= (ga-date-field :year) [:relative-datetime -1 :year]]}}))))
-        (testing "day is > yesterday (start-date should be today)"
-          (is (= (ga-query {:start-date "today", :end-date "today"})
-                 (mbql->native {:query {:filter [:> (ga-date-field :day) [:relative-datetime -1 :day]]}}))))
-        (testing "day is > 30 days ago (start-date should be 29 days ago)"
-          (is (= (ga-query {:start-date "29daysAgo"
-                            :end-date   "today"})
-                 (mbql->native {:query {:filter [:> (ga-date-field :day) [:relative-datetime -30 :day]]}}))))
-        (testing "day is >= 30 days ago (start-date should be 30 days ago)"
-          (is (= (ga-query {:start-date "30daysAgo"
-                            :end-date   "today"})
-                 (mbql->native {:query {:filter [:>= (ga-date-field :day) [:relative-datetime -30 :day]]}}))))
-        (testing "day is within last year"
-          (is (= (ga-query {:start-date "2018-11-19"
-                            :end-date   "today"})
-                 (mbql->native {:query {:filter [:> (ga-date-field :day) [:relative-datetime -1 :year]]}}))))
-        (testing "year > last year"
-          (is (= (ga-query {:start-date "2019-01-01"
-                            :end-date   "today"})
-                 (mbql->native {:query {:filter [:> (ga-date-field :year) [:relative-datetime -1 :year]]}}))))
-        (testing "month is between 4 months ago and 1 month ago (:between is inclusive) (i.e., July, August, September, or Octover)"
-          (is (= (ga-query {:start-date "2019-07-01", :end-date "2019-10-31"})
-                 (mbql->native
-                  {:query {:filter [:between
-                                    (ga-date-field :month)
-                                    [:relative-datetime -4 :month]
-                                    [:relative-datetime -1 :month]]}}))))))))
+  (mt/with-database-timezone-id nil
+    (testing "\nsystem timezone should not affect the queries that get generated"
+      (doseq [system-timezone-id ["UTC" "US/Pacific"]]
+        (mt/with-system-timezone-id system-timezone-id
+          (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
+                                                   (t/local-date "2019-11-18")
+                                                   (t/local-time 0)
+                                                   (t/zone-id system-timezone-id)))
+                                       (t/zone-id system-timezone-id))
+            (testing "last month"
+              (is (= (ga-query {:start-date "2019-10-01"
+                                :end-date   "2019-10-31"})
+                     (mbql->native {:query {:filter [:= (ga-date-field :month) [:relative-datetime -1 :month]]}}))))
+            (testing "this month"
+              (is (= (ga-query {:start-date "2019-11-01"
+                                :end-date   "2019-11-30"})
+                     (mbql->native {:query {:filter [:= (ga-date-field :month) [:relative-datetime 0 :month]]}}))))
+            (testing "next month"
+              (is (= (ga-query {:start-date "2019-12-01"
+                                :end-date   "2019-12-31"})
+                     (mbql->native {:query {:filter [:= (ga-date-field :month) [:relative-datetime 1 :month]]}}))))
+            (testing "month is 2 months from current month"
+              (is (= (ga-query {:start-date "2020-01-01"
+                                :end-date   "2020-01-31"})
+                     (mbql->native {:query {:filter [:= (ga-date-field :month) [:relative-datetime 2 :month]]}}))))
+            (testing "last year"
+              (is (= (ga-query {:start-date "2018-01-01"
+                                :end-date   "2018-12-31"})
+                     (mbql->native {:query {:filter [:= (ga-date-field :year) [:relative-datetime -1 :year]]}}))))
+            (testing "day is > yesterday (start-date should be today)"
+              (is (= (ga-query {:start-date "today", :end-date "today"})
+                     (mbql->native {:query {:filter [:> (ga-date-field :day) [:relative-datetime -1 :day]]}}))))
+            (testing "day is > 30 days ago (start-date should be 29 days ago)"
+              (is (= (ga-query {:start-date "29daysAgo"
+                                :end-date   "today"})
+                     (mbql->native {:query {:filter [:> (ga-date-field :day) [:relative-datetime -30 :day]]}}))))
+            (testing "day is >= 30 days ago (start-date should be 30 days ago)"
+              (is (= (ga-query {:start-date "30daysAgo"
+                                :end-date   "today"})
+                     (mbql->native {:query {:filter [:>= (ga-date-field :day) [:relative-datetime -30 :day]]}}))))
+            (testing "day is within last year"
+              (is (= (ga-query {:start-date "2018-11-19"
+                                :end-date   "today"})
+                     (mbql->native {:query {:filter [:> (ga-date-field :day) [:relative-datetime -1 :year]]}}))))
+            (testing "year > last year"
+              (is (= (ga-query {:start-date "2019-01-01"
+                                :end-date   "today"})
+                     (mbql->native {:query {:filter [:> (ga-date-field :year) [:relative-datetime -1 :year]]}}))))
+            (testing "month is between 4 months ago and 1 month ago (:between is inclusive) (i.e., July, August, September, or Octover)"
+              (is (= (ga-query {:start-date "2019-07-01", :end-date "2019-10-31"})
+                     (mbql->native
+                      {:query {:filter [:between
+                                        (ga-date-field :month)
+                                        [:relative-datetime -4 :month]
+                                        [:relative-datetime -1 :month]]}}))))))))))
 
 (deftest limit-test
   (is (= (ga-query {:max-results 25})
@@ -218,8 +215,8 @@
 (deftest almost-e2e-test-1
   ;; system timezone ID shouldn't affect generated query
   (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-    (tu.timezone/with-system-timezone-id system-timezone-id
-      (t/with-clock (t/mock-clock (t/instant (t/zoned-date-time
+    (mt/with-system-timezone-id system-timezone-id
+      (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                               (t/local-date "2019-11-18")
                                               (t/local-time 0)
                                               (t/zone-id system-timezone-id)))
@@ -249,8 +246,8 @@
 
 (deftest almost-e2e-test-2
   (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-    (tu.timezone/with-system-timezone-id system-timezone-id
-      (t/with-clock (t/mock-clock (t/instant (t/zoned-date-time
+    (mt/with-system-timezone-id system-timezone-id
+      (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                               (t/local-date "2019-11-18")
                                               (t/local-time 0)
                                               (t/zone-id system-timezone-id)))
@@ -265,8 +262,8 @@
 (deftest almost-e2e-test-3
   ;; system timezone ID shouldn't affect generated query
   (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-    (tu.timezone/with-system-timezone-id system-timezone-id
-      (t/with-clock (t/mock-clock (t/instant (t/zoned-date-time
+    (mt/with-system-timezone-id system-timezone-id
+      (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                               (t/local-date "2019-11-18")
                                               (t/local-time 0)
                                               (t/zone-id system-timezone-id)))
@@ -311,8 +308,8 @@
 (deftest almost-e2e-time-interval-test
   (testing "Make sure filtering by the previous 4 months actually filters against the right months (#10701)"
     (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-      (tu.timezone/with-system-timezone-id system-timezone-id
-        (t/with-clock (t/mock-clock (t/instant (t/zoned-date-time
+      (mt/with-system-timezone-id system-timezone-id
+        (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                                 (t/local-date "2019-11-18")
                                                 (t/local-time 0)
                                                 (t/zone-id system-timezone-id)))

@@ -186,8 +186,9 @@
 (require 'honeysql.types)
 (extend-protocol PrettyPrintable
   honeysql.types.SqlCall
-  (pretty [{fn-name :name, args :args}]
-    (apply list 'hsql/call fn-name args)))
+  (pretty [{fn-name :name, args :args, :as this}]
+    (with-meta (apply list 'hsql/call fn-name args)
+      (meta this))))
 
 (defmethod print-method honeysql.types.SqlCall
   [call writer]

@@ -27,12 +27,12 @@
                (substitute {:x 100} ["2" (param :x)]))
             "\"2{{x}}\" with x = 100 should be replaced with string \"2100\""))
       (testing "temporal params"
-        (is (= "2019-12-06T17:01:00-08:00"
+        (is (= "ISODate(\"2019-12-06T17:01:00-08:00\")"
                (substitute {:written-at #t "2019-12-06T17:01:00-08:00[America/Los_Angeles]"} [(param :written-at)]))))
       (testing "multiple params in one string"
-        (is (= "2019-12-06"
-               (substitute {:year 2019, :month 12, :day "06"} [(param :year) "-" (param :month) "-" (param :day)]))
-            "\"{{year}}-{{month}}-{{day}}\" should be replaced with \"2019-12-06\"")
+        (is (= "2019-12-10"
+               (substitute {:year 2019, :month 12, :day 10} [(param :year) "-" (param :month) "-" (param :day)]))
+            "\"{{year}}-{{month}}-{{day}}\" should be replaced with \"2019-12-09\"")
         (testing "some params missing"
           (is (thrown-with-msg? clojure.lang.ExceptionInfo
                                 #"missing required parameters: #\{:day\}"
@@ -45,8 +45,8 @@
       (testing "{{year}}[[-{{month}}[[-{{day}}]]]]"
         (let [params [(param :year) (optional "-" (param :month) (optional "-" (param :day)))]]
           (testing "with all params present"
-            (is (= "2019-12-06"
-                   (substitute {:year 2019, :month 12, :day "06"} params))))
+            (is (= "2019-12-10"
+                   (substitute {:year 2019, :month 12, :day 10} params))))
           (testing "with :year & :month present but not :day"
             (is (= "2019-12"
                    (substitute {:year 2019, :month 12} params))))

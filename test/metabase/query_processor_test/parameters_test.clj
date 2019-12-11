@@ -1,7 +1,9 @@
 (ns metabase.query-processor-test.parameters-test
   "Tests for support for parameterized queries in drivers that support it. (There are other tests for parameter support
   in various places; these are mainly for high-level verification that parameters are working.)"
-  (:require [cheshire.core :as json]
+  (:require [cheshire
+             [core :as json]
+             [generate :as json.generate]]
             [clojure
              [string :as str]
              [test :refer :all]]
@@ -11,7 +13,8 @@
              [models :refer [Field]]
              [query-processor :as qp]
              [test :as mt]
-             [util :as u]]))
+             [util :as u]])
+  (:import com.fasterxml.jackson.core.JsonGenerator))
 
 (defmulti native-count-query
   "Generate a native query for the count of rows in `table` matching a set of conditions defined by `field->type+value`,
@@ -36,18 +39,31 @@
                              :aggregation  [[:count]]
                              :filter       (into [:and]
                                                  (for [[i [field]] (map-indexed vector field->type+value)]
-                                                   [:= (mt/id table field) i]))})
+                                                   [:= [:field-id (mt/id table field)] i]))})
           {:keys [query]} (qp/query->native mbql-query)
           query           (reduce
-                           (fn [query [i [field]]]
-                             (str/replace query (re-pattern (format "= %d" i)) (format "= {{%s}}" (name field))))
+                           (fn [query [field]]
+                             ;; TODO — currently only supports one field
+                             (str/replace query (re-pattern #"= .*") (format "= {{%s}}" (name field))))
                            query
-                           (map-indexed vector field->type+value))]
+                           field->type+value)]
       (log/tracef "%s\n->\n%s\n->\n%s"
                   (pr-str (list 'native-count-query driver table field->type+value))
                   (pr-str mbql-query)
                   query)
       {:query query})))
+
+(defn- json-raw
+  "Wrap a string so it will be spliced directly into resulting JSON as-is. Analogous to HoneySQL `raw`."
+  [^String s]
+  (reify json.generate/JSONable
+    (to-json [_ generator]
+      (.writeRawValue ^JsonGenerator generator s))))
+
+(deftest json-raw-test
+  (testing "Make sure the `json-raw` util fn actually works the way we expect it to"
+    (is (= "{\"x\":{{param}}}"
+           (json/generate-string {:x (json-raw "{{param}}")})))))
 
 (defmethod native-count-query :mongo
   [driver table field->type+value]
@@ -55,12 +71,8 @@
     {:projections [:count]
      :query       (json/generate-string
                    [{:$match (into {} (for [[field [param-type]] field->type+value
-                                            :let                 [base-type (:base_type (Field (mt/id table field)))
-                                                                  xform     (case param-type
-                                                                              :number      (fn [k] {:$numberInt k})
-                                                                              :text        identity
-                                                                              :date/single (fn [k] {:$date k}))]]
-                                        [(name field) (xform (format "{{%s}}" (name field)))]))}
+                                            :let                 [base-type (:base_type (Field (mt/id table field)))]]
+                                        [(name field) (json-raw (format "{{%s}}" (name field)))]))}
                     {:$group {"_id" nil, "count" {:$sum 1}}}
                     {:$sort {"_id" 1}}
                     {:$project {"_id" false, "count" true}}])
@@ -107,6 +119,8 @@
       (testing "date params"
         (count= 1
                 :users {:last_login [:date/single "2014-08-02T09:30Z"]})))))
+
+;; TODO - tests for optional params
 
 ;; TODO - field-filter params, only for drivers that support `:native-parameters-field-filters`. Currently, this is
 ;; only SQL, and this feature is tested elsewhere. But we should add some tests here too.

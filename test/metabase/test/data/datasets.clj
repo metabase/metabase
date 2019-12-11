@@ -51,7 +51,7 @@
   {:style/indent 1}
   [driver & body]
   `(with-driver-when-testing ~driver
-     (t/testing (colorize/cyan ~driver)
+     (t/testing (str "\n" (colorize/cyan ~driver))
        ~@body)))
 
 (defmacro test-drivers
@@ -78,7 +78,7 @@
   ;; speeds up loading of metabase.driver.query-processor-test significantly
   (let [symb (symbol (str "expect-with-drivers-" (hash &form)))]
     `(t/deftest ~symb
-       (t/testing (format ~(str (name (ns-name *ns*)) ":%d") (:line (meta #'~symb)))
+       (t/testing (str "\n" (format ~(str (name (ns-name *ns*)) ":%d") (:line (meta #'~symb))))
          (test-drivers ~drivers
            (t/is (~'expect= ~expected ~actual)))))))
 
