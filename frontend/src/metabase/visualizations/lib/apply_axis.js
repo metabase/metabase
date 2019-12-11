@@ -8,7 +8,8 @@ import moment from "moment";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { formatValue } from "metabase/lib/formatting";
 
-import { computeTimeseriesTicksInterval, timeseriesScale } from "./timeseries";
+import { computeTimeseriesTicksInterval } from "./timeseries";
+import timeseriesScale from "./timeseriesScale";
 import { isMultipleOf, getModuloScaleFactor } from "./numeric";
 import { getFriendlyName } from "./utils";
 import { isHistogram } from "./renderer_utils";
