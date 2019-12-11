@@ -3,7 +3,8 @@
   (:require [clojure.test :refer :all]
             [metabase
              [driver :as driver]
-             [query-processor-test :as qp.test]]
+             [query-processor-test :as qp.test]
+             [test :as mt]]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]))
 
@@ -119,34 +120,30 @@
     (data/run-mbql-query venues
       {:filter [:inside $latitude $longitude 10.0649 -165.379 10.0641 -165.371]})))
 
-;;; FILTER - `is-null` & `not-null` on datetime columns
-(qp.test/expect-with-non-timeseries-dbs
-  [1000]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query checkins
-        {:aggregation [[:count]]
-         :filter      [:not-null $date]}))))
+(deftest is-null-test
+  (mt/test-drivers (mt/normal-drivers)
+    (let [result (qp.test/first-row (data/run-mbql-query checkins
+                                      {:aggregation [[:count]]
+                                       :filter      [:is-null $date]}))]
+      ;; Some DBs like Mongo don't return any results at all in this case, and there's no easy workaround
+      (is (= true
+             (contains? #{[0] [0M] [nil] nil} result))))))
 
-;; Creates a query that uses a field-literal. Normally our test queries will use a field placeholder, but
-;; https://github.com/metabase/metabase/issues/7381 is only triggered by a field literal
-(qp.test/expect-with-non-timeseries-dbs
-  [1000]
-  (qp.test/first-row
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query checkins
-        {:aggregation [[:count]]
-         :filter      ["NOT_NULL"
-                       ["field-id"
-                        ["field-literal" (data/format-name "date") "type/DateTime"]]]}))))
-
-(qp.test/expect-with-non-timeseries-dbs
-  true
-  (let [result (qp.test/first-row (data/run-mbql-query checkins
-                            {:aggregation [[:count]]
-                             :filter      [:is-null $date]}))]
-    ;; Some DBs like Mongo don't return any results at all in this case, and there's no easy workaround
-    (contains? #{[0] [0M] [nil] nil} result)))
+(deftest not-null-test
+  (mt/test-drivers (mt/normal-drivers)
+    (is (= [1000]
+           (qp.test/first-row
+             (qp.test/format-rows-by [int]
+               (data/run-mbql-query checkins
+                 {:aggregation [[:count]]
+                  :filter      [:not-null $date]})))))
+    (testing "Make sure :not-null filters work correctly with field literals (#7381)"
+      (is (= [1000]
+             (qp.test/first-row
+               (qp.test/format-rows-by [int]
+                 (data/run-mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:not-null *date]}))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -1057,7 +1057,7 @@
   (testing "Additional tests for filtering against various datetime bucketing units that aren't tested above"
     (mt/test-drivers (mt/normal-drivers)
       (doseq [[expected-count unit filter-value] addition-unit-filtering-vals]
-        (testing unit
+        (testing (format "\nunit = %s" unit)
           (let [result (count-of-checkins unit filter-value)]
             (if (integer? expected-count)
               (is (= expected-count result)
