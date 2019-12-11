@@ -149,12 +149,20 @@
   [_]
   :time)
 
+(defmethod temporal-type :datetime-field
+  [[_ field unit]]
+  ;; date extraction operations result in integers, so the type of the expression shouldn't be a temporal type
+  (if (u.date/extract-units unit)
+    nil
+    (temporal-type field)))
+
 (defmethod temporal-type :default
   [x]
-  (or (:bigquery/temporal-type (meta x))
-      (mbql.u/match-one x
-        [:field-id id]               (temporal-type (qp.store/field id))
-        [:field-literal _ base-type] (base-type->temporal-type base-type))))
+  (if (contains? (meta x) :bigquery/temporal-type)
+    (:bigquery/temporal-type (meta x))
+    (mbql.u/match-one x
+      [:field-id id]               (temporal-type (qp.store/field id))
+      [:field-literal _ base-type] (base-type->temporal-type base-type))))
 
 (defmulti ^:private ->temporal-type
   {:arglists '([target-type x])}
@@ -197,22 +205,36 @@
 
 (defmethod ->temporal-type :default
   [target-type x]
-  (if (= (temporal-type x) target-type)
+  (cond
+    (nil? x)
+    nil
+
+    (= (temporal-type x) target-type)
     (vary-meta x assoc :bigquery/temporal-type target-type)
-    (let [honeysql-form (sql.qp/->honeysql :bigquery x)]
-      (if (= (temporal-type honeysql-form) target-type)
-        (vary-meta honeysql-form assoc :bigquery/temporal-type target-type)
-        (if-let [bigquery-type (case target-type
-                                 :date      :date
-                                 :time      :time
-                                 :datetime  :datetime
-                                 :timestamp :timestamp
-                                 nil)]
-          (do
-            (log/tracef "Casting %s (temporal type = %s) to %s" (binding [*print-meta* true] (pr-str x)) (temporal-type x) bigquery-type)
-            (with-meta (hx/cast bigquery-type (sql.qp/->honeysql :bigquery x))
-              {:bigquery/temporal-type target-type}))
-          x)))))
+
+    :else
+    (let [hsql-form     (sql.qp/->honeysql :bigquery x)
+          bigquery-type (case target-type
+                          :date      :date
+                          :time      :time
+                          :datetime  :datetime
+                          :timestamp :timestamp
+                          nil)]
+      (cond
+        (nil? hsql-form)
+        nil
+
+        (= (temporal-type hsql-form) target-type)
+        (vary-meta hsql-form assoc :bigquery/temporal-type target-type)
+
+        bigquery-type
+        (do
+          (log/tracef "Casting %s (temporal type = %s) to %s" (binding [*print-meta* true] (pr-str x)) (temporal-type x) bigquery-type)
+          (with-meta (hx/cast bigquery-type (sql.qp/->honeysql :bigquery x))
+            {:bigquery/temporal-type target-type}))
+
+        :else
+        x))))
 
 (defmethod ->temporal-type [:temporal-type :absolute-datetime]
   [target-type [_ t unit]]
@@ -232,7 +254,7 @@
 
 (defn- extract [unit expr]
   (with-meta (hsql/call :extract unit (->temporal-type :timestamp expr))
-    {:bigquery/temporal-type :timestamp}))
+    {:bigquery/temporal-type nil}))
 
 (defmethod sql.qp/date [:bigquery :minute]          [_ _ expr] (trunc   :minute    expr))
 (defmethod sql.qp/date [:bigquery :minute-of-hour]  [_ _ expr] (extract :minute    expr))

@@ -238,6 +238,14 @@
       :as    {:date     (hx/cast :date unix-ts)
               :datetime (hx/cast :datetime unix-ts)}})])
 
+(deftest temporal-type-test
+  (testing "Make sure we can detect temporal types correctly"
+    (doseq [[expr expected-type] {[:field-literal "x" :type/DateTime]                                :datetime
+                                  [:datetime-field [:field-literal "x" :type/DateTime] :day-of-week] nil}]
+      (testing (format "\n(temporal-type %s)" (binding [*print-meta* true] (pr-str expr)))
+        (is (= expected-type
+               (#'bigquery.qp/temporal-type expr)))))))
+
 (deftest reconcile-temporal-types-test
   (mt/with-everything-store
     (tt/with-temp* [Field [date-field      {:name "date", :base_type :type/Date}]

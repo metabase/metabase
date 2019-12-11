@@ -36,13 +36,14 @@
                              :aggregation  [[:count]]
                              :filter       (into [:and]
                                                  (for [[i [field]] (map-indexed vector field->type+value)]
-                                                   [:= (mt/id table field) i]))})
+                                                   [:= [:field-id (mt/id table field)] i]))})
           {:keys [query]} (qp/query->native mbql-query)
           query           (reduce
-                           (fn [query [i [field]]]
-                             (str/replace query (re-pattern (format "= %d" i)) (format "= {{%s}}" (name field))))
+                           (fn [query [field]]
+                             ;; TODO — currently only supports one field
+                             (str/replace query (re-pattern #"= .*") (format "= {{%s}}" (name field))))
                            query
-                           (map-indexed vector field->type+value))]
+                           field->type+value)]
       (log/tracef "%s\n->\n%s\n->\n%s"
                   (pr-str (list 'native-count-query driver table field->type+value))
                   (pr-str mbql-query)
