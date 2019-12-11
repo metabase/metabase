@@ -29,9 +29,7 @@
              [pulse :refer [Pulse]]
              [setting :as setting :refer [Setting]]
              [user :refer [User]]]
-            [metabase.util
-             [date :as du]
-             [i18n :refer [trs]]]
+            [metabase.util.i18n :refer [trs]]
             [toucan
              [db :as db]
              [models :as models]])
@@ -42,8 +40,8 @@
 (models/defmodel DataMigrations :data_migrations)
 
 (defn- run-migration-if-needed!
-  "Run migration defined by MIGRATION-VAR if needed.
-   RAN-MIGRATIONS is a set of migrations names that have already been run.
+  "Run migration defined by `migration-var` if needed. `ran-migrations` is a set of migrations names that have already
+  been run.
 
      (run-migration-if-needed! #{\"migrate-base-types\"} #'set-card-database-and-table-ids)"
   [ran-migrations migration-var]
@@ -53,7 +51,7 @@
       (@migration-var)
       (db/insert! DataMigrations
         :id        migration-name
-        :timestamp (du/new-sql-timestamp)))))
+        :timestamp :%now))))
 
 (def ^:private data-migrations (atom []))
 

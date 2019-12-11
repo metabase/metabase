@@ -22,41 +22,38 @@
              [datasets :as datasets :refer [expect-with-driver]]
              [oracle :as oracle.tx]
              [sql :as sql.tx]]
+            [metabase.test.data.sql.ddl :as ddl]
             [metabase.test.util.log :as tu.log]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.util.test :as tt]))
 
 (deftest connection-details->spec-test
-  (are [message expected-spec details] (is (= expected-spec
-                                              (sql-jdbc.conn/connection-details->spec :oracle details))
-                                           message)
-    "You should be able to connect with an SID"
-    {:classname                   "oracle.jdbc.OracleDriver"
-     :subprotocol                 "oracle:thin"
-     :subname                     "@localhost:1521:ORCL"
-     :oracle.jdbc.J2EE13Compliant true}
-    {:host "localhost"
-     :port 1521
-     :sid  "ORCL"}
-
-    "You should be able to specify a Service Name with no SID"
-    {:classname                   "oracle.jdbc.OracleDriver"
-     :subprotocol                 "oracle:thin"
-     :subname                     "@localhost:1521/MyCoolService"
-     :oracle.jdbc.J2EE13Compliant true}
-    {:host         "localhost"
-     :port         1521
-     :service-name "MyCoolService"}
-
-    "You should be able to specifiy a Service Name *and* an SID"
-    {:classname                   "oracle.jdbc.OracleDriver"
-     :subprotocol                 "oracle:thin"
-     :subname                     "@localhost:1521:ORCL/MyCoolService"
-     :oracle.jdbc.J2EE13Compliant true}
-    {:host         "localhost"
-     :port         1521
-     :service-name "MyCoolService"
-     :sid          "ORCL"}))
+  (doseq [[message expected-spec details]
+          [["You should be able to connect with an SID"
+            {:classname   "oracle.jdbc.OracleDriver"
+             :subprotocol "oracle:thin"
+             :subname     "@localhost:1521:ORCL"}
+            {:host "localhost"
+             :port 1521
+             :sid  "ORCL"}]
+           ["You should be able to specify a Service Name with no SID"
+            {:classname   "oracle.jdbc.OracleDriver"
+             :subprotocol "oracle:thin"
+             :subname     "@localhost:1521/MyCoolService"}
+            {:host         "localhost"
+             :port         1521
+             :service-name "MyCoolService"}]
+           ["You should be able to specifiy a Service Name *and* an SID"
+            {:classname   "oracle.jdbc.OracleDriver"
+             :subprotocol "oracle:thin"
+             :subname     "@localhost:1521:ORCL/MyCoolService"}
+            {:host         "localhost"
+             :port         1521
+             :service-name "MyCoolService"
+             :sid          "ORCL"}]]]
+    (is (= expected-spec
+           (sql-jdbc.conn/connection-details->spec :oracle details))
+        message)))
 
 ;; no SID and not Service Name should throw an exception
 (expect
@@ -92,6 +89,17 @@
 (expect-with-driver :oracle
   "UTC"
   (tu/db-timezone-id))
+
+(deftest insert-rows-ddl-test
+  (is (= [[(str "INSERT ALL"
+                " INTO \"my_db\".\"my_table\" (\"col1\", \"col2\") VALUES (?, 1)"
+                " INTO \"my_db\".\"my_table\" (\"col1\", \"col2\") VALUES (?, 2) "
+                "SELECT * FROM dual")
+           "A"
+           "B"]]
+         (ddl/insert-rows-ddl-statements :oracle (hx/identifier :table "my_db" "my_table") [{:col1 "A", :col2 1}
+                                                                                            {:col1 "B", :col2 2}]))
+      "Make sure we're generating correct DDL for Oracle to insert all rows at once."))
 
 (defn- do-with-temp-user [f]
   (let [username (tu/random-name)]

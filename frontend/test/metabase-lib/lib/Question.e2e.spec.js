@@ -4,7 +4,7 @@ import {
   metadata,
 } from "__support__/sample_dataset_fixture";
 import Question from "metabase-lib/lib/Question";
-import { useSharedAdminLogin } from "__support__/e2e_tests";
+import { useSharedAdminLogin } from "__support__/e2e";
 import { NATIVE_QUERY_TEMPLATE } from "metabase-lib/lib/queries/NativeQuery";
 
 // TODO Atte Keinänen 6/22/17: This could include tests that run each "question drill action" (summarize etc)

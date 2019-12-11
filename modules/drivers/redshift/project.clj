@@ -1,4 +1,4 @@
-(defproject metabase/redshift-driver "1.0.0-SNAPSHOT-1.2.32.1056"
+(defproject metabase/redshift-driver "1.0.0-SNAPSHOT-1.2.36.1060"
   :min-lein-version "2.5.0"
 
   :repositories
@@ -6,11 +6,13 @@
 
 
   :dependencies
-  [[com.amazon.redshift/redshift-jdbc42-no-awssdk "1.2.32.1056"]]
+  [[com.amazon.redshift/redshift-jdbc42-no-awssdk "1.2.36.1060"]]
 
   :profiles
   {:provided
-   {:dependencies [[metabase-core "1.0.0-SNAPSHOT"]]}
+   {:dependencies
+    [[org.clojure/clojure "1.10.1"]
+     [metabase-core "1.0.0-SNAPSHOT"]]}
 
    :uberjar
    {:auto-clean    true

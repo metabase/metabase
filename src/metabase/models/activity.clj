@@ -10,7 +10,6 @@
              [metric :refer [Metric]]
              [pulse :refer [Pulse]]
              [segment :refer [Segment]]]
-            [metabase.util.date :as du]
             [toucan
              [db :as db]
              [models :as models]]))
@@ -52,7 +51,7 @@
 (models/defmodel Activity :activity)
 
 (defn- pre-insert [activity]
-  (let [defaults {:timestamp (du/new-sql-timestamp)
+  (let [defaults {:timestamp :%now
                   :details   {}}]
     (merge defaults activity)))
 
@@ -69,7 +68,6 @@
 
 
 ;;; ------------------------------------------------------ Etc. ------------------------------------------------------
-
 
 ;; ## Persistence Functions
 

@@ -22,7 +22,9 @@
     "prefer-const": [1, { "destructuring": "all" }]
   },
   "globals": {
-    "pending": false
+    "pending": false,
+    "cy": true,
+    "Cypress": true
   },
   "env": {
     "browser": true,

@@ -18,8 +18,8 @@
             [toucan.util.test :as tt]))
 
 (defn- remove-nonsense
-  "Remove fields that aren't really relevant in the output for TABLES and their FIELDS.
-   Done for the sake of making debugging some of the tests below easier."
+  "Remove fields that aren't really relevant in the output for `tables` and their `fields`. Done for the sake of making
+  debugging some of the tests below easier."
   [tables]
   (for [table tables]
     (-> (u/select-non-nil-keys table [:schema :name :fields])

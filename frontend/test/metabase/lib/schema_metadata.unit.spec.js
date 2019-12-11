@@ -1,12 +1,13 @@
 import {
   getFieldType,
-  DATE_TIME,
+  TEMPORAL,
   STRING,
   STRING_LIKE,
   NUMBER,
   BOOLEAN,
   LOCATION,
   COORDINATE,
+  PRIMARY_KEY,
   foreignKeyCountsByOriginTable,
 } from "metabase/lib/schema_metadata";
 
@@ -15,15 +16,15 @@ import { TYPE } from "metabase/lib/types";
 describe("schema_metadata", () => {
   describe("getFieldType", () => {
     it("should know a date", () => {
-      expect(getFieldType({ base_type: TYPE.Date })).toEqual(DATE_TIME);
-      expect(getFieldType({ base_type: TYPE.DateTime })).toEqual(DATE_TIME);
-      expect(getFieldType({ base_type: TYPE.Time })).toEqual(DATE_TIME);
+      expect(getFieldType({ base_type: TYPE.Date })).toEqual(TEMPORAL);
+      expect(getFieldType({ base_type: TYPE.DateTime })).toEqual(TEMPORAL);
+      expect(getFieldType({ base_type: TYPE.Time })).toEqual(TEMPORAL);
       expect(getFieldType({ special_type: TYPE.UNIXTimestampSeconds })).toEqual(
-        DATE_TIME,
+        TEMPORAL,
       );
       expect(
         getFieldType({ special_type: TYPE.UNIXTimestampMilliseconds }),
-      ).toEqual(DATE_TIME);
+      ).toEqual(TEMPORAL);
     });
     it("should know a number", () => {
       expect(getFieldType({ base_type: TYPE.BigInteger })).toEqual(NUMBER);
@@ -47,6 +48,11 @@ describe("schema_metadata", () => {
       expect(
         getFieldType({ base_type: TYPE.Text, special_type: TYPE.URL }),
       ).toEqual(STRING);
+    });
+    it("should know a pk", () => {
+      expect(
+        getFieldType({ base_type: TYPE.Integer, special_type: TYPE.PK }),
+      ).toEqual(PRIMARY_KEY);
     });
     it("should know a bool", () => {
       expect(getFieldType({ base_type: TYPE.Boolean })).toEqual(BOOLEAN);

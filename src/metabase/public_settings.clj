@@ -1,6 +1,7 @@
 (ns metabase.public-settings
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [java-time :as t]
             [metabase
              [config :as config]
              [types :as types]
@@ -15,7 +16,7 @@
              [i18n :refer [available-locales-with-names deferred-tru set-locale trs tru]]
              [password :as password]]
             [toucan.db :as db])
-  (:import [java.util TimeZone UUID]))
+  (:import java.util.UUID))
 
 (defsetting check-for-updates
   (deferred-tru "Identify when new versions of Metabase are available.")
@@ -171,6 +172,16 @@
   :type    :boolean
   :default true)
 
+(defsetting show-homepage-data
+  (deferred-tru "Whether or not to display data on the homepage. Admins might turn this off in order to direct users to better content than raw data")
+  :type    :boolean
+  :default true)
+
+(defsetting show-homepage-xrays
+  (deferred-tru "Whether or not to display x-ray suggestions on the homepage. They will also be hidden if any dashboards are pinned. Admins might hide this to direct users to better content than raw data")
+  :type    :boolean
+  :default true)
+
 (defsetting source-address-header
   (deferred-tru "Identify the source of HTTP requests by this header's value, instead of its remote address.")
   :getter (fn [] (some-> (setting/get-string :source-address-header)
@@ -185,16 +196,14 @@
     (assoc object :public_uuid nil)
     object))
 
-
-(defn- short-timezone-name*
-  "Get a short display name (e.g. `PST`) for `report-timezone`, or fall back to the System default if it's not set."
-  [^String timezone-name]
-  (let [^TimeZone timezone (or (when (seq timezone-name)
-                                 (TimeZone/getTimeZone timezone-name))
-                               (TimeZone/getDefault))]
-    (.getDisplayName timezone (.inDaylightTime timezone (java.util.Date.)) TimeZone/SHORT)))
-
-(def ^:private short-timezone-name (memoize short-timezone-name*))
+(defn- short-timezone-name [timezone-id]
+  (let [^java.time.ZoneId zone (if (seq timezone-id)
+                                 (t/zone-id timezone-id)
+                                 (t/zone-id))]
+    (.getDisplayName
+     zone
+     java.time.format.TextStyle/SHORT
+     (java.util.Locale/getDefault))))
 
 (defn- resolve-setting [ns-symb setting-symb]
   (classloader/require ns-symb)
@@ -234,6 +243,8 @@
    :public_sharing        (enable-public-sharing)
    :report_timezone       (resolve-setting 'metabase.driver 'report-timezone)
    :setup_token           (resolve-setting 'metabase.setup 'token-value)
+   :show_homepage_data    (show-homepage-data)
+   :show_homepage_xrays   (show-homepage-xrays)
    :site_name             (site-name)
    :site_url              (site-url)
    :timezone_short        (short-timezone-name (setting/get :report-timezone))

@@ -2,8 +2,8 @@ import {
   useSharedAdminLogin,
   createTestStore,
   createSavedQuestion,
-} from "__support__/e2e_tests";
-import { click, setInputValue } from "__support__/enzyme_utils";
+} from "__support__/e2e";
+import { click, setInputValue } from "__support__/enzyme";
 
 import React from "react";
 import { mount } from "enzyme";

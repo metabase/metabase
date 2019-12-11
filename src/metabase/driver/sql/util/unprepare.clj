@@ -5,16 +5,10 @@
   methods from here) let's rename this `metabase.driver.sql.unprepare` when we get a chance."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [honeysql
-             [core :as hsql]
-             [format :as hformat]]
+            [java-time :as t]
             [metabase.driver :as driver]
-            [metabase.util
-             [date :as du]
-             [honeysql-extensions :as hx]
-             [i18n :refer [trs]]])
-  (:import java.sql.Time
-           java.util.Date))
+            [metabase.util.i18n :refer [trs]])
+  (:import [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
 (defmulti unprepare-value
   "Convert a single argument to appropriate raw SQL for splicing directly into a SQL query. Dispatches on both driver
@@ -48,22 +42,34 @@
   [_ value]
   (str value))
 
-(defn unprepare-date-with-iso-8601-fn
-  "Convert a Date to appropriate raw SQL by passing an ISO-8601 literal string to the function named by `iso-8601-fn`.
-  You can use this function to create implementations of `unprepare-value` for Date values."
-  [iso-8601-fn value]
-  (hformat/to-sql
-   (hsql/call iso-8601-fn (hx/literal (du/date->iso-8601 value)))))
+(defmethod unprepare-value [:sql LocalDate]
+  [_ t]
+  (format "date '%s'" (t/format "yyyy-MM-dd" t)))
 
-(defmethod unprepare-value [:sql Date]
-  [_ value]
-  (unprepare-date-with-iso-8601-fn :timestamp value))
+(defmethod unprepare-value [:sql LocalTime]
+  [_ t]
+  (format "time '%s'" (t/format "HH:mm:ss.SSS" t)))
 
-;; default impl for Time is just converting the Time literal to a `1970-01-01T<time>` Timestamp and passing to impl
-;; for `Date`, then wrapping entire expression in `time()`
-(defmethod unprepare-value [:sql Time]
-  [driver value]
-  (hformat/to-sql (hx/->time (hsql/raw (unprepare-value driver (du/->Timestamp value))))))
+(defmethod unprepare-value [:sql OffsetTime]
+  [_ t]
+  (format "time with time zone '%s'" (t/format "HH:mm:ss.SSSZZZZZ" t)))
+
+(defmethod unprepare-value [:sql LocalDateTime]
+  [_ t]
+  (format "timestamp '%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)))
+
+(defmethod unprepare-value [:sql OffsetDateTime]
+  [_ t]
+  (format "timestamp with time zone '%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
+
+(defmethod unprepare-value [:sql ZonedDateTime]
+  [_ t]
+  (format "timestamp with time zone '%s'" (t/format "yyyy-MM-dd HH:mm:ss.SSSZZZZZ" t)))
+
+;; TODO - pretty sure we can remove this
+(defmethod unprepare-value [:sql Instant]
+  [driver t]
+  (unprepare-value driver (t/offset-date-time t (t/zone-offset 0))))
 
 
 ;; TODO - I think a name like `deparameterize` would be more appropriate here

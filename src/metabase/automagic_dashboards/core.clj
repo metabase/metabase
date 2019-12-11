@@ -3,14 +3,12 @@
    heuristics."
   (:require [buddy.core.codecs :as codecs]
             [cheshire.core :as json]
-            [clj-time
-             [core :as t]
-             [format :as t.format]]
             [clojure
              [string :as str]
              [walk :as walk]]
             [clojure.math.combinatorics :as combo]
             [clojure.tools.logging :as log]
+            [java-time :as t]
             [kixi.stats
              [core :as stats]
              [math :as math]]
@@ -39,12 +37,11 @@
             [metabase.query-processor.util :as qp.util]
             [metabase.sync.analyze.classify :as classify]
             [metabase.util
-             [date :as date]
+             [date-2 :as u.date]
              [i18n :as ui18n :refer [deferred-tru trs tru]]]
             [ring.util.codec :as codec]
             [schema.core :as s]
-            [toucan.db :as db])
-  (:import java.util.TimeZone))
+            [toucan.db :as db]))
 
 (def ^:private public-endpoint "/auto/dashboard/")
 
@@ -287,12 +284,13 @@
                                       :type
                                       :type/DateTime
                                       ((juxt :earliest :latest))
-                                      (map date/str->date-time))]
-    (condp > (t/in-hours (t/interval earliest latest))
-      3               :minute
-      (* 24 7)        :hour
-      (* 24 30 6)     :day
-      (* 24 30 12 10) :month
+                                      (map u.date/parse))]
+    ;; e.g. if 3 hours > [duration between earliest and latest] then use `:minute` resolution
+    (condp u.date/greater-than-period-duration? (u.date/period-duration earliest latest)
+      (t/hours 3)  :minute
+      (t/days 7)   :hour
+      (t/months 6) :day
+      (t/years 10) :month
       :year)
     :day))
 
@@ -304,7 +302,7 @@
                     id                 [:field-id id]
                     :else              [:field-literal name base_type])]
     (cond
-      (isa? base_type :type/DateTime)
+      (isa? base_type :type/Temporal)
       [:datetime-field reference (or aggregation
                                      (optimal-datetime-resolution field))]
 
@@ -1070,41 +1068,37 @@
 
 (defn- pluralize
   [x]
-  (case (mod x 10)
+  ;; the `int` cast here is to fix performance warnings if `*warn-on-reflection*` is enabled
+  (case (int (mod x 10))
     1 (tru "{0}st" x)
     2 (tru "{0}nd" x)
     3 (tru "{0}rd" x)
     (tru "{0}th" x)))
 
 (defn- humanize-datetime
-  [dt unit]
-  (let [dt                     (date/str->date-time dt)
-        tz                     (.getID ^TimeZone @date/jvm-timezone)
-        unparse-with-formatter (fn [formatter dt]
-                                 (t.format/unparse
-                                  (t.format/formatter formatter (t/time-zone-for-id tz))
-                                  dt))]
+  [t-str unit]
+  (let [dt (u.date/parse t-str)]
     (case unit
-      :second          (tru "at {0}" (unparse-with-formatter "h:mm:ss a, MMMM d, YYYY" dt))
-      :minute          (tru "at {0}" (unparse-with-formatter "h:mm a, MMMM d, YYYY" dt))
-      :hour            (tru "at {0}" (unparse-with-formatter "h a, MMMM d, YYYY" dt))
-      :day             (tru "on {0}" (unparse-with-formatter "MMMM d, YYYY" dt))
+      :second          (tru "at {0}" (t/format "h:mm:ss a, MMMM d, YYYY" dt))
+      :minute          (tru "at {0}" (t/format "h:mm a, MMMM d, YYYY" dt))
+      :hour            (tru "at {0}" (t/format "h a, MMMM d, YYYY" dt))
+      :day             (tru "on {0}" (t/format "MMMM d, YYYY" dt))
       :week            (tru "in {0} week - {1}"
-                            (pluralize (date/date-extract :week-of-year dt tz))
-                            (str (date/date-extract :year dt tz)))
-      :month           (tru "in {0}" (unparse-with-formatter "MMMM YYYY" dt))
+                            (pluralize (u.date/extract dt :week-of-year))
+                            (str (u.date/extract dt :year)))
+      :month           (tru "in {0}" (t/format "MMMM YYYY" dt))
       :quarter         (tru "in Q{0} - {1}"
-                            (date/date-extract :quarter-of-year dt tz)
-                            (str (date/date-extract :year dt tz)))
-      :year            (unparse-with-formatter "YYYY" dt)
-      :day-of-week     (unparse-with-formatter "EEEE" dt)
-      :hour-of-day     (tru "at {0}" (unparse-with-formatter "h a" dt))
-      :month-of-year   (unparse-with-formatter "MMMM" dt)
-      :quarter-of-year (tru "Q{0}" (date/date-extract :quarter-of-year dt tz))
+                            (u.date/extract dt :quarter-of-year)
+                            (str (u.date/extract dt :year)))
+      :year            (t/format "YYYY" dt)
+      :day-of-week     (t/format "EEEE" dt)
+      :hour-of-day     (tru "at {0}" (t/format "h a" dt))
+      :month-of-year   (t/format "MMMM" dt)
+      :quarter-of-year (tru "Q{0}" (u.date/extract dt :quarter-of-year))
       (:minute-of-hour
        :day-of-month
        :day-of-year
-       :week-of-year)  (date/date-extract unit dt tz))))
+       :week-of-year)  (u.date/extract dt unit))))
 
 (defn- field-reference->field
   [root field-reference]
@@ -1136,13 +1130,13 @@
    (->> field-reference (field-reference->field root) field-name))
   ([{:keys [display_name unit] :as field}]
    (cond->> display_name
-     (some-> unit date/date-extract-units) (tru "{0} of {1}" (unit-name unit)))))
+     (some-> unit u.date/extract-units) (tru "{0} of {1}" (unit-name unit)))))
 
 (defmethod humanize-filter-value :=
   [root [_ field-reference value]]
   (let [field      (field-reference->field root field-reference)
         field-name (field-name field)]
-    (if (or (isa? (:base_type field) :type/DateTime)
+    (if (or (isa? (:base_type field) :type/Temporal)
             (field/unix-timestamp? field))
       (tru "{0} is {1}" field-name (humanize-datetime value (:unit field)))
       (tru "{0} is {1}" field-name value))))

@@ -17,23 +17,40 @@
 
 (def connection-error-messages
   "Generic error messages that drivers should return in their implementation of `humanize-connection-error-message`."
-  {:cannot-connect-check-host-and-port (str (deferred-tru "Hmm, we couldn''t connect to the database.")
-                                            " "
-                                            (deferred-tru "Make sure your host and port settings are correct"))
-   :ssh-tunnel-auth-fail               (str (deferred-tru "We couldn''t connect to the ssh tunnel host.")
-                                            " "
-                                            (deferred-tru "Check the username, password."))
-   :ssh-tunnel-connection-fail         (str (deferred-tru "We couldn''t connect to the ssh tunnel host.")
-                                            " "
-                                            (deferred-tru "Check the hostname and port."))
-   :database-name-incorrect            (deferred-tru "Looks like the database name is incorrect.")
-   :invalid-hostname                   (str (deferred-tru "It looks like your host is invalid.")
-                                            " "
-                                            (deferred-tru "Please double-check it and try again."))
-   :password-incorrect                 (deferred-tru "Looks like your password is incorrect.")
-   :password-required                  (deferred-tru "Looks like you forgot to enter your password.")
-   :username-incorrect                 (deferred-tru "Looks like your username is incorrect.")
-   :username-or-password-incorrect     (deferred-tru "Looks like the username or password is incorrect.")})
+  {:cannot-connect-check-host-and-port
+   (str (deferred-tru "Hmm, we couldn''t connect to the database.")
+        " "
+        (deferred-tru "Make sure your host and port settings are correct"))
+
+   :ssh-tunnel-auth-fail
+   (str (deferred-tru "We couldn''t connect to the ssh tunnel host.")
+        " "
+        (deferred-tru "Check the username, password."))
+
+   :ssh-tunnel-connection-fail
+   (str (deferred-tru "We couldn''t connect to the ssh tunnel host.")
+        " "
+        (deferred-tru "Check the hostname and port."))
+
+   :database-name-incorrect
+   (deferred-tru "Looks like the database name is incorrect.")
+
+   :invalid-hostname
+   (str (deferred-tru "It looks like your host is invalid.")
+        " "
+        (deferred-tru "Please double-check it and try again."))
+
+   :password-incorrect
+   (deferred-tru "Looks like your password is incorrect.")
+
+   :password-required
+   (deferred-tru "Looks like you forgot to enter your password.")
+
+   :username-incorrect
+   (deferred-tru "Looks like your username is incorrect.")
+
+   :username-or-password-incorrect
+   (deferred-tru "Looks like the username or password is incorrect.")})
 
 ;; TODO - we should rename these from `default-*-details` to `default-*-connection-property`
 
@@ -107,7 +124,7 @@
 ;;; |                                           Fetching Current Timezone                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defprotocol ^:private ParseDateTimeString
+(defprotocol ^:private ^:deprecated ParseDateTimeString
   (^:private parse
    ^DateTime [this date-time-str]
    "Parse the `date-time-str` and return a `DateTime` instance."))
@@ -122,7 +139,7 @@
 ;; dispatch parsing for SimpleDateFormat instances. Dispatching off of the SimpleDateFormat directly wouldn't be good
 ;; as it's not threadsafe. This will always create a new SimpleDateFormat instance and discard it after parsing the
 ;; date
-(defrecord ^:private ThreadSafeSimpleDateFormat [format-str]
+(defrecord ^:private ^:deprecated ThreadSafeSimpleDateFormat [format-str]
   ParseDateTimeString
   (parse [_ date-time-str]
     (let [sdf         (SimpleDateFormat. format-str)
@@ -130,14 +147,14 @@
           joda-tz     (-> sdf .getTimeZone .getID time/time-zone-for-id)]
       (time/to-time-zone (tcoerce/from-date parsed-date) joda-tz))))
 
-(defn create-db-time-formatters
+(defn ^:deprecated create-db-time-formatters
   "Creates date formatters from `DATE-FORMAT-STR` that will preserve the offset/timezone information. Will return a
   JodaTime date formatter and a core Java SimpleDateFormat. Results of this are threadsafe and can safely be def'd."
   [date-format-str]
   [(.withOffsetParsed ^DateTimeFormatter (tformat/formatter date-format-str))
    (ThreadSafeSimpleDateFormat. date-format-str)])
 
-(defn- first-successful-parse
+(defn- ^:deprecated first-successful-parse
   "Attempt to parse `time-str` with each of `date-formatters`, returning the first successful parse. If there are no
   successful parses throws the exception that the last formatter threw."
   ^DateTime [date-formatters time-str]
@@ -145,55 +162,65 @@
       (doseq [formatter (reverse date-formatters)]
         (parse formatter time-str))))
 
-(defmulti current-db-time-native-query
+(defmulti ^:deprecated current-db-time-native-query
   "Return a native query that will fetch the current time (presumably as a string) used by the `current-db-time`
-  implementation below."
+  implementation below.
+
+  DEPRECATED — `metabase.driver/current-db-time`, the method this function provides an implementation for, is itself
+  deprecated. Implement `metabase.driver/db-default-timezone` instead directly."
   {:arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmulti current-db-time-date-formatters
+(defmulti ^:deprecated current-db-time-date-formatters
   "Return JODA time date formatters to parse the current time returned by `current-db-time-native-query`. Used by
   `current-db-time` implementation below. You can use `create-db-time-formatters` provided by this namespace to create
-  formatters for a date format string."
+  formatters for a date format string.
+
+  DEPRECATED — `metabase.driver/current-db-time`, the method this function provides an implementation for, is itself
+  deprecated. Implement `metabase.driver/db-default-timezone` instead directly."
   {:arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defn current-db-time
+(defn ^:deprecated current-db-time
   "Implementation of `driver/current-db-time` using the `current-db-time-native-query` and
   `current-db-time-date-formatters` multimethods defined above. Execute a native query for the current time, and parse
   the results using the date formatters, preserving the timezone. To use this implementation, you must implement the
-  aforementioned multimethods; no default implementation is provided."
+  aforementioned multimethods; no default implementation is provided.
+
+  DEPRECATED — `metabase.driver/current-db-time`, the method this function provides an implementation for, is itself
+  deprecated. Implement `metabase.driver/db-default-timezone` instead directly."
   ^DateTime [driver database]
   {:pre [(map? database)]}
-  (let [native-query    (current-db-time-native-query driver)
-        date-formatters (current-db-time-date-formatters driver)
-        settings        (when-let [report-tz (driver.u/report-timezone-if-supported driver)]
-                          {:settings {:report-timezone report-tz}})
-        time-str        (try
-                          ;; need to initialize the store sicne we're calling `execute-query` directly instead of
-                          ;; going thru normal QP pipeline
-                          (qp.store/with-store
-                            (qp.store/fetch-and-store-database! (u/get-id database))
-                            (->
-                             (driver/execute-query driver
-                               (merge settings {:database (u/get-id database), :native {:query native-query}}))
-                             :rows
-                             ffirst))
-                          (catch Exception e
-                            (throw
-                             (Exception.
-                              (format "Error querying database '%s' for current time" (:name database)) e))))]
-    (try
-      (when time-str
-        (first-successful-parse date-formatters time-str))
-      (catch Exception e
-        (throw
-         (Exception.
-          (str
-           (tru "Unable to parse date string ''{0}'' for database engine ''{1}''"
-                time-str (-> database :engine name))) e))))))
+  (driver/with-driver driver
+    (let [native-query    (current-db-time-native-query driver)
+          date-formatters (current-db-time-date-formatters driver)
+          settings        (when-let [report-tz (driver.u/report-timezone-if-supported driver)]
+                            {:settings {:report-timezone report-tz}})
+          time-str        (try
+                            ;; need to initialize the store sicne we're calling `execute-query` directly instead of
+                            ;; going thru normal QP pipeline
+                            (qp.store/with-store
+                              (qp.store/fetch-and-store-database! (u/get-id database))
+                              (->
+                               (driver/execute-query driver
+                                 (merge settings {:database (u/get-id database), :native {:query native-query}}))
+                               :rows
+                               ffirst))
+                            (catch Exception e
+                              (throw
+                               (Exception.
+                                (format "Error querying database '%s' for current time" (:name database)) e))))]
+      (try
+        (when time-str
+          (first-successful-parse date-formatters time-str))
+        (catch Exception e
+          (throw
+           (Exception.
+            (str
+             (tru "Unable to parse date string ''{0}'' for database engine ''{1}''"
+                  time-str (-> database :engine name))) e)))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -204,36 +231,56 @@
   "Return the `Field.base_type` that corresponds to a given class returned by the DB.
    This is used to infer the types of results that come back from native queries."
   [klass]
-  (or (some (fn [[mapped-class mapped-type]]
-              (when (isa? klass mapped-class)
-                mapped-type))
-            [[Boolean                        :type/Boolean]
-             [Double                         :type/Float]
-             [Float                          :type/Float]
-             [Integer                        :type/Integer]
-             [Long                           :type/Integer]
-             [java.math.BigDecimal           :type/Decimal]
-             [java.math.BigInteger           :type/BigInteger]
-             [Number                         :type/Number]
-             [String                         :type/Text]
-             [java.sql.Date                  :type/Date]
-             [java.sql.Timestamp             :type/DateTime]
-             [java.util.Date                 :type/DateTime]
-             [DateTime                       :type/DateTime]
-             [java.util.UUID                 :type/Text]       ; shouldn't this be :type/UUID ?
-             [clojure.lang.IPersistentMap    :type/Dictionary]
-             [clojure.lang.IPersistentVector :type/Array]
-             [org.postgresql.util.PGobject   :type/*]
-             [nil                            :type/*]]) ; all-NULL columns in DBs like Mongo w/o explicit types
+  (condp #(isa? %2 %1) klass
+    Boolean                        :type/Boolean
+    Double                         :type/Float
+    Float                          :type/Float
+    Integer                        :type/Integer
+    Long                           :type/Integer
+    java.math.BigDecimal           :type/Decimal
+    java.math.BigInteger           :type/BigInteger
+    Number                         :type/Number
+    String                         :type/Text
+    ;; java.sql types and Joda-Time types should be considered DEPRECATED
+    java.sql.Date                  :type/Date
+    java.sql.Timestamp             :type/DateTime
+    java.util.Date                 :type/Date
+    DateTime                       :type/DateTime
+    ;; shouldn't this be :type/UUID ?
+    java.util.UUID                 :type/Text
+    clojure.lang.IPersistentMap    :type/Dictionary
+    clojure.lang.IPersistentVector :type/Array
+    java.time.LocalDate            :type/Date
+    java.time.LocalTime            :type/Time
+    java.time.LocalDateTime        :type/DateTime
+    ;; `OffsetTime` and `OffsetDateTime` should be mapped to one of `type/TimeWithLocalTZ`/`type/TimeWithZoneOffset`
+    ;; and `type/DateTimeWithLocalTZ`/`type/DateTimeWithZoneOffset` respectively. We can't really tell how they're
+    ;; stored in the DB based on class alone, so drivers should return more specific types where possible. See
+    ;; discussion in the `metabase.types` namespace.
+    java.time.OffsetTime           :type/TimeWithTZ
+    java.time.OffsetDateTime       :type/DateTimeWithTZ
+    java.time.ZonedDateTime        :type/DateTimeWithZoneID
+    java.time.Instant              :type/Instant
+    ;; TODO - this should go in the Postgres driver implementation of this method rather than here
+    org.postgresql.util.PGobject   :type/*
+    ;; all-NULL columns in DBs like Mongo w/o explicit types
+    nil                            :type/*
+    (do
       (log/warn (trs "Don''t know how to map class ''{0}'' to a Field base_type, falling back to :type/*." klass))
-      :type/*))
+      :type/*)))
+
+(defn- values->class->count [values]
+  (reduce
+   (fn [class->count klass]
+     (update class->count klass (fnil inc 0)))
+   {}
+   ;; take (up to) the first 100 non-nil values out of the first 1000 values
+   (eduction (map class) (take 100) (filter some?) (take 1000) values)))
+
+(defn- values->most-common-class [values]
+  (ffirst (reverse (sort-by second (values->class->count values)))))
 
 (defn values->base-type
-  "Given a sequence of VALUES, return the most common base type."
+  "Given a sequence of `values`, return the most common base type."
   [values]
-  (->> values
-       (take 100)                                   ; take up to 100 values
-       (remove nil?)                                ; filter out `nil` values
-       (group-by (comp class->base-type class))     ; now group by their base-type
-       (sort-by (comp (partial * -1) count second)) ; sort the map into pairs of [base-type count] with highest count as first pair
-       ffirst))                                     ; take the base-type from the first pair
+  (-> values values->most-common-class class->base-type))

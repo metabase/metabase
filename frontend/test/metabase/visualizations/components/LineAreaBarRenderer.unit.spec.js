@@ -1,8 +1,4 @@
-import "__support__/mocks"; // included explicitly whereas with e2e tests it comes with __support__/e2e_tests
-
-import { formatValue } from "metabase/lib/formatting";
-
-import d3 from "d3";
+import "__support__/mocks"; // included explicitly whereas with e2e tests it comes with __support__/e2e
 
 import {
   NumberColumn,
@@ -17,12 +13,6 @@ import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settin
 import lineAreaBarRenderer, {
   getDimensionsAndGroupsAndUpdateSeriesDisplayNames,
 } from "metabase/visualizations/lib/LineAreaBarRenderer";
-
-const formatTz = offset =>
-  (offset < 0 ? "-" : "+") + d3.format("02d")(Math.abs(offset)) + ":00";
-
-const BROWSER_TZ = formatTz(-new Date().getTimezoneOffset() / 60);
-const ALL_TZS = d3.range(-1, 2).map(formatTz);
 
 describe("LineAreaBarRenderer", () => {
   let element;
@@ -71,77 +61,45 @@ describe("LineAreaBarRenderer", () => {
     expect(warnings).toEqual(['We encountered an invalid date: "2019-W53"']);
   });
 
-  ["Z", ...ALL_TZS].forEach(tz =>
-    it(
-      "should display hourly data (in " +
-        tz +
-        " timezone) in X axis and tooltip consistently",
-      () => {
-        const onHoverChange = jest.fn();
+  it("should warn if expected timezone doesn't match actual", () => {
+    const data = {
+      cols: [DateTimeColumn(), NumberColumn()],
+      rows: [["2019-01-01", 1]],
+      requested_timezone: "US/Pacific",
+      results_timezone: "US/Eastern",
+    };
+    const card = { display: "line", visualization_settings: {} };
+    const onRender = jest.fn();
 
-        const rows = [
-          ["2016-10-03T20:00:00.000" + tz, 1],
-          ["2016-10-03T21:00:00.000" + tz, 1],
-        ];
+    renderLineAreaBar(element, [{ data, card }], { onRender });
 
-        renderTimeseriesLine({
-          rowsOfSeries: [rows],
-          unit: "hour",
-          onHoverChange,
-        });
-
-        dispatchUIEvent(qs(".dot"), "mousemove");
-
-        const expected = rows.map(row =>
-          formatValue(row[0], {
-            column: DateTimeColumn({ unit: "hour" }),
-          }),
-        );
-        expect(getFormattedTooltips(onHoverChange.mock.calls[0][0])).toEqual([
-          expected[0],
-          "1",
-        ]);
-        expect(qsa(".axis.x .tick text").map(e => e.textContent)).toEqual(
-          expected,
-        );
-      },
-    ),
-  );
-
-  it("should display hourly data (in the browser's timezone) in X axis and tooltip consistently and correctly", () => {
-    const onHoverChange = jest.fn();
-    const tz = BROWSER_TZ;
-    const rows = [
-      ["2016-01-01T01:00:00.000" + tz, 1],
-      ["2016-01-01T02:00:00.000" + tz, 1],
-      ["2016-01-01T03:00:00.000" + tz, 1],
-      ["2016-01-01T04:00:00.000" + tz, 1],
-    ];
-
-    renderTimeseriesLine({
-      rowsOfSeries: [rows],
-      unit: "hour",
-      onHoverChange,
-    });
-
-    dispatchUIEvent(qs(".dot"), "mousemove");
-
-    expect(
-      formatValue(rows[0][0], {
-        column: DateTimeColumn({ unit: "hour" }),
-      }),
-    ).toEqual("January 1, 2016, 1:00 AM");
-
-    expect(getFormattedTooltips(onHoverChange.mock.calls[0][0])).toEqual([
-      "January 1, 2016, 1:00 AM",
-      "1",
+    const [[{ warnings }]] = onRender.mock.calls;
+    expect(warnings).toEqual([
+      "The query for this chart was run in US/Eastern rather than US/Pacific due to database or driver constraints.",
     ]);
+  });
 
-    expect(qsa(".axis.x .tick text").map(e => e.textContent)).toEqual([
-      "January 1, 2016, 1:00 AM",
-      "January 1, 2016, 2:00 AM",
-      "January 1, 2016, 3:00 AM",
-      "January 1, 2016, 4:00 AM",
+  it("should warn if there are multiple timezones", () => {
+    const seriesInTZ = tz => ({
+      data: {
+        cols: [DateTimeColumn(), NumberColumn()],
+        rows: [["2019-01-01", 1]],
+        requested_timezone: tz,
+        results_timezone: tz,
+      },
+      card: { display: "line", visualization_settings: {} },
+    });
+    const onRender = jest.fn();
+
+    renderLineAreaBar(
+      element,
+      [seriesInTZ("US/Pacific"), seriesInTZ("US/Eastern")],
+      { onRender },
+    );
+
+    const [[{ warnings }]] = onRender.mock.calls;
+    expect(warnings).toEqual([
+      "This chart contains queries run in multiple timezones: US/Pacific, US/Eastern",
     ]);
   });
 
@@ -159,7 +117,10 @@ describe("LineAreaBarRenderer", () => {
 
     // column settings are cached based on name.
     // we need something unique to not conflict with other tests.
-    const dateColumn = DateTimeColumn({ unit: "week", name: "uniqueName123" });
+    const dateColumn = DateTimeColumn({
+      unit: "week",
+      name: Math.random().toString(36),
+    });
 
     const cols = [dateColumn, NumberColumn()];
     const chartType = "line";
@@ -178,6 +139,43 @@ describe("LineAreaBarRenderer", () => {
 
     const ticks = qsa(".axis.x .tick text").map(e => e.textContent);
     expect(ticks).toEqual(["January, 2020", "February, 2020", "March, 2020"]);
+  });
+
+  it("should use column settings for tick formatting and tooltips", () => {
+    const rows = [["2016-01-01", 1], ["2016-02-01", 2]];
+
+    // column settings are cached based on name.
+    // we need something unique to not conflict with other tests.
+    const columnName = Math.random().toString(36);
+    const dateColumn = DateTimeColumn({ unit: "month", name: columnName });
+
+    const cols = [dateColumn, NumberColumn()];
+    const chartType = "line";
+    const column_settings = {
+      [`["name","${columnName}"]`]: {
+        date_style: "M/D/YYYY",
+        date_separator: "-",
+      },
+    };
+    const card = {
+      display: chartType,
+      visualization_settings: { column_settings },
+    };
+    const series = [{ data: { cols, rows }, card }];
+    const settings = getComputedSettingsForSeries(series);
+    const onHoverChange = jest.fn();
+
+    const props = { chartType, series, settings, onHoverChange };
+    lineAreaBarRenderer(element, props);
+
+    dispatchUIEvent(qs(".dot"), "mousemove");
+
+    const hover = onHoverChange.mock.calls[0][0];
+    const [formattedWeek] = getFormattedTooltips(hover, settings);
+    expect(formattedWeek).toEqual("1-2016");
+
+    const ticks = qsa(".axis.x .tick text").map(e => e.textContent);
+    expect(ticks).toEqual(["1-2016", "2-2016"]);
   });
 
   describe("should render correctly a compound line graph", () => {

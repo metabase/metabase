@@ -70,9 +70,7 @@
                                                                       :format :auto}
                                                      :dimensionsSpec {:dimensions ["id"
                                                                                    "user_last_login"
-                                                                                   {:name "user_name"
-                                                                                    :type "string"
-                                                                                    :isInputHyperUnique true}
+                                                                                   "user_name"
                                                                                    "user_password"
                                                                                    "venue_category_name"
                                                                                    {:name "venue_latitude"
@@ -83,7 +81,11 @@
                                                                                    {:name "venue_price"
                                                                                     :type "float"}]}}}
                        :metricsSpec     [{:type :count
-                                          :name :count}]
+                                          :name :count}
+                                         {:name               :unique_users
+                                          :type               :hyperUnique
+                                          :field_name         "user_name"
+                                          :isInputHyperUnique false}]
                        :granularitySpec {:type               :uniform
                                          :segmentGranularity :DAY
                                          :queryGranularity   :NONE

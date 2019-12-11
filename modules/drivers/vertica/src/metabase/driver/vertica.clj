@@ -10,18 +10,18 @@
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.util
-             [date :as du]
+             [date-2 :as u.date]
              [honeysql-extensions :as hx]
              [i18n :refer [trs]]])
-  (:import java.sql.Time
-           java.util.Date))
+  (:import [java.sql ResultSet Types]))
 
-(driver/register! :vertica, :parent :sql-jdbc)
+(driver/register! :vertica, :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set})
 
-(defmethod sql-jdbc.sync/database-type->base-type :vertica [_ database-type]
+(defmethod sql-jdbc.sync/database-type->base-type :vertica
+  [_ database-type]
   ({:Boolean                   :type/Boolean
      :Integer                   :type/Integer
      :Bigint                    :type/BigInteger
@@ -35,31 +35,34 @@
      :Float                     :type/Float
      :Date                      :type/Date
      :Time                      :type/Time
-     :TimeTz                    :type/Time
+     :TimeTz                    :type/TimeWithLocalTZ
      :Timestamp                 :type/DateTime
-     :TimestampTz               :type/DateTime
+     :TimestampTz               :type/DateTimeWithLocalTZ
      :AUTO_INCREMENT            :type/Integer
      (keyword "Long Varchar")   :type/Text
      (keyword "Long Varbinary") :type/*} database-type))
 
-(defmethod sql-jdbc.conn/connection-details->spec :vertica [_ {:keys [host port db dbname]
-                                                               :or   {host "localhost", port 5433, db ""}
-                                                               :as   details}]
+(defmethod sql-jdbc.conn/connection-details->spec :vertica
+  [_ {:keys [host port db dbname]
+      :or   {host "localhost", port 5433, db ""}
+      :as   details}]
   (-> (merge {:classname   "com.vertica.jdbc.Driver"
               :subprotocol "vertica"
               :subname     (str "//" host ":" port "/" (or dbname db))}
              (dissoc details :host :port :dbname :db :ssl))
       (sql-jdbc.common/handle-additional-options details)))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:vertica :seconds] [_ _ expr]
+(defmethod sql.qp/unix-timestamp->timestamp [:vertica :seconds]
+  [_ _ expr]
   (hsql/call :to_timestamp expr))
 
+;; TODO - not sure if needed or not
 (defn- cast-timestamp
   "Vertica requires stringified timestamps (what Date/DateTime/Timestamps are converted to) to be cast as timestamps
   before date operations can be performed. This function will add that cast if it is a timestamp, otherwise this is a
-  noop."
+  no-op."
   [expr]
-  (if (du/is-temporal? expr)
+  (if (instance? java.time.temporal.Temporal expr)
     (hx/cast :timestamp expr)
     expr))
 
@@ -86,16 +89,18 @@
 (defmethod sql.qp/date [:vertica :quarter-of-year] [_ _ expr] (extract-integer :quarter expr))
 (defmethod sql.qp/date [:vertica :year]            [_ _ expr] (date-trunc :year expr))
 
-(defmethod sql.qp/date [:vertica :week] [_ _ expr]
+(defmethod sql.qp/date [:vertica :week]
+  [_ _ expr]
   (hx/- (date-trunc :week (hx/+ (cast-timestamp expr)
                                 one-day))
         one-day))
 
-(defmethod driver/date-add :vertica [_ dt amount unit]
+(defmethod driver/date-add :vertica
+  [_ dt amount unit]
   (hx/+ (hx/->timestamp dt) (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit)))))
 
 (defn- materialized-views
-  "Fetch the Materialized Views for a Vertica DATABASE.
+  "Fetch the Materialized Views for a Vertica `database`.
    These are returned as a set of maps, the same format as `:tables` returned by `describe-database`."
   [database]
   (try (set (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
@@ -103,22 +108,35 @@
        (catch Throwable e
          (log/error e (trs "Failed to fetch materialized views for this database")))))
 
-(defmethod driver/describe-database :vertica [driver database]
+(defmethod driver/describe-database :vertica
+  [driver database]
   (-> ((get-method driver/describe-database :sql-jdbc) driver database)
       (update :tables set/union (materialized-views database))))
 
-(defmethod driver.common/current-db-time-date-formatters :vertica [_]
+(defmethod driver.common/current-db-time-date-formatters :vertica
+  [_]
   (driver.common/create-db-time-formatters "yyyy-MM-dd HH:mm:ss z"))
 
-(defmethod driver.common/current-db-time-native-query :vertica [_]
+(defmethod driver.common/current-db-time-native-query :vertica
+  [_]
   "select to_char(CURRENT_TIMESTAMP, 'YYYY-MM-DD HH24:MI:SS TZ')")
 
-(defmethod driver/current-db-time :vertica [& args]
+(defmethod driver/current-db-time :vertica
+  [& args]
   (apply driver.common/current-db-time args))
 
 (defmethod sql-jdbc.execute/set-timezone-sql :vertica [_] "SET TIME ZONE TO %s;")
 
-(defmethod unprepare/unprepare-value [:vertica Date] [_ value]
-  (format "timestamp '%s'" (du/date->iso-8601 value)))
+(defmethod sql-jdbc.execute/read-column [:vertica Types/TIME]
+  [_ _ ^ResultSet rs _ ^Integer i]
+  (let [s (.getString rs i)
+        t (u.date/parse s)]
+    (log/tracef "(.getString rs %d) [TIME] -> %s -> %s" i s t)
+    t))
 
-(prefer-method unprepare/unprepare-value [:sql Time] [:vertica Date])
+(defmethod sql-jdbc.execute/read-column [:vertica Types/TIME_WITH_TIMEZONE]
+  [_ _ ^ResultSet rs _ ^Integer i]
+  (let [s (.getString rs i)
+        t (u.date/parse s)]
+    (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
+    t))

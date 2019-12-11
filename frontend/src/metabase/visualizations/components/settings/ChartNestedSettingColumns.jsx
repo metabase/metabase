@@ -2,8 +2,6 @@
 
 import React from "react";
 
-import Icon from "metabase/components/Icon";
-
 import ColumnItem from "./ColumnItem";
 
 const displayNameForColumn = column =>
@@ -16,31 +14,9 @@ export default class ChartNestedSettingColumns extends React.Component {
   props: NestedSettingComponentProps;
 
   render() {
-    const {
-      objects,
-      onChangeEditingObject,
-      objectSettingsWidgets,
-      object,
-    } = this.props;
-
+    const { object, objects, onChangeEditingObject } = this.props;
     if (object) {
-      return (
-        <div>
-          {/* only show the back button if we have more than one column */}
-          {objects.length > 1 && (
-            <div
-              className="flex align-center mb2 cursor-pointer"
-              onClick={() => onChangeEditingObject()}
-            >
-              <Icon name="chevronleft" className="text-light" />
-              <span className="ml1 text-bold text-brand text-wrap">
-                {displayNameForColumn(object)}
-              </span>
-            </div>
-          )}
-          {objectSettingsWidgets}
-        </div>
-      );
+      return <ColumnWidgets {...this.props} />;
     } else {
       return (
         <div>
@@ -54,5 +30,34 @@ export default class ChartNestedSettingColumns extends React.Component {
         </div>
       );
     }
+  }
+}
+
+// ColumnWidgets is a component just to hook into mount/unmount
+class ColumnWidgets extends React.Component {
+  componentDidMount() {
+    const {
+      setSidebarPropsOverride,
+      onChangeEditingObject,
+      object,
+    } = this.props;
+
+    if (setSidebarPropsOverride) {
+      setSidebarPropsOverride({
+        title: displayNameForColumn(object),
+        onBack: () => onChangeEditingObject(),
+      });
+    }
+  }
+
+  componentWillUnmount() {
+    const { setSidebarPropsOverride } = this.props;
+    if (setSidebarPropsOverride) {
+      setSidebarPropsOverride(null);
+    }
+  }
+
+  render() {
+    return <div>{this.props.objectSettingsWidgets}</div>;
   }
 }

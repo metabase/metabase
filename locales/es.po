@@ -14,7 +14,7 @@ msgstr "¡Tu base de datos ha sido añadida!"
 
 #: frontend/src/metabase/admin/databases/components/CreatedDatabaseModal.jsx:28
 msgid "We took a look at your data, and we have some automated explorations that we can show you!"
-msgstr "Echamos un vistazo a tus datos, y tenemos algunas exploraciones automatizadas que podemos mostrarte!"
+msgstr "Echamos un vistazo a tus datos y ¡tenemos algunas exploraciones automatizadas que podemos mostrarte!"
 
 #: frontend/src/metabase/admin/databases/components/CreatedDatabaseModal.jsx:35
 msgid "I'm good thanks"
@@ -246,7 +246,7 @@ msgstr "No se ha podido sincronizar"
 
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:199
 msgid "Sync triggered!"
-msgstr "Sincronización iniciada!"
+msgstr "¡Sincronización iniciada!"
 
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:208
 msgid "Re-scan field values now"
@@ -262,7 +262,7 @@ msgstr "No se ha podido iniciar la exploración"
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:17
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:89
 msgid "Scan triggered!"
-msgstr "Exploración iniciada!"
+msgstr "¡Exploración iniciada!"
 
 #: frontend/src/metabase/admin/databases/containers/DatabaseEditApp.jsx:218
 #: frontend/src/metabase/query_builder/components/AlertModals.jsx:400
@@ -699,7 +699,7 @@ msgstr "Error al descartar valores"
 #: frontend/src/metabase/admin/datamodel/components/UpdateCachedFieldValues.jsx:25
 #: frontend/src/metabase/admin/datamodel/containers/TableSettingsApp.jsx:97
 msgid "Discard triggered!"
-msgstr "Limpieza iniciada!"
+msgstr "¡Limpieza iniciada!"
 
 #: frontend/src/metabase/admin/datamodel/containers/MetadataEditorApp.jsx:116
 msgid "Select any table to see its schema and add or edit metadata."
@@ -1419,7 +1419,7 @@ msgstr "Enviando..."
 
 #: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:14
 msgid "Sent!"
-msgstr "Enviado!"
+msgstr "¡Enviado!"
 
 #: frontend/src/metabase/admin/settings/components/SettingsEmailForm.jsx:82
 msgid "Clear"
@@ -2179,7 +2179,7 @@ msgstr "Clic"
 
 #: frontend/src/metabase/components/ButtonWithStatus.jsx:9
 msgid "Saved!"
-msgstr "Guardado!"
+msgstr "¡Guardado!"
 
 #: frontend/src/metabase/components/ButtonWithStatus.jsx:10
 msgid "Saving failed."
@@ -2314,7 +2314,7 @@ msgstr "Nueva colección"
 
 #: frontend/src/metabase/components/CopyButton.jsx:35
 msgid "Copied!"
-msgstr "Copiado!"
+msgstr "¡Copiado!"
 
 #: frontend/src/metabase/components/DatabaseDetailsForm.jsx:218
 msgid "Use an SSH-tunnel for database connections"
@@ -2671,7 +2671,7 @@ msgstr "¡Guardado! ¿Añadir esto a un cuadro de mando?"
 
 #: frontend/src/metabase/components/QuestionSavedModal.jsx:25
 msgid "Yes please!"
-msgstr "Sí, por favor!"
+msgstr "¡Sí, por favor!"
 
 #: frontend/src/metabase/components/QuestionSavedModal.jsx:29
 msgid "Not now"
@@ -3150,7 +3150,7 @@ msgstr "Desconocido"
 
 #: frontend/src/metabase/home/components/Activity.jsx:253
 msgid "Hello World!"
-msgstr "Hola Mundo!"
+msgstr "¡Hola Mundo!"
 
 #: frontend/src/metabase/home/components/Activity.jsx:254
 msgid "Metabase is up and running."
@@ -3211,7 +3211,7 @@ msgstr "eliminado el filtro {0}"
 
 #: frontend/src/metabase/home/components/Activity.jsx:431
 msgid "joined!"
-msgstr "se ha unido!"
+msgstr "¡se ha unido!"
 
 #: frontend/src/metabase/home/components/Activity.jsx:531
 msgid "Hmmm, looks like nothing has happened yet."
@@ -5210,7 +5210,7 @@ msgstr "Haciendo ciencia"
 
 #: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:149
 msgid "If you give me some data I can show you something cool. Run a Query!"
-msgstr "Si me das algunos datos, puedo mostrarte algo genial. ¡Ejecuta una consulta!"
+msgstr "Si me das algunos datos puedo mostrarte algo genial. ¡Ejecuta una consulta!"
 
 #: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:299
 msgid "How do I use this thing?"
@@ -6258,7 +6258,7 @@ msgstr "¿Cómo deberíamos llamarte?"
 
 #: frontend/src/metabase/setup/components/UserStep.jsx:156
 msgid "Hi, {0}. nice to meet you!"
-msgstr "Hola, {0} ¡Encantado de conocerte!"
+msgstr "Hola {0}, ¡Encantado de conocerte!"
 
 #: frontend/src/metabase/setup/components/UserStep.jsx:243
 msgid "Create a password"
@@ -6333,7 +6333,7 @@ msgstr "He terminado de explorar por ahora"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:20
 msgid "Welcome to the Query Builder!"
-msgstr "Bienvenido al Generador de Consultas!"
+msgstr "¡Bienvenido al Generador de Consultas!"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:22
 msgid "The Query Builder lets you assemble questions (or \"queries\") to ask about your data."
@@ -6401,7 +6401,7 @@ msgstr "A todos nos gustan las gráficas! Haz clic en el menú desplegable <stro
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:216
 msgid "Well done!"
-msgstr "Muy bien!"
+msgstr "¡Muy bien!"
 
 #: frontend/src/metabase/tutorial/QueryBuilderTutorial.jsx:218
 msgid "That's all! If you still have questions, check out our"
@@ -6433,7 +6433,7 @@ msgstr "Suena bien"
 
 #: frontend/src/metabase/tutorial/Tutorial.jsx:248
 msgid "Whoops!"
-msgstr "uy!!"
+msgstr "¡¡uy!!"
 
 #: frontend/src/metabase/tutorial/Tutorial.jsx:249
 msgid "Sorry, it looks like something went wrong. Please try restarting the tutorial in a minute."
@@ -6445,7 +6445,7 @@ msgstr "¡Contraseña actualizada correctamente!"
 
 #: frontend/src/metabase/user/actions.js:53
 msgid "Account updated successfully!"
-msgstr "Cuenta actualizada con éxito!"
+msgstr "¡Cuenta actualizada con éxito!"
 
 #: frontend/src/metabase/user/components/SetUserPassword.jsx:107
 msgid "Current password"
@@ -6522,7 +6522,7 @@ msgstr "No se pudo mostrar este gráfico con esta información."
 
 #: frontend/src/metabase/visualizations/components/Visualization.jsx:514
 msgid "No results!"
-msgstr "Sin resultados!"
+msgstr "¡Sin resultados!"
 
 #: frontend/src/metabase/visualizations/components/Visualization.jsx:535
 msgid "Still Waiting..."
@@ -6759,7 +6759,7 @@ msgstr "Editar Configuración"
 
 #: frontend/src/metabase/visualizations/lib/fill_data.js:37
 msgid "xValues missing!"
-msgstr "Faltan valores x!"
+msgstr "¡Faltan valores x!"
 
 #: frontend/src/metabase/visualizations/lib/settings/graph.js:90
 #: frontend/src/metabase/visualizations/visualizations/RowChart.jsx:31
@@ -8151,7 +8151,7 @@ msgstr "No se como {0} `{1}`.n{2}"
 
 #: src/metabase/metabot/slack.clj
 msgid "Uh oh! :cry:n> {0}"
-msgstr "Oh! :cry:n>"
+msgstr "¡Oh! :cry:n>"
 
 #: src/metabase/metabot/command.clj
 msgid "Here''s your {0} most recent cards:n{1}"
@@ -8257,7 +8257,7 @@ msgstr "debe ser un código de color hexadecimal válido de 6 caracteres"
 
 #: src/metabase/models/collection.clj
 msgid "Collection name cannot be blank!"
-msgstr "¡El nombre de la colección no puede ser vacío!"
+msgstr "¡El nombre de la colección no puede estar vacío!"
 
 #: src/metabase/models/collection.clj
 msgid "cannot be blank"
@@ -8277,7 +8277,7 @@ msgstr "Ubicación de colección inválida: uno o más antepasados no existen."
 
 #: src/metabase/models/collection.clj
 msgid "You cannot archive the Root Collection."
-msgstr "No puedes archivar la Colección Raíz!"
+msgstr "¡No puedes archivar la Colección Raíz!"
 
 #: src/metabase/models/collection.clj
 msgid "You cannot archive a Personal Collection."
@@ -8285,7 +8285,7 @@ msgstr "No puedes archivar una Colección Personal."
 
 #: src/metabase/models/collection.clj
 msgid "You cannot move the Root Collection."
-msgstr "No puedes mover la Colección Raíz!"
+msgstr "¡No puedes mover la Colección Raíz!"
 
 #: src/metabase/models/collection.clj
 msgid "You cannot move a Collection into itself or into one of its descendants."
@@ -8310,7 +8310,7 @@ msgstr "No puedes mover y archivar una Colección al mismo tiempo."
 
 #: src/metabase/models/collection.clj
 msgid "You cannot delete a Personal Collection!"
-msgstr "No puedes eliminar una Colección Personal!"
+msgstr "¡No puedes eliminar una Colección Personal!"
 
 #: src/metabase/models/collection.clj
 msgid "{0} {1}''s Personal Collection"
@@ -8318,7 +8318,7 @@ msgstr "Colección Personal de {0} {1}"
 
 #: src/metabase/models/collection_revision.clj
 msgid "You cannot update a CollectionRevision!"
-msgstr "No puedes actualzar una revisión de Colección!"
+msgstr "¡No puedes actualzar una revisión de Colección!"
 
 #: src/metabase/models/field_values.clj
 msgid "Field {0} was previously automatically set to show a list widget, but now has {1} values."
@@ -8460,7 +8460,7 @@ msgstr "Valor no válido para la cadena: debe ser \"true\" o \"false\" (no disti
 
 #: src/metabase/models/setting.clj
 msgid "You cannot update `settings-last-updated` yourself! This is done automatically."
-msgstr "ulitmo cambio en configuración se actualiza automáticamente, no puedes cambiarlo"
+msgstr "¡No puedes actualizar `settings-last-update` ! Esto se realiza automáticamente."
 
 #. go ahead and log the Exception anyway on the off chance that it *wasn't* just a race condition issue
 #: src/metabase/models/setting.clj
@@ -8639,7 +8639,7 @@ msgstr "El tipo de canal {0} es desconocido"
 
 #: src/metabase/pulse.clj
 msgid "Error sending notification!"
-msgstr "Error enviando norificación!"
+msgstr "¡Error enviando norificación!"
 
 #: src/metabase/pulse/render/color.clj
 msgid "Can't find JS color selector at ''{0}''"
@@ -9756,7 +9756,7 @@ msgstr "Error leyendo {0}:n{1}"
 
 #: src/metabase/driver/druid/query_processor.clj
 msgid "WARNING: Filtering only works on dimensions! ''{0}'' is a metric. Ignoring filter."
-msgstr "ADVERTENCIA: ¡El filtrado solo funciona sobre dimensiones! ''{0}'' es una métrica así que será ignorado."
+msgstr "ADVERTENCIA: ¡El filtrado solo funciona sobre dimensiones! ''{0}'' es una métrica, así que será ignorado."
 
 #: src/metabase/driver/druid/query_processor.clj
 msgid "WARNING: A date can't belong to multiple discrete intervals, so ANDing them together doesn't make sense."
@@ -9819,7 +9819,7 @@ msgstr "PIPELINE DE AGREGACION DE MONGO:"
 
 #: src/metabase/driver/mongo/query_processor.clj
 msgid "Error: mismatched columns in results! Expected: {0} Got: {1}"
-msgstr "Error: columnas no coincidentes en los resultados! Esperaba: {0} pero se ha obtenido: {1}"
+msgstr "Error: ¡columnas no coincidentes en los resultados! Esperaba: {0} pero se ha obtenido: {1}"
 
 #: src/metabase/email/messages.clj
 msgid "Unable to create temp file in `{0}` for email attachments "
@@ -9952,7 +9952,7 @@ msgstr "Error general"
 
 #: src/metabase/query_processor.clj
 msgid "Missing query hash!"
-msgstr "Falta el hash de consulta!"
+msgstr "¡Falta el hash de consulta!"
 
 #: src/metabase/query_processor/middleware/add_implicit_clauses.clj
 msgid "Table ''{0}'' has no Fields associated with it."
@@ -11234,7 +11234,7 @@ msgstr "Problema al conectarse al servidor LDAP, se volverá a la autenticación
 
 #: src/metabase/driver/bigquery.clj
 msgid "BigQuery statements can''t be parameterized!"
-msgstr "Las consultas BigQuery no se pueden paramerizar!"
+msgstr "¡Las consultas BigQuery no se pueden parametrizar!"
 
 #: src/metabase/driver/druid/query_processor.clj
 msgid "WARNING: Druid does not allow limitSpec in time series queries. Ignoring the LIMIT clause."

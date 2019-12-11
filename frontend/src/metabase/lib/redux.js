@@ -2,7 +2,12 @@ import moment from "moment";
 import _ from "underscore";
 import { getIn } from "icepick";
 
-import { setRequestState, clearRequestState } from "metabase/redux/requests";
+import {
+  setRequestLoading,
+  setRequestLoaded,
+  setRequestError,
+  setRequestUnloaded,
+} from "metabase/redux/requests";
 
 // convienence
 export { combineReducers, compose } from "redux";
@@ -71,29 +76,22 @@ export const fetchData = async ({
 
   const statePath = requestStatePath.concat(["fetch"]);
   try {
-    const requestState = getIn(getState(), [
-      "requests",
-      "states",
-      ...statePath,
-    ]);
+    const requestState = getIn(getState(), ["requests", ...statePath]);
     if (!requestState || requestState.error || reload) {
-      dispatch(setRequestState({ statePath, state: "LOADING" }));
+      dispatch(setRequestLoading(statePath));
       const data = await getData();
 
       // NOTE Atte Keinänen 8/23/17:
-      // Dispatch `setRequestState` after clearing the call stack because we want to the actual data to be updated
+      // Dispatch `setRequestLoaded` after clearing the call stack because we want to the actual data to be updated
       // before we notify components via `state.requests.fetches` that fetching the data is completed
-      setTimeout(
-        () => dispatch(setRequestState({ statePath, state: "LOADED" })),
-        0,
-      );
+      setTimeout(() => dispatch(setRequestLoaded(statePath)));
 
       return data;
     }
 
     return existingData;
   } catch (error) {
-    dispatch(setRequestState({ statePath, error }));
+    dispatch(setRequestError(statePath, error));
     console.error("fetchData error", error);
     return existingData;
   }
@@ -114,17 +112,17 @@ export const updateData = async ({
     : null;
   const statePath = requestStatePath.concat(["update"]);
   try {
-    dispatch(setRequestState({ statePath, state: "LOADING" }));
+    dispatch(setRequestLoading(statePath));
     const data = await putData();
-    dispatch(setRequestState({ statePath, state: "LOADED" }));
+    dispatch(setRequestLoaded(statePath));
 
     (dependentRequestStatePaths || []).forEach(statePath =>
-      dispatch(clearRequestState({ statePath })),
+      dispatch(setRequestUnloaded(statePath)),
     );
 
     return data;
   } catch (error) {
-    dispatch(setRequestState({ statePath, error }));
+    dispatch(setRequestError(statePath, error));
     console.error(error);
     return existingData;
   }
@@ -233,21 +231,19 @@ export function withRequestState(getRequestStatePath) {
       async (dispatch, getState) => {
         const statePath = getRequestStatePath(...args);
         try {
-          dispatch(setRequestState({ statePath, state: "LOADING" }));
+          dispatch(setRequestLoading(statePath));
 
           const result = await thunkCreator(...args)(dispatch, getState);
 
-          // Dispatch `setRequestState` after clearing the call stack because
+          // Dispatch `setRequestLoaded` after clearing the call stack because
           // we want to the actual data to be updated before we notify
           // components that fetching the data is completed
-          setTimeout(() =>
-            dispatch(setRequestState({ statePath, state: "LOADED" })),
-          );
+          setTimeout(() => dispatch(setRequestLoaded(statePath)));
 
           return result;
         } catch (error) {
           console.error(`Request ${statePath.join(",")} failed:`, error);
-          dispatch(setRequestState({ statePath, error }));
+          dispatch(setRequestError(statePath, error));
           throw error;
         }
       };
@@ -279,25 +275,21 @@ function withCachedData(getExistingStatePath, getRequestStatePath) {
         const { reload, properties } = options;
 
         const existingStatePath = getExistingStatePath(...args);
-        const requestStatePath = [
-          "requests",
-          "states",
-          ...getRequestStatePath(...args),
-        ];
+        const requestStatePath = ["requests", ...getRequestStatePath(...args)];
         const existingData = getIn(getState(), existingStatePath);
-        const requestState = getIn(getState(), requestStatePath);
+        const { loading, loaded } = getIn(getState(), requestStatePath) || {};
+
+        const hasRequestedProperties =
+          properties &&
+          existingData &&
+          _.all(properties, p => existingData[p] !== undefined);
 
         // return existing data if
         if (
           // we don't want to reload
           !reload &&
-          // and either
-          // we have a list of properties that all exist on the object
-          ((properties &&
-            existingData &&
-            _.all(properties, p => existingData[p] !== undefined)) ||
-            // or we have a an non-error request state
-            (requestState && !requestState.error))
+          // and we have a an non-error request state or have a list of properties that all exist on the object
+          (loading || loaded || hasRequestedProperties)
         ) {
           // TODO: if requestState is LOADING can we wait for the other reques
           // to complete and return that result instead?

@@ -1,9 +1,11 @@
 (ns metabase.driver.sql.util.unprepare-test
   (:require [clojure.string :as str]
             [expectations :refer [expect]]
+            [java-time :as t]
             [metabase.driver :as driver]
-            [metabase.driver.sql.util.unprepare :as unprepare])
-  (:import java.util.Date))
+            [metabase.driver.sql.util.unprepare :as unprepare]
+            [metabase.util.date-2 :as u.date])
+  (:import java.time.OffsetDateTime))
 
 ;; check simple unprepare with only one string arg
 (expect
@@ -14,26 +16,28 @@
 
 ;; ok, thry to trip it up -- multiple args: string, boolean, and date; `??` which should not be replaced by a value
 (expect
-  "SELECT 'Cam''s Cool Toucan' FROM TRUE WHERE x ?? y AND z = timestamp('2017-01-01T00:00:00.000Z')"
+  "SELECT 'Cam''s Cool Toucan' FROM TRUE WHERE x ?? y AND z = timestamp with time zone '2017-01-01 00:00:00.000Z'"
   (unprepare/unprepare :sql
     ["SELECT ? FROM ? WHERE x ?? y AND z = ?"
      "Cam's Cool Toucan"
      true
-     #inst "2017-01-01T00:00:00.000Z"]))
+     (t/offset-date-time "2017-01-01T00:00:00.000Z")]))
 
 ;; check that we can override methods for unpreparing values of specific classes
 (driver/register! ::unprepare-test, :parent :sql, :abstract? true)
 
-(defmethod unprepare/unprepare-value [::unprepare-test String] [_ value]
+(defmethod unprepare/unprepare-value [::unprepare-test String]
+  [_ value]
   (str \' (str/replace value "'" "\\\\'") \'))
 
-(defmethod unprepare/unprepare-value [::unprepare-test Date] [_ value]
-  (unprepare/unprepare-date-with-iso-8601-fn :from_iso8601_timestamp value))
+(defmethod unprepare/unprepare-value [::unprepare-test OffsetDateTime]
+  [_ t]
+  (format "from_iso8601_timestamp('%s')" (u.date/format t)))
 
 (expect
-  "SELECT 'Cam\\'s Cool Toucan' FROM TRUE WHERE x ?? y AND z = from_iso8601_timestamp('2017-01-01T00:00:00.000Z')"
+  "SELECT 'Cam\\'s Cool Toucan' FROM TRUE WHERE x ?? y AND z = from_iso8601_timestamp('2017-01-01T00:00:00Z')"
   (unprepare/unprepare ::unprepare-test
     ["SELECT ? FROM ? WHERE x ?? y AND z = ?"
      "Cam's Cool Toucan"
      true
-     #inst "2017-01-01T00:00:00.000Z"]))
+     (t/offset-date-time "2017-01-01T00:00:00.000Z")]))

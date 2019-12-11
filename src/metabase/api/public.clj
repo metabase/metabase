@@ -75,7 +75,7 @@
   [results]
   (u/select-nested-keys
    results
-   [[:data :cols :rows :rows_truncated :insights] [:json_query :parameters] :status :report_timezone]))
+   [[:data :cols :rows :rows_truncated :insights :requested_timezone :results_timezone] [:json_query :parameters] :status]))
 
 (defmethod transform-results :failed
   [{:keys [error], error-type :error_type, :as results}]

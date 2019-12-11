@@ -106,9 +106,7 @@ export default class SegmentForm extends Component {
             title={isNewRecord ? t`Create Your Segment` : t`Edit Your Segment`}
             description={
               isNewRecord
-                ? t`Select and add filters to create your new segment for the ${
-                    table.display_name
-                  } table`
+                ? t`Select and add filters to create your new segment for the ${table.display_name} table`
                 : t`Make changes to your segment and leave an explanatory note.`
             }
           >
