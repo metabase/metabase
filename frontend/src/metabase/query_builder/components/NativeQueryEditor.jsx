@@ -93,6 +93,7 @@ type Props = {
   isNativeEditorOpen: boolean,
 
   viewHeight: number,
+  width: number,
 };
 type State = {
   initialHeight: number,
@@ -153,7 +154,7 @@ export default class NativeQueryEditor extends Component {
     document.addEventListener("keydown", this.handleKeyDown);
   }
 
-  componentDidUpdate(prevProps) {
+  componentDidUpdate(prevProps: Props) {
     const { query } = this.props;
     if (!query || !this._editor) {
       return;
