@@ -19,7 +19,7 @@
              [datasets :as datasets]
              [sql :as sql.tx]]
             [metabase.util.honeysql-extensions :as hx]
-            [toucan.db :as db]))
+            [toucan.db :as db]) )
 
 ;; TIMEZONE FIXME
 (def ^:private broken-drivers
@@ -171,19 +171,20 @@
   ;; parameters always get `date` bucketing so doing something the between stuff we do below is basically just going
   ;; to match anything with a `2014-08-02` date
   (datasets/test-drivers (set-timezone-drivers)
-    (data/dataset test-data-with-timezones
-      (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-        (testing "Native dates should be parsed with the report timezone"
-          (doseq [[params-description query] (native-params-queries)]
-            (testing (format "Query with %s" params-description)
-              (is (= [[6 "Shad Ferdynand"  "2014-08-02T05:30:00-07:00"]
-                      [7 "Conchúr Tihomir" "2014-08-02T02:30:00-07:00"]]
-                     (qp.test/formatted-rows [int identity identity]
-                       (qp/process-query
-                         (merge
-                          {:database (data/id)
-                           :type     :native}
-                          query))))))))))))
+    (when (driver/supports? driver/*driver* :native-parameters)
+      (data/dataset test-data-with-timezones
+        (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
+          (testing "Native dates should be parsed with the report timezone"
+            (doseq [[params-description query] (native-params-queries)]
+              (testing (format "Query with %s" params-description)
+                (is (= [[6 "Shad Ferdynand"  "2014-08-02T05:30:00-07:00"]
+                        [7 "Conchúr Tihomir" "2014-08-02T02:30:00-07:00"]]
+                       (qp.test/formatted-rows [int identity identity]
+                         (qp/process-query
+                           (merge
+                            {:database (data/id)
+                             :type     :native}
+                            query)))))))))))))
 
 
 

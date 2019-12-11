@@ -113,17 +113,12 @@
         (swap! has-done-before-run conj driver)))))
 
 
-(defonce ^:private require-lock (Object.))
-
 (defn- require-driver-test-extensions-ns [driver & require-options]
   (let [expected-ns (symbol (or (namespace driver)
                                 (str "metabase.test.data." (name driver))))]
-    ;; ...and lock to make sure that multithreaded driver test-extension loading (on the off chance that it happens
-    ;; in tests) doesn't make Clojure explode
-    (locking require-lock
-      (println (format "Loading driver %s test extensions %s"
-                       (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
-      (apply classloader/require expected-ns require-options))))
+    (println (format "Loading driver %s test extensions %s"
+                     (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
+    (apply classloader/require expected-ns require-options)))
 
 (defonce ^:private has-loaded-extensions (atom #{}))
 

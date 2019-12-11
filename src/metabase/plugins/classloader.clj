@@ -81,7 +81,7 @@
        current-thread-context-classloader))
    ;; otherwise set the current thread's context classloader to the shared context classloader
    (let [shared-classloader @shared-context-classloader]
-     (log/debug
+     (log/trace
       (deferred-trs "Setting current thread context classloader to shared classloader {0}..." shared-classloader))
      (.setContextClassLoader (Thread/currentThread) shared-classloader)
      shared-classloader)))

@@ -1,6 +1,8 @@
-(ns dev.test
+(ns metabase.test
   "The stuff you need to write almost every test, all in one place. Nice!"
-  (:require [metabase
+  (:require [clojure.test :refer :all]
+            [java-time :as t]
+            [metabase
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :as qp.test]]
@@ -87,7 +89,10 @@
   rows+column-names]
 
  [qp.test-util
-  with-everything-store]
+  with-database-timezone-id
+  with-everything-store
+  with-report-timezone-id
+  with-results-timezone-id]
 
  [sql-jdbc-test
   sql-jdbc-drivers]
@@ -143,5 +148,24 @@
 
  [tx.env
   set-test-drivers!
-  test-drivers
   with-test-drivers])
+
+(defn do-with-clock [clock thunk]
+  (let [clock (cond
+                (t/clock? clock)           clock
+                (t/zoned-date-time? clock) (t/mock-clock (t/instant clock) (t/zone-id clock))
+                :else                      (throw (Exception. (format "Invalid clock: ^%s %s"
+                                                                      (.getName (class clock))
+                                                                      (pr-str clock)))))]
+    (t/with-clock clock
+      (testing (format "\nsystem clock = %s" (pr-str clock))
+        (thunk)))))
+
+(defmacro with-clock
+  "Same as `t/with-clock`, but adds `testing` context, and also supports using `ZonedDateTime` instances
+  directly (converting them to a mock clock automatically).
+
+    (mt/with-clock #t \"2019-12-10T00:00-08:00[US/Pacific]\"
+      ...)"
+  [clock & body]
+  `(do-with-clock ~clock (fn [] ~@body)))

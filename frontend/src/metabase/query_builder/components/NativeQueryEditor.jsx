@@ -19,6 +19,7 @@ import "ace/mode-pgsql";
 import "ace/mode-sqlserver";
 import "ace/mode-json";
 
+import "ace/snippets/text";
 import "ace/snippets/sql";
 import "ace/snippets/mysql";
 import "ace/snippets/pgsql";
@@ -32,6 +33,7 @@ import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
+import ExplicitSize from "metabase/components/ExplicitSize";
 
 import Parameters from "metabase/parameters/components/Parameters";
 
@@ -91,12 +93,14 @@ type Props = {
   isNativeEditorOpen: boolean,
 
   viewHeight: number,
+  width: number,
 };
 type State = {
   initialHeight: number,
   hasTextSelected: boolean,
 };
 
+@ExplicitSize()
 export default class NativeQueryEditor extends Component {
   props: Props;
   state: State;
@@ -150,7 +154,7 @@ export default class NativeQueryEditor extends Component {
     document.addEventListener("keydown", this.handleKeyDown);
   }
 
-  componentDidUpdate() {
+  componentDidUpdate(prevProps: Props) {
     const { query } = this.props;
     if (!query || !this._editor) {
       return;
@@ -181,6 +185,10 @@ export default class NativeQueryEditor extends Component {
       if (aceMode.indexOf("sql") >= 0) {
         this._editor.getSession().$mode.$behaviour = new SQLBehaviour();
       }
+    }
+
+    if (this.props.width !== prevProps.width && this._editor) {
+      this._editor.resize();
     }
   }
 
@@ -472,9 +480,16 @@ export default class NativeQueryEditor extends Component {
         >
           <div className="flex-full" id="id_sql" ref="editor" />
           <div className="flex flex-column align-center border-left">
-            {[DataReferenceButton, NativeVariablesButton].map(Button => (
-              <Button {...this.props} size={ICON_SIZE} className="mt3" />
-            ))}
+            <DataReferenceButton
+              {...this.props}
+              size={ICON_SIZE}
+              className="mt3"
+            />
+            <NativeVariablesButton
+              {...this.props}
+              size={ICON_SIZE}
+              className="mt3"
+            />
             <RunButtonWithTooltip
               disabled={!isRunnable}
               isRunning={isRunning}

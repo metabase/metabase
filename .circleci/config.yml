@@ -75,7 +75,7 @@ executors:
      working_directory: /home/circleci/metabase/metabase/
      docker:
        - image: circleci/clojure:lein-2.8.1
-       - image: circleci/mongo:3.4
+       - image: circleci/mongo:4.0
 
   presto:
     working_directory: /home/circleci/metabase/metabase/

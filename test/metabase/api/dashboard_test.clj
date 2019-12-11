@@ -1,7 +1,10 @@
 (ns metabase.api.dashboard-test
   "Tests for /api/dashboard endpoints."
-  (:require [clojure.walk :as walk]
-            [expectations :refer :all]
+  (:require [clojure
+             [string :as str]
+             [test :refer :all]
+             [walk :as walk]]
+            [expectations :refer [expect]]
             [medley.core :as m]
             [metabase
              [http-client :as http]
@@ -33,19 +36,21 @@
 ;;; |                                              Helper Fns & Macros                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- remove-ids-and-booleanize-timestamps [m]
-  (let [f (fn [v]
-            (cond
-              (map? v) (remove-ids-and-booleanize-timestamps v)
-              (coll? v) (mapv remove-ids-and-booleanize-timestamps v)
-              :else v))]
-    (into {} (for [[k v] m]
+(defn- remove-ids-and-booleanize-timestamps [x]
+  (cond
+    (map? x)
+    (into {} (for [[k v] x]
                (when-not (or (= :id k)
-                             (.endsWith (name k) "_id"))
-                 (if (or (= :created_at k)
-                         (= :updated_at k))
+                             (str/ends-with? k "_id"))
+                 (if (#{:created_at :updated_at} k)
                    [k (boolean v)]
-                   [k (f v)]))))))
+                   [k (remove-ids-and-booleanize-timestamps v)]))))
+
+    (coll? x)
+    (mapv remove-ids-and-booleanize-timestamps x)
+
+    :else
+    x))
 
 (defn- user-details [user]
   (select-keys user [:common_name :date_joined :email :first_name :id :is_qbnewb :is_superuser :last_login :last_name]))
@@ -195,8 +200,6 @@
                                                            :creator_id             (user->id :rasta)
                                                            :collection_id          true
                                                            :display                "table"
-                                                           :query_type             nil
-                                                           :dataset_query          {}
                                                            :read_permissions       nil
                                                            :visualization_settings {}
                                                            :result_metadata        nil})
@@ -231,8 +234,9 @@
                                                     :display_name     display-name
                                                     :base_type        "type/Text"
                                                     :special_type     nil
-                                                    :has_field_values "search" :name_field nil
-                                                    :dimensions       ()}}
+                                                    :has_field_values "search"
+                                                    :name_field       nil
+                                                    :dimensions       []}}
           :ordered_cards [{:sizeX                  2
                            :sizeY                  2
                            :col                    0
@@ -249,7 +253,6 @@
                                                            :collection_id          true
                                                            :display                "table"
                                                            :query_type             nil
-                                                           :dataset_query          {}
                                                            :read_permissions       nil
                                                            :visualization_settings {}
                                                            :result_metadata        nil})
@@ -647,61 +650,40 @@
 ;;; |                                         POST /api/dashboard/:id/cards                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; simple creation with no additional series
-(expect
-  {1 {:sizeX                  2
-      :sizeY                  2
-      :col                    4
-      :row                    4
-      :series                 []
-      :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
-      :visualization_settings {}
-      :created_at             true
-      :updated_at             true}
-   2 [{:sizeX                  2
-       :sizeY                  2
-       :col                    4
-       :row                    4
-       :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
-       :visualization_settings {}}]}
+(deftest simple-creation-with-no-additional-series-test
   (tt/with-temp* [Dashboard [{dashboard-id :id}]
                   Card      [{card-id :id}]]
     (with-dashboards-in-writeable-collection [dashboard-id]
       (card-api-test/with-cards-in-readable-collection [card-id]
-        (array-map
-         1 (-> ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id)
-                {:cardId                 card-id
-                 :row                    4
+        (is (= {:sizeX                  2
+                :sizeY                  2
+                :col                    4
+                :row                    4
+                :series                 []
+                :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
+                :visualization_settings {}
+                :created_at             true
+                :updated_at             true}
+               (-> ((user->client :rasta) :post 200 (format "dashboard/%d/cards" dashboard-id)
+                    {:cardId                 card-id
+                     :row                    4
+                     :col                    4
+                     :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
+                     :visualization_settings {}})
+                   (dissoc :id :dashboard_id :card_id)
+                   (update :created_at boolean)
+                   (update :updated_at boolean))))
+        (is (= [{:sizeX                  2
+                 :sizeY                  2
                  :col                    4
+                 :row                    4
                  :parameter_mappings     [{:card-id 123, :hash "abc", :target "foo"}]
-                 :visualization_settings {}})
-               (dissoc :id :dashboard_id :card_id)
-               (update :created_at boolean)
-               (update :updated_at boolean))
-         2 (map (partial into {})
-                (db/select [DashboardCard :sizeX :sizeY :col :row :parameter_mappings :visualization_settings]
-                  :dashboard_id dashboard-id)))))))
+                 :visualization_settings {}}]
+               (map (partial into {})
+                    (db/select [DashboardCard :sizeX :sizeY :col :row :parameter_mappings :visualization_settings]
+                      :dashboard_id dashboard-id))))))))
 
-;; new dashboard card w/ additional series
-(expect
-  {1 {:sizeX                  2
-      :sizeY                  2
-      :col                    4
-      :row                    4
-      :parameter_mappings     []
-      :visualization_settings {}
-      :series                 [{:name                   "Series Card"
-                                :description            nil
-                                :display                "table"
-                                :dataset_query          {}
-                                :visualization_settings {}}]
-      :created_at             true
-      :updated_at             true}
-   2 [{:sizeX 2
-       :sizeY 2
-       :col   4
-       :row   4}]
-   3 #{0}}
+(deftest new-dashboard-card-with-additional-series-test
   (tt/with-temp* [Dashboard [{dashboard-id :id}]
                   Card      [{card-id :id}]
                   Card      [{series-id-1 :id} {:name "Series Card"}]]
@@ -712,105 +694,123 @@
                                :row    4
                                :col    4
                                :series [{:id series-id-1}]})]
-          (array-map
-           1 (remove-ids-and-booleanize-timestamps dashboard-card)
-           2 (map (partial into {})
-                  (db/select [DashboardCard :sizeX :sizeY :col :row], :dashboard_id dashboard-id))
-           3 (db/select-field :position DashboardCardSeries, :dashboardcard_id (:id dashboard-card))))))))
+          (is (= {:sizeX                  2
+                  :sizeY                  2
+                  :col                    4
+                  :row                    4
+                  :parameter_mappings     []
+                  :visualization_settings {}
+                  :series                 [{:name                   "Series Card"
+                                            :description            nil
+                                            :dataset_query          (:dataset_query card-api-test/card-defaults)
+                                            :display                "table"
+                                            :visualization_settings {}}]
+                  :created_at             true
+                  :updated_at             true}
+                 (remove-ids-and-booleanize-timestamps dashboard-card)))
+          (is (= [{:sizeX 2
+                   :sizeY 2
+                   :col   4
+                   :row   4}]
+                 (map (partial into {})
+                      (db/select [DashboardCard :sizeX :sizeY :col :row], :dashboard_id dashboard-id))))
+          (is (= #{0}
+                 (db/select-field :position DashboardCardSeries, :dashboardcard_id (:id dashboard-card)))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        DELETE /api/dashboard/:id/cards                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(expect
-  {1 1
-   2 {:success true}
-   3 0}
-  ;; fetch a dashboard WITH a dashboard card on it
-  (tt/with-temp* [Dashboard           [{dashboard-id :id}]
-                  Card                [{card-id :id}]
-                  Card                [{series-id-1 :id}]
-                  Card                [{series-id-2 :id}]
-                  DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
-                  DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
-                  DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
-    (with-dashboards-in-writeable-collection [dashboard-id]
-      (array-map
-       1 (count (db/select-ids DashboardCard, :dashboard_id dashboard-id))
-       2 ((user->client :rasta) :delete 200 (format "dashboard/%d/cards" dashboard-id) :dashcardId dashcard-id)
-       3 (count (db/select-ids DashboardCard, :dashboard_id dashboard-id))))))
+(deftest delete-cards-test
+  (testing "DELETE /api/dashboard/id/:cards"
+    ;; fetch a dashboard WITH a dashboard card on it
+    (tt/with-temp* [Dashboard           [{dashboard-id :id}]
+                    Card                [{card-id :id}]
+                    Card                [{series-id-1 :id}]
+                    Card                [{series-id-2 :id}]
+                    DashboardCard       [{dashcard-id :id} {:dashboard_id dashboard-id, :card_id card-id}]
+                    DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-1, :position 0}]
+                    DashboardCardSeries [_                 {:dashboardcard_id dashcard-id, :card_id series-id-2, :position 1}]]
+      (with-dashboards-in-writeable-collection [dashboard-id]
+        (is (= 1
+               (count (db/select-ids DashboardCard, :dashboard_id dashboard-id))))
+        (is (= {:success true}
+               ((user->client :rasta) :delete 200 (format "dashboard/%d/cards" dashboard-id) :dashcardId dashcard-id)))
+        (is (= 0
+               (count (db/select-ids DashboardCard, :dashboard_id dashboard-id))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          PUT /api/dashboard/:id/cards                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(expect
-  {1 [{:sizeX                  2
-       :sizeY                  2
-       :col                    0
-       :row                    0
-       :series                 []
-       :parameter_mappings     []
-       :visualization_settings {}
-       :created_at             true
-       :updated_at             true}
-      {:sizeX                  2
-       :sizeY                  2
-       :col                    0
-       :row                    0
-       :parameter_mappings     []
-       :visualization_settings {}
-       :series                 []
-       :created_at             true
-       :updated_at             true}]
-   2 {:status "ok"}
-   3 [{:sizeX                  4
-       :sizeY                  2
-       :col                    0
-       :row                    0
-       :parameter_mappings     []
-       :visualization_settings {}
-       :series                 [{:name                   "Series Card"
-                                 :description            nil
-                                 :display                :table
-                                 :dataset_query          {}
-                                 :visualization_settings {}}]
-       :created_at             true
-       :updated_at             true}
-      {:sizeX                  1
-       :sizeY                  1
-       :col                    1
-       :row                    3
-       :parameter_mappings     []
-       :visualization_settings {}
-       :series                 []
-       :created_at             true
-       :updated_at             true}]}
-  ;; fetch a dashboard WITH a dashboard card on it
-  (tt/with-temp* [Dashboard     [{dashboard-id :id}]
-                  Card          [{card-id :id}]
-                  DashboardCard [{dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id}]
-                  DashboardCard [{dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id}]
-                  Card          [{series-id-1 :id}   {:name "Series Card"}]]
-    (with-dashboards-in-writeable-collection [dashboard-id]
-      (array-map
-       1 [(remove-ids-and-booleanize-timestamps (retrieve-dashboard-card dashcard-id-1))
-          (remove-ids-and-booleanize-timestamps (retrieve-dashboard-card dashcard-id-2))]
-       2 ((user->client :rasta) :put 200 (format "dashboard/%d/cards" dashboard-id) {:cards [{:id     dashcard-id-1
-                                                                                              :sizeX  4
-                                                                                              :sizeY  2
-                                                                                              :col    0
-                                                                                              :row    0
-                                                                                              :series [{:id series-id-1}]}
-                                                                                             {:id    dashcard-id-2
-                                                                                              :sizeX 1
-                                                                                              :sizeY 1
-                                                                                              :col   1
-                                                                                              :row   3}]})
-       3 [(remove-ids-and-booleanize-timestamps (retrieve-dashboard-card dashcard-id-1))
-          (remove-ids-and-booleanize-timestamps (retrieve-dashboard-card dashcard-id-2))]))))
+(deftest update-cards-test
+  (testing "PUT /api/dashboard/:id/cards"
+    ;; fetch a dashboard WITH a dashboard card on it
+    (tt/with-temp* [Dashboard     [{dashboard-id :id}]
+                    Card          [{card-id :id}]
+                    DashboardCard [{dashcard-id-1 :id} {:dashboard_id dashboard-id, :card_id card-id}]
+                    DashboardCard [{dashcard-id-2 :id} {:dashboard_id dashboard-id, :card_id card-id}]
+                    Card          [{series-id-1 :id}   {:name "Series Card"}]]
+      (with-dashboards-in-writeable-collection [dashboard-id]
+        (is (= {:sizeX                  2
+                :sizeY                  2
+                :col                    0
+                :row                    0
+                :series                 []
+                :parameter_mappings     []
+                :visualization_settings {}
+                :created_at             true
+                :updated_at             true}
+               (remove-ids-and-booleanize-timestamps (retrieve-dashboard-card dashcard-id-1))))
+        (is (= {:sizeX                  2
+                :sizeY                  2
+                :col                    0
+                :row                    0
+                :parameter_mappings     []
+                :visualization_settings {}
+                :series                 []
+                :created_at             true
+                :updated_at             true}
+               (remove-ids-and-booleanize-timestamps (retrieve-dashboard-card dashcard-id-2))))
+        (is (= {:status "ok"}
+               ((user->client :rasta) :put 200 (format "dashboard/%d/cards" dashboard-id)
+                {:cards [{:id     dashcard-id-1
+                          :sizeX  4
+                          :sizeY  2
+                          :col    0
+                          :row    0
+                          :series [{:id series-id-1}]}
+                         {:id    dashcard-id-2
+                          :sizeX 1
+                          :sizeY 1
+                          :col   1
+                          :row   3}]})))
+        (is (= {:sizeX                  4
+                :sizeY                  2
+                :col                    0
+                :row                    0
+                :parameter_mappings     []
+                :visualization_settings {}
+                :series                 [{:name                   "Series Card"
+                                          :description            nil
+                                          :display                :table
+                                          :dataset_query          {}
+                                          :visualization_settings {}}]
+                :created_at             true
+                :updated_at             true}
+               (remove-ids-and-booleanize-timestamps (retrieve-dashboard-card dashcard-id-1))))
+        (is (= {:sizeX                  1
+                :sizeY                  1
+                :col                    1
+                :row                    3
+                :parameter_mappings     []
+                :visualization_settings {}
+                :series                 []
+                :created_at             true
+                :updated_at             true}
+               (remove-ids-and-booleanize-timestamps (retrieve-dashboard-card dashcard-id-2))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -869,71 +869,64 @@
 ;;; |                                         POST /api/dashboard/:id/revert                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(expect {:errors {:revision_id "value must be an integer greater than zero."}}
-  ((user->client :crowberto) :post 400 "dashboard/1/revert" {}))
+(deftest revert-dashboard-test
+  (testing "POST /api/dashboard/:id/revert"
+    (testing "parameter validation"
+      (is (= {:errors {:revision_id "value must be an integer greater than zero."}}
+             ((user->client :crowberto) :post 400 "dashboard/1/revert" {})))
+      (is (= {:errors {:revision_id "value must be an integer greater than zero."}}
+             ((user->client :crowberto) :post 400 "dashboard/1/revert" {:revision_id "foobar"})))      )
+    (tt/with-temp* [Dashboard [{dashboard-id :id}]
+                    Revision  [{revision-id :id} {:model       "Dashboard"
+                                                  :model_id    dashboard-id
+                                                  :object      {:name        "a"
+                                                                :description nil
+                                                                :cards       []}
+                                                  :is_creation true}]
+                    Revision  [_                 {:model    "Dashboard"
+                                                  :model_id dashboard-id
+                                                  :user_id  (user->id :crowberto)
+                                                  :object   {:name        "b"
+                                                             :description nil
+                                                             :cards       []}
+                                                  :message  "updated"}]]
+      (is (= {:is_reversion true
+              :is_creation  false
+              :message      nil
+              :user         (-> (user-details (fetch-user :crowberto))
+                                (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+              :diff         {:before {:name "b"}
+                             :after  {:name "a"}}
+              :description  "renamed it from \"b\" to \"a\"."}
+             (dissoc ((user->client :crowberto) :post 200 (format "dashboard/%d/revert" dashboard-id)
+                      {:revision_id revision-id})
+                     :id :timestamp)))
 
-(expect {:errors {:revision_id "value must be an integer greater than zero."}}
-  ((user->client :crowberto) :post 400 "dashboard/1/revert" {:revision_id "foobar"}))
-
-
-(expect
-  {:response
-   {:is_reversion true
-    :is_creation  false
-    :message      nil
-    :user         (-> (user-details (fetch-user :crowberto))
-                      (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-    :diff         {:before {:name "b"}
-                   :after  {:name "a"}}
-    :description  "renamed it from \"b\" to \"a\"."}
-
-   :revisions
-   [{:is_reversion true
-     :is_creation  false
-     :message      nil
-     :user         (-> (user-details (fetch-user :crowberto))
-                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-     :diff         {:before {:name "b"}
-                    :after  {:name "a"}}
-     :description  "renamed it from \"b\" to \"a\"."}
-    {:is_reversion false
-     :is_creation  false
-     :message      "updated"
-     :user         (-> (user-details (fetch-user :crowberto))
-                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-     :diff         {:before {:name "a"}
-                    :after  {:name "b"}}
-     :description  "renamed it from \"a\" to \"b\"."}
-    {:is_reversion false
-     :is_creation  true
-     :message      nil
-     :user         (-> (user-details (fetch-user :rasta))
-                       (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
-     :diff         nil
-     :description  nil}]}
-  (tt/with-temp* [Dashboard [{dashboard-id :id}]
-                  Revision  [{revision-id :id} {:model        "Dashboard"
-                                                :model_id     dashboard-id
-                                                :object       {:name         "a"
-                                                               :description  nil
-                                                               :cards        []}
-                                                :is_creation  true}]
-                  Revision  [_                 {:model        "Dashboard"
-                                                :model_id     dashboard-id
-                                                :user_id      (user->id :crowberto)
-                                                :object       {:name         "b"
-                                                               :description  nil
-                                                               :cards        []}
-                                                :message      "updated"}]]
-    (array-map
-     :response
-     (dissoc ((user->client :crowberto) :post 200 (format "dashboard/%d/revert" dashboard-id)
-              {:revision_id revision-id})
-             :id :timestamp)
-
-     :revisions
-     (doall (for [revision ((user->client :crowberto) :get 200 (format "dashboard/%d/revisions" dashboard-id))]
-              (dissoc revision :timestamp :id))))))
+      (is (= [{:is_reversion true
+               :is_creation  false
+               :message      nil
+               :user         (-> (user-details (fetch-user :crowberto))
+                                 (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+               :diff         {:before {:name "b"}
+                              :after  {:name "a"}}
+               :description  "renamed it from \"b\" to \"a\"."}
+              {:is_reversion false
+               :is_creation  false
+               :message      "updated"
+               :user         (-> (user-details (fetch-user :crowberto))
+                                 (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+               :diff         {:before {:name "a"}
+                              :after  {:name "b"}}
+               :description  "renamed it from \"a\" to \"b\"."}
+              {:is_reversion false
+               :is_creation  true
+               :message      nil
+               :user         (-> (user-details (fetch-user :rasta))
+                                 (dissoc :email :date_joined :last_login :is_superuser :is_qbnewb))
+               :diff         nil
+               :description  nil}]
+             (doall (for [revision ((user->client :crowberto) :get 200 (format "dashboard/%d/revisions" dashboard-id))]
+                      (dissoc revision :timestamp :id))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

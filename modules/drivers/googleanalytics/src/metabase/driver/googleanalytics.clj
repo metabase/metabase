@@ -194,7 +194,8 @@
 (defn- add-built-in-column-metadata [query results]
   (update-in results [:data :cols] (partial map (partial add-col-metadata query))))
 
-(defmethod driver/process-query-in-context :googleanalytics [_ qp]
+(defmethod driver/process-query-in-context :googleanalytics
+  [_ qp]
   (fn [query]
     (let [results (qp query)]
       (add-built-in-column-metadata query results))))

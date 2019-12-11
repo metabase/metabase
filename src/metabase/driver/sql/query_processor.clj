@@ -444,45 +444,56 @@
   [value :- (s/constrained mbql.s/value #(string? (second %)) "string value"), f]
   (update value 1 f))
 
-(defmethod ->honeysql [:sql :starts-with] [driver [_ field value options]]
+(defmethod ->honeysql [:sql :starts-with]
+  [driver [_ field value options]]
   (like-clause driver (->honeysql driver field) (update-string-value value #(str % \%)) options))
 
-(defmethod ->honeysql [:sql :contains] [driver [_ field value options]]
+(defmethod ->honeysql [:sql :contains]
+  [driver [_ field value options]]
   (like-clause driver (->honeysql driver field) (update-string-value value #(str \% % \%)) options))
 
-(defmethod ->honeysql [:sql :ends-with] [driver [_ field value options]]
+(defmethod ->honeysql [:sql :ends-with]
+  [driver [_ field value options]]
   (like-clause driver (->honeysql driver field) (update-string-value value #(str \% %)) options))
 
-(defmethod ->honeysql [:sql :between] [driver [_ field min-val max-val]]
+(defmethod ->honeysql [:sql :between]
+  [driver [_ field min-val max-val]]
   [:between (->honeysql driver field) (->honeysql driver min-val) (->honeysql driver max-val)])
 
-
-(defmethod ->honeysql [:sql :>] [driver [_ field value]]
+(defmethod ->honeysql [:sql :>]
+  [driver [_ field value]]
   [:> (->honeysql driver field) (->honeysql driver value)])
 
-(defmethod ->honeysql [:sql :<] [driver [_ field value]]
+(defmethod ->honeysql [:sql :<]
+  [driver [_ field value]]
   [:< (->honeysql driver field) (->honeysql driver value)])
 
-(defmethod ->honeysql [:sql :>=] [driver [_ field value]]
+(defmethod ->honeysql [:sql :>=]
+  [driver [_ field value]]
   [:>= (->honeysql driver field) (->honeysql driver value)])
 
-(defmethod ->honeysql [:sql :<=] [driver [_ field value]]
+(defmethod ->honeysql [:sql :<=]
+  [driver [_ field value]]
   [:<= (->honeysql driver field) (->honeysql driver value)])
 
-(defmethod ->honeysql [:sql :=] [driver [_ field value]]
+(defmethod ->honeysql [:sql :=]
+  [driver [_ field value]]
   [:= (->honeysql driver field) (->honeysql driver value)])
 
-(defmethod ->honeysql [:sql :!=] [driver [_ field value]]
+(defmethod ->honeysql [:sql :!=]
+  [driver [_ field value]]
   [:not= (->honeysql driver field) (->honeysql driver value)])
 
-
-(defmethod ->honeysql [:sql :and] [driver [_ & subclauses]]
+(defmethod ->honeysql [:sql :and]
+  [driver [_ & subclauses]]
   (apply vector :and (map (partial ->honeysql driver) subclauses)))
 
-(defmethod ->honeysql [:sql :or] [driver [_ & subclauses]]
+(defmethod ->honeysql [:sql :or]
+  [driver [_ & subclauses]]
   (apply vector :or (map (partial ->honeysql driver) subclauses)))
 
-(defmethod ->honeysql [:sql :not] [driver [_ subclause]]
+(defmethod ->honeysql [:sql :not]
+  [driver [_ subclause]]
   [:not (->honeysql driver subclause)])
 
 (defmethod apply-top-level-clause [:sql :filter]

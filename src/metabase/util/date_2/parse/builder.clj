@@ -98,7 +98,8 @@
     field))
 
 (defn value
-  "Define a section for a specific field such as `:hour-of-day` or `:minute-of-hour`."
+  "Define a section for a specific field such as `:hour-of-day` or `:minute-of-hour`. Refer to
+  `metabase.util.date-2.common/temporal-field` for all possible temporal fields names."
   ([temporal-field-name]
    (fn [^DateTimeFormatterBuilder builder]
      (.appendValue builder (temporal-field temporal-field-name))))
