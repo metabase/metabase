@@ -3,11 +3,9 @@
             [java-time :as t]
             [metabase
              [driver :as driver]
-             [query-processor-test :as qp.test]]
-            [metabase.query-processor.middleware.format-rows :as format-rows]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]))
+             [query-processor-test :as qp.test]
+             [test :as mt]]
+            [metabase.query-processor.middleware.format-rows :as format-rows]))
 
 (driver/register! ::timezone-driver, :abstract? true)
 
@@ -20,7 +18,7 @@
   #{:oracle :mongo :redshift :presto :sparksql :snowflake})
 
 (deftest format-rows-test
-  (datasets/test-drivers (qp.test/normal-drivers-except dbs-exempt-from-format-rows-tests)
+  (mt/test-drivers (mt/normal-drivers-except dbs-exempt-from-format-rows-tests)
     (testing "without report timezone"
       (is (= (if (= driver/*driver* :sqlite)
                ;; TIMEZONE FIXME
@@ -34,13 +32,13 @@
                 [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00Z" "16:15:00Z"]
                 [4 "Simcha Yan"          "2014-01-01T00:00:00Z" "08:30:00Z"]
                 [5 "Quentin Sören"       "2014-10-03T00:00:00Z" "17:30:00Z"]])
-             (qp.test/rows
-               (data/dataset test-data-with-time
-                 (data/run-mbql-query users
+             (mt/rows
+               (mt/dataset test-data-with-time
+                 (mt/run-mbql-query users
                    {:order-by [[:asc $id]]
                     :limit    5}))))))
     (testing "with report timezone"
-      (qp.timezone/with-report-timezone-id "America/Los_Angeles"
+      (mt/with-report-timezone-id "America/Los_Angeles"
         (is (= (cond
                  (= driver/*driver* :sqlite)
                  [[1 "Plato Yeshua"        "2014-04-01T00:00:00Z" "08:30:00"]
@@ -62,9 +60,9 @@
                   [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00Z" "16:15:00Z"]
                   [4 "Simcha Yan"          "2014-01-01T00:00:00Z" "08:30:00Z"]
                   [5 "Quentin Sören"       "2014-10-03T00:00:00Z" "17:30:00Z"]])
-               (data/dataset test-data-with-time
-                 (qp.test/rows
-                   (data/run-mbql-query users
+               (mt/dataset test-data-with-time
+                 (mt/rows
+                   (mt/run-mbql-query users
                      {:order-by [[:asc $id]]
                       :limit    5})))))))))
 
@@ -158,7 +156,7 @@
                                         ["2019-07-01T13:14:15Z" "UTC"]
                                         ["2019-07-01T13:14:15Z" "US/Pacific"]]]
       (testing (format "system clock = %s; system timezone = %s" clock-instant clock-zone)
-        (t/with-clock (t/mock-clock (t/instant clock-instant) clock-zone)
+        (mt/with-clock (t/mock-clock (t/instant clock-instant) clock-zone)
           (is (= expected
                  (format-rows/format-value t (t/zone-id zone)))
               (format "format %s '%s' with results timezone ID '%s'" (.getName (class t)) t zone))))))
@@ -171,7 +169,7 @@
                                            "Asia/Tokyo" [["2011-04-18T19:12:47.232+09:00"
                                                           "2011-04-18T00:00:00+09:00"
                                                           "2011-04-18T19:12:47.232+09:00"]]}]
-        (qp.timezone/with-results-timezone-id timezone-id
+        (mt/with-results-timezone-id timezone-id
           (testing (format "timezone ID '%s'" timezone-id)
             (let [results (driver/with-driver ::timezone-driver
                             ((format-rows/format-rows

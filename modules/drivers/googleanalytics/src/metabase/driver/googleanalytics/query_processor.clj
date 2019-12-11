@@ -6,7 +6,9 @@
             [clojure.tools.reader.edn :as edn]
             [java-time :as t]
             [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor
+             [store :as qp.store]
+             [timezone :as qp.timezone]]
             [metabase.util
              [date-2 :as u.date]
              [i18n :as ui18n :refer [deferred-tru tru]]
@@ -245,7 +247,8 @@
                 (:> :>=) {:start-date special-amount}
                 :=       {:start-date special-amount, :end-date special-amount}
                 nil)))))
-      (let [t (u.date/add relative-datetime-unit n)]
+      (let [now (qp.timezone/now :googleanalytics nil :use-report-timezone-id-if-unsupported? true)
+            t   (u.date/add now relative-datetime-unit n)]
         (format-range (u.date/comparison-range t unit comparison-type {:end :inclusive, :resolution :day})))))
 
 (defmethod ->date-range :absolute-datetime

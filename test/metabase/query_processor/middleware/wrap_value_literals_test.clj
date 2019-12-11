@@ -1,14 +1,11 @@
 (ns metabase.query-processor.middleware.wrap-value-literals-test
   (:require [clojure.test :refer :all]
             [java-time :as t]
-            [metabase.driver :as driver]
-            [metabase.query-processor
-             [test-util :as qp.test-util]
-             [timezone :as qp.timezone]]
+            [metabase
+             [driver :as driver]
+             [test :as mt]]
             [metabase.query-processor.middleware.wrap-value-literals :as wrap-value-literals]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]))
+            [metabase.query-processor.timezone :as qp.timezone]))
 
 (driver/register! ::tz-driver, :abstract? true)
 
@@ -20,22 +17,22 @@
    (wrap-value-literals query "UTC"))
 
   ([query, ^String timezone-id]
-   (qp.test-util/with-everything-store
-     (qp.timezone/with-results-timezone-id timezone-id
+   (mt/with-everything-store
+     (mt/with-results-timezone-id timezone-id
        ((wrap-value-literals/wrap-value-literals identity)
         query)))))
 
 (deftest wrap-integers-test
-  (is (= (data/mbql-query venues
+  (is (= (mt/mbql-query venues
            {:filter [:>
                      $id
                      [:value 50 {:base_type     :type/BigInteger
                                  :special_type  :type/PK
                                  :database_type "BIGINT"}]]})
          (wrap-value-literals
-           (data/mbql-query venues
+           (mt/mbql-query venues
              {:filter [:> $id 50]}))))
-  (is (= (data/mbql-query venues
+  (is (= (mt/mbql-query venues
            {:filter [:and
                      [:> $id [:value 50 {:base_type     :type/BigInteger
                                          :special_type  :type/PK
@@ -44,7 +41,7 @@
                                            :special_type  :type/Category
                                            :database_type "INTEGER"}]]]})
          (wrap-value-literals
-           (data/mbql-query venues
+           (mt/mbql-query venues
              {:filter [:and
                        [:> $id 50]
                        [:< $price 5]]})))))
@@ -52,7 +49,7 @@
 (deftest parse-datetime-literal-strings-test
   (let [parse-with-timezone (fn [datetime-str, ^String timezone-id]
                               (driver/with-driver ::tz-driver
-                                (tu/with-temporary-setting-values [report-timezone timezone-id]
+                                (mt/with-temporary-setting-values [report-timezone timezone-id]
                                   (is (= (qp.timezone/results-timezone-id)
                                          timezone-id)
                                       "Make sure `results-timezone-id` is returning the bound value")
@@ -66,42 +63,42 @@
 
 (deftest wrap-datetime-literal-strings-test
   (is (= (:query
-          (data/mbql-query checkins
+          (mt/mbql-query checkins
             {:filter [:= !month.date [:absolute-datetime (t/zoned-date-time "2018-10-01T00:00Z[UTC]") :month]]}))
-         (-> (data/$ids checkins
-               (data/mbql-query checkins
+         (-> (mt/$ids checkins
+               (mt/mbql-query checkins
                  {:filter [:= !month.date "2018-10-01"]}))
              wrap-value-literals
              :query))
       "do datetime literal strings get wrapped in `absolute-datetime` clauses when in appropriate filters?")
 
   (is (= (:query
-          (data/mbql-query checkins
+          (mt/mbql-query checkins
             {:source-query {:source-table $$checkins}
              :filter       [:=
                             !month.*date
                             [:absolute-datetime (t/zoned-date-time "2018-10-01T00:00Z[UTC]") :month]]}))
          (:query
           (wrap-value-literals
-            (data/mbql-query checkins
+            (mt/mbql-query checkins
               {:source-query {:source-table $$checkins}
                :filter       [:= !month.*date "2018-10-01"]}))))
       (str "make sure datetime literal strings should also get wrapped in `absolute-datetime` clauses if they are "
            "being compared against a type/DateTime `field-literal`"))
 
   (is (= (:query
-          (data/mbql-query checkins
+          (mt/mbql-query checkins
             {:filter [:= $date [:absolute-datetime (t/zoned-date-time "2018-10-01T00:00Z[UTC]") :default]]}))
          (:query
           (wrap-value-literals
-            (data/mbql-query checkins
+            (mt/mbql-query checkins
               {:filter [:= $date "2018-10-01"]}))))
       (str "even if the Field in question is not wrapped in a datetime-field clause, we should still auto-bucket the "
            "value, but we should give it a a`:default` unit"))
 
   (is (= (:query
-          (data/dataset sad-toucan-incidents
-            (data/mbql-query incidents
+          (mt/dataset sad-toucan-incidents
+            (mt/mbql-query incidents
               {:filter [:and
                         [:>
                          !day.timestamp
@@ -110,22 +107,22 @@
                          !day.timestamp
                          [:absolute-datetime (t/zoned-date-time "2015-06-03T00:00:00Z[UTC]") :day]]]})))
          (:query
-          (data/dataset sad-toucan-incidents
+          (mt/dataset sad-toucan-incidents
             (wrap-value-literals
-              (data/mbql-query incidents
+              (mt/mbql-query incidents
                 {:filter [:and
                           [:> !day.timestamp "2015-06-01"]
                           [:< !day.timestamp "2015-06-03"]]})))))
       "should also apply if the Fields are UNIX timestamps or other things with special type of :type/Datetime")
 
-  (tu/with-temporary-setting-values [report-timezone "US/Pacific"]
+  (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
     (is (= (:query
-            (data/mbql-query checkins
+            (mt/mbql-query checkins
               {:source-query {:source-table $$checkins}
                :filter       [:=
                               !day.*date
                               [:absolute-datetime (t/zoned-date-time "2018-10-01T00:00-07:00[US/Pacific]") :day]]}))
-           (-> (data/mbql-query checkins
+           (-> (mt/mbql-query checkins
                  {:source-query {:source-table $$checkins}
                   :filter       [:= !day.*date "2018-10-01"]})
                (assoc-in [:settings :report-timezone] "US/Pacific")
@@ -135,7 +132,7 @@
 
 (deftest string-filters-test
   (testing "string filters like `starts-with` should not parse datetime strings for obvious reasons"
-    (is (= (data/mbql-query checkins
+    (is (= (mt/mbql-query checkins
              {:filter [:starts-with
                        !month.date
                        [:value "2018-10-01" {:base_type     :type/Date
@@ -143,29 +140,29 @@
                                              :database_type "DATE"
                                              :unit          :month}]]})
            (wrap-value-literals
-             (data/mbql-query checkins
+             (mt/mbql-query checkins
                {:filter [:starts-with !month.date "2018-10-01"]}))))))
 
 (deftest wrap-literals-in-source-queries-test
   (testing "does wrapping value literals work recursively on source queries as well?"
     (is (=
-         (data/mbql-query checkins
+         (mt/mbql-query checkins
            {:source-query {:source-table $$checkins
                            :filter       [:>
                                           $date
                                           [:absolute-datetime (t/zoned-date-time "2014-01-01T00:00Z[UTC]") :default]]}})
          (wrap-value-literals
-           (data/mbql-query checkins
+           (mt/mbql-query checkins
              {:source-query {:source-table $$checkins
                              :filter       [:> $date "2014-01-01"]}}))))))
 
 (deftest other-clauses-test
   (testing "Make sure we apply the transformation to predicates in all parts of the query, not only `:filter`"
-    (is (= (data/dataset sad-toucan-incidents
-             (data/mbql-query incidents
+    (is (= (mt/dataset sad-toucan-incidents
+             (mt/mbql-query incidents
                {:aggregation [[:share
                                [:> !day.timestamp [:absolute-datetime (t/zoned-date-time "2015-06-01T00:00Z[UTC]") :day]]]]}))
-           (data/dataset sad-toucan-incidents
+           (mt/dataset sad-toucan-incidents
              (wrap-value-literals
-               (data/mbql-query incidents
+               (mt/mbql-query incidents
                  {:aggregation [[:share [:> !day.timestamp "2015-06-01"]]]})))))))
