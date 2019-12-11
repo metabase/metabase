@@ -148,24 +148,51 @@
              :quarter-of-year  :quarter-of-year
              :year             :year))))
 
-(def ^:private adjusters*
-  {:first-day-of-week
-   (reify TemporalAdjuster
-     (adjustInto [_ t]
-       (t/adjust t :previous-or-same-day-of-week :sunday)))
+(defmulti ^TemporalAdjuster adjuster
+  "Get the custom `TemporalAdjuster` named by `k`.
 
-   :first-day-of-iso-week
-   (reify TemporalAdjuster
-     (adjustInto [_ t]
-       (t/adjust t :previous-or-same-day-of-week :monday)))
+    ;; adjust 2019-12-10T17:26 to the second week of the year
+    (t/adjust #t \"2019-12-10T17:26\" (u.date/adjuster :week-of-year 2)) ;; -> #t \"2019-01-06T17:26\""
+  {:arglists '([k & args])}
+  (fn [k & _] (keyword k)))
 
-   :first-day-of-quarter
-   (reify TemporalAdjuster
-     (adjustInto [_ t]
-       (.with t (.atDay (t/year-quarter t) 1))))})
+(defmethod adjuster :default
+  [k]
+  (throw (Exception. (tru "No temporal adjuster named {0}" k))))
 
-(defn- adjusters ^TemporalAdjuster [k]
-  (get adjusters* k))
+(defmethod adjuster :first-day-of-week
+  [_]
+  (reify TemporalAdjuster
+    (adjustInto [_ t]
+      (t/adjust t :previous-or-same-day-of-week :sunday))))
+
+(defmethod adjuster :first-day-of-iso-week
+  [_]
+  (reify TemporalAdjuster
+    (adjustInto [_ t]
+      (t/adjust t :previous-or-same-day-of-week :monday))))
+
+(defmethod adjuster :first-day-of-quarter
+  [_]
+  (reify TemporalAdjuster
+    (adjustInto [_ t]
+      (.with t (.atDay (t/year-quarter t) 1)))))
+
+(defmethod adjuster :first-week-of-year
+  [_]
+  (reify TemporalAdjuster
+    (adjustInto [_ t]
+      (-> t
+          (t/adjust :first-day-of-year)
+          (t/adjust (adjuster :first-day-of-week))))))
+
+(defmethod adjuster :week-of-year
+  [_ week-of-year]
+  (reify TemporalAdjuster
+    (adjustInto [_ t]
+      (-> t
+          (t/adjust (adjuster :first-week-of-year))
+          (t/plus (t/weeks (dec week-of-year)))))))
 
 ;; if you attempt to truncate a `LocalDate` to `:day` or anything smaller we can go ahead and return it as is
 (extend-protocol t.core/Truncatable
@@ -196,10 +223,10 @@
      :minute      (t/truncate-to t :minutes)
      :hour        (t/truncate-to t :hours)
      :day         (t/truncate-to t :days)
-     :week        (-> (.with t (adjusters :first-day-of-week))     (t/truncate-to :days))
-     :iso-week    (-> (.with t (adjusters :first-day-of-iso-week)) (t/truncate-to :days))
+     :week        (-> (.with t (adjuster :first-day-of-week))     (t/truncate-to :days))
+     :iso-week    (-> (.with t (adjuster :first-day-of-iso-week)) (t/truncate-to :days))
      :month       (-> (t/adjust t :first-day-of-month)             (t/truncate-to :days))
-     :quarter     (-> (.with t (adjusters :first-day-of-quarter))  (t/truncate-to :days))
+     :quarter     (-> (.with t (adjuster :first-day-of-quarter))  (t/truncate-to :days))
      :year        (-> (t/adjust t :first-day-of-year)              (t/truncate-to :days)))))
 
 (s/defn bucket :- (s/cond-pre Number Temporal)
