@@ -2,7 +2,9 @@
   "Functions for fetching the timezone for the current query."
   (:require [clojure.tools.logging :as log]
             [java-time :as t]
-            [metabase.driver :as driver]
+            [metabase
+             [config :as config]
+             [driver :as driver]]
             [metabase.query-processor.store :as qp.store]
             [metabase.util.i18n :refer [tru]])
   (:import java.time.ZonedDateTime))
@@ -75,8 +77,8 @@
   (^String [database]
    (results-timezone-id (:engine database) database))
 
-  (^String ^:deprecated [driver database & {:keys [use-report-timezone-id-if-unsupported?]
-                                            :or   {use-report-timezone-id-if-unsupported? false}}]
+  (^String [driver database & {:keys [use-report-timezone-id-if-unsupported?]
+                               :or   {use-report-timezone-id-if-unsupported? false}}]
    (valid-timezone-id
     (or *results-timezone-id-override*
         (if use-report-timezone-id-if-unsupported?
@@ -90,8 +92,12 @@
         ;;       GH issues: #2282, #2035
         (system-timezone-id)))))
 
-(def ^ZonedDateTime ^{:arglists (:arglists (meta #'results-timezone-id))} now
+(def ^ZonedDateTime now
   "Get the current moment in time adjusted to the results timezone ID, e.g. for relative datetime calculations."
   (comp (fn [timezone-id]
           (t/with-zone-same-instant (t/zoned-date-time) (t/zone-id timezone-id)))
         results-timezone-id))
+
+;; normally I'd do this inline with the `def` form above but it busts Eastwood
+(when config/is-dev?
+  (alter-meta! #'now assoc :arglists (:arglists (meta #'results-timezone-id))))

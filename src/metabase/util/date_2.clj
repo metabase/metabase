@@ -6,6 +6,7 @@
             [clojure.tools.logging :as log]
             [java-time :as t]
             [java-time.core :as t.core]
+            [metabase.config :as config]
             [metabase.util.date-2
              [common :as common]
              [parse :as parse]]
@@ -426,10 +427,11 @@
   (print-method (list 't/duration (str d)) writer))
 
 ;; mark everything in the `clj-time` namespaces as `:deprecated`, if they're loaded. If not, we don't care
-(doseq [a-namespace '[clj-time.core clj-time.coerce clj-time.format]]
-  (try
-    (let [a-namespace (the-ns a-namespace)]
-      (alter-meta! a-namespace assoc :deprecated true)
-      (doseq [[_ varr] (ns-publics a-namespace)]
-        (alter-meta! varr assoc :deprecated true)))
-    (catch Throwable _)))
+(when config/is-dev?
+  (doseq [a-namespace '[clj-time.core clj-time.coerce clj-time.format]]
+    (try
+      (let [a-namespace (the-ns a-namespace)]
+        (alter-meta! a-namespace assoc :deprecated true)
+        (doseq [[_ varr] (ns-publics a-namespace)]
+          (alter-meta! varr assoc :deprecated true)))
+      (catch Throwable _))))
