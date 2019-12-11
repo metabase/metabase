@@ -4,18 +4,15 @@
             [java-time :as t]
             [metabase
              [driver :as driver]
+             [models :refer [Field]]
              [query-processor :as qp]
-             [query-processor-test :as qp.test]]
+             [test :as mt]]
             [metabase.driver.common.parameters :as i]
             [metabase.driver.common.parameters.parse :as parse]
             [metabase.driver.sql.parameters.substitute :as substitute]
             [metabase.mbql.normalize :as normalize]
-            [metabase.models.field :refer [Field]]
             [metabase.query-processor.middleware.parameters.native :as native]
             [metabase.query-processor.test-util :as qp.test-util]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
             [metabase.test.data.datasets :as datasets]
             [metabase.util.schema :as su]
             [schema.core :as s]))
@@ -101,7 +98,7 @@
   information about"
   []
   (i/map->FieldFilter
-   {:field (Field (data/id :checkins :date))
+   {:field (Field (mt/id :checkins :date))
     :value {:type  :date/single
             :value (t/offset-date-time "2019-09-20T19:52:00.000-07:00")}}))
 
@@ -364,7 +361,7 @@
                        :template-tags {"date" {:name         "date"
                                                :display-name "Checkin Date"
                                                :type         :dimension
-                                               :dimension    [:field-id (data/id :checkins :date)]}}}
+                                               :dimension    [:field-id (mt/id :checkins :date)]}}}
           :parameters (when field-filter-param
                         [(merge {:target [:dimension [:template-tag "date"]]}
                                 field-filter-param)])}
@@ -470,32 +467,32 @@
   "Get the identifier used for `checkins` for the current driver by looking at what the driver uses when converting MBQL
   to SQL. Different drivers qualify to different degrees (i.e. `table` vs `schema.table` vs `database.schema.table`)."
   []
-  (let [sql (:query (qp/query->native (data/mbql-query checkins)))]
+  (let [sql (:query (qp/query->native (mt/mbql-query checkins)))]
     (second (re-find #"FROM\s([^\s()]+)" sql))))
 
 ;; as with the MBQL parameters tests Redshift fail for unknown reasons; disable their tests for now
 ;; TIMEZONE FIXME
 (defn- sql-parameters-engines []
-  (set (for [driver (qp.test/normal-drivers-with-feature :native-parameters)
+  (set (for [driver (mt/normal-drivers-with-feature :native-parameters)
              :when  (and (isa? driver/hierarchy driver :sql)
                          (not= driver :redshift))]
          driver)))
 
 (defn- process-native {:style/indent 0} [& kvs]
   (qp/process-query
-    (apply assoc {:database (data/id), :type :native} kvs)))
+    (apply assoc {:database (mt/id), :type :native} kvs)))
 
 (deftest e2e-basic-test
   (datasets/test-drivers (sql-parameters-engines)
     (is (= [29]
-           (qp.test/first-row
-             (qp.test/format-rows-by [int]
+           (mt/first-row
+             (mt/format-rows-by [int]
                (process-native
                  :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
                               :template-tags {"checkin_date" {:name         "checkin_date"
                                                               :display-name "Checkin Date"
                                                               :type         :dimension
-                                                              :dimension    [:field-id (data/id :checkins :date)]}}}
+                                                              :dimension    [:field-id (mt/id :checkins :date)]}}}
                  :parameters [{:type   :date/range
                                :target [:dimension [:template-tag "checkin_date"]]
                                :value  "2015-04-01~2015-05-01"}])))))))
@@ -504,14 +501,14 @@
   (datasets/test-drivers (sql-parameters-engines)
     (testing "no parameter — should give us a query with \"WHERE 1 = 1\""
       (is (= [1000]
-             (qp.test/first-row
-               (qp.test/format-rows-by [int]
+             (mt/first-row
+               (mt/format-rows-by [int]
                  (process-native
                    :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}" (checkins-identifier))
                                 :template-tags {"checkin_date" {:name         "checkin_date"
                                                                 :display-name "Checkin Date"
                                                                 :type         :dimension
-                                                                :dimension    [:field-id (data/id :checkins :date)]}}}
+                                                                :dimension    [:field-id (mt/id :checkins :date)]}}}
                    :parameters []))))))))
 
 (deftest e2e-relative-dates-test
@@ -520,15 +517,15 @@
                   "here, since handling them gets delegated to the functions in `metabase.query-processor.parameters`, "
                   "which is fully-tested :D")
       (is (= [0]
-             (qp.test/first-row
-               (qp.test/format-rows-by [int]
+             (mt/first-row
+               (mt/format-rows-by [int]
                  (process-native
                    :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
                                                        (checkins-identifier))
                                 :template-tags {"checkin_date" {:name         "checkin_date"
                                                                 :display-name "Checkin Date"
                                                                 :type         :dimension
-                                                                :dimension    [:field-id (data/id :checkins :date)]}}}
+                                                                :dimension    [:field-id (mt/id :checkins :date)]}}}
                    :parameters [{:type   :date/relative
                                  :target [:dimension [:template-tag "checkin_date"]]
                                  :value  "thismonth"}]))))))))
@@ -537,15 +534,15 @@
   (datasets/test-drivers (sql-parameters-engines)
     (testing "test that multiple filters applied to the same variable combine into `AND` clauses (#3539)"
       (is (= [4]
-             (qp.test/first-row
-               (qp.test/format-rows-by [int]
+             (mt/first-row
+               (mt/format-rows-by [int]
                  (process-native
                    :native     {:query         (format "SELECT COUNT(*) FROM %s WHERE {{checkin_date}}"
                                                        (checkins-identifier))
                                 :template-tags {"checkin_date" {:name         "checkin_date"
                                                                 :display-name "Checkin Date"
                                                                 :type         :dimension
-                                                                :dimension    [:field-id (data/id :checkins :date)]}}}
+                                                                :dimension    [:field-id (mt/id :checkins :date)]}}}
                    :parameters [{:type   :date/range
                                  :target [:dimension [:template-tag "checkin_date"]]
                                  :value  "2015-01-01~2016-09-01"}
@@ -568,8 +565,8 @@
 
               :else
               "2018-04-18T00:00:00Z")]
-           (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-             (qp.test/first-row
+           (mt/with-report-timezone-id "America/Los_Angeles"
+             (mt/first-row
                (process-native
                  :native     {:query (case driver/*driver*
                                        :bigquery
@@ -580,8 +577,8 @@
 
                                        "SELECT cast({{date}} as date)")
                               :template-tags {"date" {:name "date" :display-name "Date" :type :date}}}
-                 :parameters [{:type :date/single :target [:variable [:template-tag "date"]] :value "2018-04-18"}])))))
-    "Native dates should be parsed with the report timezone (where supported)"))
+                 :parameters [{:type :date/single :target [:variable [:template-tag "date"]] :value "2018-04-18"}]))))
+        "Native dates should be parsed with the report timezone")))
 
 ;; Some random end-to-end param expansion tests added as part of the SQL Parameters 2.0 rewrite
 (deftest param-expansion-test
@@ -592,7 +589,7 @@
                                 :template-tags {"created_at" {:name         "created_at"
                                                               :display-name "Created At"
                                                               :type         :dimension
-                                                              :dimension    [:field-id (data/id :checkins :date)]}}}
+                                                              :dimension    [:field-id (mt/id :checkins :date)]}}}
                    :parameters [{:type   :date/month-year
                                  :target [:dimension [:template-tag "created_at"]]
                                  :value  "2017-03"}]})))
@@ -657,7 +654,7 @@
                            :template-tags {"checkin_date" {:name         "checkin_date"
                                                            :display-name "Checkin Date"
                                                            :type         :dimension
-                                                           :dimension    [:field-id (data/id :checkins :date)]}}}
+                                                           :dimension    [:field-id (mt/id :checkins :date)]}}}
               :parameters [{:type   :date/range
                             :target [:dimension [:template-tag "checkin_date"]]
                             :value  "past5days"}]})))
@@ -679,7 +676,7 @@
                        :template-tags {"checkin_date" {:name         "checkin_date"
                                                        :display-name "Checkin Date"
                                                        :type         :dimension
-                                                       :dimension    [:field-id (data/id :checkins :date)]
+                                                       :dimension    [:field-id (mt/id :checkins :date)]
                                                        :default      "past5days"
                                                        :widget-type  :date/all-options}}}})))
 
@@ -697,7 +694,7 @@
                      :template-tags {"checkin_date" {:name         "checkin_date"
                                                      :display-name "Checkin Date"
                                                      :type         :dimension
-                                                     :dimension    [:field-id (data/id :checkins :date)]
+                                                     :dimension    [:field-id (mt/id :checkins :date)]
                                                      :default      "2017-11-14"
                                                      :widget-type  :date/all-options}}}}))
 
@@ -708,7 +705,7 @@
   (testing "Make sure using commas in numeric params treats them as separate IDs (#5457)"
     (is (= "SELECT * FROM USERS where id IN (1, 2, 3)"
            (-> (qp/process-query
-                 {:database   (data/id)
+                 {:database   (mt/id)
                   :type       "native"
                   :native     {:query         "SELECT * FROM USERS [[where id IN ({{ids_list}})]]"
                                :template-tags {"ids_list" {:name         "ids_list"
@@ -737,7 +734,7 @@
                           :template-tags {"names_list" {:name         "names_list"
                                                         :display-name "Names List"
                                                         :type         :dimension
-                                                        :dimension    [:field-id (data/id :users :id)]}}}
+                                                        :dimension    [:field-id (mt/id :users :id)]}}}
              :parameters [{:type   :text
                            :target [:dimension [:template-tag "names_list"]]
                            :value  ["BBQ", "Bakery", "Bar"]}]})))))

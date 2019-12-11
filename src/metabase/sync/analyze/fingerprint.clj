@@ -9,7 +9,7 @@
              [util :as u]]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.models.field :refer [Field]]
-            [metabase.query-processor.timezone :as qp.timezone]
+            [metabase.query-processor.store :as qp.store]
             [metabase.sync
              [interface :as i]
              [util :as sync-util]]
@@ -167,8 +167,9 @@
   [database :- i/DatabaseInstance
    tables :- [i/TableInstance]
    log-progress-fn]
-  ;; database timezone is bound so it can be used in date coercion logic
-  (qp.timezone/with-database-timezone-id (:timezone database)
+  (qp.store/with-store
+    ;; store is bound so DB timezone can be used in date coercion logic
+    (qp.store/store-database! database)
     (apply merge-with + (for [table tables
                               :let  [result (fingerprint-fields! table)]]
                           (do
