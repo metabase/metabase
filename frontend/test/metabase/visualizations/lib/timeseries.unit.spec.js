@@ -432,7 +432,7 @@ describe("visualization.lib.timeseries", () => {
       ).toEqual([0, 365, 731]);
     });
 
-    it("should not evenly space days", () => {
+    it("should not evenly space DST-transition days", () => {
       // 2019-11-03 is a 25 hour day in US/Pacific
       const scale = timeseriesScale({
         interval: "day",
