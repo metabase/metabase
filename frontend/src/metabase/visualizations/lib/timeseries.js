@@ -211,34 +211,37 @@ export const timeseriesScale = (
   const s = x => linear(ms(x));
   s.domain = x => {
     if (x === undefined) {
-      return linear.domain().map(t => moment(t).tz(timezone));
+      return linear._domain;
     }
+    linear._domain = x.map(t => moment(t).tz(timezone));
     if (interval === "month") {
-      linear.domain(ticksForRange(x.map(t => moment(t).tz(timezone))).map(ms));
-    } else {
-      linear.domain(x.map(ms));
+      x = wrapValues(ticksForRange(linear._domain, 1), x);
     }
+    linear.domain(x.map(ms));
     return s;
   };
   s.range = x => {
     if (x === undefined) {
-      return linear.range();
+      return linear._range;
     }
+    linear._range = x;
     if (interval === "month") {
-      const [start, stop] = x;
-      const step = (stop - start) / (s.domain().length - 1);
-      linear.range(d3.range(start, stop, step));
-    } else {
-      linear.range(x);
+      const plainScale = d3.scale
+        .linear()
+        .domain(s.domain().map(ms))
+        .range(x);
+      const ticks = ticksForRange(linear._domain, 1);
+      const start = plainScale(ticks[0]);
+      const stop = plainScale(ticks[ticks.length - 1]);
+      const step = (stop - start) / (ticks.length - 1);
+      x = wrapValues(d3.range(ticks.length).map(i => start + i * step), x);
     }
+    linear.range(x);
     return s;
   };
-  s.ticks = () =>
-    interval === "month" ? s.domain() : ticksForRange(s.domain());
+  s.ticks = () => ticksForRange(s.domain(), count);
 
-  // s.ticks = () => {
-  //   const [start, end] = s.domain();
-  const ticksForRange = ([start, end]) => {
+  const ticksForRange = ([start, end], count) => {
     const ticks = [];
     let tick = start
       .clone()
@@ -259,10 +262,21 @@ export const timeseriesScale = (
     }
     return ticks;
   };
+
   s.copy = () => timeseriesScale({ count, interval, timezone }, linear);
   d3.rebind(s, linear, "rangeRound", "interpolate", "clamp", "invert");
   return s;
 };
+
+function wrapValues(x, [start, end]) {
+  if (start < x[0]) {
+    x = [start, ...x];
+  }
+  if (x[x.length - 1] < end) {
+    x = [...x, end];
+  }
+  return x;
+}
 
 // We should always have results_timezone, but just in case we fallback to UTC
 const DEFAULT_TIMEZONE = "Etc/UTC";

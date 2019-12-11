@@ -453,6 +453,34 @@ describe("visualization.lib.timeseries", () => {
         ].map(d => scale(moment(d))),
       ).toEqual([0, 24, 49]);
     });
+
+    it("should handle a stretched domain", () => {
+      // We extend the domain by a partial month as a margin on charts. Full
+      // months are evenly spaced, but the partial months on either end should
+      // not match that spacing.
+      // In this example, Febuary and January should appear as the same length
+      // (30 pixels), and the 10 day spacers should appear as 10 pixels.
+      const scale = timeseriesScale({
+        interval: "month",
+        count: 1,
+        timezone: "Etc/UTC",
+      })
+        .domain([
+          moment("2019-12-21T00:00:00.000Z"),
+          moment("2020-03-11T00:00:00.000Z"),
+        ])
+        .range([0, 80]);
+
+      expect(
+        [
+          "2019-12-21",
+          "2020-01-01",
+          "2020-02-01",
+          "2020-03-01",
+          "2020-03-11",
+        ].map(d => scale(moment(`${d}T00:00:00.000Z`))),
+      ).toEqual([0, 10, 40, 70, 80]);
+    });
   });
   describe("getTimezone", () => {
     const series = [
