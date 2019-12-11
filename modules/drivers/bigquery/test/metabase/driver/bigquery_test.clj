@@ -122,8 +122,11 @@
          (doseq [column [:ts :dt]]
            (testing (format "Filtering against %s column" column)
              (doseq [s    ["2020-01-01" "2020-01-01T00:00:00"]
-                     :let [filter-clause [:= [:field-id (data/id table-name column)] s]]]
-               (testing (format "MBQL filter clause = %s" (pr-str filter-clause))
+                     field [[:field-id (data/id table-name column)]
+                            [:datetime-field [:field-id (data/id table-name column)] :default]
+                            [:datetime-field [:field-id (data/id table-name column)] :day]]
+                     :let [filter-clause [:= field s]]]
+               (testing (format "\nMBQL filter clause = %s" (pr-str filter-clause))
                  (is (= [["2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z"]]
                         (qp.test/rows
                           (data/run-mbql-query nil
