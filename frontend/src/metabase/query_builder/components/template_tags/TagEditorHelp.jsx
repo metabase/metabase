@@ -75,7 +75,7 @@ const SAMPLE_DATASET_EXAMPLES = {
 const MONGO_EXAMPLES = {
   variable: {
     collection: "Venues",
-    query: '[{$match: {price: NumberInt("{{price}}")}}]',
+    query: '[{$match: {price: {{price}}}}]',
     "template-tags": {
       price: {
         name: "price",
@@ -88,7 +88,7 @@ const MONGO_EXAMPLES = {
   },
   optional: {
     collection: "Venues",
-    query: '[{$match: {[[price: NumberInt("{{price}}")]]}}]',
+    query: '[{$match: {[[price: {{price}}]]}}]',
     "template-tags": {
       price: {
         name: "price",
@@ -101,7 +101,7 @@ const MONGO_EXAMPLES = {
   multipleOptional: {
     collection: "Venues",
     query:
-      '[{$match: {[[price: NumberInt("{{price}}", [[category_id: NumberInt("{{category_id}}")]]]]}}]',
+      '[{$match: {[[price: {{price}}, [[category_id: {{category_id}}]]]]}}]',
     "template-tags": {
       price: {
         name: "price",
