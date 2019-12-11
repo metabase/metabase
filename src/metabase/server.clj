@@ -23,12 +23,14 @@
 (defn- jetty-config []
   (cond-> (m/filter-vals
            some?
-           {:port          (config/config-int :mb-jetty-port)
-            :host          (config/config-str :mb-jetty-host)
-            :max-threads   (config/config-int :mb-jetty-maxthreads)
-            :min-threads   (config/config-int :mb-jetty-minthreads)
-            :max-queued    (config/config-int :mb-jetty-maxqueued)
-            :max-idle-time (config/config-int :mb-jetty-maxidletime)})
+           {:port                 (config/config-int :mb-jetty-port)
+            :host                 (config/config-str :mb-jetty-host)
+            :max-threads          (config/config-int :mb-jetty-maxthreads)
+            :min-threads          (config/config-int :mb-jetty-minthreads)
+            :max-queued           (config/config-int :mb-jetty-maxqueued)
+            :request-header-size  (config/config-int :mb-jetty-maxrequestheader)
+            :response-header-size (config/config-int :mb-jetty-maxresponseheader)
+            :max-idle-time        (config/config-int :mb-jetty-maxidletime)})
     (config/config-str :mb-jetty-daemon) (assoc :daemon? (config/config-bool :mb-jetty-daemon))
     (config/config-str :mb-jetty-ssl)    (-> (assoc :ssl? true)
                                              (merge (jetty-ssl-config)))))
