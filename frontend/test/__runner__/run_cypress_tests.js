@@ -129,6 +129,14 @@ const init = async () => {
       `baseUrl=${testFixtureBackendHost}`,
       "--env",
       serializedEnv,
+      ...(process.env["CI"]
+        ? [
+            "--reporter",
+            "junit",
+            "--reporter-options",
+            "mochaFile=cypress/results/results-[hash].xml",
+          ]
+        : []),
     ],
     { stdio: "inherit" },
   );

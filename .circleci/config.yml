@@ -489,6 +489,8 @@ jobs:
                 command: ./bin/build version
       - store_artifacts:
           path: /home/circleci/metabase/metabase/cypress
+      - store_test_results:
+          path: cypress/results
 
 ########################################################################################################################
 #                                                   DEPLOYMENT, ETC.                                                   #
