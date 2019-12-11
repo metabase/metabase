@@ -255,44 +255,53 @@
       ;; `hx/identifier`s to SQL
       (binding [sql.qp/*table-alias* "ABC"
                 *print-meta*         true]
-        (doseq [clause [{:args 2, :mbql :=, :honeysql :=}
-                        {:args 2, :mbql :!=, :honeysql :not=}
-                        {:args 2, :mbql :>, :honeysql :>}
-                        {:args 2, :mbql :>=, :honeysql :>=}
-                        {:args 2, :mbql :<, :honeysql :<}
-                        {:args 2, :mbql :<=, :honeysql :<=}
-                        {:args 3, :mbql :between, :honeysql :between}]]
-          (testing (format "\n%s filter clause" (:mbql clause))
-            (doseq [[temporal-type field] {:date      date-field
-                                           :datetime  datetime-field
-                                           :timestamp timestamp-field}
-                    field                 [field
-                                           [:field-id (:id field)]
-                                           [:datetime-field [:field-id (:id field)] :default]
-                                           [:field-literal (:name field) (:base_type field)]
-                                           [:datetime-field [:field-literal (:name field) (:base_type field)] :default]]]
-              (testing (format "\nField = %s %s"
-                               temporal-type
-                               (if (map? field) (format "<Field %s>" (pr-str (:name field))) field))
-                (doseq [{filter-value :value, :as value} reconcile-test-values
-                        filter-value                     (cons filter-value
-                                                               (when (instance? java.time.temporal.Temporal filter-value)
-                                                                 [[:absolute-datetime filter-value :default]]))]
-                  (testing (format "\nValue = %s %s" (:type value) (pr-str filter-value))
-                    (let [filter-clause       (into [(:mbql clause) field]
-                                                    (repeat (dec (:args clause)) filter-value))
-                          expected-identifier (hx/identifier :field "ABC" (name temporal-type))
-                          expected-value      (get-in value [:as temporal-type] (:value value))
-                          expected-clause     (into [(:honeysql clause) expected-identifier]
-                                                    (repeat (dec (:args clause)) expected-value))]
-                      (testing (format "\nreconcile %s -> %s"
-                                       (into [(:mbql clause) temporal-type] (repeat (dec (:args clause)) (:type value)))
-                                       (into [(:mbql clause) temporal-type] (repeat (dec (:args clause)) temporal-type)))
-                        (testing (format "\ninferred field type = %s, inferred value type = %s"
-                                         (#'bigquery.qp/temporal-type field)
-                                         (#'bigquery.qp/temporal-type filter-value))
-                          (is (= expected-clause
-                                 (sql.qp/->honeysql :bigquery filter-clause))))))))))))))))
+        (let [fields {:date      date-field
+                      :datetime  datetime-field
+                      :timestamp timestamp-field}]
+          (doseq [clause [{:args 2, :mbql :=, :honeysql :=}
+                          {:args 2, :mbql :!=, :honeysql :not=}
+                          {:args 2, :mbql :>, :honeysql :>}
+                          {:args 2, :mbql :>=, :honeysql :>=}
+                          {:args 2, :mbql :<, :honeysql :<}
+                          {:args 2, :mbql :<=, :honeysql :<=}
+                          {:args 3, :mbql :between, :honeysql :between}]]
+            (testing (format "\n%s filter clause" (:mbql clause))
+              (doseq [[temporal-type field] fields
+                      field                 [field
+                                             [:field-id (:id field)]
+                                             [:datetime-field [:field-id (:id field)] :default]
+                                             [:field-literal (:name field) (:base_type field)]
+                                             [:datetime-field [:field-literal (:name field) (:base_type field)] :default]]]
+                (testing (format "\nField = %s %s"
+                                 temporal-type
+                                 (if (map? field) (format "<Field %s>" (pr-str (:name field))) field))
+                  (doseq [{filter-value :value, :as value} reconcile-test-values
+                          filter-value                     (cons filter-value
+                                                                 (when (instance? java.time.temporal.Temporal filter-value)
+                                                                   [[:absolute-datetime filter-value :default]]))]
+                    (testing (format "\nValue = %s %s" (:type value) (pr-str filter-value))
+                      (let [filter-clause       (into [(:mbql clause) field]
+                                                      (repeat (dec (:args clause)) filter-value))
+                            expected-identifier (hx/identifier :field "ABC" (name temporal-type))
+                            expected-value      (get-in value [:as temporal-type] (:value value))
+                            expected-clause     (into [(:honeysql clause) expected-identifier]
+                                                      (repeat (dec (:args clause)) expected-value))]
+                        (testing (format "\nreconcile %s -> %s"
+                                         (into [(:mbql clause) temporal-type] (repeat (dec (:args clause)) (:type value)))
+                                         (into [(:mbql clause) temporal-type] (repeat (dec (:args clause)) temporal-type)))
+                          (testing (format "\ninferred field type = %s, inferred value type = %s"
+                                           (#'bigquery.qp/temporal-type field)
+                                           (#'bigquery.qp/temporal-type filter-value))
+                            (is (= expected-clause
+                                   (sql.qp/->honeysql :bigquery filter-clause))))))))))))
+          (testing "\ndate extraction filters"
+            (doseq [[temporal-type field] fields
+                    :let                  [identifier          (hx/identifier :field "ABC" (name temporal-type))
+                                           expected-identifier (if (= temporal-type :timestamp)
+                                                                 identifier
+                                                                 (hx/cast :timestamp identifier))]]
+              (is (= [:= (hsql/call :extract :dayofweek expected-identifier) 1]
+                     (sql.qp/->honeysql :bigquery [:= [:datetime-field [:field-id (:id field)] :day-of-week] 1]))))))))))
 
 (deftest between-test
   (testing "Make sure :between clauses reconcile the temporal types of their args"
