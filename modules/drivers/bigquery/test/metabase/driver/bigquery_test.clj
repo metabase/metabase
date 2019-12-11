@@ -59,13 +59,8 @@
 (deftest sync-views-test
   (datasets/test-driver :bigquery
     (with-view [view-name]
-      (is (= {:tables
-              #{{:schema nil, :name "categories"}
-                {:schema nil, :name "checkins"}
-                {:schema nil, :name "users"}
-                {:schema nil, :name "venues"}
-                {:schema nil, :name view-name}}}
-             (driver/describe-database :bigquery (data/db)))
+      (is (contains? (:tables (driver/describe-database :bigquery (data/db)))
+                     {:schema nil, :name view-name})
           "`describe-database` should see the view")
       (is (= {:schema nil
               :name   view-name
