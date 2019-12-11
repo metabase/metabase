@@ -962,7 +962,6 @@ export const runQuestionQuery = ({
         );
         return dispatch(queryCompleted(question, queryResults));
       })
-      .then(queryResults => dispatch(queryCompleted(question, queryResults)))
       .catch(error => dispatch(queryErrored(startTime, error)));
 
     // TODO Move this out from Redux action asap
