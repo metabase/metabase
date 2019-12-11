@@ -256,29 +256,25 @@
 .QueryError-image--noRows {
   width: 120px;
   height: 120px;
-  /* NOTE: this path works in normal builds but not "build-hot". Sorry. */
-  background-image: url("../assets/img/no_results.svg");
+  background-image: url("~assets/img/no_results.svg");
 }
 
 .QueryError-image--queryError {
   width: 120px;
   height: 120px;
-  /* NOTE: this path works in normal builds but not "build-hot". Sorry. */
-  background-image: url("../assets/img/no_understand.svg");
+  background-image: url("~assets/img/no_understand.svg");
 }
 
 .QueryError-image--serverError {
   width: 120px;
   height: 148px;
-  /* NOTE: this path works in normal builds but not "build-hot". Sorry. */
-  background-image: url("../assets/img/blown_up.svg");
+  background-image: url("~assets/img/blown_up.svg");
 }
 
 .QueryError-image--timeout {
   width: 120px;
   height: 120px;
-  /* NOTE: this path works in normal builds but not "build-hot". Sorry. */
-  background-image: url("../assets/img/stopwatch.svg");
+  background-image: url("~assets/img/stopwatch.svg");
 }
 
 .QueryError-message {
@@ -493,6 +489,24 @@
   border-right: none;
 }
 
+.NativeQueryEditorDragHandleWrapper {
+  position: absolute;
+  height: 8px;
+  width: 100%;
+  bottom: -4px;
+  cursor: row-resize;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.NativeQueryEditorDragHandle {
+  background: color(var(--color-border) blackness(+ 3%));
+  width: 100px;
+  height: 5px;
+  border-radius: 4px;
+}
+
 /* VISUALIZATION SETTINGS */
 
 .VisualizationSettings .GuiBuilder-section {
@@ -677,4 +691,24 @@
 
 .ParameterValuePickerNoPopover input::-webkit-input-placeholder {
   color: var(--color-text-medium);
+}
+
+text.value-label-outline {
+  font-weight: 900;
+  stroke-width: 4px;
+  stroke: var(--color-text-white);
+}
+
+text.value-label {
+  fill: var(--color-text-dark);
+  font-weight: 900;
+}
+
+text.value-label-outline,
+text.value-label {
+  pointer-events: none;
+}
+
+.Dashboard--night text.value-label-outline {
+  stroke: var(--night-mode-card);
 }

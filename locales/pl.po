@@ -1163,7 +1163,7 @@ msgstr "Nigdy"
 #: src/metabase/automagic_dashboards/core.clj
 msgid "{0} table"
 msgid_plural "{0} tables"
-msgstr[0] "tabela"
+msgstr[0] "tabelę {0}"
 msgstr[1] "{0} tabele"
 msgstr[2] "{0} tabele"
 msgstr[3] "{0} tabele"
@@ -2489,7 +2489,7 @@ msgstr "Na podstawie schematu"
 
 #: frontend/src/metabase/components/ExplorePane.jsx:173
 msgid "A look at your"
-msgstr "Zobacz na"
+msgstr "Przegląd twojej"
 
 #: frontend/src/metabase/components/FieldValuesWidget.jsx:240
 msgid "Search the list"

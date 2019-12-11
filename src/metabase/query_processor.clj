@@ -21,7 +21,6 @@
              [async :as async]
              [async-wait :as async-wait]
              [auto-bucket-datetimes :as bucket-datetime]
-             [bind-effective-timezone :as bind-timezone]
              [binning :as binning]
              [cache :as cache]
              [catch-exceptions :as catch-exceptions]
@@ -38,6 +37,7 @@
              [log :as log-query]
              [mbql-to-native :as mbql-to-native]
              [normalize-query :as normalize]
+             [optimize-datetime-filters :as optimize-datetime-filters]
              [parameters :as parameters]
              [permissions :as perms]
              [pre-alias-aggregations :as pre-alias-ags]
@@ -65,9 +65,8 @@
   "The pivotal stage of the `process-query` pipeline where the query is actually executed by the driver's Query
   Processor methods. This function takes the fully pre-processed query, runs it, and returns the results, which then
   run through the various post-processing steps."
-  [query :- {:driver   s/Keyword
-             s/Keyword s/Any}]
-  (driver/execute-query (:driver query) query))
+  [query :- (s/pred map?)]
+  (driver/execute-query driver/*driver* query))
 
 ;; The way these functions are applied is actually straight-forward; it matches the middleware pattern used by
 ;; Ring.
@@ -107,6 +106,7 @@
   [#'mbql-to-native/mbql->native
    #'annotate/result-rows-maps->vectors
    #'check-features/check-features
+   #'optimize-datetime-filters/optimize-datetime-filters
    #'wrap-value-literals/wrap-value-literals
    #'annotate/add-column-info
    #'perms/check-query-permissions
@@ -145,7 +145,6 @@
    ;; TODO - `resolve-driver` and `resolve-database` can be combined into a single step, so we don't need to fetch
    ;; DB twice
    #'resolve-driver/resolve-driver
-   #'bind-timezone/bind-effective-timezone
    #'resolve-database/resolve-database
    #'fetch-source-query/resolve-card-id-source-tables
    #'store/initialize-store
@@ -317,7 +316,7 @@
   the core.async channel is closed, the query will be canceled."
   (if config/is-dev?
     (s/fn :- QueryResponse
-      [query]
+      [query :- clojure.lang.IPersistentMap]
       ((if *debug*
          debugging-pipeline
          default-pipeline) query))

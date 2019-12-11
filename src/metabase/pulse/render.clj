@@ -1,13 +1,13 @@
 (ns metabase.pulse.render
   (:require [clojure.tools.logging :as log]
             [hiccup.core :refer [h]]
-            [metabase.mbql.util :as mbql.u]
             [metabase.pulse.render
              [body :as body]
              [common :as common]
              [image-bundle :as image-bundle]
              [png :as png]
              [style :as style]]
+            [metabase.types :as types]
             [metabase.util
              [i18n :refer [trs tru]]
              [urls :as urls]]
@@ -75,7 +75,7 @@
 
       (and (= col-count 2)
            (> row-count 1)
-           (mbql.u/datetime-field? col-1)
+           (types/temporal-field? col-1)
            (number-field? col-2))
       :sparkline
 
@@ -91,7 +91,7 @@
       (:include_xls card)))
 
 (s/defn ^:private render-pulse-card-body :- common/RenderedPulseCard
-  [render-type timezone card {:keys [data error], :as results}]
+  [render-type timezone-id :- (s/maybe s/Str) card {:keys [data error], :as results}]
   (try
     (when error
       (let [^String msg (tru "Card has errors: {0}" error)]
@@ -100,7 +100,7 @@
                           (when (is-attached? card)
                             :attached)
                           :unknown)]
-      (body/render chart-type render-type timezone card data))
+      (body/render chart-type render-type timezone-id card data))
     (catch Throwable e
       (log/error e (trs "Pulse card render error"))
       (body/render :error nil nil nil nil))))
@@ -111,9 +111,9 @@
 
 (s/defn ^:private render-pulse-card :- common/RenderedPulseCard
   "Render a single `card` for a `Pulse` to Hiccup HTML. `result` is the QP results."
-  [render-type timezone card results]
+  [render-type timezone-id :- (s/maybe s/Str) card results]
   (let [{title :content title-attachments :attachments} (make-title-if-needed render-type card)
-        {pulse-body :content body-attachments :attachments} (render-pulse-card-body render-type timezone card results)]
+        {pulse-body :content body-attachments :attachments} (render-pulse-card-body render-type timezone-id card results)]
     {:attachments (merge title-attachments body-attachments)
      :content     [:a {:href   (card-href card)
                        :target "_blank"
@@ -129,14 +129,14 @@
 (defn render-pulse-card-for-display
   "Same as `render-pulse-card` but isn't intended for an email, rather for previewing so there is no need for
   attachments"
-  [timezone card results]
-  (:content (render-pulse-card :inline timezone card results)))
+  [timezone-id card results]
+  (:content (render-pulse-card :inline timezone-id card results)))
 
 (s/defn render-pulse-section :- common/RenderedPulseCard
   "Render a specific section of a Pulse, i.e. a single Card, to Hiccup HTML."
-  [timezone {card :card {:keys [data] :as result} :result}]
+  [timezone-id {card :card {:keys [data] :as result} :result}]
   (let [{:keys [attachments content]} (binding [*include-title* true]
-                                        (render-pulse-card :attachment timezone card result))]
+                                        (render-pulse-card :attachment timezone-id card result))]
     {:attachments attachments
      :content     [:div {:style (style/style (merge
                                               {:margin-top    :10px
@@ -151,7 +151,7 @@
                                                  :box-shadow       "0 1px 2px rgba(0, 0, 0, .08)"})))}
                    content]}))
 
-(defn render-pulse-card-to-png
+(s/defn render-pulse-card-to-png :- bytes
   "Render a `pulse-card` as a PNG. `data` is the `:data` from a QP result (I think...)"
-  ^bytes [timezone pulse-card result]
-  (png/render-html-to-png (render-pulse-card :inline timezone pulse-card result) card-width))
+  [timezone-id :- (s/maybe s/Str) pulse-card result]
+  (png/render-html-to-png (render-pulse-card :inline timezone-id pulse-card result) card-width))

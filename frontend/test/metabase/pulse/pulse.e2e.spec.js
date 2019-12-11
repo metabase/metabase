@@ -2,8 +2,8 @@ import {
   useSharedAdminLogin,
   createTestStore,
   createSavedQuestion,
-} from "__support__/e2e_tests";
-import { click, setInputValue } from "__support__/enzyme_utils";
+} from "__support__/e2e";
+import { click, setInputValue } from "__support__/enzyme";
 
 import React from "react";
 import { mount } from "enzyme";
@@ -43,7 +43,7 @@ describe("Pulse", () => {
     questionCount = await createSavedQuestion(
       Question.create({ databaseId: 1, tableId: 1, metadata: null })
         .query()
-        .addAggregation(["count"])
+        .aggregate(["count"])
         .question()
         .setDisplay("scalar")
         .setDisplayName("count"),

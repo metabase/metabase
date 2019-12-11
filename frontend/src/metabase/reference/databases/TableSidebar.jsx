@@ -16,7 +16,7 @@ const TableSidebar = ({ database, table, style, className }) => (
   <div className={cx(S.sidebar, className)} style={style}>
     <div className={S.breadcrumbs}>
       <Breadcrumbs
-        className="py4"
+        className="py4 ml3"
         crumbs={[
           [t`Databases`, "/reference/databases"],
           [database.name, `/reference/databases/${database.id}`],
@@ -26,7 +26,7 @@ const TableSidebar = ({ database, table, style, className }) => (
         placeholder={t`Data Reference`}
       />
     </div>
-    <ol>
+    <ol className="mx3">
       <SidebarItem
         key={`/reference/databases/${database.id}/tables/${table.id}`}
         href={`/reference/databases/${database.id}/tables/${table.id}`}
@@ -36,14 +36,12 @@ const TableSidebar = ({ database, table, style, className }) => (
       <SidebarItem
         key={`/reference/databases/${database.id}/tables/${table.id}/fields`}
         href={`/reference/databases/${database.id}/tables/${table.id}/fields`}
-        icon="fields"
+        icon="field"
         name={t`Fields in this table`}
       />
       <SidebarItem
         key={`/reference/databases/${database.id}/tables/${table.id}/questions`}
-        href={`/reference/databases/${database.id}/tables/${
-          table.id
-        }/questions`}
+        href={`/reference/databases/${database.id}/tables/${table.id}/questions`}
         icon="all"
         name={t`Questions about this table`}
       />

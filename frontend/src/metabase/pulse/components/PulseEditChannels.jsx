@@ -138,11 +138,7 @@ export default class PulseEditChannels extends Component {
   willPulseSkip = () => {
     const cards = _.pluck(this.props.pulse.cards, "id");
     const cardPreviews = this.props.cardPreviews;
-    const previews = _.map(cards, function(id) {
-      return _.find(cardPreviews, function(card) {
-        return id == card.id;
-      });
-    });
+    const previews = _.map(cards, id => _.findWhere(cardPreviews, { id }));
     const types = _.pluck(previews, "pulse_card_type");
     const empty = _.isEqual(_.uniq(types), ["empty"]);
     return empty && this.props.pulse.skip_if_empty;
@@ -283,9 +279,7 @@ export default class PulseEditChannels extends Component {
           <ul className="bg-light px3">{channels}</ul>
         ) : channels.length > 0 && !channelSpec.configured ? (
           <div className="p4 text-centered">
-            <h3 className="mb2">{t`${
-              channelSpec.name
-            } needs to be set up by an administrator.`}</h3>
+            <h3 className="mb2">{t`${channelSpec.name} needs to be set up by an administrator.`}</h3>
             <ChannelSetupMessage user={user} channels={[channelSpec.name]} />
           </div>
         ) : null}

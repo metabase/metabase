@@ -52,7 +52,6 @@
   (server/stop-web-server!)
   (log/info (trs "Metabase Shutdown COMPLETE")))
 
-
 (defn init!
   "General application initialization function which should be run once at application startup."
   []

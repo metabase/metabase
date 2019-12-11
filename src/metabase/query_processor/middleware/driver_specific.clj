@@ -8,5 +8,5 @@
   "Middleware that runs the query using the driver's `process-query-in-context` implementation, if any.
    (Implementing this method effectively allows drivers to inject their own QP middleware functions.)"
   [qp]
-  (fn [{driver :driver, :as query}]
-    ((driver/process-query-in-context driver qp) query)))
+  (fn [query]
+    ((driver/process-query-in-context driver/*driver* qp) query)))

@@ -1,10 +1,6 @@
 (ns metabase.driver.presto
   "Presto driver. See https://prestodb.io/docs/current/ for complete dox."
   (:require [clj-http.client :as http]
-            [clj-time
-             [coerce :as tcoerce]
-             [core :as time]
-             [format :as tformat]]
             [clojure
              [set :as set]
              [string :as str]]
@@ -12,6 +8,7 @@
             [honeysql
              [core :as hsql]
              [helpers :as h]]
+            [java-time :as t]
             [metabase
              [driver :as driver]
              [util :as u]]
@@ -22,16 +19,17 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor
              [store :as qp.store]
+             [timezone :as qp.timezone]
              [util :as qputil]]
             [metabase.util
-             [date :as du]
+             [date-2 :as u.date]
              [honeysql-extensions :as hx]
-             [i18n :refer [trs]]
+             [i18n :refer [trs tru]]
              [schema :as su]
              [ssh :as ssh]]
             [schema.core :as s])
   (:import java.sql.Time
-           java.util.Date))
+           [java.time OffsetDateTime ZonedDateTime]))
 
 (driver/register! :presto, :parent :sql)
 
@@ -48,12 +46,12 @@
   (str (if ssl "https" "http") "://" host ":" port
        path))
 
-(defn- details->request [{:keys [user password catalog report-timezone]}]
+(defn- details->request [{:keys [user password catalog]}]
   (merge {:headers (merge {"X-Presto-Source" "metabase"
                            "X-Presto-User"   user}
                           (when catalog
                             {"X-Presto-Catalog" catalog})
-                          (when report-timezone
+                          (when-let [report-timezone (qp.timezone/report-timezone-id-if-supported)]
                             {"X-Presto-Time-Zone" report-timezone}))}
          (when password
            {:basic-auth [user password]})))
@@ -63,59 +61,34 @@
   ;; break SSH tunneling as the host in the cancel-uri is different if it's enabled
   (str/replace cancel-uri (str host ":" port) (get (str/split info-uri #"/") 2)))
 
-(defn- parse-time-with-tz [s]
-  ;; Try parsing with offset first then with full ZoneId
-  (or (u/ignore-exceptions (du/parse-date "HH:mm:ss.SSS ZZ" s))
-      (du/parse-date "HH:mm:ss.SSS ZZZ" s)))
-
-(defn- parse-timestamp-with-tz [s]
-  ;; Try parsing with offset first then with full ZoneId
-  (or (u/ignore-exceptions (du/parse-date "yyyy-MM-dd HH:mm:ss.SSS ZZ" s))
-      (du/parse-date "yyyy-MM-dd HH:mm:ss.SSS ZZZ" s)))
-
-(def ^:private presto-date-time-formatter
-  (du/->DateTimeFormatter "yyyy-MM-dd HH:mm:ss.SSS"))
-
-(defn- parse-presto-time
-  "Parsing time from presto using a specific formatter rather than the utility functions as this will be called on each
-  row returned, so performance is important"
-  [time-str]
-  (->> time-str
-       (du/parse-date :hour-minute-second-ms)
-       tcoerce/to-long
-       Time.))
-
-(defn- field-type->parser [report-timezone field-type]
+(defn- field-type->parser [field-type]
   (condp re-matches field-type
     #"decimal.*"                bigdec
-    #"time"                     parse-presto-time
-    #"time with time zone"      parse-time-with-tz
-    #"timestamp"                (partial du/parse-date
-                                         (if-let [report-tz (and report-timezone
-                                                                 (time/time-zone-for-id report-timezone))]
-                                           (tformat/with-zone presto-date-time-formatter report-tz)
-                                           presto-date-time-formatter))
-    #"timestamp with time zone" parse-timestamp-with-tz
+    #"time"                     #(u.date/parse % (qp.timezone/results-timezone-id))
+    #"time with time zone"      #(u.date/parse % (qp.timezone/results-timezone-id))
+    #"timestamp"                #(u.date/parse % (qp.timezone/results-timezone-id))
+    #"timestamp with time zone" #(u.date/parse % (qp.timezone/results-timezone-id))
     #".*"                       identity))
 
-(defn- parse-presto-results [report-timezone columns data]
-  (let [parsers (map (comp #(field-type->parser report-timezone %) :type) columns)]
+(defn- parse-presto-results [columns data]
+  (let [parsers (map (comp field-type->parser :type) columns)]
     (for [row data]
       (vec
        (for [[value parser] (partition 2 (interleave row parsers))]
-         (when (some? value)
-           (parser value)))))))
+         (u/prog1 (when (some? value)
+                    (parser value))
+           (log/tracef "Parse %s -> %s" (pr-str value) (pr-str <>))))))))
 
 (defn- fetch-presto-results! [details {prev-columns :columns, prev-rows :rows} uri]
   (let [{{:keys [columns data nextUri error]} :body} (http/get uri (assoc (details->request details) :as :json))]
     (when error
-      (throw (ex-info (or (:message error) "Error running query.") error)))
-    (let [rows    (parse-presto-results (:report-timezone details) columns data)
+      (throw (ex-info (or (:message error) (tru "Error running query.")) error)))
+    (let [rows    (parse-presto-results columns data)
           results {:columns (or columns prev-columns)
                    :rows    (vec (concat prev-rows rows))}]
       (if (nil? nextUri)
         results
-        (do (Thread/sleep 100) ; Might not be the best way, but the pattern is that we poll Presto at intervals
+        (do (Thread/sleep 100)        ; Might not be the best way, but the pattern is that we poll Presto at intervals
             (fetch-presto-results! details results nextUri))))))
 
 (defn- execute-presto-query!
@@ -129,7 +102,7 @@
                              :body query, :as :json, :redirect-strategy :lax))]
       (when error
         (throw (ex-info (or (:message error) "Error preparing query.") error)))
-      (let [rows    (parse-presto-results (:report-timezone details) (or columns []) (or data []))
+      (let [rows    (parse-presto-results (or columns []) (or data []))
             results {:columns (or columns [])
                      :rows    rows}]
         (if (nil? nextUri)
@@ -147,7 +120,7 @@
                     (try
                       (let [tunneledUri (details->uri details-with-tunnel (str "/v1/query/" id))
                             adjustedUri (create-cancel-url tunneledUri (get details :host) (get details :port) infoUri)]
-                        (http/delete adjustedUri(details->request details-with-tunnel)))
+                        (http/delete adjustedUri (details->request details-with-tunnel)))
                       ;; If we fail to cancel the query, log it but propogate the interrupted exception, instead of
                       ;; covering it up with a failed cancel
                       (catch Exception e
@@ -233,37 +206,35 @@
   [_ bool]
   (hsql/raw (if bool "TRUE" "FALSE")))
 
-(defmethod sql.qp/->honeysql [:presto Date]
-  [_ date]
-  (hsql/call :from_iso8601_timestamp (hx/literal (du/date->iso-8601 date))))
-
 (defmethod sql.qp/->honeysql [:presto :stddev]
   [driver [_ field]]
   (hsql/call :stddev_samp (sql.qp/->honeysql driver field)))
 
-(def ^:private time-format (tformat/formatter "HH:mm:SS.SSS"))
-
-(defn- time->str
-  ([t]
-   (time->str t nil))
-  ([t tz-id]
-   (let [tz (time/time-zone-for-id tz-id)]
-     (tformat/unparse (tformat/with-zone time-format tz) (tcoerce/to-date-time t)))))
-
 (defmethod sql.qp/->honeysql [:presto :time]
-  [_ [_ value]]
-  (hx/cast :time (time->str value (driver/report-timezone))))
+  [_ [_ t]]
+  (hx/cast :time (u.date/format-sql (t/local-time t))))
 
-(defmethod unprepare/unprepare-value [:presto Date] [_ value]
-  (unprepare/unprepare-date-with-iso-8601-fn :from_iso8601_timestamp value))
+;; See https://prestodb.io/docs/current/functions/datetime.html
 
-(prefer-method unprepare/unprepare-value [:sql Time] [:presto Date])
+;; This is only needed for test purposes, because some of the sample data still uses legacy types
+(defmethod unprepare/unprepare-value [:presto Time]
+  [driver t]
+  (unprepare/unprepare-value driver (t/local-time t)))
 
-(defmethod driver/execute-query :presto [driver {database-id                  :database
-                                                 :keys                        [settings]
-                                                 {sql :query, params :params} :native
-                                                 query-type                   :type
-                                                 :as                          outer-query}]
+(defmethod unprepare/unprepare-value [:presto OffsetDateTime]
+  [_ t]
+  (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-offset t)))
+
+(defmethod unprepare/unprepare-value [:presto ZonedDateTime]
+  [_ t]
+  (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-id t)))
+
+(defmethod driver/execute-query :presto
+  [driver {database-id                  :database
+           :keys                        [settings]
+           {sql :query, params :params} :native
+           query-type                   :type
+           :as                          outer-query}]
   (let [sql                    (str "-- "
                                     (qputil/query->remark outer-query) "\n"
                                     (unprepare/unprepare driver (cons sql params)))
@@ -282,8 +253,8 @@
      (when (= query-type :native)
        {:cols columns}))))
 
-
-(defmethod driver/humanize-connection-error-message :presto [_ message]
+(defmethod driver/humanize-connection-error-message :presto
+  [_ message]
   (condp re-matches message
     #"^java.net.ConnectException: Connection refused.*$"
     (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
@@ -297,10 +268,10 @@
     #".*" ; default
     message))
 
+;;; `:sql-driver` methods
 
-;;; ISQLDriver implementation
-
-(defmethod sql.qp/apply-top-level-clause [:presto :page] [_ _ honeysql-query {{:keys [items page]} :page}]
+(defmethod sql.qp/apply-top-level-clause [:presto :page]
+  [_ _ honeysql-query {{:keys [items page]} :page}]
   (let [offset (* (dec page) items)]
     (if (zero? offset)
       ;; if there's no offset we can simply use limit
@@ -327,14 +298,16 @@
 (defmethod sql.qp/date [:presto :day-of-year]     [_ _ expr] (hsql/call :day_of_year expr))
 
 ;; Similar to DoW, sicne Presto is ISO compliant the week starts on Monday, we need to shift that to Sunday
-(defmethod sql.qp/date [:presto :week]            [_ _ expr]
+(defmethod sql.qp/date [:presto :week]
+  [_ _ expr]
   (hsql/call :date_add
     (hx/literal :day) -1 (hsql/call :date_trunc
                            (hx/literal :week) (hsql/call :date_add
                                                 (hx/literal :day) 1 expr))))
 
 ;; Offset by one day forward to "fake" a Sunday starting week
-(defmethod sql.qp/date [:presto :week-of-year]    [_ _ expr]
+(defmethod sql.qp/date [:presto :week-of-year]
+  [_ _ expr]
   (hsql/call :week (hsql/call :date_add (hx/literal :day) 1 expr)))
 
 (defmethod sql.qp/date [:presto :month]           [_ _ expr] (hsql/call :date_trunc (hx/literal :month) expr))
@@ -345,7 +318,6 @@
 
 (defmethod sql.qp/unix-timestamp->timestamp [:presto :seconds] [_ _ expr]
   (hsql/call :from_unixtime expr))
-
 
 (defmethod driver.common/current-db-time-date-formatters :presto [_]
   (driver.common/create-db-time-formatters "yyyy-MM-dd'T'HH:mm:ss.SSSZ"))

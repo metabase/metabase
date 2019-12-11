@@ -17,6 +17,10 @@ import Utils from "metabase/lib/utils";
 
 import * as authActions from "../auth";
 
+const GOOGLE_AUTH_ERRORS = {
+  popup_closed_by_user: t`The window was closed before completing Google Authentication.`,
+};
+
 const mapStateToProps = (state, props) => {
   return {
     loginError: state.auth && state.auth.loginError,
@@ -39,6 +43,7 @@ export default class LoginApp extends Component {
       credentials: {},
       valid: false,
       rememberMe: true,
+      errorMessage: null,
     };
   }
 
@@ -63,7 +68,7 @@ export default class LoginApp extends Component {
 
     const ssoLoginButton = findDOMNode(this.refs.ssoLoginButton);
 
-    function attachGoogleAuth() {
+    const attachGoogleAuth = () => {
       // if gapi isn't loaded yet then wait 100ms and check again. Keep doing this until we're ready
       if (!window.gapi) {
         window.setTimeout(attachGoogleAuth, 100);
@@ -78,14 +83,23 @@ export default class LoginApp extends Component {
           auth2.attachClickHandler(
             ssoLoginButton,
             {},
-            googleUser => loginGoogle(googleUser, location.query.redirect),
-            error => console.error("There was an error logging in", error),
+            googleUser => {
+              this.setState({ errorMessage: null });
+              loginGoogle(googleUser, location.query.redirect);
+            },
+            error => {
+              this.setState({
+                errorMessage:
+                  GOOGLE_AUTH_ERRORS[error.error] ||
+                  t`There was an issue signing in with Google. Pleast contact an administrator.`,
+              });
+            },
           );
         });
       } catch (error) {
         console.error("Error attaching Google Auth handler: ", error);
       }
-    }
+    };
     attachGoogleAuth();
   }
 
@@ -114,6 +128,7 @@ export default class LoginApp extends Component {
 
   render() {
     const { loginError, location } = this.props;
+    const { errorMessage } = this.state;
     const ldapEnabled = Settings.ldapEnabled();
 
     const preferUsernameAndPassword = location.query.useMBLogin;
@@ -126,14 +141,20 @@ export default class LoginApp extends Component {
           </div>
           <div className="Login-content Grid-cell">
             <form
-              className="Form-new bg-white bordered rounded shadowed"
+              className="p4 bg-white bordered rounded shadowed"
               name="form"
               onSubmit={e => this.formSubmitted(e)}
             >
-              <h3 className="Login-header Form-offset">{t`Sign in to Metabase`}</h3>
+              <h2 className="Login-header mb2">{t`Sign in to Metabase`}</h2>
+
+              {errorMessage && (
+                <div className="bg-error p1 rounded text-white text-bold mt3">
+                  {errorMessage}
+                </div>
+              )}
 
               {Settings.ssoEnabled() && !preferUsernameAndPassword && (
-                <div className="mx4 py3 relative my4">
+                <div className="py3 relative my3">
                   <div className="relative border-bottom pb4">
                     <SSOLoginButton provider="google" ref="ssoLoginButton" />
                     {/*<div className="g-signin2 ml1 relative z2" id="g-signin2"></div>*/}
@@ -146,7 +167,7 @@ export default class LoginApp extends Component {
                   </div>
                   <div className="py3">
                     <Link to="/auth/login?useMBLogin=true">
-                      <Button className="EmailSignIn full">
+                      <Button className="EmailSignIn full py2">
                         {t`Sign in with email`}
                       </Button>
                     </Link>
@@ -161,7 +182,6 @@ export default class LoginApp extends Component {
                       loginError && loginError.data.message ? loginError : null
                     }
                   />
-
                   <FormField
                     key="username"
                     fieldName="username"
@@ -177,7 +197,7 @@ export default class LoginApp extends Component {
                       formError={loginError}
                     />
                     <input
-                      className="Form-input Form-offset full py1"
+                      className="Form-input full"
                       name="username"
                       placeholder="youlooknicetoday@email.com"
                       type={
@@ -192,7 +212,6 @@ export default class LoginApp extends Component {
                       onChange={e => this.onChange("username", e.target.value)}
                       autoFocus
                     />
-                    <span className="Form-charm" />
                   </FormField>
 
                   <FormField
@@ -206,31 +225,28 @@ export default class LoginApp extends Component {
                       formError={loginError}
                     />
                     <input
-                      className="Form-input Form-offset full py1"
+                      className="Form-input full"
                       name="password"
                       placeholder="Shh..."
                       type="password"
                       onChange={e => this.onChange("password", e.target.value)}
                     />
-                    <span className="Form-charm" />
                   </FormField>
 
                   <div className="Form-field">
-                    <div className="Form-offset flex align-center">
+                    <div className="flex align-center">
                       <CheckBox
                         name="remember"
                         checked={this.state.rememberMe}
                         onChange={() =>
-                          this.setState({
-                            rememberMe: !this.state.rememberMe,
-                          })
+                          this.setState({ rememberMe: !this.state.rememberMe })
                         }
                       />
                       <span className="ml1">{t`Remember Me`}</span>
                     </div>
                   </div>
 
-                  <div className="Form-actions p4">
+                  <div className="Form-actions flex align-center">
                     <Button
                       primary={this.state.valid}
                       disabled={!this.state.valid}
@@ -244,7 +260,7 @@ export default class LoginApp extends Component {
                           ? "?email=" + this.state.credentials.username
                           : "")
                       }
-                      className="Grid-cell py2 sm-py0 md-text-right text-centered flex-full link"
+                      className="text-right ml-auto link"
                       onClick={e => {
                         window.OSX ? window.OSX.resetPassword() : null;
                       }}

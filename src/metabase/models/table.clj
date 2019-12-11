@@ -50,11 +50,8 @@
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:table])
-          :types          (constantly {:entity_type      :keyword,
-                                       :visibility_type  :keyword,
-                                       :description      :clob,
-                                       :has_field_values :clob,
-                                       :fields_hash      :clob})
+          :types          (constantly {:entity_type     :keyword
+                                       :visibility_type :keyword})
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert
           :pre-delete     pre-delete})

@@ -1,6 +1,7 @@
 (ns metabase.public-settings
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [java-time :as t]
             [metabase
              [config :as config]
              [types :as types]
@@ -15,7 +16,7 @@
              [i18n :refer [available-locales-with-names deferred-tru set-locale trs tru]]
              [password :as password]]
             [toucan.db :as db])
-  (:import [java.util TimeZone UUID]))
+  (:import java.util.UUID))
 
 (defsetting check-for-updates
   (deferred-tru "Identify when new versions of Metabase are available.")
@@ -171,6 +172,16 @@
   :type    :boolean
   :default true)
 
+(defsetting show-homepage-data
+  (deferred-tru "Whether or not to display data on the homepage. Admins might turn this off in order to direct users to better content than raw data")
+  :type    :boolean
+  :default true)
+
+(defsetting show-homepage-xrays
+  (deferred-tru "Whether or not to display x-ray suggestions on the homepage. They will also be hidden if any dashboards are pinned. Admins might hide this to direct users to better content than raw data")
+  :type    :boolean
+  :default true)
+
 (defsetting source-address-header
   (deferred-tru "Identify the source of HTTP requests by this header's value, instead of its remote address.")
   :getter (fn [] (some-> (setting/get-string :source-address-header)
@@ -185,16 +196,23 @@
     (assoc object :public_uuid nil)
     object))
 
+(defn- short-timezone-name [timezone-id]
+  (let [^java.time.ZoneId zone (if (seq timezone-id)
+                                 (t/zone-id timezone-id)
+                                 (t/zone-id))]
+    (.getDisplayName
+     zone
+     java.time.format.TextStyle/SHORT
+     (java.util.Locale/getDefault))))
 
-(defn- short-timezone-name*
-  "Get a short display name (e.g. `PST`) for `report-timezone`, or fall back to the System default if it's not set."
-  [^String timezone-name]
-  (let [^TimeZone timezone (or (when (seq timezone-name)
-                                 (TimeZone/getTimeZone timezone-name))
-                               (TimeZone/getDefault))]
-    (.getDisplayName timezone (.inDaylightTime timezone (java.util.Date.)) TimeZone/SHORT)))
-
-(def ^:private short-timezone-name (memoize short-timezone-name*))
+(defn- resolve-setting [ns-symb setting-symb]
+  (classloader/require ns-symb)
+  (let [varr (or (ns-resolve ns-symb setting-symb)
+                 (throw (Exception. (tru "Could not resolve Setting {0}/{1}" ns-symb setting-symb))))
+        f    (var-get varr)]
+    (assert (ifn? f)
+      (tru "Invalid Setting: {0}/{1}" ns-symb setting-symb))
+    (f)))
 
 ;; TODO - it seems like it would be a nice performance win to cache this a little bit
 (defn public-settings
@@ -203,35 +221,33 @@
   []
   {:admin_email           (admin-email)
    :anon_tracking_enabled (anon-tracking-enabled)
-   :custom_geojson        (setting/get :custom-geojson)
-   :custom_formatting     (setting/get :custom-formatting)
-   :email_configured      (do (classloader/require 'metabase.email)
-                              ((resolve 'metabase.email/email-configured?)))
+   :available_locales     (available-locales-with-names)
+   :custom_formatting     (custom-formatting)
+   :custom_geojson        (resolve-setting 'metabase.api.geojson 'custom-geojson)
+   :email_configured      (resolve-setting 'metabase.email 'email-configured?)
    :embedding             (enable-embedding)
-   :enable_query_caching  (enable-query-caching)
    :enable_nested_queries (enable-nested-queries)
+   :enable_query_caching  (enable-query-caching)
    :enable_xrays          (enable-xrays)
    :engines               (driver.u/available-drivers-info)
+   :entities              (types/types->parents :entity/*)
    :ga_code               "UA-60817802-1"
-   :google_auth_client_id (setting/get :google-auth-client-id)
+   :google_auth_client_id (resolve-setting 'metabase.api.session 'google-auth-client-id)
    :has_sample_dataset    (db/exists? 'Database, :is_sample true)
    :hide_embed_branding   (metastore/hide-embed-branding?)
-   :ldap_configured       (do (classloader/require 'metabase.integrations.ldap)
-                              ((resolve 'metabase.integrations.ldap/ldap-configured?)))
-   :available_locales     (available-locales-with-names)
+   :ldap_configured       (resolve-setting 'metabase.integrations.ldap 'ldap-configured?)
    :map_tile_server_url   (map-tile-server-url)
    :metastore_url         metastore/store-url
    :password_complexity   password/active-password-complexity
    :premium_token         (metastore/premium-embedding-token)
    :public_sharing        (enable-public-sharing)
-   :report_timezone       (setting/get :report-timezone)
-   :setup_token           (do
-                            (classloader/require 'metabase.setup)
-                            ((resolve 'metabase.setup/token-value)))
+   :report_timezone       (resolve-setting 'metabase.driver 'report-timezone)
+   :setup_token           (resolve-setting 'metabase.setup 'token-value)
+   :show_homepage_data    (show-homepage-data)
+   :show_homepage_xrays   (show-homepage-xrays)
    :site_name             (site-name)
    :site_url              (site-url)
    :timezone_short        (short-timezone-name (setting/get :report-timezone))
    :timezones             common/timezones
    :types                 (types/types->parents :type/*)
-   :entities              (types/types->parents :entity/*)
    :version               config/mb-version-info})

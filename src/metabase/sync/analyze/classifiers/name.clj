@@ -2,9 +2,7 @@
   "Classifier that infers the special type of a Field based on its name and base type."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase
-             [config :as config]
-             [util :as u]]
+            [metabase.config :as config]
             [metabase.models.database :refer [Database]]
             [metabase.sync
              [interface :as i]
@@ -87,6 +85,9 @@
    [#"cancel"                      date-type        :type/CancelationDate]
    [#"cancel"                      time-type        :type/CancelationTime]
    [#"cancel"                      timestamp-type   :type/CancelationTimestamp]
+   [#"delet(?:e|i)"                date-type        :type/DeletionDate]
+   [#"delet(?:e|i)"                time-type        :type/DeletionTime]
+   [#"delet(?:e|i)"                timestamp-type   :type/DeletionTimestamp]
    [#"source"                      int-or-text-type :type/Source]
    [#"channel"                     int-or-text-type :type/Source]
    [#"share"                       float-type       :type/Share]
@@ -115,7 +116,7 @@
 (when-not config/is-prod?
   (doseq [[name-pattern base-types special-type] pattern+base-types+special-type]
     (assert (instance? java.util.regex.Pattern name-pattern))
-    (assert (every? (u/rpartial isa? :type/*) base-types))
+    (assert (every? #(isa? % :type/*) base-types))
     (assert (isa? special-type :type/*))))
 
 
@@ -131,17 +132,18 @@
 
 (def ^:private FieldOrColumn
   "Schema that allows a `metabase.model.field/Field` or a column from a query resultset"
-  {:name                          su/NonBlankString
+  {:name                          s/Str ; Some DBs such as MSSQL can return columns with blank name
    :base_type                     s/Keyword
    (s/optional-key :special_type) (s/maybe s/Keyword)
    s/Any                          s/Any})
 
 (s/defn infer-special-type :- (s/maybe s/Keyword)
-  "Classifer that infers the special type of a FIELD based on its name and base type."
+  "Classifer that infers the special type of a `field` based on its name and base type."
   [field-or-column :- FieldOrColumn]
   ;; Don't overwrite keys, else we're ok with overwriting as a new more precise type might have
   ;; been added.
-  (when (not-any? (partial isa? (:special_type field-or-column)) [:type/PK :type/FK])
+  (when-not (or (some (partial isa? (:special_type field-or-column)) [:type/PK :type/FK])
+                (str/blank? (:name field-or-column)))
     (special-type-for-name-and-base-type (:name field-or-column) (:base_type field-or-column))))
 
 (s/defn infer-and-assoc-special-type  :- (s/maybe FieldOrColumn)

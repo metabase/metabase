@@ -69,13 +69,13 @@
 
 (expect
   (includes-encryption-warning?
-   (tu/with-mb-log-messages-at-level :warn
+   (tu/with-log-messages-for-level :warn
      (encryption/maybe-decrypt secret-2 (encryption/encrypt secret "WOW")))))
 
 ;; Something obviously not encrypted should avoiding trying to decrypt it (and thus not log an error)
 (expect
   []
-  (tu/with-mb-log-messages-at-level :warn
+  (tu/with-log-messages-for-level :warn
     (encryption/maybe-decrypt secret "abc")))
 
 ;; Something obviously not encrypted should return the original string
@@ -93,7 +93,7 @@
 ;; to decrypt it, log a warning.
 (expect
   (includes-encryption-warning?
-   (tu/with-mb-log-messages-at-level :warn
+   (tu/with-log-messages-for-level :warn
      (encryption/maybe-decrypt secret fake-ciphertext))))
 
 ;; Something that is not encrypted, but might be should return the original text

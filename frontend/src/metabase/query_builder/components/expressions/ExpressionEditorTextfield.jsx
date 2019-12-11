@@ -74,7 +74,7 @@ export default class ExpressionEditorTextfield extends Component {
 
   componentWillReceiveProps(newProps) {
     // we only refresh our state if we had no previous state OR if our expression changed
-    if (!this.state || this.props.expression != newProps.expression) {
+    if (!this.state || this.props.expression !== newProps.expression) {
       const parserInfo = this._getParserInfo(newProps);
       const parsedExpression = newProps.expression;
       const expressionString = format(newProps.expression, parserInfo);

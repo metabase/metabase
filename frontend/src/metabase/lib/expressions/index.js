@@ -28,8 +28,8 @@ export function isReservedWord(word) {
   return !!getAggregationFromName(word);
 }
 
-export function formatAggregationName(aggregationOption) {
-  return VALID_AGGREGATIONS.get(aggregationOption.short);
+export function formatAggregationName(aggregationOperator) {
+  return VALID_AGGREGATIONS.get(aggregationOperator.short);
 }
 
 export function formatIdentifier(name) {

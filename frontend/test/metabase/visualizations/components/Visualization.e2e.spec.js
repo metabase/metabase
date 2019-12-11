@@ -1,4 +1,4 @@
-import "__support__/e2e_tests";
+import "__support__/e2e";
 
 import React from "react";
 
@@ -15,7 +15,7 @@ import {
 } from "../__support__/visualizations";
 
 import { mount } from "enzyme";
-import { click } from "__support__/enzyme_utils";
+import { click } from "__support__/enzyme";
 
 function renderVisualization(props) {
   return mount(<Visualization className="spread" {...props} />);

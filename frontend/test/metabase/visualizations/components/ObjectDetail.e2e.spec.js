@@ -2,9 +2,9 @@ import {
   useSharedAdminLogin,
   createSavedQuestion,
   createTestStore,
-} from "__support__/e2e_tests";
+} from "__support__/e2e";
 
-import { click, dispatchBrowserEvent } from "__support__/enzyme_utils";
+import { click, dispatchBrowserEvent } from "__support__/enzyme";
 
 import { mount } from "enzyme";
 import { delay } from "metabase/lib/promise";
@@ -29,7 +29,7 @@ describe("ObjectDetail", () => {
         metadata: getMetadata(store.getState()),
       })
         .query()
-        .addFilter(["=", ["field-id", 2], 2])
+        .filter(["=", ["field-id", 2], 2])
         .question()
         .setDisplayName("Object Detail");
 
@@ -44,14 +44,14 @@ describe("ObjectDetail", () => {
 
       expect(app.find(".ObjectDetail h1").text()).toEqual("2");
 
-      const previousObjectTrigger = app.find(".Icon.Icon-arrow_back");
+      const previousObjectTrigger = app.find(".Icon.Icon-arrow_left");
       click(previousObjectTrigger);
 
       await store.waitForActions([QUERY_COMPLETED]);
       await delay(100); // Trying to address random CI failures with a small delay
 
       expect(app.find(".ObjectDetail h1").text()).toEqual("1");
-      const nextObjectTrigger = app.find(".Icon.Icon-arrow_forward");
+      const nextObjectTrigger = app.find(".Icon.Icon-arrow_right");
       click(nextObjectTrigger);
 
       await store.waitForActions([QUERY_COMPLETED]);

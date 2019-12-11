@@ -1,8 +1,11 @@
 (ns metabase.models.setting-test
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase.models.setting :as setting :refer [defsetting Setting]]
             [metabase.models.setting.cache :as cache]
-            [metabase.test.util :refer :all]
+            [metabase.test
+             [fixtures :as fixtures]
+             [util :refer :all]]
             [metabase.util :as u]
             [metabase.util
              [encryption :as encryption]
@@ -10,6 +13,8 @@
              [i18n :refer [deferred-tru]]]
             [puppetlabs.i18n.core :as i18n]
             [toucan.db :as db]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 ;; ## TEST SETTINGS DEFINITIONS
 ;; TODO! These don't get loaded by `lein ring server` unless this file is touched
@@ -415,7 +420,7 @@
   (-> (db/query {:select [:value]
                  :from   [:setting]
                  :where  [:= :key (name setting-key)]})
-      first :value u/jdbc-clob->str))
+      first :value))
 
 ;; If encryption is *enabled*, make sure Settings get saved as encrypted!
 (expect
@@ -446,13 +451,13 @@
   :type :timestamp)
 
 (expect
-  java.sql.Timestamp
+  java.time.temporal.Temporal
   (:tag (meta #'test-timestamp-setting)))
 
 ;; make sure we can set & fetch the value and that it gets serialized/deserialized correctly
 (expect
-  #inst "2018-07-11T09:32:00.000Z"
-  (do (test-timestamp-setting #inst "2018-07-11T09:32:00.000Z")
+  #t "2018-07-11T09:32:00.000Z"
+  (do (test-timestamp-setting #t "2018-07-11T09:32:00.000Z")
       (test-timestamp-setting)))
 
 

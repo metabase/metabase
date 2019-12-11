@@ -97,8 +97,8 @@
 (def ^:private ^:const builtin-geojson
   {:us_states       {:name        "United States"
                      :url         "app/assets/geojson/us-states.json"
-                     :region_key  "name"
-                     :region_name "name"
+                     :region_key  "STATE"
+                     :region_name "NAME"
                      :builtin     true}
    :world_countries {:name        "World"
                      :url         "app/assets/geojson/world.json"
@@ -128,7 +128,7 @@
   [key]
   {key su/NonBlankString}
   (let [url (or (get-in (custom-geojson) [(keyword key) :url])
-                (throw (ui18n/ex-info (tru "Invalid custom GeoJSON key: {0}" key)
+                (throw (ex-info (tru "Invalid custom GeoJSON key: {0}" key)
                          {:status-code 400})))]
     ;; TODO - it would be nice if we could also avoid returning our usual cache-busting headers with the response here
     (-> (rr/response (ReaderInputStream. (io/reader url)))

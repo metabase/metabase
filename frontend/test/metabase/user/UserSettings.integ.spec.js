@@ -2,8 +2,8 @@ import React from "react";
 
 import mock from "xhr-mock";
 
-import { getFormValues } from "__support__/enzyme_utils";
-import { mountWithStore } from "__support__/integration_tests";
+import { getFormValues } from "__support__/enzyme";
+import { mountWithStore } from "__support__/integration";
 
 import UserSettings from "metabase/user/components/UserSettings";
 import Users from "metabase/entities/users";

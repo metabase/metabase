@@ -27,8 +27,7 @@ export function columnsAreValid(colNames, data, filter = () => true) {
   }
   return colNames.reduce(
     (acc, name) =>
-      acc &&
-      (name == undefined || (colsByName[name] && filter(colsByName[name]))),
+      acc && (name == null || (colsByName[name] && filter(colsByName[name]))),
     true,
   );
 }

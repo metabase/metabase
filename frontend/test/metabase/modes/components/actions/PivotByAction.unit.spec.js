@@ -5,7 +5,7 @@ import React from "react";
 import { ORDERS } from "__support__/sample_dataset_fixture";
 
 import { mount } from "enzyme";
-import { click } from "__support__/enzyme_utils";
+import { click } from "__support__/enzyme";
 
 import PivotByAction from "metabase/modes/components/actions/PivotByAction";
 
@@ -42,7 +42,7 @@ describe("PivotByAction", () => {
           type: "query",
         },
         display: "line",
-        name: null,
+        name: undefined,
         visualization_settings: {},
       },
     });

@@ -1,6 +1,7 @@
 (ns metabase.api.pulse-test
   "Tests for /api/pulse endpoints."
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase
              [email-test :as et]
              [http-client :as http]
@@ -845,10 +846,7 @@
 ;;; |                                              POST /api/pulse/test                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(expect
-  {:response {:ok true}
-   :emails   (et/email-to :rasta {:subject "Pulse: Daily Sad Toucans"
-                                  :body    {"Daily Sad Toucans" true}})}
+(deftest create-pulse-test
   (tu/with-non-admin-groups-no-root-collection-perms
     (tu/with-model-cleanup [Pulse]
       (et/with-fake-inbox
@@ -860,23 +858,22 @@
                                                                         :aggregation  [[:count]]}}}]]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
             (card-api-test/with-cards-in-readable-collection [card]
-              (array-map
-               :response
-               ((user->client :rasta) :post 200 "pulse/test" {:name          "Daily Sad Toucans"
-                                                              :collection_id (u/get-id collection)
-                                                              :cards         [{:id          (u/get-id card)
-                                                                               :include_csv false
-                                                                               :include_xls false}]
-                                                              :channels      [{:enabled       true
-                                                                               :channel_type  "email"
-                                                                               :schedule_type "daily"
-                                                                               :schedule_hour 12
-                                                                               :schedule_day  nil
-                                                                               :recipients    [(fetch-user :rasta)]}]
-                                                              :skip_if_empty false})
-
-               :emails
-               (et/regex-email-bodies #"Daily Sad Toucans")))))))))
+              (is (= {:ok true}
+                     ((user->client :rasta) :post 200 "pulse/test" {:name          "Daily Sad Toucans"
+                                                                    :collection_id (u/get-id collection)
+                                                                    :cards         [{:id          (u/get-id card)
+                                                                                     :include_csv false
+                                                                                     :include_xls false}]
+                                                                    :channels      [{:enabled       true
+                                                                                     :channel_type  "email"
+                                                                                     :schedule_type "daily"
+                                                                                     :schedule_hour 12
+                                                                                     :schedule_day  nil
+                                                                                     :recipients    [(fetch-user :rasta)]}]
+                                                                    :skip_if_empty false})))
+              (is (= (et/email-to :rasta {:subject "Pulse: Daily Sad Toucans"
+                                          :body    {"Daily Sad Toucans" true}})
+                     (et/regex-email-bodies #"Daily Sad Toucans"))))))))))
 
 ;; This test follows a flow that the user/UI would follow by first creating a pulse, then making a small change to
 ;; that pulse and testing it. The primary purpose of this test is to ensure tha the pulse/test endpoint accepts data
@@ -946,3 +943,30 @@
   (tu/with-temporary-setting-values [slack-token nil]
     (-> ((user->client :rasta) :get 200 "pulse/form_input")
         (get-in [:channels :slack :fields]))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                         DELETE /api/pulse/:pulse-id/subscription                               |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(expect
+  nil
+  (tt/with-temp* [Pulse                 [{pulse-id :id}   {:name "Lodi Dodi" :creator_id (user->id :crowberto)}]
+                  PulseChannel          [{channel-id :id} {:pulse_id      pulse-id
+                                                           :channel_type  "email"
+                                                           :schedule_type "daily"
+                                                           :details       {:other  "stuff"
+                                                                           :emails ["foo@bar.com"]}}]
+                  PulseChannelRecipient [pcr              {:pulse_channel_id channel-id :user_id (user->id :rasta)}]]
+    ((user->client :rasta) :delete 204 (str "pulse/" pulse-id "/subscription/email"))))
+
+;; Users can't delete someone else's pulse subscription
+(expect
+  "Not found."
+  (tt/with-temp* [Pulse                 [{pulse-id :id}   {:name "Lodi Dodi" :creator_id (user->id :crowberto)}]
+                  PulseChannel          [{channel-id :id} {:pulse_id      pulse-id
+                                                           :channel_type  "email"
+                                                           :schedule_type "daily"
+                                                           :details       {:other  "stuff"
+                                                                           :emails ["foo@bar.com"]}}]
+                  PulseChannelRecipient [pcr              {:pulse_channel_id channel-id :user_id (user->id :rasta)}]]
+    ((user->client :lucky) :delete 404 (str "pulse/" pulse-id "/subscription/email"))))

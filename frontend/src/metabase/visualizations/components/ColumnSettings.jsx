@@ -13,6 +13,7 @@ import {
 } from "metabase/visualizations/lib/settings";
 
 import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
+import NoResults from "assets/img/no_results.svg";
 
 type SettingId = string;
 type Settings = { [id: SettingId]: any };
@@ -87,7 +88,7 @@ const ColumnSettings = ({
       ) : (
         <EmptyState
           message={t`No formatting settings`}
-          illustrationElement={<img src="app/assets/img/no_results.svg" />}
+          illustrationElement={<img src={NoResults} />}
         />
       )}
     </div>

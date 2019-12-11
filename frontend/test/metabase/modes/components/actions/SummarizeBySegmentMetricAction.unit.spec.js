@@ -5,7 +5,7 @@ import {
   ORDERS,
   metadata,
 } from "__support__/sample_dataset_fixture";
-import { click } from "__support__/enzyme_utils";
+import { click } from "__support__/enzyme";
 import Question from "metabase-lib/lib/Question";
 import SummarizeBySegmentMetricAction from "metabase/modes/components/actions/SummarizeBySegmentMetricAction";
 import { mount } from "enzyme";
@@ -19,7 +19,7 @@ const question = Question.create({
 describe("SummarizeBySegmentMetricAction", () => {
   describe("aggregation options", () => {
     it("should show only a subset of all query aggregations", () => {
-      const hasAggregationOption = (popover, optionName) =>
+      const hasAggregationOperator = (popover, optionName) =>
         popover.find(`.List-item-title[children="${optionName}"]`).length === 1;
 
       const action = SummarizeBySegmentMetricAction({ question })[0];
@@ -30,10 +30,10 @@ describe("SummarizeBySegmentMetricAction", () => {
         }),
       );
 
-      expect(hasAggregationOption(popover, "Count of rows")).toBe(true);
-      expect(hasAggregationOption(popover, "Average of ...")).toBe(true);
-      expect(hasAggregationOption(popover, "Raw data")).toBe(false);
-      expect(hasAggregationOption(popover, "Cumulative count of rows")).toBe(
+      expect(hasAggregationOperator(popover, "Count of rows")).toBe(true);
+      expect(hasAggregationOperator(popover, "Average of ...")).toBe(true);
+      expect(hasAggregationOperator(popover, "Raw data")).toBe(false);
+      expect(hasAggregationOperator(popover, "Cumulative count of rows")).toBe(
         false,
       );
       expect(popover.find(".List-section-title").length).toBe(0);

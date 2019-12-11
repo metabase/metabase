@@ -34,6 +34,8 @@
 
      (There are several variations of this macro; see documentation below for more details.)"
   (:require [cheshire.core :as json]
+            [clojure.test :as t]
+            [colorize.core :as colorize]
             [medley.core :as m]
             [metabase
              [query-processor :as qp]
@@ -184,7 +186,9 @@
   implementation of `format-name`. (Most databases use the default implementation of `identity`; H2 uses
   `clojure.string/upper-case`.) This function DOES NOT quote the identifier."
   [a-name]
-  {:pre [((some-fn keyword? string? symbol?) a-name)]}
+  (assert ((some-fn keyword? string? symbol?) a-name)
+    (str "Cannot format `nil` name -- did you use a `$field` without specifying its Table? (Change the form to"
+         " `$table.field`, or specify a top-level default Table to `$ids` or `mbql-query`.)"))
   (tx/format-name (tx/driver) (name a-name)))
 
 (defn id
@@ -224,11 +228,14 @@
      (data/dataset (get-dataset-definition) ...)"
   {:style/indent 1}
   [dataset & body]
-  `(impl/do-with-dataset ~(if (and (symbol? dataset)
-                                   (not (get &env dataset)))
-                            `(impl/resolve-dataset-definition '~(ns-name *ns*) '~dataset)
-                            dataset)
-     (fn [] ~@body)))
+  `(t/testing (colorize/magenta ~(if (symbol? dataset)
+                                   (format "using %s dataset" dataset)
+                                   "using inline dataset"))
+     (impl/do-with-dataset ~(if (and (symbol? dataset)
+                                     (not (get &env dataset)))
+                              `(impl/resolve-dataset-definition '~(ns-name *ns*) '~dataset)
+                              dataset)
+       (fn [] ~@body))))
 
 (defmacro with-temp-copy-of-db
   "Run `body` with the current DB (i.e., the one that powers `data/db` and `data/id`) bound to a temporary copy of the
@@ -248,12 +255,12 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn fks-supported?
-  "Does the current engine support foreign keys?"
+  "Does the current driver support foreign keys?"
   []
-  (contains? (driver.u/features (or (tx/driver))) :foreign-keys))
+  (contains? (driver.u/features (tx/driver)) :foreign-keys))
 
 (defn binning-supported?
-  "Does the current engine support binning?"
+  "Does the current driver support binning?"
   []
   (contains? (driver.u/features (tx/driver)) :binning))
 

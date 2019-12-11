@@ -1,6 +1,7 @@
 (ns metabase.driver.oracle-test
   "Tests for specific behavior of the Oracle driver."
   (:require [clojure.java.jdbc :as jdbc]
+            [clojure.test :refer :all]
             [expectations :refer [expect]]
             [honeysql.core :as hsql]
             [metabase
@@ -18,22 +19,41 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data
-             [datasets :refer [expect-with-driver]]
+             [datasets :as datasets :refer [expect-with-driver]]
              [oracle :as oracle.tx]
              [sql :as sql.tx]]
+            [metabase.test.data.sql.ddl :as ddl]
             [metabase.test.util.log :as tu.log]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.util.test :as tt]))
 
-;; make sure we can connect with an SID
-(expect
-  {:classname                   "oracle.jdbc.OracleDriver"
-   :subprotocol                 "oracle:thin"
-   :subname                     "@localhost:1521:ORCL"
-   :oracle.jdbc.J2EE13Compliant true}
-  (sql-jdbc.conn/connection-details->spec :oracle {:host "localhost"
-                                                   :port 1521
-                                                   :sid  "ORCL"}))
+(deftest connection-details->spec-test
+  (doseq [[message expected-spec details]
+          [["You should be able to connect with an SID"
+            {:classname   "oracle.jdbc.OracleDriver"
+             :subprotocol "oracle:thin"
+             :subname     "@localhost:1521:ORCL"}
+            {:host "localhost"
+             :port 1521
+             :sid  "ORCL"}]
+           ["You should be able to specify a Service Name with no SID"
+            {:classname   "oracle.jdbc.OracleDriver"
+             :subprotocol "oracle:thin"
+             :subname     "@localhost:1521/MyCoolService"}
+            {:host         "localhost"
+             :port         1521
+             :service-name "MyCoolService"}]
+           ["You should be able to specifiy a Service Name *and* an SID"
+            {:classname   "oracle.jdbc.OracleDriver"
+             :subprotocol "oracle:thin"
+             :subname     "@localhost:1521:ORCL/MyCoolService"}
+            {:host         "localhost"
+             :port         1521
+             :service-name "MyCoolService"
+             :sid          "ORCL"}]]]
+    (is (= expected-spec
+           (sql-jdbc.conn/connection-details->spec :oracle details))
+        message)))
 
 ;; no SID and not Service Name should throw an exception
 (expect
@@ -47,29 +67,6 @@
                                                         :port 1521})
        (catch Throwable e
          (driver/humanize-connection-error-message :oracle (.getMessage e)))))
-
-;; make sure you can specify a Service Name with no SID
-(expect
-  {:classname                   "oracle.jdbc.OracleDriver"
-   :subprotocol                 "oracle:thin"
-   :subname                     "@localhost:1521/MyCoolService"
-   :oracle.jdbc.J2EE13Compliant true}
-  (sql-jdbc.conn/connection-details->spec :oracle
-    {:host         "localhost"
-     :port         1521
-     :service-name "MyCoolService"}))
-
-;; make sure you can specify a Service Name and an SID
-(expect
-  {:classname                   "oracle.jdbc.OracleDriver"
-   :subprotocol                 "oracle:thin"
-   :subname                     "@localhost:1521:ORCL/MyCoolService"
-   :oracle.jdbc.J2EE13Compliant true}
-  (sql-jdbc.conn/connection-details->spec :oracle
-    {:host         "localhost"
-     :port         1521
-     :service-name "MyCoolService"
-     :sid          "ORCL"}))
 
 (expect
   com.jcraft.jsch.JSchException
@@ -92,6 +89,17 @@
 (expect-with-driver :oracle
   "UTC"
   (tu/db-timezone-id))
+
+(deftest insert-rows-ddl-test
+  (is (= [[(str "INSERT ALL"
+                " INTO \"my_db\".\"my_table\" (\"col1\", \"col2\") VALUES (?, 1)"
+                " INTO \"my_db\".\"my_table\" (\"col1\", \"col2\") VALUES (?, 2) "
+                "SELECT * FROM dual")
+           "A"
+           "B"]]
+         (ddl/insert-rows-ddl-statements :oracle (hx/identifier :table "my_db" "my_table") [{:col1 "A", :col2 1}
+                                                                                            {:col1 "B", :col2 2}]))
+      "Make sure we're generating correct DDL for Oracle to insert all rows at once."))
 
 (defn- do-with-temp-user [f]
   (let [username (tu/random-name)]
@@ -132,43 +140,50 @@
 
 ;; let's make sure we're actually attempting to generate the correctl HoneySQL for joins and source queries so we
 ;; don't sit around scratching our heads wondering why the queries themselves aren't working
-
-(expect-with-driver :oracle
-  {:select [:*]
-   :from   [{:select
-             [[(hx/identifier :field oracle.tx/session-schema "test_data_venues" "id")          (hx/identifier :field-alias "id")]
-              [(hx/identifier :field oracle.tx/session-schema "test_data_venues" "name")        (hx/identifier :field-alias "name")]
-              [(hx/identifier :field oracle.tx/session-schema "test_data_venues" "category_id") (hx/identifier :field-alias "category_id")]
-              [(hx/identifier :field oracle.tx/session-schema "test_data_venues" "latitude")    (hx/identifier :field-alias "latitude")]
-              [(hx/identifier :field oracle.tx/session-schema "test_data_venues" "longitude")   (hx/identifier :field-alias "longitude")]
-              [(hx/identifier :field oracle.tx/session-schema "test_data_venues" "price")       (hx/identifier :field-alias "price")]]
-
-             :from      [(hx/identifier :table oracle.tx/session-schema "test_data_venues")]
-             :left-join [[(hx/identifier :table oracle.tx/session-schema "test_data_categories") (hx/identifier :table-alias "test_data_categories__via__cat")]
-                         [:=
-                          (hx/identifier :field oracle.tx/session-schema "test_data_venues" "category_id")
-                          (hx/identifier :field "test_data_categories__via__cat" "id")]]
-             :where     [:=
-                         (hx/identifier :field "test_data_categories__via__cat" "name")
-                         "BBQ"]
-             :order-by  [[(hx/identifier :field oracle.tx/session-schema "test_data_venues" "id") :asc]]}]
-   :where [:<= {:s "rownum"} 100]}
-  (qp.test-util/with-everything-store
-    (#'sql.qp/mbql->honeysql
-     :oracle
-     (data/mbql-query venues
-       {:source-table $$venues
-        :order-by     [[:asc $id]]
-        :filter       [:=
-                       [:joined-field "test_data_categories__via__cat" $categories.name]
-                       [:value "BBQ" {:base_type :type/Text, :special_type :type/Name, :database_type "VARCHAR"}]]
-        :fields       [$id $name $category_id $latitude $longitude $price]
-        :limit        100
-        :joins        [{:source-table $$categories
-                        :alias        "test_data_categories__via__cat",
-                        :strategy     :left-join
-                        :condition    [:=
-                                       $category_id
-                                       [:joined-field "test_data_categories__via__cat" $categories.id]]
-                        :fk-field-id  (data/id :venues :category_id)
-                        :fields       :none}]}))))
+(deftest honeysql-test
+  (datasets/test-driver :oracle
+    (is (= {:select [:*]
+            :from   [{:select
+                      [[(hx/identifier :field oracle.tx/session-schema "test_data_venues" "id")
+                        (hx/identifier :field-alias "id")]
+                       [(hx/identifier :field oracle.tx/session-schema "test_data_venues" "name")
+                        (hx/identifier :field-alias "name")]
+                       [(hx/identifier :field oracle.tx/session-schema "test_data_venues" "category_id")
+                        (hx/identifier :field-alias "category_id")]
+                       [(hx/identifier :field oracle.tx/session-schema "test_data_venues" "latitude")
+                        (hx/identifier :field-alias "latitude")]
+                       [(hx/identifier :field oracle.tx/session-schema "test_data_venues" "longitude")
+                        (hx/identifier :field-alias "longitude")]
+                       [(hx/identifier :field oracle.tx/session-schema "test_data_venues" "price")
+                        (hx/identifier :field-alias "price")]]
+                      :from      [(hx/identifier :table oracle.tx/session-schema "test_data_venues")]
+                      :left-join [[(hx/identifier :table oracle.tx/session-schema "test_data_categories")
+                                   (hx/identifier :table-alias "test_data_categories__via__cat")]
+                                  [:=
+                                   (hx/identifier :field oracle.tx/session-schema "test_data_venues" "category_id")
+                                   (hx/identifier :field "test_data_categories__via__cat" "id")]]
+                      :where     [:=
+                                  (hx/identifier :field "test_data_categories__via__cat" "name")
+                                  "BBQ"]
+                      :order-by  [[(hx/identifier :field oracle.tx/session-schema "test_data_venues" "id") :asc]]}]
+            :where  [:<= (hsql/raw "rownum") 100]}
+           (qp.test-util/with-everything-store
+             (#'sql.qp/mbql->honeysql
+              :oracle
+              (data/mbql-query venues
+                {:source-table $$venues
+                 :order-by     [[:asc $id]]
+                 :filter       [:=
+                                [:joined-field "test_data_categories__via__cat" $categories.name]
+                                [:value "BBQ" {:base_type :type/Text, :special_type :type/Name, :database_type "VARCHAR"}]]
+                 :fields       [$id $name $category_id $latitude $longitude $price]
+                 :limit        100
+                 :joins        [{:source-table $$categories
+                                 :alias        "test_data_categories__via__cat",
+                                 :strategy     :left-join
+                                 :condition    [:=
+                                                $category_id
+                                                [:joined-field "test_data_categories__via__cat" $categories.id]]
+                                 :fk-field-id  (data/id :venues :category_id)
+                                 :fields       :none}]}))))
+        "Correct HoneySQL form should be generated")))

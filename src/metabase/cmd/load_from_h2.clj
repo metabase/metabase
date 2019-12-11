@@ -134,7 +134,7 @@
                                              k))))]
     {:cols dest-keys
      :vals (for [row objs]
-             (map (comp u/jdbc-clob->str row) source-keys))}))
+             (map row source-keys))}))
 
 (def ^:private chunk-size 100)
 
@@ -225,6 +225,9 @@
       (jdbc/db-query-with-resultset target-db-conn [sql] :val))
     (println-ok)))
 
+(defn- mb-db-populated? [conn]
+  (binding [db/*db-connection* conn]
+    (pos? (db/count Setting))))
 
 ;;; --------------------------------------------------- Public Fns ---------------------------------------------------
 
@@ -241,6 +244,11 @@
 
   (jdbc/with-db-transaction [target-db-conn (mdb/jdbc-details)]
     (jdbc/db-set-rollback-only! target-db-conn)
+
+    (println (u/format-color 'blue "Testing if target DB is already populated..."))
+    (assert (not (mb-db-populated? target-db-conn))
+      (trs "Target DB is already populated!"))
+    (println-ok)
 
     (println (u/format-color 'blue "Temporarily disabling DB constraints..."))
     (disable-db-constraints! target-db-conn)

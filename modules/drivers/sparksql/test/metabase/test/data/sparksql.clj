@@ -26,14 +26,15 @@
 ;; during unit tests don't treat Spark SQL as having FK support
 (defmethod driver/supports? [:sparksql :foreign-keys] [_ _] (not config/is-test?))
 
-(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/BigInteger] [_ _] "BIGINT")
-(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Boolean]    [_ _] "BOOLEAN")
-(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Date]       [_ _] "DATE")
-(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/DateTime]   [_ _] "TIMESTAMP")
-(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Decimal]    [_ _] "DECIMAL")
-(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Float]      [_ _] "DOUBLE")
-(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Integer]    [_ _] "INTEGER")
-(defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Text]       [_ _] "STRING")
+(doseq [[base-type database-type] {:type/BigInteger "BIGINT"
+                                   :type/Boolean    "BOOLEAN"
+                                   :type/Date       "DATE"
+                                   :type/DateTime   "TIMESTAMP"
+                                   :type/Decimal    "DECIMAL"
+                                   :type/Float      "DOUBLE"
+                                   :type/Integer    "INTEGER"
+                                   :type/Text       "STRING"}]
+  (defmethod sql.tx/field-base-type->sql-type [:sparksql base-type] [_ _] database-type))
 
 ;; If someone tries to run Time column tests with SparkSQL give them a heads up that SparkSQL does not support it
 (defmethod sql.tx/field-base-type->sql-type [:sparksql :type/Time] [_ _]

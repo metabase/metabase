@@ -72,7 +72,7 @@ const Tables = createEntity({
       withAction(FETCH_METADATA),
       withCachedDataAndRequestState(
         ({ id }) => [...Tables.getObjectStatePath(id)],
-        ({ id }) => [...Tables.getObjectStatePath(id), "fetch_query_metadata"],
+        ({ id }) => [...Tables.getObjectStatePath(id), "fetchMetadata"],
       ),
       withNormalize(TableSchema),
     )(({ id }) => async (dispatch, getState) => {
@@ -101,7 +101,7 @@ const Tables = createEntity({
       withAction(FETCH_TABLE_FOREIGN_KEYS),
       withCachedDataAndRequestState(
         ({ id }) => [...Tables.getObjectStatePath(id)],
-        ({ id }) => [...Tables.getObjectStatePath(id), "fk"],
+        ({ id }) => [...Tables.getObjectStatePath(id), "fetchForeignKeys"],
       ),
       withNormalize(TableSchema),
     )(entityObject => async (dispatch, getState) => {
@@ -176,6 +176,8 @@ const Tables = createEntity({
   },
 
   selectors: {
+    getObject: (state, { entityId }) => getMetadata(state).table(entityId),
+
     getTable: createSelector(
       // we wrap getMetadata to handle a circular dep issue
       [state => getMetadata(state), (state, props) => props.entityId],

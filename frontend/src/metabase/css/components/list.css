@@ -7,6 +7,10 @@
   color: var(--color-text-dark);
 }
 
+.List-section-header:hover .Icon {
+  color: inherit;
+}
+
 .List-item .Icon {
   color: var(--color-text-light);
 }

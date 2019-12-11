@@ -23,7 +23,8 @@
 (defn- do-with-rasta
   "Call `f` with Rasta as the current user."
   [f]
-  (users/do-with-test-user :rasta f))
+  (users/with-test-user :rasta
+    (f)))
 
 (defn- check-perms-for-rasta
   "Check permissions for `query` with rasta as the current user."
