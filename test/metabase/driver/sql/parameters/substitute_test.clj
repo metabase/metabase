@@ -6,6 +6,7 @@
              [driver :as driver]
              [models :refer [Field]]
              [query-processor :as qp]
+             [query-processor-test :as qp.test]
              [test :as mt]]
             [metabase.driver.common.parameters :as i]
             [metabase.driver.common.parameters.parse :as parse]
