@@ -635,7 +635,7 @@ export const updateTemplateTag = createThunkAction(
         ["dataset_query", "native", "template-tags", templateTag.name],
         tag =>
           // when we switch type, null out any default
-          tag.type != templateTag.type
+          tag.type !== templateTag.type
             ? { ...templateTag, default: null }
             : templateTag,
       );
