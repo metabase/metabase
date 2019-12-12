@@ -76,6 +76,63 @@ describe("query builder", () => {
       });
     });
   });
+
+  describe("column settings", () => {
+    it("should allow you to remove a column and add two foreign columns", () => {
+      // oddly specific test inspired by https://github.com/metabase/metabase/issues/11499
+
+      // get a really wide window, so we don't need to mess with scrolling the table horizontally
+      cy.viewport(1600, 800);
+
+      loadOrdersTable();
+      cy.contains("Settings").click();
+
+      // wait for settings sidebar to open
+      cy.get(".border-right.overflow-x-hidden")
+        .invoke("width")
+        .should("be.gt", 350);
+
+      cy.contains("Table options")
+        .parents(".scroll-y")
+        .first()
+        .as("tableOptions");
+
+      // remove Total column
+      cy.get("@tableOptions")
+        .contains("Total")
+        .scrollIntoView()
+        .nextAll(".Icon-close")
+        .click();
+
+      // Add people.category
+      cy.get("@tableOptions")
+        .contains("Category")
+        .scrollIntoView()
+        .nextAll(".Icon-add")
+        .click();
+
+      // wait a Category value to appear in the table, so we know the query completed
+      cy.contains("Widget");
+
+      // Add people.ean
+      cy.get("@tableOptions")
+        .contains("Ean")
+        .scrollIntoView()
+        .nextAll(".Icon-add")
+        .click();
+
+      // wait a Ean value to appear in the table, so we know the query completed
+      cy.contains("8833419218504");
+
+      // confirm that the table contains the right columns
+      cy.get(".Visualization .TableInteractive").as("table");
+      cy.get("@table").contains("Product → Category");
+      cy.get("@table").contains("Product → Ean");
+      cy.get("@table")
+        .contains("Total")
+        .should("not.exist");
+    });
+  });
 });
 
 function loadOrdersTable() {
