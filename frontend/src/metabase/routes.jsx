@@ -42,7 +42,7 @@ import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
 import CollectionPermissionsModal from "metabase/admin/permissions/containers/CollectionPermissionsModal";
 import UserCollectionList from "metabase/containers/UserCollectionList";
 
-import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
+/*import PulseEditApp from "metabase/pulse/containers/PulseEditApp";*/
 import SetupApp from "metabase/setup/containers/SetupApp";
 import PostSetupApp from "metabase/setup/containers/PostSetupApp";
 import UserSettingsApp from "metabase/user/containers/UserSettingsApp";
@@ -322,7 +322,7 @@ export const getRoutes = store => (
           <IndexRoute component={PulseEditApp} />
         </Route>
     </Route>*/}
-      
+
       {/* USER */}
       <Route path="/user/edit_current" component={UserSettingsApp} />
 
