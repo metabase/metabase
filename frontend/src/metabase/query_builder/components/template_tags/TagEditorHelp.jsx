@@ -118,7 +118,11 @@ const TagExample = ({ datasetQuery, setDatasetQuery }) => (
   </div>
 );
 
-const TagEditorHelp = ({ setDatasetQuery, sampleDatasetId }) => {
+const TagEditorHelp = ({
+  setDatasetQuery,
+  sampleDatasetId,
+  switchToSettings,
+}) => {
   let setQueryWithSampleDatasetId = null;
   if (sampleDatasetId != null) {
     setQueryWithSampleDatasetId = (dataset_query, run) => {
@@ -129,6 +133,7 @@ const TagEditorHelp = ({ setDatasetQuery, sampleDatasetId }) => {
         },
         run,
       );
+      switchToSettings();
     };
   }
   return (
