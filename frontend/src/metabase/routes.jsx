@@ -312,17 +312,17 @@ export const getRoutes = store => (
           component={TableQuestionsContainer}
         />
       </Route>
-
       {/* PULSE */}
-      <Route path="/pulse" title={t`Pulses`}>
-        {/* NOTE: legacy route, not linked to in app */}
+      {/* NOTE: legacy route, not linked to in app */}
+
+      {/*<Route path="/pulse" title={t`Pulses`}>
         <IndexRedirect to="/search" query={{ type: "pulse" }} />
         <Route path="create" component={PulseEditApp} />
         <Route path=":pulseId">
           <IndexRoute component={PulseEditApp} />
         </Route>
-      </Route>
-
+    </Route>*/}
+      
       {/* USER */}
       <Route path="/user/edit_current" component={UserSettingsApp} />
 
