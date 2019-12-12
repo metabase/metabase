@@ -632,8 +632,12 @@ export const updateTemplateTag = createThunkAction(
       // using updateIn instead of assocIn due to not preserving order of keys
       return updateIn(
         updatedCard,
-        ["dataset_query", "native", "template-tags"],
-        tags => ({ ...tags, [templateTag.name]: templateTag }),
+        ["dataset_query", "native", "template-tags", templateTag.name],
+        tag =>
+          // when we switch type, null out any default
+          tag.type != templateTag.type
+            ? { ...templateTag, default: null }
+            : templateTag,
       );
     };
   },
