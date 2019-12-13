@@ -363,14 +363,6 @@
     ;;    SELECT * FROM table WHERE field = 1
     :native-parameters
 
-    ;; Does this driver support parameter substitution in native queries, where parameter expressions are replaced
-    ;; with entire conditional expressions? e.g.
-    ;;
-    ;;    SELECT * FROM table WHERE {{param}}
-    ;;    ->
-    ;;    SELECT * FROM table WHERE field = 1
-    :native-parameters-field-filters
-
     ;; Does the driver support using expressions inside aggregations? e.g. something like \"sum(x) + count(y)\" or
     ;; \"avg(x + y)\"
     :expression-aggregations
