@@ -2,7 +2,7 @@ import { getIsResultDirty } from "metabase/query_builder/selectors";
 import { state as sampleState } from "__support__/sample_dataset_fixture";
 
 describe("getIsResultDirty", () => {
-  xdescribe("structure query", () => {
+  describe("structure query", () => {
     function getState(q1, q2) {
       const card = query => ({
         dataset_query: { database: 1, type: "query", query },
