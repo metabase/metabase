@@ -139,7 +139,7 @@ const MONGO_EXAMPLES = {
     database: null,
     type: "native",
     native: {
-      query: "[{ $match: { [[ _id: {{id}}} ]] }]",
+      query: "[{ $match: { [[ _id: {{id}} ]] } }]",
       "template-tags": {
         category: {
           id: Utils.uuid(),
@@ -155,7 +155,7 @@ const MONGO_EXAMPLES = {
     database: null,
     type: "native",
     native: {
-      query: "[{ $match: { [[ _id: {{id}}} [[, category: {{category}} ]] ]] }]",
+      query: "[{ $match: { [[ _id: {{id}} [[, category: {{category}} ]]  ]] } }]",
       "template-tags": {
         id: {
           id: Utils.uuid(),
@@ -217,22 +217,23 @@ const TagEditorHelp = ({
   sampleDatasetId,
   switchToSettings,
 }) => {
-  let setQueryWithSampleDatasetId = null;
-  if (sampleDatasetId != null) {
-    setQueryWithSampleDatasetId = (dataset_query, run) => {
+  const driver = database && database.engine;
+  const examples = driver === "mongo" ? MONGO_EXAMPLES : SQL_EXAMPLES;
+  const datasetId = driver === "mongo" ? database.id : sampleDatasetId;
+
+  let setQueryWithDatasetId = null;
+  if (datasetId != null) {
+    setQueryWithDatasetId = (dataset_query, run) => {
       setDatasetQuery(
         {
           ...dataset_query,
-          database: sampleDatasetId,
+          database: datasetId,
         },
         run,
       );
       switchToSettings();
     };
   }
-
-  const driver = database && database.engine;
-  const examples = driver === "mongo" ? MONGO_EXAMPLES : SQL_EXAMPLES;
 
   return (
     <div>
@@ -249,7 +250,7 @@ const TagEditorHelp = ({
       </p>
       <TagExample
         datasetQuery={examples.variable}
-        setDatasetQuery={setQueryWithSampleDatasetId}
+        setDatasetQuery={setQueryWithDatasetId}
       />
 
       <h4 className="pt2">{t`Field Filters`}</h4>
@@ -261,7 +262,7 @@ const TagEditorHelp = ({
       </p>
       <TagExample
         datasetQuery={examples.dimension}
-        setDatasetQuery={setQueryWithSampleDatasetId}
+        setDatasetQuery={setQueryWithDatasetId}
       />
 
       <h4 className="pt2">{t`Optional Clauses`}</h4>
@@ -272,7 +273,7 @@ const TagEditorHelp = ({
       </p>
       <TagExample
         datasetQuery={examples.optional}
-        setDatasetQuery={setQueryWithSampleDatasetId}
+        setDatasetQuery={setQueryWithDatasetId}
       />
 
       <p>
@@ -280,13 +281,13 @@ const TagEditorHelp = ({
       </p>
       <TagExample
         datasetQuery={examples.multipleOptional}
-        setDatasetQuery={setQueryWithSampleDatasetId}
+        setDatasetQuery={setQueryWithDatasetId}
       />
 
       <p>{t`When using a Field Filter, the column name should not be included in the SQL. Instead, the variable should be mapped to a field in the side panel.`}</p>
       <TagExample
         datasetQuery={examples.optionalDimension}
-        setDatasetQuery={setQueryWithSampleDatasetId}
+        setDatasetQuery={setQueryWithDatasetId}
       />
 
       <p className="pt2 link">
