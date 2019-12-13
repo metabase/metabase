@@ -43,7 +43,6 @@
              (optional "and bar3 = " (param "baz")) " "
              (optional "and bar4 = " (param "baz"))]
 
-
             "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND total_birds > {{total_birds}}]]"
             ["SELECT * FROM toucanneries WHERE TRUE "
              (optional "AND num_toucans > " (param "num_toucans"))
@@ -67,7 +66,8 @@
              {query [query]})
 
            "JSON queries that contain non-param fragments like '}}'"
-           {"{x: {y: \"{{param}}\"}}" ["{x: {y: \"" (param "param") "\"" "}}"]}}]
+           {"{x: {y: \"{{param}}\"}}"         ["{x: {y: \"" (param "param") "\"}}"]
+            "{$match: {{{date}}, field: 1}}}" ["{$match: {" (param "date") ", field: 1}}}"]}}]
     (testing group
       (doseq [[s expected] s->expected]
         (is (= expected

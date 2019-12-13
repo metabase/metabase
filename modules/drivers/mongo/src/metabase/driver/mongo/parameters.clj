@@ -5,35 +5,80 @@
             [clojure.tools.logging :as log]
             [metabase.driver.common.parameters :as params]
             [metabase.driver.common.parameters
+             [dates :as date-params]
              [parse :as parse]
              [values :as values]]
+            [metabase.driver.mongo.query-processor :as mongo.qp]
             [metabase.query-processor.error-type :as error-type]
             [metabase.util :as u]
             [metabase.util
              [date-2 :as u.date]
              [i18n :refer [tru]]])
   (:import java.time.temporal.Temporal
-           metabase.driver.common.parameters.Date))
+           [metabase.driver.common.parameters CommaSeparatedNumbers Date]))
 
 (defn- param-value->str [x]
-  (condp instance? x
-    ;; Date = the Parameters Date type, not an actual Temporal type
-    Date     (param-value->str (u.date/parse (:s x)))
-    ;; convert temporal types to ISODate("2019-12-09T...") (etc.)
-    Temporal (format "ISODate(\"%s\")" (u.date/format x))
-    ;; for everything else, splice it in as its string representation
-    (pr-str x)))
+  ;; sequences get converted to `$in`
+  (if (sequential? x)
+    (format "{$in: [%s]}" (str/join ", " (map param-value->str x)))
+    (condp instance? x
+      ;; Date = the Parameters Date type, not an actual Temporal type
+      Date                  (param-value->str (u.date/parse (:s x)))
+      ;; convert temporal types to ISODate("2019-12-09T...") (etc.)
+      Temporal              (format "ISODate(\"%s\")" (u.date/format x))
+      ;; there's a special record type for sequences of numbers; pull the sequence it wraps out and recur
+      CommaSeparatedNumbers (param-value->str (:numbers x))
+      ;; for everything else, splice it in as its string representation
+      (pr-str x))))
 
-(defn- substitute-param [param->value [acc missing] in-optional? {:keys [k]}]
-  (if-not (contains? param->value k)
-    [acc (conj missing k)]
-    (let [v (get param->value k)]
-      (when (params/FieldFilter? v)
-        (throw (ex-info (tru "Field filter parameters are not currently supported for MongoDB native queries.")
-                 {:type error-type/invalid-query})))
-      (if (= params/no-value v)
-        [acc (conj missing k)]
-        [(conj acc (param-value->str v)) missing]))))
+(defn- field->name [field]
+  (pr-str (mongo.qp/field->name field ".")))
+
+(defn- substitute-one-field-filter-relative-date [{field :field, {param-type :type, value :value} :value}]
+  (let [{:keys [start end]} (date-params/date-string->range value)
+        start-condition     (when start
+                              (format "{%s: {$gte: %s}}" (field->name field) (param-value->str (u.date/parse start))))
+        end-condition       (when end
+                              (format "{%s: {$lt: %s}}" (field->name field) (param-value->str (u.date/parse end))))]
+    (if (and start-condition end-condition)
+      (format "{$and: [%s, %s]}" start-condition end-condition)
+      (or start-condition
+          end-condition))))
+
+;; Field filter value is either params/no-value (handled in `substitute-param`, a map with `:type` and `:value`, or a
+;; sequence of those maps.
+(defn- substitute-one-field-filter [{field :field, {param-type :type, value :value} :value, :as field-filter}]
+  ;; convert relative dates to approprate date range representations
+  (if (date-params/relative-date-param-type? param-type)
+    (substitute-one-field-filter-relative-date field-filter)
+    (format "{%s: %s}" (field->name field) (param-value->str value))))
+
+(defn- substitute-field-filter [{field :field, {:keys [value]} :value, :as field-filter}]
+  (if (sequential? value)
+    (format "{%s: %s}" (field->name field) (param-value->str value))
+    (substitute-one-field-filter field-filter)))
+
+(defn- substitute-param [param->value [acc missing] in-optional? {:keys [k], :as param}]
+  (let [v (get param->value k)]
+    (cond
+      (not (contains? param->value k))
+      [acc (conj missing k)]
+
+      (params/FieldFilter? v)
+      (let [no-value? (= (:value v) params/no-value)]
+        (cond
+          ;; no-value field filters inside optional clauses are ignored and omitted entirely
+          (and no-value? in-optional?) [acc (conj missing k)]
+          ;; otherwise replace it with a {} which is the $match equivalent of 1 = 1, i.e. always true
+          no-value?                    [(conj acc "{}") missing]
+          :else                        [(conj acc (substitute-field-filter v))
+                                        missing]))
+
+      (= v params/no-value)
+      [acc (conj missing k)]
+
+      :else
+      [(conj acc (param-value->str v)) missing])))
 
 (declare substitute*)
 

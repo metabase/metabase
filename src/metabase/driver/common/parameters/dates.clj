@@ -15,6 +15,11 @@
   (or (= param-type :date)
       (= "date" (namespace param-type))))
 
+(defn relative-date-param-type?
+  "Is param type a relative `:date` param (e.g., not an absolute moment in time?)"
+  [param-type]
+  (#{:date/range :date/month-year :date/quarter-year :date/relative :date/all-options} param-type))
+
 ;; Both in MBQL and SQL parameter substitution a field value is compared to a date range, either relative or absolute.
 ;; Currently the field value is casted to a day (ignoring the time of day), so the ranges should have the same
 ;; granularity level.
@@ -80,8 +85,7 @@
     (:date :date-1 :date-2) [[group-label (u.date/parse group-value)]]
     [[group-label group-value]]))
 
-
-(defn- regex->parser
+(s/defn ^:private regex->parser :- (s/pred fn?)
   "Takes a regex and labels matching the regex capturing groups. Returns a parser which takes a parameter value,
   validates the value against regex and gives a map of labels and group values. Respects the following special label
   names:
@@ -89,7 +93,7 @@
       :unit – finds a matching date unit and merges date unit operations to the result
       :int-value – converts the group value to integer
       :date, :date1, date2 – converts the group value to absolute date"
-  [regex group-labels]
+  [regex :- java.util.regex.Pattern, group-labels]
   (fn [param-value]
     (when-let [regex-result (re-matches regex param-value)]
       (into {} (mapcat expand-parser-groups group-labels (rest regex-result))))))
@@ -202,21 +206,23 @@
             (parser-result-decoder parser-result decoder-param)))
         decoders))
 
-(defn date-string->range
-  "Takes a string description of a date range such as 'lastmonth' or '2016-07-15~2016-08-6' and return a MAP with
-  `:start` and `:end` as iso8601 string formatted dates, respecting the given timezone."
-  [date-string report-timezone-id]
-  (let [#_formatter-local-tz #_ (u.date/parse % report-timezone-id)
-        #_formatter-no-tz    #_ (tf/formatter "yyyy-MM-dd")
-        today                (t/local-date)]
-    ;; Relative dates respect the given time zone because a notion like "last 7 days" might mean a different range of
-    ;; days depending on the user timezone
-    (or (->> (execute-decoders relative-date-string-decoders :range today date-string)
-             (m/map-vals u.date/format #_(partial tf/unparse formatter-local-tz)))
-        ;; Absolute date ranges don't need the time zone conversion because in SQL the date ranges are compared
-        ;; against the db field value that is casted granularity level of a day in the db time zone
-        (->> (execute-decoders absolute-date-string-decoders :range nil date-string)
-             (m/map-vals u.date/format #_(partial tf/unparse formatter-no-tz))))))
+(s/defn date-string->range :- {(s/optional-key :start) s/Str, (s/optional-key :end) s/Str}
+  "Takes a string description of a date range such as `lastmonth` or `2016-07-15~2016-08-6` and returns a map with
+  `:start` and/or `:end` keys, as iso-8601 strings."
+  ([date-string :- s/Str]
+   (let [today (t/local-date)]
+     ;; Relative dates respect the given time zone because a notion like "last 7 days" might mean a different range of
+     ;; days depending on the user timezone
+     (or (->> (execute-decoders relative-date-string-decoders :range today date-string)
+              (m/map-vals u.date/format))
+         ;; Absolute date ranges don't need the time zone conversion because in SQL the date ranges are compared
+         ;; against the db field value that is casted granularity level of a day in the db time zone
+         (->> (execute-decoders absolute-date-string-decoders :range nil date-string)
+              (m/map-vals u.date/format)))))
+
+  ;; 2-arg version is for legacy compatibility only; no longer needed
+  ([date-string _]
+   (date-string->range date-string)))
 
 (s/defn date-string->filter :- mbql.s/Filter
   "Takes a string description of a *date* (not datetime) range such as 'lastmonth' or '2016-07-15~2016-08-6' and

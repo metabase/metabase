@@ -40,8 +40,11 @@
   (pretty [_]
     (list 'DateRange. start end)))
 
-;; List of numbers to faciliate things like using params in a SQL `IN` clause. See the discussion in `value->number`
-;; for more details.
+;; List of numbers to faciliate things like using params in a SQL `IN` clause. This is supported by both regular
+;; filter clauses (e.g. `IN ({{ids}})` and in field filters. Field filters also support sequences of values other than
+;; numbers, but these don't have a special record type. (TODO - we don't need a record type here, either. Just use a
+;; sequence)
+;;
 ;; `numbers` are a sequence of `[java.lang.Number]`
 (p.types/defrecord+ CommaSeparatedNumbers [numbers]
   PrettyPrintable
