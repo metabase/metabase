@@ -257,7 +257,7 @@ export default class NativeQueryEditor extends Component {
           minLineNumberWidth,
           lastLineNumber.toString().length * config.characterWidth,
         ),
-      getText: (session, row) => row,
+      getText: (session, row) => row + 1,
     };
 
     // initialize the content
