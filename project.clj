@@ -260,7 +260,8 @@
 
    :repl
    [:include-all-drivers
-    {:jvm-opts ["-Duser.timezone=UTC"]}] ; so running the tests doesn't give you different answers
+    ;; so running the tests doesn't give you different answers
+    {:jvm-opts ["-Duser.timezone=UTC"]}]
 
    :bikeshed
    [:include-all-drivers
@@ -317,8 +318,9 @@
 
    ;; build the uberjar with `lein uberjar`
    :uberjar
-   {:auto-clean true
-    :aot        :all}
+   {:auto-clean  true
+    :aot         :all
+    :omit-source true}
 
    ;; lein strip-and-compress my-plugin.jar [path/to/metabase.jar]
    ;; strips classes from my-plugin.jar that already exist in other JAR and recompresses with higher compression ratio.
