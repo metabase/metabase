@@ -250,6 +250,16 @@ export default class NativeQueryEditor extends Component {
     this._editor.getSession().on("change", this.onChange);
     this._editor.on("changeSelection", this.handleSelectionChange);
 
+    const minLineNumberWidth = 20;
+    this._editor.getSession().gutterRenderer = {
+      getWidth: (session, lastLineNumber, config) =>
+        Math.max(
+          minLineNumberWidth,
+          lastLineNumber.toString().length * config.characterWidth,
+        ),
+      getText: (session, row) => row,
+    };
+
     // initialize the content
     this._editor.setValue(query ? query.queryText() : "");
 
