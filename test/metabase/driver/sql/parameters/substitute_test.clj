@@ -147,16 +147,15 @@
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}}"
            {"toucans_are_cool" true})))
-
   (is (thrown?
        Exception
        (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}}"
          nil)))
-
-  (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE AND bird_type = ?"
-          :params ["toucan"]}
-         (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}"
-           {"toucans_are_cool" true, "bird_type" "toucan"})))
+  (testing "Multiple params"
+    (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE AND bird_type = ?"
+            :params ["toucan"]}
+           (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}"
+             {"toucans_are_cool" true, "bird_type" "toucan"}))))
 
   (testing "Should throw an Exception if a required param is missing"
     (is (thrown?
@@ -639,26 +638,26 @@
 ;;; |                            RELATIVE DATES & DEFAULTS IN "DIMENSION" PARAMS (#6059)                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Make sure relative date forms like `past5days` work correctly with Field Filters
-(expect
-  {:query  (str "SELECT count(*) AS \"count\", \"DATE\" "
-                "FROM CHECKINS "
-                "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ? "
-                "GROUP BY \"DATE\"")
-   :params [#t "2017-10-31"
-            #t "2017-11-04"]}
-  (t/with-clock (t/mock-clock #t "2017-11-05T12:00Z" (t/zone-id "UTC"))
-    (expand* {:native     {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
-                                               "FROM CHECKINS "
-                                               "WHERE {{checkin_date}} "
-                                               "GROUP BY \"DATE\"")
-                           :template-tags {"checkin_date" {:name         "checkin_date"
-                                                           :display-name "Checkin Date"
-                                                           :type         :dimension
-                                                           :dimension    [:field-id (mt/id :checkins :date)]}}}
-              :parameters [{:type   :date/range
-                            :target [:dimension [:template-tag "checkin_date"]]
-                            :value  "past5days"}]})))
+(deftest expand-field-filter-relative-dates-test
+  (testing "Make sure relative date forms like `past5days` work correctly with Field Filters"
+    (t/with-clock (t/mock-clock #t "2017-11-05T12:00Z" (t/zone-id "UTC"))
+      (is (= {:query  (str "SELECT count(*) AS \"count\", \"DATE\" "
+                           "FROM CHECKINS "
+                           "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ? "
+                           "GROUP BY \"DATE\"")
+              :params [#t "2017-10-31"
+                       #t "2017-11-04"]}
+             (expand* {:native     {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
+                                                        "FROM CHECKINS "
+                                                        "WHERE {{checkin_date}} "
+                                                        "GROUP BY \"DATE\"")
+                                    :template-tags {"checkin_date" {:name         "checkin_date"
+                                                                    :display-name "Checkin Date"
+                                                                    :type         :dimension
+                                                                    :dimension    [:field-id (mt/id :checkins :date)]}}}
+                       :parameters [{:type   :date/range
+                                     :target [:dimension [:template-tag "checkin_date"]]
+                                     :value  "past5days"}]}))))))
 
 ;; Make sure we can specify the type of a default value for a "Dimension" (Field Filter) by setting the
 ;; `:widget-type` key. Check that it works correctly with relative dates...

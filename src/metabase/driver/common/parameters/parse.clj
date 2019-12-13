@@ -12,11 +12,29 @@
 
 (def ^:private ParsedToken (s/cond-pre s/Str Param Optional))
 
-(defn- split-on-token [^String s token-str token]
+(defn- split-on-token-string
+  "Split string `s` once when substring `token-str` is encountered; replace `token-str` with `token` keyword instead.
+
+    (split-on-token \"ABxCxD\" \"x\" :x) ;; -> [\"AB\" :x \"CxD\"]"
+  [^String s token-str token]
   (when-let [index (str/index-of s token-str)]
     (let [before (.substring s 0 index)
           after  (.substring s (+ index (count token-str)) (count s))]
       [before token after])))
+
+(defn- split-on-token-pattern
+  "Like `split-on-token-string`, but splits on a regular expression instead, replacing the matched group with `token`.
+  The pattern match an entire query, and return 3 groups — everything before the match; the match itself; and
+  everything after the match."
+  [s re token]
+  (when-let [[_ before _ after] (re-matches re s)]
+    [before token after]))
+
+(defn- split-on-token
+  [s token-str token]
+  ((if (string? token-str)
+     split-on-token-string
+     split-on-token-pattern) s token-str token))
 
 (defn- tokenize-one [s token-str token]
   (loop [acc [], s s]
@@ -41,7 +59,9 @@
    [s]
    [["[[" :optional-begin]
     ["]]" :optional-end]
-    ["{{" :param-begin]
+    ;; param-begin should only match the last two opening brackets in a sequence of > 2, e.g.
+    ;; [{$match: {{{x}}, field: 1}}] should parse to ["[$match: {" (param "x") ", field: 1}}]"]
+    [#"(.*?)(\{\{(?!\{))(.*)" :param-begin]
     ["}}" :param-end]]))
 
 (defn- param [& [k & more]]
@@ -93,9 +113,16 @@
 
 (s/defn ^:private parse-tokens :- [ParsedToken]
   [tokens :- [StringOrToken]]
-  (let [[parsed remaining] (parse-tokens* tokens 0)]
-    (concat parsed (when (seq remaining)
-                     (parse-tokens remaining)))))
+  (let [[parsed remaining] (parse-tokens* tokens 0)
+        parsed             (concat parsed (when (seq remaining)
+                                            (parse-tokens remaining)))]
+    ;; now loop over everything in `parsed`, and if we see 2 strings next to each other put them back together
+    ;; e.g. [:token "x" "}}"] -> [:token "x}}"]
+    (loop [acc [], last (first parsed), [x & more] (rest parsed)]
+      (cond
+        (not x)                          (conj acc last)
+        (and (string? last) (string? x)) (recur acc (str last x) more)
+        :else                            (recur (conj acc last) x more)))))
 
 (s/defn parse :- [(s/cond-pre s/Str Param Optional)]
   "Attempts to parse parameters in string `s`. Parses any optional clauses or parameters found, and returns a sequence

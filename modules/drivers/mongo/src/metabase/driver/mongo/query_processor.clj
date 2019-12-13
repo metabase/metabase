@@ -110,7 +110,7 @@
   {:arglists '([field])}
   mbql.u/dispatch-by-clause-name-or-class)
 
-(defn- field->name
+(defn field->name
   "Return a single string name for `field`. For nested fields, this creates a combined qualified name."
   ^String [^FieldInstance field, ^String separator]
   (if-let [parent-id (:parent_id field)]
@@ -664,7 +664,7 @@
     (for [^org.bson.BsonValue v (org.bson.BsonArray/parse s)]
       (com.mongodb.BasicDBObject. (.asDocument v)))
     (catch Throwable e
-      (throw (ex-info (tru "Unable to parse query. Query should be an array of aggregation pipeline stages.")
+      (throw (ex-info (tru "Unable to parse query: {0}" (.getMessage e))
                {:type  error-type/invalid-query
                 :query s}
                e)))))

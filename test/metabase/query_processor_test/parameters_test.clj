@@ -119,8 +119,3 @@
       (testing "date params"
         (count= 1
                 :users {:last_login [:date/single "2014-08-02T09:30Z"]})))))
-
-;; TODO - tests for optional params
-
-;; TODO - field-filter params, only for drivers that support `:native-parameters-field-filters`. Currently, this is
-;; only SQL, and this feature is tested elsewhere. But we should add some tests here too.
