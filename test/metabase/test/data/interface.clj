@@ -22,7 +22,7 @@
             [metabase.query-processor.store :as qp.store]
             [metabase.test.initialize :as initialize]
             [metabase.util
-             [date :as du]
+             [date-2 :as u.date]
              [schema :as su]]
             [potemkin.types :as p.types]
             [pretty.core :as pretty]
@@ -65,6 +65,7 @@
     :table-definitions [ValidTableDefinition]}
    (partial instance? DatabaseDefinition)))
 
+;; TODO - this should probably be a protocol instead
 (defmulti ^DatabaseDefinition get-dataset-definition
   "Return a definition of a dataset, so a test database can be created from it."
   {:arglists '([this])}
@@ -112,17 +113,12 @@
         (swap! has-done-before-run conj driver)))))
 
 
-(defonce ^:private require-lock (Object.))
-
 (defn- require-driver-test-extensions-ns [driver & require-options]
   (let [expected-ns (symbol (or (namespace driver)
                                 (str "metabase.test.data." (name driver))))]
-    ;; ...and lock to make sure that multithreaded driver test-extension loading (on the off chance that it happens
-    ;; in tests) doesn't make Clojure explode
-    (locking require-lock
-      (println (format "Loading driver %s test extensions %s"
-                       (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
-      (apply classloader/require expected-ns require-options))))
+    (println (format "Loading driver %s test extensions %s"
+                     (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
+    (apply classloader/require expected-ns require-options)))
 
 (defonce ^:private has-loaded-extensions (atom #{}))
 
@@ -130,7 +126,7 @@
   (when-not (contains? @has-loaded-extensions driver)
     (locking has-loaded-extensions
       (when-not (contains? @has-loaded-extensions driver)
-        (du/profile (format "Load %s test extensions" driver)
+        (u/profile (format "Load %s test extensions" driver)
           (require-driver-test-extensions-ns driver)
           ;; if it doesn't have test extensions yet, it may be because it's relying on a parent driver to add them (e.g.
           ;; Redshift uses Postgres' test extensions). Load parents as appropriate and try again
@@ -357,8 +353,8 @@
     :source       :aggregation
     :field_ref    [:aggregation 0]})
 
-  ([driver aggregation-type {field-id :id, :keys [base_type special_type table_id]}]
-   {:pre [base_type special_type]}
+  ([driver aggregation-type {field-id :id, :keys [table_id]}]
+   {:pre [table_id]}
    (driver/with-driver driver
      (qp.store/with-store
        (qp.store/fetch-and-store-database! (db/select-one-field :db_id Table :id table_id))
@@ -420,7 +416,22 @@
                           (dataset-table-definition table))})))
 
 (defmacro defdataset
-  "Define a new dataset to test against."
+  "Define a new dataset to test against. Definition should be of the format
+
+    [table-def+]
+
+  Where each table-def is of the format
+
+    [table-name [field-def+] [row+]]
+
+  e.g.
+
+  [[\"bird_species\"
+    [{:field-name \"name\", :base-type :type/Text}]
+    [[\"House Finch\"]
+     [\"Mourning Dove\"]]]]
+
+  Refer to the EDN definitions (e.g. `test-data.edn`) for more examples."
   ([dataset-name definition]
    `(defdataset ~dataset-name nil ~definition))
 
@@ -450,7 +461,9 @@
   directory. (Filename should be `dataset-name` + `.edn`.)"
   [dataset-name :- su/NonBlankString]
   (let [get-def (delay
-                  (let [file-contents (edn/read-string (slurp (str edn-definitions-dir dataset-name ".edn")))]
+                  (let [file-contents (edn/read-string
+                                       {:eof nil, :readers {'t #'u.date/parse}}
+                                       (slurp (str edn-definitions-dir dataset-name ".edn")))]
                     (apply dataset-definition dataset-name file-contents)))]
     (EDNDatasetDefinition. dataset-name get-def)))
 
@@ -627,6 +640,7 @@
   "Same as `db-test-env-var` but will throw an exception if the variable is `nil`."
   ([driver env-var]
    (db-test-env-var-or-throw driver env-var nil))
+
   ([driver env-var default]
    (or (db-test-env-var driver env-var default)
        (throw (Exception. (format "In order to test %s, you must specify the env var MB_%s_TEST_%s."

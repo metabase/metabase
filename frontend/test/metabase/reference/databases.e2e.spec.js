@@ -1,5 +1,5 @@
-import { useSharedAdminLogin, createTestStore } from "__support__/e2e_tests";
-import { click, clickButton, setInputValue } from "__support__/enzyme_utils";
+import { useSharedAdminLogin, createTestStore } from "__support__/e2e";
+import { click, clickButton, setInputValue } from "__support__/enzyme";
 
 import React from "react";
 import { mount } from "enzyme";
@@ -28,11 +28,10 @@ import ReferenceHeader from "metabase/reference/components/ReferenceHeader";
 import AdminAwareEmptyState from "metabase/components/AdminAwareEmptyState";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
 import Detail from "metabase/reference/components/Detail";
-import EditButton from "metabase/reference/components/EditButton";
-import EditHeader from "metabase/reference/components/EditHeader";
 import QueryButton from "metabase/components/QueryButton";
 import { INITIALIZE_QB, QUERY_COMPLETED } from "metabase/query_builder/actions";
 import { getQuestion } from "metabase/query_builder/selectors";
+import { delay } from "metabase/lib/promise";
 
 describe("The Reference Section", () => {
   // Test data
@@ -113,9 +112,9 @@ describe("The Reference Section", () => {
       await store.waitForActions([FETCH_DATABASE_METADATA, END_LOADING]);
 
       // switch to edit view
-      const editButton = app.find(EditButton);
-      expect(editButton.text()).toBe("Edit");
-      click(editButton);
+      const editButton = app.find(".Button");
+
+      clickButton(editButton);
 
       // update "caveats" and save
       const textarea = app
@@ -123,13 +122,13 @@ describe("The Reference Section", () => {
         .at(2)
         .find("textarea");
       setInputValue(textarea, "v important thing");
-      clickButton(
-        app
-          .find(EditHeader)
-          .find("button")
-          .at(1),
-      );
+
+      const doneButton = app.find(".Button--primary");
+
+      clickButton(doneButton);
       await store.waitForActions(END_LOADING);
+      // unfortunately this is required?
+      await delay(200);
 
       // check that the field was updated
       const savedText = app
@@ -138,6 +137,7 @@ describe("The Reference Section", () => {
         .find("span")
         .at(1)
         .text();
+
       expect(savedText).toBe("v important thing");
 
       // clean up

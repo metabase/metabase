@@ -1,7 +1,9 @@
 (ns metabase.db.migrations-test
   "Tests to make sure the data migrations actually work as expected and don't break things. Shamefully, we have way less
   of these than we should... but that doesn't mean we can't write them for our new ones :)"
-  (:require [clojure.set :as set]
+  (:require [clojure
+             [set :as set]
+             [test :refer :all]]
             [expectations :refer :all]
             [medley.core :as m]
             [metabase.db.migrations :as migrations]
@@ -15,11 +17,14 @@
              [pulse :refer [Pulse]]
              [user :refer [User]]]
             [metabase.test.data.datasets :as datasets]
+            [metabase.test.fixtures :as fixtures]
             [metabase.test.util.log :as tu.log]
             [metabase.util :as u]
             [metabase.util.password :as upass]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 ;; add-legacy-sql-directive-to-bigquery-sql-cards
 ;;

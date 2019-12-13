@@ -11,10 +11,11 @@
              [config :as config]
              [connection-pool :as connection-pool]
              [util :as u]]
-            [metabase.db.spec :as dbspec]
+            [metabase.db
+             [jdbc-protocols :as db.jdbc-protocols]
+             [spec :as db.spec]]
             [metabase.plugins.classloader :as classloader]
             [metabase.util
-             [date :as du]
              [i18n :refer [trs]]
              [schema :as su]]
             [ring.util.codec :as codec]
@@ -40,7 +41,7 @@
         ;; MVStore engine anyway so this only affects people still with legacy PageStore databases
         ;;
         ;; Tell H2 to defrag when Metabase is shut down -- can reduce DB size by multiple GIGABYTES -- see #6510
-        options      ";DB_CLOSE_DELAY=-1;MVCC=TRUE;DEFRAG_ALWAYS=TRUE"]
+        options ";DB_CLOSE_DELAY=-1;MVCC=TRUE;DEFRAG_ALWAYS=TRUE"]
     ;; H2 wants file path to always be absolute
     (str "file:"
          (.getAbsolutePath (io/file db-file-name))
@@ -146,9 +147,9 @@
    {:pre [(map? db-details)]}
    ;; TODO: it's probably a good idea to put some more validation here and be really strict about what's in `db-details`
    (case (:type db-details)
-     :h2       (dbspec/h2       db-details)
-     :mysql    (dbspec/mysql    (assoc db-details :db (:dbname db-details)))
-     :postgres (dbspec/postgres (assoc db-details :db (:dbname db-details))))))
+     :h2       (db.spec/h2       db-details)
+     :mysql    (db.spec/mysql    (assoc db-details :db (:dbname db-details)))
+     :postgres (db.spec/postgres (assoc db-details :db (:dbname db-details))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -360,18 +361,13 @@
 ;;; |                                      CONNECTION POOLS & TRANSACTION STUFF                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- new-connection-pool
-  "Create a C3P0 connection pool for the given database `spec`. Default c3p0 properties can be found in the
-  c3p0.properties file and are there so users may override them from the system if desired."
-  [spec]
-  (connection-pool/connection-pool-spec spec))
-
 (defn- create-connection-pool! [spec]
   (db/set-default-quoting-style! (case (db-type)
                                    :postgres :ansi
                                    :h2       :h2
                                    :mysql    :mysql))
-  (db/set-default-db-connection! (new-connection-pool spec)))
+  (db/set-default-db-connection! (connection-pool/connection-pool-spec spec))
+  (db/set-default-jdbc-options! {:read-columns db.jdbc-protocols/read-columns}))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -416,7 +412,6 @@
              ((resolve 'metabase.driver.util/can-connect-with-details?) driver details :throw-exceptions))
      (trs "Unable to connect to Metabase {0} DB." (name driver)))
    (log/info (trs "Verify Database Connection ... ") (u/emoji "✅"))))
-
 
 (def ^:dynamic ^Boolean *disable-data-migrations*
   "Should we skip running data migrations when setting up the DB? (Default is `false`).
@@ -474,12 +469,12 @@
 (defn setup-db!*
   "Connects to db and runs migrations."
   [db-details auto-migrate]
-  (du/profile (trs "Database setup")
-              (u/with-us-locale
-                (verify-db-connection db-details)
-                (run-schema-migrations! auto-migrate db-details)
-                (create-connection-pool! (jdbc-details db-details))
-                (run-data-migrations!)))
+  (u/profile (trs "Database setup")
+    (u/with-us-locale
+      (verify-db-connection db-details)
+      (run-schema-migrations! auto-migrate db-details)
+      (create-connection-pool! (jdbc-details db-details))
+      (run-data-migrations!)))
   nil)
 
 (defn- setup-db-from-env!* []
@@ -523,7 +518,7 @@
       ->
      (db/select Field :special_type [:in #{\"type/URL\" \"type/ImageURL\" \"type/AvatarURL\"}])
 
-   Also accepts optional EXPR for use directly in a HoneySQL `where`:
+   Also accepts optional `expr` for use directly in a HoneySQL `where`:
 
      (db/select Field {:where (mdb/isa :special_type :type/URL)})
      ->

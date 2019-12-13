@@ -1969,7 +1969,7 @@ msgstr "Cache Time-To-Live (TTL) Multiplikator"
 
 #: frontend/src/metabase/admin/settings/selectors.js:431
 msgid "Max Cache Entry Size"
-msgstr "Max Cache Anfangsgröße"
+msgstr "Max Cachegröße"
 
 #: frontend/src/metabase/alert/alert.js:60
 msgid "Your alert is all set up."
@@ -12794,11 +12794,11 @@ msgstr ""
 
 #: src/metabase/api/session.clj
 msgid "Problem connecting to LDAP server, will fall back to local authentication"
-msgstr ""
+msgstr "Fehler beim Verbinden zum LDAP Server, Fallback auf lokale Authentifizierung."
 
 #: src/metabase/api/setup.clj
 msgid "Cannot create Database: cannot find driver {0}."
-msgstr ""
+msgstr "Datenbank konnte nicht erstellt werden. Treiber {0} nicht gefunden."
 
 #: src/metabase/api/tiles.clj
 msgid "Query failed"
@@ -12810,7 +12810,7 @@ msgstr "Warnung: {0} hat `nil` zurückgegeben"
 
 #: src/metabase/async/util.clj
 msgid "Unexpected error writing result to output channel: already closed"
-msgstr ""
+msgstr "Unerwarteter Fehler beim Schreiben des Ergebnisses in den Output-Kanal: Bereits geschlossen."
 
 #: src/metabase/async/util.clj
 msgid "Unexpected error writing exception to output channel: already closed"
@@ -12818,11 +12818,11 @@ msgstr ""
 
 #: src/metabase/async/util.clj
 msgid "Request canceled, canceling future."
-msgstr ""
+msgstr "Anfrage abgebrochen, breche zukünftige Anfragen ab."
 
 #: src/metabase/cmd/load_from_h2.clj
 msgid "Metabase can only transfer data from H2 to Postgres or MySQL/MariaDB."
-msgstr ""
+msgstr "Metabase kann Daten nur von H2 zu Postgres oder MySQL/MariaDB übertragen."
 
 #: src/metabase/db.clj
 msgid "WARNING: Using Metabase with an H2 application database is not recommended for production deployments."
@@ -12830,7 +12830,7 @@ msgstr ""
 
 #: src/metabase/db.clj
 msgid "Application database setup"
-msgstr ""
+msgstr "Anwendungs-Datenbank Setup"
 
 #: src/metabase/driver.clj
 msgid "Could not find {0} driver."
@@ -12842,11 +12842,11 @@ msgstr ""
 
 #: src/metabase/driver/mysql.clj
 msgid "You may need to add 'trustServerCertificate=true' to the additional connection options to connect with SSL."
-msgstr ""
+msgstr "Sie müssten möglicherweise 'trustServerCertificate=true' zu den zusätzlichen Verbindungsoptionen hinzufügen, um sich über SSL verbinden zu können."
 
 #: src/metabase/driver/sql/util.clj
 msgid "Don't know how to alias {0}, expected an Identifer."
-msgstr ""
+msgstr "Kann {0} nicht mit einem Alias versehen, Identifier erwartet."
 
 #: src/metabase/driver/sql_jdbc/execute.clj
 msgid "Client closed connection, canceling query"
@@ -12858,11 +12858,11 @@ msgstr "{0} ist keine gültige DN."
 
 #: src/metabase/middleware/log.clj
 msgid "Error logging API request"
-msgstr ""
+msgstr "Fehler beim Loggen der API Anfrage."
 
 #: src/metabase/middleware/misc.clj
 msgid "Failed to set site-url"
-msgstr ""
+msgstr "Setzen der site-url fehlgeschlagen."
 
 #: src/metabase/models/database.clj
 msgid "Error destroying thread pool for DB."

@@ -2,6 +2,7 @@ import React from "react";
 import { t, jt } from "ttag";
 import Code from "metabase/components/Code";
 import MetabaseSettings from "metabase/lib/settings";
+import Utils from "metabase/lib/utils";
 
 const EXAMPLES = {
   variable: {
@@ -11,6 +12,7 @@ const EXAMPLES = {
       query: "SELECT count(*)\nFROM products\nWHERE category = {{category}}",
       "template-tags": {
         category: {
+          id: Utils.uuid(),
           name: "category",
           display_name: "Category",
           type: "text",
@@ -27,6 +29,7 @@ const EXAMPLES = {
       query: "SELECT count(*)\nFROM products\nWHERE {{created_at}}",
       "template-tags": {
         created_at: {
+          id: Utils.uuid(),
           name: "created_at",
           display_name: "Created At",
           type: "dimension",
@@ -44,6 +47,7 @@ const EXAMPLES = {
         "SELECT count(*)\nFROM products\n[[WHERE category = {{category}}]]",
       "template-tags": {
         category: {
+          id: Utils.uuid(),
           name: "category",
           display_name: "Category",
           type: "text",
@@ -60,12 +64,14 @@ const EXAMPLES = {
         "SELECT count(*)\nFROM products\nWHERE 1=1\n  [[AND id = {{id}}]]\n  [[AND category = {{category}}]]",
       "template-tags": {
         id: {
+          id: Utils.uuid(),
           name: "id",
           display_name: "ID",
           type: "number",
           required: false,
         },
         category: {
+          id: Utils.uuid(),
           name: "category",
           display_name: "Category",
           type: "text",
@@ -82,6 +88,7 @@ const EXAMPLES = {
         "SELECT count(*)\nFROM products\nWHERE 1=1\n  [[AND {{category}}]]",
       "template-tags": {
         category: {
+          id: Utils.uuid(),
           name: "category",
           display_name: "Category",
           type: "dimension",
@@ -111,7 +118,11 @@ const TagExample = ({ datasetQuery, setDatasetQuery }) => (
   </div>
 );
 
-const TagEditorHelp = ({ setDatasetQuery, sampleDatasetId }) => {
+const TagEditorHelp = ({
+  setDatasetQuery,
+  sampleDatasetId,
+  switchToSettings,
+}) => {
   let setQueryWithSampleDatasetId = null;
   if (sampleDatasetId != null) {
     setQueryWithSampleDatasetId = (dataset_query, run) => {
@@ -122,6 +133,7 @@ const TagEditorHelp = ({ setDatasetQuery, sampleDatasetId }) => {
         },
         run,
       );
+      switchToSettings();
     };
   }
   return (

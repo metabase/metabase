@@ -1,28 +1,24 @@
 (ns metabase.driver.bigquery.query-processor-test
-  (:require [clj-time.core :as time]
-            [clojure.test :refer :all]
+  (:require [clojure.test :refer :all]
             [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase
              [driver :as driver]
+             [models :refer [Database Field]]
              [query-processor :as qp]
              [query-processor-test :as qp.test]
+             [test :as mt]
              [util :as u]]
             [metabase.driver.bigquery :as bigquery]
+            [metabase.driver.bigquery.query-processor :as bigquery.qp]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.models
-             [database :refer [Database]]
-             [field :refer [Field]]]
-            [metabase.query-processor.test-util :as qp.test-util]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
-            [metabase.test.data.datasets :as datasets]
+            [metabase.query-processor.store :as qp.store]
             [metabase.test.util.timezone :as tu.tz]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.util.test :as tt]))
 
 (deftest native-query-test
-  (datasets/test-driver :bigquery
+  (mt/test-driver :bigquery
     (is (= [[100]
             [99]]
            (get-in
@@ -32,7 +28,7 @@
                                       "ORDER BY `test_data.venues`.`id` DESC "
                                       "LIMIT 2;")}
                :type     :native
-               :database (data/id)})
+               :database (mt/id)})
             [:data :rows])))
 
     (is (= [{:name         "venue_id"
@@ -58,24 +54,24 @@
                                        "FROM `test_data.checkins` "
                                        "LIMIT 2")}
                 :type     :native
-                :database (data/id)})))
+                :database (mt/id)})))
         (str "make sure that BigQuery native queries maintain the column ordering specified in the SQL -- "
              "post-processing ordering shouldn't apply (Issue #2821)"))))
 
 (deftest aggregations-test
-  (datasets/test-driver :bigquery
+  (mt/test-driver :bigquery
     (testing (str "make sure queries with two or more of the same aggregation type still work. Aggregations used to be "
                   "deduplicated here in the BigQuery driver; now they are deduplicated as part of the main QP "
                   "middleware, but no reason not to keep a few of these tests just to be safe")
       (let [{:keys [rows columns]} (qp.test/rows+column-names
-                                     (data/run-mbql-query checkins
+                                     (mt/run-mbql-query checkins
                                        {:aggregation [[:sum $user_id] [:sum $user_id]]}))]
         (is (= ["sum" "sum_2"]
                columns))
         (is (= [[7929 7929]]
                rows)))
       (let [{:keys [rows columns]} (qp.test/rows+column-names
-                                     (data/run-mbql-query checkins
+                                     (mt/run-mbql-query checkins
                                        {:aggregation [[:sum $user_id] [:sum $user_id] [:sum $user_id]]}))]
         (is (= ["sum" "sum_2" "sum_3"]
                columns))
@@ -90,10 +86,10 @@
               :from     [(hx/identifier :table "test_data.venues")]
               :group-by [(hx/identifier :field-alias "price")]
               :order-by [[(hx/identifier :field-alias "avg") :asc]]}
-             (qp.test-util/with-everything-store
+             (mt/with-everything-store
                (#'sql.qp/mbql->honeysql
                 :bigquery
-                (data/mbql-query venues
+                (mt/mbql-query venues
                   {:aggregation [[:avg $category_id]]
                    :breakout    [$price]
                    :order-by    [[:asc [:aggregation 0]]]})))))
@@ -106,11 +102,11 @@
               :table-name "venues"
               :mbql?      true}
              (qp/query->native
-               (data/mbql-query venues
+               (mt/mbql-query venues
                  {:aggregation [[:avg $category_id]], :breakout [$price], :order-by [[:asc [:aggregation 0]]]})))))))
 
 (deftest join-alias-test
-  (datasets/test-driver :bigquery
+  (mt/test-driver :bigquery
     (is (= (str "SELECT `categories__via__category_id`.`name` AS `name`,"
                 " count(*) AS `count` "
                 "FROM `test_data.venues` "
@@ -121,9 +117,9 @@
            ;; normally for test purposes BigQuery doesn't support foreign keys so override the function that checks
            ;; that and make it return `true` so this test proceeds as expected
            (with-redefs [driver/supports? (constantly true)]
-             (tu/with-temp-vals-in-db Field (data/id :venues :category_id) {:fk_target_field_id (data/id :categories :id)
+             (mt/with-temp-vals-in-db Field (mt/id :venues :category_id) {:fk_target_field_id (mt/id :categories :id)
                                                                             :special_type       "type/FK"}
-               (let [results (data/run-mbql-query venues
+               (let [results (mt/run-mbql-query venues
                                {:aggregation [:count]
                                 :breakout    [$category_id->categories.name]})]
                  (get-in results [:data :native_form :query] results)))))
@@ -141,25 +137,25 @@
       ffirst))
 
 (deftest parsed-date-timezone-handling-test
-  (datasets/test-driver :bigquery
-    (is (= "2018-08-31T00:00:00.000Z"
-           (native-timestamp-query (data/id) "2018-08-31 00:00:00" "UTC"))
+  (mt/test-driver :bigquery
+    (is (= "2018-08-31T00:00:00Z"
+           (native-timestamp-query (mt/id) "2018-08-31 00:00:00" "UTC"))
         "A UTC date is returned, we should read/return it as UTC")
 
-    (is (= "2018-08-31T00:00:00.000-05:00"
-           (tu.tz/with-jvm-tz (time/time-zone-for-id "America/Chicago")
+    (is (= "2018-08-31T00:00:00-05:00"
+           (tu.tz/with-system-timezone-id "America/Chicago"
              (tt/with-temp* [Database [db {:engine  :bigquery
-                                           :details (assoc (:details (data/db))
+                                           :details (assoc (:details (mt/db))
                                                            :use-jvm-timezone true)}]]
                (native-timestamp-query db "2018-08-31 00:00:00-05" "America/Chicago"))))
         (str "This test includes a `use-jvm-timezone` flag of true that will assume that the date coming from BigQuery "
              "is already in the JVM's timezone. The test puts the JVM's timezone into America/Chicago an ensures that "
              "the correct date is compared"))
 
-    (is (= "2018-08-31T00:00:00.000+07:00"
-           (tu.tz/with-jvm-tz (time/time-zone-for-id "Asia/Jakarta")
+    (is (= "2018-08-31T00:00:00+07:00"
+           (tu.tz/with-system-timezone-id "Asia/Jakarta"
              (tt/with-temp* [Database [db {:engine  :bigquery
-                                           :details (assoc (:details (data/db))
+                                           :details (assoc (:details (mt/db))
                                                            :use-jvm-timezone true)}]]
                (native-timestamp-query db "2018-08-31 00:00:00+07" "Asia/Jakarta"))))
         "Similar to the above test, but covers a positive offset")))
@@ -171,16 +167,16 @@
     (with-redefs [bigquery/process-native* (fn [_ sql]
                                              (reset! native-query sql)
                                              (throw (Exception. "Done.")))]
-      (qp/process-query {:database (data/id)
+      (qp/process-query {:database (mt/id)
                          :type     :query
-                         :query    {:source-table (data/id :venues)
+                         :query    {:source-table (mt/id :venues)
                                     :limit        1}
                          :info     {:executed-by 1000
                                     :query-hash  (byte-array [1 2 3 4])}})
       @native-query)))
 
 (deftest remark-test
-  (datasets/test-driver :bigquery
+  (mt/test-driver :bigquery
     (is (= (str
             "-- Metabase:: userID: 1000 queryType: MBQL queryHash: 01020304\n"
             "SELECT `test_data.venues`.`id` AS `id`,"
@@ -192,20 +188,20 @@
             "FROM `test_data.venues` "
             "LIMIT 1")
            (query->native
-            {:database (data/id)
+            {:database (mt/id)
              :type     :query
-             :query    {:source-table (data/id :venues)
+             :query    {:source-table (mt/id :venues)
                         :limit        1}
              :info     {:executed-by 1000
                         :query-hash  (byte-array [1 2 3 4])}}))
         "if I run a BigQuery query, does it get a remark added to it?")))
 
 (deftest unprepare-params-test
-  (datasets/test-driver :bigquery
+  (mt/test-driver :bigquery
     (is (= [["Red Medicine"]]
            (qp.test/rows
              (qp/process-query
-               {:database (data/id)
+               {:database (mt/id)
                 :type     :native
                 :native   {:query  (str "SELECT `test_data.venues`.`name` AS `name` "
                                         "FROM `test_data.venues` "
@@ -213,3 +209,156 @@
                            :params ["Red Medicine"]}})))
         (str "Do we properly unprepare, and can we execute, queries that still have parameters for one reason or "
              "another? (EE #277)"))))
+
+(def ^:private reconcile-test-values
+  [{:value (t/local-date "2019-12-10")
+    :type  :date
+    :as    {:datetime  (t/local-date-time "2019-12-10T00:00:00")
+            :timestamp (t/zoned-date-time "2019-12-10T00:00:00Z[UTC]")}}
+   {:value (t/local-date-time "2019-12-10T14:47:00")
+    :type  :datetime
+    :as    {:date      (t/local-date "2019-12-10")
+            :timestamp (t/zoned-date-time "2019-12-10T14:47:00Z[UTC]")}}
+   {:value (t/zoned-date-time "2019-12-10T14:47:00Z[UTC]")
+    :type  :timestamp
+    :as    {:date     (t/local-date "2019-12-10")
+            :datetime (t/local-date-time "2019-12-10T14:47:00")}}
+   {:value (t/offset-date-time "2019-12-10T14:47:00Z")
+    :type  :timestamp
+    :as    {:date     (t/local-date "2019-12-10")
+            :datetime (t/local-date-time "2019-12-10T14:47:00")}}
+   (let [unix-ts (sql.qp/unix-timestamp->timestamp :bigquery :seconds :some_field)]
+     {:value unix-ts
+      :type  :timestamp
+      :as    {:date     (hx/cast :date unix-ts)
+              :datetime (hx/cast :datetime unix-ts)}})
+   (let [unix-ts (sql.qp/unix-timestamp->timestamp :bigquery :milliseconds :some_field)]
+     {:value unix-ts
+      :type  :timestamp
+      :as    {:date     (hx/cast :date unix-ts)
+              :datetime (hx/cast :datetime unix-ts)}})])
+
+(deftest temporal-type-test
+  (testing "Make sure we can detect temporal types correctly"
+    (doseq [[expr expected-type] {[:field-literal "x" :type/DateTime]                                :datetime
+                                  [:datetime-field [:field-literal "x" :type/DateTime] :day-of-week] nil}]
+      (testing (format "\n(temporal-type %s)" (binding [*print-meta* true] (pr-str expr)))
+        (is (= expected-type
+               (#'bigquery.qp/temporal-type expr)))))))
+
+(deftest reconcile-temporal-types-test
+  (mt/with-everything-store
+    (tt/with-temp* [Field [date-field      {:name "date", :base_type :type/Date}]
+                    Field [datetime-field  {:name "datetime", :base_type :type/DateTime}]
+                    Field [timestamp-field {:name "timestamp", :base_type :type/DateTimeWithLocalTZ}]]
+      ;; bind `*table-alias*` so the BigQuery QP doesn't try to look up the current dataset name when converting
+      ;; `hx/identifier`s to SQL
+      (binding [sql.qp/*table-alias* "ABC"
+                *print-meta*         true]
+        (let [fields {:date      date-field
+                      :datetime  datetime-field
+                      :timestamp timestamp-field}]
+          (doseq [clause [{:args 2, :mbql :=, :honeysql :=}
+                          {:args 2, :mbql :!=, :honeysql :not=}
+                          {:args 2, :mbql :>, :honeysql :>}
+                          {:args 2, :mbql :>=, :honeysql :>=}
+                          {:args 2, :mbql :<, :honeysql :<}
+                          {:args 2, :mbql :<=, :honeysql :<=}
+                          {:args 3, :mbql :between, :honeysql :between}]]
+            (testing (format "\n%s filter clause" (:mbql clause))
+              (doseq [[temporal-type field] fields
+                      field                 [field
+                                             [:field-id (:id field)]
+                                             [:datetime-field [:field-id (:id field)] :default]
+                                             [:field-literal (:name field) (:base_type field)]
+                                             [:datetime-field [:field-literal (:name field) (:base_type field)] :default]]]
+                (testing (format "\nField = %s %s"
+                                 temporal-type
+                                 (if (map? field) (format "<Field %s>" (pr-str (:name field))) field))
+                  (doseq [{filter-value :value, :as value} reconcile-test-values
+                          filter-value                     (cons filter-value
+                                                                 (when (instance? java.time.temporal.Temporal filter-value)
+                                                                   [[:absolute-datetime filter-value :default]]))]
+                    (testing (format "\nValue = %s %s" (:type value) (pr-str filter-value))
+                      (let [filter-clause       (into [(:mbql clause) field]
+                                                      (repeat (dec (:args clause)) filter-value))
+                            expected-identifier (hx/identifier :field "ABC" (name temporal-type))
+                            expected-value      (get-in value [:as temporal-type] (:value value))
+                            expected-clause     (into [(:honeysql clause) expected-identifier]
+                                                      (repeat (dec (:args clause)) expected-value))]
+                        (testing (format "\nreconcile %s -> %s"
+                                         (into [(:mbql clause) temporal-type] (repeat (dec (:args clause)) (:type value)))
+                                         (into [(:mbql clause) temporal-type] (repeat (dec (:args clause)) temporal-type)))
+                          (testing (format "\ninferred field type = %s, inferred value type = %s"
+                                           (#'bigquery.qp/temporal-type field)
+                                           (#'bigquery.qp/temporal-type filter-value))
+                            (is (= expected-clause
+                                   (sql.qp/->honeysql :bigquery filter-clause))))))))))))
+          (testing "\ndate extraction filters"
+            (doseq [[temporal-type field] fields
+                    :let                  [identifier          (hx/identifier :field "ABC" (name temporal-type))
+                                           expected-identifier (if (= temporal-type :timestamp)
+                                                                 identifier
+                                                                 (hx/cast :timestamp identifier))]]
+              (is (= [:= (hsql/call :extract :dayofweek expected-identifier) 1]
+                     (sql.qp/->honeysql :bigquery [:= [:datetime-field [:field-id (:id field)] :day-of-week] 1]))))))))))
+
+(deftest between-test
+  (testing "Make sure :between clauses reconcile the temporal types of their args"
+    (letfn [(between->sql [clause]
+              (sql.qp/format-honeysql :bigquery
+                {:where (sql.qp/->honeysql :bigquery clause)}))]
+      (testing "Should look for `:bigquery/temporal-type` metadata"
+        (is (= ["WHERE field BETWEEN ? AND ?"
+                (t/local-date-time "2019-11-11T00:00")
+                (t/local-date-time "2019-11-12T00:00")]
+               (between->sql [:between
+                              (with-meta (hsql/raw "field") {:bigquery/temporal-type :datetime})
+                              (t/local-date "2019-11-11")
+                              (t/local-date "2019-11-12")]))))
+      (testing "If first arg has no temporal-type info, should look at next arg"
+        (is (= ["WHERE CAST(field AS date) BETWEEN ? AND ?"
+                (t/local-date "2019-11-11")
+                (t/local-date "2019-11-12")]
+               (between->sql [:between
+                              (hsql/raw "field")
+                              (t/local-date "2019-11-11")
+                              (t/local-date "2019-11-12")]))))
+      (testing "No need to cast if args agree on temporal type"
+        (is (= ["WHERE field BETWEEN ? AND ?"
+                (t/local-date "2019-11-11")
+                (t/local-date "2019-11-12")]
+               (between->sql [:between
+                              (with-meta (hsql/raw "field") {:bigquery/temporal-type :date})
+                              (t/local-date "2019-11-11")
+                              (t/local-date "2019-11-12")]))))
+      (mt/test-driver :bigquery
+        (mt/with-everything-store
+          (let [expected ["WHERE `test_data.checkins`.`date` BETWEEN ? AND ?"
+                          (t/zoned-date-time "2019-11-11T00:00Z[UTC]")
+                          (t/zoned-date-time "2019-11-12T00:00Z[UTC]")]]
+            (testing "Should be able to get temporal type from a FieldInstance"
+              (is (= expected
+                     (between->sql [:between
+                                    (qp.store/field (mt/id :checkins :date))
+                                    (t/local-date "2019-11-11")
+                                    (t/local-date "2019-11-12")]))))
+            (testing "Should be able to get temporal type from a :field-id"
+              (is (= expected
+                     (between->sql [:between
+                                    [:field-id (mt/id :checkins :date)]
+                                    (t/local-date "2019-11-11")
+                                    (t/local-date "2019-11-12")]))))
+            (testing "Should be able to get temporal type from a wrapped field-id"
+              (is (= (cons "WHERE timestamp_trunc(`test_data.checkins`.`date`, day) BETWEEN ? AND ?"
+                           (rest expected))
+                     (between->sql [:between
+                                    [:datetime-field [:field-id (mt/id :checkins :date)] :day]
+                                    (t/local-date "2019-11-11")
+                                    (t/local-date "2019-11-12")]))))
+            (testing "Should work with a field literal"
+              (is (= ["WHERE `date` BETWEEN ? AND ?" (t/local-date "2019-11-11") (t/local-date "2019-11-12")]
+                     (between->sql [:between
+                                    [:field-literal "date" :type/Date]
+                                    (t/local-date-time "2019-11-11T12:00:00")
+                                    (t/local-date-time "2019-11-12T12:00:00")]))))))))))

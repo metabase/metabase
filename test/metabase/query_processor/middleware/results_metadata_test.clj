@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.results-metadata-test
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase
              [query-processor :as qp]
              [util :as u]]
@@ -163,31 +164,31 @@
       round-to-2-decimals
       (->> (tu/round-fingerprint-cols [:columns]))))
 
-;; make sure that a Card where a DateTime column is broken out by year works the way we'd expect
-(expect
-  [{:base_type    "type/Date"
-    :display_name "Date"
-    :name         "DATE"
-    :unit         "year"
-    :special_type nil
-    :fingerprint  {:global {:distinct-count 618 :nil% 0.0}, :type {:type/DateTime {:earliest "2013-01-03T00:00:00.000Z"
-                                                                                   :latest   "2015-12-29T00:00:00.000Z"}}}}
-   {:base_type    "type/Integer"
-    :display_name "Count"
-    :name         "count"
-    :special_type "type/Quantity"
-    :fingerprint  {:global {:distinct-count 3
-                            :nil%           0.0},
-                   :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.0 :sd 143.5}}}}]
-  (tt/with-temp Card [card]
-    (qp/process-query {:database (data/id)
-                       :type     :query
-                       :query    {:source-table (data/id :checkins)
-                                  :aggregation  [[:count]]
-                                  :breakout     [[:datetime-field [:field-id (data/id :checkins :date)] :year]]}
-                       :info     {:card-id    (u/get-id card)
-                                  :query-hash (qputil/query-hash {})}})
-    (-> card
-        card-metadata
-        round-to-2-decimals
-        tu/round-fingerprint-cols)))
+(deftest card-with-datetime-breakout-by-year-test
+  (testing "make sure that a Card where a DateTime column is broken out by year works the way we'd expect"
+    (is (= [{:base_type    "type/Date"
+             :display_name "Date"
+             :name         "DATE"
+             :unit         "year"
+             :special_type nil
+             :fingerprint  {:global {:distinct-count 618 :nil% 0.0}, :type {:type/DateTime {:earliest "2013-01-03"
+                                                                                            :latest   "2015-12-29"}}}}
+            {:base_type    "type/Integer"
+             :display_name "Count"
+             :name         "count"
+             :special_type "type/Quantity"
+             :fingerprint  {:global {:distinct-count 3
+                                     :nil%           0.0},
+                            :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.0 :sd 143.5}}}}]
+           (tt/with-temp Card [card]
+             (qp/process-query {:database (data/id)
+                                :type     :query
+                                :query    {:source-table (data/id :checkins)
+                                           :aggregation  [[:count]]
+                                           :breakout     [[:datetime-field [:field-id (data/id :checkins :date)] :year]]}
+                                :info     {:card-id    (u/get-id card)
+                                           :query-hash (qputil/query-hash {})}})
+             (-> card
+                 card-metadata
+                 round-to-2-decimals
+                 tu/round-fingerprint-cols))))))

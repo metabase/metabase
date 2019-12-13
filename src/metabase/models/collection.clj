@@ -837,7 +837,6 @@
   models/IModel
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:collection])
-          :types          (constantly {:name :clob, :description :clob})
           :pre-insert     pre-insert
           :post-insert    post-insert
           :pre-update     pre-update

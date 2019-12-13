@@ -239,9 +239,7 @@ const GraphSection = ({
       <polygon
         opacity={1 - index * (0.9 / (infos.length + 1))}
         fill={DEFAULT_COLORS[0]}
-        points={`0 ${info.graph.startBottom}, 0 ${info.graph.startTop}, 1 ${
-          info.graph.endTop
-        }, 1 ${info.graph.endBottom}`}
+        points={`0 ${info.graph.startBottom}, 0 ${info.graph.startTop}, 1 ${info.graph.endTop}, 1 ${info.graph.endBottom}`}
       />
     </svg>
   );

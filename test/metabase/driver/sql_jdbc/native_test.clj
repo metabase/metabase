@@ -1,6 +1,6 @@
 (ns metabase.driver.sql-jdbc.native-test
   "Tests for running native queries against SQL databases."
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.query-processor :as qp]
             [metabase.test
@@ -10,55 +10,53 @@
             [metabase.util.schema :as su]
             [schema.core :as s]))
 
-;; Just check that a basic query works
-(expect
-  {:status            :completed
-   :row_count         2
-   :data              {:rows               [[100]
-                                            [99]]
-                       :cols               [{:name         "ID"
-                                             :display_name "ID"
-                                             :base_type    :type/Integer
-                                             :source       :native
-                                             :field_ref    [:field-literal "ID" :type/Integer]}]
-                       :native_form        {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2"}
-                       :requested_timezone "UTC"
-                       :results_timezone   "UTC"}}
-  (-> (qp/process-query {:native   {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2"}
-                         :type     :native
-                         :database (data/id)})
-      (m/dissoc-in [:data :results_metadata])
-      (m/dissoc-in [:data :insights])))
+(deftest basic-query-test
+  (is (= {:status    :completed
+          :row_count 2
+          :data      {:rows             [[100]
+                                         [99]]
+                      :cols             [{:name         "ID"
+                                          :display_name "ID"
+                                          :base_type    :type/Integer
+                                          :source       :native
+                                          :field_ref    [:field-literal "ID" :type/Integer]}]
+                      :native_form      {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2"}
+                      :results_timezone "UTC"}}
+         (-> (qp/process-query {:native   {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2"}
+                                :type     :native
+                                :database (data/id)})
+             (m/dissoc-in [:data :results_metadata])
+             (m/dissoc-in [:data :insights])))
+      "Check that a basic query works"))
 
-;; Check that column ordering is maintained
-(expect
-  {:status            :completed
-   :row_count         2
-   :data              {:rows               [[100 "Mohawk Bend" 46]
-                                            [99 "Golden Road Brewing" 10]]
-                       :cols               [{:name         "ID"
-                                             :display_name "ID"
-                                             :source       :native
-                                             :base_type    :type/Integer
-                                             :field_ref    [:field-literal "ID" :type/Integer]}
-                                            {:name         "NAME"
-                                             :display_name "NAME"
-                                             :source       :native
-                                             :base_type    :type/Text
-                                             :field_ref    [:field-literal "NAME" :type/Text]}
-                                            {:name         "CATEGORY_ID"
-                                             :display_name "CATEGORY_ID"
-                                             :source       :native
-                                             :base_type    :type/Integer
-                                             :field_ref    [:field-literal "CATEGORY_ID" :type/Integer]}]
-                       :native_form        {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2"}
-                       :requested_timezone "UTC"
-                       :results_timezone   "UTC"}}
-  (-> (qp/process-query {:native   {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2"}
-                         :type     :native
-                         :database (data/id)})
-      (m/dissoc-in [:data :results_metadata])
-      (m/dissoc-in [:data :insights])))
+(deftest column-ordering-test
+  (is (= {:status    :completed
+          :row_count 2
+          :data      {:rows             [[100 "Mohawk Bend" 46]
+                                         [99 "Golden Road Brewing" 10]]
+                      :cols             [{:name         "ID"
+                                          :display_name "ID"
+                                          :source       :native
+                                          :base_type    :type/Integer
+                                          :field_ref    [:field-literal "ID" :type/Integer]}
+                                         {:name         "NAME"
+                                          :display_name "NAME"
+                                          :source       :native
+                                          :base_type    :type/Text
+                                          :field_ref    [:field-literal "NAME" :type/Text]}
+                                         {:name         "CATEGORY_ID"
+                                          :display_name "CATEGORY_ID"
+                                          :source       :native
+                                          :base_type    :type/Integer
+                                          :field_ref    [:field-literal "CATEGORY_ID" :type/Integer]}]
+                      :native_form      {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2"}
+                      :results_timezone "UTC"}}
+         (-> (qp/process-query {:native   {:query "SELECT ID, NAME, CATEGORY_ID FROM VENUES ORDER BY ID DESC LIMIT 2"}
+                                :type     :native
+                                :database (data/id)})
+             (m/dissoc-in [:data :results_metadata])
+             (m/dissoc-in [:data :insights])))
+      "Check that column ordering is maintained"))
 
 ;; Check that we get proper error responses for malformed SQL
 (tu/expect-schema
