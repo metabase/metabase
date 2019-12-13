@@ -139,8 +139,7 @@ const MONGO_EXAMPLES = {
     database: null,
     type: "native",
     native: {
-      query:
-        "[{ $match: { [[ _id: {{id}}} ]] }]",
+      query: "[{ $match: { [[ _id: {{id}}} ]] }]",
       "template-tags": {
         category: {
           id: Utils.uuid(),
@@ -156,8 +155,7 @@ const MONGO_EXAMPLES = {
     database: null,
     type: "native",
     native: {
-      query:
-         "[{ $match: { [[ _id: {{id}}} [[, category: {{category}} ]] ]] }]",
+      query: "[{ $match: { [[ _id: {{id}}} [[, category: {{category}} ]] ]] }]",
       "template-tags": {
         id: {
           id: Utils.uuid(),
@@ -180,8 +178,7 @@ const MONGO_EXAMPLES = {
     database: null,
     type: "native",
     native: {
-      query:
-        "[{ $match: { $and: [ { _id: 1 } [[, {{category}} ]] ] } }]",
+      query: "[{ $match: { $and: [ { _id: 1 } [[, {{category}} ]] ] } }]",
       "template-tags": {
         category: {
           id: Utils.uuid(),
