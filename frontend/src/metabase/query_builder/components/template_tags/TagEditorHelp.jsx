@@ -155,7 +155,8 @@ const MONGO_EXAMPLES = {
     database: null,
     type: "native",
     native: {
-      query: "[{ $match: { [[ _id: {{id}} [[, category: {{category}} ]]  ]] } }]",
+      query:
+        "[{ $match: { [[ _id: {{id}} [[, category: {{category}} ]]  ]] } }]",
       "template-tags": {
         id: {
           id: Utils.uuid(),
