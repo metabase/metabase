@@ -1053,10 +1053,10 @@ accepts@~1.3.4:
     mime-types "~2.1.16"
     negotiator "0.6.1"
 
-ace-builds@^1.2.2:
-  version "1.2.9"
-  resolved "https://registry.yarnpkg.com/ace-builds/-/ace-builds-1.2.9.tgz#2947fb47a881005e914e3dd8d095b6e84e5e5216"
-  integrity sha512-Gcz6nv1YOwTrd1cCd5iDHyF15/hsascz25kUdUYC2zvMv1xeTldGrisMeV4+Jq3vv2OGNukzhIu48RB70iY7pA==
+ace-builds@^1.4.7:
+  version "1.4.7"
+  resolved "https://registry.yarnpkg.com/ace-builds/-/ace-builds-1.4.7.tgz#56e5465270b6c48a48d30e70d6b8f6b92fbf2b08"
+  integrity sha512-gwQGVFewBopRLho08BfahyvRa9FlB43JUig5ItAKTYc9kJJsbA9QNz75p28QtQomoPQ9rJx82ymL21x4ZSZmdg==
 
 acorn-dynamic-import@^2.0.0:
   version "2.0.2"
