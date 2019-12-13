@@ -1,6 +1,5 @@
 {
-	"testFiles": "**/*.cy.spec.js",
-	"ignoreTestFiles": "**/*.tz.cy.spec.js",
+	"testFiles": "**/*.tz.cy.spec.js",
 	"pluginsFile": "frontend/test/cypress-plugins.js",
 	"integrationFolder": "frontend/test",
 	"supportFile": false

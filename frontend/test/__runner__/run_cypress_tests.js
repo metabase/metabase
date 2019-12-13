@@ -7,7 +7,7 @@ const BackendResource = require("./backend.js").BackendResource;
 
 // Backend that uses a test fixture database
 const serverWithTestDbFixture = BackendResource.get({
-  dbKey: "/cypress_db_fixture.db",
+  dbKey: process.env["MB_DB_FILE"] || "/cypress_db_fixture.db",
 });
 const testFixtureBackendHost = serverWithTestDbFixture.host;
 
@@ -114,9 +114,15 @@ const init = async () => {
     TEST_FIXTURE_SHARED_ADMIN_LOGIN_SESSION_ID: sharedAdminLoginSession.id,
     TEST_FIXTURE_SHARED_NORMAL_LOGIN_SESSION_ID: sharedNormalLoginSession.id,
     PLAIN_DB_HOST: plainBackendHost,
+    CLIENT_TZ: process.env["CLIENT_TZ"],
+    SERVER_TZ: process.env["SERVER_TZ"],
   })
     .map(a => a.join("="))
     .join(",");
+
+  const clientTZ = process.env["CLIENT_TZ"] || "US/Pacific";
+  const cypressConfig =
+    process.env["CYPRESS_CONFIG"] || "frontend/test/cypress.json";
 
   const cypressProcess = spawn(
     "yarn",
@@ -124,7 +130,7 @@ const init = async () => {
       "cypress",
       isOpenMode ? "open" : "run",
       "--config-file",
-      "frontend/test/cypress.json",
+      cypressConfig,
       "--config",
       `baseUrl=${testFixtureBackendHost}`,
       "--env",
@@ -138,7 +144,7 @@ const init = async () => {
           ]
         : []),
     ],
-    { stdio: "inherit" },
+    { env: { ...process.env, TZ: clientTZ }, stdio: "inherit" },
   );
 
   return new Promise((resolve, reject) => {

@@ -438,7 +438,14 @@ jobs:
     steps:
       - run-yarn-command:
           command-name: Run frontend timezone tests
-          command: run test-timezones
+          command: run test-timezones-without-build
+          before-steps:
+            - restore_cache:
+                keys:
+                  - uberjar-{{ checksum "./backend-checksums.txt" }}
+            - run:
+                name: Generate version file
+                command: ./bin/build version
 
   build-uberjar:
     executor: clojure-and-node
@@ -706,6 +713,7 @@ workflows:
             - fe-deps
       - fe-tests-timezones:
           requires:
+            - build-uberjar
             - fe-deps
       - build-uberjar:
           requires:
