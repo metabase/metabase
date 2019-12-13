@@ -147,16 +147,15 @@
           :params []}
          (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}}"
            {"toucans_are_cool" true})))
-
   (is (thrown?
        Exception
        (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}}"
          nil)))
-
-  (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE AND bird_type = ?"
-          :params ["toucan"]}
-         (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}"
-           {"toucans_are_cool" true, "bird_type" "toucan"})))
+  (testing "Multiple params"
+    (is (= {:query  "SELECT * FROM bird_facts WHERE toucans_are_cool = TRUE AND bird_type = ?"
+            :params ["toucan"]}
+           (substitute-e2e "SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}"
+             {"toucans_are_cool" true, "bird_type" "toucan"}))))
 
   (testing "Should throw an Exception if a required param is missing"
     (is (thrown?

@@ -33,6 +33,11 @@
             "select * from foo where bar={{baz}}"        ["select * from foo where bar=" (param "baz")]
             "select * from foo [[where bar = {{baz}} ]]" ["select * from foo " (optional "where bar = " (param "baz") " ")]}
 
+           "multiple params"
+           {"SELECT * FROM bird_facts WHERE toucans_are_cool = {{toucans_are_cool}} AND bird_type = {{bird_type}}"
+            ["SELECT * FROM bird_facts WHERE toucans_are_cool = " (param "toucans_are_cool")
+             " AND bird_type = " (param "bird_type")]}
+
            "Multiple optional clauses"
            {(str "select * from foo where bar1 = {{baz}} "
                  "[[and bar2 = {{baz}}]] "

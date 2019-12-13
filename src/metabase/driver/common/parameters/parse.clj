@@ -26,8 +26,8 @@
   "Like `split-on-token-string`, but splits on a regular expression instead, replacing the matched group with `token`.
   The pattern match an entire query, and return 3 groups — everything before the match; the match itself; and
   everything after the match."
-  [s token-pattern token]
-  (when-let [[_ before _ after] (re-matches token-pattern s)]
+  [s re token]
+  (when-let [[_ before _ after] (re-matches re s)]
     [before token after]))
 
 (defn- split-on-token
@@ -61,7 +61,7 @@
     ["]]" :optional-end]
     ;; param-begin should only match the last two opening brackets in a sequence of > 2, e.g.
     ;; [{$match: {{{x}}, field: 1}}] should parse to ["[$match: {" (param "x") ", field: 1}}]"]
-    [#"(.*)(\{\{)([^{]?.*)" :param-begin]
+    [#"(.*?)(\{\{(?!\{))(.*)" :param-begin]
     ["}}" :param-end]]))
 
 (defn- param [& [k & more]]
@@ -120,14 +120,9 @@
     ;; e.g. [:token "x" "}}"] -> [:token "x}}"]
     (loop [acc [], last (first parsed), [x & more] (rest parsed)]
       (cond
-        (not x)
-        (conj acc last)
-
-        (and (string? last) (string? x))
-        (recur acc (str last x) more)
-
-        :else
-        (recur (conj acc last) x more)))))
+        (not x)                          (conj acc last)
+        (and (string? last) (string? x)) (recur acc (str last x) more)
+        :else                            (recur (conj acc last) x more)))))
 
 (s/defn parse :- [(s/cond-pre s/Str Param Optional)]
   "Attempts to parse parameters in string `s`. Parses any optional clauses or parameters found, and returns a sequence

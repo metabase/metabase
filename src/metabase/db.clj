@@ -110,36 +110,34 @@
   "Connection details that can be used when pretending the Metabase DB is itself a `Database` (e.g., to use the Generic
   SQL driver functions on the Metabase DB itself)."
   (delay
-    (when (= (db-type) :h2)
-      (log/warn
-       (u/format-color 'red
-           (str
-            (trs "WARNING: Using Metabase with an H2 application database is not recommended for production deployments.")
-            " "
-            (trs "For production deployments, we highly recommend using Postgres, MySQL, or MariaDB instead.")
-            " "
-            (trs "If you decide to continue to use H2, please be sure to back up the database file regularly.")
-            " "
-            (trs "For more information, see")
-            "https://metabase.com/docs/latest/operations-guide/migrating-from-h2.html"))))
-    (or @connection-string-details
-        (case (db-type)
-          :h2       {:type     :h2 ; TODO - we probably don't need to specifc `:type` here since we can just call (db-type)
-                     :db       @db-file}
-          :mysql    {:type     :mysql
-                     :host     (config/config-str :mb-db-host)
-                     :port     (config/config-int :mb-db-port)
-                     :dbname   (config/config-str :mb-db-dbname)
-                     :user     (config/config-str :mb-db-user)
-                     :password (config/config-str :mb-db-pass)}
-          :postgres (merge
-                     {:type     :postgres
-                      :host     (config/config-str :mb-db-host)
-                      :port     (config/config-int :mb-db-port)
-                      :dbname   (config/config-str :mb-db-dbname)
-                      :user     (config/config-str :mb-db-user)}
-                     (when-let [password (config/config-str :mb-db-pass)]
-                       {:password password}))))))
+   (when (= (db-type) :h2)
+     (log/warn
+      (u/format-color 'red
+          (str
+           (trs "WARNING: Using Metabase with an H2 application database is not recommended for production deployments.")
+           " "
+           (trs "For production deployments, we highly recommend using Postgres, MySQL, or MariaDB instead.")
+           " "
+           (trs "If you decide to continue to use H2, please be sure to back up the database file regularly.")
+           " "
+           (trs "For more information, see")
+           "https://metabase.com/docs/latest/operations-guide/migrating-from-h2.html"))))
+   (or @connection-string-details
+       (case (db-type)
+         :h2       {:type     :h2 ; TODO - we probably don't need to specifc `:type` here since we can just call (db-type)
+                    :db       @db-file}
+         :mysql    {:type     :mysql
+                    :host     (config/config-str :mb-db-host)
+                    :port     (config/config-int :mb-db-port)
+                    :dbname   (config/config-str :mb-db-dbname)
+                    :user     (config/config-str :mb-db-user)
+                    :password (config/config-str :mb-db-pass)}
+         :postgres {:type     :postgres
+                    :host     (config/config-str :mb-db-host)
+                    :port     (config/config-int :mb-db-port)
+                    :dbname   (config/config-str :mb-db-dbname)
+                    :user     (config/config-str :mb-db-user)
+                    :password (config/config-str :mb-db-pass)}))))
 
 (defn jdbc-details
   "Takes our own MB details map and formats them properly for connection details for JDBC."
