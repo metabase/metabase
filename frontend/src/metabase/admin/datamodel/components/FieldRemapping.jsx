@@ -5,7 +5,7 @@ import _ from "underscore";
 import cx from "classnames";
 
 import SelectButton from "metabase/components/SelectButton";
-import Select from "metabase/components/Select";
+import { LegacySelect } from "metabase/components/Select";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import FieldList from "metabase/query_builder/components/FieldList";
 import InputBlurChange from "metabase/components/InputBlurChange";
@@ -254,7 +254,7 @@ export default class FieldRemapping extends React.Component {
 
     return (
       <div>
-        <Select
+        <LegacySelect
           value={mappingType}
           onChange={this.onSetMappingType}
           options={this.getAvailableMappingTypes()}

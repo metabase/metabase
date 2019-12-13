@@ -13,21 +13,7 @@ import SelectButton from "./SelectButton";
 import cx from "classnames";
 import _ from "underscore";
 
-export default class Select extends Component {
-  static propTypes = {
-    children: PropTypes.any,
-  };
-
-  render() {
-    if (this.props.children) {
-      return <BrowserSelect {...this.props} />;
-    } else {
-      return <LegacySelect {...this.props} />;
-    }
-  }
-}
-
-class BrowserSelect extends Component {
+export default class BrowserSelect extends Component {
   state = {
     inputValue: "",
   };
@@ -50,8 +36,6 @@ class BrowserSelect extends Component {
     height: PropTypes.number,
     width: PropTypes.number,
     rowHeight: PropTypes.number,
-    // TODO - @kdoh
-    // we should not allow this
     className: PropTypes.string,
     compact: PropTypes.bool,
     multiple: PropTypes.bool,
@@ -276,7 +260,7 @@ export class Option extends Component {
   }
 }
 
-class LegacySelect extends Component {
+export class LegacySelect extends Component {
   static propTypes = {
     value: PropTypes.any,
     values: PropTypes.array,

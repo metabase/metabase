@@ -19,7 +19,7 @@ import DatabaseSchedulingForm, {
 import FormField from "metabase/components/form/FormField";
 import Toggle from "metabase/components/Toggle";
 import { TestModal } from "metabase/components/Modal";
-import Select from "metabase/components/Select";
+import { LegacySelect } from "metabase/components/Select";
 import ColumnarSelector from "metabase/components/ColumnarSelector";
 import Radio from "metabase/components/Radio";
 import { click, clickButton } from "__support__/enzyme";

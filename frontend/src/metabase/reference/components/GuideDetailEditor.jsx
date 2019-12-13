@@ -6,7 +6,7 @@ import cx from "classnames";
 import { t } from "ttag";
 import S from "./GuideDetailEditor.css";
 
-import Select from "metabase/components/Select";
+import { LegacySelect } from "metabase/components/Select";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
@@ -63,7 +63,7 @@ const GuideDetailEditor = ({
         </div>
         <div className="py2">
           {entities ? (
-            <Select
+            <LegacySelect
               value={entities[formField.id.value]}
               options={Object.values(entities)}
               disabledOptionIds={selectedIds}
@@ -181,7 +181,7 @@ const GuideDetailEditor = ({
             <EditLabel key="metricFieldsLabel">
               {t`Which 2-3 fields do you usually group this metric by?`}
             </EditLabel>
-            <Select
+            <LegacySelect
               options={fieldsByMetric}
               optionNameFn={option => option.display_name || option.name}
               placeholder={t`Select...`}

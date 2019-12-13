@@ -17,7 +17,7 @@ import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
 import InputBlurChange from "metabase/components/InputBlurChange";
-import Select from "metabase/components/Select";
+import { LegacySelect } from "metabase/components/Select";
 import SaveStatus from "metabase/components/SaveStatus";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -311,7 +311,7 @@ const FieldGeneralPane = ({
         title={t`Filtering on this field`}
         description={t`When this field is used in a filter, what should people use to enter the value they want to filter on?`}
       />
-      <Select
+      <LegacySelect
         value={_.findWhere(has_field_values_options, {
           value: field.has_field_values,
         })}

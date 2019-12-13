@@ -1,12 +1,12 @@
 import React from "react";
 
-import Select from "metabase/components/Select";
+import { LegacySelect } from "metabase/components/Select";
 import _ from "underscore";
 
 const YEARS = _.range(new Date().getFullYear(), 1900, -1);
 
 const YearPicker = ({ value, onChange }) => (
-  <Select
+  <LegacySelect
     className="borderless"
     value={value}
     options={YEARS}

@@ -5,7 +5,7 @@ import pure from "recompose/pure";
 import { t } from "ttag";
 import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy";
 
-import Select from "metabase/components/Select";
+import { LegacySelect } from "metabase/components/Select";
 
 import D from "metabase/reference/components/Detail.css";
 
@@ -27,7 +27,7 @@ const MetricImportantFieldsDetail = ({
           </span>
         </div>
         <div className={cx(D.detailSubtitle, { mt1: true })}>
-          <Select
+          <LegacySelect
             key="metricFieldsSelect"
             triggerClasses="input p1 block"
             options={table.fields.map(fieldId => allFields[fieldId])}

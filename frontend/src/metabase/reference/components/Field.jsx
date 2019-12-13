@@ -12,7 +12,7 @@ import { getIn } from "icepick";
 import S from "metabase/components/List.css";
 import F from "./Field.css";
 
-import Select from "metabase/components/Select";
+import { LegacySelect } from "metabase/components/Select";
 import Icon from "metabase/components/Icon";
 
 import cx from "classnames";
@@ -44,7 +44,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
         </div>
         <div className={F.fieldType}>
           {isEditing ? (
-            <Select
+            <LegacySelect
               triggerClasses={F.fieldSelect}
               placeholder={t`Select a field type`}
               value={
@@ -96,7 +96,7 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
             ? (isFK(formField.special_type.value) ||
                 (isFK(field.special_type) &&
                   formField.special_type.value === undefined)) && (
-                <Select
+                <LegacySelect
                   triggerClasses={F.fieldSelect}
                   placeholder={t`Select a field type`}
                   value={

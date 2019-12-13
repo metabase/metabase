@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { Link, withRouter } from "react-router";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
-import Select, { Option } from "metabase/components/Select";
+import Select, { Option, LegacySelect } from "metabase/components/Select";
 import Icon from "metabase/components/Icon";
 import { t } from "ttag";
 import * as MetabaseCore from "metabase/lib/core";
@@ -118,7 +118,7 @@ export class FieldVisibilityPicker extends Component {
     const { field, className } = this.props;
 
     return (
-      <Select
+      <LegacySelect
         className={cx("TableEditor-field-visibility", className)}
         placeholder={t`Select a field visibility`}
         value={MetabaseCore.field_visibility_types.find(
@@ -215,7 +215,7 @@ export class SpecialTypeAndTargetPicker extends Component {
 
     return (
       <div>
-        <Select
+        <LegacySelect
           className={cx("TableEditor-field-special-type", "mt0", className)}
           placeholder={t`Select a special type`}
           value={MetabaseCore.field_special_types.find(

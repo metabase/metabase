@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import Select from "metabase/components/Select";
+import { LegacySelect } from "metabase/components/Select";
 
 import Settings from "metabase/lib/settings";
 import { capitalize } from "metabase/lib/formatting";
@@ -127,7 +127,7 @@ export default class SchedulePicker extends Component {
     return (
       <span className="mt1">
         <span className="h4 text-bold mx1">on the</span>
-        <Select
+        <LegacySelect
           value={_.find(
             MONTH_DAY_OPTIONS,
             o => o.value === schedule.schedule_frame,
@@ -140,7 +140,7 @@ export default class SchedulePicker extends Component {
         />
         {schedule.schedule_frame !== "mid" && (
           <span className="mt1 mx1">
-            <Select
+            <LegacySelect
               value={_.find(
                 DAY_OPTIONS,
                 o => o.value === schedule.schedule_day,
@@ -163,7 +163,7 @@ export default class SchedulePicker extends Component {
     return (
       <span className="mt1">
         <span className="h4 text-bold mx1">on</span>
-        <Select
+        <LegacySelect
           value={_.find(
             DAY_OF_WEEK_OPTIONS,
             o => o.value === schedule.schedule_day,
@@ -190,7 +190,7 @@ export default class SchedulePicker extends Component {
     return (
       <div className="mt1">
         <span className="h4 text-bold mr1">at</span>
-        <Select
+        <LegacySelect
           className="mr1 h4 text-bold bg-white"
           value={_.find(HOUR_OPTIONS, o => o.value === hour)}
           options={HOUR_OPTIONS}
@@ -198,7 +198,7 @@ export default class SchedulePicker extends Component {
           optionValueFn={o => o.value}
           onChange={o => this.onPropertyChange("schedule_hour", o + amPm * 12)}
         />
-        <Select
+        <LegacySelect
           value={_.find(AM_PM_OPTIONS, o => o.value === amPm)}
           options={AM_PM_OPTIONS}
           optionNameFn={o => o.name}
@@ -224,7 +224,7 @@ export default class SchedulePicker extends Component {
     return (
       <div className="mt1">
         <span className="h4 text-bold mr1">{textBeforeInterval}</span>
-        <Select
+        <LegacySelect
           className="h4 text-bold bg-white"
           value={scheduleType}
           options={scheduleOptions}

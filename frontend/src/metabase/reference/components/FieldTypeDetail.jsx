@@ -8,7 +8,7 @@ import * as MetabaseCore from "metabase/lib/core";
 import { isNumericBaseType } from "metabase/lib/schema_metadata";
 import { isFK } from "metabase/lib/types";
 
-import Select from "metabase/components/Select";
+import { LegacySelect } from "metabase/components/Select";
 
 import D from "metabase/reference/components/Detail.css";
 
@@ -27,7 +27,7 @@ const FieldTypeDetail = ({
       <div className={cx(D.detailSubtitle, { mt1: true })}>
         <span>
           {isEditing ? (
-            <Select
+            <LegacySelect
               triggerClasses="rounded bordered p1 inline-block"
               placeholder={t`Select a field type`}
               value={
@@ -62,7 +62,7 @@ const FieldTypeDetail = ({
             ? (isFK(fieldTypeFormField.value) ||
                 (isFK(field.special_type) &&
                   fieldTypeFormField.value === undefined)) && (
-                <Select
+                <LegacySelect
                   triggerClasses="rounded bordered p1 inline-block"
                   placeholder={t`Select a field type`}
                   value={
