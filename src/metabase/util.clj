@@ -15,7 +15,6 @@
             [flatland.ordered.map :refer [ordered-map]]
             [medley.core :as m]
             [metabase.config :as config]
-            [metabase.plugins.classloader :as classloader]
             [metabase.util.i18n :refer [trs tru]]
             [ring.util.codec :as codec]
             [weavejester.dependency :as dep])
@@ -150,7 +149,7 @@
     (catch Throwable _ false)))
 
 (defn ^:deprecated rpartial
-  "Like `partial`, but applies additional args *before* BOUND-ARGS.
+  "Like `partial`, but applies additional args *before* `bound-args`.
    Inspired by [`-rpartial` from dash.el](https://github.com/magnars/dash.el#-rpartial-fn-rest-args)
 
     ((partial - 5) 8)  -> (- 5 8) -> -3
