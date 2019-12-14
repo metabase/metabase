@@ -12,6 +12,204 @@ import SelectButton from "./SelectButton";
 
 import cx from "classnames";
 import _ from "underscore";
+import AccordionList from "./AccordionList";
+import { createSelector } from "reselect";
+
+import { color } from "metabase/lib/colors";
+
+const MIN_ICON_WIDTH = 20;
+
+import Uncontrollable from "metabase/hoc/Uncontrollable";
+
+@Uncontrollable()
+export class Select extends Component {
+  static propTypes = {
+    // one of these is required
+    options: PropTypes.any,
+    sections: PropTypes.any,
+    children: PropTypes.any,
+
+    value: PropTypes.any.isRequired,
+    onChange: PropTypes.func.isRequired,
+    multiple: PropTypes.bool,
+    placeholder: PropTypes.string,
+
+    // PopoverWithTrigger props
+    triggerElement: PropTypes.element,
+    triggerClasses: PropTypes.string,
+    isInitiallyOpen: PropTypes.bool,
+
+    // AccordianList props
+    searchProp: PropTypes.string,
+    searchCaseInsensitive: PropTypes.bool,
+    searchFuzzy: PropTypes.bool,
+  };
+
+  static defaultProps = {};
+
+  constructor(props) {
+    super(props);
+
+    this._getValue = props => props.value;
+    this._getValues = createSelector(
+      [this._getValue],
+      value => (Array.isArray(value) ? value : [value]),
+    );
+    this._getValuesSet = createSelector(
+      [this._getValues],
+      values => new Set(values),
+    );
+  }
+
+  _getSections() {
+    // normalize `children`/`options` into same format as `sections`
+    const { children, sections, options } = this.props;
+    if (children) {
+      const optionToItem = option => ({
+        name: option.props.children,
+        ...option.props,
+      });
+      const first = Array.isArray(children) ? children[0] : children;
+      if (first && first.type === SelectSection) {
+        return React.Children.map(children, child => ({
+          ...child.props,
+          items: React.Children.map(child.props.children, optionToItem),
+        }));
+      } else if (first && first.type === SelectOption) {
+        return [{ items: React.Children.map(children, optionToItem) }];
+      }
+    } else if (options) {
+      return [{ items: options || [] }];
+    } else if (sections) {
+      return sections;
+    }
+    return [];
+  }
+
+  itemIsSelected = option => this._getValuesSet(this.props).has(option.value);
+  itemIsClickable = option => !option.disabled;
+
+  handleChange = option => {
+    const { multiple, onChange } = this.props;
+    let value;
+    if (multiple) {
+      const values = this._getValues(this.props);
+      value = this.itemIsSelected(option)
+        ? values.filter(value => value !== option.value)
+        : [...values, option.value];
+    } else {
+      value = option.value;
+    }
+    onChange({ target: { value } });
+    if (!multiple) {
+      this._popover.close();
+    }
+  };
+
+  renderItemIcon = item =>
+    this.itemIsSelected(item) ? (
+      <Icon
+        name="check"
+        size={14}
+        color={color("text-dark")}
+        style={{ minWidth: MIN_ICON_WIDTH }}
+      />
+    ) : item.icon ? (
+      <Icon
+        name={item.icon}
+        size={item.iconSize || 18}
+        color={item.iconColor || color("text-dark")}
+        style={{ minWidth: MIN_ICON_WIDTH }}
+      />
+    ) : (
+      <span style={{ minWidth: MIN_ICON_WIDTH }} />
+    );
+
+  render() {
+    const {
+      placeholder,
+      searchProp,
+      searchCaseInsensitive,
+      searchFuzzy,
+      triggerElement,
+      triggerClasses,
+      isInitiallyOpen,
+    } = this.props;
+
+    const sections = this._getSections();
+    const selectedNames = sections
+      .map(section =>
+        section.items.filter(this.itemIsSelected).map(item => item.name),
+      )
+      .flat()
+      .filter(n => n);
+
+    return (
+      <PopoverWithTrigger
+        ref={ref => (this._popover = ref)}
+        triggerElement={
+          triggerElement || (
+            <SelectButton hasValue={selectedNames.length > 0}>
+              {selectedNames.length > 0
+                ? selectedNames.map((name, index) => (
+                    <span key={index}>
+                      {name}
+                      {index < selectedNames.length - 1 ? ", " : ""}
+                    </span>
+                  ))
+                : placeholder}
+            </SelectButton>
+          )
+        }
+        triggerClasses={triggerClasses}
+        isInitiallyOpen={isInitiallyOpen}
+        verticalAttachments={["top", "bottom"]}
+        // keep the popover from jumping around one its been opened,
+        // this can happen when filtering items via search
+        pinInitialAttachment
+      >
+        <AccordionList
+          sections={sections}
+          className="text-brand"
+          alwaysExpanded
+          itemIsSelected={this.itemIsSelected}
+          itemIsClickable={this.itemIsClickable}
+          renderItemIcon={this.renderItemIcon}
+          onChange={this.handleChange}
+          searchable={!!searchProp}
+          searchProp={searchProp}
+          searchCaseInsensitive={searchCaseInsensitive}
+          searchFuzzy={searchFuzzy}
+        />
+      </PopoverWithTrigger>
+    );
+  }
+}
+export class SelectSection extends Component {
+  static propTypes = {
+    name: PropTypes.any,
+    icon: PropTypes.any,
+    children: PropTypes.any.isRequired,
+  };
+  render() {
+    return null;
+  }
+}
+export class SelectOption extends Component {
+  static propTypes = {
+    value: PropTypes.any.isRequired,
+
+    // one of these two is required
+    name: PropTypes.any,
+    children: PropTypes.any,
+
+    icon: PropTypes.any,
+    disabled: PropTypes.bool,
+  };
+  render() {
+    return null;
+  }
+}
 
 export default class BrowserSelect extends Component {
   state = {
@@ -20,25 +218,28 @@ export default class BrowserSelect extends Component {
 
   static propTypes = {
     children: PropTypes.array.isRequired,
-    onChange: PropTypes.func.isRequired,
+
     value: PropTypes.any,
     defaultValue: PropTypes.any,
+    onChange: PropTypes.func.isRequired,
+    multiple: PropTypes.bool,
+
+    className: PropTypes.string,
 
     searchProp: PropTypes.string,
     searchCaseInsensitive: PropTypes.bool,
     searchFuzzy: PropTypes.bool,
 
-    isInitiallyOpen: PropTypes.bool,
     placeholder: PropTypes.string,
-    // NOTE - @kdoh
-    // seems too generic for us?
+
+    // popover props
     triggerElement: PropTypes.any,
+    isInitiallyOpen: PropTypes.bool,
+
     height: PropTypes.number,
     width: PropTypes.number,
     rowHeight: PropTypes.number,
-    className: PropTypes.string,
     compact: PropTypes.bool,
-    multiple: PropTypes.bool,
   };
   static defaultProps = {
     className: "",
@@ -95,9 +296,6 @@ export default class BrowserSelect extends Component {
     if (searchProp && inputValue) {
       filter = child => {
         let childValue = String(child.props[searchProp] || "");
-        if (!inputValue) {
-          return false;
-        }
         if (searchCaseInsensitive) {
           childValue = childValue.toLowerCase();
           inputValue = inputValue.toLowerCase();

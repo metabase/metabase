@@ -54,7 +54,6 @@ export default class AccordionList extends Component {
     className: PropTypes.string,
     id: PropTypes.string,
     sections: PropTypes.array.isRequired,
-    searchable: PropTypes.oneOfType([PropTypes.bool, PropTypes.func]),
     initiallyOpenSection: PropTypes.number,
     openSection: PropTypes.number,
     onChange: PropTypes.func,
@@ -69,6 +68,11 @@ export default class AccordionList extends Component {
     alwaysExpanded: PropTypes.bool,
     hideSingleSectionTitle: PropTypes.bool,
     showItemArrows: PropTypes.bool,
+
+    searchable: PropTypes.oneOfType([PropTypes.bool, PropTypes.func]),
+    searchProp: PropTypes.string,
+    searchCaseInsensitive: PropTypes.bool,
+    searchFuzzy: PropTypes.bool,
     searchPlaceholder: PropTypes.string,
   };
 
@@ -76,6 +80,9 @@ export default class AccordionList extends Component {
     style: {},
     width: 300,
     searchable: section => section.items && section.items.length > 10,
+    searchProp: "name",
+    searchCaseInsensitive: true,
+    searchFuzzy: true,
     alwaysTogglable: false,
     alwaysExpanded: false,
     hideSingleSectionTitle: false,
@@ -263,12 +270,14 @@ export default class AccordionList extends Component {
       style,
       className,
       searchable,
+      searchProp,
+      searchCaseInsensitive,
+      searchFuzzy,
       sections,
       alwaysTogglable,
       alwaysExpanded,
       hideSingleSectionTitle,
     } = this.props;
-    const { searchText } = this.state;
 
     const openSection = this.getOpenSection();
     const sectionIsExpanded = sectionIndex =>
@@ -278,6 +287,23 @@ export default class AccordionList extends Component {
       (typeof searchable !== "function" || searchable(sections[sectionIndex]));
     const sectionIsTogglable = sectionIndex =>
       alwaysTogglable || sections.length > 1;
+
+    let { searchText } = this.state;
+    let searchFilter = () => true;
+    if (searchText) {
+      searchFilter = item => {
+        let itemText = String(item[searchProp] || "");
+        if (searchCaseInsensitive) {
+          itemText = itemText.toLowerCase();
+          searchText = searchText.toLowerCase();
+        }
+        if (searchFuzzy) {
+          return itemText.indexOf(searchText) >= 0;
+        } else {
+          return itemText.startsWith(searchText);
+        }
+      };
+    }
 
     // if any section is searchable just enable a global search
     let globalSearch = false;
@@ -316,10 +342,7 @@ export default class AccordionList extends Component {
         section.items.length > 0
       ) {
         for (const [itemIndex, item] of section.items.entries()) {
-          if (
-            !searchText ||
-            item.name.toLowerCase().includes(searchText.toLowerCase())
-          ) {
+          if (searchFilter(item)) {
             const isLastItem = itemIndex === section.items.length - 1;
             if (this.itemIsSelected(item)) {
               this._initialSelectedRowIndex = rows.length;
@@ -556,7 +579,14 @@ const AccordionListCell = ({
           <span className="flex align-center">
             {renderItemIcon(item, itemIndex, isSelected)}
           </span>
-          <h4 className="List-item-title ml1 text-wrap">{item.name}</h4>
+          <div>
+            <h4 className="List-item-title ml1 text-wrap">{item.name}</h4>
+            {item.description && (
+              <h4 className="List-item-description ml1 text-wrap">
+                {item.description}
+              </h4>
+            )}
+          </div>
         </a>
         {renderItemExtra(item, itemIndex, isSelected)}
         {showItemArrows && (
