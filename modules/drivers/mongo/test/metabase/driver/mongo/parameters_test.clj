@@ -80,9 +80,10 @@
 
 (deftest field-filter-test
   (testing "Date ranges"
-    (is (= "[{$match: {$and: [{\"date\": {$gte: ISODate(\"2019-12-08\")}}, {\"date\": {$lt: ISODate(\"2019-12-12\")}}]}}]"
-           (substitute {:date (field-filter "date" :date/range "past5days")}
-                       ["[{$match: " (param :date) "}]"]))))
+    (mt/with-clock #t "2019-12-13T12:00:00.000Z[UTC]"
+      (is (= "[{$match: {$and: [{\"date\": {$gte: ISODate(\"2019-12-08\")}}, {\"date\": {$lt: ISODate(\"2019-12-12\")}}]}}]"
+             (substitute {:date (field-filter "date" :date/range "past5days")}
+                         ["[{$match: " (param :date) "}]"])))))
   (testing "multiple values"
     (doseq [[message v] {"values are a vector of numbers" [1 2 3]
                          "comma-separated numbers"        (comma-separated-numbers [1 2 3])}]
