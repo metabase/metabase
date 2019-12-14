@@ -308,7 +308,8 @@
    ;; build the uberjar with `lein uberjar`
    :uberjar
    {:auto-clean true
-    :aot        :all}
+    :aot        :all
+    :omit-source true}
 
    ;; generate sample dataset with `lein generate-sample-dataset`
    :generate-sample-dataset
