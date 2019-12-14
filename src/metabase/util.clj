@@ -6,7 +6,9 @@
              [set :as set]
              [string :as str]
              [walk :as walk]]
-            [clojure.java.classpath :as classpath]
+            [clojure.java
+             [classpath :as classpath]
+             [io :as io]]
             [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
@@ -495,11 +497,12 @@
                                 (not (.contains (name ns-symb) "test")))]
                ns-symb))))
 
-(def ^:private namespace-symbs-filename "resources/namespaces.edn")
+(def ^:private namespace-symbs-filename "namespaces.edn")
 
 (when *compile-files*
-  (printf "Saving list of Metabase namespaces to %s...\n" namespace-symbs-filename)
-  (spit namespace-symbs-filename (with-out-str (pprint (metabase-namespace-symbs*)))))
+  (let [filename (str "resources/" namespace-symbs-filename)]
+    (printf "Saving list of Metabase namespaces to %s...\n" filename)
+    (spit filename (with-out-str (pprint (metabase-namespace-symbs*))))))
 
 (def metabase-namespace-symbols
   "Delay to a vector of symbols of all Metabase namespaces, excluding test namespaces. This is intended for use by
@@ -513,7 +516,7 @@
     (delay
       (try
         (log/info (trs "Reading Metabase namespaces from {0}" namespace-symbs-filename))
-        (edn/read-string (slurp namespace-symbs-filename))
+        (edn/read-string (slurp (io/resource namespace-symbs-filename)))
         (catch Throwable e
           (log/error e (trs "Failed to read Metabase namespaces from {0}" namespace-symbs-filename))
           (metabase-namespace-symbs*))))
