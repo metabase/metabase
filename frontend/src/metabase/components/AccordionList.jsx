@@ -582,9 +582,9 @@ const AccordionListCell = ({
           <div>
             <h4 className="List-item-title ml1 text-wrap">{item.name}</h4>
             {item.description && (
-              <h4 className="List-item-description ml1 text-wrap">
+              <p className="List-item-description ml1 text-wrap">
                 {item.description}
-              </h4>
+              </p>
             )}
           </div>
         </a>

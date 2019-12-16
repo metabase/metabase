@@ -65,7 +65,8 @@
 
 /* LIST ITEM DESCRIPTION */
 .List-item-description {
-  margin-top: 0.5em;
+  margin-top: 0.25em;
+  margin-bottom: 0;
   color: var(--color-text-medium);
 }
 .List-item--disabled .List-item-description {
