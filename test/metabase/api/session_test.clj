@@ -341,6 +341,56 @@
                    [:first_name :last_name :email]))))
 
 
+;;; --------------------------------------------- google-auth-token-info ---------------------------------------------
+(deftest google-auth-token-info-tests
+  (testing "Throws exception"
+    (testing "for non-200 status"
+      (is (= [400 "Invalid Google Auth token."]
+             (try
+               (#'session-api/google-auth-token-info {:status 400} "")
+               (catch Exception e
+                 [(-> e ex-data :status-code) (.getMessage e)])))))
+
+    (testing "for invalid data."
+      (is (= [400 "Google Auth token meant for a different site."]
+             (try
+               (#'session-api/google-auth-token-info
+                 {:status 200
+                  :body   "{\"aud\":\"BAD-GOOGLE-CLIENT-ID\"}"}
+                 "PRETEND-GOOD-GOOGLE-CLIENT-ID")
+               (catch Exception e
+                 [(-> e ex-data :status-code) (.getMessage e)]))))
+      (is (= [400 "Email is not verified."]
+             (try
+               (#'session-api/google-auth-token-info
+                 {:status 200
+                  :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
+                               "\"email_verified\":false}")}
+                 "PRETEND-GOOD-GOOGLE-CLIENT-ID")
+               (catch Exception e
+                 [(-> e ex-data :status-code) (.getMessage e)]))))
+      (is (= {:aud            "PRETEND-GOOD-GOOGLE-CLIENT-ID"
+              :email_verified "true"}
+             (try
+               (#'session-api/google-auth-token-info
+                 {:status 200
+                  :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
+                               "\"email_verified\":\"true\"}")}
+                 "PRETEND-GOOD-GOOGLE-CLIENT-ID")
+               (catch Exception e
+                 [(-> e ex-data :status-code) (.getMessage e)]))))))
+
+  (testing "Supports multiple :aud token data fields"
+    (let [token-1 "GOOGLE-CLIENT-ID-1"
+          token-2 "GOOGLE-CLIENT-ID-2"]
+      (is (= [token-1 token-2]
+             (:aud (#'session-api/google-auth-token-info
+                     {:status 200
+                      :body   (format "{\"aud\":[\"%s\",\"%s\"],\"email_verified\":\"true\"}"
+                                      token-1
+                                      token-2)}
+                     token-1)))))))
+
 ;;; --------------------------------------- google-auth-fetch-or-create-user! ----------------------------------------
 
 ;; test that an existing user can log in with Google auth even if the auto-create accounts domain is different from

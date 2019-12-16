@@ -140,10 +140,10 @@
   :manifest
   {"Liquibase-Package"
    #= (eval
-       (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
-            "liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,"
-            "liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,"
-            "liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"))}
+        (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
+             "liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,"
+             "liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,"
+             "liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"))}
 
   :jvm-opts
   ["-XX:+IgnoreUnrecognizedVMOptions"                                 ; ignore things not recognized for our Java version instead of refusing to start
@@ -243,10 +243,10 @@
 
    :include-all-drivers
    [:with-include-drivers-middleware
-   {:include-drivers :all
-    :injections
-    [(require 'metabase.plugins)
-     (metabase.plugins/load-plugins!)]}]
+    {:include-drivers :all
+     :injections
+     [(require 'metabase.plugins)
+      (metabase.plugins/load-plugins!)]}]
 
    :repl
    [:include-all-drivers
@@ -308,8 +308,7 @@
    ;; build the uberjar with `lein uberjar`
    :uberjar
    {:auto-clean true
-    :aot        :all
-    :omit-source true}
+    :aot        :all}
 
    ;; generate sample dataset with `lein generate-sample-dataset`
    :generate-sample-dataset
