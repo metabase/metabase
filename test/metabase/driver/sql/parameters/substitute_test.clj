@@ -698,6 +698,20 @@
                                                      :default      "2017-11-14"
                                                      :widget-type  :date/all-options}}}}))
 
+(deftest newlines-test
+  (testing "Make sure queries with newlines are parsed correctly (#11526)"
+    (qp/process-query
+     {:database   (mt/id)
+      :type       "native"
+      :native     {:query         "SELECT count(*)\nFROM products\nWHERE category = {{category}}"
+                   :template-tags {:category {:id           "aefb90d0-b360-db67-5fa0-8bddbddf103c"
+                                              :name         "category"
+                                              :display_name "Category"
+                                              :type         "text"
+                                              :required     true
+                                              :default      "Widget"}}}
+      :parameters []})))
+
 
 ;;; ------------------------------- Multiple Value Support (comma-separated or array) --------------------------------
 
@@ -705,15 +719,15 @@
   (testing "Make sure using commas in numeric params treats them as separate IDs (#5457)"
     (is (= "SELECT * FROM USERS where id IN (1, 2, 3)"
            (-> (qp/process-query
-                 {:database   (mt/id)
-                  :type       "native"
-                  :native     {:query         "SELECT * FROM USERS [[where id IN ({{ids_list}})]]"
-                               :template-tags {"ids_list" {:name         "ids_list"
-                                                           :display-name "Ids list"
-                                                           :type         :number}}}
-                  :parameters [{:type   "category"
-                                :target [:variable [:template-tag "ids_list"]]
-                                :value  "1,2,3"}]})
+                {:database   (mt/id)
+                 :type       "native"
+                 :native     {:query         "SELECT * FROM USERS [[where id IN ({{ids_list}})]]"
+                              :template-tags {"ids_list" {:name         "ids_list"
+                                                          :display-name "Ids list"
+                                                          :type         :number}}}
+                 :parameters [{:type   "category"
+                               :target [:variable [:template-tag "ids_list"]]
+                               :value  "1,2,3"}]})
                :data :native_form :query))))
   (testing "make sure you can now also pass multiple values in by passing an array of values"
     (is (= {:query  "SELECT * FROM CATEGORIES where name IN (?, ?, ?)"

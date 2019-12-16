@@ -61,7 +61,7 @@
     ["]]" :optional-end]
     ;; param-begin should only match the last two opening brackets in a sequence of > 2, e.g.
     ;; [{$match: {{{x}}, field: 1}}] should parse to ["[$match: {" (param "x") ", field: 1}}]"]
-    [#"(.*?)(\{\{(?!\{))(.*)" :param-begin]
+    [#"(?s)(.*?)(\{\{(?!\{))(.*)" :param-begin]
     ["}}" :param-end]]))
 
 (defn- param [& [k & more]]

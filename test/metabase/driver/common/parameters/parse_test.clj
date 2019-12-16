@@ -70,6 +70,10 @@
            (let [query "SELECT array_dims(1 || '[0:1]={2,3}'::int[])"]
              {query [query]})
 
+           "Queries with newlines (#11526)"
+           {"SELECT count(*)\nFROM products\nWHERE category = {{category}}"
+            ["SELECT count(*)\nFROM products\nWHERE category = " (param "category")]}
+
            "JSON queries that contain non-param fragments like '}}'"
            {"{x: {y: \"{{param}}\"}}"         ["{x: {y: \"" (param "param") "\"}}"]
             "{$match: {{{date}}, field: 1}}}" ["{$match: {" (param "date") ", field: 1}}}"]}}]

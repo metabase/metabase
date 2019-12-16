@@ -78,44 +78,58 @@
                     {:$project {"_id" false, "count" true}}])
      :collection  (name table)}))
 
-(defn- count-query [table field->type+value]
+(defn- count-query [table field->type+value {:keys [defaults?]}]
   {:database   (mt/id)
    :type       :native
    :native     (assoc (native-count-query driver/*driver* table field->type+value)
-                      :template-tags (into {} (for [[field [param-type]] field->type+value]
-                                                [field {:name         (name field)
-                                                        :display-name (name field)
-                                                        :type         (or (namespace param-type)
-                                                                          (name param-type))}])))
-   :parameters (for [[field [param-type v]] field->type+value]
-                 {:type   param-type
-                  :target [:variable [:template-tag (name field)]]
-                  :value  v})})
-
-(defn- count= [expected table field->type+value]
-  (let [query (count-query table field->type+value)]
-    (testing (str "\nquery =\n" (u/pprint-to-str query))
-      (is (= expected
-             (ffirst
-              (mt/formatted-rows [int]
-                (qp/process-query query))))
-          (format "count with of %s with %s should be %d"
-                  (name table)
-                  (str/join " and " (for [[field [_ v]] field->type+value]
-                                      (format "%s = %s" (name field) v)))
-                  expected)))))
+                      :template-tags (into {} (for [[field [param-type v]] field->type+value]
+                                                [field (merge
+                                                        {:name         (name field)
+                                                         :display-name (name field)
+                                                         :type         (or (namespace param-type)
+                                                                           (name param-type))}
+                                                        (when defaults?
+                                                          {:default (when defaults? v)}))])))
+   :parameters (when-not defaults?
+                 (for [[field [param-type v]] field->type+value]
+                   {:type   param-type
+                    :target [:variable [:template-tag (name field)]]
+                    :value  v}))})
 
 (deftest param-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
-    (testing "text params"
-      (count= 1
-              :venues {:name [:text "In-N-Out Burger"]}))
-    (testing "number params"
-      (count= 22
-              :venues {:price [:number "1"]}))
-    ;; FIXME — This is not currently working on SQLite, probably because SQLite's implementation of temporal types is
-    ;; wacko.
-    (when-not (= driver/*driver* :sqlite)
-      (testing "date params"
-        (count= 1
-                :users {:last_login [:date/single "2014-08-02T09:30Z"]})))))
+    (doseq [[message {:keys [expected-count table param-name param-type value exclude-drivers]}]
+            {"text params"   {:expected-count 1
+                              :table          :venues
+                              :param-name     :name
+                              :param-type     :text
+                              :value          "In-N-Out Burger"}
+             "number params" {:expected-count 22
+                              :table          :venues
+                              :param-name     :price
+                              :param-type     :number
+                              :value          "1"}
+             "date params"   {:expected-count  1
+                              ;; FIXME — This is not currently working on SQLite, probably because SQLite's
+                              ;; implementation of temporal types is wacko.
+                              :exclude-drivers #{:sqlite}
+                              :table           :users
+                              :param-name      :last_login
+                              :param-type      :date/single
+                              :value           "2014-08-02T09:30Z"}}
+            :when (not (contains? exclude-drivers driver/*driver*))]
+      (testing (str "\n" message)
+        (doseq [[message options] {"Query with all supplied parameters" nil
+                                   "Query using default values"         {:defaults? true}}]
+          (testing (str "\n" message)
+            (let [query (count-query table {param-name [param-type value]} options)]
+              (testing (str "\nquery =\n" (u/pprint-to-str query))
+                (is (= expected-count
+                       (ffirst
+                        (mt/formatted-rows [int]
+                          (qp/process-query query))))
+                    (format "count with of %s with %s = %s should be %d"
+                            (name table)
+                            (name param-name)
+                            value
+                            expected-count))))))))))
