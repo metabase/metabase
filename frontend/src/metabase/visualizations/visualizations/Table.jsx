@@ -4,6 +4,7 @@ import React, { Component } from "react";
 
 import TableInteractive from "../components/TableInteractive.jsx";
 import TableSimple from "../components/TableSimple";
+import SingleRow from "../components/SingleRow";
 import { t } from "ttag";
 import * as DataGrid from "metabase/lib/data_grid";
 import { findColumnIndexForColumnSetting } from "metabase/lib/dataset";
@@ -153,6 +154,13 @@ export default class Table extends Component {
       ) => !settings["table.pivot"],
       readDependencies: ["table.pivot", "table.pivot_column"],
       persistDefault: true,
+    },
+    "table.row_details": {
+      section: t`Columns`,
+      title: t`Single row details`,
+      widget: "toggle",
+      getHidden: ([{ card, data }]) => data && data.rows.length !== 1,
+      getDefault: ([{ card, data }]) => data && data.rows.length === 1,
     },
     // NOTE: table column settings may be identified by fieldRef (possible not normalized) or column name:
     //   { name: "COLUMN_NAME", enabled: true }
@@ -381,9 +389,11 @@ export default class Table extends Component {
       isDashboard,
       settings,
     } = this.props;
+
     const { data } = this.state;
     const sort = getIn(card, ["dataset_query", "query", "order-by"]) || null;
     const isPivoted = settings["table.pivot"];
+    const isSingleRowDetails = settings["table.row_details"];
     const isColumnsDisabled =
       (settings["table.columns"] || []).filter(f => f.enabled).length < 1;
     const TableComponent = isDashboard ? TableSimple : TableInteractive;
@@ -408,6 +418,14 @@ export default class Table extends Component {
           />
           <span className="h4 text-bold">Every field is hidden right now</span>
         </div>
+      );
+    } else if (isSingleRowDetails) {
+      return (
+        <SingleRow
+          {...this.props}
+          data={data}
+          getColumnTitle={this.getColumnTitle}
+        />
       );
     } else {
       return (
