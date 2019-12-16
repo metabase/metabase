@@ -700,17 +700,18 @@
 
 (deftest newlines-test
   (testing "Make sure queries with newlines are parsed correctly (#11526)"
-    (qp/process-query
-     {:database   (mt/id)
-      :type       "native"
-      :native     {:query         "SELECT count(*)\nFROM products\nWHERE category = {{category}}"
-                   :template-tags {:category {:id           "aefb90d0-b360-db67-5fa0-8bddbddf103c"
-                                              :name         "category"
-                                              :display_name "Category"
-                                              :type         "text"
-                                              :required     true
-                                              :default      "Widget"}}}
-      :parameters []})))
+    (is (= [[1]]
+           (mt/rows
+             (qp/process-query
+               {:database   (mt/id)
+                :type       "native"
+                :native     {:query         "SELECT count(*)\nFROM venues\n WHERE name = {{name}}"
+                             :template-tags {:name {:name         "name"
+                                                    :display_name "Name"
+                                                    :type         "text"
+                                                    :required     true
+                                                    :default      "Fred 62"}}}
+                :parameters []}))))))
 
 
 ;;; ------------------------------- Multiple Value Support (comma-separated or array) --------------------------------
