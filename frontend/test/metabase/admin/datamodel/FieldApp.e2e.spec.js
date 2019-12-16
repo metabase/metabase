@@ -30,7 +30,7 @@ import {
   SpecialTypeAndTargetPicker,
 } from "metabase/admin/datamodel/components/database/ColumnItem";
 import Popover from "metabase/components/Popover";
-import { LegacySelect } from "metabase/components/Select";
+import Select from "metabase/components/Select";
 import SelectButton from "metabase/components/SelectButton";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import { getMetadata } from "metabase/selectors/metadata";

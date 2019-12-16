@@ -8,7 +8,7 @@ import * as MetabaseCore from "metabase/lib/core";
 import { isNumericBaseType } from "metabase/lib/schema_metadata";
 import { isFK } from "metabase/lib/types";
 
-import { LegacySelect } from "metabase/components/Select";
+import Select from "metabase/components/Select";
 
 import D from "metabase/reference/components/Detail.css";
 
@@ -27,14 +27,9 @@ const FieldTypeDetail = ({
       <div className={cx(D.detailSubtitle, { mt1: true })}>
         <span>
           {isEditing ? (
-            <LegacySelect
-              triggerClasses="rounded bordered p1 inline-block"
+            <Select
               placeholder={t`Select a field type`}
-              value={
-                MetabaseCore.field_special_types_map[
-                  fieldTypeFormField.value
-                ] || MetabaseCore.field_special_types_map[field.special_type]
-              }
+              value={fieldTypeFormField.value || field.special_type}
               options={MetabaseCore.field_special_types
                 .concat({
                   id: null,
@@ -46,7 +41,10 @@ const FieldTypeDetail = ({
                     ? !(type.id && type.id.startsWith("timestamp_"))
                     : true,
                 )}
-              onChange={type => fieldTypeFormField.onChange(type.id)}
+              optionValueFn={o => o.id}
+              onChange={({ target: { value } }) =>
+                fieldTypeFormField.onChange(value)
+              }
             />
           ) : (
             <span>
@@ -62,20 +60,14 @@ const FieldTypeDetail = ({
             ? (isFK(fieldTypeFormField.value) ||
                 (isFK(field.special_type) &&
                   fieldTypeFormField.value === undefined)) && (
-                <LegacySelect
-                  triggerClasses="rounded bordered p1 inline-block"
-                  placeholder={t`Select a field type`}
-                  value={
-                    foreignKeys[foreignKeyFormField.value] ||
-                    foreignKeys[field.fk_target_field_id] || {
-                      name: t`Select a Foreign Key`,
-                    }
-                  }
+                <Select
+                  placeholder={t`Select a foreign key`}
+                  value={foreignKeyFormField.value || field.fk_target_field_id}
                   options={Object.values(foreignKeys)}
-                  onChange={foreignKey =>
-                    foreignKeyFormField.onChange(foreignKey.id)
+                  onChange={({ target: { value } }) =>
+                    foreignKeyFormField.onChange(value)
                   }
-                  optionNameFn={foreignKey => foreignKey.name}
+                  optionValueFn={o => o.id}
                 />
               )
             : isFK(field.special_type) && (

@@ -12,7 +12,7 @@ import { getIn } from "icepick";
 import S from "metabase/components/List.css";
 import F from "./Field.css";
 
-import { LegacySelect } from "metabase/components/Select";
+import Select from "metabase/components/Select";
 import Icon from "metabase/components/Icon";
 
 import cx from "classnames";
@@ -44,13 +44,11 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
         </div>
         <div className={F.fieldType}>
           {isEditing ? (
-            <LegacySelect
-              triggerClasses={F.fieldSelect}
+            <Select
               placeholder={t`Select a field type`}
-              value={
-                MetabaseCore.field_special_types_map[
-                  formField.special_type.value
-                ] || MetabaseCore.field_special_types_map[field.special_type]
+              value={formField.special_type.value || field.special_type}
+              onChange={({ target: { value } }) =>
+                formField.special_type.onChange(value)
               }
               options={MetabaseCore.field_special_types
                 .concat({
@@ -63,7 +61,8 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
                     isNumericBaseType(field) ||
                     !isa(type && type.id, TYPE.UNIXTimestamp),
                 )}
-              onChange={type => formField.special_type.onChange(type.id)}
+              optionValueFn={o => o.id}
+              optionSectionFn={o => o.section}
             />
           ) : (
             <div className="flex">
@@ -96,19 +95,17 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
             ? (isFK(formField.special_type.value) ||
                 (isFK(field.special_type) &&
                   formField.special_type.value === undefined)) && (
-                <LegacySelect
-                  triggerClasses={F.fieldSelect}
-                  placeholder={t`Select a field type`}
+                <Select
+                  placeholder={t`Select a target`}
                   value={
-                    foreignKeys[formField.fk_target_field_id.value] ||
-                    foreignKeys[field.fk_target_field_id] ||
-                    {}
+                    formField.fk_target_field_id.value ||
+                    field.fk_target_field_id
+                  }
+                  onChange={({ target: { value } }) =>
+                    formField.fk_target_field_id.onChange(value)
                   }
                   options={Object.values(foreignKeys)}
-                  onChange={foreignKey =>
-                    formField.fk_target_field_id.onChange(foreignKey.id)
-                  }
-                  optionNameFn={foreignKey => foreignKey.name}
+                  optionValueFn={o => o.id}
                 />
               )
             : isFK(field.special_type) && (

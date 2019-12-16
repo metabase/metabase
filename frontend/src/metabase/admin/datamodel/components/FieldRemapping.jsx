@@ -5,7 +5,7 @@ import _ from "underscore";
 import cx from "classnames";
 
 import SelectButton from "metabase/components/SelectButton";
-import { LegacySelect } from "metabase/components/Select";
+import Select from "metabase/components/Select";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import FieldList from "metabase/query_builder/components/FieldList";
 import InputBlurChange from "metabase/components/InputBlurChange";
@@ -98,7 +98,7 @@ export default class FieldRemapping extends React.Component {
     });
   };
 
-  onSetMappingType = async mappingType => {
+  handleChangeMappingType = async ({ target: { value: mappingType } }) => {
     const {
       table,
       field,
@@ -254,10 +254,11 @@ export default class FieldRemapping extends React.Component {
 
     return (
       <div>
-        <LegacySelect
+        <Select
           value={mappingType}
-          onChange={this.onSetMappingType}
+          onChange={this.handleChangeMappingType}
           options={this.getAvailableMappingTypes()}
+          optionValueFn={o => o}
         />
         {mappingType === MAP_OPTIONS.foreign && [
           <SelectSeparator key="foreignKeySeparator" />,

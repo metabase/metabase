@@ -52,7 +52,7 @@ import {
   FETCH_CARD_DATA,
 } from "metabase/dashboard/dashboard";
 
-import { LegacySelect } from "metabase/components/Select";
+import Select from "metabase/components/Select";
 import RunButton from "metabase/query_builder/components/RunButton";
 import Scalar from "metabase/visualizations/visualizations/Scalar";
 import ParameterFieldWidget from "metabase/parameters/components/widgets/ParameterFieldWidget";
@@ -252,9 +252,9 @@ describe("public/embedded", () => {
       );
 
       // currently only one Select is present, but verify it's the right one
-      expect(app.find(LegacySelect).text()).toBe("Disabled");
+      expect(app.find(Select).text()).toBe("Disabled");
       // make the parameter editable
-      click(app.find(LegacySelect));
+      click(app.find(Select));
 
       click(app.find(".TestPopoverBody .Icon-pencil"));
 
