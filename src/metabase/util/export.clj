@@ -1,8 +1,9 @@
 (ns metabase.util.export
   (:require [cheshire.core :as json]
             [clojure.data.csv :as csv]
+            [clojure.java.io :as io]
             [dk.ative.docjure.spreadsheet :as spreadsheet])
-  (:import [java.io ByteArrayInputStream ByteArrayOutputStream File]
+  (:import [java.io File PipedOutputStream]
            org.apache.poi.ss.usermodel.Cell))
 
 ;; add a generic implementation for the method that writes values to XLSX cells that just piggybacks off the
@@ -24,12 +25,10 @@
   (cons (map :display_name (get-in results [:result :data :cols]))
         (get-in results [:result :data :rows])))
 
-(defn- export-to-xlsx [column-names rows]
-  (let [wb  (spreadsheet/create-workbook "Query result" (cons (mapv name column-names) rows))
-        ;; note: byte array streams don't need to be closed
-        out (ByteArrayOutputStream.)]
-    (spreadsheet/save-workbook! out wb)
-    (ByteArrayInputStream. (.toByteArray out))))
+(defn- export-to-xlsx
+  [^PipedOutputStream ostream column-names rows]
+  (let [wb (spreadsheet/create-workbook "Query result" (cons (mapv name column-names) rows))]
+    (spreadsheet/save-workbook! ostream wb)))
 
 (defn export-to-xlsx-file
   "Write an XLS file to `file` with the header a and rows found in `results`"
@@ -39,10 +38,10 @@
          (spreadsheet/create-workbook "Query result")
          (spreadsheet/save-workbook! file-path))))
 
-(defn- export-to-csv [column-names rows]
-  (with-out-str
+(defn- export-to-csv [ostream column-names rows]
+  (with-open [writer (io/writer ostream)]
     ;; turn keywords into strings, otherwise we get colons in our output
-    (csv/write-csv *out* (into [(mapv name column-names)] rows))))
+    (csv/write-csv writer (cons (mapv name column-names) rows))))
 
 (defn export-to-csv-writer
   "Write a CSV to `file` with the header a and rows found in `results`"
@@ -50,9 +49,12 @@
   (with-open [fw (java.io.FileWriter. file)]
     (csv/write-csv fw (results->cells results))))
 
-(defn- export-to-json [column-names rows]
-  (for [row rows]
-    (zipmap column-names row)))
+(defn- export-to-json [ostream column-names rows]
+  (with-open [writer (io/writer ostream)]
+    (json/generate-stream
+      (for [row rows]
+        (zipmap column-names row))
+      writer)))
 
 ;; TODO - we should rewrite this whole thing as 4 multimethods. Then it would be possible to add new export types via
 ;; plugins, etc.

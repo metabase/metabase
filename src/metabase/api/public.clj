@@ -127,7 +127,12 @@
   {parameters    (s/maybe su/JSONString)
    export-format dataset-api/ExportFormat}
   (dataset-api/as-format-async export-format respond raise
-    (run-query-for-card-with-public-uuid-async uuid (json/parse-string parameters keyword), :constraints nil)))
+    (fn [f]
+      (run-query-for-card-with-public-uuid-async
+        uuid
+        (json/parse-string parameters keyword)
+        :constraints nil
+        :data-fn f))))
 
 
 
@@ -250,7 +255,7 @@
   `dashboard-id`. Throws a 404 immediately if the Card isn't part of the Dashboard. Otherwise returns channel for
   fetching results."
   {:style/indent 3}
-  [dashboard-id card-id parameters & {:keys [context constraints]
+  [dashboard-id card-id parameters & {:keys [context constraints data-fn]
                                       :or   {context :public-dashboard
                                              constraints constraints/default-query-constraints}}]
   (check-card-is-in-dashboard card-id dashboard-id)
@@ -260,7 +265,8 @@
     (run-query-for-card-with-id-async card-id params
       :dashboard-id dashboard-id
       :context      context
-      :constraints  constraints)))
+      :constraints  constraints
+      :data-fn      data-fn)))
 
 (api/defendpoint GET "/dashboard/:uuid/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public

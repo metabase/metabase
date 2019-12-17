@@ -237,7 +237,7 @@
 (defn dashcard-results-async
   "Return results for running the query belonging to a DashboardCard."
   {:style/indent 0}
-  [& {:keys [dashboard-id dashcard-id card-id embedding-params token-params query-params constraints]
+  [& {:keys [dashboard-id dashcard-id card-id embedding-params token-params query-params data-fn constraints]
       :or   {constraints constraints/default-query-constraints}}]
   {:pre [(integer? dashboard-id) (integer? dashcard-id) (integer? card-id) (u/maybe? map? embedding-params)
          (map? token-params) (map? query-params)]}
@@ -246,7 +246,8 @@
                                                  parameter-values)]
     (public-api/public-dashcard-results-async dashboard-id card-id parameters
       :context     :embedded-dashboard
-      :constraints constraints)))
+      :constraints constraints
+      :data-fn     data-fn)))
 
 
 ;;; ------------------------------------- Other /api/embed-specific utility fns --------------------------------------
@@ -314,7 +315,12 @@
   [{{:keys [token export-format]} :params, :keys [query-params]} respond raise]
   {export-format dataset-api/ExportFormat}
   (dataset-api/as-format-async export-format respond raise
-    (run-query-for-unsigned-token-async (eu/unsign token) (m/map-keys keyword query-params), :constraints nil)))
+    (fn [f]
+      (run-query-for-unsigned-token-async
+        (eu/unsign token)
+        (m/map-keys keyword query-params)
+        :constraints nil
+        :data-fn f))))
 
 
 ;;; ----------------------------------------- /api/embed/dashboard endpoints -----------------------------------------
@@ -343,7 +349,7 @@
 
    Additional dashboard parameters can be provided in the query string, but params in the JWT token take precedence."
   {:style/indent 1}
-  [token dashcard-id card-id query-params & {:keys [constraints]
+  [token dashcard-id card-id query-params & {:keys [constraints data-fn]
                                              :or   {constraints constraints/default-query-constraints}}]
   (let [unsigned-token (eu/unsign token)
         dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
@@ -355,7 +361,8 @@
       :embedding-params (db/select-one-field :embedding_params Dashboard :id dashboard-id)
       :token-params     (eu/get-in-unsigned-token-or-throw unsigned-token [:params])
       :query-params     query-params
-      :constraints      constraints)))
+      :constraints      constraints
+      :data-fn          data-fn)))
 
 (api/defendpoint GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
@@ -441,11 +448,13 @@
   [{{:keys [token export-format dashcard-id card-id]} :params, :keys [query-params]} respond raise]
   {export-format dataset-api/ExportFormat}
   (dataset-api/as-format-async export-format respond raise
-    (card-for-signed-token-async token
-      (Integer/parseUnsignedInt dashcard-id)
-      (Integer/parseUnsignedInt card-id)
-      (m/map-keys keyword query-params)
-      :constraints nil)))
+    (fn [f]
+      (card-for-signed-token-async token
+        (Integer/parseUnsignedInt dashcard-id)
+        (Integer/parseUnsignedInt card-id)
+        (m/map-keys keyword query-params)
+        :constraints nil
+        :data-fn f))))
 
 
 (api/define-routes)

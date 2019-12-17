@@ -25,7 +25,8 @@
              [i18n :refer [trs tru]]
              [schema :as su]]
             [schema.core :as s])
-  (:import clojure.core.async.impl.channels.ManyToManyChannel))
+  (:import [java.io PipedInputStream
+                    PipedOutputStream]))
 
 ;;; -------------------------------------------- Running a Query Normally --------------------------------------------
 
@@ -102,42 +103,47 @@
       rows)))
 
 (defn- as-format-response
-  "Return a response containing the `results` of a query in the specified format."
-  {:style/indent 1, :arglists '([export-format results])}
-  [export-format {{:keys [rows cols]} :data, :keys [status error], error-type :error_type, :as response}]
+  "Return a response containing `stream` in the specified format."
+  [export-format stream]
   (api/let-404 [export-conf (ex/export-formats export-format)]
-    (if (= status :completed)
-      ;; successful query, send file
-      {:status  200
-       :body    ((:export-fn export-conf)
-                 (map #(some % [:display_name :name]) cols)
-                 (maybe-modify-date-values cols rows))
-       :headers {"Content-Type"        (str (:content-type export-conf) "; charset=utf-8")
-                 "Content-Disposition" (format "attachment; filename=\"query_result_%s.%s\""
-                                               (u.date/format (t/zoned-date-time))
-                                               (:ext export-conf))}}
-      ;; failed query, send error message
-      {:status (if (qp.error-type/server-error? error-type)
-                 500
-                 400)
-       :body   error})))
+    {:status  200
+     :body    stream
+     :headers {"Content-Type"        (str (:content-type export-conf) "; charset=utf-8")
+               "Content-Disposition" (format "attachment; filename=\"query_result_%s.%s\""
+                                             (u.date/format (t/zoned-date-time))
+                                             (:ext export-conf))}}))
 
 (s/defn as-format-async
-  "Write the results of an async query to API `respond` or `raise` functions in `export-format`. `in-chan` should be a
-  core.async channel that can be used to fetch the results of the query."
+  "Write the results of an async query to API `respond` or `raise` functions in `export-format`. `results-builder`
+  should be a function that calls its sole argument with query results."
   {:style/indent 3}
-  [export-format :- ExportFormat, respond :- (s/pred fn?), raise :- (s/pred fn?), in-chan :- ManyToManyChannel]
-  (a/go
-    (try
-      (let [results (a/<! in-chan)]
-        (if (instance? Throwable results)
-          (raise results)
-          (respond (as-format-response export-format results))))
-      (catch Throwable e
-        (raise e))
-      (finally
-        (a/close! in-chan))))
-  nil)
+  [export-format :- ExportFormat, respond :- (s/pred fn?), raise :- (s/pred fn?), results-builder :- (s/pred fn?)]
+  (let [export-fn (:export-fn (ex/export-formats export-format))
+        input     (PipedInputStream.)
+        response  (promise)
+        in-chan   (results-builder
+                    (fn [{:keys [rows cols]}]
+                      (with-open [ostream (PipedOutputStream. input)]
+                        (deliver response (future (respond (as-format-response export-format input))))
+                        (export-fn
+                          ostream
+                          (map #(some % [:display_name :name]) cols)
+                          (maybe-modify-date-values cols rows)))))]
+    (a/go
+      (try
+        (let [results (a/<! in-chan)]
+          (when-not (realized? response)
+            (if (instance? Throwable results)
+              (raise results)
+              (respond
+                {:status (if (qp.error-type/server-error? (:error_type results))
+                           500
+                           400)
+                 :body (:error results)}))))
+        (catch Throwable e
+          (raise e))
+        (finally
+          (a/close! in-chan))))))
 
 (def export-format-regex
   "Regex for matching valid export formats (e.g., `json`) for queries.
@@ -155,12 +161,14 @@
     (when-not (= database mbql.s/saved-questions-virtual-database-id)
       (api/read-check Database database))
     (as-format-async export-format respond raise
-      (qp.async/process-query-and-save-execution!
-       (-> query
-           (dissoc :constraints)
-           (m/dissoc-in [:middleware :add-default-userland-constraints?])
-           (assoc-in [:middleware :skip-results-metadata?] true))
-       {:executed-by api/*current-user-id*, :context (export-format->context export-format)}))))
+      (fn [f]
+        (qp.async/process-query-and-save-execution!
+         (-> query
+             (assoc :data-fn f)
+             (dissoc :constraints)
+             (m/dissoc-in [:middleware :add-default-userland-constraints?])
+             (assoc-in [:middleware :skip-results-metadata?] true))
+         {:executed-by api/*current-user-id*, :context (export-format->context export-format)})))))
 
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------

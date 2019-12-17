@@ -602,12 +602,12 @@
   "Run the query for Card with `parameters` and `constraints`, and return results in a core.async channel. Will throw an
   Exception if preconditions (such as read perms) are not met before returning a channel."
   {:style/indent 1}
-  [card-id & {:keys [parameters constraints context dashboard-id middleware]
+  [card-id & {:keys [parameters constraints context dashboard-id middleware data-fn]
               :or   {constraints constraints/default-query-constraints
                      context     :question}}]
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card    (api/read-check (Card card-id))
-        query   (query-for-card card parameters constraints middleware)
+        query   (assoc (query-for-card card parameters constraints middleware) :data-fn data-fn)
         options {:executed-by  api/*current-user-id*
                  :context      context
                  :card-id      card-id
@@ -630,12 +630,13 @@
    export-format dataset-api/ExportFormat}
   (binding [cache/*ignore-cached-results* true]
     (dataset-api/as-format-async export-format respond raise
-      (run-query-for-card-async (Integer/parseUnsignedInt card-id)
+      (fn [f]
+       (run-query-for-card-async (Integer/parseUnsignedInt card-id)
         :parameters  (json/parse-string parameters keyword)
         :constraints nil
         :context     (dataset-api/export-format->context export-format)
-        :middleware  {:skip-results-metadata? true}))))
-
+        :middleware  {:skip-results-metadata? true}
+        :data-fn     f)))))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 

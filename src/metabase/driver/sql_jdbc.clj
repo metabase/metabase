@@ -48,6 +48,10 @@
   [driver query]
   (sql-jdbc.execute/execute-query driver query))
 
+(defmethod driver/execute-query-callback :sql-jdbc
+  [driver query callback]
+  (sql-jdbc.execute/execute-query driver (assoc query :data-fn callback)))
+
 (defmethod driver/notify-database-updated :sql-jdbc
   [driver database]
   (sql-jdbc.conn/notify-database-updated driver database))

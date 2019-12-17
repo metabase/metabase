@@ -331,6 +331,14 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti execute-query-callback
+  "Like execute-query, but pass the result to a callback rather than returning it."
+  {:arglists '([driver query callback]), :style/indent 1}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod execute-query-callback :default [driver query callback]
+  (callback (execute-query driver query)))
 
 (def driver-features
   "Set of all features a driver can support."

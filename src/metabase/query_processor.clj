@@ -66,7 +66,18 @@
   Processor methods. This function takes the fully pre-processed query, runs it, and returns the results, which then
   run through the various post-processing steps."
   [query :- (s/pred map?)]
-  (driver/execute-query driver/*driver* query))
+  (if-let [f (:data-fn query)]
+    (let [query (dissoc query :data-fn)]
+      (driver/execute-query-callback
+        driver/*driver*
+        query
+        (fn [res] (f ((->
+                        (constantly res)
+                        annotate/result-rows-maps->vectors
+                        annotate/add-column-info
+                        format-rows/format-rows)
+                      query)))))
+    (driver/execute-query driver/*driver* query)))
 
 ;; The way these functions are applied is actually straight-forward; it matches the middleware pattern used by
 ;; Ring.

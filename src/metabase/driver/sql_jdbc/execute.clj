@@ -232,19 +232,30 @@
             (finally
               (throw e))))))))
 
+(defn- prepare-result
+  "Convert a result set to a hash-map with :rows and :columns."
+  [[columns & rows]] {:rows (or rows []) :columns (map u/qualified-name columns)})
+
+(defn- handle-result-set [data-fn result]
+  (let [{:keys [columns] :as data} (prepare-result result)]
+    (data-fn data)
+    {:rows [] :columns columns}))
+
 (defn- run-query
   "Run the query itself."
-  [driver {sql :query, :keys [params remark max-rows]} connection]
+  [driver {sql :query, :keys [params remark max-rows data-fn]}, connection]
   (let [sql              (str "-- " remark "\n" sql)
-        [columns & rows] (cancelable-run-query
-                          connection sql params
-                          {:identifiers    identity
-                           :as-arrays?     true
-                           :read-columns   (partial read-columns driver)
-                           :set-parameters (partial set-parameters driver)
-                           :max-rows       max-rows})]
-    {:rows    (or rows [])
-     :columns (map u/qualified-name columns)}))
+        res              (cancelable-run-query
+                           connection sql params
+                           {:identifiers    identity
+                            :as-arrays?     true
+                            :result-set-fn  (when data-fn (partial handle-result-set data-fn))
+                            :read-columns   (partial read-columns driver)
+                            :set-parameters (partial set-parameters driver)
+                            :max-rows       max-rows})]
+    (if (nil? data-fn)
+      (prepare-result res)
+      res)))
 
 
 ;;; -------------------------- Running queries: exception handling & disabling auto-commit ---------------------------
@@ -338,11 +349,12 @@
 
 (defn execute-query
   "Process and run a native (raw SQL) `query`."
-  [driver {query :native, :as outer-query}]
+  [driver {data-fn :data-fn, query :native, :as outer-query}]
   (let [report-timezone (qp.timezone/report-timezone-id-if-supported)
         query           (assoc query
                                :remark   (qputil/query->remark outer-query)
-                               :max-rows (or (mbql.u/query->max-rows-limit outer-query) qp.i/absolute-max-results))]
+                               :max-rows (or (mbql.u/query->max-rows-limit outer-query) qp.i/absolute-max-results)
+                               :data-fn  data-fn)]
     (do-with-try-catch
       (fn []
         (let [db-connection (sql-jdbc.conn/db->pooled-connection-spec (qp.store/database))
