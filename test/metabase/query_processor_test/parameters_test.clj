@@ -83,13 +83,11 @@
    :type       :native
    :native     (assoc (native-count-query driver/*driver* table field->type+value)
                       :template-tags (into {} (for [[field [param-type v]] field->type+value]
-                                                [field (merge
-                                                        {:name         (name field)
-                                                         :display-name (name field)
-                                                         :type         (or (namespace param-type)
-                                                                           (name param-type))}
-                                                        (when defaults?
-                                                          {:default (when defaults? v)}))])))
+                                                [field (cond-> {:name         (name field)
+                                                                :display-name (name field)
+                                                                :type         (or (namespace param-type)
+                                                                                  (name param-type))}
+                                                         defaults? (assoc :default v))])))
    :parameters (when-not defaults?
                  (for [[field [param-type v]] field->type+value]
                    {:type   param-type
