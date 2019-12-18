@@ -446,6 +446,10 @@ jobs:
             - run:
                 name: Generate version file
                 command: ./bin/build version
+      - store_artifacts:
+          path: /home/circleci/metabase/metabase/cypress
+      - store_test_results:
+          path: cypress/results
 
   build-uberjar:
     executor: clojure-and-node
