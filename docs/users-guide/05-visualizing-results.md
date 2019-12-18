@@ -199,7 +199,7 @@ There's quite a bit you can do in this tab:
 
 - Set the colors and labels for the series on your chart
 - Change the style of your lines for Line and Area charts, and choose whether or not to display dots on them
-- Use the "Replace missing values with…" setting to change how your chart deals with missing values. You can user linear interpolation, or display those points as zero or as nothing.
+- Use the "Replace missing values with…" setting to change how your chart deals with missing values. You can use linear interpolation, or display those points as zero or as nothing.
 - Add a goal line. This can be used in conjunction with [alerts](15-alerts.md) to send an email or a Slack message when your metric cross this line.
 - If you're looking at a time series chart, you can turn on a trend line to show where things are heading.
 - Show values on data points. The default setting will try and fit as many values on your chart as will fit nicely, but you can also force Metabase to show the values for each and every data point, which it will do begrudgingly.
