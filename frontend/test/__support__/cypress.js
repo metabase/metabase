@@ -9,3 +9,5 @@ export function signInAsNormalUser() {
 }
 
 export const plainDbHost = Cypress.env("PLAIN_DB_HOST");
+
+Cypress.on("uncaught:exception", (err, runnable) => false);

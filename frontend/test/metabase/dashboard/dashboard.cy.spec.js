@@ -1,7 +1,6 @@
 import { signInAsAdmin } from "__support__/cypress";
 
 describe("dashboard", () => {
-  Cypress.on("uncaught:exception", (err, runnable) => false);
   beforeEach(signInAsAdmin);
 
   it("should have the correct embed snippet", () => {
