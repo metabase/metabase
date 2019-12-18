@@ -64,6 +64,6 @@
   [parsed-query param->value]
   (let [[sql args missing] (substitute* param->value parsed-query false)]
     (when (seq missing)
-      (throw (ex-info (tru "Cannot run query: missing required parameters: {0}" (set missing))
+      (throw (ex-info (tru "Cannot run the query: missing required parameters: {0}" (set missing))
                {:type error-type/invalid-query})))
     [(str/trim sql) args]))

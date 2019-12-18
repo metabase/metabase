@@ -117,7 +117,7 @@
   ;; grab the oldest admins email address, that's who we'll send to
   (when-let [admin-email (db/select-one-field :email User :is_superuser true, {:order-by [:date_joined]})]
     (when (should-send-abandoment-email?)
-      (log/info (trs "Sending abandoment email!"))
+      (log/info (trs "Sending abandonment email!"))
       (try
         (messages/send-follow-up-email! admin-email "abandon")
         (catch Throwable e
