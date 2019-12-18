@@ -124,7 +124,7 @@ This is necessary because the MariaDB connector, used by Metabase to connect to 
 >
 > https://jira.mariadb.org/browse/CONJ-663
 
-### Error message: Connections cannot be acquired from the underlying database!
+### Error message: "Connections cannot be acquired from the underlying database!"
 
 #### How to detect this
 
