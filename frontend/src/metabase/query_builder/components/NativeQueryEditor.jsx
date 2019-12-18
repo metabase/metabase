@@ -230,6 +230,7 @@ export default class NativeQueryEditor extends Component {
         shouldUpdateUrl: false,
       });
     } else if (query.canRun()) {
+      // $FlowFixMe
       runQuestionQuery()
         // <hack>
         // This is an attempt to fix a conflict between Ace and react-draggable.
