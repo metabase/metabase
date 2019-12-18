@@ -28,6 +28,7 @@ import "ace/snippets/json";
 import { t } from "ttag";
 
 import { isMac } from "metabase/lib/browser";
+import { delay } from "metabase/lib/promise";
 import { SQLBehaviour } from "metabase/lib/ace/sql_behaviour";
 
 import _ from "underscore";
@@ -229,7 +230,22 @@ export default class NativeQueryEditor extends Component {
         shouldUpdateUrl: false,
       });
     } else if (query.canRun()) {
-      runQuestionQuery();
+      // $FlowFixMe
+      runQuestionQuery()
+        // <hack>
+        // This is an attempt to fix a conflict between Ace and react-draggable.
+        // TableInteractive uses react-draggable for the column headers. When
+        // that's first added (as a result of runninga query), Ace freezes until
+        // the arrow keys are hit or text is deleted.
+        // Bluring and refocusing gets it out of that state. Here we try and
+        // wait until just after a table is added. That's super error prone, but
+        // we're just doing a best effort to eliminate the freezing.
+        .then(() => delay(1500))
+        .then(() => {
+          this._editor.blur();
+          this._editor.focus();
+        });
+      // </hack>
     }
   };
 
@@ -249,6 +265,16 @@ export default class NativeQueryEditor extends Component {
     // listen to onChange events
     this._editor.getSession().on("change", this.onChange);
     this._editor.on("changeSelection", this.handleSelectionChange);
+
+    const minLineNumberWidth = 20;
+    this._editor.getSession().gutterRenderer = {
+      getWidth: (session, lastLineNumber, config) =>
+        Math.max(
+          minLineNumberWidth,
+          lastLineNumber.toString().length * config.characterWidth,
+        ),
+      getText: (session, row) => row + 1,
+    };
 
     // initialize the content
     this._editor.setValue(query ? query.queryText() : "");
