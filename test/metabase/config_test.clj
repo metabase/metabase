@@ -1,7 +1,7 @@
 (ns metabase.config-test
-  (:require [metabase.config :as config]
-            [clojure.test :refer :all]
-            [environ.core :as environ]))
+  (:require [clojure.test :refer :all]
+            [environ.core :as environ]
+            [metabase.config :as config]))
 
 (deftest config-parsing
   (testing "takes value of non-empty env var"
