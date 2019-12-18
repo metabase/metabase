@@ -195,7 +195,7 @@ Here's where you can choose the columns you want to plot on your x and y axes. T
 
 **Display**
 
-There's quite a bit you can do on this tab:
+There's quite a bit you can do in this tab:
 
 - Set the colors and labels for the series on your chart
 - Change the style of your lines for Line and Area charts, and choose whether or not to display dots on them
