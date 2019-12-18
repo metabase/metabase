@@ -6,7 +6,7 @@ import { spawn } from "child_process";
 import fetch from "isomorphic-fetch";
 import { delay } from "../../src/metabase/lib/promise";
 
-export const DEFAULT_DB = __dirname + "/test_db_fixture.db";
+export const DEFAULT_DB_KEY = "/test_db_fixture.db";
 
 let testDbId = 0;
 const getDbFile = () =>
@@ -16,24 +16,22 @@ let port = 4000;
 const getPort = () => port++;
 
 export const BackendResource = createSharedResource("BackendResource", {
-  getKey({ dbKey = DEFAULT_DB }) {
+  getKey({ dbKey = DEFAULT_DB_KEY }) {
     return dbKey || {};
   },
-  create({ dbKey = DEFAULT_DB }) {
+  create({ dbKey = DEFAULT_DB_KEY }) {
     const dbFile = getDbFile();
-    if (!dbKey) {
-      dbKey = dbFile;
-    }
-    if (process.env["E2E_HOST"] && dbKey === DEFAULT_DB) {
+    const absoluteDbKey = dbKey ? __dirname + dbKey : dbFile;
+    if (process.env["E2E_HOST"] && dbKey === DEFAULT_DB_KEY) {
       return {
-        dbKey: dbKey,
+        dbKey: absoluteDbKey,
         host: process.env["E2E_HOST"],
         process: { kill: () => {} },
       };
     } else {
       const port = getPort();
       return {
-        dbKey: dbKey,
+        dbKey: absoluteDbKey,
         dbFile: dbFile,
         host: `http://localhost:${port}`,
         port: port,

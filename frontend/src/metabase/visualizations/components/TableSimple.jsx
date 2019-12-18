@@ -109,7 +109,14 @@ export default class TableSimple extends Component {
 
     let rowIndexes = _.range(0, rows.length);
     if (sortColumn != null) {
-      rowIndexes = _.sortBy(rowIndexes, rowIndex => rows[rowIndex][sortColumn]);
+      rowIndexes = _.sortBy(rowIndexes, rowIndex => {
+        let value = rows[rowIndex][sortColumn];
+        // for strings we should be case insensitive
+        if (typeof value === "string") {
+          value = value.toLowerCase();
+        }
+        return value;
+      });
       if (sortDescending) {
         rowIndexes.reverse();
       }

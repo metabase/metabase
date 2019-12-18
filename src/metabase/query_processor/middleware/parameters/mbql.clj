@@ -1,12 +1,12 @@
 (ns metabase.query-processor.middleware.parameters.mbql
   "Code for handling parameter substitution in MBQL queries."
-  (:require [metabase.mbql
+  (:require [metabase.driver.common.parameters.dates :as date-params]
+            [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.models
              [field :refer [Field]]
              [params :as params]]
-            [metabase.query-processor.middleware.parameters.dates :as date-params]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))

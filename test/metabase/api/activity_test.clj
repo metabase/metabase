@@ -2,6 +2,9 @@
   "Tests for /api/activity endpoints."
   (:require [clojure.test :refer :all]
             [expectations :refer [expect]]
+            [metabase
+             [db :as mdb]
+             [util :as u]]
             [metabase.api.activity :as activity-api]
             [metabase.models
              [activity :refer [Activity]]
@@ -10,8 +13,6 @@
              [view-log :refer [ViewLog]]]
             [metabase.test.data.users :as test-users]
             [metabase.test.fixtures :as fixtures]
-            [metabase.util :as u]
-            [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -39,44 +40,45 @@
     [:common_name :date_joined :email :first_name :is_qbnewb :is_superuser :last_login :last_name])))
 
 ;; NOTE: timestamp matching was being a real PITA so I cheated a bit.  ideally we'd fix that
-(tt/expect-with-temp [Activity [activity1 {:topic     "install"
-                                           :details   {}
-                                           :timestamp (du/->Timestamp #inst "2015-09-09T12:13:14.888Z")}]
-                      Activity [activity2 {:topic     "dashboard-create"
-                                           :user_id   (test-users/user->id :crowberto)
-                                           :model     "dashboard"
-                                           :model_id  1234
-                                           :details   {:description "Because I can!"
-                                                       :name        "Bwahahaha"}
-                                           :timestamp (du/->Timestamp #inst "2015-09-10T18:53:01.632Z")}]
-                      Activity [activity3 {:topic     "user-joined"
-                                           :user_id   (test-users/user->id :rasta)
-                                           :model     "user"
-                                           :details   {}
-                                           :timestamp (du/->Timestamp #inst "2015-09-10T05:33:43.641Z")}]]
-  (let [activity-ids (fn [activity]
-                       (db/select-one [Activity :id :user_id :details :model :model_id] :id (u/get-id activity)))]
-    [(merge
-      activity-defaults
-      (activity-ids activity2)
-      {:topic "dashboard-create"
-       :user  (activity-user-info :crowberto)})
-     (merge
-      activity-defaults
-      (activity-ids activity3)
-      {:topic "user-joined"
-       :user  (activity-user-info :rasta)})
-     (merge
-      activity-defaults
-      (activity-ids activity1)
-      {:topic   "install"
-       :user_id nil
-       :user    nil})])
-  ;; remove other activities from the API response just in case -- we're not interested in those
-  (let [these-activity-ids #{(u/get-id activity1) (u/get-id activity2) (u/get-id activity3)}]
-    (for [activity ((test-users/user->client :crowberto) :get 200 "activity")
-          :when    (contains? these-activity-ids (u/get-id activity))]
-      (dissoc activity :timestamp))))
+(deftest activity-list-test
+  (testing "GET /api/activity"
+    (tt/with-temp* [Activity [activity1 {:topic     "install"
+                                         :details   {}
+                                         :timestamp #t "2015-09-09T12:13:14.888Z[UTC]"}]
+                    Activity [activity2 {:topic     "dashboard-create"
+                                         :user_id   (test-users/user->id :crowberto)
+                                         :model     "dashboard"
+                                         :model_id  1234
+                                         :details   {:description "Because I can!"
+                                                     :name        "Bwahahaha"}
+                                         :timestamp #t "2015-09-10T18:53:01.632Z[UTC]"}]
+                    Activity [activity3 {:topic     "user-joined"
+                                         :user_id   (test-users/user->id :rasta)
+                                         :model     "user"
+                                         :details   {}
+                                         :timestamp #t "2015-09-10T05:33:43.641Z[UTC]"}]]
+      (is (= (letfn [(fetch-activity [activity]
+                       (merge
+                        activity-defaults
+                        (db/select-one [Activity :id :user_id :details :model :model_id] :id (u/get-id activity))))]
+               [(merge
+                 (fetch-activity activity2)
+                 {:topic "dashboard-create"
+                  :user  (activity-user-info :crowberto)})
+                (merge
+                 (fetch-activity activity3)
+                 {:topic "user-joined"
+                  :user  (activity-user-info :rasta)})
+                (merge
+                 (fetch-activity activity1)
+                 {:topic   "install"
+                  :user_id nil
+                  :user    nil})])
+             ;; remove other activities from the API response just in case -- we're not interested in those
+             (let [these-activity-ids (set (map u/get-id [activity1 activity2 activity3]))]
+               (for [activity ((test-users/user->client :crowberto) :get 200 "activity")
+                     :when    (contains? these-activity-ids (u/get-id activity))]
+                 (dissoc activity :timestamp))))))))
 
 
 ;;; GET /recent_views
@@ -92,59 +94,59 @@
     :user_id  user
     :model    model
     :model_id model-id
-    :timestamp (du/new-sql-timestamp))
+    :timestamp :%now)
   ;; we sleep a bit to ensure no events have the same timestamp
   ;; sadly, MySQL doesn't support milliseconds so we have to wait a second
   ;; otherwise our records are out of order and this test fails :(
-  (Thread/sleep 1000))
+  (Thread/sleep (if (= (mdb/db-type) :mysql)
+                  1000
+                  10)))
 
-(tt/expect-with-temp [Card      [card1 {:name                   "rand-name"
-                                        :creator_id             (test-users/user->id :crowberto)
-                                        :display                "table"
-                                        :dataset_query          {}
-                                        :visualization_settings {}}]
-                      Dashboard [dash1 {:name        "rand-name"
-                                        :description "rand-name"
-                                        :creator_id  (test-users/user->id :crowberto)}]
-                      Card      [card2 {:name                   "rand-name"
-                                        :creator_id             (test-users/user->id :crowberto)
-                                        :display                "table"
-                                        :dataset_query          {}
-                                        :visualization_settings {}}]]
-  [{:cnt          1
-    :user_id      (test-users/user->id :crowberto)
-    :model        "card"
-    :model_id     (:id card1)
-    :model_object {:id            (:id card1)
-                   :name          (:name card1)
-                   :collection_id nil
-                   :description   (:description card1)
-                   :display       (name (:display card1))}}
-   {:cnt          1
-    :user_id      (test-users/user->id :crowberto)
-    :model        "dashboard"
-    :model_id     (:id dash1)
-    :model_object {:id            (:id dash1)
-                   :name          (:name dash1)
-                   :collection_id nil
-                   :description   (:description dash1)}}
-   {:cnt          1
-    :user_id      (test-users/user->id :crowberto)
-    :model        "card"
-    :model_id     (:id card2)
-    :model_object {:id            (:id card2)
-                   :name          (:name card2)
-                   :collection_id nil
-                   :description   (:description card2)
-                   :display       (name (:display card2))}}]
-  (do
+(deftest recent-views-test
+  (tt/with-temp* [Card      [card1 {:name                   "rand-name"
+                                    :creator_id             (test-users/user->id :crowberto)
+                                    :display                "table"
+                                    :visualization_settings {}}]
+                  Dashboard [dash1 {:name        "rand-name"
+                                    :description "rand-name"
+                                    :creator_id  (test-users/user->id :crowberto)}]
+                  Card      [card2 {:name                   "rand-name"
+                                    :creator_id             (test-users/user->id :crowberto)
+                                    :display                "table"
+                                    :visualization_settings {}}]]
     (create-view! (test-users/user->id :crowberto) "card"      (:id card2))
     (create-view! (test-users/user->id :crowberto) "dashboard" (:id dash1))
     (create-view! (test-users/user->id :crowberto) "card"      (:id card1))
     (create-view! (test-users/user->id :crowberto) "card"      36478)
     (create-view! (test-users/user->id :rasta)     "card"      (:id card1))
-    (for [recent-view ((test-users/user->client :crowberto) :get 200 "activity/recent_views")]
-      (dissoc recent-view :max_ts))))
+    (is (= [{:cnt          1
+             :user_id      (test-users/user->id :crowberto)
+             :model        "card"
+             :model_id     (:id card1)
+             :model_object {:id            (:id card1)
+                            :name          (:name card1)
+                            :collection_id nil
+                            :description   (:description card1)
+                            :display       (name (:display card1))}}
+            {:cnt          1
+             :user_id      (test-users/user->id :crowberto)
+             :model        "dashboard"
+             :model_id     (:id dash1)
+             :model_object {:id            (:id dash1)
+                            :name          (:name dash1)
+                            :collection_id nil
+                            :description   (:description dash1)}}
+            {:cnt          1
+             :user_id      (test-users/user->id :crowberto)
+             :model        "card"
+             :model_id     (:id card2)
+             :model_object {:id            (:id card2)
+                            :name          (:name card2)
+                            :collection_id nil
+                            :description   (:description card2)
+                            :display       (name (:display card2))}}]
+           (for [recent-view ((test-users/user->client :crowberto) :get 200 "activity/recent_views")]
+             (dissoc recent-view :max_ts))))))
 
 
 ;;; activities->referenced-objects, referenced-objects->existing-objects, add-model-exists-info
@@ -188,16 +190,21 @@
                                          {:model "dashboard", :model_id 0, :topic :dashboard-remove-cards, :details {:dashcards [{:card_id card-id}
                                                                                                                                  {:card_id 0}]}}]))
 
-;; Only admins should get to see user-joined activities
 (defn- user-can-see-user-joined-activity? [user]
   ;; clear out all existing Activity entries
   (db/delete! Activity)
   (-> (tt/with-temp Activity [activity {:topic     "user-joined"
                                         :details   {}
-                                        :timestamp (du/->Timestamp #inst "2019-02-15T11:55:00.000Z")}]
+                                        :timestamp #t "2019-02-15T11:55:00.000Z"}]
         ((test-users/user->client user) :get 200 "activity"))
       seq
       boolean))
 
-(expect true  (user-can-see-user-joined-activity? :crowberto))
-(expect false (user-can-see-user-joined-activity? :rasta))
+(deftest activity-visibility-test
+  (testing "Only admins should get to see user-joined activities"
+    (is (= true
+           (user-can-see-user-joined-activity? :crowberto))
+        "admin should see `:user-joined` activities")
+    (is (= false
+           (user-can-see-user-joined-activity? :rasta))
+        "non-admin should *not* see `:user-joined` activities")))

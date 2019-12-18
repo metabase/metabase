@@ -50,15 +50,18 @@
 
 (defsetting ldap-attribute-email
   (deferred-tru "Attribute to use for the user's email. (usually ''mail'', ''email'' or ''userPrincipalName'')")
-  :default "mail")
+  :default "mail"
+  :getter (fn [] (u/lower-case-en (setting/get-string :ldap-attribute-email))))
 
 (defsetting ldap-attribute-firstname
   (deferred-tru "Attribute to use for the user''s first name. (usually ''givenName'')")
-  :default "givenName")
+  :default "givenName"
+  :getter (fn [] (u/lower-case-en (setting/get-string :ldap-attribute-firstname))))
 
 (defsetting ldap-attribute-lastname
   (deferred-tru "Attribute to use for the user''s last name. (usually ''sn'')")
-  :default "sn")
+  :default "sn"
+  :getter (fn [] (u/lower-case-en (setting/get-string :ldap-attribute-lastname))))
 
 (defsetting ldap-group-sync
   (deferred-tru "Enable group membership synchronization with LDAP.")
@@ -183,7 +186,7 @@
    (with-connection find-user username))
 
   ([conn username]
-   (when-let [{:keys [dn], :as result} (search conn username)]
+   (when-let [{:keys [dn], :as result} (u/lower-case-map-keys (search conn username))]
      (let [{fname (keyword (ldap-attribute-firstname))
             lname (keyword (ldap-attribute-lastname))
             email (keyword (ldap-attribute-email))}    result]

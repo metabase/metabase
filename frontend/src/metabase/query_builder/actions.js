@@ -14,6 +14,7 @@ import { push, replace } from "react-router-redux";
 import { setErrorPage } from "metabase/redux/app";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
+import { startTimer } from "metabase/lib/performance";
 import {
   loadCard,
   startNewCard,
@@ -631,8 +632,12 @@ export const updateTemplateTag = createThunkAction(
       // using updateIn instead of assocIn due to not preserving order of keys
       return updateIn(
         updatedCard,
-        ["dataset_query", "native", "template-tags"],
-        tags => ({ ...tags, [templateTag.name]: templateTag }),
+        ["dataset_query", "native", "template-tags", templateTag.name],
+        tag =>
+          // when we switch type, null out any default
+          tag.type !== templateTag.type
+            ? { ...templateTag, default: null }
+            : templateTag,
       );
     };
   },
@@ -942,20 +947,26 @@ export const runQuestionQuery = ({
     const startTime = new Date();
     const cancelQueryDeferred = defer();
 
+    const queryTimer = startTimer();
+
     question
       .apiGetResults({
         cancelDeferred: cancelQueryDeferred,
         ignoreCache: ignoreCache,
         isDirty: cardIsDirty,
       })
-      .then(queryResults => dispatch(queryCompleted(question, queryResults)))
+      .then(queryResults => {
+        queryTimer(duration =>
+          MetabaseAnalytics.trackEvent(
+            "QueryBuilder",
+            "Run Query",
+            question.query().datasetQuery().type,
+            duration,
+          ),
+        );
+        return dispatch(queryCompleted(question, queryResults));
+      })
       .catch(error => dispatch(queryErrored(startTime, error)));
-
-    MetabaseAnalytics.trackEvent(
-      "QueryBuilder",
-      "Run Query",
-      question.query().datasetQuery().type,
-    );
 
     // TODO Move this out from Redux action asap
     // HACK: prevent SQL editor from losing focus

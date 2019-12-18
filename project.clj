@@ -64,7 +64,6 @@
                  commons-io
                  slingshot]]
    [clojure.java-time "0.3.2"]                                        ; Java 8 java.time wrapper
-   [clj-time "0.15.1"]                                                ; Joda-Time wrapper
    [clojurewerkz/quartzite "2.1.0"                                    ; scheduling library
     :exclusions [c3p0]]
    [colorize "0.1.1" :exclusions [org.clojure/clojure]]               ; string output with ANSI color codes (for logging)
@@ -107,8 +106,8 @@
                  com.sun.jmx/jmxri]]
    [me.raynes/fs "1.4.6"]                                             ; Filesystem tools
    [medley "1.2.0"]                                                   ; lightweight lib of useful functions
-   [metabase/connection-pool "1.0.3"]                                 ; simple wrapper around C3P0. JDBC connection pools
-   [metabase/mbql "1.4.0"]                                            ; MBQL language schema & util fns
+   [metabase/connection-pool "1.1.1"]                                 ; simple wrapper around C3P0. JDBC connection pools
+   [metabase/mbql "1.4.3"]                                            ; MBQL language schema & util fns
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
    [org.apache.commons/commons-lang3 "3.9"]                           ; helper methods for working with java.lang stuff
@@ -142,10 +141,10 @@
   :manifest
   {"Liquibase-Package"
    #= (eval
-       (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
-            "liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,"
-            "liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,"
-            "liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"))}
+        (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
+             "liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,"
+             "liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,"
+             "liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"))}
 
   :jvm-opts
   ["-XX:+IgnoreUnrecognizedVMOptions"                                 ; ignore things not recognized for our Java version instead of refusing to start
@@ -261,7 +260,8 @@
 
    :repl
    [:include-all-drivers
-    {:jvm-opts ["-Duser.timezone=UTC"]}] ; so running the tests doesn't give you different answers
+    ;; so running the tests doesn't give you different answers
+    {:jvm-opts ["-Duser.timezone=UTC"]}]
 
    :bikeshed
    [:include-all-drivers
@@ -320,14 +320,6 @@
    :uberjar
    {:auto-clean true
     :aot        :all}
-
-   ;; generate sample dataset with `lein generate-sample-dataset`
-   :generate-sample-dataset
-   {:dependencies
-    [[faker "0.3.2"]                                                     ; Fake data generator -- port of Perl/Ruby library
-     [jdistlib "0.5.1" :exclusions [com.github.wendykierp/JTransforms]]] ; Distribution statistic tests
-    :source-paths                                                        ["lein-commands/sample-dataset"]
-    :main                                                                ^:skip-aot metabase.sample-dataset.generate}
 
    ;; lein strip-and-compress my-plugin.jar [path/to/metabase.jar]
    ;; strips classes from my-plugin.jar that already exist in other JAR and recompresses with higher compression ratio.

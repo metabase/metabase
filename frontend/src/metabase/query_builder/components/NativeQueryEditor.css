@@ -47,7 +47,8 @@
 
 .NativeQueryEditor .ace_editor .ace_gutter {
   background-color: var(--color-bg-light);
-  border-right: 1px solid var(--color-border);
-  padding-left: 5px;
-  padding-right: 5px;
+}
+
+.NativeQueryEditor .ace_editor .ace_content {
+  padding-left: 7px;
 }

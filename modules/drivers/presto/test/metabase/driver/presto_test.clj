@@ -6,7 +6,8 @@
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :as qp.test]]
+             [query-processor-test :as qp.test]
+             [test :as mt]]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver
              [presto :as presto]
@@ -15,9 +16,7 @@
             [metabase.models
              [field :refer [Field]]
              [table :as table :refer [Table]]]
-            [metabase.query-processor
-             [test-util :as qp.test-util]
-             [timezone :as qp.timezone]]
+            [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -37,18 +36,18 @@
   (driver/with-driver :presto
     (is (= {:headers {"X-Presto-Source" "metabase"
                       "X-Presto-User"   "user"}}
-           (qp.timezone/with-report-timezone-id nil
+           (mt/with-report-timezone-id nil
              (#'presto/details->request {:user "user"}))))
     (is (= {:headers    {"X-Presto-Source" "metabase"
                          "X-Presto-User"   "user"}
             :basic-auth ["user" "test"]}
-           (qp.timezone/with-report-timezone-id nil
+           (mt/with-report-timezone-id nil
              (#'presto/details->request {:user "user", :password "test"}))))
     (is (= {:headers {"X-Presto-Source"    "metabase"
                       "X-Presto-User"      "user"
                       "X-Presto-Catalog"   "test_data"
                       "X-Presto-Time-Zone" "America/Toronto"}}
-           (qp.timezone/with-report-timezone-id "America/Toronto"
+           (mt/with-report-timezone-id "America/Toronto"
              (#'presto/details->request {:user "user", :catalog "test_data"}))))))
 
 (deftest parse-results-test

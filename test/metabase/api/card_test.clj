@@ -2,8 +2,9 @@
   "Tests for /api/card endpoints."
   (:require [cheshire.core :as json]
             [clojure.data.csv :as csv]
+            [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [medley.core :as m]
             [metabase
              [email-test :as et]
@@ -33,7 +34,6 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data.users :as test-users]
-            [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt])
   (:import java.io.ByteArrayInputStream
@@ -47,13 +47,14 @@
   {:archived            false
    :collection_id       nil
    :collection_position nil
+   :dataset_query       {}
    :description         nil
    :display             "scalar"
    :enable_embedding    false
    :embedding_params    nil
    :made_public_by_id   nil
    :public_uuid         nil
-   :query_type          "query"
+   :query_type          nil
    :cache_ttl           nil
    :result_metadata     nil})
 
@@ -207,15 +208,15 @@
                   ;; 3 was viewed most recently, followed by 4, then 1. Card 2 was viewed by a different user so
                   ;; shouldn't be returned
                   ViewLog [_ {:model "card", :model_id (u/get-id card-1), :user_id (test-users/user->id :rasta)
-                              :timestamp (du/->Timestamp #inst "2015-12-01")}]
+                              :timestamp #t "2015-12-01"}]
                   ViewLog [_ {:model "card", :model_id (u/get-id card-2), :user_id (test-users/user->id :trashbird)
-                              :timestamp (du/->Timestamp #inst "2016-01-01")}]
+                              :timestamp #t "2016-01-01"}]
                   ViewLog [_ {:model "card", :model_id (u/get-id card-3), :user_id (test-users/user->id :rasta)
-                              :timestamp (du/->Timestamp #inst "2016-02-01")}]
+                              :timestamp #t "2016-02-01"}]
                   ViewLog [_ {:model "card", :model_id (u/get-id card-4), :user_id (test-users/user->id :rasta)
-                              :timestamp (du/->Timestamp #inst "2016-03-01")}]
+                              :timestamp #t "2016-03-01"}]
                   ViewLog [_ {:model "card", :model_id (u/get-id card-3), :user_id (test-users/user->id :rasta)
-                              :timestamp (du/->Timestamp #inst "2016-04-01")}]]
+                              :timestamp #t "2016-04-01"}]]
     (with-cards-in-readable-collection [card-1 card-2 card-3 card-4]
       (map :name ((test-users/user->client :rasta) :get 200 "card", :f :recent)))))
 
@@ -274,6 +275,7 @@
       :collection             true
       :creator_id             (test-users/user->id :rasta)
       :dataset_query          true
+      :query_type             "query"
       :visualization_settings {:global {:title nil}}
       :database_id            true
       :table_id               true
@@ -496,6 +498,7 @@
     :dataset_query          (tu/obj->json->obj (:dataset_query card))
     :read_permissions       nil
     :display                "table"
+    :query_type             "query"
     :visualization_settings {}
     :can_write              true
     :database_id            (u/get-id db) ; these should be inferred from the dataset_query
@@ -954,91 +957,77 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- rasta-alert-not-working [body-map]
-  (et/email-to :rasta {:subject "One of your alerts has stopped working",
-                       :body body-map}))
+  (et/email-to :rasta {:subject "One of your alerts has stopped working"
+                       :body    body-map}))
 
 (defn- crowberto-alert-not-working [body-map]
-  (et/email-to :crowberto {:subject "One of your alerts has stopped working",
-                           :body body-map}))
+  (et/email-to :crowberto {:subject "One of your alerts has stopped working"
+                           :body    body-map}))
 
-;; Validate archiving a card trigers alert deletion
-(expect
-  {:emails (merge (crowberto-alert-not-working {"the question was archived by Rasta Toucan" true})
-                  (rasta-alert-not-working {"the question was archived by Rasta Toucan" true}))
-   :pulse  nil}
-  (tt/with-temp* [Card                  [card]
-                  Pulse                 [pulse {:alert_condition  "rows"
-                                                :alert_first_only false
-                                                :creator_id       (test-users/user->id :rasta)
-                                                :name             "Original Alert Name"}]
+(deftest alert-deletion-test
+  (doseq [{:keys [message card expected-email f]}
+          [{:message        "Archiving a Card should trigger Alert deletion"
+            :expected-email "the question was archived by Rasta Toucan"
+            :f              (fn [{:keys [card]}]
+                              ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:archived true}))}
+           {:message        "Validate changing a display type triggers alert deletion"
+            :card           {:display :table}
+            :expected-email "the question was edited by Rasta Toucan"
+            :f              (fn [{:keys [card]}]
+                              ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:display :line}))}
+           {:message        "Changing the display type from line to table should force a delete"
+            :card           {:display :line}
+            :expected-email "the question was edited by Rasta Toucan"
+            :f              (fn [{:keys [card]}]
+                              ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:display :table}))}
+           {:message        "Removing the goal value will trigger the alert to be deleted"
+            :card           {:display                :line
+                             :visualization_settings {:graph.goal_value 10}}
+            :expected-email "the question was edited by Rasta Toucan"
+            :f              (fn [{:keys [card]}]
+                              ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:visualization_settings {:something "else"}}))}
+           {:message        "Adding an additional breakout will cause the alert to be removed"
+            :card           {:display                :line
+                             :visualization_settings {:graph.goal_value 10}
+                             :dataset_query          (assoc-in
+                                                      (mbql-count-query (data/id) (data/id :checkins))
+                                                      [:query :breakout]
+                                                      [["datetime-field"
+                                                        (data/id :checkins :date)
+                                                        "hour"]])}
+            :expected-email "the question was edited by Crowberto Corv"
+            :f              (fn [{:keys [card]}]
+                              ((test-users/user->client :crowberto) :put 200 (str "card/" (u/get-id card))
+                               {:dataset_query (assoc-in (mbql-count-query (data/id) (data/id :checkins))
+                                                         [:query :breakout] [[:datetime-field (data/id :checkins :date) "hour"]
+                                                                             [:datetime-field (data/id :checkins :date) "minute"]])}))}]]
+    (testing message
+      (tt/with-temp* [Card                  [card  card]
+                      Pulse                 [pulse {:alert_condition  "rows"
+                                                    :alert_first_only false
+                                                    :creator_id       (test-users/user->id :rasta)
+                                                    :name             "Original Alert Name"}]
 
-                  PulseCard             [_     {:pulse_id (u/get-id pulse)
-                                                :card_id  (u/get-id card)
-                                                :position 0}]
-                  PulseChannel          [pc    {:pulse_id (u/get-id pulse)}]
-                  PulseChannelRecipient [_     {:user_id          (test-users/user->id :crowberto)
-                                                :pulse_channel_id (u/get-id pc)}]
-                  PulseChannelRecipient [_     {:user_id          (test-users/user->id :rasta)
-                                                :pulse_channel_id (u/get-id pc)}]]
-    (with-cards-in-writeable-collection card
-      (et/with-fake-inbox
-        (et/with-expected-messages 2
-          ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:archived true}))
-        (array-map
-         :emails (et/regex-email-bodies #"the question was archived by Rasta Toucan")
-         :pulse  (Pulse (u/get-id pulse)))))))
-
-;; Validate changing a display type trigers alert deletion
-(expect
-  {:emails (merge (crowberto-alert-not-working {"the question was edited by Rasta Toucan" true})
-                  (rasta-alert-not-working {"the question was edited by Rasta Toucan" true}))
-
-   :pulse  nil}
-  (tt/with-temp* [Card                  [card  {:display :table}]
-                  Pulse                 [pulse {:alert_condition  "rows"
-                                                :alert_first_only false
-                                                :creator_id       (test-users/user->id :rasta)
-                                                :name             "Original Alert Name"}]
-
-                  PulseCard             [_     {:pulse_id (u/get-id pulse)
-                                                :card_id  (u/get-id card)
-                                                :position 0}]
-                  PulseChannel          [pc    {:pulse_id (u/get-id pulse)}]
-                  PulseChannelRecipient [_     {:user_id          (test-users/user->id :crowberto)
-                                                :pulse_channel_id (u/get-id pc)}]
-                  PulseChannelRecipient [_     {:user_id          (test-users/user->id :rasta)
-                                                :pulse_channel_id (u/get-id pc)}]]
-    (with-cards-in-writeable-collection card
-      (et/with-fake-inbox
-        (et/with-expected-messages 2
-          ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:display :line}))
-        (array-map
-         :emails (et/regex-email-bodies #"the question was edited by Rasta Toucan")
-         :pulse  (Pulse (u/get-id pulse)))))))
-
-;; Changing the display type from line to table should force a delete
-(expect
-  {:emails (rasta-alert-not-working {"the question was edited by Rasta Toucan" true})
-   :pulse  nil}
-  (tt/with-temp* [Card                  [card  {:display                :line
-                                                :visualization_settings {:graph.goal_value 10}}]
-                  Pulse                 [pulse {:alert_condition  "goal"
-                                                :alert_first_only false
-                                                :creator_id       (test-users/user->id :rasta)
-                                                :name             "Original Alert Name"}]
-                  PulseCard             [_     {:pulse_id (u/get-id pulse)
-                                                :card_id  (u/get-id card)
-                                                :position 0}]
-                  PulseChannel          [pc    {:pulse_id (u/get-id pulse)}]
-                  PulseChannelRecipient [_     {:user_id          (test-users/user->id :rasta)
-                                                :pulse_channel_id (u/get-id pc)}]]
-    (with-cards-in-writeable-collection card
-      (et/with-fake-inbox
-        (et/with-expected-messages 1
-          ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:display :table}))
-        (array-map
-         :emails (et/regex-email-bodies #"the question was edited by Rasta Toucan")
-         :pulse  (Pulse (u/get-id pulse)))))))
+                      PulseCard             [_     {:pulse_id (u/get-id pulse)
+                                                    :card_id  (u/get-id card)
+                                                    :position 0}]
+                      PulseChannel          [pc    {:pulse_id (u/get-id pulse)}]
+                      PulseChannelRecipient [_     {:user_id          (test-users/user->id :crowberto)
+                                                    :pulse_channel_id (u/get-id pc)}]
+                      PulseChannelRecipient [_     {:user_id          (test-users/user->id :rasta)
+                                                    :pulse_channel_id (u/get-id pc)}]]
+        (with-cards-in-writeable-collection card
+          (et/with-fake-inbox
+            (metabase.util/with-timeout 5000
+              (et/with-expected-messages 2
+                (f {:card card})))
+            (is (= (merge (crowberto-alert-not-working {expected-email true})
+                          (rasta-alert-not-working     {expected-email true}))
+                   (et/regex-email-bodies (re-pattern expected-email)))
+                (format "Email containing %s should have been sent to Crowberto and Rasta" (pr-str expected-email)))
+            (is (= nil
+                   (Pulse (u/get-id pulse)))
+                "Alert should have been deleted")))))))
 
 ;; Changing the display type from line to area/bar is fine and doesn't delete the alert
 (expect
@@ -1069,62 +1058,6 @@
                      ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:display :bar})
                      (et/regex-email-bodies #"the question was edited by Rasta Toucan"))
          :pulse-2  (boolean (Pulse (u/get-id pulse))))))))
-
-;; Removing the goal value will trigger the alert to be deleted
-(expect
-  {:emails (rasta-alert-not-working {"the question was edited by Rasta Toucan" true})
-   :pulse nil}
-  (tt/with-temp* [Card                  [card  {:display                :line
-                                                :visualization_settings {:graph.goal_value 10}}]
-                  Pulse                 [pulse {:alert_condition  "goal"
-                                                :alert_first_only false
-                                                :creator_id       (test-users/user->id :rasta)
-                                                :name             "Original Alert Name"}]
-                  PulseCard             [_     {:pulse_id (u/get-id pulse)
-                                                :card_id  (u/get-id card)
-                                                :position 0}]
-                  PulseChannel          [pc    {:pulse_id (u/get-id pulse)}]
-                  PulseChannelRecipient [pcr   {:user_id          (test-users/user->id :rasta)
-                                                :pulse_channel_id (u/get-id pc)}]]
-    (with-cards-in-writeable-collection card
-      (et/with-fake-inbox
-        (et/with-expected-messages 1
-          ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:visualization_settings {:something "else"}}))
-        (array-map
-         :emails (et/regex-email-bodies #"the question was edited by Rasta Toucan")
-         :pulse  (Pulse (u/get-id pulse)))))))
-
-;; Adding an additional breakout will cause the alert to be removed
-(expect
-  {:emails (rasta-alert-not-working {"the question was edited by Crowberto Corv" true})
-   :pulse nil}
-  (tt/with-temp* [Card                 [card  {:display                :line
-                                               :visualization_settings {:graph.goal_value 10}
-                                               :dataset_query          (assoc-in
-                                                                        (mbql-count-query (data/id) (data/id :checkins))
-                                                                        [:query :breakout]
-                                                                        [["datetime-field"
-                                                                          (data/id :checkins :date)
-                                                                          "hour"]])}]
-                  Pulse                 [pulse {:alert_condition  "goal"
-                                                :alert_first_only false
-                                                :creator_id       (test-users/user->id :rasta)
-                                                :name             "Original Alert Name"}]
-                  PulseCard             [_     {:pulse_id (u/get-id pulse)
-                                                :card_id  (u/get-id card)
-                                                :position 0}]
-                  PulseChannel          [pc    {:pulse_id (u/get-id pulse)}]
-                  PulseChannelRecipient [pcr   {:user_id          (test-users/user->id :rasta)
-                                                :pulse_channel_id (u/get-id pc)}]]
-    (et/with-fake-inbox
-      (et/with-expected-messages 1
-        ((test-users/user->client :crowberto) :put 200 (str "card/" (u/get-id card))
-         {:dataset_query (assoc-in (mbql-count-query (data/id) (data/id :checkins))
-                                   [:query :breakout] [["datetime-field" (data/id :checkins :date) "hour"]
-                                                       ["datetime-field" (data/id :checkins :date) "minute"]])}))
-      (array-map
-       :emails (et/regex-email-bodies #"the question was edited by Crowberto Corv")
-       :pulse  (Pulse (u/get-id pulse))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          DELETING A CARD (DEPRECATED)                                          |

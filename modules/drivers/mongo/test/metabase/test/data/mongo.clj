@@ -26,20 +26,12 @@
                           (keyword (:field-name field-definition)))]
         ;; Use map-indexed so we can get an ID for each row (index + 1)
         (doseq [[i row] (map-indexed (partial vector) rows)]
-          (let [row (for [v row]
-                      ;; Conver all the java.sql.Timestamps to java.util.Date, because the Mongo driver insists on
-                      ;; being obnoxious and going from using Timestamps in 2.x to Dates in 3.x
-                      ;;
-                      ;; TIMEZONE FIXME — stop using legacy types
-                      (if (instance? java.sql.Timestamp v)
-                        (java.util.Date. (.getTime ^java.sql.Timestamp v))
-                        v))]
-            (try
-              ;; Insert each row
-              (mc/insert mongo-db (name table-name) (assoc (zipmap field-names row)
-                                                      :_id (inc i)))
-              ;; If row already exists then nothing to do
-              (catch com.mongodb.MongoException _))))))))
+          (try
+            ;; Insert each row
+            (mc/insert mongo-db (name table-name) (assoc (zipmap field-names row)
+                                                         :_id (inc i)))
+            ;; If row already exists then nothing to do
+            (catch com.mongodb.MongoException _)))))))
 
 (defmethod tx/format-name :mongo
   [_ table-or-field-name]

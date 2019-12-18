@@ -33,7 +33,7 @@
   models/IModel
   (merge
    models/IModelDefaults
-   {:types          (constantly {:definition :metric-segment-definition, :description :clob})
+   {:types          (constantly {:definition :metric-segment-definition})
     :properties     (constantly {:timestamped? true})
     :hydration-keys (constantly [:segment])
     :pre-update     pre-update})

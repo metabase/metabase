@@ -6,12 +6,11 @@
             [metabase
              [driver :as driver]
              [query-processor :as qp]
+             [test :as mt]
              [util :as u]]
             [metabase.driver.sql-jdbc-test :as sql-jdbc-test]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-            [metabase.query-processor
-             [test-util :as qp.tu]
-             [timezone :as qp.timezone]]
+            [metabase.query-processor.test-util :as qp.tu]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -247,7 +246,7 @@
   {:ran-with-timezone? true, :timezone "US/Pacific"}
   (with-redefs [driver/supports?               (constantly true)
                 sql-jdbc.execute/set-timezone! (constantly nil)]
-    (qp.timezone/with-report-timezone-id "US/Pacific"
+    (mt/with-report-timezone-id "US/Pacific"
       (ran-with-timezone?
        :h2
        {:database (data/id)

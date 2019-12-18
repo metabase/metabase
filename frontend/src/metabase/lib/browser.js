@@ -26,3 +26,8 @@ export function updateQueryString(location, optionsUpdater) {
     search: queryString ? `?${queryString}` : null,
   };
 }
+
+export function isMac() {
+  const { platform = "" } = navigator;
+  return Boolean(platform.match(/^Mac/));
+}
