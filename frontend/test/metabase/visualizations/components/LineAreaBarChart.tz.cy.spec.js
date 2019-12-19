@@ -29,6 +29,7 @@ describe("LineAreaBarChart", () => {
     cy.get(".bar")
       .first()
       .trigger("mousemove");
+    cy.wait(100);
     tooltipContains("March 9, 2019");
     tooltipContains(firstValue);
 
@@ -36,6 +37,7 @@ describe("LineAreaBarChart", () => {
     cy.get(".bar")
       .last()
       .trigger("mousemove");
+    cy.wait(100);
     tooltipContains("March 10, 2019");
     tooltipContains(secondValue);
   });
@@ -76,9 +78,14 @@ function setupQuestion() {
   cy.contains("Previous")
     .parent()
     .click();
-  cy.contains("Before").click();
+  cy.contains("Between").click();
 
-  cy.get(`input[type="text"]`).type("{selectAll}03/11/2019");
+  cy.get(`input[type="text"]`)
+    .first()
+    .type("{selectAll}03/09/2019");
+  cy.get(`input[type="text"]`)
+    .last()
+    .type("{selectAll}03/10/2019");
   cy.contains("Add filter").click();
 
   cy.contains("Visualization").click();
