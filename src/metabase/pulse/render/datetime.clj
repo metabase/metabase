@@ -112,6 +112,6 @@
       [(format-temporal-str timezone-id a col) (format-temporal-str timezone-id b col)])
     (catch Throwable _
       ;; TODO  - there is code that calls this in `render.body` regardless of the types of values
-      (log/warn (trs "FIXME: These aren''t valid temporal literals: {0} {1}. Why are we attemping to format them as such?"
+      (log/warn (trs "FIXME: These aren''t valid temporal literals: {0} {1}. Why are we attempting to format them as such?"
                      (pr-str a) (pr-str b)))
       nil)))

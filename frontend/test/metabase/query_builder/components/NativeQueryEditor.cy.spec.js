@@ -1,16 +1,6 @@
 import { signInAsNormalUser } from "__support__/cypress";
 describe("NativeQueryEditor", () => {
-  beforeEach(() => {
-    signInAsNormalUser();
-    cy.on("uncaught:exception", (err, runnable) => {
-      // ignore the error if it's a "script error"
-      if (err.message.match(/^Script error./)) {
-        return false;
-      }
-      // otherwise, let Cypress fail as usual
-      return true;
-    });
-  });
+  beforeEach(signInAsNormalUser);
 
   it("lets you create and run a SQL question", () => {
     cy.visit("/question/new");

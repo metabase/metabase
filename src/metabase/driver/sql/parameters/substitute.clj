@@ -5,7 +5,7 @@
             [metabase.query-processor.error-type :as error-type]
             [metabase.util.i18n :refer [tru]]))
 
-(defn- substitute-field-filter [param->value [sql args missing] in-optional? k {:keys [field value], :as v}]
+(defn- substitute-field-filter [[sql args missing] in-optional? k {:keys [field value], :as v}]
   (if (and (= i/no-value value) in-optional?)
     ;; no-value field filters inside optional clauses are ignored, and eventually emitted entirely
     [sql args (conj missing k)]
@@ -19,7 +19,7 @@
     (let [v (get param->value k)]
       (cond
         (i/FieldFilter? v)
-        (substitute-field-filter param->value [sql args missing] in-optional? k v)
+        (substitute-field-filter [sql args missing] in-optional? k v)
 
         (= i/no-value v)
         [sql args (conj missing k)]
@@ -64,6 +64,6 @@
   [parsed-query param->value]
   (let [[sql args missing] (substitute* param->value parsed-query false)]
     (when (seq missing)
-      (throw (ex-info (tru "Cannot run query: missing required parameters: {0}" (set missing))
+      (throw (ex-info (tru "Cannot run the query: missing required parameters: {0}" (set missing))
                {:type error-type/invalid-query})))
     [(str/trim sql) args]))

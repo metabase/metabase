@@ -10,7 +10,7 @@
     "yarn": ">=1.12.3"
   },
   "dependencies": {
-    "ace-builds": "^1.2.2",
+    "ace-builds": "^1.4.7",
     "chevrotain": "0.21.0",
     "classlist-polyfill": "^1.2.0",
     "classnames": "^2.1.3",

@@ -227,31 +227,37 @@ export default class Navbar extends Component {
               name={t`Settings`}
               path="/admin/settings"
               currentPath={this.props.path}
+              key="admin-nav-settings"
             />
             <AdminNavItem
               name={t`People`}
               path="/admin/people"
               currentPath={this.props.path}
+              key="admin-nav-people"
             />
             <AdminNavItem
               name={t`Data Model`}
               path="/admin/datamodel"
               currentPath={this.props.path}
+              key="admin-nav-datamodel"
             />
             <AdminNavItem
               name={t`Databases`}
               path="/admin/databases"
               currentPath={this.props.path}
+              key="admin-nav-databases"
             />
             <AdminNavItem
               name={t`Permissions`}
               path="/admin/permissions"
               currentPath={this.props.path}
+              key="admin-nav-permissions"
             />
             <AdminNavItem
               name={t`Troubleshooting`}
               path="/admin/troubleshooting"
               currentPath={this.props.path}
+              key="admin-nav-troubleshooting"
             />
           </ul>
 

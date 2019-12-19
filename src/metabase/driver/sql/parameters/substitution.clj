@@ -190,9 +190,6 @@
   {:replacement-snippet     (str \( (str/join " AND " (map :replacement-snippet replacement-snippet-maps)) \))
    :prepared-statement-args (reduce concat (map :prepared-statement-args replacement-snippet-maps))})
 
-(defn- relative-date-param-type? [param-type]
-  (contains? #{:date/range :date/month-year :date/quarter-year :date/relative :date/all-options} param-type))
-
 ;; for relative dates convert the param to a `DateRange` record type and call `->replacement-snippet-info` on it
 (s/defn ^:private relative-date-field-filter->replacement-snippet-info :- ParamSnippetInfo
   [value]
@@ -216,13 +213,13 @@
   [{param-type :type, value :value} :- i/ParamValue]
   (cond
     ;; convert relative dates to approprate date range representations
-    (relative-date-param-type? param-type) (relative-date-field-filter->replacement-snippet-info value)
+    (date-params/relative-date-param-type? param-type) (relative-date-field-filter->replacement-snippet-info value)
     ;; convert all other dates to `= <date>`
-    (date-params/date-type? param-type)    (field-filter->equals-clause-sql (i/map->Date {:s value}))
+    (date-params/date-type? param-type)                (field-filter->equals-clause-sql (i/map->Date {:s value}))
     ;; for sequences of multiple values we want to generate an `IN (...)` clause
-    (sequential? value)                    (field-filter-multiple-values->in-clause-sql value)
+    (sequential? value)                                (field-filter-multiple-values->in-clause-sql value)
     ;; convert everything else to `= <value>`
-    :else                                  (field-filter->equals-clause-sql value)))
+    :else                                              (field-filter->equals-clause-sql value)))
 
 (s/defn ^:private honeysql->replacement-snippet-info :- ParamSnippetInfo
   "Convert `x` to a replacement snippet info map by passing it to HoneySQL's `format` function."

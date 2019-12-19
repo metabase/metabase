@@ -1,7 +1,8 @@
 (ns metabase.api.util
   "Random utilty endpoints for things that don't belong anywhere else in particular, e.g. endpoints for certain admin
   page tasks."
-  (:require [compojure.core :refer [GET POST]]
+  (:require [clojure.java.jdbc :as jdbc]
+            [compojure.core :refer [GET POST]]
             [crypto.random :as crypto-random]
             [metabase
              [logger :as logger]
@@ -9,7 +10,8 @@
             [metabase.api.common :as api]
             [metabase.util
              [schema :as su]
-             [stats :as stats]]))
+             [stats :as stats]]
+            [toucan.db :as db]))
 
 (api/defendpoint POST "/password_check"
   "Endpoint that checks if the supplied password meets the currently configured password complexity rules."
@@ -41,5 +43,18 @@
   (api/check-superuser)
   {:system-info (troubleshooting/system-info)
    :metabase-info (troubleshooting/metabase-info)})
+
+; FIXME: only enable for test + sanitize `name`
+(api/defendpoint POST "/snapshot/:name"
+  [name]
+  (jdbc/query (db/connection) ["SCRIPT TO ?", name])
+  nil)
+
+; FIXME: only enable for test + sanitize `name`
+(api/defendpoint POST "/restore/:name"
+  [name]
+  (jdbc/execute! (db/connection) ["DROP ALL OBJECTS"])
+  (jdbc/execute! (db/connection) ["RUNSCRIPT FROM ?", name])
+  nil)
 
 (api/define-routes)

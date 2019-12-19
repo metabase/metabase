@@ -14,7 +14,7 @@ Now you’ll see a list of your databases. To connect another database to Metaba
 - [Google BigQuery](databases/bigquery.md)
 - H2
 - [MongoDB (version 3.4 or higher)](databases/mongodb.md)
-- [MySQL (version 4.1 or higher, as well as MariaDB)](databases/mysql.md)
+- [MySQL (version 5.5.3 or higher, as well as MariaDB)](databases/mysql.md)
 - Postgres
 - SQLite
 - SQL Server
