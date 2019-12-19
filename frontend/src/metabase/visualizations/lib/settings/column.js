@@ -26,7 +26,6 @@ import {
   numberFormatterForOptions,
 } from "metabase/lib/formatting";
 import {
-  DEFAULT_DATE_STYLE,
   getDateFormatFromStyle,
   hasDay,
   hasHour,
@@ -184,7 +183,7 @@ export const DATE_COLUMN_SETTINGS = {
   date_style: {
     title: t`Date style`,
     widget: "select",
-    getDefault: ({ unit }) => {
+    getDefault: ({ unit }: Column) => {
       // Grab the first option's value. If there were no options (for
       // hour-of-day probably), use an empty format string instead.
       const [{ value = "" } = {}] = getDateStyleOptionsForUnit(unit);

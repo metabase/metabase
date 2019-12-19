@@ -13,7 +13,7 @@ export type DateStyle =
   | "D MMMM, YYYY"
   | "dddd, MMMM D, YYYY";
 
-export type TimeStyle = "h:mm A" | "k:mm";
+export type TimeStyle = "h:mm A" | "k:mm" | "h A";
 
 export type MomentFormat = string; // moment.js format strings
 export type DateFormat = MomentFormat;
