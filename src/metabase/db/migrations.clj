@@ -29,9 +29,7 @@
              [pulse :refer [Pulse]]
              [setting :as setting :refer [Setting]]
              [user :refer [User]]]
-            [metabase.util
-             [date :as du]
-             [i18n :refer [trs]]]
+            [metabase.util.i18n :refer [trs]]
             [toucan
              [db :as db]
              [models :as models]])
@@ -53,7 +51,7 @@
       (@migration-var)
       (db/insert! DataMigrations
         :id        migration-name
-        :timestamp (du/new-sql-timestamp)))))
+        :timestamp :%now))))
 
 (def ^:private data-migrations (atom []))
 

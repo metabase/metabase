@@ -88,7 +88,7 @@
   (google/execute (.list (.columns (.metadata client)) "ga")))
 
 (defn- column-attribute
-  "Get the value of ATTRIBUTE-NAME for COLUMN."
+  "Get the value of `attribute-name` for `column`."
   [^Column column, attribute-name]
   (get (.getAttributes column) (name attribute-name)))
 
@@ -194,7 +194,8 @@
 (defn- add-built-in-column-metadata [query results]
   (update-in results [:data :cols] (partial map (partial add-col-metadata query))))
 
-(defmethod driver/process-query-in-context :googleanalytics [_ qp]
+(defmethod driver/process-query-in-context :googleanalytics
+  [_ qp]
   (fn [query]
     (let [results (qp query)]
       (add-built-in-column-metadata query results))))
@@ -204,6 +205,7 @@
                  (json/parse-string query keyword)
                  query)
         client (database->client database)]
+    ;; `end-date` is inclusive!!!
     (u/prog1 (.get (.ga (.data client))
                    (:ids query)
                    (:start-date query)

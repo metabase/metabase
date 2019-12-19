@@ -41,8 +41,10 @@
    2.  jvm options (ex: -Dmb.db.type -> :mb-db-type)
    3.  hard coded `app-defaults`"
   [k]
-  (let [k (keyword k)]
-    (or (k environ/env) (k app-defaults))))
+  (let [k       (keyword k)
+        env-val (k environ/env)]
+    (or (when-not (str/blank? env-val) env-val)
+        (k app-defaults))))
 
 
 ;; These are convenience functions for accessing config values that ensures a specific return type

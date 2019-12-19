@@ -2,13 +2,11 @@
   (:require [clojure.test :refer :all]
             [metabase
              [driver :as driver]
+             [models :refer [Field Table]]
              [query-processor :as qp]
              [query-processor-test :as qp.test]
              [sync :as sync]]
             [metabase.db.metadata-queries :as metadata-queries]
-            [metabase.models
-             [field :refer [Field]]
-             [table :refer [Table]]]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -61,13 +59,8 @@
 (deftest sync-views-test
   (datasets/test-driver :bigquery
     (with-view [view-name]
-      (is (= {:tables
-              #{{:schema nil, :name "categories"}
-                {:schema nil, :name "checkins"}
-                {:schema nil, :name "users"}
-                {:schema nil, :name "venues"}
-                {:schema nil, :name view-name}}}
-             (driver/describe-database :bigquery (data/db)))
+      (is (contains? (:tables (driver/describe-database :bigquery (data/db)))
+                     {:schema nil, :name view-name})
           "`describe-database` should see the view")
       (is (= {:schema nil
               :name   view-name
@@ -93,9 +86,44 @@
     (testing "BigQuery does not support report-timezone, so setting it should not affect results"
       (doseq [timezone ["UTC" "US/Pacific"]]
         (tu/with-temporary-setting-values [report-timezone timezone]
-          (is (= [[37 "2015-11-19T00:00:00.000Z"]]
+          (is (= [[37 "2015-11-19T00:00:00Z"]]
                  (qp.test/rows
                    (data/run-mbql-query checkins
                      {:fields   [$id $date]
                       :filter   [:= $date "2015-11-19"]
                       :order-by [[:asc $id]]})))))))))
+
+(defn- do-with-datetime-timestamp-table [f]
+  (driver/with-driver :bigquery
+    (let [table-name (name (munge (gensym "table_")))]
+      (data/with-temp-copy-of-db
+        (try
+          (bigquery.tx/execute!
+           (format "CREATE TABLE `test_data.%s` ( ts TIMESTAMP, dt DATETIME )" table-name))
+          (bigquery.tx/execute!
+           (format "INSERT INTO `test_data.%s` (ts, dt) VALUES (TIMESTAMP \"2020-01-01 00:00:00 UTC\", DATETIME \"2020-01-01 00:00:00\")"
+                   table-name))
+          (sync/sync-database! (data/db))
+          (f table-name)
+          (finally
+            (bigquery.tx/execute! "DROP TABLE IF EXISTS `test_data.%s`" table-name)))))))
+
+(deftest filter-by-datetime-timestamp-test
+  (datasets/test-driver :bigquery
+    ;; there are more tests in the `bigquery.query-processor-test` namespace
+    (testing "Make sure we can filter against different types of BigQuery temporal columns (#11222)"
+      (do-with-datetime-timestamp-table
+       (fn [table-name]
+         (doseq [column [:ts :dt]]
+           (testing (format "Filtering against %s column" column)
+             (doseq [s    ["2020-01-01" "2020-01-01T00:00:00"]
+                     field [[:field-id (data/id table-name column)]
+                            [:datetime-field [:field-id (data/id table-name column)] :default]
+                            [:datetime-field [:field-id (data/id table-name column)] :day]]
+                     :let [filter-clause [:= field s]]]
+               (testing (format "\nMBQL filter clause = %s" (pr-str filter-clause))
+                 (is (= [["2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z"]]
+                        (qp.test/rows
+                          (data/run-mbql-query nil
+                            {:source-table (data/id table-name)
+                             :filter       filter-clause})))))))))))))

@@ -1,14 +1,15 @@
 (ns metabase.pulse.render.body-test
-  (:require [clojure.walk :as walk]
+  (:require [clojure
+             [test :refer :all]
+             [walk :as walk]]
             [expectations :refer [expect]]
             [hiccup.core :refer [html]]
             [metabase.pulse.render
              [body :as body]
              [common :as common]
-             [test-util :as render.tu]])
-  (:import java.util.TimeZone))
+             [test-util :as render.tu]]))
 
-(def ^:private pacific-tz (TimeZone/getTimeZone "America/Los_Angeles"))
+(def ^:private pacific-tz "America/Los_Angeles")
 
 (def ^:private test-columns
   [{:name            "ID",
@@ -316,37 +317,35 @@
     :base_type    :type/BigInteger
     :special_type nil}])
 
-;; Render a bar graph with non-nil values for the x and y axis
-(expect
-  [true true]
-  (let [result (render-bar-graph {:cols default-columns
-                                  :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]})]
-    [(some #(= "Price" %) result)
-     (some #(= "NumPurchased" %) result)]))
-
-;; Check to make sure we allow nil values for the y-axis
-(expect
-  [true true]
-  (let [result (render-bar-graph {:cols default-columns
-                                  :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]})]
-    [(some #(= "Price" %) result)
-     (some #(= "NumPurchased" %) result)]))
-
-;; Check to make sure we allow nil values for the y-axis
-(expect
-  [true true]
-  (let [result (render-bar-graph {:cols default-columns
-                                  :rows [[10.0 1] [5.0 10] [2.50 20] [nil 30]]})]
-    [(some #(= "Price" %) result)
-     (some #(= "NumPurchased" %) result)]))
-
-;; Check to make sure we allow nil values for both x and y on different rows
-(expect
-  [true true]
-  (let [result (render-bar-graph {:cols default-columns
-                                  :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]})]
-    [(some #(= "Price" %) result)
-     (some #(= "NumPurchased" %) result)]))
+(deftest render-bar-graph-test
+  (testing "Render a bar graph with non-nil values for the x and y axis"
+    (let [result (render-bar-graph {:cols default-columns
+                                    :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]})]
+      (is (= true
+             (some #(= "Price" %) result)))
+      (is (= true
+             (some #(= "NumPurchased" %) result)))))
+  (testing "Check to make sure we allow nil values for the y-axis"
+    (let [result (render-bar-graph {:cols default-columns
+                                    :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 nil]]})]
+      (is (= true
+             (some #(= "Price" %) result)))
+      (is (= true
+             (some #(= "NumPurchased" %) result)))))
+  (testing "Check to make sure we allow nil values for the y-axis"
+    (let [result (render-bar-graph {:cols default-columns
+                                    :rows [[10.0 1] [5.0 10] [2.50 20] [nil 30]]})]
+      (is (= true
+             (some #(= "Price" %) result)))
+      (is (= true
+             (some #(= "NumPurchased" %) result)))))
+  (testing "Check to make sure we allow nil values for both x and y on different rows"
+    (let [result (render-bar-graph {:cols default-columns
+                                    :rows [[10.0 1] [5.0 10] [nil 20] [1.25 nil]]})]
+      (is (= true
+             (some #(= "Price" %) result)))
+      (is (= true
+             (some #(= "NumPurchased" %) result))))))
 
 ;; Test rendering a sparkline
 ;;
@@ -359,37 +358,29 @@
           :attachments
           count))
 
-;; Test that we can render a sparkline with all valid values
-(expect
-  1
-  (render-sparkline
-   {:cols default-columns
-    :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))
-
-;; Tex that we can have a nil value in the middle
-(expect
-  1
-  (render-sparkline
-   {:cols default-columns
-    :rows [[10.0 1] [11.0 2] [5.0 nil] [2.50 20] [1.25 30]]}))
-
-;; Test that we can have a nil value for the y-axis at the end of the results
-(expect
-  1
-  (render-sparkline
-   {:cols default-columns
-    :rows [[10.0 1] [11.0 2] [2.50 20] [1.25 nil]]}))
-
-;; Test that we can have a nil value for the x-axis at the end of the results
-(expect
-  1
-  (render-sparkline
-   {:cols default-columns
-    :rows [[10.0 1] [11.0 2] [nil 20] [1.25 30]]}))
-
-;; Test that we can have a nil value for both x and y axis for different rows
-(expect
-  1
-  (render-sparkline
-   {:cols default-columns
-    :rows [[10.0 1] [11.0 2] [nil 20] [1.25 nil]]}))
+(deftest render-sparkline-test
+  (testing "Test that we can render a sparkline with all valid values"
+    (is (= 1
+           (render-sparkline
+            {:cols default-columns
+             :rows [[10.0 1] [5.0 10] [2.50 20] [1.25 30]]}))))
+  (testing "Tex that we can have a nil value in the middle"
+    (is (= 1
+           (render-sparkline
+            {:cols default-columns
+             :rows [[10.0 1] [11.0 2] [5.0 nil] [2.50 20] [1.25 30]]}))))
+  (testing "Test that we can have a nil value for the y-axis at the end of the results"
+    (is (= 1
+           (render-sparkline
+            {:cols default-columns
+             :rows [[10.0 1] [11.0 2] [2.50 20] [1.25 nil]]}))))
+  (testing "Test that we can have a nil value for the x-axis at the end of the results"
+    (is (= 1
+           (render-sparkline
+            {:cols default-columns
+             :rows [[10.0 1] [11.0 2] [nil 20] [1.25 30]]}))))
+  (testing "Test that we can have a nil value for both x and y axis for different rows"
+    (is (= 1
+           (render-sparkline
+            {:cols default-columns
+             :rows [[10.0 1] [11.0 2] [nil 20] [1.25 nil]]})))))

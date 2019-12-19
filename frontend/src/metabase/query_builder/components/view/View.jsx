@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import cx from "classnames";
 
+import ExplicitSize from "metabase/components/ExplicitSize";
 import Popover from "metabase/components/Popover";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 import Subhead from "metabase/components/Subhead";
@@ -42,6 +43,7 @@ const DEFAULT_POPOVER_STATE = {
   breakoutPopoverTarget: null,
 };
 
+@ExplicitSize()
 export default class View extends React.Component {
   state = {
     ...DEFAULT_POPOVER_STATE,
@@ -97,6 +99,7 @@ export default class View extends React.Component {
       queryBuilderMode,
       mode,
       fitClassNames,
+      height,
     } = this.props;
     const {
       aggregationIndex,
@@ -249,10 +252,11 @@ export default class View extends React.Component {
                 "hide sm-show": isSidebarOpen,
               })}
             >
-              {query instanceof NativeQuery && (
+              {isNative && (
                 <div className="z2 hide sm-show border-bottom mb2">
                   <NativeQueryEditor
                     {...this.props}
+                    viewHeight={height}
                     isOpen={!card.dataset_query.native.query || isDirty}
                     datasetQuery={card && card.dataset_query}
                   />

@@ -11,9 +11,7 @@
              [interface :as qp.i]
              [util :as qputil]]
             [metabase.util :as u]
-            [metabase.util
-             [date :as du]
-             [i18n :refer [deferred-tru trs tru]]]
+            [metabase.util.i18n :refer [deferred-tru trs tru]]
             [toucan.db :as db]))
 
 (defn- add-running-time [{start-time-ms :start_time_millis, :as query-execution}]
@@ -142,7 +140,7 @@
    :hash              query-hash
    :native            (= (keyword query-type) :native)
    :json_query        (dissoc query :info)
-   :started_at        (du/new-sql-timestamp)
+   :started_at        :%now
    :running_time      0
    :result_rows       0
    :start_time_millis (System/currentTimeMillis)})

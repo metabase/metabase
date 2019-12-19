@@ -420,7 +420,7 @@
   (-> (db/query {:select [:value]
                  :from   [:setting]
                  :where  [:= :key (name setting-key)]})
-      first :value u/jdbc-clob->str))
+      first :value))
 
 ;; If encryption is *enabled*, make sure Settings get saved as encrypted!
 (expect
@@ -451,13 +451,13 @@
   :type :timestamp)
 
 (expect
-  java.sql.Timestamp
+  java.time.temporal.Temporal
   (:tag (meta #'test-timestamp-setting)))
 
 ;; make sure we can set & fetch the value and that it gets serialized/deserialized correctly
 (expect
-  #inst "2018-07-11T09:32:00.000Z"
-  (do (test-timestamp-setting #inst "2018-07-11T09:32:00.000Z")
+  #t "2018-07-11T09:32:00.000Z"
+  (do (test-timestamp-setting #t "2018-07-11T09:32:00.000Z")
       (test-timestamp-setting)))
 
 

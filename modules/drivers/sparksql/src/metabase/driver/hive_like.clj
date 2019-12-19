@@ -2,23 +2,28 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase
              [driver :as driver]
              [util :as u]]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
+             [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.models.table :refer [Table]]
             [metabase.util
-             [date :as du]
+             [date-2 :as u.date]
              [honeysql-extensions :as hx]]
             [toucan.db :as db])
-  (:import [java.sql PreparedStatement Time]
-           java.util.Date))
+  (:import [java.sql PreparedStatement ResultSet Types]
+           [java.time LocalDate OffsetDateTime ZonedDateTime]))
 
-(driver/register! :hive-like, :parent :sql-jdbc, :abstract? true)
+(driver/register! :hive-like
+  :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set}
+  :abstract? true)
 
 (defmethod sql-jdbc.conn/data-warehouse-connection-pool-properties :hive-like
   [driver]
@@ -123,11 +128,13 @@
 
 (defn- run-query
   "Run the query itself."
-  [{sql :query, :keys [params remark max-rows]} connection]
+  [driver {sql :query, :keys [params remark max-rows]} connection]
   (let [sql     (str "-- " remark "\n" sql)
-        options {:identifiers identity
-                 :as-arrays?  true
-                 :max-rows    max-rows}]
+        options {:identifiers    identity
+                 :as-arrays?     true
+                 :max-rows       max-rows
+                 :read-columns   (partial sql-jdbc.execute/read-columns driver)
+                 :set-parameters (partial sql-jdbc.execute/set-parameters driver)}]
     (with-open [connection (jdbc/get-connection connection)]
       (with-open [^PreparedStatement statement (jdbc/prepare-statement connection sql options)]
         (let [statement        (into [statement] params)
@@ -137,13 +144,40 @@
 
 (defn run-query-without-timezone
   "Runs the given query without trying to set a timezone"
-  [_ _ connection query]
-  (run-query query connection))
+  [driver _ connection query]
+  (run-query driver query connection))
 
-(defmethod unprepare/unprepare-value [:hive-like Date] [_ value]
-  (format "timestamp '%s'" (du/format-date "yyyy-MM-dd HH:mm:ss.SSS" value)))
-
-(prefer-method unprepare/unprepare-value [:sql Time] [:hive-like Date])
-
-(defmethod unprepare/unprepare-value [:hive-like String] [_ value]
+(defmethod unprepare/unprepare-value [:hive-like String]
+  [_ value]
   (str \' (str/replace value "'" "\\\\'") \'))
+
+;; Hive/Spark SQL doesn't seem to like DATEs so convert it to a DATETIME first
+(defmethod unprepare/unprepare-value [:hive-like LocalDate]
+  [driver t]
+  (unprepare/unprepare-value driver (t/local-date-time t (t/local-time 0))))
+
+(defmethod unprepare/unprepare-value [:hive-like OffsetDateTime]
+  [_ t]
+  (format "to_utc_timestamp('%s', '%s')" (u.date/format-sql (t/local-date-time t)) (t/zone-offset t)))
+
+(defmethod unprepare/unprepare-value [:hive-like ZonedDateTime]
+  [_ t]
+  (format "to_utc_timestamp('%s', '%s')" (u.date/format-sql (t/local-date-time t)) (t/zone-id t)))
+
+;; Hive/Spark SQL doesn't seem to like DATEs so convert it to a DATETIME first
+(defmethod sql-jdbc.execute/set-parameter [:hive-like LocalDate]
+  [driver ps i t]
+  (sql-jdbc.execute/set-parameter driver ps i (t/local-date-time t (t/local-time 0))))
+
+;; TIMEZONE FIXME — not sure what timezone the results actually come back as
+(defmethod sql-jdbc.execute/read-column [:hive-like Types/TIME]
+  [_ _ ^ResultSet rs rsmeta ^Integer i]
+  (t/offset-time (t/local-time (.getTimestamp rs i)) (t/zone-offset 0)))
+
+(defmethod sql-jdbc.execute/read-column [:hive-like Types/DATE]
+  [_ _ ^ResultSet rs rsmeta ^Integer i]
+  (t/zoned-date-time (t/local-date (.getDate rs i)) (t/local-time 0) (t/zone-id "UTC")))
+
+(defmethod sql-jdbc.execute/read-column [:hive-like Types/TIMESTAMP]
+  [_ _ ^ResultSet rs rsmeta ^Integer i]
+  (t/zoned-date-time (t/local-date-time (.getTimestamp rs i)) (t/zone-id "UTC")))

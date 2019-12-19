@@ -176,6 +176,7 @@ export default class Table extends Component {
       ]) =>
         cols.map(col => ({
           name: col.name,
+          fieldRef: col.field_ref,
           enabled: col.visibility_type !== "details-only",
         })),
       getProps: ([

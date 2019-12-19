@@ -13,13 +13,19 @@
 (doseq [[base-type database-type] {:type/BigInteger     "BIGINT"
                                    :type/Boolean        "BOOLEAN"
                                    :type/Date           "DATE"
-                                   :type/DateTime       "TIMESTAMP"
-                                   :type/DateTimeWithTZ "TIMESTAMP"
+                                   ;; (3) is fractional seconds precision, i.e. millisecond precision
+                                   :type/DateTime       "DATETIME(3)"
+                                   ;; MySQL is extra dumb and can't have two `TIMESTAMP` columns without default
+                                   ;; values — see
+                                   ;; https://stackoverflow.com/questions/11601034/unable-to-create-2-timestamp-columns-in-1-mysql-table.
+                                   ;; They also have to have non-zero values. See also
+                                   ;; https://dba.stackexchange.com/questions/6171/invalid-default-value-for-datetime-when-changing-to-utf8-general-ci
+                                   :type/DateTimeWithTZ "TIMESTAMP(3) DEFAULT '1970-01-01 00:00:01'"
                                    :type/Decimal        "DECIMAL"
                                    :type/Float          "DOUBLE"
                                    :type/Integer        "INTEGER"
                                    :type/Text           "TEXT"
-                                   :type/Time           "TIME"}]
+                                   :type/Time           "TIME(3)"}]
   (defmethod sql.tx/field-base-type->sql-type [:mysql base-type] [_ _] database-type))
 
 (defmethod tx/dbdef->connection-details :mysql
@@ -41,5 +47,10 @@
 (defmethod load-data/load-data! :mysql
   [& args]
   (apply load-data/load-data-all-at-once! args))
+
+#_(defmethod load-data/do-insert! :mysql
+  [driver spec table-identifier row-or-rows]
+  (jdbc/execute! spec "SET @@session.time_zone = 'UTC'");
+  ((get-method load-data/do-insert! :sql-jdbc/test-extensions) driver spec table-identifier row-or-rows))
 
 (defmethod sql.tx/pk-sql-type :mysql [_] "INTEGER NOT NULL AUTO_INCREMENT")
