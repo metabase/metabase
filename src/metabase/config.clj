@@ -43,7 +43,7 @@
   [k]
   (let [k       (keyword k)
         env-val (k environ/env)]
-    (or (and (not (str/blank? env-val)) env-val)
+    (or (when-not (str/blank? env-val) env-val)
         (k app-defaults))))
 
 
