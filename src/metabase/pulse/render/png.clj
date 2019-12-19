@@ -23,6 +23,18 @@
            org.fit.cssbox.layout.BrowserCanvas
            org.w3c.dom.Document))
 
+(def register-fonts
+  "Makes custom fonts available to Java so that CSSBox can render them"
+  (delay (doseq [weight ["regular" "700" "900"]]
+           (.registerFont (java.awt.GraphicsEnvironment/getLocalGraphicsEnvironment)
+                          (java.awt.Font/createFont
+                            java.awt.Font/TRUETYPE_FONT
+                            (-> (format "frontend_client/app/fonts/lato-v16-latin/lato-v16-latin-%s.ttf" weight)
+                                clojure.java.io/resource
+                                clojure.java.io/input-stream))))))
+
+@register-fonts
+
 (defn- write-image!
   [^BufferedImage image, ^String format-name, ^ByteArrayOutputStream output-stream]
   (try
@@ -69,11 +81,13 @@
   "Render the Hiccup HTML `content` of a Pulse to a PNG image, returning a byte array."
   [{:keys [content]} :- common/RenderedPulseCard
    width]
-  (let [html (html [:html [:body {:style (style/style
-                                          {:margin           0
-                                           :padding          0
-                                           :background-color :white})}
-                           content]])]
+  (let [html (html [:html
+                    [:head [:style (slurp (clojure.java.io/resource "css/cssbox-png.css"))]]
+                    [:body {:style (style/style
+                                     {:margin           0
+                                      :padding          0
+                                      :background-color :white})}
+                     content]])]
     (with-open [os (ByteArrayOutputStream.)]
       (render-to-png! html os width)
       (.toByteArray os))))
