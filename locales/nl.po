@@ -74,7 +74,7 @@ msgid "Metabase can scan the values present in each\n"
 "field in this database to enable checkbox filters in dashboards and questions. This\n"
 "can be a somewhat resource-intensive process, particularly if you have a very large\n"
 "database."
-msgstr "Metabase kan de waardes van elk veld in deze database scannen om de checkbox filters in dashboards en vragen weer te geven. Dit is een resource-intensief proces, voornamelijk indien je een grote database hebt.\n"
+msgstr "Metabase kan de waardes van elk veld in deze database scannen om de checkbox filters in dashboards en vragen weer te geven. Dit is een resource-intensief proces, voornamelijk indien je een grote database hebt."
 ""
 
 #: frontend/src/metabase/admin/databases/components/DatabaseSchedulingForm.jsx:158
@@ -8791,7 +8791,7 @@ msgstr "JVM timezone is {0} and detected database timezone is {1}."
 
 #: src/metabase/util/date.clj
 msgid "Configure a report timezone to ensure proper date and time conversions."
-msgstr "Configure a report timezone to ensure proper date and time conversions.\n"
+msgstr "Configure a report timezone to ensure proper date and time conversions."
 ""
 
 #: src/metabase/util/embed.clj
@@ -11320,7 +11320,7 @@ msgstr "Database {0} bestaat niet"
 
 #: src/metabase/query_processor/store.clj
 msgid "Error: Database is not present in the Query Processor Store."
-msgstr "\n"
+msgstr "Error: Database is not present in the Query Processor Store."
 "Error: Database is not present in the Query Processor Store."
 
 #: src/metabase/util/embed.clj
@@ -11749,7 +11749,7 @@ msgstr "Plug-ins laden in {0} ..."
 
 #: src/metabase/plugins/classloader.clj
 msgid "Using Clojure base loader as shared context classloader: {0}"
-msgstr "\n"
+msgstr "Using Clojure base loader as shared context classloader: {0}"
 "Using Clojure base loader as shared context classloader: {0}"
 
 #: src/metabase/plugins/classloader.clj
@@ -12908,7 +12908,7 @@ msgstr "Cannot resolve :field-literal inside :fk-> unless inside join with expli
 
 #: src/metabase/query_processor/middleware/add_implicit_joins.clj
 msgid "Cannot find Table ID for {0}"
-msgstr "\n"
+msgstr "Cannot find Table ID for {0}"
 "Cannot find Table ID for {0}"
 
 #: src/metabase/query_processor/middleware/add_implicit_joins.clj
@@ -13050,7 +13050,7 @@ msgstr "Unable to resolve driver for query: Database {0} does not exist."
 
 #: src/metabase/query_processor/middleware/resolve_joins.clj
 msgid "Cannot use :fields :all in join against source query unless it has :source-metadata."
-msgstr "\n"
+msgstr "Cannot use :fields :all in join against source query unless it has :source-metadata."
 "Cannot use :fields :all in join against source query unless it has :source-metadata."
 
 #: src/metabase/query_processor/middleware/resolve_joins.clj
@@ -13129,7 +13129,7 @@ msgstr "Kan taken voor database {0} niet plannen"
 msgid "All elements must be distinct."
 msgstr "Alle elementen moeten uniek zijn."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Kies de kolommen die je mee wilt nemen"
@@ -13609,4 +13609,3 @@ msgstr "Waarde van token ontbreekt voor keypath {0}."
 #: src/metabase/util/stats.clj
 msgid "Sending usage stats FAILED"
 msgstr "Gebruiksstatistieken verzenden MISLUKT"
-

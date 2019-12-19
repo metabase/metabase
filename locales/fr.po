@@ -13048,7 +13048,7 @@ msgstr "Incapable de mettre à jour le champ binné: la requête manque de méta
 
 #: src/metabase/query_processor/middleware/binning.clj
 msgid "Cannot update binned field: could not find matching source metadata for Field ''{0}''"
-msgstr "Dans l'incapacité de mttre à jour le champ binné: métadonnées correspondantes non trouvées pour le champ \"{0}\"\n"
+msgstr "Dans l'incapacité de mttre à jour le champ binné: métadonnées correspondantes non trouvées pour le champ \"{0}\""
 ""
 
 #: src/metabase/query_processor/middleware/cache.clj
@@ -13159,7 +13159,7 @@ msgstr "Echec à la planification des tâches pour la base de données {0}"
 msgid "All elements must be distinct."
 msgstr "Tous les éléments doivent être distincts."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Choisissez les colonnes concernées"
@@ -13638,4 +13638,3 @@ msgstr "La valeur du jeton est manquante pour le chemin {0}"
 #: src/metabase/util/stats.clj
 msgid "Sending usage stats FAILED"
 msgstr "Échec de l'envoi des statistiques d'utilisation"
-

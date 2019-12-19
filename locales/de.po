@@ -13177,7 +13177,7 @@ msgstr "Fehler beim Planen der Aufgaben für Datenbank {0}"
 msgid "All elements must be distinct."
 msgstr "Jedes Element muss eindeutig sein."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Wähle die Spalten aus, die Du einbeziehen möchtest."
@@ -13310,7 +13310,7 @@ msgstr "Nur in Detailansichten"
 
 #: frontend/src/metabase/lib/core.js:289
 msgid "Do not include"
-msgstr "Nicht enthalten\n"
+msgstr "Nicht enthalten"
 ""
 
 #: frontend/src/metabase/lib/core.js:290
@@ -13656,4 +13656,3 @@ msgstr "Token fehlt Wert für Schlüsselpfad {0]"
 #: src/metabase/util/stats.clj
 msgid "Sending usage stats FAILED"
 msgstr "Sende Nutzungsstatistiken FEHLGESCHLAGEN"
-
