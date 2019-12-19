@@ -128,7 +128,7 @@ export default class TagEditorParam extends Component {
     const hasWidgetOptions = widgetOptions && widgetOptions.length > 0;
     return (
       <Card className="p2 mb2">
-        <h4 className="pb2 text-monospace text-brand">{tag.name}</h4>
+        <h3 className="pb2 text-brand">{tag.name}</h3>
 
         <div className="pb3">
           <h4 className="pb1">{t`Filter label`}</h4>
