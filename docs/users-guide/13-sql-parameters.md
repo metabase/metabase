@@ -63,7 +63,7 @@ First, insert a variable tag in your SQL, like `{% raw %}{{my_var}}{% endraw %}`
 - UNIX Timestamp (Milliseconds)
 - ZIP or Postal Code
 
-The field can also be a datetime one (which can be left as "No special type" in the Data Model).
+The field can also be a datetime, which can be left as "No special type" in the Data Model.
 
 You'll then see a dropdown labeled "Widget," which will let you choose the kind of filter widget you want on your question, which is especially useful for datetime fields. You can select "None" if you don't want a widget on the question at all, which you might do e.g. if you're just wanting to allow this question to be mapped to a dashboard filter (see more on that below).
 
