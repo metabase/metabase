@@ -194,7 +194,7 @@ export default class Select extends Component {
       >
         <AccordionList
           sections={sections}
-          className="text-brand"
+          className="MB-Select text-brand"
           alwaysExpanded
           itemIsSelected={this.itemIsSelected}
           itemIsClickable={this.itemIsClickable}
