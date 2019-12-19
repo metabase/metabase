@@ -2,5 +2,5 @@
 	"testFiles": "**/*.tz.cy.spec.js",
 	"pluginsFile": "frontend/test/cypress-plugins.js",
 	"integrationFolder": "frontend/test",
-	"supportFile": false
+	"supportFile": "frontend/test/__support__/cypress.js"
 }
