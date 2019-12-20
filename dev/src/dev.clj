@@ -7,20 +7,14 @@
              [driver :as driver]
              [handler :as handler]
              [plugins :as pluguns]
-             [pulse :as pulse]
              [server :as server]
              [util :as u]]
             [metabase.api.common :as api-common]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]]
-            [metabase.models.card :as card]
-            [metabase.models.user :as user]
-            [metabase.pulse.render :as pulse-render]
             [metabase.test.data :as data]
-            [metabase.test.data.impl :as data.impl]
-            [toucan.db :as tdb]
-            [metabase.query-processor :as qp]))
+            [metabase.test.data.impl :as data.impl]))
 
 (defn init!
   []
@@ -97,10 +91,10 @@
   ([driver-or-driver+dataset sql-args]
    (let [[driver dataset] (u/one-or-many driver-or-driver+dataset)]
      (query-jdbc-db
-       driver-or-driver+dataset
-       sql-args
-       {:read-columns   (partial sql-jdbc.execute/read-columns driver)
-        :set-parameters (partial sql-jdbc.execute/set-parameters driver)})))
+      driver-or-driver+dataset
+      sql-args
+      {:read-columns   (partial sql-jdbc.execute/read-columns driver)
+       :set-parameters (partial sql-jdbc.execute/set-parameters driver)})))
 
 
   ([driver-or-driver+dataset sql-args options]
@@ -112,53 +106,3 @@
          (if dataset
            (data.impl/do-with-dataset (data.impl/resolve-dataset-definition *ns* dataset) thunk)
            (thunk)))))))
-
-
-;;---------
-;; rendering to png
-;;---------
-
-;; taken from https://github.com/aysylu/loom/blob/master/src/loom/io.clj
-(defn- os
-  "Returns :win, :mac, :unix, or nil"
-  []
-  (condp
-      #(<= 0 (.indexOf ^String %2 ^String %1))
-      (.toLowerCase (System/getProperty "os.name"))
-    "win" :win
-    "mac" :mac
-    "nix" :unix
-    "nux" :unix
-    nil))
-
-(defn- open
-  "Opens the given file (a string, File, or file URI) in the default
-  application for the current desktop environment. Returns nil"
-  [f]
-  (let [f (clojure.java.io/file f)]
-    ;; There's an 'open' method in java.awt.Desktop but it hangs on Windows
-    ;; using Clojure Box and turns the process into a GUI process on Max OS X.
-    ;; Maybe it's ok for Linux?
-    (condp = (os)
-      :mac  (clojure.java.shell/sh "open" (str f))
-      :win  (clojure.java.shell/sh "cmd" (str "/c start " (-> f .toURI .toURL str)))
-      :unix (clojure.java.shell/sh "xdg-open" (str f)))
-    nil))
-
-(defn render-card-to-png
-  "Given a card ID, renderst he card to a png and opens it"
-  [card-id]
-  (let [{:keys [dataset_query] :as card} (tdb/select-one card/Card :id card-id)
-        user                             (tdb/select-one user/User)
-        query-results                    (qp/process-query-and-save-execution! (assoc dataset_query :async? false)
-                                                                               {:executed-by (:id user)
-                                                                                :context     :pulse
-                                                                                :card-id     card-id})
-        png-bytes                        (pulse-render/render-pulse-card-to-png (pulse/defaulted-timezone card)
-                                                                                card
-                                                                                query-results)
-        tmp-file                         (java.io.File/createTempFile "card-png" ".png")]
-    (with-open [w (java.io.FileOutputStream. tmp-file)]
-      (.write w ^bytes png-bytes))
-    (.deleteOnExit tmp-file)
-    (open tmp-file)))
