@@ -23,8 +23,11 @@
            org.fit.cssbox.layout.BrowserCanvas
            org.w3c.dom.Document))
 
-(def register-fonts
-  "Makes custom fonts available to Java so that CSSBox can render them"
+
+(defonce
+  ^{:doc     "Makes custom fonts available to Java so that CSSBox can render them"
+    :private true}
+  register-fonts
   (delay (doseq [weight ["regular" "700" "900"]]
            (.registerFont (java.awt.GraphicsEnvironment/getLocalGraphicsEnvironment)
                           (java.awt.Font/createFont
