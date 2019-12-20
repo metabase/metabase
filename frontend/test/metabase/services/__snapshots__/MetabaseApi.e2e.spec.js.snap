@@ -429,13 +429,13 @@ Object {
       "display_name": "Created At",
       "fingerprint": Object {
         "global": Object {
-          "distinct-count": 10001,
+          "distinct-count": 9998,
           "nil%": 0,
         },
         "type": Object {
           "type/DateTime": Object {
-            "earliest": "2016-05-01T01:56:13.352Z",
-            "latest": "2020-04-19T21:07:15.657Z",
+            "earliest": "2016-04-30T18:56:13.352",
+            "latest": "2020-04-19T14:07:15.657",
           },
         },
       },
@@ -1573,8 +1573,8 @@ Object {
         },
         "type": Object {
           "type/DateTime": Object {
-            "earliest": "1958-04-26T08:00:00.000Z",
-            "latest": "2000-04-03T07:00:00.000Z",
+            "earliest": "1958-04-26",
+            "latest": "2000-04-03",
           },
         },
       },
@@ -1793,8 +1793,8 @@ Object {
         },
         "type": Object {
           "type/DateTime": Object {
-            "earliest": "2016-04-20T04:35:18.752Z",
-            "latest": "2019-04-19T21:06:27.300Z",
+            "earliest": "2016-04-19T21:35:18.752",
+            "latest": "2019-04-19T14:06:27.3",
           },
         },
       },
@@ -2778,8 +2778,8 @@ Object {
         },
         "type": Object {
           "type/DateTime": Object {
-            "earliest": "2016-04-27T02:29:55.147Z",
-            "latest": "2019-04-15T20:34:19.931Z",
+            "earliest": "2016-04-26T19:29:55.147",
+            "latest": "2019-04-15T13:34:19.931",
           },
         },
       },
@@ -3443,7 +3443,7 @@ Object {
         },
         "type": Object {
           "type/Text": Object {
-            "average-length": 177.41996402877697,
+            "average-length": 182.37589928057554,
             "percent-email": 0,
             "percent-json": 0,
             "percent-url": 0,
@@ -3626,8 +3626,8 @@ Object {
         },
         "type": Object {
           "type/DateTime": Object {
-            "earliest": "2016-06-03T07:37:05.818Z",
-            "latest": "2020-04-19T21:15:25.677Z",
+            "earliest": "2016-06-03T00:37:05.818",
+            "latest": "2020-04-19T14:15:25.677",
           },
         },
       },

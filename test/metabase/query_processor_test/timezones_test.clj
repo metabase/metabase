@@ -3,6 +3,7 @@
              [set :as set]
              [test :refer :all]]
             [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
@@ -18,8 +19,9 @@
              [datasets :as datasets]
              [sql :as sql.tx]]
             [metabase.util.honeysql-extensions :as hx]
-            [toucan.db :as db]))
+            [toucan.db :as db]) )
 
+;; TIMEZONE FIXME
 (def ^:private broken-drivers
   "The following drivers are broken to some extent -- details listed in the Google Doc, or can be see here:
   https://circleci.com/workflow-run/856f6dd0-3d95-4732-a56e-1af59e3ae4ba. The goal is to gradually remove these
@@ -35,7 +37,7 @@
   "Drivers that support setting a Session timezone."
   []
   (set/difference
-   (set (qp.test/non-timeseries-drivers-with-feature :set-timezone))
+   (set (qp.test/normal-drivers-with-feature :set-timezone))
    broken-drivers))
 
 (defn- timezone-aware-column-drivers
@@ -47,8 +49,8 @@
 (deftest result-rows-test
   (data/dataset test-data-with-timezones
     (datasets/test-drivers (timezone-aware-column-drivers)
-      (is (= [[12 "2014-07-03T01:30:00.000Z"]
-              [10 "2014-07-03T19:30:00.000Z"]]
+      (is (= [[12 "2014-07-03T01:30:00Z"]
+              [10 "2014-07-03T19:30:00Z"]]
              (qp.test/formatted-rows [int identity]
                (data/run-mbql-query users
                  {:fields   [$id $last_login]
@@ -56,9 +58,9 @@
                   :order-by [[:asc $last_login]]})))
           "Basic sanity check: make sure the rows come back with the values we'd expect without setting report-timezone"))
     (datasets/test-drivers (set-timezone-drivers)
-      (doseq [[timezone expected-rows] {"UTC"        [[12 "2014-07-03T01:30:00.000Z"]
-                                                      [10 "2014-07-03T19:30:00.000Z"]]
-                                        "US/Pacific" [[10 "2014-07-03T12:30:00.000-07:00"]]}]
+      (doseq [[timezone expected-rows] {"UTC"        [[12 "2014-07-03T01:30:00Z"]
+                                                      [10 "2014-07-03T19:30:00Z"]]
+                                        "US/Pacific" [[10 "2014-07-03T12:30:00-07:00"]]}]
         (tu/with-temporary-setting-values [report-timezone timezone]
           (is (= expected-rows
                  (qp.test/formatted-rows [int identity]
@@ -66,30 +68,29 @@
                      {:fields   [$id $last_login]
                       :filter   [:= $last_login "2014-07-03"]
                       :order-by [[:asc $last_login]]})))
-              (format "There should be %d checkins on July 30th in the %s timezone" (count expected-rows) timezone)))))))
+              (format "There should be %d checkins on July 3rd in the %s timezone" (count expected-rows) timezone)))))))
 
 (deftest filter-test
   (data/dataset test-data-with-timezones
     (datasets/test-drivers (set-timezone-drivers)
       (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-        (is (= [[6 "Shad Ferdynand" "2014-08-02T05:30:00.000-07:00"]]
+        (is (= [[6 "Shad Ferdynand" "2014-08-02T05:30:00-07:00"]]
                (qp.test/formatted-rows [int identity identity]
                  (data/run-mbql-query users
                    {:filter [:between $last_login "2014-08-02T03:00:00.000000" "2014-08-02T06:00:00.000000"]})))
             (str "If MBQL datetime literal strings do not explicitly specify a timezone, they should be parsed as if "
                  "in the current reporting timezone (Pacific in this case)"))
-        (is (= [[6 "Shad Ferdynand" "2014-08-02T05:30:00.000-07:00"]]
+        (is (= [[6 "Shad Ferdynand" "2014-08-02T05:30:00-07:00"]]
                (qp.test/formatted-rows [int identity identity]
                  (data/run-mbql-query users
                    {:filter [:between $last_login "2014-08-02T10:00:00.000000Z" "2014-08-02T13:00:00.000000Z"]})))
             "MBQL datetime literal strings that include timezone should be parsed in it regardless of report timezone")))
-
     (testing "UTC timezone"
       (let [run-query   (fn []
                           (qp.test/formatted-rows [int identity identity]
                             (data/run-mbql-query users
                               {:filter [:between $last_login "2014-08-02T10:00:00.000000" "2014-08-02T13:00:00.000000"]})))
-            utc-results [[6 "Shad Ferdynand" "2014-08-02T12:30:00.000Z"]]]
+            utc-results [[6 "Shad Ferdynand" "2014-08-02T12:30:00Z"]]]
         (datasets/test-drivers (set-timezone-drivers)
           (is (= utc-results
                  (tu/with-temporary-setting-values [report-timezone "UTC"]
@@ -123,7 +124,7 @@
                                                   [:id :name :last_login])
                                   :from     [(table-identifier :users)]
                                   :where    [:between
-                                             (hx/cast :date (field-identifier :users :last_login))
+                                             (field-identifier :users :last_login)
                                              (hsql/raw "{{date1}}")
                                              (hsql/raw "{{date2}}")]
                                   :order-by [[(field-identifier :users :id) :asc]]})
@@ -170,16 +171,68 @@
   ;; parameters always get `date` bucketing so doing something the between stuff we do below is basically just going
   ;; to match anything with a `2014-08-02` date
   (datasets/test-drivers (set-timezone-drivers)
-    (data/dataset test-data-with-timezones
-      (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
-        (testing "Native dates should be parsed with the report timezone"
-          (doseq [[params-description query] (native-params-queries)]
-            (testing (format "Query with %s" params-description)
-              (is (= [[6 "Shad Ferdynand"  "2014-08-02T05:30:00.000-07:00"]
-                      [7 "Conchúr Tihomir" "2014-08-02T02:30:00.000-07:00"]]
-                     (qp.test/formatted-rows [int identity identity]
-                       (qp/process-query
-                         (merge
-                          {:database (data/id)
-                           :type     :native}
-                          query))))))))))))
+    (when (driver/supports? driver/*driver* :native-parameters)
+      (data/dataset test-data-with-timezones
+        (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
+          (testing "Native dates should be parsed with the report timezone"
+            (doseq [[params-description query] (native-params-queries)]
+              (testing (format "Query with %s" params-description)
+                (is (= [[6 "Shad Ferdynand"  "2014-08-02T05:30:00-07:00"]
+                        [7 "Conchúr Tihomir" "2014-08-02T02:30:00-07:00"]]
+                       (qp.test/formatted-rows [int identity identity]
+                         (qp/process-query
+                           (merge
+                            {:database (data/id)
+                             :type     :native}
+                            query)))))))))))))
+
+
+
+;; Make sure TIME values are handled consistently (#10366)
+(defn- attempts []
+  (zipmap
+   [:date :time :datetime :time-ltz :time-tz :datetime-ltz :datetime-tz :datetime-tz-id]
+   (qp.test/first-row
+     (qp/process-query
+       (data/query attempts
+         {:query      {:fields [$date $time $datetime $time-ltz $time-tz $datetime-ltz $datetime-tz $datetime-tz-id]
+                       :filter [:= $id 1]}
+          :middleware {:format-rows? false}})))))
+
+(defn- driver-distinguishes-between-base-types?
+  "True if the current distinguishes between two base types when loading data in test datasets.
+  TODO — how is this supposed to work for MongoDB?"
+  [base-type-1 base-type-2]
+  (not= (sql.tx/field-base-type->sql-type driver/*driver* base-type-1)
+        (sql.tx/field-base-type->sql-type driver/*driver* base-type-2)))
+
+(defn- supports-time-with-time-zone?   [] (driver-distinguishes-between-base-types? :type/TimeWithTZ :type/Time))
+(defn- supports-time-with-offset?      [] (driver-distinguishes-between-base-types? :type/TimeWithZoneOffset :type/TimeWithTZ))
+(defn- supports-datetime-with-offset?  [] (driver-distinguishes-between-base-types? :type/DateTimeWithZoneOffset :type/DateTimeWithTZ))
+(defn- supports-datetime-with-zone-id? [] (driver-distinguishes-between-base-types? :type/DateTimeWithZoneID :type/DateTimeWithTZ))
+
+(defn- expected-attempts []
+  (merge
+   {:date         (t/local-date "2019-11-01")
+    :time         (t/local-time "00:23:18.331")
+    :datetime     (t/local-date-time "2019-11-01T00:23:18.331")
+    :datetime-ltz (t/offset-date-time "2019-11-01T07:23:18.331Z")}
+   (when (supports-time-with-time-zone?)
+     {:time-ltz (t/offset-time "07:23:18.331Z")})
+   (when (supports-time-with-offset?)
+     {:time-tz (t/offset-time "00:23:18.331-07:00")})
+   (when (supports-datetime-with-offset?)
+     {:datetime-tz (t/offset-date-time "2019-11-01T00:23:18.331-07:00")})
+   (when (supports-datetime-with-zone-id?)
+     {:datetime-tz-id (t/zoned-date-time "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]")})))
+
+(deftest time-timezone-handling-test
+  ;; Actual value : "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"
+  ;; Oracle doesn't have a time type
+  (datasets/test-drivers (set-timezone-drivers)
+    (data/dataset attempted-murders
+      (doseq [timezone [nil "US/Pacific" "US/Eastern" "Asia/Hong_Kong"]]
+        (tu/with-temporary-setting-values [report-timezone timezone]
+          (let [expected (expected-attempts)]
+            (is (= expected
+                   (select-keys (attempts) (keys expected))))))))))

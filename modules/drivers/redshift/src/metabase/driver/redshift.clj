@@ -8,10 +8,13 @@
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]]
+            [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.util.honeysql-extensions :as hx]))
+            [metabase.util.honeysql-extensions :as hx])
+  (:import java.sql.Types
+           java.time.OffsetTime))
 
-(driver/register! :redshift, :parent :postgres)
+(driver/register! :redshift, :parent #{:postgres ::legacy/use-legacy-classes-for-read-and-set})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -78,25 +81,30 @@
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod driver/date-add :redshift [_ dt amount unit]
+(defmethod driver/date-add :redshift
+  [_ dt amount unit]
   (hsql/call :dateadd (hx/literal unit) amount (hx/->timestamp dt)))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:redshift :seconds] [_ _ expr]
+(defmethod sql.qp/unix-timestamp->timestamp [:redshift :seconds]
+  [_ _ expr]
   (hx/+ (hsql/raw "TIMESTAMP '1970-01-01T00:00:00Z'")
         (hx/* expr
               (hsql/raw "INTERVAL '1 second'"))))
 
-(defmethod sql.qp/current-datetime-fn :redshift [_]
+(defmethod sql.qp/current-datetime-fn :redshift
+  [_]
   :%getdate)
 
-(defmethod sql-jdbc.execute/set-timezone-sql :redshift [_]
+(defmethod sql-jdbc.execute/set-timezone-sql :redshift
+  [_]
   "SET TIMEZONE TO %s;")
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod sql-jdbc.conn/connection-details->spec :redshift [_ {:keys [host port db], :as opts}]
+(defmethod sql-jdbc.conn/connection-details->spec :redshift
+  [_ {:keys [host port db], :as opts}]
   (merge
    {:classname                     "com.amazon.redshift.jdbc.Driver"
     :subprotocol                   "redshift"
@@ -104,3 +112,13 @@
     :ssl                           true
     :OpenSourceSubProtocolOverride false}
    (dissoc opts :host :port :db)))
+
+(prefer-method
+ sql-jdbc.execute/read-column
+ [::legacy/use-legacy-classes-for-read-and-set Types/TIMESTAMP]
+ [:postgres Types/TIMESTAMP])
+
+(prefer-method
+ sql-jdbc.execute/set-parameter
+ [::legacy/use-legacy-classes-for-read-and-set OffsetTime]
+ [:postgres OffsetTime])

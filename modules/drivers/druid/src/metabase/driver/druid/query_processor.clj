@@ -1,30 +1,27 @@
 (ns metabase.driver.druid.query-processor
   (:require [cheshire.core :as json]
-            [clj-time
-             [coerce :as tcoerce]
-             [core :as time]
-             [format :as tformat]]
             [clojure.core.match :refer [match]]
             [clojure.math.numeric-tower :as math]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [flatland.ordered.map :as ordered-map]
+            [java-time :as t]
+            [metabase
+             [types :as types]
+             [util :as u]]
             [metabase.driver.druid.js :as js]
             [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.query-processor
              [interface :as i]
-             [store :as qp.store]]
+             [store :as qp.store]
+             [timezone :as qp.timezone]]
             [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.util :as u]
             [metabase.util
-             [date :as du]
+             [date-2 :as u.date]
              [i18n :as ui18n :refer [tru]]]
-            [schema.core :as s])
-  (:import java.sql.Timestamp
-           java.util.TimeZone
-           org.joda.time.DateTimeZone))
+            [schema.core :as s]))
 
 (def ^:private ^:const topN-max-results
   "Maximum number of rows the topN query in Druid should return. Huge values cause significant issues with the engine.
@@ -52,10 +49,6 @@
   "The INNER part of the query currently being processed.
    (`:settings` is merged in from the outer query as well so we can access timezone info)."
   nil)
-
-(defn- get-timezone-id
-  []
-  (or (get-in *query* [:settings :report-timezone]) "UTC"))
 
 (defn- query-type-dispatch-fn
   [query-type & _]
@@ -107,19 +100,20 @@
   (->rvalue field))
 
 (defmethod ->rvalue :absolute-datetime
-  [[_ timestamp unit]]
-  (du/date->iso-8601 (if (= unit :default)
-                       timestamp
-                       (du/date-trunc unit timestamp (get-timezone-id)))))
+  [[_ t unit]]
+  (u.date/format
+   (if (= unit :default)
+     t
+     (u.date/truncate t unit))))
 
 ;; TODO - not 100% sure how to handle times here, just treating it exactly like a date will have to do for now
 (defmethod ->rvalue :time
-  [[_ time unit]]
-  (du/date->iso-8601 (du/date-trunc unit time (get-timezone-id))))
+  [[_ t unit]]
+  (u.date/format (u.date/truncate t unit)))
 
 (defmethod ->rvalue :relative-datetime
   [[_ amount unit]]
-  (du/date->iso-8601 (du/date-trunc unit (du/relative-date unit amount) (get-timezone-id))))
+  (u.date/format (u.date/truncate (u.date/add unit amount) unit)))
 
 (defmethod ->rvalue :value
   [[_ value]]
@@ -337,22 +331,22 @@
   milliseconds, because that is the smallest unit Druid supports."
   [clause n]
   (mbql.u/replace clause
-    [:absolute-datetime inst :default]
-    [:absolute-datetime (du/relative-date :millisecond n inst) :millisecond]
+    [:absolute-datetime t :default]
+    [:absolute-datetime (u.date/add t :millisecond n) :millisecond]
 
     _
     (mbql.u/add-datetime-units clause n)))
 
-(defn- ->absolute-timestamp ^Timestamp [clause]
+(defn- ->absolute-timestamp ^java.time.temporal.Temporal [clause]
   (mbql.u/match-one clause
-    [:absolute-datetime inst :default]
-    inst
+    [:absolute-datetime t :default]
+    t
 
-    [:absolute-datetime inst unit]
-    (du/date-trunc unit inst (get-timezone-id))
+    [:absolute-datetime t unit]
+    (u.date/truncate t unit)
 
     [:relative-datetime amount unit]
-    (du/date-trunc unit (du/relative-date unit amount) (get-timezone-id))
+    (u.date/truncate (u.date/add unit amount) unit)
 
     _
     nil))
@@ -360,7 +354,7 @@
 (defmulti ^:private filter-clause->intervals
   "Generate query intervals as appropriate from a `filter-clause` containing a `:datetime-field`. `:intervals` are
   specified seperately from other things we think of as filter clauses in Druid. For temporal filter clauses, this
-  returns a sequence of min/max datetime tuples; like `[#inst 2019-01-01 #inst 2019-10-01]`; for irrelevant filter
+  returns a sequence of min/max datetime tuples; like `[#t 2019-01-01 #t 2019-10-01]`; for irrelevant filter
   clauses, the methods are skipped entirely."
   {:arglists '([filter-clause])}
   (fn [clause]
@@ -450,8 +444,8 @@
   (when-let [intervals (seq (filter some? intervals))]
     (for [[min-value max-value] intervals]
       (format "%s/%s"
-              (or (some-> min-value du/date->iso-8601) "-5000")
-              (or (some-> max-value du/date->iso-8601) "5000")))))
+              (or (some-> min-value u.date/format) "-5000")
+              (or (some-> max-value u.date/format) "5000")))))
 
 (defn- handle-filter
   [_ {filter-clause :filter} updated-query]
@@ -584,6 +578,10 @@
   [filtr aggregator]
   {:type :filtered, :filter filtr, :aggregator aggregator})
 
+(defn- hyper-unique?
+  [[_ field-id]]
+  (-> field-id qp.store/field :base_type (isa? :type/DruidHyperUnique)))
+
 (defn- ag:distinct
   [field output-name]
   (cond
@@ -593,7 +591,7 @@
      :fieldNames (mapv ->rvalue (rest field))
      :byRow      true
      :round      true}
-    (isa? (:base-type field) :type/DruidHyperUnique)
+    (hyper-unique? field)
     {:type      :hyperUnique
      :name      output-name
      :fieldName (->rvalue field)}
@@ -608,7 +606,8 @@
   ([output-name]
    {:type :count, :name output-name})
   ([field output-name]
-   (if (isa? (:base-type field) :type/DruidHyperUnique)
+   (if (and (mbql.u/is-clause? #{:field-id} field)
+            (hyper-unique? field))
      {:type      :hyperUnique
       :name      output-name
       :fieldName (->rvalue field)}
@@ -869,7 +868,7 @@
                       :month   "P1M"
                       :quarter "P3M"
                       :year    "P1Y")
-          :timeZone (get-timezone-id)}
+          :timeZone (qp.timezone/results-timezone-id)}
          ;; Druid uses Monday for the start of its weekly calculations. Metabase uses Sundays. When grouping by week,
          ;; the origin keypair will use the date specified as it's start of the week. The below date is the first
          ;; Sunday after Epoch. The date itself isn't significant, it just uses it to figure out what day it should
@@ -878,7 +877,7 @@
            {:origin "1970-01-04T00:00:00Z"})))
 
 (def ^:private units-that-need-post-processing-int-parsing
-  "`extract:timeFormat` always returns a string; there are cases where we'd like to return an integer instead, such as
+  "`extract:timeFormat` always returns a string; there are cases where we'd like to return an integer tead, such as
   `:day-of-month`. There's no simple way to do this in Druid -- Druid 0.9.0+ *does* let you combine extraction
   functions with `:cascade`, but we're still supporting 0.8.x. Instead, we will perform the conversions in
   Clojure-land during post-processing. If we need to perform the extra post-processing step, we'll name the resulting
@@ -908,7 +907,7 @@
   [[_ _ unit]]
   {:type         :extraction
    :dimension    :__time
-   ;; :timestamp is a special case, and we need to do an 'extraction' against the secret special value :__time to get
+   ;; :timestamp is a special case, and we need to do an 'extraction' agat the secret special value :__time to get
    ;; at it
    :outputName   (if (contains? units-that-need-post-processing-int-parsing unit)
                    :timestamp___int
@@ -1007,12 +1006,12 @@
                                                                             :desc :descending
                                                                             :asc  :ascending)}))))
 (defn- datetime-field?
-  "Similar to `mbql.u/datetime-field?` but works on field ids wrapped in a datetime or on fields that happen to be a
+  "Similar to `types/temporal-field?` but works on field ids wrapped in a datetime or on fields that happen to be a
   datetime"
   [field]
   (when field
     (or (mbql.u/is-clause? :datetime-field field)
-        (mbql.u/datetime-field? (qp.store/field (second field))))))
+        (types/temporal-field? (qp.store/field (second field))))))
 
 ;; Handle order by timstamp field
 (defn- handle-order-by-timestamp
@@ -1055,7 +1054,7 @@
       (cond
         ;; If you specify nil or empty `:dimensions` or `:metrics` Druid will just return all of the ones available.
         ;; In cases where we don't want anything to be returned in one or the other, we'll ask for a `:___dummy`
-        ;; column instead. Druid happily returns `nil` for the column in every row, and it will get auto-filtered out
+        ;; column tead. Druid happily returns `nil` for the column in every row, and it will get auto-filtered out
         ;; of the results so the User will never see it.
         (nil? field)
         (-> updated-query
@@ -1176,70 +1175,42 @@
   {:arglists '([query-type projections timezone-and-middleware-settings results])}
   query-type-dispatch-fn)
 
-(defn- post-process-map
-  [projections results]
-  {:projections projections
-   :results     results})
-
-(def ^:private druid-ts-format (tformat/formatters :date-time))
-
-(def ^:private ^{:arglists '([timestamp])} parse-timestamp
-  (comp tcoerce/to-date (partial tformat/parse druid-ts-format)))
-
-(defn- reformat-timestamp
-  [timestamp target-formatter]
-  (->> timestamp
-       (tformat/parse druid-ts-format)
-       (tformat/unparse target-formatter)))
-
 (defmethod post-process ::select
-  [_ projections {:keys [timezone middleware]} results]
-  (let [target-formater (some->> timezone (tformat/with-zone druid-ts-format))
-        update-ts-fn    (cond
-                          (not (:format-rows? middleware true))
-                          #(update % :timestamp parse-timestamp)
-
-                          target-formater
-                          #(update % :timestamp reformat-timestamp target-formater)
-
-                          :else
-                          identity)]
-    (->> results
-         first
-         :result
-         :events
-         (map (comp update-ts-fn :event))
-         (post-process-map projections))))
+  [_ projections {:keys [middleware]} [{{:keys [events]} :result} first-result]]
+  {:projections projections
+   :results     (for [event (map :event events)]
+                  (update event :timestamp u.date/parse))})
 
 (defmethod post-process ::total
   [_ projections _ results]
-  (post-process-map projections (map :result results)))
+  {:projections projections
+   :results     (map :result results)})
 
 (defmethod post-process ::topN
   [_ projections {:keys [middleware]} results]
-  (post-process-map projections
-                    (let [results (-> results first :result)]
-                      (if (:format-rows? middleware true)
-                        results
-                        (map #(u/update-when % :timestamp parse-timestamp) results)))))
+  {:projections projections
+   :results     (let [results (-> results first :result)]
+                  (if (:format-rows? middleware true)
+                    results
+                    (map #(u/update-when % :timestamp u.date/parse) results)))})
 
 (defmethod post-process ::groupBy
   [_ projections {:keys [middleware]} results]
-  (post-process-map projections
-                    (if (:format-rows? middleware true)
-                      (map :event results)
-                      (map (comp #(u/update-when % :timestamp parse-timestamp)
-                                 :event)
-                           results))))
+  {:projections projections
+   :results     (if (:format-rows? middleware true)
+                  (map :event results)
+                  (map (comp #(u/update-when % :timestamp u.date/parse)
+                             :event)
+                       results))})
 
 (defmethod post-process ::timeseries
   [_ projections {:keys [middleware]} results]
-  (post-process-map (conj projections :timestamp)
-                    (let [ts-getter (if (:format-rows? middleware true)
-                                      :timestamp
-                                      (comp parse-timestamp :timestamp))]
-                      (for [event results]
-                        (merge {:timestamp (ts-getter event)} (:result event))))))
+  {:projections (conj projections :timestamp)
+   :results     (let [ts-getter (if (:format-rows? middleware true)
+                                  :timestamp
+                                  (comp u.date/parse :timestamp))]
+                  (for [event results]
+                    (merge {:timestamp (ts-getter event)} (:result event))))})
 
 (defn- remove-bonus-keys
   "Remove keys that start with `___` from the results -- they were temporary, and we don't want to return them."
@@ -1279,19 +1250,12 @@
                                   k)
           k)])))
 
-(defn- utc?
-  "There are several timezone ids that mean UTC. This will create a TimeZone object from `TIMEZONE` and check to see if
-  it's a UTC timezone"
-  [^DateTimeZone timezone]
-  (.hasSameRules (TimeZone/getTimeZone "UTC") (.toTimeZone timezone)))
-
 (defn- resolve-timezone
   "Returns the timezone object (either report-timezone or JVM timezone). Returns nil if the timezone is UTC as the
   timestamps from Druid are already in UTC and don't need to be converted"
-  [{:keys [settings]}]
-  (let [tz (time/time-zone-for-id (:report-timezone settings (System/getProperty "user.timezone")))]
-    (when-not (utc? tz)
-      tz)))
+  [_]
+  (when-not (= (t/zone-id (qp.timezone/results-timezone-id)) (t/zone-id "UTC"))
+    (qp.timezone/results-timezone-id)))
 
 (defn execute-query
   "Execute a query for a Druid DB."
@@ -1321,14 +1285,14 @@
     ;; Leave `:rows` as a sequence of maps and the `annotate` middleware will take care of converting them to vectors
     ;; in the correct column order
     {:rows (for [row (:results post-proc-map)]
-             ;; use ordered-map to preseve the column ordering because for native queries results are returned in whatever
-             ;; order the keys come out when calling `keys`
+             ;; use ordered-map to preseve the column ordering because for native queries results are returned in
+             ;; whatever order the keys come out when calling `keys`
              (into
               (ordered-map/ordered-map)
               (for [[column getter] column->getter]
-                ;; rename any occurances of `:timestamp___int` to `:timestamp` in the results so the user doesn't know about
-                ;; our behind-the-scenes conversion and apply any other post-processing on the value such as parsing some
-                ;; units to int and rounding up approximate cardinality values.
+                ;; rename any occurances of `:timestamp___int` to `:timestamp` in the results so the user doesn't know
+                ;; about our behind-the-scenes conversion and apply any other post-processing on the value such as
+                ;; parsing some units to int and rounding up approximate cardinality values.
                 [(case column
                    :timestamp___int  :timestamp
                    :distinct___count :count

@@ -1,14 +1,14 @@
 (ns metabase.test.data.mongo
   (:require [metabase.driver.mongo.util :refer [with-mongo-connection]]
             [metabase.test.data.interface :as tx]
-            [metabase.util :as u]
             [monger
              [collection :as mc]
              [core :as mg]]))
 
 (tx/add-test-extensions! :mongo)
 
-(defmethod tx/dbdef->connection-details :mongo [_ _ dbdef]
+(defmethod tx/dbdef->connection-details :mongo
+  [_ _ dbdef]
   {:dbname (tx/escaped-name dbdef)
    :host   "localhost"})
 
@@ -26,19 +26,12 @@
                           (keyword (:field-name field-definition)))]
         ;; Use map-indexed so we can get an ID for each row (index + 1)
         (doseq [[i row] (map-indexed (partial vector) rows)]
-          (let [row (for [v row]
-                      ;; Conver all the java.sql.Timestamps to java.util.Date, because the Mongo driver insists on
-                      ;; being obnoxious and going from using Timestamps in 2.x to Dates in 3.x
-                      (if (instance? java.sql.Timestamp v)
-                        (java.util.Date. (.getTime ^java.sql.Timestamp v))
-                        v))]
-            (try
-              ;; Insert each row
-              (mc/insert mongo-db (name table-name) (assoc (zipmap field-names row)
-                                                      :_id (inc i)))
-              ;; If row already exists then nothing to do
-              (catch com.mongodb.MongoException _))))))))
-
+          (try
+            ;; Insert each row
+            (mc/insert mongo-db (name table-name) (assoc (zipmap field-names row)
+                                                         :_id (inc i)))
+            ;; If row already exists then nothing to do
+            (catch com.mongodb.MongoException _)))))))
 
 (defmethod tx/format-name :mongo
   [_ table-or-field-name]

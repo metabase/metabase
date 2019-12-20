@@ -1,6 +1,7 @@
 (ns metabase.test.data.presto
   "Presto driver test extensions."
   (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [honeysql
              [core :as hsql]
              [helpers :as h]]
@@ -12,8 +13,7 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.test.data
              [interface :as tx]
-             [sql :as sql.tx]])
-  (:import java.util.Date))
+             [sql :as sql.tx]]))
 
 (sql.tx/add-test-extensions! :presto)
 
@@ -27,7 +27,8 @@
 ;; `db-qualified-table-name` like everyone else.
 (def ^:private test-catalog-name "test-data")
 
-(defmethod tx/dbdef->connection-details :presto [_ context {:keys [database-name]}]
+(defmethod tx/dbdef->connection-details :presto
+  [_ context {:keys [database-name]}]
   (merge {:host    (tx/db-test-env-var-or-throw :presto :host "localhost")
           :port    (tx/db-test-env-var-or-throw :presto :port "8080")
           :user    (tx/db-test-env-var-or-throw :presto :user "metabase")
@@ -71,7 +72,8 @@
             (str/join \, (for [column columns]
                            (sql.u/quote-name driver :field (tx/format-name driver column)))))))
 
-(defmethod sql.tx/drop-table-if-exists-sql :presto [driver {:keys [database-name]} {:keys [table-name]}]
+(defmethod sql.tx/drop-table-if-exists-sql :presto
+  [driver {:keys [database-name]} {:keys [table-name]}]
   (str "DROP TABLE IF EXISTS " (sql.tx/qualify-and-quote driver database-name table-name)))
 
 (defn- insert-sql [driver {:keys [database-name]} {:keys [table-name], :as tabledef} rows]
@@ -82,6 +84,9 @@
                                                     (sql.tx/qualified-name-components driver database-name table-name)))
                               (h/values rows)
                               (hsql/format :allow-dashed-names? true, :quoting :ansi))]
+    (log/trace "Inserting Presto rows")
+    (doseq [row rows]
+      (log/trace (str/join ", " (map #(format "^%s %s" (.getName (class %)) (pr-str %)) row))))
     (if (nil? params)
       query
       (unprepare/unprepare :presto (cons query params)))))
@@ -102,7 +107,8 @@
       (doseq [batch batches]
         (execute! (insert-sql driver dbdef tabledef batch))))))
 
-(defmethod tx/format-name :presto [_ s]
+(defmethod tx/format-name :presto
+  [_ s]
   (str/lower-case s))
 
 ;; FIXME Presto actually has very good timezone support

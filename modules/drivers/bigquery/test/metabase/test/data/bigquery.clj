@@ -1,8 +1,6 @@
 (ns metabase.test.data.bigquery
-  (:require [clj-time
-             [coerce :as tcoerce]
-             [format :as tformat]]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
+            [java-time :as t]
             [medley.core :as m]
             [metabase
              [config :as config]
@@ -11,19 +9,18 @@
             [metabase.driver
              [bigquery :as bigquery]
              [google :as google]]
-            [metabase.driver.bigquery.query-processor :as bigquery.qp]
             [metabase.test.data :as data]
             [metabase.test.data
              [interface :as tx]
              [sql :as sql.tx]]
             [metabase.util
-             [date :as du]
+             [date-2 :as u.date]
              [schema :as su]]
             [schema.core :as s])
   (:import com.google.api.client.util.DateTime
            com.google.api.services.bigquery.Bigquery
-           [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest QueryResponse Table
-            TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableFieldSchema TableReference TableRow
+           [com.google.api.services.bigquery.model Dataset DatasetReference QueryRequest QueryResponse
+            Table TableDataInsertAllRequest TableDataInsertAllRequest$Rows TableFieldSchema TableReference TableRow
             TableSchema]
            java.sql.Time))
 
@@ -132,7 +129,7 @@
   "Convert the HoneySQL form we normally use to wrap a `Timestamp` to a Google `DateTime`."
   [{[{s :literal}] :args}]
   {:pre [(string? s) (seq s)]}
-  (DateTime. (du/->Timestamp (str/replace s #"'" ""))))
+  (DateTime. (t/to-java-date (u.date/parse (str/replace s #"'" "")))))
 
 
 (defn- insert-data! [^String dataset-id, ^String table-id, row-maps]
@@ -191,13 +188,6 @@
                      (println (u/format-color 'red "Don't know what BigQuery type to use for base type: %s" base-type))
                      (throw (Exception. (format "Don't know what BigQuery type to use for base type: %s" base-type))))})))
 
-(defn- time->string
-  "Coerces `t` to a Joda DateTime object and returns it's String representation."
-  [t]
-  (->> t
-       tcoerce/to-date-time
-       (tformat/unparse #'bigquery.qp/bigquery-time-format)))
-
 (defn- tabledef->prepared-rows
   "Convert `table-definition` to a format approprate for passing to `insert-data!`."
   [{:keys [field-definitions rows]}]
@@ -207,7 +197,7 @@
           :let    [vs (for [v row]
                         (u/prog1 (cond
                                    (instance? Time v)
-                                   (time->string v)
+                                   (u.date/format-sql (t/local-time v))
 
                                    (instance? java.util.Date v)
                                    ;; convert to Google version of DateTime, otherwise it doesn't work (!)

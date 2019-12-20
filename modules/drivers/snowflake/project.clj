@@ -1,12 +1,14 @@
-(defproject metabase/snowflake-driver "1.0.0-SNAPSHOT-3.6.27"
+(defproject metabase/snowflake-driver "1.0.0-SNAPSHOT-3.10.2"
   :min-lein-version "2.5.0"
 
   :dependencies
-  [[net.snowflake/snowflake-jdbc "3.8.0"]]
+  [[net.snowflake/snowflake-jdbc "3.10.2"]]
 
   :profiles
   {:provided
-   {:dependencies [[metabase-core "1.0.0-SNAPSHOT"]]}
+   {:dependencies
+    [[org.clojure/clojure "1.10.1"]
+     [metabase-core "1.0.0-SNAPSHOT"]]}
 
    :uberjar
    {:auto-clean    true

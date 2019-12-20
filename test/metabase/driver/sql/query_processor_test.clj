@@ -102,7 +102,7 @@
                  :from   [(id :table "PUBLIC" "CHECKINS")]
                  :where  [:>
                           (id :field "PUBLIC" "CHECKINS" "DATE")
-                          #inst "2015-01-01T00:00:00.000-00:00"]}
+                          #t "2015-01-01T00:00:00.000-00:00"]}
                 (id :table-alias "source")]]
    :left-join [[(id :table "PUBLIC" "VENUES") (bound-alias :source (id :table-alias "v"))]
                [:=
@@ -123,7 +123,7 @@
                          :fields       [$id [:datetime-field $date :default] $user_id $venue_id]
                          :filter       [:>
                                         $date
-                                        [:absolute-datetime #inst "2015-01-01T00:00:00.000000000-00:00" :default]],},
+                                        [:absolute-datetime #t "2015-01-01T00:00:00.000000000-00:00" :default]],},
           :aggregation  [[:count]]
           :order-by     [[:asc [:joined-field "v" $venues.name]]]
           :breakout     [[:joined-field "v" $venues.name]],

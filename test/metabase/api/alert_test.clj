@@ -53,6 +53,7 @@
 (defn- default-email-channel
   ([pulse-card]
    (default-email-channel pulse-card [(fetch-user :rasta)]))
+
   ([pulse-card recipients]
    {:id            pulse-card
     :enabled       true

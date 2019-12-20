@@ -7,6 +7,7 @@
              [config :as config]
              [driver :as driver]
              [util :as u]]
+            [metabase.driver.impl :as impl]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))
 
@@ -39,7 +40,6 @@
       (catch Throwable e
         (log/error (trs "Failed to connect to database: {0}" (.getMessage e)))
         false))))
-
 
 (defn report-timezone-if-supported
   "Returns the report-timezone if `driver` supports setting it's timezone and a report-timezone has been specified by
@@ -85,10 +85,10 @@
           :let    [driver (keyword (-> (last (str/split (name ns-symb) #"\."))
                                        (str/replace #"_" "-")))]
           ;; let's go ahead and ignore namespaces we know for a fact do not contain drivers
-          :when   (not (#{:common :util :query-processor :google}
+          :when   (not (#{:common :util :query-processor :google :impl}
                         driver))]
     (try
-      (#'driver/load-driver-namespace-if-needed! driver)
+      (impl/load-driver-namespace-if-needed! driver)
       (catch Throwable e
         (log/error e (trs "Error loading namespace"))))))
 

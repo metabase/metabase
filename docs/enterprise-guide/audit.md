@@ -14,31 +14,31 @@ The Team Members panel has a view of other options for viewing your team's usage
 
 The Audit Log tab will display, in chronological order, each query, who viewed it, and when. Note that if the user did not save their query, its name will be listed as `Ad-hoc`. Each query name can be clicked to view more details about your users' interactions with it, including a full revision history. You will also be able to view the query in Metabase. Note that this link will always show the latest version of the query - use the revision history to see changes over time.
 
-
 #### Drilling In
 
 Throughout the People section, names can be clicked to access the profile of a specific user’s activity. This profile includes:
 
-* Dashboard views
-* Query views
-* Downloads
+- Dashboard views
+- Query views
+- Downloads
 
 ![Team Members](./images/audit-teammember.png)
 
 ### Data
 
-The Data section focuses on your databases, schemas and tables, and is divided into corresponding sections. Look here if you're trying to uncover queries and schemas that need optimization.  Each section provides visualizations around the use and speed of querying against your databases, schemas or tables. You will also be able to view lists of stats about all of your databases, schemas and tables.
+The Data section focuses on your databases, schemas and tables, and is divided into corresponding sections. Look here if you're trying to uncover queries and schemas that need optimization. Each section provides visualizations around the use and speed of querying against your databases, schemas or tables. You will also be able to view lists of stats about all of your databases, schemas and tables.
 
 ![Data](./images/audit-data.png)
 
 ### Items
+
 The Items section focuses on questions, dashboards and downloads, and is divided into corresponding sections. Use these pages to gain a better understanding of what your users are interacting with.
 
 #### Questions
 
-The Questions section will show you your most popular queries, as well as your slowest queries. If queries you think are important aren't appearing on your most popular queries list, you may want to make sure your team is focusing on the right things. 
+The Questions section will show you your most popular queries, as well as your slowest queries. If queries you think are important aren't appearing on your most popular queries list, you may want to make sure your team is focusing on the right things.
 
-If important queries are appearing on the list of slowest queries, you will want to look at optimizing them. One option is to adjust your [caching settings](../../14-caching.html), but there are plenty of other options as well. To help you determine if your optimization efforts are heading in the right direction, use the `Query views and speed per day` visualization at the bottom of the page.
+If important queries are appearing on the list of slowest queries, you will want to look at optimizing them. One option is to adjust your [caching settings](../administration-guide/14-caching.md), but there are plenty of other options as well. To help you determine if your optimization efforts are heading in the right direction, use the `Query views and speed per day` visualization at the bottom of the page.
 
 ![Items](./images/audit-questions.png)
 
@@ -48,9 +48,9 @@ A list of all of your questions is available as well, and you can see various da
 
 You can also click on any question to drill into a more detailed profile showing:
 
-* View activity
-* Revision History
-* A full audit log of who viewed the question, and when
+- View activity
+- Revision History
+- A full audit log of who viewed the question, and when
 
 #### Dashboards
 

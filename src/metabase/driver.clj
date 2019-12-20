@@ -8,13 +8,13 @@
   `metabase.driver.sql-jdbc` for more details."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [metabase.driver.impl :as impl]
             [metabase.models.setting :as setting :refer [defsetting]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.util :as u]
             [metabase.util
-             [date :as du]
              [i18n :refer [deferred-tru trs tru]]
              [schema :as su]]
+            [potemkin :as p]
             [schema.core :as s]
             [toucan.db :as db])
   (:import org.joda.time.DateTime))
@@ -69,30 +69,21 @@
   [driver & body]
   `(do-with-driver ~driver (fn [] ~@body)))
 
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                        Driver Registration / Hierarchy                                         |
+;;; |                             Driver Registration / Hierarchy / Multimethod Dispatch                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defonce ^{:doc "Driver hierarchy. Used by driver multimethods for dispatch. Add new drivers with `regsiter!`."}
-  hierarchy
-  (make-hierarchy))
+(p/import-vars [impl hierarchy register! initialized?])
 
-(defn- registered?
-  "Is `driver` a valid registered driver?"
-  [driver]
-  (isa? hierarchy (keyword driver) ::driver))
-
-(defn- concrete?
-  "Is `driver` registered, and non-abstract?"
-  [driver]
-  (isa? hierarchy (keyword driver) ::concrete))
-
-(defn- abstract?
-  "Is `driver` an abstract \"base class\"? i.e. a driver that you cannot use directly when adding a Database, such as
-  `:sql` or `:sql-jdbc`."
-  [driver]
-  (not (concrete? driver)))
+(add-watch
+ #'hierarchy
+ nil
+ (fn [_ _ _ _]
+   (when (not= hierarchy impl/hierarchy)
+     ;; this is a dev-facing error so no need to i18n it.
+     (throw (Exception. (str "Don't alter #'metabase.driver/hierarchy directly, since it is imported from "
+                             "metabase.driver.impl. Alter #'metabase.driver.impl/hierarchy instead if you need to "
+                             "alter the var directly."))))))
 
 (defn available?
   "Is this driver available for use? (i.e. should we show it as an option when adding a new database?) This is `true`
@@ -101,47 +92,7 @@
   Note that an available driver is not necessarily initialized yet; for example lazy-loaded drivers are *registered*
   when Metabase starts up (meaning this will return `true` for them) and only initialized when first needed."
   [driver]
-  ((every-pred registered? concrete?) driver))
-
-(s/defn ^:private driver->expected-namespace [driver :- s/Keyword]
-  (symbol
-   (or (namespace driver)
-       (str "metabase.driver." (name driver)))))
-
-(defonce ^:private require-lock (Object.))
-
-(defn- require-driver-ns [driver & require-options]
-  (let [expected-ns (driver->expected-namespace driver)]
-    ;; acquire an exclusive lock FOR THIS THREAD to make sure no other threads simultaneously call `require` when
-    ;; loading drivers; e.g. if multiple queries are launched at once requiring different drivers. Clojure breaks if
-    ;; you try to do multithreaded require, at least last time I checked.
-    (locking require-lock
-      (log/debug
-       (trs "Loading driver {0} {1}" (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
-      (try
-        (apply classloader/require expected-ns require-options)
-        (catch Throwable _
-          (throw (Exception. (tru "Could not find {0} driver." driver))))))))
-
-(defn- load-driver-namespace-if-needed!
-  "Load the expected namespace for a `driver` if it has not already been registed. This only works for core Metabase
-  drivers, whose namespaces follow an expected pattern; drivers provided by 3rd-party plugins are expected to register
-  themselves in their plugin initialization code.
-
-  You should almost never need to do this directly; it is handled automatically when dispatching on a driver and by
-  `register!` below (for parent drivers) and by `driver.u/database->driver` for drivers that have not yet been
-  loaded."
-  [driver]
-  (when-not *compile-files*
-    (when-not (registered? driver)
-      (du/profile (trs "Load driver {0}" driver)
-        (require-driver-ns driver)
-        ;; ok, hopefully it was registered now. If not, try again, but reload the entire driver namespace
-        (when-not (registered? driver)
-          (require-driver-ns driver :reload)
-          ;; if *still* not registered, throw an Exception
-          (when-not (registered? driver)
-            (throw (Exception. (tru "Driver not registered after loading: {0}" driver)))))))))
+  ((every-pred impl/registered? impl/concrete?) driver))
 
 (defn the-driver
   "Like Clojure core `the-ns`. Converts argument to a keyword, then loads and registers the driver if not already done,
@@ -166,83 +117,16 @@
   {:pre [((some-fn keyword? string?) driver)]}
   (classloader/the-classloader)
   (let [driver (keyword driver)]
-    (load-driver-namespace-if-needed! driver)
+    (impl/load-driver-namespace-if-needed! driver)
     driver))
-
-(defn- check-abstractness-hasnt-changed
-  "Check to make sure we're not trying to change the abstractness of an already registered driver"
-  [driver new-abstract?]
-  (when (registered? driver)
-    (let [old-abstract? (boolean (abstract? driver))
-          new-abstract? (boolean new-abstract?)]
-      (when (not= old-abstract? new-abstract?)
-        (throw (Exception. (tru "Error: attempting to change {0} property `:abstract?` from {1} to {2}."
-                                driver old-abstract? new-abstract?)))))))
 
 (defn add-parent!
   "Add a new parent to `driver`."
   [driver new-parent]
   (when-not *compile-files*
-    (load-driver-namespace-if-needed! driver)
-    (load-driver-namespace-if-needed! new-parent)
-    (alter-var-root #'hierarchy derive driver new-parent)))
-
-(defn register!
-  "Register a driver.
-
-    (register! :sql, :abstract? true)
-
-    (register! :postgres, :parent :sql-jdbc)
-
-  Valid options are:
-
-  ###### `:parent` (default = none)
-
-  Parent driver(s) to derive from. Drivers inherit method implementations from their parents similar to the way
-  inheritance works in OOP. Specify multiple direct parents by passing a collection of parents.
-
-  You can add additional parents to a driver using `add-parent!` below; this is how test extensions are implemented.
-
-  ###### `:abstract?` (default = false)
-
-  Is this an abstract driver (i.e. should we hide it in the admin interface, and disallow running queries with it)?
-
-  Note that because concreteness is implemented as part of our keyword hierarchy it is not currently possible to
-  create an abstract driver with a concrete driver as its parent, since it would still ultimately derive from
-  `::concrete`."
-  {:style/indent 1}
-  [driver & {:keys [parent abstract?]}]
-  {:pre [(keyword? driver)]}
-  ;; no-op during compilation.
-  (when-not *compile-files*
-    (let [parents (filter some? (u/one-or-many parent))]
-      ;; load parents as needed; if this is an abstract driver make sure parents aren't concrete
-      (doseq [parent parents]
-        (load-driver-namespace-if-needed! parent))
-      (when abstract?
-        (doseq [parent parents
-                :when  (concrete? parent)]
-          (throw (ex-info (trs "Abstract drivers cannot derive from concrete parent drivers.")
-                   {:driver driver, :parent parent}))))
-      ;; validate that the registration isn't stomping on things
-      (check-abstractness-hasnt-changed driver abstract?)
-      ;; ok, if that was successful we can derive the driver from `::driver`/`::concrete` and parent(s)
-      (let [derive! (partial alter-var-root #'hierarchy derive driver)]
-        (derive! ::driver)
-        (when-not abstract?
-          (derive! ::concrete))
-        (doseq [parent parents]
-          (derive! parent)))
-      ;; ok, log our great success
-      (log/info
-       (u/format-color 'blue
-           (if (metabase.driver/abstract? driver)
-             (trs "Registered abstract driver {0}" driver)
-             (trs "Registered driver {0}" driver)))
-       (if (seq parents)
-         (trs "(parents: {0})" (vec parents))
-         "")
-       (u/emoji "🚚")))))
+    (impl/load-driver-namespace-if-needed! driver)
+    (impl/load-driver-namespace-if-needed! new-parent)
+    (alter-var-root #'impl/hierarchy derive driver new-parent)))
 
 (defn- dispatch-on-uninitialized-driver
   "Dispatch function to use for driver multimethods. Dispatches on first arg, a driver keyword; loads that driver's
@@ -253,53 +137,13 @@
   [driver & _]
   (the-driver driver))
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                 Initialization                                                 |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; We'll keep track of which drivers are initialized using a set rather than adding a special key to the hierarchy or
-;; something like that -- we don't want child drivers to inherit initialized status from their ancestors
-(defonce ^:private initialized-drivers
-  ;; For the purposes of this exercise the special keywords used in the hierarchy should always be assumed to be
-  ;; initialized so we don't try to call initialize on them, which of course would try to load their namespaces when
-  ;; dispatching off `the-driver`; that would fail, so don't try it
-  (atom #{::driver ::concrete}))
-
-(defn initialized?
-  "Has `driver` been initialized? (See `initialize!` below for a discussion of what exactly this means.)"
-  [driver]
-  (@initialized-drivers driver))
-
-
 (declare initialize!)
-
-(defonce ^:private initialization-lock (Object.))
-
-(defn- initialize-if-needed! [driver]
-  ;; no-op during compilation
-  (when-not *compile-files*
-    ;; first, initialize parents as needed
-    (doseq [parent (parents hierarchy driver)]
-      (initialize-if-needed! parent))
-    (when-not (initialized? driver)
-      ;; if the driver is not yet initialized, acquire an exclusive lock for THIS THREAD to perform initialization to
-      ;; make sure no other thread tries to initialize it at the same time
-      (locking initialization-lock
-        ;; and once we acquire the lock, check one more time to make sure the driver didn't get initialized by
-        ;; whatever thread(s) we were waiting on.
-        (when-not (initialized? driver)
-          (log/info (u/format-color 'yellow (trs "Initializing driver {0}..." driver)))
-          (log/debug (trs "Reason:") (u/pprint-to-str 'blue (drop 5 (u/filtered-stacktrace (Thread/currentThread)))))
-          (swap! initialized-drivers conj driver)
-          (initialize! driver))))))
-
 
 (defn the-initialized-driver
   "Like `the-driver`, but also initializes the driver if not already initialized."
   [driver]
   (let [driver (the-driver driver)]
-    (initialize-if-needed! driver)
+    (impl/initialize-if-needed! driver initialize!)
     driver))
 
 (defn dispatch-on-initialized-driver
@@ -511,7 +355,12 @@
     ;; Does this driver support expressions (e.g. adding the values of 2 columns together)?
     :expressions
 
-    ;; Does the driver support parameter substitution on native queries?
+    ;; Does this driver support parameter substitution in native queries, where parameter expressions are replaced
+    ;; with a single value? e.g.
+    ;;
+    ;;    SELECT * FROM table WHERE field = {{param}}
+    ;;    ->
+    ;;    SELECT * FROM table WHERE field = 1
     :native-parameters
 
     ;; Does the driver support using expressions inside aggregations? e.g. something like \"sum(x) + count(y)\" or
@@ -679,7 +528,8 @@
   pattern and is injected into the QP middleware stack immediately after the Query Expander; in other words, it will
   receive the expanded query. See the Mongo and H2 drivers for examples of how this is intended to be used.
 
-       (defn process-query-in-context [driver qp]
+       (defmethod process-query-in-context :my-driver
+         [driver qp]
          (fn [query]
            (qp query)))"
   {:arglists '([driver qp])}
@@ -701,11 +551,44 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmulti ^DateTime current-db-time
-  "Return the current time and timezone from the perspective of `database`. You can use
-  `metabase.driver.common/current-db-time` to implement this. This should return a Joda-Time `DateTime`."
-  {:arglists '([driver database])}
+(defmulti db-default-timezone
+  "Return the *system* timezone ID name of this database, i.e. the timezone that local dates/times/datetimes are
+  considered to be in by default. Ideally, this method should return a timezone ID like `America/Los_Angeles`, but an
+  offset formatted like `-08:00` is acceptable in cases where the actual ID cannot be provided."
+  {:arglists '(^java.lang.String [driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmethod db-default-timezone ::driver [_ _] nil)
+
+;; TIMEZONE FIXME — remove this method entirely
+(defmulti ^:deprecated current-db-time
+  "Return the current time and timezone from the perspective of `database`. You can use
+  `metabase.driver.common/current-db-time` to implement this. This should return a Joda-Time `DateTime`.
+
+  DEPRECATED — the only thing this method is ultimately used for is to determine the DB's system timezone.
+  `db-default-timezone` has been introduced as an intended replacement for this method; implement it instead. This
+  method will be removed in a future release."
+  {:arglists '(^org.joda.time.DateTime [driver database])} dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
 (defmethod current-db-time ::driver [_ _] nil)
+
+(defmulti substitue-native-parameters
+  "For drivers that support `:native-parameters`. Substitute parameters in a normalized 'inner' native query.
+
+    {:query \"SELECT count(*) FROM table WHERE id = {{param}}\"
+     :template-tags {:param {:name \"param\", :display-name \"Param\", :type :number}}
+     :parameters    [{:type   :number
+                      :target [:variable [:template-tag \"param\"]]
+                      :value  2}]}
+    ->
+    {:query \"SELECT count(*) FROM table WHERE id = 2\"}
+
+  Much of the implementation for this method is shared across drivers and lives in the
+  `metabase.driver.common.parameters.*` namespaces. See the `:sql` and `:mongo` drivers for sample implementations of
+  this method.`Driver-agnostic end-to-end native parameter tests live in
+  `metabase.query-processor-test.parameters-test` and other namespaces."
+  {:arglists '([driver inner-query])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)

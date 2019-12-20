@@ -278,7 +278,7 @@ export const STACKABLE_SETTINGS = {
 export const GRAPH_GOAL_SETTINGS = {
   "graph.show_goal": {
     section: t`Display`,
-    title: t`Show goal`,
+    title: t`Goal line`,
     widget: "toggle",
     default: false,
   },
@@ -300,7 +300,7 @@ export const GRAPH_GOAL_SETTINGS = {
   },
   "graph.show_trendline": {
     section: t`Display`,
-    title: t`Show trend line`,
+    title: t`Trend line`,
     widget: "toggle",
     default: false,
     getHidden: (series, vizSettings) => {
@@ -308,6 +308,43 @@ export const GRAPH_GOAL_SETTINGS = {
       return !insights || insights.length === 0;
     },
     useRawSeries: true,
+  },
+};
+
+// with more than this many rows, don't display values on top of bars by default
+const AUTO_SHOW_VALUES_MAX_ROWS = 25;
+
+export const GRAPH_DISPLAY_VALUES_SETTINGS = {
+  "graph.show_values": {
+    section: t`Display`,
+    title: t`Show values on data points`,
+    widget: "toggle",
+    getHidden: (series, vizSettings) =>
+      series.length > 1 || vizSettings["stackable.stack_type"] === "normalized",
+    getDefault: ([{ card, data }]) =>
+      // small bar graphs should have this turned on by default,
+      // but bar graphs that were saved without this feature shouldn't
+      card.original_card_id == null &&
+      card.display === "bar" &&
+      data.rows.length < AUTO_SHOW_VALUES_MAX_ROWS,
+    persistDefault: true,
+  },
+  "graph.label_value_frequency": {
+    section: t`Display`,
+    title: t`Values to show`,
+    widget: "radio",
+    getHidden: (series, vizSettings) =>
+      series.length > 1 ||
+      vizSettings["graph.show_values"] !== true ||
+      vizSettings["stackable.stack_type"] === "normalized",
+    props: {
+      options: [
+        { name: t`As many as can fit nicely`, value: "fit" },
+        { name: t`All`, value: "all" },
+      ],
+    },
+    default: "fit",
+    readDependencies: ["graph.show_values"],
   },
 };
 
@@ -507,9 +544,24 @@ export const GRAPH_AXIS_SETTINGS = {
     widget: "input",
     getHidden: (series, vizSettings) =>
       vizSettings["graph.y_axis.labels_enabled"] === false,
-    getDefault: (series, vizSettings) =>
-      series.length === 1 ? vizSettings.series(series[0]).title : null,
-    readDependencies: ["series"],
+    getDefault: (series, vizSettings) => {
+      if (series.length === 1) {
+        return vizSettings.series(series[0]).title;
+      }
+      // If there are multiple series, we check if the metric names match.
+      // If they do, we use that as the default y axis label.
+      const [metric] = vizSettings["graph.metrics"];
+      const metricNames = Array.from(
+        new Set(
+          series.map(({ data: { cols } }) => {
+            const metricCol = cols.find(c => c.name === metric);
+            return metricCol && metricCol.display_name;
+          }),
+        ),
+      );
+      return metricNames.length === 1 ? metricNames[0] : null;
+    },
+    readDependencies: ["series", "graph.metrics"],
   },
   // DEPRECATED" replaced with "label" series setting
   "graph.series_labels": {},
