@@ -22,6 +22,7 @@
     "nux" :unix
     nil))
 
+;; taken from https://github.com/aysylu/loom/blob/master/src/loom/io.clj
 (defn- open
   "Opens the given file (a string, File, or file URI) in the default
   application for the current desktop environment. Returns nil"
@@ -37,7 +38,8 @@
     nil))
 
 (defn render-card-to-png
-  "Given a card ID, renderst he card to a png and opens it"
+  "Given a card ID, renders the card to a png and opens it. Be aware that the png rendered on a dev machine may not
+  match what's rendered on another system, like a docker container."
   [card-id]
   (let [{:keys [dataset_query] :as card} (tdb/select-one card/Card :id card-id)
         user                             (tdb/select-one user/User)
