@@ -81,13 +81,11 @@
   "Render the Hiccup HTML `content` of a Pulse to a PNG image, returning a byte array."
   [{:keys [content]} :- common/RenderedPulseCard
    width]
-  (let [html (html [:html
-                    [:head [:style (slurp (clojure.java.io/resource "css/cssbox-png.css"))]]
-                    [:body {:style (style/style
-                                     {:margin           0
-                                      :padding          0
-                                      :background-color :white})}
-                     content]])]
+  (let [html (html [:html [:body {:style (style/style
+                                           {:margin           0
+                                            :padding          0
+                                            :background-color :white})}
+                           content]])]
     (with-open [os (ByteArrayOutputStream.)]
       (render-to-png! html os width)
       (.toByteArray os))))
