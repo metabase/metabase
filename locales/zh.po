@@ -12606,7 +12606,7 @@ msgstr[0] "记录"
 
 #: frontend/src/metabase/nav/containers/Navbar.jsx:346
 msgid "Browse Data"
-msgstr "流量数据"
+msgstr "浏览数据"
 
 #: frontend/src/metabase/nav/containers/Navbar.jsx:376
 msgid "Write SQL"
