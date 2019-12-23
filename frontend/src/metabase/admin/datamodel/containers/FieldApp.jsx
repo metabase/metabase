@@ -423,12 +423,14 @@ export class FieldHeader extends React.Component {
     return (
       <div>
         <InputBlurChange
+          name="display_name"
           className="h2 AdminInput bordered rounded border-dark block mb1"
           value={this.props.field.display_name}
           onChange={this.onNameChange}
           placeholder={this.props.field.name}
         />
         <InputBlurChange
+          name="description"
           className="text AdminInput bordered input text-measure block full"
           value={this.props.field.description}
           onChange={this.onDescriptionChange}
