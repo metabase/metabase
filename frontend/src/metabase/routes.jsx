@@ -44,6 +44,8 @@ import ArchiveCollectionModal from "metabase/components/ArchiveCollectionModal";
 import CollectionPermissionsModal from "metabase/admin/permissions/containers/CollectionPermissionsModal";
 import UserCollectionList from "metabase/containers/UserCollectionList";
 
+import NewCollection from "metabase/containers/NewCollection";
+
 import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
 import SetupApp from "metabase/setup/containers/SetupApp";
 import PostSetupApp from "metabase/setup/containers/PostSetupApp";
@@ -199,6 +201,10 @@ export const getRoutes = store => (
 
         <Route path="collection/users" component={IsAdmin}>
           <IndexRoute component={UserCollectionList} />
+        </Route>
+
+        <Route path="collection/v2">
+          <IndexRoute component={NewCollection} />
         </Route>
 
         <Route path="collection/:collectionId" component={CollectionLanding}>
