@@ -96,4 +96,19 @@ describe("column settings", () => {
     const computed = getComputedSettings(defs, series, stored);
     expect(computed.column(series[0].data.cols[0]).currency).toEqual("BTC");
   });
+  it("should set a time style but no date style for hour-of-day", () => {
+    const series = seriesWithColumn({
+      unit: "hour-of-day",
+      base_type: "type/DateTime",
+      special_type: undefined,
+    });
+    const defs = { ...columnSettings() };
+    const computed = getComputedSettings(defs, series, {});
+    const { time_enabled, time_style, date_style } = computed.column(
+      series[0].data.cols[0],
+    );
+    expect(time_enabled).toEqual("minutes");
+    expect(time_style).toEqual("h:mm A");
+    expect(date_style).toEqual("");
+  });
 });
