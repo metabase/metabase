@@ -1027,14 +1027,14 @@
                                                          :id (u/get-id user-or-id))]
     (format-personal-collection-name first-name last-name)))
 
-(s/defn user->personal-collection-no-create :- (s/maybe CollectionInstance)
+(s/defn user->existing-personal-collection :- (s/maybe CollectionInstance)
   [user-or-id]
   (db/select-one Collection :personal_owner_id (u/get-id user-or-id)))
 
 (s/defn user->personal-collection :- CollectionInstance
   "Return the Personal Collection for `user-or-id`, if it already exists; if not, create it and return it."
   [user-or-id]
-  (or (user->personal-collection-no-create user-or-id)
+  (or (user->existing-personal-collection user-or-id)
       (try
         (db/insert! Collection
           :name              (user->personal-collection-name user-or-id)

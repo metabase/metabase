@@ -341,8 +341,7 @@
               :last_name "Era",
               :is_superuser true,
               :email "cam.era@metabase.com"
-              :personal_collection_name "Cam Era's Personal Collection"
-              }
+              :personal_collection_name "Cam Era's Personal Collection"}
    :response (merge
               user-defaults
               {:common_name  "Cam Eron"
@@ -356,16 +355,14 @@
               :last_name "Eron"
               :is_superuser true
               :email "cam.eron@metabase.com"
-              :personal_collection_name "Cam Eron's Personal Collection"
-              }}
+              :personal_collection_name "Cam Eron's Personal Collection"}}
   (tt/with-temp* [User [{user-id :id} {:first_name   "Cam"
                                        :last_name    "Era"
                                        :email        "cam.era@metabase.com"
                                        :is_superuser true}]
                   Collection [coll]]
     (let [user (fn [] (into {} (-> (db/select-one [User :id :first_name :last_name :is_superuser :email], :id user-id)
-                                   (hydrate :personal_collection_id)
-                                   (hydrate :personal_collection_name)
+                                   (hydrate :personal_collection_id :personal_collection_name)
                                    (dissoc :id :personal_collection_id :common_name))))]
       (array-map
        :before   (user)

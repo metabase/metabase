@@ -58,7 +58,7 @@
 (defn- maybe-update-user-personal-collection-name! [user-before-update first_name last_name]
   ;; If the user name is updated, we shall also update the personal collection name (if such collection exists).
   (when-some [[first_name last_name] (updated-user-name user-before-update first_name last_name)]
-    (when-some [collection (collection/user->personal-collection-no-create (u/get-id user-before-update))]
+    (when-some [collection (collection/user->existing-personal-collection (u/get-id user-before-update))]
       (let [new-collection-name (collection/format-personal-collection-name first_name last_name)]
         (when-not (= new-collection-name (:name collection))
           (db/update! Collection (:id collection) :name new-collection-name))))))
