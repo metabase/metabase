@@ -10,13 +10,13 @@ describe("dashboard", () => {
     cy.contains(/Embed this .* in an application/).click();
     cy.contains("Code").click();
 
-    const JS_CODE = `// you will need to install via 'npm install jsonwebtoken' or in your package.json
+    const JS_CODE = new RegExp(
+      `// you will need to install via 'npm install jsonwebtoken' or in your package.json
 
 var jwt = require("jsonwebtoken");
 
-var METABASE_SITE_URL = "http://localhost:3000";
-var METABASE_SECRET_KEY = "e893e786425e7604263d8d9590937e7a59d41d940fe99d529690b0e2cd3662a5";
-
+var METABASE_SITE_URL = "http://localhost:PORTPORTPORT";
+var METABASE_SECRET_KEY = "KEYKEYKEY";
 var payload = {
   resource: { dashboard: 1 },
   params: {},
@@ -25,8 +25,12 @@ var payload = {
 var token = jwt.sign(payload, METABASE_SECRET_KEY);
 
 var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=true&titled=true";`
-      .split("\n")
-      .join("");
+        .split("\n")
+        .join("")
+        .replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")
+        .replace("KEYKEYKEY", ".*")
+        .replace("PORTPORTPORT", ".*"),
+    );
 
     const IFRAME_CODE = `<iframe
     src="{{iframeUrl}}"
@@ -40,7 +44,8 @@ var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=tru
 
     cy.get(".ace_content")
       .first()
-      .should("have.text", JS_CODE);
+      .invoke("text")
+      .should("match", JS_CODE);
     cy.get(".ace_content")
       .last()
       .should("have.text", IFRAME_CODE);

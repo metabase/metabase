@@ -50,6 +50,10 @@ function updateSettings() {
     .prev()
     .click();
   cy.contains("Saved");
+
+  cy.visit("/admin/settings/embedding_in_other_applications");
+  cy.contains(/Enable/).click();
+  cy.contains("Saved");
 }
 
 function addUser() {
@@ -123,6 +127,9 @@ function createQuestionAndDashboard() {
   cy.contains("Simple question").click();
   cy.contains("Orders").click();
   cy.contains("37.65");
+  cy.contains("Summarize").click();
+  cy.contains("Done").click();
+  cy.contains("18,760");
   cy.contains("Save").click(); // open save modal
   cy.get(".ModalContent")
     .contains(/^Save$/)
