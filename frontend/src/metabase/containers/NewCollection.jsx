@@ -30,6 +30,7 @@ const FIXTURE_COLLECTIONS = [
   {
     name: "Marketing",
     icon: "folder",
+    active: true,
   },
   {
     name: "Ops",
@@ -49,8 +50,13 @@ const FIXTURE_COLLECTIONS = [
 const CollectionItem = ({ collection, isSelected }) => (
   <Box mb={1}>
     <PillWithAdornment
-      left={<Icon name={collection.icon} />}
-      right={collection.hasChildren && <Icon name="chevrondown" size={12} />}
+      active={collection.active}
+      left={<Icon name={collection.icon} color="brand" />}
+      right={
+        collection.hasChildren && (
+          <Icon name="chevrondown" size={12} color="brand" />
+        )
+      }
     >
       {collection.name}
     </PillWithAdornment>
