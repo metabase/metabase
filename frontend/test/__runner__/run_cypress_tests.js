@@ -60,7 +60,7 @@ const init = async () => {
       "cypress",
       isOpenMode ? "open" : "run",
       "--config-file",
-      "frontend/test/cypress.json",
+      process.env["CONFIG_FILE"],
       "--config",
       `baseUrl=${server.host}`,
       ...(process.env["CI"]
