@@ -1,9 +1,11 @@
 import React from "react";
 import { connect } from "react-redux";
 
-import { Box } from "grid-styled";
-import { PillWithAdornment } from "metabase/components/Pill";
+import { Box, Flex } from "grid-styled";
+
+import UserAvatar from "metabase/components/UserAvatar";
 import Icon from "metabase/components/Icon";
+import { PillWithAdornment } from "metabase/components/Pill";
 
 const FIXTURE_ITEMS = [
   {
@@ -72,9 +74,10 @@ const CollectionContent = ({ item }) => (
 const NewCollection = ({ items, collections }) => (
   <div className="relative">
     <Box w={300} px={2} ml={2} className="absolute left top bottom">
-      <Box my={3}>
-        <h3>Hey there Kyle</h3>
-      </Box>
+      <Flex my={3} align="center">
+        <UserAvatar />
+        <h3 className="ml2 text-bold">Hey there Kyle</h3>
+      </Flex>
       <Box>
         <CollectionItem
           collection={{ name: "Our analytics", icon: "folder" }}
