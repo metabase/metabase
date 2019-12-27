@@ -1,9 +1,9 @@
 import React from "react";
+import { connect } from "react-redux";
+
 import { Box } from "grid-styled";
 import { PillWithAdornment } from "metabase/components/Pill";
 import Icon from "metabase/components/Icon";
-
-import { connect } from "react-redux";
 
 const FIXTURE_ITEMS = [
   {
@@ -26,31 +26,40 @@ const FIXTURE_ITEMS = [
 
 const FIXTURE_COLLECTIONS = [
   {
-    name: "Our analytics",
-  },
-  {
     name: "Marketing",
+    icon: "folder",
   },
   {
     name: "Ops",
     hasChildren: true,
+    icon: "folder",
   },
   {
     name: "Internal",
+    icon: "folder",
   },
   {
     name: "Stripe",
+    icon: "folder",
   },
 ];
 
 const CollectionItem = ({ collection, isSelected }) => (
   <Box mb={1}>
     <PillWithAdornment
-      left={<Icon name="folder" />}
+      left={<Icon name={collection.icon} />}
       right={collection.hasChildren && <Icon name="chevrondown" size={12} />}
     >
       {collection.name}
     </PillWithAdornment>
+  </Box>
+);
+
+const CollectionList = ({ collections }) => (
+  <Box>
+    {collections.map(collection => (
+      <CollectionItem collection={collection} />
+    ))}
   </Box>
 );
 
@@ -67,12 +76,15 @@ const NewCollection = ({ items, collections }) => (
         <h3>Hey there Kyle</h3>
       </Box>
       <Box>
-        {collections.map(collection => (
-          <CollectionItem collection={collection} />
-        ))}
+        <CollectionItem
+          collection={{ name: "Our analytics", icon: "folder" }}
+        />
       </Box>
+      <CollectionList collections={collections} />
       <Box mt={2}>
-        <CollectionItem collection={{ name: "Your personal collection" }} />
+        <CollectionItem
+          collection={{ name: "Your personal collection", icon: "person" }}
+        />
       </Box>
     </Box>
 
