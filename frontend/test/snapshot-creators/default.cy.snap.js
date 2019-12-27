@@ -54,6 +54,14 @@ function updateSettings() {
   cy.visit("/admin/settings/embedding_in_other_applications");
   cy.contains(/Enable/).click();
   cy.contains("Saved");
+
+  // update the Sample db connection string so it is valid in both CI and locally
+  cy.visit("/admin/databases/1");
+  cy.contains("Connection String")
+    .next()
+    .type("{SelectAll}./resources/sample-dataset.db;USER=GUEST;PASSWORD=guest");
+  cy.contains("Save").click();
+  cy.contains("Successfully saved!");
 }
 
 function addUser() {
