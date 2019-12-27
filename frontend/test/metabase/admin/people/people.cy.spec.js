@@ -1,6 +1,7 @@
-import { signInAsAdmin } from "__support__/cypress";
+import { signInAsAdmin, restore } from "__support__/cypress";
 
 describe("admin/people", () => {
+  before(() => restore("default"));
   beforeEach(signInAsAdmin);
 
   describe("user management", () => {

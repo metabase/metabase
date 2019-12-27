@@ -1,6 +1,7 @@
-import { signInAsAdmin } from "__support__/cypress";
+import { signInAsAdmin, restore } from "__support__/cypress";
 
 describe("new question", () => {
+  before(() => restore("default"));
   beforeEach(signInAsAdmin);
 
   it("should count all orders", () => {

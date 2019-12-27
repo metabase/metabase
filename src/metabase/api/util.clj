@@ -8,6 +8,7 @@
              [logger :as logger]
              [troubleshooting :as troubleshooting]]
             [metabase.api.common :as api]
+            [metabase.models.setting.cache :as cache]
             [metabase.util
              [schema :as su]
              [stats :as stats]]
@@ -44,17 +45,22 @@
   {:system-info (troubleshooting/system-info)
    :metabase-info (troubleshooting/metabase-info)})
 
+(defn- snapshot-path-for-name
+  [name]
+  (str "frontend/test/snapshots/" name ".sql"))
+
 ; FIXME: only enable for test + sanitize `name`
 (api/defendpoint POST "/snapshot/:name"
   [name]
-  (jdbc/query (db/connection) ["SCRIPT TO ?", name])
+  (jdbc/query (db/connection) ["SCRIPT TO ?" (snapshot-path-for-name name)])
   nil)
 
 ; FIXME: only enable for test + sanitize `name`
 (api/defendpoint POST "/restore/:name"
   [name]
   (jdbc/execute! (db/connection) ["DROP ALL OBJECTS"])
-  (jdbc/execute! (db/connection) ["RUNSCRIPT FROM ?", name])
+  (jdbc/execute! (db/connection) ["RUNSCRIPT FROM ?" (snapshot-path-for-name name)])
+  (cache/restore-cache!)
   nil)
 
 (api/define-routes)

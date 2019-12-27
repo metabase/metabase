@@ -34,7 +34,7 @@ const init = async () => {
     const version = await readFile(
       __dirname + "/../../../resources/version.properties",
     );
-    console.log(chalk.bold("Running e2e test runner with this build:"));
+    console.log(chalk.bold("Running snapshot creator with this build:"));
     process.stdout.write(chalk.cyan(version));
     console.log(
       chalk.bold(
@@ -54,23 +54,16 @@ const init = async () => {
   await BackendResource.start(server);
 
   console.log(chalk.bold("Starting Cypress"));
+
   const cypressProcess = spawn(
     "yarn",
     [
       "cypress",
       isOpenMode ? "open" : "run",
       "--config-file",
-      "frontend/test/cypress.json",
+      "frontend/test/cypress-snapshots.json",
       "--config",
       `baseUrl=${server.host}`,
-      ...(process.env["CI"]
-        ? [
-            "--reporter",
-            "junit",
-            "--reporter-options",
-            "mochaFile=cypress/results/results-[hash].xml",
-          ]
-        : []),
     ],
     { stdio: "inherit" },
   );
@@ -97,4 +90,5 @@ const launch = () =>
 launch();
 
 process.on("SIGTERM", cleanup);
+
 process.on("SIGINT", cleanup);
