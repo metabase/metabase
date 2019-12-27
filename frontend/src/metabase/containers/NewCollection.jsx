@@ -1,5 +1,6 @@
 import React from "react";
 import { connect } from "react-redux";
+import { t } from "ttag";
 
 import { Box, Flex } from "grid-styled";
 
@@ -101,6 +102,12 @@ const NewCollection = ({ items, collections }) => (
       <Box w={"80%"} ml="auto" mr="auto">
         <Box py={3} pt={2}>
           <h1>Marketing</h1>
+        </Box>
+        <Box py={3}>
+          <h4>{t`Pinned items`}</h4>
+          {items.map(item => (
+            <CollectionContent item={item} />
+          ))}
         </Box>
 
         <Box py={3}>
