@@ -46,8 +46,8 @@
    :metabase-info (troubleshooting/metabase-info)})
 
 (defn- snapshot-path-for-name
-  [name]
-  (str "frontend/test/snapshots/" name ".sql"))
+  [snapshot-name]
+  (str "frontend/test/snapshots/" snapshot-name ".sql"))
 
 ; FIXME: only enable for test + sanitize `name`
 (api/defendpoint POST "/snapshot/:name"
