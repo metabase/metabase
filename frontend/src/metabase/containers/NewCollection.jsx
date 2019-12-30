@@ -5,7 +5,7 @@ import { t } from "ttag";
 import { Box, Flex } from "grid-styled";
 
 import UserAvatar from "metabase/components/UserAvatar";
-import Icon from "metabase/components/Icon";
+import Icon, { IconWrapper } from "metabase/components/Icon";
 import { PillWithAdornment } from "metabase/components/Pill";
 
 import EntityMenu from "metabase/components/EntityMenu";
@@ -160,10 +160,23 @@ class CollectionActions extends React.Component {
   render() {
     return (
       <Flex algin="center" ml="auto">
-        <Icon name="lock" />
+        <IconWrapper className="mr1">
+          <Link
+            to={""}
+            className="flex align-center"
+            data-metabase-event={`Collection;Perms`}
+          >
+            <Icon
+              size={18}
+              p={"11px"}
+              name="lock"
+              tooltip={t`Edit collection permissions`}
+            />
+          </Link>
+        </IconWrapper>
         <EntityMenu
           tooltip={t`Edit`}
-          className="hide sm-show mr1"
+          className="mr1"
           triggerIcon="pencil"
           items={[
             {
@@ -182,7 +195,7 @@ class CollectionActions extends React.Component {
         />
         <EntityMenu
           tooltip={t`Create`}
-          className="hide sm-show mr1"
+          className="mr1"
           triggerIcon="add"
           items={[
             {
