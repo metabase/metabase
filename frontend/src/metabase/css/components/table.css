@@ -50,6 +50,11 @@ th {
   padding: 1em;
 }
 
+/* bit of a hack to have a cell shrink to fit its content */
+.Table td.shrink {
+  width: 1%;
+}
+
 .ComparisonTable {
   border-collapse: collapse;
   border-spacing: 0;

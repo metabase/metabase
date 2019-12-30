@@ -89,7 +89,7 @@ const CollectionItemList = ({ items }) => (
 );
 const CollectionItem = ({ item }) => (
   <tr>
-    <td>
+    <td className="shrink">
       <div className="inline-block">
         <div className="bg-brand p2 circle text-white flex align-center">
           <Icon name={item.type} />
