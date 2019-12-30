@@ -8,6 +8,13 @@ import UserAvatar from "metabase/components/UserAvatar";
 import Icon from "metabase/components/Icon";
 import { PillWithAdornment } from "metabase/components/Pill";
 
+import EntityMenu from "metabase/components/EntityMenu";
+import * as Urls from "metabase/lib/urls";
+import Modal from "metabase/components/Modal";
+import CreateDashboardModal from "metabase/components/CreateDashboardModal";
+
+const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
+
 const FIXTURE_ITEMS = [
   {
     name: "2019 Campaigns",
@@ -112,13 +119,82 @@ const CollectionItem = ({ item }) => (
   </tr>
 );
 
-const CollectionActions = () => (
-  <Flex algin="center" ml="auto">
-    <Icon name="lock" />
-    <Icon name="pencil" />
-    <Icon name="add" />
-  </Flex>
-);
+class CollectionActions extends React.Component {
+  state = {
+    modal: null,
+  };
+
+  setModal(modal) {
+    this.setState({ modal });
+    if (this._newPopover) {
+      this._newPopover.close();
+    }
+  }
+
+  renderModal() {
+    const { modal } = this.state;
+    if (modal) {
+      return (
+        <Modal onClose={() => this.setState({ modal: null })}>
+          {modal === MODAL_NEW_DASHBOARD ? (
+            <CreateDashboardModal
+              createDashboard={this.props.createDashboard}
+              onClose={() => this.setState({ modal: null })}
+            />
+          ) : null}
+        </Modal>
+      );
+    } else {
+      return null;
+    }
+  }
+
+  render() {
+    return (
+      <Flex algin="center" ml="auto">
+        <Icon name="lock" />
+        <EntityMenu
+          tooltip={t`Edit`}
+          className="hide sm-show mr1"
+          triggerIcon="pencil"
+          items={[
+            {
+              title: t`New dashboard`,
+              icon: `dashboard`,
+              action: () => this.setModal(MODAL_NEW_DASHBOARD),
+              event: `NavBar;New Dashboard Click;`,
+            },
+            {
+              title: t`New pulse`,
+              icon: `pulse`,
+              link: Urls.newPulse(),
+              event: `NavBar;New Pulse Click;`,
+            },
+          ]}
+        />
+        <EntityMenu
+          tooltip={t`Create`}
+          className="hide sm-show mr1"
+          triggerIcon="add"
+          items={[
+            {
+              title: t`New dashboard`,
+              icon: `dashboard`,
+              action: () => this.setModal(MODAL_NEW_DASHBOARD),
+              event: `NavBar;New Dashboard Click;`,
+            },
+            {
+              title: t`New pulse`,
+              icon: `pulse`,
+              link: Urls.newPulse(),
+              event: `NavBar;New Pulse Click;`,
+            },
+          ]}
+        />
+      </Flex>
+    );
+  }
+}
 
 const CollectionHeader = ({ children }) => (
   <Flex align="center" pt={3} pb={1}>

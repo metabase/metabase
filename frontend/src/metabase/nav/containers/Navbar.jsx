@@ -19,7 +19,6 @@ import { color, darken, lighten } from "metabase/lib/colors";
 import Icon, { IconWrapper } from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 import LogoIcon from "metabase/components/LogoIcon";
-import EntityMenu from "metabase/components/EntityMenu";
 import OnClickOutsideWrapper from "metabase/components/OnClickOutsideWrapper";
 import Modal from "metabase/components/Modal";
 
@@ -368,26 +367,6 @@ export default class Navbar extends Component {
               <Icon name="table_spaced" size={14} />
             </Link>
           )}
-          <EntityMenu
-            tooltip={t`Create`}
-            className="hide sm-show mr1"
-            triggerIcon="add"
-            triggerProps={{ hover: NavHover }}
-            items={[
-              {
-                title: t`New dashboard`,
-                icon: `dashboard`,
-                action: () => this.setModal(MODAL_NEW_DASHBOARD),
-                event: `NavBar;New Dashboard Click;`,
-              },
-              {
-                title: t`New pulse`,
-                icon: `pulse`,
-                link: Urls.newPulse(),
-                event: `NavBar;New Pulse Click;`,
-              },
-            ]}
-          />
           {hasNativeWrite && (
             <IconWrapper
               className="relative hide sm-show mr1 overflow-hidden"
