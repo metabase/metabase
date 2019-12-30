@@ -1,6 +1,9 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { Box, Flex } from "grid-styled";
+import papaparse from 'papaparse'
+import querystring from "querystring";
+import { t } from "ttag";
 
 import { color } from "metabase/lib/colors";
 import { extractQueryParams } from "metabase/lib/urls";
@@ -16,9 +19,53 @@ function colorForType(type) {
       return color("accent1");
     case "json":
       return color("bg-dark");
+    case "clipboard":
+      return color("accent3");
     default:
       return color("brand");
   }
+}
+
+const ClipBoardButton = ({
+  url,
+  params,
+  children,
+  ...props,
+}) => {
+  return (
+    <Box>
+      <Flex
+        is="button"
+        className="text-white-hover bg-brand-hover rounded cursor-pointer full hover-parent hover--inherit"
+        align="center"
+        px={1}
+        onClick={e => {
+          e.preventDefault();
+          fetch(`${url.split('/').slice(0, -1).join('/')}/csv`, {
+            method: "POST",
+            mode: 'cors',
+            cache: 'no-cache',
+            credentials: 'same-origin',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: querystring.encode(params),
+          })
+            .then(r => r.text())
+            .then(text => {
+              const j = papaparse.parse(text)
+              const r = papaparse.unparse(j, {delimiter: '\t'})
+              navigator.clipboard.writeText(r)
+                .then(() => window.alert(t`Result copied to clipboard.`))
+            });
+        }}
+        {...props}
+      >
+        <Icon name={children} size={32} mr={1} color={colorForType(children)} />
+        <Text className="text-bold">.{children}</Text>
+      </Flex>
+  </Box>
+  )
 }
 
 const DownloadButton = ({
@@ -28,31 +75,46 @@ const DownloadButton = ({
   params,
   extensions,
   ...props
-}) => (
-  <Box>
-    <form method={method} action={url}>
-      {params && extractQueryParams(params).map(getInput)}
-      <Flex
-        is="button"
-        className="text-white-hover bg-brand-hover rounded cursor-pointer full hover-parent hover--inherit"
-        align="center"
-        px={1}
-        onClick={e => {
-          if (window.OSX) {
-            // prevent form from being submitted normally
-            e.preventDefault();
-            // download using the API provided by the OS X app
-            window.OSX.download(method, url, params, extensions);
-          }
-        }}
+}) => {
+  if (children === 'clipboard') {
+    return (
+      <ClipBoardButton
+        children={children}
+        method={method}
+        url={url}
+        params={params}
+        extensions={extensions}
         {...props}
-      >
-        <Icon name={children} size={32} mr={1} color={colorForType(children)} />
-        <Text className="text-bold">.{children}</Text>
-      </Flex>
-    </form>
-  </Box>
-);
+      />
+    )
+  }
+
+  return (
+    <Box>
+      <form method={method} action={url}>
+        {params && extractQueryParams(params).map(getInput)}
+        <Flex
+          is="button"
+          className="text-white-hover bg-brand-hover rounded cursor-pointer full hover-parent hover--inherit"
+          align="center"
+          px={1}
+          onClick={e => {
+            if (window.OSX) {
+              // prevent form from being submitted normally
+              e.preventDefault();
+              // download using the API provided by the OS X app
+              window.OSX.download(method, url, params, extensions);
+            }
+          }}
+          {...props}
+        >
+          <Icon name={children} size={32} mr={1} color={colorForType(children)} />
+          <Text className="text-bold">.{children}</Text>
+        </Flex>
+      </form>
+    </Box>
+  )
+};
 
 const getInput = ([name, value]) => (
   <input type="hidden" name={name} value={value} />
