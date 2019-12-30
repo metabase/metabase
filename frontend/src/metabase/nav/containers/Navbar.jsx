@@ -366,7 +366,6 @@ export default class Navbar extends Component {
               }}
             >
               <Icon name="table_spaced" size={14} />
-              <h4 className="hide md-show ml1 text-nowrap">{t`Browse Data`}</h4>
             </Link>
           )}
           <EntityMenu
