@@ -12,18 +12,26 @@ const FIXTURE_ITEMS = [
   {
     name: "2019 Campaigns",
     type: "dashboard",
+    creator: "Damon",
+    modified_at: "Oct 19, 2019",
   },
   {
     name: "2019 Collaborations",
     type: "dashboard",
+    creator: "Kyle",
+    modified_at: "Oct 19, 2019",
   },
   {
     name: "2020 Planning (Draft)",
     type: "dashboard",
+    creator: "Cam",
+    modified_at: "Oct 19, 2019",
   },
   {
     name: "Cool Question",
     type: "question",
+    creator: "Paul",
+    modified_at: "Oct 19, 2019",
   },
 ];
 
