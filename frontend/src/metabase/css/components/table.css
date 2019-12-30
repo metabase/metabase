@@ -32,18 +32,22 @@ th {
   border: 1px solid color(var(--color-border) alpha(-70%));
 }
 
-.Table tr {
-  border-bottom: 1px solid color(var(--color-border) alpha(-70%));
+.Table tr,
+.Table th {
+  border-bottom: 1px solid color(var(--color-border));
 }
 
-.Table tr:nth-child(even) {
+.Table tr:last-child {
+  border-bottom: none;
+}
+
+.Table.Table--striped tr:nth-child(even) {
   background-color: color(var(--color-bg-black) alpha(-98%));
 }
 
 .Table th,
 .Table td {
   padding: 1em;
-  border: 1px solid color(var(--color-border) alpha(-70%));
 }
 
 .ComparisonTable {
