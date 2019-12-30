@@ -48,8 +48,8 @@ const FIXTURE_COLLECTIONS = [
   },
 ];
 
-const CollectionItem = ({ collection, isSelected }) => (
-  <Box mb={1}>
+const CollectionLink = ({ collection, isSelected }) => (
+  <Box className="CollectionLink" mb={1}>
     <PillWithAdornment
       active={collection.active}
       left={<Icon name={collection.icon} color="brand" />}
@@ -64,18 +64,52 @@ const CollectionItem = ({ collection, isSelected }) => (
   </Box>
 );
 
-const CollectionList = ({ collections }) => (
+const CollectionLinkList = ({ collections }) => (
   <Box>
     {collections.map(collection => (
-      <CollectionItem collection={collection} />
+      <CollectionLink collection={collection} />
     ))}
   </Box>
 );
 
-const CollectionContent = ({ item }) => (
-  <Box className="border-bottom" py={2}>
-    <h3>{item.name}</h3>
-  </Box>
+const CollectionItemList = ({ items }) => (
+  <table className="Table">
+    <thead>
+      <th></th>
+      <th>Name</th>
+      <th>Creator</th>
+      <th>Last updated</th>
+    </thead>
+    <tbody>
+      {items.map(item => (
+        <CollectionItem item={item} />
+      ))}
+    </tbody>
+  </table>
+);
+const CollectionItem = ({ item }) => (
+  <tr>
+    <td>
+      <div className="inline-block">
+        <div className="bg-brand p2 circle text-white flex align-center">
+          <Icon name={item.type} />
+        </div>
+      </div>
+    </td>
+    <td>
+      <h3>{item.name}</h3>
+    </td>
+    <td>{item.creator}</td>
+    <td>{item.modified_at}</td>
+  </tr>
+);
+
+const CollectionActions = () => (
+  <Flex algin="center" ml="auto">
+    <Icon name="lock" />
+    <Icon name="pencil" />
+    <Icon name="add" />
+  </Flex>
 );
 
 const NewCollection = ({ items, collections }) => (
@@ -83,16 +117,16 @@ const NewCollection = ({ items, collections }) => (
     <Box w={300} px={2} ml={2} className="absolute left top bottom">
       <Flex my={3} align="center">
         <UserAvatar />
-        <h3 className="ml2 text-bold">Hey there Kyle</h3>
+        <h3 className="ml2 text-heavy">Hey there Kyle</h3>
       </Flex>
       <Box>
-        <CollectionItem
+        <CollectionLink
           collection={{ name: "Our analytics", icon: "folder" }}
         />
       </Box>
-      <CollectionList collections={collections} />
+      <CollectionLinkList collections={collections} />
       <Box mt={2}>
-        <CollectionItem
+        <CollectionLink
           collection={{ name: "Your personal collection", icon: "person" }}
         />
       </Box>
@@ -100,20 +134,17 @@ const NewCollection = ({ items, collections }) => (
 
     <Box bg="white" ml={360} className="full-height border-left">
       <Box w={"80%"} ml="auto" mr="auto">
-        <Box py={3} pt={2}>
-          <h1>Marketing</h1>
-        </Box>
+        <Flex align="center">
+          <h1 className="text-heavy py2">Marketing</h1>
+          <CollectionActions />
+        </Flex>
         <Box py={3}>
-          <h4>{t`Pinned items`}</h4>
-          {items.map(item => (
-            <CollectionContent item={item} />
-          ))}
+          <h5 className="text-uppercase text-heavy">{t`Pinned items`}</h5>
+          <CollectionItemList items={[items[0], items[1]]} />
         </Box>
 
         <Box py={3}>
-          {items.map(item => (
-            <CollectionContent item={item} />
-          ))}
+          <CollectionItemList items={items} />
         </Box>
       </Box>
     </Box>
