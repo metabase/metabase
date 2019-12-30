@@ -13,6 +13,8 @@ import * as Urls from "metabase/lib/urls";
 import Modal from "metabase/components/Modal";
 import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
+import Link from "metabase/components/Link";
+
 const MODAL_NEW_DASHBOARD = "MODAL_NEW_DASHBOARD";
 
 const FIXTURE_ITEMS = [
@@ -112,10 +114,16 @@ const CollectionItem = ({ item }) => (
       </div>
     </td>
     <td>
-      <h3>{item.name}</h3>
+      <Link to="/" className="link">
+        <h3>{item.name}</h3>
+      </Link>
     </td>
-    <td>{item.creator}</td>
-    <td>{item.modified_at}</td>
+    <td>
+      <h3 className="text-medium">{item.creator}</h3>
+    </td>
+    <td>
+      <h3 className="text-medium">{item.modified_at}</h3>
+    </td>
   </tr>
 );
 
@@ -228,13 +236,15 @@ const Greeting = () => (
 );
 
 const CollectionSubhead = ({ children }) => (
-  <h5 className="text-uppercase text-heavy">{children}</h5>
+  <h5 className="text-uppercase text-heavy text-medium">{children}</h5>
 );
 
 const CollectionPins = ({ pinnedItems }) => (
   <Box py={3}>
     <CollectionSubhead>{t`Pinned items`}</CollectionSubhead>
-    <CollectionItemList items={pinnedItems} />
+    <Box mt={2}>
+      <CollectionItemList items={pinnedItems} />
+    </Box>
   </Box>
 );
 
@@ -253,13 +263,13 @@ const NewCollection = ({ items, collections }) => (
 
     <CollectionContent>
       <CollectionHeader>
-        <CollectionTitle>Marketing</CollectionTitle>>
+        <CollectionTitle>Marketing</CollectionTitle>
         <CollectionActions />
       </CollectionHeader>
 
       <CollectionPins pinnedItems={[items[0], items[1]]} />
 
-      <Box py={3}>
+      <Box py={3} mb={2}>
         <CollectionItemList items={items} />
       </Box>
     </CollectionContent>
