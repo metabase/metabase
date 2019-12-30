@@ -1,11 +1,8 @@
 import { signInAsAdmin, snapshot, restore } from "__support__/cypress";
 
-const FIELD_APP_ORDERS_CREATED_AT_URL =
-  "/admin/datamodel/database/1/table/2/15/general";
-const FIELD_APP_ORDERS_PRODUCT_URL =
-  "/admin/datamodel/database/1/table/2/11/general";
-const FIELD_APP_ORDERS_QUANTITY_URL =
-  "/admin/datamodel/database/1/table/2/14/general";
+const ORDERS_CREATED_AT_URL = "/admin/datamodel/database/1/table/2/15/general";
+const ORDERS_PRODUCT_URL = "/admin/datamodel/database/1/table/2/11/general";
+const ORDERS_QUANTITY_URL = "/admin/datamodel/database/1/table/2/14/general";
 
 describe("admin > datamodel > field", () => {
   before(snapshot);
@@ -20,21 +17,17 @@ describe("admin > datamodel > field", () => {
   describe("Name and Description", () => {
     after(restore);
 
-    const newTitle = "Brought Into Existence At";
-    const newDescription =
-      "The point in space-time when this order saw the light.";
-
     it("lets you change field name and description", () => {
-      cy.visit(FIELD_APP_ORDERS_CREATED_AT_URL);
+      cy.visit(ORDERS_CREATED_AT_URL);
 
-      cy.get('input[name="display_name"]').as("name");
+      cy.get('input[name="display_name"]').as("display_name");
       cy.get('input[name="description"]').as("description");
 
       // update the name
-      cy.get("@name")
+      cy.get("@display_name")
         .should("have.value", "Created At")
         .clear()
-        .type(newTitle)
+        .type("new display_name")
         .blur();
       cy.wait("@fieldUpdate");
 
@@ -42,14 +35,14 @@ describe("admin > datamodel > field", () => {
       cy.get("@description")
         .should("have.value", "The date and time an order was submitted.")
         .clear()
-        .type(newDescription)
+        .type("new description")
         .blur();
       cy.wait("@fieldUpdate");
 
       // reload and verify they have been updated
       cy.reload();
-      cy.get("@name").should("have.value", newTitle);
-      cy.get("@description").should("have.value", newDescription);
+      cy.get("@display_name").should("have.value", "new display_name");
+      cy.get("@description").should("have.value", "new description");
     });
   });
 
@@ -57,7 +50,7 @@ describe("admin > datamodel > field", () => {
     after(restore);
 
     it("lets you change field visibility", () => {
-      cy.visit(FIELD_APP_ORDERS_CREATED_AT_URL);
+      cy.visit(ORDERS_CREATED_AT_URL);
 
       cy.contains("Everywhere").click();
       cy.contains("Do not include").click({ force: true });
@@ -72,7 +65,7 @@ describe("admin > datamodel > field", () => {
     after(restore);
 
     it("lets you change the type to 'No special type'", () => {
-      cy.visit(FIELD_APP_ORDERS_PRODUCT_URL);
+      cy.visit(ORDERS_PRODUCT_URL);
 
       cy.contains("Foreign Key").click();
       cy.contains("No special type").click({ force: true });
@@ -83,7 +76,7 @@ describe("admin > datamodel > field", () => {
     });
 
     it("lets you change the type to 'Number'", () => {
-      cy.visit(FIELD_APP_ORDERS_PRODUCT_URL);
+      cy.visit(ORDERS_PRODUCT_URL);
 
       cy.contains("No special type").click();
       cy.contains("Number").click({ force: true });
@@ -94,7 +87,7 @@ describe("admin > datamodel > field", () => {
     });
 
     it("lets you change the type to 'Foreign key' and choose the target field", () => {
-      cy.visit(FIELD_APP_ORDERS_PRODUCT_URL);
+      cy.visit(ORDERS_PRODUCT_URL);
 
       cy.contains("Number").click();
       cy.get(".ReactVirtualized__Grid").scrollTo(0, 0); // HACK: scroll to the top of the list. Ideally we should probably disable AccordianList virtualization
@@ -115,7 +108,7 @@ describe("admin > datamodel > field", () => {
     after(restore);
 
     it("lets you change to 'Search box'", () => {
-      cy.visit(FIELD_APP_ORDERS_QUANTITY_URL);
+      cy.visit(ORDERS_QUANTITY_URL);
 
       cy.contains("A list of all values").click();
       cy.contains("Search box").click();
@@ -130,7 +123,7 @@ describe("admin > datamodel > field", () => {
     after(restore);
 
     it("lets you change to 'Use foreign key' and change the target for field with fk", () => {
-      cy.visit(FIELD_APP_ORDERS_PRODUCT_URL);
+      cy.visit(ORDERS_PRODUCT_URL);
 
       cy.contains("Use original value").click();
       cy.contains("Use foreign key").click();
@@ -143,7 +136,7 @@ describe("admin > datamodel > field", () => {
     });
 
     it("lets you change to 'Custom mapping' and set custom values", () => {
-      cy.visit(FIELD_APP_ORDERS_QUANTITY_URL);
+      cy.visit(ORDERS_QUANTITY_URL);
 
       cy.contains("Use original value").click();
       cy.contains("Custom mapping").click();
