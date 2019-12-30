@@ -7,6 +7,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { loadTableAndForeignKeys } from "metabase/lib/table";
+import { delay } from "metabase/lib/promise";
 
 import fitViewport from "metabase/hoc/FitViewPort";
 
@@ -42,6 +43,7 @@ import {
   getQuestion,
   getOriginalQuestion,
   getSettings,
+  getQueryStartTime,
   getRawSeries,
   getQuestionAlerts,
   getVisualizationSettings,
@@ -140,6 +142,7 @@ const mapStateToProps = (state, props) => {
       state,
       props,
     ),
+    queryStartTime: getQueryStartTime(state),
   };
 };
 
@@ -152,7 +155,16 @@ const mapDispatchToProps = {
   mapStateToProps,
   mapDispatchToProps,
 )
-@title(({ card }) => (card && card.name) || t`Question`)
+@title(({ card, queryStartTime }) => {
+  const cardName = (card && card.name) || t`Question`;
+  if (queryStartTime == null) {
+    return cardName;
+  }
+  // When the query is running, we want to show a counter in the title.
+  // We include refresh, so the title HOC knows when to refresh itself.
+  const seconds = Math.floor((performance.now() - queryStartTime) / 1000);
+  return { title: `${seconds}s – ${cardName}`, refresh: delay(100) };
+})
 @fitViewport
 export default class QueryBuilder extends Component {
   timeout: any;
