@@ -1,7 +1,7 @@
 import { signInAsAdmin, restore } from "__support__/cypress";
 
 describe("dashboard", () => {
-  before(() => restore("default"));
+  before(restore);
   beforeEach(signInAsAdmin);
 
   it("should have the correct embed snippet", () => {

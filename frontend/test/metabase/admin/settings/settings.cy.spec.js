@@ -1,7 +1,7 @@
 import { signInAsAdmin, restore } from "__support__/cypress";
 
 describe("admin/settings", () => {
-  before(() => restore("default"));
+  before(restore);
   beforeEach(signInAsAdmin);
 
   it("should save a setting", () => {

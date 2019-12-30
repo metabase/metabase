@@ -1,6 +1,6 @@
 import { restore } from "__support__/cypress";
 describe("sign in", () => {
-  before(() => restore("default"));
+  before(restore);
 
   it("should display an error for incorrect passwords", () => {
     cy.visit("/");

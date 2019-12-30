@@ -19,7 +19,7 @@ export function signInAsNormalUser() {
 export function snapshot(name) {
   cy.request("POST", `/api/util/snapshot/${name}`);
 }
-export function restore(name) {
+export function restore(name = "default") {
   cy.request("POST", `/api/util/restore/${name}`);
 }
 

@@ -1,7 +1,7 @@
 import { signInAsAdmin, restore } from "__support__/cypress";
 
 describe("query builder", () => {
-  before(() => restore("default"));
+  before(restore);
   beforeEach(signInAsAdmin);
 
   describe("browse data", () => {

@@ -5,7 +5,7 @@ import {
 } from "__support__/cypress";
 
 describe("homepage", () => {
-  before(() => restore("default"));
+  before(restore);
 
   describe("content management", () => {
     describe("as admin", () => {
