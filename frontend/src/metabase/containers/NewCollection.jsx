@@ -120,42 +120,73 @@ const CollectionActions = () => (
   </Flex>
 );
 
+const CollectionHeader = ({ children }) => (
+  <Flex align="center" pt={3} pb={1}>
+    {children}
+  </Flex>
+);
+
+const CollectionTitle = ({ children }) => (
+  <h1 className="text-heavy">{children}</h1>
+);
+
+const CollectionContent = ({ children }) => (
+  <Box bg="white" ml={360} className="full-height border-left">
+    <Box w={"80%"} ml="auto" mr="auto">
+      {children}
+    </Box>
+  </Box>
+);
+
+const CollectionSidebar = ({ children }) => (
+  <Box w={300} px={2} ml={2} className="absolute left top bottom">
+    {children}
+  </Box>
+);
+
+const Greeting = () => (
+  <Flex my={3} align="center">
+    <UserAvatar />
+    <h3 className="ml2 text-heavy">Hey there Kyle</h3>
+  </Flex>
+);
+
+const CollectionSubhead = ({ children }) => (
+  <h5 className="text-uppercase text-heavy">{children}</h5>
+);
+
+const CollectionPins = ({ pinnedItems }) => (
+  <Box py={3}>
+    <CollectionSubhead>{t`Pinned items`}</CollectionSubhead>
+    <CollectionItemList items={pinnedItems} />
+  </Box>
+);
+
 const NewCollection = ({ items, collections }) => (
   <div className="relative">
-    <Box w={300} px={2} ml={2} className="absolute left top bottom">
-      <Flex my={3} align="center">
-        <UserAvatar />
-        <h3 className="ml2 text-heavy">Hey there Kyle</h3>
-      </Flex>
-      <Box>
-        <CollectionLink
-          collection={{ name: "Our analytics", icon: "folder" }}
-        />
-      </Box>
+    <CollectionSidebar>
+      <Greeting />
+
+      <CollectionLink collection={{ name: "Our analytics", icon: "folder" }} />
       <CollectionLinkList collections={collections} />
-      <Box mt={2}>
-        <CollectionLink
-          collection={{ name: "Your personal collection", icon: "person" }}
-        />
-      </Box>
-    </Box>
+      <CollectionLink
+        collection={{ name: "Your personal collection", icon: "person" }}
+        mt={2}
+      />
+    </CollectionSidebar>
 
-    <Box bg="white" ml={360} className="full-height border-left">
-      <Box w={"80%"} ml="auto" mr="auto">
-        <Flex align="center">
-          <h1 className="text-heavy py2">Marketing</h1>
-          <CollectionActions />
-        </Flex>
-        <Box py={3}>
-          <h5 className="text-uppercase text-heavy">{t`Pinned items`}</h5>
-          <CollectionItemList items={[items[0], items[1]]} />
-        </Box>
+    <CollectionContent>
+      <CollectionHeader>
+        <CollectionTitle>Marketing</CollectionTitle>>
+        <CollectionActions />
+      </CollectionHeader>
 
-        <Box py={3}>
-          <CollectionItemList items={items} />
-        </Box>
+      <CollectionPins pinnedItems={[items[0], items[1]]} />
+
+      <Box py={3}>
+        <CollectionItemList items={items} />
       </Box>
-    </Box>
+    </CollectionContent>
   </div>
 );
 
