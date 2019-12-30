@@ -1,7 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import { Box, Flex } from "grid-styled";
-import papaparse from 'papaparse'
+import papaparse from "papaparse";
 import querystring from "querystring";
 import { t } from "ttag";
 
@@ -26,12 +26,7 @@ function colorForType(type) {
   }
 }
 
-const ClipBoardButton = ({
-  url,
-  params,
-  children,
-  ...props,
-}) => {
+const ClipBoardButton = ({ url, params, children, ...props }) => {
   return (
     <Box>
       <Flex
@@ -41,22 +36,29 @@ const ClipBoardButton = ({
         px={1}
         onClick={e => {
           e.preventDefault();
-          fetch(`${url.split('/').slice(0, -1).join('/')}/csv`, {
-            method: "POST",
-            mode: 'cors',
-            cache: 'no-cache',
-            credentials: 'same-origin',
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded'
+          fetch(
+            `${url
+              .split("/")
+              .slice(0, -1)
+              .join("/")}/tsv`,
+            {
+              method: "POST",
+              mode: "cors",
+              cache: "no-cache",
+              credentials: "same-origin",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+              },
+              body: querystring.encode(params),
             },
-            body: querystring.encode(params),
-          })
+          )
             .then(r => r.text())
             .then(text => {
-              const j = papaparse.parse(text)
-              const r = papaparse.unparse(j, {delimiter: '\t'})
-              navigator.clipboard.writeText(r)
-                .then(() => window.alert(t`Result copied to clipboard.`))
+              const j = papaparse.parse(text);
+              const r = papaparse.unparse(j, { delimiter: "\t" });
+              navigator.clipboard
+                .writeText(r)
+                .then(() => window.alert(t`Result copied to clipboard.`));
             });
         }}
         {...props}
@@ -64,9 +66,9 @@ const ClipBoardButton = ({
         <Icon name={children} size={32} mr={1} color={colorForType(children)} />
         <Text className="text-bold">.{children}</Text>
       </Flex>
-  </Box>
-  )
-}
+    </Box>
+  );
+};
 
 const DownloadButton = ({
   children,
@@ -76,7 +78,7 @@ const DownloadButton = ({
   extensions,
   ...props
 }) => {
-  if (children === 'clipboard') {
+  if (children === "clipboard") {
     return (
       <ClipBoardButton
         children={children}
@@ -86,7 +88,7 @@ const DownloadButton = ({
         extensions={extensions}
         {...props}
       />
-    )
+    );
   }
 
   return (
@@ -108,12 +110,17 @@ const DownloadButton = ({
           }}
           {...props}
         >
-          <Icon name={children} size={32} mr={1} color={colorForType(children)} />
+          <Icon
+            name={children}
+            size={32}
+            mr={1}
+            color={colorForType(children)}
+          />
           <Text className="text-bold">.{children}</Text>
         </Flex>
       </form>
     </Box>
-  )
+  );
 };
 
 const getInput = ([name, value]) => (
