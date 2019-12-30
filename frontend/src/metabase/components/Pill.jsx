@@ -4,6 +4,8 @@ import { Absolute } from "metabase/components/Position";
 import { background, color, display, space } from "styled-system";
 import { alpha, color as metabaseColor } from "metabase/lib/colors";
 
+const DEFAULT_PILL_COLOR = metabaseColor("brand");
+
 export const Pill = styled.div`
   ${space};
   ${background};
@@ -24,7 +26,7 @@ export const Pill = styled.div`
 
 Pill.defaultProps = {
   bg: alpha(metabaseColor("brand"), 0.2),
-  color: metabaseColor("brand"),
+  color: DEFAULT_PILL_COLOR,
   py: "12px",
   pl: "36px",
   pr: "36px",
@@ -36,11 +38,19 @@ const PillWrapper = styled.div`
   display: flex;
   align-items: center;
   flex: 1;
+  color: ${props => props.color || DEFAULT_PILL_COLOR};
+  &:hover {
+    color: ${props => (props.active ? "white" : props.color)};
+  }
+  .Icon {
+    opacity: 0.6;
+    transform: translate3d(0, 1px, 0);
+  }
 `;
 
 export const PillWithAdornment = ({ left, right, ...props }) => {
   return (
-    <PillWrapper>
+    <PillWrapper color={props.color} active={props.active}>
       {left && (
         <Absolute left={0} pl="16px">
           {left}
