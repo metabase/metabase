@@ -2,6 +2,7 @@ import React, { Component } from "react";
 
 import { compose } from "redux";
 import { connect } from "react-redux";
+import { push } from "react-router-redux";
 
 import { t } from "ttag";
 
@@ -27,11 +28,33 @@ const mapStateToProps = state => ({
   hasNativeWrite: getHasNativeWrite(state),
 });
 
+const mapDispatchToProps = {
+  push,
+};
+
 const PAGE_PADDING = [1, 4];
 
 @fitViewport
+@connect(
+  null,
+  { push },
+)
 export class NewQueryOptions extends Component {
   props: Props;
+
+  componentWillMount(props) {
+    const { location, push } = this.props;
+    if (Object.keys(location.query).length > 0) {
+      const { database, table, ...options } = location.query;
+      push(
+        Urls.newQuestion({
+          ...options,
+          databaseId: database ? parseInt(database) : undefined,
+          tableId: table ? parseInt(table) : undefined,
+        }),
+      );
+    }
+  }
 
   render() {
     const { hasDataAccess, hasNativeWrite } = this.props;
@@ -99,6 +122,6 @@ export default compose(
   Database.loadList({ query: { include_tables: true, include_cards: true } }),
   connect(
     mapStateToProps,
-    null,
+    mapDispatchToProps,
   ),
 )(NewQueryOptions);
