@@ -65,7 +65,7 @@ If you wish to have a parameter locked down to prevent your embedding applicatio
 
 ### Hiding parameters
 
-If you have parameters that aren't required, but that you'd like to be hidden, instead of marking them as Locked you can use the `hide_parameters` URL option to hide one or more parameter (i.e., prevent it from showing up as a filter widget on screen). You'll want to add this option to the Metabase URL specified in your embedding iframe.
+If you have parameters that aren't required, but that you'd like to be hidden, instead of marking them as Locked you can use the `hide_parameters` URL option to hide one or more parameters (i.e., prevent it from showing up as a filter widget on screen). You'll want to add this option to the Metabase URL specified in your embedding iframe.
 
 For example, if you have a parameter called "ID," in this example the ID filter widget would be hidden:
 
