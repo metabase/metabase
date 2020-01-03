@@ -1,5 +1,4 @@
 import { signInAsAdmin, snapshot, restore } from "__support__/cypress";
-import { saveFile } from "jsrsasign";
 
 function typeField(name, value) {
   cy.get(`input[name="${name}"]`)

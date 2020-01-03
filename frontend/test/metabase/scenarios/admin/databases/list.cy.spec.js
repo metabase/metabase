@@ -9,9 +9,15 @@ describe("admin > databases > list", () => {
     cy.server();
   });
 
-  it("should let you add a database", () => {
+  it("should let you view a database", () => {
     cy.visit("/admin/databases");
     cy.contains("Sample Dataset").click();
+    cy.url().should("match", /\/admin\/databases\/\d+$/);
+  });
+
+  it("should let you add a database", () => {
+    cy.visit("/admin/databases");
+    cy.contains("Add database").click();
     cy.url().should("match", /\/admin\/databases\/create$/);
   });
 
