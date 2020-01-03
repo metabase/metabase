@@ -2,7 +2,7 @@
 
 import { createSelector } from "reselect";
 import _ from "underscore";
-import { getIn, updateIn } from "icepick";
+import { getIn, assocIn, updateIn } from "icepick";
 
 // Needed due to wrong dependency resolution order
 // eslint-disable-next-line no-unused-vars
@@ -162,7 +162,7 @@ function normalizeQuery(query, tableMetadata) {
     });
   }
   if (query.native && query.native["template-tags"] == null) {
-    query.native["template-tags"] = {};
+    query = assocIn(query, ["native", "template-tags"], {});
   }
   return query;
 }
