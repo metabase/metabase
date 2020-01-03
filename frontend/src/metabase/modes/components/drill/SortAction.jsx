@@ -1,6 +1,7 @@
 /* @flow */
 
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
+import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/lib/Dimension";
 
 import { t } from "ttag";
@@ -15,8 +16,16 @@ function updateQuestion(...args) {
   return require("metabase/query_builder/actions").updateQuestion(...args);
 }
 
-export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
+export default ({
+  question,
+  settings,
+  clicked,
+}: ClickActionProps): ClickAction[] => {
   const query = question.query();
+
+  if (!(query instanceof StructuredQuery || query instanceof NativeQuery)) {
+    return [];
+  }
 
   if (
     !clicked ||
@@ -29,36 +38,27 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   const { column } = clicked;
 
   const fieldRef = query.fieldReferenceForColumn(column);
-
   if (!fieldRef) {
     return [];
   }
-  if (query instanceof NativeQuery) {
-    return [
-      {
-        name: "sort-ascending",
-        section: "sort",
-        title: t`Ascending`,
-        action: () =>
-          updateQuestion(
-            question.updateSettings({ "table.sort": [["asc", fieldRef]] }),
-          ),
-      },
-      {
-        name: "sort-descending",
-        section: "sort",
-        title: t`Descending`,
-        action: () =>
-          updateQuestion(
-            question.updateSettings({ "table.sort": [["desc", fieldRef]] }),
-          ),
-      },
-    ];
-  }
 
-  const [sortDirection, sortFieldRef] = query.sorts()[0] || [];
+  const [sortSetting] =
+    (query instanceof NativeQuery && settings["table.sort"]) || [];
+  const [querySort] = query instanceof StructuredQuery ? query.sorts() : [];
+  const [sortDirection, sortFieldRef] = querySort || sortSetting || [];
   const isAlreadySorted =
     sortFieldRef != null && Dimension.isEqual(fieldRef, sortFieldRef);
+
+  const addSort = sort => {
+    if (query instanceof NativeQuery) {
+      return {
+        action: () =>
+          updateQuestion(question.updateSettings({ "table.sort": [sort] })),
+      };
+    } else if (query instanceof StructuredQuery) {
+      return { question: () => query.replaceSort(sort).question() };
+    }
+  };
 
   const actions = [];
   if (!isAlreadySorted || sortDirection === "desc") {
@@ -66,7 +66,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       name: "sort-ascending",
       section: "sort",
       title: t`Ascending`,
-      question: () => query.replaceSort(["asc", fieldRef]).question(),
+      ...addSort(["asc", fieldRef]),
     });
   }
   if (!isAlreadySorted || sortDirection === "asc") {
@@ -74,7 +74,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
       name: "sort-descending",
       section: "sort",
       title: t`Descending`,
-      question: () => query.replaceSort(["desc", fieldRef]).question(),
+      ...addSort(["desc", fieldRef]),
     });
   }
   return actions;

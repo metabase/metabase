@@ -271,7 +271,8 @@ export default class Visualization extends React.PureComponent {
     const card = rawSeries[seriesIndex].card;
     const question = this._getQuestionForCardCached(metadata, card);
     const mode = question && question.mode();
-    return mode ? mode.actionsForClick(clicked, {}) : [];
+    const settings = this.state.computedSettings || {};
+    return mode ? mode.actionsForClick(clicked, settings) : [];
   }
 
   visualizationIsClickable = (clicked: ClickObject) => {

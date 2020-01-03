@@ -45,7 +45,7 @@ import type {
   ClickObject,
 } from "metabase/meta/types/Visualization";
 import type { VisualizationSettings } from "metabase/meta/types/Card";
-import type { DatasetData } from "metabase/meta/types/Dataset";
+import type { DatasetData, Row } from "metabase/meta/types/Dataset";
 
 function pickRowsToMeasure(rows, columnIndex, count = 10) {
   const rowIndexes = [];
@@ -83,6 +83,7 @@ type State = {
     center: number,
     width: number,
   }[]),
+  sortedRows: ?(Row[]),
 };
 
 type CellRendererProps = {
@@ -117,6 +118,7 @@ export default class TableInteractive extends Component {
     this.state = {
       columnWidths: [],
       contentWidths: null,
+      sortedRows: null,
     };
     this.columnHasResized = {};
     this.headerRefs = [];
@@ -195,7 +197,7 @@ export default class TableInteractive extends Component {
     this.setState({ sortedRows: this.getSortedRows() });
   }
 
-  componentDidUpdate(prevProps) {
+  componentDidUpdate(prevProps: Props) {
     if (!this.state.contentWidths) {
       this._measure();
     } else if (this.props.onContentWidthChange) {

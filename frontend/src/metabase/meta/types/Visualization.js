@@ -53,6 +53,7 @@ export type ClickAction = {
 export type ClickActionProps = {
   question: Question,
   clicked?: ClickObject,
+  settings: VisualizationSettings,
 };
 
 export type OnChangeCardAndRun = ({
