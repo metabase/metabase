@@ -629,15 +629,19 @@ export const updateTemplateTag = createThunkAction(
         delete updatedCard.description;
       }
 
-      // using updateIn instead of assocIn due to not preserving order of keys
+      // we need to preserve the order of the keys to avoid UI jumps
       return updateIn(
         updatedCard,
-        ["dataset_query", "native", "template-tags", templateTag.name],
-        tag =>
-          // when we switch type, null out any default
-          tag.type !== templateTag.type
-            ? { ...templateTag, default: null }
-            : templateTag,
+        ["dataset_query", "native", "template-tags"],
+        tags => {
+          const { name } = templateTag;
+          const newTag =
+            tags[name] && tags[name].type !== templateTag.type
+              ? // when we switch type, null out any default
+                { ...templateTag, default: null }
+              : templateTag;
+          return { ...tags, [name]: newTag };
+        },
       );
     };
   },
