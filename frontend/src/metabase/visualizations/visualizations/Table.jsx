@@ -226,6 +226,12 @@ export default class Table extends Component {
       },
       readDependencies: ["table.column_formatting", "table.pivot"],
     },
+    // This is really just a placeholder. table.sort is set in a drill and used
+    // in TableInteractive for client-side sorting.
+    "table.sort": {
+      default: null,
+      getHidden: () => true,
+    },
   };
 
   static columnSettings = column => {
@@ -382,7 +388,10 @@ export default class Table extends Component {
       settings,
     } = this.props;
     const { data } = this.state;
-    const sort = getIn(card, ["dataset_query", "query", "order-by"]) || null;
+    const sort =
+      getIn(card, ["dataset_query", "query", "order-by"]) ||
+      settings["table.sort"] ||
+      null;
     const isPivoted = settings["table.pivot"];
     const isColumnsDisabled =
       (settings["table.columns"] || []).filter(f => f.enabled).length < 1;

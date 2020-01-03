@@ -191,7 +191,11 @@ export default class TableInteractive extends Component {
     );
   }
 
-  componentDidUpdate() {
+  componentDidMount() {
+    this.setState({ sortedRows: this.getSortedRows() });
+  }
+
+  componentDidUpdate(prevProps) {
     if (!this.state.contentWidths) {
       this._measure();
     } else if (this.props.onContentWidthChange) {
@@ -200,6 +204,12 @@ export default class TableInteractive extends Component {
         this.props.onContentWidthChange(total, this.state.columnWidths);
         this._totalContentWidth = total;
       }
+    }
+    if (
+      this.props.data !== prevProps.data ||
+      this.props.sort !== prevProps.sort
+    ) {
+      this.setState({ sortedRows: this.getSortedRows() });
     }
   }
 
@@ -430,10 +440,39 @@ export default class TableInteractive extends Component {
     }
   }
 
+  getSortedRows() {
+    const {
+      data: { cols, rows },
+      settings,
+      sort,
+    } = this.props;
+    if (!settings["table.sort"]) {
+      return rows;
+    }
+    const [[sortDirection, sortFieldRef]] = sort;
+    const sortColumnIndex = cols.findIndex(column => {
+      const fieldRef = fieldRefForColumn(column, cols);
+      return Dimension.isEqual(sortFieldRef, fieldRef);
+    });
+    const sortedRows = _.sortBy(rows, row => {
+      let value = row[sortColumnIndex];
+      // for strings we should be case insensitive
+      if (typeof value === "string") {
+        value = value.toLowerCase();
+      }
+      return value;
+    });
+    if (sortDirection !== "asc") {
+      sortedRows.reverse();
+    }
+    return sortedRows;
+  }
+
   cellRenderer = ({ key, style, rowIndex, columnIndex }: CellRendererProps) => {
     const { data, settings } = this.props;
     const { dragColIndex } = this.state;
-    const { rows, cols } = data;
+    const { cols } = data;
+    const rows = this.state.sortedRows || data.rows;
 
     const column = cols[columnIndex];
     const row = rows[rowIndex];

@@ -1,6 +1,6 @@
 /* @flow */
 
-import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 import Dimension from "metabase-lib/lib/Dimension";
 
 import { t } from "ttag";
@@ -9,11 +9,14 @@ import type {
   ClickActionProps,
 } from "metabase/meta/types/Visualization";
 
+// NOTE: cyclical dependency
+// import { updateQuestion } from "metabase/query_builder/actions";
+function updateQuestion(...args) {
+  return require("metabase/query_builder/actions").updateQuestion(...args);
+}
+
 export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   const query = question.query();
-  if (!(query instanceof StructuredQuery)) {
-    return [];
-  }
 
   if (
     !clicked ||
@@ -26,8 +29,31 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   const { column } = clicked;
 
   const fieldRef = query.fieldReferenceForColumn(column);
+
   if (!fieldRef) {
     return [];
+  }
+  if (query instanceof NativeQuery) {
+    return [
+      {
+        name: "sort-ascending",
+        section: "sort",
+        title: t`Ascending`,
+        action: () =>
+          updateQuestion(
+            question.updateSettings({ "table.sort": [["asc", fieldRef]] }),
+          ),
+      },
+      {
+        name: "sort-descending",
+        section: "sort",
+        title: t`Descending`,
+        action: () =>
+          updateQuestion(
+            question.updateSettings({ "table.sort": [["desc", fieldRef]] }),
+          ),
+      },
+    ];
   }
 
   const [sortDirection, sortFieldRef] = query.sorts()[0] || [];

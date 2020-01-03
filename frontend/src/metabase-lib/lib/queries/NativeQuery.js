@@ -310,4 +310,8 @@ export default class NativeQuery extends AtomicQuery {
     }
     return {};
   }
+
+  fieldReferenceForColumn(column) {
+    return column.field_ref;
+  }
 }
