@@ -91,6 +91,12 @@ You can specify multiple parameters to hide by separating them with commas, like
 /dashboard/42#hide_parameters=id,customer_name
 ```
 
+To specify multiple values for filters, though, you'll need to separate them with ampersands (&), like this:
+
+```
+/dashboard/42?id=7&customer_name=janet
+```
+
 ### Resizing dashboards to fit their content
 
 Dashboards are a fixed aspect ratio, so if you'd like to ensure they're automatically sized vertically to fit their contents you can use the [iFrame Resizer](https://github.com/davidjbradshaw/iframe-resizer) script. Metabase serves a copy for convenience:
