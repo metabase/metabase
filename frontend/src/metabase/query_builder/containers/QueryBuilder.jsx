@@ -7,7 +7,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { loadTableAndForeignKeys } from "metabase/lib/table";
-import { delay } from "metabase/lib/promise";
 
 import fitViewport from "metabase/hoc/FitViewPort";
 
@@ -15,6 +14,7 @@ import View from "../components/view/View";
 // import Notebook from "../components/notebook/Notebook";
 
 import title from "metabase/hoc/Title";
+import loadingTimeTitle from "metabase/hoc/LoadingTimeTitle";
 
 import {
   getCard,
@@ -155,16 +155,8 @@ const mapDispatchToProps = {
   mapStateToProps,
   mapDispatchToProps,
 )
-@title(({ card, queryStartTime }) => {
-  const cardName = (card && card.name) || t`Question`;
-  if (queryStartTime == null) {
-    return cardName;
-  }
-  // When the query is running, we want to show a counter in the title.
-  // We include refresh, so the title HOC knows when to refresh itself.
-  const seconds = Math.floor((performance.now() - queryStartTime) / 1000);
-  return { title: `${seconds}s – ${cardName}`, refresh: delay(100) };
-})
+@title(({ card }) => (card && card.name) || t`Question`)
+@loadingTimeTitle("queryStartTime")
 @fitViewport
 export default class QueryBuilder extends Component {
   timeout: any;
