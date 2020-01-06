@@ -379,8 +379,8 @@
       ZonedDateTime  (t/zoned-date-time))))
 
 (defn older-than?
-  "True if temporal value `t` happened before some period/duration ago. Prefer this over using `t/before?`
-  because it is incredibly fussy about the classes of arguments it is passed.
+  "True if temporal value `t` happened before some period/duration ago, compared to now. Prefer this over using
+  `t/before?` to compare times to now because it is incredibly fussy about the classes of arguments it is passed.
 
     ;; did `t` happen more than 2 months ago?
     (older-than? t (t/months 2))"
