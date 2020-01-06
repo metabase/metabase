@@ -5,7 +5,7 @@ import "metabase/css/index.css";
 
 window.MetabaseBootstrap = {
   "enable-xrays": true,
-  timezones: [
+  "available-timezones": [
     "GMT",
     "UTC",
     "US/Alaska",
