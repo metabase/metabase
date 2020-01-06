@@ -211,18 +211,15 @@
    :run-with-repl
    [:exclude-tests
     :include-all-drivers
-    ;; so running the tests doesn't give you different answers
-    {:jvm-opts
-     ["-Duser.timezone=UTC"]
 
-     :env
-     {:mb-jetty-join "false"}
+    :env
+    {:mb-jetty-join "false"}
 
-     :repl-options
-     {:init (do
-             (use 'metabase.core)
-             (metabase.core/-main))
-      :timeout 60000}}]
+    :repl-options
+    {:init (do
+            (use 'metabase.core)
+            (metabase.core/-main))
+     :timeout 60000}}]
 
    ;; start the dev HTTP server with 'lein ring server'
    :ring
