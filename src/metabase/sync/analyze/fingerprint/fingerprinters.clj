@@ -2,7 +2,7 @@
   "Non-identifying fingerprinters for various field types."
   (:require [bigml.histogram.core :as hist]
             [cheshire.core :as json]
-            [clj-time.coerce :as t.coerce]
+            [java-time :as t]
             [kixi.stats
              [core :as stats]
              [math :as math]]
@@ -11,12 +11,12 @@
             [metabase.sync.util :as sync-util]
             [metabase.util :as u]
             [metabase.util
-             [date :as du]
+             [date-2 :as u.date]
              [i18n :refer [trs]]]
             [redux.core :as redux])
   (:import com.bigml.histogram.Histogram
            com.clearspring.analytics.stream.cardinality.HyperLogLogPlus
-           org.joda.time.DateTime))
+           java.time.temporal.Temporal))
 
 (defn col-wise
   "Apply reducing functinons `rfs` coll-wise to a seq of seqs."
@@ -55,12 +55,16 @@
 
 (defmulti fingerprinter
   "Return a fingerprinter transducer for a given field based on the field's type."
-   (fn [{:keys [base_type special_type unit] :as field}]
-     [(cond
-        (du/date-extract-units unit)  :type/Integer
-        (field/unix-timestamp? field) :type/DateTime
-        :else                         base_type)
-      (or special_type :type/*)]))
+  {:arglists '([field])}
+  (fn [{:keys [base_type special_type unit] :as field}]
+    [(cond
+       (u.date/extract-units unit)    :type/Integer
+       (field/unix-timestamp? field)   :type/DateTime
+       ;; for historical reasons the Temporal fingerprinter is still called `:type/DateTime` so anything that derives
+       ;; from `Temporal` (such as DATEs and TIMEs) should still use the `:type/DateTime` fingerprinter
+       (isa? base_type :type/Temporal) :type/DateTime
+       :else                           base_type)
+     (or special_type :type/*)]))
 
 (def ^:private global-fingerprinter
   (redux/post-complete
@@ -132,44 +136,37 @@
          (trs "Error generating fingerprint for {0}" (sync-util/name-for-logging field#))))))
 
 (defn- earliest
-  ([] (java.util.Date. Long/MAX_VALUE))
+  ([] nil)
   ([acc]
-   (when (not= acc (earliest))
-     (du/date->iso-8601 acc)))
-  ([^java.util.Date acc dt]
-   (if dt
-     (if (.before ^java.util.Date dt acc)
-       dt
-       acc)
-     acc)))
+   (some-> acc u.date/format))
+  ([acc t]
+   (if (and t acc (t/before? t acc))
+     t
+     (or acc t))))
 
 (defn- latest
-  ([] (java.util.Date. 0))
+  ([] nil)
   ([acc]
-   (when (not= acc (latest))
-     (du/date->iso-8601 acc)))
-  ([^java.util.Date acc dt]
-   (if dt
-     (if (.after ^java.util.Date dt acc)
-       dt
-       acc)
-     acc)))
+   (some-> acc u.date/format))
+  ([acc t]
+   (if (and t acc (t/after? t acc))
+     t
+     (or acc t))))
 
-(defprotocol IDateCoercible
-  "Protocol for converting objects in resultset to `java.util.Date`"
-  (->date ^java.util.Date [this]
-    "Coerce object to a `java.util.Date`."))
+(defprotocol ^:private ITemporalCoerceable
+  "Protocol for converting objects in resultset to a `java.time` temporal type."
+  (->temporal ^java.time.temporal.Temporal [this]
+    "Coerce object to a `java.time` temporal type."))
 
-(extend-protocol IDateCoercible
-  nil                    (->date [_] nil)
-  String                 (->date [this] (-> this du/str->date-time t.coerce/to-date))
-  java.util.Date         (->date [this] this)
-  DateTime               (->date [this] (t.coerce/to-date this))
-  Long                   (->date [^Long this] (java.util.Date. this))
-  Integer                (->date [^Integer this] (java.util.Date. (long this))))
+(extend-protocol ITemporalCoerceable
+  nil      (->temporal [_]    nil)
+  String   (->temporal [this] (u.date/parse this))
+  Long     (->temporal [this] (t/instant this))
+  Integer  (->temporal [this] (t/instant this))
+  Temporal (->temporal [this] this))
 
 (deffingerprinter :type/DateTime
-  ((map ->date)
+  ((map ->temporal)
    (redux/fuse {:earliest earliest
                 :latest   latest})))
 
@@ -198,9 +195,9 @@
     ((some-fn map? sequential?) (json/parse-string x))))
 
 (deffingerprinter :type/Text
-  ((map (comp str u/jdbc-clob->str)) ; we cast to str to support `field-literal` type overwriting:
-                                     ; `[:field-literal "A_NUMBER" :type/Text]` (which still
-                                     ; returns numbers in the result set)
+  ((map str) ; we cast to str to support `field-literal` type overwriting:
+             ; `[:field-literal "A_NUMBER" :type/Text]` (which still
+             ; returns numbers in the result set)
    (redux/fuse {:percent-json   (stats/share valid-serialized-json?)
                 :percent-url    (stats/share u/url?)
                 :percent-email  (stats/share u/email?)

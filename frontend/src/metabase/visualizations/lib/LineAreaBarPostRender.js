@@ -6,6 +6,7 @@ import _ from "underscore";
 import { color } from "metabase/lib/colors";
 import { clipPathReference } from "metabase/lib/dom";
 import { adjustYAxisTicksIfNeeded } from "./apply_axis";
+import { isHistogramBar } from "./renderer_utils";
 
 const X_LABEL_MIN_SPACING = 2; // minimum space we want to leave between labels
 const X_LABEL_ROTATE_90_THRESHOLD = 24; // tick width breakpoint for switching from 45° to 90°
@@ -245,6 +246,125 @@ function onRenderVoronoiHover(chart) {
     .order();
 }
 
+function onRenderValueLabels(chart, formatYValue, [data]) {
+  const hasDuplicateX = new Set(data.map(([x]) => x)).size < data.length;
+  if (
+    !chart.settings["graph.show_values"] || // setting is off
+    chart.settings["stackable.stack_type"] === "normalized" || // no normalized
+    chart.series.length > 1 || // no multiseries
+    hasDuplicateX // need unique x values
+  ) {
+    return;
+  }
+  const showAll = chart.settings["graph.label_value_frequency"] === "all";
+  const { display } = chart.settings.series(chart.series[0]);
+
+  // Update `data` to use named x/y and include `showLabelBelow`.
+  // We need to do that before data is filtered to show every nth value.
+  data = data.map(([x, y], i) => {
+    const isLocalMin =
+      // first point or prior is greater than y
+      (i === 0 || data[i - 1][1] > y) &&
+      // last point point or next is greater than y
+      (i === data.length - 1 || data[i + 1][1] > y);
+    const showLabelBelow = isLocalMin && display === "line";
+    return { x, y, showLabelBelow };
+  });
+
+  // use the chart body so things line up properly
+  const parent = chart.svg().select(".chart-body");
+
+  const xScale = chart.x();
+  const yScale = chart.y();
+
+  // Ordinal bar charts and histograms need extra logic to center the label.
+  let xShift = 0;
+  if (xScale.rangeBand) {
+    xShift += xScale.rangeBand() / 2;
+  }
+  if (isHistogramBar({ settings: chart.settings, chartType: display })) {
+    // this has to match the logic in `doHistogramBarStuff`
+    const [x1, x2] = chart
+      .svg()
+      .selectAll("rect")
+      .flat()
+      .map(r => parseFloat(r.getAttribute("x")));
+    const barWidth = x2 - x1;
+    xShift += barWidth / 2;
+  }
+
+  const addLabels = data => {
+    // make sure we don't add .value-lables multiple times
+    parent.select(".value-labels").remove();
+    // Safari had an issue with rendering paint-order: stroke. To work around
+    // that, we create two text labels: one for the the black text and another
+    // for the white outline behind it.
+    const labelGroups = parent
+      .append("svg:g")
+      .classed("value-labels", true)
+      .selectAll("g")
+      .data(data)
+      .enter()
+      .append("g")
+      .attr("transform", ({ x, y, showLabelBelow }) => {
+        const xPos = xShift + xScale(x);
+        let yPos = yScale(y) + (showLabelBelow ? 18 : -8);
+        // if the yPos is below the x axis, move it to be above the data point
+        const [yMax] = yScale.range();
+        if (yPos > yMax) {
+          yPos = yScale(y) - 8;
+        }
+        return `translate(${xPos}, ${yPos})`;
+      });
+
+    ["value-label-outline", "value-label"].forEach(klass =>
+      labelGroups
+        .append("text")
+        .attr("class", klass)
+        .attr("text-anchor", "middle")
+        .text(({ y }) => formatYValue(y, { compact: true })),
+    );
+  };
+
+  let nth;
+  if (showAll) {
+    // show all
+    nth = 1;
+  } else {
+    // auto fit
+    // Render a sample of rows to estimate average label size.
+    // We use that estimate to compute the label interval.
+    const LABEL_PADDING = 6;
+    const MAX_SAMPLE_SIZE = 30;
+    const sampleStep = Math.ceil(data.length / MAX_SAMPLE_SIZE);
+    const sample = data.filter((d, i) => i % sampleStep === 0);
+    addLabels(sample);
+    const totalWidth = chart
+      .svg()
+      .selectAll(".value-label-outline")
+      .flat()
+      .reduce((sum, label) => sum + label.getBoundingClientRect().width, 0);
+    const labelWidth = totalWidth / sample.length + LABEL_PADDING;
+
+    const { width: chartWidth } = chart
+      .svg()
+      .select(".axis.x")
+      .node()
+      .getBoundingClientRect();
+
+    nth = Math.ceil((labelWidth * data.length) / chartWidth);
+  }
+
+  addLabels(data.filter((d, i) => i % nth === 0));
+
+  moveToTop(
+    chart
+      .svg()
+      .select(".value-labels")
+      .node().parentNode,
+  );
+}
+
 function onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis) {
   // remove dots
   chart.selectAll(".goal .dot, .trend .dot").remove();
@@ -378,7 +498,10 @@ function onRenderAddExtraClickHandlers(chart) {
 }
 
 // the various steps that get called
-function onRender(chart, onGoalHover, isSplitAxis, isStacked) {
+function onRender(
+  chart,
+  { onGoalHover, isSplitAxis, isStacked, formatYValue, datas },
+) {
   onRenderRemoveClipPath(chart);
   onRenderMoveContentToTop(chart);
   onRenderReorderCharts(chart);
@@ -387,6 +510,7 @@ function onRender(chart, onGoalHover, isSplitAxis, isStacked) {
   onRenderEnableDots(chart);
   onRenderVoronoiHover(chart);
   onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis); // do this before hiding x-axis
+  onRenderValueLabels(chart, formatYValue, datas);
   onRenderHideDisabledLabels(chart);
   onRenderHideDisabledAxis(chart);
   onRenderHideBadAxis(chart);
@@ -610,15 +734,8 @@ function beforeRender(chart) {
 // +-------------------------------------------------------------------------------------------------------------------+
 
 /// once chart has rendered and we can access the SVG, do customizations to axis labels / etc that you can't do through dc.js
-export default function lineAndBarOnRender(
-  chart,
-  onGoalHover,
-  isSplitAxis,
-  isStacked,
-) {
+export default function lineAndBarOnRender(chart, args) {
   beforeRender(chart);
-  chart.on("renderlet.on-render", () =>
-    onRender(chart, onGoalHover, isSplitAxis, isStacked),
-  );
+  chart.on("renderlet.on-render", () => onRender(chart, args));
   chart.render();
 }

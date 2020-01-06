@@ -3,14 +3,7 @@
   is one of the types here. If you see an Exception in QP code that doesn't return an `:type`, add it!")
 
 (def ^:private hierarchy
-  (-> (make-hierarchy)
-      ;; errors deriving from `:client-error` are the equivalent of HTTP 4xx client status codes
-      (derive :client-error :error)
-      (derive :invalid-query :client-error)
-      ;; errors deriving from `:unexpected-server-error` are the equivalent of HTTP 5xx status codes
-      (derive :unexpected-server-error :error)
-      (derive :unexpected-qp-error :unexpected-server-error)
-      (derive :unexpected-db-error :unexpected-server-error)))
+  (make-hierarchy))
 
 (defn known-error-types
   "Set of all known QP error types."
@@ -79,6 +72,10 @@
 (deferror qp
   "Generic ancestor type for all unexpected errors (e.g., uncaught Exceptions) in QP code."
   :parent server)
+
+(deferror driver
+  "Generic ancestor type for all errors related to bad drivers and uncaught Exceptions in driver code."
+  :parent qp)
 
 ;;;; #### Data Warehouse (DB) Errors
 

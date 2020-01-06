@@ -1,6 +1,5 @@
 /* @flow weak */
 
-import d3 from "d3";
 import moment from "moment-timezone";
 import _ from "underscore";
 
@@ -199,50 +198,6 @@ export function computeTimeseriesTicksInterval(xDomain, xInterval, chartWidth) {
     maxTicksForChartWidth(chartWidth),
   );
 }
-
-// moment-timezone based d3 scale
-export const timeseriesScale = (
-  { count, interval, timezone },
-  linear = d3.scale.linear(),
-) => {
-  const ms = d =>
-    moment.isMoment(d) ? d.valueOf() : moment.isDate(d) ? d.getTime() : d;
-
-  const s = x => linear(ms(x));
-  s.domain = x => {
-    if (x === undefined) {
-      return linear.domain().map(t => moment(t).tz(timezone));
-    }
-    linear.domain(x.map(ms));
-    return s;
-  };
-  s.ticks = () => {
-    const [start, end] = s.domain();
-
-    const ticks = [];
-    let tick = start
-      .clone()
-      .tz(timezone)
-      .startOf(interval);
-
-    // We want to use "round" ticks for a given interval (unit). If we're
-    // creating ticks every 50 years, but and the start of the domain is in 1981
-    // we move it be on an even 50-year block. 1981 - (1981 % 50) => 1950;
-    const intervalMod = tick.get(interval);
-    tick.set(interval, intervalMod - (intervalMod % count));
-
-    while (!tick.isAfter(end)) {
-      if (!tick.isBefore(start)) {
-        ticks.push(tick);
-      }
-      tick = tick.clone().add(count, interval);
-    }
-    return ticks;
-  };
-  s.copy = () => timeseriesScale({ count, interval, timezone }, linear);
-  d3.rebind(s, linear, "range", "rangeRound", "interpolate", "clamp", "invert");
-  return s;
-};
 
 // We should always have results_timezone, but just in case we fallback to UTC
 const DEFAULT_TIMEZONE = "Etc/UTC";

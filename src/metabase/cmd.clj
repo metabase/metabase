@@ -20,8 +20,7 @@
              [config :as config]
              [db :as mdb]
              [util :as u]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.util.date :as du]))
+            [metabase.plugins.classloader :as classloader]))
 
 (defn ^:command migrate
   "Run database migrations. Valid options for `direction` are `up`, `force`, `down-one`, `print`, or `release-locks`."
@@ -52,7 +51,7 @@
   ;; override env var that would normally make Jetty block forever
   (classloader/require 'environ.core 'metabase.core)
   (alter-var-root #'environ.core/env assoc :mb-jetty-join "false")
-  (du/profile "start-normally" ((resolve 'metabase.core/start-normally))))
+  (u/profile "start-normally" ((resolve 'metabase.core/start-normally))))
 
 (defn ^:command reset-password
   "Reset the password for a user with `email-address`."

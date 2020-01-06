@@ -202,6 +202,7 @@ export class DatabaseBrowser extends React.Component {
                     <Link
                       to={`browse/${database.id}`}
                       data-metabase-event={`${ANALYTICS_CONTEXT};Database Click`}
+                      display="block"
                       hover={{ color: color("brand") }}
                     >
                       <Card p={3} hover={{ color: color("brand") }}>

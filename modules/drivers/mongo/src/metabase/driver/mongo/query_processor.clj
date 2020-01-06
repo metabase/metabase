@@ -1,46 +1,34 @@
 (ns metabase.driver.mongo.query-processor
   "Logic for translating MBQL queries into Mongo Aggregation Pipeline queries. See
   https://docs.mongodb.com/manual/reference/operator/aggregation-pipeline/ for more details."
-  (:require [cheshire.core :as json]
-            [clojure
+  (:require [clojure
              [set :as set]
              [string :as str]
              [walk :as walk]]
             [clojure.tools.logging :as log]
             [flatland.ordered.map :as ordered-map]
+            [java-time :as t]
             [metabase.driver.mongo.util :refer [*mongo-connection*]]
             [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.models.field :refer [Field]]
-            [metabase.plugins.classloader :as classloader]
             [metabase.query-processor
+             [error-type :as error-type]
              [interface :as i]
              [store :as qp.store]]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.util :as u]
             [metabase.util
-             [date :as du]
-             [i18n :as ui18n :refer [deferred-tru tru]]
+             [date-2 :as u.date]
+             [i18n :as ui18n :refer [tru]]
              [schema :as su]]
             [monger
              [collection :as mc]
              [operators :refer :all]]
             [schema.core :as s])
-  (:import java.sql.Timestamp
-           [java.util Date TimeZone]
-           metabase.models.field.FieldInstance
-           org.bson.types.ObjectId
-           org.joda.time.DateTime))
-
-;; See http://clojuremongodb.info/articles/integration.html
-;; Loading these namespaces will load appropriate Monger integrations with JODA Time and Cheshire respectively
-;;
-;; These are loaded here and not in the `:require` above because they tend to get automatically removed by
-;; `cljr-clean-ns` and also cause Eastwood to complain about unused namespaces
-(when-not *compile-files*
-  (classloader/require 'monger.joda-time
-                       'monger.json))
+  (:import metabase.models.field.FieldInstance
+           org.bson.types.ObjectId))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                     Schema                                                     |
@@ -90,11 +78,8 @@
 
 (defn- log-aggregation-pipeline [form]
   (when-not i/*disable-qp-logging*
-    (log/debug (u/format-color 'green (str "\n" (deferred-tru "MONGO AGGREGATION PIPELINE:") "\n%s\n")
-                 (->> form
-                      ;; strip namespace qualifiers from Monger form
-                      (walk/postwalk #(if (symbol? %) (symbol (name %)) %))
-                      u/pprint-to-str) "\n"))))
+    (log/tracef "\nMongo aggregation pipeline:\n%s\n"
+                (u/pprint-to-str 'green (walk/postwalk #(if (symbol? %) (symbol (name %)) %) form)))))
 
 
 ;;; # STRUCTURED QUERY PROCESSOR
@@ -125,9 +110,8 @@
   {:arglists '([field])}
   mbql.u/dispatch-by-clause-name-or-class)
 
-
-(defn- field->name
-  "Return a single string name for FIELD. For nested fields, this creates a combined qualified name."
+(defn field->name
+  "Return a single string name for `field`. For nested fields, this creates a combined qualified name."
   ^String [^FieldInstance field, ^String separator]
   (if-let [parent-id (:parent_id field)]
     (str/join separator [(field->name (qp.store/field parent-id) separator)
@@ -142,9 +126,26 @@
                    ~@body)}})
 
 
-(defmethod ->lvalue         (class Field) [this] (field->name this "___"))
-(defmethod ->initial-rvalue (class Field) [this] (str \$ (field->name this ".")))
-(defmethod ->rvalue         (class Field) [this] (str \$ (->lvalue this)))
+(defmethod ->lvalue (class Field)
+  [field]
+  (field->name field "___"))
+
+(defmethod ->initial-rvalue (class Field)
+  [{special-type :special_type, :as field}]
+  (let [field-name (str \$ (field->name field "."))]
+    (cond
+      ;; TIMEZONE FIXME — use `java.time` classes
+      (isa? (:special_type field) :type/UNIXTimestampMilliseconds)
+      {$add [(java.util.Date. 0) field-name]}
+
+      (isa? (:special_type field) :type/UNIXTimestampSeconds)
+      {$add [(java.util.Date. 0) {$multiply [field-name 1000]}]}
+
+      :else field-name)))
+
+(defmethod ->rvalue (class Field)
+  [field]
+  (str \$ (->lvalue field)))
 
 (defmethod ->lvalue         :field-id [[_ field-id]] (->lvalue          (qp.store/field field-id)))
 (defmethod ->initial-rvalue :field-id [[_ field-id]] (->initial-rvalue  (qp.store/field field-id)))
@@ -154,39 +155,33 @@
 (defmethod ->initial-rvalue :field-literal [[_ field-name]] (str \$ (name field-name)))
 (defmethod ->rvalue         :field-literal [[_ field-name]] (str \$ (name field-name))) ; TODO - not sure if right?
 
-
 ;; Don't think this needs to implement `->lvalue` because you can't assign something to an aggregation e.g.
 ;;
 ;;    aggregations[0] = 20
 ;;
 ;; makes no sense. It doesn't have an initial projection either so no need to implement `->initial-rvalue`
-(defmethod ->lvalue :aggregation [[_ index]]
+(defmethod ->lvalue :aggregation
+  [[_ index]]
   (annotate/aggregation-name (mbql.u/aggregation-at-index *query* index)))
 ;; TODO - does this need to implement `->lvalue` and `->initial-rvalue` ?
 
 
-(defmethod ->lvalue :datetime-field [[_ field-clause unit]]
+(defmethod ->lvalue :datetime-field
+  [[_ field-clause unit]]
   (str (->lvalue field-clause) "~~~" (name unit)))
 
-(defmethod ->initial-rvalue :datetime-field [[_ field-clause unit]]
+(defmethod ->initial-rvalue :datetime-field
+  [[_ field-clause unit]]
   (let [field-id (mbql.u/field-clause->id-or-literal field-clause)
         field    (when (integer? field-id)
                    (qp.store/field field-id))]
-    (mongo-let [column (let [initial-rvalue (->initial-rvalue field-clause)]
-                         (cond
-                           (isa? (:special_type field) :type/UNIXTimestampMilliseconds)
-                           {$add [(java.util.Date. 0) initial-rvalue]}
-
-                           (isa? (:special_type field) :type/UNIXTimestampSeconds)
-                           {$add [(java.util.Date. 0) {$multiply [initial-rvalue 1000]}]}
-
-                           :else initial-rvalue))]
-      (let [stringify (fn stringify
-                        ([format-string]
-                         (stringify format-string column))
-                        ([format-string fld]
-                         {:___date {:$dateToString {:format format-string
-                                                    :date   fld}}}))]
+    (mongo-let [column (->initial-rvalue field-clause)]
+      (letfn [(stringify
+                ([format-string]
+                 (stringify format-string column))
+                ([format-string fld]
+                 {:___date {:$dateToString {:format format-string
+                                            :date   fld}}}))]
         (case unit
           :default         column
           :minute          (stringify "%Y-%m-%dT%H:%M:00")
@@ -221,30 +216,31 @@
           :year            (stringify "%Y"))))))
 
 
-(defmethod ->rvalue :datetime-field [this]
+(defmethod ->rvalue :datetime-field
+  [this]
   (str \$ (->lvalue this)))
-
 
 ;; Values clauses below; they only need to implement `->rvalue`
 
 (defmethod ->rvalue nil [_] nil)
 
-
-(defmethod ->rvalue :value [[_ value {base-type :base_type}]]
+(defmethod ->rvalue :value
+  [[_ value {base-type :base_type}]]
   (if (isa? base-type :type/MongoBSONID)
     (ObjectId. (str value))
     value))
 
-
-(defmethod ->rvalue :absolute-datetime [[_ ^java.sql.Timestamp value, unit]]
-  (let [stringify (fn stringify
-                    ([format-string]
-                     (stringify format-string value))
-                    ([format-string v]
-                     {:___date (du/format-date format-string v)}))
-        extract   #(du/date-extract % value)]
+(defmethod ->rvalue :absolute-datetime
+  [[_ t unit]]
+  (letfn [(stringify
+            ([format-string]
+             (stringify format-string t))
+            ([format-string t]
+             {:___date (t/format format-string t)}))
+          (extract [unit]
+            (u.date/extract t unit))]
     (case (or unit :default)
-      :default         value
+      :default         (t/to-java-date t)
       :minute          (stringify "yyyy-MM-dd'T'HH:mm:00")
       :minute-of-hour  (extract :minute)
       :hour            (stringify "yyyy-MM-dd'T'HH:00:00")
@@ -253,18 +249,18 @@
       :day-of-week     (extract :day-of-week)
       :day-of-month    (extract :day-of-month)
       :day-of-year     (extract :day-of-year)
-      :week            (stringify "yyyy-MM-dd" (du/date-trunc :week value))
+      :week            (stringify "yyyy-MM-dd" (u.date/truncate t :week))
       :week-of-year    (extract :week-of-year)
       :month           (stringify "yyyy-MM")
       :month-of-year   (extract :month-of-year)
-      :quarter         (stringify "yyyy-MM" (du/date-trunc :quarter value))
+      :quarter         (stringify "yyyy-MM" (u.date/truncate t :quarter))
       :quarter-of-year (extract :quarter-of-year)
       :year            (stringify "yyyy"))))
 
-
 ;; TODO - where's the part where we handle include-current?
-(defmethod ->rvalue :relative-datetime [[_ amount unit]]
-  (->rvalue [:absolute-datetime (du/relative-date (or unit :day) amount) unit]))
+(defmethod ->rvalue :relative-datetime
+  [[_ amount unit]]
+  (->rvalue [:absolute-datetime (u.date/add (or unit :day) amount) unit]))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -630,80 +626,8 @@
      (for [[k v] row]
        [k (if (and (map? v)
                    (contains? v :___date))
-            (du/->Timestamp (:___date v) (TimeZone/getDefault))
+            (u.date/parse (:___date v))
             v)]))))
-
-
-;;; --------------------------------- Handling ISODate(...) and ObjectId(...) forms ----------------------------------
-
-;; In Mongo it's fairly common use ISODate(...) or ObjectId(...) forms in queries, which unfortunately are not valid
-;; JSON, and thus cannot be parsed by Cheshire. But we are clever so we will:
-;;
-;; 1) Convert forms like ISODate(...) to valid JSON forms like ["___ISODate", ...]
-;; 2) Parse Normally
-;; 3) Walk the parsed JSON and convert forms like [:___ISODate ...] to JodaTime dates, and [:___ObjectId ...] to BSON
-;;    IDs
-
-;; See https://docs.mongodb.com/manual/core/shell-types/ for a list of different supported types
-(def ^:private fn-name->decoder
-  {:ISODate    (fn [arg]
-                 (DateTime. arg))
-   :ObjectId   (fn [^String arg]
-                 (ObjectId. arg))
-   ;; it looks like Date() just ignores any arguments return a date string formatted the same way the Mongo console
-   ;; does
-   :Date       (fn [& _]
-                 (du/format-date "EEE MMM dd yyyy HH:mm:ss z"))
-   :NumberLong (fn [^String s]
-                 (Long/parseLong s))
-   :NumberInt  (fn [^String s]
-                 (Integer/parseInt s))})
-;; we're missing NumberDecimal but not sure how that's supposed to be converted to a Java type
-
-(defn- form->encoded-fn-name
-  "If `form` is an encoded fn call form return the key representing the fn call that was encoded.
-  If it doesn't represent an encoded fn, return `nil`.
-
-     (form->encoded-fn-name [:___ObjectId \"583327789137b2700a1621fb\"]) -> :ObjectId"
-  [form]
-  (when (vector? form)
-    (when ((some-fn keyword? string?) (first form))
-      (when-let [[_ k] (re-matches #"^___(\w+$)" (name (first form)))]
-        (let [k (keyword k)]
-          (when (contains? fn-name->decoder k)
-            k))))))
-
-(defn- maybe-decode-fncall [form]
-  (if-let [fn-name (form->encoded-fn-name form)]
-    ((fn-name->decoder fn-name) (second form))
-    form))
-
-(defn- decode-fncalls [query]
-  (walk/postwalk maybe-decode-fncall query))
-
-(defn- encode-fncalls-for-fn
-  "Walk `query-string` and replace fncalls to fn with `fn-name` with encoded forms that can be parsed as valid JSON.
-
-     (encode-fncalls-for-fn \"ObjectId\" \"{\\\"$match\\\":ObjectId(\\\"583327789137b2700a1621fb\\\")}\")
-     ;; -> \"{\\\"$match\\\":[\\\"___ObjectId\\\", \\\"583327789137b2700a1621fb\\\"]}\""
-  [fn-name query-string]
-  (-> query-string
-      ;; replace any forms WITH NO args like ISODate() with ones like ["___ISODate"]
-      (str/replace (re-pattern (format "%s\\(\\)" (name fn-name))) (format "[\"___%s\"]" (name fn-name)))
-      ;; now replace any forms WITH args like ISODate("2016-01-01") with ones like ["___ISODate", "2016-01-01"]
-      (str/replace (re-pattern (format "%s\\(([^)]*)\\)" (name fn-name))) (format "[\"___%s\", $1]" (name fn-name)))))
-
-(defn- encode-fncalls
-  "Replace occurances of `ISODate(...)` and similary function calls (invalid JSON, but legal in Mongo)
-   with legal JSON forms like `[:___ISODate ...]` that we can decode later.
-
-   Walks `query-string` and encodes all the various fncalls we support."
-  [query-string]
-  (loop [query-string query-string, [fn-name & more] (keys fn-name->decoder)]
-    (if-not fn-name
-      query-string
-      (recur (encode-fncalls-for-fn fn-name query-string)
-             more))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -733,14 +657,24 @@
       (when (seq not-in-expected)
         (throw (Exception. (tru "Unexpected columns in results: {0}" (sort not-in-expected))))))))
 
+(defn parse-query-string
+  "Parse a serialized native query. Like a normal JSON parse, but handles BSON/MongoDB extended JSON forms."
+  [^String s]
+  (try
+    (for [^org.bson.BsonValue v (org.bson.BsonArray/parse s)]
+      (com.mongodb.BasicDBObject. (.asDocument v)))
+    (catch Throwable e
+      (throw (ex-info (tru "Unable to parse query: {0}" (.getMessage e))
+               {:type  error-type/invalid-query
+                :query s}
+               e)))))
+
 (defn execute-query
   "Process and run a native MongoDB query."
   [{{:keys [collection query mbql? projections]} :native}]
   {:pre [query (string? collection)]}
-  (let [query      (if (string? query)
-                     (decode-fncalls (json/parse-string (encode-fncalls query) keyword))
-                     query)
-        ;; query *secret-query*
+  (let [query      (cond-> query
+                     (string? query) parse-query-string)
         results    (mc/aggregate *mongo-connection* collection query
                                  :allow-disk-use true
                                  ;; options that control the creation of the cursor object. Empty map means use default

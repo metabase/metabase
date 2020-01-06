@@ -16,7 +16,6 @@
              [interface :as tx]]
             [metabase.test.initialize :as initialize]
             [metabase.test.util.timezone :as tu.tz]
-            [metabase.util.date :as du]
             [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -72,11 +71,11 @@
 
 (def ^:private create-database-timeout-ms
   "Max amount of time to wait for driver text extensions to create a DB and load test data."
-  (du/minutes->ms 4)) ; 4 minutes
+  (u/minutes->ms 4)) ; 4 minutes
 
 (def ^:private sync-timeout-ms
   "Max amount of time to wait for sync to complete."
-  (du/minutes->ms 5)) ; five minutes
+  (u/minutes->ms 5)) ; five minutes
 
 (defn- create-database! [driver {:keys [database-name], :as database-definition}]
   {:pre [(seq database-name)]}
@@ -84,7 +83,7 @@
     ;; Create the database and load its data
     ;; ALWAYS CREATE DATABASE AND LOAD DATA AS UTC! Unless you like broken tests
     (u/with-timeout create-database-timeout-ms
-      (tu.tz/with-jvm-tz "UTC"
+      (tu.tz/with-system-timezone-id "UTC"
         (tx/create-db! driver database-definition)))
     ;; Add DB object to Metabase DB
     (let [db (db/insert! Database
@@ -93,7 +92,7 @@
                :details (tx/dbdef->connection-details driver :db database-definition))]
       ;; sync newly added DB
       (u/with-timeout sync-timeout-ms
-        (du/profile (format "Sync %s Database %s" driver database-name)
+        (u/profile (format "Sync %s Database %s" driver database-name)
           (sync/sync-database! db)
           ;; add extra metadata for fields
           (try

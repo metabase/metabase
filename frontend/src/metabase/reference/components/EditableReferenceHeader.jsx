@@ -6,15 +6,11 @@ import pure from "recompose/pure";
 import { t } from "ttag";
 import S from "./ReferenceHeader.css";
 import L from "metabase/components/List.css";
-import E from "metabase/reference/components/EditButton.css";
 
-import IconBorder from "metabase/components/IconBorder";
 import Icon from "metabase/components/Icon";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Ellipsified from "metabase/components/Ellipsified";
-import EditButton from "metabase/reference/components/EditButton";
-
-import { color } from "metabase/lib/colors";
+import Button from "metabase/components/Button";
 
 const EditableReferenceHeader = ({
   entity = {},
@@ -31,24 +27,11 @@ const EditableReferenceHeader = ({
   displayNameFormField,
   nameFormField,
 }) => (
-  <div className="wrapper wrapper--trim">
-    <div
-      className={cx("relative", L.header)}
-      style={type === "segment" ? { marginBottom: 0 } : {}}
-    >
-      <div className={L.leftIcons}>
+  <div className="wrapper">
+    <div className={cx("relative", L.header)}>
+      <div className="flex align-center mr1">
         {headerIcon && (
-          <IconBorder
-            borderWidth="0"
-            style={{ backgroundColor: color("bg-medium") }}
-          >
-            <Icon
-              className="text-brand"
-              name={headerIcon}
-              width={24}
-              height={24}
-            />
-          </IconBorder>
+          <Icon className="text-light" name={headerIcon} size={21} />
         )}
       </div>
       {type === "table" && !hasSingleSchema && !isEditing && (
@@ -86,44 +69,29 @@ const EditableReferenceHeader = ({
                 : name}
             </Ellipsified>,
             headerLink && (
-              <div key="2" className={cx("flex-full", S.headerButton)}>
-                <Link
-                  to={headerLink}
-                  className={cx(
-                    "Button",
-                    "Button--borderless",
-                    "ml3",
-                    E.editButton,
-                  )}
-                  data-metabase-event={`Data Reference;Entity -> QB click;${type}`}
-                >
-                  <div className="flex align-center relative">
-                    <span className="mr1 flex-no-shrink">{t`See this ${type}`}</span>
-                    <Icon name="chevronright" size={16} />
-                  </div>
-                </Link>
-              </div>
+              <Button
+                primary
+                className="flex flex-align-right mr2"
+                style={{ fontSize: 14 }}
+                data-metabase-event={`Data Reference;Entity -> QB click;${type}`}
+              >
+                <Link to={headerLink}>{t`See this ${type}`}</Link>
+              </Button>
             ),
           ]
         )}
         {user && user.is_superuser && !isEditing && (
-          <EditButton className="ml1" startEditing={startEditing} />
+          <Button
+            secondary
+            icon="pencil"
+            style={{ fontSize: 14 }}
+            onClick={startEditing}
+          >
+            {t`Edit`}
+          </Button>
         )}
       </div>
     </div>
-    {type === "segment" && table && (
-      <div className={S.subheader}>
-        <div className={cx(S.subheaderBody)}>
-          {t`A subset of`}{" "}
-          <Link
-            className={S.subheaderLink}
-            to={`/reference/databases/${table.db_id}/tables/${table.id}`}
-          >
-            {table.display_name}
-          </Link>
-        </div>
-      </div>
-    )}
   </div>
 );
 EditableReferenceHeader.propTypes = {

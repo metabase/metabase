@@ -5,6 +5,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :refer [POST]]
+            [java-time :as t]
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.mbql.schema :as mbql.s]
@@ -19,7 +20,7 @@
              [util :as qputil]]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.util
-             [date :as du]
+             [date-2 :as u.date]
              [export :as ex]
              [i18n :refer [trs tru]]
              [schema :as su]]
@@ -113,7 +114,8 @@
                  (maybe-modify-date-values cols rows))
        :headers {"Content-Type"        (str (:content-type export-conf) "; charset=utf-8")
                  "Content-Disposition" (format "attachment; filename=\"query_result_%s.%s\""
-                                               (du/date->iso-8601) (:ext export-conf))}}
+                                               (u.date/format (t/zoned-date-time))
+                                               (:ext export-conf))}}
       ;; failed query, send error message
       {:status (if (qp.error-type/server-error? error-type)
                  500

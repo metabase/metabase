@@ -3,8 +3,8 @@ import {
   createTestStore,
   createSavedQuestion,
   cleanup,
-} from "__support__/e2e_tests";
-import { click } from "__support__/enzyme_utils";
+} from "__support__/e2e";
+import { click } from "__support__/enzyme";
 
 import React from "react";
 import { mount } from "enzyme";

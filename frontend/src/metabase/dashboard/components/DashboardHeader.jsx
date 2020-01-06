@@ -173,7 +173,7 @@ export default class DashboardHeader extends Component {
         key="archive"
         ref="archiveDashboardModal"
         triggerClasses="Button Button--small"
-        triggerElement="Archive"
+        triggerElement={t`Archive`}
       >
         <ArchiveDashboardModal
           onArchive={() => this.onArchive(this.props.dashboard)}

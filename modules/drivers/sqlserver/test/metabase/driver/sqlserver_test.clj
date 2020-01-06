@@ -1,15 +1,21 @@
 (ns metabase.driver.sqlserver-test
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
-            [expectations :refer [expect]]
+  (:require [clojure
+             [string :as str]
+             [test :refer :all]]
+            [clojure.java.jdbc :as jdbc]
+            [colorize.core :as colorize]
             [honeysql.core :as hsql]
+            [java-time :as t]
             [medley.core :as m]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :as qp.test]]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.driver.sql-jdbc
+             [connection :as sql-jdbc.conn]
+             [execute :as sql-jdbc.execute]]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test
              [data :as data]
@@ -36,28 +42,29 @@
         (data/run-mbql-query genetic-data))
       :data :rows obj->json->obj)) ; convert to JSON + back so the Clob gets stringified
 
-;;; Test that additional connection string options work (#5296)
-(expect
-  {:subprotocol     "sqlserver"
-   :applicationName "Metabase <version>"
-   :subname         "//localhost;trustServerCertificate=false"
-   :database        "birddb"
-   :port            1433
-   :instanceName    nil
-   :user            "cam"
-   :password        "toucans"
-   :encrypt         false
-   :loginTimeout    10}
-  (-> (sql-jdbc.conn/connection-details->spec
-       :sqlserver
-       {:user               "cam"
-        :password           "toucans"
-        :db                 "birddb"
-        :host               "localhost"
-        :port               1433
-        :additional-options "trustServerCertificate=false"})
-      ;; the MB version Is subject to change between test runs, so replace the part like `v.0.25.0` with `<version>`
-      (update :applicationName #(str/replace % #"\s.*$" " <version>"))))
+(deftest connection-spec-test
+  (testing "Test that additional connection string options work (#5296)"
+    (is (= {:applicationName    "Metabase <version>"
+            :database           "birddb"
+            :encrypt            false
+            :instanceName       nil
+            :loginTimeout       10
+            :password           "toucans"
+            :port               1433
+            :sendTimeAsDatetime false
+            :subname            "//localhost;trustServerCertificate=false"
+            :subprotocol        "sqlserver"
+            :user               "cam"}
+           (-> (sql-jdbc.conn/connection-details->spec :sqlserver
+                 {:user               "cam"
+                  :password           "toucans"
+                  :db                 "birddb"
+                  :host               "localhost"
+                  :port               1433
+                  :additional-options "trustServerCertificate=false"})
+               ;; the MB version Is subject to change between test runs, so replace the part like `v.0.25.0` with
+               ;; `<version>`
+               (update :applicationName #(str/replace % #"\s.*$" " <version>")))))))
 
 (datasets/expect-with-driver :sqlserver
   "UTC"
@@ -138,21 +145,54 @@
                         :limit        5}
          :limit        3}))))
 
-;; Make sure datetime bucketing functions work properly with languages that format dates like yyyy-dd-MM instead of
-;; yyyy-MM-dd (i.e. not American English) (#9057)
-(datasets/expect-with-driver :sqlserver
-  [{:my-date #inst "2019-02-01T00:00:00.000-00:00"}]
-  ;; we're doing things here with low-level calls to HoneySQL (emulating what the QP does) instead of using normal QP
-  ;; pathways because `SET LANGUAGE` doesn't seem to persist to subsequent executions so to test that things are
-  ;; working we need to add to in from of the query we're trying to check
-  (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/connection-details->spec :sqlserver
-                                      (tx/dbdef->connection-details :sqlserver :db {:database-name "test-data"}))]
-    (try
-      (jdbc/execute! t-conn "CREATE TABLE temp (d DATETIME2);")
-      (jdbc/execute! t-conn ["INSERT INTO temp (d) VALUES (?)" #inst "2019-02-08T00:00:00Z"])
-      (jdbc/query t-conn (let [[sql & args] (hsql/format {:select [[(sql.qp/date :sqlserver :month :temp.d) :my-date]]
-                                                          :from   [:temp]}
-                                              :quoting :ansi, :allow-dashed-names? true)]
-                           (cons (str "SET LANGUAGE Italian; " sql) args)))
-      ;; rollback transaction so `temp` table gets discarded
-      (finally (.rollback (jdbc/get-connection t-conn))))))
+(deftest locale-bucketing-test
+  (datasets/test-driver :sqlserver
+    (testing (str "Make sure datetime bucketing functions work properly with languages that format dates like "
+                  "yyyy-dd-MM instead of yyyy-MM-dd (i.e. not American English) (#9057)")
+      ;; we're doing things here with low-level calls to HoneySQL (emulating what the QP does) instead of using normal QP
+      ;; pathways because `SET LANGUAGE` doesn't seem to persist to subsequent executions so to test that things are
+      ;; working we need to add to in from of the query we're trying to check
+      (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/connection-details->spec :sqlserver
+                                          (tx/dbdef->connection-details :sqlserver :db {:database-name "test-data"}))]
+        (try
+          (jdbc/execute! t-conn "CREATE TABLE temp (d DATETIME2);")
+          (jdbc/execute! t-conn ["INSERT INTO temp (d) VALUES (?)" #t "2019-02-08T00:00:00Z"])
+          (let [[sql & args] (hsql/format {:select [[(sql.qp/date :sqlserver :month :temp.d) :my-date]]
+                                           :from   [:temp]}
+                               :quoting :ansi, :allow-dashed-names? true)
+                result       (jdbc/query t-conn (cons (str "SET LANGUAGE Italian; " sql) args)
+                                         {:read-columns   (partial sql-jdbc.execute/read-columns :sqlserver)
+                                          :set-parameters (partial sql-jdbc.execute/set-parameters :sqlserver)})]
+            (is (= [{:my-date #t "2019-02-01"}]
+                   result)))
+          ;; rollback transaction so `temp` table gets discarded
+          (finally (.rollback (jdbc/get-connection t-conn))))))))
+
+(defn- query [sql-args]
+  (jdbc/query
+   (sql-jdbc.conn/db->pooled-connection-spec (data/db))
+   sql-args
+   {:read-columns (partial sql-jdbc.execute/read-columns driver/*driver*)}))
+
+(deftest unprepare-test
+  (datasets/test-driver :sqlserver
+    (let [date (t/local-date 2019 11 5)
+          time (t/local-time 19 27)]
+      ;; various types should come out the same as they went in (1 value per tuple) or something functionally
+      ;; equivalent (2 values)
+      (doseq [[t expected] [[date]
+                            [time]
+                            [(t/local-date-time date time)]
+                            ;; SQL server doesn't support OffsetTime, so we should convert it to UTC and then to a
+                            ;; LocalTime (?)
+                            [(t/offset-time time (t/zone-offset -8)) (t/local-time 3 27)]
+                            [(t/offset-date-time (t/local-date-time date time) (t/zone-offset -8))]
+                            ;; since SQL Server doesn't support timezone IDs it should be converted to an offset in the literal
+                            [(t/zoned-date-time  date time (t/zone-id "America/Los_Angeles"))
+                             (t/offset-date-time (t/local-date-time date time) (t/zone-offset -8))]]]
+        (let [expected (or expected t)]
+          (testing (format "Convert %s to SQL literal" (colorize/magenta (with-out-str (pr t))))
+            (let [sql (format "SELECT %s AS t;" (unprepare/unprepare-value :sqlserver t))]
+              (is (= expected
+                     (-> (query sql) first :t))
+                  (format "SQL %s should return %s" (colorize/blue sql) (colorize/green expected))))))))))
