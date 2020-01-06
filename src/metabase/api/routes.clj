@@ -2,7 +2,6 @@
   (:require [compojure
              [core :refer [context defroutes]]
              [route :as route]]
-            [environ.core :as env]
             [metabase.api
              [activity :as activity]
              [alert :as alert]
@@ -37,6 +36,7 @@
              [transform :as transform]
              [user :as user]
              [util :as util]]
+            [metabase.config :as config]
             [metabase.middleware
              [auth :as middleware.auth]
              [exceptions :as middleware.exceptions]]
@@ -89,7 +89,7 @@
   (context "/slack"                [] (+auth slack/routes))
   (context "/table"                [] (+auth table/routes))
   (context "/task"                 [] (+auth task/routes))
-  (context "/testing"              [] (if (env/env :mb-enable-test-endpoints)
+  (context "/testing"              [] (if (config/config-bool :mb-enable-test-endpoints)
                                         testing/routes
                                         (fn [_ respond _] (respond nil))))
   (context "/tiles"                [] (+auth tiles/routes))
