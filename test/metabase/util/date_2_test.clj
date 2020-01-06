@@ -381,7 +381,7 @@
 
 (deftest older-than-test
   (let [now (t/instant "2019-12-04T00:45:00Z")]
-    (t/with-clock (t/mock-clock  (t/zone-id "America/Los_Angeles"))
+    (t/with-clock (t/mock-clock now (t/zone-id "America/Los_Angeles"))
       (testing (str "now = " now)
         (doseq [t ((juxt t/instant t/local-date t/local-date-time t/offset-date-time identity)
                    (t/zoned-date-time "2019-11-01T00:00-08:00[US/Pacific]"))]
