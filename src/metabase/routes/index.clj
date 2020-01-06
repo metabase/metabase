@@ -8,8 +8,8 @@
             [clojure.tools.logging :as log]
             [hiccup.util :as h.util]
             [metabase.core.initialization-status :as init-status]
-            [metabase.public-settings :as public-settings]
             [metabase.models.setting :as setting]
+            [metabase.public-settings :as public-settings]
             [metabase.util
              [embed :as embed]
              [i18n :refer [trs]]]

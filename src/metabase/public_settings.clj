@@ -10,8 +10,6 @@
             [metabase.models
              [common :as common]
              [setting :as setting :refer [defsetting]]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.metastore :as metastore]
             [metabase.util
              [i18n :refer [available-locales-with-names deferred-tru set-locale trs tru]]
              [password :as password]]
