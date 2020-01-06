@@ -17,10 +17,10 @@ export function signInAsNormalUser() {
 }
 
 export function snapshot(name) {
-  cy.request("POST", `/api/util/snapshot/${name}`);
+  cy.request("POST", `/api/testing/snapshot/${name}`);
 }
 export function restore(name = "default") {
-  cy.request("POST", `/api/util/restore/${name}`);
+  cy.request("POST", `/api/testing/restore/${name}`);
 }
 
 Cypress.on("uncaught:exception", (err, runnable) => false);
