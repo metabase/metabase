@@ -2,7 +2,7 @@
   "Endpoints for testing."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
-            [compojure.core :refer [GET POST]]
+            [compojure.core :refer [POST]]
             [metabase.api.common :as api]
             [metabase.models.setting.cache :as cache]
             [toucan.db :as db]))
