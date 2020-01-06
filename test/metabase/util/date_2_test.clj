@@ -380,12 +380,15 @@
            (u.date/period-duration (t/instant "2019-12-03T02:30:27Z") (t/offset-date-time "2019-12-03T02:31:26Z"))))))
 
 (deftest older-than-test
-  (t/with-clock (t/mock-clock  (t/zone-id "America/Los_Angeles"))
-    (testing "older-than works with differen date formats"
-      (doseq [t ((juxt t/instant t/local-date t/local-date-time t/offset-date-time identity)
-                 (t/minus (t/zoned-date-time) (t/days 20)))]
-        (testing (format "t = %s" (pr-str t))
-          (is (u.date/older-than? t (t/weeks 2))
-              (format "%s happened before 2019-11-19" (pr-str t)))
-          (is (not (u.date/older-than? t (t/months 2)))
-              (format "%s did not happen before 2019-10-03" (pr-str t))))))))
+  (let [now (t/instant "2019-12-04T00:45:00Z")]
+    (t/with-clock (t/mock-clock now (t/zone-id "America/Los_Angeles"))
+      (testing (str "now = " now)
+        (doseq [t ((juxt t/instant t/local-date t/local-date-time t/offset-date-time identity)
+                   (t/zoned-date-time "2019-11-01T00:00-08:00[US/Pacific]"))]
+          (testing (format "t = %s" (pr-str t))
+            (is (= true
+                   (u.date/older-than? t (t/weeks 2)))
+                (format "%s happened before 2019-11-19" (pr-str t)))
+            (is (= false
+                   (u.date/older-than? t (t/months 2)))
+                (format "%s did not happen before 2019-10-03" (pr-str t)))))))))
