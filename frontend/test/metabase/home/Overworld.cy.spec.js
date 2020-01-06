@@ -1,6 +1,12 @@
-import { signInAsAdmin, signInAsNormalUser } from "__support__/cypress";
+import {
+  signInAsAdmin,
+  signInAsNormalUser,
+  restore,
+} from "__support__/cypress";
 
 describe("homepage", () => {
+  before(restore);
+
   describe("content management", () => {
     describe("as admin", () => {
       beforeEach(() => {

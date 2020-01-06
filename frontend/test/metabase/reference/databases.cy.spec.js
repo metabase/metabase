@@ -1,9 +1,7 @@
-import { signInAsAdmin, snapshot, restore } from "__support__/cypress";
+import { signInAsAdmin, restore } from "__support__/cypress";
 
 describe("sample database reference", () => {
-  before(snapshot);
-  after(restore);
-
+  before(restore);
   beforeEach(signInAsAdmin);
 
   it("should see the listing", () => {

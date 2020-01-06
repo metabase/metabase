@@ -1,10 +1,8 @@
 import path from "path";
-import { plainDbHost } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 
 describe("setup wizard", () => {
-  before(() => {
-    Cypress.config("baseUrl", plainDbHost);
-  });
+  before(() => restore("blank"));
 
   it("should allow you to sign up", () => {
     // intial redirection and welcome page
