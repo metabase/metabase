@@ -53,6 +53,10 @@ function rangeForEvenlySpacedMonths(range, domain, { timezone, interval }) {
     .domain(domain.map(toInt))
     .range(range);
   const ticks = ticksForRange(domain, { count: 1, timezone, interval });
+  // if the domain only contains one month, return the range untouched
+  if (ticks.length < 2) {
+    return range;
+  }
   const [start, end] = firstAndLast(ticks).map(t => plainScale(toInt(t)));
   const step = (end - start) / (ticks.length - 1);
   const monthPoints = d3.range(ticks.length).map(i => start + i * step);
