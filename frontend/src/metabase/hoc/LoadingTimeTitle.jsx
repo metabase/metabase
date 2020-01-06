@@ -3,6 +3,8 @@ import React from "react";
 import { delay } from "metabase/lib/promise";
 import title from "metabase/hoc/Title";
 
+const SECONDS_UNTIL_DISPLAY = 10;
+
 export default startTimePropName => ComposedComponent =>
   title(({ [startTimePropName]: startTime }) => {
     if (startTime == null) {
@@ -10,8 +12,8 @@ export default startTimePropName => ComposedComponent =>
     }
     const totalSeconds = (performance.now() - startTime) / 1000;
     const title =
-      totalSeconds < 10
-        ? "" // don't display the title until >=10 seconds
+      totalSeconds < SECONDS_UNTIL_DISPLAY && !document.hidden
+        ? "" // don't display the title until SECONDS_UNTIL_DISPLAY or tab is hidden
         : [totalSeconds / 60, totalSeconds % 60] // minutes, seconds
             .map(Math.floor) // round both down
             .map(x => (x < 10 ? `0${x}` : `${x}`)) // pad with "0" to two digits
