@@ -29,13 +29,13 @@ our [developers' guide](developers-guide.md).
 
         You can install [PerlBrew](https://perlbrew.pl/) if you want to install CPAN modules without having to use `sudo`.
 
-        Normally you shouldn't have to use `install force` to install the modules above but `File::Copy::Recursive` seems fussy lately and has a failing test that
+        Normally you shouldn't have to use `install force` to install the modules above, but `File::Copy::Recursive` seems fussy lately and has a failing test that
         prevents it from installing normally.
 
     1.  Add a JRE to the `OSX/Metabase/jre`
 
         You can download a copy of a JRE from https://adoptopenjdk.net/releases.html — make sure you download a JRE rather than JDK. Move the `Contents/Home` directory from
-        the JRE archiveinto `OSX/Metabase/jre`. For example:
+        the JRE archive into `OSX/Metabase/jre`. For example:
 
         ```bash
         wget https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/jdk8u232-b09/OpenJDK8U-jre_x64_mac_hotspot_8u232b09.tar.gz
