@@ -20,6 +20,8 @@ Once you do, you'll see a set of options:
   For example, `https://*.metabase.com http://my-web-app.example.com:8080/`. Leaving this empty will default to a `frame-ancestors` value of `'none'`.
   If you're a fancy person, you can specify this URL in the environment variable `MB_EMBEDDING_APP_ORIGIN`.
 
+A note to IE11 users: only the first URL will be valid for IE11 due to limitations in the HTTP headers it supports. IE11 does not support the `Content-Security-Policy` header, but does support `X-Frame-Options`, which can only accept a single value.
+
 ### Setting things up in your web app
 To give you a picture of what you'll need to do in your app, we've created this [reference app](https://github.com/metabase/sso-examples/tree/master/app-embed-example). If you use React in your application, [this React component](https://github.com/metabase/sso-examples/blob/master/app-embed-example/src/MetabaseAppEmbed.js) may be helpful.
 
