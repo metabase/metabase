@@ -12,8 +12,8 @@
             [metabase.api.session :as session-api]
             [metabase.models
              [session :refer [Session]]
-             [user :refer [User]]
-             [setting :as setting]]
+             [setting :as setting]
+             [user :refer [User]]]
             [metabase.test
              [fixtures :as fixtures]
              [util :as tu]]
