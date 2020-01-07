@@ -12,8 +12,8 @@ export default startTimePropName => ComposedComponent =>
     }
     const totalSeconds = (performance.now() - startTime) / 1000;
     const title =
-      totalSeconds < SECONDS_UNTIL_DISPLAY && !document.hidden
-        ? "" // don't display the title until SECONDS_UNTIL_DISPLAY or tab is hidden
+      totalSeconds < SECONDS_UNTIL_DISPLAY
+        ? "" // don't display the title until SECONDS_UNTIL_DISPLAY have elapsed
         : [totalSeconds / 60, totalSeconds % 60] // minutes, seconds
             .map(Math.floor) // round both down
             .map(x => (x < 10 ? `0${x}` : `${x}`)) // pad with "0" to two digits
