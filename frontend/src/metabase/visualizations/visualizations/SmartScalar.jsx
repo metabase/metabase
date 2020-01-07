@@ -105,8 +105,7 @@ export default class Smart extends React.Component {
     const lastChange = insight["last-change"];
     const previousValue = insight["previous-value"];
 
-    const change = formatNumber(lastChange * 100);
-    const isNegative = (change && Math.sign(change) < 0) || false;
+    const isNegative = lastChange < 0;
     const isSwapped = settings["scalar.switch_positive_negative"];
 
     // if the number is negative but thats been identified as a good thing (e.g. decreased latency somehow?)
@@ -117,7 +116,9 @@ export default class Smart extends React.Component {
       : color("success");
 
     const changeDisplay = (
-      <span style={{ fontWeight: 900 }}>{Math.abs(change)}%</span>
+      <span style={{ fontWeight: 900 }}>
+        {formatNumber(Math.abs(lastChange), { number_style: "percent" })}
+      </span>
     );
     const separator = (
       <span

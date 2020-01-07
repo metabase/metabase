@@ -73,4 +73,24 @@ describe("SmartScalar", () => {
     getAllByText("100");
     getAllByText("No change from last month");
   });
+
+  it("should show 8000% change", () => {
+    const rows = [
+      ["2019-10-01T00:00:00", 100],
+      [("2019-11-01T00:00:00", 8100)],
+    ];
+    const insights = [
+      {
+        "last-value": 8100,
+        "last-change": 80,
+        "previous-value": 100,
+        unit: "month",
+        col: "Count",
+      },
+    ];
+    const { getAllByText } = render(
+      <Visualization rawSeries={series({ rows, insights })} />,
+    );
+    getAllByText("8,000%");
+  });
 });
