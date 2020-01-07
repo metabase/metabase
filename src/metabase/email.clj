@@ -51,7 +51,7 @@
   :type       :boolean
   :visibility :public
   :setter     :none
-  :getter     (fn [] (boolean (email-smtp-host))))
+  :getter     #(boolean (email-smtp-host)))
 
 (defn- add-ssl-settings [m ssl-setting]
   (merge

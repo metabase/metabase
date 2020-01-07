@@ -385,7 +385,10 @@
 
      (mandrill-api-key \"xyz123\")"
   [setting-or-name new-value]
-  (let [{:keys [setter cache?]} (resolve-setting setting-or-name)]
+  (let [{:keys [setter cache?], :as setting} (resolve-setting setting-or-name)
+        name                                 (setting-name setting)]
+    (when (= setter :none)
+      (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." name))))
     (binding [*disable-cache* (not cache?)]
       (setter new-value))))
 
@@ -515,10 +518,10 @@
                       turn call functions in this namespace like `get-string` or `get-boolean` to invoke the default
                       getter behavior.)
 
-   *  `:setter`     - A custom setter fn, which takes a single argument. Overrides the default implementation. (This
-                      can in turn call functions in this namespace like `set-string!` or `set-boolean!` to invoke the
-                      default setter behavior. Keep in mind that the custom setter may be passed `nil`, which should
-                      clear the values of the Setting.)
+   *  `:setter`     - A custom setter fn, which takes a single argument, or `:none` for read-only settings. Overrides the
+                      default implementation. (This can in turn call functions in this namespace like `set-string!` or
+                      `set-boolean!` to invoke the default setter behavior. Keep in mind that the custom setter may be
+                      passed `nil`, which should clear the values of the Setting.)
 
    *  `:cache?`     - Should this Setting be cached? (default `true`)? Be careful when disabling this, because it could
                       have a very negative performance impact.
