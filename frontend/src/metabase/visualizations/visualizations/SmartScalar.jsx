@@ -177,11 +177,13 @@ export default class Smart extends React.Component {
           />
         )}
         <Box className="SmartWrapper">
-          {!lastChange || !previousValue ? (
+          {lastChange == null || previousValue == null ? (
             <Box
               className="text-centered text-bold mt1"
               color={color("text-medium")}
             >{jt`Nothing to compare for the previous ${granularity}.`}</Box>
+          ) : lastChange === 0 ? (
+            t`No change from last ${granularity}`
           ) : (
             <Flex align="center" mt={1} flexWrap="wrap">
               <Flex align="center" color={changeColor}>
