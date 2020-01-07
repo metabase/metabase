@@ -161,7 +161,10 @@ export default class NativeQueryEditor extends Component {
       return;
     }
 
-    if (this._editor.getValue() !== query.queryText()) {
+    // Check that the query prop changed before updating the editor. Otherwise,
+    // we might overwrite just typed characters before onChange is called.
+    const queryPropUpdated = this.props.query !== prevProps.query;
+    if (queryPropUpdated && this._editor.getValue() !== query.queryText()) {
       // This is a weird hack, but the purpose is to avoid an infinite loop caused by the fact that calling editor.setValue()
       // will trigger the editor 'change' event, update the query, and cause another rendering loop which we don't want, so
       // we need a way to update the editor without causing the onChange event to go through as well

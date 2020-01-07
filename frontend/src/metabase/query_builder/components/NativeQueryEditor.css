@@ -40,15 +40,11 @@
   font-weight: 700;
   color: var(--color-text-light);
   padding-left: 0;
-  padding-right: 0;
+  padding-right: 7px;
   display: block;
   text-align: center;
 }
 
 .NativeQueryEditor .ace_editor .ace_gutter {
   background-color: var(--color-bg-light);
-}
-
-.NativeQueryEditor .ace_editor .ace_content {
-  padding-left: 7px;
 }

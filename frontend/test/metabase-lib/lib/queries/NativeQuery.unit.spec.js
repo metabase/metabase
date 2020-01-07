@@ -126,6 +126,21 @@ describe("NativeQuery", () => {
       });
     });
   });
+  describe("clean", () => {
+    it("should add template-tags: {} if there are none", () => {
+      const cleanedQuery = native =>
+        new NativeQuery(SAMPLE_DATASET.question(), {
+          type: "native",
+          database: SAMPLE_DATASET.id,
+          native,
+        })
+          .clean()
+          .datasetQuery();
+      const q1 = cleanedQuery({ query: "select 1" });
+      const q2 = cleanedQuery({ query: "select 1", "template-tags": {} });
+      expect(q1).toEqual(q2);
+    });
+  });
   describe("Acessing the underlying native query", () => {
     describe("You can access the actual native query via queryText()", () => {
       expect(makeQuery("SELECT * FROM ORDERS").queryText()).toEqual(

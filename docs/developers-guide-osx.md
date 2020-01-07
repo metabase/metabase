@@ -11,21 +11,39 @@ our [developers' guide](developers-guide.md).
 
 1.  Run `./bin/build` to build the latest version of the uberjar.
 
-1.  Next, you'll need to run the following commands before building the app:
+1.  Next, you'll need to run the following commands before building the app for the first time. You only need to do these once:
 
-    ```bash
-      # Fetch and initialize git submodule
-      git submodule update --init
+    1.  Install Git submodule
 
-      # Install Perl modules used by ./bin/osx-setup and ./bin/osx-release
-      sudo cpan install File::Copy::Recursive Readonly String::Util Text::Caml JSON
+        ```bash
+          git submodule update --init
+        ```
 
-      # Copy JRE and uberjar
-      ./bin/osx-setup
-    ```
+    1.  Install CPAN modules
 
-`./bin/osx-setup` will copy over things like the JRE into the Mac App directory for you. You only need to do this once the first time you plan on building the Mac App.
-This also runs `./bin/build` to get the latest uberjar and copies it for you; if the script fails near the end, you can just copy the uberjar to `OSX/Resources/metabase.jar`.)
+        ```bash
+        sudo cpan
+        install force File::Copy::Recursive Readonly String::Util Text::Caml JSON
+        quit
+        ```
+
+        You can install [PerlBrew](https://perlbrew.pl/) if you want to install CPAN modules without having to use `sudo`.
+
+        Normally you shouldn't have to use `install force` to install the modules above, but `File::Copy::Recursive` seems fussy lately and has a failing test that
+        prevents it from installing normally.
+
+    1.  Add a JRE to the `OSX/Metabase/jre`
+
+        You can download a copy of a JRE from https://adoptopenjdk.net/releases.html — make sure you download a JRE rather than JDK. Move the `Contents/Home` directory from
+        the JRE archive into `OSX/Metabase/jre`. For example:
+
+        ```bash
+        wget https://github.com/AdoptOpenJDK/openjdk8-binaries/releases/download/jdk8u232-b09/OpenJDK8U-jre_x64_mac_hotspot_8u232b09.tar.gz
+        tar -xzvf OpenJDK8U-jre_x64_mac_hotspot_8u232b09.tar.gz
+        mv jdk8u232-b09-jre/Contents/Home/ OSX/Metabase/jre
+        ```
+
+        You are fine to use whatever the latest JRE version available is. I have been using the HotSpot JRE instead of the OpenJ9 one but it ultimately shouldn't make a difference.
 
 ## Releasing
 
@@ -55,7 +73,6 @@ Run `open OSX/Metabase.xcodeproj` to open the project, which will automatically 
 After that, you are good to go:
 ```bash
 # Build the latest version of the uberjar and copy it to the Mac App build directory
-# (You can skip this step if you just ran ./bin/osx-setup, because it does this step for you)
 ./bin/build && cp target/uberjar/metabase.jar OSX/Resources/metabase.jar
 
 # Bundle entire app, and upload to s3

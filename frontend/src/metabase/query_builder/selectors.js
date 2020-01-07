@@ -2,7 +2,7 @@
 
 import { createSelector } from "reselect";
 import _ from "underscore";
-import { getIn, updateIn } from "icepick";
+import { getIn, assocIn, updateIn } from "icepick";
 
 // Needed due to wrong dependency resolution order
 // eslint-disable-next-line no-unused-vars
@@ -143,6 +143,30 @@ const getNextRunParameterValues = createSelector(
     parameters.map(parameter => parameter.value).filter(p => p !== undefined),
 );
 
+// Certain differences in a query should be ignored. `normalizeQuery`
+// standardizes the query before comparision in `getIsResultDirty`.
+function normalizeQuery(query, tableMetadata) {
+  if (!query) {
+    return query;
+  }
+  if (query.query && tableMetadata) {
+    query = updateIn(query, ["query", "fields"], fields => {
+      fields = fields
+        ? // if the query has fields, copy them before sorting
+          [...fields]
+        : // if the fields aren't set, we get them from the table metadata
+          tableMetadata.fields.map(({ id }) => ["field-id", id]);
+      return fields.sort((a, b) =>
+        JSON.stringify(b).localeCompare(JSON.stringify(a)),
+      );
+    });
+  }
+  if (query.native && query.native["template-tags"] == null) {
+    query = assocIn(query, ["native", "template-tags"], {});
+  }
+  return query;
+}
+
 export const getIsResultDirty = createSelector(
   [
     getLastRunDatasetQuery,
@@ -158,22 +182,8 @@ export const getIsResultDirty = createSelector(
     nextParameters,
     tableMetadata,
   ) => {
-    // this function sorts fields so that reordering doesn't dirty the result
-    const queryWithSortedFields = query =>
-      query && query.query && tableMetadata
-        ? updateIn(query, ["query", "fields"], fields => {
-            fields = fields
-              ? // if the query has fields, copy them before sorting
-                [...fields]
-              : // if the fields aren't set, we get them from the table metadata
-                tableMetadata.fields.map(({ id }) => ["field-id", id]);
-            return fields.sort((a, b) =>
-              JSON.stringify(b).localeCompare(JSON.stringify(a)),
-            );
-          })
-        : query;
-    lastDatasetQuery = queryWithSortedFields(lastDatasetQuery);
-    nextDatasetQuery = queryWithSortedFields(nextDatasetQuery);
+    lastDatasetQuery = normalizeQuery(lastDatasetQuery, tableMetadata);
+    nextDatasetQuery = normalizeQuery(nextDatasetQuery, tableMetadata);
     return (
       !Utils.equals(lastDatasetQuery, nextDatasetQuery) ||
       !Utils.equals(lastParameters, nextParameters)
