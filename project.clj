@@ -212,14 +212,14 @@
    [:exclude-tests
     :include-all-drivers
 
-    :env
-    {:mb-jetty-join "false"}
+    {:env
+     {:mb-jetty-join "false"}
 
-    :repl-options
-    {:init (do
-            (use 'metabase.core)
-            (metabase.core/-main))
-     :timeout 60000}}]
+     :repl-options
+     {:init (do
+             (use 'metabase.core)
+             (metabase.core/-main))
+      :timeout 60000}}]
 
    ;; start the dev HTTP server with 'lein ring server'
    :ring
