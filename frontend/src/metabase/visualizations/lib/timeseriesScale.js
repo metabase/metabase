@@ -41,10 +41,12 @@ const timeseriesScale = (
 };
 
 function domainForEvenlySpacedMonths(domain, { timezone, interval }) {
-  return wrapValues(
-    ticksForRange(domain, { count: 1, timezone, interval }),
-    domain,
-  );
+  const ticks = ticksForRange(domain, { count: 1, timezone, interval });
+  // if the domain only contains one month, return the domain untouched
+  if (ticks.length < 2) {
+    return domain;
+  }
+  return wrapValues(ticks, domain);
 }
 
 function rangeForEvenlySpacedMonths(range, domain, { timezone, interval }) {
