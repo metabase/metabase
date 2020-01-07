@@ -82,8 +82,8 @@
 
 (defsetting anon-tracking-enabled
   (deferred-tru "Enable the collection of anonymous usage data in order to help Metabase improve.")
-  :type   :boolean
-  :default true
+  :type       :boolean
+  :default    true
   :visibility :public)
 
 (defsetting ga-code
@@ -93,19 +93,19 @@
 
 (defsetting map-tile-server-url
   (deferred-tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
-  :default "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+  :default    "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
   :visibility :authenticated)
 
 (defsetting enable-public-sharing
   (deferred-tru "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?")
-  :type    :boolean
-  :default false
+  :type       :boolean
+  :default    false
   :visibility :authenticated)
 
 (defsetting enable-embedding
   (deferred-tru "Allow admins to securely embed questions and dashboards within other applications?")
-  :type    :boolean
-  :default false
+  :type       :boolean
+  :default    false
   :visibility :authenticated)
 
 (defsetting enable-nested-queries
