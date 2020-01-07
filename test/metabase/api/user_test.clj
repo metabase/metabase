@@ -332,8 +332,7 @@
 (defn include-personal-collection-name
   {:hydrate :personal_collection_name}
   [user]
-  (db/select-one-field
-      :name Collection :id (:personal_collection_id user)))
+  (db/select-one-field :name Collection :id (:personal_collection_id user)))
 
 ;; Test that admins can edit other Users
 (expect
