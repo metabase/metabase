@@ -80,7 +80,7 @@
   This really only needs to be done by the public settings API endpoint to populate the list of available drivers.
   Please avoid using this function elsewhere, as loading all of these namespaces can be quite expensive!"
   []
-  (doseq [ns-symb @u/metabase-namespace-symbols
+  (doseq [ns-symb u/metabase-namespace-symbols
           :when   (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb))
           :let    [driver (keyword (-> (last (str/split (name ns-symb) #"\."))
                                        (str/replace #"_" "-")))]

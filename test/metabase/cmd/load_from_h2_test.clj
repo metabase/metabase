@@ -38,7 +38,7 @@
     "QueryExecution"})
 
 (defn- all-model-names []
-  (set (for [ns       @u/metabase-namespace-symbols
+  (set (for [ns       u/metabase-namespace-symbols
              :when    (or (re-find #"^metabase\.models\." (name ns))
                           (= (name ns) "metabase.db.migrations"))
              :when    (not (re-find #"test" (name ns)))

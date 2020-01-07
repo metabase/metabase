@@ -13,7 +13,7 @@
   (str "# API Documentation for Metabase "
        (config/mb-version-info :tag)
        "\n\n"
-       (str/join "\n\n\n" (for [ns-symb     @u/metabase-namespace-symbols
+       (str/join "\n\n\n" (for [ns-symb     u/metabase-namespace-symbols
                                 :when       (.startsWith (name ns-symb) "metabase.api.")
                                 [symb varr] (do (classloader/require ns-symb)
                                                 (sort (ns-interns ns-symb)))
