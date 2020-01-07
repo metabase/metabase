@@ -4,7 +4,7 @@
             [toucan.db :as db])
   (:import java.util.UUID))
 
-(defsetting ^:private setup-token
+(defsetting setup-token
   "A token used to signify that an instance has permissions to create the initial User. This is created upon the first
   launch of Metabase, by the first instance; once used, it is cleared out, never to be used again."
   :visibility :public
