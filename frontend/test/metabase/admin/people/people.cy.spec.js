@@ -1,15 +1,16 @@
-import { signInAsAdmin } from "__support__/cypress";
+import { signInAsAdmin, restore } from "__support__/cypress";
 
 describe("admin/people", () => {
+  before(restore);
   beforeEach(signInAsAdmin);
 
   describe("user management", () => {
     it("should render", () => {
-      cy.visit("admin/people");
+      cy.visit("/admin/people");
       cy.contains("People");
     });
     it("should allow admin to create new users", () => {
-      cy.visit("admin/people");
+      cy.visit("/admin/people");
       cy.contains("Add someone").click();
       cy.contains("First name")
         .next()

@@ -231,11 +231,6 @@ export const field_special_types = [
     section: t`Common`,
   },
   {
-    id: TYPE.Description,
-    name: t`Description`,
-    section: t`Common`,
-  },
-  {
     id: TYPE.Title,
     name: t`Title`,
     section: t`Common`,
