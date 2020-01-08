@@ -103,7 +103,7 @@ After following the configuration steps above, to build and release the app you 
 
 1. Copy latest uberjar to the Mac App build directory
 
-    ````bash
+    ```bash
     cp path/to/metabase.jar OSX/Resources/metabase.jar
     ```
     
