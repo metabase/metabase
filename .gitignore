@@ -36,6 +36,7 @@
 /local/src
 /local/src
 /locales/metabase-*.pot
+/modules/drivers/*/resources/namespaces.edn
 /modules/drivers/*/target
 /node_modules/
 /osx-artifacts

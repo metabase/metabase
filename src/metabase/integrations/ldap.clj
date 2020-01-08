@@ -199,9 +199,9 @@
           :last-name  lname
           :email      email
           :groups     (when (ldap-group-sync)
-                        ;; ActiveDirectory (and others?) will supply a `memberOf` overlay attribute for groups
-                        ;; Otherwise we have to make the inverse query to get them
-                        (or (:memberOf result) (get-user-groups dn) []))})))))
+                        ;; Active Directory and others (like FreeIPA) will supply a `memberOf` overlay attribute for
+                        ;; groups. Otherwise we have to make the inverse query to get them.
+                        (or (:memberof result) (get-user-groups dn) []))})))))
 
 (defn verify-password
   "Verifies if the supplied password is valid for the `user-info` (from `find-user`) or DN."

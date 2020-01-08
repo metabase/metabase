@@ -1,6 +1,7 @@
-import { signInAsAdmin } from "__support__/cypress";
+import { signInAsAdmin, restore } from "__support__/cypress";
 
 describe("sample database reference", () => {
+  before(restore);
   beforeEach(signInAsAdmin);
 
   it("should see the listing", () => {
@@ -48,12 +49,5 @@ describe("sample database reference", () => {
       .type("My definitely profitable business");
     cy.contains("Save").click();
     cy.contains("My definitely profitable business");
-
-    // reset
-    cy.contains("Edit").click();
-    cy.get(".wrapper input")
-      .clear()
-      .type("Sample Dataset");
-    cy.contains("Save").click();
   });
 });
