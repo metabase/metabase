@@ -583,7 +583,7 @@
     convert the setting to the appropriate type; you can use `get-string` to get all string values of Settings, for
     example."
   [setting-or-name & {:keys [getter], :or {getter get}}]
-  (let [{:keys [sensitive? default], k :name, :as setting} (resolve-setting setting-or-name)
+  (let [{:keys [sensitive? visibility default], k :name, :as setting} (resolve-setting setting-or-name)
         unparsed-value                                     (get-string k)
         parsed-value                                       (getter k)
         ;; `default` and `env-var-value` are probably still in serialized form so compare
@@ -595,6 +595,9 @@
       ;; the UI.
       (or value-is-default? value-is-from-env-var?)
       nil
+
+      (= visibility :internal)
+      (throw (Exception. (tru "Setting {0} is internal" k)))
 
       sensitive?
       (obfuscate-value parsed-value)
@@ -620,7 +623,7 @@
 
    `options` are passed to `user-facing-value`."
   [& {:as options}]
-  (for [setting (sort-by :name (vals @registered-settings))]
+  (for [setting (sort-by :name (vals @registered-settings)) :when (not= (:visibility setting) :internal)]
     (m/mapply user-facing-info setting options)))
 
 (defn properties

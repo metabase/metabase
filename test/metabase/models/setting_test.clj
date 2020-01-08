@@ -22,13 +22,15 @@
 ;; these tests will fail. FIXME
 
 (defsetting test-setting-1
-  "Test setting - this only shows up in dev (1)"
-  :visibility :internal)
+  (deferred-tru "Test setting - this only shows up in dev (1)"))
 
 (defsetting test-setting-2
-  "Test setting - this only shows up in dev (2)"
-  :visibility :internal
+  (deferred-tru "Test setting - this only shows up in dev (2)")
   :default "[Default Value]")
+
+(defsetting test-setting-3
+  (deferred-tru "Test setting - this only shows up in dev (3)")
+  :visibility :internal)
 
 (defsetting ^:private test-boolean-setting
   "Test setting - this only shows up in dev (3)"
