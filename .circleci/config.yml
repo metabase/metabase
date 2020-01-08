@@ -455,6 +455,8 @@ jobs:
               then ./bin/build version frontend uberjar;
             fi
           no_output_timeout: 5m
+      - store_artifacts:
+          path: /home/circleci/metabase/metabase/target/uberjar/metabase.jar
       - save_cache:
           key: uberjar-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
           paths:
