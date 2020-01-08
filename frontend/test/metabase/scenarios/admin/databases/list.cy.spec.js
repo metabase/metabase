@@ -1,8 +1,7 @@
-import { signInAsAdmin, snapshot, restore } from "__support__/cypress";
+import { signInAsAdmin, restore } from "__support__/cypress";
 
 describe("admin > databases > list", () => {
-  before(snapshot);
-  after(restore);
+  before(restore);
 
   beforeEach(() => {
     signInAsAdmin();

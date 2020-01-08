@@ -1,10 +1,9 @@
-import { signInAsAdmin, snapshot, restore } from "__support__/cypress";
+import { signInAsAdmin, restore } from "__support__/cypress";
 
 const ORDERS_URL = "/admin/datamodel/database/1/table/2";
 
 describe("admin > datamodel > table", () => {
-  before(snapshot);
-  afterEach(restore);
+  before(restore);
 
   beforeEach(() => {
     signInAsAdmin();

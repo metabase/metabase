@@ -1,4 +1,4 @@
-import { signInAsAdmin, snapshot, restore } from "__support__/cypress";
+import { signInAsAdmin, restore } from "__support__/cypress";
 
 function typeField(name, value) {
   cy.get(`input[name="${name}"]`)
@@ -15,8 +15,7 @@ function toggleFieldWithDisplayName(displayName) {
 }
 
 describe("admin > databases > add", () => {
-  before(snapshot);
-  after(restore);
+  before(restore);
 
   beforeEach(() => {
     signInAsAdmin();

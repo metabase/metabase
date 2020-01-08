@@ -2,7 +2,6 @@ import {
   signInAsAdmin,
   signInAsNormalUser,
   signOut,
-  snapshot,
   restore,
   popover,
   modal,
@@ -19,8 +18,7 @@ const NORMAL_USER = ["normal", signInAsNormalUser];
 const ANONYMOUS_USER = ["anonymous", signOut];
 
 describe("public and embeds", () => {
-  before(snapshot);
-  after(restore);
+  before(restore);
 
   beforeEach(() => {
     signInAsAdmin();

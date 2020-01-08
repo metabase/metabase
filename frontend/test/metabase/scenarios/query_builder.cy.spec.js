@@ -1,6 +1,7 @@
-import { signInAsAdmin } from "__support__/cypress";
+import { signInAsAdmin, restore } from "__support__/cypress";
 
 describe("query builder", () => {
+  before(restore);
   beforeEach(signInAsAdmin);
 
   describe("browse data", () => {

@@ -1,11 +1,10 @@
-import { signInAsAdmin, snapshot, restore } from "__support__/cypress";
+import { signInAsAdmin, restore } from "__support__/cypress";
 
 const ORDERS_CREATED_AT_URL = "/admin/datamodel/database/1/table/2/15/general";
 const ORDERS_PRODUCT_URL = "/admin/datamodel/database/1/table/2/11/general";
 const ORDERS_QUANTITY_URL = "/admin/datamodel/database/1/table/2/14/general";
 
 describe("admin > datamodel > field", () => {
-  before(snapshot);
   beforeEach(() => {
     signInAsAdmin();
     cy.server();
@@ -15,7 +14,7 @@ describe("admin > datamodel > field", () => {
   });
 
   describe("Name and Description", () => {
-    after(restore);
+    before(restore);
 
     it("lets you change field name and description", () => {
       cy.visit(ORDERS_CREATED_AT_URL);
@@ -47,7 +46,7 @@ describe("admin > datamodel > field", () => {
   });
 
   describe("Visibility", () => {
-    after(restore);
+    before(restore);
 
     it("lets you change field visibility", () => {
       cy.visit(ORDERS_CREATED_AT_URL);
@@ -62,7 +61,7 @@ describe("admin > datamodel > field", () => {
   });
 
   describe("Field Type", () => {
-    after(restore);
+    before(restore);
 
     it("lets you change the type to 'No special type'", () => {
       cy.visit(ORDERS_PRODUCT_URL);
@@ -105,7 +104,7 @@ describe("admin > datamodel > field", () => {
   });
 
   describe("Filtering on this field", () => {
-    after(restore);
+    before(restore);
 
     it("lets you change to 'Search box'", () => {
       cy.visit(ORDERS_QUANTITY_URL);
@@ -120,7 +119,7 @@ describe("admin > datamodel > field", () => {
   });
 
   describe("Display Values", () => {
-    after(restore);
+    before(restore);
 
     it("lets you change to 'Use foreign key' and change the target for field with fk", () => {
       cy.visit(ORDERS_PRODUCT_URL);
