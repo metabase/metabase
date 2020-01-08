@@ -5,10 +5,10 @@
             [medley.core :as m]
             [metabase
              [driver :as driver]
+             [test :as mt]
              [util :as u]]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.test.data
              [interface :as tx]
              [sql :as sql.tx]]
@@ -182,7 +182,7 @@
       (let [set-timezone-sql (format set-timezone-format-string "'UTC'")]
         (log/debugf "Setting timezone to UTC before inserting data with SQL \"%s\"" set-timezone-sql)
         (jdbc/execute! spec [set-timezone-sql])))
-    (qp.timezone/with-database-timezone-id nil
+    (mt/with-database-timezone-id nil
       (try
         ;; TODO - why don't we use `execute/execute-sql!` here like we do below?
         (doseq [sql+args statements]

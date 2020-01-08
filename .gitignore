@@ -9,8 +9,6 @@
 .DS_Store
 .\#*
 .eastwood
-.eastwood
-.idea/
 .idea/
 .nrepl-port
 .vscode
@@ -31,11 +29,14 @@
 /classes
 /coverage
 /crate-*
+/cypress
 /deploy/artifacts/*
 /docs/uberdoc.html
 /lein-plugins/*/target
 /local/src
+/local/src
 /locales/metabase-*.pot
+/modules/drivers/*/resources/namespaces.edn
 /modules/drivers/*/target
 /node_modules/
 /osx-artifacts
@@ -43,9 +44,11 @@
 /reset-password-artifacts
 /resources/frontend_client/app/dist/
 /resources/frontend_client/app/locales
+/resources/frontend_client/app/locales
 /resources/frontend_client/embed.html
 /resources/frontend_client/index.html
 /resources/frontend_client/public.html
+/resources/namespaces.edn
 /resources/sample-dataset.db.trace.db
 /resources/version.properties
 /screenshots
@@ -67,8 +70,3 @@ profiles.clj
 target/checksum.txt
 xcshareddata
 xcuserdata
-/resources/frontend_client/app/locales
-*.iml
-.idea/
-/local/src
-/cypress

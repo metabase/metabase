@@ -489,17 +489,22 @@
   border-right: none;
 }
 
+.NativeQueryEditorDragHandleWrapper {
+  position: absolute;
+  height: 8px;
+  width: 100%;
+  bottom: -4px;
+  cursor: row-resize;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
 .NativeQueryEditorDragHandle {
   background: color(var(--color-border) blackness(+ 3%));
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  height: 5px;
   width: 100px;
+  height: 5px;
   border-radius: 4px;
-  cursor: row-resize;
-  margin-left: -50px;
-  margin-bottom: -2.5px;
 }
 
 /* VISUALIZATION SETTINGS */
@@ -686,4 +691,24 @@
 
 .ParameterValuePickerNoPopover input::-webkit-input-placeholder {
   color: var(--color-text-medium);
+}
+
+text.value-label-outline {
+  font-weight: 900;
+  stroke-width: 4px;
+  stroke: var(--color-text-white);
+}
+
+text.value-label {
+  fill: var(--color-text-dark);
+  font-weight: 900;
+}
+
+text.value-label-outline,
+text.value-label {
+  pointer-events: none;
+}
+
+.Dashboard--night text.value-label-outline {
+  stroke: var(--night-mode-card);
 }

@@ -7,7 +7,8 @@
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :as qp.t :refer [rows]]]
+             [query-processor-test :as qp.t :refer [rows]]
+             [test :as mt]]
             [metabase.automagic-dashboards.core :as magic]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver
@@ -37,7 +38,7 @@
 
 ;; ## Tests for connection functions
 (deftest can-connect-test?
-  (datasets/test-driver :mongo
+  (mt/test-driver :mongo
     (doseq [{:keys [details expected message]} [{:details  {:host   "localhost"
                                                             :port   3000
                                                             :dbname "bad-db-name"}
@@ -72,7 +73,7 @@
     {\"$project\": {\"_id\": false, \"count\": true}}]")
 
 (deftest native-query-test
-  (datasets/test-driver :mongo
+  (mt/test-driver :mongo
     (is (= {:status    :completed
             :row_count 1
             :data      {:rows             [[1]]
@@ -93,7 +94,7 @@
 ;; ## Tests for individual syncing functions
 
 (deftest describe-database-test
-  (datasets/test-driver :mongo
+  (mt/test-driver :mongo
     (is (= {:tables #{{:schema nil, :name "checkins"}
                       {:schema nil, :name "categories"}
                       {:schema nil, :name "users"}
@@ -101,7 +102,7 @@
            (driver/describe-database :mongo (data/db))))))
 
 (deftest describe-table-tets
-  (datasets/test-driver :mongo
+  (mt/test-driver :mongo
     (is (= {:schema nil
             :name   "venues"
             :fields #{{:name          "name"
@@ -160,7 +161,7 @@
 
 ;; ## Big-picture tests for the way data should look post-sync
 (deftest table-sync-test
-  (datasets/test-driver :mongo
+  (mt/test-driver :mongo
     (is (= [{:active true, :name "categories"}
             {:active true, :name "checkins"}
             {:active true, :name "users"}
@@ -205,69 +206,39 @@
       ["Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]]])
 
 (deftest bson-ids-test
-  (datasets/test-driver :mongo
+  (mt/test-driver :mongo
     (is (= [[2 "Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]
            (rows (data/dataset with-bson-ids
                    (data/run-mbql-query birds
                      {:filter [:= $bird_id "abcdefabcdefabcdefabcdef"]}))))
         "Check that we support Mongo BSON ID and can filter by it (#1367)")))
 
+(deftest bson-fn-call-forms-test
+  (mt/test-driver :mongo
+    (testing "Make sure we can handle arbitarty BSON fn-call forms like ISODate() (#3741, #4448)"
+      (letfn [(rows-count [query]
+                (count (rows (qp/process-query {:native   query
+                                                :type     :native
+                                                :database (data/id)}))))]
+        (data/dataset with-bson-ids
+          (is (= 1
+                 (rows-count {:query      "[{\"$match\": {\"bird_id\": ObjectId(\"abcdefabcdefabcdefabcdef\")}}]"
+                              :collection "birds"}))))
+        (is (= 22
+               (rows-count {:query      "[{$match: {price: {$numberInt: \"1\"}}}]"
+                            :collection "venues"})
+               (rows-count {:query      "[{$match: {price: NumberInt(\"1\")}}]"
+                            :collection "venues"})))
+        (is (= 5
+               (rows-count {:query      "[{$match: {date: {$gte: ISODate(\"2015-12-20\")}}}]"
+                            :collection "checkins"})))))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                             ISODate(...) AND ObjectId(...) HANDLING (#3741, #4448)                             |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(deftest encode-function-calls-test
-  (is (= "[{\"$match\":{\"date\":{\"$gte\":[\"___ISODate\", \"2012-01-01\"]}}}]"
-         (#'mongo-qp/encode-fncalls "[{\"$match\":{\"date\":{\"$gte\":ISODate(\"2012-01-01\")}}}]")))
-  (is (= "[{\"$match\":{\"entityId\":{\"$eq\":[\"___ObjectId\", \"583327789137b2700a1621fb\"]}}}]"
-         (#'mongo-qp/encode-fncalls "[{\"$match\":{\"entityId\":{\"$eq\":ObjectId(\"583327789137b2700a1621fb\")}}}]")))
-  (testing "make sure fn calls with no arguments work as well (#4996)"
-    (is (= "[{\"$match\":{\"date\":{\"$eq\":[\"___ISODate\"]}}}]"
-           (#'mongo-qp/encode-fncalls "[{\"$match\":{\"date\":{\"$eq\":ISODate()}}}]")))))
-
-(deftest decode-function-calls-test
-  (testing "ISODate()"
-    (is (=
-         (t/local-date "2012-01-01")
-         (#'mongo-qp/maybe-decode-fncall ["___ISODate" "2012-01-01"])))
-    (is (=
-         [{:$match {:date {:$gte (t/local-date "2012-01-01")}}}]
-         (#'mongo-qp/decode-fncalls [{:$match {:date {:$gte ["___ISODate" "2012-01-01"]}}}]))))
-  (testing "ObjectID()"
-    (is (=
-         (ObjectId. "583327789137b2700a1621fb")
-         (#'mongo-qp/maybe-decode-fncall ["___ObjectId" "583327789137b2700a1621fb"])))
-    (is (=
-         [{:$match {:entityId {:$eq (ObjectId. "583327789137b2700a1621fb")}}}]
-         (#'mongo-qp/decode-fncalls [{:$match {:entityId {:$eq ["___ObjectId" "583327789137b2700a1621fb"]}}}])))))
-
-(datasets/expect-with-driver :mongo
-  5
-  (count (rows (qp/process-query {:native   {:query      "[{\"$match\": {\"date\": {\"$gte\": ISODate(\"2015-12-20\")}}}]"
-                                             :collection "checkins"}
-                                  :type     :native
-                                  :database (data/id)}))))
-
-(datasets/expect-with-driver :mongo
-  0
-  ;; this query shouldn't match anything, so we're just checking that it completes successfully
-  (count (rows (qp/process-query {:native   {:query      "[{\"$match\": {\"_id\": {\"$eq\": ObjectId(\"583327789137b2700a1621fb\")}}}]"
-                                             :collection "venues"}
-                                  :type     :native
-                                  :database (data/id)}))))
-
-
-;; tests for `most-common-object-type`
-(expect
-  String
-  (#'mongo/most-common-object-type [[Float 20] [Integer 10] [String 30]]))
-
-;; make sure it handles `nil` types correctly as well (#6880)
-(expect
-  nil
-  (#'mongo/most-common-object-type [[Float 20] [nil 40] [Integer 10] [String 30]]))
-
+(deftest most-common-object-type-test
+  (is (= String
+         (#'mongo/most-common-object-type [[Float 20] [Integer 10] [String 30]])))
+  (testing "make sure it handles `nil` types correctly as well (#6880)"
+    (is (= nil
+           (#'mongo/most-common-object-type [[Float 20] [nil 40] [Integer 10] [String 30]])))))
 
 ;; make sure x-rays don't use features that the driver doesn't support
 (datasets/expect-with-driver :mongo
@@ -295,8 +266,23 @@
      qp.t/data
      (select-keys [:columns :rows]))))
 
-
 ;; Make sure we correctly (un-)freeze BSON IDs
 (deftest ObjectId-serialization
   (let [oid (ObjectId. "012345678901234567890123")]
     (is (= oid (nippy/thaw (nippy/freeze oid))))))
+
+(deftest native-query-nil-test
+  (testing "Nil values (like {_id nil} below) should not get removed from native queries"
+    (mt/test-driver :mongo
+      (is (= [[22]]
+             (mt/rows
+               (qp/process-query
+                 {:database (data/id)
+                  :type     :native
+                  :native   {:projections [:count]
+                             :query       [{"$project" {"price" "$price"}}
+                                           {"$match" {"price" {"$eq" 1}}}
+                                           {"$group" {"_id" nil, "count" {"$sum" 1}}}
+                                           {"$sort" {"_id" 1}}
+                                           {"$project" {"_id" false, "count" true}}]
+                             :collection  "venues"}})))))))

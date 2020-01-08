@@ -1,6 +1,7 @@
 (ns metabase.util-test
   "Tests for functions in `metabase.util`."
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [flatland.ordered.map :refer [ordered-map]]
             [metabase.util :as u])
   (:import java.util.Locale))
@@ -85,25 +86,36 @@
   (u/key-by :id [{:id 1, :name "Rasta"}
                  {:id 2, :name "Lucky"}]))
 
-
-;; `remove-diacritical-marks`
-(expect "uuuu" (u/remove-diacritical-marks "üuuü"))
-(expect "aeiu" (u/remove-diacritical-marks "åéîü"))
-(expect "acnx" (u/remove-diacritical-marks "åçñx"))
-(expect nil    (u/remove-diacritical-marks ""))
-(expect nil    (u/remove-diacritical-marks nil))
+(deftest remove-diacritical-marks-test
+  (doseq [[s expected] {"üuuü" "uuuu"
+                        "åéîü" "aeiu"
+                        "åçñx" "acnx"
+                        ""     nil
+                        nil    nil}]
+    (testing (list 'u/remove-diacritical-marks s)
+      (is (= expected
+             (u/remove-diacritical-marks s))))))
 
 
 ;;; `slugify`
-(expect "toucanfest_2017"               (u/slugify "ToucanFest 2017"))
-(expect "cam_s_awesome_toucan_emporium" (u/slugify "Cam's awesome toucan emporium"))
-(expect "frequently_used_cards"         (u/slugify "Frequently-Used Cards"))
-;; check that diactrics get removed
-(expect "cam_saul_s_toucannery"         (u/slugify "Cam Saul's Toucannery"))
-(expect "toucans_dislike_pinatas___"    (u/slugify "toucans dislike piñatas :("))
-;; check that non-ASCII characters get URL-encoded (so we can support non-Latin alphabet languages; see #3818)
-(expect "%E5%8B%87%E5%A3%AB"            (u/slugify "勇士")) ; go dubs
+(deftest slugify-test
+  (doseq [[group s->expected]
+          {nil
+           {"ToucanFest 2017"               "toucanfest_2017"
+            "Cam's awesome toucan emporium" "cam_s_awesome_toucan_emporium"
+            "Frequently-Used Cards"         "frequently_used_cards"}
 
+           "check that diactrics get removed"
+           {"Cam Saul's Toucannery"      "cam_saul_s_toucannery"
+            "toucans dislike piñatas :(" "toucans_dislike_pinatas___" }
+
+           "check that non-ASCII characters get URL-encoded (so we can support non-Latin alphabet languages; see #3818)"
+           {"勇士" "%E5%8B%87%E5%A3%AB"}}]
+    (testing group
+      (doseq [[s expected] s->expected]
+        (testing (list 'u/slugify s)
+          (is (= expected
+                 (u/slugify s))))))))
 
 ;;; `select-nested-keys`
 (expect

@@ -34,3 +34,25 @@ export function memoize(target, name, descriptor) {
 }
 
 const createMap = () => new Map();
+
+// `sortObject`` copies objects for deterministic serialization.
+// Objects that have equal keys and values don't necessarily serialize to the
+// same string. JSON.strinify prints properties in inserted order. This function
+// sorts keys before adding them to the duplicated object to ensure consistent
+// serialization.
+export function sortObject(obj) {
+  if (obj === null || typeof obj !== "object") {
+    return obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map(sortObject);
+  }
+  const sortedKeyValues = Object.entries(obj).sort(([keyA], [keyB]) =>
+    keyA.localeCompare(keyB),
+  );
+  const o = {};
+  for (const [k, v] of sortedKeyValues) {
+    o[k] = sortObject(v);
+  }
+  return o;
+}

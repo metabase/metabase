@@ -5,10 +5,9 @@
             [java-time :as t]
             [metabase
              [driver :as driver]
-             [query-processor :as qp]]
+             [query-processor :as qp]
+             [test :as mt]]
             [metabase.query-processor.middleware.optimize-datetime-filters :as optimize-datetime-filters]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.test.data :as data]
             [metabase.util.date-2 :as u.date]))
 
 (driver/register! ::timezone-driver, :abstract? true)
@@ -160,7 +159,7 @@
         (let [t     (u.date/parse "2015-11-18" timezone-id)
               lower (t/zoned-date-time (t/local-date 2015 11 18) (t/local-time 0) timezone-id)
               upper (t/zoned-date-time (t/local-date 2015 11 19) (t/local-time 0) timezone-id)]
-          (qp.timezone/with-report-timezone-id timezone-id
+          (mt/with-report-timezone-id timezone-id
             (testing "lower-bound and upper-bound util fns"
               (is (= lower
                      (#'optimize-datetime-filters/lower-bound :day t))
@@ -186,7 +185,7 @@
 ;; Make sure the optimization logic is actually applied in the resulting native query!
 (defn- filter->sql [filter-clause]
   (let [result (qp/query->native
-                 (data/mbql-query checkins
+                 (mt/mbql-query checkins
                    {:aggregation [[:count]]
                     :filter      filter-clause}))]
     (update result :query #(-> (last (re-matches #"^.*(WHERE .*$)" %))
@@ -198,21 +197,21 @@
     (is (= {:query  "WHERE (CHECKINS.DATE >= ? AND CHECKINS.DATE < ?)"
             :params [(t/zoned-date-time (t/local-date 2019 9 24) (t/local-time 0) "UTC")
                      (t/zoned-date-time (t/local-date 2019 9 25) (t/local-time 0) "UTC")]}
-           (data/$ids checkins
+           (mt/$ids checkins
              (filter->sql [:= !day.date "2019-09-24T12:00:00.000Z"])))))
   (testing :<
     (is (= {:query  "WHERE CHECKINS.DATE < ?"
             :params [(t/zoned-date-time (t/local-date 2019 9 24) (t/local-time 0) "UTC")]}
-           (data/$ids checkins
+           (mt/$ids checkins
              (filter->sql [:< !day.date "2019-09-24T12:00:00.000Z"])))))
   (testing :between
     (is (= {:query  "WHERE (CHECKINS.DATE >= ? AND CHECKINS.DATE < ?)"
             :params [(t/zoned-date-time (t/local-date 2019  9 1) (t/local-time 0) "UTC")
                      (t/zoned-date-time (t/local-date 2019 11 1) (t/local-time 0) "UTC")]}
-           (data/$ids checkins
+           (mt/$ids checkins
              (filter->sql [:between !month.date "2019-09-02T12:00:00.000Z" "2019-10-05T12:00:00.000Z"]))))
     (is (= {:query "WHERE (CHECKINS.DATE >= ? AND CHECKINS.DATE < ?)"
             :params           [(t/zoned-date-time "2019-09-01T00:00Z[UTC]")
                                (t/zoned-date-time "2019-10-02T00:00Z[UTC]")]}
-           (data/$ids checkins
+           (mt/$ids checkins
              (filter->sql [:between !day.date "2019-09-01" "2019-10-01"]))))))

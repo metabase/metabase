@@ -26,9 +26,10 @@
     (swap! inbox assoc recipient (-> (get @inbox recipient [])
                                      (conj email)))))
 
-(defn call-with-expected-messages
-  "Invokes `F`, blocking until `N` messages are found in the inbox"
-  [n f]
+(defn do-with-expected-messages
+  "Invokes `thunk`, blocking until `n` messages are found in the inbox."
+  [n thunk]
+  {:pre [(number? n)]}
   (let [p (promise)]
     ;; Watches get invoked on the callers thread. In our case, this will be the future (or background thread) that is
     ;; sending the message. It will block that thread, counting the number of messages. If it has reached it's goal,
@@ -39,11 +40,11 @@
                    (when (<= n num-msgs)
                      (deliver p num-msgs)))))
     (try
-      (let [result (f)
+      (let [result        (thunk)
             ;; This will block the calling thread (i.e. the test) waiting for the promise to be delivered. There is a
-            ;; very high timeout (1 minute) that we should never reach, but without it, if we do hit that scenario, it
+            ;; very high timeout (30 seconds) that we should never reach, but without it, if we do hit that scenario, it
             ;; should at least not hang forever in CI
-            promise-value (deref p 60000 ::timeout)]
+            promise-value (deref p 30000 ::timeout)]
         (if (= promise-value ::timeout)
           (throw (Exception. "Timed out while waiting for messages in the inbox"))
           result))
@@ -51,11 +52,11 @@
         (remove-watch inbox ::inbox-watcher)))))
 
 (defmacro with-expected-messages
-  "Invokes `BODY`, waiting until `N` messages are found in the inbox before returning. This is useful if the code you
+  "Invokes `body`, waiting until `n` messages are found in the inbox before returning. This is useful if the code you
   are testing sends emails via a future or background thread. Using this will block the test, waiting for the messages
   to arrive before continuing."
   [n & body]
-  `(call-with-expected-messages ~n (fn [] ~@body)))
+  `(do-with-expected-messages ~n (fn [] ~@body)))
 
 (defn do-with-fake-inbox
   "Impl for `with-fake-inbox` macro; prefer using that rather than calling this directly."
@@ -80,7 +81,7 @@
   `(do-with-fake-inbox (fn [] ~@body)))
 
 (defn- create-email-body->regex-fn
-  "Returns a function expecting the email body structure. It will apply the regexes in `REGEX-SEQ` over the body and
+  "Returns a function expecting the email body structure. It will apply the regexes in `regex-seq` over the body and
   return map of the stringified regex as the key and a boolean as the value. True if it returns results via `re-find`
   false otherwise."
   [regex-seq]
@@ -90,7 +91,7 @@
               (map #(boolean (re-find % content)) regex-seq)))))
 
 (defn regex-email-bodies
-  "Will be apply each regex to each email body in the fake inbox. The body will be replaced by a map with the
+  "Return messages in the fake inbox whose body matches the regex(es). The body will be replaced by a map with the
   stringified regex as it's key and a boolean indicated that the regex returned results."
   [& regexes]
   (let [email-body->regex-boolean (create-email-body->regex-fn regexes)]

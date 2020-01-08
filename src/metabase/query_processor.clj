@@ -316,7 +316,7 @@
   the core.async channel is closed, the query will be canceled."
   (if config/is-dev?
     (s/fn :- QueryResponse
-      [query]
+      [query :- clojure.lang.IPersistentMap]
       ((if *debug*
          debugging-pipeline
          default-pipeline) query))

@@ -30,6 +30,7 @@ import {
   applyChartQuantitativeXAxis,
   applyChartOrdinalXAxis,
   applyChartYAxis,
+  getYValueFormatter,
 } from "./apply_axis";
 
 import { setupTooltips } from "./apply_tooltips";
@@ -886,12 +887,13 @@ export default function lineAreaBar(
   parent.render();
 
   // apply any on-rendering functions (this code lives in `LineAreaBarPostRenderer`)
-  lineAndBarOnRender(
-    parent,
+  lineAndBarOnRender(parent, {
     onGoalHover,
-    yAxisProps.isSplit,
-    isStacked(parent.settings, datas),
-  );
+    isSplitAxis: yAxisProps.isSplit,
+    isStacked: isStacked(parent.settings, datas),
+    formatYValue: getYValueFormatter(parent, series, yAxisProps.yExtent),
+    datas,
+  });
 
   // only ordinal axis can display "null" values
   if (isOrdinal(parent.settings)) {

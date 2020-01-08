@@ -77,6 +77,7 @@
                  it.unimi.dsi/fastutil]]
    [com.draines/postal "2.0.3"]                                       ; SMTP library
    [com.jcraft/jsch "0.1.55"]                                         ; SSH client for tunnels
+   [com.google.guava/guava "28.2-jre"]                                ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
    [com.h2database/h2 "1.4.197"]                                      ; embedded SQL database
    [com.mattbertolini/liquibase-slf4j "2.0.0"]                        ; Java Migrations lib logging. We don't actually use this AFAIK (?)
    [com.taoensso/nippy "2.14.0"]                                      ; Fast serialization (i.e., GZIP) library for Clojure
@@ -106,8 +107,8 @@
                  com.sun.jmx/jmxri]]
    [me.raynes/fs "1.4.6"]                                             ; Filesystem tools
    [medley "1.2.0"]                                                   ; lightweight lib of useful functions
-   [metabase/connection-pool "1.0.3"]                                 ; simple wrapper around C3P0. JDBC connection pools
-   [metabase/mbql "1.4.0"]                                            ; MBQL language schema & util fns
+   [metabase/connection-pool "1.1.1"]                                 ; simple wrapper around C3P0. JDBC connection pools
+   [metabase/mbql "1.4.3"]                                            ; MBQL language schema & util fns
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
    [org.apache.commons/commons-lang3 "3.9"]                           ; helper methods for working with java.lang stuff
@@ -141,10 +142,10 @@
   :manifest
   {"Liquibase-Package"
    #= (eval
-       (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
-            "liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,"
-            "liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,"
-            "liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"))}
+        (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
+             "liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,"
+             "liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,"
+             "liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"))}
 
   :jvm-opts
   ["-XX:+IgnoreUnrecognizedVMOptions"                                 ; ignore things not recognized for our Java version instead of refusing to start
@@ -260,7 +261,8 @@
 
    :repl
    [:include-all-drivers
-    {:jvm-opts ["-Duser.timezone=UTC"]}] ; so running the tests doesn't give you different answers
+    ;; so running the tests doesn't give you different answers
+    {:jvm-opts ["-Duser.timezone=UTC"]}]
 
    :bikeshed
    [:include-all-drivers

@@ -1,9 +1,9 @@
 (ns metabase.query-processor.middleware.add-settings-test
   (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.query-processor.middleware.add-settings :as add-settings]
-            [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.test.util :as tu]))
+            [metabase
+             [driver :as driver]
+             [test :as mt]]
+            [metabase.query-processor.middleware.add-settings :as add-settings]))
 
 (driver/register! ::timezone-driver, :abstract? true)
 
@@ -22,9 +22,9 @@
                                                              nil          {:results_timezone "UTC"}}}
           [timezone expected]         timezone->expected]
     (testing driver
-      (tu/with-temporary-setting-values [report-timezone timezone]
+      (mt/with-temporary-setting-values [report-timezone timezone]
         (driver/with-driver driver
-          (qp.timezone/with-database-timezone-id nil
+          (mt/with-database-timezone-id nil
             (is (= expected
                    (let [query        {:query? true}
                          results      {:results? true}

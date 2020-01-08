@@ -103,7 +103,7 @@
 
 (defn- maybe-normalize-query [card]
   (cond-> card
-    (:dataset_query card) (update :dataset_query normalize/normalize)))
+    (seq (:dataset_query card)) (update :dataset_query normalize/normalize)))
 
 (defn- pre-insert [{query :dataset_query, :as card}]
   ;; TODO - we usually check permissions to save/update stuff in the API layer rather than here in the Toucan

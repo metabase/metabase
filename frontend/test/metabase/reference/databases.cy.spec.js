@@ -48,5 +48,12 @@ describe("sample database reference", () => {
       .type("My definitely profitable business");
     cy.contains("Save").click();
     cy.contains("My definitely profitable business");
+
+    // reset
+    cy.contains("Edit").click();
+    cy.get(".wrapper input")
+      .clear()
+      .type("Sample Dataset");
+    cy.contains("Save").click();
   });
 });

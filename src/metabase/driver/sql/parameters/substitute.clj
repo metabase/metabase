@@ -1,11 +1,11 @@
-(ns metabase.query-processor.middleware.parameters.native.substitute
+(ns metabase.driver.sql.parameters.substitute
   (:require [clojure.string :as str]
-            [metabase.query-processor.middleware.parameters.native
-             [interface :as i]
-             [substitution :as substitution]]
+            [metabase.driver.common.parameters :as i]
+            [metabase.driver.sql.parameters.substitution :as substitution]
+            [metabase.query-processor.error-type :as error-type]
             [metabase.util.i18n :refer [tru]]))
 
-(defn- substitute-field-filter [param->value [sql args missing] in-optional? k {:keys [field value], :as v}]
+(defn- substitute-field-filter [[sql args missing] in-optional? k {:keys [field value], :as v}]
   (if (and (= i/no-value value) in-optional?)
     ;; no-value field filters inside optional clauses are ignored, and eventually emitted entirely
     [sql args (conj missing k)]
@@ -19,7 +19,7 @@
     (let [v (get param->value k)]
       (cond
         (i/FieldFilter? v)
-        (substitute-field-filter param->value [sql args missing] in-optional? k v)
+        (substitute-field-filter [sql args missing] in-optional? k v)
 
         (= i/no-value v)
         [sql args (conj missing k)]
@@ -30,13 +30,15 @@
 
 (declare substitute*)
 
-(defn- substitute-optional [param->value [sql args missing] in-optional? {subclauses :args}]
+(defn- substitute-optional [param->value [sql args missing] {subclauses :args}]
   (let [[opt-sql opt-args opt-missing] (substitute* param->value subclauses true)]
     (if (seq opt-missing)
       [sql args missing]
       [(str sql opt-sql) (concat args opt-args) missing])))
 
-(defn- substitute* [param->value parsed in-optional?]
+(defn- substitute*
+  "Returns a sequence of `[replaced-sql-string jdbc-args missing-parameters]`."
+  [param->value parsed in-optional?]
   (reduce
    (fn [[sql args missing] x]
      (cond
@@ -47,7 +49,7 @@
        (substitute-param param->value [sql args missing] in-optional? x)
 
        (i/Optional? x)
-       (substitute-optional param->value [sql args missing] in-optional? x)))
+       (substitute-optional param->value [sql args missing] x)))
    nil
    parsed))
 
@@ -62,5 +64,6 @@
   [parsed-query param->value]
   (let [[sql args missing] (substitute* param->value parsed-query false)]
     (when (seq missing)
-      (throw (Exception. (tru "Cannot run query: missing required parameters: {0}" (set missing)))))
+      (throw (ex-info (tru "Cannot run the query: missing required parameters: {0}" (set missing))
+               {:type error-type/invalid-query})))
     [(str/trim sql) args]))
