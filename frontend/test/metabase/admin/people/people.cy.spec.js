@@ -6,11 +6,11 @@ describe("admin/people", () => {
 
   describe("user management", () => {
     it("should render", () => {
-      cy.visit("admin/people");
+      cy.visit("/admin/people");
       cy.contains("People");
     });
     it("should allow admin to create new users", () => {
-      cy.visit("admin/people");
+      cy.visit("/admin/people");
       cy.contains("Add someone").click();
       cy.contains("First name")
         .next()

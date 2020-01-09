@@ -26,26 +26,25 @@ export default class Column extends Component {
     updateField: PropTypes.func.isRequired,
   };
 
-  updateField = properties =>
+  updateField = properties => {
     this.props.updateField({
       ...this.props.field.getPlainObject(),
       ...properties,
     });
+  };
 
-  onNameChange = event => {
-    if (!_.isEmpty(event.target.value)) {
-      this.updateField({ display_name: event.target.value });
+  handleChangeName = ({ target: { value: display_name } }) => {
+    if (!_.isEmpty(display_name)) {
+      this.updateField({ display_name });
     } else {
       // if the user set this to empty then simply reset it because that's not allowed!
-      event.target.value = this.props.field.display_name;
+      this.updateField({ display_name: this.props.field.display_name });
     }
   };
 
-  onDescriptionChange = event =>
-    this.updateField({ description: event.target.value });
-
-  onVisibilityChange = ({ id: visibility_type }) =>
-    this.updateField({ visibility_type });
+  handleChangeDescription = ({ target: { value: description } }) => {
+    this.updateField({ description });
+  };
 
   render() {
     const { field, idfields } = this.props;
@@ -59,7 +58,7 @@ export default class Column extends Component {
               className="AdminInput TableEditor-field-name float-left bordered inline-block rounded text-bold"
               type="text"
               value={this.props.field.display_name || ""}
-              onBlurChange={this.onNameChange}
+              onBlurChange={this.handleChangeName}
             />
             <div className="clearfix">
               <div className="flex flex-auto">
@@ -86,7 +85,7 @@ export default class Column extends Component {
               className="AdminInput TableEditor-field-description"
               type="text"
               value={this.props.field.description || ""}
-              onBlurChange={this.onDescriptionChange}
+              onBlurChange={this.handleChangeDescription}
               placeholder={t`No column description yet`}
             />
           </div>
@@ -111,8 +110,9 @@ export class FieldVisibilityPicker extends Component {
     className?: string,
   };
 
-  onVisibilityChange = ({ id: visibility_type }) =>
+  handleChangeVisibility = ({ target: { value: visibility_type } }) => {
     this.props.updateField({ visibility_type });
+  };
 
   render() {
     const { field, className } = this.props;
@@ -120,13 +120,11 @@ export class FieldVisibilityPicker extends Component {
     return (
       <Select
         className={cx("TableEditor-field-visibility", className)}
-        placeholder={t`Select a field visibility`}
-        value={MetabaseCore.field_visibility_types.find(
-          type => type.id === field.visibility_type,
-        )}
+        value={field.visibility_type}
+        onChange={this.handleChangeVisibility}
         options={MetabaseCore.field_visibility_types}
-        onChange={this.onVisibilityChange}
-        triggerClasses={this.props.triggerClasses}
+        optionValueFn={o => o.id}
+        placeholder={t`Select a field visibility`}
       />
     );
   }
@@ -140,15 +138,14 @@ export class SpecialTypeAndTargetPicker extends Component {
     selectSeparator?: React$Element<any>,
   };
 
-  onSpecialTypeChange = async ({ id: special_type }) => {
+  handleChangeSpecialType = async ({ target: { value: special_type } }) => {
     const { field, updateField } = this.props;
 
     // If we are changing the field from a FK to something else, we should delete any FKs present
     if (field.target && field.target.id != null && isFK(field.special_type)) {
       await updateField({
         special_type,
-        target: null,
-        k_target_field_id: null,
+        fk_target_field_id: null,
       });
     } else {
       await updateField({ special_type });
@@ -161,16 +158,14 @@ export class SpecialTypeAndTargetPicker extends Component {
     );
   };
 
-  onCurrencyTypeChange = async currency => {
+  handleChangeCurrency = async ({ target: { value: currency } }) => {
     const { field, updateField } = this.props;
-
-    // FIXME: mutation
-    field.settings = {
-      ...(field.settings || {}),
-      currency,
-    };
-
-    await updateField(field);
+    await updateField({
+      settings: {
+        ...(field.settings || {}),
+        currency,
+      },
+    });
     MetabaseAnalytics.trackEvent(
       "Data Model",
       "Update Currency Type",
@@ -178,21 +173,22 @@ export class SpecialTypeAndTargetPicker extends Component {
     );
   };
 
-  onTargetChange = async ({ id: fk_target_field_id }) => {
+  handleChangeTarget = async ({ target: { value: fk_target_field_id } }) => {
     await this.props.updateField({ fk_target_field_id });
-
     MetabaseAnalytics.trackEvent("Data Model", "Update Field Target");
   };
 
   render() {
     const { field, className, selectSeparator } = this.props;
 
-    let specialTypes = MetabaseCore.field_special_types.slice(0);
-    specialTypes.push({
-      id: null,
-      name: t`No special type`,
-      section: t`Other`,
-    });
+    let specialTypes = [
+      ...MetabaseCore.field_special_types,
+      {
+        id: null,
+        name: t`No special type`,
+        section: t`Other`,
+      },
+    ];
     // if we don't have a numeric base-type then prevent the options for unix timestamp conversion (#823)
     if (!isNumericBaseType(field)) {
       specialTypes = specialTypes.filter(f => !isa(f.id, TYPE.UNIXTimestamp));
@@ -216,14 +212,13 @@ export class SpecialTypeAndTargetPicker extends Component {
     return (
       <div>
         <Select
-          className={cx("TableEditor-field-special-type", "mt0", className)}
-          placeholder={t`Select a special type`}
-          value={MetabaseCore.field_special_types.find(
-            type => type.id === field.special_type,
-          )}
+          className={cx("TableEditor-field-special-type mt0", className)}
+          value={field.special_type}
+          onChange={this.handleChangeSpecialType}
           options={specialTypes}
-          onChange={this.onSpecialTypeChange}
-          triggerClasses={this.props.triggerClasses}
+          optionValueFn={o => o.id}
+          optionSectionFn={o => o.section}
+          placeholder={t`Select a special type`}
         />
         {showCurrencyTypeSelect && selectSeparator}
         {// TODO - now that we have multiple "nested" options like choosing a
@@ -231,18 +226,13 @@ export class SpecialTypeAndTargetPicker extends Component {
         // handle a "secondary" input more elegantly
         showCurrencyTypeSelect && (
           <Select
-            className={cx(
-              "TableEditor-field-target",
-              "inline-block",
-              className,
-            )}
-            triggerClasses={this.props.triggerClasses}
+            className={cx("TableEditor-field-target inline-block", className)}
             value={
               (field.settings && field.settings.currency) ||
               getGlobalSettingsForColumn(field).currency ||
               "USD"
             }
-            onChange={({ target }) => this.onCurrencyTypeChange(target.value)}
+            onChange={this.handleChangeCurrency}
             placeholder={t`Select a currency type`}
             searchProp="name"
             searchCaseSensitive={false}
@@ -260,17 +250,16 @@ export class SpecialTypeAndTargetPicker extends Component {
         {showFKTargetSelect && selectSeparator}
         {showFKTargetSelect && (
           <Select
-            className={cx("TableEditor-field-target", "text-wrap", className)}
-            triggerClasses={this.props.triggerClasses}
+            className={cx("TableEditor-field-target text-wrap", className)}
             placeholder={t`Select a target`}
-            value={idfields.find(
-              idField => idField.id === field.fk_target_field_id,
-            )}
+            value={field.fk_target_field_id}
+            onChange={this.handleChangeTarget}
             options={idfields}
+            optionValueFn={field => field.id}
             optionNameFn={field =>
               field.displayName({ includeTable: true, includeSchema })
             }
-            onChange={this.onTargetChange}
+            optionIconFn={field => null}
           />
         )}
       </div>

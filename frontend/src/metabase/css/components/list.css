@@ -37,17 +37,13 @@
   word-wrap: break-word;
 }
 
+/* LIST ITEM */
 .List-item {
   display: flex;
   border-radius: 4px;
   margin-top: 2px;
   margin-bottom: 2px;
 }
-
-.List-item--disabled .List-item-title {
-  color: var(--color-text-medium);
-}
-
 .List-item:not(.List-item--disabled):hover,
 .List-item--selected {
   background-color: currentColor;
@@ -55,15 +51,33 @@
   /*color: white;*/
 }
 
+/* LIST ITEM TITLE */
 .List-item-title {
   color: var(--color-text-dark);
 }
-
+.List-item--disabled .List-item-title {
+  color: var(--color-text-medium);
+}
 .List-item:not(.List-item--disabled):hover .List-item-title,
 .List-item--selected .List-item-title {
   color: white;
 }
 
+/* LIST ITEM DESCRIPTION */
+.List-item-description {
+  margin-top: 0.25em;
+  margin-bottom: 0;
+  color: var(--color-text-medium);
+}
+.List-item--disabled .List-item-description {
+  color: var(--color-text-dark);
+}
+.List-item:not(.List-item--disabled):hover .List-item-description,
+.List-item--selected .List-item-description {
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* LIST ITEM ICON */
 .List-item:not(.List-item--disabled):hover .Icon,
 .List-item--selected .Icon {
   color: white !important;

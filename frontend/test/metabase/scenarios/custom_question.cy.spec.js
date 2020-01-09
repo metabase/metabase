@@ -1,6 +1,7 @@
-import { signInAsAdmin } from "__support__/cypress";
+import { signInAsAdmin, restore } from "__support__/cypress";
 
 describe("custom question", () => {
+  before(restore);
   beforeEach(signInAsAdmin);
   it("should allow post-aggregation filters", () => {
     // count orders by user id, filter to the one user with 46 orders
