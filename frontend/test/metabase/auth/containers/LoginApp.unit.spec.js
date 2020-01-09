@@ -4,12 +4,6 @@ import LoginApp from "metabase/auth/containers/LoginApp";
 
 import { mountWithStore } from "__support__/integration";
 
-jest.mock("metabase/lib/settings", () => ({
-  ...require.requireActual("metabase/lib/settings").default,
-  ssoEnabled: jest.fn(),
-  ldapEnabled: jest.fn(),
-}));
-
 import Settings from "metabase/lib/settings";
 
 describe("LoginApp", () => {
@@ -24,7 +18,7 @@ describe("LoginApp", () => {
     });
     describe("with SSO", () => {
       beforeEach(() => {
-        Settings.ssoEnabled.mockReturnValue(true);
+        Settings.set("google-auth-client-id", "something");
       });
       it("should show the SSO button", () => {
         const { wrapper } = mountWithStore(
