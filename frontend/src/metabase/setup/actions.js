@@ -27,7 +27,7 @@ export const validateDatabase = createThunkAction(VALIDATE_DATABASE, function(
 ) {
   return async function(dispatch, getState) {
     return await SetupApi.validate_db({
-      token: MetabaseSettings.get("setup_token"),
+      token: MetabaseSettings.get("setup-token"),
       details: details,
     });
   };
@@ -52,7 +52,7 @@ export const submitSetup = createThunkAction(SUBMIT_SETUP, function() {
     try {
       // NOTE: this request will return a Set-Cookie header for the session
       const response = await SetupApi.create({
-        token: MetabaseSettings.get("setup_token"),
+        token: MetabaseSettings.get("setup-token"),
         prefs: {
           site_name: userDetails.site_name,
           allow_tracking: allowTracking.toString(),
@@ -77,7 +77,7 @@ export const completeSetup = createAction(COMPLETE_SETUP, function(
   apiResponse,
 ) {
   // clear setup token from settings
-  MetabaseSettings.setAll({ setup_token: null });
+  MetabaseSettings.set("setup-token", null);
 
   return true;
 });

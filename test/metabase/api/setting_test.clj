@@ -1,7 +1,7 @@
 (ns metabase.api.setting-test
   (:require [clojure.test :refer :all]
             [expectations :refer [expect]]
-            [metabase.models.setting-test :refer [test-sensitive-setting test-setting-1 test-setting-2]]
+            [metabase.models.setting-test :refer [test-sensitive-setting test-setting-1 test-setting-2 test-setting-3]]
             [metabase.test.data.users :as test-users]
             [metabase.test.fixtures :as fixtures]))
 
@@ -13,11 +13,11 @@
         :when   (re-find #"^test-setting-\d$" (name (:key setting)))]
     setting))
 
-(defn- fetch-setting [setting-name]
-  ((test-users/user->client :crowberto) :get 200 (format "setting/%s" (name setting-name))))
+(defn- fetch-setting [setting-name status]
+  ((test-users/user->client :crowberto) :get status (format "setting/%s" (name setting-name))))
 
 ;; ## GET /api/setting
-;; Check that we can fetch all Settings for Org
+;; Check that we can fetch all Settings for Org, except `:visiblity :internal` ones
 (expect
   [{:key            "test-setting-1"
     :value          nil
@@ -34,6 +34,8 @@
   (do
     (test-setting-1 nil)
     (test-setting-2 "FANCY")
+    ; internal setting that should not be returned:
+    (test-setting-3 "oh hai")
     (fetch-test-settings)))
 
 ;; Check that non-superusers are denied access
@@ -46,7 +48,13 @@
 (expect
  "OK!"
  (do (test-setting-2 "OK!")
-     (fetch-setting :test-setting-2)))
+     (fetch-setting :test-setting-2 200)))
+
+;; Test that we can't fetch internal settings
+(expect
+ "Setting :test-setting-3 is internal"
+ (do (test-setting-3 "NOPE!")
+     (:message (fetch-setting :test-setting-3 500))))
 
 (deftest update-settings-test
   (testing "PUT /api/setting/:key"
@@ -56,7 +64,7 @@
         "Updated setting should be visible from setting getter")
 
     (is (= "NICE!"
-           (fetch-setting :test-setting-1))
+           (fetch-setting :test-setting-1 200))
         "Updated setting should be visible from API endpoint")))
 
 ;; ## Check non-superuser can't set a Setting
@@ -73,7 +81,7 @@
   "**********EF"
   (do
     (test-sensitive-setting "ABCDEF")
-    (fetch-setting :test-sensitive-setting)))
+    (fetch-setting :test-sensitive-setting 200)))
 
 ;; GET /api/setting should obfuscate sensitive settings
 (expect

@@ -1,70 +1,107 @@
+/* @flow weak */
+
 import _ from "underscore";
 import inflection from "inflection";
 import { t } from "ttag";
 import MetabaseUtils from "metabase/lib/utils";
 
-const mb_settings = _.clone(window.MetabaseBootstrap);
+// TODO: dump this from backend settings definitions
+export type SettingName =
+  | "admin-email"
+  | "anon-tracking-enabled"
+  | "available-locales"
+  | "available-timezones"
+  | "custom-formatting"
+  | "custom-geojson"
+  | "email-configured?"
+  | "enable-embedding"
+  | "enable-public-sharing"
+  | "enable-xrays"
+  | "engines"
+  | "ga-code"
+  | "google-auth-client-id"
+  | "has-sample-dataset?"
+  | "hide-embed-branding?"
+  | "ldap-configured?"
+  | "map-tile-server-url"
+  | "password-complexity"
+  | "setup-token"
+  | "site-url"
+  | "types"
+  | "version";
 
-const settingListeners = {};
+type SettingsMap = { [key: SettingName]: any };
 
 // provides access to Metabase application settings
-const MetabaseSettings = {
-  get: function(propName, defaultValue = null) {
-    return mb_settings[propName] !== undefined
-      ? mb_settings[propName]
-      : defaultValue;
-  },
+class Settings {
+  _settings: SettingsMap;
+  _listeners: { [key: SettingName]: Function[] };
 
-  set: function(key, value) {
-    if (mb_settings[key] !== value) {
-      mb_settings[key] = value;
-      if (settingListeners[key]) {
-        for (const listener of settingListeners[key]) {
+  constructor(settings: SettingsMap) {
+    this._settings = settings;
+    this._listeners = {};
+  }
+
+  get(key: SettingName, defaultValue: any = null) {
+    return this._settings[key] !== undefined
+      ? this._settings[key]
+      : defaultValue;
+  }
+
+  set(key: SettingName, value: any) {
+    if (this._settings[key] !== value) {
+      this._settings[key] = value;
+      if (this._listeners[key]) {
+        for (const listener of this._listeners[key]) {
           setTimeout(() => listener(value));
         }
       }
     }
-  },
+  }
 
-  setAll: function(settings) {
-    for (const key in settings) {
-      MetabaseSettings.set(key, settings[key]);
+  setAll(settings: SettingsMap) {
+    for (const [key, value] of Object.entries(settings)) {
+      // $FlowFixMe
+      this.set(key, value);
     }
-  },
+  }
+
+  on(key, callback) {
+    this._listeners[key] = this._listeners[key] || [];
+    this._listeners[key].push(callback);
+  }
 
   // these are all special accessors which provide a lookup of a property plus some additional help
-  adminEmail: function() {
-    return mb_settings.admin_email;
-  },
+  adminEmail() {
+    return this.get("admin-email");
+  }
 
-  isEmailConfigured: function() {
-    return mb_settings.email_configured;
-  },
+  isEmailConfigured() {
+    return this.get("email-configured?");
+  }
 
-  isTrackingEnabled: function() {
-    return mb_settings.anon_tracking_enabled || false;
-  },
+  isTrackingEnabled() {
+    return this.get("anon-tracking-enabled") || false;
+  }
 
-  hasSetupToken: function() {
-    return (
-      mb_settings.setup_token !== undefined && mb_settings.setup_token !== null
-    );
-  },
+  hasSetupToken() {
+    return this.get("setup-token") != null;
+  }
 
-  ssoEnabled: function() {
-    return mb_settings.google_auth_client_id != null;
-  },
+  ssoEnabled() {
+    return this.get("google-auth-client-id") != null;
+  }
 
-  ldapEnabled: function() {
-    return mb_settings.ldap_configured;
-  },
+  ldapEnabled() {
+    return this.get("ldap-configured?");
+  }
 
-  hideEmbedBranding: () => mb_settings.hide_embed_branding,
+  hideEmbedBranding() {
+    return this.get("hide-embed-branding?");
+  }
 
-  metastoreUrl: () => mb_settings.metastore_url,
-
-  docsUrl: (page = "", anchor = "") => {
-    let { tag } = MetabaseSettings.get("version", {});
+  docsUrl(page = "", anchor = "") {
+    let { tag } = this.get("version", {});
     if (!tag) {
       tag = "latest";
     }
@@ -75,11 +112,11 @@ const MetabaseSettings = {
       anchor = `#${anchor}`;
     }
     return `https://metabase.com/docs/${tag}${page}${anchor}`;
-  },
+  }
 
-  newVersionAvailable: function(settings) {
+  newVersionAvailable(settings) {
     let versionInfo = _.findWhere(settings, { key: "version-info" });
-    const currentVersion = MetabaseSettings.get("version").tag;
+    const currentVersion = this.get("version").tag;
 
     if (versionInfo) {
       versionInfo = versionInfo.value;
@@ -93,14 +130,16 @@ const MetabaseSettings = {
         versionInfo.latest.version,
       ) < 0
     );
-  },
+  }
 
   // returns a map that looks like {total: 6, digit: 1}
-  passwordComplexityRequirements: () => mb_settings.password_complexity,
+  passwordComplexityRequirements() {
+    return this.get("password-complexity");
+  }
 
   // returns a description of password complexity requirements rather than the actual map of requirements
-  passwordComplexityDescription: function(capitalize) {
-    const complexity = this.get("password_complexity");
+  passwordComplexityDescription(capitalize) {
+    const complexity = this.get("password-complexity");
 
     const clauseDescription = function(clause) {
       switch (clause) {
@@ -138,12 +177,7 @@ const MetabaseSettings = {
     } else {
       return description;
     }
-  },
+  }
+}
 
-  on: function(setting, callback) {
-    settingListeners[setting] = settingListeners[setting] || [];
-    settingListeners[setting].push(callback);
-  },
-};
-
-export default MetabaseSettings;
+export default new Settings(_.clone(window.MetabaseBootstrap));
