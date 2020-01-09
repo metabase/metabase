@@ -3,6 +3,7 @@ import {
   restore,
   ADMIN_CREDS,
   NORMAL_USER_CREDS,
+  modal,
 } from "__support__/cypress";
 
 describe("default", () => {
@@ -134,24 +135,38 @@ function createQuestionAndDashboard() {
   cy.visit("/question/new");
   cy.contains("Simple question").click();
   cy.contains("Orders").click();
+  cy.contains("Save").click(); // open save modal
+  modal()
+    .contains(/^Save$/)
+    .click(); // save question
+
+  cy.visit("/question/new");
+  cy.contains("Simple question").click();
+  cy.contains("Sample Dataset").click();
+  cy.contains("Orders").click();
   cy.contains("37.65");
   cy.contains("Summarize").click();
   cy.contains("Done").click();
   cy.contains("18,760");
   cy.contains("Save").click(); // open save modal
-  cy.get(".ModalContent")
+  modal()
     .contains(/^Save$/)
     .click(); // save question
   cy.contains("Saved!");
+
+  // add to a dashboard
   cy.contains("Yes please!").click();
   cy.contains("Create a new dashboard").click();
   cy.contains("Name")
     .next()
     .type("orders in a dashboard");
-  cy.get(".ModalContent")
+  modal()
     .contains("Create")
     .click();
   cy.contains("You are editing a dashboard");
   cy.contains("Save").click();
   cy.get(".EditHeader").should("have.length", 0);
+
+  // dismiss the "it's ok to play around" modal
+  cy.request("PUT", "/api/user/1/qbnewb", {});
 }

@@ -1,3 +1,5 @@
+/* eslint "react/prop-types": "warn" */
+
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
@@ -8,12 +10,6 @@ import { color } from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import ListSearchField from "metabase/components/ListSearchField";
 import { List, CellMeasurer, CellMeasurerCache } from "react-virtualized";
-
-export type RenderItemWrapper = (
-  item: any,
-  itemIndex: number,
-  children?: any,
-) => React$Element;
 
 export default class AccordionList extends Component {
   constructor(props, context) {
@@ -53,22 +49,38 @@ export default class AccordionList extends Component {
     style: PropTypes.object,
     className: PropTypes.string,
     id: PropTypes.string,
+
+    width: PropTypes.number,
+    maxHeight: PropTypes.number,
+
     sections: PropTypes.array.isRequired,
-    searchable: PropTypes.oneOfType([PropTypes.bool, PropTypes.func]),
+
     initiallyOpenSection: PropTypes.number,
     openSection: PropTypes.number,
     onChange: PropTypes.func,
     onChangeSection: PropTypes.func,
+
+    // section getters/render props
+    renderSectionIcon: PropTypes.func,
+
+    // item getters/render props
     itemIsSelected: PropTypes.func,
     itemIsClickable: PropTypes.func,
-    renderItem: PropTypes.func,
-    renderSectionIcon: PropTypes.func,
-    renderItemWrapper: PropTypes.func,
+    renderItemName: PropTypes.func,
+    renderItemDescription: PropTypes.func,
+    renderItemIcon: PropTypes.func,
+    renderItemExtra: PropTypes.func,
     getItemClassName: PropTypes.func,
+
     alwaysTogglable: PropTypes.bool,
     alwaysExpanded: PropTypes.bool,
     hideSingleSectionTitle: PropTypes.bool,
     showItemArrows: PropTypes.bool,
+
+    searchable: PropTypes.oneOfType([PropTypes.bool, PropTypes.func]),
+    searchProp: PropTypes.string,
+    searchCaseInsensitive: PropTypes.bool,
+    searchFuzzy: PropTypes.bool,
     searchPlaceholder: PropTypes.string,
   };
 
@@ -76,9 +88,25 @@ export default class AccordionList extends Component {
     style: {},
     width: 300,
     searchable: section => section.items && section.items.length > 10,
+    searchProp: "name",
+    searchCaseInsensitive: true,
+    searchFuzzy: true,
     alwaysTogglable: false,
     alwaysExpanded: false,
     hideSingleSectionTitle: false,
+
+    // section getters/render props
+    renderSectionIcon: section =>
+      section.icon && <Icon name={section.icon} size={18} />,
+
+    // item getters/render props
+    itemIsClickable: item => true,
+    itemIsSelected: item => false,
+    renderItemName: item => item.name,
+    renderItemDescription: item => item.description,
+    renderItemExtra: item => null,
+    renderItemIcon: item => item.icon && <Icon name={item.icon} size={18} />,
+    getItemClassName: item => item.className,
   };
 
   componentDidMount() {
@@ -89,7 +117,12 @@ export default class AccordionList extends Component {
     // Use list.scrollToRow instead of the scrollToIndex prop since the
     // causes the list's scrolling to be pinned to the selected row
     setTimeout(() => {
-      if (this._initialSelectedRowIndex != null && this._list) {
+      const index = this._initialSelectedRowIndex;
+      if (
+        this._list &&
+        index != null &&
+        !(index >= this._startIndex && index <= this._stopIndex)
+      ) {
         this._list.scrollToRow(this._initialSelectedRowIndex);
       }
     }, 0);
@@ -171,29 +204,13 @@ export default class AccordionList extends Component {
     const { sections } = this.props;
     let selectedSection = null;
     for (let i = 0; i < sections.length; i++) {
-      if (_.some(sections[i].items, item => this.itemIsSelected(item))) {
+      if (_.some(sections[i].items, item => this.props.itemIsSelected(item))) {
         selectedSection = i;
         break;
       }
     }
     return selectedSection === sectionIndex;
   }
-
-  itemIsClickable = item => {
-    if (this.props.itemIsClickable) {
-      return this.props.itemIsClickable(item);
-    } else {
-      return true;
-    }
-  };
-
-  itemIsSelected = item => {
-    if (this.props.itemIsSelected) {
-      return this.props.itemIsSelected(item);
-    } else {
-      return false;
-    }
-  };
 
   handleChange = item => {
     if (this.props.onChange) {
@@ -205,70 +222,20 @@ export default class AccordionList extends Component {
     this.setState({ searchText });
   };
 
-  renderItemExtra = (item, itemIndex, isSelected) => {
-    if (this.props.renderItemExtra) {
-      return this.props.renderItemExtra(item, itemIndex, isSelected);
-    } else {
-      return null;
-    }
-  };
-
-  renderItemIcon = (item, itemIndex) => {
-    if (this.props.renderItemIcon) {
-      return this.props.renderItemIcon(item, itemIndex);
-    } else if (item.icon) {
-      return <Icon className="Icon text-default" name={item.icon} size={18} />;
-    } else {
-      return null;
-    }
-  };
-
-  renderSectionIcon = (section, sectionIndex) => {
-    if (this.props.renderSectionIcon) {
-      return (
-        <span className="List-section-icon mr1 flex align-center">
-          {this.props.renderSectionIcon(section, sectionIndex)}
-        </span>
-      );
-    } else if (section.icon) {
-      return (
-        <span className="List-section-icon mr1 flex align-center">
-          <Icon name={section.icon} size={18} />
-        </span>
-      );
-    } else {
-      return null;
-    }
-  };
-
-  renderItemWrapper = (item, itemIndex, children) => {
-    if (this.props.renderItemWrapper) {
-      return this.props.renderItemWrapper(item, itemIndex, children);
-    } else {
-      return children;
-    }
-  };
-
-  getItemClassName = (item, itemIndex) => {
-    if (this.props.getItemClassName) {
-      return this.props.getItemClassName(item, itemIndex);
-    } else {
-      return item.className;
-    }
-  };
-
   render() {
     const {
       id,
       style,
       className,
       searchable,
+      searchProp,
+      searchCaseInsensitive,
+      searchFuzzy,
       sections,
       alwaysTogglable,
       alwaysExpanded,
       hideSingleSectionTitle,
     } = this.props;
-    const { searchText } = this.state;
 
     const openSection = this.getOpenSection();
     const sectionIsExpanded = sectionIndex =>
@@ -278,6 +245,23 @@ export default class AccordionList extends Component {
       (typeof searchable !== "function" || searchable(sections[sectionIndex]));
     const sectionIsTogglable = sectionIndex =>
       alwaysTogglable || sections.length > 1;
+
+    let { searchText } = this.state;
+    let searchFilter = () => true;
+    if (searchText) {
+      searchFilter = item => {
+        let itemText = String(item[searchProp] || "");
+        if (searchCaseInsensitive) {
+          itemText = itemText.toLowerCase();
+          searchText = searchText.toLowerCase();
+        }
+        if (searchFuzzy) {
+          return itemText.indexOf(searchText) >= 0;
+        } else {
+          return itemText.startsWith(searchText);
+        }
+      };
+    }
 
     // if any section is searchable just enable a global search
     let globalSearch = false;
@@ -316,12 +300,9 @@ export default class AccordionList extends Component {
         section.items.length > 0
       ) {
         for (const [itemIndex, item] of section.items.entries()) {
-          if (
-            !searchText ||
-            item.name.toLowerCase().includes(searchText.toLowerCase())
-          ) {
+          if (searchFilter(item)) {
             const isLastItem = itemIndex === section.items.length - 1;
-            if (this.itemIsSelected(item)) {
+            if (this.props.itemIsSelected(item)) {
               this._initialSelectedRowIndex = rows.length;
             }
             rows.push({
@@ -364,16 +345,9 @@ export default class AccordionList extends Component {
               onChange={this.handleChange}
               searchText={this.state.searchText}
               onChangeSearchText={this.handleChangeSearchText}
-              itemIsSelected={this.itemIsSelected}
-              itemIsClickable={this.itemIsClickable}
               sectionIsExpanded={sectionIsExpanded}
               sectionIsTogglable={sectionIsTogglable}
               toggleSection={this.toggleSection}
-              renderSectionIcon={this.renderSectionIcon}
-              renderItemWrapper={this.renderItemWrapper}
-              renderItemIcon={this.renderItemIcon}
-              renderItemExtra={this.renderItemExtra}
-              getItemClassName={this.getItemClassName}
             />
           ))}
         </div>
@@ -434,25 +408,24 @@ export default class AccordionList extends Component {
                   onChange={this.handleChange}
                   searchText={this.state.searchText}
                   onChangeSearchText={this.handleChangeSearchText}
-                  itemIsSelected={this.itemIsSelected}
-                  itemIsClickable={this.itemIsClickable}
                   sectionIsExpanded={sectionIsExpanded}
                   sectionIsTogglable={sectionIsTogglable}
                   toggleSection={this.toggleSection}
-                  renderSectionIcon={this.renderSectionIcon}
-                  renderItemWrapper={this.renderItemWrapper}
-                  renderItemIcon={this.renderItemIcon}
-                  renderItemExtra={this.renderItemExtra}
-                  getItemClassName={this.getItemClassName}
                 />
               )}
             </CellMeasurer>
           );
         }}
+        onRowsRendered={({ startIndex, stopIndex }) => {
+          this._startIndex = startIndex;
+          this._stopIndex = stopIndex;
+        }}
       />
     );
   }
 }
+
+/* eslint-disable react/prop-types */
 
 const AccordionListCell = ({
   style,
@@ -466,7 +439,8 @@ const AccordionListCell = ({
   alwaysExpanded,
   toggleSection,
   renderSectionIcon,
-  renderItemWrapper,
+  renderItemName,
+  renderItemDescription,
   renderItemIcon,
   renderItemExtra,
   searchText,
@@ -488,6 +462,8 @@ const AccordionListCell = ({
         </div>
       );
     } else {
+      const icon = renderSectionIcon(section, sectionIndex);
+      const name = section.name;
       content = (
         <div
           className={cx(
@@ -502,8 +478,12 @@ const AccordionListCell = ({
             (() => toggleSection(sectionIndex))
           }
         >
-          {renderSectionIcon(section, sectionIndex)}
-          <h3 className="List-section-title text-wrap">{section.name}</h3>
+          {icon && (
+            <span className="List-section-icon mr1 flex align-center">
+              {icon}
+            </span>
+          )}
+          {name && <h3 className="List-section-title text-wrap">{name}</h3>}
           {sections.length > 1 && section.items && section.items.length > 0 && (
             <span className="flex-align-right hover-child">
               <Icon
@@ -532,9 +512,10 @@ const AccordionListCell = ({
   } else if (type === "item") {
     const isSelected = itemIsSelected(item, itemIndex);
     const isClickable = itemIsClickable(item, itemIndex);
-    content = renderItemWrapper(
-      item,
-      itemIndex,
+    const icon = renderItemIcon(item, itemIndex, isSelected);
+    const name = renderItemName(item, itemIndex, isSelected);
+    const description = renderItemDescription(item, itemIndex, isSelected);
+    content = (
       <div
         className={cx(
           "List-item flex mx1",
@@ -553,10 +534,19 @@ const AccordionListCell = ({
           )}
           onClick={isClickable ? () => onChange(item) : null}
         >
-          <span className="flex align-center">
-            {renderItemIcon(item, itemIndex, isSelected)}
-          </span>
-          <h4 className="List-item-title ml1 text-wrap">{item.name}</h4>
+          {icon && (
+            <span className="List-item-icon text-default flex align-center">
+              {icon}
+            </span>
+          )}
+          <div>
+            {name && <h4 className="List-item-title ml1 text-wrap">{name}</h4>}
+            {description && (
+              <p className="List-item-description ml1 text-wrap">
+                {description}
+              </p>
+            )}
+          </div>
         </a>
         {renderItemExtra(item, itemIndex, isSelected)}
         {showItemArrows && (
@@ -564,7 +554,7 @@ const AccordionListCell = ({
             <Icon name="chevronright" size={8} />
           </div>
         )}
-      </div>,
+      </div>
     );
   }
 

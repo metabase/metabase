@@ -3,7 +3,7 @@ describe("getting started guide", () => {
   before(restore);
   beforeEach(signInAsAdmin);
   it("should render", () => {
-    cy.visit("reference");
+    cy.visit("/reference");
     cy.contains("Our data");
   });
 });

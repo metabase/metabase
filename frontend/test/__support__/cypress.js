@@ -16,11 +16,24 @@ export function signInAsNormalUser() {
   cy.request("POST", "/api/session", NORMAL_USER_CREDS);
 }
 
+export function signOut() {
+  cy.clearCookie("metabase.SESSION");
+}
+
 export function snapshot(name) {
   cy.request("POST", `/api/testing/snapshot/${name}`);
 }
 export function restore(name = "default") {
   cy.request("POST", `/api/testing/restore/${name}`);
+}
+
+export function popover(callback) {
+  const p = cy.get(".PopoverContainer");
+  return callback ? callback(p) : p;
+}
+export function modal(callback) {
+  const m = cy.get(".ModalContainer");
+  return callback ? callback(m) : m;
 }
 
 Cypress.on("uncaught:exception", (err, runnable) => false);
