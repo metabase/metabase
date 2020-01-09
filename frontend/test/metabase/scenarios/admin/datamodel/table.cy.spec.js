@@ -3,9 +3,8 @@ import { signInAsAdmin, restore } from "__support__/cypress";
 const ORDERS_URL = "/admin/datamodel/database/1/table/2";
 
 describe("admin > datamodel > table", () => {
-  before(restore);
-
   beforeEach(() => {
+    restore();
     signInAsAdmin();
     cy.server();
     cy.route("PUT", "/api/table/*").as("tableUpdate");
@@ -96,18 +95,12 @@ describe("admin > datamodel > table", () => {
       testSelect("@created_at", "Everywhere", "Only in detail views");
     });
 
-    it("should allow changing of special type", () => {
+    it("should allow changing of special type and currency", () => {
       cy.visit(ORDERS_URL);
 
       field("Tax").as("tax");
       testSelect("@tax", "No special type", "Currency");
-    });
-
-    it("should allow changing of currency", () => {
-      cy.visit(ORDERS_URL);
-
-      field("Total").as("total");
-      testSelect("@total", "US Dollar", "Canadian Dollar");
+      testSelect("@tax", "US Dollar", "Canadian Dollar");
     });
 
     it("should allow changing of foreign key target", () => {
