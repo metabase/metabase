@@ -29,7 +29,7 @@ export const validateDatabase = createThunkAction(VALIDATE_DATABASE, function(
     return await SetupApi.validate_db({
       token: MetabaseSettings.get("setup-token"),
       // NOTE: the validate endpoint calls this `details` but it's actually an object containing `engine` and `details`
-      details: details,
+      details: database,
     });
   };
 });
