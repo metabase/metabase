@@ -78,7 +78,7 @@
 
 (defsetting admin-email
   (deferred-tru "The email address users should be referred to if they encounter a problem.")
-  :visibility :public)
+  :visibility :authenticated)
 
 (defsetting anon-tracking-enabled
   (deferred-tru "Enable the collection of anonymous usage data in order to help Metabase improve.")
@@ -94,7 +94,7 @@
 (defsetting map-tile-server-url
   (deferred-tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
   :default    "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-  :visibility :authenticated)
+  :visibility :public)
 
 (defsetting enable-public-sharing
   (deferred-tru "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?")
@@ -173,7 +173,7 @@
   (deferred-tru "Object keyed by type, containing formatting settings")
   :type       :json
   :default    {}
-  :visibility :authenticated)
+  :visibility :public)
 
 (defsetting enable-xrays
   (deferred-tru "Allow users to explore data using X-rays")
@@ -248,7 +248,7 @@
 
 (defsetting has-sample-dataset?
   "Whether this instance has a Sample Dataset database"
-  :visibility :public
+  :visibility :authenticated
   :setter     :none
   :getter     (fn [] (db/exists? 'Database, :is_sample true)))
 
