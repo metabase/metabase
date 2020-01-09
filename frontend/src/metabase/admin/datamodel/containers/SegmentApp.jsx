@@ -16,6 +16,7 @@ import Tables from "metabase/entities/tables";
 const mapDispatchToProps = {
   updatePreviewSummary,
   createSegment: Segments.actions.create,
+  updateSegment: Segments.actions.update,
   onChangeLocation: push,
 };
 
@@ -24,15 +25,12 @@ const mapStateToProps = (state, props) => ({
   previewSummary: getPreviewSummary(state),
 });
 
-@Segments.load({
-  id: (state, props) => parseInt(props.params.id),
-  wrapped: true,
-})
+@Segments.load({ id: (state, props) => parseInt(props.params.id) })
 @Tables.load({ id: (state, props) => props.segment.table_id, wrapped: true })
 @withTableMetadataLoaded
 class UpdateSegmentForm extends Component {
   onSubmit = async segment => {
-    await this.props.segment.update(segment);
+    await this.props.updateSegment(segment);
     MetabaseAnalytics.trackEvent("Data Model", "Segment Updated");
     const { id: tableId, db_id: databaseId } = this.props.table;
     this.props.onChangeLocation(
@@ -41,7 +39,14 @@ class UpdateSegmentForm extends Component {
   };
 
   render() {
-    return <SegmentForm {...this.props} onSubmit={this.onSubmit} />;
+    const { segment, ...props } = this.props;
+    return (
+      <SegmentForm
+        {...props}
+        segment={segment.getPlainObject()}
+        onSubmit={this.onSubmit}
+      />
+    );
   }
 }
 
