@@ -177,7 +177,7 @@ export default class SchedulePicker extends Component {
       : schedule.schedule_hour;
     const hour = hourOfDay % 12;
     const amPm = hourOfDay >= 12 ? 1 : 0;
-    const timezone = Settings.get("timezone_short");
+    const timezone = Settings.get("report-timezone-short");
     return (
       <div className="mt1">
         <span className="h4 text-bold mr1">at</span>

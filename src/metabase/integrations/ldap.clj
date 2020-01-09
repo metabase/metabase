@@ -84,12 +84,14 @@
                  (throw (IllegalArgumentException. (tru "{0} is not a valid DN." (name k))))))
              (setting/set-json! :ldap-group-mappings new-value)))
 
-(defn ldap-configured?
+(defsetting ldap-configured?
   "Check if LDAP is enabled and that the mandatory settings are configured."
-  []
-  (boolean (and (ldap-enabled)
-                (ldap-host)
-                (ldap-user-base))))
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (boolean (and (ldap-enabled)
+                                   (ldap-host)
+                                   (ldap-user-base)))))
 
 (defn- details->ldap-options [{:keys [host port bind-dn password security]}]
   {:host      (str host ":" port)
@@ -197,9 +199,9 @@
           :last-name  lname
           :email      email
           :groups     (when (ldap-group-sync)
-                        ;; ActiveDirectory (and others?) will supply a `memberOf` overlay attribute for groups
-                        ;; Otherwise we have to make the inverse query to get them
-                        (or (:memberOf result) (get-user-groups dn) []))})))))
+                        ;; Active Directory and others (like FreeIPA) will supply a `memberOf` overlay attribute for
+                        ;; groups. Otherwise we have to make the inverse query to get them.
+                        (or (:memberof result) (get-user-groups dn) []))})))))
 
 (defn verify-password
   "Verifies if the supplied password is valid for the `user-info` (from `find-user`) or DN."

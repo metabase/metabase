@@ -11,7 +11,7 @@ import { t } from "ttag";
 import { utf8_to_b64url } from "metabase/lib/card";
 
 export default ({ question }: ClickActionProps): ClickAction[] => {
-  if (!MetabaseSettings.get("enable_xrays")) {
+  if (!MetabaseSettings.get("enable-xrays")) {
     return [];
   }
   return [

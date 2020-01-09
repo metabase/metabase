@@ -1,73 +1,106 @@
+/* @flow weak */
+
 import _ from "underscore";
 import { t, ngettext, msgid } from "ttag";
 import MetabaseUtils from "metabase/lib/utils";
 
-const mb_settings = _.clone(window.MetabaseBootstrap);
+// TODO: dump this from backend settings definitions
+export type SettingName =
+  | "admin-email"
+  | "anon-tracking-enabled"
+  | "available-locales"
+  | "available-timezones"
+  | "custom-formatting"
+  | "custom-geojson"
+  | "email-configured?"
+  | "enable-embedding"
+  | "enable-public-sharing"
+  | "enable-xrays"
+  | "engines"
+  | "ga-code"
+  | "google-auth-client-id"
+  | "has-sample-dataset?"
+  | "hide-embed-branding?"
+  | "ldap-configured?"
+  | "map-tile-server-url"
+  | "password-complexity"
+  | "setup-token"
+  | "site-url"
+  | "types"
+  | "version";
 
-const settingListeners = {};
+type SettingsMap = { [key: SettingName]: any };
 
 // provides access to Metabase application settings
-const MetabaseSettings = {
-  get(propName, defaultValue = null) {
-    return mb_settings[propName] !== undefined
-      ? mb_settings[propName]
-      : defaultValue;
-  },
+class Settings {
+  _settings: SettingsMap;
+  _listeners: { [key: SettingName]: Function[] };
 
-  set(key, value) {
-    if (mb_settings[key] !== value) {
-      mb_settings[key] = value;
-      if (settingListeners[key]) {
-        for (const listener of settingListeners[key]) {
+  constructor(settings: SettingsMap) {
+    this._settings = settings;
+    this._listeners = {};
+  }
+
+  get(key: SettingName, defaultValue: any = null) {
+    return this._settings[key] !== undefined
+      ? this._settings[key]
+      : defaultValue;
+  }
+
+  set(key: SettingName, value: any) {
+    if (this._settings[key] !== value) {
+      this._settings[key] = value;
+      if (this._listeners[key]) {
+        for (const listener of this._listeners[key]) {
           setTimeout(() => listener(value));
         }
       }
     }
-  },
+  }
 
-  setAll(settings) {
-    for (const key in settings) {
-      MetabaseSettings.set(key, settings[key]);
+  setAll(settings: SettingsMap) {
+    for (const [key, value] of Object.entries(settings)) {
+      // $FlowFixMe
+      this.set(key, value);
     }
-  },
+  }
+
+  on(key, callback) {
+    this._listeners[key] = this._listeners[key] || [];
+    this._listeners[key].push(callback);
+  }
 
   // these are all special accessors which provide a lookup of a property plus some additional help
   adminEmail() {
-    return mb_settings.admin_email;
-  },
+    return this.get("admin-email");
+  }
 
   isEmailConfigured() {
-    return mb_settings.email_configured;
-  },
+    return this.get("email-configured?");
+  }
 
   isTrackingEnabled() {
-    return mb_settings.anon_tracking_enabled || false;
-  },
+    return this.get("anon-tracking-enabled") || false;
+  }
 
   hasSetupToken() {
-    return (
-      mb_settings.setup_token !== undefined && mb_settings.setup_token !== null
-    );
-  },
+    return this.get("setup-token") != null;
+  }
 
   ssoEnabled() {
-    return mb_settings.google_auth_client_id != null;
-  },
+    return this.get("google-auth-client-id") != null;
+  }
 
   ldapEnabled() {
-    return mb_settings.ldap_configured;
-  },
+    return this.get("ldap-configured?");
+  }
 
   hideEmbedBranding() {
-    return mb_settings.hide_embed_branding;
-  },
-
-  metastoreUrl() {
-    return mb_settings.metastore_url;
-  },
+    return this.get("hide-embed-branding?");
+  }
 
   docsUrl(page = "", anchor = "") {
-    let { tag } = MetabaseSettings.get("version", {});
+    let { tag } = this.get("version", {});
     if (!tag) {
       tag = "latest";
     }
@@ -78,11 +111,11 @@ const MetabaseSettings = {
       anchor = `#${anchor}`;
     }
     return `https://metabase.com/docs/${tag}${page}${anchor}`;
-  },
+  }
 
   newVersionAvailable(settings) {
     let versionInfo = _.findWhere(settings, { key: "version-info" });
-    const currentVersion = MetabaseSettings.get("version").tag;
+    const currentVersion = this.get("version").tag;
 
     if (versionInfo) {
       versionInfo = versionInfo.value;
@@ -96,12 +129,12 @@ const MetabaseSettings = {
         versionInfo.latest.version,
       ) < 0
     );
-  },
+  }
 
   // returns a map that looks like {total: 6, digit: 1}
   passwordComplexityRequirements() {
-    return this.get("password_complexity", {});
-  },
+    return this.get("password-complexity", {});
+  }
 
   /**
    * Returns a description of password complexity requirements.
@@ -128,13 +161,8 @@ const MetabaseSettings = {
     } else {
       return null;
     }
-  },
-
-  on(setting, callback) {
-    settingListeners[setting] = settingListeners[setting] || [];
-    settingListeners[setting].push(callback);
-  },
-};
+  }
+}
 
 const n2w = n => MetabaseUtils.numberToWord(n);
 
@@ -187,4 +215,4 @@ function makeRegexTest(property, regex) {
     (password.match(regex) || []).length >= (requirements[property] || 0);
 }
 
-export default MetabaseSettings;
+export default new Settings(_.clone(window.MetabaseBootstrap));

@@ -23,7 +23,6 @@ export function signOut() {
 export function snapshot(name) {
   cy.request("POST", `/api/testing/snapshot/${name}`);
 }
-
 export function restore(name = "default") {
   cy.request("POST", `/api/testing/restore/${name}`);
 }
