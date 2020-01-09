@@ -8,9 +8,11 @@
              [sparkline :as sparkline]
              [style :as style]
              [table :as table]]
+            [medley.core :as m]
             [metabase.types :as types]
             [metabase.util.i18n :refer [trs]]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [cheshire.core :as json]))
 
 (def rows-limit
   "Maximum number of rows to render in a Pulse image."
@@ -62,15 +64,26 @@
               :when remapped_from]
           [remapped_from col-idx])))
 
+(defn- header-row-column-name
+  [card col]
+  (let [setting-key     (if-let [ref (:field_ref col)]
+                          ["ref" (mapv #(if (keyword? %) (name %) %) ref)]
+                          ["name" (:name col)])
+        column-settings (some->> (get-in card [:visualization_settings :column_settings])
+                                 (m/map-keys (comp vec json/parse-string name)))]
+    (name (or (get-in column-settings [setting-key :column_title])
+              (:display_name col)
+              (:name col)))))
+
 (defn- query-results->header-row
   "Returns a row structure with header info from `cols`. These values are strings that are ready to be rendered as HTML"
-  [remapping-lookup cols include-bar?]
+  [remapping-lookup card cols include-bar?]
   {:row (for [maybe-remapped-col cols
               :when (show-in-table? maybe-remapped-col)
               :let [{:keys [base_type special_type] :as col} (if (:remapped_to maybe-remapped-col)
                                                                (nth cols (get remapping-lookup (:name maybe-remapped-col)))
                                                                maybe-remapped-col)
-                    column-name (name (or (:display_name col) (:name col)))]
+                    column-name (header-row-column-name card col)]
               ;; If this column is remapped from another, it's already
               ;; in the output and should be skipped
               :when (not (:remapped_from maybe-remapped-col))]
@@ -99,11 +112,11 @@
 (s/defn ^:private prep-for-html-rendering
   "Convert the query results (`cols` and `rows`) into a formatted seq of rows (list of strings) that can be rendered as
   HTML"
-  [timezone-id :- (s/maybe s/Str) cols rows bar-column max-value column-limit]
+  [timezone-id :- (s/maybe s/Str) card {:keys [cols rows]} bar-column max-value column-limit]
   (let [remapping-lookup (create-remapping-lookup cols)
         limited-cols (take column-limit cols)]
     (cons
-     (query-results->header-row remapping-lookup limited-cols bar-column)
+     (query-results->header-row remapping-lookup card limited-cols bar-column)
      (query-results->row-seq timezone-id remapping-lookup limited-cols (take rows-limit rows) bar-column max-value))))
 
 (defn- strong-limit-text [number]
@@ -166,7 +179,7 @@
                     (table/render-table
                      (color/make-color-selector data (:visualization_settings card))
                      (mapv :name (:cols data))
-                     (prep-for-html-rendering timezone-id cols rows nil nil cols-limit))
+                     (prep-for-html-rendering timezone-id card data nil nil cols-limit))
                     (render-truncation-warning cols-limit (count-displayed-columns cols) rows-limit (count rows))]]
     {:attachments
      nil
@@ -188,7 +201,7 @@
      [:div
       (table/render-table (color/make-color-selector data (:visualization_settings card))
                           (mapv :name cols)
-                          (prep-for-html-rendering timezone-id cols rows y-axis-rowfn max-value 2))
+                          (prep-for-html-rendering timezone-id card data y-axis-rowfn max-value 2))
       (render-truncation-warning 2 (count-displayed-columns cols) rows-limit (count rows))]}))
 
 (s/defmethod render :scalar :- common/RenderedPulseCard
