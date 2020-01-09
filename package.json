@@ -131,6 +131,7 @@
     "file-loader": "^0.11.1",
     "flow-bin": "^0.37.4",
     "fs-promise": "^2.0.2",
+    "fsevents": "^1.2.9",
     "glob": "^7.1.1",
     "html-webpack-harddisk-plugin": "^0.1.0",
     "html-webpack-plugin": "^2.30.1",
