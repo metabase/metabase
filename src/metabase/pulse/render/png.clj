@@ -6,7 +6,8 @@
   subsequent code simplification and cleanup by @camsaul
 
   CSSBox JavaDoc is here: http://cssbox.sourceforge.net/api/index.html"
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.java.io :as io]
+            [clojure.tools.logging :as log]
             [hiccup.core :refer [html]]
             [metabase.pulse.render
              [common :as common]
@@ -22,6 +23,21 @@
            [org.fit.cssbox.io DefaultDOMSource StreamDocumentSource]
            org.fit.cssbox.layout.BrowserCanvas
            org.w3c.dom.Document))
+
+
+(defonce
+  ^{:doc     "Makes custom fonts available to Java so that CSSBox can render them"
+    :private true}
+  register-fonts
+  (delay (doseq [weight ["regular" "700" "900"]]
+           (.registerFont (java.awt.GraphicsEnvironment/getLocalGraphicsEnvironment)
+                          (java.awt.Font/createFont
+                           java.awt.Font/TRUETYPE_FONT
+                           (-> (format "frontend_client/app/fonts/lato-v16-latin/lato-v16-latin-%s.ttf" weight)
+                               io/resource
+                               io/input-stream))))))
+
+@register-fonts
 
 (defn- write-image!
   [^BufferedImage image, ^String format-name, ^ByteArrayOutputStream output-stream]

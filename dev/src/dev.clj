@@ -1,6 +1,7 @@
 (ns dev
   "Put everything needed for REPL development within easy reach"
   (:require [clojure.java.jdbc :as jdbc]
+            [dev.render-png :as render-png]
             [metabase
              [core :as mbc]
              [db :as mdb]
@@ -106,3 +107,5 @@
          (if dataset
            (data.impl/do-with-dataset (data.impl/resolve-dataset-definition *ns* dataset) thunk)
            (thunk)))))))
+
+(def render-card-to-png render-png/render-card-to-png)
