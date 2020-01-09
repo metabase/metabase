@@ -6,7 +6,8 @@
   subsequent code simplification and cleanup by @camsaul
 
   CSSBox JavaDoc is here: http://cssbox.sourceforge.net/api/index.html"
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.java.io :as io]
+            [clojure.tools.logging :as log]
             [hiccup.core :refer [html]]
             [metabase.pulse.render
              [common :as common]
@@ -31,10 +32,10 @@
   (delay (doseq [weight ["regular" "700" "900"]]
            (.registerFont (java.awt.GraphicsEnvironment/getLocalGraphicsEnvironment)
                           (java.awt.Font/createFont
-                            java.awt.Font/TRUETYPE_FONT
-                            (-> (format "frontend_client/app/fonts/lato-v16-latin/lato-v16-latin-%s.ttf" weight)
-                                clojure.java.io/resource
-                                clojure.java.io/input-stream))))))
+                           java.awt.Font/TRUETYPE_FONT
+                           (-> (format "frontend_client/app/fonts/lato-v16-latin/lato-v16-latin-%s.ttf" weight)
+                               io/resource
+                               io/input-stream))))))
 
 @register-fonts
 
@@ -85,9 +86,9 @@
   [{:keys [content]} :- common/RenderedPulseCard
    width]
   (let [html (html [:html [:body {:style (style/style
-                                           {:margin           0
-                                            :padding          0
-                                            :background-color :white})}
+                                          {:margin           0
+                                           :padding          0
+                                           :background-color :white})}
                            content]])]
     (with-open [os (ByteArrayOutputStream.)]
       (render-to-png! html os width)
