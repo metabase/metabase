@@ -47,7 +47,7 @@ export function parseTimestamp(value, unit) {
     return value;
   } else if (typeof value === "string" && /(Z|[+-]\d\d:?\d\d)$/.test(value)) {
     return moment.parseZone(value);
-  } else if (unit in NUMERIC_UNIT_FORMATS) {
+  } else if (unit in NUMERIC_UNIT_FORMATS && typeof value == "number") {
     return NUMERIC_UNIT_FORMATS[unit](value);
   } else {
     return moment.utc(value);
