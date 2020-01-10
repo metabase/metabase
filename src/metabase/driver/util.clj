@@ -38,7 +38,7 @@
     (try
       (can-connect-with-details? driver details-map :throw-exceptions)
       (catch Throwable e
-        (log/error (trs "Failed to connect to database: {0}" (.getMessage e)))
+        (log/error e (trs "Failed to connect to database"))
         false))))
 
 (defn report-timezone-if-supported

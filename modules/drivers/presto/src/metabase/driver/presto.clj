@@ -51,7 +51,7 @@
                            "X-Presto-User"   user}
                           (when catalog
                             {"X-Presto-Catalog" catalog})
-                          (when-let [report-timezone (qp.timezone/report-timezone-id-if-supported)]
+                          (when-let [report-timezone (qp.timezone/report-timezone-id-if-supported :presto)]
                             {"X-Presto-Time-Zone" report-timezone}))}
          (when password
            {:basic-auth [user password]})))
