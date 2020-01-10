@@ -150,15 +150,15 @@
   "A dataset for testing temporal values with and without timezones. Records of number of crow counts spoted and the
   date/time when they spotting occured in several different column types."
   [["attempts"
-    [{:field-name "num-crows",      :base-type :type/Integer}
+    [{:field-name "num_crows",      :base-type :type/Integer}
      {:field-name "date",           :base-type :type/Date}
      {:field-name "time",           :base-type :type/Time}
-     {:field-name "time-ltz",       :base-type :type/TimeWithLocalTZ}
-     {:field-name "time-tz",        :base-type :type/TimeWithZoneOffset}
+     {:field-name "time_ltz",       :base-type :type/TimeWithLocalTZ}
+     {:field-name "time_tz",        :base-type :type/TimeWithZoneOffset}
      {:field-name "datetime",       :base-type :type/DateTime}
-     {:field-name "datetime-ltz",   :base-type :type/DateTimeWithLocalTZ}
-     {:field-name "datetime-tz",    :base-type :type/DateTimeWithZoneOffset}
-     {:field-name "datetime-tz-id", :base-type :type/DateTimeWithZoneID}]
+     {:field-name "datetime_ltz",   :base-type :type/DateTimeWithLocalTZ}
+     {:field-name "datetime_tz",    :base-type :type/DateTimeWithZoneOffset}
+     {:field-name "datetime_tz_id", :base-type :type/DateTimeWithZoneID}]
     (for [[cnt t] [[6 #t "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"]
                    [8 #t "2019-11-02T00:14:14.246-07:00[America/Los_Angeles]"]
                    [6 #t "2019-11-03T23:35:17.906-08:00[America/Los_Angeles]"]

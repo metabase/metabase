@@ -115,8 +115,12 @@
   "Return info about all currently available drivers, including their connection properties fields and supported
   features."
   []
-  (into {} (for [driver (available-drivers)]
+  (into {} (for [driver (available-drivers)
+                 :let   [props (try
+                                 (driver/connection-properties driver)
+                                 (catch Throwable e
+                                   (log/error e (trs "Unable to determine connection properties for driver {0}" driver))))]
+                 :when  props]
              ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
-             [driver {:details-fields (driver/connection-properties driver)
-                      :driver-name    (driver/display-name driver)
-                      #_:features       #_(features driver)}])))
+             [driver {:details-fields props
+                      :driver-name    (driver/display-name driver)}])))

@@ -7,12 +7,14 @@
              [models :refer [Database Field]]
              [query-processor :as qp]
              [query-processor-test :as qp.test]
+             [sync :as sync]
              [test :as mt]
              [util :as u]]
             [metabase.driver.bigquery :as bigquery]
             [metabase.driver.bigquery.query-processor :as bigquery.qp]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.query-processor.store :as qp.store]
+            [metabase.test.data.bigquery :as bigquery.tx]
             [metabase.test.util.timezone :as tu.tz]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.util.test :as tt]))
@@ -362,3 +364,79 @@
                                     [:field-literal "date" :type/Date]
                                     (t/local-date-time "2019-11-11T12:00:00")
                                     (t/local-date-time "2019-11-12T12:00:00")]))))))))))
+
+(deftest timezones-test
+  (mt/test-driver :bigquery
+    (testing "BigQuery does not support report-timezone, so setting it should not affect results"
+      (doseq [timezone ["UTC" "US/Pacific"]]
+        (mt/with-temporary-setting-values [report-timezone timezone]
+          (is (= [[37 "2015-11-19T00:00:00Z"]]
+                 (mt/rows
+                   (mt/run-mbql-query checkins
+                     {:fields   [$id $date]
+                      :filter   [:= $date "2015-11-19"]
+                      :order-by [[:asc $id]]})))))))))
+
+(defn- do-with-datetime-timestamp-table [f]
+  (driver/with-driver :bigquery
+    (let [table-name (name (munge (gensym "table_")))]
+      (mt/with-temp-copy-of-db
+        (try
+          (bigquery.tx/execute!
+           (format "CREATE TABLE `test_data.%s` ( ts TIMESTAMP, dt DATETIME )" table-name))
+          (bigquery.tx/execute!
+           (format "INSERT INTO `test_data.%s` (ts, dt) VALUES (TIMESTAMP \"2020-01-01 00:00:00 UTC\", DATETIME \"2020-01-01 00:00:00\")"
+                   table-name))
+          (sync/sync-database! (mt/db))
+          (f table-name)
+          (finally
+            (bigquery.tx/execute! "DROP TABLE IF EXISTS `test_data.%s`" table-name)))))))
+
+(deftest filter-by-datetime-timestamp-test
+  (mt/test-driver :bigquery
+    ;; there are more tests in the `bigquery.query-processor-test` namespace
+    (testing "Make sure we can filter against different types of BigQuery temporal columns (#11222)"
+      (do-with-datetime-timestamp-table
+       (fn [table-name]
+         (doseq [column [:ts :dt]]
+           (testing (format "Filtering against %s column" column)
+             (doseq [s    ["2020-01-01" "2020-01-01T00:00:00"]
+                     field [[:field-id (mt/id table-name column)]
+                            [:datetime-field [:field-id (mt/id table-name column)] :default]
+                            [:datetime-field [:field-id (mt/id table-name column)] :day]]
+                     :let [filter-clause [:= field s]]]
+               (testing (format "\nMBQL filter clause = %s" (pr-str filter-clause))
+                 (is (= [["2020-01-01T00:00:00Z" "2020-01-01T00:00:00Z"]]
+                        (mt/rows
+                          (mt/run-mbql-query nil
+                            {:source-table (mt/id table-name)
+                             :filter       filter-clause})))))))))))))
+
+(deftest datetime-parameterized-sql-test
+  (testing "Make sure Field filters against temporal fields generates correctly-typed SQL (#11578)"
+    (mt/test-driver :bigquery
+      (mt/dataset attempted-murders
+        (doseq [field              [:datetime
+                                    :date
+                                    :datetime_tz]
+                [value-type value] {:date/relative     "past30days"
+                                    :date/range        "2019-12-11~2020-01-09"
+                                    :date/single       "2020-01-09"
+                                    :date/quarter-year "Q1-2020"
+                                    :date/month-year   "2020-01"}]
+          (testing (format "\nField filter with %s Field" field)
+            (testing (format "\nfiltering against %s value '%s'" value-type value)
+              (is (= [[0]]
+                     (mt/rows
+                       (qp/process-query
+                         {:database   (mt/id)
+                          :type       :native
+                          :native     {:query         "SELECT count(*) FROM `attempted_murders.attempts` WHERE {{d}}"
+                                       :template-tags {"d" {:name         "d"
+                                                            :display-name "Date"
+                                                            :type         :dimension
+                                                            :dimension    [:field-id (mt/id :attempts field)]}}}
+                          :parameters [{:type   value-type
+                                        :name   "d"
+                                        :target [:dimension [:template-tag "d"]]
+                                        :value  value}]})))))))))))
