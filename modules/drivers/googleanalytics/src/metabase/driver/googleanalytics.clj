@@ -42,7 +42,7 @@
   (google/execute (.list (.profiles (.management client)) account-id property-id)))
 
 (defn- properties+profiles
-  "Return a set of tuples of `Webproperty` and `Profile` for DATABASE."
+  "Return a set of tuples of `Webproperty` and `Profile` for `database`."
   [{{:keys [account-id]} :details, :as database}]
   (let [client (database->client database)]
     (set (for [^Webproperty property (.getItems (fetch-properties client account-id))
