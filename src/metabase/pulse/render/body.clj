@@ -90,7 +90,7 @@
           (if (or (isa? base_type :type/Number)
                   (isa? special_type :type/Number))
             (common/->NumericWrapper col-name)
-            column-name))
+            col-name))
    :bar-width (when include-bar? 99)})
 
 (s/defn ^:private query-results->row-seq
