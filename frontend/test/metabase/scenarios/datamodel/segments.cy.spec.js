@@ -1,11 +1,11 @@
-import { signInAsAdmin, restore } from "__support__/cypress";
+import { signInAsAdmin } from "__support__/cypress";
 
 describe("Segments", () => {
-  before(restore);
   beforeEach(() => {
     signInAsAdmin();
     cy.viewport(1400, 860);
   });
+
   it("should create a segment", () => {
     cy.visit("/admin");
     cy.contains("Data Model").click();
@@ -85,5 +85,16 @@ describe("Segments", () => {
     // get redirected to previous page and see the new segment name
     cy.url().should("match", /datamodel\/database\/1\/table\/2$/);
     cy.contains("orders >10");
+
+    // clean up
+    cy.contains("orders >10")
+      .parent()
+      .find(".Icon-ellipsis")
+      .click();
+    cy.contains("Retire Segment").click();
+    cy.get(".ModalBody textarea").type("delete it");
+    cy.get(".ModalBody")
+      .contains("button", "Retire")
+      .click();
   });
 });
