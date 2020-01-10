@@ -257,6 +257,25 @@ describe("timeseriesScale", () => {
     ).toEqual([0, 10, 20, 30]);
   });
 
+  it("should work for one 'evenly spaced' month", () => {
+    const scale = timeseriesScale({
+      interval: "month",
+      count: 1,
+      timezone: "Etc/UTC",
+    })
+      .domain([
+        moment("2018-11-15T00:00:00.000Z"),
+        moment("2018-12-15T00:00:00.000Z"),
+      ])
+      .range([0, 30]);
+
+    expect(
+      ["2018-11-15", "2018-12-15"].map(d =>
+        scale(moment(`${d}T00:00:00.000Z`)),
+      ),
+    ).toEqual([0, 30]);
+  });
+
   it("should not evenly space years", () => {
     // 2020 is a leap year and 2019 is not. With the total width set to the
     // total number of days, each year should have one pixel per day.
