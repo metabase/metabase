@@ -2,7 +2,6 @@
   (:require [clojure
              [test :refer :all]
              [walk :as walk]]
-            [expectations :refer [expect]]
             [hiccup.core :refer [html]]
             [metabase.pulse.render
              [body :as body]
