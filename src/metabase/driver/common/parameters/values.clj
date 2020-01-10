@@ -233,7 +233,7 @@
                {k v}))
     (catch Throwable e
       (throw (ex-info (.getMessage e)
-               {:type   (or (:type (ex-data e) qp.error-type/invalid-parameter))
+               {:type   (or (:type (ex-data e)) qp.error-type/invalid-parameter)
                 :tags   tags
                 :params params}
                e)))))
