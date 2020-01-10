@@ -95,10 +95,10 @@
   (when-let [field-filter (:dimension tag)]
     (i/map->FieldFilter
      ;; TODO - shouldn't this use the QP Store?
-     {:field (or (db/select-one [Field :name :parent_id :table_id :base_type]
-                   :id (field-filter->field-id field-filter))
-                 (throw (Exception. (tru "Can''t find field with ID: {0}"
-                                         (field-filter->field-id field-filter)))))
+     {:field (let [field-id (field-filter->field-id field-filter)]
+               (or (db/select-one [Field :name :parent_id :table_id :base_type] :id field-id)
+                   (throw (ex-info (tru "Can''t find field with ID: {0}" field-id)
+                            {:field-id field-id, :type qp.error-type/invalid-parameter}))))
       :value (if-let [value-info-or-infos (or
                                            ;; look in the sequence of params we were passed to see if there's anything
                                            ;; that matches
@@ -232,7 +232,7 @@
                ;; kind of query shouldn't be possible from the frontend anyway
                {k v}))
     (catch Throwable e
-      (throw (ex-info (tru "Error parsing query parameters")
+      (throw (ex-info (.getMessage e)
                {:type   (or (:type (ex-data e) qp.error-type/invalid-parameter))
                 :tags   tags
                 :params params}

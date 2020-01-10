@@ -73,5 +73,6 @@
                                         e))))]
     (when (seq missing)
       (throw (ex-info (tru "Cannot run the query: missing required parameters: {0}" (set missing))
-               {:type error-type/missing-required-parameter})))
+               {:type    error-type/missing-required-parameter
+                :missing missing})))
     [(str/trim sql) args]))
