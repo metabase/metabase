@@ -81,9 +81,6 @@ executors:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: circleci/clojure:lein-2.8.1
-        environment:
-          MB_PRESTO_TEST_HOST: localhost
-          MB_PRESTO_TEST_PORT: 8080
       - image: metabase/presto-mb-ci
         environment:
           JAVA_TOOL_OPTIONS: "-Xmx2g"
