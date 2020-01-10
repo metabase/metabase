@@ -64,8 +64,8 @@
               :when remapped_from]
           [remapped_from col-idx])))
 
-(defn- column-header
-  "Returns a column header, "
+(defn- column-name
+  "Returns first column name from a hierarchy of possible column names"
   [card col]
   (let [column-settings (some->> (get-in card [:visualization_settings :column_settings])
                                  (m/map-keys (comp vec json/parse-string name)))]
@@ -83,13 +83,13 @@
               :let [{:keys [base_type special_type] :as col} (if (:remapped_to maybe-remapped-col)
                                                                (nth cols (get remapping-lookup (:name maybe-remapped-col)))
                                                                maybe-remapped-col)
-                    column-name (column-header card col)]
+                    col-name (column-name card col)]
               ;; If this column is remapped from another, it's already
               ;; in the output and should be skipped
               :when (not (:remapped_from maybe-remapped-col))]
           (if (or (isa? base_type :type/Number)
                   (isa? special_type :type/Number))
-            (common/->NumericWrapper column-name)
+            (common/->NumericWrapper col-name)
             column-name))
    :bar-width (when include-bar? 99)})
 
