@@ -106,6 +106,43 @@
     (is (= default-header-result
            (prep-for-html-rendering' columns-with-retired data-with-retired nil nil)))))
 
+(deftest prefers-col-visualization-settings-for-header
+  (testing "Users can give columns custom names. Use those if they exist."
+    (let [card    {:visualization_settings
+                   {:column_settings {(keyword "[\"ref\",[\"field-id\",321]]") {:column_title "Custom Last Login"}
+                                      (keyword "[\"name\",\"name\"]")          {:column_title "Custom Name"}}}}
+          cols    [{:name            "last_login"
+                    :display_name    "Last Login"
+                    :base_type       :type/DateTime
+                    :special_type    nil
+                    :visibility_type :normal
+                    :field_ref       [:field-id 321]}
+                   {:name            "name"
+                    :display_name    "Name"
+                    :base_type       :type/Text
+                    :special_type    nil
+                    :visibility_type :normal}]]
+
+      ;; card contains custom column names
+      (is (= {:row       ["Custom Last Login" "Custom Name"]
+              :bar-width nil}
+             (first (#'body/prep-for-html-rendering pacific-tz
+                                                    card
+                                                    {:cols cols :rows []}
+                                                    nil
+                                                    nil
+                                                    (count test-columns)))))
+
+      ;; card does not contain custom column names
+      (is (= {:row       ["Last Login" "Name"]
+              :bar-width nil}
+             (first (#'body/prep-for-html-rendering pacific-tz
+                                                    {}
+                                                    {:cols cols :rows []}
+                                                    nil
+                                                    nil
+                                                    (count test-columns))))))))
+
 ;; When including a bar column, bar-width is 99%
 (deftest bar-width
   (is (= (assoc-in default-header-result [0 :bar-width] 99)

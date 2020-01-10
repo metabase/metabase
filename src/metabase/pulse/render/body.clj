@@ -64,14 +64,14 @@
               :when remapped_from]
           [remapped_from col-idx])))
 
-(defn- header-row-column-name
+(defn- column-header
+  "Returns a column header, "
   [card col]
-  (let [setting-key     (if-let [ref (:field_ref col)]
-                          ["ref" (mapv #(if (keyword? %) (name %) %) ref)]
-                          ["name" (:name col)])
-        column-settings (some->> (get-in card [:visualization_settings :column_settings])
+  (let [column-settings (some->> (get-in card [:visualization_settings :column_settings])
                                  (m/map-keys (comp vec json/parse-string name)))]
-    (name (or (get-in column-settings [setting-key :column_title])
+    (name (or (when-let [fr (:field_ref col)]
+                (get-in column-settings [["ref" (mapv #(if (keyword? %) (name %) %) fr)] :column_title]))
+              (get-in column-settings [["name" (:name col)] :column_title])
               (:display_name col)
               (:name col)))))
 
@@ -83,7 +83,7 @@
               :let [{:keys [base_type special_type] :as col} (if (:remapped_to maybe-remapped-col)
                                                                (nth cols (get remapping-lookup (:name maybe-remapped-col)))
                                                                maybe-remapped-col)
-                    column-name (header-row-column-name card col)]
+                    column-name (column-header card col)]
               ;; If this column is remapped from another, it's already
               ;; in the output and should be skipped
               :when (not (:remapped_from maybe-remapped-col))]
