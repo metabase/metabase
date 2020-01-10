@@ -20,6 +20,7 @@ class CustomForm extends React.Component {
   static childContextTypes = {
     handleSubmit: PropTypes.func,
     submitTitle: PropTypes.string,
+    renderSubmit: PropTypes.func,
     className: PropTypes.string,
     style: PropTypes.object,
     fields: PropTypes.object,
@@ -44,6 +45,7 @@ class CustomForm extends React.Component {
       error,
       handleSubmit,
       submitTitle,
+      renderSubmit,
       className,
       style,
       onChangeField,
@@ -54,6 +56,7 @@ class CustomForm extends React.Component {
     return {
       handleSubmit,
       submitTitle,
+      renderSubmit,
       className,
       style,
       fields,
@@ -162,24 +165,36 @@ export class CustomFormField extends React.Component {
 
 export const CustomFormSubmit = (
   { children, ...props },
-  { values, submitting, invalid, pristine, handleSubmit, submitTitle },
+  {
+    values,
+    submitting,
+    invalid,
+    pristine,
+    handleSubmit,
+    submitTitle,
+    renderSubmit,
+  },
 ) => {
   const title = children || submitTitle || t`Submit`;
   // NOTE: need a way to configure if "pristine" forms can be submitted
   const canSubmit = !(submitting || invalid); // || pristine );
-  return (
-    <ActionButton
-      normalText={title}
-      activeText={title}
-      failedText={t`Failed`}
-      successText={t`Success`}
-      primary={canSubmit}
-      disabled={!canSubmit}
-      {...props}
-      type="submit"
-      actionFn={handleSubmit}
-    />
-  );
+  if (renderSubmit) {
+    return renderSubmit({ canSubmit, title, handleSubmit });
+  } else {
+    return (
+      <ActionButton
+        normalText={title}
+        activeText={title}
+        failedText={t`Failed`}
+        successText={t`Success`}
+        primary={canSubmit}
+        disabled={!canSubmit}
+        {...props}
+        type="submit"
+        actionFn={handleSubmit}
+      />
+    );
+  }
 };
 CustomFormSubmit.contextTypes = {
   values: PropTypes.object,
@@ -187,6 +202,8 @@ CustomFormSubmit.contextTypes = {
   invalid: PropTypes.bool,
   pristine: PropTypes.bool,
   handleSubmit: PropTypes.func,
+  submitTitle: PropTypes.string,
+  renderSubmit: PropTypes.func,
 };
 
 export const CustomFormMessage = (props, { error }) =>

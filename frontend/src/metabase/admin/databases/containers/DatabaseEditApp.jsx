@@ -3,6 +3,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
+import { getValues } from "redux-form";
 
 import { t } from "ttag";
 
@@ -12,6 +13,7 @@ import title from "metabase/hoc/Title";
 
 import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
 import ActionButton from "metabase/components/ActionButton";
+import Button from "metabase/components/Button";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import Radio from "metabase/components/Radio";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
@@ -33,10 +35,22 @@ import {
 } from "../database";
 import ConfirmContent from "metabase/components/ConfirmContent";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
+import { getIn } from "icepick";
+
+const DATABASE_FORM_NAME = "database";
+
+const getLetUserControlScheduling = database =>
+  getIn(database, ["details", "let-user-control-scheduling"]);
 
 const mapStateToProps = (state, props) => ({
   database: getEditingDatabase(state),
   databaseCreationStep: getDatabaseCreationStep(state),
+  letUserControlSchedulingSaved: getLetUserControlScheduling(
+    getEditingDatabase(state),
+  ),
+  letUserControlSchedulingForm: getLetUserControlScheduling(
+    getValues(state.form[DATABASE_FORM_NAME]),
+  ),
 });
 
 const mapDispatchToProps = {
@@ -113,17 +127,17 @@ export default class DatabaseEditApp extends Component {
   }
 
   render() {
-    const { database } = this.props;
+    const {
+      database,
+      letUserControlSchedulingSaved,
+      letUserControlSchedulingForm,
+    } = this.props;
     const { currentTab } = this.state;
 
     const editingExistingDatabase = database && database.id != null;
     const addingNewDatabase = !editingExistingDatabase;
 
-    const letUserControlScheduling =
-      database &&
-      database.details &&
-      database.details["let-user-control-scheduling"];
-    const showTabs = editingExistingDatabase && letUserControlScheduling;
+    const showTabs = editingExistingDatabase && letUserControlSchedulingSaved;
 
     return (
       <div className="wrapper">
@@ -152,12 +166,29 @@ export default class DatabaseEditApp extends Component {
                   <Databases.Form
                     database={database}
                     form={Databases.forms[currentTab]}
+                    formName={DATABASE_FORM_NAME}
                     onSubmit={
                       addingNewDatabase && currentTab === "connection"
                         ? this.props.proceedWithDbCreation
                         : this.props.saveDatabase
                     }
                     submitTitle={addingNewDatabase ? t`Save` : t`Save changes`}
+                    renderSubmit={
+                      // override use of ActionButton for the `Next` button
+                      addingNewDatabase &&
+                      currentTab === "connection" &&
+                      letUserControlSchedulingForm &&
+                      (({ handleSubmit, canSubmit }) => (
+                        <Button
+                          primary={canSubmit}
+                          disabled={!canSubmit}
+                          onClick={handleSubmit}
+                        >
+                          {t`Next`}
+                        </Button>
+                      ))
+                    }
+                    submitButtonComponent={Button}
                   />
                 )}
               </LoadingAndErrorWrapper>

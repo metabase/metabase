@@ -83,12 +83,13 @@ type State = {
 };
 
 let FORM_ID = 0;
+// use makeMapStateToProps so each component gets it's own unique formId
 const makeMapStateToProps = () => {
-  let formName;
+  const formId = FORM_ID++;
   return (state, ownProps) => {
+    const formName = ownProps.formName || `form_${formId}`;
     return {
-      formName:
-        ownProps.formName || (formName = formName || `form_${FORM_ID++}`),
+      formName: formName,
       values: getValues(state.form[formName]),
     };
   };

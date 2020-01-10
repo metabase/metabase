@@ -33,13 +33,13 @@ describe("admin > databases > add", () => {
     cy.visit("/admin/databases/create");
 
     typeField("name", "Test db name");
-    typeField("dbname", "test_postgres_db");
-    typeField("user", "uberadmin");
+    typeField("details.dbname", "test_postgres_db");
+    typeField("details.user", "uberadmin");
 
     cy.contains("button", "Save")
       .should("not.be.disabled")
       .click();
-    cy.contains("button", "Saving...").should("be.disabled");
+    cy.contains("button", "Save").should("be.disabled");
 
     cy.wait("@createDatabase");
 
@@ -50,8 +50,8 @@ describe("admin > databases > add", () => {
     cy.visit("/admin/databases/create");
 
     typeField("name", "Test db name");
-    typeField("dbname", "test_postgres_db");
-    typeField("user", "uberadmin");
+    typeField("details.dbname", "test_postgres_db");
+    typeField("details.user", "uberadmin");
 
     cy.contains("button", "Save").should("not.be.disabled");
 
@@ -71,8 +71,8 @@ describe("admin > databases > add", () => {
     cy.visit("/admin/databases/create");
 
     typeField("name", "Test db name");
-    typeField("dbname", "test_postgres_db");
-    typeField("user", "uberadmin");
+    typeField("details.dbname", "test_postgres_db");
+    typeField("details.user", "uberadmin");
 
     cy.contains("button", "Save").should("not.be.disabled");
 
@@ -97,23 +97,23 @@ describe("admin > databases > add", () => {
     cy.contains("Your database has been added");
   });
 
-  it("should show error correctly on server error", () => {
+  it.only("should show error correctly on server error", () => {
     cy.route({
       method: "POST",
       url: "/api/database",
-      response: {},
+      response: "Server error encountered",
       status: 400,
-      delay: 1000,
+      delay: 100,
     }).as("createDatabase");
 
     cy.visit("/admin/databases/create");
 
     typeField("name", "Test db name");
-    typeField("dbname", "test_postgres_db");
-    typeField("user", "uberadmin");
+    typeField("details.dbname", "test_postgres_db");
+    typeField("details.user", "uberadmin");
 
     cy.contains("button", "Save").click();
-    cy.contains("button", "Saving...").should("be.disabled");
+    cy.contains("button", "Save").should("be.disabled");
 
     cy.contains("Server error encountered");
   });

@@ -163,10 +163,8 @@ export const proceedWithDbCreation = function(database) {
           });
         } else {
           throw {
-            error: {
-              data: {
-                message: t`Couldn't connect to the database. Please check the connection details.`,
-              },
+            data: {
+              message: t`Couldn't connect to the database. Please check the connection details.`,
             },
           };
         }

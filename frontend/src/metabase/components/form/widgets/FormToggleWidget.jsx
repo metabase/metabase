@@ -3,6 +3,8 @@ import { t } from "ttag";
 
 import Toggle from "metabase/components/Toggle";
 
+const HIDDEN_STYLE = { height: 0, overflow: "hidden" };
+
 const FormToggleWidget = ({
   field,
   horizontal = false,
@@ -12,7 +14,9 @@ const FormToggleWidget = ({
     <Toggle {...field} />
     {showEnabledLabel && (
       <span className="text-bold mx1">
-        {field.value ? t`Enabled` : t`Disabled`}
+        {/* HACK: ensure a consistent width by always rendering both labels */}
+        <div style={field.value ? {} : HIDDEN_STYLE}>{t`Enabled`}</div>
+        <div style={field.value ? HIDDEN_STYLE : {}}>{t`Disabled`}</div>
       </span>
     )}
   </div>
