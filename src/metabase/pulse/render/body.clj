@@ -1,5 +1,7 @@
 (ns metabase.pulse.render.body
-  (:require [hiccup.core :refer [h]]
+  (:require [cheshire.core :as json]
+            [hiccup.core :refer [h]]
+            [medley.core :as m]
             [metabase.pulse.render
              [color :as color]
              [common :as common]
@@ -8,11 +10,9 @@
              [sparkline :as sparkline]
              [style :as style]
              [table :as table]]
-            [medley.core :as m]
             [metabase.types :as types]
             [metabase.util.i18n :refer [trs]]
-            [schema.core :as s]
-            [cheshire.core :as json]))
+            [schema.core :as s]))
 
 (def rows-limit
   "Maximum number of rows to render in a Pulse image."
