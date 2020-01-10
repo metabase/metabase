@@ -1,8 +1,7 @@
 /* @flow weak */
 
 import _ from "underscore";
-import inflection from "inflection";
-import { t } from "ttag";
+import { t, ngettext, msgid } from "ttag";
 import MetabaseUtils from "metabase/lib/utils";
 
 // TODO: dump this from backend settings definitions
@@ -134,50 +133,88 @@ class Settings {
 
   // returns a map that looks like {total: 6, digit: 1}
   passwordComplexityRequirements() {
-    return this.get("password-complexity");
+    return this.get("password-complexity", {});
   }
 
-  // returns a description of password complexity requirements rather than the actual map of requirements
-  passwordComplexityDescription(capitalize) {
-    const complexity = this.get("password-complexity");
+  /**
+   * Returns a description of password complexity requirements.
+   * Optionally takes a password and returns a description only including the requirements not met.
+   */
+  passwordComplexityDescription(password = "") {
+    const requirements = this.passwordComplexityRequirements();
 
-    const clauseDescription = function(clause) {
-      switch (clause) {
-        case "lower":
-          return t`lower case letter`;
-        case "upper":
-          return t`upper case letter`;
-        case "digit":
-          return t`number`;
-        case "special":
-          return t`special character`;
+    const descriptions = {};
+    for (const [name, clause] of Object.entries(PASSWORD_COMPLEXITY_CLAUSES)) {
+      // $FlowFixMe:
+      if (!clause.test(requirements, password)) {
+        // $FlowFixMe:
+        descriptions[name] = clause.description(requirements);
       }
-    };
+    }
 
-    const description =
-      capitalize === false
-        ? t`must be at least ${complexity.total} characters long`
-        : t`Must be at least ${complexity.total} characters long`;
-    const clauses = [];
-
-    ["lower", "upper", "digit", "special"].forEach(function(clause) {
-      if (clause in complexity) {
-        const desc =
-          complexity[clause] > 1
-            ? inflection.pluralize(clauseDescription(clause))
-            : clauseDescription(clause);
-        clauses.push(
-          MetabaseUtils.numberToWord(complexity[clause]) + " " + desc,
-        );
-      }
-    });
-
-    if (clauses.length > 0) {
-      return description + " " + t`and include` + " " + clauses.join(", ");
+    const { total, ...rest } = descriptions;
+    const includes = Object.values(rest).join(t`, `);
+    if (total && includes) {
+      return t`must be ${total} and include ${includes}.`;
+    } else if (total) {
+      return t`must be ${total}.`;
+    } else if (includes) {
+      return t`must include ${includes}.`;
     } else {
-      return description;
+      return null;
     }
   }
+}
+
+const n2w = n => MetabaseUtils.numberToWord(n);
+
+const PASSWORD_COMPLEXITY_CLAUSES = {
+  total: {
+    test: ({ total = 0 }, password = "") => password.length >= total,
+    description: ({ total = 0 }) =>
+      ngettext(
+        msgid`at least ${n2w(total)} character long`,
+        `at least ${n2w(total)} characters long`,
+        total,
+      ),
+  },
+  lower: {
+    test: makeRegexTest("lower", /[a-z]/g),
+    description: ({ lower = 0 }) =>
+      ngettext(
+        msgid`${n2w(lower)} lower case letter`,
+        `${n2w(lower)} lower case letters`,
+        lower,
+      ),
+  },
+  upper: {
+    test: makeRegexTest("upper", /[A-Z]/g),
+    description: ({ upper = 0 }) =>
+      ngettext(
+        msgid`${n2w(upper)} upper case letter`,
+        `${n2w(upper)} upper case letters`,
+        upper,
+      ),
+  },
+  digit: {
+    test: makeRegexTest("digit", /[0-9]/g),
+    description: ({ digit = 0 }) =>
+      ngettext(msgid`${n2w(digit)} number`, `${n2w(digit)} numbers`, digit),
+  },
+  special: {
+    test: makeRegexTest("special", /[^a-zA-Z0-9]/g),
+    description: ({ special = 0 }) =>
+      ngettext(
+        msgid`${n2w(special)} special character`,
+        `${n2w(special)} special characters`,
+        special,
+      ),
+  },
+};
+
+function makeRegexTest(property, regex) {
+  return (requirements, password = "") =>
+    (password.match(regex) || []).length >= (requirements[property] || 0);
 }
 
 export default new Settings(_.clone(window.MetabaseBootstrap));

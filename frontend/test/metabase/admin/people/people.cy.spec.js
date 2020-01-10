@@ -12,12 +12,8 @@ describe("admin/people", () => {
     it("should allow admin to create new users", () => {
       cy.visit("/admin/people");
       cy.contains("Add someone").click();
-      cy.contains("First name")
-        .next()
-        .type("Testy");
-      cy.contains("Last name")
-        .next()
-        .type("McTestface");
+      cy.get('[name="first_name"]').type("Testy");
+      cy.get('[name="last_name"]').type("McTestface");
       // bit of a hack since there are multiple "Email" nodes
       cy.get("input[name='email']").type(
         `testy${Math.round(Math.random() * 100000)}@metabase.com`,

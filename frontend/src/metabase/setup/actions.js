@@ -23,12 +23,13 @@ export const setDatabaseDetails = createAction(SET_DATABASE_DETAILS);
 export const setAllowTracking = createAction(SET_ALLOW_TRACKING);
 
 export const validateDatabase = createThunkAction(VALIDATE_DATABASE, function(
-  details,
+  database,
 ) {
   return async function(dispatch, getState) {
     return await SetupApi.validate_db({
       token: MetabaseSettings.get("setup-token"),
-      details: details,
+      // NOTE: the validate endpoint calls this `details` but it's actually an object containing `engine` and `details`
+      details: database,
     });
   };
 });
