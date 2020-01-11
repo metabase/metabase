@@ -49,8 +49,19 @@
 ;; sequence of those maps.
 (defn- substitute-one-field-filter [{field :field, {param-type :type, value :value} :value, :as field-filter}]
   ;; convert relative dates to approprate date range representations
-  (if (date-params/date-range-type? param-type)
+  (cond
+    (date-params/date-range-type? param-type)
     (substitute-one-field-filter-date-range field-filter)
+
+    ;; a `date/single` like `2020-01-10`
+    (and (date-params/date-type? param-type)
+         (string? value))
+    (let [t (u.date/parse value)]
+      (format "{$and: [%s, %s]}"
+              (format "{%s: {$gte: %s}}" (field->name field) (param-value->str t))
+              (format "{%s: {$lt: %s}}"  (field->name field) (param-value->str (u.date/add t :day 1)))))
+
+    :else
     (format "{%s: %s}" (field->name field) (param-value->str value))))
 
 (defn- substitute-field-filter [{field :field, {:keys [value]} :value, :as field-filter}]

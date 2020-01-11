@@ -141,6 +141,7 @@
   db-test-env-var
   db-test-env-var-or-throw
   dbdef->connection-details
+  dispatch-on-driver-with-test-extensions
   get-dataset-definition
   has-questionable-timezone-support?
   has-test-extensions?
