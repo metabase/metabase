@@ -7,7 +7,7 @@
    ;; implementations of things like log4j <-> slf4j, or are part of both hadoop-common and hive-jdbc;
    [org.apache.hadoop/hadoop-common "3.1.1"
     :exclusions [com.fasterxml.jackson.core/jackson-core
-                 #_com.google.guava/guava
+                 com.google.guava/guava
                  commons-logging
                  org.apache.httpcomponents/httpcore
                  org.codehaus.jackson/jackson-core-asl
