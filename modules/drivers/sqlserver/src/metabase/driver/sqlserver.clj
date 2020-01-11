@@ -5,7 +5,9 @@
             [metabase
              [config :as config]
              [driver :as driver]]
-            [metabase.driver.common :as driver.common]
+            [metabase.driver
+             [common :as driver.common]
+             [sql :as sql]]
             [metabase.driver.sql-jdbc
              [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn]
@@ -303,3 +305,8 @@
 (defmethod sql-jdbc.execute/read-column [:sqlserver microsoft.sql.Types/DATETIMEOFFSET]
   [_ _^ResultSet rs _ ^Integer i]
   (.getObject rs i OffsetDateTime))
+
+;; SQL Server doesn't really support boolean types so use bits instead (#11592)
+(defmethod sql/->prepared-substitution [:sqlserver Boolean]
+  [driver bool]
+  (sql/->prepared-substitution driver (if bool 1 0)))
