@@ -160,23 +160,27 @@
                        (run-count-query query))))))]
     (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
       (testing "temporal field filters"
-        (mt/dataset attempted-murders
-          ;; TODO - we should test default values as well...
-          (doseq [field
-                  [:datetime
-                   :date
-                   :datetime_tz]
+        ;; TIMEZONE FIXME — The excluded drivers below don't have TIME types, so the `attempted-murders` dataset doesn't
+        ;; currently work. We should use the closest equivalent types (e.g. `DATETIME` or `TIMESTAMP` so we can still
+        ;; load the dataset and run tests using this dataset such as these, which doesn't even use the TIME type.
+        (when-not (#{:oracle :presto :redshift :sparksql :snowflake} driver/*driver*)
+          (mt/dataset attempted-murders
+            ;; TODO - we should test default values as well...
+            (doseq [field
+                    [:datetime
+                     :date
+                     :datetime_tz]
 
-                  [value-type value expected-count]
-                  [[:date/relative     "past30days" 0]
-                   [:date/range        "2019-11-01~2020-01-09" 20]
-                   [:date/single       "2019-11-12" 1]
-                   [:date/quarter-year "Q4-2019" 20]
-                   [:date/month-year   "2019-11" 20]]]
-            (testing (format "\nField filter with %s Field" field)
-              (testing (format "\nfiltering against %s value '%s'" value-type value)
-                (is-count-= expected-count
-                            :attempts field value-type value))))))
+                    [value-type value expected-count]
+                    [[:date/relative     "past30days" 0]
+                     [:date/range        "2019-11-01~2020-01-09" 20]
+                     [:date/single       "2019-11-12" 1]
+                     [:date/quarter-year "Q4-2019" 20]
+                     [:date/month-year   "2019-11" 20]]]
+              (testing (format "\nField filter with %s Field" field)
+                (testing (format "\nfiltering against %s value '%s'" value-type value)
+                  (is-count-= expected-count
+                              :attempts field value-type value)))))))
       (testing "text params"
         (is-count-= 1
                     :venues :name :text "In-N-Out Burger"))

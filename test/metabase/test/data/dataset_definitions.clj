@@ -145,10 +145,12 @@
           [username last-login password-text (if (zero? idx)
                                                1
                                                idx)])))))
-
 (tx/defdataset ^:private attempted-murders
   "A dataset for testing temporal values with and without timezones. Records of number of crow counts spoted and the
-  date/time when they spotting occured in several different column types."
+  date/time when they spotting occured in several different column types.
+
+  No Database we support supports all of these different types, so the expectation is that we'll use the closest
+  equivalent for each column."
   [["attempts"
     [{:field-name "num_crows",      :base-type :type/Integer}
      {:field-name "date",           :base-type :type/Date}
