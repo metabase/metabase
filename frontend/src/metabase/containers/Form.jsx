@@ -71,7 +71,7 @@ export default class Form extends React.Component {
   constructor(props: Props) {
     super(props);
     this._formName = this.props.formName || `form_${FORM_ID++}`;
-    this._updateFormComponent(props);
+    this._updateFormComponent(props, props.initialValues);
   }
 
   static propTypes = {
@@ -86,19 +86,19 @@ export default class Form extends React.Component {
   };
 
   // dynamically generates a component decorated with reduxForm
-  _updateFormComponent(props: Props) {
+  _updateFormComponent(props: Props, initialValues: ?FormValues) {
     if (this.props.form) {
       const form = makeForm(this.props.form);
-      const initialValues = {
+      const initialValuesProp = {
         ...form.initial(),
-        ...(this.props.initialValues || {}),
+        ...(initialValues || {}),
       };
       // redux-form config:
       const formConfig = {
         form: this._formName,
-        fields: form.fieldNames(initialValues),
+        fields: form.fieldNames(initialValuesProp),
         validate: form.validate,
-        initialValues: initialValues,
+        initialValues: initialValuesProp,
         onSubmit: values => this.handleSubmit(form.normalize(values)),
       };
       const mapStateToProps = (state, ownProps) => {
@@ -121,7 +121,12 @@ export default class Form extends React.Component {
 
   handleSubmit = async (object: FormValues) => {
     try {
-      return await this.props.onSubmit(object);
+      const result = await this.props.onSubmit(object);
+
+      // we want to reset our form's initialState so that dirty=false
+      this._updateFormComponent(this.props, object);
+
+      return result;
     } catch (error) {
       console.error("Form save failed", error);
       // redux-form expects { "FIELD NAME": "ERROR STRING" }

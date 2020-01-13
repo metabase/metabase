@@ -26,7 +26,7 @@ const StandardForm = ({
   resetButton = false,
   newForm = true,
   onClose = null,
-
+  submitResultDetail = null,
   ...props
 }) => (
   <form onSubmit={handleSubmit} className={cx(className, { NewForm: newForm })}>
@@ -51,6 +51,21 @@ const StandardForm = ({
     </div>
     <div className="flex">
       <div className="ml-auto flex align-center">
+        {submitResultDetail && !dirty && (
+          <FormMessage
+            formError={
+              submitResultDetail && !submitResultDetail.success
+                ? submitResultDetail
+                : undefined
+            }
+            formSuccess={
+              submitResultDetail && submitResultDetail.success
+                ? submitResultDetail
+                : undefined
+            }
+          />
+        )}
+
         {error && <FormMessage message={error} formError />}
         {onClose && (
           <Button

@@ -37,6 +37,7 @@ export default class EntityForm extends React.Component {
         object.id != null ? update(object) : create(object),
       onClose,
       onSaved,
+      onSaveFailed,
       modal,
       title,
       ...props
@@ -47,7 +48,10 @@ export default class EntityForm extends React.Component {
         form={form}
         initialValues={entityObject}
         onSubmit={onSubmit}
-        onSubmitSuccess={action => onSaved && onSaved(action.payload.object)}
+        onSubmitSuccess={action =>
+          action && onSaved && onSaved(action.payload.object)
+        }
+        onSubmitFail={errors => onSaveFailed && onSaveFailed(errors)}
       />
     );
     if (modal) {
