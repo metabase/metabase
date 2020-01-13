@@ -217,7 +217,7 @@
 
      :repl-options
      {:init (do
-             (use 'metabase.core)
+             (require 'metabase.core)
              (metabase.core/-main))
       :timeout 60000}}]
 
