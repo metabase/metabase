@@ -12,7 +12,7 @@
             [metabase.util.i18n :refer [trs]])
   (:import java.io.FileNotFoundException
            java.net.URL
-           [java.nio.file CopyOption Files FileSystem FileSystems LinkOption OpenOption Path StandardCopyOption]
+           [java.nio.file CopyOption Files FileSystem FileSystems LinkOption OpenOption Path Paths StandardCopyOption]
            [java.nio.file.attribute FileAttribute FileTime]
            java.util.Collections))
 
@@ -107,7 +107,7 @@
     (if (url-inside-jar? url)
       (with-open [fs (jar-file-system-from-url url)]
         (f (get-path-in-filesystem fs "/" resource)))
-      (f (get-path (.getPath url))))))
+      (f (get-path (.toString (Paths/get (.toURI url))))))))
 
 (defmacro with-open-path-to-resource
   "Execute `body` with an Path to a resource file (i.e. a file in the project `resources/` directory), cleaning up when
