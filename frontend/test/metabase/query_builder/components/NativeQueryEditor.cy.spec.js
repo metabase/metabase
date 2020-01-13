@@ -64,4 +64,46 @@ describe("NativeQueryEditor", () => {
       "You'll need to pick a value for 'X' before this query can run.",
     );
   });
+
+  it("doesn't reorder template tags when updated", () => {
+    cy.visit("/question/new");
+    cy.contains("Native query").click();
+
+    // Write a query with parameter x. It defaults to a text parameter.
+    cy.get(".ace_content").type("{{foo}} {{bar}}", {
+      parseSpecialCharSequences: false,
+      delay: 0,
+    });
+
+    cy.contains("Variables")
+      .parent()
+      .parent()
+      .find(".text-brand")
+      .as("variableLabels");
+
+    // ensure they're in the right order to start
+    cy.get("@variableLabels")
+      .first()
+      .should("have.text", "foo");
+    cy.get("@variableLabels")
+      .last()
+      .should("have.text", "bar");
+
+    // change the parameter to a number.
+    cy.contains("Variable type")
+      .first()
+      .next()
+      .as("variableType");
+    cy.get("@variableType").click();
+    cy.contains("Number").click();
+    cy.get("@variableType").should("have.text", "Number");
+
+    // ensure they're still in the right order
+    cy.get("@variableLabels")
+      .first()
+      .should("have.text", "foo");
+    cy.get("@variableLabels")
+      .last()
+      .should("have.text", "bar");
+  });
 });

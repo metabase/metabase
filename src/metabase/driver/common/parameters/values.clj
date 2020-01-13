@@ -37,14 +37,16 @@
 ;; FieldFilter as well.
 (def ^:private TagParam
   "Schema for a tag parameter declaration, passed in as part of the `:template-tags` list."
-  {(s/optional-key :id)          su/NonBlankString ; this is used internally by the frontend
-   :name                         su/NonBlankString
-   :display-name                 su/NonBlankString
-   :type                         ParamType
-   (s/optional-key :dimension)   [s/Any]
-   (s/optional-key :widget-type) s/Keyword ; type of the [default] value if `:type` itself is `dimension`
-   (s/optional-key :required)    s/Bool
-   (s/optional-key :default)     s/Any})
+  (s/named
+   {(s/optional-key :id)          su/NonBlankString ; this is used internally by the frontend
+    :name                         su/NonBlankString
+    :display-name                 su/NonBlankString
+    :type                         ParamType
+    (s/optional-key :dimension)   [s/Any]
+    (s/optional-key :widget-type) s/Keyword         ; type of the [default] value if `:type` itself is `dimension`
+    (s/optional-key :required)    s/Bool
+    (s/optional-key :default)     s/Any}
+   "valid template-tags tag"))
 
 (def ^:private ParsedParamValue
   "Schema for valid param value(s). Params can have one or more values."
@@ -93,10 +95,10 @@
   (when-let [field-filter (:dimension tag)]
     (i/map->FieldFilter
      ;; TODO - shouldn't this use the QP Store?
-     {:field (or (db/select-one [Field :name :parent_id :table_id :base_type]
-                   :id (field-filter->field-id field-filter))
-                 (throw (Exception. (tru "Can''t find field with ID: {0}"
-                                         (field-filter->field-id field-filter)))))
+     {:field (let [field-id (field-filter->field-id field-filter)]
+               (or (db/select-one [Field :name :parent_id :table_id :base_type] :id field-id)
+                   (throw (ex-info (tru "Can''t find field with ID: {0}" field-id)
+                            {:field-id field-id, :type qp.error-type/invalid-parameter}))))
       :value (if-let [value-info-or-infos (or
                                            ;; look in the sequence of params we were passed to see if there's anything
                                            ;; that matches
@@ -222,9 +224,16 @@
     ->
     {:checkin_date #t \"2019-09-19T23:30:42.233-07:00\"}"
   [{tags :template-tags, params :parameters}]
-  (into {} (for [[k tag] tags
-                 :let    [v (value-for-tag tag params)]
-                 :when   v]
-             ;; TODO - if V is `nil` *on purpose* this still won't give us a query like `WHERE field = NULL`. That
-             ;; kind of query shouldn't be possible from the frontend anyway
-             {k v})))
+  (try
+    (into {} (for [[k tag] tags
+                   :let    [v (value-for-tag tag params)]
+                   :when   v]
+               ;; TODO - if V is `nil` *on purpose* this still won't give us a query like `WHERE field = NULL`. That
+               ;; kind of query shouldn't be possible from the frontend anyway
+               {k v}))
+    (catch Throwable e
+      (throw (ex-info (.getMessage e)
+               {:type   (or (:type (ex-data e)) qp.error-type/invalid-parameter)
+                :tags   tags
+                :params params}
+               e)))))
