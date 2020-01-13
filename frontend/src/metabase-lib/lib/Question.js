@@ -26,7 +26,7 @@ import {
 } from "metabase-lib/lib/Dimension";
 import Mode from "metabase-lib/lib/Mode";
 
-import { memoize } from "metabase-lib/lib/utils";
+import { memoize, sortObject } from "metabase-lib/lib/utils";
 
 // TODO: remove these dependencies
 import * as Card_DEPRECATED from "metabase/lib/card";
@@ -928,7 +928,7 @@ export default class Question {
         : {}),
     };
 
-    return Card_DEPRECATED.utf8_to_b64url(JSON.stringify(cardCopy));
+    return Card_DEPRECATED.utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
 }
 
