@@ -268,7 +268,7 @@
                          (setting/get setting-k))]
     (try
       (setting/set! setting-k value)
-      (testing (colorize/blue (format "Setting %s = %s" (keyword setting-k) value))
+      (testing (colorize/blue (format "\nSetting %s = %s\n" (keyword setting-k) (pr-str value)))
         (f))
       (finally
         (setting/set! setting-k original-value)))))
