@@ -12,12 +12,36 @@ import UserAvatar from "metabase/components/UserAvatar";
 import SetUserPassword from "./SetUserPassword";
 
 export default class UserSettings extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { updateUserResult: null };
+  }
+
   static propTypes = {
     tab: PropTypes.string.isRequired,
     user: PropTypes.object.isRequired,
     setTab: PropTypes.func.isRequired,
     updatePassword: PropTypes.func.isRequired,
   };
+
+  onUserSettingsSaved(details) {
+    this.setState({
+      updateUserResult: {
+        success: true,
+        data: { message: t`Account updated successfully!` },
+      },
+    });
+  }
+
+  onUserSettingsSaveFailed(errors) {
+    // NB the actual error is showed by StandardForm.error
+    this.setState({
+      updateUserResult: {
+        success: false,
+        data: { message: t`Account update failed!` },
+      },
+    });
+  }
 
   onUpdatePassword(details) {
     this.props.updatePassword(
@@ -29,6 +53,7 @@ export default class UserSettings extends Component {
 
   render() {
     const { tab, user, setTab } = this.props;
+    const { updateUserResult } = this.state;
 
     return (
       <Box>
@@ -65,7 +90,13 @@ export default class UserSettings extends Component {
         </Flex>
         <Box w={["100%", 540]} ml="auto" mr="auto" px={[1, 2]} pt={[1, 3]}>
           {tab === "details" ? (
-            <User.Form {...this.props} formName="user" />
+            <User.Form
+              {...this.props}
+              formName="user"
+              submitResultDetail={updateUserResult}
+              onSaved={this.onUserSettingsSaved.bind(this)}
+              onSaveFailed={this.onUserSettingsSaveFailed.bind(this)}
+            />
           ) : tab === "password" ? (
             <SetUserPassword
               submitFn={this.onUpdatePassword.bind(this)}
