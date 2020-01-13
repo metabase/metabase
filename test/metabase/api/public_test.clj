@@ -1,9 +1,11 @@
 (ns metabase.api.public-test
   "Tests for `api/public/` (public links) endpoints."
   (:require [cheshire.core :as json]
-            [clojure.string :as str]
+            [clojure
+             [string :as str]
+             [test :refer :all]]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [metabase
              [http-client :as http]
              [query-processor-test :as qp.test]
@@ -216,15 +218,15 @@
                                                :target [:variable [:template-tag "price"]]
                                                :value  1}]))))))
 
-;; if you're missing a required param, the error message should get passed thru, rather than the normal generic 'Query
-;; Failed' message that we show for most embedding errors
-(expect
-  {:status     "failed"
-   :error      "You'll need to pick a value for 'Price' before this query can run."
-   :error_type "missing-required-parameter"}
-  (do-with-required-param-card
-   (fn [uuid]
-     (http/client :get 200 (str "public/card/" uuid "/query")))))
+(deftest missing-required-param-error-message-test
+  (testing (str "If you're missing a required param, the error message should get passed thru, rather than the normal "
+                "generic 'Query Failed' message that we show for most embedding errors")
+    (is (= {:status     "failed"
+            :error      "You'll need to pick a value for 'Price' before this query can run."
+            :error_type "missing-required-parameter"}
+           (do-with-required-param-card
+            (fn [uuid]
+              (http/client :get 200 (str "public/card/" uuid "/query"))))))))
 
 ;; make sure CSV (etc.) downloads take editable params into account (#6407)
 

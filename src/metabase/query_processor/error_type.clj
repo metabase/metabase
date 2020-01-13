@@ -1,6 +1,9 @@
 (ns metabase.query-processor.error-type
   "A hierarchy of all QP error types. Ideally all QP exceptions should be `ex-data` maps with an `:type` key whose value
-  is one of the types here. If you see an Exception in QP code that doesn't return an `:type`, add it!")
+  is one of the types here. If you see an Exception in QP code that doesn't return an `:type`, add it!
+
+    (throw (ex-info (tru \"Don''t know how to parse {0} {1}\" (class x) x)
+                    {:type qp.error-type/invalid-parameter}))")
 
 (def ^:private hierarchy
   (make-hierarchy))
@@ -53,6 +56,11 @@
 
 (deferror missing-required-parameter
   "The query is parameterized, and a required parameter was not supplied."
+  :parent invalid-query
+  :show-in-embeds? true)
+
+(deferror invalid-parameter
+  "The query is parameterized, and a supplied parameter has an invalid value."
   :parent invalid-query
   :show-in-embeds? true)
 
