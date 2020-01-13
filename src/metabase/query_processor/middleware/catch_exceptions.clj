@@ -81,7 +81,8 @@
 
 (defmethod format-exception ExceptionInfo
   [query e]
-  (let [{error :error, error-type :type, :as data} (ex-data e)]
+  (let [{error :error, :as data} (ex-data e)
+        {error-type :type}       (u/all-ex-data e)]
     (merge
      ((get-method format-exception Throwable) query e)
      (when-let [error-msg (and (= error-type :schema.core/error)

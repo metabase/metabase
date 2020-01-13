@@ -191,11 +191,11 @@
 ;; Make sure TIME values are handled consistently (#10366)
 (defn- attempts []
   (zipmap
-   [:date :time :datetime :time-ltz :time-tz :datetime-ltz :datetime-tz :datetime-tz-id]
+   [:date :time :datetime :time_ltz :time_tz :datetime_ltz :datetime_tz :datetime_tz_id]
    (qp.test/first-row
      (qp/process-query
        (data/query attempts
-         {:query      {:fields [$date $time $datetime $time-ltz $time-tz $datetime-ltz $datetime-tz $datetime-tz-id]
+         {:query      {:fields [$date $time $datetime $time_ltz $time_tz $datetime_ltz $datetime_tz $datetime_tz_id]
                        :filter [:= $id 1]}
           :middleware {:format-rows? false}})))))
 
@@ -216,15 +216,15 @@
    {:date         (t/local-date "2019-11-01")
     :time         (t/local-time "00:23:18.331")
     :datetime     (t/local-date-time "2019-11-01T00:23:18.331")
-    :datetime-ltz (t/offset-date-time "2019-11-01T07:23:18.331Z")}
+    :datetime_ltz (t/offset-date-time "2019-11-01T07:23:18.331Z")}
    (when (supports-time-with-time-zone?)
-     {:time-ltz (t/offset-time "07:23:18.331Z")})
+     {:time_ltz (t/offset-time "07:23:18.331Z")})
    (when (supports-time-with-offset?)
-     {:time-tz (t/offset-time "00:23:18.331-07:00")})
+     {:time_tz (t/offset-time "00:23:18.331-07:00")})
    (when (supports-datetime-with-offset?)
-     {:datetime-tz (t/offset-date-time "2019-11-01T00:23:18.331-07:00")})
+     {:datetime_tz (t/offset-date-time "2019-11-01T00:23:18.331-07:00")})
    (when (supports-datetime-with-zone-id?)
-     {:datetime-tz-id (t/zoned-date-time "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]")})))
+     {:datetime_tz_id (t/zoned-date-time "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]")})))
 
 (deftest time-timezone-handling-test
   ;; Actual value : "2019-11-01T00:23:18.331-07:00[America/Los_Angeles]"
