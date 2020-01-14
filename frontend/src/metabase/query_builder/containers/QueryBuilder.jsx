@@ -218,6 +218,8 @@ export default class QueryBuilder extends Component {
     window.removeEventListener("resize", this.handleResize);
 
     clearTimeout(this.timeout);
+
+    this.closeModal(); // close any modal that might be open
   }
 
   // When the window is resized we need to re-render, mainly so that our visualization pane updates
