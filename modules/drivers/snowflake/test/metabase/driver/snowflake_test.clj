@@ -6,6 +6,7 @@
             [metabase
              [driver :as driver]
              [models :refer [Table]]
+             [query-processor :as qp]
              [test :as mt]]
             [metabase.test.data
              [dataset-definitions :as dataset-defs]
@@ -73,11 +74,12 @@
              (driver/describe-table :snowflake (assoc (mt/db) :name "ABC") (Table (mt/id :categories))))))))
 
 (deftest describe-table-fks-test
-  (testing "make sure describe-table-fks uses the NAME FROM DETAILS too"
-    (is (= #{{:fk-column-name   "category_id"
-              :dest-table       {:name "categories", :schema "PUBLIC"}
-              :dest-column-name "id"}}
-           (driver/describe-table-fks :snowflake (assoc (mt/db) :name "ABC") (Table (mt/id :venues)))))))
+  (mt/test-driver :snowflake
+    (testing "make sure describe-table-fks uses the NAME FROM DETAILS too"
+      (is (= #{{:fk-column-name   "category_id"
+                :dest-table       {:name "categories", :schema "PUBLIC"}
+                :dest-column-name "id"}}
+             (driver/describe-table-fks :snowflake (assoc (mt/db) :name "ABC") (Table (mt/id :venues))))))))
 
 (deftest can-connect-test
   (mt/test-driver :snowflake
@@ -90,3 +92,53 @@
              (mt/suppress-output
                (can-connect? (assoc (:details (mt/db)) :db (mt/random-name)))))
           "can-connect? should return false for Snowflake databases that don't exist (#9041)"))))
+
+(deftest report-timezone-test
+  (mt/test-driver :snowflake
+    (testing "Make sure temporal parameters are set and returned correctly when report-timezone is set (#11036)"
+      (letfn [(run-query []
+                (mt/rows
+                  (qp/process-query
+                    (merge
+                     {:database   (mt/id)
+                      :type       :native
+                      :native     {:query         (str "SELECT {{filter_date}}")
+                                   :template-tags {:filter_date {:name         "filter_date"
+                                                                 :display_name "Just A Date"
+                                                                 :type         "date"}}}
+                      :parameters [{:type   "date/single"
+                                    :target ["variable" ["template-tag" "filter_date"]]
+                                    :value  "2014-08-02"}]}))))]
+        (testing "baseline"
+          (is (= [["2014-08-02T00:00:00Z"]]
+                 (run-query))))
+        (testing "with report-timezone"
+          (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+            (is (= [["2014-08-02T00:00:00-07:00"]]
+                   (run-query)))))))
+    (testing "Make sure temporal values are returned correctly when report-timezone is set (#11036)"
+      (letfn [(run-query []
+                (mt/rows
+                  (qp/process-query
+                    (merge
+                     {:database   (mt/id)
+                      :type       :native
+                      :native     {:query         (str "SELECT {{filter_date}}, \"last_login\" "
+                                                       "FROM \"test-data\".\"PUBLIC\".\"users\" "
+                                                       "WHERE date_trunc('day', CAST(\"last_login\" AS timestamp))"
+                                                       "    = date_trunc('day', CAST({{filter_date}} AS timestamp))")
+                                   :template-tags {:filter_date {:name         "filter_date"
+                                                                 :display_name "Just A Date"
+                                                                 :type         "date"}}}
+                      :parameters [{:type   "date/single"
+                                    :target ["variable" ["template-tag" "filter_date"]]
+                                    :value  "2014-08-02"}]}))))]
+        (testing "baseline (no report-timezone set)"
+          (is (= [["2014-08-02T00:00:00Z" "2014-08-02T12:30:00Z"]
+                  ["2014-08-02T00:00:00Z" "2014-08-02T09:30:00Z"]]
+                 (run-query))))
+        (testing "with report timezone set"
+          (is (= [["2014-08-02T00:00:00-07:00" "2014-08-02T05:30:00-07:00"]
+                  ["2014-08-02T00:00:00-07:00" "2014-08-02T02:30:00-07:00"]]
+                 (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
+                   (run-query)))))))))
