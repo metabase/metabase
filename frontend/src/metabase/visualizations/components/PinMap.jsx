@@ -138,12 +138,16 @@ export default class PinMap extends Component {
       col => col.name === settings["map.metric_column"],
     );
 
-    const points = rows.map(row => [
+    const all_points = rows.map(row => [
       row[latitudeIndex],
       row[longitudeIndex],
       metricIndex >= 0 ? row[metricIndex] : 1,
     ]);
 
+    // only use points with numeric coordinates & metric
+    const points = all_points.filter(row => typeof row[0] == 'number' &&
+                                            typeof row[1] == 'number' &&
+                                            typeof row[2] == 'number');
     const bounds = L.latLngBounds(points);
 
     const min = d3.min(points, point => point[2]);
