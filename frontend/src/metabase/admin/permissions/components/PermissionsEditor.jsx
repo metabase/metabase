@@ -23,7 +23,6 @@ const PermissionsEditor = ({
   onChangeTab,
   confirmCancel,
   isDirty,
-  saveError,
   diff,
   location,
 }) => {
