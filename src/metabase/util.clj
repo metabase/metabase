@@ -25,7 +25,8 @@
            java.util.concurrent.TimeoutException
            java.util.Locale
            javax.xml.bind.DatatypeConverter
-           org.apache.commons.validator.routines.UrlValidator))
+           org.apache.commons.validator.routines.UrlValidator
+           org.apache.commons.validator.routines.RegexValidator))
 
 ;; This is the very first log message that will get printed.
 ;;
