@@ -1,5 +1,6 @@
 import React from "react";
 
+import { t } from "ttag";
 import { Flex, Box } from "grid-styled";
 
 import AggregateStep from "./AggregateStep";
@@ -22,7 +23,7 @@ export default function SummarizeStep({
         />
       </Box>
       <Box mx={[0, 2]} my={[1, 0]} style={{ color }} className="text-bold">
-        by
+        {t`by`}
       </Box>
       <Box width={[1, 1 / 2]}>
         <BreakoutStep color={color} query={query} {...props} />
