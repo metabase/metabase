@@ -276,17 +276,52 @@
                           {:aggregation [[:count]]
                            :filter      [:= $ip "192.168.1.1"]}))))))))
 
+(defn- do-with-money-test-db [thunk]
+  (drop-if-exists-and-create-db! "money_columns_test")
+  (let [details (mt/dbdef->connection-details :postgres :db {:database-name "money_columns_test"})]
+    (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :postgres details)]
+      (doseq [sql+args [["CREATE table bird_prices (bird TEXT, price money);"]
+                        ["INSERT INTO bird_prices (bird, price) VALUES (?, ?::numeric::money), (?, ?::numeric::money);"
+                         "Lucky Pigeon"   6.0
+                         "Katie Parakeet" 23.99]]]
+        (jdbc/execute! conn sql+args)))
+    (mt/with-temp Database [db {:engine :postgres, :details (assoc details :dbname "money_columns_test")}]
+      (sync/sync-database! db)
+      (mt/with-db db
+        (thunk)))))
+
 (deftest money-columns-test
   (mt/test-driver :postgres
     (testing "We should support the Postgres MONEY type"
       (testing "It should be possible to return money column results (#3754)"
-        (mt/with-log-level :trace
-          (is (= [{:money 1000.00M}]
-                 (jdbc/query
-                  (sql-jdbc.conn/connection-details->spec :postgres (mt/dbdef->connection-details :postgres :server nil))
-                  "SELECT 1000::money AS \"money\";"
-                  {:read-columns   (partial sql-jdbc.execute/read-columns :postgres)
-                   :set-parameters (partial sql-jdbc.execute/set-parameters :postgres)}))))))))
+        (is (= [{:money 1000.00M}]
+               (jdbc/query
+                (sql-jdbc.conn/connection-details->spec :postgres (mt/dbdef->connection-details :postgres :server nil))
+                "SELECT 1000::money AS \"money\";"
+                {:read-columns   (partial sql-jdbc.execute/read-columns :postgres)
+                 :set-parameters (partial sql-jdbc.execute/set-parameters :postgres)}))))
+      (do-with-money-test-db
+       (fn []
+         (testing "We should be able to select avg() of a money column (#11498)"
+           (is (= [[14.995M]]
+                  (mt/rows
+                    (mt/run-mbql-query bird_prices
+                      {:aggregation [[:avg $price]]})))))
+         (testing "Should be able to filter on a money column"
+           (is (= [["Katie Parakeet" 23.99M]]
+                  (mt/rows
+                    (mt/run-mbql-query bird_prices
+                      {:filter [:= $price 23.99]}))))
+           (is (= []
+                  (mt/rows
+                    (mt/run-mbql-query bird_prices
+                      {:filter [:!= $price $price]})))))
+         (testing "Should be able to sort by price"
+           (is (= [["Katie Parakeet" 23.99M]
+                   ["Lucky Pigeon" 6.00M]]
+                  (mt/rows
+                    (mt/run-mbql-query bird_prices
+                      {:order-by [[:desc $price]]}))))))))))
 
 (defn- enums-test-db-details [] (mt/dbdef->connection-details :postgres :db {:database-name "enums_test"}))
 
