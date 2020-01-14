@@ -32,10 +32,12 @@
 (expect true  (u/url? "http://www.cool.com:3000"))
 (expect true  (u/url? "http://localhost:3000/auth/reset_password/144_f98987de-53ca-4335-81da-31bb0de8ea2b#new"))
 (expect true  (u/url? "http://192.168.1.10/"))
+(expect true  (u/url? "http://metabase.intranet/"))
 (expect false (u/url? "google.com"))                      ; missing protocol
 (expect false (u/url? "ftp://metabase.com"))              ; protocol isn't HTTP/HTTPS
 (expect false (u/url? "http://.com"))                     ; no domain
 (expect false (u/url? "http://google."))                  ; no TLD
+(expect false (u/url? "http://"))                         ; no domain or tld
 (expect false (u/url? "http:/"))                          ; nil .getAuthority needs to be handled or NullPointerException
 
 

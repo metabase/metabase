@@ -25,7 +25,7 @@
            java.util.concurrent.TimeoutException
            java.util.Locale
            javax.xml.bind.DatatypeConverter
-           org.apache.commons.validator.routines.UrlValidator))
+           [org.apache.commons.validator.routines RegexValidator UrlValidator]))
 
 ;; This is the very first log message that will get printed.
 ;;
@@ -100,7 +100,9 @@
 (defn url?
   "Is `s` a valid HTTP/HTTPS URL string?"
   ^Boolean [s]
-  (let [validator (UrlValidator. (varargs String ["http" "https"]) UrlValidator/ALLOW_LOCAL_URLS)]
+  (let [validator (UrlValidator. (varargs String ["http" "https"])
+                                 (RegexValidator. "^\\p{Alnum}+([\\.|\\-]\\p{Alnum}+)*(:\\d*)?")
+                                 UrlValidator/ALLOW_LOCAL_URLS)]
     (.isValid validator (str s))))
 
 (defn maybe?
