@@ -22,32 +22,34 @@
 ;; these tests will fail. FIXME
 
 (defsetting test-setting-1
-  "Test setting - this only shows up in dev (1)"
-  :internal? true)
+  (deferred-tru "Test setting - this only shows up in dev (1)"))
 
 (defsetting test-setting-2
-  "Test setting - this only shows up in dev (2)"
-  :internal? true
+  (deferred-tru "Test setting - this only shows up in dev (2)")
   :default "[Default Value]")
+
+(defsetting test-setting-3
+  (deferred-tru "Test setting - this only shows up in dev (3)")
+  :visibility :internal)
 
 (defsetting ^:private test-boolean-setting
   "Test setting - this only shows up in dev (3)"
-  :internal? true
+  :visibility :internal
   :type :boolean)
 
 (defsetting ^:private test-json-setting
   "Test setting - this only shows up in dev (4)"
-  :internal? true
+  :visibility :internal
   :type :json)
 
 (defsetting ^:private test-csv-setting
   "Test setting - this only shows up in dev (5)"
-  :internal? true
+  :visibility :internal
   :type :csv)
 
 (defsetting ^:private test-csv-setting-with-default
   "Test setting - this only shows up in dev (6)"
-  :internal? true
+  :visibility :internal
   :type :csv
   :default "A,B,C")
 
@@ -332,7 +334,7 @@
 
 (setting/defsetting toucan-name
   "Name for the Metabase Toucan mascot."
-  :internal? true)
+  :visibility :internal)
 
 (expect
   "Banana Beak"
@@ -447,7 +449,7 @@
 
 (defsetting ^:private test-timestamp-setting
   "Test timestamp setting"
-  :internal? true
+  :visibility :internal
   :type :timestamp)
 
 (expect
@@ -471,7 +473,7 @@
 
 (defsetting ^:private uncached-setting
   "A test setting that should *not* be cached."
-  :internal? true
+  :visibility :internal
   :cache? false)
 
 ;; make sure uncached setting still saves to the DB

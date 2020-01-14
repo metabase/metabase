@@ -113,7 +113,7 @@
     "color-diff": "^1.1.0",
     "concurrently": "^3.1.0",
     "css-loader": "^0.28.7",
-    "cypress": "^3.7.0",
+    "cypress": "3.8.0",
     "documentation": "^4.0.0-rc.1",
     "enzyme": "^3.8.0",
     "enzyme-2": "npm:enzyme@2",
@@ -212,7 +212,8 @@
     "ci-backend": "lein docstring-checker && lein bikeshed && lein eastwood && lein test",
     "test-cypress-headless": "yarn build && ./bin/build-for-test && yarn test-cypress-no-build",
     "test-cypress-open": "./bin/build-for-test && yarn test-cypress-no-build --open",
-    "test-cypress-no-build": "yarn && babel-node ./frontend/test/__runner__/run_cypress_tests.js"
+    "test-cypress-no-build": "yarn && CONFIG_FILE=frontend/test/cypress.json babel-node ./frontend/test/__runner__/run_cypress_tests.js",
+    "create-cypress-snapshots": "yarn && CONFIG_FILE=frontend/test/cypress-snapshots.json babel-node ./frontend/test/__runner__/run_cypress_tests.js"
   },
   "lint-staged": {
     "frontend/**/*.{js,jsx,css}": [

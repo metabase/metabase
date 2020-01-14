@@ -38,7 +38,7 @@
     (try
       (can-connect-with-details? driver details-map :throw-exceptions)
       (catch Throwable e
-        (log/error (trs "Failed to connect to database: {0}" (.getMessage e)))
+        (log/error e (trs "Failed to connect to database"))
         false))))
 
 (defn report-timezone-if-supported
@@ -115,8 +115,12 @@
   "Return info about all currently available drivers, including their connection properties fields and supported
   features."
   []
-  (into {} (for [driver (available-drivers)]
+  (into {} (for [driver (available-drivers)
+                 :let   [props (try
+                                 (driver/connection-properties driver)
+                                 (catch Throwable e
+                                   (log/error e (trs "Unable to determine connection properties for driver {0}" driver))))]
+                 :when  props]
              ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
-             [driver {:details-fields (driver/connection-properties driver)
-                      :driver-name    (driver/display-name driver)
-                      #_:features       #_(features driver)}])))
+             [driver {:details-fields props
+                      :driver-name    (driver/display-name driver)}])))

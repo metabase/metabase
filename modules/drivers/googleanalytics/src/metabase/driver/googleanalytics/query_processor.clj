@@ -430,21 +430,28 @@
     (-> (YearWeek/from (.parse iso-year-week-formatter s))
         (.atDay DayOfWeek/MONDAY))))
 
-(def ^:private ^DateTimeFormatter year-week
+(def ^:private ^DateTimeFormatter year-week-formatter
   (u.date.builder/formatter
    (u.date.builder/value :week-fields/week-based-year 4)
    (u.date.builder/value :week-fields/week-of-week-based-year 2)))
 
 (defn- parse-year-week [^String s]
   (when s
-    (let [parsed (.parse year-week s)
+    (let [parsed (.parse year-week-formatter s)
           year   (.getLong parsed (u.date.common/temporal-field :week-fields/week-based-year))
           week   (.getLong parsed (u.date.common/temporal-field :week-fields/week-of-week-based-year))]
       (t/adjust (t/local-date year 1 1) (u.date/adjuster :week-of-year week)))))
 
-(def ^:private ga-dimension->date-format-fn
+(def ^:private ^DateTimeFormatter year-month-formatter
+  (u.date.builder/formatter
+   (u.date.builder/value :year 4)
+   (u.date.builder/value :month-of-year 2)
+   (u.date.builder/default-value :day-of-month 1)))
+
+(def ^:private ga-dimension->formatter
   {"ga:date"           "yyyyMMdd"
    "ga:dateHour"       "yyyyMMddHH"
+   "ga:dateHourMinute" "yyyyMMddHHmm"
    "ga:day"            parse-number
    "ga:dayOfWeek"      (comp inc parse-number)
    "ga:hour"           parse-number
@@ -453,26 +460,26 @@
    "ga:month"          parse-number
    "ga:week"           parse-number
    "ga:year"           parse-number
-   "ga:yearMonth"      "yyyyMM"
+   "ga:yearMonth"      year-month-formatter
    "ga:yearWeek"       parse-year-week})
 
 (defn- header->column [^GaData$ColumnHeaders header]
-  (let [date-parser (ga-dimension->date-format-fn (.getName header))]
-    (if date-parser
+  (let [formatter (ga-dimension->formatter (.getName header))]
+    (if formatter
       {:name      "ga:date"
        :base_type :type/DateTime}
       {:name      (.getName header)
        :base_type (ga-type->base-type (.getDataType header))})))
 
 (defn- header->getter-fn [^GaData$ColumnHeaders header]
-  (let [date-parser (ga-dimension->date-format-fn (.getName header))
-        base-type   (ga-type->base-type (.getDataType header))
-        parser      (cond
-                      date-parser                   date-parser
-                      (isa? base-type :type/Number) edn/read-string
-                      :else                         identity)]
+  (let [formatter (ga-dimension->formatter (.getName header))
+        base-type (ga-type->base-type (.getDataType header))
+        parser    (cond
+                    formatter                     formatter
+                    (isa? base-type :type/Number) edn/read-string
+                    :else                         identity)]
     (log/tracef "Parsing result column %s with %s" (.getName header) (pr-str parser))
-    (if (string? parser)
+    (if (or (string? parser) (instance? DateTimeFormatter parser))
       (partial u.date.parse/parse-with-formatter parser)
       parser)))
 

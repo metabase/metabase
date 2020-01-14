@@ -1,10 +1,8 @@
 import path from "path";
-import { plainDbHost } from "__support__/cypress";
+import { restore } from "__support__/cypress";
 
 describe("setup wizard", () => {
-  before(() => {
-    Cypress.config("baseUrl", plainDbHost);
-  });
+  before(() => restore("blank"));
 
   it("should allow you to sign up", () => {
     // intial redirection and welcome page
@@ -30,7 +28,7 @@ describe("setup wizard", () => {
     cy.get('input[name="password_confirm"]').type("password");
 
     // the form shouldn't be valid yet and we should display an error
-    cy.contains("Insufficient password strength");
+    cy.contains("must include one number");
     cy.contains("Next").should("be.disabled");
 
     // now try a strong password that doesn't match
@@ -40,13 +38,12 @@ describe("setup wizard", () => {
       .type(strongPassword);
     cy.get('input[name="password_confirm"]')
       .clear()
-      .type(strongPassword + "foobar");
+      .type(strongPassword + "foobar")
+      .blur();
 
     // tell the user about the mismatch after clicking "Next"
-    cy.contains("Next")
-      .should("not.be.disabled")
-      .click();
-    cy.contains("Passwords do not match");
+    cy.contains("Next").should("be.disabled");
+    cy.contains("passwords do not match");
 
     // fix that mismatch
     cy.get('input[name="password_confirm"]')
@@ -64,14 +61,15 @@ describe("setup wizard", () => {
     cy.contains("You’ll need some info about your database");
 
     // test that you can return to user settings if you want
-    cy.contains("Hi, Testy. nice to meet you!").click();
+    cy.contains("Hi, Testy. Nice to meet you!").click();
     cy.get('input[name="email"]').should("have.value", "testy@metabase.com");
 
     // now back to database setting
     cy.contains("Next").click();
 
     // add h2 database
-    cy.get("select").select("H2");
+    cy.contains("Select a database").click();
+    cy.contains("H2").click();
     cy.get("input[name='name']").type("Metabase H2");
     cy.contains("Next").should("be.disabled");
 
@@ -79,7 +77,7 @@ describe("setup wizard", () => {
       Cypress.config("fileServerFolder"),
       "frontend/test/__runner__/empty.db",
     );
-    cy.get("input[name='db']").type(`file:${dbPath}`);
+    cy.get("input[name='details.db']").type(`file:${dbPath}`);
     cy.contains("Next")
       .should("not.be.disabled")
       .click();

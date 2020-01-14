@@ -1,5 +1,6 @@
 (ns metabase.driver.sql.parameters.substitute
   (:require [clojure.string :as str]
+            [metabase.driver :as driver]
             [metabase.driver.common.parameters :as i]
             [metabase.driver.sql.parameters.substitution :as substitution]
             [metabase.query-processor.error-type :as error-type]
@@ -10,7 +11,7 @@
     ;; no-value field filters inside optional clauses are ignored, and eventually emitted entirely
     [sql args (conj missing k)]
     ;; otherwise no values get replaced with `1 = 1` and other values get replaced normally
-    (let [{:keys [replacement-snippet prepared-statement-args]} (substitution/->replacement-snippet-info v)]
+    (let [{:keys [replacement-snippet prepared-statement-args]} (substitution/->replacement-snippet-info driver/*driver* v)]
       [(str sql replacement-snippet) (concat args prepared-statement-args) missing])))
 
 (defn- substitute-param [param->value [sql args missing] in-optional? {:keys [k]}]
@@ -25,7 +26,7 @@
         [sql args (conj missing k)]
 
         :else
-        (let [{:keys [replacement-snippet prepared-statement-args]} (substitution/->replacement-snippet-info v)]
+        (let [{:keys [replacement-snippet prepared-statement-args]} (substitution/->replacement-snippet-info driver/*driver* v)]
           [(str sql replacement-snippet) (concat args prepared-statement-args) missing])))))
 
 (declare substitute*)
@@ -62,8 +63,16 @@
                  {\"bird_type\" \"Steller's Jay\"})
     ;; -> [\"select * from foobars where bird_type = ?\" [\"Steller's Jay\"]]"
   [parsed-query param->value]
-  (let [[sql args missing] (substitute* param->value parsed-query false)]
+  (let [[sql args missing] (try
+                             (substitute* param->value parsed-query false)
+                             (catch Throwable e
+                               (throw (ex-info (tru "Unable to substitute parameters")
+                                        {:type         (or (:type (ex-data e)) error-type/qp)
+                                         :params       param->value
+                                         :parsed-query parsed-query}
+                                        e))))]
     (when (seq missing)
       (throw (ex-info (tru "Cannot run the query: missing required parameters: {0}" (set missing))
-               {:type error-type/invalid-query})))
+               {:type    error-type/missing-required-parameter
+                :missing missing})))
     [(str/trim sql) args]))

@@ -1,6 +1,5 @@
 (ns metabase.driver.sql.parameters.substitute-test
   (:require [clojure.test :refer :all]
-            [expectations :refer [expect]]
             [java-time :as t]
             [metabase
              [driver :as driver]
@@ -25,72 +24,57 @@
   (driver/with-driver :h2
     (substitute/substitute parsed param->value)))
 
-;; normal substitution
-(expect
-  ["select * from foobars where bird_type = ?" ["Steller's Jay"]]
-  (substitute
-   ["select * from foobars where bird_type = " (param "bird_type")]
-   {"bird_type" "Steller's Jay"}))
+(deftest substitute-test
+  (testing "normal substitution"
+    (is (= ["select * from foobars where bird_type = ?" ["Steller's Jay"]]
+           (substitute
+            ["select * from foobars where bird_type = " (param "bird_type")]
+            {"bird_type" "Steller's Jay"}))))
+  (testing "make sure falsey values are substituted correctly"
+    (testing "`nil` should get substituted as `NULL`"
+      (is (= ["select * from foobars where bird_type = NULL" []]
+             (substitute
+              ["select * from foobars where bird_type = " (param "bird_type")]
+              {"bird_type" nil})))))
+  (testing "`false` should get substituted as `false`"
+    (is (= ["select * from foobars where bird_type = FALSE" []]
+           (substitute
+            ["select * from foobars where bird_type = " (param "bird_type")]
+            {"bird_type" false}))))
+  (testing "optional substitution -- param present"
+    (testing "should preserve whitespace inside optional params"
+      (is (= ["select * from foobars  where bird_type = ?" ["Steller's Jay"]]
+             (substitute
+              ["select * from foobars " (optional " where bird_type = " (param "bird_type"))]
+              {"bird_type" "Steller's Jay"})))))
+  (testing "optional substitution -- param not present"
+    (is (= ["select * from foobars" nil]
+           (substitute
+            ["select * from foobars " (optional " where bird_type = " (param "bird_type"))]
+            {}))))
+  (testing "optional -- multiple params -- all present"
+    (is (= ["select * from foobars  where bird_type = ? AND color = ?" ["Steller's Jay" "Blue"]]
+           (substitute
+            ["select * from foobars " (optional " where bird_type = " (param "bird_type") " AND color = " (param "bird_color"))]
+            {"bird_type" "Steller's Jay", "bird_color" "Blue"}))))
+  (testing "optional -- multiple params -- some present"
+    (is (= ["select * from foobars" nil]
+           (substitute
+            ["select * from foobars " (optional " where bird_type = " (param "bird_type") " AND color = " (param "bird_color"))]
+            {"bird_type" "Steller's Jay"}))))
+  (testing "nested optionals -- all present"
+    (is (= ["select * from foobars  where bird_type = ? AND color = ?" ["Steller's Jay" "Blue"]]
+           (substitute
+            ["select * from foobars " (optional " where bird_type = " (param "bird_type")
+                                                (optional " AND color = " (param "bird_color")))]
+            {"bird_type" "Steller's Jay", "bird_color" "Blue"}))))
+  (testing "nested optionals -- some present"
+    (is (= ["select * from foobars  where bird_type = ?" ["Steller's Jay"]]
+           (substitute
+            ["select * from foobars " (optional " where bird_type = " (param "bird_type")
+                                                (optional " AND color = " (param "bird_color")))]
+            {"bird_type" "Steller's Jay"})))))
 
-;; make sure falsey values are substituted correctly
-;; `nil` should get substituted as `NULL`
-(expect
-  ["select * from foobars where bird_type = NULL" []]
-  (substitute
-   ["select * from foobars where bird_type = " (param "bird_type")]
-   {"bird_type" nil}))
-
-;; `false` should get substituted as `false`
-(expect
-  ["select * from foobars where bird_type = FALSE" []]
-  (substitute
-   ["select * from foobars where bird_type = " (param "bird_type")]
-   {"bird_type" false}))
-
-;; optional substitution -- param present
-(expect
-  ;; should preserve whitespace inside optional params
-  ["select * from foobars  where bird_type = ?" ["Steller's Jay"]]
-  (substitute
-   ["select * from foobars " (optional " where bird_type = " (param "bird_type"))]
-   {"bird_type" "Steller's Jay"}))
-
-;; optional substitution -- param not present
-(expect
-  ["select * from foobars" nil]
-  (substitute
-   ["select * from foobars " (optional " where bird_type = " (param "bird_type"))]
-   {}))
-
-;; optional -- multiple params -- all present
-(expect
-  ["select * from foobars  where bird_type = ? AND color = ?" ["Steller's Jay" "Blue"]]
-  (substitute
-   ["select * from foobars " (optional " where bird_type = " (param "bird_type") " AND color = " (param "bird_color"))]
-   {"bird_type" "Steller's Jay", "bird_color" "Blue"}))
-
-;; optional -- multiple params -- some present
-(expect
-  ["select * from foobars" nil]
-  (substitute
-   ["select * from foobars " (optional " where bird_type = " (param "bird_type") " AND color = " (param "bird_color"))]
-   {"bird_type" "Steller's Jay"}))
-
-;; nested optionals -- all present
-(expect
-  ["select * from foobars  where bird_type = ? AND color = ?" ["Steller's Jay" "Blue"]]
-  (substitute
-   ["select * from foobars " (optional " where bird_type = " (param "bird_type")
-                                       (optional " AND color = " (param "bird_color")))]
-   {"bird_type" "Steller's Jay", "bird_color" "Blue"}))
-
-;; nested optionals -- some present
-(expect
-  ["select * from foobars  where bird_type = ?" ["Steller's Jay"]]
-  (substitute
-   ["select * from foobars " (optional " where bird_type = " (param "bird_type")
-                                       (optional " AND color = " (param "bird_color")))]
-   {"bird_type" "Steller's Jay"}))
 
 ;;; ------------------------------------------------- Field Filters --------------------------------------------------
 
@@ -103,35 +87,27 @@
     :value {:type  :date/single
             :value (t/offset-date-time "2019-09-20T19:52:00.000-07:00")}}))
 
-;; field filter -- non-optional + present
-(expect
-  ["select * from checkins where CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ?"
-   [(t/offset-date-time "2019-09-20T19:52:00.000-07:00")]]
-  (substitute
-   ["select * from checkins where " (param "date")]
-   {"date" (date-field-filter-value)}))
-
-;; field filter -- non-optional + missing -- should be replaced with 1 = 1
-(expect
-  ["select * from checkins where 1 = 1" []]
-  (substitute
-   ["select * from checkins where " (param "date")]
-   {"date" (assoc (date-field-filter-value) :value i/no-value)}))
-
-;; field filter -- optional + present
-(expect
-  ["select * from checkins where CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ?"
-   [(t/offset-date-time "2019-09-20T19:52:00.000-07:00")]]
-  (substitute
-   ["select * from checkins " (optional "where " (param "date"))]
-   {"date" (date-field-filter-value)}))
-
-;; field filter -- optional + missing -- should be omitted entirely
-(expect
-  ["select * from checkins" nil]
-  (substitute
-   ["select * from checkins " (optional "where " (param "date"))]
-   {"date" (assoc (date-field-filter-value) :value i/no-value)}))
+(deftest substitute-field-filter-test
+  (testing "field-filters"
+    (testing "non-optional"
+      (let [query ["select * from checkins where " (param "date")]]
+        (testing "param is present"
+          (is (= ["select * from checkins where CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ?"
+                  [(t/offset-date-time "2019-09-20T19:52:00.000-07:00")]]
+                 (substitute query {"date" (date-field-filter-value)}))))
+        (testing "param is missing"
+          (is (= ["select * from checkins where 1 = 1" []]
+                 (substitute query {"date" (assoc (date-field-filter-value) :value i/no-value)}))
+              "should be replaced with 1 = 1"))))
+    (testing "optional"
+      (let [query ["select * from checkins " (optional "where " (param "date"))]]
+        (testing "param is present"
+          (is (= ["select * from checkins where CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ?"
+                  [#t "2019-09-20T19:52:00.000-07:00"]]
+                 (substitute query {"date" (date-field-filter-value)}))))
+        (testing "param is missing — should be omitted entirely"
+          (is (= ["select * from checkins" nil]
+                 (substitute query {"date" (assoc (date-field-filter-value) :value i/no-value)}))))))))
 
 
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
@@ -659,44 +635,42 @@
                                      :target [:dimension [:template-tag "checkin_date"]]
                                      :value  "past5days"}]}))))))
 
-;; Make sure we can specify the type of a default value for a "Dimension" (Field Filter) by setting the
-;; `:widget-type` key. Check that it works correctly with relative dates...
-(expect
-  {:query  (str "SELECT count(*) AS \"count\", \"DATE\" "
-                "FROM CHECKINS "
-                "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ? "
-                "GROUP BY \"DATE\"")
-   :params [#t "2017-10-31"
-            #t "2017-11-04"]}
-  (t/with-clock (t/mock-clock #t "2017-11-05T12:00Z" (t/zone-id "UTC"))
-    (expand* {:native {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
-                                           "FROM CHECKINS "
-                                           "WHERE {{checkin_date}} "
-                                           "GROUP BY \"DATE\"")
-                       :template-tags {"checkin_date" {:name         "checkin_date"
-                                                       :display-name "Checkin Date"
-                                                       :type         :dimension
-                                                       :dimension    [:field-id (mt/id :checkins :date)]
-                                                       :default      "past5days"
-                                                       :widget-type  :date/all-options}}}})))
-
-;; Check that it works with absolute dates as well
-(expect
-  {:query  (str "SELECT count(*) AS \"count\", \"DATE\" "
-                "FROM CHECKINS "
-                "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ? "
-                "GROUP BY \"DATE\"")
-   :params [#t "2017-11-14"]}
-  (expand* {:native {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
-                                         "FROM CHECKINS "
-                                         "WHERE {{checkin_date}} "
-                                         "GROUP BY \"DATE\"")
-                     :template-tags {"checkin_date" {:name         "checkin_date"
-                                                     :display-name "Checkin Date"
-                                                     :type         :dimension
-                                                     :dimension    [:field-id (mt/id :checkins :date)]
-                                                     :default      "2017-11-14"
-                                                     :widget-type  :date/all-options}}}}))
+(deftest field-filter-defaults-test
+  (testing (str "Make sure we can specify the type of a default value for a \"Dimension\" (Field Filter) by setting "
+                "the `:widget-type` key. Check that it works correctly with relative dates...")
+    (is (= {:query  (str "SELECT count(*) AS \"count\", \"DATE\" "
+                         "FROM CHECKINS "
+                         "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) BETWEEN ? AND ? "
+                         "GROUP BY \"DATE\"")
+            :params [#t "2017-10-31"
+                     #t "2017-11-04"]}
+           (t/with-clock (t/mock-clock #t "2017-11-05T12:00Z" (t/zone-id "UTC"))
+             (expand* {:native {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
+                                                    "FROM CHECKINS "
+                                                    "WHERE {{checkin_date}} "
+                                                    "GROUP BY \"DATE\"")
+                                :template-tags {"checkin_date" {:name         "checkin_date"
+                                                                :display-name "Checkin Date"
+                                                                :type         :dimension
+                                                                :dimension    [:field-id (mt/id :checkins :date)]
+                                                                :default      "past5days"
+                                                                :widget-type  :date/all-options}}}})))))
+  (testing "Check that it works with absolute dates as well"
+    (is (= {:query  (str "SELECT count(*) AS \"count\", \"DATE\" "
+                         "FROM CHECKINS "
+                         "WHERE CAST(\"PUBLIC\".\"CHECKINS\".\"DATE\" AS date) = ? "
+                         "GROUP BY \"DATE\"")
+            :params [#t "2017-11-14"]}
+           (expand* {:native {:query         (str "SELECT count(*) AS \"count\", \"DATE\" "
+                                                  "FROM CHECKINS "
+                                                  "WHERE {{checkin_date}} "
+                                                  "GROUP BY \"DATE\"")
+                              :template-tags {"checkin_date" {:name         "checkin_date"
+                                                              :display-name "Checkin Date"
+                                                              :type         :dimension
+                                                              :dimension    [:field-id (mt/id :checkins :date)]
+                                                              :default      "2017-11-14"
+                                                              :widget-type  :date/all-options}}}})))))
 
 (deftest newlines-test
   (testing "Make sure queries with newlines are parsed correctly (#11526)"

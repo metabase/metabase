@@ -45,6 +45,7 @@ const GuideDetailEditor = ({
 
   const selectClasses = "input h3 px2 py1";
 
+  const selectedIdsSet = new Set(selectedIds);
   return (
     <div className={cx("mb2 border-bottom pb4 text-measure", className)}>
       <div className="relative mt2 flex align-center">
@@ -64,11 +65,10 @@ const GuideDetailEditor = ({
         <div className="py2">
           {entities ? (
             <Select
-              value={entities[formField.id.value]}
-              options={Object.values(entities)}
-              disabledOptionIds={selectedIds}
-              optionNameFn={option => option.display_name || option.name}
-              onChange={entity => {
+              placeholder={t`Select...`}
+              value={formField.id.value}
+              onChange={({ target: { value } }) => {
+                const entity = entities[value];
                 //TODO: refactor into function
                 formField.id.onChange(entity.id);
                 formField.points_of_interest.onChange(
@@ -84,7 +84,10 @@ const GuideDetailEditor = ({
                   );
                 }
               }}
-              placeholder={t`Select...`}
+              options={Object.values(entities)}
+              optionNameFn={option => option.display_name || option.name}
+              optionValueFn={option => option.id}
+              optionDisabledFn={o => selectedIdsSet.has(o.id)}
             />
           ) : (
             <SchemaTableAndSegmentDataSelector
@@ -182,36 +185,20 @@ const GuideDetailEditor = ({
               {t`Which 2-3 fields do you usually group this metric by?`}
             </EditLabel>
             <Select
-              options={fieldsByMetric}
-              optionNameFn={option => option.display_name || option.name}
               placeholder={t`Select...`}
-              values={formField.important_fields.value || []}
-              disabledOptionIds={
-                formField.important_fields.value &&
-                formField.important_fields.value.length === 3
-                  ? fieldsByMetric
-                      .filter(
-                        field =>
-                          !formField.important_fields.value.includes(field),
-                      )
-                      .map(field => field.id)
-                  : []
+              multiple
+              value={formField.important_fields.value || []}
+              onChange={({ target: { value } }) =>
+                formField.important_fields.onChange(value)
               }
-              onChange={field => {
-                const importantFields = formField.important_fields.value || [];
-                return importantFields.includes(field)
-                  ? formField.important_fields.onChange(
-                      importantFields.filter(
-                        importantField => importantField !== field,
-                      ),
-                    )
-                  : importantFields.length < 3 &&
-                      formField.important_fields.onChange(
-                        importantFields.concat(field),
-                      );
-              }}
-              disabled={
-                formField.id.value === null || formField.id.value === undefined
+              disabled={formField.id.value == null}
+              options={fieldsByMetric}
+              optionNameFn={metric => metric.display_name || metric.name}
+              optionValueFn={metric => metric.id}
+              optionDisabledFn={metric =>
+                formField.important_fields &&
+                formField.important_fields.length >= 3 &&
+                !formField.important_fields.includes(metric.id)
               }
             />
           </div>

@@ -20,7 +20,7 @@ export default ({ question, clicked }: ClickActionProps): ClickAction[] => {
   if (
     !clicked ||
     dimensions.length === 0 ||
-    !MetabaseSettings.get("enable_xrays")
+    !MetabaseSettings.get("enable-xrays")
   ) {
     return [];
   }

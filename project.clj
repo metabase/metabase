@@ -15,6 +15,7 @@
    "install"                           ["with-profile" "+install" "install"]
    "install-for-building-drivers"      ["with-profile" "install-for-building-drivers" "install"]
    "run"                               ["with-profile" "+run" "run"]
+   "run-with-repl"                     ["with-profile" "+run-with-repl" "repl"]
    "ring"                              ["with-profile" "+ring" "ring"]
    "test"                              ["with-profile" "+test" "test"]
    "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed"
@@ -207,6 +208,19 @@
 
    :run
    [:exclude-tests {}]
+
+   :run-with-repl
+   [:exclude-tests
+    :include-all-drivers
+
+    {:env
+     {:mb-jetty-join "false"}
+
+     :repl-options
+     {:init (do
+             (require 'metabase.core)
+             (metabase.core/-main))
+      :timeout 60000}}]
 
    ;; start the dev HTTP server with 'lein ring server'
    :ring

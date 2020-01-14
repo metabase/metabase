@@ -9,6 +9,7 @@
              [driver :as driver]
              [util :as u]]
             [metabase.driver.sql :as sql]
+            [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
@@ -26,6 +27,7 @@
             [schema.core :as s]
             [toucan.db :as db])
   (:import [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
+           metabase.driver.common.parameters.FieldFilter
            metabase.util.honeysql_extensions.Identifier))
 
 (defn- valid-bigquery-identifier?
@@ -490,8 +492,19 @@
   [_]
   :mysql)
 
-;; TIMEZONE FIXME — Not working in all cases — see #11222
+;; convert LocalDate to an OffsetDateTime in UTC since BigQuery doesn't handle LocalDates as we'd like
 (defmethod sql/->prepared-substitution [:bigquery LocalDate]
-  [_ t]
-  {:sql-string   "?"
-   :param-values [(t/offset-date-time t (t/local-time 0) (t/zone-offset 0))]})
+  [driver t]
+  (sql/->prepared-substitution driver (t/offset-date-time t (t/local-time 0) (t/zone-offset 0))))
+
+(defmethod sql.params.substitution/->replacement-snippet-info [:bigquery FieldFilter]
+  [driver {:keys [field], :as field-filter}]
+  (let [field-temporal-type (temporal-type field)
+        parent-method       (get-method sql.params.substitution/->replacement-snippet-info [:sql FieldFilter])
+        result              (parent-method driver field-filter)]
+    (cond-> result
+      field-temporal-type (update :prepared-statement-args (fn [args]
+                                                             (for [arg args]
+                                                               (if (instance? java.time.temporal.Temporal arg)
+                                                                 (->temporal-type field-temporal-type arg)
+                                                                 arg)))))))

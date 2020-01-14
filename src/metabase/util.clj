@@ -386,6 +386,24 @@
   (^String [s max-length]
    (str/join (take max-length (slugify s)))))
 
+(defn all-ex-data
+  "Like `ex-data`, but merges `ex-data` from causes. If duplicate keys exist, the keys from the highest level are
+  preferred.
+
+    (def e (ex-info \"A\" {:a true, :both \"a\"} (ex-info \"B\" {:b true, :both \"A\"})))
+
+    (ex-data e)
+    ;; -> {:a true, :both \"a\"}
+
+    (u/all-ex-data e)
+    ;; -> {:a true, :b true, :both \"a\"}"
+  [e]
+  (reduce
+   (fn [data e]
+     (merge (ex-data e) data))
+   nil
+   (take-while some? (iterate #(.getCause ^Throwable %) e))))
+
 (defn do-with-auto-retries
   "Execute `f`, a function that takes no arguments, and return the results.
    If `f` fails with an exception, retry `f` up to `num-retries` times until it succeeds.
@@ -395,14 +413,20 @@
   [num-retries f]
   (if (<= num-retries 0)
     (f)
-    (try (f)
-         (catch Throwable e
-           (log/warn (format-color 'red "auto-retry %s: %s" f (.getMessage e)))
-           (do-with-auto-retries (dec num-retries) f)))))
+    (try
+      (f)
+      (catch Throwable e
+        (when (::no-auto-retry? (all-ex-data e))
+          (throw e))
+        (log/warn (format-color 'red "auto-retry %s: %s" f (.getMessage e)))
+        (do-with-auto-retries (dec num-retries) f)))))
 
 (defmacro auto-retry
-  "Execute `body` and return the results.
-   If `body` fails with an exception, retry execution up to `num-retries` times until it succeeds."
+  "Execute `body` and return the results. If `body` fails with an exception, retry execution up to `num-retries` times
+  until it succeeds.
+
+  You can disable auto-retries for a specific ExceptionInfo by including `{:metabase.util/no-auto-retry? true}` in its
+  data (or the data of one of its causes.)"
   {:style/indent 1}
   [num-retries & body]
   `(do-with-auto-retries ~num-retries

@@ -4,7 +4,9 @@
             [honeysql.core :as hsql]
             [java-time :as t]
             [metabase.driver :as driver]
-            [metabase.driver.common :as driver.common]
+            [metabase.driver
+             [common :as driver.common]
+             [sql :as sql]]
             [metabase.driver.sql
              [query-processor :as sql.qp]
              [util :as sql.u]]
@@ -313,3 +315,8 @@
 (defmethod unprepare/unprepare-value [:oracle Instant]
   [driver t]
   (unprepare/unprepare-value driver (t/zoned-date-time t (t/zone-id "UTC"))))
+
+;; Oracle doesn't really support boolean types so use bits instead (See #11592, similar issue for SQL Server)
+(defmethod sql/->prepared-substitution [:oracle Boolean]
+  [driver bool]
+  (sql/->prepared-substitution driver (if bool 1 0)))
