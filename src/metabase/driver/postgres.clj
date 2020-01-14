@@ -8,8 +8,10 @@
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [java-time :as t]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.db.spec :as db.spec]
-            [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc
              [common :as sql-jdbc.common]
@@ -112,9 +114,9 @@
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod sql.qp/unix-timestamp->timestamp [:postgres :seconds] [_ _ expr]
+(defmethod sql.qp/unix-timestamp->timestamp [:postgres :seconds]
+  [_ _ expr]
   (hsql/call :to_timestamp expr))
-
 
 (defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (hx/->timestamp expr)))
 (defn- extract    [unit expr] (hsql/call :extract    unit              (hx/->timestamp expr)))
@@ -144,7 +146,6 @@
 (defmethod sql.qp/date [:postgres :quarter]         [_ _ expr] (date-trunc :quarter expr))
 (defmethod sql.qp/date [:postgres :quarter-of-year] [_ _ expr] (extract-integer :quarter expr))
 (defmethod sql.qp/date [:postgres :year]            [_ _ expr] (date-trunc :year expr))
-
 
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver value]
@@ -301,6 +302,15 @@
         (let [s (.getString rs i)]
           (log/tracef "Error in Postgres JDBC driver reading TIME value, fetching as string '%s'" s)
           (u.date/parse s))))))
+
+;; The postgres JDBC driver cannot properly read MONEY columns — see https://github.com/pgjdbc/pgjdbc/issues/425. Work
+;; around this by checking whether the column type name is `money`, and reading it out as a String and parsing to a
+;; BigDecimal if so; otherwise, proceeding as normal
+(defmethod sql-jdbc.execute/read-column [:postgres Types/DOUBLE]
+  [driver _ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (if (= (.getColumnTypeName rsmeta i) "money")
+    (some-> (.getString rs i) u/parse-currency)
+    (.getObject rs i)))
 
 ;; Postgres doesn't support OffsetTime
 (defmethod sql-jdbc.execute/set-parameter [:postgres OffsetTime]
