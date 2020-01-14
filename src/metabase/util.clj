@@ -100,7 +100,9 @@
 (defn url?
   "Is `s` a valid HTTP/HTTPS URL string?"
   ^Boolean [s]
-  (let [validator (UrlValidator. (varargs String ["http" "https"]) UrlValidator/ALLOW_LOCAL_URLS)]
+  (let [validator (UrlValidator. (varargs String ["http" "https"])
+                                 (RegexValidator. "^\\p{Alnum}+([\\.|\\-]\\p{Alnum}+)*(:\\d*)?")
+                                 UrlValidator/ALLOW_LOCAL_URLS)]
     (.isValid validator (str s))))
 
 (defn maybe?
