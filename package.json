@@ -92,6 +92,7 @@
     "@babel/standalone": "^7.4.5",
     "@cypress/webpack-preprocessor": "^4.1.0",
     "@slack/client": "^3.5.4",
+    "@testing-library/cypress": "^5.0.2",
     "@testing-library/jest-dom": "^4.0.0",
     "@testing-library/react": "^8.0.6",
     "babel-cli": "^6.11.4",

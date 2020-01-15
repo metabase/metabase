@@ -65,7 +65,7 @@ export default class FormField extends Component {
         {(title || description) && (
           <div className={cx({ ml2: horizontal })}>
             {title && (
-              <label className="Form-label" htmlFor={name}>
+              <label className="Form-label" htmlFor={name} id={`${name}-label`}>
                 {title} {error && <span className="text-error">: {error}</span>}
               </label>
             )}

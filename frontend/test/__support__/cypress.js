@@ -1,3 +1,5 @@
+import "@testing-library/cypress/add-commands";
+
 export const ADMIN_CREDS = {
   username: "bob@metabase.com",
   password: "12341234",

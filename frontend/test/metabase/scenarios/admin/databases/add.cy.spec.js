@@ -1,7 +1,7 @@
 import { signInAsAdmin, restore } from "__support__/cypress";
 
-function typeField(name, value) {
-  cy.get(`input[name="${name}"]`)
+function typeField(label, value) {
+  cy.findByLabelText(label)
     .clear()
     .type(value)
     .blur();
@@ -22,7 +22,7 @@ describe("admin > databases > add", () => {
     cy.server();
   });
 
-  it("should work and shouldn't let you accidentally add db twice", () => {
+  it("should add a database and redirect to listing", () => {
     cy.route({
       method: "POST",
       url: "/api/database",
@@ -32,14 +32,13 @@ describe("admin > databases > add", () => {
 
     cy.visit("/admin/databases/create");
 
-    typeField("name", "Test db name");
-    typeField("details.dbname", "test_postgres_db");
-    typeField("details.user", "uberadmin");
+    typeField("Name", "Test db name");
+    typeField("Database name", "test_postgres_db");
+    typeField("Database username", "uberadmin");
 
-    cy.contains("button", "Save")
+    cy.findByText("Save")
       .should("not.be.disabled")
       .click();
-    cy.contains("button", "Save").should("be.disabled");
 
     cy.wait("@createDatabase");
 
@@ -49,19 +48,21 @@ describe("admin > databases > add", () => {
   it("should show validation error if you enable scheduling toggle and enter invalid db connection info", () => {
     cy.visit("/admin/databases/create");
 
-    typeField("name", "Test db name");
-    typeField("details.dbname", "test_postgres_db");
-    typeField("details.user", "uberadmin");
+    typeField("Name", "Test db name");
+    typeField("Database name", "test_postgres_db");
+    typeField("Database username", "uberadmin");
 
-    cy.contains("button", "Save").should("not.be.disabled");
+    cy.findByText("Save").should("not.be.disabled");
 
     toggleFieldWithDisplayName("let me choose when Metabase syncs and scans");
 
-    cy.contains("button", "Next")
+    cy.findByText("Next")
       .should("not.be.disabled")
       .click();
 
-    cy.contains("Couldn't connect to the database");
+    cy.findByText(
+      "Couldn't connect to the database. Please check the connection details.",
+    );
   });
 
   it("should direct you to scheduling settings if you enable the toggle", () => {
@@ -70,21 +71,21 @@ describe("admin > databases > add", () => {
 
     cy.visit("/admin/databases/create");
 
-    typeField("name", "Test db name");
-    typeField("details.dbname", "test_postgres_db");
-    typeField("details.user", "uberadmin");
+    typeField("Name", "Test db name");
+    typeField("Database name", "test_postgres_db");
+    typeField("Database username", "uberadmin");
 
-    cy.contains("button", "Save").should("not.be.disabled");
+    cy.findByText("Save").should("not.be.disabled");
 
     toggleFieldWithDisplayName("let me choose when Metabase syncs and scans");
 
-    cy.contains("button", "Next")
+    cy.findByText("Next")
       .should("not.be.disabled")
       .click();
 
-    cy.contains("Never").click();
+    cy.findByText("Never, I'll do this manually if I need to").click();
 
-    cy.contains("button", "Save").click();
+    cy.findByText("Save").click();
 
     cy.wait("@createDatabase").then(({ request }) => {
       expect(request.body.engine).to.equal("postgres");
@@ -94,27 +95,28 @@ describe("admin > databases > add", () => {
 
     cy.url().should("match", /\/admin\/databases\?created=42$/);
 
-    cy.contains("Your database has been added");
+    cy.findByText("Your database has been added!").should("exist");
   });
 
-  it.only("should show error correctly on server error", () => {
+  it("should show error correctly on server error", () => {
     cy.route({
       method: "POST",
       url: "/api/database",
-      response: "Server error encountered",
+      response: "DATABASE CONNECTION ERROR",
       status: 400,
-      delay: 100,
+      delay: 1000,
     }).as("createDatabase");
 
     cy.visit("/admin/databases/create");
 
-    typeField("name", "Test db name");
-    typeField("details.dbname", "test_postgres_db");
-    typeField("details.user", "uberadmin");
+    typeField("Name", "Test db name");
+    typeField("Database name", "test_postgres_db");
+    typeField("Database username", "uberadmin");
 
-    cy.contains("button", "Save").click();
-    cy.contains("button", "Save").should("be.disabled");
+    cy.findByText("Save").click();
 
-    cy.contains("Server error encountered");
+    cy.wait("@createDatabase");
+
+    cy.findByText("DATABASE CONNECTION ERROR").should("exist");
   });
 });
