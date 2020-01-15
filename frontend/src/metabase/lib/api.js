@@ -179,7 +179,8 @@ export class Api extends EventEmitter {
           try {
             body = JSON.parse(body);
           } catch (e) {}
-          if (xhr.status >= 200 && xhr.status <= 299) {
+          if (xhr.status >= 200 && xhr.status <= 299 && body.async_status != "error") {
+            console.log("XHR", body, data)
             if (options.transformResponse) {
               body = options.transformResponse(body, { data });
             }

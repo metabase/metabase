@@ -224,7 +224,7 @@
   (let [data-keys            [:dataset_query :description :display :name
                               :visualization_settings :collection_id :collection_position]
         card-data            (assoc (zipmap data-keys (map card-data data-keys))
-                               :creator_id api/*current-user-id*)
+                                    :creator_id api/*current-user-id*)
         result-metadata-chan (result-metadata-async dataset_query result_metadata metadata_checksum)
         out-chan             (a/chan 1)]
     (a/go
@@ -236,7 +236,7 @@
           (async.u/single-value-pipe (save-new-card-async! card-data) out-chan))
         (catch Throwable e
           (a/put! out-chan e)
-          (a/close! e))))
+          (a/close! out-chan))))
     ;; Return a channel
     out-chan))
 
