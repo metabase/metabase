@@ -1,4 +1,4 @@
-import { signInAsAdmin, restore } from "__support__/cypress";
+import { signInAsAdmin, restore, main } from "__support__/cypress";
 
 describe("admin > people", () => {
   before(restore);
@@ -7,22 +7,30 @@ describe("admin > people", () => {
   describe("user management", () => {
     it("should render", () => {
       cy.visit("/admin/people");
-      cy.contains("People");
+      main().within(() => {
+        cy.findByText("People");
+        cy.findByText("Groups");
+      });
     });
     it("should allow admin to create new users", () => {
       cy.visit("/admin/people");
-      cy.contains("Add someone").click();
-      cy.get('[name="first_name"]').type("Testy");
-      cy.get('[name="last_name"]').type("McTestface");
+      cy.findByText("Add someone").click();
+
+      // first modal
+      cy.findByLabelText("First name").type("Testy");
+      cy.findByLabelText("Last name").type("McTestface");
       // bit of a hack since there are multiple "Email" nodes
-      cy.get("input[name='email']").type(
+      cy.findByLabelText("Email").type(
         `testy${Math.round(Math.random() * 100000)}@metabase.com`,
       );
-      cy.contains("Create").click();
-      cy.contains("has been added");
-      cy.contains("Show").click();
-      cy.contains("Done").click();
-      cy.contains("Testy");
+      cy.findByText("Create").click();
+
+      // second modal
+      cy.findByText("Testy McTestface has been added");
+      cy.findByText("Show").click();
+      cy.findByText("Done").click();
+
+      cy.findByText("Testy McTestface");
     });
   });
 });
