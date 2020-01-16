@@ -179,24 +179,24 @@ export class Api extends EventEmitter {
           try {
             body = JSON.parse(body);
           } catch (e) {}
-          if (xhr.status >= 200 && xhr.status <= 299) {
+          const status_code = xhr.status;
+          if (status_code === 202) {
+            status_code = body.status_code;
+          }
+          if (status_code >= 200 && status_code <= 299) {
             if (options.transformResponse) {
               body = options.transformResponse(body, { data });
             }
-            if (body.async_status === "error") {
-              reject({ status: 500, data: body, isCancelled });
-            } else {
-              resolve(body);
-            }
+            resolve(body);
           } else {
             reject({
-              status: xhr.status,
+              status: status_code,
               data: body,
               isCancelled: isCancelled,
             });
           }
           if (!options.noEvent) {
-            this.emit(xhr.status, url);
+            this.emit(status_code, url);
           }
         }
       };
