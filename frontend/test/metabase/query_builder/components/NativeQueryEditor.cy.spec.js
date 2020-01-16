@@ -72,6 +72,7 @@ describe("NativeQueryEditor", () => {
     // Write a query with parameter x. It defaults to a text parameter.
     cy.get(".ace_content").type("{{foo}} {{bar}}", {
       parseSpecialCharSequences: false,
+      delay: 0,
     });
 
     cy.contains("Variables")

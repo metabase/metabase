@@ -4,8 +4,10 @@
             [medley.core :as m]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.params :as params]
+            [metabase.query-processor.error-type :as error-type]
             [metabase.util
              [date-2 :as u.date]
+             [i18n :refer [tru]]
              [schema :as su]]
             [schema.core :as s]))
 
@@ -15,9 +17,11 @@
   (or (= param-type :date)
       (= "date" (namespace param-type))))
 
-(defn relative-date-param-type?
-  "Is param type a relative `:date` param (e.g., not an absolute moment in time?)"
+(defn date-range-type?
+  "Does date `param-type` represent a range of dates, rather than a single absolute date? (The value may be relative,
+  such as `past30days`, or absolute, such as `2020-01`.)"
   [param-type]
+  ;; TODO —
   (#{:date/range :date/month-year :date/quarter-year :date/relative :date/all-options} param-type))
 
 ;; Both in MBQL and SQL parameter substitution a field value is compared to a date range, either relative or absolute.
@@ -218,7 +222,11 @@
          ;; Absolute date ranges don't need the time zone conversion because in SQL the date ranges are compared
          ;; against the db field value that is casted granularity level of a day in the db time zone
          (->> (execute-decoders absolute-date-string-decoders :range nil date-string)
-              (m/map-vals u.date/format)))))
+              (m/map-vals u.date/format))
+         ;; if both of the decoders above fail, then the date string is invalid
+         (throw (ex-info (tru "Don''t know how to parse date param ''{0}'' — invalid format" date-string)
+                  {:param date-string
+                   :type  error-type/invalid-parameter})))))
 
   ;; 2-arg version is for legacy compatibility only; no longer needed
   ([date-string _]

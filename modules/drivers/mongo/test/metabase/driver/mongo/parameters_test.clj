@@ -91,6 +91,10 @@
         (is (= "[{$match: {\"id\": {$in: [1, 2, 3]}}}]"
                (substitute {:id (field-filter "id" :number v)}
                            ["[{$match: " (param :id) "}]"]))))))
+  (testing "single date"
+    (is (= "[{$match: {$and: [{\"date\": {$gte: ISODate(\"2019-12-08\")}}, {\"date\": {$lt: ISODate(\"2019-12-09\")}}]}}]"
+           (substitute {:date (field-filter "date" :date/single "2019-12-08")}
+                       ["[{$match: " (param :date) "}]"]))))
   (testing "parameter not supplied"
     (is (= "[{$match: {}}]"
            (substitute {:date (common.params/->FieldFilter {:name "date"} common.params/no-value)} ["[{$match: " (param :date) "}]"])))))

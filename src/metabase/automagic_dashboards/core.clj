@@ -279,20 +279,21 @@
 
 (defn- optimal-datetime-resolution
   [field]
-  (if-let [[earliest latest] (some->> field
-                                      :fingerprint
-                                      :type
-                                      :type/DateTime
-                                      ((juxt :earliest :latest))
-                                      (map u.date/parse))]
-    ;; e.g. if 3 hours > [duration between earliest and latest] then use `:minute` resolution
-    (condp u.date/greater-than-period-duration? (u.date/period-duration earliest latest)
-      (t/hours 3)  :minute
-      (t/days 7)   :hour
-      (t/months 6) :day
-      (t/years 10) :month
-      :year)
-    :day))
+  (let [[earliest latest] (some->> field
+                                   :fingerprint
+                                   :type
+                                   :type/DateTime
+                                   ((juxt :earliest :latest))
+                                   (map u.date/parse))]
+    (if (and earliest latest)
+      ;; e.g. if 3 hours > [duration between earliest and latest] then use `:minute` resolution
+      (condp u.date/greater-than-period-duration? (u.date/period-duration earliest latest)
+        (t/hours 3)  :minute
+        (t/days 7)   :hour
+        (t/months 6) :day
+        (t/years 10) :month
+        :year)
+      :day)))
 
 (defmethod ->reference [:mbql (type Field)]
   [_ {:keys [fk_target_field_id id link aggregation name base_type] :as field}]

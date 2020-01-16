@@ -2,7 +2,6 @@
   (:require [clojure
              [test :refer :all]
              [walk :as walk]]
-            [expectations :refer [expect]]
             [hiccup.core :refer [html]]
             [metabase.pulse.render
              [body :as body]
@@ -51,7 +50,7 @@
 
 (defn- prep-for-html-rendering'
   [cols rows bar-column max-value]
-  (let [results (#'body/prep-for-html-rendering pacific-tz cols rows bar-column max-value (count cols))]
+  (let [results (#'body/prep-for-html-rendering pacific-tz {} {:cols cols :rows rows} bar-column max-value (count cols))]
     [(first results)
      (col-counts results)]))
 
@@ -79,59 +78,96 @@
                                 :visibility_type :retired})
 
 ;; Testing the format of headers
-(expect
-  default-header-result
-  (prep-for-html-rendering' test-columns test-data nil nil))
+(deftest header-result
+  (is (= default-header-result
+         (prep-for-html-rendering' test-columns test-data nil nil))))
 
-(expect
-  default-header-result
+(deftest header-result-2
   (let [cols-with-desc (conj test-columns description-col)
         data-with-desc (mapv #(conj % "Desc") test-data)]
-    (prep-for-html-rendering' cols-with-desc data-with-desc nil nil)))
+    (is (= default-header-result
+           (prep-for-html-rendering' cols-with-desc data-with-desc nil nil)))))
 
-(expect
-  default-header-result
+(deftest header-result-3
   (let [cols-with-details (conj test-columns detail-col)
         data-with-details (mapv #(conj % "Details") test-data)]
-    (prep-for-html-rendering' cols-with-details data-with-details nil nil)))
+    (is (= default-header-result
+           (prep-for-html-rendering' cols-with-details data-with-details nil nil)))))
 
-(expect
-  default-header-result
+(deftest header-result-4
   (let [cols-with-sensitive (conj test-columns sensitive-col)
         data-with-sensitive (mapv #(conj % "Sensitive") test-data)]
-    (prep-for-html-rendering' cols-with-sensitive data-with-sensitive nil nil)))
+    (is (= default-header-result
+           (prep-for-html-rendering' cols-with-sensitive data-with-sensitive nil nil)))))
 
-(expect
-  default-header-result
+(deftest header-result-5
   (let [columns-with-retired (conj test-columns retired-col)
         data-with-retired    (mapv #(conj % "Retired") test-data)]
-    (prep-for-html-rendering' columns-with-retired data-with-retired nil nil)))
+    (is (= default-header-result
+           (prep-for-html-rendering' columns-with-retired data-with-retired nil nil)))))
+
+(deftest prefers-col-visualization-settings-for-header
+  (testing "Users can give columns custom names. Use those if they exist."
+    (let [card    {:visualization_settings
+                   {:column_settings {(keyword "[\"ref\",[\"field-id\",321]]") {:column_title "Custom Last Login"}
+                                      (keyword "[\"name\",\"name\"]")          {:column_title "Custom Name"}}}}
+          cols    [{:name            "last_login"
+                    :display_name    "Last Login"
+                    :base_type       :type/DateTime
+                    :special_type    nil
+                    :visibility_type :normal
+                    :field_ref       [:field-id 321]}
+                   {:name            "name"
+                    :display_name    "Name"
+                    :base_type       :type/Text
+                    :special_type    nil
+                    :visibility_type :normal}]]
+
+      ;; card contains custom column names
+      (is (= {:row       ["Custom Last Login" "Custom Name"]
+              :bar-width nil}
+             (first (#'body/prep-for-html-rendering pacific-tz
+                                                    card
+                                                    {:cols cols :rows []}
+                                                    nil
+                                                    nil
+                                                    (count test-columns)))))
+
+      ;; card does not contain custom column names
+      (is (= {:row       ["Last Login" "Name"]
+              :bar-width nil}
+             (first (#'body/prep-for-html-rendering pacific-tz
+                                                    {}
+                                                    {:cols cols :rows []}
+                                                    nil
+                                                    nil
+                                                    (count test-columns))))))))
 
 ;; When including a bar column, bar-width is 99%
-(expect
-  (assoc-in default-header-result [0 :bar-width] 99)
-  (prep-for-html-rendering' test-columns test-data second 40.0))
+(deftest bar-width
+  (is (= (assoc-in default-header-result [0 :bar-width] 99)
+         (prep-for-html-rendering' test-columns test-data second 40.0))))
 
 ;; When there are too many columns, #'body/prep-for-html-rendering show narrow it
-(expect
-  [{:row [(number "ID") (number "Latitude")]
-    :bar-width 99}
-   #{2}]
-  (prep-for-html-rendering' (subvec test-columns 0 2) test-data second 40.0 ))
+(deftest narrow-the-columns
+  (is (= [{:row [(number "ID") (number "Latitude")]
+           :bar-width 99}
+          #{2}]
+         (prep-for-html-rendering' (subvec test-columns 0 2) test-data second 40.0 ))))
 
 ;; Basic test that result rows are formatted correctly (dates, floating point numbers etc)
-(expect
-  [{:bar-width nil, :row [(number "1") (number "34.10") "Apr 1, 2014" "Stout Burgers & Beers"]}
-   {:bar-width nil, :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
-   {:bar-width nil, :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
-  (rest (#'body/prep-for-html-rendering pacific-tz test-columns test-data nil nil (count test-columns))))
+(deftest format-result-rows
+  (is (= [{:bar-width nil, :row [(number "1") (number "34.10") "Apr 1, 2014" "Stout Burgers & Beers"]}
+          {:bar-width nil, :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
+          {:bar-width nil, :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
+         (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data} nil nil (count test-columns))))))
 
 ;; Testing the bar-column, which is the % of this row relative to the max of that column
-(expect
-  [{:bar-width (float 85.249),  :row [(number "1") (number "34.10") "Apr 1, 2014" "Stout Burgers & Beers"]}
-   {:bar-width (float 85.1015), :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
-   {:bar-width (float 85.1185), :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
-  (rest (#'body/prep-for-html-rendering pacific-tz test-columns test-data second 40 (count test-columns))))
+(deftest bar-column
+  (is (= [{:bar-width (float 85.249),  :row [(number "1") (number "34.10") "Apr 1, 2014" "Stout Burgers & Beers"]}
+          {:bar-width (float 85.1015), :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
+          {:bar-width (float 85.1185), :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
+         (rest (#'body/prep-for-html-rendering pacific-tz {} {:cols test-columns :rows test-data} second 40 (count test-columns))))))
 
 (defn- add-rating
   "Injects `RATING-OR-COL` and `DESCRIPTION-OR-COL` into `COLUMNS-OR-ROW`"
@@ -162,83 +198,93 @@
         ["Bad" "Ok" "Good"]))
 
 ;; With a remapped column, the header should contain the name of the remapped column (not the original)1
-(expect
-  [{:row [(number "ID") (number "Latitude") "Rating Desc" "Last Login" "Name"]
-    :bar-width nil}
-   #{5}]
-  (prep-for-html-rendering' test-columns-with-remapping test-data-with-remapping nil nil))
+(deftest remapped-col
+  (is (= [{:row [(number "ID") (number "Latitude") "Rating Desc" "Last Login" "Name"]
+           :bar-width nil}
+          #{5}]
+         (prep-for-html-rendering' test-columns-with-remapping test-data-with-remapping nil nil))))
 
 ;; Result rows should include only the remapped column value, not the original
-(expect
-  [[(number "1") (number "34.10") "Bad" "Apr 1, 2014" "Stout Burgers & Beers"]
-   [(number "2") (number "34.04") "Ok" "Dec 5, 2014" "The Apple Pan"]
-   [(number "3") (number "34.05") "Good" "Aug 1, 2014" "The Gorbals"]]
-  (map :row (rest (#'body/prep-for-html-rendering pacific-tz test-columns-with-remapping test-data-with-remapping nil nil (count test-columns-with-remapping)))))
+(deftest include-only-remapped-column-name
+  (is (= [[(number "1") (number "34.10") "Bad" "Apr 1, 2014" "Stout Burgers & Beers"]
+          [(number "2") (number "34.04") "Ok" "Dec 5, 2014" "The Apple Pan"]
+          [(number "3") (number "34.05") "Good" "Aug 1, 2014" "The Gorbals"]]
+         (map :row (rest (#'body/prep-for-html-rendering pacific-tz
+                                                         {}
+                                                         {:cols test-columns-with-remapping :rows test-data-with-remapping}
+                                                         nil
+                                                         nil
+                                                         (count test-columns-with-remapping)))))))
 
 ;; There should be no truncation warning if the number of rows/cols is fewer than the row/column limit
-(expect
-  ""
-  (html (#'body/render-truncation-warning 100 10 100 10)))
+(deftest no-truncation-warnig
+  (is (= ""
+         (html (#'body/render-truncation-warning 100 10 100 10)))))
 
 ;; When there are more rows than the limit, check to ensure a truncation warning is present
-(expect
-  [true false]
-  (let [html-output (html (#'body/render-truncation-warning 100 10 10 100))]
-    [(boolean (re-find #"Showing.*10.*of.*100.*rows" html-output))
-     (boolean (re-find #"Showing .* of .* columns" html-output))]))
+(deftest truncation-warning-when-rows-exceed-max
+  (is (= [true false]
+         (let [html-output (html (#'body/render-truncation-warning 100 10 10 100))]
+           [(boolean (re-find #"Showing.*10.*of.*100.*rows" html-output))
+            (boolean (re-find #"Showing .* of .* columns" html-output))]))))
 
 ;; When there are more columns than the limit, check to ensure a truncation warning is present
-(expect
-  [true false]
-  (let [html-output (html (#'body/render-truncation-warning 10 100 100 10))]
-    [(boolean (re-find #"Showing.*10.*of.*100.*columns" html-output))
-     (boolean (re-find #"Showing .* of .* rows" html-output))]))
+(deftest truncation-warning-when-cols-exceed-max
+  (is (= [true false]
+         (let [html-output (html (#'body/render-truncation-warning 10 100 100 10))]
+           [(boolean (re-find #"Showing.*10.*of.*100.*columns" html-output))
+            (boolean (re-find #"Showing .* of .* rows" html-output))]))))
 
 (def ^:private test-columns-with-date-special-type
   (update test-columns 2 merge {:base_type    :type/Text
                                 :special_type :type/DateTime}))
 
-(expect
-  [{:bar-width nil, :row [(number "1") (number "34.10") "Apr 1, 2014" "Stout Burgers & Beers"]}
-   {:bar-width nil, :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
-   {:bar-width nil, :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
-  (rest (#'body/prep-for-html-rendering pacific-tz test-columns-with-date-special-type test-data nil nil (count test-columns))))
+(deftest cols-with-special-types
+  (is (= [{:bar-width nil, :row [(number "1") (number "34.10") "Apr 1, 2014" "Stout Burgers & Beers"]}
+          {:bar-width nil, :row [(number "2") (number "34.04") "Dec 5, 2014" "The Apple Pan"]}
+          {:bar-width nil, :row [(number "3") (number "34.05") "Aug 1, 2014" "The Gorbals"]}]
+         (rest (#'body/prep-for-html-rendering pacific-tz
+                                               {}
+                                               {:cols test-columns-with-date-special-type :rows test-data}
+                                               nil
+                                               nil
+                                               (count test-columns))))))
 
 (defn- render-scalar-value [results]
   (-> (body/render :scalar nil pacific-tz nil results)
       :content
       last))
 
-(expect
-  "10"
-  (render-scalar-value {:cols [{:name         "ID",
-                                :display_name "ID",
-                                :base_type    :type/BigInteger
-                                :special_type nil}]
-                        :rows [[10]]}))
+(deftest renders-int
+  (is (= "10"
+         (render-scalar-value {:cols [{:name         "ID",
+                                       :display_name "ID",
+                                       :base_type    :type/BigInteger
+                                       :special_type nil}]
+                               :rows [[10]]}))))
 
-(expect
-  "10.12"
-  (render-scalar-value {:cols [{:name         "floatnum",
-                                :display_name "FLOATNUM",
-                                :base_type    :type/Float
-                                :special_type nil}]
-                        :rows [[10.12345]]}))
+(deftest renders-float
+  (is (= "10.12"
+         (render-scalar-value {:cols [{:name         "floatnum",
+                                       :display_name "FLOATNUM",
+                                       :base_type    :type/Float
+                                       :special_type nil}]
+                               :rows [[10.12345]]}))))
 
-(expect
-  "foo"
-  (render-scalar-value {:cols [{:name         "stringvalue",
-                                :display_name "STRINGVALUE",
-                                :base_type    :type/Text
-                                :special_type nil}]
-                        :rows [["foo"]]}))
-(expect
-  "Apr 1, 2014"
-  (render-scalar-value {:cols [{:name         "date",
-                                :display_name "DATE",
-                                :base_type    :type/DateTime
-                                :special_type nil}]
-                        :rows [["2014-04-01T08:30:00.0000"]]}))
+(deftest renders-string
+  (is (= "foo"
+         (render-scalar-value {:cols [{:name         "stringvalue",
+                                       :display_name "STRINGVALUE",
+                                       :base_type    :type/Text
+                                       :special_type nil}]
+                               :rows [["foo"]]}))))
+(deftest renders-date
+  (is (= "Apr 1, 2014"
+         (render-scalar-value {:cols [{:name         "date",
+                                       :display_name "DATE",
+                                       :base_type    :type/DateTime
+                                       :special_type nil}]
+                               :rows [["2014-04-01T08:30:00.0000"]]}))))
 
 (defn- replace-style-maps [hiccup-map]
   (walk/postwalk (fn [maybe-map]
@@ -250,48 +296,47 @@
 (def ^:private render-truncation-warning'
   (comp replace-style-maps #'body/render-truncation-warning))
 
-(expect
-  nil
-  (render-truncation-warning' 10 5 20 10))
+(deftest no-truncation-warnig-for-style
+  (is (nil? (render-truncation-warning' 10 5 20 10))))
 
-(expect
-  [:div :style-map
-   [:div :style-map
-    "Showing " [:strong :style-map "10"] " of "
-    [:strong :style-map "11"] " columns."]]
-  (render-truncation-warning' 10 11 20 10))
+(deftest renders-truncation-style-1
+  (is (= [:div :style-map
+          [:div :style-map
+           "Showing " [:strong :style-map "10"] " of "
+           [:strong :style-map "11"] " columns."]]
+         (render-truncation-warning' 10 11 20 10))))
 
-(expect
-  [:div
-   :style-map
-   [:div :style-map "Showing "
-    [:strong :style-map "20"] " of " [:strong :style-map "21"] " rows."]]
-  (render-truncation-warning' 10 5 20 21))
+(deftest renders-truncation-style-2
+  (is (= [:div
+          :style-map
+          [:div :style-map "Showing "
+           [:strong :style-map "20"] " of " [:strong :style-map "21"] " rows."]]
+         (render-truncation-warning' 10 5 20 21))))
 
-(expect
-  [:div
-   :style-map
-   [:div
-    :style-map
-    "Showing "
-    [:strong :style-map "20"]
-    " of "
-    [:strong :style-map "21"]
-    " rows and "
-    [:strong :style-map "10"]
-    " of "
-    [:strong :style-map "11"]
-    " columns."]]
-  (render-truncation-warning' 10 11 20 21))
+(deftest renders-truncation-style-3
+  (is (= [:div
+          :style-map
+          [:div
+           :style-map
+           "Showing "
+           [:strong :style-map "20"]
+           " of "
+           [:strong :style-map "21"]
+           " rows and "
+           [:strong :style-map "10"]
+           " of "
+           [:strong :style-map "11"]
+           " columns."]]
+         (render-truncation-warning' 10 11 20 21))))
 
-(expect
-  4
-  (#'body/count-displayed-columns test-columns))
+(deftest counts-displayed-columns
+  (is (= 4
+         (#'body/count-displayed-columns test-columns))))
 
-(expect
-  4
-  (#'body/count-displayed-columns
-   (concat test-columns [description-col detail-col sensitive-col retired-col])))
+(deftest counts-displayed-columns-excludes-undisplayed
+  (is (= 4
+         (#'body/count-displayed-columns
+          (concat test-columns [description-col detail-col sensitive-col retired-col])))))
 
 ;; Test rendering a bar graph
 ;;
