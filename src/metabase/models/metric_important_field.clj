@@ -9,7 +9,7 @@
 (u/strict-extend (class MetricImportantField)
   models/IModel
   (merge models/IModelDefaults
-         {:types (constantly {:definition :json, :description :clob})})
+         {:types (constantly {:definition :json})})
   i/IObjectPermissions
   (merge i/IObjectPermissionsDefaults
          {:can-read?  (constantly true)

@@ -127,7 +127,7 @@
                                            k))))]
     {:cols dest-keys
      :vals (for [row objs]
-             (map (comp u/jdbc-clob->str row) source-keys))}))
+             (map row source-keys))}))
 
 (def ^:private chunk-size 100)
 

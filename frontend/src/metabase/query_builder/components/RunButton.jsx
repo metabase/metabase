@@ -9,7 +9,6 @@ import cx from "classnames";
 export default class RunButton extends Component {
   static propTypes = {
     className: PropTypes.string,
-    isRunnable: PropTypes.bool.isRequired,
     isRunning: PropTypes.bool.isRequired,
     isDirty: PropTypes.bool.isRequired,
     isPreviewing: PropTypes.bool,
@@ -21,7 +20,6 @@ export default class RunButton extends Component {
 
   render() {
     const {
-      isRunnable,
       isRunning,
       isDirty,
       isPreviewing,
@@ -40,17 +38,14 @@ export default class RunButton extends Component {
       if (!compact) {
         buttonText = t`Cancel`;
       }
-    } else if (isRunnable && isDirty) {
+    } else if (isDirty) {
       if (compact) {
         buttonIcon = "play";
       } else {
         buttonText = isPreviewing ? t`Get Preview` : t`Get Answer`;
       }
-    } else if (isRunnable && !isDirty) {
+    } else {
       buttonIcon = "refresh";
-    }
-    if (!buttonIcon && !buttonText) {
-      return null;
     }
     return (
       <Button

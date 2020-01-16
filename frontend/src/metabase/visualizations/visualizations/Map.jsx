@@ -45,7 +45,10 @@ export default class Map extends Component {
   static minSize = { width: 4, height: 4 };
 
   static isSensible({ cols, rows }) {
-    return true;
+    return (
+      PinMap.isSensible({ cols, rows }) ||
+      ChoroplethMap.isSensible({ cols, rows })
+    );
   }
 
   static placeholderSeries = [
@@ -234,7 +237,7 @@ export default class Map extends Component {
         return null;
       },
       getProps: () => ({
-        options: Object.entries(MetabaseSettings.get("custom_geojson", {})).map(
+        options: Object.entries(MetabaseSettings.get("custom-geojson", {})).map(
           // $FlowFixMe:
           ([key, value]) => ({ name: value.name, value: key }),
         ),

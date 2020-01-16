@@ -14,7 +14,7 @@ import type {
 function getFiltersForColumn(column) {
   if (
     isa(column.base_type, TYPE.Number) ||
-    isa(column.base_type, TYPE.DateTime)
+    isa(column.base_type, TYPE.Temporal)
   ) {
     return [
       { name: "<", operator: "<" },

@@ -131,7 +131,7 @@ export default class ChoroplethMap extends Component {
   }
 
   _getDetails(props) {
-    return MetabaseSettings.get("custom_geojson", {})[
+    return MetabaseSettings.get("custom-geojson", {})[
       props.settings["map.region"]
     ];
   }
@@ -317,6 +317,7 @@ export default class ChoroplethMap extends Component {
         gridSize={gridSize}
         hovered={hovered}
         onHoverChange={onHoverChange}
+        isDashboard={this.props.isDashboard}
       >
         {projection ? (
           <LegacyChoropleth

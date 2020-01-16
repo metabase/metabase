@@ -25,7 +25,7 @@
 
 ;; TODO - Should this go somewhere more general, like util ?
 (defn- do-request
-  "Perform a JSON request using REQUEST-FN against URL.
+  "Perform a JSON request using `request-fn` against `url`.
    Tho
 
      (do-request http/get \"http://my-json-api.net\")"
@@ -41,8 +41,8 @@
       (catch Throwable _
         (throw (Exception. (tru "Failed to parse body: {0}" body)))))))
 
-(def ^:private ^{:arglists '([url & {:as options}])} GET  (partial do-request http/get))
-(def ^:private ^{:arglists '([url & {:as options}])} POST (partial do-request http/post))
+(def ^:private ^{:arglists '([url & {:as options}])} GET    (partial do-request http/get))
+(def ^:private ^{:arglists '([url & {:as options}])} POST   (partial do-request http/post))
 (def ^:private ^{:arglists '([url & {:as options}])} DELETE (partial do-request http/delete))
 
 
@@ -125,7 +125,8 @@
    :base-type     (druid-type->base-type field-type)
    :database-type field-type})
 
-(defmethod driver/describe-table :druid [_ database table]
+(defmethod driver/describe-table :druid
+  [_ database table]
   (ssh/with-ssh-tunnel [details-with-tunnel (:details database)]
     (let [{:keys [columns]} (first (do-segment-metadata-query details-with-tunnel (:name table)))]
       {:schema nil
@@ -134,22 +135,25 @@
                      ;; every Druid table is an event stream w/ a timestamp field
                      [{:name          "timestamp"
                        :database-type "timestamp"
-                       :base-type     :type/DateTime
+                       :base-type     :type/Instant
                        :pk?           true}]
                      (for [[field-name field-info] (dissoc columns :__time)]
                        (describe-table-field field-name field-info))))})))
 
-(defmethod driver/describe-database :druid [_ database]
+(defmethod driver/describe-database :druid
+  [_ database]
   {:pre [(map? (:details database))]}
   (ssh/with-ssh-tunnel [details-with-tunnel (:details database)]
     (let [druid-datasources (GET (details->url details-with-tunnel "/druid/v2/datasources"))]
       {:tables (set (for [table-name druid-datasources]
                       {:schema nil, :name table-name}))})))
 
-(defmethod driver/mbql->native :druid [_ query]
+(defmethod driver/mbql->native :druid
+  [_ query]
   (qp/mbql->native query))
 
-(defmethod driver/execute-query :druid [_ query]
+(defmethod driver/execute-query :druid
+  [_ query]
   (qp/execute-query do-query-with-cancellation query))
 
 (defmethod driver/supports? [:druid :set-timezone]            [_ _] true)

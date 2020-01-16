@@ -80,6 +80,16 @@ export default class NativeQuery extends AtomicQuery {
       .filter(database => database.native_permissions === "write");
   }
 
+  clean() {
+    return this.setDatasetQuery(
+      updateIn(
+        this.datasetQuery(),
+        ["native", "template-tags"],
+        tt => tt || {},
+      ),
+    );
+  }
+
   /* AtomicQuery superclass methods */
 
   tables(): ?(Table[]) {

@@ -7,6 +7,7 @@
              [config :as config]
              [driver :as driver]
              [util :as u]]
+            [metabase.driver.impl :as impl]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))
 
@@ -37,9 +38,8 @@
     (try
       (can-connect-with-details? driver details-map :throw-exceptions)
       (catch Throwable e
-        (log/error (trs "Failed to connect to database: {0}" (.getMessage e)))
+        (log/error e (trs "Failed to connect to database"))
         false))))
-
 
 (defn report-timezone-if-supported
   "Returns the report-timezone if `driver` supports setting it's timezone and a report-timezone has been specified by
@@ -85,10 +85,10 @@
           :let    [driver (keyword (-> (last (str/split (name ns-symb) #"\."))
                                        (str/replace #"_" "-")))]
           ;; let's go ahead and ignore namespaces we know for a fact do not contain drivers
-          :when   (not (#{:common :util :query-processor :google}
+          :when   (not (#{:common :util :query-processor :google :impl}
                         driver))]
     (try
-      (#'driver/load-driver-namespace-if-needed! driver)
+      (impl/load-driver-namespace-if-needed! driver)
       (catch Throwable e
         (log/error e (trs "Error loading namespace"))))))
 
@@ -115,8 +115,12 @@
   "Return info about all currently available drivers, including their connection properties fields and supported
   features."
   []
-  (into {} (for [driver (available-drivers)]
+  (into {} (for [driver (available-drivers)
+                 :let   [props (try
+                                 (driver/connection-properties driver)
+                                 (catch Throwable e
+                                   (log/error e (trs "Unable to determine connection properties for driver {0}" driver))))]
+                 :when  props]
              ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
-             [driver {:details-fields (driver/connection-properties driver)
-                      :driver-name    (driver/display-name driver)
-                      #_:features       #_(features driver)}])))
+             [driver {:details-fields props
+                      :driver-name    (driver/display-name driver)}])))

@@ -19,7 +19,9 @@ type EmptyStateProps = {
 // Don't break existing empty states
 // TODO - remove these and update empty states with proper usage of illustrationElement
 const LegacyIcon = props =>
-  props.icon ? <Icon name={props.icon} size={40} /> : null;
+  props.icon ? (
+    <Icon name={props.icon} className="text-light" size={40} />
+  ) : null;
 const LegacyImage = props =>
   props.image ? (
     <img

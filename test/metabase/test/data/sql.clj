@@ -1,6 +1,7 @@
 (ns metabase.test.data.sql
   "Common test extension functionality for all SQL drivers."
   (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase.driver :as driver]
             [metabase.driver.sql.util :as sql.u]
             [metabase.test.data.interface :as tx])
@@ -142,10 +143,25 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmulti field-base-type->sql-type
-  "Return a native SQL type that should be used for fields of BASE-TYPE."
+  "Return a native SQL type that should be used for fields of `base-type`."
   {:arglists '([driver base-type])}
   (fn [driver base-type] [(tx/dispatch-on-driver-with-test-extensions driver) base-type])
   :hierarchy #'driver/hierarchy)
+
+(defmethod field-base-type->sql-type :default
+  [driver base-type]
+  (or (some
+       (fn [ancestor-type]
+         (when-not (= ancestor-type :type/*)
+           (when-let [method (get (methods field-base-type->sql-type) [driver ancestor-type])]
+             (log/infof "No test data type mapping for driver %s for base type %s, falling back to ancestor base type %s"
+                        driver base-type ancestor-type)
+             (method driver base-type))))
+       (ancestors base-type))
+      (throw
+       (Exception.
+        (format "No test data type mapping for driver %s for base type %s; add an impl for field-base-type->sql-type."
+                driver base-type)))))
 
 
 (defmulti pk-sql-type

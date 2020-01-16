@@ -41,7 +41,7 @@
                            (into {} error)))))))
 
 (defn execute
-  "`execute` REQUEST, and catch any `GoogleJsonResponseException` is throws, converting them to `ExceptionInfo` and
+  "Execute `request`, and catch any `GoogleJsonResponseException` is throws, converting them to `ExceptionInfo` and
   rethrowing them.
 
   This automatically retries any failed requests up to 2 times."

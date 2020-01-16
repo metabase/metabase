@@ -12,6 +12,7 @@
             [metabase.api.session :as session-api]
             [metabase.models
              [session :refer [Session]]
+             [setting :as setting]
              [user :refer [User]]]
             [metabase.test
              [fixtures :as fixtures]
@@ -284,9 +285,26 @@
 
 
 ;; GET /session/properties
+
+;; Unauthenticated
 (expect
-  (keys (public-settings/public-settings))
-  (keys ((test-users/user->client :rasta) :get 200 "session/properties")))
+  (keys (setting/properties :public))
+  (keys (client :get 200 "session/properties")))
+
+;; Authenticated normal user
+(expect
+  (keys (merge
+          (setting/properties :public)
+          (setting/properties :authenticated)))
+  (keys ((test-users/user->client :lucky) :get 200 "session/properties")))
+
+;; Authenticated super user
+(expect
+  (keys (merge
+          (setting/properties :public)
+          (setting/properties :authenticated)
+          (setting/properties :admin)))
+  (keys ((test-users/user->client :crowberto) :get 200 "session/properties")))
 
 
 ;;; ------------------------------------------ TESTS FOR GOOGLE AUTH STUFF -------------------------------------------
@@ -340,6 +358,56 @@
                      (db/delete! User :id (:id <>))) ; make sure we clean up after ourselves !
                    [:first_name :last_name :email]))))
 
+
+;;; --------------------------------------------- google-auth-token-info ---------------------------------------------
+(deftest google-auth-token-info-tests
+  (testing "Throws exception"
+    (testing "for non-200 status"
+      (is (= [400 "Invalid Google Auth token."]
+             (try
+               (#'session-api/google-auth-token-info {:status 400} "")
+               (catch Exception e
+                 [(-> e ex-data :status-code) (.getMessage e)])))))
+
+    (testing "for invalid data."
+      (is (= [400 "Google Auth token meant for a different site."]
+             (try
+               (#'session-api/google-auth-token-info
+                 {:status 200
+                  :body   "{\"aud\":\"BAD-GOOGLE-CLIENT-ID\"}"}
+                 "PRETEND-GOOD-GOOGLE-CLIENT-ID")
+               (catch Exception e
+                 [(-> e ex-data :status-code) (.getMessage e)]))))
+      (is (= [400 "Email is not verified."]
+             (try
+               (#'session-api/google-auth-token-info
+                 {:status 200
+                  :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
+                               "\"email_verified\":false}")}
+                 "PRETEND-GOOD-GOOGLE-CLIENT-ID")
+               (catch Exception e
+                 [(-> e ex-data :status-code) (.getMessage e)]))))
+      (is (= {:aud            "PRETEND-GOOD-GOOGLE-CLIENT-ID"
+              :email_verified "true"}
+             (try
+               (#'session-api/google-auth-token-info
+                 {:status 200
+                  :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
+                               "\"email_verified\":\"true\"}")}
+                 "PRETEND-GOOD-GOOGLE-CLIENT-ID")
+               (catch Exception e
+                 [(-> e ex-data :status-code) (.getMessage e)]))))))
+
+  (testing "Supports multiple :aud token data fields"
+    (let [token-1 "GOOGLE-CLIENT-ID-1"
+          token-2 "GOOGLE-CLIENT-ID-2"]
+      (is (= [token-1 token-2]
+             (:aud (#'session-api/google-auth-token-info
+                     {:status 200
+                      :body   (format "{\"aud\":[\"%s\",\"%s\"],\"email_verified\":\"true\"}"
+                                      token-1
+                                      token-2)}
+                     token-1)))))))
 
 ;;; --------------------------------------- google-auth-fetch-or-create-user! ----------------------------------------
 

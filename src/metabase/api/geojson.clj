@@ -97,8 +97,8 @@
 (def ^:private ^:const builtin-geojson
   {:us_states       {:name        "United States"
                      :url         "app/assets/geojson/us-states.json"
-                     :region_key  "name"
-                     :region_name "name"
+                     :region_key  "STATE"
+                     :region_name "NAME"
                      :builtin     true}
    :world_countries {:name        "World"
                      :url         "app/assets/geojson/world.json"
@@ -119,7 +119,8 @@
   :setter  (fn [new-value]
              (when new-value
                (validate-custom-geo-json new-value))
-             (setting/set-json! :custom-geojson new-value)))
+             (setting/set-json! :custom-geojson new-value))
+  :visibility :public)
 
 
 (defendpoint GET "/:key"

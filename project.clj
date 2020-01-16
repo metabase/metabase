@@ -15,6 +15,7 @@
    "install"                           ["with-profile" "+install" "install"]
    "install-for-building-drivers"      ["with-profile" "install-for-building-drivers" "install"]
    "run"                               ["with-profile" "+run" "run"]
+   "run-with-repl"                     ["with-profile" "+run-with-repl" "repl"]
    "ring"                              ["with-profile" "+ring" "ring"]
    "test"                              ["with-profile" "+test" "test"]
    "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed"
@@ -63,7 +64,7 @@
     :exclusions [commons-codec
                  commons-io
                  slingshot]]
-   [clj-time "0.15.1"]                                                ; library for dealing with date/time
+   [clojure.java-time "0.3.2"]                                        ; Java 8 java.time wrapper
    [clojurewerkz/quartzite "2.1.0"                                    ; scheduling library
     :exclusions [c3p0]]
    [colorize "0.1.1" :exclusions [org.clojure/clojure]]               ; string output with ANSI color codes (for logging)
@@ -77,6 +78,7 @@
                  it.unimi.dsi/fastutil]]
    [com.draines/postal "2.0.3"]                                       ; SMTP library
    [com.jcraft/jsch "0.1.55"]                                         ; SSH client for tunnels
+   [com.google.guava/guava "28.2-jre"]                                ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
    [com.h2database/h2 "1.4.197"]                                      ; embedded SQL database
    [com.mattbertolini/liquibase-slf4j "2.0.0"]                        ; Java Migrations lib logging. We don't actually use this AFAIK (?)
    [com.taoensso/nippy "2.14.0"]                                      ; Fast serialization (i.e., GZIP) library for Clojure
@@ -106,8 +108,8 @@
                  com.sun.jmx/jmxri]]
    [me.raynes/fs "1.4.6"]                                             ; Filesystem tools
    [medley "1.2.0"]                                                   ; lightweight lib of useful functions
-   [metabase/connection-pool "1.0.3"]                                 ; simple wrapper around C3P0. JDBC connection pools
-   [metabase/mbql "1.3.6"]                                            ; MBQL language schema & util fns
+   [metabase/connection-pool "1.1.1"]                                 ; simple wrapper around C3P0. JDBC connection pools
+   [metabase/mbql "1.4.3"]                                            ; MBQL language schema & util fns
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
    [org.apache.commons/commons-lang3 "3.9"]                           ; helper methods for working with java.lang stuff
@@ -116,10 +118,11 @@
    [org.flatland/ordered "1.5.7"]                                     ; ordered maps & sets
    [org.liquibase/liquibase-core "3.6.3"                              ; migration management (Java lib)
     :exclusions [ch.qos.logback/logback-classic]]
-   [org.mariadb.jdbc/mariadb-java-client "2.3.0"]                     ; MySQL/MariaDB driver
-   [org.postgresql/postgresql "42.2.5"]                               ; Postgres driver
+   [org.mariadb.jdbc/mariadb-java-client "2.5.1"]                     ; MySQL/MariaDB driver
+   [org.postgresql/postgresql "42.2.8"]                               ; Postgres driver
    [org.slf4j/slf4j-log4j12 "1.7.25"]                                 ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
    [org.tcrawley/dynapath "1.0.0"]                                    ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
+   [org.threeten/threeten-extra "1.5.0"]                               ; extra Java 8 java.time classes like DayOfMonth and Quarter
    [org.yaml/snakeyaml "1.23"]                                        ; YAML parser (required by liquibase)
    [potemkin "0.4.5"]                                                 ; utility macros & fns
    [pretty "1.0.1"]                                                   ; protocol for defining how custom types should be pretty printed
@@ -140,10 +143,10 @@
   :manifest
   {"Liquibase-Package"
    #= (eval
-       (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
-            "liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,"
-            "liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,"
-            "liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"))}
+        (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
+             "liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,"
+             "liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,"
+             "liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"))}
 
   :jvm-opts
   ["-XX:+IgnoreUnrecognizedVMOptions"                                 ; ignore things not recognized for our Java version instead of refusing to start
@@ -164,6 +167,7 @@
 
     :dependencies
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
+     [jonase/eastwood "0.3.6" :exclusions [org.clojure/clojure]]      ; to run Eastwood
      [methodical "0.9.4-alpha"]
      [pjstadig/humane-test-output "0.9.0"]
      [ring/ring-mock "0.3.2"]]
@@ -179,9 +183,15 @@
      (try (require 'metabase.test.redefs)
           (catch Throwable _))]
 
-    :env      {:mb-run-mode       "dev"
-               :mb-test-setting-1 "ABCDEFG"}
-    :jvm-opts ["-Dlogfile.path=target/log"]}
+    :env
+    {:mb-run-mode       "dev"
+     :mb-test-setting-1 "ABCDEFG"}
+
+    :jvm-opts
+    ["-Dlogfile.path=target/log"]
+
+    :repl-options
+    {:init-ns user}} ; starting in the user namespace is a lot faster than metabase.core since it has less deps
 
    :ci
    {:jvm-opts ["-Xmx2500m"]}
@@ -198,6 +208,19 @@
 
    :run
    [:exclude-tests {}]
+
+   :run-with-repl
+   [:exclude-tests
+    :include-all-drivers
+
+    {:env
+     {:mb-jetty-join "false"}
+
+     :repl-options
+     {:init (do
+             (require 'metabase.core)
+             (metabase.core/-main))
+      :timeout 60000}}]
 
    ;; start the dev HTTP server with 'lein ring server'
    :ring
@@ -237,17 +260,23 @@
      ["-Duser.timezone=UTC"
       "-Dmb.db.in.memory=true"
       "-Dmb.jetty.join=false"
-      "-Dmb.jetty.port=3010"
+      ;; use a random port between 3001 and 3501. That way if you run multiple sets of tests at the same time locally
+      ;; they won't stomp on each other
+      #=(eval (format "-Dmb.jetty.port=%d" (+ 3001 (rand-int 500))))
       "-Dmb.api.key=test-api-key"
       "-Duser.language=en"]}]
 
    :include-all-drivers
    [:with-include-drivers-middleware
-    {:include-drivers :all}]
+    {:include-drivers :all
+     :injections
+     [(require 'metabase.plugins)
+      (metabase.plugins/load-plugins!)]}]
 
    :repl
    [:include-all-drivers
-    {:jvm-opts ["-Duser.timezone=UTC"]}] ; so running the tests doesn't give you different answers
+    ;; so running the tests doesn't give you different answers
+    {:jvm-opts ["-Duser.timezone=UTC"]}]
 
    :bikeshed
    [:include-all-drivers
@@ -257,13 +286,12 @@
    :eastwood
    [:include-all-drivers
     {:plugins
-     [[jonase/eastwood "0.3.1" :exclusions [org.clojure/clojure]]]
+     [[jonase/eastwood "0.3.6" :exclusions [org.clojure/clojure]]]
 
      :eastwood
-     {:exclude-namespaces [:test-paths dev]
+     {:exclude-namespaces [:test-paths dev dev.test]
       :config-files       ["./test_resources/eastwood-config.clj"]
       :add-linters        [:unused-private-vars
-                           :unused-namespaces
                            ;; These linters are pretty useful but give a few false positives and can't be selectively
                            ;; disabled (yet)
                            ;;
@@ -274,8 +302,12 @@
                            ;; get them to work
                            #_:unused-fn-args
                            #_:unused-locals]
-      ;; Turn this off temporarily until we finish removing self-deprecated functions & macros
-      :exclude-linters    [:deprecations]}}]
+      :exclude-linters    [; Turn this off temporarily until we finish removing self-deprecated functions & macros
+                           :deprecations
+                           ;; this has a fit in libs that use Potemin `import-vars` such as `java-time`
+                           :implicit-dependencies
+                           ;; too many false positives for now
+                           :unused-ret-vals]}}]
 
    ;; run ./bin/reflection-linter to check for reflection warnings
    :reflection-warnings
@@ -286,7 +318,7 @@
    :docstring-checker
    [:include-all-drivers
     {:plugins
-     [[docstring-checker "1.0.3"]]
+     [[docstring-checker "1.1.0"]]
 
      :docstring-checker
      {:include [#"^metabase"]
@@ -304,21 +336,13 @@
    {:auto-clean true
     :aot        :all}
 
-   ;; generate sample dataset with `lein generate-sample-dataset`
-   :generate-sample-dataset
-   {:dependencies
-    [[faker "0.3.2"]                                                     ; Fake data generator -- port of Perl/Ruby library
-     [jdistlib "0.5.1" :exclusions [com.github.wendykierp/JTransforms]]] ; Distribution statistic tests
-    :source-paths ["lein-commands/sample-dataset"]
-    :main         ^:skip-aot metabase.sample-dataset.generate}
-
    ;; lein strip-and-compress my-plugin.jar [path/to/metabase.jar]
    ;; strips classes from my-plugin.jar that already exist in other JAR and recompresses with higher compression ratio.
    ;; Second arg (other JAR) is optional; defaults to target/uberjar/metabase.jar
    :strip-and-compress
    {:source-paths ["src"
                    "lein-commands/strip-and-compress"]
-    :main ^:skip-aot metabase.strip-and-compress-module}
+    :main         ^:skip-aot metabase.strip-and-compress-module}
 
    ;; Profile Metabase start time with `lein profile`
    :profile
@@ -333,5 +357,5 @@
    {:main metabase.automagic-dashboards.rules}
 
    :compare-h2-dbs
-   {:main ^:skip-aot metabase.cmd.compare-h2-dbs
+   {:main         ^:skip-aot metabase.cmd.compare-h2-dbs
     :source-paths ["test"]}})

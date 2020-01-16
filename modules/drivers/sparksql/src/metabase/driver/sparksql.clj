@@ -73,7 +73,8 @@
     :subname     (str "//" host ":" port "/" db jdbc-flags)}
    (dissoc opts :host :port :jdbc-flags)))
 
-(defmethod sql-jdbc.conn/connection-details->spec :sparksql [_ details]
+(defmethod sql-jdbc.conn/connection-details->spec :sparksql
+  [_ details]
   (-> details
       (update :port (fn [port]
                       (if (string? port)
@@ -138,6 +139,7 @@
       (fn []
         (let [db-connection (sql-jdbc.conn/db->pooled-connection-spec database)]
           (hive-like/run-query-without-timezone driver settings db-connection query))))))
+
 
 (defmethod driver/supports? [:sparksql :basic-aggregations]              [_ _] true)
 (defmethod driver/supports? [:sparksql :binning]                         [_ _] true)

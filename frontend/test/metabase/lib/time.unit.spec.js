@@ -9,6 +9,7 @@ describe("time", () => {
 
     const TEST_CASES = [
       ["2015-01-01T00:00:00.000Z", 0, NY15_UTC],
+      ["2015-01-01", 0, NY15_UTC],
       ["2015-01-01T00:00:00.000+00:00", 0, NY15_UTC],
       ["2015-01-01T00:00:00.000+0000", 0, NY15_UTC],
       ["2015-01-01T00:00:00Z", 0, NY15_UTC],
@@ -27,9 +28,9 @@ describe("time", () => {
     TEST_CASES.map(([str, expectedOffset, expectedMoment]) => {
       it(
         str +
-          " should be parsed as  moment reprsenting" +
+          " should be parsed as moment reprsenting " +
           expectedMoment +
-          "with the offset " +
+          " with the offset " +
           expectedOffset,
         () => {
           const result = parseTimestamp(str);
@@ -39,6 +40,13 @@ describe("time", () => {
           expect(result.unix()).toEqual(expectedMoment.unix());
         },
       );
+    });
+
+    // See https://github.com/metabase/metabase/issues/11615
+    it("parse sqlite date with unit=year correctly", () => {
+      const result = parseTimestamp("2015-01-01", "year");
+      expect(moment.isMoment(result)).toBe(true);
+      expect(result.unix()).toEqual(NY15_UTC.unix());
     });
   });
 

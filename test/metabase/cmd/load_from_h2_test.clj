@@ -1,11 +1,9 @@
 (ns metabase.cmd.load-from-h2-test
   (:require [expectations :refer [expect]]
             [flatland.ordered.map :as ordered-map]
-            [metabase
-             [db :as mdb]
-             [util :as u]]
             [metabase.cmd.load-from-h2 :as load-from-h2]
             [metabase.plugins.classloader :as classloader]
+            [metabase.util :as u]
             [toucan
              [db :as db]
              [models :as models]]))
@@ -68,26 +66,3 @@
            :sizex 18
            :sizey 9)])
         (update :cols vec))))
-
-;; make sure `objects->colums+values` properly de-CLOBs and CLOBs (by calling `u/jdbc-clob->str`)
-
-(defrecord ^:private FakeClob [s])
-
-(expect
-  {:cols ["\"created_at\"" "\"description\"" "\"parameter_mappings\"" "\"visualization_settings\""]
-   :vals [[#inst "2019-04-05T21:26:39.936-00:00"
-           "This is a description"
-           []
-           {}]]}
-  (binding [db/*quoting-style* :ansi]
-    (with-redefs [mdb/db-type      (constantly :postgres)
-                  u/jdbc-clob->str #(cond-> %
-                                      (instance? FakeClob %) :s)]
-      (-> (#'load-from-h2/objects->colums+values
-           [(ordered-map/ordered-map
-             :created_at             #inst "2019-04-05T21:26:39.936000000-00:00"
-             :description            (FakeClob. "This is a description")
-             :parameter_mappings     []
-             :visualization_settings {})])
-          (update :cols vec)
-          (update :vals vec)))))

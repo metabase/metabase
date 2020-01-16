@@ -1,31 +1,29 @@
 (ns metabase.query-processor.middleware.cache-backend.db
   (:require [clojure.tools.logging :as log]
+            [java-time :as t]
             [metabase
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.models.query-cache :refer [QueryCache]]
             [metabase.query-processor.middleware.cache-backend.interface :as i]
-            [metabase.util.date :as du]
             [taoensso.nippy :as nippy]
             [toucan.db :as db])
   (:import [java.io BufferedOutputStream ByteArrayOutputStream DataOutputStream]
            java.util.zip.GZIPOutputStream))
 
 (defn- cached-results
-  "Return cached results for QUERY-HASH if they exist and are newer than MAX-AGE-SECONDS."
+  "Return cached results for `query-hash` if they exist and are newer than `max-age-seconds`."
   [query-hash max-age-seconds]
   (when-let [{:keys [results updated_at]} (db/select-one [QueryCache :results :updated_at]
                                             :query_hash query-hash
-                                            :updated_at [:>= (du/->Timestamp (- (System/currentTimeMillis)
-                                                                                (* 1000 max-age-seconds)))])]
+                                            :updated_at [:>= (t/minus (t/instant) (t/seconds max-age-seconds))])]
     (assoc results :updated_at updated_at)))
 
 (defn- purge-old-cache-entries!
   "Delete any cache entries that are older than the global max age `max-cache-entry-age-seconds` (currently 3 months)."
   []
   (db/simple-delete! QueryCache
-    :updated_at [:<= (du/->Timestamp (- (System/currentTimeMillis)
-                                        (* 1000 (public-settings/query-caching-max-ttl))))]))
+    :updated_at [:<= (t/minus (t/instant) (t/seconds (public-settings/query-caching-max-ttl)))]))
 
 (defn- throw-if-max-exceeded [max-num-bytes bytes-in-flight]
   (when (< max-num-bytes bytes-in-flight)
@@ -75,7 +73,7 @@
         (throw e)))))
 
 (defn- save-results!
-  "Save the RESULTS of query with QUERY-HASH, updating an existing QueryCache entry
+  "Save the `results` of query with `query-hash`, updating an existing QueryCache entry
   if one already exists, otherwise creating a new entry."
   [query-hash results]
   ;; Explicitly compressing the results here rather than having Toucan compress it automatically. This allows us to
@@ -86,7 +84,7 @@
       (do
         (purge-old-cache-entries!)
         (or (db/update-where! QueryCache {:query_hash query-hash}
-              :updated_at (du/new-sql-timestamp)
+              :updated_at :%now
               :results    compressed-results)
             (db/insert! QueryCache
               :query_hash query-hash

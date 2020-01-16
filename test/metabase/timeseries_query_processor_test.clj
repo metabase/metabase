@@ -19,8 +19,8 @@
              "venue_longitude"
              "venue_name"
              "venue_price"]
-   :rows [["931", "2013-01-03T08:00:00.000Z", 1, "2014-01-01T08:30:00.000Z", "Simcha Yan", "Thai", "34.094",  "-118.344", "Kinaree Thai Bistro",       "1"]
-          ["285", "2013-01-10T08:00:00.000Z", 1, "2014-07-03T01:30:00.000Z", "Kfir Caj",   "Thai", "34.1021", "-118.306", "Ruen Pair Thai Restaurant", "2"]]}
+   :rows [["931", "2013-01-03T08:00:00Z", 1, "2014-01-01T08:30:00.000Z", "Simcha Yan", "Thai", "34.094",  "-118.344", "Kinaree Thai Bistro",       "1"]
+          ["285", "2013-01-10T08:00:00Z", 1, "2014-07-03T01:30:00.000Z", "Kfir Caj",   "Thai", "34.1021", "-118.306", "Ruen Pair Thai Restaurant", "2"]]}
  (qp.test/rows+column-names
   (data/run-mbql-query checkins
     {:limit 2})))
@@ -37,8 +37,8 @@
              "venue_longitude"
              "venue_name"
              "venue_price"]
-   :rows    [["693", "2015-12-29T08:00:00.000Z", 1, "2014-07-03T19:30:00.000Z", "Frans Hevel", "Mexican", "34.0489", "-118.238", "Señor Fish",       "2"]
-             ["570", "2015-12-26T08:00:00.000Z", 1, "2014-07-03T01:30:00.000Z", "Kfir Caj",    "Chinese", "37.7949", "-122.406", "Empress of China", "3"]]}
+   :rows    [["693", "2015-12-29T08:00:00Z", 1, "2014-07-03T19:30:00.000Z", "Frans Hevel", "Mexican", "34.0489", "-118.238", "Señor Fish",       "2"]
+             ["570", "2015-12-26T08:00:00Z", 1, "2014-07-03T01:30:00.000Z", "Kfir Caj",    "Chinese", "37.7949", "-122.406", "Empress of China", "3"]]}
   (qp.test/rows+column-names
    (data/run-mbql-query checkins
      {:order-by [[:desc $timestamp]]
@@ -56,8 +56,8 @@
              "venue_longitude"
              "venue_name"
              "venue_price"]
-   :rows    [["931", "2013-01-03T08:00:00.000Z", 1, "2014-01-01T08:30:00.000Z", "Simcha Yan", "Thai", "34.094",  "-118.344", "Kinaree Thai Bistro",       "1"]
-             ["285", "2013-01-10T08:00:00.000Z", 1, "2014-07-03T01:30:00.000Z", "Kfir Caj",   "Thai", "34.1021", "-118.306", "Ruen Pair Thai Restaurant", "2"]]}
+   :rows    [["931", "2013-01-03T08:00:00Z", 1, "2014-01-01T08:30:00.000Z", "Simcha Yan", "Thai", "34.094",  "-118.344", "Kinaree Thai Bistro",       "1"]
+             ["285", "2013-01-10T08:00:00Z", 1, "2014-07-03T01:30:00.000Z", "Kfir Caj",   "Thai", "34.1021", "-118.306", "Ruen Pair Thai Restaurant", "2"]]}
   (qp.test/rows+column-names
    (data/run-mbql-query checkins
      {:order-by [[:asc $timestamp]]
@@ -68,8 +68,8 @@
 ;;; fields clause
 (tqp.test/expect-with-timeseries-dbs
   {:columns ["venue_name" "venue_category_name" "timestamp"],
-   :rows    [["Kinaree Thai Bistro"       "Thai" "2013-01-03T08:00:00.000Z"]
-             ["Ruen Pair Thai Restaurant" "Thai" "2013-01-10T08:00:00.000Z"]]}
+   :rows    [["Kinaree Thai Bistro"       "Thai" "2013-01-03T08:00:00Z"]
+             ["Ruen Pair Thai Restaurant" "Thai" "2013-01-10T08:00:00Z"]]}
   (qp.test/rows+column-names
    (data/run-mbql-query checkins
      {:fields [$venue_name $venue_category_name $timestamp]
@@ -78,8 +78,8 @@
 ;;; fields clause, order by timestamp asc
 (tqp.test/expect-with-timeseries-dbs
   {:columns ["venue_name" "venue_category_name" "timestamp"],
-   :rows    [["Kinaree Thai Bistro"       "Thai" "2013-01-03T08:00:00.000Z"]
-             ["Ruen Pair Thai Restaurant" "Thai" "2013-01-10T08:00:00.000Z"]]}
+   :rows    [["Kinaree Thai Bistro"       "Thai" "2013-01-03T08:00:00Z"]
+             ["Ruen Pair Thai Restaurant" "Thai" "2013-01-10T08:00:00Z"]]}
   (qp.test/rows+column-names
    (data/run-mbql-query checkins
      {:fields   [$venue_name $venue_category_name $timestamp]
@@ -89,8 +89,8 @@
 ;;; fields clause, order by timestamp desc
 (tqp.test/expect-with-timeseries-dbs
   {:columns ["venue_name" "venue_category_name" "timestamp"],
-   :rows    [["Señor Fish"       "Mexican" "2015-12-29T08:00:00.000Z"]
-             ["Empress of China" "Chinese" "2015-12-26T08:00:00.000Z"]]}
+   :rows    [["Señor Fish"       "Mexican" "2015-12-29T08:00:00Z"]
+             ["Empress of China" "Chinese" "2015-12-26T08:00:00Z"]]}
   (qp.test/rows+column-names
    (data/run-mbql-query checkins
      {:fields   [$venue_name $venue_category_name $timestamp]
@@ -301,11 +301,11 @@
 ;;; filter =
 (tqp.test/expect-with-timeseries-dbs
   {:columns ["user_name" "venue_name" "venue_category_name" "timestamp"]
-   :rows    [["Plato Yeshua" "Fred 62"        "Diner"    "2013-03-12T07:00:00.000Z"]
-             ["Plato Yeshua" "Dimples"        "Karaoke"  "2013-04-11T07:00:00.000Z"]
-             ["Plato Yeshua" "Baby Blues BBQ" "BBQ"      "2013-06-03T07:00:00.000Z"]
-             ["Plato Yeshua" "The Daily Pint" "Bar"      "2013-07-25T07:00:00.000Z"]
-             ["Plato Yeshua" "Marlowe"        "American" "2013-09-10T07:00:00.000Z"]]}
+   :rows    [["Plato Yeshua" "Fred 62"        "Diner"    "2013-03-12T07:00:00Z"]
+             ["Plato Yeshua" "Dimples"        "Karaoke"  "2013-04-11T07:00:00Z"]
+             ["Plato Yeshua" "Baby Blues BBQ" "BBQ"      "2013-06-03T07:00:00Z"]
+             ["Plato Yeshua" "The Daily Pint" "Bar"      "2013-07-25T07:00:00Z"]
+             ["Plato Yeshua" "Marlowe"        "American" "2013-09-10T07:00:00Z"]]}
   (qp.test/rows+column-names
    (data/run-mbql-query checkins
      {:fields [$user_name $venue_name $venue_category_name $timestamp]
@@ -323,7 +323,7 @@
 ;;; filter AND
 (tqp.test/expect-with-timeseries-dbs
   {:columns ["user_name" "venue_name" "timestamp"]
-   :rows    [["Plato Yeshua" "The Daily Pint" "2013-07-25T07:00:00.000Z"]]}
+   :rows    [["Plato Yeshua" "The Daily Pint" "2013-07-25T07:00:00Z"]]}
   (qp.test/rows+column-names
    (data/run-mbql-query checkins
      {:fields [$user_name $venue_name $timestamp]

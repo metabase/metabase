@@ -1,7 +1,8 @@
 (ns metabase.driver.postgres-test
   "Tests for features/capabilities specific to PostgreSQL driver, such as support for Postgres UUID or enum types."
   (:require [clojure.java.jdbc :as jdbc]
-            [expectations :refer :all]
+            [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [honeysql.core :as hsql]
             [metabase
              [driver :as driver]
@@ -25,6 +26,7 @@
             [metabase.test.data
              [datasets :as datasets]
              [interface :as tx]]
+            [metabase.test.util.log :as tu.log]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -85,7 +87,7 @@
 (datasets/expect-with-driver :postgres
   [{:name "id",      :base_type :type/Integer}
    {:name "user_id", :base_type :type/UUID}]
-  (->> (data/dataset metabase.driver.postgres-test/with-uuid
+  (->> (data/dataset with-uuid
          (data/run-mbql-query users))
        :data
        :cols
@@ -95,21 +97,21 @@
 ;; Check that we can filter by a UUID Field
 (datasets/expect-with-driver :postgres
   [[2 #uuid "4652b2e7-d940-4d55-a971-7e484566663e"]]
-  (rows (data/dataset metabase.driver.postgres-test/with-uuid
+  (rows (data/dataset with-uuid
           (data/run-mbql-query users
             {:filter [:= $user_id "4652b2e7-d940-4d55-a971-7e484566663e"]}))))
 
 ;; check that a nil value for a UUID field doesn't barf (#2152)
 (datasets/expect-with-driver :postgres
   []
-  (rows (data/dataset metabase.driver.postgres-test/with-uuid
+  (rows (data/dataset with-uuid
           (data/run-mbql-query users
             {:filter [:= $user_id nil]}))))
 
 ;; Check that we can filter by a UUID for SQL Field filters (#7955)
 (datasets/expect-with-driver :postgres
   [[#uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027" 1]]
-  (data/dataset metabase.driver.postgres-test/with-uuid
+  (data/dataset with-uuid
     (rows (qp/process-query {:database   (data/id)
                              :type       :native
                              :native     {:query         "SELECT * FROM users WHERE {{user}}"
@@ -260,12 +262,16 @@
 
 ;;; timezone tests
 
+(defn- server-spec []
+  (sql-jdbc.conn/connection-details->spec :postgres (tx/dbdef->connection-details :postgres :server nil)))
+
+(def ^:private current-timezone-query
+  {:query "SELECT current_setting('TIMEZONE') AS timezone;"})
+
 (defn- get-timezone-with-report-timezone [report-timezone]
-  (ffirst (:rows (#'sql-jdbc.execute/run-query-with-timezone
-                  :postgres
-                  {:report-timezone report-timezone}
-                  (sql-jdbc.conn/connection-details->spec :postgres (tx/dbdef->connection-details :postgres :server nil))
-                  {:query "SELECT current_setting('TIMEZONE') AS timezone;"}))))
+  (-> (#'sql-jdbc.execute/run-query-with-timezone :postgres report-timezone (server-spec) current-timezone-query)
+      :rows
+      ffirst))
 
 ;; check that if we set report-timezone to US/Pacific that the session timezone is in fact US/Pacific
 (datasets/expect-with-driver :postgres
@@ -280,8 +286,9 @@
 ;; ok, check that if we try to put in a fake timezone that the query still reëxecutes without a custom timezone. This
 ;; should give us the same result as if we didn't try to set a timezone at all
 (datasets/expect-with-driver :postgres
-  (get-timezone-with-report-timezone nil)
-  (get-timezone-with-report-timezone "Crunk Burger"))
+  (-> (#'sql-jdbc.execute/run-query-without-timezone :postgres nil (server-spec) current-timezone-query) :rows ffirst)
+  (tu.log/suppress-output
+   (get-timezone-with-report-timezone "Crunk Burger")))
 
 
 ;; make sure connection details w/ extra params work as expected
@@ -302,20 +309,8 @@
   (tu/db-timezone-id))
 
 ;; Make sure we're able to fingerprint TIME fields (#5911)
-(datasets/expect-with-driver :postgres
-  #{#metabase.models.field.FieldInstance{:name "start_time", :fingerprint {:global {:distinct-count 1
-                                                                                    :nil% 0.0}
-                                                                           :type {:type/DateTime {:earliest "1970-01-01T22:00:00.000Z", :latest "1970-01-01T22:00:00.000Z"}}}}
-    #metabase.models.field.FieldInstance{:name "end_time",   :fingerprint {:global {:distinct-count 1
-                                                                                    :nil% 0.0}
-                                                                           :type {:type/DateTime {:earliest "1970-01-01T09:00:00.000Z", :latest "1970-01-01T09:00:00.000Z"}}}}
-    #metabase.models.field.FieldInstance{:name "reason",     :fingerprint {:global {:distinct-count 1
-                                                                                    :nil% 0.0}
-                                                                           :type   {:type/Text {:percent-json    0.0
-                                                                                                :percent-url     0.0
-                                                                                                :percent-email   0.0
-                                                                                                :average-length 12.0}}}}}
-  (do
+(deftest fingerprint-time-fields-test
+  (datasets/test-driver :postgres
     (drop-if-exists-and-create-db! "time_field_test")
     (let [details (tx/dbdef->connection-details :postgres :db {:database-name "time_field_test"})]
       (jdbc/execute! (sql-jdbc.conn/connection-details->spec :postgres details)
@@ -328,7 +323,22 @@
                            "  VALUES ('22:00'::time, '9:00'::time, 'Beauty Sleep');")])
       (tt/with-temp Database [database {:engine :postgres, :details (assoc details :dbname "time_field_test")}]
         (sync/sync-database! database)
-        (set (db/select [Field :name :fingerprint] :table_id (db/select-one-id Table :db_id (u/get-id database))))))))
+        (is (= {"start_time" {:global {:distinct-count 1
+                                       :nil%           0.0}
+                              :type   {:type/DateTime {:earliest "22:00:00"
+                                                       :latest   "22:00:00"}}}
+                "end_time"   {:global {:distinct-count 1
+                                       :nil%           0.0}
+                              :type   {:type/DateTime {:earliest "09:00:00"
+                                                       :latest   "09:00:00"}}}
+                "reason"     {:global {:distinct-count 1
+                                       :nil%           0.0}
+                              :type   {:type/Text {:percent-json   0.0
+                                                   :percent-url    0.0
+                                                   :percent-email  0.0
+                                                   :average-length 12.0}}}}
+               (db/select-field->field :name :fingerprint Field
+                 :table_id (db/select-one-id Table :db_id (u/get-id database)))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

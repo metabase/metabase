@@ -13,7 +13,7 @@ export type DateStyle =
   | "D MMMM, YYYY"
   | "dddd, MMMM D, YYYY";
 
-export type TimeStyle = "h:mm A" | "k:mm";
+export type TimeStyle = "h:mm A" | "k:mm" | "h A";
 
 export type MomentFormat = string; // moment.js format strings
 export type DateFormat = MomentFormat;
@@ -25,7 +25,6 @@ const DEFAULT_DATE_FORMATS: { [unit: DatetimeUnit]: MomentFormat } = {
   year: "YYYY",
   quarter: "[Q]Q - YYYY",
   "minute-of-hour": "m",
-  "hour-of-day": "h A",
   "day-of-week": "dddd",
   "day-of-month": "D",
   "day-of-year": "DDD",
@@ -86,7 +85,12 @@ export function getDateFormatFromStyle(
   return replaceSeparators(style);
 }
 
-const UNITS_WITH_HOUR: DatetimeUnit[] = ["default", "minute", "hour"];
+const UNITS_WITH_HOUR: DatetimeUnit[] = [
+  "default",
+  "minute",
+  "hour",
+  "hour-of-day",
+];
 const UNITS_WITH_DAY: DatetimeUnit[] = [
   "default",
   "minute",

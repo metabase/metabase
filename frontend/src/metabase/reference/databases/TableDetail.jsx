@@ -36,7 +36,7 @@ const interestingQuestions = table => {
   return [
     {
       text: t`Count of ${table.display_name}`,
-      icon: { name: "number", scale: 1, viewBox: "8 8 16 16" },
+      icon: "number",
       link: getQuestionUrl({
         dbId: table.db_id,
         tableId: table.id,
@@ -184,56 +184,58 @@ export default class TableDetail extends Component {
           error={loadingError}
         >
           {() => (
-            <div className="wrapper wrapper--trim">
-              <List>
-                <li className="relative">
-                  <Detail
-                    id="description"
-                    name={t`Description`}
-                    description={entity.description}
-                    placeholder={t`No description yet`}
-                    isEditing={isEditing}
-                    field={description}
-                  />
-                </li>
-                {!isEditing && (
+            <div className="wrapper">
+              <div className="pl4 pr3 pt4 mb4 mb1 bg-white rounded bordered">
+                <List>
                   <li className="relative">
                     <Detail
-                      id="name"
-                      name={t`Actual name in database`}
-                      description={entity.name}
-                      subtitleClass={S.tableActualName}
+                      id="description"
+                      name={t`Description`}
+                      description={entity.description}
+                      placeholder={t`No description yet`}
+                      isEditing={isEditing}
+                      field={description}
                     />
                   </li>
-                )}
-                <li className="relative">
-                  <Detail
-                    id="points_of_interest"
-                    name={t`Why this table is interesting`}
-                    description={entity.points_of_interest}
-                    placeholder={t`Nothing interesting yet`}
-                    isEditing={isEditing}
-                    field={points_of_interest}
-                  />
-                </li>
-                <li className="relative">
-                  <Detail
-                    id="caveats"
-                    name={t`Things to be aware of about this table`}
-                    description={entity.caveats}
-                    placeholder={t`Nothing to be aware of yet`}
-                    isEditing={isEditing}
-                    field={caveats}
-                  />
-                </li>
-                {!isEditing && (
+                  {!isEditing && (
+                    <li className="relative">
+                      <Detail
+                        id="name"
+                        name={t`Actual name in database`}
+                        description={entity.name}
+                        subtitleClass={S.tableActualName}
+                      />
+                    </li>
+                  )}
                   <li className="relative">
-                    <UsefulQuestions
-                      questions={interestingQuestions(this.props.table)}
+                    <Detail
+                      id="points_of_interest"
+                      name={t`Why this table is interesting`}
+                      description={entity.points_of_interest}
+                      placeholder={t`Nothing interesting yet`}
+                      isEditing={isEditing}
+                      field={points_of_interest}
                     />
                   </li>
-                )}
-              </List>
+                  <li className="relative">
+                    <Detail
+                      id="caveats"
+                      name={t`Things to be aware of about this table`}
+                      description={entity.caveats}
+                      placeholder={t`Nothing to be aware of yet`}
+                      isEditing={isEditing}
+                      field={caveats}
+                    />
+                  </li>
+                  {!isEditing && (
+                    <li className="relative">
+                      <UsefulQuestions
+                        questions={interestingQuestions(this.props.table)}
+                      />
+                    </li>
+                  )}
+                </List>
+              </div>
             </div>
           )}
         </LoadingAndErrorWrapper>

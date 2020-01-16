@@ -11,6 +11,8 @@ import StepTitle from "./StepTitle";
 import CollapsedStep from "./CollapsedStep";
 
 export default class PreferencesStep extends Component {
+  state = { errorMessage: null };
+
   static propTypes = {
     stepNumber: PropTypes.number.isRequired,
     activeStep: PropTypes.number.isRequired,
@@ -32,7 +34,11 @@ export default class PreferencesStep extends Component {
     e.preventDefault();
 
     // okay, this is the big one.  we actually submit everything to the api now and complete the process.
-    this.props.submitSetup();
+    const { payload } = await this.props.submitSetup();
+    // a successful payload is null
+    const errorMessage =
+      payload && payload.data ? getErrorMessage(payload.data) : null;
+    this.setState({ errorMessage });
 
     MetabaseAnalytics.trackEvent(
       "Setup",
@@ -113,10 +119,24 @@ export default class PreferencesStep extends Component {
             <div className="Form-actions">
               <button className="Button Button--primary">{t`Next`}</button>
               {/* FIXME: <mb-form-message form="usageForm"></mb-form-message>*/}
+              {this.state.errorMessage && (
+                <div className="text-error ml1">{this.state.errorMessage}</div>
+              )}
             </div>
           </form>
         </Box>
       );
     }
   }
+}
+
+function getErrorMessage(data) {
+  const { errors, message } = data;
+  if (message) {
+    return message;
+  }
+  if (errors) {
+    return Object.values(errors)[0];
+  }
+  return null;
 }

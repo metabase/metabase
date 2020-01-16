@@ -37,7 +37,7 @@ function s4() {
 // provides functions for building urls to things we care about
 const MetabaseUtils = {
   // generate a password that satisfies `complexity` requirements, by default the ones that come back in the
-  // `password_complexity` Setting; must be a map like {total: 6, number: 1}
+  // `password-complexity` Setting; must be a map like {total: 6, number: 1}
   generatePassword(complexity) {
     complexity =
       complexity || MetabaseSettings.passwordComplexityRequirements() || {};

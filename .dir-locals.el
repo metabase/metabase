@@ -21,7 +21,6 @@
                               (let-404 1)
                               (match 1)
                               (merge-with 1)
-                              (with-redefs-fn 1)
                               (p.types/defprotocol+ '(1 (:defn)))
                               (p.types/def-abstract-type '(1 (:defn)))
                               (p.types/deftype+ '(2 nil nil (:defn)))

@@ -9,7 +9,7 @@ import {
   isHistogram,
   isHistogramBar,
 } from "./renderer_utils";
-import { timeseriesScale } from "./timeseries";
+import timeseriesScale from "./timeseriesScale";
 
 // max number of points to "fill"
 // TODO: base on pixel width of chart?

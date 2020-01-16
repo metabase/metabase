@@ -2,12 +2,10 @@
   "Utility functions and macros to abstract away some common patterns and operations across the sync processes, such
   as logging start/end messages."
   (:require [buddy.core.hash :as buddy-hash]
-            [clj-time
-             [coerce :as tcoerce]
-             [core :as time]]
             [clojure.math.numeric-tower :as math]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [java-time :as t]
             [medley.core :as m]
             [metabase
              [driver :as driver]
@@ -20,14 +18,14 @@
             [metabase.query-processor.interface :as qpi]
             [metabase.sync.interface :as i]
             [metabase.util
-             [date :as du]
+             [date-2 :as u.date]
              [i18n :refer [trs]]
              [schema :as su]]
             [ring.util.codec :as codec]
             [schema.core :as s]
             [taoensso.nippy :as nippy]
             [toucan.db :as db])
-  (:import org.joda.time.DateTime))
+  (:import java.time.temporal.Temporal))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          SYNC OPERATION "MIDDLEWARE"                                           |
@@ -104,7 +102,7 @@
         result     (f)]
     (log-fn (u/format-color 'magenta "FINISHED: %s (%s)"
               message
-              (du/format-nanoseconds (- (System/nanoTime) start-time))))
+              (u/format-nanoseconds (- (System/nanoTime) start-time))))
     result))
 
 (defn- with-start-and-finish-logging
@@ -289,12 +287,8 @@
 
 (s/defn calculate-duration-str :- s/Str
   "Given two datetimes, caculate the time between them, return the result as a string"
-  [begin-time :- (s/protocol tcoerce/ICoerce)
-   end-time :- (s/protocol tcoerce/ICoerce)]
-  (-> (du/calculate-duration begin-time end-time)
-      ;; Millis -> Nanos
-      (* 1000000)
-      du/format-nanoseconds))
+  [begin-time :- Temporal, end-time :- Temporal]
+  (u/format-nanoseconds (.toNanos (t/duration begin-time end-time))))
 
 (def StepSpecificMetadata
   "A step function can return any metadata and is used by the related LogSummaryFunction to provide step-specific
@@ -303,8 +297,8 @@
 
 (def ^:private TimedSyncMetadata
   "Metadata common to both sync steps and an entire sync/analyze operation run"
-  {:start-time DateTime
-   :end-time   DateTime})
+  {:start-time Temporal
+   :end-time   Temporal})
 
 (def StepRunMetadata
   "Map with metadata about the step. Contains both generic information like `start-time` and `end-time` and step
@@ -342,19 +336,16 @@
     :log-summary-fn (when log-summary-fn
                       (comp str log-summary-fn))}))
 
-(defn- datetime->str [datetime]
-  (du/->iso-8601-datetime datetime "UTC"))
-
 (s/defn run-step-with-metadata :- StepNameWithMetadata
   "Runs `step` on `database returning metadata from the run"
   [database :- i/DatabaseInstance
    {:keys [step-name sync-fn log-summary-fn] :as step} :- StepDefinition]
-  (let [start-time (time/now)
+  (let [start-time (t/zoned-date-time)
         results    (with-start-and-finish-debug-logging (trs "step ''{0}'' for {1}"
                                                              step-name
                                                              (name-for-logging database))
                      #(sync-fn database))
-        end-time   (time/now)]
+        end-time   (t/zoned-date-time)]
     [step-name (assoc results
                  :start-time start-time
                  :end-time end-time
@@ -374,8 +365,8 @@
                "# %s\n"
                "# %s\n")
           [(trs "Completed {0} on {1}" operation (:name database))
-           (trs "Start: {0}" (datetime->str start-time))
-           (trs "End: {0}" (datetime->str end-time))
+           (trs "Start: {0}" (u.date/format start-time))
+           (trs "End: {0}" (u.date/format end-time))
            (trs "Duration: {0}" (calculate-duration-str start-time end-time))])
    (apply str (for [[step-name {:keys [start-time end-time log-summary-fn] :as step-info}] steps]
                 (apply format (str "# ---------------------------------------------------------------\n"
@@ -386,8 +377,8 @@
                                    (when log-summary-fn
                                        (format "# %s\n" (log-summary-fn step-info))))
                        [(trs "Completed step ''{0}''" step-name)
-                        (trs "Start: {0}" (datetime->str start-time))
-                        (trs "End: {0}" (datetime->str end-time))
+                        (trs "Start: {0}" (u.date/format start-time))
+                        (trs "End: {0}" (u.date/format end-time))
                         (trs "Duration: {0}" (calculate-duration-str start-time end-time))])))
    "#################################################################\n"))
 
@@ -413,9 +404,9 @@
    {:keys [start-time end-time]} :- SyncOperationOrStepRunMetadata]
   {:task       task-name
    :db_id      (u/get-id database)
-   :started_at (du/->Timestamp start-time)
-   :ended_at   (du/->Timestamp end-time)
-   :duration   (du/calculate-duration start-time end-time)})
+   :started_at start-time
+   :ended_at   end-time
+   :duration   (.toMillis (t/duration start-time end-time))})
 
 (s/defn ^:private store-sync-summary!
   [operation :- s/Str
@@ -437,9 +428,9 @@
   [operation :- s/Str
    database :- i/DatabaseInstance
    sync-steps :- [StepDefinition]]
-  (let [start-time    (time/now)
+  (let [start-time    (t/zoned-date-time)
         step-metadata (mapv #(run-step-with-metadata database %) sync-steps)
-        end-time      (time/now)
+        end-time      (t/zoned-date-time)
         sync-metadata {:start-time start-time
                        :end-time   end-time
                        :steps      step-metadata}]

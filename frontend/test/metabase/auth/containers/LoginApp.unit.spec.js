@@ -2,16 +2,7 @@ import React from "react";
 
 import LoginApp from "metabase/auth/containers/LoginApp";
 
-import { mountWithStore } from "__support__/integration_tests";
-
-jest.mock("metabase/lib/settings", () => ({
-  get: () => ({
-    tag: 1,
-    version: 1,
-  }),
-  ssoEnabled: jest.fn(),
-  ldapEnabled: jest.fn(),
-}));
+import { mountWithStore } from "__support__/integration";
 
 import Settings from "metabase/lib/settings";
 
@@ -22,12 +13,12 @@ describe("LoginApp", () => {
         const { wrapper } = mountWithStore(
           <LoginApp location={{ query: {} }} />,
         );
-        expect(wrapper.find("FormField").length).toBe(2);
+        expect(wrapper.find("FormField").length).toBe(3);
       });
     });
     describe("with SSO", () => {
       beforeEach(() => {
-        Settings.ssoEnabled.mockReturnValue(true);
+        Settings.set("google-auth-client-id", "something");
       });
       it("should show the SSO button", () => {
         const { wrapper } = mountWithStore(
@@ -49,7 +40,7 @@ describe("LoginApp", () => {
           <LoginApp location={{ query: { useMBLogin: true } }} />,
         );
 
-        expect(wrapper.find("FormField").length).toBe(2);
+        expect(wrapper.find("FormField").length).toBe(3);
         expect(wrapper.find("SSOLoginButton").length).toBe(0);
       });
     });
