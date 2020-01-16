@@ -361,16 +361,6 @@
           (recur (assoc details :ssl false))
           (or error details))))))
 
-(s/defn ^:private test-unique-db-name
-  "Check if the database name already exists on a specific engine and returns a useful error message
-  if it does, otherwise it returns `nil` if the name is valid (unique)."
-  [db-name :- su/NonBlankString, engine :- DBEngineString]
-  (let [current-db {:name db-name
-                    :engine (keyword engine)}
-        db-names (mapv #(select-keys % [:name :engine]) (dbs-list true true))
-        valid-name? (every? #(not= % current-db) db-names)]
-    (if (not valid-name?)
-      (invalid-connection-response :dbname (str "Databse with name '" name "' already exists")))))
 
 (def ^:private CronSchedulesMap
   "Schema with values for a DB's schedules that can be put directly into the DB."
@@ -400,10 +390,7 @@
   (api/check-superuser)
   (let [is-full-sync?    (or (nil? is_full_sync)
                              (boolean is_full_sync))
-        ;; Priority for connection error messages. If the connection succeeds, then show the unique name error if it occurs.
-        details-or-error (merge
-                          (test-unique-db-name name engine)
-                          (test-connection-details engine details))
+        details-or-error (test-connection-details engine details)
         valid?           (not= (:valid details-or-error) false)]
     (if valid?
       ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event.
