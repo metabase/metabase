@@ -179,12 +179,15 @@ export class Api extends EventEmitter {
           try {
             body = JSON.parse(body);
           } catch (e) {}
-          if (xhr.status >= 200 && xhr.status <= 299 && body.async_status != "error") {
-            console.log("XHR", body, data)
+          if (xhr.status >= 200 && xhr.status <= 299) {
             if (options.transformResponse) {
               body = options.transformResponse(body, { data });
             }
-            resolve(body);
+            if (options.bodyHasError && options.bodyHasError(body)) {
+              reject({ status: 500, data: body, isCancelled });
+            } else {
+              resolve(body);
+            }
           } else {
             reject({
               status: xhr.status,

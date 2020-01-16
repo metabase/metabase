@@ -20,6 +20,8 @@ export const ActivityApi = {
   recent_views: GET("/api/activity/recent_views"),
 };
 
+// The card creation/update endpoints return 200s with an error in the body.
+const cardApiOptions = { bodyHasError: body => body.async_status === "error" };
 export const CardApi = {
   list: GET("/api/card", (cards, { data }) =>
     // HACK: support for the "q" query param until backend implements it
@@ -28,9 +30,9 @@ export const CardApi = {
         !data.q || card.name.toLowerCase().indexOf(data.q.toLowerCase()) >= 0,
     ),
   ),
-  create: POST("/api/card"),
+  create: POST("/api/card", cardApiOptions),
   get: GET("/api/card/:cardId"),
-  update: PUT("/api/card/:id"),
+  update: PUT("/api/card/:id", cardApiOptions),
   delete: DELETE("/api/card/:cardId"),
   query: POST("/api/card/:cardId/query"),
   // isfavorite:                  GET("/api/card/:cardId/favorite"),

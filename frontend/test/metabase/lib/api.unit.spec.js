@@ -89,4 +89,20 @@ describe("api", () => {
     const response = await hello();
     expect(response).toEqual({ status: "ok" });
   });
+
+  it("should use bodyHasError option", async () => {
+    expect.assertions(2);
+    mock.get("/weird-error", {
+      status: 200,
+      body: JSON.stringify({ bodyStatus: "error", message: "error message" }),
+    });
+    const bodyHasError = body => body.bodyStatus === "error";
+    const weirdError = GET("/weird-error", { bodyHasError });
+    try {
+      await weirdError();
+    } catch (error) {
+      expect(error.status).toBe(500);
+      expect(error.data.message).toBe("error message");
+    }
+  });
 });
