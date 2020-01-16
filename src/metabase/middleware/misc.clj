@@ -4,6 +4,7 @@
             [metabase
              [db :as mdb]
              [public-settings :as public-settings]]
+            [metabase.api.common :as api]
             [metabase.middleware.util :as middleware.u]
             [metabase.util.i18n :refer [trs]]
             [puppetlabs.i18n.core :as puppet-i18n])
@@ -39,14 +40,15 @@
 ;; the (initial) value of `site-url`
 
 (defn- maybe-set-site-url* [{{:strs [origin host] :as headers} :headers, :as request}]
-  (when (mdb/db-is-setup?)
-    (when-not (public-settings/site-url)
-      (when-let [site-url (or origin host)]
-        (log/info (trs "Setting Metabase site URL to {0}" site-url))
-        (try
-          (public-settings/site-url site-url)
-          (catch Throwable e
-            (log/warn e (trs "Failed to set site-url"))))))))
+  (when (and (mdb/db-is-setup?)
+             (not (public-settings/site-url))
+             api/*current-user*)
+    (when-let [site-url (or origin host)]
+      (log/info (trs "Setting Metabase site URL to {0}" site-url))
+      (try
+        (public-settings/site-url site-url)
+        (catch Throwable e
+          (log/warn e (trs "Failed to set site-url")))))))
 
 (defn maybe-set-site-url
   "Middleware to set the `site-url` Setting if it's unset the first time a request is made."
