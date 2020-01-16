@@ -11,13 +11,10 @@ import {
   getCollectionType,
 } from "metabase/entities/collections";
 
-import { POST, PUT, DELETE } from "metabase/lib/api";
+import { POST, DELETE } from "metabase/lib/api";
 
 const FAVORITE_ACTION = `metabase/entities/questions/FAVORITE`;
 const UNFAVORITE_ACTION = `metabase/entities/questions/UNFAVORITE`;
-
-// The card creation/update endpoints return 200s with an error in the body.
-const apiOptions = { bodyHasError: body => body.async_status === "error" };
 
 const Questions = createEntity({
   name: "questions",
@@ -26,8 +23,6 @@ const Questions = createEntity({
   api: {
     favorite: POST("/api/card/:id/favorite"),
     unfavorite: DELETE("/api/card/:id/favorite"),
-    create: POST("/api/card", apiOptions),
-    update: PUT("/api/card/:id", apiOptions),
   },
 
   objectActions: {

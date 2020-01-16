@@ -183,7 +183,7 @@ export class Api extends EventEmitter {
             if (options.transformResponse) {
               body = options.transformResponse(body, { data });
             }
-            if (options.bodyHasError && options.bodyHasError(body)) {
+            if (body.async_status === "error") {
               reject({ status: 500, data: body, isCancelled });
             } else {
               resolve(body);

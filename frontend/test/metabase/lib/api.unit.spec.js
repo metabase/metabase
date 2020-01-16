@@ -90,11 +90,11 @@ describe("api", () => {
     expect(response).toEqual({ status: "ok" });
   });
 
-  it("should use bodyHasError option", async () => {
+  it("should throw when body contains async_status=error", async () => {
     expect.assertions(2);
     mock.get("/weird-error", {
       status: 200,
-      body: JSON.stringify({ bodyStatus: "error", message: "error message" }),
+      body: JSON.stringify({ async_status: "error", message: "error message" }),
     });
     const bodyHasError = body => body.bodyStatus === "error";
     const weirdError = GET("/weird-error", { bodyHasError });
