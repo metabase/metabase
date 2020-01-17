@@ -3,8 +3,6 @@ import { mount } from "enzyme";
 
 import { ORDERS, PRODUCTS, PEOPLE } from "__support__/sample_dataset_fixture";
 
-import { MetabaseApi } from "metabase/services";
-
 import { FieldValuesWidget } from "metabase/components/FieldValuesWidget";
 import TokenField from "metabase/components/TokenField";
 
