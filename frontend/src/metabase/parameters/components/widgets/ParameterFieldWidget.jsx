@@ -18,7 +18,7 @@ type Props = {
 
   isEditing: boolean,
 
-  field: Field,
+  fields: Field[],
   parentFocusChanged: boolean => void,
 };
 
@@ -51,13 +51,13 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
 
   static noPopover = true;
 
-  static format(value, field) {
+  static format(value, fields) {
     value = normalizeValue(value);
     if (value.length > 1) {
       const n = value.length;
       return ngettext(msgid`${n} selection`, `${n} selections`, n);
     } else {
-      return <RemappedValue value={value[0]} column={field} />;
+      return <RemappedValue value={value[0]} columns={fields} />;
     }
   }
 
@@ -78,7 +78,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
   }
 
   render() {
-    const { setValue, isEditing, field, parentFocusChanged } = this.props;
+    const { setValue, isEditing, fields, parentFocusChanged } = this.props;
     const { isFocused } = this.state;
 
     const savedValue = normalizeValue(this.props.value);
@@ -107,7 +107,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
           onClick={() => focusChanged(true)}
         >
           {savedValue.length > 0 ? (
-            ParameterFieldWidget.format(savedValue, field)
+            ParameterFieldWidget.format(savedValue, fields)
           ) : (
             <span>{placeholder}</span>
           )}
@@ -131,8 +131,7 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
               this.setState({ value });
             }}
             placeholder={placeholder}
-            field={field}
-            searchField={field.parameterSearchField()}
+            fields={fields}
             multi
             autoFocus
             color="brand"

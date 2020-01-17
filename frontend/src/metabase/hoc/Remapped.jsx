@@ -40,17 +40,27 @@ export default ComposedComponent =>
 
     render() {
       // eslint-disable-next-line no-unused-vars
-      const { metadata, fetchRemapping, ...props } = this.props;
-      const field = metadata.field(props.column && props.column.id);
-      const displayValue = field && field.remappedValue(props.value);
-      const displayColumn =
-        (displayValue != null && field && field.remappedField()) || null;
+      const { metadata, fetchRemapping, columns, ...props } = this.props;
+      const [column] = columns;
+      const fields = columns.map(column => metadata.field(column.id));
+      let displayValue, displayColumn;
+      if (shouldRemap(fields)) {
+        const [field] = fields;
+        displayValue = field.remappedValue(props.value);
+        displayColumn = (displayValue != null && field.remappedField()) || null;
+      }
       return (
         <ComposedComponent
           {...props}
+          column={column}
           displayValue={displayValue}
           displayColumn={displayColumn}
         />
       );
     }
   };
+
+export function shouldRemap(fields) {
+  const remappedFields = fields.map(field => field.remappedField() || field);
+  return new Set(remappedFields.map(f => f.id)).size === 1;
+}

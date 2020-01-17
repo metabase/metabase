@@ -31,18 +31,19 @@ const mapDispatchToProps = {
   fetchFieldValues,
 };
 
-function mapStateToProps(state, { field }) {
-  const selectedField =
-    field && Fields.selectors.getObject(state, { entityId: field.id });
-  // try and use the selected field, but fall back to the one passed
-  return { field: selectedField || field };
+function mapStateToProps(state, { fields }) {
+  const selectedFields =
+    fields &&
+    fields.map(({ id }) => Fields.selectors.getObject(state, { entityId: id }));
+  // try and use the selected fields, but fall back to the ones passed
+  return { fields: selectedFields || fields };
 }
 
 type Props = {
   value: Value[],
   onChange: (value: Value[]) => void,
-  field: Field,
-  searchField?: Field,
+  fields: Field[],
+  disablePKRemappingForSearch?: boolean,
   multi?: boolean,
   autoFocus?: boolean,
   color?: string,
@@ -91,9 +92,9 @@ export class FieldValuesWidget extends Component {
   };
 
   componentWillMount() {
-    const { field, fetchFieldValues } = this.props;
-    if (field.has_field_values === "list") {
-      fetchFieldValues(field.id);
+    const { fields, fetchFieldValues } = this.props;
+    if (fields.every(field => field.has_field_values === "list")) {
+      fields.forEach(field => fetchFieldValues(field.id));
     }
   }
 
@@ -104,13 +105,19 @@ export class FieldValuesWidget extends Component {
   }
 
   hasList() {
-    const { field } = this.props;
-    return field.has_field_values === "list" && field.values;
+    return this.props.fields.every(
+      field => field.has_field_values === "list" && field.values,
+    );
   }
 
   isSearchable() {
-    const { field, searchField } = this.props;
-    return searchField && field.has_field_values === "search";
+    const hasFieldValues = this.props.fields.map(f => f.has_field_values);
+    return (
+      // search is available if at least one field is "search" and all fields
+      // are either "search" or "list"
+      hasFieldValues.some(v => v === "search") &&
+      hasFieldValues.every(v => v === "search" || v === "list")
+    );
   }
 
   onInputChange = (value: string) => {
@@ -121,26 +128,39 @@ export class FieldValuesWidget extends Component {
     return value;
   };
 
-  search = async (value: string, cancelled: Promise<void>) => {
-    const { field, searchField, maxResults } = this.props;
+  searchField(field) {
+    return this.props.disablePKRemappingForSearch
+      ? field.filterSearchField()
+      : field.parameterSearchField();
+  }
 
-    if (!field || !searchField || !value) {
+  search = async (value: string, cancelled: Promise<void>) => {
+    if (!value) {
       return;
     }
 
-    const fieldId = (field.target || field).id;
-    const searchFieldId = searchField.id;
-    const results = await MetabaseApi.field_search(
-      {
-        value,
-        fieldId,
-        searchFieldId,
-        limit: maxResults,
-      },
-      { cancelled },
-    );
+    const { fields } = this.props;
 
-    if (results && field.remappedField() === searchField) {
+    const allResults = await Promise.all(
+      fields.map(field =>
+        MetabaseApi.field_search(
+          {
+            value,
+            fieldId: field.id,
+            searchFieldId: this.searchField(field).id,
+            limit: this.props.maxResults,
+          },
+          { cancelled },
+        ),
+      ),
+    );
+    const resultsMap = new Map(allResults.flat().map(o => [o[0], o]));
+    const results = [...resultsMap.values()];
+
+    // There might be multiple fields, but if any are remapped then we
+    // know we only have one.
+    const [field] = fields;
+    if (results && field.remappedField() === this.searchField(field)) {
       // $FlowFixMe: addRemappings provided by @connect
       this.props.addRemappings(field.id, results);
     }
@@ -208,7 +228,7 @@ export class FieldValuesWidget extends Component {
     isFocused,
     isAllSelected,
   }: LayoutRendererProps) {
-    const { alwaysShowOptions, field, searchField } = this.props;
+    const { alwaysShowOptions, fields } = this.props;
     const { loadingState } = this.state;
     if (alwaysShowOptions || isFocused) {
       if (optionsList) {
@@ -221,18 +241,25 @@ export class FieldValuesWidget extends Component {
         if (loadingState === "LOADING") {
           return <LoadingState />;
         } else if (loadingState === "LOADED") {
-          return <NoMatchState field={searchField || field} />;
+          return <NoMatchState field={fields} />;
         }
       }
     }
   }
 
+  // searchFieldName() {
+  //   const searchFields = this.props.fields.map(field => this.searchField(field) || field)
+  //   searchFields.map()
+  //
+  //         stripId(searchField.display_name) || searchField.display_name;
+  //
+  // }
+
   render() {
     const {
       value,
       onChange,
-      field,
-      searchField,
+      fields,
       multi,
       autoFocus,
       color,
@@ -245,13 +272,13 @@ export class FieldValuesWidget extends Component {
 
     let { placeholder } = this.props;
     if (!placeholder) {
+      const [field] = fields;
       if (this.hasList()) {
         placeholder = t`Search the list`;
-      } else if (this.isSearchable() && searchField) {
-        const searchFieldName =
-          stripId(searchField.display_name) || searchField.display_name;
-        placeholder = t`Search by ${searchFieldName}`;
-        if (field.isID() && field !== searchField) {
+      } else if (this.isSearchable()) {
+        placeholder = t`Search by [SEARCH FIELD]`;
+        if (field.isID()) {
+          //&& field !== searchField) {
           placeholder += t` or enter an ID`;
         }
       } else {
@@ -267,7 +294,9 @@ export class FieldValuesWidget extends Component {
 
     let options = [];
     if (this.hasList()) {
-      options = field.values;
+      const fieldValues = fields.flatMap(f => f.values);
+      const uniqueValueMap = new Map(fieldValues.map(o => [o[0], o]));
+      options = [...uniqueValueMap.values()];
     } else if (this.isSearchable() && loadingState === "LOADED") {
       options = this.state.options;
     } else {
@@ -305,7 +334,7 @@ export class FieldValuesWidget extends Component {
           valueRenderer={value => (
             <RemappedValue
               value={value}
-              column={field}
+              columns={fields}
               {...formatOptions}
               maximumFractionDigits={20}
               compact={false}
@@ -315,7 +344,7 @@ export class FieldValuesWidget extends Component {
           optionRenderer={option => (
             <RemappedValue
               value={option[0]}
-              column={field}
+              columns={fields}
               maximumFractionDigits={20}
               autoLoad={false}
               {...formatOptions}
@@ -346,7 +375,7 @@ export class FieldValuesWidget extends Component {
               return null;
             }
             // if the field is numeric we need to parse the string into an integer
-            if (field.isNumeric()) {
+            if (fields[0].isNumeric()) {
               if (/^-?\d+(\.\d+)?$/.test(v)) {
                 return parseFloat(v);
               } else {
@@ -370,13 +399,21 @@ const LoadingState = () => (
   </div>
 );
 
-const NoMatchState = ({ field }) => (
-  <OptionsMessage
-    message={jt`No matching ${(
-      <strong>&nbsp;{field.display_name}&nbsp;</strong>
-    )} found.`}
-  />
-);
+const NoMatchState = ({ fields }) => {
+  if (fields.length > 1) {
+    // if there is more than one field, don't name them
+    return <OptionsMessage message={t`No matching result`} />;
+  }
+  const field = fields[0];
+  const { display_name } = this.searchField(field) || field;
+  return (
+    <OptionsMessage
+      message={jt`No matching ${(
+        <strong>&nbsp;{display_name}&nbsp;</strong>
+      )} found.`}
+    />
+  );
+};
 
 const EveryOptionState = () => (
   <OptionsMessage

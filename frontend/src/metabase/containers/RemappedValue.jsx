@@ -2,7 +2,7 @@ import React from "react";
 
 import { formatValue } from "metabase/lib/formatting";
 
-import AutoLoadRemapped from "metabase/hoc/Remapped";
+import AutoLoadRemapped, { shouldRemap } from "metabase/hoc/Remapped";
 
 const defaultRenderNormal = ({ value, column }) => (
   <span className="text-bold">{value}</span>
@@ -55,13 +55,22 @@ const RemappedValueContent = ({
 
 export const AutoLoadRemappedValue = AutoLoadRemapped(RemappedValueContent);
 
-export const FieldRemappedValue = props => (
-  <RemappedValueContent
-    {...props}
-    displayValue={props.column.remappedValue(props.value)}
-    displayColumn={props.column.remappedField()}
-  />
-);
+export const FieldRemappedValue = ({ columns, ...props }) => {
+  const [column] = columns;
+  let displayValue, displayColumn;
+  if (shouldRemap(columns)) {
+    displayValue = column.remappedValue(props.value);
+    displayColumn = column.remappedField();
+  }
+  return (
+    <RemappedValueContent
+      {...props}
+      column={column}
+      displayValue={displayValue}
+      displayColumn={displayColumn}
+    />
+  );
+};
 
 const RemappedValue = ({ autoLoad = true, ...props }) =>
   autoLoad ? (
