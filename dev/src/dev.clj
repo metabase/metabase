@@ -97,7 +97,6 @@
       {:read-columns   (partial sql-jdbc.execute/read-columns driver)
        :set-parameters (partial sql-jdbc.execute/set-parameters driver)})))
 
-
   ([driver-or-driver+dataset sql-args options]
    (let [[driver dataset] (u/one-or-many driver-or-driver+dataset)]
      (driver/with-driver driver

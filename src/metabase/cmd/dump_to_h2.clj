@@ -106,7 +106,7 @@
 
 (defn- h2-details [h2-connection-string-or-nil]
   (let [h2-filename (add-file-prefix-if-needed h2-connection-string-or-nil)]
-    (mdb/jdbc-details {:type :h2, :db h2-filename})))
+    (mdb/jdbc-spec {:type :h2, :db h2-filename})))
 
 
 ;;; ------------------------------------------- Fetching & Inserting Rows --------------------------------------------
@@ -151,8 +151,8 @@
   (println-ok))
 
 (defn- load-data! [target-db-conn]
-  (println "Source db:" (mdb/jdbc-details))
-  (jdbc/with-db-connection [db-conn (mdb/jdbc-details)]
+  (println "Source db:" (mdb/jdbc-spec))
+  (jdbc/with-db-connection [db-conn (mdb/jdbc-spec)]
     (doseq [{table-name :table, :as e} entities
             :let [rows (jdbc/query db-conn [(str "SELECT * FROM " (name table-name))])]
             :when (seq rows)]

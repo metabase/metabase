@@ -282,7 +282,7 @@
 ;; LocalDateTime), and normalize it to a UTC timestamp if so.
 (defmethod sql-jdbc.execute/read-column [:mysql Types/TIMESTAMP]
   [_ _ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
-  (let [t (.getObject rs i LocalDateTime)]
+  (when-let [t (.getObject rs i LocalDateTime)]
     (if (= (.getColumnTypeName rsmeta i) "TIMESTAMP")
       (t/with-offset-same-instant (t/offset-date-time t (t/zone-id (qp.timezone/results-timezone-id))) (t/zone-offset 0))
       t)))

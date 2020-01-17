@@ -134,6 +134,29 @@ describe("query builder", () => {
         .should("not.exist");
     });
   });
+
+  describe("resetting state", () => {
+    it("should reset modal state when navigating away", () => {
+      // create a question and add it to a modal
+      loadOrdersTable();
+      cy.contains("Save").click();
+      cy.get(".ModalContent")
+        .contains("button", "Save")
+        .click();
+      cy.contains("Yes please!").click();
+      cy.contains("Orders over time").click();
+
+      // create a new question to see if the "add to a dashboard" modal is still there
+      cy.contains("Browse Data").click();
+      cy.contains("Sample Dataset").click();
+      cy.contains("Orders").click();
+
+      // This next assertion might not catch bugs where the modal displays after
+      // a quick delay. With the previous presentation of this bug, the modal
+      // was immediately visible, so I'm not going to add any waits.
+      cy.contains("Add this question to a dashboard").should("not.exist");
+    });
+  });
 });
 
 function loadOrdersTable() {
