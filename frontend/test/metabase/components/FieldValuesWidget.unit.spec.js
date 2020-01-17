@@ -140,15 +140,14 @@ describe("FieldValuesWidget", () => {
       expect(optionValues).toContain("Facebook");
     });
 
-    it.only("search if any field is a search", () => {
+    it("search if any field is a search", () => {
       const fields = [
         mock(PEOPLE.SOURCE, { has_field_values: "search" }),
         mock(PEOPLE.STATE, { has_field_values: "list" }),
       ];
       const component = mountFieldValuesWidget({ fields });
       const { placeholder, options } = component.find(TokenField).props();
-      console.log(component.debug());
-      expect(placeholder).toEqual("Search by Source and State");
+      expect(placeholder).toEqual("Search");
       expect(options.length).toBe(0);
     });
 

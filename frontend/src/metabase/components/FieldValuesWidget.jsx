@@ -247,14 +247,6 @@ export class FieldValuesWidget extends Component {
     }
   }
 
-  // searchFieldName() {
-  //   const searchFields = this.props.fields.map(field => this.searchField(field) || field)
-  //   searchFields.map()
-  //
-  //         stripId(searchField.display_name) || searchField.display_name;
-  //
-  // }
-
   render() {
     const {
       value,
@@ -276,10 +268,17 @@ export class FieldValuesWidget extends Component {
       if (this.hasList()) {
         placeholder = t`Search the list`;
       } else if (this.isSearchable()) {
-        placeholder = t`Search by [SEARCH FIELD]`;
-        if (field.isID()) {
-          //&& field !== searchField) {
-          placeholder += t` or enter an ID`;
+        const names = new Set(
+          fields.map(field => stripId(this.searchField(field).display_name)),
+        );
+        if (names.size > 1) {
+          placeholder = t`Search`;
+        } else {
+          const [name] = names;
+          placeholder = t`Search by ${name}`;
+          if (field.isID() && field !== this.searchField(field)) {
+            placeholder += t` or enter an ID`;
+          }
         }
       } else {
         if (field.isID()) {
