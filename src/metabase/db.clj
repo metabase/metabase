@@ -187,7 +187,6 @@
          (case direction
            :up            (liquibase/migrate-up-if-needed! conn liquibase)
            :force         (liquibase/force-migrate-up-if-needed! conn liquibase)
-           ;; TODO -
            :down-one      (liquibase/rollback-one liquibase)
            :print         (println (liquibase/migrations-sql liquibase))
            :release-locks (liquibase/force-release-locks! liquibase))
@@ -316,7 +315,7 @@
     (u/with-us-locale
       (verify-db-connection db-details)
       (run-schema-migrations! auto-migrate db-details)
-      (create-connection-pool! (jdbc-details db-details))
+      (create-connection-pool! (jdbc-spec db-details))
       (run-data-migrations!)))
   nil)
 

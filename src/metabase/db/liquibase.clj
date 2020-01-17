@@ -6,10 +6,14 @@
             [metabase.util.i18n :refer [trs]])
   (:import java.io.StringWriter
            [liquibase Contexts Liquibase]
-           liquibase.database.DatabaseFactory
+           [liquibase.database Database DatabaseFactory]
            liquibase.database.jvm.JdbcConnection
            liquibase.exception.LockException
-           liquibase.resource.ClassLoaderResourceAccessor))
+           liquibase.resource.ClassLoaderResourceAccessor
+           liquibase.sqlgenerator.SqlGeneratorFactory
+           metabase.db.liquibase.MetabaseMySqlCreateTableSqlGenerator))
+
+(.register (SqlGeneratorFactory/getInstance) (MetabaseMySqlCreateTableSqlGenerator.))
 
 (def ^:private ^String changelog-file "liquibase.yaml")
 
@@ -36,7 +40,8 @@
   [[liquibase-binding jdbc-spec] & body]
   `(do-with-liquibase
     ~jdbc-spec
-    (fn [~'&database ~(vary-meta liquibase-binding assoc :tag (symbol (.getCanonicalName Liquibase)))]
+    (fn [~(vary-meta '&database assoc :tag (symbol (.getCanonicalName Database)))
+         ~(vary-meta liquibase-binding assoc :tag (symbol (.getCanonicalName Liquibase)))]
       ~@body)))
 
 (defn migrations-sql
