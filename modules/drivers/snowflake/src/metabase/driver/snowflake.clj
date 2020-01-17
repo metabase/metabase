@@ -274,17 +274,17 @@
 ;; return a String that we can parse
 (defmethod sql-jdbc.execute/read-column [:snowflake Types/TIME]
   [_ _ ^ResultSet rs _ ^Integer i]
-  (let [s (.getString rs i)
-        t (u.date/parse s)]
-    (log/tracef "(.getString rs %d) [TIME] -> %s -> %s" i s t)
-    t))
+  (when-let [s (.getString rs i)]
+    (let [t (u.date/parse s)]
+      (log/tracef "(.getString rs %d) [TIME] -> %s -> %s" i s t)
+      t)))
 
 (defmethod sql-jdbc.execute/read-column [:snowflake Types/TIME_WITH_TIMEZONE]
   [_ _ ^ResultSet rs _ ^Integer i]
-  (let [s (.getString rs i)
-        t (u.date/parse s)]
-    (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
-    t))
+  (when-let [s (.getString rs i)]
+    (let [t (u.date/parse s)]
+      (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
+      t)))
 
 ;; TODO ­ would it make more sense to use functions like `timestamp_tz_from_parts` directly instead of JDBC parameters?
 
