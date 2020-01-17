@@ -2,7 +2,7 @@ import React from "react";
 
 import { formatValue } from "metabase/lib/formatting";
 
-import AutoLoadRemapped, { shouldRemap } from "metabase/hoc/Remapped";
+import AutoLoadRemapped from "metabase/hoc/Remapped";
 
 const defaultRenderNormal = ({ value, column }) => (
   <span className="text-bold">{value}</span>
@@ -58,7 +58,9 @@ export const AutoLoadRemappedValue = AutoLoadRemapped(RemappedValueContent);
 export const FieldRemappedValue = ({ columns, ...props }) => {
   const [column] = columns;
   let displayValue, displayColumn;
-  if (shouldRemap(columns)) {
+  if (columns.length === 1) {
+    // If there is more than one column, don't remap. If multiple columns are
+    // remapped to the same column, they were previously merged.
     displayValue = column.remappedValue(props.value);
     displayColumn = column.remappedField();
   }

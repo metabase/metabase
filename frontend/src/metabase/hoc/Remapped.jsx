@@ -42,10 +42,11 @@ export default ComposedComponent =>
       // eslint-disable-next-line no-unused-vars
       const { metadata, fetchRemapping, columns, ...props } = this.props;
       const [column] = columns;
-      const fields = columns.map(column => metadata.field(column.id));
       let displayValue, displayColumn;
-      if (shouldRemap(fields)) {
-        const [field] = fields;
+      if (columns.length === 1) {
+        // If there is more than one column, don't remap. If multiple columns
+        // are remapped to the same column, they were previously merged.
+        const field = metadata.field(column.id);
         displayValue = field.remappedValue(props.value);
         displayColumn = (displayValue != null && field.remappedField()) || null;
       }
@@ -59,8 +60,3 @@ export default ComposedComponent =>
       );
     }
   };
-
-export function shouldRemap(fields) {
-  const remappedFields = fields.map(field => field.remappedField() || field);
-  return new Set(remappedFields.map(f => f.id)).size === 1;
-}
