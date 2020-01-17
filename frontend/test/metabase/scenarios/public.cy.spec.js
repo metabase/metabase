@@ -85,6 +85,12 @@ describe("public and embeds", () => {
         .click();
       cy.contains(COUNT_DOOHICKEY);
 
+      cy.focused().blur();
+
+      // This is needed to work around a timing bug. Without closing the editor,
+      // part of the question name was getting entered into the ace editor.
+      cy.get(".Icon-contract").click();
+
       cy.contains("Save").click();
       modal()
         .find('input[name="name"]')
