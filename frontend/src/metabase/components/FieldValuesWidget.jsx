@@ -111,12 +111,17 @@ export class FieldValuesWidget extends Component {
   }
 
   isSearchable() {
-    const hasFieldValues = this.props.fields.map(f => f.has_field_values);
+    const { fields } = this.props;
     return (
-      // search is available if at least one field is "search" and all fields
-      // are either "search" or "list"
-      hasFieldValues.some(v => v === "search") &&
-      hasFieldValues.every(v => v === "search" || v === "list")
+      // search is available if:
+      // all fields have a valid search field
+      fields.every(this.isFieldSearchable) &&
+      // at least one field is set to display as "search"
+      fields.some(f => f.has_field_values === "search") &&
+      // and all fields are either "search" or "list"
+      fields.every(
+        f => f.has_field_values === "search" || f.has_field_values === "list",
+      )
     );
   }
 
@@ -128,19 +133,19 @@ export class FieldValuesWidget extends Component {
     return value;
   };
 
-  searchField(field) {
-    const fieldIfSearchable = field.isSearchable() ? field : null;
+  isFieldSearchable = (field: Field) => this.searchField(field).isSearchable();
 
+  searchField = (field: Field) => {
     if (this.props.disablePKRemappingForSearch && field.isPK()) {
-      return fieldIfSearchable;
+      return field;
     }
 
     const remappedField = field.remappedField();
     if (remappedField && remappedField.isSearchable()) {
       return remappedField;
     }
-    return fieldIfSearchable;
-  }
+    return field;
+  };
 
   search = async (value: string, cancelled: Promise<void>) => {
     if (!value) {
@@ -162,8 +167,7 @@ export class FieldValuesWidget extends Component {
         ),
       ),
     );
-    const resultsMap = new Map(allResults.flat().map(o => [o[0], o]));
-    const results = [...resultsMap.values()];
+    const results = dedupeValues(allResults);
 
     // There might be multiple fields, but if any are remapped then we
     // know we only have one.
@@ -249,7 +253,7 @@ export class FieldValuesWidget extends Component {
         if (loadingState === "LOADING") {
           return <LoadingState />;
         } else if (loadingState === "LOADED") {
-          return <NoMatchState field={fields} />;
+          return <NoMatchState field={fields.map(this.searchField)} />;
         }
       }
     }
@@ -282,6 +286,7 @@ export class FieldValuesWidget extends Component {
         if (names.size > 1) {
           placeholder = t`Search`;
         } else {
+          // $FlowFixMe
           const [name] = names;
           placeholder = t`Search by ${name}`;
           if (field.isID() && field !== this.searchField(field)) {
@@ -301,9 +306,7 @@ export class FieldValuesWidget extends Component {
 
     let options = [];
     if (this.hasList()) {
-      const fieldValues = fields.flatMap(f => f.values);
-      const uniqueValueMap = new Map(fieldValues.map(o => [o[0], o]));
-      options = [...uniqueValueMap.values()];
+      options = dedupeValues(fields.map(field => field.values));
     } else if (this.isSearchable() && loadingState === "LOADED") {
       options = this.state.options;
     } else {
@@ -397,6 +400,12 @@ export class FieldValuesWidget extends Component {
   }
 }
 
+function dedupeValues(valuesList) {
+  // $FlowFixMe
+  const uniqueValueMap = new Map(valuesList.flat().map(o => [o[0], o]));
+  return Array.from(uniqueValueMap.values());
+}
+
 const LoadingState = () => (
   <div
     className="flex layout-centered align-center border-bottom"
@@ -411,8 +420,7 @@ const NoMatchState = ({ fields }) => {
     // if there is more than one field, don't name them
     return <OptionsMessage message={t`No matching result`} />;
   }
-  const field = fields[0];
-  const { display_name } = this.searchField(field) || field;
+  const [{ display_name }] = fields;
   return (
     <OptionsMessage
       message={jt`No matching ${(

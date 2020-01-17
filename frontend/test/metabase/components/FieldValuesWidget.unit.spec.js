@@ -102,7 +102,7 @@ describe("FieldValuesWidget", () => {
           fields: [
             mock(ORDERS.PRODUCT_ID, {
               has_field_values: "search",
-              parameterSearchField: () => PRODUCTS.CATEGORY,
+              remappedField: () => PRODUCTS.CATEGORY,
             }),
           ],
         });
