@@ -4,13 +4,11 @@ only: pulls
 # Number of days of inactivity before an issue becomes stale
 daysUntilStale: 60
 
+# Override the default Label of "wontfix"
+staleLabel: ""
+
 # Number of days of inactivity before a stale issue is closed
 daysUntilClose: 7
-
-# Issues with these labels will never be considered stale
-exemptLabels:
-  - pinned
-  - security
 
 # Comment to post when marking an issue as stale. Set to `false` to disable
 markComment: >
