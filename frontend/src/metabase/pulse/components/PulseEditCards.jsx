@@ -22,7 +22,7 @@ function isAutoAttached(cardPreview) {
     cardPreview &&
     cardPreview.pulse_card_type === "table" &&
     (cardPreview.row_count > TABLE_MAX_ROWS ||
-      cardPreview.col_cound > TABLE_MAX_COLS)
+      cardPreview.col_count > TABLE_MAX_COLS)
   );
 }
 
