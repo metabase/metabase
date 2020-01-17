@@ -1,18 +1,32 @@
 export const USERS = {
   admin: {
+    first_name: "Bobby",
+    last_name: "Tables",
     username: "admin@metabase.com",
     password: "12341234",
   },
   normal: {
+    first_name: "Robert",
+    last_name: "Tableton",
     username: "normal@metabase.com",
     password: "12341234",
   },
   nodata: {
+    first_name: "No Data",
+    last_name: "Tableton",
     username: "nodata@metabase.com",
     password: "12341234",
   },
   nocollection: {
+    first_name: "No Collection",
+    last_name: "Tableton",
     username: "nocollection@metabase.com",
+    password: "12341234",
+  },
+  none: {
+    first_name: "None",
+    last_name: "Tableton",
+    username: "none@metabase.com",
     password: "12341234",
   },
 };

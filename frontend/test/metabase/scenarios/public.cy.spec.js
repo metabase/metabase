@@ -1,6 +1,6 @@
 import {
   signInAsAdmin,
-  signInAsNormalUser,
+  signIn,
   signOut,
   restore,
   popover,
@@ -13,9 +13,11 @@ const COUNT_DOOHICKEY = "42";
 
 const PUBLIC_URL_REGEX = /\/public\/(question|dashboard)\/[0-9a-f-]+$/;
 
-const ADMIN_USER = ["admin", signInAsAdmin];
-const NORMAL_USER = ["normal", signInAsNormalUser];
-const ANONYMOUS_USER = ["anonymous", signOut];
+const USERS = {
+  "admin user": () => signInAsAdmin(),
+  "user with no permissions": () => signIn("none"),
+  "anonymous user": () => signOut(),
+};
 
 describe("public and embeds", () => {
   before(restore);
@@ -38,8 +40,16 @@ describe("public and embeds", () => {
       cy.visit(`/question/new?type=native&database=${SAMPLE_DATASET.id}`);
       cy.get(".ace_text-input").type(
         "select count(*) from products where {{c}}",
-        { force: true, parseSpecialCharSequences: false },
+        {
+          force: true,
+          parseSpecialCharSequences: false,
+        },
       );
+
+      // HACK: disable the editor due to weirdness with `.type()` on other elements typing into editor
+      cy.window().then(win => {
+        win.document.querySelectorAll(".ace_text-input")[0].disabled = true;
+      });
 
       cy.contains("Filter label")
         .siblings("input")
@@ -75,11 +85,10 @@ describe("public and embeds", () => {
         .click();
       cy.contains(COUNT_DOOHICKEY);
 
-      cy.focused().blur();
-
       cy.contains("Save").click();
       modal()
         .find('input[name="name"]')
+        .focus()
         .type("sql param");
       modal()
         .contains("button", "Save")
@@ -229,8 +238,8 @@ describe("public and embeds", () => {
       });
     });
 
-    [ADMIN_USER, NORMAL_USER, ANONYMOUS_USER].map(([userType, setUser]) =>
-      describe(`${userType} user`, () => {
+    Object.entries(USERS).map(([userType, setUser]) =>
+      describe(`${userType}`, () => {
         beforeEach(setUser);
 
         it(`should be able to view public questions`, () => {

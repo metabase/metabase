@@ -1,4 +1,4 @@
-import { snapshot, restore, USERS, modal } from "__support__/cypress";
+import { snapshot, restore, USERS } from "__support__/cypress";
 
 describe("default", () => {
   it("default", () => {
@@ -12,16 +12,21 @@ describe("default", () => {
   });
 });
 
+function makeUserObject(name, groupIds) {
+  return {
+    first_name: USERS[name].first_name,
+    last_name: USERS[name].last_name,
+    email: USERS[name].username,
+    password: USERS[name].password,
+    group_ids: groupIds,
+  };
+}
+
 function setup() {
   cy.request("GET", "/api/session/properties").then(({ body: properties }) => {
     cy.request("POST", "/api/setup", {
       token: properties["setup-token"],
-      user: {
-        first_name: "Bobby",
-        last_name: "Tables",
-        email: USERS.admin.username,
-        password: USERS.admin.password,
-      },
+      user: makeUserObject("admin"),
       prefs: {
         site_name: "Epic Team",
         allow_tracking: false,
@@ -55,28 +60,23 @@ function addUsersAndGroups() {
   cy.request("POST", "/api/permissions/group", { name: "collection" }); // 4
   cy.request("POST", "/api/permissions/group", { name: "data" }); // 5
 
-  // users
-  cy.request("POST", "/api/user", {
-    first_name: "Robert",
-    last_name: "Tableton",
-    email: USERS.normal.username,
-    password: USERS.normal.password,
-    group_ids: [ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP],
-  });
-  cy.request("POST", "/api/user", {
-    first_name: "No Data",
-    last_name: "Tableton",
-    email: USERS.nodata.username,
-    password: USERS.nodata.password,
-    groups: [ALL_USERS_GROUP, COLLECTION_GROUP],
-  });
-  cy.request("POST", "/api/user", {
-    first_name: "No Collection",
-    last_name: "Tableton",
-    email: USERS.nocollection.username,
-    password: USERS.nocollection.password,
-    groups: [ALL_USERS_GROUP, DATA_GROUP],
-  });
+  // additional users
+  cy.request(
+    "POST",
+    "/api/user",
+    makeUserObject("normal", [ALL_USERS_GROUP, COLLECTION_GROUP, DATA_GROUP]),
+  );
+  cy.request(
+    "POST",
+    "/api/user",
+    makeUserObject("nodata", [ALL_USERS_GROUP, COLLECTION_GROUP]),
+  );
+  cy.request(
+    "POST",
+    "/api/user",
+    makeUserObject("nocollection", [ALL_USERS_GROUP, DATA_GROUP]),
+  );
+  cy.request("POST", "/api/user", makeUserObject("none", [ALL_USERS_GROUP]));
 
   // permissions
   cy.request("PUT", "/api/permissions/graph", {
