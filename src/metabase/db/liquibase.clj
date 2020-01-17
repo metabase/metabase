@@ -17,11 +17,14 @@
 
 (def ^:private ^String changelog-file "liquibase.yaml")
 
-(def ^{:arglists '([])} ^DatabaseFactory database-factory
-  "Return an instance of the Liquibase `DatabaseFactory`. This is done on a background thread at launch because
-  otherwise it adds 2 seconds to startup time."
-  (when-not *compile-files*
-    (partial deref (future (DatabaseFactory/getInstance)))))
+(defn- liquibase-connection ^JdbcConnection [^java.sql.Connection jdbc-connection]
+  (JdbcConnection. jdbc-connection))
+
+(defn- database ^Database [^JdbcConnection liquibase-conn]
+  (.findCorrectDatabaseImplementation (DatabaseFactory/getInstance) liquibase-conn))
+
+(defn- liquibase ^Liquibase [^Database database]
+  (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database))
 
 (defn do-with-liquibase
   "Impl for `with-liquibase-macro`."
@@ -29,14 +32,7 @@
   ;; closing the `LiquibaseConnection`/`Database` closes the parent JDBC `Connection`, so only use it in combination
   ;; with `with-open` *if* we are opening a new JDBC `Connection` from a JDBC spec. If we're passed in a `Connection`,
   ;; it's safe to assume the caller is managing its lifecycle.
-  (letfn [(^JdbcConnection liquibase-connection [^java.sql.Connection jdbc-connection]
-           (JdbcConnection. jdbc-connection))
-
-          (^Database database [^JdbcConnection liquibase-conn]
-           (.findCorrectDatabaseImplementation (database-factory) liquibase-conn))
-
-          (^Liquibase liquibase [^Database database]
-           (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database))]
+  (letfn []
     (cond
       (instance? java.sql.Connection jdbc-spec-or-conn)
       (f (-> jdbc-spec-or-conn liquibase-connection database liquibase))
@@ -176,10 +172,12 @@
       (jdbc/execute! jdbc-spec [statement "migrations/000_migrations.yaml"]))))
 
 (defn rollback-one
+  "Roll back the last migration."
   [^Liquibase liquibase]
   (.rollback liquibase 1 ""))
 
 (defn force-release-locks!
+  "(Attempt to) force release Liquibase migration locks."
   [^Liquibase liquibase]
   (.forceReleaseLocks liquibase))
 

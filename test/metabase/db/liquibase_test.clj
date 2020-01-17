@@ -16,7 +16,8 @@
                       "LOCKGRANTED datetime NULL, "
                       "LOCKEDBY VARCHAR(255) NULL, "
                       "CONSTRAINT PK_DATABASECHANGELOGLOCK PRIMARY KEY (ID)"
-                      ") ENGINE InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"))))
+                      ") ENGINE InnoDB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;")
+                 (first (liquibase/migrations-lines liquibase)))))
         (testing "Make sure *every* line contains ENGINE ... CHARACTER SET ... COLLATE"
           (doseq [line  (liquibase/migrations-lines liquibase)
                   :when (str/starts-with? line "CREATE TABLE")]
