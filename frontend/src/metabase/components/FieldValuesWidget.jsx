@@ -129,9 +129,17 @@ export class FieldValuesWidget extends Component {
   };
 
   searchField(field) {
-    return this.props.disablePKRemappingForSearch
-      ? field.filterSearchField()
-      : field.parameterSearchField();
+    const fieldIfSearchable = field.isSearchable() ? field : null;
+
+    if (this.props.disablePKRemappingForSearch && field.isPK()) {
+      return fieldIfSearchable;
+    }
+
+    const remappedField = field.remappedField();
+    if (remappedField && remappedField.isSearchable()) {
+      return remappedField;
+    }
+    return fieldIfSearchable;
   }
 
   search = async (value: string, cancelled: Promise<void>) => {
