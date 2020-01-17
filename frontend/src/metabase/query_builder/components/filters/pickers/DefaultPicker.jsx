@@ -81,7 +81,7 @@ export default function DefaultPicker({
             onChange={onValuesChange}
             multi={operator.multi}
             placeholder={placeholder}
-            fields={[underlyingField]}
+            fields={underlyingField ? [underlyingField] : []}
             disablePKRemappingForSearch={true}
             autoFocus={index === 0}
             alwaysShowOptions={operator.fields.length === 1}
