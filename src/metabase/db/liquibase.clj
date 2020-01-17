@@ -24,24 +24,42 @@
     (partial deref (future (DatabaseFactory/getInstance)))))
 
 (defn do-with-liquibase
+  "Impl for `with-liquibase-macro`."
   [jdbc-spec-or-conn f]
-  (letfn [(do-with-conn [^java.sql.Connection conn]
-            (with-open [liquibase-conn (JdbcConnection. conn)
-                        database       (.findCorrectDatabaseImplementation (database-factory) liquibase-conn)]
-              ;; NOCOMMIT the &database param (probably)
-              (f database (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database))))]
-    (if (instance? java.sql.Connection jdbc-spec-or-conn)
-      (do-with-conn jdbc-spec-or-conn)
-      (with-open [jdbc-conn (jdbc/get-connection jdbc-spec-or-conn)]
-        (do-with-conn jdbc-conn)))))
+  ;; closing the `LiquibaseConnection`/`Database` closes the parent JDBC `Connection`, so only use it in combination
+  ;; with `with-open` *if* we are opening a new JDBC `Connection` from a JDBC spec. If we're passed in a `Connection`,
+  ;; it's safe to assume the caller is managing its lifecycle.
+  (letfn [(^JdbcConnection liquibase-connection [^java.sql.Connection jdbc-connection]
+           (JdbcConnection. jdbc-connection))
+
+          (^Database database [^JdbcConnection liquibase-conn]
+           (.findCorrectDatabaseImplementation (database-factory) liquibase-conn))
+
+          (^Liquibase liquibase [^Database database]
+           (Liquibase. changelog-file (ClassLoaderResourceAccessor.) database))]
+    (cond
+      (instance? java.sql.Connection jdbc-spec-or-conn)
+      (f (-> jdbc-spec-or-conn liquibase-connection database liquibase))
+
+      (:connection jdbc-spec-or-conn)
+      (recur (:connection jdbc-spec-or-conn) f)
+
+      :else
+      (with-open [jdbc-conn      (jdbc/get-connection jdbc-spec-or-conn)
+                  liquibase-conn (liquibase-connection jdbc-conn)
+                  database       (database liquibase-conn)]
+        (f (liquibase database))))))
 
 (defmacro with-liquibase
+  "Execute body with an instance of a `Liquibase` bound to `liquibase-binding`.
+
+    (liquibase/with-liquibase [liquibase {:subname :postgres, ...}]
+      (liquibase/migrate-up-if-needed! liquibase))"
   {:style/indent 1}
-  [[liquibase-binding jdbc-spec] & body]
+  [[liquibase-binding jdbc-spec-or-conn] & body]
   `(do-with-liquibase
-    ~jdbc-spec
-    (fn [~(vary-meta '&database assoc :tag (symbol (.getCanonicalName Database)))
-         ~(vary-meta liquibase-binding assoc :tag (symbol (.getCanonicalName Liquibase)))]
+    ~jdbc-spec-or-conn
+    (fn [~(vary-meta liquibase-binding assoc :tag (symbol (.getCanonicalName Liquibase)))]
       ~@body)))
 
 (defn migrations-sql
