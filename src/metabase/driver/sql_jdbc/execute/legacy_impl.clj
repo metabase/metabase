@@ -55,21 +55,21 @@
 
 (defmethod sql-jdbc.execute/read-column [:use-legacy-classes-for-read-and-set Types/TIME]
   [_ _ ^ResultSet rs _ ^Integer i]
-  (let [s (.getString rs i)
-        t (u.date/parse s)]
-    (log/tracef "(.getString rs i) [TIME] -> %s -> %s" (pr-str s) (pr-str t))
-    t))
+  (when-let [s (.getString rs i)]
+    (let [t (u.date/parse s)]
+      (log/tracef "(.getString rs i) [TIME] -> %s -> %s" (pr-str s) (pr-str t))
+      t)))
 
 (defmethod sql-jdbc.execute/read-column [::use-legacy-classes-for-read-and-set Types/DATE]
   [_ _ ^ResultSet rs _ ^Integer i]
-  (let [s (.getString rs i)
-        t (u.date/parse s)]
-    (log/tracef "(.getString rs i) [DATE] -> %s -> %s" (pr-str s) (pr-str t))
-    t))
+  (when-let [s (.getString rs i)]
+    (let [t (u.date/parse s)]
+      (log/tracef "(.getString rs i) [DATE] -> %s -> %s" (pr-str s) (pr-str t))
+      t)))
 
 (defmethod sql-jdbc.execute/read-column [::use-legacy-classes-for-read-and-set Types/TIMESTAMP]
   [_ _ ^ResultSet rs _ ^Integer i]
-  (let [s (.getString rs i)
-        t (u.date/parse s)]
-    (log/tracef "(.getString rs i) [TIMESTAMP] -> %s -> %s" (pr-str s) (pr-str t))
-    t))
+  (when-let [s (.getString rs i)]
+    (let [t (u.date/parse s)]
+      (log/tracef "(.getString rs i) [TIMESTAMP] -> %s -> %s" (pr-str s) (pr-str t))
+      t)))

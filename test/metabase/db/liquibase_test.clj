@@ -2,15 +2,23 @@
   (:require [clojure
              [string :as str]
              [test :refer :all]]
-            [metabase.db :as mdb]
-            [metabase.db.liquibase :as liquibase]))
+            [clojure.java.jdbc :as jdbc]
+            [metabase.db.liquibase :as liquibase]
+            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
+            [metabase.test :as mt]))
 
 (deftest mysql-engine-charset-test
-  (when (= (mdb/db-type) :mysql)
+  (mt/test-driver :mysql
     (testing "Make sure MySQL CREATE DATABASE statements have ENGINE/CHARACTER SET appended to them (#10691)"
-      (liquibase/with-liquibase [liquibase (mdb/jdbc-spec)]
+      (jdbc/with-db-connection [conn (sql-jdbc.conn/connection-details->spec :mysql
+                                       (mt/dbdef->connection-details :mysql :server nil))]
+        (doseq [statement ["DROP DATABASE IF EXISTS liquibase_test;"
+                           "CREATE DATABASE liquibase_test;"]]
+          (jdbc/execute! conn statement)))
+      (liquibase/with-liquibase [liquibase (sql-jdbc.conn/connection-details->spec :mysql
+                                             (mt/dbdef->connection-details :mysql :db {:database-name "liquibase_test"}))]
         (testing "Make sure the first line actually matches the shape we're testing against"
-          (is (= (str (format "CREATE TABLE %s.DATABASECHANGELOGLOCK (" (:dbname (mdb/jdbc-spec)))
+          (is (= (str "CREATE TABLE liquibase_test.DATABASECHANGELOGLOCK ("
                       "ID INT NOT NULL, "
                       "`LOCKED` BIT(1) NOT NULL, "
                       "LOCKGRANTED datetime NULL, "
