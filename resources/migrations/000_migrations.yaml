@@ -5307,6 +5307,7 @@ databaseChangeLog:
 #
 # Add a unique constraint on (name + engine). This is to fix the issue where creating two databases
 # with the same name will override each other (Check #11106).
+# There is no need for an additional postgresql constraint cause neither name nor engine are nullable.
 #
   - changeSet:
       id: 107
@@ -5333,8 +5334,4 @@ databaseChangeLog:
             tableName: metabase_database
             columnNames: name, engine
             constraintName: idx_uniq_table_name_engine
-        # No need for additional conditions on postgres becauase neither name nor the engine are nullable.
-        - sql:
-            dbms: postgresql
-            sql: CREATE UNIQUE INDEX idx_uniq_table_name_engine_2col ON "metabase_database" ("name", "engine")
 
