@@ -1,4 +1,4 @@
-import { signInAsAdmin, restore } from "__support__/cypress";
+import { signInAsAdmin, restore, popover, modal } from "__support__/cypress";
 
 describe("admin > databases > edit", () => {
   before(restore);
@@ -26,7 +26,7 @@ describe("admin > databases > edit", () => {
         "This is a large database, so let me choose when Metabase syncs and scans",
       ).click();
 
-      cy.findByText("button", "Save").click();
+      cy.findByText("Save changes").click();
       cy.wait("@databaseUpdate").then(({ response }) =>
         expect(response.body.details["let-user-control-scheduling"]).to.equal(
           true,
@@ -50,7 +50,7 @@ describe("admin > databases > edit", () => {
 
       cy.findByText("Database syncing")
         .parent()
-        .findByText(".AdminSelect", "Hourly");
+        .findByText("Hourly");
 
       cy.findByText("Regularly, on a schedule")
         .closest("div")
@@ -67,17 +67,17 @@ describe("admin > databases > edit", () => {
         .as("sync");
 
       cy.get("@sync")
-        .findByText(".AdminSelect", "Hourly")
+        .findByText("Hourly")
         .click();
-      cy.get(".PopoverBody")
-        .findByText("Daily")
-        .click({ force: true });
+      popover().within(() => {
+        cy.findByText("Daily").click({ force: true });
+      });
 
       cy.findByText("Regularly, on a schedule")
         .closest("div")
         .should("have.class", "text-brand");
 
-      cy.findByText("button", "Save changes").click();
+      cy.findByText("Save changes").click();
       cy.wait("@databaseUpdate").then(({ response }) =>
         expect(response.body.schedules.metadata_sync.schedule_type).to.equal(
           "daily",
@@ -89,18 +89,17 @@ describe("admin > databases > edit", () => {
       cy.visit("/admin/databases/1");
       cy.findByText("Scheduling").click();
 
-      cy.findByText("Scanning")
+      cy.findByText("Regularly, on a schedule")
         .parent()
-        .as("scan");
+        .parent()
+        .within(() => {
+          cy.findByText("Daily").click();
+        });
+      popover().within(() => {
+        cy.findByText("Weekly").click({ force: true });
+      });
 
-      cy.get("@scan")
-        .findByText("Daily")
-        .click();
-      cy.get(".PopoverBody")
-        .findByText("Weekly")
-        .click({ force: true });
-
-      cy.findByText("button", "Save changes").click();
+      cy.findByText("Save changes").click();
       cy.wait("@databaseUpdate").then(({ response }) => {
         expect(
           response.body.schedules.cache_field_values.schedule_type,
@@ -113,7 +112,7 @@ describe("admin > databases > edit", () => {
       cy.findByText("Scheduling").click();
 
       cy.findByText("Only when adding a new filter widget").click();
-      cy.findByText("button", "Save changes").click();
+      cy.findByText("Save changes").click();
       cy.wait("@databaseUpdate").then(({ response }) => {
         expect(response.body.is_full_sync).to.equal(false);
         expect(response.body.is_on_demand).to.equal(true);
@@ -124,8 +123,8 @@ describe("admin > databases > edit", () => {
       cy.visit("/admin/databases/1");
       cy.findByText("Scheduling").click();
 
-      cy.findByText("Never").click();
-      cy.findByText("button", "Save changes").click();
+      cy.findByText("Never, I'll do this manually if I need to").click();
+      cy.findByText("Save changes").click();
       cy.wait("@databaseUpdate").then(({ response }) => {
         expect(response.body.is_full_sync).to.equal(false);
         expect(response.body.is_on_demand).to.equal(false);
@@ -157,7 +156,7 @@ describe("admin > databases > edit", () => {
 
       cy.visit("/admin/databases/1");
       cy.findByText("Discard saved field values").click();
-      cy.findByText("button", "Yes").click();
+      cy.findByText("Yes").click();
       cy.wait("@discard_values");
     });
 
@@ -166,10 +165,11 @@ describe("admin > databases > edit", () => {
 
       cy.visit("/admin/databases/1");
       cy.findByText("Remove this database").click();
-      cy.get(".ModalBody input").type("DELETE");
-      cy.get(".ModalBody")
-        .findByText("button", "Delete")
-        .click();
+      modal().within(() => {
+        cy.get("input").type("DELETE");
+        cy.get(".Button.Button--danger").click();
+      });
+
       cy.wait("@delete");
       cy.url().should("match", /\/admin\/databases\/$/);
     });
