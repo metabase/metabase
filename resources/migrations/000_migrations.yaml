@@ -5304,3 +5304,16 @@ databaseChangeLog:
             tableName: metabase_field
             columnName: database_type
             newDataType: text
+
+#
+# Convert report_cart to utf8mb4 if it isn't alredy there. See #10691
+#
+
+  - changeSet:
+      id: 107
+      author: camsaul
+      comment: 'Added 0.34.2'
+      changes:
+        - sql:
+            dbms: mysql,mariadb
+            sql: 'ALTER TABLE report_card CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'

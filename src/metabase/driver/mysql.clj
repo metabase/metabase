@@ -206,8 +206,10 @@
    :zeroDateTimeBehavior "convertToNull"
    ;; Force UTF-8 encoding of results
    :useUnicode           true
-   :characterEncoding    "UTF8"
-   :characterSetResults  "UTF8"
+   :characterEncoding    "UTF-8"
+   :characterSetResults  "UTF-8"
+   :character_set_server "utf8mb4"
+   :connectionCollation  "utf8mb4_unicode_ci"
    ;; GZIP compress packets sent between Metabase server and MySQL/MariaDB database
    :useCompression       true})
 
