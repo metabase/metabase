@@ -11,7 +11,7 @@ const FormToggleWidget = ({
   showEnabledLabel = !horizontal,
 }) => (
   <div className="flex align-center">
-    <Toggle {...field} />
+    <Toggle aria-labelledby={`${field.name}-label`} {...field} />
     {showEnabledLabel && (
       <span className="text-bold mx1">
         {/* HACK: ensure a consistent width by always rendering both labels */}

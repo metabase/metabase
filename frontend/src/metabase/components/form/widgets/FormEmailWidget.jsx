@@ -1,14 +1,7 @@
 import React from "react";
 
-import { formDomOnlyProps } from "metabase/lib/redux";
+import FormInputWidget from "./FormInputWidget";
 
-const FormEmailWidget = ({ placeholder, field }) => (
-  <input
-    className="Form-input full"
-    type="email"
-    placeholder={placeholder}
-    {...formDomOnlyProps(field)}
-  />
-);
+const FormEmailWidget = props => <FormInputWidget {...props} type="email" />;
 
 export default FormEmailWidget;
