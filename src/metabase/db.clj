@@ -320,8 +320,10 @@
   ([db-details direction]
    (jdbc/with-db-transaction [conn (jdbc-details db-details)]
      ;; Tell transaction to automatically `.rollback` instead of `.commit` when the transaction finishes
+     (log/debug (trs "Set transaction to automatically roll back..."))
      (jdbc/db-set-rollback-only! conn)
      ;; Disable auto-commit. This should already be off but set it just to be safe
+     (log/debug (trs "Disable auto-commit..."))
      (.setAutoCommit (jdbc/get-connection conn) false)
      ;; Set up liquibase and let it do its thing
      (log/info (trs "Setting up Liquibase..."))
@@ -366,6 +368,7 @@
                                    :postgres :ansi
                                    :h2       :h2
                                    :mysql    :mysql))
+  (log/debug (trs "Set default db connection with connection pool..."))
   (db/set-default-db-connection! (connection-pool/connection-pool-spec spec))
   (db/set-default-jdbc-options! {:read-columns db.jdbc-protocols/read-columns}))
 

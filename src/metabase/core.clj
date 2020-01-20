@@ -2,6 +2,8 @@
 (ns metabase.core
   (:gen-class)
   (:require [clojure.tools.logging :as log]
+            [clojure.tools.trace :as trace]
+            [clojure.string :as str]
             [metabase
              [config :as config]
              [db :as mdb]
@@ -131,12 +133,25 @@
   (classloader/require 'metabase.cmd)
   ((resolve 'metabase.cmd/run-cmd) cmd args))
 
+;;; -------------------------------------------------- Tracing -------------------------------------------------------
+
+(defn maybe-enable-tracing
+  []
+  (log/info (trs "You have enabled namespace tracing. This should only be used temporarily to provide debugging information."))
+  (let [mb-trace-str (config/config-str :mb-ns-trace)]
+    (when (not-empty mb-trace-str)
+      (doseq [namespace (map symbol (str/split mb-trace-str #","))]
+        (try (require namespace)
+             (catch Throwable _
+               (throw (ex-info "A namespace you specified with MB_NS_TRACE could not be required" {:namespace namespace}))))
+        (trace/trace-ns namespace)))))
 
 ;;; ------------------------------------------------ App Entry Point -------------------------------------------------
 
 (defn -main
   "Launch Metabase in standalone mode."
   [& [cmd & args]]
+  (maybe-enable-tracing)
   (if cmd
     (run-cmd cmd args) ; run a command like `java -jar metabase.jar migrate release-locks` or `lein run migrate release-locks`
     (start-normally))) ; with no command line args just start Metabase normally

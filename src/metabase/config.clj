@@ -26,6 +26,7 @@
    ;; other application settings
    :mb-password-complexity "normal"
    :mb-version-info-url    "http://static.metabase.com/version-info.json"
+   :mb-ns-trace            ""                                             ; comma-separated namespaces to trace
    :max-session-age        "20160"                                        ; session length in minutes (14 days)
    :mb-colorize-logs       (str (not is-windows?))                        ; since PowerShell and cmd.exe don't support ANSI color escape codes or emoji,
    :mb-emoji-in-logs       (str (not is-windows?))                        ; disable them by default when running on Windows. Otherwise they're enabled
