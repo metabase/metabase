@@ -137,7 +137,7 @@
 
 (defn maybe-enable-tracing
   []
-  (log/info (trs "You have enabled namespace tracing. This should only be used temporarily to provide debugging information."))
+  (log/warn (trs "WARNING: You have enabled namespace tracing. This can result in sensitive information like database passwords getting logged. It should only be used temporarily to provide debugging information."))
   (let [mb-trace-str (config/config-str :mb-ns-trace)]
     (when (not-empty mb-trace-str)
       (doseq [namespace (map symbol (str/split mb-trace-str #","))]
