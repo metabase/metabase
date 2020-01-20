@@ -112,8 +112,8 @@ export default class ParameterValueWidget extends Component {
     }
   }
 
-  fieldIds({ parameter: { field_ids = [] } }) {
-    return field_ids;
+  fieldIds({ parameter: { field_ids = [], field_id } }) {
+    return field_id ? [field_id] : field_ids;
   }
 
   componentWillReceiveProps(nextProps) {

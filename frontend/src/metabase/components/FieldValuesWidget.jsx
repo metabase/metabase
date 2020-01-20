@@ -253,7 +253,7 @@ export class FieldValuesWidget extends Component {
         if (loadingState === "LOADING") {
           return <LoadingState />;
         } else if (loadingState === "LOADED") {
-          return <NoMatchState field={fields.map(this.searchField)} />;
+          return <NoMatchState fields={fields.map(this.searchField)} />;
         }
       }
     }
