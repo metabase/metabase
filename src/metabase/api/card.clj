@@ -258,7 +258,8 @@
   ;; check that we have permissions for the collection we're trying to save this card to, if applicable
   (collection/check-write-perms-for-collection collection_id)
   ;; Return a channel that can be used to fetch the results asynchronously
-  (create-card-async! body))
+  {:status 202
+   :body   (create-card-async! body)})
 
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
