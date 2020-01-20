@@ -218,9 +218,8 @@
      {:mb-jetty-join "false"}
 
      :repl-options
-     {:init (do
-              (require 'metabase.core)
-              (metabase.core/-main))
+     {:init (do (require 'metabase.core)
+                (metabase.core/-main))
       :timeout 60000}}]
 
    ;; start the dev HTTP server with 'lein ring server'
