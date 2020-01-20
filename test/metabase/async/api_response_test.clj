@@ -121,10 +121,10 @@
 
 ;; An error should be written to the output stream
 (expect
-  {:message      "Input channel unexpectedly closed."
-   :type         "class java.lang.InterruptedException"
-   :async_status "error"
-   :stacktrace   true}
+  {:message     "Input channel unexpectedly closed."
+   :type        "class java.lang.InterruptedException"
+   :status_code 500
+   :stacktrace  true}
   (tu.async/with-chans [input-chan]
     (with-response [{:keys [os os-closed-chan]} input-chan]
       (a/close! input-chan)
@@ -177,7 +177,7 @@
 
 ;; If the message sent to input-chan is an Exception an appropriate response should be generated
 (expect
-  {:message "Broken", :type "class java.lang.Exception", :stacktrace true, :async_status "error"}
+  {:message "Broken", :type "class java.lang.Exception", :stacktrace true, :status_code 500}
   (tu.async/with-chans [input-chan]
     (with-response [{:keys [os os-closed-chan]} input-chan]
       (a/>!! input-chan (Exception. "Broken"))
@@ -190,10 +190,10 @@
 ;; If we write a bad API endpoint and return a channel but never write to it, the request should be canceled after
 ;; `absolute-max-keepalive-ms`
 (expect
-  {:message      "No response after waiting 500.0 ms. Canceling request."
-   :type         "class java.util.concurrent.TimeoutException"
-   :async_status "error"
-   :stacktrace   true}
+  {:message     "No response after waiting 500.0 ms. Canceling request."
+   :type        "class java.util.concurrent.TimeoutException"
+   :status_code 500
+   :stacktrace  true}
   (with-redefs [async-response/absolute-max-keepalive-ms 500]
     (tu.async/with-chans [input-chan]
       (with-response [{:keys [os os-closed-chan]} input-chan]

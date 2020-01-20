@@ -179,7 +179,7 @@ export class Api extends EventEmitter {
           try {
             body = JSON.parse(body);
           } catch (e) {}
-          const status_code = xhr.status;
+          let status_code = xhr.status;
           if (status_code === 202) {
             status_code = body.status_code;
           }
