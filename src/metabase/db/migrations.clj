@@ -349,7 +349,7 @@
 
 ;; Converts the application DB to `utf8mb4` if it is not already encoded that way. See #10691 for more details.
 (defmigration ^{:author "camsaul", :added "0.34.2"} convert-mysql-to-utf8mb4
-  (when (= (mdb/db-type :mysql))
+  (when (= (mdb/db-type) :mysql)
     (try
       (fix-mysql-utf8/convert-to-utf8mb4! (mdb/jdbc-spec) (:dbname (mdb/jdbc-spec)))
       (catch Throwable e

@@ -31,20 +31,24 @@
   "Return a sequence of SQL statements needed to convert this MySQL database and its tables to the `utf8mb4` character
   set. If the database is already `utf8mb4`, this returns an empty seq."
   [jdbc-spec database-name]
+  (log/infof "Checking whether application database '%s' needs to be converted to utf8mb4..." database-name)
   (let [statements
         (jdbc/with-db-connection [conn jdbc-spec]
           (doall
            (concat
-            (let [{:keys [collation character-set]} (db-character-set-and-collation conn database-name)]
-              (when (or (not= character-set "utf8mb4")
-                        (not= collation "utf8mb4_unicode_ci"))
-                [(format "ALTER DATABASE `%s` CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci;" database-name)]))
+            (if (= (db-character-set-and-collation conn database-name)
+                   {:character-set "utf8mb4", :collation "utf8mb4_unicode_ci"})
+              (log/debug "Default character set for application database is already in utf8mb4")
+              [(format "ALTER DATABASE `%s` CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci;" database-name)])
             (jdbc/with-db-metadata [metadata conn]
-              (for [table-name (table-names metadata database-name)
-                    :let       [{:keys [collation character-set]} (table-character-set-and-collation conn database-name table-name)]
-                    :when      (or (not= character-set "utf8mb4")
-                                   (not= collation "utf8mb4_unicode_ci"))]
-                (format "ALTER TABLE `%s` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" table-name))))))]
+              (->> (table-names metadata database-name)
+                   (map (fn [table-name]
+                          (if (= (table-character-set-and-collation conn database-name table-name)
+                                 {:character-set "utf8mb4", :collation "utf8mb4_unicode_ci"})
+                            (log/debug "Character set for table '%s' is already utf8mb4" table-name)
+                            (format "ALTER TABLE `%s` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+                                    table-name))))
+                   (filter some?))))))]
     (when (seq statements)
       (concat ["SET foreign_key_checks = 0;"]
               statements
