@@ -49,9 +49,6 @@
                           [(str/lower-case (name model)) i])
                         searchable-models)))
 
-(defn- sorted-results [results]
-  (sort-by (juxt (comp model->sort-position :model) :name) results))
-
 (def ^:private SearchableModel
   (apply s/enum searchable-models))
 
