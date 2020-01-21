@@ -169,15 +169,17 @@
 
 (def ^:private sample-jdbc-spec
   {:password             "bad-password"
-   :characterSetResults  "UTF8"
-   :characterEncoding    "UTF8"
+   :useUnicode           true
+   :characterEncoding    "UTF-8"
+   :characterSetResults  "UTF-8"
+   :character_set_server "utf8mb4"
+   :connectionCollation  "utf8mb4_unicode_ci"
    :classname            "org.mariadb.jdbc.Driver"
    :subprotocol          "mysql"
    :zeroDateTimeBehavior "convertToNull"
    :user                 "cam"
    :subname              "//localhost:3306/my_db"
-   :useCompression       true
-   :useUnicode           true})
+   :useCompression       true})
 
 ;; Do `:ssl` connection details give us the connection spec we'd expect?
 (expect
