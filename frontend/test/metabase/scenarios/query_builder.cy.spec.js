@@ -144,7 +144,7 @@ describe("query builder", () => {
         .contains("button", "Save")
         .click();
       cy.contains("Yes please!").click();
-      cy.contains("Orders over time").click();
+      cy.contains("orders in a dashboard").click();
 
       // create a new question to see if the "add to a dashboard" modal is still there
       cy.contains("Browse Data").click();
