@@ -173,6 +173,15 @@ export default class FieldApp extends React.Component {
     return this.onUpdateFieldProperties({ settings });
   };
 
+  updateCustomActionDebounced = _.debounce(url => {
+    return this.onUpdateFieldProperties({ settings: { custom_actions: { url: url }}});
+  }, 300);
+
+  onUpdateCustomAction = (e: { target: HTMLInputElement }) => {
+    const url = e.target.value;
+    this.updateCustomActionDebounced(url);
+  };
+
   render() {
     const {
       metadata,
@@ -243,6 +252,7 @@ export default class FieldApp extends React.Component {
                   onUpdateFieldProperties={this.onUpdateFieldProperties}
                   onUpdateFieldDimension={this.onUpdateFieldDimension}
                   onDeleteFieldDimension={this.onDeleteFieldDimension}
+                  onUpdateCustomAction={this.onUpdateCustomAction}
                   rescanFieldValues={rescanFieldValues}
                   discardFieldValues={discardFieldValues}
                   fetchTableMetadata={fetchTableMetadata}
@@ -270,6 +280,7 @@ const FieldGeneralPane = ({
   onUpdateFieldProperties,
   onUpdateFieldDimension,
   onDeleteFieldDimension,
+  onUpdateCustomAction,
   rescanFieldValues,
   discardFieldValues,
   fetchTableMetadata,
@@ -336,6 +347,19 @@ const FieldGeneralPane = ({
         updateFieldDimension={onUpdateFieldDimension}
         deleteFieldDimension={onDeleteFieldDimension}
         fetchTableMetadata={fetchTableMetadata}
+      />
+    </Section>
+
+    <Section>
+      <SectionHeader
+        title={t`Custom actions`}
+        description={t`Link this field value to a custom URL`}
+      />
+      <InputBlurChange
+        className="text AdminInput bordered input text-measure block full"
+        value={field.settings && field.settings.custom_actions && field.settings.custom_actions.url}
+        onChange={onUpdateCustomAction}
+        placeholder={t`https://example.com/{value}`}
       />
     </Section>
 
