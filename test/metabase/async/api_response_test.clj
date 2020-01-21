@@ -123,7 +123,7 @@
 (expect
   {:message     "Input channel unexpectedly closed."
    :type        "class java.lang.InterruptedException"
-   :status_code 500
+   :_status 500
    :stacktrace  true}
   (tu.async/with-chans [input-chan]
     (with-response [{:keys [os os-closed-chan]} input-chan]
@@ -177,7 +177,7 @@
 
 ;; If the message sent to input-chan is an Exception an appropriate response should be generated
 (expect
-  {:message "Broken", :type "class java.lang.Exception", :stacktrace true, :status_code 500}
+  {:message "Broken", :type "class java.lang.Exception", :stacktrace true, :_status 500}
   (tu.async/with-chans [input-chan]
     (with-response [{:keys [os os-closed-chan]} input-chan]
       (a/>!! input-chan (Exception. "Broken"))
@@ -192,7 +192,7 @@
 (expect
   {:message     "No response after waiting 500.0 ms. Canceling request."
    :type        "class java.util.concurrent.TimeoutException"
-   :status_code 500
+   :_status 500
    :stacktrace  true}
   (with-redefs [async-response/absolute-max-keepalive-ms 500]
     (tu.async/with-chans [input-chan]
