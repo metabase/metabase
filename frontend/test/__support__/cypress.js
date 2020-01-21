@@ -31,7 +31,7 @@ export function restore(name = "default") {
 
 // various Metabase-specific "scoping" functions like inside popover/modal/navbar/main content area
 export function popover() {
-  return cy.get(".PopoverBody");
+  return cy.get(".PopoverContainer");
 }
 export function modal() {
   return cy.get(".ModalContainer");

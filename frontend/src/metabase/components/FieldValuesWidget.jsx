@@ -31,12 +31,14 @@ const mapDispatchToProps = {
   fetchFieldValues,
 };
 
-function mapStateToProps(state, { fields }) {
-  const selectedFields =
-    fields &&
-    fields.map(({ id }) => Fields.selectors.getObject(state, { entityId: id }));
+function mapStateToProps(state, { fields = [] }) {
   // try and use the selected fields, but fall back to the ones passed
-  return { fields: selectedFields || fields };
+  return {
+    fields: fields.map(
+      field =>
+        Fields.selectors.getObject(state, { entityId: field.id }) || field,
+    ),
+  };
 }
 
 type Props = {
