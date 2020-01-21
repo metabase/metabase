@@ -7,8 +7,10 @@
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [java-time :as t]
+            [metabase
+             [driver :as driver]
+             [util :as u]]
             [metabase.db.spec :as dbspec]
-            [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc
              [common :as sql-jdbc.common]
@@ -22,7 +24,7 @@
              [honeysql-extensions :as hx]
              [i18n :refer [trs]]
              [ssh :as ssh]])
-  (:import [java.sql ResultSet ResultSetMetaData Types]
+  (:import [java.sql DatabaseMetaData ResultSet ResultSetMetaData Types]
            [java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime]))
 
 (driver/register! :mysql, :parent :sql-jdbc)
@@ -33,6 +35,27 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- db-version [^DatabaseMetaData metadata]
+  (Double/parseDouble
+   (format "%d.%d" (.getDatabaseMajorVersion metadata) (.getDatabaseMinorVersion metadata))))
+
+(defn- warn-on-unsupported-versions [driver details]
+  (let [jdbc-spec (sql-jdbc.conn/details->connection-spec-for-testing-connection driver details)]
+    (jdbc/with-db-metadata [metadata jdbc-spec]
+      (when (< (db-version metadata) 5.7)
+        (log/warn
+         (u/format-color 'red (str (trs "WARNING: Metabase only officially supports MySQL/MariaDB 5.7 and above.")
+                                   " "
+                                   (trs "All Metabase features may not work properly when using an unsupported version of MySQL."))))))))
+
+(defmethod driver/can-connect? :mysql
+  [driver details]
+  ;; delegate to parent method to check whether we can connect; if so, check if it's an unsupported version and issue
+  ;; a warning if it is
+  (when ((get-method driver/can-connect? :sql-jdbc) driver details)
+    (warn-on-unsupported-versions driver details)
+    true))
 
 (defmethod driver/supports? [:mysql :full-join] [_ _] false)
 
