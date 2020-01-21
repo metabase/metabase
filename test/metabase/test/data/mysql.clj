@@ -48,9 +48,4 @@
   [& args]
   (apply load-data/load-data-all-at-once! args))
 
-#_(defmethod load-data/do-insert! :mysql
-  [driver spec table-identifier row-or-rows]
-  (jdbc/execute! spec "SET @@session.time_zone = 'UTC'");
-  ((get-method load-data/do-insert! :sql-jdbc/test-extensions) driver spec table-identifier row-or-rows))
-
 (defmethod sql.tx/pk-sql-type :mysql [_] "INTEGER NOT NULL AUTO_INCREMENT")

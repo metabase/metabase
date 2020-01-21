@@ -254,11 +254,9 @@
        (-> (dbspec/mysql details)
            (sql-jdbc.common/handle-additional-options details))))))
 
-
 (defmethod sql-jdbc.sync/active-tables :mysql
   [& args]
   (apply sql-jdbc.sync/post-filtered-active-tables args))
-
 
 (defmethod sql-jdbc.sync/excluded-schemas :mysql
   [_]
