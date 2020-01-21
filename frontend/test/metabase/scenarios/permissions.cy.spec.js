@@ -40,4 +40,15 @@ describe("custom question", () => {
       cy.contains("Sorry, you don’t have permission to see that.");
     });
   }
+
+  // There's no pulse in the fixture data, so we stub out the api call to
+  // replace the 404 with a 403.
+  it("should display the permissions screen for pulses", () => {
+    signInAsNormalUser();
+    cy.server();
+    cy.route({ url: /\/api\/pulse\/1/, status: 403, response: {} });
+    cy.visit("/pulse/1");
+    cy.get(".Icon-key");
+    cy.contains("Sorry, you don’t have permission to see that.");
+  });
 });

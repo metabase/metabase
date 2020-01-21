@@ -13,6 +13,8 @@ import { clearCurrentUser } from "metabase/redux/user";
 const NOT_AUTHORIZED_TRIGGERS = [
   /\/api\/dashboard\/\d+$/,
   /\/api\/collection\/\d+$/,
+  /\/api\/card\/\d+$/,
+  /\/api\/pulse\/\d+$/,
   /\/api\/dataset$/,
 ];
 
