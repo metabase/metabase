@@ -276,7 +276,11 @@
    :repl
    [:include-all-drivers
     ;; so running the tests doesn't give you different answers
-    {:jvm-opts ["-Duser.timezone=UTC"]}]
+    {:resource-paths
+     ["test_resources"]
+
+     :jvm-opts
+     ["-Duser.timezone=UTC"]}]
 
    :bikeshed
    [:include-all-drivers
