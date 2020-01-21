@@ -84,7 +84,7 @@
                                            (when zone-id
                                              (try
                                                (.getId (t/zone-id zone-id))
-                                               (catch Throwable _))))]a
+                                               (catch Throwable _))))]
     (or
      ;; if global timezone ID is 'SYSTEM', then try to use the system timezone ID
      (when (= global "SYSTEM")
