@@ -309,7 +309,8 @@
     ((resolve 'metabase.db.migrations/run-all!))))
 
 (defn setup-db!*
-  "Connects to db and runs migrations."
+  "Connects to db and runs migrations. Don't use this directly, unless you know what you're doing; use `setup-db!`
+  instead, which can be called more than once without issue and is thread-safe."
   [db-details auto-migrate]
   (u/profile (trs "Database setup")
     (u/with-us-locale
@@ -326,13 +327,22 @@
     (reset! db-setup-finished? true))
   nil)
 
-(defonce ^{:arglists '([]), :doc "Do general preparation of database by validating that we can connect. Caller can
-  specify if we should run any pending database migrations. If DB is already set up, this function will no-op."}
-  setup-db!
-  (partial deref (delay (setup-db-from-env!*))))
+(defonce ^:private db-setup-complete? (atom false))
+(defonce ^:private setup-db-lock (Object.))
+
+(defn setup-db!
+  "Do general preparation of database by validating that we can connect. Caller can specify if we should run any pending
+  database migrations. If DB is already set up, this function will no-op. Thread-safe."
+  []
+  (when-not @db-setup-complete?
+    (locking setup-db-lock
+      (when-not @db-setup-complete?
+        (setup-db-from-env!*)
+        (reset! db-setup-complete? true))))
+  :done)
 
 
-;;; Various convenience fns (experiMENTAL)
+;;; Various convenience fns
 
 (defn join
   "Convenience for generating a HoneySQL `JOIN` clause.

@@ -105,10 +105,14 @@ executors:
           MB_DB_TYPE: mysql
           MB_DB_HOST: localhost
           MB_DB_PORT: 3306
-          MB_DB_DBNAME: circle_test
+          MB_DB_DBNAME: metabase_test
           MB_DB_USER: root
           MB_MYSQL_TEST_USER: root
-      - image: circleci/mariadb:latest
+      - image: mariadb:latest
+        environment:
+          MYSQL_DATABASE: metabase_test
+          MYSQL_USER: root
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
 
   mongo:
      working_directory: /home/circleci/metabase/metabase/

@@ -84,7 +84,7 @@
                                            (when zone-id
                                              (try
                                                (.getId (t/zone-id zone-id))
-                                               (catch Throwable _))))]
+                                               (catch Throwable _))))]a
     (or
      ;; if global timezone ID is 'SYSTEM', then try to use the system timezone ID
      (when (= global "SYSTEM")
@@ -231,11 +231,9 @@
        (-> (dbspec/mysql details)
            (sql-jdbc.common/handle-additional-options details))))))
 
-
 (defmethod sql-jdbc.sync/active-tables :mysql
   [& args]
   (apply sql-jdbc.sync/post-filtered-active-tables args))
-
 
 (defmethod sql-jdbc.sync/excluded-schemas :mysql
   [_]
