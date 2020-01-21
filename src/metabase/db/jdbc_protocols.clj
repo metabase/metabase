@@ -110,7 +110,7 @@
     ;;
     ;; Check and see if the column type is `TIMESTAMP` (as opposed to `DATETIME`, which is the equivalent of
     ;; LocalDateTime), and normalize it to a UTC timestamp if so.
-    (let [t (.getObject rs i LocalDateTime)]
+    (when-let [t (.getObject rs i LocalDateTime)]
       (if (= (.getColumnTypeName rsmeta i) "TIMESTAMP")
         (t/with-offset-same-instant (t/offset-date-time t (t/zone-id)) (t/zone-offset 0))
         t))
@@ -135,7 +135,7 @@
     (try
       (.getObject rs i LocalTime)
       (catch Throwable _
-        (let [s (.getString rs i)]
+        (when-let [s (.getString rs i)]
           (log/tracef "Error in Postgres JDBC driver reading TIME value, fetching as string '%s'" s)
           (u.date/parse s))))
 

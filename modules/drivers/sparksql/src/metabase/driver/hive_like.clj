@@ -172,12 +172,15 @@
 ;; TIMEZONE FIXME — not sure what timezone the results actually come back as
 (defmethod sql-jdbc.execute/read-column [:hive-like Types/TIME]
   [_ _ ^ResultSet rs rsmeta ^Integer i]
-  (t/offset-time (t/local-time (.getTimestamp rs i)) (t/zone-offset 0)))
+  (when-let [t (.getTimestamp rs i)]
+    (t/offset-time (t/local-time t) (t/zone-offset 0))))
 
 (defmethod sql-jdbc.execute/read-column [:hive-like Types/DATE]
   [_ _ ^ResultSet rs rsmeta ^Integer i]
-  (t/zoned-date-time (t/local-date (.getDate rs i)) (t/local-time 0) (t/zone-id "UTC")))
+  (when-let [t (.getDate rs i)]
+    (t/zoned-date-time (t/local-date t) (t/local-time 0) (t/zone-id "UTC"))))
 
 (defmethod sql-jdbc.execute/read-column [:hive-like Types/TIMESTAMP]
   [_ _ ^ResultSet rs rsmeta ^Integer i]
-  (t/zoned-date-time (t/local-date-time (.getTimestamp rs i)) (t/zone-id "UTC")))
+  (when-let [t (.getTimestamp rs i)]
+    (t/zoned-date-time (t/local-date-time t) (t/zone-id "UTC"))))

@@ -44,6 +44,9 @@
 (deftest valid-period-test
   (is (= true
          (valid-period? #t "2015-01" #t "2015-02")))
+  ; Do we correctly handle descending time series?
+  (is (= true
+         (valid-period? #t "2015-02" #t "2015-01")))
   (is (= true
          (valid-period? #t "2015-02" #t "2015-03")))
   (is (= false

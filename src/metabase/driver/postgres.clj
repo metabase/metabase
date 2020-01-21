@@ -6,10 +6,15 @@
              [string :as str]]
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
+            [honeysql
+             [core :as hsql]
+             [format :as hformat]]
             [java-time :as t]
+            [metabase
+             [driver :as driver]
+             [models :refer [Field]]
+             [util :as u]]
             [metabase.db.spec :as db.spec]
-            [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc
              [common :as sql-jdbc.common]
@@ -21,7 +26,8 @@
             [metabase.util
              [date-2 :as u.date]
              [honeysql-extensions :as hx]
-             [ssh :as ssh]])
+             [ssh :as ssh]]
+            [pretty.core :refer [PrettyPrintable]])
   (:import [java.sql ResultSet ResultSetMetaData Time Types]
            [java.time LocalDateTime OffsetDateTime OffsetTime]
            [java.util Date UUID]))
@@ -112,9 +118,9 @@
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod sql.qp/unix-timestamp->timestamp [:postgres :seconds] [_ _ expr]
+(defmethod sql.qp/unix-timestamp->timestamp [:postgres :seconds]
+  [_ _ expr]
   (hsql/call :to_timestamp expr))
-
 
 (defn- date-trunc [unit expr] (hsql/call :date_trunc (hx/literal unit) (hx/->timestamp expr)))
 (defn- extract    [unit expr] (hsql/call :extract    unit              (hx/->timestamp expr)))
@@ -145,20 +151,40 @@
 (defmethod sql.qp/date [:postgres :quarter-of-year] [_ _ expr] (extract-integer :quarter expr))
 (defmethod sql.qp/date [:postgres :year]            [_ _ expr] (date-trunc :year expr))
 
-
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver value]
   (let [[_ value {base-type :base_type, database-type :database_type}] value]
     (when (some? value)
-      (cond
-        (isa? base-type :type/UUID)         (UUID/fromString value)
-        (isa? base-type :type/IPAddress)    (hx/cast :inet value)
-        (isa? base-type :type/PostgresEnum) (hx/quoted-cast database-type value)
-        :else                               (sql.qp/->honeysql driver value)))))
+      (condp #(isa? %2 %1) base-type
+        :type/UUID         (UUID/fromString value)
+        :type/IPAddress    (hx/cast :inet value)
+        :type/PostgresEnum (hx/quoted-cast database-type value)
+        (sql.qp/->honeysql driver value)))))
 
 (defmethod sql.qp/->honeysql [:postgres Time]
   [_ time-value]
   (hx/->time time-value))
+
+(defn- pg-conversion
+  "HoneySQL form that adds a Postgres-style `::` cast e.g. `expr::type`.
+
+    (pg-conversion :my_field ::integer) -> HoneySQL -[Compile]-> \"my_field\"::integer"
+  [expr psql-type]
+  (reify
+    hformat/ToSql
+    (to-sql [_]
+      (format "%s::%s" (hformat/to-sql expr) (name psql-type)))
+    PrettyPrintable
+    (pretty [_]
+      (format "%s::%s" (pr-str expr) (name psql-type)))))
+
+(defmethod sql.qp/->honeysql [:postgres (class Field)]
+  [driver {database-type :database_type, :as field}]
+  (let [parent-method (get-method sql.qp/->honeysql [:sql (class Field)])
+        identifier    (parent-method driver field)]
+    (if (= database-type "money")
+      (pg-conversion identifier :numeric)
+      identifier)))
 
 (defmethod unprepare/unprepare-value [:postgres Date]
   [_ value]
@@ -301,6 +327,15 @@
         (let [s (.getString rs i)]
           (log/tracef "Error in Postgres JDBC driver reading TIME value, fetching as string '%s'" s)
           (u.date/parse s))))))
+
+;; The postgres JDBC driver cannot properly read MONEY columns — see https://github.com/pgjdbc/pgjdbc/issues/425. Work
+;; around this by checking whether the column type name is `money`, and reading it out as a String and parsing to a
+;; BigDecimal if so; otherwise, proceeding as normal
+(defmethod sql-jdbc.execute/read-column [:postgres Types/DOUBLE]
+  [driver _ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (if (= (.getColumnTypeName rsmeta i) "money")
+    (some-> (.getString rs i) u/parse-currency)
+    (.getObject rs i)))
 
 ;; Postgres doesn't support OffsetTime
 (defmethod sql-jdbc.execute/set-parameter [:postgres OffsetTime]
