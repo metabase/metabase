@@ -78,10 +78,6 @@
               ;; rethrow e if updating an existing average execution time failed
               (throw e))))))
 
-;; TODO - somewhat confusing that the Ad-hoc queries here use the keys `:table-id` and `:database-id` instead of the
-;; `:database_id` and `:table_id` that come out of the Database. In the automagic dashboards code, for example, we
-;; have special utility functions to account for both possiblities. Should we fix this?
-
 (defn query->database-and-table-ids
   "Return a map with `:database-id` and source `:table-id` that should be saved for a Card. Handles queries that use
    other queries as their source (ones that come in with a `:source-table` like `card__100`, or `:source-query`)
