@@ -62,7 +62,7 @@
     ;; An error has occurred, let the user know
     (instance? Throwable chunkk)
     (json/generate-stream (let [body (:body (mw.exceptions/api-exception-response chunkk))]
-                            (cond-> body (map? body) (assoc :status_code 500)))
+                            (cond-> body (map? body) (assoc :_status 500)))
                           out)
 
     ;; We've recevied the response, write it to the output stream and we're done

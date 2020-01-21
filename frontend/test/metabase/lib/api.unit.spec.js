@@ -90,11 +90,11 @@ describe("api", () => {
     expect(response).toEqual({ status: "ok" });
   });
 
-  it("should use status_code from body when HTTP status is 202", async () => {
+  it("should use _status from body when HTTP status is 202", async () => {
     expect.assertions(2);
     mock.get("/async-status", {
       status: 202,
-      body: JSON.stringify({ status_code: 400, message: "error message" }),
+      body: JSON.stringify({ _status: 400, message: "error message" }),
     });
     const asyncStatus = GET("/async-status");
     try {
