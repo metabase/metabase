@@ -256,7 +256,7 @@
   false)
 
 (s/defn ^:private verify-db-connection
-  "Test connection to database with DETAILS and throw an exception if we have any troubles connecting."
+  "Test connection to database with `details` and throw an exception if we have any troubles connecting."
   ([db-details]
    (verify-db-connection (:type db-details) db-details))
 
@@ -266,7 +266,10 @@
              (classloader/require 'metabase.driver.util)
              ((resolve 'metabase.driver.util/can-connect-with-details?) driver details :throw-exceptions))
      (trs "Unable to connect to Metabase {0} DB." (name driver)))
-   (log/info (trs "Verify Database Connection ... ") (u/emoji "✅"))))
+   (jdbc/with-db-metadata [metadata (jdbc-spec details)]
+     (log/info (trs "Successfully verified {0} {1} application database connection."
+                    (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata))
+               (u/emoji "✅")))))
 
 (def ^:dynamic ^Boolean *disable-data-migrations*
   "Should we skip running data migrations when setting up the DB? (Default is `false`).
