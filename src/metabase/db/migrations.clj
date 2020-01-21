@@ -13,22 +13,18 @@
             [metabase
              [config :as config]
              [db :as mdb]
+             [models :refer [Card Collection Dashboard Database Field Permissions PermissionsGroup PermissionsGroupMembership Pulse Setting User]]
              [public-settings :as public-settings]
              [util :as u]]
+            [metabase.db.fix-mysql-utf8 :as fix-mysql-utf8]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models
-             [card :refer [Card]]
-             [collection :as collection :refer [Collection]]
-             [dashboard :refer [Dashboard]]
-             [database :refer [Database]]
-             [field :refer [Field]]
+             [collection :as collection]
              [humanization :as humanization]
-             [permissions :as perms :refer [Permissions]]
-             [permissions-group :as perm-group :refer [PermissionsGroup]]
-             [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
-             [pulse :refer [Pulse]]
-             [setting :as setting :refer [Setting]]
-             [user :refer [User]]]
+             [permissions :as perms]
+             [permissions-group :as perm-group]
+             [permissions-group-membership :as perm-membership]
+             [setting :as setting]]
             [metabase.util.i18n :refer [trs]]
             [toucan
              [db :as db]
@@ -350,6 +346,17 @@
                      (name model) new-collection-name (u/get-id new-collection)))
       (db/update-where! model {:collection_id nil}
         :collection_id (u/get-id new-collection)))))
+
+;; Converts the application DB to `utf8mb4` if it is not already encoded that way. See #10691 for more details.
+(defmigration ^{:author "camsaul", :added "0.34.2"} convert-mysql-to-utf8mb4
+  (when (= (mdb/db-type :mysql))
+    (try
+      (fix-mysql-utf8/convert-to-utf8mb4! (mdb/jdbc-spec) (:dbname (mdb/jdbc-spec)))
+      (catch Throwable e
+        (log/error
+         e
+         (trs "Failed to convert application DB to utf8mb4 character set automatically; please convert it manually.")
+         (trs "See https://github.com/metabase/metabase/issues/10691 for more details."))))))
 
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

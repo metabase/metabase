@@ -256,14 +256,14 @@
   false)
 
 (s/defn ^:private verify-db-connection
-  "Test connection to database with DETAILS and throw an exception if we have any troubles connecting."
+  "Test connection to database with `details` and throw an exception if we have any troubles connecting."
   ([db-details]
    (verify-db-connection (:type db-details) db-details))
 
   ([driver :- s/Keyword, details :- su/Map]
    (log/info (u/format-color 'cyan (trs "Verifying {0} Database Connection ..." (name driver))))
+   (classloader/require 'metabase.driver.util)
    (assert (binding [*allow-potentailly-unsafe-connections* true]
-             (classloader/require 'metabase.driver.util)
              ((resolve 'metabase.driver.util/can-connect-with-details?) driver details :throw-exceptions))
      (trs "Unable to connect to Metabase {0} DB." (name driver)))
    (log/info (trs "Verify Database Connection ... ") (u/emoji "✅"))))

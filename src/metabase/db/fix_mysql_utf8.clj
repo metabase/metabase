@@ -1,35 +1,62 @@
 (ns metabase.db.fix-mysql-utf8
+  "Logic for converting a MySQL/MariaDB database to the `utf8mb4` character set."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
-            [metabase.util :as u])
+            [metabase.util :as u]
+            [metabase.util.i18n :refer [trs]])
   (:import java.sql.DatabaseMetaData))
 
-(defn- warn-on-old-mysql-versions [^DatabaseMetaData metadata]
-  (when (< (db-version metadata) 5.7)
-    ;; TODO - warn
-    ))
+(defn- db-character-set-and-collation [spec database-name]
+  (first
+   (jdbc/query spec (str "SELECT default_collation_name AS `collation`, default_character_set_name AS `character-set` "
+                         "FROM information_schema.SCHEMATA "
+                         (format "WHERE schema_name = \"%s\";" database-name)))))
 
-(defn- db-version [^DatabaseMetaData metadata]
-  (Double/parseDouble
-   (format "%d.%d" (.getDatabaseMajorVersion metadata) (.getDatabaseMinorVersion metadata))))
-
-(defn- tables [^DatabaseMetaData metadata database-name]
+(defn- table-names [^DatabaseMetaData metadata database-name]
   (reduce
    (fn [acc table]
      (conj acc (:table_name table)))
    []
    (jdbc/reducible-result-set (.getTables metadata database-name nil "%" (u/varargs String ["TABLE"])) nil)))
 
-(defn change-to-utf8mb4 [jdbc-spec database-name]
+(defn- table-character-set-and-collation [spec database-name table-name]
+  (first (jdbc/query spec (str "SELECT ccsa.collation_name AS `collation`, ccsa.character_set_name AS `character-set` "
+                               "FROM information_schema.`TABLES` t,"
+                               " information_schema.`COLLATION_CHARACTER_SET_APPLICABILITY` ccsa "
+                               "WHERE ccsa.collation_name = t.table_collation"
+                               (format "  AND t.table_schema = \"%s\"" database-name)
+                               (format "  AND t.table_name = \"%s\";" table-name)))))
+
+(defn- convert-to-utf8mb4-statements
+  "Return a sequence of SQL statements needed to convert this MySQL database and its tables to the `utf8mb4` character
+  set. If the database is already `utf8mb4`, this returns an empty seq."
+  [jdbc-spec database-name]
+  (let [statements
+        (jdbc/with-db-connection [conn jdbc-spec]
+          (doall
+           (concat
+            (let [{:keys [collation character-set]} (db-character-set-and-collation conn database-name)]
+              (when (or (not= character-set "utf8mb4")
+                        (not= collation "utf8mb4_unicode_ci"))
+                [(format "ALTER DATABASE `%s` CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci;" database-name)]))
+            (jdbc/with-db-metadata [metadata conn]
+              (for [table-name (table-names metadata database-name)
+                    :let       [{:keys [collation character-set]} (table-character-set-and-collation conn database-name table-name)]
+                    :when      (or (not= character-set "utf8mb4")
+                                   (not= collation "utf8mb4_unicode_ci"))]
+                (format "ALTER TABLE `%s` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" table-name))))))]
+    (when (seq statements)
+      (concat ["SET foreign_key_checks = 0;"]
+              statements
+              ["SET foreign_key_checks = 1;"]))))
+
+(defn convert-to-utf8mb4!
+  "Convert a MySQL database to the `utf8mb4` encoding if it is not already in that encoding."
+  [jdbc-spec database-name]
   (jdbc/with-db-connection [conn jdbc-spec]
-    (letfn [(execute! [sql-args]
-              (log/info sql-args)
-              (jdbc/execute! conn sql-args))]
-      (execute! "SET foreign_key_checks = 0;")
-      ;; Modify database
-      (execute! (format "ALTER DATABASE `%s` CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci;" database-name))
-      (let [metadata (.getMetaData (jdbc/get-connection conn))]
-        ;; Modify tables
-        (doseq [table-name (tables metadata database-name)]
-          (execute! (format "ALTER TABLE `%s` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;" table-name))))
-      (execute! "SET foreign_key_checks = 1;"))))
+    (when-let [statements (seq (convert-to-utf8mb4-statements conn database-name))]
+      (log/info (trs "Converting application database to utf8mb4 character set..."))
+      (doseq [statement statements]
+        (log/info statement)
+        (jdbc/execute! conn statement))
+      (log/info (trs "Successfully converted application database to utf8mb4 character set.")))))
