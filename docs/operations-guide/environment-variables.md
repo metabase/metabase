@@ -1,8 +1,8 @@
 # Environment variables
 
-Settings in Metabase are created using a custom macro, `defsetting`. This macro helps to create a Settings model that will be cached and stored in the Database model, viewed/modified from the SuperAdmin page, and automagically creates a corresponding environment variable that can be used (by default) to override that setting.
+Settings in Metabase are created using a custom macro, `defsetting`. This macro helps to create a Settings model that will be cached and stored in the Database model, viewed/modified from the Admin Panel, and automagically creates a corresponding environment variable that can be used (by default) to override that setting.
 
-These environment variables, if defined, will prevent the corresponding setting from being changed in the SuperAdmin page.
+These environment variables, if defined, will prevent the corresponding setting from being changed in the Admin Panel.
 
 | Environment Variable                       | Type                                     | Default at install                                             | Description                                                                                                                                                                                                                                                                                                |
 | ------------------------------------------ | ---------------------------------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
