@@ -1,41 +1,41 @@
 SET DB_CLOSE_DELAY -1;         
 ;              
 CREATE USER IF NOT EXISTS "" SALT '' HASH '' ADMIN;            
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_03E345A4_0236_48D4_904B_11B9E5592048 START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_5C7F5C98_C36C_47BB_A50E_025F02F32116 START WITH 4 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_D83E4801_363C_4616_8AB0_925325D9494C START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_17B1EFA8_F1F0_4C5B_99E0_5B1E3ABFAA48 START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_3C935C31_69F3_4134_A9B2_20358519A4D5 START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_51D3CE6A_CDE5_4A9E_AC5C_901AC3D8EAFC START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_7FE950FE_7573_4D6A_A1D5_CF3482C5947B START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_7C5A0191_88AE_4394_A9C6_6AE52942A42A START WITH 5 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_2836135D_08BF_40B3_86A9_7B2EA6E06DEE START WITH 37 BELONGS_TO_TABLE;    
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_844F7FA4_B690_45ED_9FD2_392B981DD368 START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_60E25564_FA5F_47C0_A7DD_93331C87C7C3 START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_3BC1B238_2ACF_4011_970F_3ED68746EE0E START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_C693E580_D4E0_4294_A2A7_048E06EDFA2C START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_159ECBDC_F53B_4EB9_9174_62F0FD918EC3 START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_CCB5A437_DC56_447E_8629_771ACB60DA9B START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_807583EF_1F7E_4B2E_BE4F_226AB5FC5B27 START WITH 2 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_16E7F76E_DA4B_47A7_960D_EAC0635E4D2A START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_6264C83F_4D9F_4860_8E37_1EC54F17D5BF START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_C521AA0C_2582_43D2_922C_E2766CAC4121 START WITH 5 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_9338F6A4_4A26_49CB_9366_AEC2650F1B11 START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_F8E53FF2_C2B9_4E56_B5B8_9C517AA9047B START WITH 6 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_7FF798E2_EB9B_43C9_ADD5_A6710F4A4A41 START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_265B8CD1_F6CA_43AD_A51F_63612D75158C START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_04E0D0C9_830A_4FE2_84B4_8A7E6470861B START WITH 2 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_672CE682_92EF_47ED_86F8_2D4F9183AC98 START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_371A6FA4_40EA_4CC0_83CD_60E2FF252D1C START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_A0A4F6E8_51D4_4C61_8D0E_1C9BAD083E8A START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_D5C95481_130A_4776_B1CA_9150DB422C42 START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_C4356946_5735_4D3C_85A5_240CFA3124D3 START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_418D4B0F_2EB7_4264_8413_340FBCB708D8 START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_E035BAB9_D30A_47FB_8C4C_86824EE07E0D START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_8F39885F_8FF8_4B92_87A3_F7033BF42E55 START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_0573F52A_8CD7_4F6A_932A_27B96FEF3FDC START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_DE65A757_723A_4214_9F03_82C63B31ECCB START WITH 1 BELONGS_TO_TABLE;     
-CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_05CA2B62_072D_4D28_93DD_772A49D8AC95 START WITH 13 BELONGS_TO_TABLE;    
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_1C753CA1_ADE8_4F0D_B1F0_F3E9CC1505B4 START WITH 5 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_827E1B8D_FF0B_497F_9C89_8E1318EBFB57 START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_81D97E1F_FA4A_4722_99CC_6DE3D920CB91 START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_D43A0683_1DA5_4383_ACBD_222C69FAA540 START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_A55C2E8C_C0F3_4525_B0F3_7D7E4B693CB4 START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_05A35C62_9715_4D84_BEBA_6117A9F3C15C START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_9E104C75_4229_4884_A248_A6C6594708F6 START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_A6351602_50E0_4870_A7D2_A8D2648175A1 START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_5AC6DC88_BD7E_49AB_80F4_ECD555BB1FA4 START WITH 37 BELONGS_TO_TABLE;    
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_10E1A53D_BE34_4ED9_A48E_6E0CCB5341EA START WITH 2 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_293744B6_3BEE_47A4_8E76_32C5844B9BED START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_9E70D311_C0C9_4CF8_A993_5DD0B9733A5B START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_441FD2DA_7863_4CFC_8E83_403C4F26B572 START WITH 5 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_14256567_24AD_4FC0_8899_D1F0B042DE3D START WITH 6 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_0F9E7303_EB02_41C6_9581_8B02A2F772CC START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_EF567467_3BA2_4446_B534_B3B3870B0505 START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_25F21D27_65CB_4C2D_83FE_B07AB05DDAA0 START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_9F7D2455_E264_4BC8_B009_34DAC3AE275F START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_9CFDBE74_9FE1_4348_A466_15549C3F29FB START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_8CD7EAFB_6915_406B_906F_F7D339953039 START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_A6B66D1E_AD9C_4D1D_81CD_132143C2ADC8 START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_549A427D_43A8_419D_8842_4DD5B317A760 START WITH 13 BELONGS_TO_TABLE;    
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_15B7B783_8677_4E14_B5E0_A3B0A898A62B START WITH 2 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_2EE73F58_32C1_413F_A47B_B44F24458ED1 START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_A0B66AC4_7887_412C_8615_125795B00CD5 START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_1E3BBF77_95F1_4CBD_A218_96469EFEF405 START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_D103B92F_04A2_4790_8B26_706D017E4D64 START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_51191381_554A_4245_A488_E12C3A3054D9 START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_47437BEF_F37C_4089_86B3_91D27E8AC81B START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_20538F71_1C9F_4D8D_88C4_29DCF9AFA822 START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_A015697A_42A4_4B9B_99E9_7AF633CD49F8 START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_E9CF44CB_B50D_4122_95E4_BD66F6228BC8 START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_E17FA259_C3EB_48D0_BEDB_68EB694E98AB START WITH 4 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_B6D5202A_FC2C_444E_9539_9A86CB786297 START WITH 1 BELONGS_TO_TABLE;     
+CREATE SEQUENCE PUBLIC.SYSTEM_SEQUENCE_21A717F0_9995_4834_9F23_8C5AF720C41C START WITH 1 BELONGS_TO_TABLE;     
 CREATE CACHED TABLE PUBLIC.DATABASECHANGELOG(
     ID VARCHAR(255) NOT NULL,
     AUTHOR VARCHAR(255) NOT NULL,
@@ -54,110 +54,110 @@ CREATE CACHED TABLE PUBLIC.DATABASECHANGELOG(
 );               
 -- 97 +/- SELECT COUNT(*) FROM PUBLIC.DATABASECHANGELOG;       
 INSERT INTO PUBLIC.DATABASECHANGELOG(ID, AUTHOR, FILENAME, DATEEXECUTED, ORDEREXECUTED, EXECTYPE, MD5SUM, DESCRIPTION, COMMENTS, TAG, LIQUIBASE, CONTEXTS, LABELS, DEPLOYMENT_ID) VALUES
-('1', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:37.953', 1, 'EXECUTED', '8:29a8f482877466643f65adb20c6d2139', 'createTable tableName=core_organization; createTable tableName=core_user; createTable tableName=core_userorgperm; addUniqueConstraint constraintName=idx_unique_user_id_organization_id, tableName=core_userorgperm; createIndex indexName=idx_userorgp...', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('2', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:37.959', 2, 'EXECUTED', '8:983477ec51adb1236dd9d76ebf604be9', 'createTable tableName=core_session', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('4', 'cammsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:37.961', 3, 'EXECUTED', '8:a8e7822a91ea122212d376f5c2d4158f', 'createTable tableName=setting', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('5', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:37.979', 4, 'EXECUTED', '8:4f8653d16f4b102b3dff647277b6b988', 'addColumn tableName=core_organization', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('6', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:37.984', 5, 'EXECUTED', '8:2d2f5d1756ecb81da7c09ccfb9b1565a', 'dropNotNullConstraint columnName=organization_id, tableName=metabase_database; dropForeignKeyConstraint baseTableName=metabase_database, constraintName=fk_database_ref_organization_id; dropNotNullConstraint columnName=organization_id, tableName=re...', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('7', 'cammsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:37.992', 6, 'EXECUTED', '8:c57c69fd78d804beb77d261066521f7f', 'addColumn tableName=metabase_field', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('8', 'tlrobinson', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.003', 7, 'EXECUTED', '8:960ec59bbcb4c9f3fa8362eca9af4075', 'addColumn tableName=metabase_table; addColumn tableName=metabase_field', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('9', 'tlrobinson', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.009', 8, 'EXECUTED', '8:d560283a190e3c60802eb04f5532a49d', 'addColumn tableName=metabase_table', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('10', 'cammsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.014', 9, 'EXECUTED', '8:532075ff1717d4a16bb9f27c606db46b', 'createTable tableName=revision; createIndex indexName=idx_revision_model_model_id, tableName=revision', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('11', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.017', 10, 'EXECUTED', '8:ca6561cab1eedbcf4dcb6d6e22cd46c6', 'sql', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('12', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.037', 11, 'EXECUTED', '8:bedbea570e5dfc694b4cf5a8f6a4f445', 'addColumn tableName=report_card', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('13', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.041', 12, 'EXECUTED', '8:f3ae0bac98abb3288158ac45d85bf0e3', 'createTable tableName=activity; createIndex indexName=idx_activity_timestamp, tableName=activity; createIndex indexName=idx_activity_user_id, tableName=activity; createIndex indexName=idx_activity_custom_id, tableName=activity', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('14', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.045', 13, 'EXECUTED', '8:7dc558da864d98b79f8d13a427ca3858', 'createTable tableName=view_log; createIndex indexName=idx_view_log_user_id, tableName=view_log; createIndex indexName=idx_view_log_timestamp, tableName=view_log', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('15', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.05', 14, 'EXECUTED', '8:505b91530103673a9be3382cd2db1070', 'addColumn tableName=revision', '', NULL, '3.6.3', NULL, NULL, '9299817830');
+('1', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:57.897', 1, 'EXECUTED', '8:29a8f482877466643f65adb20c6d2139', 'createTable tableName=core_organization; createTable tableName=core_user; createTable tableName=core_userorgperm; addUniqueConstraint constraintName=idx_unique_user_id_organization_id, tableName=core_userorgperm; createIndex indexName=idx_userorgp...', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('2', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:57.928', 2, 'EXECUTED', '8:983477ec51adb1236dd9d76ebf604be9', 'createTable tableName=core_session', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('4', 'cammsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:57.931', 3, 'EXECUTED', '8:a8e7822a91ea122212d376f5c2d4158f', 'createTable tableName=setting', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('5', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.034', 4, 'EXECUTED', '8:4f8653d16f4b102b3dff647277b6b988', 'addColumn tableName=core_organization', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('6', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.046', 5, 'EXECUTED', '8:2d2f5d1756ecb81da7c09ccfb9b1565a', 'dropNotNullConstraint columnName=organization_id, tableName=metabase_database; dropForeignKeyConstraint baseTableName=metabase_database, constraintName=fk_database_ref_organization_id; dropNotNullConstraint columnName=organization_id, tableName=re...', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('7', 'cammsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.122', 6, 'EXECUTED', '8:c57c69fd78d804beb77d261066521f7f', 'addColumn tableName=metabase_field', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('8', 'tlrobinson', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.16', 7, 'EXECUTED', '8:960ec59bbcb4c9f3fa8362eca9af4075', 'addColumn tableName=metabase_table; addColumn tableName=metabase_field', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('9', 'tlrobinson', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.208', 8, 'EXECUTED', '8:d560283a190e3c60802eb04f5532a49d', 'addColumn tableName=metabase_table', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('10', 'cammsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.214', 9, 'EXECUTED', '8:532075ff1717d4a16bb9f27c606db46b', 'createTable tableName=revision; createIndex indexName=idx_revision_model_model_id, tableName=revision', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('11', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.217', 10, 'EXECUTED', '8:ca6561cab1eedbcf4dcb6d6e22cd46c6', 'sql', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('12', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.265', 11, 'EXECUTED', '8:bedbea570e5dfc694b4cf5a8f6a4f445', 'addColumn tableName=report_card', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('13', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.305', 12, 'EXECUTED', '8:f3ae0bac98abb3288158ac45d85bf0e3', 'createTable tableName=activity; createIndex indexName=idx_activity_timestamp, tableName=activity; createIndex indexName=idx_activity_user_id, tableName=activity; createIndex indexName=idx_activity_custom_id, tableName=activity', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('14', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.311', 13, 'EXECUTED', '8:7dc558da864d98b79f8d13a427ca3858', 'createTable tableName=view_log; createIndex indexName=idx_view_log_user_id, tableName=view_log; createIndex indexName=idx_view_log_timestamp, tableName=view_log', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('15', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.32', 14, 'EXECUTED', '8:505b91530103673a9be3382cd2db1070', 'addColumn tableName=revision', '', NULL, '3.6.3', NULL, NULL, '9723797323'); 
 INSERT INTO PUBLIC.DATABASECHANGELOG(ID, AUTHOR, FILENAME, DATEEXECUTED, ORDEREXECUTED, EXECTYPE, MD5SUM, DESCRIPTION, COMMENTS, TAG, LIQUIBASE, CONTEXTS, LABELS, DEPLOYMENT_ID) VALUES
-('16', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.052', 15, 'EXECUTED', '8:b81df46fe16c3e8659a81798b97a4793', 'dropNotNullConstraint columnName=last_login, tableName=core_user', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('17', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.058', 16, 'EXECUTED', '8:051c23cd15359364b9895c1569c319e7', 'addColumn tableName=metabase_database; sql', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('18', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.06', 17, 'EXECUTED', '8:62a0483dde183cfd18dd0a86e9354288', 'createTable tableName=data_migrations; createIndex indexName=idx_data_migrations_id, tableName=data_migrations', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('19', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.066', 18, 'EXECUTED', '8:269b129dbfc39a6f9e0d3bc61c3c3b70', 'addColumn tableName=metabase_table', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('20', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.077', 19, 'EXECUTED', '8:7ec10b2c7acbab0fc38043be575ff907', 'createTable tableName=pulse; createIndex indexName=idx_pulse_creator_id, tableName=pulse; createTable tableName=pulse_card; createIndex indexName=idx_pulse_card_pulse_id, tableName=pulse_card; createIndex indexName=idx_pulse_card_card_id, tableNam...', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('21', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.081', 20, 'EXECUTED', '8:492a1b64ff9c792aa6ba97d091819261', 'createTable tableName=segment; createIndex indexName=idx_segment_creator_id, tableName=segment; createIndex indexName=idx_segment_table_id, tableName=segment', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('22', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.085', 21, 'EXECUTED', '8:80bc8a62a90791a79adedcf1ac3c6f08', 'addColumn tableName=revision', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('23', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.091', 22, 'EXECUTED', '8:b6f054835db2b2688a1be1de3707f9a9', 'modifyDataType columnName=rows, tableName=metabase_table', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('24', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.094', 23, 'EXECUTED', '8:5e7354b3f92782d1151be0aa9d3fe625', 'createTable tableName=dependency; createIndex indexName=idx_dependency_model, tableName=dependency; createIndex indexName=idx_dependency_model_id, tableName=dependency; createIndex indexName=idx_dependency_dependent_on_model, tableName=dependency;...', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('25', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.099', 24, 'EXECUTED', '8:cea300a621393501d4534b0ff41eb91c', 'createTable tableName=metric; createIndex indexName=idx_metric_creator_id, tableName=metric; createIndex indexName=idx_metric_table_id, tableName=metric', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('26', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.104', 25, 'EXECUTED', '8:ddef40b95c55cf4ac0e6a5161911a4cb', 'addColumn tableName=metabase_database; sql', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('27', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.115', 26, 'EXECUTED', '8:017050df833b3b678d1b52b1a0f4de50', 'createTable tableName=dashboardcard_series; createIndex indexName=idx_dashboardcard_series_dashboardcard_id, tableName=dashboardcard_series; createIndex indexName=idx_dashboardcard_series_card_id, tableName=dashboardcard_series', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('28', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.132', 27, 'EXECUTED', '8:428e4eb05e4e29141735adf9ae141a0b', 'addColumn tableName=core_user', '', NULL, '3.6.3', NULL, NULL, '9299817830');         
+('16', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.323', 15, 'EXECUTED', '8:b81df46fe16c3e8659a81798b97a4793', 'dropNotNullConstraint columnName=last_login, tableName=core_user', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('17', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.333', 16, 'EXECUTED', '8:051c23cd15359364b9895c1569c319e7', 'addColumn tableName=metabase_database; sql', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('18', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.341', 17, 'EXECUTED', '8:62a0483dde183cfd18dd0a86e9354288', 'createTable tableName=data_migrations; createIndex indexName=idx_data_migrations_id, tableName=data_migrations', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('19', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.354', 18, 'EXECUTED', '8:269b129dbfc39a6f9e0d3bc61c3c3b70', 'addColumn tableName=metabase_table', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('20', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.404', 19, 'EXECUTED', '8:7ec10b2c7acbab0fc38043be575ff907', 'createTable tableName=pulse; createIndex indexName=idx_pulse_creator_id, tableName=pulse; createTable tableName=pulse_card; createIndex indexName=idx_pulse_card_pulse_id, tableName=pulse_card; createIndex indexName=idx_pulse_card_card_id, tableNam...', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('21', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.415', 20, 'EXECUTED', '8:492a1b64ff9c792aa6ba97d091819261', 'createTable tableName=segment; createIndex indexName=idx_segment_creator_id, tableName=segment; createIndex indexName=idx_segment_table_id, tableName=segment', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('22', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.426', 21, 'EXECUTED', '8:80bc8a62a90791a79adedcf1ac3c6f08', 'addColumn tableName=revision', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('23', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.438', 22, 'EXECUTED', '8:b6f054835db2b2688a1be1de3707f9a9', 'modifyDataType columnName=rows, tableName=metabase_table', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('24', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.456', 23, 'EXECUTED', '8:5e7354b3f92782d1151be0aa9d3fe625', 'createTable tableName=dependency; createIndex indexName=idx_dependency_model, tableName=dependency; createIndex indexName=idx_dependency_model_id, tableName=dependency; createIndex indexName=idx_dependency_dependent_on_model, tableName=dependency;...', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('25', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.464', 24, 'EXECUTED', '8:cea300a621393501d4534b0ff41eb91c', 'createTable tableName=metric; createIndex indexName=idx_metric_creator_id, tableName=metric; createIndex indexName=idx_metric_table_id, tableName=metric', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('26', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.516', 25, 'EXECUTED', '8:ddef40b95c55cf4ac0e6a5161911a4cb', 'addColumn tableName=metabase_database; sql', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('27', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.543', 26, 'EXECUTED', '8:017050df833b3b678d1b52b1a0f4de50', 'createTable tableName=dashboardcard_series; createIndex indexName=idx_dashboardcard_series_dashboardcard_id, tableName=dashboardcard_series; createIndex indexName=idx_dashboardcard_series_card_id, tableName=dashboardcard_series', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('28', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.615', 27, 'EXECUTED', '8:428e4eb05e4e29141735adf9ae141a0b', 'addColumn tableName=core_user', '', NULL, '3.6.3', NULL, NULL, '9723797323');        
 INSERT INTO PUBLIC.DATABASECHANGELOG(ID, AUTHOR, FILENAME, DATEEXECUTED, ORDEREXECUTED, EXECTYPE, MD5SUM, DESCRIPTION, COMMENTS, TAG, LIQUIBASE, CONTEXTS, LABELS, DEPLOYMENT_ID) VALUES
-('29', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.136', 28, 'EXECUTED', '8:8b02731cc34add3722c926dfd7376ae0', 'addColumn tableName=pulse_channel', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('30', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.142', 29, 'EXECUTED', '8:2c3a50cef177cb90d47a9973cd5934e5', 'addColumn tableName=metabase_field; addNotNullConstraint columnName=visibility_type, tableName=metabase_field', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('31', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.146', 30, 'EXECUTED', '8:30a33a82bab0bcbb2ccb6738d48e1421', 'addColumn tableName=metabase_field', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('32', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.155', 31, 'EXECUTED', '8:40830260b92cedad8da273afd5eca678', 'createTable tableName=label; createIndex indexName=idx_label_slug, tableName=label; createTable tableName=card_label; addUniqueConstraint constraintName=unique_card_label_card_id_label_id, tableName=card_label; createIndex indexName=idx_card_label...', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('32', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.176', 32, 'EXECUTED', '8:ca6efc1c0a7aa82467d2c84421e812eb', 'createTable tableName=raw_table; createIndex indexName=idx_rawtable_database_id, tableName=raw_table; addUniqueConstraint constraintName=uniq_raw_table_db_schema_name, tableName=raw_table; createTable tableName=raw_column; createIndex indexName=id...', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('34', 'tlrobinson', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.18', 33, 'EXECUTED', '8:52b082600b05bbbc46bfe837d1f37a82', 'addColumn tableName=pulse_channel', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('35', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.182', 34, 'EXECUTED', '8:91b72167fca724e6b6a94b64f886cf09', 'modifyDataType columnName=value, tableName=setting', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('36', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.191', 35, 'EXECUTED', '8:252e08892449dceb16c3d91337bd9573', 'addColumn tableName=report_dashboard; addNotNullConstraint columnName=parameters, tableName=report_dashboard; addColumn tableName=report_dashboardcard; addNotNullConstraint columnName=parameter_mappings, tableName=report_dashboardcard', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('37', 'tlrobinson', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.195', 36, 'EXECUTED', '8:07d959eff81777e5690e2920583cfe5f', 'addColumn tableName=query_queryexecution; addNotNullConstraint columnName=query_hash, tableName=query_queryexecution; createIndex indexName=idx_query_queryexecution_query_hash, tableName=query_queryexecution; createIndex indexName=idx_query_querye...', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('38', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.248', 37, 'EXECUTED', '8:43604ab55179b50306eb39353e760b46', 'addColumn tableName=metabase_database; addColumn tableName=metabase_table; addColumn tableName=metabase_field; addColumn tableName=report_dashboard; addColumn tableName=metric; addColumn tableName=segment; addColumn tableName=metabase_database; ad...', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('39', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.259', 38, 'EXECUTED', '8:334adc22af5ded71ff27759b7a556951', 'addColumn tableName=core_user', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('40', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.271', 39, 'EXECUTED', '8:ee7f50a264d6cf8d891bd01241eebd2c', 'createTable tableName=permissions_group; createIndex indexName=idx_permissions_group_name, tableName=permissions_group; createTable tableName=permissions_group_membership; addUniqueConstraint constraintName=unique_permissions_group_membership_user...', '', NULL, '3.6.3', NULL, NULL, '9299817830');        
+('29', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.63', 28, 'EXECUTED', '8:8b02731cc34add3722c926dfd7376ae0', 'addColumn tableName=pulse_channel', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('30', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.644', 29, 'EXECUTED', '8:2c3a50cef177cb90d47a9973cd5934e5', 'addColumn tableName=metabase_field; addNotNullConstraint columnName=visibility_type, tableName=metabase_field', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('31', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.656', 30, 'EXECUTED', '8:30a33a82bab0bcbb2ccb6738d48e1421', 'addColumn tableName=metabase_field', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('32', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.78', 31, 'EXECUTED', '8:40830260b92cedad8da273afd5eca678', 'createTable tableName=label; createIndex indexName=idx_label_slug, tableName=label; createTable tableName=card_label; addUniqueConstraint constraintName=unique_card_label_card_id_label_id, tableName=card_label; createIndex indexName=idx_card_label...', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('32', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.871', 32, 'EXECUTED', '8:ca6efc1c0a7aa82467d2c84421e812eb', 'createTable tableName=raw_table; createIndex indexName=idx_rawtable_database_id, tableName=raw_table; addUniqueConstraint constraintName=uniq_raw_table_db_schema_name, tableName=raw_table; createTable tableName=raw_column; createIndex indexName=id...', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('34', 'tlrobinson', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.908', 33, 'EXECUTED', '8:52b082600b05bbbc46bfe837d1f37a82', 'addColumn tableName=pulse_channel', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('35', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.915', 34, 'EXECUTED', '8:91b72167fca724e6b6a94b64f886cf09', 'modifyDataType columnName=value, tableName=setting', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('36', 'agilliland', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.943', 35, 'EXECUTED', '8:252e08892449dceb16c3d91337bd9573', 'addColumn tableName=report_dashboard; addNotNullConstraint columnName=parameters, tableName=report_dashboard; addColumn tableName=report_dashboardcard; addNotNullConstraint columnName=parameter_mappings, tableName=report_dashboardcard', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('37', 'tlrobinson', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:58.973', 36, 'EXECUTED', '8:07d959eff81777e5690e2920583cfe5f', 'addColumn tableName=query_queryexecution; addNotNullConstraint columnName=query_hash, tableName=query_queryexecution; createIndex indexName=idx_query_queryexecution_query_hash, tableName=query_queryexecution; createIndex indexName=idx_query_querye...', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('38', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.159', 37, 'EXECUTED', '8:43604ab55179b50306eb39353e760b46', 'addColumn tableName=metabase_database; addColumn tableName=metabase_table; addColumn tableName=metabase_field; addColumn tableName=report_dashboard; addColumn tableName=metric; addColumn tableName=segment; addColumn tableName=metabase_database; ad...', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('39', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.185', 38, 'EXECUTED', '8:334adc22af5ded71ff27759b7a556951', 'addColumn tableName=core_user', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('40', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.236', 39, 'EXECUTED', '8:ee7f50a264d6cf8d891bd01241eebd2c', 'createTable tableName=permissions_group; createIndex indexName=idx_permissions_group_name, tableName=permissions_group; createTable tableName=permissions_group_membership; addUniqueConstraint constraintName=unique_permissions_group_membership_user...', '', NULL, '3.6.3', NULL, NULL, '9723797323');         
 INSERT INTO PUBLIC.DATABASECHANGELOG(ID, AUTHOR, FILENAME, DATEEXECUTED, ORDEREXECUTED, EXECTYPE, MD5SUM, DESCRIPTION, COMMENTS, TAG, LIQUIBASE, CONTEXTS, LABELS, DEPLOYMENT_ID) VALUES
-('41', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.278', 40, 'EXECUTED', '8:fae0855adf2f702f1133e32fc98d02a5', 'dropColumn columnName=field_type, tableName=metabase_field; addDefaultValue columnName=active, tableName=metabase_field; addDefaultValue columnName=preview_display, tableName=metabase_field; addDefaultValue columnName=position, tableName=metabase_...', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('42', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.302', 41, 'EXECUTED', '8:e32b3a1624fa289a6ee1f3f0a2dac1f6', 'dropForeignKeyConstraint baseTableName=query_queryexecution, constraintName=fk_queryexecution_ref_query_id; dropColumn columnName=query_id, tableName=query_queryexecution; dropColumn columnName=is_staff, tableName=core_user; dropColumn columnName=...', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('43', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.306', 42, 'EXECUTED', '8:165e9384e46d6f9c0330784955363f70', 'createTable tableName=permissions_revision', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('44', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.315', 43, 'EXECUTED', '8:2e356e8a1049286f1c78324828ee7867', 'dropColumn columnName=public_perms, tableName=report_card; dropColumn columnName=public_perms, tableName=report_dashboard; dropColumn columnName=public_perms, tableName=pulse', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('45', 'tlrobinson', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.319', 44, 'EXECUTED', '8:421edd38ee0cb0983162f57193f81b0b', 'addColumn tableName=report_dashboardcard; addNotNullConstraint columnName=visualization_settings, tableName=report_dashboardcard', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('46', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.322', 45, 'EXECUTED', '8:131df3cdd9a8c67b32c5988a3fb7fe3d', 'addNotNullConstraint columnName=row, tableName=report_dashboardcard; addNotNullConstraint columnName=col, tableName=report_dashboardcard; addDefaultValue columnName=row, tableName=report_dashboardcard; addDefaultValue columnName=col, tableName=rep...', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('47', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.33', 46, 'EXECUTED', '8:1d2474e49a27db344c250872df58a6ed', 'createTable tableName=collection; createIndex indexName=idx_collection_slug, tableName=collection; addColumn tableName=report_card; createIndex indexName=idx_card_collection_id, tableName=report_card', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('48', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.334', 47, 'EXECUTED', '8:720ce9d4b9e6f0917aea035e9dc5d95d', 'createTable tableName=collection_revision', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('49', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.346', 48, 'EXECUTED', '8:56dcab086b21de1df002561efeac8bb6', 'addColumn tableName=report_card; createIndex indexName=idx_card_public_uuid, tableName=report_card; addColumn tableName=report_dashboard; createIndex indexName=idx_dashboard_public_uuid, tableName=report_dashboard; dropNotNullConstraint columnName...', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('50', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.36', 49, 'EXECUTED', '8:388da4c48984aad647709514e4ba9204', 'addColumn tableName=report_card; addColumn tableName=report_dashboard', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('51', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.363', 50, 'EXECUTED', '8:43c90b5b9f6c14bfd0e41cc0b184617e', 'createTable tableName=query_execution; createIndex indexName=idx_query_execution_started_at, tableName=query_execution; createIndex indexName=idx_query_execution_query_hash_started_at, tableName=query_execution', '', NULL, '3.6.3', NULL, NULL, '9299817830');    
+('41', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.256', 40, 'EXECUTED', '8:fae0855adf2f702f1133e32fc98d02a5', 'dropColumn columnName=field_type, tableName=metabase_field; addDefaultValue columnName=active, tableName=metabase_field; addDefaultValue columnName=preview_display, tableName=metabase_field; addDefaultValue columnName=position, tableName=metabase_...', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('42', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.355', 41, 'EXECUTED', '8:e32b3a1624fa289a6ee1f3f0a2dac1f6', 'dropForeignKeyConstraint baseTableName=query_queryexecution, constraintName=fk_queryexecution_ref_query_id; dropColumn columnName=query_id, tableName=query_queryexecution; dropColumn columnName=is_staff, tableName=core_user; dropColumn columnName=...', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('43', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.37', 42, 'EXECUTED', '8:165e9384e46d6f9c0330784955363f70', 'createTable tableName=permissions_revision', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('44', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.39', 43, 'EXECUTED', '8:2e356e8a1049286f1c78324828ee7867', 'dropColumn columnName=public_perms, tableName=report_card; dropColumn columnName=public_perms, tableName=report_dashboard; dropColumn columnName=public_perms, tableName=pulse', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('45', 'tlrobinson', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.426', 44, 'EXECUTED', '8:421edd38ee0cb0983162f57193f81b0b', 'addColumn tableName=report_dashboardcard; addNotNullConstraint columnName=visualization_settings, tableName=report_dashboardcard', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('46', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.431', 45, 'EXECUTED', '8:131df3cdd9a8c67b32c5988a3fb7fe3d', 'addNotNullConstraint columnName=row, tableName=report_dashboardcard; addNotNullConstraint columnName=col, tableName=report_dashboardcard; addDefaultValue columnName=row, tableName=report_dashboardcard; addDefaultValue columnName=col, tableName=rep...', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('47', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.444', 46, 'EXECUTED', '8:1d2474e49a27db344c250872df58a6ed', 'createTable tableName=collection; createIndex indexName=idx_collection_slug, tableName=collection; addColumn tableName=report_card; createIndex indexName=idx_card_collection_id, tableName=report_card', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('48', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.45', 47, 'EXECUTED', '8:720ce9d4b9e6f0917aea035e9dc5d95d', 'createTable tableName=collection_revision', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('49', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.535', 48, 'EXECUTED', '8:56dcab086b21de1df002561efeac8bb6', 'addColumn tableName=report_card; createIndex indexName=idx_card_public_uuid, tableName=report_card; addColumn tableName=report_dashboard; createIndex indexName=idx_dashboard_public_uuid, tableName=report_dashboard; dropNotNullConstraint columnName...', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('50', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.636', 49, 'EXECUTED', '8:388da4c48984aad647709514e4ba9204', 'addColumn tableName=report_card; addColumn tableName=report_dashboard', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('51', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.643', 50, 'EXECUTED', '8:43c90b5b9f6c14bfd0e41cc0b184617e', 'createTable tableName=query_execution; createIndex indexName=idx_query_execution_started_at, tableName=query_execution; createIndex indexName=idx_query_execution_query_hash_started_at, tableName=query_execution', '', NULL, '3.6.3', NULL, NULL, '9723797323');     
 INSERT INTO PUBLIC.DATABASECHANGELOG(ID, AUTHOR, FILENAME, DATEEXECUTED, ORDEREXECUTED, EXECTYPE, MD5SUM, DESCRIPTION, COMMENTS, TAG, LIQUIBASE, CONTEXTS, LABELS, DEPLOYMENT_ID) VALUES
-('52', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.368', 51, 'EXECUTED', '8:329695cb161ceb86f6d9473819359351', 'createTable tableName=query_cache; createIndex indexName=idx_query_cache_updated_at, tableName=query_cache; addColumn tableName=report_card', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('53', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.37', 52, 'EXECUTED', '8:78d015c5090c57cd6972eb435601d3d0', 'createTable tableName=query', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('54', 'tlrobinson', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.372', 53, 'EXECUTED', '8:e410005b585f5eeb5f202076ff9468f7', 'addColumn tableName=pulse', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('55', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.38', 54, 'EXECUTED', '8:87c4becde5fe208ba2c356128df86fba', 'addColumn tableName=report_dashboard; createTable tableName=dashboard_favorite; addUniqueConstraint constraintName=unique_dashboard_favorite_user_id_dashboard_id, tableName=dashboard_favorite; createIndex indexName=idx_dashboard_favorite_user_id, ...', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('56', 'wwwiiilll', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.385', 55, 'EXECUTED', '8:9f46051abaee599e2838733512a32ad0', 'addColumn tableName=core_user', 'Added 0.25.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('57', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.389', 56, 'EXECUTED', '8:aab81d477e2d19a9ab18c58b78c9af88', 'addColumn tableName=report_card', 'Added 0.25.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('58', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.393', 57, 'EXECUTED', '8:3554219ca39e0fd682d0fba57531e917', 'createTable tableName=dimension; addUniqueConstraint constraintName=unique_dimension_field_id_name, tableName=dimension; createIndex indexName=idx_dimension_field_id, tableName=dimension', 'Added 0.25.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('59', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.396', 58, 'EXECUTED', '8:5b6ce52371e0e9eee88e6d766225a94b', 'addColumn tableName=metabase_field', 'Added 0.26.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('60', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.399', 59, 'EXECUTED', '8:4f997b2cd3309882e900493892381f38', 'addColumn tableName=metabase_database', 'Added 0.26.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('61', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.402', 60, 'EXECUTED', '8:7dded6fd5bf74d79b9a0b62511981272', 'addColumn tableName=metabase_field', 'Added 0.26.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('62', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.404', 61, 'EXECUTED', '8:cb32e6eaa1a2140703def2730f81fef2', 'addColumn tableName=metabase_database', 'Added 0.26.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('63', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.409', 62, 'EXECUTED', '8:226f73b9f6617495892d281b0f8303db', 'addColumn tableName=metabase_database', 'Added 0.26.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('64', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.41', 63, 'EXECUTED', '8:4dcc8ffd836b56756f494d5dfce07b50', 'dropForeignKeyConstraint baseTableName=raw_table, constraintName=fk_rawtable_ref_database', 'Added 0.26.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('66', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.412', 64, 'EXECUTED', '8:e77d66af8e3b83d46c5a0064a75a1aac', 'sql; sql', 'Added 0.26.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('67', 'attekei', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.415', 65, 'EXECUTED', '8:59dfc37744fc362e0e312488fbc9a69b', 'createTable tableName=computation_job; createTable tableName=computation_job_result', 'Added 0.27.0', NULL, '3.6.3', NULL, NULL, '9299817830');
+('52', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.68', 51, 'EXECUTED', '8:329695cb161ceb86f6d9473819359351', 'createTable tableName=query_cache; createIndex indexName=idx_query_cache_updated_at, tableName=query_cache; addColumn tableName=report_card', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('53', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.696', 52, 'EXECUTED', '8:78d015c5090c57cd6972eb435601d3d0', 'createTable tableName=query', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('54', 'tlrobinson', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.702', 53, 'EXECUTED', '8:e410005b585f5eeb5f202076ff9468f7', 'addColumn tableName=pulse', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('55', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.758', 54, 'EXECUTED', '8:87c4becde5fe208ba2c356128df86fba', 'addColumn tableName=report_dashboard; createTable tableName=dashboard_favorite; addUniqueConstraint constraintName=unique_dashboard_favorite_user_id_dashboard_id, tableName=dashboard_favorite; createIndex indexName=idx_dashboard_favorite_user_id, ...', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('56', 'wwwiiilll', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.778', 55, 'EXECUTED', '8:9f46051abaee599e2838733512a32ad0', 'addColumn tableName=core_user', 'Added 0.25.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('57', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.791', 56, 'EXECUTED', '8:aab81d477e2d19a9ab18c58b78c9af88', 'addColumn tableName=report_card', 'Added 0.25.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('58', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.798', 57, 'EXECUTED', '8:3554219ca39e0fd682d0fba57531e917', 'createTable tableName=dimension; addUniqueConstraint constraintName=unique_dimension_field_id_name, tableName=dimension; createIndex indexName=idx_dimension_field_id, tableName=dimension', 'Added 0.25.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('59', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.837', 58, 'EXECUTED', '8:5b6ce52371e0e9eee88e6d766225a94b', 'addColumn tableName=metabase_field', 'Added 0.26.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('60', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.85', 59, 'EXECUTED', '8:4f997b2cd3309882e900493892381f38', 'addColumn tableName=metabase_database', 'Added 0.26.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('61', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.858', 60, 'EXECUTED', '8:7dded6fd5bf74d79b9a0b62511981272', 'addColumn tableName=metabase_field', 'Added 0.26.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('62', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.865', 61, 'EXECUTED', '8:cb32e6eaa1a2140703def2730f81fef2', 'addColumn tableName=metabase_database', 'Added 0.26.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('63', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.877', 62, 'EXECUTED', '8:226f73b9f6617495892d281b0f8303db', 'addColumn tableName=metabase_database', 'Added 0.26.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('64', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.881', 63, 'EXECUTED', '8:4dcc8ffd836b56756f494d5dfce07b50', 'dropForeignKeyConstraint baseTableName=raw_table, constraintName=fk_rawtable_ref_database', 'Added 0.26.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('66', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.884', 64, 'EXECUTED', '8:e77d66af8e3b83d46c5a0064a75a1aac', 'sql; sql', 'Added 0.26.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('67', 'attekei', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.895', 65, 'EXECUTED', '8:59dfc37744fc362e0e312488fbc9a69b', 'createTable tableName=computation_job; createTable tableName=computation_job_result', 'Added 0.27.0', NULL, '3.6.3', NULL, NULL, '9723797323');               
 INSERT INTO PUBLIC.DATABASECHANGELOG(ID, AUTHOR, FILENAME, DATEEXECUTED, ORDEREXECUTED, EXECTYPE, MD5SUM, DESCRIPTION, COMMENTS, TAG, LIQUIBASE, CONTEXTS, LABELS, DEPLOYMENT_ID) VALUES
-('68', 'sbelak', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.42', 66, 'EXECUTED', '8:ca201aeb20c1719a46c6bcc3fc95c81d', 'addColumn tableName=computation_job', 'Added 0.27.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('69', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.427', 67, 'EXECUTED', '8:97b7768436b9e8d695bae984020d754c', 'addColumn tableName=pulse; dropNotNullConstraint columnName=name, tableName=pulse', 'Added 0.27.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('70', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.43', 68, 'EXECUTED', '8:4e4eff7abb983b1127a32ba8107e7fb8', 'addColumn tableName=metabase_field; addNotNullConstraint columnName=database_type, tableName=metabase_field', 'Added 0.28.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('71', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.431', 69, 'EXECUTED', '8:755e5c3dd8a55793f29b2c95cb79c211', 'dropNotNullConstraint columnName=card_id, tableName=report_dashboardcard', 'Added 0.28.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('72', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.436', 70, 'EXECUTED', '8:ed16046dfa04c139f48e9068eb4faee4', 'addColumn tableName=pulse_card', 'Added 0.28.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('73', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.438', 71, 'EXECUTED', '8:3c0f03d18ff78a0bcc9915e1d9c518d6', 'addColumn tableName=metabase_database', 'Added 0.29.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('74', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.441', 72, 'EXECUTED', '8:16726d6560851325930c25caf3c8ab96', 'addColumn tableName=metabase_field', 'Added 0.29.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('75', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.446', 73, 'EXECUTED', '8:6072cabfe8188872d8e3da9a675f88c1', 'addColumn tableName=report_card', 'Added 0.28.2', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('76', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.449', 74, 'EXECUTED', '8:9b7190c9171ccca72617d508875c3c82', 'addColumn tableName=metabase_table', 'Added 0.30.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('77', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.454', 75, 'EXECUTED', '8:07f0a6cd8dbbd9b89be0bd7378f7bdc8', 'addColumn tableName=core_user', 'Added 0.30.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('79', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.46', 76, 'EXECUTED', '8:3f31cb67f9cdf7754ca95cade22d87a2', 'addColumn tableName=report_dashboard; createIndex indexName=idx_dashboard_collection_id, tableName=report_dashboard; addColumn tableName=pulse; createIndex indexName=idx_pulse_collection_id, tableName=pulse', 'Added 0.30.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('80', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.463', 77, 'EXECUTED', '8:199d0ce28955117819ca15bcc29323e5', 'addColumn tableName=collection; createIndex indexName=idx_collection_location, tableName=collection', '', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('81', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.47', 78, 'EXECUTED', '8:3a6dc22403660529194d004ca7f7ad39', 'addColumn tableName=report_dashboard; addColumn tableName=report_card; addColumn tableName=pulse', 'Added 0.30.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('82', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.476', 79, 'EXECUTED', '8:ac4b94df8c648f88cfff661284d6392d', 'addColumn tableName=core_user; sql', 'Added 0.30.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('84', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.48', 80, 'EXECUTED', '8:58afc10c3e283a8050ea471aac447a97', 'renameColumn newColumnName=archived, oldColumnName=is_active, tableName=metric; addDefaultValue columnName=archived, tableName=metric; renameColumn newColumnName=archived, oldColumnName=is_active, tableName=segment; addDefaultValue columnName=arch...', 'Added 0.30.0', NULL, '3.6.3', NULL, NULL, '9299817830');     
+('68', 'sbelak', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.941', 66, 'EXECUTED', '8:ca201aeb20c1719a46c6bcc3fc95c81d', 'addColumn tableName=computation_job', 'Added 0.27.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('69', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.957', 67, 'EXECUTED', '8:97b7768436b9e8d695bae984020d754c', 'addColumn tableName=pulse; dropNotNullConstraint columnName=name, tableName=pulse', 'Added 0.27.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('70', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.973', 68, 'EXECUTED', '8:4e4eff7abb983b1127a32ba8107e7fb8', 'addColumn tableName=metabase_field; addNotNullConstraint columnName=database_type, tableName=metabase_field', 'Added 0.28.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('71', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:09:59.992', 69, 'EXECUTED', '8:755e5c3dd8a55793f29b2c95cb79c211', 'dropNotNullConstraint columnName=card_id, tableName=report_dashboardcard', 'Added 0.28.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('72', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00', 70, 'EXECUTED', '8:ed16046dfa04c139f48e9068eb4faee4', 'addColumn tableName=pulse_card', 'Added 0.28.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('73', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.009', 71, 'EXECUTED', '8:3c0f03d18ff78a0bcc9915e1d9c518d6', 'addColumn tableName=metabase_database', 'Added 0.29.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('74', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.057', 72, 'EXECUTED', '8:16726d6560851325930c25caf3c8ab96', 'addColumn tableName=metabase_field', 'Added 0.29.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('75', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.066', 73, 'EXECUTED', '8:6072cabfe8188872d8e3da9a675f88c1', 'addColumn tableName=report_card', 'Added 0.28.2', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('76', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.072', 74, 'EXECUTED', '8:9b7190c9171ccca72617d508875c3c82', 'addColumn tableName=metabase_table', 'Added 0.30.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('77', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.09', 75, 'EXECUTED', '8:07f0a6cd8dbbd9b89be0bd7378f7bdc8', 'addColumn tableName=core_user', 'Added 0.30.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('79', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.106', 76, 'EXECUTED', '8:3f31cb67f9cdf7754ca95cade22d87a2', 'addColumn tableName=report_dashboard; createIndex indexName=idx_dashboard_collection_id, tableName=report_dashboard; addColumn tableName=pulse; createIndex indexName=idx_pulse_collection_id, tableName=pulse', 'Added 0.30.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('80', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.146', 77, 'EXECUTED', '8:199d0ce28955117819ca15bcc29323e5', 'addColumn tableName=collection; createIndex indexName=idx_collection_location, tableName=collection', '', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('81', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.169', 78, 'EXECUTED', '8:3a6dc22403660529194d004ca7f7ad39', 'addColumn tableName=report_dashboard; addColumn tableName=report_card; addColumn tableName=pulse', 'Added 0.30.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('82', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.187', 79, 'EXECUTED', '8:ac4b94df8c648f88cfff661284d6392d', 'addColumn tableName=core_user; sql', 'Added 0.30.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('84', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.251', 80, 'EXECUTED', '8:58afc10c3e283a8050ea471aac447a97', 'renameColumn newColumnName=archived, oldColumnName=is_active, tableName=metric; addDefaultValue columnName=archived, tableName=metric; renameColumn newColumnName=archived, oldColumnName=is_active, tableName=segment; addDefaultValue columnName=arch...', 'Added 0.30.0', NULL, '3.6.3', NULL, NULL, '9723797323');     
 INSERT INTO PUBLIC.DATABASECHANGELOG(ID, AUTHOR, FILENAME, DATEEXECUTED, ORDEREXECUTED, EXECTYPE, MD5SUM, DESCRIPTION, COMMENTS, TAG, LIQUIBASE, CONTEXTS, LABELS, DEPLOYMENT_ID) VALUES
-('85', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.492', 81, 'EXECUTED', '8:9b4c9878a5018452dd63eb6d7c17f415', 'addColumn tableName=collection; createIndex indexName=idx_collection_personal_owner_id, tableName=collection; addColumn tableName=collection; sql; addNotNullConstraint columnName=_slug, tableName=collection; dropColumn columnName=slug, tableName=c...', 'Added 0.30.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('86', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.493', 82, 'EXECUTED', '8:50c75bb29f479e0b3fb782d89f7d6717', 'sql', 'Added 0.30.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('87', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.495', 83, 'EXECUTED', '8:0eccf19a93cb0ba4017aafd1d308c097', 'dropTable tableName=raw_column; dropTable tableName=raw_table', 'Added 0.30.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('89', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.51', 84, 'EXECUTED', '8:ab526907b26b1bb43ac9f9548043f2a7', 'createTable tableName=QRTZ_JOB_DETAILS; addPrimaryKey constraintName=PK_QRTZ_JOB_DETAILS, tableName=QRTZ_JOB_DETAILS; createTable tableName=QRTZ_TRIGGERS; addPrimaryKey constraintName=PK_QRTZ_TRIGGERS, tableName=QRTZ_TRIGGERS; addForeignKeyConstra...', 'Added 0.30.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('91', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.525', 85, 'EXECUTED', '8:9b8831e1e409f08e874c4ece043d0340', 'dropColumn columnName=raw_table_id, tableName=metabase_table; dropColumn columnName=raw_column_id, tableName=metabase_field', 'Added 0.30.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('92', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.528', 86, 'EXECUTED', '8:1e5bc2d66778316ea640a561862c23b4', 'addColumn tableName=query_execution', 'Added 0.31.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('93', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.53', 87, 'EXECUTED', '8:93b0d408a3970e30d7184ed1166b5476', 'addColumn tableName=query', 'Added 0.31.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('94', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.532', 88, 'EXECUTED', '8:a2a1eedf1e8f8756856c9d49c7684bfe', 'createTable tableName=task_history; createIndex indexName=idx_task_history_end_time, tableName=task_history; createIndex indexName=idx_task_history_db_id, tableName=task_history', 'Added 0.31.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('95', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.54', 89, 'EXECUTED', '8:9824808283004e803003b938399a4cf0', 'addUniqueConstraint constraintName=idx_databasechangelog_id_author_filename, tableName=DATABASECHANGELOG', 'Added 0.31.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('96', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.545', 90, 'EXECUTED', '8:5cb2f36edcca9c6e14c5e109d6aeb68b', 'addColumn tableName=metabase_field', 'Added 0.31.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('97', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.546', 91, 'MARK_RAN', '8:9169e238663c5d036bd83428d2fa8e4b', 'modifyDataType columnName=results, tableName=query_cache', 'Added 0.32.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('98', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.548', 92, 'EXECUTED', '8:f036d20a4dc86fb60ffb64ea838ed6b9', 'addUniqueConstraint constraintName=idx_uniq_table_db_id_schema_name, tableName=metabase_table; sql', 'Added 0.32.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('99', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.55', 93, 'EXECUTED', '8:274bb516dd95b76c954b26084eed1dfe', 'addUniqueConstraint constraintName=idx_uniq_field_table_id_parent_id_name, tableName=metabase_field; sql', 'Added 0.32.0', NULL, '3.6.3', NULL, NULL, '9299817830');             
+('85', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.289', 81, 'EXECUTED', '8:9b4c9878a5018452dd63eb6d7c17f415', 'addColumn tableName=collection; createIndex indexName=idx_collection_personal_owner_id, tableName=collection; addColumn tableName=collection; sql; addNotNullConstraint columnName=_slug, tableName=collection; dropColumn columnName=slug, tableName=c...', 'Added 0.30.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('86', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.292', 82, 'EXECUTED', '8:50c75bb29f479e0b3fb782d89f7d6717', 'sql', 'Added 0.30.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('87', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.296', 83, 'EXECUTED', '8:0eccf19a93cb0ba4017aafd1d308c097', 'dropTable tableName=raw_column; dropTable tableName=raw_table', 'Added 0.30.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('89', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.376', 84, 'EXECUTED', '8:ab526907b26b1bb43ac9f9548043f2a7', 'createTable tableName=QRTZ_JOB_DETAILS; addPrimaryKey constraintName=PK_QRTZ_JOB_DETAILS, tableName=QRTZ_JOB_DETAILS; createTable tableName=QRTZ_TRIGGERS; addPrimaryKey constraintName=PK_QRTZ_TRIGGERS, tableName=QRTZ_TRIGGERS; addForeignKeyConstra...', 'Added 0.30.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('91', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.396', 85, 'EXECUTED', '8:9b8831e1e409f08e874c4ece043d0340', 'dropColumn columnName=raw_table_id, tableName=metabase_table; dropColumn columnName=raw_column_id, tableName=metabase_field', 'Added 0.30.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('92', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.411', 86, 'EXECUTED', '8:1e5bc2d66778316ea640a561862c23b4', 'addColumn tableName=query_execution', 'Added 0.31.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('93', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.415', 87, 'EXECUTED', '8:93b0d408a3970e30d7184ed1166b5476', 'addColumn tableName=query', 'Added 0.31.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('94', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.435', 88, 'EXECUTED', '8:a2a1eedf1e8f8756856c9d49c7684bfe', 'createTable tableName=task_history; createIndex indexName=idx_task_history_end_time, tableName=task_history; createIndex indexName=idx_task_history_db_id, tableName=task_history', 'Added 0.31.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('95', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.458', 89, 'EXECUTED', '8:9824808283004e803003b938399a4cf0', 'addUniqueConstraint constraintName=idx_databasechangelog_id_author_filename, tableName=DATABASECHANGELOG', 'Added 0.31.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('96', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.472', 90, 'EXECUTED', '8:5cb2f36edcca9c6e14c5e109d6aeb68b', 'addColumn tableName=metabase_field', 'Added 0.31.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('97', 'senior', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.474', 91, 'MARK_RAN', '8:9169e238663c5d036bd83428d2fa8e4b', 'modifyDataType columnName=results, tableName=query_cache', 'Added 0.32.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('98', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.477', 92, 'EXECUTED', '8:f036d20a4dc86fb60ffb64ea838ed6b9', 'addUniqueConstraint constraintName=idx_uniq_table_db_id_schema_name, tableName=metabase_table; sql', 'Added 0.32.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('99', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.482', 93, 'EXECUTED', '8:274bb516dd95b76c954b26084eed1dfe', 'addUniqueConstraint constraintName=idx_uniq_field_table_id_parent_id_name, tableName=metabase_field; sql', 'Added 0.32.0', NULL, '3.6.3', NULL, NULL, '9723797323');         
 INSERT INTO PUBLIC.DATABASECHANGELOG(ID, AUTHOR, FILENAME, DATEEXECUTED, ORDEREXECUTED, EXECTYPE, MD5SUM, DESCRIPTION, COMMENTS, TAG, LIQUIBASE, CONTEXTS, LABELS, DEPLOYMENT_ID) VALUES
-('100', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.552', 94, 'EXECUTED', '8:948014f13b6198b50e3b7a066fae2ae0', 'sql', 'Added 0.32.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('101', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.553', 95, 'EXECUTED', '8:58eabb08a175fafe8985208545374675', 'createIndex indexName=idx_field_parent_id, tableName=metabase_field', 'Added 0.32.0', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('103', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.557', 96, 'EXECUTED', '8:fda3670fd16a40fd9d0f89a003098d54', 'addColumn tableName=metabase_database', 'Added 0.32.10', NULL, '3.6.3', NULL, NULL, '9299817830'),
-('106', 'sb', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-17 14:23:38.565', 97, 'EXECUTED', '8:a3dd42bbe25c415ce21e4c180dc1c1d7', 'modifyDataType columnName=database_type, tableName=metabase_field', 'Added 0.34.0', NULL, '3.6.3', NULL, NULL, '9299817830');       
+('100', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.496', 94, 'EXECUTED', '8:948014f13b6198b50e3b7a066fae2ae0', 'sql', 'Added 0.32.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('101', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.498', 95, 'EXECUTED', '8:58eabb08a175fafe8985208545374675', 'createIndex indexName=idx_field_parent_id, tableName=metabase_field', 'Added 0.32.0', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('103', 'camsaul', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.506', 96, 'EXECUTED', '8:fda3670fd16a40fd9d0f89a003098d54', 'addColumn tableName=metabase_database', 'Added 0.32.10', NULL, '3.6.3', NULL, NULL, '9723797323'),
+('106', 'sb', 'migrations/000_migrations.yaml', TIMESTAMP '2020-01-22 12:10:00.516', 97, 'EXECUTED', '8:a3dd42bbe25c415ce21e4c180dc1c1d7', 'modifyDataType columnName=database_type, tableName=metabase_field', 'Added 0.34.0', NULL, '3.6.3', NULL, NULL, '9723797323');       
 CREATE CACHED TABLE PUBLIC.DATABASECHANGELOGLOCK(
     ID INT NOT NULL,
     LOCKED BOOLEAN NOT NULL,
@@ -169,7 +169,7 @@ ALTER TABLE PUBLIC.DATABASECHANGELOGLOCK ADD CONSTRAINT PUBLIC.PK_DATABASECHANGE
 INSERT INTO PUBLIC.DATABASECHANGELOGLOCK(ID, LOCKED, LOCKGRANTED, LOCKEDBY) VALUES
 (1, FALSE, NULL, NULL);     
 CREATE CACHED TABLE PUBLIC.REPORT_DASHBOARDCARD(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_DE65A757_723A_4214_9F03_82C63B31ECCB) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_DE65A757_723A_4214_9F03_82C63B31ECCB,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_9E70D311_C0C9_4CF8_A993_5DD0B9733A5B) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_9E70D311_C0C9_4CF8_A993_5DD0B9733A5B,
     CREATED_AT TIMESTAMP NOT NULL,
     UPDATED_AT TIMESTAMP NOT NULL,
     SIZEX INT NOT NULL,
@@ -186,7 +186,7 @@ ALTER TABLE PUBLIC.REPORT_DASHBOARDCARD ADD CONSTRAINT PUBLIC.PK_REPORT_DASHBOAR
 CREATE INDEX PUBLIC.IDX_DASHBOARDCARD_CARD_ID ON PUBLIC.REPORT_DASHBOARDCARD(CARD_ID);         
 CREATE INDEX PUBLIC.IDX_DASHBOARDCARD_DASHBOARD_ID ON PUBLIC.REPORT_DASHBOARDCARD(DASHBOARD_ID);               
 CREATE CACHED TABLE PUBLIC.PERMISSIONS_REVISION COMMENT 'Used to keep track of changes made to permissions.'(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_03E345A4_0236_48D4_904B_11B9E5592048) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_03E345A4_0236_48D4_904B_11B9E5592048,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_8CD7EAFB_6915_406B_906F_F7D339953039) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_8CD7EAFB_6915_406B_906F_F7D339953039,
     BEFORE CLOB NOT NULL COMMENT 'Serialized JSON of the permissions before the changes.',
     AFTER CLOB NOT NULL COMMENT 'Serialized JSON of the permissions after the changes.',
     USER_ID INT NOT NULL COMMENT 'The ID of the admin who made this set of changes.',
@@ -202,11 +202,11 @@ CREATE CACHED TABLE PUBLIC.SETTING(
 ALTER TABLE PUBLIC.SETTING ADD CONSTRAINT PUBLIC.PK_SETTING PRIMARY KEY(KEY);  
 -- 3 +/- SELECT COUNT(*) FROM PUBLIC.SETTING;  
 INSERT INTO PUBLIC.SETTING(KEY, VALUE) VALUES
-('setup-token', 'b5236ba7-ea2e-4418-872d-ed72c5cf2926'),
 ('site-url', 'http://localhost:4000'),
-('settings-last-updated', '2020-01-17 14:23:39.282');            
+('setup-token', '8c01c0c9-a862-405a-8da5-893174294b71'),
+('settings-last-updated', '2020-01-22 12:10:02.548');            
 CREATE CACHED TABLE PUBLIC.METRIC_IMPORTANT_FIELD(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_C4356946_5735_4D3C_85A5_240CFA3124D3) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_C4356946_5735_4D3C_85A5_240CFA3124D3,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_9F7D2455_E264_4BC8_B009_34DAC3AE275F) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_9F7D2455_E264_4BC8_B009_34DAC3AE275F,
     METRIC_ID INT NOT NULL,
     FIELD_ID INT NOT NULL
 );     
@@ -215,7 +215,7 @@ ALTER TABLE PUBLIC.METRIC_IMPORTANT_FIELD ADD CONSTRAINT PUBLIC.PK_METRIC_IMPORT
 CREATE INDEX PUBLIC.IDX_METRIC_IMPORTANT_FIELD_METRIC_ID ON PUBLIC.METRIC_IMPORTANT_FIELD(METRIC_ID);          
 CREATE INDEX PUBLIC.IDX_METRIC_IMPORTANT_FIELD_FIELD_ID ON PUBLIC.METRIC_IMPORTANT_FIELD(FIELD_ID);            
 CREATE CACHED TABLE PUBLIC.TASK_HISTORY COMMENT 'Timing and metadata info about background/quartz processes'(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_05CA2B62_072D_4D28_93DD_772A49D8AC95) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_05CA2B62_072D_4D28_93DD_772A49D8AC95,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_549A427D_43A8_419D_8842_4DD5B317A760) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_549A427D_43A8_419D_8842_4DD5B317A760,
     TASK VARCHAR(254) NOT NULL COMMENT 'Name of the task',
     DB_ID INT,
     STARTED_AT TIMESTAMP NOT NULL,
@@ -226,18 +226,18 @@ CREATE CACHED TABLE PUBLIC.TASK_HISTORY COMMENT 'Timing and metadata info about 
 ALTER TABLE PUBLIC.TASK_HISTORY ADD CONSTRAINT PUBLIC.PK_TASK_HISTORY PRIMARY KEY(ID);         
 -- 12 +/- SELECT COUNT(*) FROM PUBLIC.TASK_HISTORY;            
 INSERT INTO PUBLIC.TASK_HISTORY(ID, TASK, DB_ID, STARTED_AT, ENDED_AT, DURATION, TASK_DETAILS) VALUES
-(1, 'sync', 1, TIMESTAMP '2020-01-17 14:23:39.009848', TIMESTAMP '2020-01-17 14:23:39.576677', 566, NULL),
-(2, 'sync-timezone', 1, TIMESTAMP '2020-01-17 14:23:39.010682', TIMESTAMP '2020-01-17 14:23:39.256387', 245, '{"timezone-id":"America/Los_Angeles"}'),
-(3, 'sync-tables', 1, TIMESTAMP '2020-01-17 14:23:39.256721', TIMESTAMP '2020-01-17 14:23:39.298768', 42, '{"updated-tables":4,"total-tables":0}'),
-(4, 'sync-fields', 1, TIMESTAMP '2020-01-17 14:23:39.298934', TIMESTAMP '2020-01-17 14:23:39.489789', 190, '{"total-fields":36,"updated-fields":36}'),
-(5, 'sync-fks', 1, TIMESTAMP '2020-01-17 14:23:39.489847', TIMESTAMP '2020-01-17 14:23:39.509665', 19, '{"total-fks":3,"updated-fks":3,"total-failed":0}'),
-(6, 'sync-metabase-metadata', 1, TIMESTAMP '2020-01-17 14:23:39.509742', TIMESTAMP '2020-01-17 14:23:39.576643', 66, NULL),
-(7, 'analyze', 1, TIMESTAMP '2020-01-17 14:23:39.625894', TIMESTAMP '2020-01-17 14:23:42.829826', 3203, NULL),
-(8, 'fingerprint-fields', 1, TIMESTAMP '2020-01-17 14:23:39.625938', TIMESTAMP '2020-01-17 14:23:42.763819', 3137, '{"no-data-fingerprints":0,"failed-fingerprints":0,"updated-fingerprints":32,"fingerprints-attempted":32}'),
-(9, 'classify-fields', 1, TIMESTAMP '2020-01-17 14:23:42.763857', TIMESTAMP '2020-01-17 14:23:42.823593', 59, '{"fields-classified":32,"fields-failed":0}'),
-(10, 'classify-tables', 1, TIMESTAMP '2020-01-17 14:23:42.823632', TIMESTAMP '2020-01-17 14:23:42.829781', 6, '{"total-tables":4,"tables-classified":4}'),
-(11, 'field values scanning', 1, TIMESTAMP '2020-01-17 14:23:42.838298', TIMESTAMP '2020-01-17 14:23:43.410735', 572, NULL),
-(12, 'update-field-values', 1, TIMESTAMP '2020-01-17 14:23:42.838339', TIMESTAMP '2020-01-17 14:23:43.4107', 572, '{"errors":0,"created":5,"updated":0,"deleted":0}');          
+(1, 'sync', 1, TIMESTAMP '2020-01-22 12:10:02.728424', TIMESTAMP '2020-01-22 12:10:05.617394', 2888, NULL),
+(2, 'sync-timezone', 1, TIMESTAMP '2020-01-22 12:10:02.729941', TIMESTAMP '2020-01-22 12:10:03.563614', 833, '{"timezone-id":"America/Los_Angeles"}'),
+(3, 'sync-tables', 1, TIMESTAMP '2020-01-22 12:10:03.564268', TIMESTAMP '2020-01-22 12:10:03.682111', 117, '{"updated-tables":4,"total-tables":0}'),
+(4, 'sync-fields', 1, TIMESTAMP '2020-01-22 12:10:03.682364', TIMESTAMP '2020-01-22 12:10:05.007371', 1325, '{"total-fields":36,"updated-fields":36}'),
+(5, 'sync-fks', 1, TIMESTAMP '2020-01-22 12:10:05.007461', TIMESTAMP '2020-01-22 12:10:05.257171', 249, '{"total-fks":3,"updated-fks":3,"total-failed":0}'),
+(6, 'sync-metabase-metadata', 1, TIMESTAMP '2020-01-22 12:10:05.257278', TIMESTAMP '2020-01-22 12:10:05.617327', 360, NULL),
+(7, 'analyze', 1, TIMESTAMP '2020-01-22 12:10:05.994394', TIMESTAMP '2020-01-22 12:10:22.204304', 16209, NULL),
+(8, 'fingerprint-fields', 1, TIMESTAMP '2020-01-22 12:10:05.994457', TIMESTAMP '2020-01-22 12:10:21.936662', 15942, '{"no-data-fingerprints":0,"failed-fingerprints":0,"updated-fingerprints":32,"fingerprints-attempted":32}'),
+(9, 'classify-fields', 1, TIMESTAMP '2020-01-22 12:10:21.93676', TIMESTAMP '2020-01-22 12:10:22.18174', 244, '{"fields-classified":32,"fields-failed":0}'),
+(10, 'classify-tables', 1, TIMESTAMP '2020-01-22 12:10:22.181822', TIMESTAMP '2020-01-22 12:10:22.204229', 22, '{"total-tables":4,"tables-classified":4}'),
+(11, 'field values scanning', 1, TIMESTAMP '2020-01-22 12:10:22.226735', TIMESTAMP '2020-01-22 12:10:23.555298', 1328, NULL),
+(12, 'update-field-values', 1, TIMESTAMP '2020-01-22 12:10:22.226832', TIMESTAMP '2020-01-22 12:10:23.555222', 1328, '{"errors":0,"created":5,"updated":0,"deleted":0}');               
 CREATE INDEX PUBLIC.IDX_TASK_HISTORY_END_TIME ON PUBLIC.TASK_HISTORY(ENDED_AT);
 CREATE INDEX PUBLIC.IDX_TASK_HISTORY_DB_ID ON PUBLIC.TASK_HISTORY(DB_ID);      
 CREATE CACHED TABLE PUBLIC.DATA_MIGRATIONS(
@@ -247,23 +247,23 @@ CREATE CACHED TABLE PUBLIC.DATA_MIGRATIONS(
 ALTER TABLE PUBLIC.DATA_MIGRATIONS ADD CONSTRAINT PUBLIC.PK_DATA_MIGRATIONS PRIMARY KEY(ID);   
 -- 14 +/- SELECT COUNT(*) FROM PUBLIC.DATA_MIGRATIONS;         
 INSERT INTO PUBLIC.DATA_MIGRATIONS(ID, TIMESTAMP) VALUES
-('add-users-to-default-permissions-groups', TIMESTAMP '2020-01-17 14:23:38.717'),
-('add-admin-group-root-entry', TIMESTAMP '2020-01-17 14:23:38.724'),
-('add-databases-to-magic-permissions-groups', TIMESTAMP '2020-01-17 14:23:38.726'),
-('migrate-field-types', TIMESTAMP '2020-01-17 14:23:38.755'),
-('fix-invalid-field-types', TIMESTAMP '2020-01-17 14:23:38.758'),
-('copy-site-url-setting-and-remove-trailing-slashes', TIMESTAMP '2020-01-17 14:23:38.76'),
-('drop-old-query-execution-table', TIMESTAMP '2020-01-17 14:23:38.762'),
-('ensure-protocol-specified-in-site-url', TIMESTAMP '2020-01-17 14:23:38.775'),
-('populate-card-database-id', TIMESTAMP '2020-01-17 14:23:38.778'),
-('migrate-humanization-setting', TIMESTAMP '2020-01-17 14:23:38.779'),
-('mark-category-fields-as-list', TIMESTAMP '2020-01-17 14:23:38.784'),
-('add-legacy-sql-directive-to-bigquery-sql-cards', TIMESTAMP '2020-01-17 14:23:38.785'),
-('clear-ldap-user-local-passwords', TIMESTAMP '2020-01-17 14:23:38.786'),
-('add-migrated-collections', TIMESTAMP '2020-01-17 14:23:38.796');
+('add-users-to-default-permissions-groups', TIMESTAMP '2020-01-22 12:10:01.322'),
+('add-admin-group-root-entry', TIMESTAMP '2020-01-22 12:10:01.336'),
+('add-databases-to-magic-permissions-groups', TIMESTAMP '2020-01-22 12:10:01.339'),
+('migrate-field-types', TIMESTAMP '2020-01-22 12:10:01.593'),
+('fix-invalid-field-types', TIMESTAMP '2020-01-22 12:10:01.599'),
+('copy-site-url-setting-and-remove-trailing-slashes', TIMESTAMP '2020-01-22 12:10:01.602'),
+('drop-old-query-execution-table', TIMESTAMP '2020-01-22 12:10:01.619'),
+('ensure-protocol-specified-in-site-url', TIMESTAMP '2020-01-22 12:10:01.65'),
+('populate-card-database-id', TIMESTAMP '2020-01-22 12:10:01.701'),
+('migrate-humanization-setting', TIMESTAMP '2020-01-22 12:10:01.706'),
+('mark-category-fields-as-list', TIMESTAMP '2020-01-22 12:10:01.732'),
+('add-legacy-sql-directive-to-bigquery-sql-cards', TIMESTAMP '2020-01-22 12:10:01.735'),
+('clear-ldap-user-local-passwords', TIMESTAMP '2020-01-22 12:10:01.739'),
+('add-migrated-collections', TIMESTAMP '2020-01-22 12:10:01.803');
 CREATE INDEX PUBLIC.IDX_DATA_MIGRATIONS_ID ON PUBLIC.DATA_MIGRATIONS(ID);      
 CREATE CACHED TABLE PUBLIC.COLLECTION_REVISION COMMENT 'Used to keep track of changes made to collections.'(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_6264C83F_4D9F_4860_8E37_1EC54F17D5BF) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_6264C83F_4D9F_4860_8E37_1EC54F17D5BF,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_9E104C75_4229_4884_A248_A6C6594708F6) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_9E104C75_4229_4884_A248_A6C6594708F6,
     BEFORE CLOB NOT NULL COMMENT 'Serialized JSON of the collections graph before the changes.',
     AFTER CLOB NOT NULL COMMENT 'Serialized JSON of the collections graph after the changes.',
     USER_ID INT NOT NULL COMMENT 'The ID of the admin who made this set of changes.',
@@ -273,7 +273,7 @@ CREATE CACHED TABLE PUBLIC.COLLECTION_REVISION COMMENT 'Used to keep track of ch
 ALTER TABLE PUBLIC.COLLECTION_REVISION ADD CONSTRAINT PUBLIC.PK_COLLECTION_REVISION PRIMARY KEY(ID);           
 -- 0 +/- SELECT COUNT(*) FROM PUBLIC.COLLECTION_REVISION;      
 CREATE CACHED TABLE PUBLIC.COLLECTION COMMENT 'Collections are an optional way to organize Cards and handle permissions for them.'(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_9338F6A4_4A26_49CB_9366_AEC2650F1B11) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_9338F6A4_4A26_49CB_9366_AEC2650F1B11,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_47437BEF_F37C_4089_86B3_91D27E8AC81B) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_47437BEF_F37C_4089_86B3_91D27E8AC81B,
     NAME CLOB NOT NULL COMMENT 'The user-facing name of this Collection.',
     DESCRIPTION CLOB COMMENT 'Optional description for this Collection.',
     COLOR CHAR(7) NOT NULL COMMENT 'Seven-character hex color for this Collection, including the preceding hash sign.',
@@ -287,7 +287,7 @@ ALTER TABLE PUBLIC.COLLECTION ADD CONSTRAINT PUBLIC.PK_COLLECTION PRIMARY KEY(ID
 CREATE INDEX PUBLIC.IDX_COLLECTION_LOCATION ON PUBLIC.COLLECTION(LOCATION);    
 CREATE INDEX PUBLIC.IDX_COLLECTION_PERSONAL_OWNER_ID ON PUBLIC.COLLECTION(PERSONAL_OWNER_ID);  
 CREATE CACHED TABLE PUBLIC.REPORT_CARD(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_51D3CE6A_CDE5_4A9E_AC5C_901AC3D8EAFC) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_51D3CE6A_CDE5_4A9E_AC5C_901AC3D8EAFC,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_A6B66D1E_AD9C_4D1D_81CD_132143C2ADC8) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_A6B66D1E_AD9C_4D1D_81CD_132143C2ADC8,
     CREATED_AT TIMESTAMP NOT NULL,
     UPDATED_AT TIMESTAMP NOT NULL,
     NAME VARCHAR(254) NOT NULL,
@@ -316,7 +316,7 @@ CREATE INDEX PUBLIC.IDX_CARD_CREATOR_ID ON PUBLIC.REPORT_CARD(CREATOR_ID);
 CREATE INDEX PUBLIC.IDX_CARD_COLLECTION_ID ON PUBLIC.REPORT_CARD(COLLECTION_ID);               
 CREATE INDEX PUBLIC.IDX_CARD_PUBLIC_UUID ON PUBLIC.REPORT_CARD(PUBLIC_UUID);   
 CREATE CACHED TABLE PUBLIC.LABEL(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_7FF798E2_EB9B_43C9_ADD5_A6710F4A4A41) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_7FF798E2_EB9B_43C9_ADD5_A6710F4A4A41,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_21A717F0_9995_4834_9F23_8C5AF720C41C) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_21A717F0_9995_4834_9F23_8C5AF720C41C,
     NAME VARCHAR(254) NOT NULL,
     SLUG VARCHAR(254) NOT NULL,
     ICON VARCHAR(128)
@@ -325,7 +325,7 @@ ALTER TABLE PUBLIC.LABEL ADD CONSTRAINT PUBLIC.PK_LABEL PRIMARY KEY(ID);
 -- 0 +/- SELECT COUNT(*) FROM PUBLIC.LABEL;    
 CREATE INDEX PUBLIC.IDX_LABEL_SLUG ON PUBLIC.LABEL(SLUG);      
 CREATE CACHED TABLE PUBLIC.DEPENDENCY(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_A0A4F6E8_51D4_4C61_8D0E_1C9BAD083E8A) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_A0A4F6E8_51D4_4C61_8D0E_1C9BAD083E8A,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_25F21D27_65CB_4C2D_83FE_B07AB05DDAA0) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_25F21D27_65CB_4C2D_83FE_B07AB05DDAA0,
     MODEL VARCHAR(32) NOT NULL,
     MODEL_ID INT NOT NULL,
     DEPENDENT_ON_MODEL VARCHAR(32) NOT NULL,
@@ -339,7 +339,7 @@ CREATE INDEX PUBLIC.IDX_DEPENDENCY_MODEL_ID ON PUBLIC.DEPENDENCY(MODEL_ID);
 CREATE INDEX PUBLIC.IDX_DEPENDENCY_DEPENDENT_ON_MODEL ON PUBLIC.DEPENDENCY(DEPENDENT_ON_MODEL);
 CREATE INDEX PUBLIC.IDX_DEPENDENCY_DEPENDENT_ON_ID ON PUBLIC.DEPENDENCY(DEPENDENT_ON_ID);      
 CREATE CACHED TABLE PUBLIC.REPORT_DASHBOARD(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_418D4B0F_2EB7_4264_8413_340FBCB708D8) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_418D4B0F_2EB7_4264_8413_340FBCB708D8,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_1E3BBF77_95F1_4CBD_A218_96469EFEF405) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_1E3BBF77_95F1_4CBD_A218_96469EFEF405,
     CREATED_AT TIMESTAMP NOT NULL,
     UPDATED_AT TIMESTAMP NOT NULL,
     NAME VARCHAR(254) NOT NULL,
@@ -365,7 +365,7 @@ CREATE INDEX PUBLIC.IDX_REPORT_DASHBOARD_SHOW_IN_GETTING_STARTED ON PUBLIC.REPOR
 CREATE INDEX PUBLIC.IDX_DASHBOARD_PUBLIC_UUID ON PUBLIC.REPORT_DASHBOARD(PUBLIC_UUID);         
 CREATE INDEX PUBLIC.IDX_DASHBOARD_COLLECTION_ID ON PUBLIC.REPORT_DASHBOARD(COLLECTION_ID);     
 CREATE CACHED TABLE PUBLIC.DASHBOARD_FAVORITE COMMENT 'Presence of a row here indicates a given User has favorited a given Dashboard.'(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_7FE950FE_7573_4D6A_A1D5_CF3482C5947B) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_7FE950FE_7573_4D6A_A1D5_CF3482C5947B,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_E9CF44CB_B50D_4122_95E4_BD66F6228BC8) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_E9CF44CB_B50D_4122_95E4_BD66F6228BC8,
     USER_ID INT NOT NULL COMMENT 'ID of the User who favorited the Dashboard.',
     DASHBOARD_ID INT NOT NULL COMMENT 'ID of the Dashboard favorited by the User.'
 );   
@@ -381,7 +381,7 @@ CREATE CACHED TABLE PUBLIC.QUERY COMMENT 'Information (such as average execution
 ALTER TABLE PUBLIC.QUERY ADD CONSTRAINT PUBLIC.PK_QUERY PRIMARY KEY(QUERY_HASH);               
 -- 0 +/- SELECT COUNT(*) FROM PUBLIC.QUERY;    
 CREATE CACHED TABLE PUBLIC.PERMISSIONS_GROUP(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_5C7F5C98_C36C_47BB_A50E_025F02F32116) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_5C7F5C98_C36C_47BB_A50E_025F02F32116,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_E17FA259_C3EB_48D0_BEDB_68EB694E98AB) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_E17FA259_C3EB_48D0_BEDB_68EB694E98AB,
     NAME VARCHAR(255) NOT NULL
 ); 
 ALTER TABLE PUBLIC.PERMISSIONS_GROUP ADD CONSTRAINT PUBLIC.PK_PERMISSIONS_GROUP PRIMARY KEY(ID);               
@@ -392,7 +392,7 @@ INSERT INTO PUBLIC.PERMISSIONS_GROUP(ID, NAME) VALUES
 (3, 'MetaBot'); 
 CREATE INDEX PUBLIC.IDX_PERMISSIONS_GROUP_NAME ON PUBLIC.PERMISSIONS_GROUP(NAME);              
 CREATE CACHED TABLE PUBLIC.DASHBOARDCARD_SERIES(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_CCB5A437_DC56_447E_8629_771ACB60DA9B) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_CCB5A437_DC56_447E_8629_771ACB60DA9B,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_81D97E1F_FA4A_4722_99CC_6DE3D920CB91) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_81D97E1F_FA4A_4722_99CC_6DE3D920CB91,
     DASHBOARDCARD_ID INT NOT NULL,
     CARD_ID INT NOT NULL,
     POSITION INT NOT NULL
@@ -402,7 +402,7 @@ ALTER TABLE PUBLIC.DASHBOARDCARD_SERIES ADD CONSTRAINT PUBLIC.PK_DASHBOARDCARD_S
 CREATE INDEX PUBLIC.IDX_DASHBOARDCARD_SERIES_DASHBOARDCARD_ID ON PUBLIC.DASHBOARDCARD_SERIES(DASHBOARDCARD_ID);
 CREATE INDEX PUBLIC.IDX_DASHBOARDCARD_SERIES_CARD_ID ON PUBLIC.DASHBOARDCARD_SERIES(CARD_ID);  
 CREATE CACHED TABLE PUBLIC.CORE_USER(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_8F39885F_8FF8_4B92_87A3_F7033BF42E55) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_8F39885F_8FF8_4B92_87A3_F7033BF42E55,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_A6351602_50E0_4870_A7D2_A8D2648175A1) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_A6351602_50E0_4870_A7D2_A8D2648175A1,
     EMAIL VARCHAR(254) NOT NULL,
     FIRST_NAME VARCHAR(254) NOT NULL,
     LAST_NAME VARCHAR(254) NOT NULL,
@@ -423,7 +423,7 @@ CREATE CACHED TABLE PUBLIC.CORE_USER(
 ALTER TABLE PUBLIC.CORE_USER ADD CONSTRAINT PUBLIC.PK_CORE_USER PRIMARY KEY(ID);               
 -- 0 +/- SELECT COUNT(*) FROM PUBLIC.CORE_USER;
 CREATE CACHED TABLE PUBLIC.ACTIVITY(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_04E0D0C9_830A_4FE2_84B4_8A7E6470861B) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_04E0D0C9_830A_4FE2_84B4_8A7E6470861B,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_10E1A53D_BE34_4ED9_A48E_6E0CCB5341EA) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_10E1A53D_BE34_4ED9_A48E_6E0CCB5341EA,
     TOPIC VARCHAR(32) NOT NULL,
     TIMESTAMP TIMESTAMP NOT NULL,
     USER_ID INT,
@@ -437,12 +437,12 @@ CREATE CACHED TABLE PUBLIC.ACTIVITY(
 ALTER TABLE PUBLIC.ACTIVITY ADD CONSTRAINT PUBLIC.PK_ACTIVITY PRIMARY KEY(ID); 
 -- 1 +/- SELECT COUNT(*) FROM PUBLIC.ACTIVITY; 
 INSERT INTO PUBLIC.ACTIVITY(ID, TOPIC, TIMESTAMP, USER_ID, MODEL, MODEL_ID, DATABASE_ID, TABLE_ID, CUSTOM_ID, DETAILS) VALUES
-(1, 'install', TIMESTAMP '2020-01-17 14:23:38.974', NULL, 'install', NULL, NULL, NULL, NULL, '{}');              
+(1, 'install', TIMESTAMP '2020-01-22 12:10:02.563', NULL, 'install', NULL, NULL, NULL, NULL, '{}');              
 CREATE INDEX PUBLIC.IDX_ACTIVITY_TIMESTAMP ON PUBLIC.ACTIVITY(TIMESTAMP);      
 CREATE INDEX PUBLIC.IDX_ACTIVITY_USER_ID ON PUBLIC.ACTIVITY(USER_ID);          
 CREATE INDEX PUBLIC.IDX_ACTIVITY_CUSTOM_ID ON PUBLIC.ACTIVITY(CUSTOM_ID);      
 CREATE CACHED TABLE PUBLIC.METABASE_FIELDVALUES(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_F8E53FF2_C2B9_4E56_B5B8_9C517AA9047B) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_F8E53FF2_C2B9_4E56_B5B8_9C517AA9047B,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_14256567_24AD_4FC0_8899_D1F0B042DE3D) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_14256567_24AD_4FC0_8899_D1F0B042DE3D,
     CREATED_AT TIMESTAMP NOT NULL,
     UPDATED_AT TIMESTAMP NOT NULL,
     VALUES CLOB,
@@ -452,14 +452,14 @@ CREATE CACHED TABLE PUBLIC.METABASE_FIELDVALUES(
 ALTER TABLE PUBLIC.METABASE_FIELDVALUES ADD CONSTRAINT PUBLIC.PK_METABASE_FIELDVALUES PRIMARY KEY(ID);         
 -- 5 +/- SELECT COUNT(*) FROM PUBLIC.METABASE_FIELDVALUES;     
 INSERT INTO PUBLIC.METABASE_FIELDVALUES(ID, CREATED_AT, UPDATED_AT, VALUES, HUMAN_READABLE_VALUES, FIELD_ID) VALUES
-(1, TIMESTAMP '2020-01-17 14:23:42.873', TIMESTAMP '2020-01-17 14:23:42.873', '["Doohickey","Gadget","Gizmo","Widget"]', NULL, 6),
-(2, TIMESTAMP '2020-01-17 14:23:43.372', TIMESTAMP '2020-01-17 14:23:43.372', '[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,63,65,67,68,69,70,71,72,73,75,78,82,83,88,100]', NULL, 14),
-(3, TIMESTAMP '2020-01-17 14:23:43.386', TIMESTAMP '2020-01-17 14:23:43.386', '["Affiliate","Facebook","Google","Organic","Twitter"]', NULL, 24),
-(4, TIMESTAMP '2020-01-17 14:23:43.397', TIMESTAMP '2020-01-17 14:23:43.397', '["AK","AL","AR","AZ","CA","CO","CT","DE","FL","GA","IA","ID","IL","IN","KS","KY","LA","MA","MD","ME","MI","MN","MO","MS","MT","NC","ND","NE","NH","NJ","NM","NV","NY","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VA","VT","WA","WI","WV","WY"]', NULL, 28),
-(5, TIMESTAMP '2020-01-17 14:23:43.409', TIMESTAMP '2020-01-17 14:23:43.409', '[1,2,3,4,5]', NULL, 36);
+(1, TIMESTAMP '2020-01-22 12:10:22.343', TIMESTAMP '2020-01-22 12:10:22.343', '["Doohickey","Gadget","Gizmo","Widget"]', NULL, 6),
+(2, TIMESTAMP '2020-01-22 12:10:23.446', TIMESTAMP '2020-01-22 12:10:23.446', '[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57,58,59,60,61,63,65,67,68,69,70,71,72,73,75,78,82,83,88,100]', NULL, 14),
+(3, TIMESTAMP '2020-01-22 12:10:23.478', TIMESTAMP '2020-01-22 12:10:23.478', '["Affiliate","Facebook","Google","Organic","Twitter"]', NULL, 24),
+(4, TIMESTAMP '2020-01-22 12:10:23.528', TIMESTAMP '2020-01-22 12:10:23.528', '["AK","AL","AR","AZ","CA","CO","CT","DE","FL","GA","IA","ID","IL","IN","KS","KY","LA","MA","MD","ME","MI","MN","MO","MS","MT","NC","ND","NE","NH","NJ","NM","NV","NY","OH","OK","OR","PA","RI","SC","SD","TN","TX","UT","VA","VT","WA","WI","WV","WY"]', NULL, 28),
+(5, TIMESTAMP '2020-01-22 12:10:23.553', TIMESTAMP '2020-01-22 12:10:23.553', '[1,2,3,4,5]', NULL, 36);
 CREATE INDEX PUBLIC.IDX_FIELDVALUES_FIELD_ID ON PUBLIC.METABASE_FIELDVALUES(FIELD_ID);         
 CREATE CACHED TABLE PUBLIC.METABASE_DATABASE(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_807583EF_1F7E_4B2E_BE4F_226AB5FC5B27) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_807583EF_1F7E_4B2E_BE4F_226AB5FC5B27,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_15B7B783_8677_4E14_B5E0_A3B0A898A62B) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_15B7B783_8677_4E14_B5E0_A3B0A898A62B,
     CREATED_AT TIMESTAMP NOT NULL,
     UPDATED_AT TIMESTAMP NOT NULL,
     NAME VARCHAR(254) NOT NULL,
@@ -480,9 +480,9 @@ CREATE CACHED TABLE PUBLIC.METABASE_DATABASE(
 ALTER TABLE PUBLIC.METABASE_DATABASE ADD CONSTRAINT PUBLIC.PK_METABASE_DATABASE PRIMARY KEY(ID);               
 -- 1 +/- SELECT COUNT(*) FROM PUBLIC.METABASE_DATABASE;        
 INSERT INTO PUBLIC.METABASE_DATABASE(ID, CREATED_AT, UPDATED_AT, NAME, DESCRIPTION, DETAILS, ENGINE, IS_SAMPLE, IS_FULL_SYNC, POINTS_OF_INTEREST, CAVEATS, METADATA_SYNC_SCHEDULE, CACHE_FIELD_VALUES_SCHEDULE, TIMEZONE, IS_ON_DEMAND, OPTIONS, AUTO_RUN_QUERIES) VALUES
-(1, TIMESTAMP '2020-01-17 14:23:38.97', TIMESTAMP '2020-01-17 14:23:39.255', 'Sample Dataset', NULL, '{"db":"zip:/Users/tlrobinson/metabase/metabase/target/uberjar/metabase.jar!/sample-dataset.db;USER=GUEST;PASSWORD=guest"}', 'h2', TRUE, TRUE, NULL, NULL, '0 50 * * * ? *', '0 50 0 * * ? *', 'America/Los_Angeles', FALSE, NULL, TRUE);       
+(1, TIMESTAMP '2020-01-22 12:10:02.567', TIMESTAMP '2020-01-22 12:10:03.562', 'Sample Dataset', NULL, '{"db":"zip:/Users/paul/metabase/target/uberjar/metabase.jar!/sample-dataset.db;USER=GUEST;PASSWORD=guest"}', 'h2', TRUE, TRUE, NULL, NULL, '0 50 * * * ? *', '0 50 0 * * ? *', 'America/Los_Angeles', FALSE, NULL, TRUE);     
 CREATE CACHED TABLE PUBLIC.PULSE(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_0573F52A_8CD7_4F6A_932A_27B96FEF3FDC) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_0573F52A_8CD7_4F6A_932A_27B96FEF3FDC,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_2EE73F58_32C1_413F_A47B_B44F24458ED1) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_2EE73F58_32C1_413F_A47B_B44F24458ED1,
     CREATOR_ID INT NOT NULL,
     NAME VARCHAR(254),
     CREATED_AT TIMESTAMP NOT NULL,
@@ -500,7 +500,7 @@ ALTER TABLE PUBLIC.PULSE ADD CONSTRAINT PUBLIC.PK_PULSE PRIMARY KEY(ID);
 CREATE INDEX PUBLIC.IDX_PULSE_CREATOR_ID ON PUBLIC.PULSE(CREATOR_ID);          
 CREATE INDEX PUBLIC.IDX_PULSE_COLLECTION_ID ON PUBLIC.PULSE(COLLECTION_ID);    
 CREATE CACHED TABLE PUBLIC.SEGMENT(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_D5C95481_130A_4776_B1CA_9150DB422C42) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_D5C95481_130A_4776_B1CA_9150DB422C42,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_9CFDBE74_9FE1_4348_A466_15549C3F29FB) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_9CFDBE74_9FE1_4348_A466_15549C3F29FB,
     TABLE_ID INT NOT NULL,
     CREATOR_ID INT NOT NULL,
     NAME VARCHAR(254) NOT NULL,
@@ -519,7 +519,7 @@ CREATE INDEX PUBLIC.IDX_SEGMENT_CREATOR_ID ON PUBLIC.SEGMENT(CREATOR_ID);
 CREATE INDEX PUBLIC.IDX_SEGMENT_TABLE_ID ON PUBLIC.SEGMENT(TABLE_ID);          
 CREATE INDEX PUBLIC.IDX_SEGMENT_SHOW_IN_GETTING_STARTED ON PUBLIC.SEGMENT(SHOW_IN_GETTING_STARTED);            
 CREATE CACHED TABLE PUBLIC.METRIC(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_17B1EFA8_F1F0_4C5B_99E0_5B1E3ABFAA48) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_17B1EFA8_F1F0_4C5B_99E0_5B1E3ABFAA48,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_B6D5202A_FC2C_444E_9539_9A86CB786297) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_B6D5202A_FC2C_444E_9539_9A86CB786297,
     TABLE_ID INT NOT NULL,
     CREATOR_ID INT NOT NULL,
     NAME VARCHAR(254) NOT NULL,
@@ -565,7 +565,7 @@ INSERT INTO PUBLIC.QRTZ_JOB_DETAILS(SCHED_NAME, JOB_NAME, JOB_GROUP, DESCRIPTION
 CREATE INDEX PUBLIC.IDX_QRTZ_J_REQ_RECOVERY ON PUBLIC.QRTZ_JOB_DETAILS(SCHED_NAME, REQUESTS_RECOVERY);         
 CREATE INDEX PUBLIC.IDX_QRTZ_J_GRP ON PUBLIC.QRTZ_JOB_DETAILS(SCHED_NAME, JOB_GROUP);          
 CREATE CACHED TABLE PUBLIC.REPORT_CARDFAVORITE(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_E035BAB9_D30A_47FB_8C4C_86824EE07E0D) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_E035BAB9_D30A_47FB_8C4C_86824EE07E0D,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_827E1B8D_FF0B_497F_9C89_8E1318EBFB57) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_827E1B8D_FF0B_497F_9C89_8E1318EBFB57,
     CREATED_AT TIMESTAMP NOT NULL,
     UPDATED_AT TIMESTAMP NOT NULL,
     CARD_ID INT NOT NULL,
@@ -596,14 +596,14 @@ CREATE CACHED TABLE PUBLIC.QRTZ_TRIGGERS COMMENT 'Used for Quartz scheduler.'(
 ALTER TABLE PUBLIC.QRTZ_TRIGGERS ADD CONSTRAINT PUBLIC.PK_QRTZ_TRIGGERS PRIMARY KEY(SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP);  
 -- 8 +/- SELECT COUNT(*) FROM PUBLIC.QRTZ_TRIGGERS;            
 INSERT INTO PUBLIC.QRTZ_TRIGGERS(SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP, JOB_NAME, JOB_GROUP, DESCRIPTION, NEXT_FIRE_TIME, PREV_FIRE_TIME, PRIORITY, TRIGGER_STATE, TRIGGER_TYPE, START_TIME, END_TIME, CALENDAR_NAME, MISFIRE_INSTR, JOB_DATA) VALUES
-('MetabaseScheduler', 'metabase.task.upgrade-checks.trigger', 'DEFAULT', 'metabase.task.upgrade-checks.job', 'DEFAULT', NULL, 1579313700000, -1, 5, 'WAITING', 'CRON', 1579299818000, 0, NULL, 0, X''),
-('MetabaseScheduler', 'metabase.task.anonymous-stats.trigger', 'DEFAULT', 'metabase.task.anonymous-stats.job', 'DEFAULT', NULL, 1579360500000, -1, 5, 'WAITING', 'CRON', 1579299818000, 0, NULL, 0, X''),
-('MetabaseScheduler', 'metabase.task.abandonment-emails.trigger', 'DEFAULT', 'metabase.task.abandonment-emails.job', 'DEFAULT', NULL, 1579377600000, -1, 5, 'WAITING', 'CRON', 1579299818000, 0, NULL, 0, X''),
-('MetabaseScheduler', 'metabase.task.send-pulses.trigger', 'DEFAULT', 'metabase.task.send-pulses.job', 'DEFAULT', NULL, 1579302000000, -1, 5, 'WAITING', 'CRON', 1579299818000, 0, NULL, 1, X''),
-('MetabaseScheduler', 'metabase.task.follow-up-emails.trigger', 'DEFAULT', 'metabase.task.follow-up-emails.job', 'DEFAULT', NULL, 1579377600000, -1, 5, 'WAITING', 'CRON', 1579299818000, 0, NULL, 0, X''),
-('MetabaseScheduler', 'metabase.task.task-history-cleanup.trigger', 'DEFAULT', 'metabase.task.task-history-cleanup.job', 'DEFAULT', NULL, 1579302000000, -1, 5, 'WAITING', 'CRON', 1579299818000, 0, NULL, 0, X''),
-('MetabaseScheduler', 'metabase.task.sync-and-analyze.trigger.1', 'DEFAULT', 'metabase.task.sync-and-analyze.job', 'DEFAULT', 'sync-and-analyze Database 1', 1579301400000, -1, 5, 'WAITING', 'CRON', 1579299818000, 0, NULL, 2, X'aced0005737200156f72672e71756172747a2e4a6f62446174614d61709fb083e8bfa9b0cb020000787200266f72672e71756172747a2e7574696c732e537472696e674b65794469727479466c61674d61708208e8c3fbc55d280200015a0013616c6c6f77735472616e7369656e74446174617872001d6f72672e71756172747a2e7574696c732e4469727479466c61674d617013e62ead28760ace0200025a000564697274794c00036d617074000f4c6a6176612f7574696c2f4d61703b787001737200116a6176612e7574696c2e486173684d61700507dac1c31660d103000246000a6c6f6164466163746f724900097468726573686f6c6478703f4000000000000c7708000000100000000174000564622d6964737200116a6176612e6c616e672e496e746567657212e2a0a4f781873802000149000576616c7565787200106a6176612e6c616e672e4e756d62657286ac951d0b94e08b0200007870000000017800'),
-('MetabaseScheduler', 'metabase.task.update-field-values.trigger.1', 'DEFAULT', 'metabase.task.update-field-values.job', 'DEFAULT', 'update-field-values Database 1', 1579337400000, -1, 5, 'WAITING', 'CRON', 1579299818000, 0, NULL, 2, X'aced0005737200156f72672e71756172747a2e4a6f62446174614d61709fb083e8bfa9b0cb020000787200266f72672e71756172747a2e7574696c732e537472696e674b65794469727479466c61674d61708208e8c3fbc55d280200015a0013616c6c6f77735472616e7369656e74446174617872001d6f72672e71756172747a2e7574696c732e4469727479466c61674d617013e62ead28760ace0200025a000564697274794c00036d617074000f4c6a6176612f7574696c2f4d61703b787001737200116a6176612e7574696c2e486173684d61700507dac1c31660d103000246000a6c6f6164466163746f724900097468726573686f6c6478703f4000000000000c7708000000100000000174000564622d6964737200116a6176612e6c616e672e496e746567657212e2a0a4f781873802000149000576616c7565787200106a6176612e6c616e672e4e756d62657286ac951d0b94e08b0200007870000000017800');     
+('MetabaseScheduler', 'metabase.task.upgrade-checks.trigger', 'DEFAULT', 'metabase.task.upgrade-checks.job', 'DEFAULT', NULL, 1579745700000, -1, 5, 'WAITING', 'CRON', 1579723802000, 0, NULL, 0, X''),
+('MetabaseScheduler', 'metabase.task.anonymous-stats.trigger', 'DEFAULT', 'metabase.task.anonymous-stats.job', 'DEFAULT', NULL, 1579792500000, -1, 5, 'WAITING', 'CRON', 1579723802000, 0, NULL, 0, X''),
+('MetabaseScheduler', 'metabase.task.abandonment-emails.trigger', 'DEFAULT', 'metabase.task.abandonment-emails.job', 'DEFAULT', NULL, 1579809600000, -1, 5, 'WAITING', 'CRON', 1579723802000, 0, NULL, 0, X''),
+('MetabaseScheduler', 'metabase.task.send-pulses.trigger', 'DEFAULT', 'metabase.task.send-pulses.job', 'DEFAULT', NULL, 1579726800000, -1, 5, 'WAITING', 'CRON', 1579723802000, 0, NULL, 1, X''),
+('MetabaseScheduler', 'metabase.task.follow-up-emails.trigger', 'DEFAULT', 'metabase.task.follow-up-emails.job', 'DEFAULT', NULL, 1579809600000, -1, 5, 'WAITING', 'CRON', 1579723802000, 0, NULL, 0, X''),
+('MetabaseScheduler', 'metabase.task.task-history-cleanup.trigger', 'DEFAULT', 'metabase.task.task-history-cleanup.job', 'DEFAULT', NULL, 1579726800000, -1, 5, 'WAITING', 'CRON', 1579723802000, 0, NULL, 0, X''),
+('MetabaseScheduler', 'metabase.task.sync-and-analyze.trigger.1', 'DEFAULT', 'metabase.task.sync-and-analyze.job', 'DEFAULT', 'sync-and-analyze Database 1', 1579726200000, -1, 5, 'WAITING', 'CRON', 1579723802000, 0, NULL, 2, X'aced0005737200156f72672e71756172747a2e4a6f62446174614d61709fb083e8bfa9b0cb020000787200266f72672e71756172747a2e7574696c732e537472696e674b65794469727479466c61674d61708208e8c3fbc55d280200015a0013616c6c6f77735472616e7369656e74446174617872001d6f72672e71756172747a2e7574696c732e4469727479466c61674d617013e62ead28760ace0200025a000564697274794c00036d617074000f4c6a6176612f7574696c2f4d61703b787001737200116a6176612e7574696c2e486173684d61700507dac1c31660d103000246000a6c6f6164466163746f724900097468726573686f6c6478703f4000000000000c7708000000100000000174000564622d6964737200116a6176612e6c616e672e496e746567657212e2a0a4f781873802000149000576616c7565787200106a6176612e6c616e672e4e756d62657286ac951d0b94e08b0200007870000000017800'),
+('MetabaseScheduler', 'metabase.task.update-field-values.trigger.1', 'DEFAULT', 'metabase.task.update-field-values.job', 'DEFAULT', 'update-field-values Database 1', 1579769400000, -1, 5, 'WAITING', 'CRON', 1579723802000, 0, NULL, 2, X'aced0005737200156f72672e71756172747a2e4a6f62446174614d61709fb083e8bfa9b0cb020000787200266f72672e71756172747a2e7574696c732e537472696e674b65794469727479466c61674d61708208e8c3fbc55d280200015a0013616c6c6f77735472616e7369656e74446174617872001d6f72672e71756172747a2e7574696c732e4469727479466c61674d617013e62ead28760ace0200025a000564697274794c00036d617074000f4c6a6176612f7574696c2f4d61703b787001737200116a6176612e7574696c2e486173684d61700507dac1c31660d103000246000a6c6f6164466163746f724900097468726573686f6c6478703f4000000000000c7708000000100000000174000564622d6964737200116a6176612e6c616e672e496e746567657212e2a0a4f781873802000149000576616c7565787200106a6176612e6c616e672e4e756d62657286ac951d0b94e08b0200007870000000017800');     
 CREATE INDEX PUBLIC.IDX_QRTZ_T_J ON PUBLIC.QRTZ_TRIGGERS(SCHED_NAME, JOB_NAME, JOB_GROUP);     
 CREATE INDEX PUBLIC.IDX_QRTZ_T_JG ON PUBLIC.QRTZ_TRIGGERS(SCHED_NAME, JOB_GROUP);              
 CREATE INDEX PUBLIC.IDX_QRTZ_T_C ON PUBLIC.QRTZ_TRIGGERS(SCHED_NAME, CALENDAR_NAME);           
@@ -617,7 +617,7 @@ CREATE INDEX PUBLIC.IDX_QRTZ_T_NFT_MISFIRE ON PUBLIC.QRTZ_TRIGGERS(SCHED_NAME, M
 CREATE INDEX PUBLIC.IDX_QRTZ_T_NFT_ST_MISFIRE ON PUBLIC.QRTZ_TRIGGERS(SCHED_NAME, MISFIRE_INSTR, NEXT_FIRE_TIME, TRIGGER_STATE);               
 CREATE INDEX PUBLIC.IDX_QRTZ_T_NFT_ST_MISFIRE_GRP ON PUBLIC.QRTZ_TRIGGERS(SCHED_NAME, MISFIRE_INSTR, NEXT_FIRE_TIME, TRIGGER_GROUP, TRIGGER_STATE);            
 CREATE CACHED TABLE PUBLIC.COMPUTATION_JOB COMMENT 'Stores submitted async computation jobs.'(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_159ECBDC_F53B_4EB9_9174_62F0FD918EC3) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_159ECBDC_F53B_4EB9_9174_62F0FD918EC3,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_A0B66AC4_7887_412C_8615_125795B00CD5) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_A0B66AC4_7887_412C_8615_125795B00CD5,
     CREATOR_ID INT,
     CREATED_AT TIMESTAMP NOT NULL,
     UPDATED_AT TIMESTAMP NOT NULL,
@@ -629,7 +629,7 @@ CREATE CACHED TABLE PUBLIC.COMPUTATION_JOB COMMENT 'Stores submitted async compu
 ALTER TABLE PUBLIC.COMPUTATION_JOB ADD CONSTRAINT PUBLIC.PK_COMPUTATION_JOB PRIMARY KEY(ID);   
 -- 0 +/- SELECT COUNT(*) FROM PUBLIC.COMPUTATION_JOB;          
 CREATE CACHED TABLE PUBLIC.PULSE_CARD(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_844F7FA4_B690_45ED_9FD2_392B981DD368) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_844F7FA4_B690_45ED_9FD2_392B981DD368,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_293744B6_3BEE_47A4_8E76_32C5844B9BED) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_293744B6_3BEE_47A4_8E76_32C5844B9BED,
     PULSE_ID INT NOT NULL,
     CARD_ID INT NOT NULL,
     POSITION INT NOT NULL,
@@ -649,7 +649,7 @@ ALTER TABLE PUBLIC.QUERY_CACHE ADD CONSTRAINT PUBLIC.PK_QUERY_CACHE PRIMARY KEY(
 -- 0 +/- SELECT COUNT(*) FROM PUBLIC.QUERY_CACHE;              
 CREATE INDEX PUBLIC.IDX_QUERY_CACHE_UPDATED_AT ON PUBLIC.QUERY_CACHE(UPDATED_AT);              
 CREATE CACHED TABLE PUBLIC.CARD_LABEL(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_3BC1B238_2ACF_4011_970F_3ED68746EE0E) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_3BC1B238_2ACF_4011_970F_3ED68746EE0E,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_A55C2E8C_C0F3_4525_B0F3_7D7E4B693CB4) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_A55C2E8C_C0F3_4525_B0F3_7D7E4B693CB4,
     CARD_ID INT NOT NULL,
     LABEL_ID INT NOT NULL
 );   
@@ -658,7 +658,7 @@ ALTER TABLE PUBLIC.CARD_LABEL ADD CONSTRAINT PUBLIC.PK_CARD_LABEL PRIMARY KEY(ID
 CREATE INDEX PUBLIC.IDX_CARD_LABEL_CARD_ID ON PUBLIC.CARD_LABEL(CARD_ID);      
 CREATE INDEX PUBLIC.IDX_CARD_LABEL_LABEL_ID ON PUBLIC.CARD_LABEL(LABEL_ID);    
 CREATE CACHED TABLE PUBLIC.DIMENSION COMMENT 'Stores references to alternate views of existing fields, such as remapping an integer to a description, like an enum'(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_16E7F76E_DA4B_47A7_960D_EAC0635E4D2A) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_16E7F76E_DA4B_47A7_960D_EAC0635E4D2A,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_51191381_554A_4245_A488_E12C3A3054D9) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_51191381_554A_4245_A488_E12C3A3054D9,
     FIELD_ID INT NOT NULL COMMENT 'ID of the field this dimension row applies to',
     NAME VARCHAR(254) NOT NULL COMMENT 'Short description used as the display name of this new column',
     TYPE VARCHAR(254) NOT NULL COMMENT 'Either internal for a user defined remapping or external for a foreign key based remapping',
@@ -670,7 +670,7 @@ ALTER TABLE PUBLIC.DIMENSION ADD CONSTRAINT PUBLIC.PK_DIMENSION PRIMARY KEY(ID);
 -- 0 +/- SELECT COUNT(*) FROM PUBLIC.DIMENSION;
 CREATE INDEX PUBLIC.IDX_DIMENSION_FIELD_ID ON PUBLIC.DIMENSION(FIELD_ID);      
 CREATE CACHED TABLE PUBLIC.METABASE_FIELD(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_2836135D_08BF_40B3_86A9_7B2EA6E06DEE) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_2836135D_08BF_40B3_86A9_7B2EA6E06DEE,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_5AC6DC88_BD7E_49AB_80F4_ECD555BB1FA4) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_5AC6DC88_BD7E_49AB_80F4_ECD555BB1FA4,
     CREATED_AT TIMESTAMP NOT NULL,
     UPDATED_AT TIMESTAMP NOT NULL,
     NAME VARCHAR(254) NOT NULL,
@@ -697,50 +697,50 @@ CREATE CACHED TABLE PUBLIC.METABASE_FIELD(
 ALTER TABLE PUBLIC.METABASE_FIELD ADD CONSTRAINT PUBLIC.PK_METABASE_FIELD PRIMARY KEY(ID);     
 -- 36 +/- SELECT COUNT(*) FROM PUBLIC.METABASE_FIELD;          
 INSERT INTO PUBLIC.METABASE_FIELD(ID, CREATED_AT, UPDATED_AT, NAME, BASE_TYPE, SPECIAL_TYPE, ACTIVE, DESCRIPTION, PREVIEW_DISPLAY, POSITION, TABLE_ID, PARENT_ID, DISPLAY_NAME, VISIBILITY_TYPE, FK_TARGET_FIELD_ID, LAST_ANALYZED, POINTS_OF_INTEREST, CAVEATS, FINGERPRINT, FINGERPRINT_VERSION, DATABASE_TYPE, HAS_FIELD_VALUES, SETTINGS) VALUES
-(1, TIMESTAMP '2020-01-17 14:23:39.364', TIMESTAMP '2020-01-17 14:23:40.062', 'EAN', 'type/Text', NULL, TRUE, 'The international article number. A 13 digit number uniquely identifying the product.', TRUE, 0, 1, NULL, 'Ean', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":200,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":13.0}}}', 4, 'CHAR', NULL, NULL),
-(2, TIMESTAMP '2020-01-17 14:23:39.365', TIMESTAMP '2020-01-17 14:23:42.776', 'RATING', 'type/Float', 'type/Score', TRUE, 'The average rating users have given the product. This ranges from 1 - 5', TRUE, 0, 1, NULL, 'Rating', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":23,"nil%":0.0},"type":{"type/Number":{"min":0.0,"max":5.0,"avg":3.4715,"sd":1.3605488657451452,"q1":3.5120465053408525,"q3":4.216124969497314}}}', 4, 'DOUBLE', NULL, NULL),
-(3, TIMESTAMP '2020-01-17 14:23:39.366', TIMESTAMP '2020-01-17 14:23:40.064', 'PRICE', 'type/Float', NULL, TRUE, 'The list price of the product. Note that this is not always the price the product sold for due to discounts, promotions, etc.', TRUE, 0, 1, NULL, 'Price', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":170,"nil%":0.0},"type":{"type/Number":{"min":15.691943673970439,"max":98.81933684368194,"avg":55.74639966792074,"sd":21.711481557852057,"q1":37.25154462926434,"q3":75.45898071609447}}}', 4, 'DOUBLE', NULL, NULL),
-(4, TIMESTAMP '2020-01-17 14:23:39.366', TIMESTAMP '2020-01-17 14:23:39.366', 'ID', 'type/BigInteger', 'type/PK', TRUE, 'The numerical product number. Only used internally. All external communication should use the title or EAN.', TRUE, 0, 1, NULL, 'ID', 'normal', NULL, NULL, NULL, NULL, NULL, 0, 'BIGINT', NULL, NULL),
-(5, TIMESTAMP '2020-01-17 14:23:39.367', TIMESTAMP '2020-01-17 14:23:42.779', 'TITLE', 'type/Text', 'type/Title', TRUE, 'The name of the product as it should be displayed to customers.', TRUE, 0, 1, NULL, 'Title', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":199,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":21.495}}}', 4, 'VARCHAR', NULL, NULL),
-(6, TIMESTAMP '2020-01-17 14:23:39.367', TIMESTAMP '2020-01-17 14:23:42.78', 'CATEGORY', 'type/Text', 'type/Category', TRUE, 'The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget', TRUE, 0, 1, NULL, 'Category', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":4,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":6.375}}}', 4, 'VARCHAR', 'auto-list', NULL),
-(7, TIMESTAMP '2020-01-17 14:23:39.368', TIMESTAMP '2020-01-17 14:23:42.782', 'CREATED_AT', 'type/DateTime', 'type/CreationTimestamp', TRUE, 'The date the product was added to our catalog.', TRUE, 0, 1, NULL, 'Created At', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":200,"nil%":0.0},"type":{"type/DateTime":{"earliest":"2016-04-26T19:29:55.147","latest":"2019-04-15T13:34:19.931"}}}', 4, 'TIMESTAMP', NULL, NULL),
-(8, TIMESTAMP '2020-01-17 14:23:39.368', TIMESTAMP '2020-01-17 14:23:42.783', 'VENDOR', 'type/Text', 'type/Company', TRUE, 'The source of the product.', TRUE, 0, 1, NULL, 'Vendor', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":200,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":20.6}}}', 4, 'VARCHAR', NULL, NULL),
-(9, TIMESTAMP '2020-01-17 14:23:39.411', TIMESTAMP '2020-01-17 14:23:41.11', 'USER_ID', 'type/Integer', 'type/FK', TRUE, 'The id of the user who made this order. Note that in some cases where an order was created on behalf of a customer who phoned the order in, this might be the employee who handled the request.', TRUE, 0, 2, NULL, 'User ID', 'normal', 21, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":929,"nil%":0.0}}', 4, 'INTEGER', NULL, NULL);       
+(1, TIMESTAMP '2020-01-22 12:10:03.898', TIMESTAMP '2020-01-22 12:10:09.609', 'EAN', 'type/Text', NULL, TRUE, 'The international article number. A 13 digit number uniquely identifying the product.', TRUE, 0, 1, NULL, 'Ean', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":200,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":13.0}}}', 4, 'CHAR', NULL, NULL),
+(2, TIMESTAMP '2020-01-22 12:10:03.899', TIMESTAMP '2020-01-22 12:10:22.035', 'RATING', 'type/Float', 'type/Score', TRUE, 'The average rating users have given the product. This ranges from 1 - 5', TRUE, 0, 1, NULL, 'Rating', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":23,"nil%":0.0},"type":{"type/Number":{"min":0.0,"max":5.0,"avg":3.4715,"sd":1.3605488657451452,"q1":3.5120465053408525,"q3":4.216124969497314}}}', 4, 'DOUBLE', NULL, NULL),
+(3, TIMESTAMP '2020-01-22 12:10:03.902', TIMESTAMP '2020-01-22 12:10:09.612', 'PRICE', 'type/Float', NULL, TRUE, 'The list price of the product. Note that this is not always the price the product sold for due to discounts, promotions, etc.', TRUE, 0, 1, NULL, 'Price', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":170,"nil%":0.0},"type":{"type/Number":{"min":15.691943673970439,"max":98.81933684368194,"avg":55.74639966792074,"sd":21.711481557852057,"q1":37.25154462926434,"q3":75.45898071609447}}}', 4, 'DOUBLE', NULL, NULL),
+(4, TIMESTAMP '2020-01-22 12:10:03.907', TIMESTAMP '2020-01-22 12:10:03.907', 'ID', 'type/BigInteger', 'type/PK', TRUE, 'The numerical product number. Only used internally. All external communication should use the title or EAN.', TRUE, 0, 1, NULL, 'ID', 'normal', NULL, NULL, NULL, NULL, NULL, 0, 'BIGINT', NULL, NULL),
+(5, TIMESTAMP '2020-01-22 12:10:03.919', TIMESTAMP '2020-01-22 12:10:22.04', 'TITLE', 'type/Text', 'type/Title', TRUE, 'The name of the product as it should be displayed to customers.', TRUE, 0, 1, NULL, 'Title', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":199,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":21.495}}}', 4, 'VARCHAR', NULL, NULL),
+(6, TIMESTAMP '2020-01-22 12:10:03.922', TIMESTAMP '2020-01-22 12:10:22.047', 'CATEGORY', 'type/Text', 'type/Category', TRUE, 'The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget', TRUE, 0, 1, NULL, 'Category', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":4,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":6.375}}}', 4, 'VARCHAR', 'auto-list', NULL),
+(7, TIMESTAMP '2020-01-22 12:10:03.93', TIMESTAMP '2020-01-22 12:10:22.053', 'CREATED_AT', 'type/DateTime', 'type/CreationTimestamp', TRUE, 'The date the product was added to our catalog.', TRUE, 0, 1, NULL, 'Created At', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":200,"nil%":0.0},"type":{"type/DateTime":{"earliest":"2016-04-26T19:29:55.147","latest":"2019-04-15T13:34:19.931"}}}', 4, 'TIMESTAMP', NULL, NULL),
+(8, TIMESTAMP '2020-01-22 12:10:03.931', TIMESTAMP '2020-01-22 12:10:22.086', 'VENDOR', 'type/Text', 'type/Company', TRUE, 'The source of the product.', TRUE, 0, 1, NULL, 'Vendor', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":200,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":20.6}}}', 4, 'VARCHAR', NULL, NULL),
+(9, TIMESTAMP '2020-01-22 12:10:04.145', TIMESTAMP '2020-01-22 12:10:15.764', 'USER_ID', 'type/Integer', 'type/FK', TRUE, 'The id of the user who made this order. Note that in some cases where an order was created on behalf of a customer who phoned the order in, this might be the employee who handled the request.', TRUE, 0, 2, NULL, 'User ID', 'normal', 21, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":929,"nil%":0.0}}', 4, 'INTEGER', NULL, NULL);       
 INSERT INTO PUBLIC.METABASE_FIELD(ID, CREATED_AT, UPDATED_AT, NAME, BASE_TYPE, SPECIAL_TYPE, ACTIVE, DESCRIPTION, PREVIEW_DISPLAY, POSITION, TABLE_ID, PARENT_ID, DISPLAY_NAME, VISIBILITY_TYPE, FK_TARGET_FIELD_ID, LAST_ANALYZED, POINTS_OF_INTEREST, CAVEATS, FINGERPRINT, FINGERPRINT_VERSION, DATABASE_TYPE, HAS_FIELD_VALUES, SETTINGS) VALUES
-(10, TIMESTAMP '2020-01-17 14:23:39.412', TIMESTAMP '2020-01-17 14:23:42.788', 'DISCOUNT', 'type/Float', 'type/Discount', TRUE, 'Discount amount.', TRUE, 0, 2, NULL, 'Discount', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":701,"nil%":0.898},"type":{"type/Number":{"min":0.17088996672584322,"max":61.69684269960571,"avg":5.161255547580326,"sd":3.053663125001991,"q1":2.9786226681458743,"q3":7.338187788658235}}}', 4, 'DOUBLE', NULL, NULL),
-(11, TIMESTAMP '2020-01-17 14:23:39.413', TIMESTAMP '2020-01-17 14:23:41.113', 'PRODUCT_ID', 'type/Integer', 'type/FK', TRUE, 'The product ID. This is an internal identifier for the product, NOT the SKU.', TRUE, 0, 2, NULL, 'Product ID', 'normal', 4, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":200,"nil%":0.0}}', 4, 'INTEGER', NULL, NULL),
-(12, TIMESTAMP '2020-01-17 14:23:39.413', TIMESTAMP '2020-01-17 14:23:39.413', 'ID', 'type/BigInteger', 'type/PK', TRUE, STRINGDECODE('This is a unique ID for the product. It is also called the \u201cInvoice number\u201d or \u201cConfirmation number\u201d in customer facing emails and screens.'), TRUE, 0, 2, NULL, 'ID', 'normal', NULL, NULL, NULL, NULL, NULL, 0, 'BIGINT', NULL, NULL),
-(13, TIMESTAMP '2020-01-17 14:23:39.414', TIMESTAMP '2020-01-17 14:23:41.113', 'SUBTOTAL', 'type/Float', NULL, TRUE, 'The raw, pre-tax cost of the order. Note that this might be different in the future from the product price due to promotions, credits, etc.', TRUE, 0, 2, NULL, 'Subtotal', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":340,"nil%":0.0},"type":{"type/Number":{"min":15.691943673970439,"max":148.22900526552291,"avg":77.01295465356547,"sd":32.53705013056317,"q1":49.74894519060184,"q3":105.42965746993103}}}', 4, 'DOUBLE', NULL, NULL),
-(14, TIMESTAMP '2020-01-17 14:23:39.414', TIMESTAMP '2020-01-17 14:23:42.791', 'QUANTITY', 'type/Integer', 'type/Quantity', TRUE, 'Number of products bought.', TRUE, 0, 2, NULL, 'Quantity', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":62,"nil%":0.0},"type":{"type/Number":{"min":0.0,"max":100.0,"avg":3.7015,"sd":4.214258386403798,"q1":1.755882607764982,"q3":4.882654507928044}}}', 4, 'INTEGER', 'auto-list', NULL),
-(15, TIMESTAMP '2020-01-17 14:23:39.415', TIMESTAMP '2020-01-17 14:23:42.792', 'CREATED_AT', 'type/DateTime', 'type/CreationTimestamp', TRUE, 'The date and time an order was submitted.', TRUE, 0, 2, NULL, 'Created At', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":9998,"nil%":0.0},"type":{"type/DateTime":{"earliest":"2016-04-30T18:56:13.352","latest":"2020-04-19T14:07:15.657"}}}', 4, 'TIMESTAMP', NULL, NULL),
-(16, TIMESTAMP '2020-01-17 14:23:39.415', TIMESTAMP '2020-01-17 14:23:41.115', 'TAX', 'type/Float', NULL, TRUE, 'This is the amount of local and federal taxes that are collected on the purchase. Note that other governmental fees on some products are not included here, but instead are accounted for in the subtotal.', TRUE, 0, 2, NULL, 'Tax', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":797,"nil%":0.0},"type":{"type/Number":{"min":0.0,"max":11.12,"avg":3.8722100000000004,"sd":2.3206651358900316,"q1":2.273340386603857,"q3":5.337275338216307}}}', 4, 'DOUBLE', NULL, NULL),
-(17, TIMESTAMP '2020-01-17 14:23:39.416', TIMESTAMP '2020-01-17 14:23:41.115', 'TOTAL', 'type/Float', NULL, TRUE, 'The total billed amount.', TRUE, 0, 2, NULL, 'Total', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":10000,"nil%":0.0},"type":{"type/Number":{"min":12.061602936923117,"max":238.32732001721533,"avg":82.96014815230805,"sd":38.35967664847571,"q1":52.006147617878135,"q3":109.55803018499738}}}', 4, 'DOUBLE', NULL, NULL);    
+(10, TIMESTAMP '2020-01-22 12:10:04.146', TIMESTAMP '2020-01-22 12:10:22.094', 'DISCOUNT', 'type/Float', 'type/Discount', TRUE, 'Discount amount.', TRUE, 0, 2, NULL, 'Discount', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":701,"nil%":0.898},"type":{"type/Number":{"min":0.17088996672584322,"max":61.69684269960571,"avg":5.161255547580326,"sd":3.053663125001991,"q1":2.9786226681458743,"q3":7.338187788658235}}}', 4, 'DOUBLE', NULL, NULL),
+(11, TIMESTAMP '2020-01-22 12:10:04.15', TIMESTAMP '2020-01-22 12:10:15.769', 'PRODUCT_ID', 'type/Integer', 'type/FK', TRUE, 'The product ID. This is an internal identifier for the product, NOT the SKU.', TRUE, 0, 2, NULL, 'Product ID', 'normal', 4, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":200,"nil%":0.0}}', 4, 'INTEGER', NULL, NULL),
+(12, TIMESTAMP '2020-01-22 12:10:04.151', TIMESTAMP '2020-01-22 12:10:04.151', 'ID', 'type/BigInteger', 'type/PK', TRUE, STRINGDECODE('This is a unique ID for the product. It is also called the \u201cInvoice number\u201d or \u201cConfirmation number\u201d in customer facing emails and screens.'), TRUE, 0, 2, NULL, 'ID', 'normal', NULL, NULL, NULL, NULL, NULL, 0, 'BIGINT', NULL, NULL),
+(13, TIMESTAMP '2020-01-22 12:10:04.151', TIMESTAMP '2020-01-22 12:10:15.771', 'SUBTOTAL', 'type/Float', NULL, TRUE, 'The raw, pre-tax cost of the order. Note that this might be different in the future from the product price due to promotions, credits, etc.', TRUE, 0, 2, NULL, 'Subtotal', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":340,"nil%":0.0},"type":{"type/Number":{"min":15.691943673970439,"max":148.22900526552291,"avg":77.01295465356547,"sd":32.53705013056317,"q1":49.74894519060184,"q3":105.42965746993103}}}', 4, 'DOUBLE', NULL, NULL),
+(14, TIMESTAMP '2020-01-22 12:10:04.152', TIMESTAMP '2020-01-22 12:10:22.101', 'QUANTITY', 'type/Integer', 'type/Quantity', TRUE, 'Number of products bought.', TRUE, 0, 2, NULL, 'Quantity', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":62,"nil%":0.0},"type":{"type/Number":{"min":0.0,"max":100.0,"avg":3.7015,"sd":4.214258386403798,"q1":1.755882607764982,"q3":4.882654507928044}}}', 4, 'INTEGER', 'auto-list', NULL),
+(15, TIMESTAMP '2020-01-22 12:10:04.154', TIMESTAMP '2020-01-22 12:10:22.104', 'CREATED_AT', 'type/DateTime', 'type/CreationTimestamp', TRUE, 'The date and time an order was submitted.', TRUE, 0, 2, NULL, 'Created At', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":9998,"nil%":0.0},"type":{"type/DateTime":{"earliest":"2016-04-30T18:56:13.352","latest":"2020-04-19T14:07:15.657"}}}', 4, 'TIMESTAMP', NULL, NULL),
+(16, TIMESTAMP '2020-01-22 12:10:04.155', TIMESTAMP '2020-01-22 12:10:15.775', 'TAX', 'type/Float', NULL, TRUE, 'This is the amount of local and federal taxes that are collected on the purchase. Note that other governmental fees on some products are not included here, but instead are accounted for in the subtotal.', TRUE, 0, 2, NULL, 'Tax', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":797,"nil%":0.0},"type":{"type/Number":{"min":0.0,"max":11.12,"avg":3.8722100000000004,"sd":2.3206651358900316,"q1":2.273340386603857,"q3":5.337275338216307}}}', 4, 'DOUBLE', NULL, NULL),
+(17, TIMESTAMP '2020-01-22 12:10:04.156', TIMESTAMP '2020-01-22 12:10:15.777', 'TOTAL', 'type/Float', NULL, TRUE, 'The total billed amount.', TRUE, 0, 2, NULL, 'Total', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":10000,"nil%":0.0},"type":{"type/Number":{"min":12.061602936923117,"max":238.32732001721533,"avg":82.96014815230805,"sd":38.35967664847571,"q1":52.006147617878135,"q3":109.55803018499738}}}', 4, 'DOUBLE', NULL, NULL);     
 INSERT INTO PUBLIC.METABASE_FIELD(ID, CREATED_AT, UPDATED_AT, NAME, BASE_TYPE, SPECIAL_TYPE, ACTIVE, DESCRIPTION, PREVIEW_DISPLAY, POSITION, TABLE_ID, PARENT_ID, DISPLAY_NAME, VISIBILITY_TYPE, FK_TARGET_FIELD_ID, LAST_ANALYZED, POINTS_OF_INTEREST, CAVEATS, FINGERPRINT, FINGERPRINT_VERSION, DATABASE_TYPE, HAS_FIELD_VALUES, SETTINGS) VALUES
-(18, TIMESTAMP '2020-01-17 14:23:39.45', TIMESTAMP '2020-01-17 14:23:42.798', 'LATITUDE', 'type/Float', 'type/Latitude', TRUE, 'This is the latitude of the user on sign-up. It might be updated in the future to the last seen location.', TRUE, 0, 3, NULL, 'Latitude', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":2491,"nil%":0.0},"type":{"type/Number":{"min":25.775827,"max":70.6355001,"avg":39.87934670484002,"sd":6.390832341883712,"q1":35.302705923023126,"q3":43.773802584662}}}', 4, 'DOUBLE', NULL, NULL),
-(19, TIMESTAMP '2020-01-17 14:23:39.45', TIMESTAMP '2020-01-17 14:23:42.466', 'BIRTH_DATE', 'type/Date', NULL, TRUE, 'The date of birth of the user', TRUE, 0, 3, NULL, 'Birth Date', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":2308,"nil%":0.0},"type":{"type/DateTime":{"earliest":"1958-04-26","latest":"2000-04-03"}}}', 4, 'DATE', NULL, NULL),
-(20, TIMESTAMP '2020-01-17 14:23:39.45', TIMESTAMP '2020-01-17 14:23:42.8', 'NAME', 'type/Text', 'type/Name', TRUE, 'The name of the user who owns an account', TRUE, 0, 3, NULL, 'Name', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":2499,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":13.532}}}', 4, 'VARCHAR', NULL, NULL),
-(21, TIMESTAMP '2020-01-17 14:23:39.451', TIMESTAMP '2020-01-17 14:23:39.451', 'ID', 'type/BigInteger', 'type/PK', TRUE, 'A unique identifier given to each user.', TRUE, 0, 3, NULL, 'ID', 'normal', NULL, NULL, NULL, NULL, NULL, 0, 'BIGINT', NULL, NULL),
-(22, TIMESTAMP '2020-01-17 14:23:39.451', TIMESTAMP '2020-01-17 14:23:42.467', 'ADDRESS', 'type/Text', NULL, TRUE, STRINGDECODE('The street address of the account\u2019s billing address'), TRUE, 0, 3, NULL, 'Address', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":2490,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":20.85}}}', 4, 'VARCHAR', NULL, NULL),
-(23, TIMESTAMP '2020-01-17 14:23:39.452', TIMESTAMP '2020-01-17 14:23:42.803', 'LONGITUDE', 'type/Float', 'type/Longitude', TRUE, 'This is the longitude of the user on sign-up. It might be updated in the future to the last seen location.', TRUE, 0, 3, NULL, 'Longitude', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":2491,"nil%":0.0},"type":{"type/Number":{"min":-166.5425726,"max":-67.96735199999999,"avg":-95.18741780363999,"sd":15.399698968175663,"q1":-101.58350792373135,"q3":-84.65289348288829}}}', 4, 'DOUBLE', NULL, NULL),
-(24, TIMESTAMP '2020-01-17 14:23:39.452', TIMESTAMP '2020-01-17 14:23:42.805', 'SOURCE', 'type/Text', 'type/Source', TRUE, 'The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter', TRUE, 0, 3, NULL, 'Source', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":5,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":7.4084}}}', 4, 'VARCHAR', 'auto-list', NULL),
-(25, TIMESTAMP '2020-01-17 14:23:39.453', TIMESTAMP '2020-01-17 14:23:42.807', 'EMAIL', 'type/Text', 'type/Email', TRUE, 'The contact email for the account.', TRUE, 0, 3, NULL, 'Email', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":2500,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":1.0,"average-length":24.1824}}}', 4, 'VARCHAR', NULL, NULL),
-(26, TIMESTAMP '2020-01-17 14:23:39.453', TIMESTAMP '2020-01-17 14:23:42.809', 'CREATED_AT', 'type/DateTime', 'type/CreationTimestamp', TRUE, STRINGDECODE('The date the user record was created. Also referred to as the user\u2019s \"join date\"'), TRUE, 0, 3, NULL, 'Created At', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":2500,"nil%":0.0},"type":{"type/DateTime":{"earliest":"2016-04-19T21:35:18.752","latest":"2019-04-19T14:06:27.3"}}}', 4, 'TIMESTAMP', NULL, NULL);       
+(18, TIMESTAMP '2020-01-22 12:10:04.701', TIMESTAMP '2020-01-22 12:10:22.121', 'LATITUDE', 'type/Float', 'type/Latitude', TRUE, 'This is the latitude of the user on sign-up. It might be updated in the future to the last seen location.', TRUE, 0, 3, NULL, 'Latitude', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":2491,"nil%":0.0},"type":{"type/Number":{"min":25.775827,"max":70.6355001,"avg":39.87934670484002,"sd":6.390832341883712,"q1":35.302705923023126,"q3":43.773802584662}}}', 4, 'DOUBLE', NULL, NULL),
+(19, TIMESTAMP '2020-01-22 12:10:04.702', TIMESTAMP '2020-01-22 12:10:21.12', 'BIRTH_DATE', 'type/Date', NULL, TRUE, 'The date of birth of the user', TRUE, 0, 3, NULL, 'Birth Date', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":2308,"nil%":0.0},"type":{"type/DateTime":{"earliest":"1958-04-26","latest":"2000-04-03"}}}', 4, 'DATE', NULL, NULL),
+(20, TIMESTAMP '2020-01-22 12:10:04.707', TIMESTAMP '2020-01-22 12:10:22.125', 'NAME', 'type/Text', 'type/Name', TRUE, 'The name of the user who owns an account', TRUE, 0, 3, NULL, 'Name', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":2499,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":13.532}}}', 4, 'VARCHAR', NULL, NULL),
+(21, TIMESTAMP '2020-01-22 12:10:04.708', TIMESTAMP '2020-01-22 12:10:04.708', 'ID', 'type/BigInteger', 'type/PK', TRUE, 'A unique identifier given to each user.', TRUE, 0, 3, NULL, 'ID', 'normal', NULL, NULL, NULL, NULL, NULL, 0, 'BIGINT', NULL, NULL),
+(22, TIMESTAMP '2020-01-22 12:10:04.709', TIMESTAMP '2020-01-22 12:10:21.131', 'ADDRESS', 'type/Text', NULL, TRUE, STRINGDECODE('The street address of the account\u2019s billing address'), TRUE, 0, 3, NULL, 'Address', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":2490,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":20.85}}}', 4, 'VARCHAR', NULL, NULL),
+(23, TIMESTAMP '2020-01-22 12:10:04.71', TIMESTAMP '2020-01-22 12:10:22.129', 'LONGITUDE', 'type/Float', 'type/Longitude', TRUE, 'This is the longitude of the user on sign-up. It might be updated in the future to the last seen location.', TRUE, 0, 3, NULL, 'Longitude', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":2491,"nil%":0.0},"type":{"type/Number":{"min":-166.5425726,"max":-67.96735199999999,"avg":-95.18741780363999,"sd":15.399698968175663,"q1":-101.58350792373135,"q3":-84.65289348288829}}}', 4, 'DOUBLE', NULL, NULL),
+(24, TIMESTAMP '2020-01-22 12:10:04.789', TIMESTAMP '2020-01-22 12:10:22.133', 'SOURCE', 'type/Text', 'type/Source', TRUE, 'The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter', TRUE, 0, 3, NULL, 'Source', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":5,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":7.4084}}}', 4, 'VARCHAR', 'auto-list', NULL),
+(25, TIMESTAMP '2020-01-22 12:10:04.852', TIMESTAMP '2020-01-22 12:10:22.136', 'EMAIL', 'type/Text', 'type/Email', TRUE, 'The contact email for the account.', TRUE, 0, 3, NULL, 'Email', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":2500,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":1.0,"average-length":24.1824}}}', 4, 'VARCHAR', NULL, NULL),
+(26, TIMESTAMP '2020-01-22 12:10:04.87', TIMESTAMP '2020-01-22 12:10:22.142', 'CREATED_AT', 'type/DateTime', 'type/CreationTimestamp', TRUE, STRINGDECODE('The date the user record was created. Also referred to as the user\u2019s \"join date\"'), TRUE, 0, 3, NULL, 'Created At', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":2500,"nil%":0.0},"type":{"type/DateTime":{"earliest":"2016-04-19T21:35:18.752","latest":"2019-04-19T14:06:27.3"}}}', 4, 'TIMESTAMP', NULL, NULL);     
 INSERT INTO PUBLIC.METABASE_FIELD(ID, CREATED_AT, UPDATED_AT, NAME, BASE_TYPE, SPECIAL_TYPE, ACTIVE, DESCRIPTION, PREVIEW_DISPLAY, POSITION, TABLE_ID, PARENT_ID, DISPLAY_NAME, VISIBILITY_TYPE, FK_TARGET_FIELD_ID, LAST_ANALYZED, POINTS_OF_INTEREST, CAVEATS, FINGERPRINT, FINGERPRINT_VERSION, DATABASE_TYPE, HAS_FIELD_VALUES, SETTINGS) VALUES
-(27, TIMESTAMP '2020-01-17 14:23:39.454', TIMESTAMP '2020-01-17 14:23:42.47', 'ZIP', 'type/Text', 'type/ZipCode', TRUE, STRINGDECODE('The postal code of the account\u2019s billing address'), TRUE, 0, 3, NULL, 'Zip', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":2234,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":5.0}}}', 4, 'CHAR', NULL, NULL),
-(28, TIMESTAMP '2020-01-17 14:23:39.454', TIMESTAMP '2020-01-17 14:23:42.812', 'STATE', 'type/Text', 'type/State', TRUE, STRINGDECODE('The state or province of the account\u2019s billing address'), TRUE, 0, 3, NULL, 'State', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":49,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":2.0}}}', 4, 'CHAR', 'auto-list', NULL),
-(29, TIMESTAMP '2020-01-17 14:23:39.454', TIMESTAMP '2020-01-17 14:23:42.471', 'PASSWORD', 'type/Text', NULL, TRUE, 'This is the salted password of the user. It should not be visible', TRUE, 0, 3, NULL, 'Password', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":2500,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":36.0}}}', 4, 'VARCHAR', NULL, NULL),
-(30, TIMESTAMP '2020-01-17 14:23:39.455', TIMESTAMP '2020-01-17 14:23:42.815', 'CITY', 'type/Text', 'type/City', TRUE, STRINGDECODE('The city of the account\u2019s billing address'), TRUE, 0, 3, NULL, 'City', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":1966,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":8.284}}}', 4, 'VARCHAR', NULL, NULL),
-(31, TIMESTAMP '2020-01-17 14:23:39.48', TIMESTAMP '2020-01-17 14:23:42.761', 'PRODUCT_ID', 'type/Integer', 'type/FK', TRUE, 'The product the review was for', TRUE, 0, 4, NULL, 'Product ID', 'normal', 4, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":176,"nil%":0.0}}', 4, 'INTEGER', NULL, NULL),
-(32, TIMESTAMP '2020-01-17 14:23:39.481', TIMESTAMP '2020-01-17 14:23:39.481', 'ID', 'type/BigInteger', 'type/PK', TRUE, 'A unique internal identifier for the review. Should not be used externally.', TRUE, 0, 4, NULL, 'ID', 'normal', NULL, NULL, NULL, NULL, NULL, 0, 'BIGINT', NULL, NULL),
-(33, TIMESTAMP '2020-01-17 14:23:39.481', TIMESTAMP '2020-01-17 14:23:42.762', 'BODY', 'type/Text', 'type/Description', TRUE, 'The review the user left. Limited to 2000 characters.', TRUE, 0, 4, NULL, 'Body', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":1112,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":180.68345323741008}}}', 4, 'CLOB', NULL, NULL),
-(34, TIMESTAMP '2020-01-17 14:23:39.482', TIMESTAMP '2020-01-17 14:23:42.762', 'REVIEWER', 'type/Text', NULL, TRUE, 'The user who left the review', TRUE, 0, 4, NULL, 'Reviewer', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":1076,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":9.972122302158274}}}', 4, 'VARCHAR', NULL, NULL),
-(35, TIMESTAMP '2020-01-17 14:23:39.482', TIMESTAMP '2020-01-17 14:23:42.821', 'CREATED_AT', 'type/DateTime', 'type/CreationTimestamp', TRUE, 'The day and time a review was written by a user.', TRUE, 0, 4, NULL, 'Created At', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":1112,"nil%":0.0},"type":{"type/DateTime":{"earliest":"2016-06-03T00:37:05.818","latest":"2020-04-19T14:15:25.677"}}}', 4, 'TIMESTAMP', NULL, NULL); 
+(27, TIMESTAMP '2020-01-22 12:10:04.871', TIMESTAMP '2020-01-22 12:10:21.165', 'ZIP', 'type/Text', 'type/ZipCode', TRUE, STRINGDECODE('The postal code of the account\u2019s billing address'), TRUE, 0, 3, NULL, 'Zip', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":2234,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":5.0}}}', 4, 'CHAR', NULL, NULL),
+(28, TIMESTAMP '2020-01-22 12:10:04.873', TIMESTAMP '2020-01-22 12:10:22.146', 'STATE', 'type/Text', 'type/State', TRUE, STRINGDECODE('The state or province of the account\u2019s billing address'), TRUE, 0, 3, NULL, 'State', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":49,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":2.0}}}', 4, 'CHAR', 'auto-list', NULL),
+(29, TIMESTAMP '2020-01-22 12:10:04.874', TIMESTAMP '2020-01-22 12:10:21.166', 'PASSWORD', 'type/Text', NULL, TRUE, 'This is the salted password of the user. It should not be visible', TRUE, 0, 3, NULL, 'Password', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":2500,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":36.0}}}', 4, 'VARCHAR', NULL, NULL),
+(30, TIMESTAMP '2020-01-22 12:10:04.875', TIMESTAMP '2020-01-22 12:10:22.153', 'CITY', 'type/Text', 'type/City', TRUE, STRINGDECODE('The city of the account\u2019s billing address'), TRUE, 0, 3, NULL, 'City', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":1966,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":8.284}}}', 4, 'VARCHAR', NULL, NULL),
+(31, TIMESTAMP '2020-01-22 12:10:04.981', TIMESTAMP '2020-01-22 12:10:21.928', 'PRODUCT_ID', 'type/Integer', 'type/FK', TRUE, 'The product the review was for', TRUE, 0, 4, NULL, 'Product ID', 'normal', 4, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":176,"nil%":0.0}}', 4, 'INTEGER', NULL, NULL),
+(32, TIMESTAMP '2020-01-22 12:10:04.983', TIMESTAMP '2020-01-22 12:10:04.983', 'ID', 'type/BigInteger', 'type/PK', TRUE, 'A unique internal identifier for the review. Should not be used externally.', TRUE, 0, 4, NULL, 'ID', 'normal', NULL, NULL, NULL, NULL, NULL, 0, 'BIGINT', NULL, NULL),
+(33, TIMESTAMP '2020-01-22 12:10:04.985', TIMESTAMP '2020-01-22 12:10:21.929', 'BODY', 'type/Text', 'type/Description', TRUE, 'The review the user left. Limited to 2000 characters.', TRUE, 0, 4, NULL, 'Body', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":1112,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":180.68345323741008}}}', 4, 'CLOB', NULL, NULL),
+(34, TIMESTAMP '2020-01-22 12:10:04.986', TIMESTAMP '2020-01-22 12:10:21.93', 'REVIEWER', 'type/Text', NULL, TRUE, 'The user who left the review', TRUE, 0, 4, NULL, 'Reviewer', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":1076,"nil%":0.0},"type":{"type/Text":{"percent-json":0.0,"percent-url":0.0,"percent-email":0.0,"average-length":9.972122302158274}}}', 4, 'VARCHAR', NULL, NULL),
+(35, TIMESTAMP '2020-01-22 12:10:04.987', TIMESTAMP '2020-01-22 12:10:22.162', 'CREATED_AT', 'type/DateTime', 'type/CreationTimestamp', TRUE, 'The day and time a review was written by a user.', TRUE, 0, 4, NULL, 'Created At', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":1112,"nil%":0.0},"type":{"type/DateTime":{"earliest":"2016-06-03T00:37:05.818","latest":"2020-04-19T14:15:25.677"}}}', 4, 'TIMESTAMP', NULL, NULL);
 INSERT INTO PUBLIC.METABASE_FIELD(ID, CREATED_AT, UPDATED_AT, NAME, BASE_TYPE, SPECIAL_TYPE, ACTIVE, DESCRIPTION, PREVIEW_DISPLAY, POSITION, TABLE_ID, PARENT_ID, DISPLAY_NAME, VISIBILITY_TYPE, FK_TARGET_FIELD_ID, LAST_ANALYZED, POINTS_OF_INTEREST, CAVEATS, FINGERPRINT, FINGERPRINT_VERSION, DATABASE_TYPE, HAS_FIELD_VALUES, SETTINGS) VALUES
-(36, TIMESTAMP '2020-01-17 14:23:39.483', TIMESTAMP '2020-01-17 14:23:42.823', 'RATING', 'type/Integer', 'type/Score', TRUE, 'The rating (on a scale of 1-5) the user left.', TRUE, 0, 4, NULL, 'Rating', 'normal', NULL, TIMESTAMP '2020-01-17 14:23:42.836', NULL, NULL, '{"global":{"distinct-count":5,"nil%":0.0},"type":{"type/Number":{"min":1.0,"max":5.0,"avg":3.987410071942446,"sd":1.0443899855660577,"q1":3.54744353181696,"q3":4.764807071650455}}}', 4, 'SMALLINT', 'auto-list', NULL);     
+(36, TIMESTAMP '2020-01-22 12:10:04.988', TIMESTAMP '2020-01-22 12:10:22.18', 'RATING', 'type/Integer', 'type/Score', TRUE, 'The rating (on a scale of 1-5) the user left.', TRUE, 0, 4, NULL, 'Rating', 'normal', NULL, TIMESTAMP '2020-01-22 12:10:22.217', NULL, NULL, '{"global":{"distinct-count":5,"nil%":0.0},"type":{"type/Number":{"min":1.0,"max":5.0,"avg":3.987410071942446,"sd":1.0443899855660577,"q1":3.54744353181696,"q3":4.764807071650455}}}', 4, 'SMALLINT', 'auto-list', NULL);      
 CREATE INDEX PUBLIC.IDX_FIELD_TABLE_ID ON PUBLIC.METABASE_FIELD(TABLE_ID);     
 CREATE INDEX PUBLIC.IDX_FIELD_PARENT_ID ON PUBLIC.METABASE_FIELD(PARENT_ID);   
 CREATE CACHED TABLE PUBLIC.VIEW_LOG(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_672CE682_92EF_47ED_86F8_2D4F9183AC98) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_672CE682_92EF_47ED_86F8_2D4F9183AC98,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_D43A0683_1DA5_4383_ACBD_222C69FAA540) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_D43A0683_1DA5_4383_ACBD_222C69FAA540,
     USER_ID INT,
     MODEL VARCHAR(16) NOT NULL,
     MODEL_ID INT NOT NULL,
@@ -751,7 +751,7 @@ ALTER TABLE PUBLIC.VIEW_LOG ADD CONSTRAINT PUBLIC.PK_VIEW_LOG PRIMARY KEY(ID);
 CREATE INDEX PUBLIC.IDX_VIEW_LOG_USER_ID ON PUBLIC.VIEW_LOG(USER_ID);          
 CREATE INDEX PUBLIC.IDX_VIEW_LOG_TIMESTAMP ON PUBLIC.VIEW_LOG(MODEL_ID);       
 CREATE CACHED TABLE PUBLIC.COMPUTATION_JOB_RESULT COMMENT 'Stores results of async computation jobs.'(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_60E25564_FA5F_47C0_A7DD_93331C87C7C3) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_60E25564_FA5F_47C0_A7DD_93331C87C7C3,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_EF567467_3BA2_4446_B534_B3B3870B0505) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_EF567467_3BA2_4446_B534_B3B3870B0505,
     JOB_ID INT NOT NULL,
     CREATED_AT TIMESTAMP NOT NULL,
     UPDATED_AT TIMESTAMP NOT NULL,
@@ -761,7 +761,7 @@ CREATE CACHED TABLE PUBLIC.COMPUTATION_JOB_RESULT COMMENT 'Stores results of asy
 ALTER TABLE PUBLIC.COMPUTATION_JOB_RESULT ADD CONSTRAINT PUBLIC.PK_COMPUTATION_JOB_RESULT PRIMARY KEY(ID);     
 -- 0 +/- SELECT COUNT(*) FROM PUBLIC.COMPUTATION_JOB_RESULT;   
 CREATE CACHED TABLE PUBLIC.QUERY_EXECUTION COMMENT 'A log of executed queries, used for calculating historic execution times, auditing, and other purposes.'(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_3C935C31_69F3_4134_A9B2_20358519A4D5) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_3C935C31_69F3_4134_A9B2_20358519A4D5,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_0F9E7303_EB02_41C6_9581_8B02A2F772CC) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_0F9E7303_EB02_41C6_9581_8B02A2F772CC,
     HASH BINARY(32) NOT NULL COMMENT 'The hash of the query dictionary. This is a 256-bit SHA3 hash of the query.',
     STARTED_AT TIMESTAMP NOT NULL COMMENT 'Timestamp of when this query started running.',
     RUNNING_TIME INT NOT NULL COMMENT 'The time, in milliseconds, this query took to complete.',
@@ -780,7 +780,7 @@ ALTER TABLE PUBLIC.QUERY_EXECUTION ADD CONSTRAINT PUBLIC.PK_QUERY_EXECUTION PRIM
 CREATE INDEX PUBLIC.IDX_QUERY_EXECUTION_STARTED_AT ON PUBLIC.QUERY_EXECUTION(STARTED_AT);      
 CREATE INDEX PUBLIC.IDX_QUERY_EXECUTION_QUERY_HASH_STARTED_AT ON PUBLIC.QUERY_EXECUTION(HASH, STARTED_AT);     
 CREATE CACHED TABLE PUBLIC.PULSE_CHANNEL(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_265B8CD1_F6CA_43AD_A51F_63612D75158C) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_265B8CD1_F6CA_43AD_A51F_63612D75158C,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_20538F71_1C9F_4D8D_88C4_29DCF9AFA822) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_20538F71_1C9F_4D8D_88C4_29DCF9AFA822,
     PULSE_ID INT NOT NULL,
     CHANNEL_TYPE VARCHAR(32) NOT NULL,
     DETAILS CLOB NOT NULL,
@@ -832,7 +832,7 @@ INSERT INTO PUBLIC.QRTZ_CRON_TRIGGERS(SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP, C
 ('MetabaseScheduler', 'metabase.task.sync-and-analyze.trigger.1', 'DEFAULT', '0 50 * * * ? *', 'US/Pacific'),
 ('MetabaseScheduler', 'metabase.task.update-field-values.trigger.1', 'DEFAULT', '0 50 0 * * ? *', 'US/Pacific');     
 CREATE CACHED TABLE PUBLIC.PULSE_CHANNEL_RECIPIENT(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_C693E580_D4E0_4294_A2A7_048E06EDFA2C) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_C693E580_D4E0_4294_A2A7_048E06EDFA2C,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_05A35C62_9715_4D84_BEBA_6117A9F3C15C) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_05A35C62_9715_4D84_BEBA_6117A9F3C15C,
     PULSE_CHANNEL_ID INT NOT NULL,
     USER_ID INT NOT NULL
 );              
@@ -857,7 +857,7 @@ CREATE CACHED TABLE PUBLIC.QRTZ_SIMPROP_TRIGGERS COMMENT 'Used for Quartz schedu
 ALTER TABLE PUBLIC.QRTZ_SIMPROP_TRIGGERS ADD CONSTRAINT PUBLIC.PK_QRTZ_SIMPROP_TRIGGERS PRIMARY KEY(SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP);  
 -- 0 +/- SELECT COUNT(*) FROM PUBLIC.QRTZ_SIMPROP_TRIGGERS;    
 CREATE CACHED TABLE PUBLIC.REVISION(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_371A6FA4_40EA_4CC0_83CD_60E2FF252D1C) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_371A6FA4_40EA_4CC0_83CD_60E2FF252D1C,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_D103B92F_04A2_4790_8B26_706D017E4D64) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_D103B92F_04A2_4790_8B26_706D017E4D64,
     MODEL VARCHAR(16) NOT NULL,
     MODEL_ID INT NOT NULL,
     USER_ID INT NOT NULL,
@@ -879,7 +879,7 @@ CREATE CACHED TABLE PUBLIC.QRTZ_BLOB_TRIGGERS COMMENT 'Used for Quartz scheduler
 ALTER TABLE PUBLIC.QRTZ_BLOB_TRIGGERS ADD CONSTRAINT PUBLIC.PK_QRTZ_BLOB_TRIGGERS PRIMARY KEY(SCHED_NAME, TRIGGER_NAME, TRIGGER_GROUP);        
 -- 0 +/- SELECT COUNT(*) FROM PUBLIC.QRTZ_BLOB_TRIGGERS;       
 CREATE CACHED TABLE PUBLIC.PERMISSIONS_GROUP_MEMBERSHIP(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_D83E4801_363C_4616_8AB0_925325D9494C) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_D83E4801_363C_4616_8AB0_925325D9494C,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_A015697A_42A4_4B9B_99E9_7AF633CD49F8) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_A015697A_42A4_4B9B_99E9_7AF633CD49F8,
     USER_ID INT NOT NULL,
     GROUP_ID INT NOT NULL
 ); 
@@ -889,7 +889,7 @@ CREATE INDEX PUBLIC.IDX_PERMISSIONS_GROUP_MEMBERSHIP_GROUP_ID ON PUBLIC.PERMISSI
 CREATE INDEX PUBLIC.IDX_PERMISSIONS_GROUP_MEMBERSHIP_USER_ID ON PUBLIC.PERMISSIONS_GROUP_MEMBERSHIP(USER_ID);  
 CREATE INDEX PUBLIC.IDX_PERMISSIONS_GROUP_MEMBERSHIP_GROUP_ID_USER_ID ON PUBLIC.PERMISSIONS_GROUP_MEMBERSHIP(GROUP_ID, USER_ID);               
 CREATE CACHED TABLE PUBLIC.PERMISSIONS(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_C521AA0C_2582_43D2_922C_E2766CAC4121) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_C521AA0C_2582_43D2_922C_E2766CAC4121,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_441FD2DA_7863_4CFC_8E83_403C4F26B572) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_441FD2DA_7863_4CFC_8E83_403C4F26B572,
     OBJECT VARCHAR(254) NOT NULL,
     GROUP_ID INT NOT NULL
 );          
@@ -948,7 +948,7 @@ CREATE CACHED TABLE PUBLIC.QRTZ_SCHEDULER_STATE COMMENT 'Used for Quartz schedul
 ALTER TABLE PUBLIC.QRTZ_SCHEDULER_STATE ADD CONSTRAINT PUBLIC.PK_QRTZ_SCHEDULER_STATE PRIMARY KEY(SCHED_NAME, INSTANCE_NAME);  
 -- 1 +/- SELECT COUNT(*) FROM PUBLIC.QRTZ_SCHEDULER_STATE;     
 INSERT INTO PUBLIC.QRTZ_SCHEDULER_STATE(SCHED_NAME, INSTANCE_NAME, LAST_CHECKIN_TIME, CHECKIN_INTERVAL) VALUES
-('MetabaseScheduler', 'tlr-mbp-2019.local1579299818856', 1579299826429, 7500);  
+('MetabaseScheduler', 'par.attlocal.net1579723802096', 1579723922492, 7500);    
 CREATE CACHED TABLE PUBLIC.QRTZ_LOCKS COMMENT 'Used for Quartz scheduler.'(
     SCHED_NAME VARCHAR(120) NOT NULL,
     LOCK_NAME VARCHAR(40) NOT NULL
@@ -959,7 +959,7 @@ INSERT INTO PUBLIC.QRTZ_LOCKS(SCHED_NAME, LOCK_NAME) VALUES
 ('MetabaseScheduler', 'STATE_ACCESS'),
 ('MetabaseScheduler', 'TRIGGER_ACCESS');    
 CREATE CACHED TABLE PUBLIC.METABASE_TABLE(
-    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_7C5A0191_88AE_4394_A9C6_6AE52942A42A) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_7C5A0191_88AE_4394_A9C6_6AE52942A42A,
+    ID INT DEFAULT (NEXT VALUE FOR PUBLIC.SYSTEM_SEQUENCE_1C753CA1_ADE8_4F0D_B1F0_F3E9CC1505B4) NOT NULL NULL_TO_DEFAULT SEQUENCE PUBLIC.SYSTEM_SEQUENCE_1C753CA1_ADE8_4F0D_B1F0_F3E9CC1505B4,
     CREATED_AT TIMESTAMP NOT NULL,
     UPDATED_AT TIMESTAMP NOT NULL,
     NAME VARCHAR(254) NOT NULL,
@@ -980,10 +980,10 @@ CREATE CACHED TABLE PUBLIC.METABASE_TABLE(
 ALTER TABLE PUBLIC.METABASE_TABLE ADD CONSTRAINT PUBLIC.PK_METABASE_TABLE PRIMARY KEY(ID);     
 -- 4 +/- SELECT COUNT(*) FROM PUBLIC.METABASE_TABLE;           
 INSERT INTO PUBLIC.METABASE_TABLE(ID, CREATED_AT, UPDATED_AT, NAME, ROWS, DESCRIPTION, ENTITY_NAME, ENTITY_TYPE, ACTIVE, DB_ID, DISPLAY_NAME, VISIBILITY_TYPE, SCHEMA, POINTS_OF_INTEREST, CAVEATS, SHOW_IN_GETTING_STARTED, FIELDS_HASH) VALUES
-(1, TIMESTAMP '2020-01-17 14:23:39.282', TIMESTAMP '2020-01-17 14:23:42.825', 'PRODUCTS', NULL, 'This is our product catalog. It includes all products ever sold by the Sample Company.', NULL, 'entity/ProductTable', TRUE, 1, 'Products', NULL, 'PUBLIC', NULL, NULL, FALSE, 'aqXlpsb4FjyCH5o8qP4a2A=='),
-(2, TIMESTAMP '2020-01-17 14:23:39.288', TIMESTAMP '2020-01-17 14:23:42.826', 'ORDERS', NULL, 'This is a confirmed order for a product from a user.', NULL, 'entity/TransactionTable', TRUE, 1, 'Orders', NULL, 'PUBLIC', NULL, NULL, FALSE, 'Iqz4vNbm7vh80Uo9pWdesA=='),
-(3, TIMESTAMP '2020-01-17 14:23:39.29', TIMESTAMP '2020-01-17 14:23:42.827', 'PEOPLE', NULL, 'This is a user account. Note that employees and customer support staff will have accounts.', NULL, 'entity/UserTable', TRUE, 1, 'People', NULL, 'PUBLIC', NULL, NULL, FALSE, 'CXKI5VefRbNYgZ8IStmaNw=='),
-(4, TIMESTAMP '2020-01-17 14:23:39.295', TIMESTAMP '2020-01-17 14:23:42.829', 'REVIEWS', NULL, 'These are reviews our customers have left on products. Note that these are not tied to orders so it is possible people have reviewed products they did not purchase from us.', NULL, 'entity/GenericTable', TRUE, 1, 'Reviews', NULL, 'PUBLIC', NULL, NULL, FALSE, 'wIcr7cLnXrbpAUfOXgcmeQ=='); 
+(1, TIMESTAMP '2020-01-22 12:10:03.653', TIMESTAMP '2020-01-22 12:10:22.189', 'PRODUCTS', NULL, 'This is our product catalog. It includes all products ever sold by the Sample Company.', NULL, 'entity/ProductTable', TRUE, 1, 'Products', NULL, 'PUBLIC', NULL, NULL, FALSE, 'aqXlpsb4FjyCH5o8qP4a2A=='),
+(2, TIMESTAMP '2020-01-22 12:10:03.661', TIMESTAMP '2020-01-22 12:10:22.199', 'ORDERS', NULL, 'This is a confirmed order for a product from a user.', NULL, 'entity/TransactionTable', TRUE, 1, 'Orders', NULL, 'PUBLIC', NULL, NULL, FALSE, 'Iqz4vNbm7vh80Uo9pWdesA=='),
+(3, TIMESTAMP '2020-01-22 12:10:03.667', TIMESTAMP '2020-01-22 12:10:22.201', 'PEOPLE', NULL, 'This is a user account. Note that employees and customer support staff will have accounts.', NULL, 'entity/UserTable', TRUE, 1, 'People', NULL, 'PUBLIC', NULL, NULL, FALSE, 'CXKI5VefRbNYgZ8IStmaNw=='),
+(4, TIMESTAMP '2020-01-22 12:10:03.674', TIMESTAMP '2020-01-22 12:10:22.203', 'REVIEWS', NULL, 'These are reviews our customers have left on products. Note that these are not tied to orders so it is possible people have reviewed products they did not purchase from us.', NULL, 'entity/GenericTable', TRUE, 1, 'Reviews', NULL, 'PUBLIC', NULL, NULL, FALSE, 'wIcr7cLnXrbpAUfOXgcmeQ==');
 CREATE INDEX PUBLIC.IDX_TABLE_DB_ID ON PUBLIC.METABASE_TABLE(DB_ID);           
 CREATE INDEX PUBLIC.IDX_METABASE_TABLE_SHOW_IN_GETTING_STARTED ON PUBLIC.METABASE_TABLE(SHOW_IN_GETTING_STARTED);              
 CREATE INDEX PUBLIC.IDX_METABASE_TABLE_DB_ID_SCHEMA ON PUBLIC.METABASE_TABLE(DB_ID, SCHEMA);   
