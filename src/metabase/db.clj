@@ -221,9 +221,7 @@
   we use separate options for data warehouse DBs. See
   https://www.mchange.com/projects/c3p0/#configuring_connection_testing for an overview of the options used
   below (jump to the 'Simple advice on Connection testing' section.)"
-  {"testConnectionOnCheckout" false
-   "testConnectionOnCheckin"  true
-   "idleConnectionTestPeriod" 30})
+  {"idleConnectionTestPeriod" 60})
 
 (defn- create-connection-pool! [jdbc-spec]
   (db/set-default-quoting-style! (case (db-type)
