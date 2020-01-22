@@ -64,7 +64,8 @@
 (defn format
   "Format temporal value `t` as a ISO-8601 date/time/datetime string."
   ^String [t]
-  (format* (temporal->iso-8601-formatter t) t))
+  (when t
+    (format* (temporal->iso-8601-formatter t) t)))
 
 (defn format-sql
   "Format a temporal value `t` as a SQL-style literal string (for most SQL databases). This is the same as ISO-8601 but

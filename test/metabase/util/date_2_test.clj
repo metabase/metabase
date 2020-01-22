@@ -142,7 +142,11 @@
         "should get formatted as the same way as an OffsetDateTime"))
   (testing "Instant"
     (is (= "1970-01-01T00:00:00Z"
-           (u.date/format (t/instant "1970-01-01T00:00:00Z"))))))
+           (u.date/format (t/instant "1970-01-01T00:00:00Z")))))
+  (testing "nil"
+    (is (= nil
+           (u.date/format nil))
+        "Passing `nil` should return `nil`")))
 
 (deftest format-sql-test
   (testing "LocalDateTime"
