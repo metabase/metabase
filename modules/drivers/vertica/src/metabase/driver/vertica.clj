@@ -129,14 +129,14 @@
 
 (defmethod sql-jdbc.execute/read-column [:vertica Types/TIME]
   [_ _ ^ResultSet rs _ ^Integer i]
-  (let [s (.getString rs i)
-        t (u.date/parse s)]
-    (log/tracef "(.getString rs %d) [TIME] -> %s -> %s" i s t)
-    t))
+  (when-let [s (.getString rs i)]
+    (let [t (u.date/parse s)]
+      (log/tracef "(.getString rs %d) [TIME] -> %s -> %s" i s t)
+      t)))
 
 (defmethod sql-jdbc.execute/read-column [:vertica Types/TIME_WITH_TIMEZONE]
   [_ _ ^ResultSet rs _ ^Integer i]
-  (let [s (.getString rs i)
-        t (u.date/parse s)]
-    (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
-    t))
+  (when-let [s (.getString rs i)]
+    (let [t (u.date/parse s)]
+      (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
+      t)))

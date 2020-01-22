@@ -95,19 +95,21 @@ sub build {
 
 # Codesign Metabase.app
 sub codesign {
-    my $codesigning_cert_name = config('codesigningIdentity') or return;
+    Readonly my $codesigning_cert_name => config_or_die('codesigningIdentity');
 
     announce "Codesigning $app...";
 
     system('codesign', '--force', '--verify',
            '--sign', $codesigning_cert_name,
            '-r=designated => anchor trusted',
+           '--timestamp',
+           '--options', 'runtime',
            '--deep', get_file_or_die($app)) == 0 or die "Code signing failed: $!\n";
 }
 
 # Verify that Metabase.app was signed correctly
 sub verify_codesign {
-    return unless config('codesigningIdentity');
+    config_or_die('codesigningIdentity');
 
     announce "Verifying codesigning for $app...";
 
@@ -154,8 +156,8 @@ sub generate_appcast {
 
     remove_tree($appcast);
 
-    my $aws_bucket  = config('awsBucket')  or return;
-    my $signature   = generate_signature() or return;
+    Readonly my $aws_bucket  => config_or_die('awsBucket');
+    Readonly my $signature   => generate_signature() or die 'Failed to generate appcast signature';
 
     open(my $out, '>', $appcast) or die "Unable to write to $appcast: $!";
     print $out Text::Caml->new->render_file(get_file_or_die('bin/templates/appcast.xml.template'), {
@@ -296,6 +298,85 @@ sub create_dmg {
     remove_tree($temp_dmg, $dmg_source_dir);
 }
 
+# ------------------------------------------------------------ NOTORIZATION ------------------------------------------------------------
+
+sub getAppleID {
+    return $ENV{'METABASE_MAC_APP_BUILD_APPLE_ID'} or die 'Make sure you export the env var METABASE_MAC_APP_BUILD_APPLE_ID';
+}
+
+sub getAscProvider {
+    return config_or_die('appStoreConnectProviderShortName');
+}
+
+sub notarize_file {
+    my ($filename) = @_;
+
+    announce "Notarizing $filename...";
+
+    Readonly my $appleID     => getAppleID;
+    Readonly my $ascProvider => getAscProvider;
+
+    system('xcrun', 'altool', '--notarize-app',
+           '--primary-bundle-id', 'com.metabase.Metabase',
+           '--username', $appleID,
+           '--password', '@keychain:METABASE_MAC_APP_BUILD_PASSWORD',
+           '--asc-provider', $ascProvider,
+           '--file', $filename
+          ) == 0 or die $!;
+}
+
+sub wait_for_notarization {
+    announce "Waiting for notarization...";
+
+    Readonly my $appleID     => getAppleID;
+    Readonly my $ascProvider => getAscProvider;
+
+    my $status = `xcrun altool --notarization-history 0 -u "$appleID" -p "\@keychain:METABASE_MAC_APP_BUILD_PASSWORD" --asc-provider $ascProvider` or die $!;
+
+    print "$status\n";
+
+    if ($status =~ m/in progress/) {
+        print "Notarization is still in progress, waiting a few seconds and trying again...\n";
+        sleep 5;
+        wait_for_notarization();
+    } else {
+        announce "Notarization successful.";
+        return "Done";
+    }
+}
+
+sub staple_notorization {
+    my ($filename) = @_;
+
+    announce "Stapling notarization to $filename...";
+
+    system('xcrun', 'stapler', 'staple',
+           '-v', $filename) == 0 or die $1;
+
+    announce "Notarization stapled successfully.";
+}
+
+# Verify that an app is Signed & Notarized correctly. See https://help.apple.com/xcode/mac/current/#/dev1cc22a95c
+sub verify_notarization {
+    # e.g. /Applications/Metabase.app
+    my ($appFile) = @_;
+
+    announce "Verifying that $appFile is notarized correctly...";
+
+    system('spctl', '-a', '-v', $appFile) == 0 or die $!;
+
+    announce "Verification successful.";
+}
+
+
+sub notarize_files {
+    notarize_file(get_file_or_die($zipfile));
+    notarize_file(get_file_or_die($dmg));
+    wait_for_notarization();
+    staple_notorization(get_file_or_die($dmg));
+    verify_notarization(get_file_or_die($app));
+}
+
 
 # ------------------------------------------------------------ UPLOADING ------------------------------------------------------------
 
@@ -303,8 +384,8 @@ sub create_dmg {
 # Upload artifacts to AWS
 # Make sure to run `aws configure --profile metabase` first to set up your ~/.aws/config file correctly
 sub upload {
-    my $aws_profile = config('awsProfile') or return;
-    my $aws_bucket  = config('awsBucket')  or return;
+    Readonly my $aws_profile => config_or_die('awsProfile');
+    Readonly my $aws_bucket  => config_or_die('awsBucket');
 
     # Make a folder that contains the files we want to upload
     Readonly my $upload_dir => artifact('upload');
@@ -332,6 +413,20 @@ sub upload {
     announce "Upload finished."
 }
 
+sub create_cloudfront_invalidation {
+    announce "Creating CloudFront invalidation...";
+
+    system ('aws', 'configure',
+            'set', 'preview.cloudfront', 'true') == 0 or die $!;
+
+    system ('aws', 'cloudfront', 'create-invalidation',
+            '--profile', config_or_die('awsProfile'),
+            '--distribution-id', config_or_die('cloudFrontDistributionID'),
+            '--paths', '/appcast.xml') == 0 or die $!;
+
+    announce "CloudFront invalidation created successfully.";
+}
+
 
 # ------------------------------------------------------------ RUN ALL ------------------------------------------------------------
 
@@ -345,7 +440,9 @@ sub all {
     generate_appcast;
     edit_release_notes;
     create_dmg;
+    notarize_files;
     upload;
+    create_cloudfront_invalidation;
 }
 
 # Run all the commands specified in command line args, otherwise default to running 'all'

@@ -1,6 +1,6 @@
 info:
   name: Metabase Snowflake Driver
-  version: 1.0.0-SNAPSHOT-3.10.2
+  version: 1.0.0-SNAPSHOT-3.11.0
   description: Allows Metabase to connect to Snowflake databases.
 driver:
   name: snowflake

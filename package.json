@@ -92,6 +92,7 @@
     "@babel/standalone": "^7.4.5",
     "@cypress/webpack-preprocessor": "^4.1.0",
     "@slack/client": "^3.5.4",
+    "@testing-library/cypress": "^5.0.2",
     "@testing-library/jest-dom": "^4.0.0",
     "@testing-library/react": "^8.0.6",
     "babel-cli": "^6.11.4",
@@ -113,7 +114,7 @@
     "color-diff": "^1.1.0",
     "concurrently": "^3.1.0",
     "css-loader": "^0.28.7",
-    "cypress": "3.8.0",
+    "cypress": "3.8.2",
     "documentation": "^4.0.0-rc.1",
     "enzyme": "^3.8.0",
     "enzyme-2": "npm:enzyme@2",
@@ -154,7 +155,6 @@
     "karma-webpack": "^2.0.5",
     "lint-staged": "^3.3.1",
     "mockdate": "^2.0.2",
-    "npm": "^5.8.0",
     "postcss-cssnext": "^2.4.0",
     "postcss-import": "^9.0.0",
     "postcss-loader": "^2.0.8",
@@ -220,5 +220,8 @@
       "prettier --write",
       "git add"
     ]
+  },
+  "resolutions": {
+    "cypress": "3.8.2"
   }
 }

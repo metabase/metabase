@@ -25,7 +25,7 @@
            java.util.concurrent.TimeoutException
            java.util.Locale
            javax.xml.bind.DatatypeConverter
-           org.apache.commons.validator.routines.UrlValidator))
+           [org.apache.commons.validator.routines RegexValidator UrlValidator]))
 
 ;; This is the very first log message that will get printed.
 ;;
@@ -85,7 +85,7 @@
 
     (u/varargs String)
     (u/varargs String [\"A\" \"B\"])"
-  {:style/indent 1}
+  {:style/indent 1, :arglists '([klass] [klass xs])}
   [klass & [objects]]
   (vary-meta `(into-array ~klass ~objects)
              assoc :tag (format "[L%s;" (.getCanonicalName ^Class (ns-resolve *ns* klass)))))
@@ -100,7 +100,9 @@
 (defn url?
   "Is `s` a valid HTTP/HTTPS URL string?"
   ^Boolean [s]
-  (let [validator (UrlValidator. (varargs String ["http" "https"]) UrlValidator/ALLOW_LOCAL_URLS)]
+  (let [validator (UrlValidator. (varargs String ["http" "https"])
+                                 (RegexValidator. "^\\p{Alnum}+([\\.|\\-]\\p{Alnum}+)*(:\\d*)?")
+                                 UrlValidator/ALLOW_LOCAL_URLS)]
     (.isValid validator (str s))))
 
 (defn maybe?
@@ -633,15 +635,6 @@
                          (when (pred x) i))
                        coll)))
 
-
-(defn is-java-9-or-higher?
-  "Are we running on Java 9 or above?"
-  ([]
-   (is-java-9-or-higher? (System/getProperty "java.version")))
-  ([java-version-str]
-   (when-let [[_ java-major-version-str] (re-matches #"^(?:1\.)?(\d+).*$" java-version-str)]
-     (>= (Integer/parseInt java-major-version-str) 9))))
-
 (defn hexadecimal-string?
   "Returns truthy if `new-value` is a hexadecimal-string"
   [new-value]
@@ -713,29 +706,6 @@
   {:style/indent 0}
   [& body]
   `(do-with-us-locale (fn [] ~@body)))
-
-(defn xor
-  "Exclusive or. (Because this is implemented as a function, rather than a macro, it is not short-circuting the way `or`
-  is.)"
-  [x y & more]
-  (loop [[x y & more] (into [x y] more)]
-    (cond
-      (and x y)
-      false
-
-      (seq more)
-      (recur (cons (or x y) more))
-
-      :else
-      (or x y))))
-
-(defn xor-pred
-  "Takes a set of predicates and returns a function that is true if *exactly one* of its composing predicates returns a
-  logically true value. Compare to `every-pred`."
-  [& preds]
-  (fn [& args]
-    (apply xor (for [pred preds]
-                 (apply pred args)))))
 
 (defn topological-sort
   "Topologically sorts vertexs in graph g. Graph is a map of vertexs to edges. Optionally takes an
@@ -854,3 +824,28 @@
   "Convert `minutes` to milliseconds. More readable than doing this math inline."
   [minutes]
   (-> minutes minutes->seconds seconds->ms))
+
+(defn parse-currency
+  "Parse a currency String to a BigDecimal. Handles a variety of different formats, such as:
+
+    $1,000.00
+    -£127.54
+    -127,54 €
+    kr-127,54
+    € 127,54-
+    ¥200"
+  ^java.math.BigDecimal [^String s]
+  (when-not (str/blank? s)
+    (bigdec
+     (reduce
+      (partial apply str/replace)
+      s
+      [
+       ;; strip out any current symbols
+       [#"[^\d,.-]+"          ""]
+       ;; now strip out any thousands separators
+       [#"(?<=\d)[,.](\d{3})" "$1"]
+       ;; now replace a comma decimal seperator with a period
+       [#","                  "."]
+       ;; move minus sign at end to front
+       [#"(^[^-]+)-$"         "-$1"]]))))

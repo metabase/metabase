@@ -1,3 +1,5 @@
+import "@testing-library/cypress/add-commands";
+
 export const ADMIN_CREDS = {
   username: "bob@metabase.com",
   password: "12341234",
@@ -27,13 +29,18 @@ export function restore(name = "default") {
   cy.request("POST", `/api/testing/restore/${name}`);
 }
 
-export function popover(callback) {
-  const p = cy.get(".PopoverContainer");
-  return callback ? callback(p) : p;
+// various Metabase-specific "scoping" functions like inside popover/modal/navbar/main content area
+export function popover() {
+  return cy.get(".PopoverContainer");
 }
-export function modal(callback) {
-  const m = cy.get(".ModalContainer");
-  return callback ? callback(m) : m;
+export function modal() {
+  return cy.get(".ModalContainer");
+}
+export function nav() {
+  return cy.get("nav");
+}
+export function main() {
+  return cy.get("nav").next();
 }
 
 Cypress.on("uncaught:exception", (err, runnable) => false);
