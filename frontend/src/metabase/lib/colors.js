@@ -55,6 +55,7 @@ export const aliases = {
   database: "accent2",
   dashboard: "brand",
   pulse: "accent4",
+  nav: "brand",
 };
 
 export const harmony = [];

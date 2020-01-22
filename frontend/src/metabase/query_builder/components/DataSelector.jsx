@@ -432,7 +432,13 @@ export default class DataSelector extends Component {
           selectedTable,
           selectedField,
         })}
-        <Icon className="ml1" name="chevrondown" size={triggerIconSize || 8} />
+        {!this.props.readOnly && (
+          <Icon
+            className="ml1"
+            name="chevrondown"
+            size={triggerIconSize || 8}
+          />
+        )}
       </span>
     );
   }

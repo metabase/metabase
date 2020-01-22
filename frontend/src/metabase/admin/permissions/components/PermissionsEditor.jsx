@@ -26,6 +26,7 @@ const PermissionsEditor = ({
   saveError,
   diff,
   location,
+  children,
 }) => {
   const saveButton = (
     <Confirm
@@ -76,6 +77,7 @@ const PermissionsEditor = ({
               <Breadcrumbs className="py1" crumbs={grid.crumbs} />
             </div>
           ) : null}
+          {children}
           <PermissionsGrid
             className="flex-full"
             grid={grid}

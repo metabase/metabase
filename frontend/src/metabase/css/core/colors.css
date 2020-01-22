@@ -58,7 +58,7 @@
   --alt-color: var(--color-bg-light);
   --alt-bg-color: var(--color-bg-light);
 
-  --success-color: var(--color-accent1);
+  --success-color: var(--color-success);
   --headsup-color: var(--color-warning);
 
   --gold-color: var(--color-accent4);
@@ -127,10 +127,10 @@
 /* success */
 
 .text-success {
-  color: var(--color-accent1);
+  color: var(--color-success);
 }
 .bg-success {
-  background-color: var(--color-accent1);
+  background-color: var(--color-success);
 }
 
 /* error */

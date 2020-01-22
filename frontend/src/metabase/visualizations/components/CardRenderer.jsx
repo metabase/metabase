@@ -17,6 +17,7 @@ type DeregisterFunction = () => void;
 
 type Props = VisualizationProps & {
   renderer: (element: Element, props: VisualizationProps) => DeregisterFunction,
+  style?: any,
 };
 
 // We track this as part of the render loop.

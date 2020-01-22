@@ -170,6 +170,10 @@ const MetabaseUtils = {
   // 0.0.9, 0.0.10-snapshot, 0.0.10-alpha1, 0.0.10-rc1, 0.0.10-rc2, 0.0.10-rc10
   // 0.0.10, 0.1.0, 0.2.0, 0.10.0, 1.1.0
   compareVersions(aVersion, bVersion) {
+    if (!aVersion || !bVersion) {
+      return null;
+    }
+
     const SPECIAL_COMPONENTS = {
       snapshot: -4,
       alpha: -3,

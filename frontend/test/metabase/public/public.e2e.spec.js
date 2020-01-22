@@ -1,5 +1,3 @@
-jest.mock("metabase/components/ExplicitSize");
-
 // Converted from an old Selenium E2E test
 import {
   useSharedAdminLogin,

@@ -48,6 +48,7 @@
     "react-addons-shallow-compare": "^15.2.1",
     "react-ansi-style": "^1.0.0",
     "react-collapse": "^4.0.3",
+    "react-color": "^2.14.1",
     "react-copy-to-clipboard": "^5.0.1",
     "react-dnd": "3",
     "react-dnd-html5-backend": "3",

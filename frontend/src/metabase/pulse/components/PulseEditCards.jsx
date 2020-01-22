@@ -8,6 +8,7 @@ import PulseCardPreview from "./PulseCardPreview";
 
 import QuestionSelect from "metabase/containers/QuestionSelect";
 
+// import Query from "metabase/lib/query";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { color } from "metabase/lib/colors";

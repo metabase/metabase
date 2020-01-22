@@ -13,6 +13,8 @@ import { UserApi, SessionApi } from "metabase/services";
 
 import FormGroupsWidget from "metabase/components/form/widgets/FormGroupsWidget";
 
+import { PLUGIN_ADMIN_USER_FORM_FIELDS } from "metabase/plugins";
+
 import type { FormFieldDefinition } from "metabase/containers/Form";
 
 export const DEACTIVATE = "metabase/entities/users/DEACTIVATE";
@@ -155,6 +157,7 @@ const Users = createEntity({
           title: "Groups",
           type: FormGroupsWidget,
         },
+        ...PLUGIN_ADMIN_USER_FORM_FIELDS,
       ],
     },
     user: {
