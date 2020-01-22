@@ -9,7 +9,7 @@
    {:dependencies
     [[org.clojure/clojure "1.10.1"]
      [metabase-core "1.0.0-SNAPSHOT"]
-     [metabase/google-driver "1.0.0-SNAPSHOT-1.27.0"]]}
+     [metabase/google-driver "1.0.0-SNAPSHOT-1.30.7"]]}
 
    :uberjar
    {:auto-clean    true
