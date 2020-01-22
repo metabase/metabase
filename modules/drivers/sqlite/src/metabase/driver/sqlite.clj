@@ -288,6 +288,8 @@
 (defmethod sql-jdbc.execute/read-column [:sqlite Types/DATE]
   [_ _ ^ResultSet rs _ ^Integer i]
   (try
-    (t/local-date (.getDate rs i))
+    (when-let [t (.getDate rs i)]
+      (t/local-date t))
     (catch Throwable _
-      (u.date/parse (.getString rs i) (qp.timezone/results-timezone-id)))))
+      (when-let [s (.getString rs i)]
+        (u.date/parse s (qp.timezone/results-timezone-id))))))

@@ -68,9 +68,9 @@
   (valid-timezone-id (report-timezone-id*)))
 
 (defn results-timezone-id
-  "The timezone that a query is actually ran in -- report timezone, if set and supported by the current driver;
+  "The timezone that a query is actually ran in ­ report timezone, if set and supported by the current driver;
   otherwise the timezone of the database (if known), otherwise the system timezone. Guaranteed to always return a
-  timezone ID — never returns `nil`."
+  timezone ID ­ never returns `nil`."
   (^String []
    (results-timezone-id driver/*driver* ::db-from-store))
 

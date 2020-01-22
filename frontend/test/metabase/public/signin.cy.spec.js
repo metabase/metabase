@@ -10,25 +10,25 @@ describe("sign in", () => {
 
   it("should display an error for incorrect passwords", () => {
     cy.visit("/");
-    cy.get('[name="username"]').type(USERS.admin.username);
-    cy.get('[name="password"]').type("INVALID" + USERS.admin.password);
-    cy.get(".Button").click();
+    cy.findByLabelText("Email address").type(USERS.admin.username);
+    cy.findByLabelText("Password").type("INVALID" + USERS.admin.password);
+    cy.findByText("Sign in").click();
     cy.contains("did not match stored password");
   });
 
-  it("should display same error for unknown users", () => {
+  it("should display same error for unknown users (to avoid leaking the existence of accounts)", () => {
     cy.visit("/");
-    cy.get('[name="username"]').type("INVALID" + USERS.admin.username);
-    cy.get('[name="password"]').type(USERS.admin.password);
-    cy.get(".Button").click();
+    cy.findByLabelText("Email address").type("INVALID" + USERS.admin.username);
+    cy.findByLabelText("Password").type(USERS.admin.password);
+    cy.findByText("Sign in").click();
     cy.contains("did not match stored password");
   });
 
   it("should greet users after successful login", () => {
-    cy.visit("/");
-    cy.get('[name="username"]').type(USERS.admin.username);
-    cy.get('[name="password"]').type(USERS.admin.password);
-    cy.get(".Button").click();
-    cy.contains(/[a-z ]+, Bobby/i);
+    cy.visit("/auth/login");
+    cy.findByLabelText("Email address").type(USERS.admin.username);
+    cy.findByLabelText("Password").type(USERS.admin.password);
+    cy.findByText("Sign in").click();
+    cy.contains(/[a-z ]+, Bob/i);
   });
 });

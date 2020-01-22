@@ -533,7 +533,7 @@
               "2018-04-18"
 
               ;; TIMEZONE FIXME — Busted
-              (#{:snowflake :vertica} driver/*driver*)
+              (= driver/*driver* :vertica)
               "2018-04-17T00:00:00-07:00"
 
               (qp.test/supports-report-timezone? driver/*driver*)

@@ -4,6 +4,7 @@
             [kixi.stats
              [core :as stats]
              [math :as math]]
+            [medley.core :as m]
             [metabase.mbql.util :as mbql.u]
             [metabase.models.field :as field]
             [metabase.sync.analyze.fingerprint.fingerprinters :as f]
@@ -160,18 +161,16 @@
    :quarter (* 30.4 3)
    :year    365.1})
 
-(defn- infer-unit
-  [from to]
-  (when (and from to)
-    (some (fn [[unit duration]]
-            (when (about= (- to from) duration)
-              unit))
-          unit->duration)))
-
 (defn- valid-period?
   [from to unit]
   (when (and from to unit)
-    (about= (- to from) (unit->duration unit))))
+    ;; Make sure we work for both ascending and descending time series
+    (let [[from to] (sort [from to])]
+      (about= (- to from) (unit->duration unit)))))
+
+(defn- infer-unit
+  [from to]
+  (m/find-first (partial valid-period? from to) (keys unit->duration)))
 
 (defn- ->millis-from-epoch [t]
   (when t

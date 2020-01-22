@@ -101,16 +101,18 @@
 (defmethod sql.qp/unix-timestamp->timestamp [:snowflake :seconds]      [_ _ expr] (hsql/call :to_timestamp expr))
 (defmethod sql.qp/unix-timestamp->timestamp [:snowflake :milliseconds] [_ _ expr] (hsql/call :to_timestamp expr 3))
 
-(defmethod sql.qp/current-datetime-fn :snowflake [_]
+(defmethod sql.qp/current-datetime-fn :snowflake
+  [_]
   :%current_timestamp)
 
-(defmethod driver/date-add :snowflake [_ dt amount unit]
+(defmethod driver/date-add :snowflake
+  [_ dt amount unit]
   (hsql/call :dateadd
     (hsql/raw (name unit))
     (hsql/raw (int amount))
     (hx/->timestamp dt)))
 
-(defn- extract [unit expr] (hsql/call :date_part unit (hx/->timestamp expr)))
+(defn- extract    [unit expr] (hsql/call :date_part unit (hx/->timestamp expr)))
 (defn- date-trunc [unit expr] (hsql/call :date_trunc unit (hx/->timestamp expr)))
 
 (defmethod sql.qp/date [:snowflake :default]         [_ _ expr] expr)
@@ -272,14 +274,30 @@
 ;; return a String that we can parse
 (defmethod sql-jdbc.execute/read-column [:snowflake Types/TIME]
   [_ _ ^ResultSet rs _ ^Integer i]
-  (let [s (.getString rs i)
-        t (u.date/parse s)]
-    (log/tracef "(.getString rs %d) [TIME] -> %s -> %s" i s t)
-    t))
+  (when-let [s (.getString rs i)]
+    (let [t (u.date/parse s)]
+      (log/tracef "(.getString rs %d) [TIME] -> %s -> %s" i s t)
+      t)))
 
 (defmethod sql-jdbc.execute/read-column [:snowflake Types/TIME_WITH_TIMEZONE]
   [_ _ ^ResultSet rs _ ^Integer i]
-  (let [s (.getString rs i)
-        t (u.date/parse s)]
-    (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
-    t))
+  (when-let [s (.getString rs i)]
+    (let [t (u.date/parse s)]
+      (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
+      t)))
+
+;; TODO ­ would it make more sense to use functions like `timestamp_tz_from_parts` directly instead of JDBC parameters?
+
+;; Snowflake seems to ignore the calendar parameter of `.setTime` and `.setTimestamp` and instead uses the session
+;; timezone; normalize temporal values to UTC so we end up with the right values
+(defmethod sql-jdbc.execute/set-parameter [::use-legacy-classes-for-read-and-set java.time.OffsetTime]
+  [driver ps i t]
+  (sql-jdbc.execute/set-parameter driver ps i (t/sql-time (t/with-offset-same-instant t (t/zone-offset 0)))))
+
+(defmethod sql-jdbc.execute/set-parameter [::use-legacy-classes-for-read-and-set java.time.OffsetDateTime]
+  [driver ps i t]
+  (sql-jdbc.execute/set-parameter driver ps i (t/sql-timestamp (t/with-offset-same-instant t (t/zone-offset 0)))))
+
+(defmethod sql-jdbc.execute/set-parameter [:snowflake java.time.ZonedDateTime]
+  [driver ps i t]
+  (sql-jdbc.execute/set-parameter driver ps i (t/sql-timestamp (t/with-zone-same-instant t (t/zone-id "UTC")))))
