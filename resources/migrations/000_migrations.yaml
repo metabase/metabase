@@ -5333,5 +5333,5 @@ databaseChangeLog:
         - addUniqueConstraint:
             tableName: metabase_database
             columnNames: name, engine
-            constraintName: idx_uniq_table_name_engine
+            constraintName: idx_uniq_database_name_engine
 
