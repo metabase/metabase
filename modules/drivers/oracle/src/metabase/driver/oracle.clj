@@ -294,12 +294,12 @@
   ;; try both and wrap the first in a try-catch. As far as I know there's now way to tell whether the value has a zone
   ;; offset or ID without first fetching a `TIMESTAMPTZ` object. So to avoid the try-catch we can fetch the
   ;; `TIMESTAMPTZ` and use `.offsetDateTimeValue` instead.
-  (let [^TIMESTAMPTZ t                  (.getObject rs i TIMESTAMPTZ)
-        ^C3P0ProxyConnection proxy-conn (.. rs getStatement getConnection)
-        conn                            (.unwrap proxy-conn OracleConnection)]
-    ;; TIMEZONE FIXME - we need to warn if the Oracle JDBC driver is `ojdbc7.jar`, which probably won't have this method
-    ;; I think we can call `(oracle.jdbc.OracleDriver/getJDBCVersion)` and check whether it returns 4.2+
-    (.offsetDateTimeValue t conn)))
+  (when-let [^TIMESTAMPTZ t (.getObject rs i TIMESTAMPTZ)]
+    (let [^C3P0ProxyConnection proxy-conn (.. rs getStatement getConnection)
+          conn                            (.unwrap proxy-conn OracleConnection)]
+      ;; TIMEZONE FIXME - we need to warn if the Oracle JDBC driver is `ojdbc7.jar`, which probably won't have this method
+      ;; I think we can call `(oracle.jdbc.OracleDriver/getJDBCVersion)` and check whether it returns 4.2+
+      (.offsetDateTimeValue t conn))))
 
 (defmethod unprepare/unprepare-value [:oracle OffsetDateTime]
   [_ t]

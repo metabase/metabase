@@ -10,8 +10,6 @@
             [metabase.models
              [common :as common]
              [setting :as setting :refer [defsetting]]]
-            [metabase.plugins.classloader :as classloader]
-            [metabase.public-settings.metastore :as metastore]
             [metabase.util
              [i18n :refer [available-locales-with-names deferred-tru set-locale trs tru]]
              [password :as password]]
@@ -36,14 +34,13 @@
   ;; Don't i18n this docstring because it's not user-facing! :)
   "Unique identifier used for this instance of Metabase. This is set once and only once the first time it is fetched via
   its magic getter. Nice!"
-  :internal? true
-  :setter    (fn [& _]
-               (throw (UnsupportedOperationException. "site-uuid is automatically generated. Don't try to change it!")))
+  :visibility :internal
+  :setter     :none
   ;; magic getter will either fetch value from DB, or if no value exists, set the value to a random UUID.
-  :getter    (fn []
-               (or (setting/get-string :site-uuid)
-                   (let [value (str (UUID/randomUUID))]
-                     (setting/set-string! :site-uuid value)
+  :getter     (fn []
+                (or (setting/get-string :site-uuid)
+                    (let [value (str (UUID/randomUUID))]
+                      (setting/set-string! :site-uuid value)
                      value))))
 
 (defn- normalize-site-url [^String s]
@@ -62,6 +59,7 @@
 ;; It will also prepend `http://` to the URL if there's not protocol when it comes in
 (defsetting site-url
   (deferred-tru "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\".")
+  :visibility :public
   :getter (fn []
             (try
               (some-> (setting/get-string :site-url) normalize-site-url)
@@ -79,32 +77,41 @@
   :default   "en")
 
 (defsetting admin-email
-  (deferred-tru "The email address users should be referred to if they encounter a problem."))
+  (deferred-tru "The email address users should be referred to if they encounter a problem.")
+  :visibility :authenticated)
 
 (defsetting anon-tracking-enabled
   (deferred-tru "Enable the collection of anonymous usage data in order to help Metabase improve.")
-  :type   :boolean
-  :default true)
+  :type       :boolean
+  :default    true
+  :visibility :public)
+
+(defsetting ga-code
+  (deferred-tru "Google Analytics tracking code.")
+  :default    "UA-60817802-1"
+  :visibility :public)
 
 (defsetting map-tile-server-url
   (deferred-tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
-  :default "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
+  :default    "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+  :visibility :public)
 
 (defsetting enable-public-sharing
   (deferred-tru "Enable admins to create publicly viewable links (and embeddable iframes) for Questions and Dashboards?")
-  :type    :boolean
-  :default false)
+  :type       :boolean
+  :default    false
+  :visibility :authenticated)
 
 (defsetting enable-embedding
   (deferred-tru "Allow admins to securely embed questions and dashboards within other applications?")
-  :type    :boolean
-  :default false)
+  :type       :boolean
+  :default    false
+  :visibility :authenticated)
 
 (defsetting enable-nested-queries
   (deferred-tru "Allow using a saved question as the source for other queries?")
   :type    :boolean
   :default true)
-
 
 (defsetting enable-query-caching
   (deferred-tru "Enabling caching will save the results of queries that take a long time to run.")
@@ -148,6 +155,7 @@
 
 (defsetting query-caching-ttl-ratio
   (str (deferred-tru "To determine how long each saved question''s cached result should stick around, we take the query''s average execution time and multiply that by whatever you input here.")
+       " "
        (deferred-tru "So if a query takes on average 2 minutes to run, and you input 10 for your multiplier, its cache entry will persist for 20 minutes."))
   :type    :integer
   :default 10)
@@ -164,23 +172,27 @@
 
 (defsetting custom-formatting
   (deferred-tru "Object keyed by type, containing formatting settings")
-  :type    :json
-  :default {})
+  :type       :json
+  :default    {}
+  :visibility :public)
 
 (defsetting enable-xrays
   (deferred-tru "Allow users to explore data using X-rays")
-  :type    :boolean
-  :default true)
+  :type       :boolean
+  :default    true
+  :visibility :authenticated)
 
 (defsetting show-homepage-data
   (deferred-tru "Whether or not to display data on the homepage. Admins might turn this off in order to direct users to better content than raw data")
-  :type    :boolean
-  :default true)
+  :type       :boolean
+  :default    true
+  :visibility :authenticated)
 
 (defsetting show-homepage-xrays
   (deferred-tru "Whether or not to display x-ray suggestions on the homepage. They will also be hidden if any dashboards are pinned. Admins might hide this to direct users to better content than raw data")
-  :type    :boolean
-  :default true)
+  :type       :boolean
+  :default    true
+  :visibility :authenticated)
 
 (defsetting source-address-header
   (deferred-tru "Identify the source of HTTP requests by this header's value, instead of its remote address.")
@@ -205,49 +217,56 @@
      java.time.format.TextStyle/SHORT
      (java.util.Locale/getDefault))))
 
-(defn- resolve-setting [ns-symb setting-symb]
-  (classloader/require ns-symb)
-  (let [varr (or (ns-resolve ns-symb setting-symb)
-                 (throw (Exception. (tru "Could not resolve Setting {0}/{1}" ns-symb setting-symb))))
-        f    (var-get varr)]
-    (assert (ifn? f)
-      (tru "Invalid Setting: {0}/{1}" ns-symb setting-symb))
-    (f)))
+(defsetting available-locales
+  "Available i18n locales"
+  :visibility :public
+  :setter     :none
+  :getter     available-locales-with-names)
 
-;; TODO - it seems like it would be a nice performance win to cache this a little bit
-(defn public-settings
-  "Return a simple map of key/value pairs which represent the public settings (`MetabaseBootstrap`) for the front-end
-   application."
-  []
-  {:admin_email           (admin-email)
-   :anon_tracking_enabled (anon-tracking-enabled)
-   :available_locales     (available-locales-with-names)
-   :custom_formatting     (custom-formatting)
-   :custom_geojson        (resolve-setting 'metabase.api.geojson 'custom-geojson)
-   :email_configured      (resolve-setting 'metabase.email 'email-configured?)
-   :embedding             (enable-embedding)
-   :enable_nested_queries (enable-nested-queries)
-   :enable_query_caching  (enable-query-caching)
-   :enable_xrays          (enable-xrays)
-   :engines               (driver.u/available-drivers-info)
-   :entities              (types/types->parents :entity/*)
-   :ga_code               "UA-60817802-1"
-   :google_auth_client_id (resolve-setting 'metabase.api.session 'google-auth-client-id)
-   :has_sample_dataset    (db/exists? 'Database, :is_sample true)
-   :hide_embed_branding   (metastore/hide-embed-branding?)
-   :ldap_configured       (resolve-setting 'metabase.integrations.ldap 'ldap-configured?)
-   :map_tile_server_url   (map-tile-server-url)
-   :metastore_url         metastore/store-url
-   :password_complexity   password/active-password-complexity
-   :premium_token         (metastore/premium-embedding-token)
-   :public_sharing        (enable-public-sharing)
-   :report_timezone       (resolve-setting 'metabase.driver 'report-timezone)
-   :setup_token           (resolve-setting 'metabase.setup 'token-value)
-   :show_homepage_data    (show-homepage-data)
-   :show_homepage_xrays   (show-homepage-xrays)
-   :site_name             (site-name)
-   :site_url              (site-url)
-   :timezone_short        (short-timezone-name (setting/get :report-timezone))
-   :timezones             common/timezones
-   :types                 (types/types->parents :type/*)
-   :version               config/mb-version-info})
+(defsetting available-timezones
+  "Available report timezone options"
+  :visibility :public
+  :setter     :none
+  :getter     (constantly common/timezones))
+
+(defsetting engines
+  "Available database engines"
+  :visibility :public
+  :setter     :none
+  :getter     driver.u/available-drivers-info)
+
+(defsetting types
+  "Field types"
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (types/types->parents :type/*)))
+
+(defsetting entities
+  "Entity types"
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (types/types->parents :entity/*)))
+
+(defsetting has-sample-dataset?
+  "Whether this instance has a Sample Dataset database"
+  :visibility :authenticated
+  :setter     :none
+  :getter     (fn [] (db/exists? 'Database, :is_sample true)))
+
+(defsetting password-complexity
+  "Current password complexity requirements"
+  :visibility :public
+  :setter     :none
+  :getter     (constantly password/active-password-complexity))
+
+(defsetting report-timezone-short
+  "Current report timezone abbreviation"
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (short-timezone-name (setting/get :report-timezone))))
+
+(defsetting version
+  "Metabase's version info"
+  :visibility :public
+  :setter     :none
+  :getter     (constantly config/mb-version-info))

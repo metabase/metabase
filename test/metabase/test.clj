@@ -1,5 +1,8 @@
 (ns metabase.test
-  "The stuff you need to write almost every test, all in one place. Nice!"
+  "The stuff you need to write almost every test, all in one place. Nice!
+
+  (Prefer using `metabase.test` to requiring bits and pieces from these various namespaces going forward, since it
+  reduces the cognitive load required to write tests.)"
   (:require [clojure.test :refer :all]
             [java-time :as t]
             [metabase
@@ -141,6 +144,7 @@
   db-test-env-var
   db-test-env-var-or-throw
   dbdef->connection-details
+  defdataset
   dispatch-on-driver-with-test-extensions
   get-dataset-definition
   has-questionable-timezone-support?

@@ -1,8 +1,8 @@
-(defproject metabase/snowflake-driver "1.0.0-SNAPSHOT-3.10.2"
+(defproject metabase/snowflake-driver "1.0.0-SNAPSHOT-3.11.0"
   :min-lein-version "2.5.0"
 
   :dependencies
-  [[net.snowflake/snowflake-jdbc "3.10.2"]]
+  [[net.snowflake/snowflake-jdbc "3.11.0"]]
 
   :profiles
   {:provided

@@ -1,6 +1,7 @@
 (ns dev
   "Put everything needed for REPL development within easy reach"
   (:require [clojure.java.jdbc :as jdbc]
+            [dev.render-png :as render-png]
             [metabase
              [core :as mbc]
              [db :as mdb]
@@ -96,7 +97,6 @@
       {:read-columns   (partial sql-jdbc.execute/read-columns driver)
        :set-parameters (partial sql-jdbc.execute/set-parameters driver)})))
 
-
   ([driver-or-driver+dataset sql-args options]
    (let [[driver dataset] (u/one-or-many driver-or-driver+dataset)]
      (driver/with-driver driver
@@ -106,3 +106,5 @@
          (if dataset
            (data.impl/do-with-dataset (data.impl/resolve-dataset-definition *ns* dataset) thunk)
            (thunk)))))))
+
+(def render-card-to-png render-png/render-card-to-png)

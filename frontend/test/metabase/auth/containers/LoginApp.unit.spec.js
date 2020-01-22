@@ -16,12 +16,12 @@ describe("LoginApp", () => {
     describe("without SSO", () => {
       it("should show the login form", () => {
         const { wrapper } = mountWithStore(<LoginApp params={{}} />);
-        expect(wrapper.find("FormField").length).toBe(2);
+        expect(wrapper.find("FormField").length).toBe(3);
       });
     });
     describe("with SSO", () => {
       beforeEach(() => {
-        Settings.set("google_auth_client_id", 123);
+        Settings.set("google-auth-client-id", 123);
       });
       it("should show the SSO button", () => {
         const { wrapper } = mountWithStore(<LoginApp params={{}} />);
@@ -39,7 +39,7 @@ describe("LoginApp", () => {
           <LoginApp params={{ provider: "password" }} />,
         );
 
-        expect(wrapper.find("FormField").length).toBe(2);
+        expect(wrapper.find("FormField").length).toBe(3);
         expect(wrapper.find("AuthProviderButton").length).toBe(0);
       });
     });

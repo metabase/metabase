@@ -7,14 +7,14 @@
   :min-lein-version "2.5.0"
 
   :aliases
-  {"generate-sample-dataset"           ["with-profile" "+generate-sample-dataset" "run"]
-   "profile"                           ["with-profile" "+profile" "run" "profile"]
+  {"profile"                           ["with-profile" "+profile" "run" "profile"]
    "h2"                                ["with-profile" "+h2-shell" "run" "-url" "jdbc:h2:./metabase.db"
                                         "-user" "" "-password" "" "-driver" "org.h2.Driver"]
    "generate-automagic-dashboards-pot" ["with-profile" "+generate-automagic-dashboards-pot" "run"]
    "install"                           ["with-profile" "+install" "install"]
    "install-for-building-drivers"      ["with-profile" "install-for-building-drivers" "install"]
    "run"                               ["with-profile" "+run" "run"]
+   "run-with-repl"                     ["with-profile" "+run-with-repl" "repl"]
    "ring"                              ["with-profile" "+ring" "ring"]
    "test"                              ["with-profile" "+test" "test"]
    "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed"
@@ -142,10 +142,10 @@
   :manifest
   {"Liquibase-Package"
    #= (eval
-        (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
-             "liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,"
-             "liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,"
-             "liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"))}
+       (str "liquibase.change,liquibase.changelog,liquibase.database,liquibase.parser,liquibase.precondition,"
+            "liquibase.datatype,liquibase.serializer,liquibase.sqlgenerator,liquibase.executor,"
+            "liquibase.snapshot,liquibase.logging,liquibase.diff,liquibase.structure,"
+            "liquibase.structurecompare,liquibase.lockservice,liquibase.sdk,liquibase.ext"))}
 
   :jvm-opts
   ["-XX:+IgnoreUnrecognizedVMOptions"                                 ; ignore things not recognized for our Java version instead of refusing to start
@@ -156,6 +156,9 @@
 
   :javac-options
   ["-target" "1.8", "-source" "1.8"]
+
+  :java-source-paths
+  ["java"]
 
   :uberjar-name
   "metabase.jar"
@@ -207,6 +210,19 @@
 
    :run
    [:exclude-tests {}]
+
+   :run-with-repl
+   [:exclude-tests
+    :include-all-drivers
+
+    {:env
+     {:mb-jetty-join "false"}
+
+     :repl-options
+     {:init (do
+             (require 'metabase.core)
+             (metabase.core/-main))
+      :timeout 60000}}]
 
    ;; start the dev HTTP server with 'lein ring server'
    :ring

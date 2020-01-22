@@ -1,11 +1,13 @@
 import React from "react";
-import cx from "classnames";
 
-const FormTextAreaWidget = ({ placeholder, field, monospaceText }) => (
+import { formDomOnlyProps } from "metabase/lib/redux";
+
+const FormTextAreaWidget = ({ placeholder, field }) => (
   <textarea
-    className={cx("Form-input full", { "text-monospace": monospaceText })}
+    className="Form-input full"
     placeholder={placeholder}
-    {...field}
+    aria-labelledby={`${field.name}-label`}
+    {...formDomOnlyProps(field)}
   />
 );
 

@@ -22,6 +22,7 @@
   ([driver database honeysql-form]
    (jdbc/query (sql-jdbc.conn/db->pooled-connection-spec database)
                (sql.qp/format-honeysql driver honeysql-form)))
+
   ([driver database table honeysql-form]
    (query driver database (merge {:from [(sql.qp/->honeysql driver (hx/identifier :table (:schema table) (:name table)))]}
                                  honeysql-form))))
@@ -31,34 +32,43 @@
 ;;; |                                     Default SQL JDBC metabase.driver impls                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod driver/can-connect? :sql-jdbc [driver details]
+(defmethod driver/can-connect? :sql-jdbc
+  [driver details]
   (sql-jdbc.conn/can-connect? driver details))
 
-(defmethod driver/table-rows-seq :sql-jdbc [driver database table]
+(defmethod driver/table-rows-seq :sql-jdbc
+  [driver database table]
   (query driver database table {:select [:*]}))
 
-(defmethod driver/supports? [:sql-jdbc :set-timezone] [driver _]
+(defmethod driver/supports? [:sql-jdbc :set-timezone]
+  [driver _]
   (boolean (seq (sql-jdbc.execute/set-timezone-sql driver))))
 
-(defmethod driver/execute-query :sql-jdbc [driver query]
+(defmethod driver/execute-query :sql-jdbc
+  [driver query]
   (sql-jdbc.execute/execute-query driver query))
 
-(defmethod driver/notify-database-updated :sql-jdbc [driver database]
+(defmethod driver/notify-database-updated :sql-jdbc
+  [driver database]
   (sql-jdbc.conn/notify-database-updated driver database))
 
-(defmethod driver/describe-database :sql-jdbc [driver database]
+(defmethod driver/describe-database :sql-jdbc
+  [driver database]
   (sql-jdbc.sync/describe-database driver database))
 
-(defmethod driver/describe-table :sql-jdbc [driver database table]
+(defmethod driver/describe-table :sql-jdbc
+  [driver database table]
   (sql-jdbc.sync/describe-table driver database table))
 
-(defmethod driver/describe-table-fks :sql-jdbc [driver database table]
+(defmethod driver/describe-table-fks :sql-jdbc
+  [driver database table]
   (sql-jdbc.sync/describe-table-fks driver database table))
 
 
 ;; `:sql-jdbc` drivers almost certainly don't need to override this method, and instead can implement
 ;; `unprepare/unprepare-value` for specific classes, or, in extereme cases, `unprepare/unprepare` itself.
-(defmethod driver/splice-parameters-into-native-query :sql-jdbc [driver {:keys [params], sql :query, :as query}]
+(defmethod driver/splice-parameters-into-native-query :sql-jdbc
+  [driver {:keys [params], sql :query, :as query}]
   (cond-> query
     (seq params)
     (merge {:params nil

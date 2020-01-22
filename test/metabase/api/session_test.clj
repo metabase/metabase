@@ -12,6 +12,7 @@
             [metabase.api.session :as session-api]
             [metabase.models
              [session :refer [Session]]
+             [setting :as setting]
              [user :refer [User]]]
             [metabase.test
              [fixtures :as fixtures]
@@ -284,9 +285,26 @@
 
 
 ;; GET /session/properties
+
+;; Unauthenticated
 (expect
-  (keys (public-settings/public-settings))
-  (keys ((test-users/user->client :rasta) :get 200 "session/properties")))
+  (keys (setting/properties :public))
+  (keys (client :get 200 "session/properties")))
+
+;; Authenticated normal user
+(expect
+  (keys (merge
+          (setting/properties :public)
+          (setting/properties :authenticated)))
+  (keys ((test-users/user->client :lucky) :get 200 "session/properties")))
+
+;; Authenticated super user
+(expect
+  (keys (merge
+          (setting/properties :public)
+          (setting/properties :authenticated)
+          (setting/properties :admin)))
+  (keys ((test-users/user->client :crowberto) :get 200 "session/properties")))
 
 
 ;;; ------------------------------------------ TESTS FOR GOOGLE AUTH STUFF -------------------------------------------

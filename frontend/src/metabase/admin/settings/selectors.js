@@ -59,7 +59,7 @@ const SECTIONS = updateSectionsWithPlugins({
         type: "select",
         options: [
           { name: t`Database Default`, value: "" },
-          ...MetabaseSettings.get("timezones"),
+          ...MetabaseSettings.get("available-timezones"),
         ],
         note: t`Not all databases support timezones, in which case this setting won't take effect.`,
         allowValueCollection: true,
@@ -68,11 +68,11 @@ const SECTIONS = updateSectionsWithPlugins({
         key: "site-locale",
         display_name: t`Language`,
         type: "select",
-        options: (MetabaseSettings.get("available_locales") || []).map(
+        options: (MetabaseSettings.get("available-locales") || []).map(
           ([value, name]) => ({ name, value }),
         ),
         defaultValue: "en",
-        getHidden: () => MetabaseSettings.get("available_locales").length < 2,
+        getHidden: () => MetabaseSettings.get("available-locales").length < 2,
       },
       {
         key: "anon-tracking-enabled",
@@ -155,7 +155,7 @@ const SECTIONS = updateSectionsWithPlugins({
         key: "email-smtp-password",
         display_name: t`SMTP Password`,
         description: null,
-        placeholder: "Shh...",
+        placeholder: "Shhh...",
         type: "password",
       },
       {
@@ -335,7 +335,7 @@ const SECTIONS = updateSectionsWithPlugins({
 });
 
 export const getSettings = createSelector(
-  state => state.settings.settings,
+  state => state.admin.settings.settings,
   state => state.admin.settings.warnings,
   (settings, warnings) =>
     settings.map(setting =>

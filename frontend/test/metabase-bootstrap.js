@@ -4,8 +4,8 @@ import "number-to-locale-string";
 import "metabase/css/index.css";
 
 window.MetabaseBootstrap = {
-  enable_xrays: true,
-  timezones: [
+  "enable-xrays": true,
+  "available-timezones": [
     "GMT",
     "UTC",
     "US/Alaska",
@@ -17,7 +17,7 @@ window.MetabaseBootstrap = {
     "US/Pacific",
     "America/Costa_Rica",
   ],
-  available_locales: [["en", "English"]],
+  "availabl-locales": [["en", "English"]],
   // NOTE: update this when updating types.clj
   types: {
     "type/DruidHyperUnique": ["type/*"],
@@ -103,5 +103,8 @@ window.MetabaseBootstrap = {
     "type/DateTimeWithLocalTZ": ["type/DateTimeWithTZ"],
     "type/UNIXTimestamp": ["type/Integer", "type/Instant"],
     "type/Enum": ["type/Category", "type/*"],
+  },
+  version: {
+    tag: "v1",
   },
 };

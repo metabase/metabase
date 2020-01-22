@@ -967,7 +967,7 @@ exports[`Radio should render "vertical" correctly 1`] = `
 </ul>
 `;
 
-exports[`Select should render "Default" correctly 1`] = `
+exports[`Select should render "default" correctly 1`] = `
 <a
   className="no-decoration"
   id={undefined}
@@ -975,23 +975,32 @@ exports[`Select should render "Default" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="AdminSelect flex align-center"
+    className="AdminSelect"
     style={undefined}
   >
     <span
-      className="AdminSelect-content mr1"
-    />
-    <svg
-      className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-cxuQhR kTAgZA"
-      fill="currentcolor"
-      height={12}
-      viewBox="0 0 32 32"
-      width={12}
+      className="flex align-center"
     >
-      <path
-        d="M1 12 L16 26 L31 12 L27 8 L16 18 L5 8 z "
-      />
-    </svg>
+      <span
+        className="AdminSelect-content mr1"
+      >
+        <span>
+          Entity Key
+          
+        </span>
+      </span>
+      <svg
+        className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-cxuQhR kTAgZA"
+        fill="currentcolor"
+        height={12}
+        viewBox="0 0 32 32"
+        width={12}
+      >
+        <path
+          d="M1 12 L16 26 L31 12 L27 8 L16 18 L5 8 z "
+        />
+      </svg>
+    </span>
   </div>
   <span
     className="hide"
@@ -999,7 +1008,7 @@ exports[`Select should render "Default" correctly 1`] = `
 </a>
 `;
 
-exports[`Select should render "With search" correctly 1`] = `
+exports[`Select should render "kitchen_sink" correctly 1`] = `
 <a
   className="no-decoration"
   id={undefined}
@@ -1007,23 +1016,163 @@ exports[`Select should render "With search" correctly 1`] = `
   style={undefined}
 >
   <div
-    className="AdminSelect flex align-center"
+    className="AdminSelect"
     style={undefined}
   >
     <span
-      className="AdminSelect-content mr1"
-    />
-    <svg
-      className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-cxuQhR kTAgZA"
-      fill="currentcolor"
-      height={12}
-      viewBox="0 0 32 32"
-      width={12}
+      className="flex align-center"
     >
-      <path
-        d="M1 12 L16 26 L31 12 L27 8 L16 18 L5 8 z "
-      />
-    </svg>
+      <span
+        className="AdminSelect-content mr1"
+      >
+        <span>
+          Entity Key
+          , 
+        </span>
+        <span>
+          Avatar Image URL
+          
+        </span>
+      </span>
+      <svg
+        className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-cxuQhR kTAgZA"
+        fill="currentcolor"
+        height={12}
+        viewBox="0 0 32 32"
+        width={12}
+      >
+        <path
+          d="M1 12 L16 26 L31 12 L27 8 L16 18 L5 8 z "
+        />
+      </svg>
+    </span>
+  </div>
+  <span
+    className="hide"
+  />
+</a>
+`;
+
+exports[`Select should render "multiple" correctly 1`] = `
+<a
+  className="no-decoration"
+  id={undefined}
+  onClick={[Function]}
+  style={undefined}
+>
+  <div
+    className="AdminSelect"
+    style={undefined}
+  >
+    <span
+      className="flex align-center"
+    >
+      <span
+        className="AdminSelect-content mr1"
+      >
+        <span>
+          Entity Key
+          , 
+        </span>
+        <span>
+          Avatar Image URL
+          
+        </span>
+      </span>
+      <svg
+        className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-cxuQhR kTAgZA"
+        fill="currentcolor"
+        height={12}
+        viewBox="0 0 32 32"
+        width={12}
+      >
+        <path
+          d="M1 12 L16 26 L31 12 L27 8 L16 18 L5 8 z "
+        />
+      </svg>
+    </span>
+  </div>
+  <span
+    className="hide"
+  />
+</a>
+`;
+
+exports[`Select should render "search" correctly 1`] = `
+<a
+  className="no-decoration"
+  id={undefined}
+  onClick={[Function]}
+  style={undefined}
+>
+  <div
+    className="AdminSelect"
+    style={undefined}
+  >
+    <span
+      className="flex align-center"
+    >
+      <span
+        className="AdminSelect-content mr1"
+      >
+        <span>
+          Entity Key
+          
+        </span>
+      </span>
+      <svg
+        className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-cxuQhR kTAgZA"
+        fill="currentcolor"
+        height={12}
+        viewBox="0 0 32 32"
+        width={12}
+      >
+        <path
+          d="M1 12 L16 26 L31 12 L27 8 L16 18 L5 8 z "
+        />
+      </svg>
+    </span>
+  </div>
+  <span
+    className="hide"
+  />
+</a>
+`;
+
+exports[`Select should render "sections" correctly 1`] = `
+<a
+  className="no-decoration"
+  id={undefined}
+  onClick={[Function]}
+  style={undefined}
+>
+  <div
+    className="AdminSelect"
+    style={undefined}
+  >
+    <span
+      className="flex align-center"
+    >
+      <span
+        className="AdminSelect-content mr1"
+      >
+        <span>
+          Entity Key
+          
+        </span>
+      </span>
+      <svg
+        className="Icon Icon-chevrondown AdminSelect-chevron flex-align-right Icon-cxuQhR kTAgZA"
+        fill="currentcolor"
+        height={12}
+        viewBox="0 0 32 32"
+        width={12}
+      >
+        <path
+          d="M1 12 L16 26 L31 12 L27 8 L16 18 L5 8 z "
+        />
+      </svg>
+    </span>
   </div>
   <span
     className="hide"

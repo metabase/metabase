@@ -81,6 +81,7 @@ type Props = {
 
   runQuestionQuery: (options?: RunQueryParams) => void,
   setDatasetQuery: (datasetQuery: DatasetQuery) => void,
+  cancelQuery: () => void,
 
   setParameterValue: (parameterId: ParameterId, value: string) => void,
 
@@ -390,6 +391,7 @@ export default class NativeQueryEditor extends Component {
   render() {
     const {
       query,
+      cancelQuery,
       setParameterValue,
       location,
       readOnly,
@@ -535,6 +537,7 @@ export default class NativeQueryEditor extends Component {
               isDirty={isResultDirty}
               isPreviewing={isPreviewing}
               onRun={this.runQuery}
+              onCancel={() => cancelQuery()}
               compact
               className="mx2 mb2 mt-auto p2"
               getTooltip={() =>

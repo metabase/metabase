@@ -4,9 +4,8 @@ import { connect } from "react-redux";
 
 import { t } from "ttag";
 import _ from "underscore";
-
-import LogoIcon from "metabase/components/LogoIcon";
 import AuthScene from "../components/AuthScene";
+import LogoIcon from "metabase/components/LogoIcon";
 
 import { getAuthProviders } from "../selectors";
 
