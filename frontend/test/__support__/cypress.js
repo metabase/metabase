@@ -1,25 +1,50 @@
 import "@testing-library/cypress/add-commands";
 
-export const ADMIN_CREDS = {
-  username: "bob@metabase.com",
-  password: "12341234",
+export const USERS = {
+  admin: {
+    first_name: "Bobby",
+    last_name: "Tables",
+    username: "admin@metabase.com",
+    password: "12341234",
+  },
+  normal: {
+    first_name: "Robert",
+    last_name: "Tableton",
+    username: "normal@metabase.com",
+    password: "12341234",
+  },
+  nodata: {
+    first_name: "No Data",
+    last_name: "Tableton",
+    username: "nodata@metabase.com",
+    password: "12341234",
+  },
+  nocollection: {
+    first_name: "No Collection",
+    last_name: "Tableton",
+    username: "nocollection@metabase.com",
+    password: "12341234",
+  },
+  none: {
+    first_name: "None",
+    last_name: "Tableton",
+    username: "none@metabase.com",
+    password: "12341234",
+  },
 };
 
-export const NORMAL_USER_CREDS = {
-  username: "robert@metabase.com",
-  password: "12341234",
-};
-
-export function signInAsAdmin() {
-  cy.request("POST", "/api/session", ADMIN_CREDS);
+export function signIn(user = "admin") {
+  cy.request("POST", "/api/session", USERS[user]);
 }
-
-export function signInAsNormalUser() {
-  cy.request("POST", "/api/session", NORMAL_USER_CREDS);
-}
-
 export function signOut() {
   cy.clearCookie("metabase.SESSION");
+}
+
+export function signInAsAdmin() {
+  signIn("admin");
+}
+export function signInAsNormalUser() {
+  signIn("normal");
 }
 
 export function snapshot(name) {
