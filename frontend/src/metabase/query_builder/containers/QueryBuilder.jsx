@@ -14,7 +14,7 @@ import View from "../components/view/View";
 // import Notebook from "../components/notebook/Notebook";
 
 import title from "metabase/hoc/Title";
-import loadingTimeTitle from "metabase/hoc/LoadingTimeTitle";
+import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 
 import {
   getCard,
@@ -156,7 +156,7 @@ const mapDispatchToProps = {
   mapDispatchToProps,
 )
 @title(({ card }) => (card && card.name) || t`Question`)
-@loadingTimeTitle("queryStartTime")
+@titleWithLoadingTime("queryStartTime")
 @fitViewport
 export default class QueryBuilder extends Component {
   timeout: any;

@@ -4,7 +4,7 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 import title from "metabase/hoc/Title";
-import loadingTimeTitle from "metabase/hoc/LoadingTimeTitle";
+import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 
 import Dashboard from "metabase/dashboard/components/Dashboard";
 
@@ -70,7 +70,7 @@ type DashboardAppState = {
   mapDispatchToProps,
 )
 @title(({ dashboard }) => dashboard && dashboard.name)
-@loadingTimeTitle("loadingStartTime")
+@titleWithLoadingTime("loadingStartTime")
 // NOTE: should use DashboardControls and DashboardData HoCs here?
 export default class DashboardApp extends Component {
   state: DashboardAppState = {
