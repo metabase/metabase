@@ -197,7 +197,7 @@
 ;; for relative dates convert the param to a `DateRange` record type and call `->replacement-snippet-info` on it
 (s/defn ^:private date-range-field-filter->replacement-snippet-info :- ParamSnippetInfo
   [driver value]
-  (->> (date-params/date-string->range value (qp.timezone/results-timezone-id))
+  (->> (date-params/date-string->range value)
        i/map->DateRange
        (->replacement-snippet-info driver)))
 

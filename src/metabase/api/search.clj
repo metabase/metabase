@@ -1,5 +1,6 @@
 (ns metabase.api.search
   (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [compojure.core :refer [GET]]
             [flatland.ordered.map :as ordered-map]
             [honeysql
@@ -26,6 +27,12 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
+(def ^:private ^:const search-max-results
+  "Absolute maximum number of search results to return. This number is in place to prevent massive application DB load
+  by returning tons of results; this number should probably be adjusted downward once we have UI in place to indicate
+  that results are truncated."
+  1000)
+
 (def ^:private SearchContext
   "Map with the various allowed search parameters, used to construct the SQL query"
   {:search-string      (s/maybe su/NonBlankString)
@@ -33,7 +40,14 @@
    :current-user-perms #{perms/UserPath}})
 
 (def ^:private searchable-models
+  "Models that can be searched. Results also come back in this order (i.e., all matching Cards, followed by all matching
+  Dashboards, etc.)"
   [Card Dashboard Pulse Collection Segment Metric Table])
+
+(def ^:private model->sort-position
+  (into {} (map-indexed (fn [i model]
+                          [(str/lower-case (name model)) i])
+                        searchable-models)))
 
 (def ^:private SearchableModel
   (apply s/enum searchable-models))
@@ -326,15 +340,24 @@
 (s/defn ^:private search
   "Builds a search query that includes all of the searchable entities and runs it"
   [search-ctx :- SearchContext]
-  (for [row (db/query {:union-all (for [model searchable-models
-                                        :let  [query (search-query-for-model model search-ctx)]
-                                        :when (seq query)]
-                                    query)})]
-    ;; MySQL returns `:favorite` as `1` or `0` so convert those to boolean as needed
-    (update row :favorite (fn [favorite]
-                            (if (integer? favorite)
-                              (not (zero? favorite))
-                              favorite)))))
+  (letfn [(bit->boolean [v]
+            (if (number? v)
+              (not (zero? v))
+              v))]
+    (let [search-query {:union-all (for [model searchable-models
+                                         :let  [query (search-query-for-model model search-ctx)]
+                                         :when (seq query)]
+                                     query)}
+          _            (log/tracef "Searching with query:\n%s" (u/pprint-to-str search-query))
+          ;; sort results by [model name]
+          results      (sort-by (juxt (comp model->sort-position :model)
+                                      :name)
+                                (db/query search-query :max-rows search-max-results))]
+      (for [row results]
+        ;; MySQL returns `:favorite` and `:archived` as `1` or `0` so convert those to boolean as needed
+        (-> row
+            (update :favorite bit->boolean)
+            (update :archived bit->boolean))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

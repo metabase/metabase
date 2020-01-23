@@ -7,45 +7,10 @@
              [util :as u]]
             [metabase.plugins.classloader :as classloader]))
 
-
-;; (def ^:private ^:dynamic *require-chain* nil)
-
-;; (defonce new-require
-;;   (let [orig-require (var-get #'clojure.core/require)]
-;;     (orig-require 'clojure.pprint)
-;;     (fn [& args]
-;;       (binding [*require-chain* (conj (vec *require-chain*) (ns-name *ns*))]
-;;         (let [require-chain-description (apply str (interpose " -> " *require-chain*))]
-;;           (println "\nin" require-chain-description)
-;;           ((resolve 'clojure.pprint/pprint) (cons 'require args))
-;;           (apply orig-require args)
-;;           (println "finished" require-chain-description))))))
-
-;; (intern 'clojure.core 'require new-require)
-
-(defmulti initialize-if-needed!
-  "Initialize one or more components.
-
-    (initialize-if-needed! :db :web-server)"
-  (fn
-    ([k]        (keyword k))
-    ([k & more] :many)))
-
-(defonce ^:private initialized (atom #{}))
-
-(defn initialized?
-  "Has this component been initialized?"
-  ([k]
-   (contains? @initialized k))
-
-  ([k & more]
-   (and (initialized? k)
-        (apply initialized? more))))
-
-(defmethod initialize-if-needed! :many
-  [& args]
-  (doseq [k args]
-    (initialize-if-needed! k)))
+(defmulti ^:private do-initialization!
+  "Perform component-specific initialization. This is guaranteed to only be called once."
+  {:arglists '([init-setp])}
+  keyword)
 
 (defn- log-init-message [task-name]
   (let [body   (format "| Initializing %s... |" task-name)
@@ -58,36 +23,57 @@
 
 (def ^:private init-timeout-ms (* 30 1000))
 
-(def ^:private ^:dynamic *initializing* [])
+(def ^:private ^:dynamic *initializing*
+  "Collection of components that are being currently initialized by the current thread."
+  [])
 
-(defn- deref-init-delay [task-name a-delay]
+(defonce ^:private initialized (atom #{}))
+
+(defn- check-for-circular-deps [step]
+  (when (contains? (set *initializing*) step)
+    (throw (Exception. (format "Circular initialization dependencies! %s"
+                               (str/join " -> " (conj *initializing* step)))))))
+
+(defn- initialize-if-needed!* [step]
   (try
-    (when (contains? (set *initializing*) task-name)
-      (throw (Exception. (format "Circular initialization dependencies! %s"
-                                 (str/join " -> " (conj *initializing* task-name))))))
-    (binding [*initializing* (conj *initializing* task-name)]
+    (log-init-message step)
+    (binding [*initializing* (conj *initializing* step)]
       (u/with-timeout init-timeout-ms
-        @a-delay))
+        (do-initialization! step)))
     (catch Throwable e
-      (println "Error initializing" task-name)
+      (println "Error initializing" step)
       (println e)
       (when config/is-test?
         (System/exit -1))
       (throw e))))
 
+(defn initialize-if-needed!
+  "Initialize one or more components.
+
+    (initialize-if-needed! :db :web-server)"
+  [& steps]
+  (doseq [step steps
+          :let [step (keyword step)]]
+    (when-not (@initialized step)
+      (check-for-circular-deps step)
+      (locking step
+        (when-not (@initialized step)
+          (initialize-if-needed!* step)
+          (swap! initialized conj step))))))
+
+(defn initialized?
+  "Has this component been initialized?"
+  ([k]
+   (contains? @initialized k))
+
+  ([k & more]
+   (and (initialized? k)
+        (apply initialized? more))))
+
 (defmacro ^:private define-initialization [task-name & body]
-  (let [delay-symb (-> (symbol (format "init-%s-%d" (name task-name) (hash &form)))
-                       (with-meta {:private true}))]
-    `(do
-       (defonce ~delay-symb
-         (delay
-           (log-init-message ~(keyword task-name))
-           (swap! initialized conj ~(keyword task-name))
-           ~@body
-           ~(keyword task-name)))
-       (defmethod initialize-if-needed! ~(keyword task-name)
-         [~'_]
-         (deref-init-delay ~(keyword task-name) ~delay-symb)))))
+  `(defmethod do-initialization! ~(keyword task-name)
+     [~'_]
+     ~@body))
 
 (define-initialization :plugins
   (classloader/require 'metabase.test.initialize.plugins)
@@ -114,5 +100,10 @@
   (classloader/require 'metabase.test.initialize.test-users-personal-collections)
   ((resolve 'metabase.test.initialize.test-users-personal-collections/init!)))
 
-(alter-meta! #'initialize-if-needed! assoc :arglists (list (into ['&] (sort (disj (set (keys (methods initialize-if-needed!)))
-                                                                                  :many)))))
+(defn- all-components
+  "Set of all components/initialization steps that are defined."
+  []
+  (set (keys (methods do-initialization!))))
+
+;; change the arglists for `initialize-if-needed!` to list all the possible args for REPL-usage convenience
+(alter-meta! #'initialize-if-needed! assoc :arglists (list (into ['&] (sort (all-components)))))

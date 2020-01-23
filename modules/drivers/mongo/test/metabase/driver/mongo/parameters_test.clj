@@ -2,7 +2,9 @@
   (:require [cheshire
              [core :as json]
              [generate :as json.generate]]
-            [clojure.test :refer :all]
+            [clojure
+             [string :as str]
+             [test :refer :all]]
             [metabase
              [query-processor :as qp]
              [test :as mt]]
@@ -78,25 +80,71 @@
            (substitute {:id (comma-separated-numbers [1 2 3])}
                        [(param :id)])))))
 
+(defprotocol ^:private ToBSON
+  (^:private to-bson [this]
+   "Utility method for converting normal Clojure objects to string-serialized 'BSON'."))
+
+(extend-protocol ToBSON
+  nil
+  (to-bson [_] "null")
+
+  Object
+  (to-bson [this] (pr-str this))
+
+  clojure.lang.Keyword
+  (to-bson [this] (name this))
+
+  clojure.lang.Sequential
+  (to-bson [this]
+    (str "["
+         (str/join ", " (map to-bson this))
+         "]"))
+
+  clojure.lang.IPersistentMap
+  (to-bson [this]
+    (str "{"
+         (str/join ", " (for [[k v] this]
+                          (str (to-bson k) ": " (to-bson v))))
+         "}")))
+
+(defn- bson-fn-call [f & args]
+  (reify ToBSON
+    (to-bson [_]
+      (format "%s(%s)" (name f) (str/join "," (map pr-str args))))))
+
+(defn- ISODate [s]
+  (bson-fn-call :ISODate s))
+
 (deftest field-filter-test
   (testing "Date ranges"
     (mt/with-clock #t "2019-12-13T12:00:00.000Z[UTC]"
-      (is (= "[{$match: {$and: [{\"date\": {$gte: ISODate(\"2019-12-08\")}}, {\"date\": {$lt: ISODate(\"2019-12-12\")}}]}}]"
-             (substitute {:date (field-filter "date" :date/range "past5days")}
-                         ["[{$match: " (param :date) "}]"])))))
+      (letfn [(substitute-date-range [s]
+                (substitute {:date (field-filter "date" :date/range s)}
+                            ["[{$match: " (param :date) "}]"]))]
+        (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-12-08")}}
+                                          {"date" {:$lt  (ISODate "2019-12-13")}}]}}])
+               (substitute-date-range "past5days")))
+        (testing "Make sure ranges like last[x]/this[x] include the full range (#11715)"
+          (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-12-01")}}
+                                            {"date" {:$lt  (ISODate "2020-01-01")}}]}}])
+                 (substitute-date-range "thismonth")))
+          (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-11-01")}}
+                                            {"date" {:$lt  (ISODate "2019-12-01")}}]}}])
+                 (substitute-date-range "lastmonth")))))))
   (testing "multiple values"
     (doseq [[message v] {"values are a vector of numbers" [1 2 3]
                          "comma-separated numbers"        (comma-separated-numbers [1 2 3])}]
       (testing message
-        (is (= "[{$match: {\"id\": {$in: [1, 2, 3]}}}]"
+        (is (= (to-bson [{:$match {"id" {:$in [1 2 3]}}}])
                (substitute {:id (field-filter "id" :number v)}
                            ["[{$match: " (param :id) "}]"]))))))
   (testing "single date"
-    (is (= "[{$match: {$and: [{\"date\": {$gte: ISODate(\"2019-12-08\")}}, {\"date\": {$lt: ISODate(\"2019-12-09\")}}]}}]"
+    (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-12-08")}}
+                                      {"date" {:$lt  (ISODate "2019-12-09")}}]}}])
            (substitute {:date (field-filter "date" :date/single "2019-12-08")}
                        ["[{$match: " (param :date) "}]"]))))
   (testing "parameter not supplied"
-    (is (= "[{$match: {}}]"
+    (is (= (to-bson [{:$match {}}])
            (substitute {:date (common.params/->FieldFilter {:name "date"} common.params/no-value)} ["[{$match: " (param :date) "}]"])))))
 
 (defn- json-raw
@@ -126,7 +174,7 @@
                                                          :dimension    $date}}}
                     :parameters [{:type   :date/range
                                   :target [:dimension [:template-tag "date"]]
-                                  :value  "2014-03-01~2014-03-03"}]}))))))
+                                  :value  "2014-03-01~2014-03-02"}]}))))))
     (testing "multiple values"
       (is (= [[1 "African"]
               [2 "American"]
