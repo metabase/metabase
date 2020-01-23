@@ -174,7 +174,7 @@
                                                          :dimension    $date}}}
                     :parameters [{:type   :date/range
                                   :target [:dimension [:template-tag "date"]]
-                                  :value  "2014-03-01~2014-03-03"}]}))))))
+                                  :value  "2014-03-01~2014-03-02"}]}))))))
     (testing "multiple values"
       (is (= [[1 "African"]
               [2 "American"]
