@@ -1,12 +1,7 @@
-import {
-  signInAsAdmin,
-  signInAsNormalUser,
-  restore,
-} from "__support__/cypress";
+import { signInAsAdmin, signInAsNormalUser } from "__support__/cypress";
 
-describe("custom question", () => {
+describe("permissions", () => {
   before(() => {
-    restore();
     signInAsAdmin();
     cy.request("PUT", "/api/permissions/graph", {
       revision: 0,
