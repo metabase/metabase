@@ -180,11 +180,7 @@ export class Api extends EventEmitter {
             body = JSON.parse(body);
           } catch (e) {}
           let status = xhr.status;
-          if (
-            status === 202 &&
-            body._status !== null &&
-            body._status !== undefined
-          ) {
+          if (status === 202 && body && body._status > 0) {
             status = body._status;
           }
           if (status >= 200 && status <= 299) {
