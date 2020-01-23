@@ -35,7 +35,7 @@
   (pr-str (mongo.qp/field->name field ".")))
 
 (defn- substitute-one-field-filter-date-range [{field :field, {param-type :type, value :value} :value}]
-  (let [{:keys [start end]} (date-params/date-string->range value)
+  (let [{:keys [start end]} (date-params/date-string->range value {:inclusive-end? false})
         start-condition     (when start
                               (format "{%s: {$gte: %s}}" (field->name field) (param-value->str (u.date/parse start))))
         end-condition       (when end
