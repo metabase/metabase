@@ -13,6 +13,7 @@ import Modal from "metabase/components/Modal";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { t } from "ttag";
 import { PermissionsApi, SettingsApi } from "metabase/services";
+import { isSpecialGroup } from "metabase/lib/groups";
 
 import _ from "underscore";
 
@@ -23,17 +24,22 @@ type Props = {
   onChange: (value: any) => void,
   settingValues: { [key: string]: any },
   onChangeSetting: (key: string, value: any) => void,
+  mappingSetting: string,
+  groupHeading: string,
+  groupPlaceholder: string,
 };
 
 type State = {
   showEditModal: boolean,
   showAddRow: boolean,
-  groups: Object[],
+  groups: ?(Object[]),
   mappings: { [string]: number[] },
   saveError: ?Object,
 };
 
-export default class LdapGroupMappingsWidget extends React.Component {
+const groupIsMappable = group => !isSpecialGroup(group);
+
+export default class GroupMappingsWidget extends React.Component {
   props: Props;
   state: State;
 
@@ -42,7 +48,7 @@ export default class LdapGroupMappingsWidget extends React.Component {
     this.state = {
       showEditModal: false,
       showAddRow: false,
-      groups: [],
+      groups: null,
       mappings: {},
       saveError: null,
     };
@@ -52,13 +58,15 @@ export default class LdapGroupMappingsWidget extends React.Component {
     e.preventDefault();
     // just load the setting again to make sure it's up to date
     const setting = _.findWhere(await SettingsApi.list(), {
-      key: "ldap-group-mappings",
+      key: this.props.mappingSetting,
     });
     this.setState({
       mappings: (setting && setting.value) || {},
       showEditModal: true,
     });
-    PermissionsApi.groups().then(groups => this.setState({ groups }));
+    PermissionsApi.groups().then(groups =>
+      this.setState({ groups: groups.filter(groupIsMappable) }),
+    );
   };
 
   _showAddRow = (e: Event) => {
@@ -116,9 +124,9 @@ export default class LdapGroupMappingsWidget extends React.Component {
       state: { mappings },
       props: { onChangeSetting },
     } = this;
-    SettingsApi.put({ key: "ldap-group-mappings", value: mappings }).then(
+    SettingsApi.put({ key: this.props.mappingSetting, value: mappings }).then(
       () => {
-        onChangeSetting("ldap-group-mappings", mappings);
+        onChangeSetting(this.props.mappingSetting, mappings);
         this.setState({
           showEditModal: false,
           showAddRow: false,
@@ -167,13 +175,14 @@ export default class LdapGroupMappingsWidget extends React.Component {
                                     failsafe measure.`}
                 </p>
                 <AdminContentTable
-                  columnTitles={[t`Distinguished Name`, t`Groups`, ""]}
+                  columnTitles={[this.props.groupHeading, t`Groups`, ""]}
                 >
                   {showAddRow ? (
                     <AddMappingRow
                       mappings={mappings}
                       onCancel={this._hideAddRow}
                       onAdd={this._addMapping}
+                      placeholder={this.props.groupPlaceholder}
                     />
                   ) : null}
                   {((Object.entries(mappings): any): Array<
@@ -182,7 +191,7 @@ export default class LdapGroupMappingsWidget extends React.Component {
                     <MappingRow
                       key={dn}
                       dn={dn}
-                      groups={groups}
+                      groups={groups || []}
                       selectedGroups={ids}
                       onChange={this._changeMapping(dn)}
                       onDelete={this._deleteMapping(dn)}
@@ -214,6 +223,7 @@ type AddMappingRowProps = {
   mappings: { [string]: number[] },
   onAdd?: (dn: string) => void,
   onCancel?: () => void,
+  placeholder?: string,
 };
 
 type AddMappingRowState = {
@@ -258,7 +268,7 @@ class AddMappingRow extends React.Component {
               className="input--borderless h3 ml1 flex-full"
               type="text"
               value={value}
-              placeholder="cn=People,ou=Groups,dc=metabase,dc=com"
+              placeholder={this.props.placeholder}
               autoFocus
               onChange={e => this.setState({ value: e.target.value })}
             />
@@ -289,7 +299,7 @@ class MappingGroupSelect extends React.Component {
   render() {
     const { groups, selectedGroups, onGroupChange } = this.props;
 
-    if (!groups || groups.length === 0) {
+    if (!groups) {
       return <LoadingSpinner />;
     }
 
@@ -312,11 +322,15 @@ class MappingGroupSelect extends React.Component {
         triggerClasses="AdminSelectBorderless py1"
         sizeToFit
       >
-        <GroupSelect
-          groups={groups}
-          selectedGroups={selected}
-          onGroupChange={onGroupChange}
-        />
+        {groups.length > 0 ? (
+          <GroupSelect
+            groups={groups}
+            selectedGroups={selected}
+            onGroupChange={onGroupChange}
+          />
+        ) : (
+          <span className="p1">{t`No mappable groups`}</span>
+        )}
       </PopoverWithTrigger>
     );
   }

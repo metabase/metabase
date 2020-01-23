@@ -1,7 +1,3 @@
-import "__support__/mocks";
-// requried to get dashboard to render
-jest.mock("metabase/components/ExplicitSize");
-
 import {
   BROWSER_HISTORY_PUSH,
   createTestStore,

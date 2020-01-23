@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { PLUGIN_ADMIN_USER_FORM_FIELDS } from "metabase/plugins";
 import validate from "metabase/lib/validate";
 import FormGroupsWidget from "metabase/components/form/widgets/FormGroupsWidget";
 
@@ -54,6 +55,7 @@ export default {
         title: "Groups",
         type: FormGroupsWidget,
       },
+      ...PLUGIN_ADMIN_USER_FORM_FIELDS,
     ],
   },
   user: {

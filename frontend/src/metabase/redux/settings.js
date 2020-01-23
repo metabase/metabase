@@ -27,7 +27,8 @@ const values = handleActions(
       next: (state, { payload }) => ({ ...state, ...payload }),
     },
   },
-  {},
+  // seed with setting values from MetabaseBootstrap
+  window.MetabaseBootstrap,
 );
 
 export default combineReducers({

@@ -1,10 +1,12 @@
+import "metabase/plugins/builtin";
+
 import { useSharedAdminLogin, createTestStore } from "__support__/e2e";
 import { click } from "__support__/enzyme";
 
 import { mount } from "enzyme";
 
 import SettingsEditorApp from "metabase/admin/settings/containers/SettingsEditorApp";
-import SettingsAuthenticationOptions from "metabase/admin/settings/components/SettingsAuthenticationOptions";
+import AuthenticationOption from "metabase/admin/settings/components/widgets/AuthenticationOption";
 import SettingsSingleSignOnForm from "metabase/admin/settings/components/SettingsSingleSignOnForm";
 import SettingsLdapForm from "metabase/admin/settings/components/SettingsLdapForm";
 
@@ -29,7 +31,7 @@ describe("Admin Auth Options", () => {
 
     click(authListItem);
 
-    expect(settingsWrapper.find(SettingsAuthenticationOptions).length).toBe(1);
+    expect(settingsWrapper.find(AuthenticationOption).length).toBe(2);
 
     // test google
     const googleConfigButton = settingsWrapper.find(".Button").first();
@@ -40,7 +42,7 @@ describe("Admin Auth Options", () => {
     store.goBack();
 
     // test ldap
-    const ldapConfigButton = settingsWrapper.find(".Button").last();
+    const ldapConfigButton = settingsWrapper.find(".Button").at(1); // LDAP is the 2nd in the list
     click(ldapConfigButton);
     expect(settingsWrapper.find(SettingsLdapForm).length).toBe(1);
   });

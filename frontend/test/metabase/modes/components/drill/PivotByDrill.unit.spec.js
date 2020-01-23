@@ -7,18 +7,18 @@ import { ORDERS } from "__support__/sample_dataset_fixture";
 import { mount } from "enzyme";
 import { click } from "__support__/enzyme";
 
-import PivotByAction from "metabase/modes/components/actions/PivotByAction";
+import PivotByDrill from "metabase/modes/components/drill/PivotByDrill";
 
-describe("PivotByAction", () => {
+describe("PivotByDrill", () => {
   it("should return a broken out card", () => {
-    const TestPivotByAction = PivotByAction("Test", "test", () => true);
+    const TestPivotByDrill = PivotByDrill("Test", "test", () => true);
 
     const countQuestion = ORDERS.query()
       .aggregate(["count"])
       .question()
       .setDisplay("scalar");
 
-    const actions = TestPivotByAction({ question: countQuestion });
+    const actions = TestPivotByDrill({ question: countQuestion });
     expect(actions).toHaveLength(1);
 
     const PopoverComponent = actions[0].popover;
