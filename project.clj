@@ -49,6 +49,7 @@
    [org.clojure/math.numeric-tower "0.0.4"]                           ; math functions like `ceil`
    [org.clojure/tools.logging "0.4.1"]                                ; logging framework
    [org.clojure/tools.namespace "0.2.11"]
+   [org.clojure/tools.trace "0.7.10"]                                 ; function tracing
    [amalloy/ring-buffer "1.2.2"
     :exclusions [org.clojure/clojure
                  org.clojure/clojurescript]]                          ; fixed length queue implementation, used in log buffering
@@ -219,9 +220,8 @@
      {:mb-jetty-join "false"}
 
      :repl-options
-     {:init (do
-             (require 'metabase.core)
-             (metabase.core/-main))
+     {:init (do (require 'metabase.core)
+                (metabase.core/-main))
       :timeout 60000}}]
 
    ;; start the dev HTTP server with 'lein ring server'
