@@ -43,7 +43,10 @@ const title = documentTitleOrGetter => ComposedComponent =>
         this._documentTitle = documentTitleOrGetter;
       } else if (typeof documentTitleOrGetter === "function") {
         const result = documentTitleOrGetter(this.props);
-        if (typeof result === "string") {
+        if (result == null) {
+          // title functions might return null before data is loaded
+          this._documentTitle = "";
+        } else if (typeof result === "string") {
           this._documentTitle = result;
         } else if (typeof result === "object") {
           // The getter can return an object with a `refresh` promise along with
