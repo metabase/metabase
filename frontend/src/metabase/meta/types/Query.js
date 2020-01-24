@@ -90,7 +90,6 @@ export type AggregationClause =
  * An aggregation MBQL clause
  */
 export type Aggregation =
-  | Rows // @deprecated: implicit when there are no aggregations
   | CountAgg
   | CountFieldAgg
   | AvgAgg
@@ -101,11 +100,6 @@ export type Aggregation =
   | MinAgg
   | MaxAgg
   | MetricAgg;
-
-/**
- * @deprecated: implicit when there are no aggregations
- */
-type Rows = ["rows"];
 
 type CountAgg = ["count"];
 
@@ -118,7 +112,6 @@ type SumAgg = ["sum", ConcreteField];
 type MinAgg = ["min", ConcreteField];
 type MaxAgg = ["max", ConcreteField];
 
-// NOTE: currently the backend expects METRIC to be uppercase
 type MetricAgg = ["metric", MetricId];
 
 export type BreakoutClause = Array<Breakout>;
@@ -254,7 +247,7 @@ export type ExpressionReference = ["expression", ExpressionName];
 
 export type FieldLiteral = ["field-literal", string, BaseType]; // ["field-literal", name, base-type]
 
-export type JoinedFieldReference = ["joined-field", string, ConcreteField];
+export type JoinedFieldReference = ["joined-field", JoinAlias, ConcreteField];
 
 export type DatetimeField =
   | [

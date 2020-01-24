@@ -173,7 +173,7 @@ export default class DashboardHeader extends Component {
         key="archive"
         ref="archiveDashboardModal"
         triggerClasses="Button Button--small"
-        triggerElement="Archive"
+        triggerElement={t`Archive`}
       >
         <ArchiveDashboardModal
           onArchive={() => this.onArchive(this.props.dashboard)}
@@ -205,8 +205,8 @@ export default class DashboardHeader extends Component {
     const isEmpty = !dashboard || dashboard.ordered_cards.length === 0;
     const canEdit = dashboard.can_write && isEditable && !!dashboard;
 
-    const isPublicLinksEnabled = MetabaseSettings.get("public_sharing");
-    const isEmbeddingEnabled = MetabaseSettings.get("embedding");
+    const isPublicLinksEnabled = MetabaseSettings.get("enable-public-sharing");
+    const isEmbeddingEnabled = MetabaseSettings.get("enable-embedding");
 
     const buttons = [];
 
@@ -256,7 +256,7 @@ export default class DashboardHeader extends Component {
             <a
               key="parameters"
               className={cx("text-brand-hover", {
-                "text-brand": this.state.modal == "parameters",
+                "text-brand": this.state.modal === "parameters",
               })}
               title={t`Parameters`}
               onClick={() => this.setState({ modal: "parameters" })}

@@ -7,7 +7,7 @@ import crossfilter from "crossfilter";
 
 import { isDimension, isMetric, isDate } from "metabase/lib/schema_metadata";
 
-export const MAX_SERIES = 20;
+export const MAX_SERIES = 100;
 
 const SPLIT_AXIS_UNSPLIT_COST = -100;
 const SPLIT_AXIS_COST_FACTOR = 2;
@@ -27,8 +27,7 @@ export function columnsAreValid(colNames, data, filter = () => true) {
   }
   return colNames.reduce(
     (acc, name) =>
-      acc &&
-      (name == undefined || (colsByName[name] && filter(colsByName[name]))),
+      acc && (name == null || (colsByName[name] && filter(colsByName[name]))),
     true,
   );
 }

@@ -1,23 +1,29 @@
 (ns metabase.api.user-test
   "Tests for /api/user endpoints."
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase
              [email-test :as et]
              [http-client :as http]
              [util :as u]]
             [metabase.middleware.util :as middleware.u]
             [metabase.models
-             [collection-test :as collection-test]
+             [collection :as collection :refer [Collection]]
              [permissions-group :as group :refer [PermissionsGroup]]
              [permissions-group-membership :refer [PermissionsGroupMembership]]
              [user :refer [User]]
              [user-test :as user-test]]
             [metabase.test
              [data :refer :all]
+             [fixtures :as fixtures]
              [util :as tu :refer [random-name]]]
             [metabase.test.data.users :as test-users]
-            [toucan.db :as db]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]
             [toucan.util.test :as tt]))
+
+(use-fixtures :once (fixtures/initialize :test-users-personal-collections))
 
 (def ^:private user-defaults
   {:date_joined      true
@@ -50,7 +56,7 @@
   (tu/with-non-admin-groups-no-root-collection-perms
     ;; Delete all the other random Users we've created so far
     ;; Make sure personal Collections have been created
-    (collection-test/force-create-personal-collections!)
+
     ;; Now do the request
     ((test-users/user->client :rasta) :get 200 "user")))
 
@@ -86,11 +92,9 @@
      :group_ids              #{(u/get-id (group/all-users))}
      :personal_collection_id true
      :common_name            "Rasta Toucan"})]
-  (do
-    (collection-test/force-create-personal-collections!)
-    (-> ((test-users/user->client :crowberto) :get 200 "user")
-        group-ids->sets
-        tu/boolean-ids-and-timestamps)))
+  (-> ((test-users/user->client :crowberto) :get 200 "user")
+      group-ids->sets
+      tu/boolean-ids-and-timestamps))
 
 ;; Non-admins should *not* be allowed to pass in include_deactivated
 (expect
@@ -134,11 +138,9 @@
      :group_ids              #{(u/get-id (group/all-users))}
      :personal_collection_id true
      :common_name            "Rasta Toucan"})]
-  (do
-    (collection-test/force-create-personal-collections!)
-    (-> ((test-users/user->client :crowberto) :get 200 "user", :include_deactivated true)
-        group-ids->sets
-        tu/boolean-ids-and-timestamps)))
+  (-> ((test-users/user->client :crowberto) :get 200 "user", :include_deactivated true)
+      group-ids->sets
+      tu/boolean-ids-and-timestamps))
 
 ;; ## GET /api/user/current
 ;; Check that fetching current user will return extra fields like `is_active` and will return OrgPerms
@@ -151,12 +153,7 @@
     :common_name            "Rasta Toucan"
     :group_ids              [(u/get-id (group/all-users))]
     :personal_collection_id true})
-  (do
-    ;; Make sure personal Collections have been created so this endpoint won't randomly return `false` for
-    ;; personal_collection_id
-    (collection-test/force-create-personal-collections!)
-    ;; now FETCH
-    (tu/boolean-ids-and-timestamps ((test-users/user->client :rasta) :get 200 "user/current"))))
+  (tu/boolean-ids-and-timestamps ((test-users/user->client :rasta) :get 200 "user/current")))
 
 
 ;; ## GET /api/user/:id
@@ -332,9 +329,18 @@
 ;;; |                                      Updating a User -- PUT /api/user/:id                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn include-personal-collection-name
+  {:hydrate :personal_collection_name}
+  [user]
+  (db/select-one-field :name Collection :id (:personal_collection_id user)))
+
 ;; Test that admins can edit other Users
 (expect
-  {:before   {:first_name "Cam", :last_name "Era", :is_superuser true, :email "cam.era@metabase.com"}
+  {:before   {:first_name "Cam",
+              :last_name "Era",
+              :is_superuser true,
+              :email "cam.era@metabase.com"
+              :personal_collection_name "Cam Era's Personal Collection"}
    :response (merge
               user-defaults
               {:common_name  "Cam Eron"
@@ -344,13 +350,19 @@
                :is_superuser true
                :group_ids    #{(u/get-id (group/all-users))
                                (u/get-id (group/admin))}})
-   :after    {:first_name "Cam", :last_name "Eron", :is_superuser true, :email "cam.eron@metabase.com"}}
-  (tt/with-temp User [{user-id :id} {:first_name   "Cam"
-                                     :last_name    "Era"
-                                     :email        "cam.era@metabase.com"
-                                     :is_superuser true}]
-    (let [user (fn [] (into {} (-> (db/select-one [User :first_name :last_name :is_superuser :email], :id user-id)
-                                   (dissoc :common_name))))]
+   :after    {:first_name "Cam"
+              :last_name "Eron"
+              :is_superuser true
+              :email "cam.eron@metabase.com"
+              :personal_collection_name "Cam Eron's Personal Collection"}}
+  (tt/with-temp* [User [{user-id :id} {:first_name   "Cam"
+                                       :last_name    "Era"
+                                       :email        "cam.era@metabase.com"
+                                       :is_superuser true}]
+                  Collection [coll]]
+    (let [user (fn [] (into {} (-> (db/select-one [User :id :first_name :last_name :is_superuser :email], :id user-id)
+                                   (hydrate :personal_collection_id :personal_collection_name)
+                                   (dissoc :id :personal_collection_id :common_name))))]
       (array-map
        :before   (user)
        :response (-> ((test-users/user->client :crowberto) :put 200 (str "user/" user-id)

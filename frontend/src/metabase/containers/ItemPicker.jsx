@@ -2,6 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 
+import { t } from "ttag";
 import { Flex, Box } from "grid-styled";
 import Icon from "metabase/components/Icon";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
@@ -111,7 +112,7 @@ export default class ItemPicker extends React.Component {
               <input
                 type="search"
                 className="input rounded flex-full"
-                placeholder="Search"
+                placeholder={t`Search`}
                 autoFocus
                 onKeyPress={e => {
                   if (e.key === "Enter") {

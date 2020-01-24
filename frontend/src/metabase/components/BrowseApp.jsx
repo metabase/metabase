@@ -152,9 +152,7 @@ export class TableBrowser extends React.Component {
                                   </Link>
                                 ),
                                 <Link
-                                  to={`reference/databases/${dbId}/tables/${
-                                    table.id
-                                  }`}
+                                  to={`reference/databases/${dbId}/tables/${table.id}`}
                                   data-metabase-event={`${ANALYTICS_CONTEXT};Table Item;Reference Click`}
                                   className="link--icon ml1"
                                 >
@@ -204,6 +202,7 @@ export class DatabaseBrowser extends React.Component {
                     <Link
                       to={`browse/${database.id}`}
                       data-metabase-event={`${ANALYTICS_CONTEXT};Database Click`}
+                      display="block"
                       hover={{ color: color("brand") }}
                     >
                       <Card p={3} hover={{ color: color("brand") }}>

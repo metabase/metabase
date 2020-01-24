@@ -25,6 +25,7 @@
              [dimension :refer [Dimension]]
              [field :refer [Field]]
              [params :as params]]
+            [metabase.query-processor.error-type :as qp.error-type]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.util
              [embed :as embed]
@@ -42,14 +43,14 @@
 ;;; -------------------------------------------------- Public Cards --------------------------------------------------
 
 (defn- remove-card-non-public-columns
-  "Remove everyting from public CARD that shouldn't be visible to the general public."
+  "Remove everyting from public `card` that shouldn't be visible to the general public."
   [card]
   (card/map->CardInstance
    (u/select-nested-keys card [:id :name :description :display :visualization_settings
                                [:dataset_query :type [:native :template-tags]]])))
 
 (defn public-card
-  "Return a public Card matching key-value CONDITIONS, removing all columns that should not be visible to the general
+  "Return a public Card matching key-value `conditions`, removing all columns that should not be visible to the general
    public. Throws a 404 if the Card doesn't exist."
   [& conditions]
   (-> (api/check-404 (apply db/select-one [Card :id :dataset_query :description :display :name :visualization_settings]
@@ -66,13 +67,24 @@
   (api/check-public-sharing-enabled)
   (card-with-uuid uuid))
 
-(defn- transform-results [results]
-  (if (= (:status results) :failed)
-    ;; if the query failed instead of returning anything about the query just return a generic error message
-    (ex-info "An error occurred while running the query." {:status-code 400})
-    (u/select-nested-keys
-     results
-     [[:data :cols :rows :rows_truncated :insights] [:json_query :parameters] :error :status])))
+(defmulti ^:private transform-results
+  {:arglists '([results])}
+  :status)
+
+(defmethod transform-results :default
+  [results]
+  (u/select-nested-keys
+   results
+   [[:data :cols :rows :rows_truncated :insights :requested_timezone :results_timezone] [:json_query :parameters] :status]))
+
+(defmethod transform-results :failed
+  [{:keys [error], error-type :error_type, :as results}]
+  ;; if the query failed instead, unless the error type is specified and is EXPLICITLY allowed to be shown for embeds,
+  ;; instead of returning anything about the query just return a generic error message
+  (merge
+   (select-keys results [:status :error :error_type])
+   (when-not (qp.error-type/show-in-embeds? error-type)
+     {:error (tru "An error occurred while running the query.")})))
 
 (defn run-query-for-card-with-id-async
   "Run the query belonging to Card with `card-id` with `parameters` and other query options (e.g. `:constraints`).

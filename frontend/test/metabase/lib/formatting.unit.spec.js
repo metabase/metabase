@@ -200,6 +200,32 @@ describe("formatting", () => {
         }),
       ).toEqual("foobar@example.com");
     });
+    it("should display hour-of-day with 12 hour clock", () => {
+      expect(
+        formatValue(24, {
+          date_style: null,
+          time_enabled: "minutes",
+          time_style: "h:mm A",
+          column: {
+            base_type: "type/DateTime",
+            unit: "hour-of-day",
+          },
+        }),
+      ).toEqual("12:00 AM");
+    });
+    it("should display hour-of-day with 24 hour clock", () => {
+      expect(
+        formatValue(24, {
+          date_style: null,
+          time_enabled: "minutes",
+          time_style: "k:mm",
+          column: {
+            base_type: "type/DateTime",
+            unit: "hour-of-day",
+          },
+        }),
+      ).toEqual("24:00");
+    });
   });
 
   describe("formatUrl", () => {
@@ -271,6 +297,16 @@ describe("formatting", () => {
         }),
       ).toEqual("data:text/plain;charset=utf-8,hello%20world");
     });
+    it("should return link component for type/URL and  view_as = link", () => {
+      const formatted = formatUrl("http://whatever", {
+        jsx: true,
+        rich: true,
+        column: { special_type: TYPE.URL },
+        view_as: "link",
+      });
+      expect(isElementOfType(formatted, ExternalLink)).toEqual(true);
+    });
+
     it("should not crash if column is null", () => {
       expect(
         formatUrl("foobar", {

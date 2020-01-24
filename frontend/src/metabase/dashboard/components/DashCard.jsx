@@ -74,6 +74,7 @@ export default class DashCard extends Component {
       metadata,
       dashboard,
       parameterValues,
+      mode,
     } = this.props;
 
     const mainCard = {
@@ -190,6 +191,7 @@ export default class DashCard extends Component {
             )
           }
           metadata={metadata}
+          mode={mode}
           onChangeCardAndRun={
             navigateToNewCardFromDashboard
               ? ({ nextCard, previousCard }) => {
@@ -202,6 +204,7 @@ export default class DashCard extends Component {
                 }
               : null
           }
+          onChangeLocation={this.props.onChangeLocation}
         />
       </div>
     );
@@ -242,6 +245,7 @@ const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) => (
     triggerClasses="text-light text-medium-hover cursor-pointer flex align-center flex-no-shrink mr1 drag-disabled"
   >
     <ChartSettingsWithState
+      className="spread"
       series={series}
       onChange={onReplaceAllVisualizationSettings}
       isDashboard

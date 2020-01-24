@@ -1,3 +1,7 @@
+// we mock ExplicitSize in register-visualizations for all tests, we need to
+// undo it just for this test
+jest.unmock("metabase/components/ExplicitSize");
+
 import React from "react";
 import renderer from "react-test-renderer";
 import { render } from "enzyme";

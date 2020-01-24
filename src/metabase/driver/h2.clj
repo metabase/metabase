@@ -1,6 +1,7 @@
 (ns metabase.driver.h2
   (:require [clojure.string :as str]
             [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase
              [db :as mdb]
              [driver :as driver]
@@ -9,16 +10,14 @@
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
+             [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor.store :as qp.store]
             [metabase.util
-             [date :as du]
              [honeysql-extensions :as hx]
              [i18n :refer [deferred-tru tru]]])
-  (:import java.sql.Time
-           java.util.Date))
+  (:import java.time.OffsetTime))
 
 (driver/register! :h2, :parent :sql-jdbc)
 
@@ -28,12 +27,14 @@
 
 (defmethod driver/supports? [:h2 :full-join] [_ _] false)
 
-(defmethod driver/connection-properties :h2 [_]
+(defmethod driver/connection-properties :h2
+  [_]
   [{:name         "db"
     :display-name (tru "Connection String")
     :placeholder  (str "file:/" (deferred-tru "Users/camsaul/bird_sightings/toucans"))
     :required     true}])
 
+;; TODO - it would be better not to put all the options in the connection string in the first place?
 (defn- connection-string->file+options
   "Explode a `connection-string` like `file:my-db;OPTION=100;OPTION_2=TRUE` to a pair of file and an options map.
 
@@ -69,12 +70,10 @@
 (defmethod driver/process-query-in-context :h2 [_ qp]
   (comp qp check-native-query-not-using-default-user))
 
-
 (defmethod driver/date-add :h2 [driver dt amount unit]
   (if (= unit :quarter)
     (recur driver dt (hx/* amount 3) :month)
     (hsql/call :dateadd (hx/literal unit) amount dt)))
-
 
 (defmethod driver/humanize-connection-error-message :h2 [_ message]
   (condp re-matches message
@@ -150,87 +149,86 @@
 ;;
 ;; Postgres DATE_TRUNC('quarter', x)
 ;; becomes  PARSEDATETIME(CONCAT(YEAR(x), ((QUARTER(x) * 3) - 2)), 'yyyyMM')
-(defmethod sql.qp/date [:h2 :quarter] [_ _ expr]
+(defmethod sql.qp/date [:h2 :quarter]
+  [_ _ expr]
   (parse-datetime "yyyyMM"
                   (hx/concat (hx/year expr) (hx/- (hx/* (hx/quarter expr)
                                                         3)
                                                   2))))
 
 
-(defmethod unprepare/unprepare-value [:h2 Date] [_ value]
-  (format "timestamp '%s'" (du/date->iso-8601 value)))
-
-(prefer-method unprepare/unprepare-value [:sql Time] [:h2 Date])
-
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod sql-jdbc.sync/database-type->base-type :h2 [_ database-type]
-  ({:ARRAY                       :type/*
-    :BIGINT                      :type/BigInteger
-    :BINARY                      :type/*
-    :BIT                         :type/Boolean
-    :BLOB                        :type/*
-    :BOOL                        :type/Boolean
-    :BOOLEAN                     :type/Boolean
-    :BYTEA                       :type/*
-    :CHAR                        :type/Text
-    :CHARACTER                   :type/Text
-    :CLOB                        :type/Text
-    :DATE                        :type/Date
-    :DATETIME                    :type/DateTime
-    :DEC                         :type/Decimal
-    :DECIMAL                     :type/Decimal
-    :DOUBLE                      :type/Float
-    :FLOAT                       :type/Float
-    :FLOAT4                      :type/Float
-    :FLOAT8                      :type/Float
-    :GEOMETRY                    :type/*
-    :IDENTITY                    :type/Integer
-    :IMAGE                       :type/*
-    :INT                         :type/Integer
-    :INT2                        :type/Integer
-    :INT4                        :type/Integer
-    :INT8                        :type/BigInteger
-    :INTEGER                     :type/Integer
-    :LONGBLOB                    :type/*
-    :LONGTEXT                    :type/Text
-    :LONGVARBINARY               :type/*
-    :LONGVARCHAR                 :type/Text
-    :MEDIUMBLOB                  :type/*
-    :MEDIUMINT                   :type/Integer
-    :MEDIUMTEXT                  :type/Text
-    :NCHAR                       :type/Text
-    :NCLOB                       :type/Text
-    :NTEXT                       :type/Text
-    :NUMBER                      :type/Decimal
-    :NUMERIC                     :type/Decimal
-    :NVARCHAR                    :type/Text
-    :NVARCHAR2                   :type/Text
-    :OID                         :type/*
-    :OTHER                       :type/*
-    :RAW                         :type/*
-    :REAL                        :type/Float
-    :SIGNED                      :type/Integer
-    :SMALLDATETIME               :type/DateTime
-    :SMALLINT                    :type/Integer
-    :TEXT                        :type/Text
-    :TIME                        :type/Time
-    :TIMESTAMP                   :type/DateTime
-    :TINYBLOB                    :type/*
-    :TINYINT                     :type/Integer
-    :TINYTEXT                    :type/Text
-    :UUID                        :type/Text
-    :VARBINARY                   :type/*
-    :VARCHAR                     :type/Text
-    :VARCHAR2                    :type/Text
-    :VARCHAR_CASESENSITIVE       :type/Text
-    :VARCHAR_IGNORECASE          :type/Text
-    :YEAR                        :type/Integer
-    (keyword "DOUBLE PRECISION") :type/Float} database-type))
+(def ^:private db-type->base-type
+  {:ARRAY                               :type/*
+   :BIGINT                              :type/BigInteger
+   :BINARY                              :type/*
+   :BIT                                 :type/Boolean
+   :BLOB                                :type/*
+   :BOOL                                :type/Boolean
+   :BOOLEAN                             :type/Boolean
+   :BYTEA                               :type/*
+   :CHAR                                :type/Text
+   :CHARACTER                           :type/Text
+   :CLOB                                :type/Text
+   :DATE                                :type/Date
+   :DATETIME                            :type/DateTime
+   :DEC                                 :type/Decimal
+   :DECIMAL                             :type/Decimal
+   :DOUBLE                              :type/Float
+   :FLOAT                               :type/Float
+   :FLOAT4                              :type/Float
+   :FLOAT8                              :type/Float
+   :GEOMETRY                            :type/*
+   :IDENTITY                            :type/Integer
+   :IMAGE                               :type/*
+   :INT                                 :type/Integer
+   :INT2                                :type/Integer
+   :INT4                                :type/Integer
+   :INT8                                :type/BigInteger
+   :INTEGER                             :type/Integer
+   :LONGBLOB                            :type/*
+   :LONGTEXT                            :type/Text
+   :LONGVARBINARY                       :type/*
+   :LONGVARCHAR                         :type/Text
+   :MEDIUMBLOB                          :type/*
+   :MEDIUMINT                           :type/Integer
+   :MEDIUMTEXT                          :type/Text
+   :NCHAR                               :type/Text
+   :NCLOB                               :type/Text
+   :NTEXT                               :type/Text
+   :NUMBER                              :type/Decimal
+   :NUMERIC                             :type/Decimal
+   :NVARCHAR                            :type/Text
+   :NVARCHAR2                           :type/Text
+   :OID                                 :type/*
+   :OTHER                               :type/*
+   :RAW                                 :type/*
+   :REAL                                :type/Float
+   :SIGNED                              :type/Integer
+   :SMALLDATETIME                       :type/DateTime
+   :SMALLINT                            :type/Integer
+   :TEXT                                :type/Text
+   :TIME                                :type/Time
+   :TIMESTAMP                           :type/DateTime
+   :TINYBLOB                            :type/*
+   :TINYINT                             :type/Integer
+   :TINYTEXT                            :type/Text
+   :UUID                                :type/Text
+   :VARBINARY                           :type/*
+   :VARCHAR                             :type/Text
+   :VARCHAR2                            :type/Text
+   :VARCHAR_CASESENSITIVE               :type/Text
+   :VARCHAR_IGNORECASE                  :type/Text
+   :YEAR                                :type/Integer
+   (keyword "DOUBLE PRECISION")         :type/Float
+   (keyword "TIMESTAMP WITH TIME ZONE") :type/DateTimeWithLocalTZ})
 
+(defmethod sql-jdbc.sync/database-type->base-type :h2
+  [_ database-type]
+  (db-type->base-type database-type))
 
 ;; These functions for exploding / imploding the options in the connection strings are here so we can override shady
 ;; options users might try to put in their connection string. e.g. if someone sets `ACCESS_MODE_DATA` to `rws` we can
@@ -249,10 +247,17 @@
     (file+options->connection-string file (merge options {"IFEXISTS"         "TRUE"
                                                           "ACCESS_MODE_DATA" "r"}))))
 
-(defmethod sql-jdbc.conn/connection-details->spec :h2 [_ details]
+(defmethod sql-jdbc.conn/connection-details->spec :h2
+  [_ details]
   (dbspec/h2 (if mdb/*allow-potentailly-unsafe-connections*
                details
                (update details :db connection-string-set-safe-options))))
 
-(defmethod sql-jdbc.sync/active-tables :h2 [& args]
+(defmethod sql-jdbc.sync/active-tables :h2
+  [& args]
   (apply sql-jdbc.sync/post-filtered-active-tables args))
+
+(defmethod sql-jdbc.execute/set-parameter [:h2 OffsetTime]
+  [driver prepared-statement i t]
+  (let [local-time (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))]
+    (sql-jdbc.execute/set-parameter driver prepared-statement i local-time)))

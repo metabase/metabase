@@ -1,9 +1,11 @@
 (ns metabase.api.public-test
   "Tests for `api/public/` (public links) endpoints."
   (:require [cheshire.core :as json]
-            [clojure.string :as str]
+            [clojure
+             [string :as str]
+             [test :refer :all]]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [metabase
              [http-client :as http]
              [query-processor-test :as qp.test]
@@ -191,6 +193,41 @@
                            :parameters (json/encode [{:name "Venue ID", :slug "venue_id", :type "id", :value 2}]))
               [:json_query :parameters]))))
 
+;; Cards with required params
+(defn- do-with-required-param-card [f]
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (with-temp-public-card [{uuid :public_uuid}
+                            {:dataset_query
+                             {:database (data/id)
+                              :type     :native
+                              :native   {:query         "SELECT count(*) FROM venues v WHERE price = {{price}}"
+                                         :template-tags {"price" {:name         "price"
+                                                                  :display-name "Price"
+                                                                  :type         :number
+                                                                  :required     true}}}}}]
+      (f uuid))))
+
+;; should be able to run a Card with a required param
+(expect
+  [[22]]
+  (do-with-required-param-card
+   (fn [uuid]
+     (qp.test/rows
+       (http/client :get 200 (str "public/card/" uuid "/query")
+                    :parameters (json/encode [{:type   "category"
+                                               :target [:variable [:template-tag "price"]]
+                                               :value  1}]))))))
+
+(deftest missing-required-param-error-message-test
+  (testing (str "If you're missing a required param, the error message should get passed thru, rather than the normal "
+                "generic 'Query Failed' message that we show for most embedding errors")
+    (is (= {:status     "failed"
+            :error      "You'll need to pick a value for 'Price' before this query can run."
+            :error_type "missing-required-parameter"}
+           (do-with-required-param-card
+            (fn [uuid]
+              (http/client :get 200 (str "public/card/" uuid "/query"))))))))
+
 ;; make sure CSV (etc.) downloads take editable params into account (#6407)
 
 (defn- card-with-date-field-filter []
@@ -236,7 +273,7 @@
                               :aggregation  [[:count]]}}))
 
 (expect
-  #{:cols :rows :insights}
+  #{:cols :rows :insights :results_timezone}
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (tt/with-temp Card [{uuid :public_uuid} (card-with-trendline)]
       (-> (http/client :get 200 (str "public/card/" uuid "/query"))

@@ -1,11 +1,13 @@
 (ns metabase.driver.util
   "Utility functions for common operations on drivers."
-  (:require [clojure.string :as str]
+  (:require [clojure.core.memoize :as memoize]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
              [config :as config]
              [driver :as driver]
              [util :as u]]
+            [metabase.driver.impl :as impl]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))
 
@@ -36,9 +38,8 @@
     (try
       (can-connect-with-details? driver details-map :throw-exceptions)
       (catch Throwable e
-        (log/error (trs "Failed to connect to database: {0}" (.getMessage e)))
+        (log/error e (trs "Failed to connect to database"))
         false))))
-
 
 (defn report-timezone-if-supported
   "Returns the report-timezone if `driver` supports setting it's timezone and a report-timezone has been specified by
@@ -55,12 +56,16 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- database->driver* [database-or-id]
-  (db/select-one-field :engine 'Database, :id (u/get-id database-or-id)))
+  (or
+   (:engine database-or-id)
+   (db/select-one-field :engine 'Database, :id (u/get-id database-or-id))))
 
 (def ^{:arglists '([database-or-id])} database->driver
-  "Memoized function that returns the driver instance that should be used for `Database` with ID. (Databases aren't
-  expected to change their types, and this optimization makes things a lot faster)."
-  (memoize database->driver*))
+  "Look up the driver that should be used for a Database. Lightly cached.
+
+  (This is cached for a second, so as to avoid repeated application DB calls if this function is called several times
+  over the duration of a single API request or sync operation.)"
+  (memoize/ttl database->driver* :ttl/threshold 1000))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -80,10 +85,10 @@
           :let    [driver (keyword (-> (last (str/split (name ns-symb) #"\."))
                                        (str/replace #"_" "-")))]
           ;; let's go ahead and ignore namespaces we know for a fact do not contain drivers
-          :when   (not (#{:common :util :query-processor :google}
+          :when   (not (#{:common :util :query-processor :google :impl}
                         driver))]
     (try
-      (#'driver/load-driver-namespace-if-needed! driver)
+      (impl/load-driver-namespace-if-needed! driver)
       (catch Throwable e
         (log/error e (trs "Error loading namespace"))))))
 
@@ -110,8 +115,12 @@
   "Return info about all currently available drivers, including their connection properties fields and supported
   features."
   []
-  (into {} (for [driver (available-drivers)]
-             ;; TODO - maybe we should rename `connection-properties` -> `connection-properties` on the FE as well?
-             [driver {:details-fields (driver/connection-properties driver)
-                      :driver-name    (driver/display-name driver)
-                      #_:features       #_(features driver)}])))
+  (into {} (for [driver (available-drivers)
+                 :let   [props (try
+                                 (driver/connection-properties driver)
+                                 (catch Throwable e
+                                   (log/error e (trs "Unable to determine connection properties for driver {0}" driver))))]
+                 :when  props]
+             ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
+             [driver {:details-fields props
+                      :driver-name    (driver/display-name driver)}])))

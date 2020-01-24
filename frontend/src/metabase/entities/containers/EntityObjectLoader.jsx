@@ -28,7 +28,7 @@ export type Props = {
   // denormalized defaults objectSelector to getObjectNormalized
   denormalized?: boolean,
   // Children render prop
-  children: (props: RenderProps) => ?React$Element<any>,
+  children?: (props: RenderProps) => ?React$Element<any>,
 };
 
 export type RenderProps = {

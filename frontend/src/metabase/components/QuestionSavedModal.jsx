@@ -16,7 +16,7 @@ export default class QuestionSavedModal extends Component {
         id="QuestionSavedModal"
         title={t`Saved! Add this to a dashboard?`}
         onClose={this.props.onClose}
-        className="Modal-content Modal-content--small NewForm"
+        className="Modal-content Modal-content--small"
       >
         <div>
           <button

@@ -7,8 +7,8 @@ describe("Metadata", () => {
     existingData = "data",
     newData = "new data",
     requestState = null,
-    requestStateLoading = { state: "LOADING" },
-    requestStateLoaded = { state: "LOADED" },
+    requestStateLoading = { loading: true },
+    requestStateLoaded = { loaded: true },
     requestStateError = { error: new Error("error") },
     statePath = ["test", "path"],
     statePathFetch = statePath.concat("fetch"),
@@ -17,9 +17,7 @@ describe("Metadata", () => {
     existingStatePath = statePath,
     getState = () => ({
       requests: {
-        states: {
-          test: { path: { fetch: requestState, update: requestState } },
-        },
+        test: { path: { fetch: requestState, update: requestState } },
       },
       test: { path: existingData },
     }),

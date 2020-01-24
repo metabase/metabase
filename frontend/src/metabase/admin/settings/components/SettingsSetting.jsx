@@ -4,12 +4,15 @@ import { assocIn } from "icepick";
 
 import SettingHeader from "./SettingHeader";
 import { t } from "ttag";
+
 import SettingInput from "./widgets/SettingInput";
 import SettingNumber from "./widgets/SettingNumber";
 import SettingPassword from "./widgets/SettingPassword";
 import SettingRadio from "./widgets/SettingRadio";
 import SettingToggle from "./widgets/SettingToggle";
 import SettingSelect from "./widgets/SettingSelect";
+import SettingText from "./widgets/SettingText";
+import SettingColor from "./widgets/SettingColor";
 
 const SETTING_WIDGET_MAP = {
   string: SettingInput,
@@ -18,6 +21,8 @@ const SETTING_WIDGET_MAP = {
   select: SettingSelect,
   radio: SettingRadio,
   boolean: SettingToggle,
+  text: SettingText,
+  color: SettingColor,
 };
 
 const updatePlaceholderForEnvironmentVars = props => {
@@ -55,7 +60,10 @@ export default class SettingsSetting extends Component {
       <li className="m2 mb4">
         {!setting.noHeader && <SettingHeader setting={setting} />}
         <div className="flex">
-          <Widget {...updatePlaceholderForEnvironmentVars(this.props)} />
+          <Widget
+            {...(setting.props || {})}
+            {...updatePlaceholderForEnvironmentVars(this.props)}
+          />
         </div>
         {errorMessage && (
           <div className="text-error text-bold pt1">{errorMessage}</div>

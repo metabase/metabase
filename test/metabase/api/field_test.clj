@@ -276,8 +276,11 @@
       (hydrate :dimensions)
       :dimensions))
 
-(defn- create-dimension-via-API! {:style/indent 1} [field-id map-to-post]
-  ((test-users/user->client :crowberto) :post 200 (format "field/%d/dimension" field-id) map-to-post))
+(defn- create-dimension-via-API!
+  {:style/indent 1}
+  [field-id map-to-post & {:keys [expected-status-code]
+                           :or   {expected-status-code 200}}]
+  ((test-users/user->client :crowberto) :post expected-status-code (format "field/%d/dimension" field-id) map-to-post))
 
 ;; test that we can do basic field update work, including unsetting some fields such as special-type
 (expect
@@ -334,9 +337,11 @@
 
 ;; External remappings require a human readable field id
 (expect
-  clojure.lang.ExceptionInfo
-  (tt/with-temp* [Field [{field-id-1 :id} {:name "Field Test 1"}]]
-    (create-dimension-via-API! field-id-1 {:name "some dimension name", :type "external"})))
+  "Foreign key based remappings require a human readable field id"
+  (tt/with-temp* [Field [{field-id :id} {:name "Field Test 1"}]]
+    (create-dimension-via-API! field-id
+      {:name "some dimension name", :type "external"}
+      :expected-status-code 400)))
 
 ;; Non-admin users can't update dimension, :field_id trues
 (expect

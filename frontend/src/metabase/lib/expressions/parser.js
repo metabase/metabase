@@ -483,15 +483,15 @@ export function suggest(
       if (outsideAggregation) {
         finalSuggestions.push(
           ...query
-            .aggregationOptionsWithoutRows()
+            .aggregationOperatorsWithoutRows()
             .filter(a => formatAggregationName(a))
-            .map(aggregationOption => {
-              const arity = aggregationOption.fields.length;
+            .map(aggregationOperator => {
+              const arity = aggregationOperator.fields.length;
               return {
                 type: "aggregations",
-                name: formatAggregationName(aggregationOption),
+                name: formatAggregationName(aggregationOperator),
                 text:
-                  formatAggregationName(aggregationOption) +
+                  formatAggregationName(aggregationOperator) +
                   (arity > 0 ? "(" : " "),
                 postfixText: arity > 0 ? ")" : " ",
                 prefixTrim: /\w+$/,

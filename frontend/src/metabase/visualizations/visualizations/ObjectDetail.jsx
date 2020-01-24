@@ -111,7 +111,7 @@ export class ObjectDetail extends Component {
     // if the card changed or table metadata loaded then reload fk references
     const tableFKsJustLoaded =
       nextProps.tableForeignKeys && !this.props.tableForeignKeys;
-    if (this.props.data != nextProps.data || tableFKsJustLoaded) {
+    if (this.props.data !== nextProps.data || tableFKsJustLoaded) {
       this.props.loadObjectDetailFKReferences();
     }
   }
@@ -362,7 +362,7 @@ export class ObjectDetail extends Component {
               }}
             >
               <DirectionalButton
-                direction="back"
+                direction="left"
                 onClick={this.props.viewPreviousObjectDetail}
               />
             </div>
@@ -374,7 +374,7 @@ export class ObjectDetail extends Component {
               }}
             >
               <DirectionalButton
-                direction="forward"
+                direction="right"
                 onClick={this.props.viewNextObjectDetail}
               />
             </div>

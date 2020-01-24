@@ -20,9 +20,9 @@
             [metabase.plugins.classloader :as classloader]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.query-processor.store :as qp.store]
-            [metabase.test.data.env :as tx.env]
+            [metabase.test.initialize :as initialize]
             [metabase.util
-             [date :as du]
+             [date-2 :as u.date]
              [schema :as su]]
             [potemkin.types :as p.types]
             [pretty.core :as pretty]
@@ -65,6 +65,7 @@
     :table-definitions [ValidTableDefinition]}
    (partial instance? DatabaseDefinition)))
 
+;; TODO - this should probably be a protocol instead
 (defmulti ^DatabaseDefinition get-dataset-definition
   "Return a definition of a dataset, so a test database can be created from it."
   {:arglists '([this])}
@@ -98,66 +99,58 @@
 (declare before-run after-run)
 
 (defonce ^:private has-done-before-run (atom #{}))
-(defonce ^:private do-before-run-lock (Object.))
 
 ;; this gets called below by `load-test-extensions-namespace-if-needed`
 (defn- do-before-run-if-needed [driver]
   (when-not (@has-done-before-run driver)
-    (locking do-before-run-lock
+    (locking has-done-before-run
       (when-not (@has-done-before-run driver)
-        (swap! has-done-before-run conj driver)
-        (when-not (= (get-method before-run driver) (get-method before-run ::test-extensions))
+        (when (not= (get-method before-run driver) (get-method before-run ::test-extensions))
           (println "doing before-run for" driver))
-        (before-run driver)))))
+        ;; avoid using the dispatch fn here because it dispatches on driver with test extensions which would result in
+        ;; a circular call back to this function
+        ((get-method before-run driver) driver)
+        (swap! has-done-before-run conj driver)))))
 
-;; after finishing all the tests, call each drivers' `after-run` implementation to do any cleanup needed
-(defn- do-after-run
-  {:expectations-options :after-run}
-  []
-  (doseq [driver (descendants driver/hierarchy ::test-extensions)
-          :when (tx.env/test-drivers driver)]
-    (when-not (= (get-method after-run driver) (get-method after-run ::test-extensions))
-      (println "doing after-run for" driver))
-    (after-run driver)))
-
-
-(defonce ^:private require-lock (Object.))
 
 (defn- require-driver-test-extensions-ns [driver & require-options]
   (let [expected-ns (symbol (or (namespace driver)
                                 (str "metabase.test.data." (name driver))))]
-    ;; ...and lock to make sure that multithreaded driver test-extension loading (on the off chance that it happens
-    ;; in tests) doesn't make Clojure explode
-    (locking require-lock
-      (println (format "Loading driver %s test extensions %s"
-                       (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
-      (apply classloader/require expected-ns require-options))))
+    (println (format "Loading driver %s test extensions %s"
+                     (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
+    (apply classloader/require expected-ns require-options)))
+
+(defonce ^:private has-loaded-extensions (atom #{}))
 
 (defn- load-test-extensions-namespace-if-needed [driver]
-  (when-not (has-test-extensions? driver)
-    (du/profile (format "Load %s test extensions" driver)
-      (require-driver-test-extensions-ns driver)
-      ;; if it doesn't have test extensions yet, it may be because it's relying on a parent driver to add them (e.g.
-      ;; Redshift uses Postgres' test extensions). Load parents as appropriate and try again
-      (when-not (has-test-extensions? driver)
-        (doseq [parent (parents driver/hierarchy driver)
-                ;; skip parents like `:metabase.driver/driver` and `:metabase.driver/concrete`
-                :when  (not= (namespace parent) "metabase.driver")]
-          (u/ignore-exceptions
-            (load-test-extensions-namespace-if-needed parent)))
-        ;; ok, hopefully it has test extensions now. If not, try again, but reload the entire driver namespace
-        (when-not (has-test-extensions? driver)
-          (require-driver-test-extensions-ns driver :reload)
-          ;; if it *still* does not test extensions, throw an Exception
+  (when-not (contains? @has-loaded-extensions driver)
+    (locking has-loaded-extensions
+      (when-not (contains? @has-loaded-extensions driver)
+        (u/profile (format "Load %s test extensions" driver)
+          (require-driver-test-extensions-ns driver)
+          ;; if it doesn't have test extensions yet, it may be because it's relying on a parent driver to add them (e.g.
+          ;; Redshift uses Postgres' test extensions). Load parents as appropriate and try again
           (when-not (has-test-extensions? driver)
-            (throw (Exception. (str "No test extensions found for " driver))))))))
-  ;; do before-run if needed as well
-  (do-before-run-if-needed driver))
+            (doseq [parent (parents driver/hierarchy driver)
+                    ;; skip parents like `:metabase.driver/driver` and `:metabase.driver/concrete`
+                    :when  (not= (namespace parent) "metabase.driver")]
+              (u/ignore-exceptions
+                (load-test-extensions-namespace-if-needed parent)))
+            ;; ok, hopefully it has test extensions now. If not, try again, but reload the entire driver namespace
+            (when-not (has-test-extensions? driver)
+              (require-driver-test-extensions-ns driver :reload)
+              ;; if it *still* does not test extensions, throw an Exception
+              (when-not (has-test-extensions? driver)
+                (throw (Exception. (str "No test extensions found for " driver))))))
+          ;; do before-run if needed as well
+          (do-before-run-if-needed driver))
+        (swap! has-loaded-extensions conj driver)))))
 
 (defn the-driver-with-test-extensions
   "Like `driver/the-driver`, but guaranteed to return a driver with test extensions loaded, throwing an Exception
   otherwise. Loads driver and test extensions automatically if not already done."
   [driver]
+  (initialize/initialize-if-needed! :plugins)
   (let [driver (driver/the-initialized-driver driver)]
     (load-test-extensions-namespace-if-needed driver)
     driver))
@@ -256,7 +249,7 @@
 (defmethod before-run ::test-extensions [_]) ; default-impl is a no-op
 
 
-(defmulti after-run
+(defmulti ^:deprecated after-run
   "Do any cleanup needed after tests are finished running, such as deleting test databases. Use this
   in place of writing expectations `:after-run` functions, since the driver namespaces are lazily loaded and might
   not be loaded in time to register those functions with expectations.
@@ -264,7 +257,11 @@
   Will only be called once for a given driver; only called when running tests against that driver. This method does
   not need to call the implementation for any parent drivers; that is done automatically.
 
-  DO NOT CALL THIS METHOD DIRECTLY; THIS IS CALLED AUTOMATICALLY WHEN APPROPRIATE."
+  DO NOT CALL THIS METHOD DIRECTLY; THIS IS CALLED AUTOMATICALLY WHEN APPROPRIATE.
+
+  DEPRECATED - this is no longer called automatically when tests conclude due to our switch to `clojure.test`. You
+  should not rely on it for performing cleanup when tests are complete. This may be fixed in the future (PRs
+  welcome)."
   {:arglists '([driver])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
@@ -356,8 +353,8 @@
     :source       :aggregation
     :field_ref    [:aggregation 0]})
 
-  ([driver aggregation-type {field-id :id, :keys [base_type special_type table_id]}]
-   {:pre [base_type special_type]}
+  ([driver aggregation-type {field-id :id, :keys [table_id]}]
+   {:pre [table_id]}
    (driver/with-driver driver
      (qp.store/with-store
        (qp.store/fetch-and-store-database! (db/select-one-field :db_id Table :id table_id))
@@ -419,7 +416,22 @@
                           (dataset-table-definition table))})))
 
 (defmacro defdataset
-  "Define a new dataset to test against."
+  "Define a new dataset to test against. Definition should be of the format
+
+    [table-def+]
+
+  Where each table-def is of the format
+
+    [table-name [field-def+] [row+]]
+
+  e.g.
+
+  [[\"bird_species\"
+    [{:field-name \"name\", :base-type :type/Text}]
+    [[\"House Finch\"]
+     [\"Mourning Dove\"]]]]
+
+  Refer to the EDN definitions (e.g. `test-data.edn`) for more examples."
   ([dataset-name definition]
    `(defdataset ~dataset-name nil ~definition))
 
@@ -449,7 +461,9 @@
   directory. (Filename should be `dataset-name` + `.edn`.)"
   [dataset-name :- su/NonBlankString]
   (let [get-def (delay
-                  (let [file-contents (edn/read-string (slurp (str edn-definitions-dir dataset-name ".edn")))]
+                  (let [file-contents (edn/read-string
+                                       {:eof nil, :readers {'t #'u.date/parse}}
+                                       (slurp (str edn-definitions-dir dataset-name ".edn")))]
                     (apply dataset-definition dataset-name file-contents)))]
     (EDNDatasetDefinition. dataset-name get-def)))
 
@@ -626,6 +640,7 @@
   "Same as `db-test-env-var` but will throw an exception if the variable is `nil`."
   ([driver env-var]
    (db-test-env-var-or-throw driver env-var nil))
+
   ([driver env-var default]
    (or (db-test-env-var driver env-var default)
        (throw (Exception. (format "In order to test %s, you must specify the env var MB_%s_TEST_%s."

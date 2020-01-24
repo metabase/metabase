@@ -56,7 +56,7 @@ export default function JoinStep({
           color={color}
           className="cursor-pointer ml-auto"
           onClick={() => {
-            query.addJoin(new Join({ fields: "all" })).update(updateQuery);
+            query.join(new Join({ fields: "all" })).update(updateQuery);
           }}
         />
       )}

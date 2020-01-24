@@ -2,6 +2,7 @@
   "Tests for /api/session"
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
+            [clojure.test :refer :all]
             [expectations :refer [expect]]
             [metabase
              [email-test :as et]
@@ -11,14 +12,19 @@
             [metabase.api.session :as session-api]
             [metabase.models
              [session :refer [Session]]
+             [setting :as setting]
              [user :refer [User]]]
+            [metabase.test
+             [fixtures :as fixtures]
+             [util :as tu]]
             [metabase.test.data.users :as test-users]
             [metabase.test.integrations.ldap :as ldap.test]
-            [metabase.test.util :as tu]
             [metabase.test.util.log :as tu.log]
             [toucan.db :as db]
             [toucan.util.test :as tt])
   (:import java.util.UUID))
+
+(use-fixtures :once (fixtures/initialize :web-server))
 
 ;; ## POST /api/session
 ;; Test that we can login
@@ -45,18 +51,24 @@
   (client :post 400 "session" (-> (test-users/user->credentials :rasta)
                                   (assoc :password "something else"))))
 
-;; Test that people get blocked from attempting to login if they try too many times (Check that throttling works at
-;; the API level -- more tests in the throttle library itself: https://github.com/metabase/throttle)
-(expect
-  [{:errors {:username "Too many attempts! You must wait 15 seconds before trying again."}}
-   {:errors {:username "Too many attempts! You must wait 42 seconds before trying again."}}]
-  (let [login #(client :post 400 "session" {:username "fakeaccount3000@metabase.com", :password "toucans"})]
-    ;; attempt to log in 10 times
-    (dorun (repeatedly 10 login))
-    ;; throttling should now be triggered
-    [(login)
-     ;; Trying to login immediately again should still return throttling error
-     (login)]))
+;;
+;;
+(deftest login-throttling-test
+  (testing (str "Test that people get blocked from attempting to login if they try too many times (Check that"
+                " throttling works at the API level -- more tests in the throttle library itself:"
+                " https://github.com/metabase/throttle)")
+    (let [login (fn []
+                  (-> (client :post 400 "session" {:username "fakeaccount3000@metabase.com", :password "toucans"})
+                      :errors
+                      :username))]
+      ;; attempt to log in 10 times
+      (dorun (repeatedly 10 login))
+      (is (re= #"^Too many attempts! You must wait 1\d seconds before trying again\.$"
+               (login))
+          "throttling should now be triggered")
+      (is (re= #"^Too many attempts! You must wait 4\d seconds before trying again\.$"
+               (login))
+          "Trying to login immediately again should still return throttling error"))))
 
 (defn- send-login-request [username & [{:or {} :as headers}]]
   (try
@@ -73,36 +85,33 @@
         clean-key  (fn [m k] (assoc-in m [k :attempts] (atom '())))]
     (reduce clean-key throttlers ks)))
 
-;; Test that source based throttling kicks in after the login failure threshold (50) has been reached
-(expect
-  ["Too many attempts! You must wait 15 seconds before trying again."
-   "Too many attempts! You must wait 42 seconds before trying again."]
-  (with-redefs [session-api/login-throttlers          (cleaned-throttlers #'session-api/login-throttlers
-                                                                          [:username :ip-address])
-                public-settings/source-address-header (constantly "x-forwarded-for")]
-    (do
+;;
+(deftest failure-threshold-throttling-test
+  (testing "Test that source based throttling kicks in after the login failure threshold (50) has been reached"
+    (with-redefs [session-api/login-throttlers          (cleaned-throttlers #'session-api/login-throttlers
+                                                                            [:username :ip-address])
+                  public-settings/source-address-header (constantly "x-forwarded-for")]
       (dotimes [n 50]
         (let [response    (send-login-request (format "user-%d" n)
                                               {"x-forwarded-for" "10.1.2.3"})
               status-code (:status response)]
           (assert (= status-code 400) (str "Unexpected response status code:" status-code))))
-      [(-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
-            :body
-            json/parse-string
-            (get-in ["errors" "username"]))
-       (-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
-            :body
-            json/parse-string
-            (get-in ["errors" "username"]))])))
+      (let [error (fn []
+                    (-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
+                        :body
+                        json/parse-string
+                        (get-in ["errors" "username"])))]
+        (is (re= #"^Too many attempts! You must wait 1\d seconds before trying again\.$"
+                 (error)))
+        (is (re= #"^Too many attempts! You must wait 4\d seconds before trying again\.$"
+                 (error)))))))
 
-;; The same as above, but ensure that throttling is done on a per request source basis.
-(expect
-  ["Too many attempts! You must wait 15 seconds before trying again."
-   "Too many attempts! You must wait 42 seconds before trying again."]
-  (with-redefs [session-api/login-throttlers          (cleaned-throttlers #'session-api/login-throttlers
-                                                                          [:username :ip-address])
-                public-settings/source-address-header (constantly "x-forwarded-for")]
-    (do
+;;
+(deftest failure-threshold-per-request-source
+  (testing "The same as above, but ensure that throttling is done on a per request source basis."
+    (with-redefs [session-api/login-throttlers          (cleaned-throttlers #'session-api/login-throttlers
+                                                                            [:username :ip-address])
+                  public-settings/source-address-header (constantly "x-forwarded-for")]
       (dotimes [n 50]
         (let [response    (send-login-request (format "user-%d" n)
                                               {"x-forwarded-for" "10.1.2.3"})
@@ -112,14 +121,15 @@
         (let [response    (send-login-request (format "round2-user-%d" n)) ; no x-forwarded-for
               status-code (:status response)]
           (assert (= status-code 400) (str "Unexpected response status code:" status-code))))
-      [(-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
-            :body
-            json/parse-string
-            (get-in ["errors" "username"]))
-       (-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
-            :body
-            json/parse-string
-            (get-in ["errors" "username"]))])))
+      (let [error (fn []
+                    (-> (send-login-request "last-user" {"x-forwarded-for" "10.1.2.3"})
+                        :body
+                        json/parse-string
+                        (get-in ["errors" "username"])))]
+        (is (re= #"^Too many attempts! You must wait 1\d seconds before trying again\.$"
+                 (error)))
+        (is (re= #"^Too many attempts! You must wait 4\d seconds before trying again\.$"
+                 (error)))))))
 
 
 ;; ## DELETE /api/session
@@ -166,20 +176,20 @@
 (defn- send-password-reset [& [expected-status & more]]
   (client :post (or expected-status 200) "session/forgot_password" {:email "not-found@metabase.com"}))
 
-(expect
-  ["Too many attempts! You must wait 15 seconds before trying again."
-   "Too many attempts! You must wait 15 seconds before trying again."] ; `throttling/check` gives 15 in stead of 42
+(deftest forgot-password-throttling-test
   (with-redefs [session-api/forgot-password-throttlers (cleaned-throttlers #'session-api/forgot-password-throttlers
                                                                            [:email :ip-address])]
-    (do
-      (dotimes [n 10]
-        (send-password-reset))
-      [(-> (send-password-reset 400)
-           :errors
-           :email)
-       (-> (send-password-reset 400)
-           :errors
-           :email)])))
+    (dotimes [n 10]
+      (send-password-reset))
+    (let [error (fn []
+                  (-> (send-password-reset 400)
+                      :errors
+                      :email))]
+      (is (= "Too many attempts! You must wait 15 seconds before trying again."
+             (error)))
+      ;;`throttling/check` gives 15 in stead of 42
+      (is (= "Too many attempts! You must wait 15 seconds before trying again."
+             (error))))))
 
 
 ;; POST /api/session/reset_password
@@ -275,32 +285,56 @@
 
 
 ;; GET /session/properties
+
+;; Unauthenticated
 (expect
-  (keys (public-settings/public-settings))
-  (keys ((test-users/user->client :rasta) :get 200 "session/properties")))
+  (keys (setting/properties :public))
+  (keys (client :get 200 "session/properties")))
+
+;; Authenticated normal user
+(expect
+  (keys (merge
+          (setting/properties :public)
+          (setting/properties :authenticated)))
+  (keys ((test-users/user->client :lucky) :get 200 "session/properties")))
+
+;; Authenticated super user
+(expect
+  (keys (merge
+          (setting/properties :public)
+          (setting/properties :authenticated)
+          (setting/properties :admin)))
+  (keys ((test-users/user->client :crowberto) :get 200 "session/properties")))
 
 
 ;;; ------------------------------------------ TESTS FOR GOOGLE AUTH STUFF -------------------------------------------
 
 ;;; tests for email->domain
-(expect "metabase.com"   (#'session-api/email->domain "cam@metabase.com"))
-(expect "metabase.co.uk" (#'session-api/email->domain "cam@metabase.co.uk"))
-(expect "metabase.com"   (#'session-api/email->domain "cam.saul+1@metabase.com"))
+(deftest email->domain-test
+  (are [domain email] (is (= domain
+                             (#'session-api/email->domain email))
+                          (format "Domain of email address '%s'" email))
+    "metabase.com"   "cam@metabase.com"
+    "metabase.co.uk" "cam@metabase.co.uk"
+    "metabase.com"   "cam.saul+1@metabase.com"))
 
 ;;; tests for email-in-domain?
-(expect true  (#'session-api/email-in-domain? "cam@metabase.com"          "metabase.com"))
-(expect false (#'session-api/email-in-domain? "cam.saul+1@metabase.co.uk" "metabase.com"))
-(expect true  (#'session-api/email-in-domain? "cam.saul+1@metabase.com"   "metabase.com"))
+(deftest email-in-domain-test
+  (are [in-domain? email domain] (is (= in-domain?
+                                        (#'session-api/email-in-domain? email domain))
+                                     (format "Is email '%s' in domain '%s'?" email domain))
+    true  "cam@metabase.com"          "metabase.com"
+    false "cam.saul+1@metabase.co.uk" "metabase.com"
+    true  "cam.saul+1@metabase.com"   "metabase.com"))
 
 ;;; tests for autocreate-user-allowed-for-email?
-(expect
+(deftest allow-autocreation-test
   (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
-    (#'session-api/autocreate-user-allowed-for-email? "cam@metabase.com")))
-
-(expect
-  false
-  (tu/with-temporary-setting-values [google-auth-auto-create-accounts-domain "metabase.com"]
-    (#'session-api/autocreate-user-allowed-for-email? "cam@expa.com")))
+    (are [allowed? email] (is (= allowed?
+                                 (#'session-api/autocreate-user-allowed-for-email? email))
+                              (format "Can we autocreate an account for email '%s'?" email))
+      true  "cam@metabase.com"
+      false "cam@expa.com")))
 
 
 ;;; tests for google-auth-create-new-user!
@@ -324,6 +358,56 @@
                      (db/delete! User :id (:id <>))) ; make sure we clean up after ourselves !
                    [:first_name :last_name :email]))))
 
+
+;;; --------------------------------------------- google-auth-token-info ---------------------------------------------
+(deftest google-auth-token-info-tests
+  (testing "Throws exception"
+    (testing "for non-200 status"
+      (is (= [400 "Invalid Google Auth token."]
+             (try
+               (#'session-api/google-auth-token-info {:status 400} "")
+               (catch Exception e
+                 [(-> e ex-data :status-code) (.getMessage e)])))))
+
+    (testing "for invalid data."
+      (is (= [400 "Google Auth token meant for a different site."]
+             (try
+               (#'session-api/google-auth-token-info
+                 {:status 200
+                  :body   "{\"aud\":\"BAD-GOOGLE-CLIENT-ID\"}"}
+                 "PRETEND-GOOD-GOOGLE-CLIENT-ID")
+               (catch Exception e
+                 [(-> e ex-data :status-code) (.getMessage e)]))))
+      (is (= [400 "Email is not verified."]
+             (try
+               (#'session-api/google-auth-token-info
+                 {:status 200
+                  :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
+                               "\"email_verified\":false}")}
+                 "PRETEND-GOOD-GOOGLE-CLIENT-ID")
+               (catch Exception e
+                 [(-> e ex-data :status-code) (.getMessage e)]))))
+      (is (= {:aud            "PRETEND-GOOD-GOOGLE-CLIENT-ID"
+              :email_verified "true"}
+             (try
+               (#'session-api/google-auth-token-info
+                 {:status 200
+                  :body   (str "{\"aud\":\"PRETEND-GOOD-GOOGLE-CLIENT-ID\","
+                               "\"email_verified\":\"true\"}")}
+                 "PRETEND-GOOD-GOOGLE-CLIENT-ID")
+               (catch Exception e
+                 [(-> e ex-data :status-code) (.getMessage e)]))))))
+
+  (testing "Supports multiple :aud token data fields"
+    (let [token-1 "GOOGLE-CLIENT-ID-1"
+          token-2 "GOOGLE-CLIENT-ID-2"]
+      (is (= [token-1 token-2]
+             (:aud (#'session-api/google-auth-token-info
+                     {:status 200
+                      :body   (format "{\"aud\":[\"%s\",\"%s\"],\"email_verified\":\"true\"}"
+                                      token-1
+                                      token-2)}
+                     token-1)))))))
 
 ;;; --------------------------------------- google-auth-fetch-or-create-user! ----------------------------------------
 

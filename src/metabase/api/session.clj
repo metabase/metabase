@@ -16,7 +16,7 @@
             [metabase.middleware.session :as mw.session]
             [metabase.models
              [session :refer [Session]]
-             [setting :refer [defsetting]]
+             [setting :as setting :refer [defsetting]]
              [user :as user :refer [User]]]
             [metabase.util
              [i18n :as ui18n :refer [deferred-tru trs tru]]
@@ -76,7 +76,7 @@
         (when-not (ldap/verify-password user-info password)
           ;; Since LDAP knows about the user, fail here to prevent the local strategy to be tried with a possibly
           ;; outdated password
-          (throw (ui18n/ex-info password-fail-message
+          (throw (ex-info (str password-fail-message)
                    {:status-code 400
                     :errors      {:password password-fail-snippet}})))
         ;; password is ok, return new session
@@ -109,7 +109,7 @@
       ;; If nothing succeeded complain about it
       ;; Don't leak whether the account doesn't exist or the password was incorrect
       (throw
-       (ui18n/ex-info password-fail-message
+       (ex-info (str password-fail-message)
          {:status-code 400
           :errors      {:password password-fail-snippet}}))))
 
@@ -237,7 +237,12 @@
 (api/defendpoint GET "/properties"
   "Get all global properties and their values. These are the specific `Settings` which are meant to be public."
   []
-  (public-settings/public-settings))
+  (merge
+   (setting/properties :public)
+   (when @api/*current-user*
+     (setting/properties :authenticated))
+   (when api/*is-superuser?*
+     (setting/properties :admin))))
 
 
 ;;; -------------------------------------------------- GOOGLE AUTH ---------------------------------------------------
@@ -247,18 +252,28 @@
 ;; add more 3rd-party SSO options
 
 (defsetting google-auth-client-id
-  (deferred-tru "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled."))
+  (deferred-tru "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled.")
+  :visibility :public)
 
 (defsetting google-auth-auto-create-accounts-domain
   (deferred-tru "When set, allow users to sign up on their own if their Google account email address is from this domain."))
 
-(defn- google-auth-token-info [^String token]
-  (let [{:keys [status body]} (http/post (str "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=" token))]
-    (when-not (= status 200)
-      (throw (ui18n/ex-info (tru "Invalid Google Auth token.") {:status-code 400})))
-    (u/prog1 (json/parse-string body keyword)
-      (when-not (= (:email_verified <>) "true")
-        (throw (ui18n/ex-info (tru "Email is not verified.") {:status-code 400}))))))
+(def ^:private google-auth-token-info-url "https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=%s")
+
+(defn- google-auth-token-info
+  ([token-info-response]
+   (google-auth-token-info token-info-response (google-auth-client-id)))
+  ([token-info-response client-id]
+   (let [{:keys [status body]} token-info-response]
+     (when-not (= status 200)
+       (throw (ex-info (tru "Invalid Google Auth token.") {:status-code 400})))
+     (u/prog1 (json/parse-string body keyword)
+       (let [audience (:aud <>)
+             audience (if (string? audience) [audience] audience)]
+         (when-not (contains? (set audience) client-id)
+           (throw (ex-info (tru "Google Auth token meant for a different site.") {:status-code 400}))))
+       (when-not (= (:email_verified <>) "true")
+         (throw (ex-info (tru "Email is not verified.") {:status-code 400})))))))
 
 ;; TODO - are these general enough to move to `metabase.util`?
 (defn- email->domain ^String [email]
@@ -279,7 +294,7 @@
     ;; Use some wacky status code (428 - Precondition Required) so we will know when to so the error screen specific
     ;; to this situation
     (throw
-     (ui18n/ex-info (tru "You''ll need an administrator to create a Metabase account before you can use Google to log in.")
+     (ex-info (tru "You''ll need an administrator to create a Metabase account before you can use Google to log in.")
        {:status-code 428}))))
 
 (s/defn ^:private google-auth-create-new-user!
@@ -298,8 +313,9 @@
                                                      :email      email}))]
     (create-session! :sso user)))
 
-(defn- do-google-auth [{{:keys [token]} :body, :as request}]
-  (let [{:keys [given_name family_name email]} (google-auth-token-info token)]
+(defn- do-google-auth [{{:keys [token]} :body :as request}]
+  (let [token-info-response                    (http/post (format google-auth-token-info-url token))
+        {:keys [given_name family_name email]} (google-auth-token-info token-info-response)]
     (log/info (trs "Successfully authenticated Google Auth token for: {0} {1}" given_name family_name))
     (let [session-id (api/check-500 (google-auth-fetch-or-create-user! given_name family_name email))
           response   {:id session-id}]
@@ -309,6 +325,8 @@
   "Login with Google Auth."
   [:as {{:keys [token]} :body, :as request}]
   {token su/NonBlankString}
+  (when-not (google-auth-client-id)
+    (throw (ex-info "Google Auth is disabled." {:status-code 400})))
   ;; Verify the token is valid with Google
   (if throttling-disabled?
     (do-google-auth token)

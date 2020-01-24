@@ -16,7 +16,8 @@
              [collection :as collection]
              [interface :as mi]
              [pulse :as pulse :refer [Pulse]]
-             [pulse-channel :refer [channel-types]]]
+             [pulse-channel :refer [channel-types PulseChannel]]
+             [pulse-channel-recipient :refer [PulseChannelRecipient]]]
             [metabase.pulse.render :as render]
             [metabase.util
              [i18n :refer [tru]]
@@ -194,5 +195,13 @@
   (p/send-pulse! body)
   {:ok true})
 
+(api/defendpoint DELETE "/:id/subscription/email"
+  "For uses to remove themselves from a pulse subscription"
+  [id]
+  (api/let-404 [pulse-id (db/select-one-id Pulse :id id)
+                pc-id    (db/select-one-id PulseChannel :pulse_id pulse-id :channel_type "email")
+                pcr-id   (db/select-one-id PulseChannelRecipient :pulse_channel_id pc-id :user_id api/*current-user-id*)]
+    (db/delete! PulseChannelRecipient :id pcr-id))
+  api/generic-204-no-content)
 
 (api/define-routes)

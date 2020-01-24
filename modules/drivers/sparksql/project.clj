@@ -7,7 +7,7 @@
    ;; implementations of things like log4j <-> slf4j, or are part of both hadoop-common and hive-jdbc;
    [org.apache.hadoop/hadoop-common "3.1.1"
     :exclusions [com.fasterxml.jackson.core/jackson-core
-                 #_com.google.guava/guava
+                 com.google.guava/guava
                  commons-logging
                  org.apache.httpcomponents/httpcore
                  org.codehaus.jackson/jackson-core-asl
@@ -20,7 +20,7 @@
                  org.tukaani/xz]]
    ;; TODO - this is deprecated, seems like we'll want to upgrade to `org.apache.hive/hive-jdbc` in the future. Don't
    ;; thing it works with Spark SQL atm however
-   [org.spark-project.hive/hive-jdbc "1.2.1.spark2"
+   [org.apache.hive/hive-jdbc "1.2.1"
     :exclusions
     [#_com.google.guava/guava
      commons-logging
@@ -37,7 +37,8 @@
   :profiles
   {:provided
    {:dependencies
-    [[metabase-core "1.0.0-SNAPSHOT"]]}
+    [[org.clojure/clojure "1.10.1"]
+     [metabase-core "1.0.0-SNAPSHOT"]]}
 
    :uberjar
    {:auto-clean    true

@@ -12,6 +12,7 @@ import EditQuestionInfoModal from "metabase/query_builder/components/view/EditQu
 
 import CollectionMoveModal from "metabase/containers/CollectionMoveModal";
 import ArchiveQuestionModal from "metabase/query_builder/containers/ArchiveQuestionModal";
+import QuestionEmbedWidget from "metabase/query_builder/containers/QuestionEmbedWidget";
 
 import QuestionHistoryModal from "metabase/query_builder/containers/QuestionHistoryModal";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
@@ -44,12 +45,12 @@ export default class QueryModals extends React.Component {
           originalCard={this.props.originalCard}
           tableMetadata={this.props.tableMetadata}
           initialCollectionId={this.props.initialCollectionId}
-          saveFn={async card => {
+          onSave={async card => {
             // if saving modified question, don't show "add to dashboard" modal
             await this.props.onSave(card);
             onCloseModal();
           }}
-          createFn={async card => {
+          onCreate={async card => {
             await this.props.onCreate(card);
             onOpenModal("saved");
           }}
@@ -72,11 +73,11 @@ export default class QueryModals extends React.Component {
           originalCard={this.props.originalCard}
           tableMetadata={this.props.tableMetadata}
           initialCollectionId={this.props.initialCollectionId}
-          saveFn={async card => {
+          onSave={async card => {
             await this.props.onSave(card);
             onOpenModal("add-to-dashboard");
           }}
-          createFn={async card => {
+          onCreate={async card => {
             await this.props.onCreate(card);
             onOpenModal("add-to-dashboard");
           }}
@@ -105,11 +106,11 @@ export default class QueryModals extends React.Component {
           card={this.props.card}
           originalCard={this.props.originalCard}
           tableMetadata={this.props.tableMetadata}
-          saveFn={async card => {
+          onSave={async card => {
             await this.props.onSave(card, false);
             this.showAlertsAfterQuestionSaved();
           }}
-          createFn={async card => {
+          onCreate={async card => {
             await this.props.onCreate(card, false);
             this.showAlertsAfterQuestionSaved();
           }}
@@ -118,7 +119,26 @@ export default class QueryModals extends React.Component {
           initialCollectionId={this.props.initialCollectionId}
         />
       </Modal>
-    ) : modal == "history" ? (
+    ) : modal === "save-question-before-embed" ? (
+      <Modal onClose={onCloseModal}>
+        <SaveQuestionModal
+          card={this.props.card}
+          originalCard={this.props.originalCard}
+          tableMetadata={this.props.tableMetadata}
+          onSave={async card => {
+            await this.props.onSave(card, false);
+            onOpenModal("embed");
+          }}
+          onCreate={async card => {
+            await this.props.onCreate(card, false);
+            onOpenModal("embed");
+          }}
+          onClose={onCloseModal}
+          multiStep
+          initialCollectionId={this.props.initialCollectionId}
+        />
+      </Modal>
+    ) : modal === "history" ? (
       <Modal onClose={onCloseModal}>
         <QuestionHistoryModal
           questionId={this.props.card.id}
@@ -156,6 +176,10 @@ export default class QueryModals extends React.Component {
           onClose={onCloseModal}
           onSave={card => this.props.onSave(card, false)}
         />
+      </Modal>
+    ) : modal === "embed" ? (
+      <Modal full onClose={onCloseModal}>
+        <QuestionEmbedWidget card={this.props.card} onClose={onCloseModal} />
       </Modal>
     ) : null;
   }

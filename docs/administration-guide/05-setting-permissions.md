@@ -22,10 +22,11 @@ You’ll notice that you already have two default groups: Administrators and All
 
 You’ll also see that you’re a member of the **Administrators** group — that’s why you were able to go to the Admin Panel in the first place. So, to make someone an admin of Metabase you just need to add them to this group. Metabase admins can log into the Admin Panel and make changes there, and they always have unrestricted access to all data that you have in your Metabase instance. So be careful who you add to the Administrator group!
 
-The **All Users** group is another special one. Every Metabase user is always a  member of this group, though they can also be a member of as many other groups as you want. We recommend using the All Users group as a way to set default access levels for new Metabase users. If you have [Google single sign-on](10-single-sign-on.md) enabled, new users who join that way will be automatically added to the All Users group.
+The **All Users** group is another special one. Every Metabase user is always a member of this group, though they can also be a member of as many other groups as you want. We recommend using the All Users group as a way to set default access levels for new Metabase users. If you have [Google single sign-on](10-single-sign-on.md) enabled, new users who join that way will be automatically added to the All Users group.
 
 #### An important note on the All Users group
-As we mentioned above, a user is given the *most permissive* setting she has for a given database/schema/table across *all* groups she is in. Because of that, it is important that your All Users group should never have *greater* access for an item than a group for which you're trying to restrict access — otherwise the more permissive setting will win out. This goes for both data access as well as [collection permission](06-collections.md) settings.
+
+As we mentioned above, a user is given the _most permissive_ setting she has for a given database/schema/table across _all_ groups she is in. Because of that, it is important that your All Users group should never have _greater_ access for an item than a group for which you're trying to restrict access — otherwise the more permissive setting will win out. This goes for both data access as well as [collection permission](06-collections.md) settings.
 
 If you’ve set up the [Slack integration](09-setting-up-slack.md) and enabled [Metabot](../users-guide/11-metabot.md), you’ll also see a special **Metabot** group, which will allow you to restrict which questions your users will be able to access in Slack via Metabot.
 
@@ -73,12 +74,14 @@ Lastly, data access levels for tables are almost exactly the same as well:
 - **Unrestricted access:** can ask questions about this table and see saved questions and dashboard cards using this table.
 - **No access:** can’t ask questions about this table or see saved questions or dashboard cards using this table.
 
-*Note: you’ll notice that tables don’t have the option for limited access. In the future, column-level permissions will be added to Metabase, and setting limited access on a table will allow you to choose which columns the group should have access to.*
+_Note: you’ll notice that tables don’t have the option for limited access. In the future, column-level permissions will be added to Metabase, and setting limited access on a table will allow you to choose which columns the group should have access to._
 
 ### A note about Pulses
+
 Pulses act a bit differently with regard to permissions. When a user creates a new Pulse, they will only have the option to include saved questions that they have permission to view. Note, however, that they are not prevented from emailing that Pulse to anyone, or posting that Pulse to a Slack channel (if you have Slack integration set up), regardless of the recipients’ permissions. Unlike dashboards, where individual cards are blocked based on a user’s permissions, a Pulse will always render all of its cards.
 
 ---
 
-## Next: custom segments and metrics
+## Next: collections
+
 Metabase lets you create and set permissions on collections of dashboards and questions. [Learn how](06-collections.md).

@@ -24,13 +24,14 @@
 
 (def app
   "The primary entry point to the Ring HTTP server."
-  ;; ▼▼▼ POST-PROCESSING ▼▼▼ happens from TOP-TO-BOTTOM
   (->
-   ;; when running TESTS use the var so we can redefine routes as needed. No need to waste time with repetitive var
-   ;; lookups when running normally
-   (if config/is-test?
-     #'routes/routes
-     routes/routes)
+   ;; in production, dereference routes now because they will not change at runtime, so we don't need to waste time
+   ;; dereferencing the var on every request. For dev & test, use the var instead so it can be tweaked without having
+   ;; to restart the web server
+   (if config/is-prod?
+     routes/routes
+     #'routes/routes)
+   ;; ▼▼▼ POST-PROCESSING ▼▼▼ happens from TOP-TO-BOTTOM
    mw.exceptions/catch-uncaught-exceptions ; catch any Exceptions that weren't passed to `raise`
    mw.exceptions/catch-api-exceptions      ; catch exceptions and return them in our expected format
    mw.log/log-api-call
@@ -39,11 +40,11 @@
    mw.json/wrap-streamed-json-response     ; middleware to automatically serialize suitable objects as JSON in responses
    wrap-keyword-params                     ; converts string keys in :params to keyword keys
    wrap-params                             ; parses GET and POST params as :query-params/:form-params and both as :params
+   mw.misc/maybe-set-site-url              ; set the value of `site-url` if it hasn't been set yet
    mw.session/bind-current-user            ; Binds *current-user* and *current-user-id* if :metabase-user-id is non-nil
    mw.session/wrap-current-user-id         ; looks for :metabase-session-id and sets :metabase-user-id if Session ID is valid
    mw.session/wrap-session-id              ; looks for a Metabase Session ID and assoc as :metabase-session-id
    mw.auth/wrap-api-key                    ; looks for a Metabase API Key on the request and assocs as :metabase-api-key
-   mw.misc/maybe-set-site-url              ; set the value of `site-url` if it hasn't been set yet
    mw.misc/bind-user-locale                ; Binds *locale* for i18n
    wrap-cookies                            ; Parses cookies in the request map and assocs as :cookies
    mw.misc/add-content-type                ; Adds a Content-Type header for any response that doesn't already have one

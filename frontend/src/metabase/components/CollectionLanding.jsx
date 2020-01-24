@@ -497,7 +497,7 @@ class DefaultLanding extends React.Component {
             </BulkActionBar>
           </Box>
         </Box>
-        {!_.isEmpty(selectedItems) && selectedAction == "copy" && (
+        {!_.isEmpty(selectedItems) && selectedAction === "copy" && (
           <Modal onClose={this.handleCloseModal}>
             <CollectionCopyEntityModal
               entityObject={selectedItems[0]}
@@ -509,7 +509,7 @@ class DefaultLanding extends React.Component {
             />
           </Modal>
         )}
-        {!_.isEmpty(selectedItems) && selectedAction == "move" && (
+        {!_.isEmpty(selectedItems) && selectedAction === "move" && (
           <Modal onClose={this.handleCloseModal}>
             <CollectionMoveModal
               title={
@@ -591,9 +591,7 @@ const PinnedItem = ({ item, index, collection }) => (
           <Box
             ml="auto"
             className="hover-child"
-            data-metabase-event={`${ANALYTICS_CONTEXT};Pinned Item;Unpin;${
-              item.model
-            }`}
+            data-metabase-event={`${ANALYTICS_CONTEXT};Pinned Item;Unpin;${item.model}`}
             onClick={ev => {
               ev.preventDefault();
               item.setPinned(false);

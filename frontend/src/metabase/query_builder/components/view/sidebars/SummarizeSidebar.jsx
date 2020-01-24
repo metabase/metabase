@@ -50,7 +50,7 @@ export default class SummarizeSidebar extends React.Component {
     const addDefaultAggregation =
       !this.state.modified && !query.hasAggregations();
     if (addDefaultAggregation) {
-      query = query.addAggregation(["count"]);
+      query = query.aggregate(["count"]);
     }
     return (
       <SidebarContent
@@ -173,7 +173,7 @@ const SummarizeAggregationAdd = ({ className, query }) => {
         <AggregationPopover
           query={query}
           onChangeAggregation={newAggregation => {
-            updateAndRun(query.addAggregation(newAggregation));
+            updateAndRun(query.aggregate(newAggregation));
             onClose();
           }}
           onClose={onClose}
@@ -199,11 +199,11 @@ const SummarizeBreakouts = ({ className, query }) => {
         if (index >= 0) {
           updateAndRun(query.updateBreakout(index, dimension.mbql()));
         } else {
-          updateAndRun(query.clearBreakouts().addBreakout(dimension.mbql()));
+          updateAndRun(query.clearBreakouts().breakout(dimension.mbql()));
         }
       }}
       onAddDimension={dimension => {
-        updateAndRun(query.addBreakout(dimension.mbql()));
+        updateAndRun(query.breakout(dimension.mbql()));
       }}
       onRemoveDimension={dimension => {
         for (const [index, existing] of dimensions.entries()) {

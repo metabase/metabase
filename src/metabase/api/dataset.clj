@@ -5,6 +5,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [compojure.core :refer [POST]]
+            [java-time :as t]
             [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.mbql.schema :as mbql.s]
@@ -15,10 +16,11 @@
             [metabase.query-processor :as qp]
             [metabase.query-processor
              [async :as qp.async]
+             [error-type :as qp.error-type]
              [util :as qputil]]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.util
-             [date :as du]
+             [date-2 :as u.date]
              [export :as ex]
              [i18n :refer [trs tru]]
              [schema :as su]]
@@ -102,7 +104,7 @@
 (defn- as-format-response
   "Return a response containing the `results` of a query in the specified format."
   {:style/indent 1, :arglists '([export-format results])}
-  [export-format {{:keys [rows cols]} :data, :keys [status], :as response}]
+  [export-format {{:keys [rows cols]} :data, :keys [status error], error-type :error_type, :as response}]
   (api/let-404 [export-conf (ex/export-formats export-format)]
     (if (= status :completed)
       ;; successful query, send file
@@ -112,10 +114,13 @@
                  (maybe-modify-date-values cols rows))
        :headers {"Content-Type"        (str (:content-type export-conf) "; charset=utf-8")
                  "Content-Disposition" (format "attachment; filename=\"query_result_%s.%s\""
-                                               (du/date->iso-8601) (:ext export-conf))}}
+                                               (u.date/format (t/zoned-date-time))
+                                               (:ext export-conf))}}
       ;; failed query, send error message
-      {:status 500
-       :body   (:error response)})))
+      {:status (if (qp.error-type/server-error? error-type)
+                 500
+                 400)
+       :body   error})))
 
 (s/defn as-format-async
   "Write the results of an async query to API `respond` or `raise` functions in `export-format`. `in-chan` should be a
@@ -176,7 +181,7 @@
 (api/defendpoint POST "/native"
   "Fetch a native version of an MBQL query."
   [:as {query :body}]
-  (qp/query->native query))
+  (qp/query->native-with-spliced-params query))
 
 
 (api/define-routes)

@@ -108,8 +108,10 @@ export default class TagEditorSidebar extends React.Component {
             />
           ) : (
             <TagEditorHelp
+              database={database}
               sampleDatasetId={sampleDatasetId}
               setDatasetQuery={setDatasetQuery}
+              switchToSettings={() => this.setSection("settings")}
             />
           )}
         </div>

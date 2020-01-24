@@ -2,7 +2,7 @@
 
 import { createSelector } from "reselect";
 import _ from "underscore";
-import { getIn } from "icepick";
+import { getIn, assocIn, updateIn } from "icepick";
 
 // Needed due to wrong dependency resolution order
 // eslint-disable-next-line no-unused-vars
@@ -143,14 +143,47 @@ const getNextRunParameterValues = createSelector(
     parameters.map(parameter => parameter.value).filter(p => p !== undefined),
 );
 
+// Certain differences in a query should be ignored. `normalizeQuery`
+// standardizes the query before comparision in `getIsResultDirty`.
+function normalizeQuery(query, tableMetadata) {
+  if (!query) {
+    return query;
+  }
+  if (query.query && tableMetadata) {
+    query = updateIn(query, ["query", "fields"], fields => {
+      fields = fields
+        ? // if the query has fields, copy them before sorting
+          [...fields]
+        : // if the fields aren't set, we get them from the table metadata
+          tableMetadata.fields.map(({ id }) => ["field-id", id]);
+      return fields.sort((a, b) =>
+        JSON.stringify(b).localeCompare(JSON.stringify(a)),
+      );
+    });
+  }
+  if (query.native && query.native["template-tags"] == null) {
+    query = assocIn(query, ["native", "template-tags"], {});
+  }
+  return query;
+}
+
 export const getIsResultDirty = createSelector(
   [
     getLastRunDatasetQuery,
     getNextRunDatasetQuery,
     getLastRunParameterValues,
     getNextRunParameterValues,
+    getTableMetadata,
   ],
-  (lastDatasetQuery, nextDatasetQuery, lastParameters, nextParameters) => {
+  (
+    lastDatasetQuery,
+    nextDatasetQuery,
+    lastParameters,
+    nextParameters,
+    tableMetadata,
+  ) => {
+    lastDatasetQuery = normalizeQuery(lastDatasetQuery, tableMetadata);
+    nextDatasetQuery = normalizeQuery(nextDatasetQuery, tableMetadata);
     return (
       !Utils.equals(lastDatasetQuery, nextDatasetQuery) ||
       !Utils.equals(lastParameters, nextParameters)
@@ -160,28 +193,21 @@ export const getIsResultDirty = createSelector(
 
 export const getQuestion = createSelector(
   [getMetadata, getCard, getParameterValues],
-  (metadata, card, parameterValues) => {
-    return metadata && card && new Question(metadata, card, parameterValues);
-  },
+  (metadata, card, parameterValues) =>
+    metadata && card && new Question(card, metadata, parameterValues),
 );
 
 export const getLastRunQuestion = createSelector(
   [getMetadata, getLastRunCard, getParameterValues],
-  (metadata, getLastRunCard, parameterValues) => {
-    return (
-      metadata &&
-      getLastRunCard &&
-      new Question(metadata, getLastRunCard, parameterValues)
-    );
-  },
+  (metadata, card, parameterValues) =>
+    card && metadata && new Question(card, metadata, parameterValues),
 );
 
 export const getOriginalQuestion = createSelector(
   [getMetadata, getOriginalCard],
-  (metadata, card) => {
+  (metadata, card) =>
     // NOTE Atte Keinänen 5/31/17 Should the originalQuestion object take parameterValues or not? (currently not)
-    return metadata && card && new Question(metadata, card);
-  },
+    metadata && card && new Question(card, metadata),
 );
 
 export const getMode = createSelector(
@@ -196,9 +222,8 @@ export const getIsObjectDetail = createSelector(
 
 export const getIsDirty = createSelector(
   [getQuestion, getOriginalQuestion],
-  (question, originalQuestion) => {
-    return question && question.isDirtyComparedTo(originalQuestion);
-  },
+  (question, originalQuestion) =>
+    question && question.isDirtyComparedTo(originalQuestion),
 );
 
 export const getQuery = createSelector(

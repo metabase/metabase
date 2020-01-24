@@ -73,9 +73,7 @@ export default class Tooltip extends Component {
       elem.addEventListener("mouseup", this._onMouseUp, true);
     } else {
       console.warn(
-        `Tooltip::componentDidMount: no DOM node for tooltip ${
-          this.props.tooltip
-        }`,
+        `Tooltip::componentDidMount: no DOM node for tooltip ${this.props.tooltip}`,
       );
     }
 
@@ -114,9 +112,7 @@ export default class Tooltip extends Component {
       elem.removeEventListener("mouseup", this._onMouseUp, true);
     } else {
       console.warn(
-        `Tooltip::componentWillUnmount: no DOM node for tooltip ${
-          this.props.tooltip
-        }`,
+        `Tooltip::componentWillUnmount: no DOM node for tooltip ${this.props.tooltip}`,
       );
     }
     if (this._element) {

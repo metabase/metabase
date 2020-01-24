@@ -1,5 +1,3 @@
-jest.mock("metabase/components/ExplicitSize");
-
 import React from "react";
 import { render, cleanup, fireEvent } from "@testing-library/react";
 
@@ -39,6 +37,23 @@ describe("pie chart", () => {
     getAllByText("50%");
     getAllByText("49%");
     getAllByText("1%");
+  });
+
+  it("should not use column formatting in the legend", () => {
+    const cols = [
+      StringColumn({ name: "name" }),
+      NumberColumn({ name: "count" }),
+    ];
+    const column_settings = { '["name","count"]': { scale: 123 } };
+    const series = [
+      {
+        card: { display: "pie", visualization_settings: { column_settings } },
+        data: { rows: [["foo", 1]], cols },
+      },
+    ];
+    const { getAllByText } = render(<Visualization rawSeries={series} />);
+    getAllByText("100%"); // shouldn't multiply legend percent by `scale`
+    getAllByText("123"); // should multiply the count in the center by `scale`
   });
 
   it("should show a condensed tooltip for squashed slices", () => {

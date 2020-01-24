@@ -71,13 +71,23 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   isEmpty() {
-    return this.databaseId() == null || this.queryText().length == 0;
+    return this.databaseId() == null || this.queryText().length === 0;
   }
 
   databases(): Database[] {
     return super
       .databases()
       .filter(database => database.native_permissions === "write");
+  }
+
+  clean() {
+    return this.setDatasetQuery(
+      updateIn(
+        this.datasetQuery(),
+        ["native", "template-tags"],
+        tt => tt || {},
+      ),
+    );
   }
 
   /* AtomicQuery superclass methods */
@@ -300,7 +310,7 @@ export default class NativeQuery extends AtomicQuery {
         // ensure all tags have an id since we need it for parameter values to work
         // $FlowFixMe
         for (const tag: TemplateTag of Object.values(templateTags)) {
-          if (tag.id == undefined) {
+          if (tag.id == null) {
             tag.id = Utils.uuid();
           }
         }

@@ -1,8 +1,11 @@
 (ns metabase.models.setting-test
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase.models.setting :as setting :refer [defsetting Setting]]
             [metabase.models.setting.cache :as cache]
-            [metabase.test.util :refer :all]
+            [metabase.test
+             [fixtures :as fixtures]
+             [util :refer :all]]
             [metabase.util :as u]
             [metabase.util
              [encryption :as encryption]
@@ -11,38 +14,42 @@
             [puppetlabs.i18n.core :as i18n]
             [toucan.db :as db]))
 
+(use-fixtures :once (fixtures/initialize :db))
+
 ;; ## TEST SETTINGS DEFINITIONS
 ;; TODO! These don't get loaded by `lein ring server` unless this file is touched
 ;; so if you run unit tests while `lein ring server` is running (i.e., no Jetty server is started)
 ;; these tests will fail. FIXME
 
 (defsetting test-setting-1
-  "Test setting - this only shows up in dev (1)"
-  :internal? true)
+  (deferred-tru "Test setting - this only shows up in dev (1)"))
 
 (defsetting test-setting-2
-  "Test setting - this only shows up in dev (2)"
-  :internal? true
+  (deferred-tru "Test setting - this only shows up in dev (2)")
   :default "[Default Value]")
+
+(defsetting test-setting-3
+  (deferred-tru "Test setting - this only shows up in dev (3)")
+  :visibility :internal)
 
 (defsetting ^:private test-boolean-setting
   "Test setting - this only shows up in dev (3)"
-  :internal? true
+  :visibility :internal
   :type :boolean)
 
 (defsetting ^:private test-json-setting
   "Test setting - this only shows up in dev (4)"
-  :internal? true
+  :visibility :internal
   :type :json)
 
 (defsetting ^:private test-csv-setting
   "Test setting - this only shows up in dev (5)"
-  :internal? true
+  :visibility :internal
   :type :csv)
 
 (defsetting ^:private test-csv-setting-with-default
   "Test setting - this only shows up in dev (6)"
-  :internal? true
+  :visibility :internal
   :type :csv
   :default "A,B,C")
 
@@ -327,7 +334,7 @@
 
 (setting/defsetting toucan-name
   "Name for the Metabase Toucan mascot."
-  :internal? true)
+  :visibility :internal)
 
 (expect
   "Banana Beak"
@@ -415,7 +422,7 @@
   (-> (db/query {:select [:value]
                  :from   [:setting]
                  :where  [:= :key (name setting-key)]})
-      first :value u/jdbc-clob->str))
+      first :value))
 
 ;; If encryption is *enabled*, make sure Settings get saved as encrypted!
 (expect
@@ -442,17 +449,17 @@
 
 (defsetting ^:private test-timestamp-setting
   "Test timestamp setting"
-  :internal? true
+  :visibility :internal
   :type :timestamp)
 
 (expect
-  java.sql.Timestamp
+  java.time.temporal.Temporal
   (:tag (meta #'test-timestamp-setting)))
 
 ;; make sure we can set & fetch the value and that it gets serialized/deserialized correctly
 (expect
-  #inst "2018-07-11T09:32:00.000Z"
-  (do (test-timestamp-setting #inst "2018-07-11T09:32:00.000Z")
+  #t "2018-07-11T09:32:00.000Z"
+  (do (test-timestamp-setting #t "2018-07-11T09:32:00.000Z")
       (test-timestamp-setting)))
 
 
@@ -466,7 +473,7 @@
 
 (defsetting ^:private uncached-setting
   "A test setting that should *not* be cached."
-  :internal? true
+  :visibility :internal
   :cache? false)
 
 ;; make sure uncached setting still saves to the DB

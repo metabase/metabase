@@ -56,8 +56,6 @@ const ChartSettingFieldPicker = ({
         className={cx("ml1 text-medium text-brand-hover cursor-pointer", {
           "disabled hidden": !onRemove,
         })}
-        width={12}
-        height={12}
         onClick={onRemove}
       />
     </div>

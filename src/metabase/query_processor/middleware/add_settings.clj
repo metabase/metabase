@@ -1,17 +1,15 @@
 (ns metabase.query-processor.middleware.add-settings
   "Middleware for adding a `:settings` map to a query before it is processed."
-  (:require [metabase.driver :as driver]
-            [metabase.driver.util :as driver.u]))
+  (:require [metabase.query-processor.timezone :as qp.timezone]))
 
-(defn- add-settings* [query]
-  (if-let [report-timezone (driver.u/report-timezone-if-supported driver/*driver*)]
-    (assoc-in query [:settings :report-timezone] report-timezone)
-    query))
-
+;; TODO - rename this (TIMEZONE FIXME)
 (defn add-settings
-  "Adds the `:settings` map to the query which can contain any fixed properties that would be useful at execution time.
-   Currently supports a settings object like:
-
-       {:report-timezone \"US/Pacific\"}"
+  "Add `:results_timezone` and `:requested_timezone` info to query results."
   [qp]
-  (comp qp add-settings*))
+  (comp
+   (fn [results]
+     (update results :data merge
+             {:results_timezone (qp.timezone/results-timezone-id)}
+             (when-let [requested-timezone-id (qp.timezone/requested-timezone-id)]
+               {:requested_timezone requested-timezone-id})))
+   qp))

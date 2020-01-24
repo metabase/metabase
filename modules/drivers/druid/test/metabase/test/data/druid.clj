@@ -81,7 +81,11 @@
                                                                                    {:name "venue_price"
                                                                                     :type "float"}]}}}
                        :metricsSpec     [{:type :count
-                                          :name :count}]
+                                          :name :count}
+                                         {:name               :unique_users
+                                          :type               :hyperUnique
+                                          :field_name         "user_name"
+                                          :isInputHyperUnique false}]
                        :granularitySpec {:type               :uniform
                                          :segmentGranularity :DAY
                                          :queryGranularity   :NONE

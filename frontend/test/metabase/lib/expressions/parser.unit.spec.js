@@ -266,7 +266,7 @@ describe("lib/expressions/parser", () => {
           }),
         ),
       ).toEqual([
-        { text: '"Count of rows" ', type: "fields" },
+        { text: '"Count" ', type: "fields" },
         { text: "Total ", type: "fields" },
         { text: " (", type: "other" },
       ]);

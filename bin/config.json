@@ -1,5 +1,7 @@
 {
-    "codesigningIdentity": "Developer ID Application: Metabase, Inc",
-    "awsProfile": "metabase",
-    "awsBucket": "downloads.metabase.com"
+  "codesigningIdentity": "Developer ID Application: Metabase, Inc",
+  "appStoreConnectProviderShortName": "BR27ZJK7WW",
+  "awsProfile": "metabase",
+  "awsBucket": "downloads.metabase.com",
+  "cloudFrontDistributionID": "E35CJLWZIZVG7K"
 }
