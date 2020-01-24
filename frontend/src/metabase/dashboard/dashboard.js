@@ -1138,7 +1138,12 @@ const loadingDashCards = handleActions(
       next: state => ({
         ...state,
         loadingIds: state.dashcardIds,
-        startTime: state.dashcardIds.length > 0 ? performance.now() : null,
+        startTime:
+          state.dashcardIds.length > 0 &&
+          // check that performance is defined just in case
+          typeof performance === "object"
+            ? performance.now()
+            : null,
       }),
     },
     [FETCH_CARD_DATA]: {
