@@ -179,10 +179,7 @@ export function getQuestionSteps(
     const allowsNesting = database && database.hasFeature("nested-queries");
 
     // strip empty source queries
-    let sourceQuery;
-    while ((sourceQuery = query.sourceQuery()) && !query.hasAnyClauses()) {
-      query = sourceQuery;
-    }
+    query = query.cleanNesting();
 
     // add a level of nesting, if valid
     if (allowsNesting && query.hasBreakouts()) {
@@ -242,26 +239,19 @@ export function getStageSteps(
         let newQuery = stageQuery.setDatasetQuery(datasetQuery);
         // clean each subsequent step individually. we have to do this rather than calling newQuery.clean() in case
         // the current step is in a temporarily invalid state
-        let currentStep = step;
-        while ((currentStep = currentStep.next)) {
+        let current = step;
+        while ((current = current.next)) {
           // when switching to the next stage we need to setSourceQuery
           if (
-            currentStep.previous &&
-            currentStep.previous.stageIndex < currentStep.stageIndex
+            current.previous &&
+            current.previous.stageIndex < current.stageIndex
           ) {
-            newQuery = currentStep.query.setSourceQuery(newQuery.query());
+            newQuery = current.query.setSourceQuery(newQuery.query());
           }
-          newQuery = currentStep.clean(newQuery);
+          newQuery = current.clean(newQuery);
         }
-        // remove leftover empty layers of nesting
-        let sourceQuery;
-        while (
-          !newQuery.hasAnyClauses() &&
-          (sourceQuery = newQuery.sourceQuery())
-        ) {
-          newQuery = sourceQuery;
-        }
-        return newQuery;
+        // strip empty source queries
+        return newQuery.cleanNesting();
       },
       // `actions`, `previewQuery`, `next` and `previous` will be set later
       actions: [],

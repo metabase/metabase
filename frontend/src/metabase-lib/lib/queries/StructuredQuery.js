@@ -337,7 +337,7 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * Removes invalid clauses from the query (and source-query, recursively)
    */
-  clean() {
+  clean(): StructuredQuery {
     if (!this.hasMetadata()) {
       console.warn("Warning: can't clean query without metadata!");
       return this;
@@ -351,7 +351,7 @@ export default class StructuredQuery extends AtomicQuery {
       query = query.setSourceQuery(sourceQuery.clean());
     }
 
-    query = query
+    return query
       .cleanJoins()
       .cleanExpressions()
       .cleanFilters()
@@ -359,50 +359,62 @@ export default class StructuredQuery extends AtomicQuery {
       .cleanBreakouts()
       .cleanSorts()
       .cleanLimit()
-      .cleanFields();
-
-    // remove empty queries
-    const newSourceQuery = query.sourceQuery();
-    if (newSourceQuery && (query.isEmpty() || !query.hasAnyClauses())) {
-      return newSourceQuery;
-    }
-
-    return query;
+      .cleanFields()
+      .cleanEmpty();
   }
 
-  cleanJoins() {
+  cleanNesting(): StructuredQuery {
+    // first clean the sourceQuery, if any, recursively
+    const sourceQuery = this.sourceQuery();
+    if (sourceQuery) {
+      return this.setSourceQuery(sourceQuery.cleanNesting()).cleanEmpty();
+    } else {
+      return this;
+    }
+  }
+
+  cleanJoins(): StructuredQuery {
     return this._cleanClauseList("joins");
   }
 
-  cleanExpressions() {
+  cleanExpressions(): StructuredQuery {
     return this; // TODO
   }
 
-  cleanFilters() {
+  cleanFilters(): StructuredQuery {
     return this._cleanClauseList("filters");
   }
 
-  cleanAggregations() {
+  cleanAggregations(): StructuredQuery {
     return this._cleanClauseList("aggregations");
   }
 
-  cleanBreakouts() {
+  cleanBreakouts(): StructuredQuery {
     return this._cleanClauseList("breakouts");
   }
 
-  cleanSorts() {
+  cleanSorts(): StructuredQuery {
     return this; // TODO
   }
 
-  cleanLimit() {
+  cleanLimit(): StructuredQuery {
     return this; // TODO
   }
 
-  cleanFields() {
+  cleanFields(): StructuredQuery {
     return this; // TODO
   }
 
-  isValid() {
+  cleanEmpty(): StructuredQuery {
+    const sourceQuery = this.sourceQuery();
+    if (sourceQuery && !this.hasAnyClauses()) {
+      return sourceQuery;
+    } else {
+      return this;
+    }
+  }
+
+  isValid(): boolean {
     if (!this.hasData()) {
       return false;
     }
@@ -1348,6 +1360,15 @@ export default class StructuredQuery extends AtomicQuery {
   canNest() {
     const db = this.database();
     return db && db.hasFeature("nested-queries");
+  }
+
+  cleanEmptyNesting(): StructuredQuery {
+    let query = this;
+    let sourceQuery;
+    while ((sourceQuery = query.sourceQuery()) && !query.hasAnyClauses()) {
+      query = sourceQuery;
+    }
+    return query;
   }
 
   /**
