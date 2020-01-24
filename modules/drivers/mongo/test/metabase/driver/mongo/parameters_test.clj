@@ -198,13 +198,34 @@
              (mt/rows
                (qp/process-query
                  (mt/query checkins
-                   {:type       :native
-                    :native     {:query         (json/generate-string
-                                                 [{:$match (json-raw "{{date}}")}
-                                                  {:$sort {:_id 1}}
-                                                  {:$limit 1}])
-                                 :collection    "checkins"
-                                 :template-tags {"date" {:name         "date"
-                                                         :display-name "Date"
-                                                         :type         :dimension
-                                                         :dimension    $date}}}}))))))))
+                   {:type   :native
+                    :native {:query         (json/generate-string
+                                             [{:$match (json-raw "{{date}}")}
+                                              {:$sort {:_id 1}}
+                                              {:$limit 1}])
+                             :collection    "checkins"
+                             :template-tags {"date" {:name         "date"
+                                                     :display-name "Date"
+                                                     :type         :dimension
+                                                     :dimension    $date}}}}))))))
+    (testing "text params"
+      (testing "using nested fields as parameters (#11597)"
+        (mt/dataset geographical-tips
+          (is (= [[5 "tupac"]]
+                 (mt/rows
+                   (qp/process-query
+                     (mt/query tips
+                       {:type       :native
+                        :native     {:query         (json/generate-string
+                                                     [{:$match (json-raw "{{username}}")}
+                                                      {:$sort {:_id 1}}
+                                                      {:$project {"username" "$source.username"}}
+                                                      {:$limit 1}])
+                                     :collection    "tips"
+                                     :template-tags {"username" {:name         "username"
+                                                                 :display-name "Username"
+                                                                 :type         :dimension
+                                                                 :dimension    $tips.source.username}}}
+                        :parameters [{:type   :text
+                                      :target [:dimension [:template-tag "username"]]
+                                      :value  "tupac"}]}))))))))))
