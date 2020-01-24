@@ -18,7 +18,9 @@
   ],
   "setupFiles": [
     "<rootDir>/frontend/test/jest-setup.js",
-    "<rootDir>/frontend/test/metabase-bootstrap.js"
+    "<rootDir>/frontend/test/metabase-bootstrap.js",
+    "<rootDir>/frontend/test/__support__/mocks.js",
+    "<rootDir>/frontend/test/register-visualizations.js"
   ],
   "globals": {
     "ace": {},

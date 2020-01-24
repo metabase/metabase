@@ -3,6 +3,8 @@ import { Route } from "metabase/hoc/Title";
 import { IndexRoute, IndexRedirect } from "react-router";
 import { t } from "ttag";
 
+import { PLUGIN_ADMIN_ROUTES } from "metabase/plugins";
+
 import { withBackground } from "metabase/hoc/Background";
 import { ModalRoute } from "metabase/hoc/ModalRoute";
 
@@ -41,6 +43,7 @@ import PeopleListingApp from "metabase/admin/people/containers/PeopleListingApp"
 import GroupsListingApp from "metabase/admin/people/containers/GroupsListingApp";
 import GroupDetailApp from "metabase/admin/people/containers/GroupDetailApp";
 
+// Permissions
 import getAdminPermissionsRoutes from "metabase/admin/permissions/routes";
 
 const getRoutes = (store, IsAdmin) => (
@@ -128,12 +131,14 @@ const getRoutes = (store, IsAdmin) => (
     {/* SETTINGS */}
     <Route path="settings" title={t`Settings`}>
       <IndexRedirect to="setup" />
-      {/* <IndexRoute component={SettingsEditorApp} /> */}
-      <Route path=":section/:authType" component={SettingsEditorApp} />
-      <Route path=":section" component={SettingsEditorApp} />
+      <Route path="*" component={SettingsEditorApp} />
     </Route>
 
+    {/* PERMISSIONS */}
     {getAdminPermissionsRoutes(store)}
+
+    {/* PLUGINS */}
+    {PLUGIN_ADMIN_ROUTES.map(getRoutes => getRoutes(store))}
   </Route>
 );
 

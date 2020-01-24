@@ -6,10 +6,10 @@ import { connect } from "react-redux";
 import { t } from "ttag";
 import S from "./DashCardCardParameterMapper.css";
 
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import Icon from "metabase/components/Icon";
-import AccordionList from "metabase/components/AccordionList";
 import Tooltip from "metabase/components/Tooltip";
+
+import ParameterTargetWidget from "metabase/parameters/components/ParameterTargetWidget";
 
 import { fetchDatabaseMetadata } from "metabase/redux/metadata";
 
@@ -21,7 +21,6 @@ import {
 } from "../selectors";
 import { setParameterMapping } from "../dashboard";
 
-import _ from "underscore";
 import cx from "classnames";
 import { getIn } from "icepick";
 
@@ -43,10 +42,6 @@ const makeMapStateToProps = () => {
   const mapStateToProps = (state, props) => ({
     parameter: getEditingParameter(state, props),
     mappingOptions: getParameterMappingOptions(state, props),
-    mappingOptionSections: _.groupBy(
-      getParameterMappingOptions(state, props),
-      "sectionName",
-    ),
     target: getParameterTarget(state, props),
     mappingsByParameter: getMappingsByParameter(state, props),
   });
@@ -69,7 +64,6 @@ export default class DashCardCardParameterMapper extends Component {
     parameter: Parameter,
     target: ParameterTarget,
     mappingOptions: Array<ParameterMappingUIOption>,
-    mappingOptionSections: Array<Array<ParameterMappingUIOption>>,
     mappingsByParameter: MappingsByParameter,
     fetchDatabaseMetadata: (id: ?DatabaseId) => void,
     setParameterMapping: (
@@ -94,31 +88,20 @@ export default class DashCardCardParameterMapper extends Component {
       this.props.fetchDatabaseMetadata(card.dataset_query.database);
   }
 
-  onChange = (option: ?ParameterMappingUIOption) => {
+  handleChangeTarget = (target: ?ParameterTarget) => {
     const { setParameterMapping, parameter, dashcard, card } = this.props;
-    setParameterMapping(
-      parameter.id,
-      dashcard.id,
-      card.id,
-      option ? option.target : null,
-    );
-    this.refs.popover.close();
+    setParameterMapping(parameter.id, dashcard.id, card.id, target);
   };
 
   render() {
     const {
       mappingOptions,
-      mappingOptionSections,
       target,
       mappingsByParameter,
       parameter,
       dashcard,
       card,
     } = this.props;
-
-    // TODO: move some of these to selectors?
-    const disabled = mappingOptions.length === 0;
-    const selected = _.find(mappingOptions, o => _.isEqual(o.target, target));
 
     const mapping = getIn(mappingsByParameter, [
       parameter.id,
@@ -130,20 +113,6 @@ export default class DashCardCardParameterMapper extends Component {
       mapping.mappingsWithValues > 1 &&
       mapping.overlapMax === 1
     );
-
-    const hasFkOption = _.any(mappingOptions, o => !!o.isFk);
-
-    const sections = _.map(mappingOptionSections, options => ({
-      name: options[0].sectionName,
-      items: options,
-    }));
-
-    let tooltipText = null;
-    if (disabled) {
-      tooltipText = t`This card doesn't have any fields or parameters that can be mapped to this parameter type.`;
-    } else if (noOverlap) {
-      tooltipText = t`The values in this field don't overlap with the values of any other fields you've chosen.`;
-    }
 
     return (
       <div className="mx1 flex flex-column align-center drag-disabled">
@@ -160,19 +129,27 @@ export default class DashCardCardParameterMapper extends Component {
             {card.name}
           </div>
         )}
-        <PopoverWithTrigger
-          ref="popover"
-          triggerClasses={cx({ disabled: disabled })}
-          sizeToFit
-          triggerElement={
+
+        <ParameterTargetWidget
+          target={target}
+          onChange={this.handleChangeTarget}
+          mappingOptions={mappingOptions}
+        >
+          {({ selected, disabled }) => (
             <Tooltip
-              tooltip={tooltipText}
+              tooltip={
+                disabled
+                  ? "This card doesn't have any fields or parameters that can be mapped to this parameter type."
+                  : noOverlap
+                  ? "The values in this field don't overlap with the values of any other fields you've chosen."
+                  : null
+              }
               verticalAttachments={["bottom", "top"]}
             >
               {/* using div instead of button due to
-                                https://bugzilla.mozilla.org/show_bug.cgi?id=984869
-                                and click event on close button not propagating in FF
-                            */}
+                                          https://bugzilla.mozilla.org/show_bug.cgi?id=984869
+                                          and click event on close button not propagating in FF
+                                      */}
               <div
                 className={cx(S.button, {
                   [S.mapped]: !!selected,
@@ -193,7 +170,7 @@ export default class DashCardCardParameterMapper extends Component {
                     name="close"
                     size={16}
                     onClick={e => {
-                      this.onChange(null);
+                      this.handleChangeTarget(null);
                       e.stopPropagation();
                     }}
                   />
@@ -206,21 +183,8 @@ export default class DashCardCardParameterMapper extends Component {
                 ) : null}
               </div>
             </Tooltip>
-          }
-        >
-          <AccordionList
-            className="text-brand scroll-show scroll-y"
-            style={{ maxHeight: 600 }}
-            sections={sections}
-            onChange={this.onChange}
-            itemIsSelected={item => _.isEqual(item.target, target)}
-            renderItemIcon={item => (
-              <Icon name={item.icon || "unknown"} size={18} />
-            )}
-            alwaysExpanded={true}
-            hideSingleSectionTitle={!hasFkOption}
-          />
-        </PopoverWithTrigger>
+          )}
+        </ParameterTargetWidget>
       </div>
     );
   }

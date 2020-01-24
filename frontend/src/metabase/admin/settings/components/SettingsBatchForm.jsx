@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import { connect } from "react-redux";
 import _ from "underscore";
 
 import Collapse from "react-collapse";
@@ -10,6 +10,8 @@ import Button from "metabase/components/Button";
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";
 import MetabaseUtils from "metabase/lib/utils";
 import SettingsSetting from "./SettingsSetting";
+
+import { updateSettings } from "../settings";
 
 const VALIDATIONS = {
   email: {
@@ -28,6 +30,10 @@ const SAVE_SETTINGS_BUTTONS_STATES = {
   success: t`Changes saved!`,
 };
 
+@connect(
+  null,
+  { updateSettings },
+)
 export default class SettingsBatchForm extends Component {
   constructor(props, context) {
     super(props, context);

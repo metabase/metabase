@@ -70,15 +70,11 @@ export default class PasswordResetApp extends Component {
     if (!this.state.tokenValid) {
       return (
         <div className="full-height">
-          <div className="full-height bg-white flex flex-column flex-full md-layout-centered">
+          <div className="full-height flex flex-column flex-full md-layout-centered">
             <div className="wrapper">
               <div className="Login-wrapper Grid  Grid--full md-Grid--1of2">
                 <div className="Grid-cell flex layout-centered text-brand">
-                  <LogoIcon
-                    className="Logo my4 sm-my0"
-                    width={66}
-                    height={85}
-                  />
+                  <LogoIcon className="Logo my4 sm-my0" height={65} />
                 </div>
                 <div className="Grid-cell bordered rounded shadowed p4">
                   <h3 className="Login-header">{t`Whoops, that's an expired link`}</h3>
@@ -97,7 +93,7 @@ export default class PasswordResetApp extends Component {
         <div className="full-height bg-white flex flex-column flex-full md-layout-centered">
           <div className="Login-wrapper wrapper Grid  Grid--full md-Grid--1of2">
             <div className="Grid-cell flex layout-centered text-brand">
-              <LogoIcon className="Logo my4 sm-my0" width={66} height={85} />
+              <LogoIcon className="Logo my4 sm-my0" height={65} />
             </div>
             {!resetSuccess ? (
               <div className="Grid-cell bg-white bordered rounded shadowed p4">

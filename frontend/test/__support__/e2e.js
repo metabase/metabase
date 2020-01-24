@@ -4,10 +4,6 @@
  * Import this file before other imports in e2e tests
  */
 
-// Mocks in a separate file as they would clutter this file
-// This must be before all other imports
-import "./mocks";
-
 import { format as urlFormat } from "url";
 import api from "metabase/lib/api";
 import { defer, delay } from "metabase/lib/promise";

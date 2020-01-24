@@ -14,7 +14,7 @@ import type {
 
 type FieldFilter = (field: Field) => boolean;
 
-// PivotByAction displays a breakout picker, and optionally filters by the
+// PivotByDrill displays a breakout picker, and optionally filters by the
 // clicked dimesion values (and removes corresponding breakouts)
 export default (name: string, icon: string, fieldFilter: FieldFilter) => ({
   question,
