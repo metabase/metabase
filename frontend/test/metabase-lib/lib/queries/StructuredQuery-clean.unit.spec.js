@@ -1,4 +1,8 @@
-import { ORDERS, PRODUCTS } from "__support__/sample_dataset_fixture";
+import {
+  SAMPLE_DATASET,
+  ORDERS,
+  PRODUCTS,
+} from "__support__/sample_dataset_fixture";
 
 const JOIN = {
   "source-table": PRODUCTS.id,
@@ -230,6 +234,43 @@ describe("StructuredQuery", () => {
           "source-table": ORDERS.id,
         });
       });
+    });
+  });
+
+  describe("cleanNesting", () => {
+    it("should not modify empty queries with no source-query", () => {
+      expect(
+        SAMPLE_DATASET.question()
+          .query()
+          .cleanNesting()
+          .datasetQuery(),
+      ).toEqual({
+        type: "query",
+        database: SAMPLE_DATASET.id,
+        query: { "source-table": null },
+      });
+    });
+    it("should remove outer empty queries", () => {
+      expect(
+        ORDERS.query()
+          .updateLimit(10)
+          .nest()
+          .nest()
+          .nest()
+          .cleanNesting()
+          .query(),
+      ).toEqual({ "source-table": ORDERS.id, limit: 10 });
+    });
+    it("should remove intermediate empty queries", () => {
+      expect(
+        ORDERS.query()
+          .nest()
+          .nest()
+          .nest()
+          .updateLimit(10)
+          .cleanNesting()
+          .query(),
+      ).toEqual({ "source-query": { "source-table": ORDERS.id }, limit: 10 });
     });
   });
 });

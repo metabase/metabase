@@ -363,6 +363,9 @@ export default class StructuredQuery extends AtomicQuery {
       .cleanEmpty();
   }
 
+  /**
+   * Removes empty/useless layers of nesting (recursively)
+   */
   cleanNesting(): StructuredQuery {
     // first clean the sourceQuery, if any, recursively
     const sourceQuery = this.sourceQuery();
@@ -405,6 +408,9 @@ export default class StructuredQuery extends AtomicQuery {
     return this; // TODO
   }
 
+  /**
+   * If this query is empty and there's a source-query, strip off this query, returning the source-query
+   */
   cleanEmpty(): StructuredQuery {
     const sourceQuery = this.sourceQuery();
     if (sourceQuery && !this.hasAnyClauses()) {
@@ -1360,15 +1366,6 @@ export default class StructuredQuery extends AtomicQuery {
   canNest() {
     const db = this.database();
     return db && db.hasFeature("nested-queries");
-  }
-
-  cleanEmptyNesting(): StructuredQuery {
-    let query = this;
-    let sourceQuery;
-    while ((sourceQuery = query.sourceQuery()) && !query.hasAnyClauses()) {
-      query = sourceQuery;
-    }
-    return query;
   }
 
   /**

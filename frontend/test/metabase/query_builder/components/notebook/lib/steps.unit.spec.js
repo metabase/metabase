@@ -70,7 +70,6 @@ describe("raw data query", () => {
 
 describe("filtered and summarized query", () => {
   const steps = getQuestionStepsForMBQLQuery(filteredAndSummarizedQuery);
-  const filterStep = steps.find(s => s.type === "filter");
   describe("getQuestionSteps", () => {
     it("`getQuestionSteps()` should return data, filter, and summarize steps", () => {
       expect(steps.map(s => s.type)).toEqual(["data", "filter", "summarize"]);

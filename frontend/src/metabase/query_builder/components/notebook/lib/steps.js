@@ -20,7 +20,9 @@ type StepType =
   | "sort"
   | "limit";
 
-type StepDefinition = {
+type StepDefinition = NormalStepDefinition | SubStepDefinition;
+
+type NormalStepDefinition = {
   // a type name for the step
   type: StepType,
   // returns true if the step can be added to the provided query
@@ -31,8 +33,20 @@ type StepDefinition = {
   clean: (query: StructuredQuery) => StructuredQuery,
   // logic to remove this step from the provided query
   revert?: (query: StructuredQuery) => StructuredQuery,
-  // if the step can be viewed as multiple steps, how many sub-steps are there
-  // if provided, all the other functions are called with the query and the index of the substep
+};
+
+type SubStepDefinition = {
+  // a type name for the step
+  type: StepType,
+  // returns true if the step can be added to the provided query
+  valid: (query: StructuredQuery, subStepIndex: number) => boolean,
+  // returns true if the provided query already has this step
+  active: (query: StructuredQuery, subStepIndex: number) => boolean,
+  // logic to remove invalid clauses that were added by this step from the provided query
+  clean: (query: StructuredQuery, subStepIndex: number) => StructuredQuery,
+  // logic to remove this step from the provided query
+  revert?: (query: StructuredQuery, subStepIndex: number) => StructuredQuery,
+  // how many sub-steps are there
   subSteps?: (query: StructuredQuery) => number,
 };
 
