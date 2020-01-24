@@ -1341,7 +1341,7 @@ export default class StructuredQuery extends AtomicQuery {
 
   // NESTING
 
-  nest() {
+  nest(): StructuredQuery {
     return this._updateQuery(query => ({ "source-query": query }));
   }
 
@@ -1463,7 +1463,9 @@ export default class StructuredQuery extends AtomicQuery {
     return this.rootQuery().sourceTableId();
   }
 
-  setSourceQuery(sourceQuery: DatasetQuery | StructuredQuery): StructuredQuery {
+  setSourceQuery(
+    sourceQuery: StructuredQuery | StructuredQueryObject,
+  ): StructuredQuery {
     if (sourceQuery instanceof StructuredQuery) {
       if (this.sourceQuery() === sourceQuery) {
         return this;
