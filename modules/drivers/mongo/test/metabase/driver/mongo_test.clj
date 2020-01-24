@@ -1,8 +1,6 @@
 (ns metabase.driver.mongo-test
   "Tests for Mongo driver."
   (:require [clojure.test :refer :all]
-            [expectations :refer [expect]]
-            [java-time :as t]
             [medley.core :as m]
             [metabase
              [driver :as driver]
@@ -14,14 +12,11 @@
             [metabase.driver
              [mongo :as mongo]
              [util :as driver.u]]
-            [metabase.driver.mongo.query-processor :as mongo-qp]
             [metabase.models
              [field :refer [Field]]
              [table :as table :refer [Table]]]
             [metabase.test.data :as data]
-            [metabase.test.data
-             [datasets :as datasets]
-             [interface :as tx]]
+            [metabase.test.data.interface :as tx]
             [taoensso.nippy :as nippy]
             [toucan.db :as db]
             [toucan.util.test :as tt])
@@ -101,7 +96,7 @@
                       {:schema nil, :name "venues"}}}
            (driver/describe-database :mongo (data/db))))))
 
-(deftest describe-table-tets
+(deftest describe-table-test
   (mt/test-driver :mongo
     (is (= {:schema nil
             :name   "venues"
@@ -126,6 +121,16 @@
                        :pk?           true}}}
            (driver/describe-table :mongo (data/db) (Table (data/id :venues)))))))
 
+(deftest nested-columns-test
+  (mt/test-driver :mongo
+    (testing "Can we filter against nested columns?"
+      (mt/dataset geographical-tips
+        (is (= [[16]]
+               (mt/rows
+                 (mt/run-mbql-query tips
+                   {:aggregation [[:count]]
+                    :filter      [:= $tips.source.username "tupac"]}))))))))
+
 ;; Make sure that all-NULL columns work and are synced correctly (#6875)
 (tx/defdataset ^:private all-null-columns
   [["bird_species"
@@ -134,29 +139,30 @@
     [["House Finch" nil]
      ["Mourning Dove" nil]]]])
 
-(datasets/expect-with-driver :mongo
-  [{:name "_id",            :database_type "java.lang.Long",   :base_type :type/Integer, :special_type :type/PK}
-   {:name "favorite_snack", :database_type "NULL",             :base_type :type/*,       :special_type nil}
-   {:name "name",           :database_type "java.lang.String", :base_type :type/Text,    :special_type :type/Name}]
-  (data/dataset all-null-columns
-    (map (partial into {})
-         (db/select [Field :name :database_type :base_type :special_type]
-           :table_id (data/id :bird_species)
-           {:order-by [:name]}))))
+(deftest all-num-columns-test
+  (mt/test-driver :mongo
+    (data/dataset all-null-columns
+      (is (= [{:name "_id",            :database_type "java.lang.Long",   :base_type :type/Integer, :special_type :type/PK}
+              {:name "favorite_snack", :database_type "NULL",             :base_type :type/*,       :special_type nil}
+              {:name "name",           :database_type "java.lang.String", :base_type :type/Text,    :special_type :type/Name}]
+             (map
+              (partial into {})
+              (db/select [Field :name :database_type :base_type :special_type]
+                :table_id (data/id :bird_species)
+                {:order-by [:name]})))))))
 
-
-;;; table-rows-sample
-(datasets/expect-with-driver :mongo
-  [[1 "Red Medicine"]
-   [2 "Stout Burgers & Beers"]
-   [3 "The Apple Pan"]
-   [4 "Wurstküche"]
-   [5 "Brite Spot Family Restaurant"]]
-  (driver/sync-in-context :mongo (data/db)
-    (fn []
-      (vec (take 5 (metadata-queries/table-rows-sample (Table (data/id :venues))
-                                                       [(Field (data/id :venues :id))
-                                                        (Field (data/id :venues :name))]))))))
+(deftest table-rows-sample-test
+  (mt/test-driver :mongo
+    (driver/sync-in-context :mongo (data/db)
+      (fn []
+        (is (= [[1 "Red Medicine"]
+                [2 "Stout Burgers & Beers"]
+                [3 "The Apple Pan"]
+                [4 "Wurstküche"]
+                [5 "Brite Spot Family Restaurant"]]
+               (vec (take 5 (metadata-queries/table-rows-sample (Table (data/id :venues))
+                              [(Field (data/id :venues :id))
+                               (Field (data/id :venues :name))])))))))))
 
 
 ;; ## Big-picture tests for the way data should look post-sync
@@ -172,30 +178,31 @@
              (into {} field)))
         "Test that Tables got synced correctly")))
 
-;; Test that Fields got synced correctly, and types are correct
-(datasets/expect-with-driver :mongo
-  [[{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-    {:special_type :type/Name,      :base_type :type/Text,     :name "name"}]
-   [{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-    {:special_type nil,             :base_type :type/Instant,  :name "date"}
-    {:special_type :type/Category,  :base_type :type/Integer,  :name "user_id"}
-    {:special_type nil,             :base_type :type/Integer,  :name "venue_id"}]
-   [{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-    {:special_type nil,             :base_type :type/Instant,  :name "last_login"}
-    {:special_type :type/Name,      :base_type :type/Text,     :name "name"}
-    {:special_type :type/Category,  :base_type :type/Text,     :name "password"}]
-   [{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-    {:special_type :type/Category,  :base_type :type/Integer,  :name "category_id"}
-    {:special_type :type/Latitude,  :base_type :type/Float,    :name "latitude"}
-    {:special_type :type/Longitude, :base_type :type/Float,    :name "longitude"}
-    {:special_type :type/Name,      :base_type :type/Text,     :name "name"}
-    {:special_type :type/Category,  :base_type :type/Integer,  :name "price"}]]
-  (vec (for [table-name table-names]
-         (vec (for [field (db/select [Field :name :base_type :special_type]
-                            :active   true
-                            :table_id (data/id table-name)
-                            {:order-by [:name]})]
-                (into {} field))))))
+(deftest sync-fields-test
+  (mt/test-driver :mongo
+    (testing "Test that Fields got synced correctly, and types are correct"
+      (is (= [[{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
+               {:special_type :type/Name,      :base_type :type/Text,     :name "name"}]
+              [{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
+               {:special_type nil,             :base_type :type/Instant,  :name "date"}
+               {:special_type :type/Category,  :base_type :type/Integer,  :name "user_id"}
+               {:special_type nil,             :base_type :type/Integer,  :name "venue_id"}]
+              [{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
+               {:special_type nil,             :base_type :type/Instant,  :name "last_login"}
+               {:special_type :type/Name,      :base_type :type/Text,     :name "name"}
+               {:special_type :type/Category,  :base_type :type/Text,     :name "password"}]
+              [{:special_type :type/PK,        :base_type :type/Integer,  :name "_id"}
+               {:special_type :type/Category,  :base_type :type/Integer,  :name "category_id"}
+               {:special_type :type/Latitude,  :base_type :type/Float,    :name "latitude"}
+               {:special_type :type/Longitude, :base_type :type/Float,    :name "longitude"}
+               {:special_type :type/Name,      :base_type :type/Text,     :name "name"}
+               {:special_type :type/Category,  :base_type :type/Integer,  :name "price"}]]
+             (vec (for [table-name table-names]
+                    (vec (for [field (db/select [Field :name :base_type :special_type]
+                                       :active   true
+                                       :table_id (data/id table-name)
+                                       {:order-by [:name]})]
+                           (into {} field))))))))))
 
 
 (tx/defdataset ^:private with-bson-ids
@@ -240,31 +247,34 @@
     (is (= nil
            (#'mongo/most-common-object-type [[Float 20] [nil 40] [Integer 10] [String 30]])))))
 
-;; make sure x-rays don't use features that the driver doesn't support
-(datasets/expect-with-driver :mongo
-  true
-  (->> (magic/automagic-analysis (Field (data/id :venues :price)) {})
-       :ordered_cards
-       (mapcat (comp :breakout :query :dataset_query :card))
-       (not-any? #{[:binning-strategy [:field-id (data/id :venues :price)] "default"]})))
+(deftest xrays-test
+  (mt/test-driver :mongo
+    (testing "make sure x-rays don't use features that the driver doesn't support"
+      (is (= true
+             (->> (magic/automagic-analysis (Field (data/id :venues :price)) {})
+                  :ordered_cards
+                  (mapcat (comp :breakout :query :dataset_query :card))
+                  (not-any? #{[:binning-strategy [:field-id (data/id :venues :price)] "default"]})))))))
 
-;; if we query a something an there are no values for the Field, the query should still return successfully! (#8929
-;; and #8894)
-(datasets/expect-with-driver :mongo
-  ;; if the column does not come back in the results for a given document we should fill in the missing values with nils
-  {:rows [[1 "African"  nil]
-          [2 "American" nil]
-          [3 "Artisan"  nil]]}
-  ;; add a temporary Field that doesn't actually exist to test data categories
-  (tt/with-temp Field [_ {:name "parent_id", :table_id (data/id :categories)}]
-    ;; ok, now run a basic MBQL query against categories Table. When implicit Field IDs get added the `parent_id`
-    ;; Field will be included
-    (->
-     (data/run-mbql-query categories
-       {:order-by [[:asc [:field-id $id]]]
-        :limit    3})
-     qp.t/data
-     (select-keys [:columns :rows]))))
+(deftest no-values-test
+  (mt/test-driver :mongo
+    (testing (str "if we query a something an there are no values for the Field, the query should still return "
+                  "successfully! (#8929 and #8894)")
+      ;; add a temporary Field that doesn't actually exist to test data categories
+      (tt/with-temp Field [_ {:name "parent_id", :table_id (data/id :categories)}]
+        ;; ok, now run a basic MBQL query against categories Table. When implicit Field IDs get added the `parent_id`
+        ;; Field will be included
+        (testing (str "if the column does not come back in the results for a given document we should fill in the "
+                      "missing values with nils")
+          (is (= {:rows [[1 "African"  nil]
+                         [2 "American" nil]
+                         [3 "Artisan"  nil]]}
+                 (->
+                  (data/run-mbql-query categories
+                    {:order-by [[:asc [:field-id $id]]]
+                     :limit    3})
+                  qp.t/data
+                  (select-keys [:columns :rows])))))))))
 
 ;; Make sure we correctly (un-)freeze BSON IDs
 (deftest ObjectId-serialization
