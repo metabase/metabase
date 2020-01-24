@@ -303,6 +303,16 @@ export const cancelQueryDeferred = handleActions(
   null,
 );
 
+export const queryStartTime = handleActions(
+  {
+    [RUN_QUERY]: { next: (state, { payload }) => performance.now() },
+    [CANCEL_QUERY]: { next: (state, { payload }) => null },
+    [QUERY_COMPLETED]: { next: (state, { payload }) => null },
+    [QUERY_ERRORED]: { next: (state, { payload }) => null },
+  },
+  null,
+);
+
 export const parameterValues = handleActions(
   {
     [SET_PARAMETER_VALUE]: {

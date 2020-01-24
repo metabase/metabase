@@ -1168,6 +1168,52 @@ const parameterValues = handleActions(
   {},
 );
 
+const loadingDashCards = handleActions(
+  {
+    [FETCH_DASHBOARD]: {
+      next: (state, { payload }) => ({
+        ...state,
+        dashcardIds: Object.values(payload.entities.dashcard || {}).map(
+          dc => dc.id,
+        ),
+      }),
+    },
+    [FETCH_DASHBOARD_CARD_DATA]: {
+      next: state => ({
+        ...state,
+        loadingIds: state.dashcardIds,
+        startTime:
+          state.dashcardIds.length > 0 &&
+          // check that performance is defined just in case
+          typeof performance === "object"
+            ? performance.now()
+            : null,
+      }),
+    },
+    [FETCH_CARD_DATA]: {
+      next: (state, { payload: { dashcard_id } }) => {
+        const loadingIds = state.loadingIds.filter(id => id !== dashcard_id);
+        return {
+          ...state,
+          loadingIds,
+          ...(loadingIds.length === 0 ? { startTime: null } : {}),
+        };
+      },
+    },
+    [CANCEL_FETCH_CARD_DATA]: {
+      next: (state, { payload: { dashcard_id } }) => {
+        const loadingIds = state.loadingIds.filter(id => id !== dashcard_id);
+        return {
+          ...state,
+          loadingIds,
+          ...(loadingIds.length === 0 ? { startTime: null } : {}),
+        };
+      },
+    },
+  },
+  { dashcardIds: [], loadingIds: [], startTime: null },
+);
+
 export default combineReducers({
   dashboardId,
   isEditing,
@@ -1179,4 +1225,5 @@ export default combineReducers({
   dashcardData,
   slowCards,
   parameterValues,
+  loadingDashCards,
 });
