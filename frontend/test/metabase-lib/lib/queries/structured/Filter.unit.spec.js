@@ -42,4 +42,43 @@ describe("Filter", () => {
       ).toBe("=");
     });
   });
+  describe("setArgument", () => {
+    it("should parse numbers for numeric fields", () => {
+      const filter = filterForMBQL([
+        "=",
+        ["field-id", ORDERS.TOTAL.id],
+        null,
+      ]).setArgument(0, "123");
+      expect(filter[2]).toEqual(123);
+    });
+
+    it("should not parse numbers for non-numeric fields", () => {
+      const filter = filterForMBQL([
+        "=",
+        ["field-id", ORDERS.CREATED_AT.id],
+        null,
+      ]).setArgument(0, "123");
+      expect(filter[2]).toEqual("123");
+    });
+  });
+
+  describe("setArguments", () => {
+    it("should parse numbers for numeric fields", () => {
+      const filter = filterForMBQL([
+        "=",
+        ["field-id", ORDERS.TOTAL.id],
+        null,
+      ]).setArguments(["123"]);
+      expect(filter[2]).toEqual(123);
+    });
+
+    it("should not parse numbers for non-numeric fields", () => {
+      const filter = filterForMBQL([
+        "=",
+        ["field-id", ORDERS.CREATED_AT.id],
+        null,
+      ]).setArguments(["123"]);
+      expect(filter[2]).toEqual("123");
+    });
+  });
 });
