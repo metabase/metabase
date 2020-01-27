@@ -138,14 +138,14 @@ export default class PinMap extends Component {
       col => col.name === settings["map.metric_column"],
     );
 
-    const all_points = rows.map(row => [
+    const allPoints = rows.map(row => [
       row[latitudeIndex],
       row[longitudeIndex],
       metricIndex >= 0 ? row[metricIndex] : 1,
     ]);
 
     // only use points with numeric coordinates & metric
-    const points = all_points.filter(
+    const points = allPoints.filter(
       row =>
         typeof row[0] == "number" &&
         typeof row[1] == "number" &&
