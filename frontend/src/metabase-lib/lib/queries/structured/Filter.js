@@ -236,16 +236,19 @@ export default class Filter extends MBQLClause {
   }
 
   setArguments(values: any[]) {
-    return this.set([...this.slice(0, 2), ...values.map(this.parseValue)]);
+    return this.set([
+      ...this.slice(0, 2),
+      ...values.map(v => this.parseValue(v)),
+    ]);
   }
 
-  parseValue = value => {
+  parseValue(value) {
     const field = this.field();
     if (field && field.isNumber() && typeof value === "string") {
       return parseFloat(value);
     }
     return value;
-  };
+  }
 
   filterOperators(): ?(FilterOperator[]) {
     const dimension = this.dimension();
