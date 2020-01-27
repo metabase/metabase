@@ -370,7 +370,7 @@
                  [(-> e ex-data :status-code) (.getMessage e)])))))
 
     (testing "for invalid data."
-      (is (= [400 "Google Auth token meant for a different site."]
+      (is (= [400 "Google Auth token appears to be incorrect. Double check that it matches in Google and Metabase."]
              (try
                (#'session-api/google-auth-token-info
                  {:status 200
