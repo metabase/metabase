@@ -69,7 +69,7 @@ Click on the `Modify` link under the Monitoring section as seen here:
 
 ![Elastic Beanstalk Monitoring](images/EBMonitoringSelect.png)
 
-The `Health check path` is how Elastic Beanstalk knows when the application is ready to run. This path is also used by the Load Balancer to check application heath. Set this path to `/api/health`
+The `Health check path` is how Elastic Beanstalk knows when the application is ready to run. This path is also used by the Load Balancer to check application heath. Set this path to `/api/health`.
 
 Then make sure enhanced health checks are enabled. This is a free option, unless you later add specific metrics to CloudWatch.
 
