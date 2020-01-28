@@ -509,17 +509,21 @@ describe("Dimension", () => {
         });
       });
 
+      function aggregation(agg) {
+        const query = new StructuredQuery(ORDERS.question(), {
+          type: "query",
+          database: SAMPLE_DATASET.id,
+          query: {
+            "source-table": ORDERS.id,
+            aggregation: [agg],
+          },
+        });
+        return Dimension.parseMBQL(["aggregation", 0], metadata, query);
+      }
+
       describe("column()", () => {
         function sumOf(column) {
-          const query = new StructuredQuery(ORDERS.question(), {
-            type: "query",
-            database: SAMPLE_DATASET.id,
-            query: {
-              "source-table": ORDERS.id,
-              aggregation: [["sum", ["field-id", column.id]]],
-            },
-          });
-          return Dimension.parseMBQL(["aggregation", 0], metadata, query);
+          return aggregation(["sum", ["field-id", column.id]]);
         }
 
         it("should clear unaggregated special types", () => {
@@ -532,6 +536,21 @@ describe("Dimension", () => {
           const { special_type } = sumOf(ORDERS.TOTAL).column();
 
           expect(special_type).toBe("type/Currency");
+        });
+      });
+
+      describe("field()", () => {
+        it("should have a valid base type for a sum's field", () => {
+          const { base_type } = aggregation([
+            "sum",
+            ["field-id", ORDERS.TOTAL.id],
+          ]).field();
+          expect(base_type).toBe("type/Float");
+        });
+
+        it("should have a valid base type for a count's fake field", () => {
+          const { base_type } = aggregation(["count"]).field();
+          expect(base_type).toBe("type/Integer");
         });
       });
     });

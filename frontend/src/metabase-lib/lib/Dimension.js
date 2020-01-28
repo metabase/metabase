@@ -858,9 +858,20 @@ export class AggregationDimension extends Dimension {
   }
 
   field() {
-    // FIXME: it isn't really correct to return the unaggregated field. return a fake Field object?
-    const dimension = this.aggregation().dimension();
-    return dimension ? dimension.field() : super.field();
+    const aggregation = this.aggregation();
+    const dimension = aggregation.dimension();
+    if (dimension) {
+      return dimension.field();
+    }
+    if (aggregation) {
+      // this field doesn't really exist, we just want the base_type to be right
+      return new Field({
+        display_name: aggregation.displayName(),
+        base_type: aggregation.baseType(),
+        query: this._query,
+        metadata: this._metadata,
+      });
+    }
   }
 
   /**
