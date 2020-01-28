@@ -5,7 +5,7 @@ import { connect } from "react-redux";
 import { t, jt } from "ttag";
 
 import TokenField from "metabase/components/TokenField";
-import RemappedValue from "metabase/containers/RemappedValue";
+import ValueComponent from "metabase/components/Value";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 
 import AutoExpanding from "metabase/hoc/AutoExpanding";
@@ -261,6 +261,20 @@ export class FieldValuesWidget extends Component {
     }
   }
 
+  renderValue = (value, options) => {
+    const { fields, formatOptions } = this.props;
+    return (
+      <ValueComponent
+        value={value}
+        column={fields[0]}
+        maximumFractionDigits={20}
+        remap={fields.length === 1}
+        {...formatOptions}
+        {...options}
+      />
+    );
+  };
+
   render() {
     const {
       value,
@@ -271,7 +285,6 @@ export class FieldValuesWidget extends Component {
       color,
       className,
       style,
-      formatOptions,
       optionsMaxHeight,
     } = this.props;
     const { loadingState } = this.state;
@@ -343,25 +356,12 @@ export class FieldValuesWidget extends Component {
           options={options}
           // $FlowFixMe
           valueKey={0}
-          valueRenderer={value => (
-            <RemappedValue
-              value={value}
-              columns={fields}
-              {...formatOptions}
-              maximumFractionDigits={20}
-              compact={false}
-              autoLoad={true}
-            />
-          )}
-          optionRenderer={option => (
-            <RemappedValue
-              value={option[0]}
-              columns={fields}
-              maximumFractionDigits={20}
-              autoLoad={false}
-              {...formatOptions}
-            />
-          )}
+          valueRenderer={value =>
+            this.renderValue(value, { autoLoad: true, compact: false })
+          }
+          optionRenderer={option =>
+            this.renderValue(option[0], { autoLoad: false })
+          }
           layoutRenderer={props => (
             <div>
               {props.valuesList}

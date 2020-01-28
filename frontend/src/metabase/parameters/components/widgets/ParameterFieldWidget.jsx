@@ -8,7 +8,7 @@ import { t, ngettext, msgid } from "ttag";
 import FieldValuesWidget from "metabase/components/FieldValuesWidget";
 import Popover from "metabase/components/Popover";
 import Button from "metabase/components/Button";
-import RemappedValue from "metabase/containers/RemappedValue";
+import Value from "metabase/components/Value";
 
 import Field from "metabase-lib/lib/metadata/Field";
 
@@ -57,7 +57,15 @@ export default class ParameterFieldWidget extends Component<*, Props, State> {
       const n = value.length;
       return ngettext(msgid`${n} selection`, `${n} selections`, n);
     } else {
-      return <RemappedValue value={value[0]} columns={fields} />;
+      return (
+        <Value
+          // If there are multiple fields, turn off remapping since they might
+          // be remapped to different fields.
+          remap={fields.length === 1}
+          value={value[0]}
+          column={fields[0]}
+        />
+      );
     }
   }
 

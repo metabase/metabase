@@ -55,24 +55,13 @@ const RemappedValueContent = ({
 
 export const AutoLoadRemappedValue = AutoLoadRemapped(RemappedValueContent);
 
-export const FieldRemappedValue = ({ columns, ...props }) => {
-  const [column] = columns;
-  let displayValue, displayColumn;
-  if (columns.length === 1) {
-    // If there is more than one column, don't remap. If multiple columns are
-    // remapped to the same column, they were previously merged.
-    displayValue = column.remappedValue(props.value);
-    displayColumn = column.remappedField();
-  }
-  return (
-    <RemappedValueContent
-      {...props}
-      column={column}
-      displayValue={displayValue}
-      displayColumn={displayColumn}
-    />
-  );
-};
+export const FieldRemappedValue = props => (
+  <RemappedValueContent
+    {...props}
+    displayValue={props.column.remappedValue(props.value)}
+    displayColumn={props.column.remappedField()}
+  />
+);
 
 const RemappedValue = ({ autoLoad = true, ...props }) =>
   autoLoad ? (

@@ -40,20 +40,14 @@ export default ComposedComponent =>
 
     render() {
       // eslint-disable-next-line no-unused-vars
-      const { metadata, fetchRemapping, columns, ...props } = this.props;
-      const [column] = columns;
-      let displayValue, displayColumn;
-      if (columns.length === 1) {
-        // If there is more than one column, don't remap. If multiple columns
-        // are remapped to the same column, they were previously merged.
-        const field = metadata.field(column.id);
-        displayValue = field.remappedValue(props.value);
-        displayColumn = (displayValue != null && field.remappedField()) || null;
-      }
+      const { metadata, fetchRemapping, ...props } = this.props;
+      const field = metadata.field(props.column && props.column.id);
+      const displayValue = field && field.remappedValue(props.value);
+      const displayColumn =
+        (displayValue != null && field && field.remappedField()) || null;
       return (
         <ComposedComponent
           {...props}
-          column={column}
           displayValue={displayValue}
           displayColumn={displayColumn}
         />

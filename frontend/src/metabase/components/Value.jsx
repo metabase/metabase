@@ -18,8 +18,7 @@ const Value = ({ value, ...options }: Props) => {
     return null;
   }
   if (options.remap) {
-    const { column, ...rest } = options;
-    return <RemappedValue value={value} columns={[column]} {...rest} />;
+    return <RemappedValue value={value} {...options} />;
   }
   const formatted = formatValue(value, { ...options, jsx: true });
   if (React.isValidElement(formatted)) {
