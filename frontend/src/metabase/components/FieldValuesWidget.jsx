@@ -262,7 +262,7 @@ export class FieldValuesWidget extends Component {
     }
   }
 
-  renderValue = (value, options) => {
+  renderValue = (value: Value, options: FormattingOptions) => {
     const { fields, formatOptions } = this.props;
     return (
       <ValueComponent
@@ -271,6 +271,7 @@ export class FieldValuesWidget extends Component {
         maximumFractionDigits={20}
         remap={fields.length === 1}
         {...formatOptions}
+        // $FlowFixMe
         {...options}
       />
     );
