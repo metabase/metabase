@@ -514,180 +514,168 @@
     (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
     ((test-users/user->client :rasta) :get 200 (str "card/" (u/get-id card)))))
 
-;; Check that a user without permissions isn't allowed to fetch the card
-(expect
-  "You don't have permissions to do that."
-  (tu/with-non-admin-groups-no-root-collection-perms
-    (tt/with-temp* [Database [db]
-                    Table    [table {:db_id (u/get-id db)}]
-                    Card     [card  {:dataset_query (mbql-count-query (u/get-id db) (u/get-id table))}]]
-      ;; revoke permissions for default group to this database
-      (perms/revoke-permissions! (perms-group/all-users) (u/get-id db))
-      ;; now a non-admin user shouldn't be able to fetch this card
-      ((test-users/user->client :rasta) :get 403 (str "card/" (u/get-id card))))))
 
+(deftest check-that-a-user-without-permissions-isn-t-allowed-to-fetch-the-card
+  (is (= "You don't have permissions to do that."
+         (tu/with-non-admin-groups-no-root-collection-perms
+           (tt/with-temp* [Database [db]
+                           Table    [table {:db_id (u/get-id db)}]
+                           Card     [card  {:dataset_query (mbql-count-query (u/get-id db) (u/get-id table))}]]
+             ;; revoke permissions for default group to this database
+             (perms/revoke-permissions! (perms-group/all-users) (u/get-id db))
+             ;; now a non-admin user shouldn't be able to fetch this card
+             ((test-users/user->client :rasta) :get 403 (str "card/" (u/get-id card))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                UPDATING A CARD                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; updating a card that doesn't exist should give a 404
-(expect "Not found."
-        ((test-users/user->client :crowberto) :put 404 "card/12345"))
 
-;; Test that we can edit a Card
-(expect
-  {1 "Original Name"
-   2 "Updated Name"}
-  (tt/with-temp Card [card {:name "Original Name"}]
-    (with-cards-in-writeable-collection card
-      (array-map
-       1 (db/select-one-field :name Card, :id (u/get-id card))
-       2 (do ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:name "Updated Name"})
-             (db/select-one-field :name Card, :id (u/get-id card)))))))
+(deftest updating-a-card-that-doesn-t-exist-should-give-a-404
+  (is (= "Not found."
+         ((test-users/user->client :crowberto) :put 404 "card/12345"))))
 
-;; Can we update a Card's archived status?
-(expect
-  {1 false
-   2 true
-   3 false}
-  (tt/with-temp Card [card]
-    (with-cards-in-writeable-collection card
-      (let [archived?     (fn [] (:archived (Card (u/get-id card))))
-            set-archived! (fn [archived]
-                            ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:archived archived})
-                            (archived?))]
-        (array-map
-         1 (archived?)
-         2 (set-archived! true)
-         3 (set-archived! false))))))
 
-;; we shouldn't be able to update archived status if we don't have collection *write* perms
-(expect
-  "You don't have permissions to do that."
-  (tu/with-non-admin-groups-no-root-collection-perms
-    (tt/with-temp* [Collection [collection]
-                    Card       [card {:collection_id (u/get-id collection)}]]
-      (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-      ((test-users/user->client :rasta) :put 403 (str "card/" (u/get-id card)) {:archived true}))))
+(deftest test-that-we-can-edit-a-card
+  (is (= {1 "Original Name"
+          2 "Updated Name"}
+         (tt/with-temp Card [card {:name "Original Name"}]
+           (with-cards-in-writeable-collection card
+             (array-map
+              1 (db/select-one-field :name Card, :id (u/get-id card))
+              2 (do ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:name "Updated Name"})
+                    (db/select-one-field :name Card, :id (u/get-id card)))))))))
 
-;; Can we clear the description of a Card? (#4738)
-(expect
-  nil
-  (tt/with-temp Card [card {:description "What a nice Card"}]
-    (with-cards-in-writeable-collection card
-      ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:description nil})
-      (db/select-one-field :description Card :id (u/get-id card)))))
 
-;; description should be blankable as well
-(expect
-  ""
-  (tt/with-temp Card [card {:description "What a nice Card"}]
-    (with-cards-in-writeable-collection card
-      ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:description ""})
-      (db/select-one-field :description Card :id (u/get-id card)))))
+(deftest can-we-update-a-card-s-archived-status-
+  (is (= {1 false
+          2 true
+          3 false}
+         (tt/with-temp Card [card]
+           (with-cards-in-writeable-collection card
+             (let [archived?     (fn [] (:archived (Card (u/get-id card))))
+                   set-archived! (fn [archived]
+                                   ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:archived archived})
+                                   (archived?))]
+               (array-map
+                1 (archived?)
+                2 (set-archived! true)
+                3 (set-archived! false))))))))
 
-;; Can we update a card's embedding_params?
-(expect
-  {:abc "enabled"}
-  (tt/with-temp Card [card]
-    (tu/with-temporary-setting-values [enable-embedding true]
-      ((test-users/user->client :crowberto) :put 202 (str "card/" (u/get-id card)) {:embedding_params {:abc "enabled"}}))
-    (db/select-one-field :embedding_params Card :id (u/get-id card))))
+(deftest we-shouldn-t-be-able-to-update-archived-status-if-we-don-t-have-collection--write--perms
+  (is (= "You don't have permissions to do that."
+         (tu/with-non-admin-groups-no-root-collection-perms
+           (tt/with-temp* [Collection [collection]
+                           Card       [card {:collection_id (u/get-id collection)}]]
+             (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+             ((test-users/user->client :rasta) :put 403 (str "card/" (u/get-id card)) {:archived true}))))))
 
-;; We shouldn't be able to update them if we're not an admin...
-(expect
-  "You don't have permissions to do that."
-  (tt/with-temp Card [card]
-    (tu/with-temporary-setting-values [enable-embedding true]
-      ((test-users/user->client :rasta) :put 403 (str "card/" (u/get-id card)) {:embedding_params {:abc "enabled"}}))))
+(deftest can-we-clear-the-description-of-a-card----4738-
+  (is (nil? (tt/with-temp Card [card {:description "What a nice Card"}]
+              (with-cards-in-writeable-collection card
+                ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:description nil})
+                (db/select-one-field :description Card :id (u/get-id card)))))))
 
-;; ...or if embedding isn't enabled
-(expect
-  "Embedding is not enabled."
-  (tt/with-temp Card [card]
-    (tu/with-temporary-setting-values [enable-embedding false]
-      ((test-users/user->client :crowberto) :put 400 (str "card/" (u/get-id card)) {:embedding_params {:abc "enabled"}}))))
+(deftest description-should-be-blankable-as-well
+  (is (= ""
+         (tt/with-temp Card [card {:description "What a nice Card"}]
+           (with-cards-in-writeable-collection card
+             ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:description ""})
+             (db/select-one-field :description Card :id (u/get-id card)))))))
 
-;; make sure when updating a Card the query metadata is saved (if correct)
-(expect
-  [{:base_type    "type/Integer"
-    :display_name "Count Chocula"
-    :name         "count_chocula"
-    :special_type "type/Number"}]
-  (let [metadata [{:base_type    :type/Integer
-                   :display_name "Count Chocula"
-                   :name         "count_chocula"
-                   :special_type :type/Number}]]
-    (tt/with-temp Card [card]
-      (with-cards-in-writeable-collection card
-        ;; update the Card's query
-        ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card))
-         {:dataset_query     (mbql-count-query)
-          :result_metadata   metadata
-          :metadata_checksum (#'results-metadata/metadata-checksum metadata)})
-        ;; now check the metadata that was saved in the DB
-        (db/select-one-field :result_metadata Card :id (u/get-id card))))))
+(deftest can-we-update-a-card-s-embedding-params-
+  (is (= {:abc "enabled"}
+         (tt/with-temp Card [card]
+           (tu/with-temporary-setting-values [enable-embedding true]
+             ((test-users/user->client :crowberto) :put 202 (str "card/" (u/get-id card)) {:embedding_params {:abc "enabled"}}))
+           (db/select-one-field :embedding_params Card :id (u/get-id card))))))
 
-;; Make sure when updating a Card the correct query metadata is fetched (if incorrect)
-(expect
-  [{:base_type    "type/Integer"
-    :display_name "Count"
-    :name         "count"
-    :special_type "type/Quantity"
-    :fingerprint  {:global {:distinct-count 1
-                            :nil%           0.0},
-                   :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}}]
-  (let [metadata [{:base_type    :type/Integer
-                   :display_name "Count Chocula"
-                   :name         "count_chocula"
-                   :special_type :type/Quantity}]]
-    (tt/with-temp Card [card]
-      (with-cards-in-writeable-collection card
-        ;; update the Card's query
-        ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card))
-         {:dataset_query     (mbql-count-query)
-          :result_metadata   metadata
-          :metadata_checksum "ABC123"}) ; invalid checksum
-        ;; now check the metadata that was saved in the DB
-        (db/select-one-field :result_metadata Card :id (u/get-id card))))))
+(deftest we-shouldn-t-be-able-to-update-them-if-we-re-not-an-admin---
+  (is (= "You don't have permissions to do that."
+         (tt/with-temp Card [card]
+           (tu/with-temporary-setting-values [enable-embedding true]
+             ((test-users/user->client :rasta) :put 403 (str "card/" (u/get-id card)) {:embedding_params {:abc "enabled"}}))))))
 
-;; Can we change the Collection position of a Card?
-(expect
-  1
-  (tt/with-temp Card [card]
-    (with-cards-in-writeable-collection card
-      ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card))
-       {:collection_position 1})
-      (db/select-one-field :collection_position Card :id (u/get-id card)))))
+(deftest ---or-if-embedding-isn-t-enabled
+  (is (= "Embedding is not enabled."
+         (tt/with-temp Card [card]
+           (tu/with-temporary-setting-values [enable-embedding false]
+             ((test-users/user->client :crowberto) :put 400 (str "card/" (u/get-id card)) {:embedding_params {:abc "enabled"}}))))))
 
-;; ...and unset (unpin) it as well?
-(expect
-  nil
-  (tt/with-temp Card [card {:collection_position 1}]
-    (with-cards-in-writeable-collection card
-      ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card))
-       {:collection_position nil})
-      (db/select-one-field :collection_position Card :id (u/get-id card)))))
+(deftest make-sure-when-updating-a-card-the-query-metadata-is-saved--if-correct-
+  (is (= [{:base_type    "type/Integer"
+           :display_name "Count Chocula"
+           :name         "count_chocula"
+           :special_type "type/Number"}]
+         (let [metadata [{:base_type    :type/Integer
+                          :display_name "Count Chocula"
+                          :name         "count_chocula"
+                          :special_type :type/Number}]]
+           (tt/with-temp Card [card]
+             (with-cards-in-writeable-collection card
+               ;; update the Card's query
+               ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card))
+                {:dataset_query     (mbql-count-query)
+                 :result_metadata   metadata
+                 :metadata_checksum (#'results-metadata/metadata-checksum metadata)})
+               ;; now check the metadata that was saved in the DB
+               (db/select-one-field :result_metadata Card :id (u/get-id card))))))))
 
-;; ...we shouldn't be able to if we don't have permissions for the Collection
-(expect
-  nil
-  (tu/with-non-admin-groups-no-root-collection-perms
-    (tt/with-temp* [Collection [collection]
-                    Card       [card {:collection_id (u/get-id collection)}]]
-      ((test-users/user->client :rasta) :put 403 (str "card/" (u/get-id card))
-       {:collection_position 1})
-      (db/select-one-field :collection_position Card :id (u/get-id card)))))
+(deftest make-sure-when-updating-a-card-the-correct-query-metadata-is-fetched--if-incorrect-
+  (is (= [{:base_type    "type/Integer"
+           :display_name "Count"
+           :name         "count"
+           :special_type "type/Quantity"
+           :fingerprint  {:global {:distinct-count 1
+                                   :nil%           0.0},
+                          :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}}]
+         (let [metadata [{:base_type    :type/Integer
+                          :display_name "Count Chocula"
+                          :name         "count_chocula"
+                          :special_type :type/Quantity}]]
+           (tt/with-temp Card [card]
+             (with-cards-in-writeable-collection card
+               ;; update the Card's query
+               ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card))
+                {:dataset_query     (mbql-count-query)
+                 :result_metadata   metadata
+                 :metadata_checksum "ABC123"}) ; invalid checksum
+               ;; now check the metadata that was saved in the DB
+               (db/select-one-field :result_metadata Card :id (u/get-id card))))))))
 
-(expect
-  1
-  (tu/with-non-admin-groups-no-root-collection-perms
-    (tt/with-temp* [Collection [collection]
-                    Card       [card {:collection_id (u/get-id collection), :collection_position 1}]]
-      ((test-users/user->client :rasta) :put 403 (str "card/" (u/get-id card))
-       {:collection_position nil})
-      (db/select-one-field :collection_position Card :id (u/get-id card)))))
+(deftest can-we-change-the-collection-position-of-a-card-
+  (is (= 1
+         (tt/with-temp Card [card]
+           (with-cards-in-writeable-collection card
+             ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card))
+              {:collection_position 1})
+             (db/select-one-field :collection_position Card :id (u/get-id card)))))))
+
+(deftest ---and-unset--unpin--it-as-well-
+  (is (nil? (tt/with-temp Card [card {:collection_position 1}]
+              (with-cards-in-writeable-collection card
+                ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card))
+                 {:collection_position nil})
+                (db/select-one-field :collection_position Card :id (u/get-id card)))))))
+
+
+
+(deftest ---we-shouldn-t-be-able-to-if-we-don-t-have-permissions-for-the-collection
+  (is (nil? (tu/with-non-admin-groups-no-root-collection-perms
+              (tt/with-temp* [Collection [collection]
+                              Card       [card {:collection_id (u/get-id collection)}]]
+                ((test-users/user->client :rasta) :put 403 (str "card/" (u/get-id card))
+                 {:collection_position 1})
+                (db/select-one-field :collection_position Card :id (u/get-id card)))))))
+
+(deftest gets-a-card
+  (is (= 1
+         (tu/with-non-admin-groups-no-root-collection-perms
+           (tt/with-temp* [Collection [collection]
+                           Card       [card {:collection_id (u/get-id collection), :collection_position 1}]]
+             ((test-users/user->client :rasta) :put 403 (str "card/" (u/get-id card))
+              {:collection_position nil})
+             (db/select-one-field :collection_position Card :id (u/get-id card)))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -715,148 +703,143 @@
                                 (partition-all 2 model-and-name-syms)))
      ~@body))
 
-;; Check to make sure we can move a card in a collection of just cards
-(expect
-  {"c" 1
-   "a" 2
-   "b" 3
-   "d" 4}
-  (tu/with-non-admin-groups-no-root-collection-perms
-    (tt/with-temp Collection [collection]
-      (with-ordered-items collection [Card a
-                                      Card b
-                                      Card c
-                                      Card d]
-        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id c))
-         {:collection_position 1})
-        (get-name->collection-position :rasta collection)))))
+(deftest check-to-make-sure-we-can-move-a-card-in-a-collection-of-just-cards
+  (is (= {"c" 1
+          "a" 2
+          "b" 3
+          "d" 4}
+         (tu/with-non-admin-groups-no-root-collection-perms
+           (tt/with-temp Collection [collection]
+             (with-ordered-items collection [Card a
+                                             Card b
+                                             Card c
+                                             Card d]
+               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+               ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id c))
+                {:collection_position 1})
+               (get-name->collection-position :rasta collection)))))))
 
-;; Change the position of the 4th card to 1st, all other cards should inc their position
-(expect
-  {"d" 1
-   "a" 2
-   "b" 3
-   "c" 4}
-  (tu/with-non-admin-groups-no-root-collection-perms
-    (tt/with-temp Collection [collection]
-      (with-ordered-items collection [Dashboard a
-                                      Dashboard b
-                                      Pulse     c
-                                      Card      d]
-        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id d))
-         {:collection_position 1})
-        (get-name->collection-position :rasta collection)))))
+(deftest change-the-position-of-the-4th-card-to-1st--all-other-cards-should-inc-their-position
+  (is (= {"d" 1
+          "a" 2
+          "b" 3
+          "c" 4}
+         (tu/with-non-admin-groups-no-root-collection-perms
+           (tt/with-temp Collection [collection]
+             (with-ordered-items collection [Dashboard a
+                                             Dashboard b
+                                             Pulse     c
+                                             Card      d]
+               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+               ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id d))
+                {:collection_position 1})
+               (get-name->collection-position :rasta collection)))))))
 
-;; Change the position of the 1st card to the 4th, all of the other items dec
-(expect
-  {"b" 1
-   "c" 2
-   "d" 3
-   "a" 4}
-  (tu/with-non-admin-groups-no-root-collection-perms
-    (tt/with-temp Collection [collection]
-      (with-ordered-items collection [Card      a
-                                      Dashboard b
-                                      Pulse     c
-                                      Dashboard d]
-        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id a))
-         {:collection_position 4})
-        (get-name->collection-position :rasta collection)))))
+(deftest change-the-position-of-the-1st-card-to-the-4th--all-of-the-other-items-dec
+  (is (= {"b" 1
+          "c" 2
+          "d" 3
+          "a" 4}
+         (tu/with-non-admin-groups-no-root-collection-perms
+           (tt/with-temp Collection [collection]
+             (with-ordered-items collection [Card      a
+                                             Dashboard b
+                                             Pulse     c
+                                             Dashboard d]
+               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+               ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id a))
+                {:collection_position 4})
+               (get-name->collection-position :rasta collection)))))))
 
-;; Change the position of a card from nil to 2nd, should adjust the existing items
-(expect
-  {"a" 1
-   "b" 2
-   "c" 3
-   "d" 4}
-  (tu/with-non-admin-groups-no-root-collection-perms
-    (tt/with-temp* [Collection [{coll-id :id :as collection}]
-                    Card       [_ {:name "a", :collection_id coll-id, :collection_position 1}]
-                    ;; Card b does not start with a collection_position
-                    Card       [b {:name "b", :collection_id coll-id}]
-                    Dashboard  [_ {:name "c", :collection_id coll-id, :collection_position 2}]
-                    Card       [_ {:name "d", :collection_id coll-id, :collection_position 3}]]
-      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-      ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id b))
-       {:collection_position 2})
-      (get-name->collection-position :rasta coll-id))))
+(deftest change-the-position-of-a-card-from-nil-to-2nd--should-adjust-the-existing-items
+  (is (= {"a" 1
+          "b" 2
+          "c" 3
+          "d" 4}
+         (tu/with-non-admin-groups-no-root-collection-perms
+           (tt/with-temp* [Collection [{coll-id :id :as collection}]
+                           Card       [_ {:name "a", :collection_id coll-id, :collection_position 1}]
+                           ;; Card b does not start with a collection_position
+                           Card       [b {:name "b", :collection_id coll-id}]
+                           Dashboard  [_ {:name "c", :collection_id coll-id, :collection_position 2}]
+                           Card       [_ {:name "d", :collection_id coll-id, :collection_position 3}]]
+             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+             ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id b))
+              {:collection_position 2})
+             (get-name->collection-position :rasta coll-id))))))
 
-;; Update an existing card to no longer have a position, should dec items after it's position
-(expect
-  {"a" 1
-   "b" nil
-   "c" 2
-   "d" 3}
-  (tu/with-non-admin-groups-no-root-collection-perms
-    (tt/with-temp Collection [collection]
-      (with-ordered-items collection [Card      a
-                                      Card      b
-                                      Dashboard c
-                                      Pulse     d]
-        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id b))
-         {:collection_position nil})
-        (get-name->collection-position :rasta collection)))))
+(deftest update-an-existing-card-to-no-longer-have-a-position--should-dec-items-after-it-s-position
+  (is (= {"a" 1
+          "b" nil
+          "c" 2
+          "d" 3}
+         (tu/with-non-admin-groups-no-root-collection-perms
+           (tt/with-temp Collection [collection]
+             (with-ordered-items collection [Card      a
+                                             Card      b
+                                             Dashboard c
+                                             Pulse     d]
+               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+               ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id b))
+                {:collection_position nil})
+               (get-name->collection-position :rasta collection)))))))
 
 ;; Change the collection the card is in, leave the position, should cause old and new collection to have their
 ;; positions updated
-(expect
-  [{"a" 1
-    "f" 2
-    "b" 3
-    "c" 4
-    "d" 5}
-   {"e" 1
-    "g" 2
-    "h" 3}]
-  (tu/with-non-admin-groups-no-root-collection-perms
-    (tt/with-temp* [Collection [collection-1]
-                    Collection [collection-2]]
-      (with-ordered-items collection-1 [Dashboard a
-                                        Card      b
-                                        Pulse     c
-                                        Dashboard d]
-        (with-ordered-items collection-2 [Pulse     e
-                                          Card      f
-                                          Card      g
-                                          Dashboard h]
-          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-1)
-          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-2)
-          ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id f))
-           {:collection_id (u/get-id collection-1)})
-          [(get-name->collection-position :rasta collection-1)
-           (get-name->collection-position :rasta collection-2)])))))
+(deftest update-collection-positions
+  (is (= [{"a" 1
+           "f" 2
+           "b" 3
+           "c" 4
+           "d" 5}
+          {"e" 1
+           "g" 2
+           "h" 3}]
+         (tu/with-non-admin-groups-no-root-collection-perms
+           (tt/with-temp* [Collection [collection-1]
+                           Collection [collection-2]]
+             (with-ordered-items collection-1 [Dashboard a
+                                               Card      b
+                                               Pulse     c
+                                               Dashboard d]
+               (with-ordered-items collection-2 [Pulse     e
+                                                 Card      f
+                                                 Card      g
+                                                 Dashboard h]
+                 (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-1)
+                 (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-2)
+                 ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id f))
+                  {:collection_id (u/get-id collection-1)})
+                 [(get-name->collection-position :rasta collection-1)
+                  (get-name->collection-position :rasta collection-2)])))))))
 
-;; Change the collection and the position, causing both collections and the updated card to have their order changed
-(expect
-  [{"h" 1
-    "a" 2
-    "b" 3
-    "c" 4
-    "d" 5}
-   {"e" 1
-    "f" 2
-    "g" 3}]
-  (tu/with-non-admin-groups-no-root-collection-perms
-    (tt/with-temp* [Collection [collection-1]
-                    Collection [collection-2]]
-      (with-ordered-items collection-1 [Pulse     a
-                                        Pulse     b
-                                        Dashboard c
-                                        Dashboard d]
-        (with-ordered-items collection-2 [Dashboard e
-                                          Dashboard f
-                                          Pulse     g
-                                          Card      h]
-          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-1)
-          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-2)
-          ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id h))
-           {:collection_position 1, :collection_id (u/get-id collection-1)})
-          [(get-name->collection-position :rasta collection-1)
-           (get-name->collection-position :rasta collection-2)])))))
+(deftest change-the-collection-and-the-position--causing-both-collections-and-the-updated-card-to-have-their-order-changed
+  (is (= [{"h" 1
+           "a" 2
+           "b" 3
+           "c" 4
+           "d" 5}
+          {"e" 1
+           "f" 2
+           "g" 3}]
+         (tu/with-non-admin-groups-no-root-collection-perms
+           (tt/with-temp* [Collection [collection-1]
+                           Collection [collection-2]]
+             (with-ordered-items collection-1 [Pulse     a
+                                               Pulse     b
+                                               Dashboard c
+                                               Dashboard d]
+               (with-ordered-items collection-2 [Dashboard e
+                                                 Dashboard f
+                                                 Pulse     g
+                                                 Card      h]
+                 (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-1)
+                 (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-2)
+                 ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id h))
+                  {:collection_position 1, :collection_id (u/get-id collection-1)})
+                 [(get-name->collection-position :rasta collection-1)
+                  (get-name->collection-position :rasta collection-2)])))))))
+
 
 ;; Add a new card to an existing collection at position 1, will cause all existing positions to increment by 1
 (deftest add-new-card-to-existing-collection-at-position-1
@@ -1036,53 +1019,50 @@
                    (Pulse (u/get-id pulse)))
                 "Alert should have been deleted")))))))
 
-;; Changing the display type from line to area/bar is fine and doesn't delete the alert
-(expect
-  {:emails-1 {}
-   :pulse-1  true
-   :emails-2 {}
-   :pulse-2  true}
-  (tt/with-temp* [Card                  [card  {:display                :line
-                                                :visualization_settings {:graph.goal_value 10}}]
-                  Pulse                 [pulse {:alert_condition  "goal"
-                                                :alert_first_only false
-                                                :creator_id       (test-users/user->id :rasta)
-                                                :name             "Original Alert Name"}]
-                  PulseCard             [_     {:pulse_id (u/get-id pulse)
-                                                :card_id  (u/get-id card)
-                                                :position 0}]
-                  PulseChannel          [pc    {:pulse_id (u/get-id pulse)}]
-                  PulseChannelRecipient [_     {:user_id          (test-users/user->id :rasta)
-                                                :pulse_channel_id (u/get-id pc)}]]
-    (with-cards-in-writeable-collection card
-      (et/with-fake-inbox
-        (array-map
-         :emails-1 (do
-                     ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:display :area})
-                     (et/regex-email-bodies #"the question was edited by Rasta Toucan"))
-         :pulse-1  (boolean (Pulse (u/get-id pulse)))
-         :emails-2 (do
-                     ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:display :bar})
-                     (et/regex-email-bodies #"the question was edited by Rasta Toucan"))
-         :pulse-2  (boolean (Pulse (u/get-id pulse))))))))
+(deftest changing-the-display-type-from-line-to-area-bar-is-fine-and-doesn-t-delete-the-alert
+  (is (= {:emails-1 {}
+          :pulse-1  true
+          :emails-2 {}
+          :pulse-2  true}
+         (tt/with-temp* [Card                  [card  {:display                :line
+                                                       :visualization_settings {:graph.goal_value 10}}]
+                         Pulse                 [pulse {:alert_condition  "goal"
+                                                       :alert_first_only false
+                                                       :creator_id       (test-users/user->id :rasta)
+                                                       :name             "Original Alert Name"}]
+                         PulseCard             [_     {:pulse_id (u/get-id pulse)
+                                                       :card_id  (u/get-id card)
+                                                       :position 0}]
+                         PulseChannel          [pc    {:pulse_id (u/get-id pulse)}]
+                         PulseChannelRecipient [_     {:user_id          (test-users/user->id :rasta)
+                                                       :pulse_channel_id (u/get-id pc)}]]
+           (with-cards-in-writeable-collection card
+             (et/with-fake-inbox
+               (array-map
+                :emails-1 (do
+                            ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:display :area})
+                            (et/regex-email-bodies #"the question was edited by Rasta Toucan"))
+                :pulse-1  (boolean (Pulse (u/get-id pulse)))
+                :emails-2 (do
+                            ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:display :bar})
+                            (et/regex-email-bodies #"the question was edited by Rasta Toucan"))
+                :pulse-2  (boolean (Pulse (u/get-id pulse))))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          DELETING A CARD (DEPRECATED)                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;; Deprecated because you're not supposed to delete cards anymore. Archive them instead
 
-;; Check that we can delete a card
-(expect
-  nil
-  (tt/with-temp Card [card]
-    (with-cards-in-writeable-collection card
-      ((test-users/user->client :rasta) :delete 204 (str "card/" (u/get-id card)))
-      (Card (u/get-id card)))))
+(deftest check-that-we-can-delete-a-card
+  (is (nil? (tt/with-temp Card [card]
+              (with-cards-in-writeable-collection card
+                ((test-users/user->client :rasta) :delete 204 (str "card/" (u/get-id card)))
+                (Card (u/get-id card)))))))
 
-;; deleting a card that doesn't exist should return a 404 (#1957)
-(expect
-  "Not found."
-  ((test-users/user->client :crowberto) :delete 404 "card/12345"))
+
+(deftest deleting-a-card-that-doesn-t-exist-should-return-a-404---1957-
+  (is (= "Not found."
+         ((test-users/user->client :crowberto) :delete 404 "card/12345"))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1100,65 +1080,59 @@
   ((test-users/user->client :rasta) :delete 204 (format "card/%d/favorite" (u/get-id card))))
 
 ;; ## GET /api/card/:id/favorite
-;; Can we see if a Card is a favorite ?
-(expect
-  false
-  (tt/with-temp Card [card]
-    (with-cards-in-readable-collection card
-      (fave? card))))
+(deftest can-we-see-if-a-card-is-a-favorite--
+  (is (= false
+         (tt/with-temp Card [card]
+           (with-cards-in-readable-collection card
+             (fave? card))))))
 
 ;; ## POST /api/card/:id/favorite
-;; Can we favorite a card?
-(expect
-  {1 false
-   2 true}
-  (tt/with-temp Card [card]
-    (with-cards-in-readable-collection card
-      (array-map
-       1 (fave? card)
-       2 (do (fave! card)
-             (fave? card))))))
+(deftest can-we-favorite-a-card-
+  (is (= {1 false
+          2 true}
+         (tt/with-temp Card [card]
+           (with-cards-in-readable-collection card
+             (array-map
+              1 (fave? card)
+              2 (do (fave! card)
+                    (fave? card))))))))
 
 ;; DELETE /api/card/:id/favorite
-;; Can we unfavorite a card?
-(expect
-  {1 false
-   2 true
-   3 false}
-  (tt/with-temp Card [card]
-    (with-cards-in-readable-collection card
-      (array-map
-       1 (fave? card)
-       2 (do (fave! card)
-             (fave? card))
-       3 (do (unfave! card)
-             (fave? card))))))
-
+(deftest can-we-unfavorite-a-card-
+  (is (= {1 false
+          2 true
+          3 false}
+         (tt/with-temp Card [card]
+           (with-cards-in-readable-collection card
+             (array-map
+              1 (fave? card)
+              2 (do (fave! card)
+                    (fave? card))
+              3 (do (unfave! card)
+                    (fave? card))))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            CSV/JSON/XLSX DOWNLOADS                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;;; Tests for GET /api/card/:id/json
+(deftest endpoint-should-return-an-array-of-maps--one-for-each-row
+  (is (= [{(keyword "COUNT(*)") 75}]
+         (with-temp-native-card [_ card]
+           (with-cards-in-readable-collection card
+             ((test-users/user->client :rasta) :post 202 (format "card/%d/query/json" (u/get-id card))))))))
 
-;; endpoint should return an array of maps, one for each row
-(expect
-  [{(keyword "COUNT(*)") 75}]
-  (with-temp-native-card [_ card]
-    (with-cards-in-readable-collection card
-      ((test-users/user->client :rasta) :post 200 (format "card/%d/query/json" (u/get-id card))))))
+(deftest  tests-for-get--api-card--id-xlsx
+  (is (= [{:col "COUNT(*)"} {:col 75.0}]
+         (with-temp-native-card [_ card]
+           (with-cards-in-readable-collection card
+             (->> ((test-users/user->client :rasta) :post 202 (format "card/%d/query/xlsx" (u/get-id card))
+                   {:request-options {:as :byte-array}})
+                  ByteArrayInputStream.
+                  spreadsheet/load-workbook
+                  (spreadsheet/select-sheet "Query result")
+                  (spreadsheet/select-columns {:A :col})))))))
 
-;;; Tests for GET /api/card/:id/xlsx
-(expect
-  [{:col "COUNT(*)"} {:col 75.0}]
-  (with-temp-native-card [_ card]
-    (with-cards-in-readable-collection card
-      (->> ((test-users/user->client :rasta) :post 200 (format "card/%d/query/xlsx" (u/get-id card))
-            {:request-options {:as :byte-array}})
-           ByteArrayInputStream.
-           spreadsheet/load-workbook
-           (spreadsheet/select-sheet "Query result")
-           (spreadsheet/select-columns {:A :col})))))
 
 ;;; Test GET /api/card/:id/query/csv & GET /api/card/:id/json & GET /api/card/:id/query/xlsx **WITH PARAMETERS**
 (def ^:private ^:const ^String encoded-params
@@ -1166,48 +1140,54 @@
                           :target [:variable [:template-tag :category]]
                           :value  2}]))
 
-;; CSV
-(expect
-  (str "COUNT(*)\n"
-       "8\n")
-  (with-temp-native-card-with-params [_ card]
-    (with-cards-in-readable-collection card
-      ((test-users/user->client :rasta) :post 200 (format "card/%d/query/csv?parameters=%s" (u/get-id card) encoded-params)))))
 
-;; JSON
-(expect
-  [{(keyword "COUNT(*)") 8}]
-  (with-temp-native-card-with-params [_ card]
-    (with-cards-in-readable-collection card
-      ((test-users/user->client :rasta) :post 200 (format "card/%d/query/json?parameters=%s" (u/get-id card) encoded-params)))))
+(deftest query-csv
+  (is (= (str "COUNT(*)\n"
+              "8\n")
+         (with-temp-native-card-with-params [_ card]
+           (with-cards-in-readable-collection card
+             ((test-users/user->client :rasta) :post 202 (format "card/%d/query/csv?parameters=%s" (u/get-id card) encoded-params)))))))
 
-;; XLSX
-(expect
-  [{:col "COUNT(*)"} {:col 8.0}]
-  (with-temp-native-card-with-params [_ card]
-    (with-cards-in-readable-collection card
-      (->> ((test-users/user->client :rasta) :post 200 (format "card/%d/query/xlsx?parameters=%s" (u/get-id card) encoded-params)
-            {:request-options {:as :byte-array}})
-           ByteArrayInputStream.
-           spreadsheet/load-workbook
-           (spreadsheet/select-sheet "Query result")
-           (spreadsheet/select-columns {:A :col})))))
+
+
+(deftest query-json
+  (is (= [{(keyword "COUNT(*)") 8}]
+         (with-temp-native-card-with-params [_ card]
+           (with-cards-in-readable-collection card
+             ((test-users/user->client :rasta) :post 202 (format "card/%d/query/json?parameters=%s" (u/get-id card) encoded-params)))))))
+
+
+
+(deftest query-xlsx
+  (is (= [{:col "COUNT(*)"} {:col 8.0}]
+         (with-temp-native-card-with-params [_ card]
+           (with-cards-in-readable-collection card
+             (->> ((test-users/user->client :rasta) :post 202 (format "card/%d/query/xlsx?parameters=%s" (u/get-id card) encoded-params)
+                   {:request-options {:as :byte-array}})
+                  ByteArrayInputStream.
+                  spreadsheet/load-workbook
+                  (spreadsheet/select-sheet "Query result")
+                  (spreadsheet/select-columns {:A :col})))))))
+
 
 ;; Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even if the query comes
 ;; in with `add-default-userland-constraints` (as will be the case if the query gets saved from one that had it -- see
 ;; #9831)
-(expect
-  101
-  (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
-    (tt/with-temp Card [card {:dataset_query {:database (data/id)
-                                              :type     :query
-                                              :query    {:source-table (data/id :venues)}
-                                              :middleware
-                                              {:add-default-userland-constraints? true
-                                               :userland-query?                   true}}}]
-      (with-cards-in-readable-collection card
-        (let [results ((test-users/user->client :rasta) :post 200 (format "card/%d/query/csv" (u/get-id card)))]
-          (count (csv/read-csv results)))))))
+
+
+(deftest formatted-export
+  (is (= 101
+         (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+           (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                                     :type     :query
+                                                     :query    {:source-table (data/id :venues)}
+                                                     :middleware
+                                                     {:add-default-userland-constraints? true
+                                                      :userland-query?                   true}}}]
+             (with-cards-in-readable-collection card
+               (let [results ((test-users/user->client :rasta) :post 202 (format "card/%d/query/csv" (u/get-id card)))]
+                 (count (csv/read-csv results)))))))))
+
 
 ;; non-"download" queries should still get the default constraints
 ;; (this also is a sanitiy check to make sure the `with-redefs` in the test above actually works)
@@ -1230,8 +1210,8 @@
 ;;; |                                                  COLLECTIONS                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Make sure we can create a card and specify its `collection_id` at the same time
-(expect
+
+(deftest make-sure-we-can-create-a-card-and-specify-its--collection-id--at-the-same-time
   (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp Collection [collection]
       (tu/with-model-cleanup [Card]
@@ -1242,56 +1222,56 @@
           (= (db/select-one-field :collection_id Card :id (u/get-id card))
              (u/get-id collection)))))))
 
-;; Make sure we card creation fails if we try to set a `collection_id` we don't have permissions for
-(expect
-  "You don't have permissions to do that."
-  (tu/with-non-admin-groups-no-root-collection-perms
-    (tu/with-model-cleanup [Card]
-      (tt/with-temp Collection [collection]
-        ((test-users/user->client :rasta) :post 403 "card"
-         (assoc (card-with-name-and-query)
-           :collection_id (u/get-id collection)))))))
+(deftest make-sure-we-card-creation-fails-if-we-try-to-set-a--collection-id--we-don-t-have-permissions-for
+  (is (= "You don't have permissions to do that."
+         (tu/with-non-admin-groups-no-root-collection-perms
+           (tu/with-model-cleanup [Card]
+             (tt/with-temp Collection [collection]
+               ((test-users/user->client :rasta) :post 403 "card"
+                (assoc (card-with-name-and-query)
+                       :collection_id (u/get-id collection)))))))))
 
-;; Make sure we can change the `collection_id` of a Card if it's not in any collection
-(expect
+(deftest make-sure-we-can-change-the--collection-id--of-a-card-if-it-s-not-in-any-collection
   (tt/with-temp* [Card       [card]
                   Collection [collection]]
     ((test-users/user->client :crowberto) :put 202 (str "card/" (u/get-id card)) {:collection_id (u/get-id collection)})
     (= (db/select-one-field :collection_id Card :id (u/get-id card))
        (u/get-id collection))))
 
-;; Make sure we can still change *anything* for a Card if we don't have permissions for the Collection it belongs to
-(expect
-  "You don't have permissions to do that."
-  (tu/with-non-admin-groups-no-root-collection-perms
-    (tt/with-temp* [Collection [collection]
-                    Card       [card       {:collection_id (u/get-id collection)}]]
-      ((test-users/user->client :rasta) :put 403 (str "card/" (u/get-id card)) {:name "Number of Blueberries Consumed Per Month"}))))
+(deftest make-sure-we-can-still-change--anything--for-a-card-if-we-don-t-have-permissions-for-the-collection-it-belongs-to
+  (is (= "You don't have permissions to do that."
+         (tu/with-non-admin-groups-no-root-collection-perms
+           (tt/with-temp* [Collection [collection]
+                           Card       [card       {:collection_id (u/get-id collection)}]]
+             ((test-users/user->client :rasta) :put 403 (str "card/" (u/get-id card)) {:name "Number of Blueberries Consumed Per Month"}))))))
+
 
 ;; Make sure that we can't change the `collection_id` of a Card if we don't have write permissions for the new
 ;; collection
-(expect
-  "You don't have permissions to do that."
-  (tu/with-non-admin-groups-no-root-collection-perms
-    (tt/with-temp* [Collection [original-collection]
-                    Collection [new-collection]
-                    Card       [card                {:collection_id (u/get-id original-collection)}]]
-      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) original-collection)
-      ((test-users/user->client :rasta) :put 403 (str "card/" (u/get-id card)) {:collection_id (u/get-id new-collection)}))))
+(deftest cant-change-collection-id-of-card-without-write-permission-in-new-collection
+  (is (= "You don't have permissions to do that."
+         (tu/with-non-admin-groups-no-root-collection-perms
+           (tt/with-temp* [Collection [original-collection]
+                           Collection [new-collection]
+                           Card       [card                {:collection_id (u/get-id original-collection)}]]
+             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) original-collection)
+             ((test-users/user->client :rasta) :put 403 (str "card/" (u/get-id card)) {:collection_id (u/get-id new-collection)}))))))
+
 
 ;; Make sure that we can't change the `collection_id` of a Card if we don't have write permissions for the current
 ;; collection
-(expect
-  "You don't have permissions to do that."
-  (tu/with-non-admin-groups-no-root-collection-perms
-    (tt/with-temp* [Collection [original-collection]
-                    Collection [new-collection]
-                    Card       [card                {:collection_id (u/get-id original-collection)}]]
-      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) new-collection)
-      ((test-users/user->client :rasta) :put 403 (str "card/" (u/get-id card)) {:collection_id (u/get-id new-collection)}))))
+(deftest cant-change-collection-id-of-card-without-write-permission-in-current-collection
+  (is (= "You don't have permissions to do that."
+         (tu/with-non-admin-groups-no-root-collection-perms
+           (tt/with-temp* [Collection [original-collection]
+                           Collection [new-collection]
+                           Card       [card                {:collection_id (u/get-id original-collection)}]]
+             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) new-collection)
+             ((test-users/user->client :rasta) :put 403 (str "card/" (u/get-id card)) {:collection_id (u/get-id new-collection)}))))))
 
-;; But if we do have permissions for both, we should be able to change it.
-(expect
+
+
+(deftest but-if-we-do-have-permissions-for-both--we-should-be-able-to-change-it-
   (tu/with-non-admin-groups-no-root-collection-perms
     (tt/with-temp* [Collection [original-collection]
                     Collection [new-collection]
@@ -1301,7 +1281,6 @@
       ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:collection_id (u/get-id new-collection)})
       (= (db/select-one-field :collection_id Card :id (u/get-id card))
          (u/get-id new-collection)))))
-
 
 ;;; ------------------------------ Bulk Collections Update (POST /api/card/collections) ------------------------------
 
@@ -1331,109 +1310,102 @@
    :collections
    (collection-names cards-or-card-ids)))
 
-;; Test that we can bulk move some Cards with no collection into a collection
-(expect
-  {:response    {:status "ok"}
-   :collections ["Pog Collection"
-                 "Pog Collection"]}
-  (tt/with-temp* [Collection [collection {:name "Pog Collection"}]
-                  Card       [card-1]
-                  Card       [card-2]]
-    (POST-card-collections! :crowberto 200 collection [card-1 card-2])))
+(deftest test-that-we-can-bulk-move-some-cards-with-no-collection-into-a-collection
+  (is (= {:response    {:status "ok"}
+          :collections ["Pog Collection"
+                        "Pog Collection"]}
+         (tt/with-temp* [Collection [collection {:name "Pog Collection"}]
+                         Card       [card-1]
+                         Card       [card-2]]
+           (POST-card-collections! :crowberto 200 collection [card-1 card-2])))))
 
-;; Test that we can bulk move some Cards from one collection to another
-(expect
-  {:response    {:status "ok"}
-   :collections ["New Collection" "New Collection"]}
-  (tt/with-temp* [Collection [old-collection {:name "Old Collection"}]
-                  Collection [new-collection {:name "New Collection"}]
-                  Card       [card-1         {:collection_id (u/get-id old-collection)}]
-                  Card       [card-2         {:collection_id (u/get-id old-collection)}]]
-    (POST-card-collections! :crowberto 200 new-collection [card-1 card-2])))
+(deftest test-that-we-can-bulk-move-some-cards-from-one-collection-to-another
+  (is (= {:response    {:status "ok"}
+          :collections ["New Collection" "New Collection"]}
+         (tt/with-temp* [Collection [old-collection {:name "Old Collection"}]
+                         Collection [new-collection {:name "New Collection"}]
+                         Card       [card-1         {:collection_id (u/get-id old-collection)}]
+                         Card       [card-2         {:collection_id (u/get-id old-collection)}]]
+           (POST-card-collections! :crowberto 200 new-collection [card-1 card-2])))))
 
-;; Test that we can bulk remove some Cards from a collection
-(expect
-  {:response    {:status "ok"}
-   :collections [nil nil]}
-  (tt/with-temp* [Collection [collection]
-                  Card       [card-1     {:collection_id (u/get-id collection)}]
-                  Card       [card-2     {:collection_id (u/get-id collection)}]]
-    (POST-card-collections! :crowberto 200 nil [card-1 card-2])))
+(deftest test-that-we-can-bulk-remove-some-cards-from-a-collection
+  (is (= {:response    {:status "ok"}
+          :collections [nil nil]}
+         (tt/with-temp* [Collection [collection]
+                         Card       [card-1     {:collection_id (u/get-id collection)}]
+                         Card       [card-2     {:collection_id (u/get-id collection)}]]
+           (POST-card-collections! :crowberto 200 nil [card-1 card-2])))))
 
-;; Check that we aren't allowed to move Cards if we don't have permissions for destination collection
-(expect
-  {:response    "You don't have permissions to do that."
-   :collections [nil nil]}
-  (tu/with-non-admin-groups-no-root-collection-perms
-    (tt/with-temp* [Collection [collection]
-                    Card       [card-1]
-                    Card       [card-2]]
-      (POST-card-collections! :rasta 403 collection [card-1 card-2]))))
+(deftest check-that-we-aren-t-allowed-to-move-cards-if-we-don-t-have-permissions-for-destination-collection
+  (is (= {:response    "You don't have permissions to do that."
+          :collections [nil nil]}
+         (tu/with-non-admin-groups-no-root-collection-perms
+           (tt/with-temp* [Collection [collection]
+                           Card       [card-1]
+                           Card       [card-2]]
+             (POST-card-collections! :rasta 403 collection [card-1 card-2]))))))
 
-;; Check that we aren't allowed to move Cards if we don't have permissions for source collection
-(expect
-  {:response    "You don't have permissions to do that."
-   :collections ["Horseshoe Collection" "Horseshoe Collection"]}
-  (tu/with-non-admin-groups-no-root-collection-perms
-    (tt/with-temp* [Collection [collection {:name "Horseshoe Collection"}]
-                    Card       [card-1     {:collection_id (u/get-id collection)}]
-                    Card       [card-2     {:collection_id (u/get-id collection)}]]
-      (POST-card-collections! :rasta 403 nil [card-1 card-2]))))
+(deftest check-that-we-aren-t-allowed-to-move-cards-if-we-don-t-have-permissions-for-source-collection
+  (is (= {:response    "You don't have permissions to do that."
+          :collections ["Horseshoe Collection" "Horseshoe Collection"]}
+         (tu/with-non-admin-groups-no-root-collection-perms
+           (tt/with-temp* [Collection [collection {:name "Horseshoe Collection"}]
+                           Card       [card-1     {:collection_id (u/get-id collection)}]
+                           Card       [card-2     {:collection_id (u/get-id collection)}]]
+             (POST-card-collections! :rasta 403 nil [card-1 card-2]))))))
 
-;; Check that we aren't allowed to move Cards if we don't have permissions for the Card
-(expect
-  {:response    "You don't have permissions to do that."
-   :collections [nil nil]}
-  (tu/with-non-admin-groups-no-root-collection-perms
-    (tt/with-temp* [Collection [collection]
-                    Database   [database]
-                    Table      [table      {:db_id (u/get-id database)}]
-                    Card       [card-1     {:dataset_query (mbql-count-query (u/get-id database) (u/get-id table))}]
-                    Card       [card-2     {:dataset_query (mbql-count-query (u/get-id database) (u/get-id table))}]]
-      (perms/revoke-permissions! (perms-group/all-users) (u/get-id database))
-      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-      (POST-card-collections! :rasta 403 collection [card-1 card-2]))))
+(deftest check-that-we-aren-t-allowed-to-move-cards-if-we-don-t-have-permissions-for-the-card
+  (is (= {:response    "You don't have permissions to do that."
+          :collections [nil nil]}
+         (tu/with-non-admin-groups-no-root-collection-perms
+           (tt/with-temp* [Collection [collection]
+                           Database   [database]
+                           Table      [table      {:db_id (u/get-id database)}]
+                           Card       [card-1     {:dataset_query (mbql-count-query (u/get-id database) (u/get-id table))}]
+                           Card       [card-2     {:dataset_query (mbql-count-query (u/get-id database) (u/get-id table))}]]
+             (perms/revoke-permissions! (perms-group/all-users) (u/get-id database))
+             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+             (POST-card-collections! :rasta 403 collection [card-1 card-2]))))))
 
 ;; Test that we can bulk move some Cards from one collection to another, while updating the collection position of the
 ;; old collection and the new collection
-(expect
-  [{:response    {:status "ok"}
-    :collections ["New Collection" "New Collection"]}
-   {"a" 4                               ;-> Moved to the new collection, gets the first slot available
-    "b" 5
-    "c" 1                               ;-> With a and b no longer in the collection, c is first
-    "d" 1                               ;-> Existing cards in new collection are untouched and position unchanged
-    "e" 2
-    "f" 3}]
-  (tt/with-temp* [Collection [{coll-id-1 :id}      {:name "Old Collection"}]
-                  Collection [{coll-id-2 :id
-                               :as new-collection} {:name "New Collection"}]
-                  Card       [card-a               {:name "a", :collection_id coll-id-1, :collection_position 1}]
-                  Card       [card-b               {:name "b", :collection_id coll-id-1, :collection_position 2}]
-                  Card       [card-c               {:name "c", :collection_id coll-id-1, :collection_position 3}]
-                  Card       [card-d               {:name "d", :collection_id coll-id-2, :collection_position 1}]
-                  Card       [card-e               {:name "e", :collection_id coll-id-2, :collection_position 2}]
-                  Card       [card-f               {:name "f", :collection_id coll-id-2, :collection_position 3}]]
-    [(POST-card-collections! :crowberto 200 new-collection [card-a card-b])
-     (merge (name->position ((test-users/user->client :crowberto) :get 200 (format "collection/%s/items" coll-id-1)  :model "card" :archived "false"))
-            (name->position ((test-users/user->client :crowberto) :get 200 (format "collection/%s/items" coll-id-2)  :model "card" :archived "false")))]))
+(deftest bulk-move-cards
+  (is (= [{:response    {:status "ok"}
+           :collections ["New Collection" "New Collection"]}
+          {"a" 4                               ;-> Moved to the new collection, gets the first slot available
+           "b" 5
+           "c" 1                               ;-> With a and b no longer in the collection, c is first
+           "d" 1                               ;-> Existing cards in new collection are untouched and position unchanged
+           "e" 2
+           "f" 3}]
+         (tt/with-temp* [Collection [{coll-id-1 :id}      {:name "Old Collection"}]
+                         Collection [{coll-id-2 :id
+                                      :as new-collection} {:name "New Collection"}]
+                         Card       [card-a               {:name "a", :collection_id coll-id-1, :collection_position 1}]
+                         Card       [card-b               {:name "b", :collection_id coll-id-1, :collection_position 2}]
+                         Card       [card-c               {:name "c", :collection_id coll-id-1, :collection_position 3}]
+                         Card       [card-d               {:name "d", :collection_id coll-id-2, :collection_position 1}]
+                         Card       [card-e               {:name "e", :collection_id coll-id-2, :collection_position 2}]
+                         Card       [card-f               {:name "f", :collection_id coll-id-2, :collection_position 3}]]
+           [(POST-card-collections! :crowberto 200 new-collection [card-a card-b])
+            (merge (name->position ((test-users/user->client :crowberto) :get 200 (format "collection/%s/items" coll-id-1)  :model "card" :archived "false"))
+                   (name->position ((test-users/user->client :crowberto) :get 200 (format "collection/%s/items" coll-id-2)  :model "card" :archived "false")))]))))
 
-;; Moving a card without a collection_position keeps the collection_position nil
-(expect
-  [{:response    {:status "ok"}
-    :collections ["New Collection" "New Collection"]}
-   {"a" nil
-    "b" 1
-    "c" 2}]
-  (tt/with-temp* [Collection [{coll-id-1 :id}      {:name "Old Collection"}]
-                  Collection [{coll-id-2 :id
-                               :as new-collection} {:name "New Collection"}]
-                  Card       [card-a               {:name "a", :collection_id coll-id-1}]
-                  Card       [card-b               {:name "b", :collection_id coll-id-2, :collection_position 1}]
-                  Card       [card-c               {:name "c", :collection_id coll-id-2, :collection_position 2}]]
-    [(POST-card-collections! :crowberto 200 new-collection [card-a card-b])
-     (merge (name->position ((test-users/user->client :crowberto) :get 200 (format "collection/%s/items" coll-id-1)  :model "card" :archived "false"))
-            (name->position ((test-users/user->client :crowberto) :get 200 (format "collection/%s/items" coll-id-2)  :model "card" :archived "false")))]))
+(deftest moving-a-card-without-a-collection-position-keeps-the-collection-position-nil
+  (is (= [{:response    {:status "ok"}
+           :collections ["New Collection" "New Collection"]}
+          {"a" nil
+           "b" 1
+           "c" 2}]
+         (tt/with-temp* [Collection [{coll-id-1 :id}      {:name "Old Collection"}]
+                         Collection [{coll-id-2 :id
+                                      :as new-collection} {:name "New Collection"}]
+                         Card       [card-a               {:name "a", :collection_id coll-id-1}]
+                         Card       [card-b               {:name "b", :collection_id coll-id-2, :collection_position 1}]
+                         Card       [card-c               {:name "c", :collection_id coll-id-2, :collection_position 2}]]
+           [(POST-card-collections! :crowberto 200 new-collection [card-a card-b])
+            (merge (name->position ((test-users/user->client :crowberto) :get 200 (format "collection/%s/items" coll-id-1)  :model "card" :archived "false"))
+                   (name->position ((test-users/user->client :crowberto) :get 200 (format "collection/%s/items" coll-id-2)  :model "card" :archived "false")))]))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                            PUBLIC SHARING ENDPOINTS                                            |
@@ -1445,96 +1417,83 @@
 
 ;;; ----------------------------------------- POST /api/card/:id/public_link -----------------------------------------
 
-;; Test that we can share a Card
-(expect
+
+(deftest test-that-we-can-share-a-card
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (tt/with-temp Card [card]
       (let [{uuid :uuid} ((test-users/user->client :crowberto) :post 200 (format "card/%d/public_link" (u/get-id card)))]
         (db/exists? Card :id (u/get-id card), :public_uuid uuid)))))
 
-;; Test that we *cannot* share a Card if we aren't admins
-(expect
-  "You don't have permissions to do that."
-  (tu/with-temporary-setting-values [enable-public-sharing true]
-    (tt/with-temp Card [card]
-      ((test-users/user->client :rasta) :post 403 (format "card/%d/public_link" (u/get-id card))))))
+(deftest test-that-we--cannot--share-a-card-if-we-aren-t-admins
+  (is (= "You don't have permissions to do that."
+         (tu/with-temporary-setting-values [enable-public-sharing true]
+           (tt/with-temp Card [card]
+             ((test-users/user->client :rasta) :post 403 (format "card/%d/public_link" (u/get-id card))))))))
 
-;; Test that we *cannot* share a Card if the setting is disabled
-(expect
-  "Public sharing is not enabled."
-  (tu/with-temporary-setting-values [enable-public-sharing false]
-    (tt/with-temp Card [card]
-      ((test-users/user->client :crowberto) :post 400 (format "card/%d/public_link" (u/get-id card))))))
+(deftest test-that-we--cannot--share-a-card-if-the-setting-is-disabled
+  (is (= "Public sharing is not enabled."
+         (tu/with-temporary-setting-values [enable-public-sharing false]
+           (tt/with-temp Card [card]
+             ((test-users/user->client :crowberto) :post 400 (format "card/%d/public_link" (u/get-id card))))))))
 
-;; Test that we *cannot* share a Card if the Card has been archived
-(expect
-  {:message "The object has been archived.", :error_code "archived"}
-  (tu/with-temporary-setting-values [enable-public-sharing true]
-    (tt/with-temp Card [card {:archived true}]
-      ((test-users/user->client :crowberto) :post 404 (format "card/%d/public_link" (u/get-id card))))))
+(deftest test-that-we--cannot--share-a-card-if-the-card-has-been-archived
+  (is (= {:message "The object has been archived.", :error_code "archived"}
+         (tu/with-temporary-setting-values [enable-public-sharing true]
+           (tt/with-temp Card [card {:archived true}]
+             ((test-users/user->client :crowberto) :post 404 (format "card/%d/public_link" (u/get-id card))))))))
 
-;; Test that we get a 404 if the Card doesn't exist
-(expect
-  "Not found."
-  (tu/with-temporary-setting-values [enable-public-sharing true]
-    ((test-users/user->client :crowberto) :post 404 (format "card/%d/public_link" Integer/MAX_VALUE))))
+(deftest test-that-we-get-a-404-if-the-card-doesn-t-exist
+  (is (= "Not found."
+         (tu/with-temporary-setting-values [enable-public-sharing true]
+           ((test-users/user->client :crowberto) :post 404 (format "card/%d/public_link" Integer/MAX_VALUE))))))
 
-;; Test that if a Card has already been shared we reüse the existing UUID
-(expect
+(deftest test-that-if-a-card-has-already-been-shared-we-re-se-the-existing-uuid
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (tt/with-temp Card [card (shared-card)]
       (= (:public_uuid card)
          (:uuid ((test-users/user->client :crowberto) :post 200 (format "card/%d/public_link" (u/get-id card))))))))
 
-
 ;;; ---------------------------------------- DELETE /api/card/:id/public_link ----------------------------------------
 
-;; Test that we can unshare a Card
-(expect
-  false
-  (tu/with-temporary-setting-values [enable-public-sharing true]
-    (tt/with-temp Card [card (shared-card)]
-      ((test-users/user->client :crowberto) :delete 204 (format "card/%d/public_link" (u/get-id card)))
-      (db/exists? Card :id (u/get-id card), :public_uuid (:public_uuid card)))))
+(deftest test-that-we-can-unshare-a-card
+  (is (= false
+         (tu/with-temporary-setting-values [enable-public-sharing true]
+           (tt/with-temp Card [card (shared-card)]
+             ((test-users/user->client :crowberto) :delete 204 (format "card/%d/public_link" (u/get-id card)))
+             (db/exists? Card :id (u/get-id card), :public_uuid (:public_uuid card)))))))
 
-;; Test that we *cannot* unshare a Card if we are not admins
-(expect
-  "You don't have permissions to do that."
-  (tu/with-temporary-setting-values [enable-public-sharing true]
-    (tt/with-temp Card [card (shared-card)]
-      ((test-users/user->client :rasta) :delete 403 (format "card/%d/public_link" (u/get-id card))))))
+(deftest test-that-we--cannot--unshare-a-card-if-we-are-not-admins
+  (is (= "You don't have permissions to do that."
+         (tu/with-temporary-setting-values [enable-public-sharing true]
+           (tt/with-temp Card [card (shared-card)]
+             ((test-users/user->client :rasta) :delete 403 (format "card/%d/public_link" (u/get-id card))))))))
 
-;; Test that we get a 404 if Card isn't shared
-(expect
-  "Not found."
-  (tu/with-temporary-setting-values [enable-public-sharing true]
-    (tt/with-temp Card [card]
-      ((test-users/user->client :crowberto) :delete 404 (format "card/%d/public_link" (u/get-id card))))))
+(deftest test-that-we-get-a-404-if-card-isn-t-shared
+  (is (= "Not found."
+         (tu/with-temporary-setting-values [enable-public-sharing true]
+           (tt/with-temp Card [card]
+             ((test-users/user->client :crowberto) :delete 404 (format "card/%d/public_link" (u/get-id card))))))))
 
-;; Test that we get a 404 if Card doesn't exist
-(expect
-  "Not found."
-  (tu/with-temporary-setting-values [enable-public-sharing true]
-    ((test-users/user->client :crowberto) :delete 404 (format "card/%d/public_link" Integer/MAX_VALUE))))
+(deftest test-that-we-get-a-404-if-card-doesn-t-exist
+  (is (= "Not found."
+         (tu/with-temporary-setting-values [enable-public-sharing true]
+           ((test-users/user->client :crowberto) :delete 404 (format "card/%d/public_link" Integer/MAX_VALUE))))))
 
-;; Test that we can fetch a list of publicly-accessible cards
-(expect
-  [{:name true, :id true, :public_uuid true}]
-  (tu/with-temporary-setting-values [enable-public-sharing true]
-    (tt/with-temp Card [card (shared-card)]
-      (for [card ((test-users/user->client :crowberto) :get 200 "card/public")]
-        (m/map-vals boolean (select-keys card [:name :id :public_uuid]))))))
+(deftest test-that-we-can-fetch-a-list-of-publicly-accessible-cards
+  (is (= [{:name true, :id true, :public_uuid true}]
+         (tu/with-temporary-setting-values [enable-public-sharing true]
+           (tt/with-temp Card [card (shared-card)]
+             (for [card ((test-users/user->client :crowberto) :get 200 "card/public")]
+               (m/map-vals boolean (select-keys card [:name :id :public_uuid]))))))))
 
-;; Test that we can fetch a list of embeddable cards
-(expect
-  [{:name true, :id true}]
-  (tu/with-temporary-setting-values [enable-embedding true]
-    (tt/with-temp Card [card {:enable_embedding true}]
-      (for [card ((test-users/user->client :crowberto) :get 200 "card/embeddable")]
-        (m/map-vals boolean (select-keys card [:name :id]))))))
+(deftest test-that-we-can-fetch-a-list-of-embeddable-cards
+  (is (= [{:name true, :id true}]
+         (tu/with-temporary-setting-values [enable-embedding true]
+           (tt/with-temp Card [card {:enable_embedding true}]
+             (for [card ((test-users/user->client :crowberto) :get 200 "card/embeddable")]
+               (m/map-vals boolean (select-keys card [:name :id]))))))))
 
-;; Test related/recommended entities
-(expect
-  #{:table :metrics :segments :dashboard-mates :similar-questions :canonical-metric :dashboards :collections}
-  (tt/with-temp Card [card]
-    (-> ((test-users/user->client :crowberto) :get 200 (format "card/%s/related" (u/get-id card))) keys set)))
+(deftest test-related-recommended-entities
+  (is (= #{:table :metrics :segments :dashboard-mates :similar-questions :canonical-metric :dashboards :collections}
+         (tt/with-temp Card [card]
+           (-> ((test-users/user->client :crowberto) :get 200 (format "card/%s/related" (u/get-id card))) keys set)))))
