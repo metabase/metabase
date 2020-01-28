@@ -230,24 +230,13 @@ export default class Filter extends MBQLClause {
   setArgument(index: number, value: any) {
     return this.set([
       ...this.slice(0, index + 2),
-      this.parseValue(value),
+      value,
       ...this.slice(index + 3),
     ]);
   }
 
   setArguments(values: any[]) {
-    return this.set([
-      ...this.slice(0, 2),
-      ...values.map(v => this.parseValue(v)),
-    ]);
-  }
-
-  parseValue(value) {
-    const field = this.field();
-    if (field && field.isNumber() && typeof value === "string") {
-      return parseFloat(value);
-    }
-    return value;
+    return this.set([...this.slice(0, 2), ...values]);
   }
 
   filterOperators(): ?(FilterOperator[]) {
