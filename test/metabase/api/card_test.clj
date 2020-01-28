@@ -543,7 +543,7 @@
     (with-cards-in-writeable-collection card
       (array-map
        1 (db/select-one-field :name Card, :id (u/get-id card))
-       2 (do ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:name "Updated Name"})
+       2 (do ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:name "Updated Name"})
              (db/select-one-field :name Card, :id (u/get-id card)))))))
 
 ;; Can we update a Card's archived status?
@@ -555,7 +555,7 @@
     (with-cards-in-writeable-collection card
       (let [archived?     (fn [] (:archived (Card (u/get-id card))))
             set-archived! (fn [archived]
-                            ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:archived archived})
+                            ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:archived archived})
                             (archived?))]
         (array-map
          1 (archived?)
@@ -576,7 +576,7 @@
   nil
   (tt/with-temp Card [card {:description "What a nice Card"}]
     (with-cards-in-writeable-collection card
-      ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:description nil})
+      ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:description nil})
       (db/select-one-field :description Card :id (u/get-id card)))))
 
 ;; description should be blankable as well
@@ -584,7 +584,7 @@
   ""
   (tt/with-temp Card [card {:description "What a nice Card"}]
     (with-cards-in-writeable-collection card
-      ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:description ""})
+      ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:description ""})
       (db/select-one-field :description Card :id (u/get-id card)))))
 
 ;; Can we update a card's embedding_params?
@@ -592,7 +592,7 @@
   {:abc "enabled"}
   (tt/with-temp Card [card]
     (tu/with-temporary-setting-values [enable-embedding true]
-      ((test-users/user->client :crowberto) :put 200 (str "card/" (u/get-id card)) {:embedding_params {:abc "enabled"}}))
+      ((test-users/user->client :crowberto) :put 202 (str "card/" (u/get-id card)) {:embedding_params {:abc "enabled"}}))
     (db/select-one-field :embedding_params Card :id (u/get-id card))))
 
 ;; We shouldn't be able to update them if we're not an admin...
@@ -622,7 +622,7 @@
     (tt/with-temp Card [card]
       (with-cards-in-writeable-collection card
         ;; update the Card's query
-        ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id card))
+        ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card))
          {:dataset_query     (mbql-count-query)
           :result_metadata   metadata
           :metadata_checksum (#'results-metadata/metadata-checksum metadata)})
@@ -645,7 +645,7 @@
     (tt/with-temp Card [card]
       (with-cards-in-writeable-collection card
         ;; update the Card's query
-        ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id card))
+        ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card))
          {:dataset_query     (mbql-count-query)
           :result_metadata   metadata
           :metadata_checksum "ABC123"}) ; invalid checksum
@@ -657,7 +657,7 @@
   1
   (tt/with-temp Card [card]
     (with-cards-in-writeable-collection card
-      ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id card))
+      ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card))
        {:collection_position 1})
       (db/select-one-field :collection_position Card :id (u/get-id card)))))
 
@@ -666,7 +666,7 @@
   nil
   (tt/with-temp Card [card {:collection_position 1}]
     (with-cards-in-writeable-collection card
-      ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id card))
+      ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card))
        {:collection_position nil})
       (db/select-one-field :collection_position Card :id (u/get-id card)))))
 
@@ -728,7 +728,7 @@
                                       Card c
                                       Card d]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id c))
+        ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id c))
          {:collection_position 1})
         (get-name->collection-position :rasta collection)))))
 
@@ -745,7 +745,7 @@
                                       Pulse     c
                                       Card      d]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id d))
+        ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id d))
          {:collection_position 1})
         (get-name->collection-position :rasta collection)))))
 
@@ -762,7 +762,7 @@
                                       Pulse     c
                                       Dashboard d]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id a))
+        ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id a))
          {:collection_position 4})
         (get-name->collection-position :rasta collection)))))
 
@@ -780,7 +780,7 @@
                     Dashboard  [_ {:name "c", :collection_id coll-id, :collection_position 2}]
                     Card       [_ {:name "d", :collection_id coll-id, :collection_position 3}]]
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-      ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id b))
+      ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id b))
        {:collection_position 2})
       (get-name->collection-position :rasta coll-id))))
 
@@ -797,7 +797,7 @@
                                       Dashboard c
                                       Pulse     d]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id b))
+        ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id b))
          {:collection_position nil})
         (get-name->collection-position :rasta collection)))))
 
@@ -825,7 +825,7 @@
                                           Dashboard h]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-1)
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-2)
-          ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id f))
+          ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id f))
            {:collection_id (u/get-id collection-1)})
           [(get-name->collection-position :rasta collection-1)
            (get-name->collection-position :rasta collection-2)])))))
@@ -853,7 +853,7 @@
                                           Card      h]
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-1)
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-2)
-          ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id h))
+          ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id h))
            {:collection_position 1, :collection_id (u/get-id collection-1)})
           [(get-name->collection-position :rasta collection-1)
            (get-name->collection-position :rasta collection-2)])))))
@@ -954,7 +954,7 @@
                                              Pulse     e
                                              Pulse     f]
                (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-               ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id d))
+               ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id d))
                 {:collection_position 1, :collection_id (u/get-id collection)})
                (name->position ((test-users/user->client :rasta) :get 200 (format "collection/%s/items" (u/get-id collection))))))))))
 
@@ -976,23 +976,23 @@
           [{:message        "Archiving a Card should trigger Alert deletion"
             :expected-email "the question was archived by Rasta Toucan"
             :f              (fn [{:keys [card]}]
-                              ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:archived true}))}
+                              ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:archived true}))}
            {:message        "Validate changing a display type triggers alert deletion"
             :card           {:display :table}
             :expected-email "the question was edited by Rasta Toucan"
             :f              (fn [{:keys [card]}]
-                              ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:display :line}))}
+                              ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:display :line}))}
            {:message        "Changing the display type from line to table should force a delete"
             :card           {:display :line}
             :expected-email "the question was edited by Rasta Toucan"
             :f              (fn [{:keys [card]}]
-                              ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:display :table}))}
+                              ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:display :table}))}
            {:message        "Removing the goal value will trigger the alert to be deleted"
             :card           {:display                :line
                              :visualization_settings {:graph.goal_value 10}}
             :expected-email "the question was edited by Rasta Toucan"
             :f              (fn [{:keys [card]}]
-                              ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:visualization_settings {:something "else"}}))}
+                              ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:visualization_settings {:something "else"}}))}
            {:message        "Adding an additional breakout will cause the alert to be removed"
             :card           {:display                :line
                              :visualization_settings {:graph.goal_value 10}
@@ -1004,7 +1004,7 @@
                                                         "hour"]])}
             :expected-email "the question was edited by Crowberto Corv"
             :f              (fn [{:keys [card]}]
-                              ((test-users/user->client :crowberto) :put 200 (str "card/" (u/get-id card))
+                              ((test-users/user->client :crowberto) :put 202 (str "card/" (u/get-id card))
                                {:dataset_query (assoc-in (mbql-count-query (data/id) (data/id :checkins))
                                                          [:query :breakout] [[:datetime-field (data/id :checkins :date) "hour"]
                                                                              [:datetime-field (data/id :checkins :date) "minute"]])}))}]]
@@ -1058,11 +1058,11 @@
       (et/with-fake-inbox
         (array-map
          :emails-1 (do
-                     ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:display :area})
+                     ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:display :area})
                      (et/regex-email-bodies #"the question was edited by Rasta Toucan"))
          :pulse-1  (boolean (Pulse (u/get-id pulse)))
          :emails-2 (do
-                     ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:display :bar})
+                     ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:display :bar})
                      (et/regex-email-bodies #"the question was edited by Rasta Toucan"))
          :pulse-2  (boolean (Pulse (u/get-id pulse))))))))
 
@@ -1211,19 +1211,19 @@
 
 ;; non-"download" queries should still get the default constraints
 ;; (this also is a sanitiy check to make sure the `with-redefs` in the test above actually works)
-(expect
-  10
-  (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
-    (tt/with-temp Card [card {:dataset_query {:database (data/id)
-                                              :type     :query
-                                              :query    {:source-table (data/id :venues)}
-                                              :middleware
-                                              {:add-default-userland-constraints? true
-                                               :userland-query?                   true}}}]
-      (with-cards-in-readable-collection card
-        (let [{row-count :row_count, :as result}
-              ((test-users/user->client :rasta) :post 200 (format "card/%d/query" (u/get-id card)))]
-          (or row-count result))))))
+(deftest non-download-queries
+  (is (= 10
+         (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+           (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                                     :type     :query
+                                                     :query    {:source-table (data/id :venues)}
+                                                     :middleware
+                                                     {:add-default-userland-constraints? true
+                                                      :userland-query?                   true}}}]
+             (with-cards-in-readable-collection card
+               (let [{row-count :row_count, :as result}
+                     ((test-users/user->client :rasta) :post 202 (format "card/%d/query" (u/get-id card)))]
+                 (or row-count result))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -1256,7 +1256,7 @@
 (expect
   (tt/with-temp* [Card       [card]
                   Collection [collection]]
-    ((test-users/user->client :crowberto) :put 200 (str "card/" (u/get-id card)) {:collection_id (u/get-id collection)})
+    ((test-users/user->client :crowberto) :put 202 (str "card/" (u/get-id card)) {:collection_id (u/get-id collection)})
     (= (db/select-one-field :collection_id Card :id (u/get-id card))
        (u/get-id collection))))
 
@@ -1298,7 +1298,7 @@
                     Card       [card                {:collection_id (u/get-id original-collection)}]]
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) original-collection)
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) new-collection)
-      ((test-users/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:collection_id (u/get-id new-collection)})
+      ((test-users/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:collection_id (u/get-id new-collection)})
       (= (db/select-one-field :collection_id Card :id (u/get-id card))
          (u/get-id new-collection)))))
 

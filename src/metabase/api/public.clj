@@ -113,14 +113,14 @@
    options))
 
 
-(api/defendpoint GET "/card/:uuid/query"
+(api/defendpoint ^:returns-chan GET "/card/:uuid/query"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth
    credentials. Public sharing must be enabled."
   [uuid parameters]
   {parameters (s/maybe su/JSONString)}
   (run-query-for-card-with-public-uuid-async uuid (json/parse-string parameters keyword)))
 
-(api/defendpoint-async GET "/card/:uuid/query/:export-format"
+(api/defendpoint-async ^:returns-chan GET "/card/:uuid/query/:export-format"
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
    credentials. Public sharing must be enabled."
   [{{:keys [uuid export-format parameters]} :params}, respond raise]
@@ -262,7 +262,7 @@
       :context      context
       :constraints  constraints)))
 
-(api/defendpoint GET "/dashboard/:uuid/card/:card-id"
+(api/defendpoint ^:returns-chan GET "/dashboard/:uuid/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public
    sharing must be enabled."
   [uuid card-id parameters]

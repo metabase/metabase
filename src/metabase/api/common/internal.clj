@@ -10,7 +10,8 @@
             [metabase.util
              [i18n :as ui18n :refer [tru]]
              [schema :as su]]
-            [schema.core :as s]))
+            [schema.core :as s])
+  (:import clojure.core.async.impl.channels.ManyToManyChannel))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              DOCSTRING GENERATION                                              |
@@ -259,5 +260,7 @@
            (contains? response :status)
            (contains? response :body))
     response
-    {:status 200
+    {:status (if (instance? ManyToManyChannel response)
+               202
+               200)
      :body   response}))
