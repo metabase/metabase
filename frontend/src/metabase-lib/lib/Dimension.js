@@ -872,6 +872,7 @@ export class AggregationDimension extends Dimension {
         metadata: this._metadata,
       });
     }
+    return super.field();
   }
 
   /**
