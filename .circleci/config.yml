@@ -407,7 +407,14 @@ jobs:
     steps:
       - run-yarn-command:
           command-name: Run Flow type checker
-          command: flow
+          command: lint-flow
+
+  fe-linter-docs-links:
+    executor: node
+    steps:
+      - run-yarn-command:
+          command-name: Run docs links checker
+          command: lint-docs-links
 
   fe-tests-karma:
     executor: node
@@ -694,6 +701,9 @@ workflows:
       - fe-linter-flow:
           requires:
             - fe-deps
+      - fe-linter-docs-links:
+          requires:
+            - fe-deps
       - fe-tests-karma:
           requires:
             - fe-deps
@@ -753,6 +763,7 @@ workflows:
             - fe-linter-eslint
             - fe-linter-flow
             - fe-linter-prettier
+            - fe-linter-docs-links
 
             - fe-tests-e2e
             - fe-tests-integration
