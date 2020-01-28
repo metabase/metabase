@@ -127,7 +127,7 @@
       (throw (ex-info message {:status-code actual-status-code}))))
   ;; all other status codes should be test assertions against the expected status code if one was specified
   (when expected-status-code
-    (t/is (= actual-status-code expected-status-code)
+    (t/is (= expected-status-code actual-status-code)
           (format "%s %s expected a status code of %d, got %d."
                   method-name url expected-status-code actual-status-code))))
 

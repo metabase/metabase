@@ -108,7 +108,7 @@
   (api/let-404 [export-conf (ex/export-formats export-format)]
     (if (= status :completed)
       ;; successful query, send file
-      {:status  200
+      {:status  202
        :body    ((:export-fn export-conf)
                  (map #(some % [:display_name :name]) cols)
                  (maybe-modify-date-values cols rows))

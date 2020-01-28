@@ -77,7 +77,6 @@
          ~@body))))
 
 
-
 ;;; ------------------------------------------- GET /api/public/card/:uuid -------------------------------------------
 
 ;; Check that we *cannot* fetch a PublicCard if the setting is disabled
@@ -158,27 +157,27 @@
   [[100]]
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-card [{uuid :public_uuid}]
-      (qp.test/rows (http/client :get 200 (str "public/card/" uuid "/query"))))))
+      (qp.test/rows (http/client :get 202 (str "public/card/" uuid "/query"))))))
 
 ;; Check that we can exec a PublicCard and get results as JSON
 (expect
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-card [{uuid :public_uuid}]
-      (http/client :get 200 (str "public/card/" uuid "/query/json")))))
+      (http/client :get 202 (str "public/card/" uuid "/query/json")))))
 
 ;; Check that we can exec a PublicCard and get results as CSV
-(expect
-  "Count\n100\n"
-  (tu/with-temporary-setting-values [enable-public-sharing true]
-    (with-temp-public-card [{uuid :public_uuid}]
-      (http/client :get 200 (str "public/card/" uuid "/query/csv"), :format :csv))))
+(deftest get-csv
+  (is (= "Count\n100\n"
+         (tu/with-temporary-setting-values [enable-public-sharing true]
+           (with-temp-public-card [{uuid :public_uuid}]
+             (http/client :get 202 (str "public/card/" uuid "/query/csv"), :format :csv))))))
 
 ;; Check that we can exec a PublicCard and get results as XLSX
 (expect
   [{:col "Count"} {:col 100.0}]
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-card [{uuid :public_uuid}]
-      (->> (http/client :get 200 (str "public/card/" uuid "/query/xlsx") {:request-options {:as :byte-array}})
+      (->> (http/client :get 202 (str "public/card/" uuid "/query/xlsx") {:request-options {:as :byte-array}})
            ByteArrayInputStream.
            spreadsheet/load-workbook
            (spreadsheet/select-sheet "Query result")
@@ -189,7 +188,7 @@
   [{:name "Venue ID", :slug "venue_id", :type "id", :value 2}]
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-card [{uuid :public_uuid}]
-      (get-in (http/client :get 200 (str "public/card/" uuid "/query")
+      (get-in (http/client :get 202 (str "public/card/" uuid "/query")
                            :parameters (json/encode [{:name "Venue ID", :slug "venue_id", :type "id", :value 2}]))
               [:json_query :parameters]))))
 
@@ -213,10 +212,10 @@
   (do-with-required-param-card
    (fn [uuid]
      (qp.test/rows
-       (http/client :get 200 (str "public/card/" uuid "/query")
-                    :parameters (json/encode [{:type   "category"
-                                               :target [:variable [:template-tag "price"]]
-                                               :value  1}]))))))
+      (http/client :get 202 (str "public/card/" uuid "/query")
+                   :parameters (json/encode [{:type   "category"
+                                              :target [:variable [:template-tag "price"]]
+                                              :value  1}]))))))
 
 (deftest missing-required-param-error-message-test
   (testing (str "If you're missing a required param, the error message should get passed thru, rather than the normal "
@@ -226,7 +225,7 @@
             :error_type "missing-required-parameter"}
            (do-with-required-param-card
             (fn [uuid]
-              (http/client :get 200 (str "public/card/" uuid "/query"))))))))
+              (http/client :get 202 (str "public/card/" uuid "/query"))))))))
 
 ;; make sure CSV (etc.) downloads take editable params into account (#6407)
 
@@ -245,7 +244,7 @@
   "count\n107\n"
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (tt/with-temp Card [{uuid :public_uuid} (card-with-date-field-filter)]
-      (http/client :get 200 (str "public/card/" uuid "/query/csv")
+      (http/client :get 202 (str "public/card/" uuid "/query/csv")
                    :parameters (json/encode [{:type   :date/quarter-year
                                               :target [:dimension [:template-tag :date]]
                                               :value  "Q1-2014"}])))))
@@ -258,7 +257,7 @@
       ;; make sure the URL doesn't include /api/ at the beginning like it normally would
       (binding [http/*url-prefix* (str/replace http/*url-prefix* #"/api/$" "/")]
         (tu/with-temporary-setting-values [site-url http/*url-prefix*]
-          (http/client :get 200 (str "public/question/" uuid ".csv")
+          (http/client :get 202 (str "public/question/" uuid ".csv")
                        :parameters (json/encode [{:type   :date/quarter-year
                                                   :target [:dimension [:template-tag :date]]
                                                   :value  "Q1-2014"}])))))))
@@ -276,7 +275,7 @@
   #{:cols :rows :insights :results_timezone}
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (tt/with-temp Card [{uuid :public_uuid} (card-with-trendline)]
-      (-> (http/client :get 200 (str "public/card/" uuid "/query"))
+      (-> (http/client :get 202 (str "public/card/" uuid "/query"))
           :data
           keys
           set))))
@@ -368,7 +367,7 @@
   [[100]]
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-dashboard-and-card [dash card]
-      (qp.test/rows (http/client :get 200 (dashcard-url dash card))))))
+      (qp.test/rows (http/client :get 202 (dashcard-url dash card))))))
 
 ;; Check that we can exec a PublicCard via a PublicDashboard with `?parameters`
 (expect
@@ -380,7 +379,7 @@
     :type    "id"}]
   (tu/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-dashboard-and-card [dash card]
-      (get-in (http/client :get 200 (dashcard-url dash card)
+      (get-in (http/client :get 202 (dashcard-url dash card)
                            :parameters (json/encode [{:name   "Venue ID"
                                                       :slug   :venue_id
                                                       :target [:dimension (data/id :venues :id)]
@@ -388,16 +387,16 @@
               [:json_query :parameters]))))
 
 ;; Make sure params are validated: this should pass because venue_id *is* one of the Dashboard's :parameters
-(expect
- [[1]]
- (tu/with-temporary-setting-values [enable-public-sharing true]
-   (with-temp-public-dashboard-and-card [dash card]
-     (-> (http/client :get 200 (dashcard-url dash card)
-                      :parameters (json/encode [{:name   "Venue ID"
-                                                 :slug   :venue_id
-                                                 :target [:dimension (data/id :venues :id)]
-                                                 :value  [10]}]))
-         qp.test/rows))))
+(deftest params-are-validated
+  (is (= [[1]]
+         (tu/with-temporary-setting-values [enable-public-sharing true]
+           (with-temp-public-dashboard-and-card [dash card]
+             (-> (http/client :get 202 (dashcard-url dash card)
+                              :parameters (json/encode [{:name   "Venue ID"
+                                                         :slug   :venue_id
+                                                         :target [:dimension (data/id :venues :id)]
+                                                         :value  [10]}]))
+                 qp.test/rows))))))
 
 ;; Make sure params are validated: this should fail because venue_name is *not* one of the Dashboard's :parameters
 (expect
@@ -417,10 +416,10 @@
     (with-temp-public-dashboard-and-card [dash card]
       (with-temp-public-card [card-2]
         (tt/with-temp DashboardCardSeries [_ {:dashboardcard_id (db/select-one-id DashboardCard
-                                                                  :card_id      (u/get-id card)
-                                                                  :dashboard_id (u/get-id dash))
+                                                                                  :card_id      (u/get-id card)
+                                                                                  :dashboard_id (u/get-id dash))
                                               :card_id          (u/get-id card-2)}]
-          (qp.test/rows (http/client :get 200 (dashcard-url dash card-2))))))))
+          (qp.test/rows (http/client :get 202 (dashcard-url dash card-2))))))))
 
 ;; Make sure that parameters actually work correctly (#7212)
 (expect

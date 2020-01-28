@@ -411,7 +411,7 @@
   (successful-query-results)
   (with-embedding-enabled-and-new-secret-key
     (with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
-      (http/client :get 200 (dashcard-url dashcard)))))
+      (http/client :get 202 (dashcard-url dashcard)))))
 
 ;; Downloading CSV/JSON/XLSX results from the dashcard endpoint shouldn't be subject to the default query constraints
 ;; (#10399)
@@ -433,10 +433,10 @@
   {:status "failed"
    :error  "An error occurred while running the query."}
   (tu.log/suppress-output
-    (with-embedding-enabled-and-new-secret-key
-      (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
-                                     :card {:dataset_query (data/native-query {:query "SELECT * FROM XYZ"})}}]
-        (http/client :get 200 (dashcard-url dashcard))))))
+   (with-embedding-enabled-and-new-secret-key
+     (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
+                                    :card {:dataset_query (data/native-query {:query "SELECT * FROM XYZ"})}}]
+       (http/client :get 202 (dashcard-url dashcard))))))
 
 ;; check that the endpoint doesn't work if embedding isn't enabled
 (expect
@@ -476,7 +476,7 @@
   (successful-query-results)
   (with-embedding-enabled-and-new-secret-key
     (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:abc "locked"}}}]
-      (http/client :get 200 (dashcard-url dashcard {:params {:abc 100}})))))
+      (http/client :get 202 (dashcard-url dashcard {:params {:abc 100}})))))
 
 ;; if `:locked` parameter is present in URL params, request should fail
 (expect
@@ -515,14 +515,14 @@
   (successful-query-results)
   (with-embedding-enabled-and-new-secret-key
     (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:abc "enabled"}}}]
-      (http/client :get 200 (dashcard-url dashcard {:params {:abc 100}})))))
+      (http/client :get 202 (dashcard-url dashcard {:params {:abc 100}})))))
 
 ;; If an `:enabled` param is present in URL params but *not* the JWT, that's ok
 (expect
   (successful-query-results)
   (with-embedding-enabled-and-new-secret-key
     (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:abc "enabled"}}}]
-      (http/client :get 200 (str (dashcard-url dashcard) "?abc=200")))))
+      (http/client :get 202 (str (dashcard-url dashcard) "?abc=200")))))
 
 
 ;;; -------------------------------------------------- Other Tests ---------------------------------------------------
@@ -544,7 +544,7 @@
         (tt/with-temp DashboardCardSeries [series {:dashboardcard_id (u/get-id dashcard)
                                                    :card_id          (u/get-id series-card)
                                                    :position         0}]
-          (:status (http/client :get 200 (str (dashcard-url (assoc dashcard :card_id (u/get-id series-card)))))))))))
+          (:status (http/client :get 202 (str (dashcard-url (assoc dashcard :card_id (u/get-id series-card)))))))))))
 
 
 ;;; ------------------------------- GET /api/embed/card/:token/field/:field-id/values --------------------------------

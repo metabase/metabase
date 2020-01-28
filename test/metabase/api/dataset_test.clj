@@ -60,8 +60,8 @@
 (deftest basic-query-test
   (testing "POST /api/meta/dataset"
     (testing "Just a basic sanity check to make sure Query Processor endpoint is still working correctly."
-      (let [result ((test-users/user->client :rasta) :post 200 "dataset" (data/mbql-query checkins
-                                                                           {:aggregation [[:count]]}))]
+      (let [result ((test-users/user->client :rasta) :post 202 "dataset" (data/mbql-query checkins
+                                                                                          {:aggregation [[:count]]}))]
         (is (= {:data                   {:rows             [[1000]]
                                          :cols             [(tu/obj->json->obj (qp.test/aggregate-col :count))]
                                          :native_form      true
@@ -70,7 +70,7 @@
                 :status                 "completed"
                 :context                "ad-hoc"
                 :json_query             (-> (data/mbql-query checkins
-                                              {:aggregation [[:count]]})
+                                                             {:aggregation [[:count]]})
                                             (assoc-in [:query :aggregation] [["count"]])
                                             (assoc :type "query")
                                             (merge query-defaults))
@@ -106,11 +106,11 @@
                                                          (re-find #"Syntax error in SQL statement")
                                                          boolean))))
           result              (tu.log/suppress-output
-                                ((test-users/user->client :rasta) :post 200 "dataset" {:database (data/id)
-                                                                                       :type     "native"
-                                                                                       :native   {:query "foobar"}}))]
-      (is (= {:data         {:rows    []
-                             :cols    []}
+                               ((test-users/user->client :rasta) :post 202 "dataset" {:database (data/id)
+                                                                                      :type     "native"
+                                                                                      :native   {:query "foobar"}}))]
+      (is (= {:data         {:rows []
+                             :cols []}
               :row_count    0
               :status       "failed"
               :context      "ad-hoc"
@@ -253,7 +253,7 @@
   10
   (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
     (let [{row-count :row_count, :as result}
-          ((test-users/user->client :rasta) :post 200 "dataset"
+          ((test-users/user->client :rasta) :post 202 "dataset"
            {:database (data/id)
             :type     :query
             :query    {:source-table (data/id :venues)}})]
