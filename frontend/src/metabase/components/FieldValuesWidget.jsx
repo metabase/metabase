@@ -171,12 +171,13 @@ export class FieldValuesWidget extends Component {
     );
     const results = dedupeValues(allResults);
 
-    // There might be multiple fields, but if any are remapped then we
-    // know we only have one.
-    const [field] = fields;
-    if (results && field.remappedField() === this.searchField(field)) {
-      // $FlowFixMe: addRemappings provided by @connect
-      this.props.addRemappings(field.id, results);
+    // We don't use remappings when there are multiple fields
+    if (results && fields.length === 1) {
+      const [field] = fields;
+      if (field.remappedField() === this.searchField(field)) {
+        // $FlowFixMe: addRemappings provided by @connect
+        this.props.addRemappings(field.id, results);
+      }
     }
     return results;
   };
