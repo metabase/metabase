@@ -12,7 +12,7 @@ function DataStep({ color, query, databases, updateQuery }) {
   return (
     <NotebookCell color={color}>
       <DatabaseSchemaAndTableDataSelector
-        databases={databases}
+        databaseQuery={{ include_cards: true }}
         selectedDatabaseId={query.databaseId()}
         selectedTableId={query.tableId()}
         setSourceTableFn={tableId =>

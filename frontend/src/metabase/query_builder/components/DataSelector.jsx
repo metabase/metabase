@@ -13,7 +13,9 @@ import { isQueryable } from "metabase/lib/table";
 import { titleize, humanize } from "metabase/lib/formatting";
 import MetabaseSettings from "metabase/lib/settings";
 
-import { fetchTableMetadata } from "metabase/redux/metadata";
+import Databases from "metabase/entities/databases";
+import Tables from "metabase/entities/tables";
+
 import { getMetadata } from "metabase/selectors/metadata";
 
 import _ from "underscore";
@@ -135,8 +137,23 @@ export const TableTriggerContent = ({ selectedTable }) =>
   );
 
 @connect(
-  state => ({ metadata: getMetadata(state) }),
-  { fetchTableMetadata },
+  (state, ownProps) => ({
+    metadata: getMetadata(state),
+    databases:
+      ownProps.databases ||
+      Databases.selectors.getList(state, {
+        entityQuery: { ...ownProps.databaseQuery, include_tables: true },
+      }) ||
+      [],
+  }),
+  {
+    fetchDatabases: databaseQuery =>
+      Databases.actions.fetchList({
+        ...databaseQuery,
+        include_tables: true,
+      }),
+    fetchTableMetadata: id => Tables.actions.fetchTableMetadata({ id }),
+  },
 )
 export default class DataSelector extends Component {
   constructor(props) {
@@ -184,6 +201,8 @@ export default class DataSelector extends Component {
 
     const selectedDatabase = selectedDatabaseId
       ? databases.find(db => db.id === selectedDatabaseId)
+      : databases.length === 1
+      ? databases[0]
       : null;
     const hasMultipleSchemas =
       selectedDatabase &&
@@ -302,6 +321,10 @@ export default class DataSelector extends Component {
     };
 
     const loadersForSteps = {
+      [DATABASE_STEP]: () =>
+        this.props.fetchDatabases(this.props.databaseQuery),
+      [DATABASE_SCHEMA_STEP]: () =>
+        this.props.fetchDatabases(this.props.databaseQuery),
       [FIELD_STEP]: () =>
         updatedState.selectedTable &&
         this.props.fetchTableMetadata(updatedState.selectedTable.id),

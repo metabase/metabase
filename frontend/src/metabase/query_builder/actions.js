@@ -308,25 +308,6 @@ export const initializeQB = (location, params) => {
       queryBuilderMode: getQueryBuilderModeFromLocation(location),
     };
 
-    // always start the QB by loading up the databases for the application
-    let databaseFetch;
-    try {
-      databaseFetch = dispatch(
-        Databases.actions.fetchList({
-          include_tables: true,
-          include_cards: true,
-        }),
-      );
-    } catch (error) {
-      console.error("error fetching dbs", error);
-      // NOTE: don't actually error if dbs can't be fetched for some reason,
-      // we may still be able to run the query
-      // NOTE: for some reason previously fetchDatabases would fall back to []
-      // if there was an API error so this would never be hit
-      // dispatch(setErrorPage(error));
-      // return { uiControls };
-    }
-
     // load up or initialize the card we'll be working on
     let options = {};
     let serializedCard;
@@ -450,18 +431,7 @@ export const initializeQB = (location, params) => {
     }
     // Fetch the question metadata (blocking)
     if (card) {
-      // ensure that the database fetch completed before getting the tables
-      if (databaseFetch) {
-        await databaseFetch;
-      }
-      const { tables } = getMetadata(getState());
-      const tableId = getIn(card, ["dataset_query", "query", "source-table"]);
-      // Only fetch the table metadata if the table was returned in the earlier
-      // call to fetch databases and tables. Otherwise, this user doesn't have
-      // permissions and the call will fail.
-      if (tables[tableId] != null) {
-        await dispatch(loadMetadataForCard(card));
-      }
+      await dispatch(loadMetadataForCard(card));
     }
 
     let question = card && new Question(card, getMetadata(getState()));

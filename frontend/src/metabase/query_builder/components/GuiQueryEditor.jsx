@@ -317,7 +317,7 @@ export default class GuiQueryEditor extends React.Component {
   }
 
   renderDataSection() {
-    const { databases, query } = this.props;
+    const { query } = this.props;
     const tableMetadata = query.tableMetadata();
     const datasetQuery = query.datasetQuery();
     const databaseId = datasetQuery && datasetQuery.database;
@@ -334,7 +334,6 @@ export default class GuiQueryEditor extends React.Component {
         <span className="GuiBuilder-section-label Query-label">{t`Data`}</span>
         {this.props.features.data ? (
           <DatabaseSchemaAndTableDataSelector
-            databases={databases}
             selectedDatabaseId={databaseId}
             selectedTableId={sourceTableId}
             setDatabaseFn={this.props.setDatabaseFn}

@@ -96,7 +96,10 @@ export class NewQueryOptions extends Component {
 }
 
 export default compose(
-  Database.loadList({ query: { include_tables: true, include_cards: true } }),
+  Database.loadList({
+    query: { include_tables: true },
+    loadingAndErrorWrapper: false,
+  }),
   connect(
     mapStateToProps,
     null,
