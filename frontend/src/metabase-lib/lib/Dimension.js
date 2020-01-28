@@ -859,15 +859,13 @@ export class AggregationDimension extends Dimension {
 
   field() {
     const aggregation = this.aggregation();
-    const dimension = aggregation.dimension();
-    if (dimension) {
-      return dimension.field();
-    }
     if (aggregation) {
-      // this field doesn't really exist, we just want the base_type to be right
+      const dimension = aggregation.dimension();
+      const field = dimension && dimension.field();
       return new Field({
         display_name: aggregation.displayName(),
         base_type: aggregation.baseType(),
+        special_type: field && field.special_type,
         query: this._query,
         metadata: this._metadata,
       });

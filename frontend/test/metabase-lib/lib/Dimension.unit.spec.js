@@ -540,7 +540,7 @@ describe("Dimension", () => {
       });
 
       describe("field()", () => {
-        it("should have a valid base type for a sum's field", () => {
+        it("should return a float field for sum of order total", () => {
           const { base_type } = aggregation([
             "sum",
             ["field-id", ORDERS.TOTAL.id],
@@ -548,7 +548,15 @@ describe("Dimension", () => {
           expect(base_type).toBe("type/Float");
         });
 
-        it("should have a valid base type for a count's fake field", () => {
+        it("should return an int field for count distinct of product category", () => {
+          const { base_type } = aggregation([
+            "distinct",
+            ["field-id", PRODUCTS.CATEGORY.id],
+          ]).field();
+          expect(base_type).toBe("type/Integer");
+        });
+
+        it("should return an int field for count", () => {
           const { base_type } = aggregation(["count"]).field();
           expect(base_type).toBe("type/Integer");
         });
