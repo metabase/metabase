@@ -144,8 +144,8 @@
   `all`, but other options include `mine`, `fav`, `database`, `table`, `recent`, `popular`, and `archived`. See
   corresponding implementation functions above for the specific behavior of each filter option. :card_index:"
   [f model_id]
-  {f          (s/maybe CardFilterOption)
-   model_id   (s/maybe su/IntGreaterThanZero)}
+  {f        (s/maybe CardFilterOption)
+   model_id (s/maybe su/IntGreaterThanZero)}
   (let [f (keyword f)]
     (when (contains? #{:database :table} f)
       (api/checkp (integer? model_id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
@@ -157,7 +157,6 @@
          ;; filterv because we want make sure all the filtering is done while current user perms set is still bound
          (filterv mi/can-read?))))
 
-
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
   [id]
@@ -166,7 +165,6 @@
                api/read-check)
     (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))
 
-
 ;;; -------------------------------------------------- Saving Cards --------------------------------------------------
 
 ;; When a new Card is saved, we wouldn't normally have the results metadata for it until the first time its query is
@@ -174,8 +172,6 @@
 ;; frontend pass it back to us when saving or updating a Card.  As a basic step to make sure the Metadata is valid
 ;; we'll also pass a simple checksum and have the frontend pass it back to us.  See the QP `results-metadata`
 ;; middleware namespace for more details
-
-
 
 (s/defn ^:private result-metadata-async :- ManyToManyChannel
   "Get the right results metadata for this `card`, and return them in a channel. We'll check to see whether the

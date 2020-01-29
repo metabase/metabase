@@ -3,7 +3,6 @@
   (:require [clojure
              [string :as str]
              [test :refer :all]]
-            [expectations :refer [expect]]
             [medley.core :as m]
             [metabase
              [driver :as driver]
@@ -88,15 +87,15 @@
                                              :schedule_type  "hourly"}}))
 
 ;; ## GET /api/database/:id
-;; regular users *should not* see DB details
-(expect
-  (add-schedules (dissoc (db-details) :details))
-  ((test-users/user->client :rasta) :get 200 (format "database/%d" (data/id))))
 
-;; superusers *should* see DB details
-(expect
-  (add-schedules (db-details))
-  ((test-users/user->client :crowberto) :get 200 (format "database/%d" (data/id))))
+(deftest regular-users--should-not--see-db-details
+  (is (= (add-schedules (dissoc (db-details) :details))
+         ((test-users/user->client :rasta) :get 200 (format "database/%d" (data/id))))))
+
+(deftest superusers--should--see-db-details
+  (is (= (add-schedules (db-details))
+         ((test-users/user->client :crowberto) :get 200 (format "database/%d" (data/id))))))
+
 
 ;; ## POST /api/database
 (defn- create-db-via-api! [& [m]]
@@ -367,7 +366,7 @@
     (is (= (-> card
                virtual-table-for-card
                saved-questions-virtual-db)
-           (last ((test-users/user->client :crowberto) :get 202 "database" :include_cards true))))))
+           (last ((test-users/user->client :crowberto) :get 200 "database" :include_cards true))))))
 
 ;; Make sure saved questions are NOT included if the setting is disabled
 (deftest saved-questions-not-inluded-if-setting-disabled
@@ -379,7 +378,7 @@
                 (some (fn [database]
                         (when (= (u/get-id database) mbql.s/saved-questions-virtual-database-id)
                           database))
-                      ((test-users/user->client :crowberto) :get 202 "database" :include_cards true)))))))
+                      ((test-users/user->client :crowberto) :get 200 "database" :include_cards true)))))))
 
 
 ;; make sure that GET /api/database?include_cards=true groups pretends COLLECTIONS are SCHEMAS
@@ -396,7 +395,7 @@
     (is (= (saved-questions-virtual-db
             (virtual-table-for-card coin-card  :schema "Coins")
             (virtual-table-for-card stamp-card :schema "Stamps"))
-           (last ((test-users/user->client :crowberto) :get 202 "database" :include_cards true))))))
+           (last ((test-users/user->client :crowberto) :get 200 "database" :include_cards true))))))
 
 (defn- fetch-virtual-database []
   (some #(when (= (:name %) "Saved Questions")
@@ -774,8 +773,8 @@
 
 ;; GET /api/database/:id/schema/:schema should exclude inactive Tables
 (deftest exclude-inactive-tables
-  (is (= ["table"])
-      (tt/with-temp* [Database [{database-id :id}]
-                      Table    [_ {:db_id database-id, :schema "public", :name "table"}]
-                      Table    [_ {:db_id database-id, :schema "public", :name "inactive-table", :active false}]]
-        (map :name ((test-users/user->client :rasta) :get 200 (format "database/%s/schema/%s" database-id "public"))))))
+  (is (= ["table"]
+         (tt/with-temp* [Database [{database-id :id}]
+                         Table    [_ {:db_id database-id, :schema "public", :name "table"}]
+                         Table    [_ {:db_id database-id, :schema "public", :name "inactive-table", :active false}]]
+           (map :name ((test-users/user->client :rasta) :get 200 (format "database/%s/schema/%s" database-id "public")))))))
