@@ -225,7 +225,7 @@
   (loop [i 1]
     (let [suffix    (str " - Copy " i)
           max-len   (min (count s) (- 254 (count suffix)))
-          next-name (str (subs s 0 max-len) " - Copy " i)]
+          next-name (str (subs s 0 max-len) suffix)]
       (if-not (db/select-one-field :id 'Database :name next-name)
         next-name
         (recur (inc i))))))
