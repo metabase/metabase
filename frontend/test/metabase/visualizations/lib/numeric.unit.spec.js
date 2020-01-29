@@ -30,10 +30,10 @@ describe("visualization.lib.numeric", () => {
       [1.2345678, 1e-7],
       [1.23456789, 1e-8],
       [-1.23456789, 1e-8],
+      [-1.2345678912345, 1e-13],
       [-1.23456789123456, 1e-14],
-      [-1.234567891234567, 1e-15],
-      // very precise numbers are cut off at 10^-15
-      [-1.23456789123456789123456789, 1e-15],
+      // very precise numbers are cut off at 10^-14
+      [-1.23456789123456789123456789, 1e-14],
     ];
     for (const [n, p] of CASES) {
       it(`precision of ${n} should be ${p}`, () => {
@@ -71,6 +71,7 @@ describe("visualization.lib.numeric", () => {
       [0.25, 0.1, false],
       [0.000000001, 0.0000000001, true],
       [0.0000000001, 0.000000001, false],
+      [100, 1e-14, true],
     ].map(([value, base, expected]) =>
       it(`${value} ${expected ? "is" : "is not"} a multiple of ${base}`, () =>
         expect(isMultipleOf(value, base)).toBe(expected)),
