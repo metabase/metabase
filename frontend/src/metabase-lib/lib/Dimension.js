@@ -845,13 +845,8 @@ export class AggregationDimension extends Dimension {
   }
 
   column(extra = {}) {
-    const aggregation = this.aggregation();
-    const { special_type, ...column } = super.column();
     return {
-      ...column,
-      // don't pass through `special_type` when aggregating these types
-      ...(!UNAGGREGATED_SPECIAL_TYPES.has(special_type) && { special_type }),
-      base_type: aggregation ? aggregation.baseType() : TYPE.Float,
+      ...super.column(),
       source: "aggregation",
       ...extra,
     };
@@ -859,18 +854,20 @@ export class AggregationDimension extends Dimension {
 
   field() {
     const aggregation = this.aggregation();
-    if (aggregation) {
-      const dimension = aggregation.dimension();
-      const field = dimension && dimension.field();
-      return new Field({
-        display_name: aggregation.displayName(),
-        base_type: aggregation.baseType(),
-        special_type: field && field.special_type,
-        query: this._query,
-        metadata: this._metadata,
-      });
+    if (!aggregation) {
+      return super.field();
     }
-    return super.field();
+    const dimension = aggregation.dimension();
+    const field = dimension && dimension.field();
+    const { special_type } = field || {};
+    return new Field({
+      display_name: aggregation.displayName(),
+      base_type: aggregation.baseType(),
+      // don't pass through `special_type` when aggregating these types
+      ...(!UNAGGREGATED_SPECIAL_TYPES.has(special_type) && { special_type }),
+      query: this._query,
+      metadata: this._metadata,
+    });
   }
 
   /**
