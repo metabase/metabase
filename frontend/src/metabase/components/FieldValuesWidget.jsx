@@ -13,7 +13,7 @@ import AutoExpanding from "metabase/hoc/AutoExpanding";
 import { MetabaseApi } from "metabase/services";
 import { addRemappings, fetchFieldValues } from "metabase/redux/metadata";
 import { defer } from "metabase/lib/promise";
-import { debounce } from "underscore";
+import { debounce, zip } from "underscore";
 import { stripId } from "metabase/lib/formatting";
 
 import Fields from "metabase/entities/fields";
@@ -117,7 +117,7 @@ export class FieldValuesWidget extends Component {
     return (
       // search is available if:
       // all fields have a valid search field
-      fields.every(this.isFieldSearchable) &&
+      fields.every(this.searchField) &&
       // at least one field is set to display as "search"
       fields.some(f => f.has_field_values === "search") &&
       // and all fields are either "search" or "list"
@@ -135,18 +135,16 @@ export class FieldValuesWidget extends Component {
     return value;
   };
 
-  isFieldSearchable = (field: Field) => this.searchField(field).isSearchable();
-
   searchField = (field: Field) => {
     if (this.props.disablePKRemappingForSearch && field.isPK()) {
-      return field;
+      return field.isSearchable() ? field : null;
     }
 
     const remappedField = field.remappedField();
     if (remappedField && remappedField.isSearchable()) {
       return remappedField;
     }
-    return field;
+    return field.isSearchable() ? field : null;
   };
 
   search = async (value: string, cancelled: Promise<void>) => {
@@ -162,6 +160,7 @@ export class FieldValuesWidget extends Component {
           {
             value,
             fieldId: field.id,
+            // $FlowFixMe all fields have a search field if we're searching
             searchFieldId: this.searchField(field).id,
             limit: this.props.maxResults,
           },
@@ -169,17 +168,15 @@ export class FieldValuesWidget extends Component {
         ),
       ),
     );
-    const results = dedupeValues(allResults);
 
-    // We don't use remappings when there are multiple fields
-    if (results && fields.length === 1) {
-      const [field] = fields;
-      if (field.remappedField() === this.searchField(field)) {
+    for (const [field, result] of zip(fields, allResults)) {
+      if (result && field.remappedField() === this.searchField(field)) {
         // $FlowFixMe: addRemappings provided by @connect
-        this.props.addRemappings(field.id, results);
+        this.props.addRemappings(field.id, result);
       }
     }
-    return results;
+
+    return dedupeValues(allResults);
   };
 
   _search = (value: string) => {
@@ -256,6 +253,7 @@ export class FieldValuesWidget extends Component {
         if (loadingState === "LOADING") {
           return <LoadingState />;
         } else if (loadingState === "LOADED") {
+          // $FlowFixMe all fields have a search field if this.isSearchable()
           return <NoMatchState fields={fields.map(this.searchField)} />;
         }
       }
@@ -298,6 +296,7 @@ export class FieldValuesWidget extends Component {
         placeholder = t`Search the list`;
       } else if (this.isSearchable()) {
         const names = new Set(
+          // $FlowFixMe all fields have a search field if this.isSearchable()
           fields.map(field => stripId(this.searchField(field).display_name)),
         );
         if (names.size > 1) {
@@ -419,7 +418,7 @@ const LoadingState = () => (
   </div>
 );
 
-const NoMatchState = ({ fields }) => {
+const NoMatchState = ({ fields }: { fields: Field[] }) => {
   if (fields.length > 1) {
     // if there is more than one field, don't name them
     return <OptionsMessage message={t`No matching result`} />;
