@@ -337,7 +337,7 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * Removes invalid clauses from the query (and source-query, recursively)
    */
-  clean() {
+  clean(): StructuredQuery {
     if (!this.hasMetadata()) {
       console.warn("Warning: can't clean query without metadata!");
       return this;
@@ -351,7 +351,7 @@ export default class StructuredQuery extends AtomicQuery {
       query = query.setSourceQuery(sourceQuery.clean());
     }
 
-    query = query
+    return query
       .cleanJoins()
       .cleanExpressions()
       .cleanFilters()
@@ -359,50 +359,68 @@ export default class StructuredQuery extends AtomicQuery {
       .cleanBreakouts()
       .cleanSorts()
       .cleanLimit()
-      .cleanFields();
-
-    // remove empty queries
-    const newSourceQuery = query.sourceQuery();
-    if (newSourceQuery && (query.isEmpty() || !query.hasAnyClauses())) {
-      return newSourceQuery;
-    }
-
-    return query;
+      .cleanFields()
+      .cleanEmpty();
   }
 
-  cleanJoins() {
+  /**
+   * Removes empty/useless layers of nesting (recursively)
+   */
+  cleanNesting(): StructuredQuery {
+    // first clean the sourceQuery, if any, recursively
+    const sourceQuery = this.sourceQuery();
+    if (sourceQuery) {
+      return this.setSourceQuery(sourceQuery.cleanNesting()).cleanEmpty();
+    } else {
+      return this;
+    }
+  }
+
+  cleanJoins(): StructuredQuery {
     return this._cleanClauseList("joins");
   }
 
-  cleanExpressions() {
+  cleanExpressions(): StructuredQuery {
     return this; // TODO
   }
 
-  cleanFilters() {
+  cleanFilters(): StructuredQuery {
     return this._cleanClauseList("filters");
   }
 
-  cleanAggregations() {
+  cleanAggregations(): StructuredQuery {
     return this._cleanClauseList("aggregations");
   }
 
-  cleanBreakouts() {
+  cleanBreakouts(): StructuredQuery {
     return this._cleanClauseList("breakouts");
   }
 
-  cleanSorts() {
+  cleanSorts(): StructuredQuery {
     return this; // TODO
   }
 
-  cleanLimit() {
+  cleanLimit(): StructuredQuery {
     return this; // TODO
   }
 
-  cleanFields() {
+  cleanFields(): StructuredQuery {
     return this; // TODO
   }
 
-  isValid() {
+  /**
+   * If this query is empty and there's a source-query, strip off this query, returning the source-query
+   */
+  cleanEmpty(): StructuredQuery {
+    const sourceQuery = this.sourceQuery();
+    if (sourceQuery && !this.hasAnyClauses()) {
+      return sourceQuery;
+    } else {
+      return this;
+    }
+  }
+
+  isValid(): boolean {
     if (!this.hasData()) {
       return false;
     }
@@ -1341,7 +1359,7 @@ export default class StructuredQuery extends AtomicQuery {
 
   // NESTING
 
-  nest() {
+  nest(): StructuredQuery {
     return this._updateQuery(query => ({ "source-query": query }));
   }
 
@@ -1463,7 +1481,9 @@ export default class StructuredQuery extends AtomicQuery {
     return this.rootQuery().sourceTableId();
   }
 
-  setSourceQuery(sourceQuery: DatasetQuery | StructuredQuery): StructuredQuery {
+  setSourceQuery(
+    sourceQuery: StructuredQuery | StructuredQueryObject,
+  ): StructuredQuery {
     if (sourceQuery instanceof StructuredQuery) {
       if (this.sourceQuery() === sourceQuery) {
         return this;
@@ -1487,42 +1507,38 @@ export default class StructuredQuery extends AtomicQuery {
     return queries;
   }
 
-  dependentTableIds({ includeFKs = true } = {}) {
-    const tableIds = new Set();
+  /**
+   * Metadata this query needs to display correctly
+   */
+  dependentMetadata({ foreignTables = true } = {}) {
+    const dependencies = [];
+    function addDependency(dep) {
+      const existing = _.findWhere(dependencies, _.pick(dep, "type", "id"));
+      if (existing) {
+        Object.assign(existing, dep);
+      } else {
+        dependencies.push(dep);
+      }
+    }
 
     // source-table, if set
     const tableId = this.sourceTableId();
     if (tableId) {
-      tableIds.add(tableId);
-      // implicit joins via foreign keys
-      if (includeFKs) {
-        const table = this.table();
-        if (table) {
-          for (const field of table.fields) {
-            if (field.target && field.target.table_id) {
-              tableIds.add(field.target.table_id);
-            }
-          }
-        }
-      }
+      addDependency({ type: "table", id: tableId, foreignTables });
     }
 
     // any explicitly joined tables
     for (const join of this.joins()) {
-      for (const tableId of join.dependentTableIds()) {
-        tableIds.add(tableId);
-      }
+      join.dependentMetadata().forEach(addDependency);
     }
 
     // parent query's table IDs
     const sourceQuery = this.sourceQuery();
     if (sourceQuery) {
-      for (const tableId of sourceQuery.dependentTableIds({ includeFKs })) {
-        tableIds.add(tableId);
-      }
+      sourceQuery.dependentMetadata({ foreignTables }).forEach(addDependency);
     }
 
-    return Array.from(tableIds);
+    return dependencies;
   }
 
   // INTERNAL

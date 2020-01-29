@@ -1,7 +1,10 @@
 ;; -*- comment-column: 35; -*-
 (ns metabase.core
   (:gen-class)
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
+            [clojure.tools
+             [logging :as log]
+             [trace :as trace]]
             [metabase
              [config :as config]
              [db :as mdb]
@@ -29,18 +32,18 @@
 (defn- -init-create-setup-token
   "Create and set a new setup token and log it."
   []
-  (let [setup-token (setup/create-token!)                    ; we need this here to create the initial token
-        hostname    (or (config/config-str :mb-jetty-host) "localhost")
-        port        (config/config-int :mb-jetty-port)
-        setup-url   (str "http://"
-                         (or hostname "localhost")
-                         (when-not (= 80 port) (str ":" port))
-                         "/setup/")]
+  (setup/create-token!)                    ; we need this here to create the initial token
+  (let [hostname  (or (config/config-str :mb-jetty-host) "localhost")
+        port      (config/config-int :mb-jetty-port)
+        setup-url (str "http://"
+                       (or hostname "localhost")
+                       (when-not (= 80 port) (str ":" port))
+                       "/setup/")]
     (log/info (u/format-color 'green
-                  (str (deferred-trs "Please use the following URL to setup your Metabase installation:")
-                       "\n\n"
-                       setup-url
-                       "\n\n")))))
+                              (str (deferred-trs "Please use the following URL to setup your Metabase installation:")
+                                   "\n\n"
+                                   setup-url
+                                   "\n\n")))))
 
 (defn- destroy!
   "General application shutdown function which should be called once at application shuddown."
@@ -131,12 +134,25 @@
   (classloader/require 'metabase.cmd)
   ((resolve 'metabase.cmd/run-cmd) cmd args))
 
+;;; -------------------------------------------------- Tracing -------------------------------------------------------
+
+(defn- maybe-enable-tracing
+  []
+  (log/warn (trs "WARNING: You have enabled namespace tracing, which could log sensitive information like db passwords."))
+  (let [mb-trace-str (config/config-str :mb-ns-trace)]
+    (when (not-empty mb-trace-str)
+      (doseq [namespace (map symbol (str/split mb-trace-str #",\s*"))]
+        (try (require namespace)
+             (catch Throwable _
+               (throw (ex-info "A namespace you specified with MB_NS_TRACE could not be required" {:namespace namespace}))))
+        (trace/trace-ns namespace)))))
 
 ;;; ------------------------------------------------ App Entry Point -------------------------------------------------
 
 (defn -main
   "Launch Metabase in standalone mode."
   [& [cmd & args]]
+  (maybe-enable-tracing)
   (if cmd
     (run-cmd cmd args) ; run a command like `java -jar metabase.jar migrate release-locks` or `lein run migrate release-locks`
     (start-normally))) ; with no command line args just start Metabase normally

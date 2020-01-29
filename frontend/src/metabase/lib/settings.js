@@ -27,7 +27,8 @@ export type SettingName =
   | "setup-token"
   | "site-url"
   | "types"
-  | "version";
+  | "version"
+  | "version-info";
 
 type SettingsMap = { [key: SettingName]: any };
 
@@ -83,6 +84,10 @@ class Settings {
     return this.get("anon-tracking-enabled") || false;
   }
 
+  googleAuthEnabled() {
+    return this.get("google-auth-client-id") != null;
+  }
+
   hasSetupToken() {
     return this.get("setup-token") != null;
   }
@@ -113,22 +118,49 @@ class Settings {
     return `https://metabase.com/docs/${tag}${page}${anchor}`;
   }
 
-  newVersionAvailable(settings) {
-    let versionInfo = _.findWhere(settings, { key: "version-info" });
-    const currentVersion = this.get("version").tag;
-
-    if (versionInfo) {
-      versionInfo = versionInfo.value;
-    }
-
-    return (
-      versionInfo &&
-      versionInfo.latest &&
-      MetabaseUtils.compareVersions(
-        currentVersion,
-        versionInfo.latest.version,
-      ) < 0
+  newVersionAvailable() {
+    const result = MetabaseUtils.compareVersions(
+      this.currentVersion(),
+      this.latestVersion(),
     );
+    return result != null && result < 0;
+  }
+
+  versionIsLatest() {
+    const result = MetabaseUtils.compareVersions(
+      this.currentVersion(),
+      this.latestVersion(),
+    );
+    return result != null && result >= 0;
+  }
+
+  /*
+    We expect the versionInfo to take on the JSON structure detailed below.
+    The 'older' section should contain only the last 5 previous versions, we don't need to go on forever.
+    The highlights for a version should just be text and should be limited to 5 items tops.
+
+    type VersionInfo = {
+      latest: Version,
+      older: Version[]
+    };
+    type Version = {
+      version: string, // e.x. "v0.17.1"
+      released: ISO8601Time,
+      patch: bool,
+      highlights: string[]
+    };
+  */
+  versionInfo() {
+    return this.get("version-info", {});
+  }
+
+  currentVersion() {
+    return this.get("version", {}).tag;
+  }
+
+  latestVersion() {
+    const { latest } = this.versionInfo();
+    return latest && latest.version;
   }
 
   // returns a map that looks like {total: 6, digit: 1}

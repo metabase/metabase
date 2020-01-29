@@ -29,6 +29,9 @@ import {
 
 import { setErrorPage } from "metabase/redux/app";
 import { addParamValues, addFields } from "metabase/redux/metadata";
+import { getMetadata } from "metabase/selectors/metadata";
+
+import PublicMode from "metabase/modes/components/modes/PublicMode";
 
 import { updateIn } from "icepick";
 
@@ -48,6 +51,10 @@ type State = {
   parameterValues: ParameterValues,
 };
 
+const mapStateToProps = state => ({
+  metadata: getMetadata(state),
+});
+
 const mapDispatchToProps = {
   setErrorPage,
   addParamValues,
@@ -55,7 +62,7 @@ const mapDispatchToProps = {
 };
 
 @connect(
-  null,
+  mapStateToProps,
   mapDispatchToProps,
 )
 @ExplicitSize()
@@ -219,6 +226,10 @@ export default class PublicQuestion extends Component {
               gridUnit={12}
               showTitle={false}
               isDashboard
+              mode={PublicMode}
+              // $FlowFixMe: metadata provided by @connect
+              metadata={this.props.metadata}
+              onChangeCardAndRun={() => {}}
             />
           )}
         </LoadingAndErrorWrapper>

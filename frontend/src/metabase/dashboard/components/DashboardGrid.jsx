@@ -224,9 +224,11 @@ export default class DashboardGrid extends Component {
           this,
           dc.id,
         )}
+        mode={this.props.mode}
         navigateToNewCardFromDashboard={
           this.props.navigateToNewCardFromDashboard
         }
+        onChangeLocation={this.props.onChangeLocation}
         metadata={this.props.metadata}
         dashboard={this.props.dashboard}
       />

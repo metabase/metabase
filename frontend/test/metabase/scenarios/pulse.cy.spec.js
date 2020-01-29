@@ -32,7 +32,7 @@ describe("pulse", () => {
     cy.visit("/pulse/create");
 
     cy.get('[placeholder="Important metrics"]')
-      .wait(10)
+      .wait(100)
       .type("pulse title");
 
     cy.contains("Select a question").click();
