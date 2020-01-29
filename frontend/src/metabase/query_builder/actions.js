@@ -5,7 +5,7 @@ declare var ace: any;
 
 import { createAction } from "redux-actions";
 import _ from "underscore";
-import { assocIn, getIn, updateIn } from "icepick";
+import { assocIn, updateIn } from "icepick";
 
 import * as Urls from "metabase/lib/urls";
 
@@ -60,7 +60,6 @@ import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/
 
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
-import Databases from "metabase/entities/databases";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { setRequestUnloaded } from "metabase/redux/requests";
