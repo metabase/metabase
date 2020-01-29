@@ -27,11 +27,19 @@ const mapStateToProps = state => ({
   hasNativeWrite: getHasNativeWrite(state),
 });
 
+const mapDispatchToProps = {
+  prefetchMetadata: () => Database.actions.fetchList({ include_tables: true }),
+};
+
 const PAGE_PADDING = [1, 4];
 
 @fitViewport
 export class NewQueryOptions extends Component {
   props: Props;
+
+  componentWillMount() {
+    this.props.prefetchMetadata();
+  }
 
   render() {
     const { hasDataAccess, hasNativeWrite } = this.props;
@@ -95,13 +103,7 @@ export class NewQueryOptions extends Component {
   }
 }
 
-export default compose(
-  Database.loadList({
-    query: { include_tables: true },
-    loadingAndErrorWrapper: false,
-  }),
-  connect(
-    mapStateToProps,
-    null,
-  ),
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps,
 )(NewQueryOptions);
