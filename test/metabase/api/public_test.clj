@@ -991,4 +991,3 @@
            (tu/with-temporary-setting-values [enable-public-sharing false]
              (http/client :get 400 (field-remapping-url dashboard (data/id :venues :id) (data/id :venues :name))
                           :value "10"))))))
-

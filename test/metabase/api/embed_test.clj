@@ -4,9 +4,10 @@
              [jwt :as jwt]
              [util :as buddy-util]]
             [clj-time.core :as time]
+            [clojure
+             [string :as str]
+             [test :refer :all]]
             [clojure.data.csv :as csv]
-            [clojure.string :as str]
-            [clojure.test :refer :all]
             [crypto.random :as crypto-random]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [expectations :refer [expect]]

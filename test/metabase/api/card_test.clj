@@ -4,7 +4,6 @@
             [clojure.data.csv :as csv]
             [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [expectations :refer [expect]]
             [medley.core :as m]
             [metabase
              [email-test :as et]
