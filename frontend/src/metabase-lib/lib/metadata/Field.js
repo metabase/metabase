@@ -19,7 +19,9 @@ import {
   isSummable,
   isCategory,
   isAddress,
+  isCity,
   isState,
+  isZipCode,
   isCountry,
   isCoordinate,
   isLocation,
@@ -97,6 +99,12 @@ export default class Field extends Base {
   }
   isAddress() {
     return isAddress(this);
+  }
+  isCity() {
+    return isCity(this);
+  }
+  isZipCode() {
+    return isZipCode(this);
   }
   isState() {
     return isState(this);

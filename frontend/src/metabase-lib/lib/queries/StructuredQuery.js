@@ -808,9 +808,9 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   filterFieldOptionSections(filter?: ?(Filter | FilterWrapper)) {
-    const filterFieldOptions = this.filterFieldOptions();
+    const filterDimensionOptions = this.filterDimensionOptions();
     const filterSegmentOptions = this.filterSegmentOptions(filter);
-    return filterFieldOptions.sections({
+    return filterDimensionOptions.sections({
       extraItems: filterSegmentOptions.map(segment => ({
         name: segment.name,
         icon: "star_outline",
@@ -856,8 +856,8 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns @type {DimensionOptions} that can be used in filters.
    */
-  filterFieldOptions(): DimensionOptions {
-    return this.fieldOptions();
+  filterDimensionOptions(): DimensionOptions {
+    return this.dimensionOptions();
   }
 
   /**
@@ -896,7 +896,7 @@ export default class StructuredQuery extends AtomicQuery {
   canAddFilter(): boolean {
     return (
       Q.canAddFilter(this.query()) &&
-      (this.filterFieldOptions().count > 0 ||
+      (this.filterDimensionOptions().count > 0 ||
         this.filterSegmentOptions().length > 0)
     );
   }

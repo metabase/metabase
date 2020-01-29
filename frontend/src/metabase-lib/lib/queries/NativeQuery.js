@@ -28,6 +28,13 @@ import type { DatabaseEngine, DatabaseId } from "metabase/meta/types/Database";
 
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 
+import Dimension, { TemplateTagDimension } from "../Dimension";
+import Variable, { TemplateTagVariable } from "../Variable";
+import DimensionOptions from "../DimensionOptions";
+
+type DimensionFilter = (dimension: Dimension) => boolean;
+type VariableFilter = (tag: TemplateTag) => boolean;
+
 export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
   database: null,
   type: "native",
@@ -249,6 +256,27 @@ export default class NativeQuery extends AtomicQuery {
 
   setDatasetQuery(datasetQuery: DatasetQuery): NativeQuery {
     return new NativeQuery(this._originalQuestion, datasetQuery);
+  }
+
+  dimensionOptions(
+    dimensionFilter: DimensionFilter = () => true,
+  ): DimensionOptions {
+    return new DimensionOptions({
+      dimensions: this.templateTags()
+        .filter(tag => tag.type === "dimension")
+        .map(
+          tag =>
+            new TemplateTagDimension(null, [tag.name], this.metadata(), this),
+        )
+        .filter(dimensionFilter),
+    });
+  }
+
+  variables(variableFilter: VariableFilter = () => true): Variable[] {
+    return this.templateTags()
+      .filter(tag => tag.type !== "dimension")
+      .map(tag => new TemplateTagVariable([tag.name], this.metadata(), this))
+      .filter(variableFilter);
   }
 
   /**

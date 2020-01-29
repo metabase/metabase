@@ -59,7 +59,6 @@ export type ParameterMappingUIOption = ParameterMappingOption & {
   icon: ?string,
   sectionName: string,
   isFk?: boolean,
-  isVariable?: boolean,
 };
 
 export type ParameterValues = {
