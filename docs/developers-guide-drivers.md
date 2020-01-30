@@ -1,4 +1,4 @@
-# Metabase Driver Development Guide
+# Community-built Database Drivers
 
 As of Metabase 0.32, we now support community-built database drivers!
 
@@ -6,7 +6,7 @@ Several folks have already started to build drivers for database integrations th
 
 Want to build your own driver? Take a look at the [driver development](#driver-development) section below.
 
-## Community Database Drivers
+## How to use a community-built driver
 
 In order to install a community driver, you would typically download the latest jar file from the relevant repository release page and copy it into the plugins directory.
 
@@ -30,7 +30,7 @@ Please note that you install these at your own risk. The plugins will run as par
 
 If the driver you're looking for isn't available, take a look at the [Writing a Driver](https://github.com/metabase/metabase/wiki/Writing-a-Driver) wiki page. It's still a work in progress, but should give you a good start. A few things to keep in mind:
 
-- If your database has a JDBC driver, you'll be able to make use some common classes that already exist in Metabase.
+- If your database has a JDBC driver, you'll be able to make use of some common classes that already exist in Metabase.
 - We're still working on providing an independent test framework for drivers, but you can copy or symlink your driver into a local copy of the Metabase source code in order to utilize pre-existing tests. Take a look at [Test Extension Basics](https://github.com/metabase/metabase/wiki/Writing-a-Driver:-Adding-Test-Extensions,-Tests,-and-Setting-up-CI#test-extensions-basics) on the wiki.
 - If you have questions related to driver development, feel free to post on our [driver development forum](https://discourse.metabase.com/c/driver-development). 
 
