@@ -120,17 +120,20 @@
   [table :- i/TableInstance]
   (when-let [fields (fields-to-classify table)]
     {:fields-classified (count fields)
-     :fields-failed     (sync-util/sum-numbers (fn [field]
-                                                 (let [result (classify! field)]
-                                                   (if (instance? Exception result)
-                                                     1
-                                                     0)))
-                                               fields)}))
+     :fields-failed     (->> fields
+                             (map classify!)
+                             (filter (partial instance? Exception))
+                             count)}))
 
 (s/defn ^:always-validate classify-table!
   "Run various classifiers on the `table`. These do things like inferring (and setting) entitiy type of `table`."
   [table :- i/TableInstance]
-  (save-model-updates! table (name/infer-entity-type table)))
+  (let [updated-table (sync-util/with-error-handling (format "Error running classifier on %s"
+                                                             (sync-util/name-for-logging table))
+                        (name/infer-entity-type table))]
+    (if (instance? Exception updated-table)
+      table
+      (save-model-updates! table updated-table))))
 
 (s/defn classify-tables-for-db!
   "Classify all tables found in a given database"
