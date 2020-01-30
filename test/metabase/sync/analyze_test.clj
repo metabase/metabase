@@ -17,7 +17,7 @@
             [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
             [metabase.test
              [data :as data]
-             [sync :as test.sync :refer [crash-fn sync-steps-run-to-competion]]]
+             [sync :as test.sync :refer [sync-survives-crash?]]]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -85,21 +85,15 @@
 
 (deftest survive-fingerprinting-errors
   (testing "Make sure we survive fingerprinting failing"
-    (with-redefs [fingerprinters/fingerprinter crash-fn]
-      (is (= (sync-steps-run-to-competion (analyze/analyze-db! (Database (data/id)))) 4)))))
+    (sync-survives-crash? fingerprinters/fingerprinter)))
 
 (deftest survive-classify-fields-errors
   (testing "Make sure we survive field classification failing"
-    (with-redefs [classifiers.name/special-type-for-name-and-base-type crash-fn]
-      (is (= (sync-steps-run-to-competion (analyze/analyze-db! (Database (data/id)))) 4)))
-    (with-redefs [classifiers.category/infer-is-category-or-list crash-fn]
-      (is (= (sync-steps-run-to-competion (analyze/analyze-db! (Database (data/id)))) 4)))
-    (with-redefs [classifiers.no-preview-display/infer-no-preview-display crash-fn]
-      (is (= (sync-steps-run-to-competion (analyze/analyze-db! (Database (data/id)))) 4)))
-    (with-redefs [classifiers.text-fingerprint/infer-special-type crash-fn]
-      (is (= (sync-steps-run-to-competion (analyze/analyze-db! (Database (data/id)))) 4)))))
+    (sync-survives-crash? classifiers.name/special-type-for-name-and-base-type)
+    (sync-survives-crash? classifiers.category/infer-is-category-or-list)
+    (sync-survives-crash? classifiers.no-preview-display/infer-no-preview-display)
+    (sync-survives-crash? classifiers.text-fingerprint/infer-special-type)))
 
 (deftest survive-classify-table-errors
   (testing "Make sure we survive table classification failing"
-    (with-redefs [classifiers.name/infer-entity-type crash-fn]
-      (is (= (sync-steps-run-to-competion (analyze/analyze-db! (Database (data/id)))) 4)))))
+    (sync-survives-crash? classifiers.name/infer-entity-type crash-fn)))
