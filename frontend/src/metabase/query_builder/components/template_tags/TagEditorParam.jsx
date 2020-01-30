@@ -180,6 +180,8 @@ export default class TagEditorParam extends Component {
                 setFieldFn={fieldId => this.setDimension(fieldId)}
                 className="AdminSelect flex align-center"
                 isInitiallyOpen={!tag.dimension}
+                triggerIconSize={12}
+                renderAsSelect={true}
               />
             )}
           </div>
