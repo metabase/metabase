@@ -569,6 +569,7 @@
              (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
              ((test-users/user->client :rasta) :put 403 (str "card/" (u/get-id card)) {:archived true}))))))
 
+;; Can we clear the description of a Card? (#4738)
 (deftest can-we-clear-the-description-of-a-card----4738-
   (is (nil? (tt/with-temp Card [card {:description "What a nice Card"}]
               (with-cards-in-writeable-collection card
@@ -1058,7 +1059,7 @@
                 ((test-users/user->client :rasta) :delete 204 (str "card/" (u/get-id card)))
                 (Card (u/get-id card)))))))
 
-
+;; deleting a card that doesn't exist should return a 404 (#1957)
 (deftest deleting-a-card-that-doesn-t-exist-should-return-a-404---1957-
   (is (= "Not found."
          ((test-users/user->client :crowberto) :delete 404 "card/12345"))))
