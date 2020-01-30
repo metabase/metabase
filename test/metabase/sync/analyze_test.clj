@@ -96,4 +96,4 @@
 
 (deftest survive-classify-table-errors
   (testing "Make sure we survive table classification failing"
-    (sync-survives-crash? classifiers.name/infer-entity-type crash-fn)))
+    (sync-survives-crash? classifiers.name/infer-entity-type)))
