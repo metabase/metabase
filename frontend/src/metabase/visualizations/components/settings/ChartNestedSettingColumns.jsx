@@ -38,15 +38,26 @@ class ColumnWidgets extends React.Component {
   componentDidMount() {
     const {
       setSidebarPropsOverride,
-      onChangeEditingObject,
       object,
+      objects,
+      hasMultipleSections,
+      onChangeEditingObject,
+      onShowSection,
     } = this.props;
 
     if (setSidebarPropsOverride) {
-      setSidebarPropsOverride({
-        title: displayNameForColumn(object),
-        onBack: () => onChangeEditingObject(),
-      });
+      const overrides = { title: displayNameForColumn(object) };
+      if (hasMultipleSections) {
+        // We override `onBack` when there are multple hidden sections. If
+        // section headers are hidden because we only have one, clicking back
+        // should still return us to the visualization list.
+        overrides.onBack =
+          // If there is just one object, we reset the section when going back.
+          // If there are multiple objects, we reset object selection to return
+          // to the list of columns but stay in the current section.
+          objects.length === 1 ? onShowSection : onChangeEditingObject;
+      }
+      setSidebarPropsOverride(overrides);
     }
   }
 

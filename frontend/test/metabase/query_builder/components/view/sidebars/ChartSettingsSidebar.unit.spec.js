@@ -24,4 +24,35 @@ describe("ChartSettingsSidebar", () => {
     expect(queryByText("Table options")).toBe(null);
     expect(queryByText("Conditional Formatting")).toBe(null);
   });
+
+  it("should for gauge charts", () => {
+    const data = {
+      rows: [[1]],
+      cols: [{ base_type: "type/Integer", name: "foo", display_name: "foo" }],
+    };
+    const { container, getByText, queryByText, debug } = render(
+      <ChartSettingsSidebar
+        question={SAMPLE_DATASET.question().setDisplay("gauge")}
+        result={{ data }}
+      />,
+    );
+    // see options header with sections
+    getByText("Gauge options");
+    getByText("Formatting");
+    getByText("Display");
+
+    // click on formatting section
+    fireEvent.click(getByText("Formatting"));
+
+    // former header and sections are gone
+    expect(queryByText("Gauge options")).toBe(null);
+    expect(queryByText("Formatting")).toBe(null);
+    expect(queryByText("Display")).toBe(null);
+
+    // click on new "foo" (column name) header to return
+    fireEvent.click(getByText("foo"));
+    getByText("Gauge options");
+    getByText("Formatting");
+    getByText("Display");
+  });
 });

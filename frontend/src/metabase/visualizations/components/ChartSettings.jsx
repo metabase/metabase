@@ -197,6 +197,8 @@ class ChartSettings extends Component {
       addField: addField,
       onShowWidget: this.handleShowWidget,
       onEndShowWidget: this.handleEndShowWidget,
+      onShowSection: this.handleShowSection,
+      hasMultipleSections: sectionNames.length > 1,
     };
 
     const sectionPicker = (
