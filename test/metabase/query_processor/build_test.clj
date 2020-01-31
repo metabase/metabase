@@ -71,7 +71,7 @@
    print-rows-rff))
 
 (defn- print-rows-to-writer-rff [filename]
-  (qp.build/in-context-rff
+  (qp.build/decorated-reducing-fn
    (fn [reduce-with-rff]
      (try
        (locking println (println (format "<Opening writer to %s>" (pr-str filename))))
@@ -173,11 +173,21 @@
             {}
             maps-rff)))))
 
+;; NOCOMMIT
+(defn timezones-test [zone]
+  (mt/with-log-level :trace
+    (mt/with-temporary-setting-values [report-timezone zone]
+      (mt/rows
+        (qp/process-query
+         (driver/with-driver :postgres
+           {:database (mt/id)
+            :type     :native
+            :native   {:query "SHOW timezone;"}}))))))
+
+;; NOCOMMIT
 (defn x []
-  (u/profile "10000 queries"
-    (dorun
-     (pmap
-      (fn [_]
-        (dotimes [_ 100]
-          (-> (mt/run-mbql-query :checkins) :data :rows count)))
-      (range 100)))))
+  (qp/process-query
+   (driver/with-driver :postgres
+     {:database (mt/id)
+      :type     :query
+      :query    {:source-table (mt/id :venues), :limit 20}})))

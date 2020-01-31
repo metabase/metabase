@@ -1,5 +1,6 @@
 (ns metabase.query-processor.util.reducible
-  (:require [clojure.core.async :as a]))
+  (:require [clojure.core.async :as a]
+            [clojure.tools.logging :as log]))
 
 (defn reducible-rows
   "Utility function for generating reducible rows when implementing `metabase.driver/execute-reducible-query`."
@@ -19,7 +20,7 @@
           (let [row (row-fn)]
             (if-not row
               (do
-                #_(locking println (println "<All rows consumed.>")) ; NOCOMMIT
+                (log/trace "All rows consumed.")
                 acc)
               (recur (rf acc row)))))))))
 

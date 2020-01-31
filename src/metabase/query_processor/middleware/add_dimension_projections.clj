@@ -188,13 +188,16 @@
                                 human-readable-values)
        :new-column      (create-remapped-col remap-to remap-from)})))
 
-(s/defn ^:private make-row-map-fn :- (s/pred fn? "function")
-  "Return a function that will add internally-remapped values to each row in the results."
-  [dim-seq :- [InternalDimensionInfo]]
-  (fn [row]
-    (concat row (map (fn [{:keys [col-index value->readable]}]
-                       (value->readable (nth row col-index)))
-                     dim-seq))))
+(s/defn ^:private make-row-map-fn :- (s/maybe (s/pred fn? "function"))
+  "Return a function that will add internally-remapped values to each row in the results. (If there is no remapping to
+  be done, this function returns `nil`.)"
+  [dims :- [InternalDimensionInfo]]
+  (when (seq dims)
+    (let [f (apply juxt (for [{:keys [col-index value->readable]} dims]
+                          (fn [row]
+                            (value->readable (nth row col-index)))))]
+      (fn [row]
+        (into (vec row) (f row))))))
 
 (defn- internal-columns-info
   "Info about the internal-only columns we add to the query."
@@ -223,7 +226,7 @@
   the column information needs to be updated with what it's being remapped from and the user specified name for the
   remapped column."
   [{:keys [cols], :as metadata} {:keys [internal-only-dims]}]
-  (let [remap-fn (make-row-map-fn internal-only-dims)]
+  (if-let [remap-fn (make-row-map-fn internal-only-dims)]
     (fn [rf]
       (fn
         ([]
@@ -233,7 +236,8 @@
          (rf result))
 
         ([result row]
-         (rf result (remap-fn row)))))))
+         (rf result (remap-fn row)))))
+    identity))
 
 (defn- remap-results-xformf [remapping-dimensions xformf]
   (fn [metadata]

@@ -23,12 +23,15 @@
 ;;; |                                            Interface (Multimethods)                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmulti set-timezone-sql
+(defmulti ^:deprecated set-timezone-sql
   "Return a format string containing a SQL statement to be used to set the timezone for the current transaction.
   The `%s` will be replaced with a string literal for a timezone, e.g. `US/Pacific.` (Timezone ID will come already
   wrapped in single quotes.)
 
-    \"SET @@session.time_zone = %s;\""
+    \"SET @@session.time_zone = %s;\"
+
+  This method is only called for drivers using the default implementatation of `connection-with-timezone`; it should
+  be considered deprecated in favor of implementing `connection-with-timezone` directly."
   {:arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)

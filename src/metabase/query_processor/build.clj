@@ -2,34 +2,14 @@
   "Logic for building a function that can process MBQL queries. TODO ­ consider renaming this namespace to
   `metabase.query-processor.impl`."
   (:require [clojure.core.async :as a]
+            [clojure.tools.logging :as log]
             [metabase
              [config :as config]
              [driver :as driver]
              [util :as u]]
             [metabase.query-processor.error-type :as error-type]
-            [potemkin.types :as p.types]))
-
-;; Signatures:
-;;
-;; (Driver) execute-query-reducible:
-;;
-;; (execute-query-reducible: driver query respond raise canceled-chan) -> reducible result
-;;
-;; Middleware:
-;;
-;; (middleware qp) -> (fn [query xformf chans])
-;;
-;; qp3:
-;;
-;; (qp5 query rf-fn chans) -> ?
-;;
-;; qp2
-;;
-;; (qp query rf-fn) -> ?
-;;
-;; qp1
-;;
-;; (qp1 query) -> ?
+            [potemkin.types :as p.types]
+            [pretty.core :refer [PrettyPrintable]]))
 
 (def query-timeout-ms
   "Maximum amount of time to wait for a running query to complete before throwing an Exception."
@@ -45,13 +25,8 @@
   "A `core.async` promise chan that closes itself when it recieves a value."
   [chan-name]
   (let [chan (a/promise-chan)]
-    #_(a/go
-      (when-let [x (a/<! chan)]
-        (locking println (println (u/format-color 'green "%s sent to %s"
-                                    (if (keyword? x)
-                                      x
-                                      (.getCanonicalName (class x)))
-                                    chan-name))) ; NOCOMMIT
+    (a/go
+      (when (a/<! chan)
         (a/close! chan)))
     chan))
 
@@ -72,7 +47,7 @@
         canceled-chan     (auto-closing-promise-chan "canceled-chan")
         finished-chan     (auto-closing-promise-chan "finished-chan")]
     (letfn [(close-all! []
-              #_(locking println (println "<closing all core.async channels>")) ; NOCOMMIT
+              (log/trace "<closing all core.async channels>")
               (a/close! reducible-chan)
               (a/close! start-reduce-chan)
               (a/close! reduced-chan)
@@ -113,13 +88,20 @@
      :canceled-chan     canceled-chan
      :finished-chan     finished-chan}))
 
-(p.types/deftype+ ^:private InContextRFF [f])
+(p.types/deftype+ ^:private DecoratedReducingFn [f]
+  PrettyPrintable
+  (pretty [_]
+    (list 'decorated-reducing-fn f))
 
-(defn in-context-rff
+  clojure.lang.IFn
+  (invoke [_ rff]
+    (f rff)))
+
+(defn decorated-reducing-fn
   "Wrapper for rffs that allow you to perform the reduction process in a manner of your choosing; e.g. in the context of
   maintain a handle to some resource with `with-open`.
 
-  `in-context-rff` takes a single function that has the signature
+  `decorated-reducing-fn` takes a single function that has the signature
 
     (f reduce-with-rff)
 
@@ -129,7 +111,7 @@
 
   Example:
 
-    (in-context-rff
+    (decorated-reducing-fn
      (fn [reduce-with-rff]
        (with-open [w (io/writer filename)]
          (reduce-with-rff
@@ -139,13 +121,13 @@
               ([acc] ...)
               ([acc row] ...)))))))"
   [f]
-  (InContextRFF. f))
+  (DecoratedReducingFn. f))
 
 (defn- execute-query-and-reduce-results
   [execute-reducible-query query xformf {:keys [reducible-chan start-reduce-chan reduced-chan raise-chan], :as chans}]
   {:pre [(fn? xformf)]}
   (letfn [(return-results [rff metadata reducible-rows]
-            {:pre [(or (fn? rff) (instance? InContextRFF rff)) (map? metadata)]}
+            {:pre [(or (fn? rff) (instance? DecoratedReducingFn rff)) (map? metadata)]}
             (a/put! start-reduce-chan :start)
             (try
               (letfn [(do-reduce [rff]
@@ -154,8 +136,8 @@
                           (assert (fn? rf))
                           (let [reduced-result (transduce identity rf reducible-rows)]
                             (a/put! reduced-chan reduced-result))))]
-                (if (instance? InContextRFF rff)
-                  ((.f rff) do-reduce)
+                (if (instance? DecoratedReducingFn rff)
+                  (rff do-reduce)
                   (do-reduce rff)))
               (catch Throwable e
                 (a/>!! raise-chan e)))
@@ -215,7 +197,7 @@
               (rff metadata)))
           chans)
          (catch Throwable e
-           (a/put! raise-chan e)))))))
+           (a/>!! raise-chan e)))))))
 
 (defn default-rff
   "Default function returning a reducing function. Results are returned in the 'standard' map format e.g.
@@ -228,7 +210,7 @@
       :row_count 0})
 
     ([result]
-     #_{:pre [(or (map? result) (println "NOT A MAP ::" (pr-str result)))]} ; NOCOMMIT
+     {:pre [(map? result)]}
      (assoc result :status :completed))
 
     ([result row]
