@@ -80,13 +80,13 @@ git push heroku master
 
 [Heroku pipelines](https://devcenter.heroku.com/articles/pipelines) are a feature that allow you to share the same codebase across multiple Heroku apps and maintain a continuous delivery pipeline. You can use this feature to test new versions of Metabase before deploying them to production.
 
-In order to do this, you would create two different Metabase apps on Heroku and then create a pipeline with one app in Staging and the other in Production.
+In order to do this, you would create two different Metabase apps on Heroku and then create a pipeline with one app in staging and the other in production.
 
 ![Heroku Pipeline image](images/HerokuPipeline.png)
 
-In order to trigger deploys, you will need to fork the [metabase-deploy](https://github.com/metabase/metabase-deploy) repository into your own GitHub user or organization and then enable [GitHub Sync](https://devcenter.heroku.com/articles/pipelines#github-sync) on that repository. To do this, connect the pipeline to your forked repository in the pipeline settings, then enable automatic deploys in the app you added to the Staging environment.
+In order to trigger automatic deploys to your staging app, you will need to fork the [metabase-deploy](https://github.com/metabase/metabase-deploy) repository into your own GitHub user or organization and then enable [GitHub Sync](https://devcenter.heroku.com/articles/pipelines#github-sync) on that repository. To do this, connect the pipeline to your forked repository in the pipeline settings, then enable automatic deploys in the app you added to the staging environment.
 
-Now, when you push to master on your forked `metabase-deploy` repository, the changes will automatically be deployed to your Staging app! Once you're happy that everything is OK, you can promote the Staging app to Production using the Heroku UI or CLI.
+Now, when you push to master on your forked `metabase-deploy` repository, the changes will automatically be deployed to your staging app! Once you're happy that everything is OK, you can promote the staging app to production using the Heroku UI or CLI.
 
 Similar to the instructions above, to deploy a new version you just need to push an empty commit and the build will pick up the new version.
 
@@ -97,7 +97,7 @@ git push master
 
 ### Database Syncs
 
-You may want to ensure that your Staging database is synced with Production before you deploy a new version. Luckily with Heroku you can restore a backup from one app to another. 
+You may want to ensure that your staging database is synced with production before you deploy a new version. Luckily with Heroku you can restore a backup from one app to another. 
 
 For example, assuming your production app is named `awesome-metabase-prod`, this command will create a backup:
 
@@ -105,7 +105,7 @@ For example, assuming your production app is named `awesome-metabase-prod`, this
 heroku pg:backups:capture --app awesome-metabase-prod
 ```
 
-Note the backup ID referenced in the above command and use that to restore the database to your Staging app, `awesome-metabase-staging`.
+Note the backup ID referenced in the above command and use that to restore the database to your staging app, `awesome-metabase-staging`.
 
 ```bash
 heroku pg:backups:restore awesome-metabase-prod::b101 DATABASE_URL --app awesome-metabase-staging
@@ -113,7 +113,7 @@ heroku pg:backups:restore awesome-metabase-prod::b101 DATABASE_URL --app awesome
 
 This will restore backup ID `b101` from your prod app to your staging app.
 
-Once this is done, restart your staging app.
+Once this is done, restart your staging app and begin testing.
 
 ### Pinning Metabase versions
 
@@ -122,7 +122,7 @@ For whatever reason, should you want to pin Metabase to a specific version, you 
 If you haven't cloned the `metabase-deploy` repository, this can be done with the Heroku CLI:
 
 ```bash
-heroku buildpacks:set --index 2 https://github.com/metabase/metabase-buildpack#0.34.1 \
+heroku buildpacks:set --index 2 https://github.com/metabase/metabase-buildpack#0.34.1 \ 
   --app <YOUR-APP-NAME>
 ```
 
