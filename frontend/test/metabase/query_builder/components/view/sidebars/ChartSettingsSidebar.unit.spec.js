@@ -1,12 +1,14 @@
 import React from "react";
 import "@testing-library/jest-dom/extend-expect";
-import { render, fireEvent } from "@testing-library/react";
+import { render, fireEvent, cleanup } from "@testing-library/react";
 
 import { SAMPLE_DATASET } from "__support__/sample_dataset_fixture";
 
 import ChartSettingsSidebar from "metabase/query_builder/components/view/sidebars/ChartSettingsSidebar";
 
 describe("ChartSettingsSidebar", () => {
+  afterEach(cleanup);
+
   it("should hide title and section picker when viewing column settings", () => {
     const data = {
       rows: [["bar"]],

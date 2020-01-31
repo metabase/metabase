@@ -52,11 +52,13 @@ class ColumnWidgets extends React.Component {
       if (objects.length > 1) {
         // If there are multiple objects, we reset object selection to return
         // to the list of columns but stay in the current section.
+        // $FlowFixMe onBack isn't always set
         overrides.onBack = onChangeEditingObject;
       } else if (hasMultipleSections) {
         // If there is just one object, we reset the section when going back. If
         // there aren't multiple sections clicking back should still return us
         // to the visualization list, so we don't override `onBack` at all.
+        // $FlowFixMe onBack isn't always set
         overrides.onBack = onShowSection;
       }
       setSidebarPropsOverride(overrides);
