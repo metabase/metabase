@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { push } from "react-router-redux";
+import { push, replace } from "react-router-redux";
 
 import { t } from "ttag";
 import MetabaseAnalytics from "metabase/lib/analytics";
@@ -31,7 +31,10 @@ const mapStateToProps = (state, { params }) => {
 };
 
 const mapDispatchToProps = {
-  selectDatabase: ({ id }) => push("/admin/datamodel/database/" + id),
+  selectDatabase: ({ id }, shouldReplace) =>
+    shouldReplace
+      ? replace(`/admin/datamodel/database/${id}`)
+      : push(`/admin/datamodel/database/${id}`),
   selectTable: ({ id, db_id }) =>
     push(`/admin/datamodel/database/${db_id}/table/${id}`),
   updateField: field => Fields.actions.update(field),
