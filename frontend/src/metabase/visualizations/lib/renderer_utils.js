@@ -8,7 +8,10 @@ import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { parseTimestamp } from "metabase/lib/time";
 
 import { dimensionIsNumeric } from "./numeric";
-import { dimensionIsTimeseries } from "./timeseries";
+import {
+  dimensionIsTimeseries,
+  dimensionIsExplicitTimeseries,
+} from "./timeseries";
 import { getAvailableCanvasWidth, getAvailableCanvasHeight } from "./utils";
 import { invalidDateWarning, nullDimensionWarning } from "./warnings";
 
@@ -122,7 +125,11 @@ function getParseOptions({ settings, data }) {
   const columnIndex = getColumnIndex({ settings, data });
   return {
     isNumeric: dimensionIsNumeric(data, columnIndex),
-    isTimeseries: dimensionIsTimeseries(data, columnIndex),
+    isTimeseries:
+      // x axis scale is timeseries
+      isTimeseries(settings) ||
+      // column type is timeseries
+      dimensionIsExplicitTimeseries(data, columnIndex),
     isQuantitative: isQuantitative(settings),
     unit: data.cols[columnIndex].unit,
   };

@@ -122,6 +122,8 @@
   [database :- DatabaseInstanceWithRequiredStoreKeys]
   (swap! *store* assoc :database database))
 
+;; TODO ­ I think these can be made private
+
 (s/defn store-table!
   "Store a `table` in the QP Store for the duration of the current query execution. Throws an Exception if table is
   invalid or doesn't have all required keys."

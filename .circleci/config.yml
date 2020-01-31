@@ -52,6 +52,22 @@ executors:
           POSTGRES_USER: circle_test
           POSTGRES_DB: circle_test
 
+  postgres-latest:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1
+        environment:
+          MB_DB_TYPE: postgres
+          MB_DB_PORT: 5432
+          MB_DB_HOST: localhost
+          MB_DB_DBNAME: metabase_test
+          MB_DB_USER: metabase_test
+          MB_POSTGRESQL_TEST_USER: metabase_test
+      - image: postgres:latest
+        environment:
+          POSTGRES_USER: metabase_test
+          POSTGRES_DB: metabase_test
+
   mysql-5-7:
     parameters:
       # for testing the use of an at-rest encryption key. Optional.
@@ -70,6 +86,49 @@ executors:
           MB_MYSQL_TEST_USER: root
           MB_ENCRYPTION_SECRET_KEY: << parameters.encryption-key >>
       - image: circleci/mysql:5.7.23
+
+  mysql-latest:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1
+        environment:
+          MB_DB_TYPE: mysql
+          MB_DB_HOST: localhost
+          MB_DB_PORT: 3306
+          MB_DB_DBNAME: circle_test
+          MB_DB_USER: root
+          MB_MYSQL_TEST_USER: root
+      - image: circleci/mysql:latest
+
+  mariadb-10-2:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1
+        environment:
+          MB_DB_TYPE: mysql
+          MB_DB_HOST: localhost
+          MB_DB_PORT: 3306
+          MB_DB_DBNAME: circle_test
+          MB_DB_USER: root
+          MB_MYSQL_TEST_USER: root
+      - image: circleci/mariadb:10.2.23
+
+  mariadb-latest:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1
+        environment:
+          MB_DB_TYPE: mysql
+          MB_DB_HOST: localhost
+          MB_DB_PORT: 3306
+          MB_DB_DBNAME: metabase_test
+          MB_DB_USER: root
+          MB_MYSQL_TEST_USER: root
+      - image: mariadb:latest
+        environment:
+          MYSQL_DATABASE: metabase_test
+          MYSQL_USER: root
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
 
   mongo:
      working_directory: /home/circleci/metabase/metabase/
@@ -290,6 +349,9 @@ jobs:
       auto-retry:
         type: boolean
         default: false
+      description:
+        type: string
+        default: ""
     executor: << parameters.e >>
     steps:
       - attach-workspace
@@ -319,7 +381,7 @@ jobs:
           condition: << parameters.auto-retry >>
           steps:
             - run:
-                name: Test << parameters.driver >> driver
+                name: Test << parameters.driver >> driver << parameters.description >>
                 environment:
                   DRIVERS: h2,<< parameters.driver >>
                 command: >
@@ -600,11 +662,39 @@ workflows:
 
       - test-driver:
           name: be-tests-mysql
+          description: "(MySQL 5.7)"
           requires:
             - be-tests
           e:
             name: mysql-5-7
             encryption-key: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
+          driver: mysql
+
+      - test-driver:
+          name: be-tests-mysql-latest
+          description: "(MySQL latest)"
+          requires:
+            - be-tests
+          e:
+            name: mysql-latest
+          driver: mysql
+
+      - test-driver:
+          name: be-tests-mariadb
+          description: "(MariaDB 10.2)"
+          requires:
+            - be-tests
+          e:
+            name: mariadb-10-2
+          driver: mysql
+
+      - test-driver:
+          name: be-tests-mariadb-latest
+          description: "(MariaDB latest)"
+          requires:
+            - be-tests
+          e:
+            name: mariadb-latest
           driver: mysql
 
       - test-driver:
@@ -617,9 +707,18 @@ workflows:
 
       - test-driver:
           name: be-tests-postgres
+          description: "(9.6)"
           requires:
             - be-tests
           e: postgres-9-6
+          driver: postgres
+
+      - test-driver:
+          name: be-tests-postgres-latest
+          description: "(Latest)"
+          requires:
+            - be-tests
+          e: postgres-latest
           driver: postgres
 
       - test-driver:
@@ -747,8 +846,12 @@ workflows:
             - be-tests-googleanalytics
             - be-tests-mongo
             - be-tests-mysql
+            - be-tests-mysql-latest
+            - be-tests-mariadb
+            - be-tests-mariadb-latest
             - be-tests-oracle
             - be-tests-postgres
+            - be-tests-postgres-latest
             - be-tests-presto
             - be-tests-redshift
             - be-tests-snowflake
