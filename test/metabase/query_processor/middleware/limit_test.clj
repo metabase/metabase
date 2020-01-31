@@ -10,8 +10,8 @@
   ((qp.build/sync-query-processor
     (qp.build/async-query-processor
      (qp.build/base-query-processor
-      (fn [_ query _ results-fn]
-        (results-fn query (repeat [:ok])))
+      (fn [_ query _ return-results]
+        (return-results query (repeat [:ok])))
       [limit/limit])))
    query))
 

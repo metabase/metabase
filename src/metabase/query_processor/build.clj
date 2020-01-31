@@ -144,7 +144,7 @@
 (defn- execute-query-and-reduce-results
   [execute-reducible-query query xformf {:keys [reducible-chan start-reduce-chan reduced-chan raise-chan], :as chans}]
   {:pre [(fn? xformf)]}
-  (letfn [(results-fn [rff metadata reducible-rows]
+  (letfn [(return-results [rff metadata reducible-rows]
             {:pre [(or (fn? rff) (instance? InContextRFF rff)) (map? metadata)]}
             (a/put! start-reduce-chan :start)
             (try
@@ -161,7 +161,7 @@
                 (a/>!! raise-chan e)))
             nil)
           (reduce-results [rff]
-            (execute-reducible-query driver/*driver* query chans (partial results-fn rff)))]
+            (execute-reducible-query driver/*driver* query chans (partial return-results rff)))]
     (a/put! reducible-chan (bound-fn* reduce-results)))
   nil)
 
@@ -179,11 +179,11 @@
 
   If `execute-reducible-query` is passed, it should have the same signature as `driver/execute-reducible-query`, i.e.:
 
-    (execute-reducible-query driver query chans results-fn)
+    (execute-reducible-query driver query chans return-results)
 
   and call
 
-    (results-fn metadata rows)."
+    (return-results metadata rows)."
   ([middleware]
    (base-query-processor driver/execute-reducible-query middleware))
 

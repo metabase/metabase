@@ -15,7 +15,7 @@
 (defn- limit-xform [max-rows]
   (fn [xf]
     {:pre [(fn? xf)]}
-    (let [row-count (atom 0)]
+    (let [row-count (volatile! 0)]
       (fn
         ([]
          (xf))
@@ -25,7 +25,7 @@
 
         ([result row]
          (let [result'       (xf result row)
-               new-row-count (swap! row-count inc)]
+               new-row-count (vswap! row-count inc)]
            (if (>= new-row-count max-rows)
              (reduced result')
              result')))))))
