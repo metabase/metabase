@@ -1,4 +1,4 @@
-# Community-built Database Drivers
+# Community-built database drivers
 
 As of Metabase 0.32, we now support community-built database drivers!
 
@@ -26,7 +26,7 @@ Please note that you install these at your own risk. The plugins will run as par
 | [Teradata](https://github.com/swisscom-bigdata/metabase-teradata-driver) | ![GitHub stars](https://img.shields.io/github/stars/swisscom-bigdata/metabase-teradata-driver) | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/swisscom-bigdata/metabase-teradata-driver) |
 | [Spark Databricks](https://github.com/ifood/metabase-sparksql-databricks-driver) | ![GitHub stars](https://img.shields.io/github/stars/ifood/metabase-sparksql-databricks-driver) | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/ifood/metabase-sparksql-databricks-driver) |
 
-## Driver Development
+## Driver development
 
 If the driver you're looking for isn't available, take a look at the [Writing a Driver](https://github.com/metabase/metabase/wiki/Writing-a-Driver) wiki page. It's still a work in progress, but should give you a good start. A few things to keep in mind:
 
@@ -34,6 +34,6 @@ If the driver you're looking for isn't available, take a look at the [Writing a 
 - We're still working on providing an independent test framework for drivers, but you can copy or symlink your driver into a local copy of the Metabase source code in order to utilize pre-existing tests. Take a look at [Test Extension Basics](https://github.com/metabase/metabase/wiki/Writing-a-Driver:-Adding-Test-Extensions,-Tests,-and-Setting-up-CI#test-extensions-basics) on the wiki.
 - If you have questions related to driver development, feel free to post on our [driver development forum](https://discourse.metabase.com/c/driver-development). 
 
-## Driver Development Announcements
+## Driver development announcements
 
 Occasionally, we may make changes to Metabase that impact database drivers. We'll try to give folks as much of a heads up as possible. For notifications regarding this, please use the form below to subscribe to the [Metabase Community Authors mailing list](http://eepurl.com/gQcIO9). This will be a low-volume email list that we will only use to notify you of important annoucements related to driver development.
