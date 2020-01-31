@@ -30,7 +30,7 @@ describe("ChartSettingsSidebar", () => {
       rows: [[1]],
       cols: [{ base_type: "type/Integer", name: "foo", display_name: "foo" }],
     };
-    const { container, getByText, queryByText, debug } = render(
+    const { getByText, queryByText } = render(
       <ChartSettingsSidebar
         question={SAMPLE_DATASET.question().setDisplay("gauge")}
         result={{ data }}
