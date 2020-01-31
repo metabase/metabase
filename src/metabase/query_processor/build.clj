@@ -45,7 +45,7 @@
   "A `core.async` promise chan that closes itself when it recieves a value."
   [chan-name]
   (let [chan (a/promise-chan)]
-    (a/go
+    #_(a/go
       (when-let [x (a/<! chan)]
         (locking println (println (u/format-color 'green "%s sent to %s"
                                     (if (keyword? x)
@@ -72,7 +72,7 @@
         canceled-chan     (auto-closing-promise-chan "canceled-chan")
         finished-chan     (auto-closing-promise-chan "finished-chan")]
     (letfn [(close-all! []
-              (locking println (println "<closing all core.async channels>"))
+              #_(locking println (println "<closing all core.async channels>")) ; NOCOMMIT
               (a/close! reducible-chan)
               (a/close! start-reduce-chan)
               (a/close! reduced-chan)
@@ -228,7 +228,7 @@
       :row_count 0})
 
     ([result]
-     {:pre [(or (map? result) (println "NOT A MAP ::" (pr-str result)))]} ; NOCOMMIT
+     #_{:pre [(or (map? result) (println "NOT A MAP ::" (pr-str result)))]} ; NOCOMMIT
      (assoc result :status :completed))
 
     ([result row]

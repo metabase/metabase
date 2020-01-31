@@ -77,7 +77,7 @@
 
 (defn- runnable ^Runnable [qp query xform {:keys [raise-chan], :as chans}]
   (bound-fn []
-    (println "<ON A DIFFERENT THREAD>") ; NOCOMMIT
+    #_(println "<ON A DIFFERENT THREAD>") ; NOCOMMIT
     (binding [*already-in-thread-pool?* true]
       (try
         (qp query xform chans)

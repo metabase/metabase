@@ -19,7 +19,7 @@
           (let [row (row-fn)]
             (if-not row
               (do
-                (locking println (println "<All rows consumed.>")) ; NOCOMMIT
+                #_(locking println (println "<All rows consumed.>")) ; NOCOMMIT
                 acc)
               (recur (rf acc row)))))))))
 

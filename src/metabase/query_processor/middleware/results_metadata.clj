@@ -7,6 +7,7 @@
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [metabase.driver :as driver]
+            [metabase.sync.analyze.query-results :as analyze.results]
             [metabase.util
              [encryption :as encryption]
              [i18n :refer [tru]]]
@@ -95,7 +96,7 @@
 (defn- insights-xform [metadata record!]
   (fn insights-rf [rf]
     (redux/post-complete
-     (redux/juxt rf (analyze.results/insights-reducing-fn metadata))
+     (redux/juxt rf (analyze.results/insights-rf metadata))
      (fn [[result {:keys [metadata insights]}]]
        (record! metadata)
        (if-not (map? result)

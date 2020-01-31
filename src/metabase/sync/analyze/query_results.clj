@@ -75,7 +75,7 @@
       :insights insights})))
 
 (defn- add-insights [rows result-metadata]
-  (transduce identity (insights-reducing-fn result-metadata) rows))
+  (transduce identity (insights-rf result-metadata) rows))
 
 (defn results->column-metadata
   "Return the desired storage format for the column metadata coming back from `results` and fingerprint the `results`."

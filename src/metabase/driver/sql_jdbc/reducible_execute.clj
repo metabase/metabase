@@ -34,7 +34,7 @@
   (dorun
    (map-indexed
     (fn [i param]
-      (println "Set param" (inc i) "->" (pr-str param)) ; NOCOMMIT
+      #_(println "Set param" (inc i) "->" (pr-str param)) ; NOCOMMIT
       (sql-jdbc.execute/set-parameter driver stmt (inc i) param))
     params)))
 
@@ -55,7 +55,7 @@
       ;; if canceled-chan gets a message, cancel the PreparedStatement
       (a/go
         (when (a/<! canceled-chan)
-          (locking println (println "Query canceled, calling PreparedStatement.cancel()")) ; NOCOMMIT
+          #_(locking println (println "Query canceled, calling PreparedStatement.cancel()")) ; NOCOMMIT
           (u/ignore-exceptions
             (.cancel stmt))))
       stmt
@@ -95,7 +95,8 @@
   (get-object-of-class-fn rs i java.time.LocalDateTime))
 
 (defn- log-readers [driver ^ResultSetMetaData rsmeta fns]
-  (doseq [^Integer i (range 1 (inc (.getColumnCount rsmeta)))]
+  ;; NOCOMMIT
+  #_(doseq [^Integer i (range 1 (inc (.getColumnCount rsmeta)))]
     (printf "Reading %s column %d (JDBC type: %s, DB type: %s) with %s\n"
             driver
             i
@@ -136,19 +137,15 @@
 (defn execute-reducible-query
   "Default impl of `execute-reducible-query` for sql-jdbc drivers."
   [driver {{sql :query, params :params} :native} chans results-fn]
-  (try
-    (locking println (println "<Opening new DB connection/statement/result set")) ; NOCOMMIT
-    (with-open [conn (connection driver (datasource))
-                stmt (prepared-statement driver conn sql params chans)
-                rs   (execute-query! driver stmt)]
-      (let [rsmeta           (.getMetaData rs)
-            results-metadata {:cols (column-metadata driver rsmeta)}
-            read-row         (read-row-fn driver rs rsmeta)
-            row-fn           (fn []
-                               (when (.next rs)
-                                 (read-row)))]
-        (results-fn
-         results-metadata
-         (qp.util.reducible/reducible-rows row-fn chans))))
-    (finally
-      (locking println (println "<Closing DB connection/statement/result set>"))))) ; NOCOMMIT
+  (with-open [conn (connection driver (datasource))
+              stmt (prepared-statement driver conn sql params chans)
+              rs   (execute-query! driver stmt)]
+    (let [rsmeta           (.getMetaData rs)
+          results-metadata {:cols (column-metadata driver rsmeta)}
+          read-row         (read-row-fn driver rs rsmeta)
+          row-fn           (fn []
+                             (when (.next rs)
+                               (read-row)))]
+      (results-fn
+       results-metadata
+       (qp.util.reducible/reducible-rows row-fn chans)))))

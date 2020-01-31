@@ -31,11 +31,11 @@
   (fn [query xform {:keys [raise-chan finished-chan], :as chans}]
     (try
       (swap! in-flight* inc)
-      (locking println (println "<adding query to in flight> in flight:" (in-flight))) ; NOCOMMIT
+      #_(locking println (println "<adding query to in flight> in flight:" (in-flight))) ; NOCOMMIT
       (a/go
         (a/<! finished-chan)
         (swap! in-flight* dec)
-        (locking println (println "<removing from in flight> in flight:" (in-flight)))) ; NOCOMMIT
+        #_(locking println (println "<removing from in flight> in flight:" (in-flight)))) ; NOCOMMIT
       (qp query xform chans)
       (catch Throwable e
         (a/>!! raise-chan e)))))

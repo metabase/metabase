@@ -162,8 +162,8 @@
 
 (deftest custom-qp-test
   (testing "Rows don't actually have to be reducible. And you can build your own QP with your own middleware."
-    (is (= {:cols [{:name "n"}]
-            :rows [{:n 1} {:n 2} {:n 3} {:n 4} {:n 5}]}
+    (is (= {:data {:cols [{:name "n"}]
+                   :rows [{:n 1} {:n 2} {:n 3} {:n 4} {:n 5}]}}
            ((qp.build/sync-query-processor
              (qp.build/async-query-processor
               (qp.build/base-query-processor
@@ -172,3 +172,12 @@
                [])))
             {}
             maps-rff)))))
+
+(defn x []
+  (u/profile "10000 queries"
+    (dorun
+     (pmap
+      (fn [_]
+        (dotimes [_ 100]
+          (-> (mt/run-mbql-query :checkins) :data :rows count)))
+      (range 100)))))
