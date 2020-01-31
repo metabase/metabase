@@ -2,7 +2,8 @@
   "Middleware for automatically bucketing unbucketed `:type/Temporal` (but not `:type/Time`) Fields with `:day`
   bucketing. Applies to any unbucketed Field in a breakout, or fields in a filter clause being compared against
   `yyyy-MM-dd` format datetime strings."
-  (:require [metabase.mbql
+  (:require [clojure.core.async :as a]
+            [metabase.mbql
              [predicates :as mbql.preds]
              [schema :as mbql.s]
              [util :as mbql.u]]
@@ -96,8 +97,8 @@
        [(_ :guard #{:field-id :field-literal}) (_ :guard datetime-but-not-time?) & _]
        [:datetime-field &match :day]))))
 
-(s/defn ^:private auto-bucket-datetimes* :- mbql.s/Query
-  [{{breakouts :breakout, filter-clause :filter} :query, :as query} :- mbql.s/Query]
+(s/defn ^:private auto-bucket-datetimes*
+  [{{breakouts :breakout, filter-clause :filter} :query, :as query}]
   ;; find any breakouts or filters in the query that are just plain `[:field-id ...]` clauses (unwrapped by any other
   ;; clause)
   (if-let [unbucketed-fields (mbql.u/match (cons filter-clause breakouts)
@@ -121,4 +122,8 @@
   Applies to any unbucketed Field in a breakout, or fields in a filter clause being compared against `yyyy-MM-dd`
   format datetime strings."
   [qp]
-  (comp qp auto-bucket-datetimes*))
+  (fn [query xform {:keys [raise-chan], :as chans}]
+    (try
+      (qp (auto-bucket-datetimes* query) xform chans)
+      (catch Throwable e
+        (a/>!! raise-chan e)))))

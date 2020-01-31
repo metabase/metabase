@@ -33,7 +33,8 @@
   The frontend, on the rare occasion it generates a query that explicitly specifies an `order-by` clause, usually will
   generate one that directly corresponds to the bad example above. This middleware finds these cases and rewrites the
   query to look like the good example."
-  (:require [metabase.mbql
+  (:require [clojure.core.async :as a]
+            [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
             [schema.core :as s]))
@@ -94,4 +95,8 @@
    {:query {:breakout [[:datetime-field [:field-id 1] :day]]
             :order-by [[:datetime-field [:asc [:field-id 1]] :day]]}"
   [qp]
-  (comp qp reconcile-bucketing-if-needed))
+  (fn [query xform {:keys [raise-chan], :as chans}]
+    (try
+      (qp (reconcile-bucketing-if-needed query) xform chans)
+      (catch Throwable e
+        (a/>!! raise-chan e)))))

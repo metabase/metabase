@@ -272,12 +272,13 @@
            [last-mb-frame & frames-before-last-mb] (for [frame other-frames
                                                          :when (str/includes? frame "metabase")]
                                                      (str/replace frame #"^metabase\." ""))]
-       (concat
-        (map str frames-after-last-mb)
-        ;; add a little arrow to the frame so it stands out more
-        (cons
-         (some->> last-mb-frame (str "--> "))
-         frames-before-last-mb))))})
+       (vec
+        (concat
+         (map str frames-after-last-mb)
+         ;; add a little arrow to the frame so it stands out more
+         (cons
+          (some->> last-mb-frame (str "--> "))
+          frames-before-last-mb)))))})
 
 (declare format-milliseconds)
 
@@ -780,8 +781,8 @@
    `(profile ~(str form) ~form))
   ([message & body]
    `(let [start-time# (System/nanoTime)]
-      (u/prog1 (do ~@body)
-        (println (u/format-color '~'green "%s took %s"
+      (prog1 (do ~@body)
+        (println (format-color '~'green "%s took %s"
                    ~message
                    (format-nanoseconds (- (System/nanoTime) start-time#))))))))
 

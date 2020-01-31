@@ -1,6 +1,9 @@
-(ns metabase.query-processor.async
+(ns ^:deprecated metabase.query-processor.async
   "Async versions of the usual public query processor functions. Instead of blocking while the query is ran, these
-  functions all return a `core.async` channel that can be used to fetch the results when they become available."
+  functions all return a `core.async` channel that can be used to fetch the results when they become available.
+
+  TODO ­ none of these functions are needed anymore, just use `metabase.query-processor/process-query-async` and the
+  like directly."
   (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
             [metabase
@@ -15,21 +18,21 @@
             [schema.core :as s])
   (:import clojure.core.async.impl.channels.ManyToManyChannel))
 
-(s/defn process-query :- async.u/PromiseChan
+(s/defn ^:deprecated process-query :- async.u/PromiseChan
   "Async version of `metabase.query-processor/process-query`. Runs query asynchronously, and returns a `core.async`
   channel that can be used to fetch the results once the query finishes running. Closing the channel will cancel the
   query."
   [query]
   (qp/process-query (assoc query :async? true)))
 
-(s/defn process-query-and-save-execution! :- async.u/PromiseChan
+(s/defn ^:deprecated process-query-and-save-execution! :- async.u/PromiseChan
   "Async version of `metabase.query-processor/process-query-and-save-execution!`. Runs query asynchronously, and returns
   a `core.async` channel that can be used to fetch the results once the query finishes running. Closing the channel
   will cancel the query."
   [query options]
   (qp/process-query-and-save-execution! (assoc query :async? true) options))
 
-(s/defn process-query-and-save-with-max-results-constraints! :- async.u/PromiseChan
+(s/defn ^:deprecated process-query-and-save-with-max-results-constraints! :- async.u/PromiseChan
   "Async version of `metabase.query-processor/process-query-and-save-with-max-results-constraints!`. Runs query
   asynchronously, and returns a `core.async` channel that can be used to fetch the results once the query finishes
   running. Closing the channel will cancel the query."
@@ -39,14 +42,14 @@
 
 ;;; ------------------------------------------------ Result Metadata -------------------------------------------------
 
-(defn- transform-result-metadata-query-results [{:keys [status], :as results}]
+(defn- ^:deprecated transform-result-metadata-query-results [{:keys [status], :as results}]
   (when (= status :failed)
     (log/error (trs "Error running query to determine Card result metadata:")
                (u/pprint-to-str 'red results)))
   (or (get-in results [:data :results_metadata :columns])
       []))
 
-(s/defn result-metadata-for-query-async :- ManyToManyChannel
+(s/defn ^:deprecated result-metadata-for-query-async :- ManyToManyChannel
   "Fetch the results metadata for a `query` by running the query and seeing what the QP gives us in return.
    This is obviously a bit wasteful so hopefully we can avoid having to do this. Returns a channel to get the
    results."

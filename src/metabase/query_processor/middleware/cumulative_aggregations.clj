@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.cumulative-aggregations
   "Middlware for handling cumulative count and cumulative sum aggregations."
-  (:require [metabase.mbql
+  (:require [clojure.core.async :as a]
+            [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
             [schema.core :as s]))
@@ -24,34 +25,51 @@
     [:cum-count field] [:count field]
     [:cum-sum field]   [:sum field]))
 
-(defn- add-rows
+(defn- add-values-from-last-row
   "Update values in `row` by adding values from `last-row` for a set of specified indexes.
 
-    (add-rows #{0} [100 200] [50 60]) ; -> [150 60]"
+    (add-values-from-last-row #{0} [100 200] [50 60]) ; -> [150 60]"
   [[index & more] last-row row]
-  (if-not index
-    row
-    (recur more last-row (update (vec row) index (partial + (nth last-row index))))))
+  (cond
+   (not index)
+   row
 
-(defn- sum-rows
-  "Sum the values in `rows` at `indexes-to-sum`.
+   (not last-row)
+   row
 
-    (sum-rows #{0} [[1] [2] [3]]) ; -> [[1] [3] [6]]"
-  [indexes-to-sum rows]
-  (reductions (partial add-rows indexes-to-sum) rows))
+   :else
+   (recur more last-row (update (vec row) index (partial + (nth last-row index))))))
+
+(defn- cumulative-ags-xform [{{breakouts :breakout} :query, :as query} query']
+  ;; figure out which indexes are being changed in the results. Since breakouts always get included in
+  ;; results first we need to offset the indexes to change by the number of breakouts
+  (let [replaced-indexes (set (for [i (diff-indecies (-> query  :query :aggregation)
+                                                     (-> query' :query :aggregation))]
+                                (+ (count breakouts) i)))]
+    (fn cumulative-ags-rf [rf]
+      {:pre [(fn? rf)]}
+      (let [last-row (volatile! nil)]
+        (fn
+          ([] (rf))
+
+          ([result] (rf result))
+
+          ([result row]
+           (let [row' (add-values-from-last-row replaced-indexes @last-row row)]
+             (vreset! last-row row')
+             (rf result row'))))))))
 
 (defn handle-cumulative-aggregations
   "Middleware that implements `cum-count` and `cum-sum` aggregations. These clauses are replaced with `count` and `sum`
   clauses respectively and summation is performed on results in Clojure-land."
   [qp]
-  (fn [{{aggregations :aggregation, breakouts :breakout} :query, :as query}]
-    (if (mbql.u/match aggregations #{:cum-count :cum-sum})
-      (let [new-query        (replace-cumulative-ags query)
-            ;; figure out which indexes are being changed in the results. Since breakouts always get included in
-            ;; results first we need to offset the indexes to change by the number of breakouts
-            replaced-indexes (set (for [i (diff-indecies (->     query :query :aggregation)
-                                                         (-> new-query :query :aggregation))]
-                                    (+ (count breakouts) i)))
-            results          (qp new-query)]
-        (update results :rows (partial sum-rows replaced-indexes)))
-      (qp query))))
+  (fn [{{aggregations :aggregation} :query, :as query} xformf {:keys [raise-chan], :as chans}]
+    (if-not (mbql.u/match aggregations #{:cum-count :cum-sum})
+      (qp query xformf chans)
+      (try
+        (let [query'  (replace-cumulative-ags query)
+              xformf' (fn [metadata]
+                        (comp (cumulative-ags-xform query query') (xformf metadata)))]
+          (qp query' xformf' chans))
+        (catch Throwable e
+          (a/>!! raise-chan e))))))

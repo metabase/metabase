@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.catch-exceptions
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
-  (:require [metabase.query-processor
+  (:require [clojure.core.async :as a]
+            [metabase.query-processor
              [error-type :as qp.error-type]
              [interface :as qp.i]]
             [metabase.util :as u]
@@ -45,9 +46,8 @@
    (when-let [cause (.getCause e)]
      {:cause (dissoc (format-exception nil cause) :status :query :stacktrace)})))
 
-
 (defn- explain-schema-validation-error
-  "Return a nice error message to explain the schema validation error."
+  "Return a nice error message to explain the Schema validation error."
   [error]
   (cond
     (instance? NamedError error)
@@ -92,20 +92,70 @@
        {:error_type error-type})
      {:ex-data (dissoc data :schema)})))
 
+(defn- format-exception* [query e]
+  (try
+    (format-exception query e)
+    (catch Throwable e
+      e)))
 
 (defn catch-exceptions
-  "Middleware for catching exceptions thrown by the query processor and returning them in a normal format."
+  "Middleware for catching exceptions thrown by the query processor and returning them in a 'normal' format. Forwards
+  exceptions to the `result-chan`."
   [qp]
-  ;; we're swapping out the top-level exception handler (`raise` fn) created by the `async-setup` middleware with one
-  ;; that will format the Exceptions and pipe them thru as normal QP 'failure' responses. For InterruptedExceptions
-  ;; however (caused when the query is canceled) pipe all the way thru to the top-level handler so it can close out
-  ;; the output channel instead of writing a response to it, which will cause the cancelation message we're looking for
-  (fn [query respond top-level-raise canceled-chan]
-    (let [raise (fn [e]
-                  (if (instance? InterruptedException e)
-                    (top-level-raise e)
-                    (respond (format-exception query e))))]
+  (fn [query xform-fn {:keys [raise-chan finished-chan], :as chans}]
+    (let [raise-chan' (a/promise-chan)]
+      ;; forward exceptions to `finished-chan`
+      (a/go
+        (when-let [e (a/<! raise-chan')]
+          (a/>! finished-chan (format-exception* query e)))
+        (a/close! raise-chan))
+      ;; if the original `raise-chan` gets closed then close this one too
+      (a/go
+        (a/<! raise-chan)
+        (a/close! raise-chan'))
       (try
-        (qp query respond raise canceled-chan)
+        (qp query xform-fn (assoc chans :raise-chan raise-chan'))
         (catch Throwable e
-          (raise e))))))
+          (a/>!! raise-chan' e))))))
+
+
+;; TODO NOCOMMIT
+
+;; The following is a better way to return Exceptions I've been working on, returns the root Exception at the
+;; top-level and ones that wrap it in a `:via` sequence, similar to how they are displayed in the CIDER REPL
+;;
+;; Currently we nest causes inside `:cause` keys, meaning the root Exception is at the deepest level, and we see
+;; messages like "Query failed" as the top-level and "Cannot parse SQL" as the most-nested `:cause`. It is more useful
+;; to see the root Exception at the top-level IMO, and this would open us up to catching Exceptions and adding useful
+;; info more often.
+
+#_(defn- exception-chain [^Throwable e]
+    (->> (iterate
+          (fn [^Throwable e]
+            (when-let [cause (or (when (instance? java.sql.SQLException e)
+                                   (.getNextException ^java.sql.SQLException e))
+                                 (.getCause e))]
+              (when-not (= e cause)
+                cause)))
+          e)
+         (take-while some?)
+         reverse))
+
+#_(defn- format-exception [^Throwable e]
+  (merge
+   {:type (.getCanonicalName (class e))
+    :message    (.getMessage e)
+    :stacktrace (u/filtered-stacktrace e)}
+   (when-let [data (ex-data e)]
+     {:data data})
+   (when (instance? java.sql.SQLException e)
+     {:state (.getSQLState ^java.sql.SQLException e)})))
+
+#_(defn- exception-response [^Throwable e]
+  (let [[e-info & more] (for [e (exception-chain e)]
+                          (format-exception e))]
+    (merge
+     {:status :failed}
+     e-info
+     (when (seq more)
+       {:via (vec more)}))))

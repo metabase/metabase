@@ -1,7 +1,8 @@
 (ns metabase.query-processor.middleware.wrap-value-literals
   "Middleware that wraps value literals in `value`/`absolute-datetime`/etc. clauses containing relevant type
   information; parses datetime string literals when appropriate."
-  (:require [metabase.mbql
+  (:require [clojure.core.async :as a]
+            [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.models.field :refer [Field]]
@@ -133,4 +134,8 @@
   to make it easier for drivers to write implementations that rely on multimethod dispatch (by clause name) -- they
   can dispatch directly off of these clauses."
   [qp]
-  (comp qp wrap-value-literals*))
+  (fn [query xform {:keys [raise-chan], :as chans}]
+    (try
+      (qp (wrap-value-literals* query) xform chans)
+      (catch Throwable e
+        (a/>!! raise-chan e)))))

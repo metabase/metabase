@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.resolve-source-table
   "Fetches Tables corresponding to any `:source-table` IDs anywhere in the query."
-  (:require [metabase.mbql.util :as mbql.u]
+  (:require [clojure.core.async :as a]
+            [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.store :as qp.store]
             [metabase.util
              [i18n :refer [tru]]
@@ -41,6 +42,9 @@
   "Middleware that will take any `:source-table`s (integer IDs) anywhere in the query and fetch and save the
   corresponding Table in the Query Processor Store."
   [qp]
-  (fn [query]
-    (resolve-source-tables* query)
-    (qp query)))
+  (fn [query xform {:keys [raise-chan], :as chans}]
+    (try
+      (resolve-source-tables* query)
+      (qp query xform chans)
+      (catch Throwable e
+        (a/>!! raise-chan e)))))

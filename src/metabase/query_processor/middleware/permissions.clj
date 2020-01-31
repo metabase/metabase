@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.permissions
   "Middleware for checking that the current user has permissions to run the current query."
-  (:require [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
+  (:require [clojure.core.async :as a]
+            [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
             [metabase.models
              [card :refer [Card]]
              [interface :as mi]
@@ -37,8 +38,7 @@
   (when *current-user-id*
     (if card-id
       (check-card-read-perms card-id)
-      (check-ad-hoc-query-perms outer-query)))
-  outer-query)
+      (check-ad-hoc-query-perms outer-query))))
 
 (defn check-query-permissions
   "Middleware that check that the current user has permissions to run the current query. This only applies if
@@ -46,7 +46,12 @@
   be checked separately before allowing the relevant objects to be create (e.g., when saving a new Pulse or
   'publishing' a Card)."
   [qp]
-  (comp qp check-query-permissions*))
+  (fn [query xform {:keys [raise-chan], :as chans}]
+    (try
+      (check-query-permissions* query)
+      (qp query xform chans)
+      (catch Throwable e
+        (a/>!! raise-chan e)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

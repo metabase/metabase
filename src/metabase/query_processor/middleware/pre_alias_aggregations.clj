@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.pre-alias-aggregations
-  (:require [metabase.driver :as driver]
+  (:require [clojure.core.async :as a]
+            [metabase.driver :as driver]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.middleware.annotate :as annotate]))
 
@@ -36,4 +37,8 @@
 (defn pre-alias-aggregations
   "Middleware that generates aliases for all aggregations anywhere in a query, and makes sure they're unique."
   [qp]
-  (comp qp maybe-pre-alias-aggregations))
+  (fn [query xform {:keys [raise-chan], :as chans}]
+    (try
+      (qp (maybe-pre-alias-aggregations query) xform chans)
+      (catch Throwable e
+        (a/>!! raise-chan e)))))

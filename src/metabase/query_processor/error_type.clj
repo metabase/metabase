@@ -75,10 +75,15 @@
   [error-type]
   (isa? hierarchy error-type :server))
 
+(deferror timed-out
+  "Error type if query fails to return the first row of results after some timeout."
+  :parent server
+  :show-in-embeds? true)
+
 ;;;; #### QP Errors
 
 (deferror qp
-  "Generic ancestor type for all unexpected errors (e.g., uncaught Exceptions) in QP code."
+  "Generic ancestor type for all unexpected errors (e.g., uncaught Exceptions) in Query Processor code."
   :parent server)
 
 (deferror driver

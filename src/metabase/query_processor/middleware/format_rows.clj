@@ -1,10 +1,10 @@
 (ns metabase.query-processor.middleware.format-rows
   "Middleware that formats the results of a query.
    Currently, the only thing this does is convert datetime types to ISO-8601 strings in the appropriate timezone."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.core.async :as a]
+            [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.query-processor.timezone :as qp.timezone]
-            [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [potemkin.types :as p.types])
   (:import [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime ZoneId]))
@@ -60,19 +60,29 @@
     (t/format :iso-offset-date-time
               (t/offset-date-time (t/with-zone-same-instant t timezone-id)))))
 
-(defn- format-rows* [rows]
-  (log/debug (tru "Formatting rows with results timezone ID {0}" (qp.timezone/results-timezone-id))
-             "\n"
-             (u/pprint-to-str 'blue (take 5 rows)))
+(defn- format-rows-xform [xf]
+  {:pre [(fn? xf)]}
+  (log/debug (tru "Formatting rows with results timezone ID {0}" (qp.timezone/results-timezone-id)))
   (let [timezone-id (t/zone-id (qp.timezone/results-timezone-id))]
-    (for [row rows]
-      (for [v row]
-        (format-value v timezone-id)))))
+    (fn
+      ([]
+       (xf))
+
+      ([result]
+       (xf result))
+
+      ([result row]
+       (xf result (mapv #(format-value % timezone-id) row))))))
 
 (defn format-rows
   "Format individual query result values as needed.  Ex: format temporal values as ISO-8601 strings w/ timezone offset."
   [qp]
-  (fn [{{:keys [format-rows?] :or {format-rows? true}} :middleware, :as query}]
-    (let [results (qp query)]
-      (cond-> results
-        (and format-rows? (:rows results)) (update :rows format-rows*)))))
+  (fn [{{:keys [format-rows?] :or {format-rows? true}} :middleware, :as query} xform-fn {:keys [raise-chan], :as chans}]
+    (let [xform-fn' (if format-rows?
+                      (fn [metadata]
+                        (comp format-rows-xform (xform-fn metadata)))
+                      xform-fn)]
+      (try
+        (qp query xform-fn' chans)
+        (catch Throwable e
+          (a/>!! raise-chan e))))))

@@ -57,27 +57,26 @@
   [column]
   (u/select-non-nil-keys column [:name :display_name :description :base_type :special_type :unit :fingerprint]))
 
-(defn- add-insights [rows result-metadata]
-  (transduce
-   identity
-   (redux/post-complete
-    (redux/juxt
-     (apply f/col-wise (for [{:keys [fingerprint], :as metadata} result-metadata]
-                         (if-not fingerprint
-                           (f/fingerprinter metadata)
-                           (f/constant-fingerprinter fingerprint))))
-     (insights/insights result-metadata))
-    (fn [[fingerprints insights]]
-      {:metadata (map (fn [fingerprint metadata]
-                        (if (instance? Throwable fingerprint)
-                          metadata
-                          (assoc metadata :fingerprint fingerprint)))
-                      fingerprints
-                      result-metadata)
-       :insights insights}))
-   rows))
+(defn insights-rf [{result-metadata :cols}]
+  (redux/post-complete
+   (redux/juxt
+    (apply f/col-wise (for [{:keys [fingerprint], :as metadata} result-metadata]
+                        (if-not fingerprint
+                          (f/fingerprinter metadata)
+                          (f/constant-fingerprinter fingerprint))))
+    (insights/insights result-metadata))
+   (fn [[fingerprints insights]]
+     {:metadata (map (fn [fingerprint metadata]
+                       (if (instance? Throwable fingerprint)
+                         metadata
+                         (assoc metadata :fingerprint fingerprint)))
+                     fingerprints
+                     result-metadata)
+      :insights insights})))
 
-;; TODO schema
+(defn- add-insights [rows result-metadata]
+  (transduce identity (insights-reducing-fn result-metadata) rows))
+
 (defn results->column-metadata
   "Return the desired storage format for the column metadata coming back from `results` and fingerprint the `results`."
   [{:keys [rows], :as results}]

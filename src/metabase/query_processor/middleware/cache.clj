@@ -20,6 +20,7 @@
              [util :as u]]
             [metabase.plugins.classloader :as classloader]
             [metabase.query-processor.middleware.cache-backend.interface :as i]
+            [medley.core :as m]
             [metabase.query-processor.util :as qputil]
             [metabase.util.i18n :refer [trs]]))
 
@@ -100,18 +101,40 @@
                (>= total-time-ms min-ttl-ms))
       (save-results! query-hash results))))
 
-(defn- run-query-with-cache [qp {:keys [cache-ttl], :as query} respond raise canceled-chan]
+;; TODO
+(defn- save-results-xform [xf]
+  #_(let [start-time (System/currentTimeMillis)
+          respond    (fn [results]
+                       (when results
+                         (save-results-if-successful! query-hash start-time results)
+                         (respond results)))])
+  #_(fn
+      ([]))
+  xf)
+
+(defn- reducible-cached-results [results]
+  (reify
+    clojure.lang.IReduceInit
+    (reduce [_ rf init-fn]
+      (let [init (init-fn)]
+        (loop [result (rf init (m/dissoc-in results [:data :rows])), [row & more] (-> results :data :rows)]
+          (cond
+            (reduced? result)
+            @result
+
+            (not row)
+            result
+
+            :else
+            (recur (rf result row) more)))))))
+
+(defn- run-query-with-cache [qp {:keys [cache-ttl], :as query} xform respond raise canceled-chan]
   ;; TODO - Query will already have `info.hash` if it's a userland query. I'm not 100% sure it will be the same hash,
   ;; because this is calculated after normalization, instead of before
   (let [query-hash (qputil/query-hash query)]
-    (if-let [cached-results (cached-results query-hash cache-ttl)]
-      (respond cached-results)
-      (let [start-time (System/currentTimeMillis)
-            respond    (fn [results]
-                         (when results
-                           (save-results-if-successful! query-hash start-time results)
-                           (respond results)))]
-        (qp query respond raise canceled-chan)))))
+    (if-let [results (cached-results query-hash cache-ttl)]
+      (respond (reducible-cached-results results))
+      (qp query xform #_(comp save-results-xform xform) respond raise canceled-chan))))
 
 (defn maybe-return-cached-results
   "Middleware for caching results of a query if applicable.
@@ -126,10 +149,10 @@
         running the query, satisfying this requirement.)
      *  The result *rows* of the query must be less than `query-caching-max-kb` when serialized (before compression)."
   [qp]
-  (fn [query respond raise canceled-chan]
+  (fn [query xform respond raise canceled-chan]
     (if-not (is-cacheable? query)
-      (qp query respond raise canceled-chan)
+      (qp xform query respond raise canceled-chan)
       ;; wait until we're actually going to use the cache before initializing the backend. We don't want to initialize
       ;; it when the files get compiled, because that would give it the wrong version of the
       ;; `IQueryProcessorCacheBackend` protocol
-      (run-query-with-cache qp query respond raise canceled-chan))))
+      (run-query-with-cache qp query xform respond raise canceled-chan))))

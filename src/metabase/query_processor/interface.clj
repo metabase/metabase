@@ -1,5 +1,6 @@
 (ns metabase.query-processor.interface
   "Dynamic variables, constants, and other things used across the query builder namespaces.")
+
 ;; TODO - Not 100% sure we really need this namespace since it's almost completely empty these days. Seems like the
 ;; things here could be moved elsewhere
 
@@ -18,3 +19,14 @@
   "Should we disable logging for the QP? (e.g., during sync we probably want to turn it off to keep logs less
   cluttered)."
   false)
+
+;; TODO - put this somewhere better
+
+(defn do-maybe-with-open [x f]
+  (if (instance? java.lang.AutoCloseable x)
+    (with-open [^java.lang.AutoCloseable x x]
+      (f x))
+    (f x)))
+
+(defmacro maybe-with-open {:style/indent 1} [[x-binding x] & body]
+  `(do-maybe-with-open ~x (fn [~x-binding] ~@body)))

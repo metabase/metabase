@@ -2,7 +2,8 @@
   "Middleware that creates corresponding `:joins` for Tables referred to by `:fk->` clauses and replaces those clauses
   with `:joined-field` clauses."
   (:refer-clojure :exclude [alias])
-  (:require [metabase
+  (:require [clojure.core.async :as a]
+            [metabase
              [db :as mdb]
              [driver :as driver]
              [util :as u]]
@@ -231,8 +232,6 @@
       (update query :query resolve-fk-clauses))
     query))
 
-
-
 (defn add-implicit-joins
   "Fetch and store any Tables other than the source Table referred to by `fk->` clauses in an MBQL query, and add a
   `:join-tables` key inside the MBQL inner query containing information about the `JOIN`s (or equivalent) that need to
@@ -240,4 +239,8 @@
 
   This middleware also replaces all `fk->` clauses with `joined-field` clauses, which are easier to work with."
   [qp]
-  (comp qp add-implicit-joins*))
+  (fn [query xform {:keys [raise-chan], :as chans}]
+    (try
+      (qp (add-implicit-joins* query) xform chans)
+      (catch Throwable e
+        (a/>!! raise-chan e)))))

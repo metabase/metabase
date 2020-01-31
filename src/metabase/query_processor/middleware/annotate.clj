@@ -11,10 +11,13 @@
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.models.humanization :as humanization]
-            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor
+             [error-type :as error-type]
+             [store :as qp.store]]
             [metabase.util
              [i18n :refer [deferred-tru tru]]
              [schema :as su]]
+            [redux.core :as redux]
             [schema.core :as s]))
 
 (def ^:private Col
@@ -48,40 +51,44 @@
 
 (defn- check-driver-native-columns
   "Double-check that the *driver* returned the correct number of `columns` for native query results."
-  [columns rows]
+  [cols rows]
+  {:pre [(sequential? cols) (every? map? cols)]}
   (when (seq rows)
-    (let [expected-count (count columns)
+    (let [expected-count (count cols)
           actual-count   (count (first rows))]
       (when-not (= expected-count actual-count)
         (throw (ex-info (str (deferred-tru "Query processor error: number of columns returned by driver does not match results.")
                              "\n"
                              (deferred-tru "Expected {0} columns, but first row of resuls has {1} columns."
-                                  expected-count actual-count))
-                 {:expected-columns columns
-                  :first-row        (first rows)}))))))
+                               expected-count actual-count))
+                 {:expected-columns (map :name cols)
+                  :first-row        (first rows)
+                  :type             error-type/qp}))))))
 
 (defmethod column-info :native
-  [_ {:keys [columns rows]}]
-  (check-driver-native-columns columns rows)
+  [_ {:keys [cols rows]}]
+  (check-driver-native-columns cols rows)
   ;; Infer the types of columns by looking at the first value for each in the results. Native queries don't have the
   ;; type information from the original `Field` objects used in the query.
   (vec
-   (for [i    (range (count columns))
-         :let [col       (nth columns i)
-               base-type (or (driver.common/values->base-type (for [row rows]
-                                                                (nth row i)))
-                             :type/*)]]
+   (for [i    (range (count cols))
+         :let [{col-name :name, :as col} (nth cols i)
+               col-name                  (name col-name)
+               base-type                 (or (:base_type col)
+                                             (driver.common/values->base-type (for [row rows]
+                                                                                (nth row i)))
+                                             :type/*)]]
      (merge
-      {:name         (name col)
-       :display_name (u/qualified-name col)
+      {:display_name (u/qualified-name col-name)
        :base_type    base-type
        :source       :native}
       ;; It is perfectly legal for a driver to return a column with a blank name; for example, SQL Server does this
       ;; for aggregations like `count(*)` if no alias is used. However, it is *not* legal to use blank names in MBQL
       ;; `:field-literal` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a valid
       ;; `:field-literal`, omit the `:field_ref`.
-      (when (seq (name col))
-        {:field_ref [:field-literal (name col) base-type]})))))
+      (when (seq col-name)
+        {:field_ref [:field-literal col-name base-type]})
+      col))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -363,7 +370,7 @@
 
 (defn- check-correct-number-of-columns-returned [returned-mbql-columns results]
   (let [expected-count (count returned-mbql-columns)
-        actual-count   (count (:columns results))]
+        actual-count   (count (:cols results))]
     (when (seq (:rows results))
       (when-not (= expected-count actual-count)
         (throw
@@ -418,7 +425,8 @@
     (mbql-cols source-query results)))
 
 (s/defn ^:private mbql-cols
-  "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the query."
+  "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the
+  query."
   [{:keys [source-metadata source-query fields], :as inner-query} :- su/Map, results]
   (let [cols (cols-for-mbql-query inner-query)]
     (cond
@@ -467,22 +475,39 @@
     (map merge cols cols-returned-by-driver)
     cols))
 
-(s/defn ^:private add-column-info* :- {:cols ColsWithUniqueNames, s/Keyword s/Any}
-  [query {cols-returned-by-driver :cols, :as results}]
+(s/defn ^:private column-info* :- ColsWithUniqueNames
+  [query {cols-returned-by-driver :cols, :as result}]
   ;; merge in `:cols` if returned by the driver, then make sure the `:name` of each map in `:cols` is unique, since
   ;; the FE uses it as a key for stuff like column settings
-  (let [cols (deduplicate-cols-names
-              (merge-cols-returned-by-driver (column-info query results) cols-returned-by-driver))]
-    (-> results
-        (assoc :cols cols)
-        ;; remove `:columns` which we no longer need
-        (dissoc :columns))))
+  (deduplicate-cols-names
+   (merge-cols-returned-by-driver (column-info query result) cols-returned-by-driver)))
+
+(def ^:private column-info-sample-size
+  "Number of result rows to sample when adding column info to results."
+  100)
+
+(defn- add-column-info-xform [{query-type :type, :as query} metadata]
+  (fn [rf]
+    (redux/post-complete
+     (redux/juxt rf ((take column-info-sample-size) conj))
+     (fn [[result sampled-rows]]
+       (if-not (map? result)
+         result
+         (assoc-in result [:data :cols] (column-info* query (assoc metadata :rows sampled-rows))))))))
 
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
   [qp]
-  (fn [query]
-    (add-column-info* query (qp query))))
+  (fn [{query-type :type, :as query} xformf chans]
+    (qp
+     query
+     (fn [metadata]
+       (if (= query-type :query)
+         (xformf (assoc metadata :cols (column-info* query metadata)))
+         ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
+         ;; queries...
+         (comp (add-column-info-xform query metadata) (xformf metadata))))
+     chans)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

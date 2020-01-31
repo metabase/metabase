@@ -6,13 +6,11 @@
             [cheshire.core :as json]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
-            [metabase.sync.analyze.query-results :as qr]
+            [metabase.driver :as driver]
             [metabase.util
              [encryption :as encryption]
              [i18n :refer [tru]]]
+            [redux.core :as redux]
             [ring.util.codec :as codec]
             [toucan.db :as db]))
 
@@ -80,33 +78,40 @@
        (= (encryption/maybe-decrypt (metadata-checksum metadata) :log-errors? false)
           (encryption/maybe-decrypt checksum                     :log-errors? false))))
 
+(defn- record-metadata! [{{:keys [card-id nested?]} :info} metadata]
+  (try
+    ;; At the very least we can skip the Extra DB call to update this Card's metadata results
+    ;; if its DB doesn't support nested queries in the first place
+    (when (and driver/*driver*
+               (driver/supports? driver/*driver* :nested-queries)
+               card-id
+               (not nested?))
+      (record-metadata! card-id metadata))
+    ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
+    ;; rather than failing the entire query
+    (catch Throwable e
+      (log/error e (tru "Error recording results metadata for query")))))
+
+(defn- insights-xform [metadata record!]
+  (fn insights-rf [rf]
+    (redux/post-complete
+     (redux/juxt rf (analyze.results/insights-reducing-fn metadata))
+     (fn [[result {:keys [metadata insights]}]]
+       (record! metadata)
+       (if-not (map? result)
+         result
+         (assoc result
+                :results_metadata {:checksum (metadata-checksum metadata)
+                                   :columns  metadata}
+                :insights insights))))))
+
 (defn record-and-return-metadata!
   "Middleware that records metadata about the columns returned when running the query."
   [qp]
-  (fn [{{:keys [card-id nested?]} :info, :as query}]
-    (let [results (qp query)]
-      (if (-> query :middleware :skip-results-metadata?)
-        results
-        (try
-          (let [{:keys [metadata insights]} (qr/results->column-metadata results)]
-            ;; At the very least we can skip the Extra DB call to update this Card's metadata results
-            ;; if its DB doesn't support nested queries in the first place
-            (when (and driver/*driver*
-                       (driver/supports? driver/*driver* :nested-queries)
-                       card-id
-                       (not nested?))
-              (record-metadata! card-id metadata))
-            ;; add the metadata and checksum to the response
-            (assoc results
-              :results_metadata {:checksum (metadata-checksum metadata)
-                                 :columns  metadata}
-              :insights insights))
-          ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
-          ;; rather than failing the entire query
-          (catch Throwable e
-            (log/error (tru "Error recording results metadata for query:")
-                       "\n"
-                       (class e) (.getMessage e)
-                       "\n"
-                       (u/pprint-to-str (u/filtered-stacktrace e)))
-            results))))))
+  (fn [{{:keys [skip-results-metadata?]} :middleware, :as query} xformf chans]
+    (if skip-results-metadata?
+      (qp query xformf chans)
+      (let [record! (partial record-metadata! query)
+            xformf' (fn [metadata]
+                      (comp (insights-xform metadata record!) (xformf metadata)))]
+        (qp query xformf' chans)))))

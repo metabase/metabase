@@ -1,5 +1,6 @@
 (ns metabase.query-processor.middleware.check-features
-  (:require [metabase
+  (:require [clojure.core.async :as a]
+            [metabase
              [driver :as driver]
              [util :as u]]
             [metabase.mbql.util :as mbql.u]
@@ -36,4 +37,8 @@
 (defn check-features
   "Middleware that checks that drivers support the `:features` required to use certain clauses, like `:stddev`."
   [qp]
-  (comp qp check-features*))
+  (fn [query xform {:keys [raise-chan], :as chans}]
+    (try
+      (qp (check-features* query) xform chans)
+      (catch Throwable e
+        (a/>!! raise-chan e)))))

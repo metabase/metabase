@@ -23,7 +23,8 @@
   appropriate `:remapped_from` and `:remapped_to` attributes in the result `:cols` in post-processing.
   `:remapped_from` and `:remapped_to` are the names of the columns, e.g. `category_id` is `:remapped_to` `name`, and
   `name` is `:remapped_from` `:category_id`."
-  (:require [metabase.mbql
+  (:require [clojure.core.async :as a]
+            [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.models.dimension :refer [Dimension]]
@@ -196,40 +197,51 @@
                        (value->readable (nth row col-index)))
                      dim-seq))))
 
-(s/defn ^:private remap-results
+(defn- remap-results-xform
   "Munges results for remapping after the query has been executed. For internal remappings, a new column needs to be
   added and each row flowing through needs to include the remapped data for the new column. For external remappings,
   the column information needs to be updated with what it's being remapped from and the user specified name for the
   remapped column."
-  [remapping-dimensions :- (s/maybe [ExternalRemappingDimension]), results]
-  (let [ ;; hydrate Dimensions and FieldValues for all of the columns in the results, then make a map of dimension info
-        ;; for each one that is `internal` type
-        internal-only-dims (->> (hydrate (:cols results) :values :dimensions)
-                                (keep-indexed col->dim-map)
-                                (filter identity))
-        ;; now using `indexed-dims` create a function that will add internal remapped values to each row in the results
-        remap-fn           (make-row-map-fn internal-only-dims)
-        ;; Get the entires we're going to add to `:cols` for each of the remapped values we add
-        internal-only-cols (map :new-column internal-only-dims)]
-    (-> results
-        ;; add remapping info `:remapped_from` and `:remapped_to` to each existing `:col`
-        (update :cols add-remapping-info remapping-dimensions internal-only-cols)
-        ;; now add the entries for each newly added column to the end of `:cols`
-        (update :cols concat internal-only-cols)
-        ;; Call our `remap-fn` on each row to add the new values to the end
-        (update :rows (partial map remap-fn)))))
+  [remapping-dimensions xf]
+  (let [remap-fn (atom nil)]
+    (fn
+      ([]
+       (xf))
 
+      ([result]
+       (xf result))
 
-;;; --------------------------------------------------- middleware ---------------------------------------------------
+      ([result {:keys [cols], :as results-metadata}]
+       (let [ ;; hydrate Dimensions and FieldValues for all of the columns in the results, then make a map of dimension info
+             ;; for each one that is `internal` type
+             internal-only-dims
+             (->> (hydrate cols :values :dimensions)
+                  (keep-indexed col->dim-map)
+                  (filter identity))
+             ;; Get the entires we're going to add to `:cols` for each of the remapped values we add
+             internal-only-cols (map :new-column internal-only-dims)]
+         ;; now using `indexed-dims` create a function that will add internal remapped values to each row in the results
+         (reset! remap-fn (make-row-map-fn internal-only-dims))
+         (xf result (-> results-metadata
+                        ;; add remapping info `:remapped_from` and `:remapped_to` to each existing `:col`
+                        (update :cols add-remapping-info remapping-dimensions internal-only-cols)
+                        ;; now add the entries for each newly added column to the end of `:cols`
+                        (update :cols concat internal-only-cols)))))
+
+      ([result results-metadata row]
+       (xf result results-metadata (@remap-fn row))))))
 
 (defn add-remapping
   "Query processor middleware. `qp` is the query processor, returns a function that works on a `query` map. Delgates to
   `add-fk-remaps` for making remapping changes to the query (before executing the query). Then delegates to
   `remap-results` to munge the results after query execution."
   [qp]
-  (fn [{query-type :type, :as query}]
+  (fn [{query-type :type, :as query} xform {:keys [raise-chan], :as chans}]
     (if (= query-type :native)
-      (qp query)
-      (let [[remapping-dimensions query] (add-fk-remaps query)
-            results                      (qp query)]
-        (remap-results remapping-dimensions results)))))
+      (qp query xform chans)
+      (try
+        (let [[remapping-dimensions query'] (add-fk-remaps query)
+              xform'                        (remap-results-xform remapping-dimensions xform)]
+          (qp query' xform' chans))
+        (catch Throwable e
+          (a/>!! raise-chan e))))))

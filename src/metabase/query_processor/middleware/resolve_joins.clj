@@ -2,7 +2,8 @@
   "Middleware that fetches tables that will need to be joined, referred to by `fk->` clauses, and adds information to
   the query about what joins should be done and how they should be performed."
   (:refer-clojure :exclude [alias])
-  (:require [metabase.mbql
+  (:require [clojure.core.async :as a]
+            [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.query-processor.middleware.add-implicit-clauses :as add-implicit-clauses]
@@ -179,15 +180,8 @@
 (defn resolve-joins
   "Add any Tables and Fields referenced by the `:joins` clause to the QP store."
   [qp]
-  (fn
-    ([query]
-     (qp (resolve-joins* query)))
-
-    ;; async-capable version of the middleware for the future when the entire QP is fully async
-    ([query respond raise canceled-chan]
-     (when-let [query (try
-                        (resolve-joins* query)
-                        (catch Throwable e
-                          (raise e)
-                          nil))]
-       (qp query respond raise canceled-chan)))))
+  (fn [query xform {:keys [raise-chan], :as chans}]
+    (try
+      (qp (resolve-joins* query) xform chans)
+      (catch Throwable e
+        (a/>!! raise-chan e)))))

@@ -315,7 +315,7 @@
   :hierarchy #'hierarchy)
 
 
-(defmulti execute-query
+(defmulti ^:deprecated execute-query
   "Execute a *native* query against the database and return the results.
 
   The query passed in will conform to the schema in `metabase.mbql.schema/Query`. MBQL queries are transformed to
@@ -326,11 +326,33 @@
 
     {:columns [\"id\", \"name\"]
      :rows    [[1 \"Lucky Bird\"]
-               [2 \"Rasta Can\"]]}"
+               [2 \"Rasta Can\"]]}
+
+  DEPRECATED: This is phased out in favor of `execute-reducible-query`."
   {:arglists '([driver query]), :style/indent 1}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti execute-reducible-query
+  "Execute a native query against that database and return rows that can be reduced using `transduce`/`reduce`.
+
+  Pass metadata about the columns and the reducible object to f, which has the signature
+
+    (f results-metadata rows)
+
+  You can use `qp.util.reducible/reducible-rows` to create reducible, streaming results.
+
+  Example impl:
+
+    (defmethod reducible-query :my-driver
+      [_ query chans f]
+      (with-open [results (run-query! query)]
+        (f
+         {:cols [{:name \"my_col\"}]}
+         (qp.util.reducible/reducible-rows (get-row results) chans)))"
+  {:arglists '([driver query chans f])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
 
 (def driver-features
   "Set of all features a driver can support."
@@ -523,16 +545,8 @@
 (defmethod sync-in-context ::driver [_ _ f] (f))
 
 
-(defmulti process-query-in-context
-  "Similar to `sync-in-context`, but for running queries rather than syncing. This should be used to do things like
-  open DB connections that need to remain open for the duration of post-processing. This function follows a middleware
-  pattern and is injected into the QP middleware stack immediately after the Query Expander; in other words, it will
-  receive the expanded query. See the Mongo and H2 drivers for examples of how this is intended to be used.
-
-       (defmethod process-query-in-context :my-driver
-         [driver qp]
-         (fn [query]
-           (qp query)))"
+(defmulti ^:deprecated process-query-in-context
+  "DEPRECATED: This method is no longer called and will be removed in the near future."
   {:arglists '([driver qp])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

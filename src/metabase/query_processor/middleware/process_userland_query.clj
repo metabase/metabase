@@ -2,16 +2,12 @@
   "Middleware related to doing extra steps for queries that are ran via API endpoints (i.e., most of them -- as opposed
   to queries ran internally e.g. as part of the sync process). These include things like saving QueryExecutions and
   formatting the results."
-  (:require [clojure.tools.logging :as log]
-            [medley.core :as m]
+  (:require [medley.core :as m]
             [metabase.models
              [query :as query]
              [query-execution :as query-execution :refer [QueryExecution]]]
-            [metabase.query-processor
-             [interface :as qp.i]
-             [util :as qputil]]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
+            [metabase.query-processor.util :as qputil]
+            [metabase.util.i18n :refer [tru]]
             [toucan.db :as db]))
 
 (defn- add-running-time [{start-time-ms :start_time_millis, :as query-execution}]
@@ -85,8 +81,8 @@
 
 (defn- format-userland-query-result
   "Format QP response in the format expected by the frontend client, and save a QueryExecution entry."
-  [respond raise query-execution {:keys [status], :as result}]
-  (cond
+  [chans query-execution {:keys [status], :as result}]
+  #_(cond
     ;; if the result itself is invalid there's something wrong in the QP -- not just with the query. Pass an
     ;; Exception up to the top-level handler; this is basically a 500 situation
     (nil? result)
@@ -149,10 +145,8 @@
   "Do extra handling 'userland' queries (i.e. ones ran as a result of a user action, e.g. an API call, scheduled Pulse,
   etc.). This includes recording QueryExecution entries and returning the results in an FE-client-friendly format."
   [qp]
-  (fn [{{:keys [userland-query?]} :middleware, :as query} respond raise canceled-chan]
-    (if-not userland-query?
-      (qp query respond raise canceled-chan)
-      ;; add calculated hash to query
-      (let [query   (assoc-in query [:info :query-hash] (qputil/query-hash query))
-            respond (partial format-userland-query-result respond raise (query-execution-info query))]
-        (qp query respond raise canceled-chan)))))
+  (fn [query xform {:keys [canceled-chan finished-chan], :as chans}]
+    ;; add calculated hash to query
+    (let [query'  (assoc-in query [:info :query-hash] (qputil/query-hash query))
+          respond (partial format-userland-query-result chans (query-execution-info query'))]
+      (qp query' xform chans))))

@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.add-implicit-clauses
   "Middlware for adding an implicit `:fields` and `:order-by` clauses to certain queries."
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.core.async :as a]
+            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [metabase
              [db :as mdb]
@@ -144,4 +145,8 @@
   "Add an implicit `fields` clause to queries with no `:aggregation`, `breakout`, or explicit `:fields` clauses.
    Add implicit `:order-by` clauses for fields specified in a `:breakout`."
   [qp]
-  (comp qp maybe-add-implicit-clauses))
+  (fn [query xform {:keys [raise-chan], :as chans}]
+    (try
+      (qp (maybe-add-implicit-clauses query) xform chans)
+      (catch Throwable e
+        (a/>!! raise-chan e)))))

@@ -20,7 +20,8 @@
     {:database 1, :type :query, :query {:source-query {...}, :source-metadata {...}}}
 
   TODO - consider renaming this namespace to `metabase.query-processor.middleware.resolve-card-id-source-tables`"
-  (:require [clojure.string :as str]
+  (:require [clojure.core.async :as a]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase.mbql
              [normalize :as normalize]
@@ -239,4 +240,8 @@
   "Middleware that assocs the `:source-query` for this query if it was specified using the shorthand `:source-table`
   `card__n` format."
   [qp]
-  (comp qp resolve-card-id-source-tables*))
+  (fn [query xform {:keys [raise-chan], :as chans}]
+    (try
+      (qp (resolve-card-id-source-tables* query) xform chans)
+      (catch Throwable e
+        (a/>!! raise-chan e)))))

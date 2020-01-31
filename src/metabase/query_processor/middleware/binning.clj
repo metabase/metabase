@@ -1,7 +1,8 @@
 (ns metabase.query-processor.middleware.binning
   "Middleware that handles `binning-strategy` Field clauses. This adds a `resolved-options` map to every
   `binning-strategy` clause that contains the information query processors will need in order to perform binning."
-  (:require [clojure.math.numeric-tower :refer [ceil expt floor]]
+  (:require [clojure.core.async :as a]
+            [clojure.math.numeric-tower :refer [ceil expt floor]]
             [metabase
              [public-settings :as public-settings]
              [util :as u]]
@@ -221,4 +222,8 @@
   the binned field. This middleware looks for that criteria, then updates the related min/max values and calculates
   the bin-width based on the criteria values (or global min/max information)."
   [qp]
-  (comp qp update-binning-strategy*))
+  (fn [query xform {:keys [raise-chan], :as chans}]
+    (try
+      (qp (update-binning-strategy* query) xform chans)
+      (catch Throwable e
+        (a/>!! raise-chan chans)))))
