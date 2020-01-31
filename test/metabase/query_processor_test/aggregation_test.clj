@@ -1,6 +1,7 @@
 (ns metabase.query-processor-test.aggregation-test
   "Tests for MBQL aggregations."
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor-test :as qp.test]
             [metabase.test
@@ -37,15 +38,14 @@
       (data/run-mbql-query venues
         {:aggregation [[:avg $latitude]]}))))
 
-
-;; distinct count aggregation
-(qp.test/expect-with-non-timeseries-dbs
-  {:rows [[15]]
-   :cols [(qp.test/aggregate-col :distinct :checkins :user_id)]}
-  (qp.test/rows-and-cols
-    (qp.test/format-rows-by [int]
-      (data/run-mbql-query checkins
-        {:aggregation [[:distinct $user_id]]}))))
+(deftest distinct-count-test
+  (datasets/test-drivers (qp.test/normal-drivers)
+    (is (= {:rows [[15]]
+            :cols [(qp.test/aggregate-col :distinct :checkins :user_id)]}
+           (qp.test/rows-and-cols
+             (qp.test/format-rows-by [int]
+               (data/run-mbql-query checkins
+                 {:aggregation [[:distinct $user_id]]})))))))
 
 ;; Test that no aggregation (formerly known as a 'rows' aggregation in MBQL '95) just returns rows as-is.
 (qp.test/expect-with-non-timeseries-dbs
@@ -66,7 +66,7 @@
 
 
 ;; standard deviation aggregations
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :standard-deviation-aggregations)
+(datasets/expect-with-drivers (qp.test/normal-drivers-with-feature :standard-deviation-aggregations)
   {:cols [(qp.test/aggregate-col :stddev :venues :latitude)]
    :rows [[3.4]]}
   (qp.test/rows-and-cols
@@ -74,7 +74,7 @@
       (data/run-mbql-query venues {:aggregation [[:stddev $latitude]]}))))
 
 ;; Make sure standard deviation fails for the Mongo driver since its not supported
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-without-feature :standard-deviation-aggregations)
+(datasets/expect-with-drivers (qp.test/normal-drivers-without-feature :standard-deviation-aggregations)
   {:status :failed
    :error  "standard-deviation-aggregations is not supported by this driver."}
   (select-keys (data/run-mbql-query venues
@@ -138,7 +138,7 @@
 ;; TODO - this isn't tested against Mongo because those driver doesn't currently work correctly with multiple columns
 ;; with the same name. It seems like it would be pretty easy to take the stuff we have for BigQuery and generalize it
 ;; so we can use it with Mongo
-(datasets/expect-with-drivers (disj @qp.test/non-timeseries-drivers :mongo)
+(datasets/expect-with-drivers (disj (qp.test/normal-drivers) :mongo)
   [(qp.test/aggregate-col :count)
    (assoc (qp.test/aggregate-col :count) :name "count_2", :field_ref [:aggregation 1])]
   (qp.test/cols

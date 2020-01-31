@@ -22,6 +22,11 @@
 
 (defn cacheable?
   "Can the ring request be permanently cached?"
-  [{:keys [uri query-string]}]
-  ;; match requests that are js/css and have a cache-busting query string
-  (and query-string (re-matches #"^/app/dist/.*\.(js|css)$" uri)))
+  [{:keys [request-method uri query-string], :as request}]
+  (and (= request-method :get)
+       (or
+        ;; match requests that are js/css and have a cache-busting query string
+        (and query-string
+             (re-matches #"^/app/dist/.*\.(js|css)$" uri))
+        ;; GeoJSON proxy requests should also be cached
+        (re-matches #"^/api/geojson/.*" uri))))

@@ -116,7 +116,10 @@ export const SET_PARAMETER_DEFAULT_VALUE =
   "metabase/dashboard/SET_PARAMETER_DEFAULT_VALUE";
 
 function getDashboardType(id) {
-  if (Utils.isUUID(id)) {
+  if (id == null || typeof id === "object") {
+    // HACK: support inline dashboards
+    return "inline";
+  } else if (Utils.isUUID(id)) {
     return "public";
   } else if (Utils.isJWT(id)) {
     return "embed";
@@ -520,7 +523,17 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
     };
 
     // make the actual request
-    if (dashboardType === "public") {
+    if (datasetQuery.type === "endpoint") {
+      result = await fetchDataOrError(
+        MetabaseApi.datasetEndpoint(
+          {
+            endpoint: datasetQuery.endpoint,
+            parameters: datasetQuery.parameters,
+          },
+          queryOptions,
+        ),
+      );
+    } else if (dashboardType === "public") {
       result = await fetchDataOrError(
         PublicApi.dashboardCardQuery(
           {
@@ -547,7 +560,7 @@ export const fetchCardData = createThunkAction(FETCH_CARD_DATA, function(
           queryOptions,
         ),
       );
-    } else if (dashboardType === "transient") {
+    } else if (dashboardType === "transient" || dashboardType === "inline") {
       result = await fetchDataOrError(
         MetabaseApi.dataset(
           { ...datasetQuery, ignore_cache: ignoreCache },
@@ -582,6 +595,31 @@ export const markCardAsSlow = createAction(MARK_CARD_AS_SLOW, card => ({
   id: card.id,
   result: true,
 }));
+
+// This adds default properties and placeholder IDs for an inline dashboard
+function expandInlineDashboard(dashboard) {
+  return {
+    name: "",
+    parameters: [],
+    ...dashboard,
+    ordered_cards: dashboard.ordered_cards.map(dashcard => ({
+      visualization_settings: {},
+      parameter_mappings: [],
+      ...dashcard,
+      id: _.uniqueId("dashcard"),
+      card: expandInlineCard(dashcard.card),
+      series: (dashcard.series || []).map(card => expandInlineCard(card)),
+    })),
+  };
+}
+function expandInlineCard(card) {
+  return {
+    name: "",
+    visualization_settings: {},
+    ...card,
+    id: _.uniqueId("card"),
+  };
+}
 
 export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
   dashId,
@@ -625,6 +663,12 @@ export const fetchDashboard = createThunkAction(FETCH_DASHBOARD, function(
           dashboard_id: dashId,
         })),
       };
+    } else if (dashboardType === "inline") {
+      // HACK: this is horrible but the easiest way to get "inline" dashboards up and running
+      // pass the dashboard in as dashboardId, and replace the id with [object Object] because
+      // that's what it will be when cast to a string
+      result = expandInlineDashboard(dashId);
+      dashId = result.id = String(dashId);
     } else {
       result = await DashboardApi.get({ dashId: dashId });
     }
@@ -1124,6 +1168,52 @@ const parameterValues = handleActions(
   {},
 );
 
+const loadingDashCards = handleActions(
+  {
+    [FETCH_DASHBOARD]: {
+      next: (state, { payload }) => ({
+        ...state,
+        dashcardIds: Object.values(payload.entities.dashcard || {}).map(
+          dc => dc.id,
+        ),
+      }),
+    },
+    [FETCH_DASHBOARD_CARD_DATA]: {
+      next: state => ({
+        ...state,
+        loadingIds: state.dashcardIds,
+        startTime:
+          state.dashcardIds.length > 0 &&
+          // check that performance is defined just in case
+          typeof performance === "object"
+            ? performance.now()
+            : null,
+      }),
+    },
+    [FETCH_CARD_DATA]: {
+      next: (state, { payload: { dashcard_id } }) => {
+        const loadingIds = state.loadingIds.filter(id => id !== dashcard_id);
+        return {
+          ...state,
+          loadingIds,
+          ...(loadingIds.length === 0 ? { startTime: null } : {}),
+        };
+      },
+    },
+    [CANCEL_FETCH_CARD_DATA]: {
+      next: (state, { payload: { dashcard_id } }) => {
+        const loadingIds = state.loadingIds.filter(id => id !== dashcard_id);
+        return {
+          ...state,
+          loadingIds,
+          ...(loadingIds.length === 0 ? { startTime: null } : {}),
+        };
+      },
+    },
+  },
+  { dashcardIds: [], loadingIds: [], startTime: null },
+);
+
 export default combineReducers({
   dashboardId,
   isEditing,
@@ -1135,4 +1225,5 @@ export default combineReducers({
   dashcardData,
   slowCards,
   parameterValues,
+  loadingDashCards,
 });

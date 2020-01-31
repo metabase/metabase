@@ -1,5 +1,6 @@
 (ns metabase.api.transform-test
-  (:require [expectations :refer :all]
+  (:require [clojure.test :refer :all]
+            [expectations :refer :all]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -9,9 +10,12 @@
             [metabase.test
              [data :as data]
              [domain-entities :refer :all]
+             [fixtures :as fixtures]
              [transforms :refer :all]
              [util :as tu]]
             [metabase.test.data.users :as test-users]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (defn- test-endpoint
   []

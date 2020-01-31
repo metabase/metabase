@@ -116,11 +116,13 @@
 
 ;;; ------------------------------------------ Saving objects in the Store -------------------------------------------
 
-(s/defn ^:private store-database!
+(s/defn store-database!
   "Store the Database referenced by this query for the duration of the current query execution. Throws an Exception if
   database is invalid or doesn't have all the required keys."
   [database :- DatabaseInstanceWithRequiredStoreKeys]
   (swap! *store* assoc :database database))
+
+;; TODO ­ I think these can be made private
 
 (s/defn store-table!
   "Store a `table` in the QP Store for the duration of the current query execution. Throws an Exception if table is

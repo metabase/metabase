@@ -73,11 +73,13 @@
 
 (defn successful-query-results
   ([]
-   {:data       {:cols     [(tu/obj->json->obj (qp.test/aggregate-col :count))]
-                 :rows     [[100]]
-                 :insights nil}
+   {:data       {:cols             [(tu/obj->json->obj (qp.test/aggregate-col :count))]
+                 :rows             [[100]]
+                 :insights         nil
+                 :results_timezone "UTC"}
     :json_query {:parameters nil}
     :status     "completed"})
+
   ([results-format]
    (case results-format
      ""      (successful-query-results)
@@ -183,6 +185,7 @@
          `(let [~response-format-binding         ~response-format
                 ~(or request-options-binding '_) {:request-options ~request-options}]
             (expect
+              ~(symbol (format "expect-for-response-formats-%s-%d" (str/join (rest response-format)) (hash [expected actual])))
               ~expected
               ~actual)))))
 
@@ -196,7 +199,9 @@
 ;; but if the card has an invalid query we should just get a generic "query failed" exception (rather than leaking
 ;; query info)
 (expect-for-response-formats [response-format]
-  "An error occurred while running the query."
+  (if (= response-format "")
+    {:status "failed" :error "An error occurred while running the query."}
+    "An error occurred while running the query.")
   (tu.log/suppress-output
     (with-embedding-enabled-and-new-secret-key
       (with-temp-card [card {:enable_embedding true, :dataset_query {:database (data/id)

@@ -115,7 +115,7 @@
   "Default implementation of `driver/notify-database-updated` for JDBC SQL drivers. We are being informed that a
   `database` has been updated, so lets shut down the connection pool (if it exists) under the assumption that the
   connection details have changed."
-  [_ database]
+  [database]
   (set-pool! (u/get-id database) nil))
 
 (defn db->pooled-connection-spec

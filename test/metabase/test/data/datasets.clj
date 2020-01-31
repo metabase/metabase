@@ -13,6 +13,7 @@
   TODO - this namespace name really doesn't make a lot of sense. How about `metabase.test.driver` or something like
   that?"
   (:require [clojure.test :as t]
+            [colorize.core :as colorize]
             [metabase.driver :as driver]
             [metabase.test.data
              [env :as tx.env]
@@ -25,7 +26,7 @@
   (This does NOT bind `*driver*`; use `driver/with-driver` if you want to do that.)"
   {:style/indent 1}
   [driver f]
-  (when (contains? @tx.env/test-drivers driver)
+  (when (contains? (tx.env/test-drivers) driver)
     (f)))
 
 (defmacro when-testing-driver
@@ -50,7 +51,7 @@
   {:style/indent 1}
   [driver & body]
   `(with-driver-when-testing ~driver
-     (t/testing ~driver
+     (t/testing (str "\n" (colorize/cyan ~driver))
        ~@body)))
 
 (defmacro test-drivers
@@ -77,7 +78,7 @@
   ;; speeds up loading of metabase.driver.query-processor-test significantly
   (let [symb (symbol (str "expect-with-drivers-" (hash &form)))]
     `(t/deftest ~symb
-       (t/testing (format ~(str (name (ns-name *ns*)) ":%d") (:line (meta #'~symb)))
+       (t/testing (str "\n" (format ~(str (name (ns-name *ns*)) ":%d") (:line (meta #'~symb))))
          (test-drivers ~drivers
            (t/is (~'expect= ~expected ~actual)))))))
 
@@ -98,7 +99,7 @@
   "Execute body (presumably containing tests) against all drivers we're currently testing against."
   {:style/indent 0}
   [& body]
-  `(test-drivers @tx.env/test-drivers ~@body))
+  `(test-drivers (tx.env/test-drivers) ~@body))
 
 (defmacro ^:deprecated expect-with-all-drivers
   "Generate unit tests for all drivers specified in env var `DRIVERS`. `*driver*` is bound to the current driver inside
@@ -111,4 +112,4 @@
         (is (= ...))))"
   {:style/indent 0}
   [expected actual]
-  `(expect-with-drivers @tx.env/test-drivers ~expected ~actual))
+  `(expect-with-drivers (tx.env/test-drivers) ~expected ~actual))

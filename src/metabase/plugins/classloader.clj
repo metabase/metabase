@@ -81,8 +81,8 @@
        current-thread-context-classloader))
    ;; otherwise set the current thread's context classloader to the shared context classloader
    (let [shared-classloader @shared-context-classloader]
-     (log/debug
-       (deferred-trs "Setting current thread context classloader to shared classloader {0}..." shared-classloader))
+     (log/trace
+      (deferred-trs "Setting current thread context classloader to shared classloader {0}..." shared-classloader))
      (.setContextClassLoader (Thread/currentThread) shared-classloader)
      shared-classloader)))
 
@@ -96,8 +96,9 @@
   ;; as elsewhere make sure Clojure is using our context classloader (which should normally be true anyway) because
   ;; that's the one that will have access to the JARs we've added to the classpath at runtime
   (binding [*use-context-classloader* true]
-    (apply clojure.core/require args)))
-
+    ;; serialize requires
+    (locking clojure.lang.RT/REQUIRE_LOCK
+      (apply clojure.core/require args))))
 
 (defn- classloader-hierarchy
   "Return a sequence of classloaders representing the hierarchy for `classloader` by iterating over calls to

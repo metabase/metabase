@@ -8,6 +8,7 @@ import PulseCardPreview from "./PulseCardPreview";
 
 import QuestionSelect from "metabase/containers/QuestionSelect";
 
+// import Query from "metabase/lib/query";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { color } from "metabase/lib/colors";
@@ -22,7 +23,7 @@ function isAutoAttached(cardPreview) {
     cardPreview &&
     cardPreview.pulse_card_type === "table" &&
     (cardPreview.row_count > TABLE_MAX_ROWS ||
-      cardPreview.col_cound > TABLE_MAX_COLS)
+      cardPreview.col_count > TABLE_MAX_COLS)
   );
 }
 

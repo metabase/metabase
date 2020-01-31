@@ -1,8 +1,9 @@
 (ns metabase.query-processor.middleware.optimize-datetime-filters
   "Middlware that optimizes equality (`=` and `!=`) and comparison (`<`, `between`, etc.) filter clauses against
   bucketed datetime fields. See docstring for `optimize-datetime-filters` for more details."
-  (:require [metabase.mbql.util :as mbql.u]
-            [metabase.util.date :as du]))
+  (:require [clojure.tools.logging :as log]
+            [metabase.mbql.util :as mbql.u]
+            [metabase.util.date-2 :as u.date]))
 
 (def ^:private optimizable-units
   #{:second :minute :hour :day :week :month :quarter :year})
@@ -33,11 +34,11 @@
      [:absolute-datetime _ (unit-2 :guard optimizable-units)]]
     (= (datetime-field-unit field) unit-1 unit-2)))
 
-(defn- lower-bound [unit inst]
-  (du/date-trunc unit inst))
+(defn- lower-bound [unit t]
+  (:start (u.date/range t unit)))
 
-(defn- upper-bound [unit inst]
-  (du/relative-date unit 1 (lower-bound unit inst)))
+(defn- upper-bound [unit t]
+  (:end (u.date/range t unit)))
 
 (defn- change-datetime-field-unit-to-default [field]
   (mbql.u/replace field
@@ -45,7 +46,9 @@
     [:datetime-field wrapped :default]))
 
 (defmulti ^:private optimize-filter
-  mbql.u/dispatch-by-clause-name-or-class)
+  {:arglists '([clause])}
+  (fn [clause]
+    (mbql.u/dispatch-by-clause-name-or-class clause)))
 
 (defmethod optimize-filter :=
   [[_ field [_ inst unit]]]
@@ -61,20 +64,33 @@
   (mbql.u/negate-filter-clause ((get-method optimize-filter :=) filter-clause)))
 
 (defn- optimize-comparison-filter
-  [trunc-fn [filter-type field [_ inst unit]]]
-  [filter-type (change-datetime-field-unit-to-default field) [:absolute-datetime (trunc-fn unit inst) :default]])
+  [trunc-fn [filter-type field [_ inst unit]] new-filter-type]
+  [new-filter-type
+   (change-datetime-field-unit-to-default field)
+   [:absolute-datetime (trunc-fn unit inst) :default]])
 
-(defmethod optimize-filter :<  [filter-clause] (optimize-comparison-filter lower-bound filter-clause))
-(defmethod optimize-filter :<= [filter-clause] (optimize-comparison-filter lower-bound filter-clause))
-(defmethod optimize-filter :>  [filter-clause] (optimize-comparison-filter upper-bound filter-clause))
-(defmethod optimize-filter :>= [filter-clause] (optimize-comparison-filter upper-bound filter-clause))
+(defmethod optimize-filter :<
+  [filter-clause]
+  (optimize-comparison-filter lower-bound filter-clause :<))
+
+(defmethod optimize-filter :<=
+  [filter-clause]
+  (optimize-comparison-filter upper-bound filter-clause :<))
+
+(defmethod optimize-filter :>
+  [filter-clause]
+  (optimize-comparison-filter upper-bound filter-clause :>=))
+
+(defmethod optimize-filter :>=
+  [filter-clause]
+  (optimize-comparison-filter lower-bound filter-clause :>=))
 
 (defmethod optimize-filter :between
   [[_ field [_ lower unit] [_ upper]]]
   (let [field' (change-datetime-field-unit-to-default field)]
     [:and
      [:>= field' [:absolute-datetime (lower-bound unit lower) :default]]
-     [:< field'  [:absolute-datetime (upper-bound unit upper) :default]]]))
+     [:<  field' [:absolute-datetime (upper-bound unit upper) :default]]]))
 
 (defn- optimize-datetime-filters* [{query-type :type, :as query}]
   (if (not= query-type :query)
@@ -82,7 +98,10 @@
     (mbql.u/replace query
       (_ :guard (partial mbql.u/is-clause? (set (keys (methods optimize-filter)))))
       (if (can-optimize-filter? &match)
-        (optimize-filter &match)
+        (let [optimized (optimize-filter &match)]
+          (when-not (= &match optimized)
+            (log/tracef "Optimized filter %s to %s" (pr-str &match) (pr-str optimized)))
+          optimized)
         &match))))
 
 (defn optimize-datetime-filters
@@ -90,11 +109,11 @@
   bucketed datetime fields. Rewrites those filter clauses as logically equivalent filter clauses that do not use
   bucketing (i.e., their datetime unit is `:default`, meaning no bucketing functions need be applied).
 
-    [:= [:datetime-field [:field-id 1] :month] [:absolute-datetime #inst \"2019-09-01\" :month]]
+    [:= [:datetime-field [:field-id 1] :month] [:absolute-datetime #t \"2019-09-01\" :month]]
     ->
     [:and
-     [:>= [:datetime-field [:field-id 1] :default] [:absolute-datetime #inst \"2019-09-01\" :month]]
-     [:<  [:datetime-field [:field-id 1] :default] [:absolute-datetime #inst \"2019-10-01\" :month]]]
+     [:>= [:datetime-field [:field-id 1] :default] [:absolute-datetime #t \"2019-09-01\" :month]]
+     [:<  [:datetime-field [:field-id 1] :default] [:absolute-datetime #t \"2019-10-01\" :month]]]
 
   The equivalent SQL, before and after, looks like:
 

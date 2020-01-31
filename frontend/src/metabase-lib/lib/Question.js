@@ -11,6 +11,7 @@ import NativeQuery, {
   NATIVE_QUERY_TEMPLATE,
 } from "metabase-lib/lib/queries/NativeQuery";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
+import InternalQuery from "./queries/InternalQuery";
 
 import Query from "metabase-lib/lib/queries/Query";
 
@@ -26,7 +27,7 @@ import {
 } from "metabase-lib/lib/Dimension";
 import Mode from "metabase-lib/lib/Mode";
 
-import { memoize } from "metabase-lib/lib/utils";
+import { memoize, sortObject } from "metabase-lib/lib/utils";
 
 // TODO: remove these dependencies
 import * as Card_DEPRECATED from "metabase/lib/card";
@@ -217,7 +218,7 @@ export default class Question {
   query(): Query {
     const datasetQuery = this._card.dataset_query;
 
-    for (const QueryClass of [StructuredQuery, NativeQuery]) {
+    for (const QueryClass of [StructuredQuery, NativeQuery, InternalQuery]) {
       if (QueryClass.isDatasetQueryType(datasetQuery)) {
         return new QueryClass(this, datasetQuery);
       }
@@ -276,7 +277,61 @@ export default class Question {
     return this.setCard(assoc(this.card(), "display", display));
   }
 
+  // The selected display is set when the user explicitly chooses a
+  // visualization type. Having it set prevents auto selecting a new type,
+  // unless the selected type isn't sensible.
+  setSelectedDisplay(display): Question {
+    return this.setCard(
+      assoc(this.card(), "selectedDisplay", display),
+    ).setDisplay(display);
+  }
+  selectedDisplay(): string {
+    return this._card && this._card.selectedDisplay;
+  }
+
+  // This feels a bit hacky because it stores result-dependent info on card. We
+  // use the list of sensible displays to override a user-selected display if it
+  // no longer makes sense for the data.
+  setSensibleDisplays(displays): Question {
+    return this.setCard(assoc(this.card(), "sensibleDisplays", displays));
+  }
+  sensibleDisplays(): string[] {
+    return (this._card && this._card.sensibleDisplays) || [];
+  }
+
+  // This determines whether `setDefaultDisplay` should replace the current
+  // display. If we have a list of sensibleDisplays and the user-selected
+  // display is one of them, we won't overwrite it in `setDefaultDisplay`. If
+  // the user hasn't selected a display or `sensibleDisplays` hasn't been set,
+  // we can let `setDefaultDisplay` choose a display type.
+  shouldNotSetDisplay(): boolean {
+    return this.sensibleDisplays().includes(this.selectedDisplay());
+  }
+
+  // Switches display based on data shape. For 1x1 data, we show a scalar. If
+  // our display was a 1x1 type, but the data isn't 1x1, we show a table.
+  switchTableScalar({ rows = [], cols }): Question {
+    const display = this.display();
+    const isScalar = ["scalar", "progress", "gauge"].includes(display);
+    const isOneByOne = rows.length === 1 && cols.length === 1;
+
+    const newDisplay =
+      !isScalar && isOneByOne
+        ? // if we have a 1x1 data result then this should always be viewed as a scalar
+          "scalar"
+        : isScalar && !isOneByOne
+        ? // any time we were a scalar and now have more than 1x1 data switch to table view
+          "table"
+        : // otherwise leave the display unchanged
+          display;
+
+    return this.setDisplay(newDisplay);
+  }
+
   setDefaultDisplay(): Question {
+    if (this.shouldNotSetDisplay()) {
+      return this;
+    }
     const query = this.query();
     if (query instanceof StructuredQuery) {
       // TODO: move to StructuredQuery?
@@ -874,7 +929,7 @@ export default class Question {
         : {}),
     };
 
-    return Card_DEPRECATED.utf8_to_b64url(JSON.stringify(cardCopy));
+    return Card_DEPRECATED.utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
 }
 

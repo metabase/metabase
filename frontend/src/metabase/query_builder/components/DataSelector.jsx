@@ -246,15 +246,17 @@ export default class DataSelector extends Component {
   };
 
   componentWillMount() {
+    this.hydrateActiveStep();
+  }
+
+  componentDidMount() {
     const useOnlyAvailableDatabase =
       !this.props.selectedDatabaseId &&
       this.props.databases.length === 1 &&
       !this.props.segments;
     if (useOnlyAvailableDatabase) {
-      setTimeout(() => this.onChangeDatabase(0, true));
+      this.onChangeDatabase(0, true);
     }
-
-    this.hydrateActiveStep();
   }
 
   componentWillReceiveProps(nextProps) {
@@ -430,7 +432,13 @@ export default class DataSelector extends Component {
           selectedTable,
           selectedField,
         })}
-        <Icon className="ml1" name="chevrondown" size={triggerIconSize || 8} />
+        {!this.props.readOnly && (
+          <Icon
+            className="ml1"
+            name="chevrondown"
+            size={triggerIconSize || 8}
+          />
+        )}
       </span>
     );
   }

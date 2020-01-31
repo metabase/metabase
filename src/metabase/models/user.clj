@@ -14,7 +14,6 @@
              [permissions-group :as group]
              [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]]
             [metabase.util
-             [date :as du]
              [i18n :refer [trs]]
              [schema :as su]]
             [schema.core :as s]
@@ -35,7 +34,7 @@
   (assert (not (:password_salt user))
     "Don't try to pass an encrypted password to (insert! User). Password encryption is handled by pre-insert.")
   (let [salt     (str (UUID/randomUUID))
-        defaults {:date_joined  (du/new-sql-timestamp)
+        defaults {:date_joined  :%now
                   :last_login   nil
                   :is_active    true
                   :is_superuser false}]

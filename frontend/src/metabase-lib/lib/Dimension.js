@@ -821,6 +821,11 @@ export class ExpressionDimension extends Dimension {
   }
 }
 
+// These types aren't aggregated. e.g. if you take the distinct count of a FK
+// column, you now have a normal integer and should see relevant filters for
+// that type.
+const UNAGGREGATED_SPECIAL_TYPES = new Set([TYPE.FK, TYPE.PK]);
+
 /**
  * Aggregation reference, `["aggregation", aggregation-index]`
  */
@@ -841,8 +846,11 @@ export class AggregationDimension extends Dimension {
 
   column(extra = {}) {
     const aggregation = this.aggregation();
+    const { special_type, ...column } = super.column();
     return {
-      ...super.column(),
+      ...column,
+      // don't pass through `special_type` when aggregating these types
+      ...(!UNAGGREGATED_SPECIAL_TYPES.has(special_type) && { special_type }),
       base_type: aggregation ? aggregation.baseType() : TYPE.Float,
       source: "aggregation",
       ...extra,

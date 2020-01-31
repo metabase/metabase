@@ -5,8 +5,8 @@ import {
   forBothAdminsAndNormalUsers,
   useSharedAdminLogin,
   useSharedNormalLogin,
-} from "__support__/e2e_tests";
-import { click, clickButton } from "__support__/enzyme_utils";
+} from "__support__/e2e";
+import { click, clickButton } from "__support__/enzyme";
 
 import { fetchTableMetadata } from "metabase/redux/metadata";
 import { mount } from "enzyme";

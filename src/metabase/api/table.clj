@@ -7,10 +7,10 @@
              [driver :as driver]
              [related :as related]
              [sync :as sync]
+             [types :as types]
              [util :as u]]
             [metabase.api.common :as api]
             [metabase.driver.util :as driver.u]
-            [metabase.mbql.util :as mbql.u]
             [metabase.models
              [card :refer [Card]]
              [field :refer [Field]]
@@ -172,7 +172,7 @@
 (defn- supports-date-binning?
   "Time fields don't support binning, returns true if it's a DateTime field and not a time field"
   [{:keys [base_type], :as field}]
-  (and (mbql.u/datetime-field? field)
+  (and (types/temporal-field? field)
        (not (isa? base_type :type/Time))))
 
 (defn- assoc-field-dimension-options [driver {:keys [base_type special_type fingerprint] :as field}]

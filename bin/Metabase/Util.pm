@@ -6,10 +6,12 @@ package Metabase::Util;
 use Cwd 'getcwd';
 use Exporter;
 use JSON;
+use Readonly;
 use Term::ANSIColor qw(:constants);
 
 our @ISA = qw(Exporter);
 our @EXPORT = qw(config
+                 config_or_die
                  announce
                  print_giant_success_banner
                  get_file_or_die
@@ -17,14 +19,19 @@ our @EXPORT = qw(config
                  OSX_ARTIFACTS_DIR
                  artifact);
 
-my $config_file = getcwd() . '/bin/config.json';
+Readonly my $config_file => getcwd() . '/bin/config.json';
 warn "Missing config file: $config_file\n" .
      "Please copy $config_file.template, and edit it as needed.\n"
      unless (-e $config_file);
-my $config = from_json(`cat $config_file`) if -e $config_file;
+Readonly my $config => from_json(`cat $config_file`) if -e $config_file;
 
 sub config {
     return $config ? $config->{ $_[0] } : '';
+}
+
+sub config_or_die {
+    my ($configKey) = @_;
+    return config($configKey) or die "Missing config.json property '$configKey'";
 }
 
 sub announce {

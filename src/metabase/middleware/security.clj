@@ -2,12 +2,11 @@
   "Ring middleware for adding security-related headers to API responses."
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
+            [java-time :as t]
             [metabase.config :as config]
             [metabase.middleware.util :as middleware.u]
             [metabase.models.setting :refer [defsetting]]
-            [metabase.util
-             [date :as du]
-             [i18n :as ui18n :refer [deferred-tru]]]
+            [metabase.util.i18n :as ui18n :refer [deferred-tru]]
             [ring.util.codec :refer [base64-encode]])
   (:import java.security.MessageDigest))
 
@@ -37,7 +36,7 @@
   []
   {"Cache-Control" "max-age=0, no-cache, must-revalidate, proxy-revalidate"
    "Expires"        "Tue, 03 Jul 2001 06:00:00 GMT"
-   "Last-Modified"  (du/format-date :rfc822)})
+   "Last-Modified"  (t/format :rfc-1123-date-time (t/zoned-date-time))})
 
  (defn- cache-far-future-headers
    "Headers that tell browsers to cache a static resource for a long time."

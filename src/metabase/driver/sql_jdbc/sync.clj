@@ -44,9 +44,11 @@
 (defmethod excluded-schemas :sql-jdbc [_] nil)
 
 
+;; TODO - why don't we just use JDBC `DatabaseMetaData` to do this? This is wacky
 (defmulti database-type->base-type
   "Given a native DB column type (as a keyword), return the corresponding `Field` `base-type`, which should derive from
-  `:type/*`. You can use `pattern-based-database-type->base-type` in this namespace to implement this using regex patterns."
+  `:type/*`. You can use `pattern-based-database-type->base-type` in this namespace to implement this using regex
+  patterns."
   {:arglists '([driver database-type])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)

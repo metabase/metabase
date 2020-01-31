@@ -4,6 +4,7 @@
   (:require [clojure.core.cache :as cache]
             [clojure.tools.logging :as log]
             [hiccup.core :refer [html]]
+            [java-time :as t]
             [medley.core :as m]
             [metabase
              [config :as config]
@@ -15,7 +16,6 @@
              [body :as render.body]
              [style :as render.style]]
             [metabase.util
-             [date :as du]
              [export :as export]
              [i18n :refer [deferred-trs trs tru]]
              [quotation :as quotation]
@@ -71,7 +71,7 @@
                                :invitorEmail (:email invitor)
                                :company      company
                                :joinUrl      join-url
-                               :today        (du/format-date "MMM'&nbsp;'dd,'&nbsp;'yyyy")
+                               :today        (t/format "MMM'&nbsp;'dd,'&nbsp;'yyyy" (t/zoned-date-time))
                                :logoHeader   true}
                               (random-quote-context)))]
     (email/send-message!
@@ -106,7 +106,7 @@
                               :joinedUserName    (:first_name new-user)
                               :joinedViaSSO      google-auth?
                               :joinedUserEmail   (:email new-user)
-                              :joinedDate        (du/format-date "EEEE, MMMM d") ; e.g. "Wednesday, July 13". TODO - is this what we want?
+                              :joinedDate        (t/format "EEEE, MMMM d" (t/zoned-date-time)) ; e.g. "Wednesday, July 13". TODO - is this what we want?
                               :adminEmail        (first recipients)
                               :joinedUserEditUrl (str (public-settings/site-url) "/admin/people")}
                              (random-quote-context))))))
@@ -145,7 +145,7 @@
   (assoc obj :url ((model-name->url-fn model) id)))
 
 (defn- build-dependencies
-  "Build a sequence of dependencies from a MODEL-NAME->DEPENDENCIES map, and add various information such as obj URLs."
+  "Build a sequence of dependencies from a `model-name->dependencies` map, and add various information such as obj URLs."
   [model-name->dependencies]
   (for [model-name (sort (keys model-name->dependencies))
         :let       [user-facing-name (if (= model-name "Card")
@@ -345,34 +345,34 @@
   (str "metabase/email/" template-name ".mustache"))
 
 ;; Paths to the templates for all of the alerts emails
-(def ^:private new-alert-template (template-path "alert_new_confirmation"))
-(def ^:private you-unsubscribed-template (template-path "alert_unsubscribed"))
+(def ^:private new-alert-template          (template-path "alert_new_confirmation"))
+(def ^:private you-unsubscribed-template   (template-path "alert_unsubscribed"))
 (def ^:private admin-unsubscribed-template (template-path "alert_admin_unsubscribed_you"))
-(def ^:private added-template (template-path "alert_you_were_added"))
-(def ^:private stopped-template (template-path "alert_stopped_working"))
-(def ^:private deleted-template (template-path "alert_was_deleted"))
+(def ^:private added-template              (template-path "alert_you_were_added"))
+(def ^:private stopped-template            (template-path "alert_stopped_working"))
+(def ^:private deleted-template            (template-path "alert_was_deleted"))
 
 (defn send-new-alert-email!
-  "Send out the initial 'new alert' email to the `CREATOR` of the alert"
+  "Send out the initial 'new alert' email to the `creator` of the alert"
   [{:keys [creator] :as alert}]
   (send-email! creator "You set up an alert" new-alert-template
                (default-alert-context alert alert-condition-text)))
 
 (defn send-you-unsubscribed-alert-email!
-  "Send an email to `WHO-UNSUBSCRIBED` letting them know they've unsubscribed themselves from `ALERT`"
+  "Send an email to `who-unsubscribed` letting them know they've unsubscribed themselves from `alert`"
   [alert who-unsubscribed]
   (send-email! who-unsubscribed "You unsubscribed from an alert" you-unsubscribed-template
                (default-alert-context alert)))
 
 (defn send-admin-unsubscribed-alert-email!
-  "Send an email to `USER-ADDED` letting them know `ADMIN` has unsubscribed them from `ALERT`"
+  "Send an email to `user-added` letting them know `admin` has unsubscribed them from `alert`"
   [alert user-added {:keys [first_name last_name] :as admin}]
   (let [admin-name (format "%s %s" first_name last_name)]
     (send-email! user-added "You’ve been unsubscribed from an alert" admin-unsubscribed-template
                  (assoc (default-alert-context alert) :adminName admin-name))))
 
 (defn send-you-were-added-alert-email!
-  "Send an email to `USER-ADDED` letting them know `ADMIN-ADDER` has added them to `ALERT`"
+  "Send an email to `user-added` letting them know `admin-adder` has added them to `alert`"
   [alert user-added {:keys [first_name last_name] :as admin-adder}]
   (let [subject (format "%s %s added you to an alert" first_name last_name)]
     (send-email! user-added subject added-template (default-alert-context alert alert-condition-text))))

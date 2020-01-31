@@ -355,10 +355,10 @@ export default class Join extends MBQLObjectClause {
     ]);
   }
 
-  dependentTableIds() {
+  dependentMetadata() {
     const joinedQuery = this.joinedQuery();
     return joinedQuery
-      ? joinedQuery.dependentTableIds({ includeFKs: false })
+      ? joinedQuery.dependentMetadata({ foreignTables: false })
       : [];
   }
 

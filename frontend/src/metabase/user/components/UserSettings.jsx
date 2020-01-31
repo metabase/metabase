@@ -11,6 +11,8 @@ import UserAvatar from "metabase/components/UserAvatar";
 
 import SetUserPassword from "./SetUserPassword";
 
+import { PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS } from "metabase/plugins";
+
 export default class UserSettings extends Component {
   static propTypes = {
     tab: PropTypes.string.isRequired,
@@ -29,6 +31,9 @@ export default class UserSettings extends Component {
 
   render() {
     const { tab, user, setTab } = this.props;
+    const showChangePassword = PLUGIN_SHOW_CHANGE_PASSWORD_CONDITIONS.every(f =>
+      f(user),
+    );
 
     return (
       <Box>
@@ -50,22 +55,24 @@ export default class UserSettings extends Component {
             <h2>{t`Account settings`}</h2>
           </Flex>
 
-          <Radio
-            value={tab}
-            underlined={true}
-            options={[
-              { name: t`Profile`, value: "details" },
-              {
-                name: t`Password`,
-                value: "password",
-              },
-            ]}
-            onChange={tab => setTab(tab)}
-          />
+          {showChangePassword && (
+            <Radio
+              value={tab}
+              underlined={true}
+              options={[
+                { name: t`Profile`, value: "details" },
+                {
+                  name: t`Password`,
+                  value: "password",
+                },
+              ]}
+              onChange={tab => setTab(tab)}
+            />
+          )}
         </Flex>
         <Box w={["100%", 540]} ml="auto" mr="auto" px={[1, 2]} pt={[1, 3]}>
-          {tab === "details" ? (
-            <User.Form {...this.props} formName="user" />
+          {tab === "details" || !showChangePassword ? (
+            <User.Form {...this.props} form={User.forms.user} />
           ) : tab === "password" ? (
             <SetUserPassword
               submitFn={this.onUpdatePassword.bind(this)}

@@ -8,6 +8,7 @@
              [util :as u]]
             [metabase.middleware.util :as middleware.u]
             [metabase.models
+             [collection :as collection :refer [Collection]]
              [permissions-group :as group :refer [PermissionsGroup]]
              [permissions-group-membership :refer [PermissionsGroupMembership]]
              [user :refer [User]]
@@ -17,7 +18,9 @@
              [fixtures :as fixtures]
              [util :as tu :refer [random-name]]]
             [metabase.test.data.users :as test-users]
-            [toucan.db :as db]
+            [toucan
+             [db :as db]
+             [hydrate :refer [hydrate]]]
             [toucan.util.test :as tt]))
 
 (use-fixtures :once (fixtures/initialize :test-users-personal-collections))
@@ -326,9 +329,18 @@
 ;;; |                                      Updating a User -- PUT /api/user/:id                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn include-personal-collection-name
+  {:hydrate :personal_collection_name}
+  [user]
+  (db/select-one-field :name Collection :id (:personal_collection_id user)))
+
 ;; Test that admins can edit other Users
 (expect
-  {:before   {:first_name "Cam", :last_name "Era", :is_superuser true, :email "cam.era@metabase.com"}
+  {:before   {:first_name "Cam",
+              :last_name "Era",
+              :is_superuser true,
+              :email "cam.era@metabase.com"
+              :personal_collection_name "Cam Era's Personal Collection"}
    :response (merge
               user-defaults
               {:common_name  "Cam Eron"
@@ -338,13 +350,19 @@
                :is_superuser true
                :group_ids    #{(u/get-id (group/all-users))
                                (u/get-id (group/admin))}})
-   :after    {:first_name "Cam", :last_name "Eron", :is_superuser true, :email "cam.eron@metabase.com"}}
-  (tt/with-temp User [{user-id :id} {:first_name   "Cam"
-                                     :last_name    "Era"
-                                     :email        "cam.era@metabase.com"
-                                     :is_superuser true}]
-    (let [user (fn [] (into {} (-> (db/select-one [User :first_name :last_name :is_superuser :email], :id user-id)
-                                   (dissoc :common_name))))]
+   :after    {:first_name "Cam"
+              :last_name "Eron"
+              :is_superuser true
+              :email "cam.eron@metabase.com"
+              :personal_collection_name "Cam Eron's Personal Collection"}}
+  (tt/with-temp* [User [{user-id :id} {:first_name   "Cam"
+                                       :last_name    "Era"
+                                       :email        "cam.era@metabase.com"
+                                       :is_superuser true}]
+                  Collection [coll]]
+    (let [user (fn [] (into {} (-> (db/select-one [User :id :first_name :last_name :is_superuser :email], :id user-id)
+                                   (hydrate :personal_collection_id :personal_collection_name)
+                                   (dissoc :id :personal_collection_id :common_name))))]
       (array-map
        :before   (user)
        :response (-> ((test-users/user->client :crowberto) :put 200 (str "user/" user-id)

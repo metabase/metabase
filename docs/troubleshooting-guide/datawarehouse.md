@@ -123,3 +123,15 @@ This is necessary because the MariaDB connector, used by Metabase to connect to 
 > MariaDB's Java Connector does not yet implement this, but has a task assigned:
 >
 > https://jira.mariadb.org/browse/CONJ-663
+
+### Error message: "Connections cannot be acquired from the underlying database!"
+
+#### How to detect this
+
+Metabase fails to connect to your data warehouse and the Metabase server logs include the error message `Connections cannot be acquired from the underlying database!`
+
+#### How to fix this
+
+Navigate to the options for your data warehouse and locate the Additional JDBC Connection Strings option, then add `trustServerCertificate=true` as an additional string.
+
+
