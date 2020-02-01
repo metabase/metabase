@@ -861,6 +861,7 @@ export class AggregationDimension extends Dimension {
     const field = dimension && dimension.field();
     const { special_type } = field || {};
     return new Field({
+      name: aggregation.columnName(),
       display_name: aggregation.displayName(),
       base_type: aggregation.baseType(),
       // don't pass through `special_type` when aggregating these types
