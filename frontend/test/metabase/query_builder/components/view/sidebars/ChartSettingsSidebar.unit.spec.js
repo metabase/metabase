@@ -28,7 +28,7 @@ describe("ChartSettingsSidebar", () => {
   });
 
   it("should not hide the title for gauge charts", () => {
-    const { getByText, queryByText } = render(
+    const { getByText } = render(
       <ChartSettingsSidebar
         question={SAMPLE_DATASET.question().setDisplay("gauge")}
         result={{ data }}
@@ -51,7 +51,7 @@ describe("ChartSettingsSidebar", () => {
   });
 
   it("should not hide the title for scalar charts", () => {
-    const { getByText, queryByText } = render(
+    const { getByText } = render(
       <ChartSettingsSidebar
         question={SAMPLE_DATASET.question().setDisplay("scalar")}
         result={{ data }}
