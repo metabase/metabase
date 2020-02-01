@@ -2,8 +2,11 @@
   (:require [clojure.test :refer :all]
             [metabase.driver.common.parameters :as i]
             [metabase.driver.common.parameters.values :as values]
-            [metabase.models.field :refer [map->FieldInstance]]
-            [metabase.test.data :as data]))
+            [metabase.models
+             [card :refer [Card]]
+             [field :refer [map->FieldInstance]]]
+            [metabase.test.data :as data]
+            [toucan.util.test :as tt]))
 
 (deftest variable-value-test
   (testing "Specified value"
@@ -120,3 +123,13 @@
                       :default      "past5days"
                       :widget-type  :date/all-options}
                      nil))))))
+
+(deftest question-query-test
+  (testing "Question tag gets card's native query"
+    (let [test-query "SELECT 1"]
+      (tt/with-temp Card [card {:dataset_query {:native {:query test-query}}}]
+        (is (= {:native {:query test-query}}
+               (#'values/value-for-tag
+                {:name "question-template-tag-test", :display-name "Question template tag test",
+                 :type :question, :question (:id card)}
+                [])))))))

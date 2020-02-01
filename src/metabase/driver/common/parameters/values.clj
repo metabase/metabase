@@ -10,7 +10,9 @@
                                      :value  \"2015-01-01~2016-09-01\"}}}"
   (:require [clojure.string :as str]
             [metabase.driver.common.parameters :as i]
-            [metabase.models.field :refer [Field]]
+            [metabase.models
+             [card :refer [Card]]
+             [field :refer [Field]]]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util
              [i18n :as ui18n :refer [tru]]
@@ -24,6 +26,7 @@
 (def ^:private ParamType
   (s/enum :number
           :dimension                    ; Field Filter
+          :question
           :text
           :date))
 
@@ -43,6 +46,7 @@
     :display-name                 su/NonBlankString
     :type                         ParamType
     (s/optional-key :dimension)   [s/Any]
+    (s/optional-key :question)    s/Int
     (s/optional-key :widget-type) s/Keyword         ; type of the [default] value if `:type` itself is `dimension`
     (s/optional-key :required)    s/Bool
     (s/optional-key :default)     s/Any}
@@ -50,7 +54,7 @@
 
 (def ^:private ParsedParamValue
   "Schema for valid param value(s). Params can have one or more values."
-  (s/named (s/maybe (s/cond-pre i/SingleValue MultipleValues))
+  (s/named (s/maybe (s/cond-pre i/SingleValue MultipleValues su/Map))
            "Valid param value(s)"))
 
 (s/defn ^:private param-with-target
@@ -115,6 +119,12 @@
                  (map? value-info-or-infos)        (dissoc value-info-or-infos :target)
                  (sequential? value-info-or-infos) (mapv #(dissoc % :target) value-info-or-infos))
                i/no-value)})))
+
+(s/defn ^:private question-native-query-for-tag :- (s/maybe (s/cond-pre su/Map (s/eq i/no-value)))
+  "Returns the native query for the `:question` referenced by the given tag."
+  [tag :- TagParam, _params :- (s/maybe [i/ParamValue])]
+  (when-let [card-id (:question tag)]
+    (db/select-one-field :dataset_query Card :id card-id)))
 
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
@@ -214,6 +224,7 @@
   [tag :- TagParam, params :- (s/maybe [i/ParamValue])]
   (parse-value-for-type (:type tag) (or (param-value-for-tag tag params)
                                         (field-filter-value-for-tag tag params)
+                                        (question-native-query-for-tag tag params)
                                         (default-value-for-tag tag)
                                         i/no-value)))
 
