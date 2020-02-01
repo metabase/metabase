@@ -187,7 +187,7 @@
     ;; with pipeline [#'middleware-1 #'middleware-2]
     (build-pipeline f) ; -> (middleware-2 (middleware-1 f))
 
-  However you can supply a custom `reducing-fn` to build modify various pieces of middleware as needed."
+  However you can supply a custom `reducing-fn` to modify various pieces of middleware as needed."
   ([f]
    (build-pipeline f (fn [qp middleware-var]
                        ((var-get middleware-var) qp))))
