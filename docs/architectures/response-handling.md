@@ -85,11 +85,28 @@ arguments](https://www.booleanknot.com/blog/2016/07/15/asynchronous-ring.html):
 The handler's return value is not used for the response. Instead, you
 use the `response` function to send a response.
 
+Async request handling and streaming responses are independent of each
+other. It's possible to handle a request asynchronously by returning a
+response body that's not streaming, and it's possible to stream a
+response body without handling the request asynchronously.
+
 ### Streaming responses
 
-- mitigates proxy by sending newlines
-- primarily implemented using core.async
-- exception handling
+Some endpoints, both async and synchronous, respond with streaming
+bodies. One reason Metabase does this is to address the scenario where
+a proxy kills an HTTP request because the server takes too long to
+respond. By encoding the response body as a streaming response,
+Metabase is able to keep the connection alive by sending newlines to
+the client while it generates a JSON payload. Since JSON ignores
+leading newlines, everything works out great.
+
+Streaming responses like this doesn't necessarily improve performance
+because it doesn't change the resource consumption needed to
+eventually produce a JSON response. Upcoming changes will improve
+performance by using transducers for streaming responses to reduce
+resource consumption.
+
+TODO explain core.async connection
 
 ### core.async
 
