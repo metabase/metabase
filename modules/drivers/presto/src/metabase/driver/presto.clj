@@ -214,7 +214,7 @@
   [_ [_ t]]
   (hx/cast :time (u.date/format-sql (t/local-time t))))
 
-(defmethod sql.qp/->flaot :presto
+(defmethod sql.qp/->float :presto
   [_ value]
   (hx/cast :double value))
 

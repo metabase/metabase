@@ -137,7 +137,7 @@
 (defn- str-to-date [format-str expr] (hsql/call :str_to_date expr (hx/literal format-str)))
 
 
-(defmethod sql.qp/->flaot :mysql
+(defmethod sql.qp/->float :mysql
   [_ value]
   ;; no-op as MySQL doesn't support cast to float
   value)
