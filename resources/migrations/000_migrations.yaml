@@ -5150,7 +5150,11 @@ databaseChangeLog:
       comment: 'Added 0.32.0'
       preConditions:
         - onFail: MARK_RAN
-        - dbms: mysql, mariadb
+        - or:
+            - dbms:
+                type: mysql
+            - dbms:
+                type: mariadb
       changes:
         - modifyDataType:
             tableName: query_cache
@@ -5184,14 +5188,20 @@ databaseChangeLog:
         - onUpdateSQL: IGNORE
         - or:
             - and:
-                - dbms:
-                    type: mysql,mariadb
+                - or:
+                    - dbms:
+                        type: mysql
+                    - dbms:
+                        type: mariadb
                 - sqlCheck:
                     expectedResult: 0
                     sql: SELECT count(*) FROM (SELECT count(*) FROM `metabase_table` GROUP BY `db_id`, `schema`, `name` HAVING count(*) > 1) t1
             - and:
-                - dbms:
-                    type: h2,postgresql
+                - or:
+                    - dbms:
+                        type: h2
+                    - dbms:
+                        type: postgresql
                 - sqlCheck:
                     expectedResult: 0
                     sql: SELECT count(*) FROM (SELECT count(*) FROM METABASE_TABLE GROUP BY DB_ID, SCHEMA, NAME HAVING count(*) > 1) t1
@@ -5214,14 +5224,20 @@ databaseChangeLog:
         - onUpdateSQL: IGNORE
         - or:
             - and:
-                - dbms:
-                    type: mysql,mariadb
+                - or:
+                    - dbms:
+                        type: mysql
+                    - dbms:
+                        type: mariadb
                 - sqlCheck:
                     expectedResult: 0
                     sql: SELECT count(*) FROM (SELECT count(*) FROM `metabase_field` GROUP BY `table_id`, `parent_id`, `name` HAVING count(*) > 1) t1
             - and:
-                - dbms:
-                    type: h2,postgresql
+                - or:
+                    - dbms:
+                        type: h2
+                    - dbms:
+                        type: postgresql
                 - sqlCheck:
                     expectedResult: 0
                     sql: SELECT count(*) FROM (SELECT count(*) FROM METABASE_FIELD GROUP BY TABLE_ID, PARENT_ID, NAME HAVING count(*) > 1) t1
