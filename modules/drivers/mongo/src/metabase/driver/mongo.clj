@@ -214,7 +214,7 @@
   [_ query]
   (qp/execute-query query))
 
-(defmethod driver/substitue-native-parameters :mongo
+(defmethod driver/substitute-native-parameters :mongo
   [driver inner-query]
   (parameters/substitute-native-parameters driver inner-query))
 

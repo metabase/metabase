@@ -575,7 +575,7 @@
 
 (defmethod current-db-time ::driver [_ _] nil)
 
-(defmulti substitue-native-parameters
+(defmulti substitute-native-parameters
   "For drivers that support `:native-parameters`. Substitute parameters in a normalized 'inner' native query.
 
     {:query \"SELECT count(*) FROM table WHERE id = {{param}}\"
