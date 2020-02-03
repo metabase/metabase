@@ -1,5 +1,4 @@
 import Dimension from "metabase-lib/lib/Dimension";
-import { stripId, singularize } from "metabase/lib/formatting";
 
 import type Field from "metabase-lib/lib/metadata/Field";
 
@@ -41,7 +40,7 @@ export default class DimensionOptions {
   sections({ extraItems = [] } = {}): Section[] {
     const table = this.dimensions[0] && this.dimensions[0].field().table;
     const mainSection = {
-      name: this.name || (table && singularize(table.display_name)),
+      name: this.name || (table && table.objectName()),
       icon: this.icon || "table2",
       items: [
         ...extraItems,
@@ -50,7 +49,7 @@ export default class DimensionOptions {
     };
 
     const fkSections = this.fks.map(fk => ({
-      name: fk.name || stripId(fk.field.display_name),
+      name: fk.name || (fk.field && fk.field.targetObjectName()),
       icon: fk.icon || "connections",
       items: fk.dimensions.map(dimension => ({ dimension })),
     }));

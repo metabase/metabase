@@ -13,7 +13,10 @@ import type {
   ParameterMappingUIOption,
 } from "./types/Parameter";
 
-import type Dimension from "metabase-lib/lib/Dimension";
+import Dimension, {
+  FKDimension,
+  JoinedDimension,
+} from "metabase-lib/lib/Dimension";
 import Variable, { TemplateTagVariable } from "metabase-lib/lib/Variable";
 
 import { t } from "ttag";
@@ -26,7 +29,7 @@ type TemplateTagFilter = (tag: TemplateTag) => boolean;
 type FieldFilter = (field: Field) => boolean;
 type VariableFilter = (variable: Variable) => boolean;
 
-export const PARAMETER_OPTIONS: Array<ParameterOption> = [
+export const PARAMETER_OPTIONS: ParameterOption[] = [
   {
     type: "date/month-year",
     name: t`Month and Year`,
@@ -88,10 +91,10 @@ export type ParameterSection = {
   id: string,
   name: string,
   description: string,
-  options: Array<ParameterOption>,
+  options: ParameterOption[],
 };
 
-export const PARAMETER_SECTIONS: Array<ParameterSection> = [
+export const PARAMETER_SECTIONS: ParameterSection[] = [
   {
     id: "date",
     name: t`Time`,
@@ -201,7 +204,7 @@ export function getParameterMappingOptions(
   metadata: Metadata,
   parameter: Parameter,
   card: Card,
-): Array<ParameterMappingUIOption> {
+): ParameterMappingUIOption[] {
   const options = [];
 
   const query = new Question(card, metadata).query();
@@ -211,25 +214,26 @@ export function getParameterMappingOptions(
     ...query
       .dimensionOptions(dimensionFilterForParameter(parameter))
       .sections()
-      .map(section =>
+      .flatMap(section =>
         section.items.map(({ dimension }) => ({
-          name: dimension.displayName(),
-          target: ["dimension", dimension.mbql()],
-          icon: dimension.icon(),
           sectionName: section.name,
-          isFk: section.icon !== "table2", // HACK: super fragile
+          name: dimension.displayName(),
+          icon: dimension.icon(),
+          target: ["dimension", dimension.mbql()],
+          isForeign:
+            dimension instanceof FKDimension ||
+            dimension instanceof JoinedDimension,
         })),
-      )
-      .flat(),
+      ),
   );
 
   // variables
   options.push(
     ...query.variables(variableFilterForParameter(parameter)).map(variable => ({
-      name: variable.displayName(),
-      target: ["variable", variable.mbql()],
-      icon: variable.icon(),
       sectionName: "Variables",
+      name: variable.displayName(),
+      icon: variable.icon(),
+      target: ["variable", variable.mbql()],
     })),
   );
 
@@ -238,7 +242,7 @@ export function getParameterMappingOptions(
 
 export function createParameter(
   option: ParameterOption,
-  parameters: Array<ParameterOption> = [],
+  parameters: Parameter[] = [],
 ): Parameter {
   let name = option.name;
   let nameIndex = 0;

@@ -58,7 +58,7 @@ export type ParameterInstance = {
 export type ParameterMappingUIOption = ParameterMappingOption & {
   icon: ?string,
   sectionName: string,
-  isFk?: boolean,
+  isForeign?: boolean,
 };
 
 export type ParameterValues = {
