@@ -7,6 +7,7 @@
              [data :as data]
              [util :as tu]]
             [metabase.test.data.datasets :as datasets]
+            [metabase.util :as u]
             [toucan.util.test :as tt]))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
@@ -64,7 +65,8 @@
        (data/run-mbql-query venues)
        rows
        ffirst
-       double))
+       double
+       (u/round-to-decimals 2)))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
   0.94

@@ -280,6 +280,17 @@
 ;;
 ;; also, we want to gracefully handle situations where the column is ZERO and just swap it out with NULL instead, so
 ;; we don't get divide by zero errors. SQL DBs always return NULL when dividing by NULL (AFAIK)
+
+(defmulti ->float
+  "Cast to float"
+  {:arglists '([driver value])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod ->float :sql
+  [_ value]
+  (hx/cast :float numerator))
+
 (defmethod ->honeysql [:sql :/]
   [driver [_ & args]]
   (let [[numerator & denominators] (for [arg args]
@@ -287,7 +298,7 @@
                                                           (double arg)
                                                           arg)))]
     (apply hsql/call :/
-           (hx/cast :float numerator)
+           (->float driver numerator)
            (for [denominator denominators]
              (hsql/call :case
                (hsql/call := denominator 0) nil
