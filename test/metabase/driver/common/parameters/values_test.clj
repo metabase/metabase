@@ -124,12 +124,12 @@
                       :widget-type  :date/all-options}
                      nil))))))
 
-(deftest question-query-test
-  (testing "Question tag gets card's native query"
+(deftest card-query-test
+  (testing "Card template tag gets card's native query"
     (let [test-query "SELECT 1"]
       (tt/with-temp Card [card {:dataset_query {:native {:query test-query}}}]
         (is (= {:native {:query test-query}}
                (#'values/value-for-tag
-                {:name "question-template-tag-test", :display-name "Question template tag test",
-                 :type :question, :question (:id card)}
+                {:name "card-template-tag-test", :display-name "Card template tag test",
+                 :type :card, :card (:id card)}
                 [])))))))

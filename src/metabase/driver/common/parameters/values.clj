@@ -26,7 +26,7 @@
 (def ^:private ParamType
   (s/enum :number
           :dimension                    ; Field Filter
-          :question
+          :card
           :text
           :date))
 
@@ -46,7 +46,7 @@
     :display-name                 su/NonBlankString
     :type                         ParamType
     (s/optional-key :dimension)   [s/Any]
-    (s/optional-key :question)    s/Int
+    (s/optional-key :card)        su/IntGreaterThanZero
     (s/optional-key :widget-type) s/Keyword         ; type of the [default] value if `:type` itself is `dimension`
     (s/optional-key :required)    s/Bool
     (s/optional-key :default)     s/Any}
@@ -120,10 +120,10 @@
                  (sequential? value-info-or-infos) (mapv #(dissoc % :target) value-info-or-infos))
                i/no-value)})))
 
-(s/defn ^:private question-native-query-for-tag :- (s/maybe (s/cond-pre su/Map (s/eq i/no-value)))
-  "Returns the native query for the `:question` referenced by the given tag."
+(s/defn ^:private card-native-query-for-tag :- (s/maybe (s/cond-pre su/Map (s/eq i/no-value)))
+  "Returns the native query for the `:card` referenced by the given tag."
   [tag :- TagParam, _params :- (s/maybe [i/ParamValue])]
-  (when-let [card-id (:question tag)]
+  (when-let [card-id (:card tag)]
     (db/select-one-field :dataset_query Card :id card-id)))
 
 
@@ -224,7 +224,7 @@
   [tag :- TagParam, params :- (s/maybe [i/ParamValue])]
   (parse-value-for-type (:type tag) (or (param-value-for-tag tag params)
                                         (field-filter-value-for-tag tag params)
-                                        (question-native-query-for-tag tag params)
+                                        (card-native-query-for-tag tag params)
                                         (default-value-for-tag tag)
                                         i/no-value)))
 
