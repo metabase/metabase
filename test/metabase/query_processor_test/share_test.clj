@@ -1,10 +1,10 @@
 (ns metabase.query-processor-test.share-test
-  (:require [metabase.models
-             [metric :refer [Metric]]
-             [segment :refer [Segment]]]
-            [metabase
+  (:require [metabase
              [query-processor-test :refer :all]
              [util :as u]]
+            [metabase.models
+             [metric :refer [Metric]]
+             [segment :refer [Segment]]]
             [metabase.test
              [data :as data]
              [util :as tu]]
