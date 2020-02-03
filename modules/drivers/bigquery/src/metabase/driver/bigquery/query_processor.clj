@@ -281,6 +281,10 @@
     [_ _ expr]
     (vary-meta (hsql/call bigquery-fn expr) assoc :bigquery/temporal-type :timestamp)))
 
+(defmethod sql.qp/->float :bigquery
+  [_ value]
+  (hx/cast :float64 value))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Query Processor                                                 |
