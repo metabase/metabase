@@ -334,7 +334,7 @@
    :check-namespace-decls
    [:include-all-drivers
     {:plugins               [[lein-check-namespace-decls "1.0.2"]]
-     :source-paths          ^:replace ["src" "test"]
+     :source-paths          ^:replace ["src" "backend/mbql/src" "test" "backend/mbql/test"]
      :check-namespace-decls {:prefix-rewriting true}}]
 
    ;; build the uberjar with `lein uberjar`
