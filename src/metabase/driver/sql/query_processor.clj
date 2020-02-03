@@ -289,7 +289,7 @@
 
 (defmethod ->float :sql
   [_ value]
-  (hx/cast :float numerator))
+  (hx/cast :float value))
 
 (defmethod ->honeysql [:sql :/]
   [driver [_ & args]]

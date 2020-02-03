@@ -137,15 +137,10 @@
 (defn- str-to-date [format-str expr] (hsql/call :str_to_date expr (hx/literal format-str)))
 
 
-;; MySQL automatically casts integer division to float (and it doesn't support CAST TO FLOAT).
-(defmethod sql.qp/->honeysql [:mysql :/]
-  [_ [_ & [numerator & denominators]]]
-  (apply hsql/call :/
-         numerator
-         (for [denominator denominators]
-           (hsql/call :case
-             (hsql/call := denominator 0) nil
-             :else                        denominator))))
+(defmethod sql.qp/->flaot :mysql
+  [_ value]
+  ;; no-op as MySQL doesn't support cast to float
+  value)
 
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
