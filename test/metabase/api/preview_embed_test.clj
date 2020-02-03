@@ -79,7 +79,7 @@
   (embed-test/successful-query-results)
   (embed-test/with-embedding-enabled-and-new-secret-key
     (embed-test/with-temp-card [card]
-      ((test-users/user->client :crowberto) :get 200 (card-query-url card)))))
+      ((test-users/user->client :crowberto) :get 202 (card-query-url card)))))
 
 ;; ...but if the user is not an admin this endpoint should fail
 (expect
@@ -118,7 +118,7 @@
   (embed-test/successful-query-results)
   (embed-test/with-embedding-enabled-and-new-secret-key
     (embed-test/with-temp-card [card]
-      ((test-users/user->client :crowberto) :get 200 (card-query-url card {:_embedding_params {:abc "locked"}
+      ((test-users/user->client :crowberto) :get 202 (card-query-url card {:_embedding_params {:abc "locked"}
                                                                            :params            {:abc 100}})))))
 
 ;; if `:locked` parameter is present in URL params, request should fail
@@ -164,7 +164,7 @@
   (embed-test/successful-query-results)
   (embed-test/with-embedding-enabled-and-new-secret-key
     (embed-test/with-temp-card [card]
-      ((test-users/user->client :crowberto) :get 200 (card-query-url card {:_embedding_params {:abc "enabled"}
+      ((test-users/user->client :crowberto) :get 202 (card-query-url card {:_embedding_params {:abc "enabled"}
                                                                            :params            {:abc "enabled"}})))))
 
 ;; If an `:enabled` param is present in URL params but *not* the JWT, that's ok
@@ -172,7 +172,7 @@
   (embed-test/successful-query-results)
   (embed-test/with-embedding-enabled-and-new-secret-key
     (embed-test/with-temp-card [card]
-      ((test-users/user->client :crowberto) :get 200 (str (card-query-url card {:_embedding_params {:abc "enabled"}})
+      ((test-users/user->client :crowberto) :get 202 (str (card-query-url card {:_embedding_params {:abc "enabled"}})
                                                           "?abc=200")))))
 
 
@@ -241,7 +241,7 @@
   (embed-test/successful-query-results)
   (embed-test/with-embedding-enabled-and-new-secret-key
     (embed-test/with-temp-dashcard [dashcard]
-      ((test-users/user->client :crowberto) :get 200 (dashcard-url dashcard)))))
+      ((test-users/user->client :crowberto) :get 202 (dashcard-url dashcard)))))
 
 ;; ...but if the user is not an admin this endpoint should fail
 (expect
@@ -280,8 +280,8 @@
   (embed-test/successful-query-results)
   (embed-test/with-embedding-enabled-and-new-secret-key
     (embed-test/with-temp-dashcard [dashcard]
-      ((test-users/user->client :crowberto) :get 200 (dashcard-url dashcard
-                                                       {:_embedding_params {:abc "locked"}, :params {:abc 100}})))))
+      ((test-users/user->client :crowberto) :get 202 (dashcard-url dashcard
+                                                                   {:_embedding_params {:abc "locked"}, :params {:abc 100}})))))
 
 ;; If `:locked` parameter is present in URL params, request should fail
 (expect
@@ -326,7 +326,7 @@
   (embed-test/successful-query-results)
   (embed-test/with-embedding-enabled-and-new-secret-key
     (embed-test/with-temp-dashcard [dashcard]
-      ((test-users/user->client :crowberto) :get 200 (dashcard-url dashcard {:_embedding_params {:abc "enabled"}
+      ((test-users/user->client :crowberto) :get 202 (dashcard-url dashcard {:_embedding_params {:abc "enabled"}
                                                                              :params            {:abc 100}})))))
 
 ;; If an `:enabled` param is present in URL params but *not* the JWT, that's ok
@@ -334,7 +334,7 @@
   (embed-test/successful-query-results)
   (embed-test/with-embedding-enabled-and-new-secret-key
     (embed-test/with-temp-dashcard [dashcard]
-      ((test-users/user->client :crowberto) :get 200 (str (dashcard-url dashcard {:_embedding_params {:abc "enabled"}})
+      ((test-users/user->client :crowberto) :get 202 (str (dashcard-url dashcard {:_embedding_params {:abc "enabled"}})
                                                           "?abc=200")))))
 
 ;; Check that editable query params work correctly and keys get coverted from strings to keywords, even if they're
@@ -344,10 +344,10 @@
   "completed"
   (embed-test/with-embedding-enabled-and-new-secret-key
     (-> (embed-test/with-temp-dashcard [dashcard {:dash {:enable_embedding true}}]
-          ((test-users/user->client :crowberto) :get 200 (str (dashcard-url dashcard
-                                                                {:_embedding_params {:num_birds     :locked
-                                                                                     :2nd_date_seen :enabled}
-                                                                 :params            {:num_birds 2}})
+          ((test-users/user->client :crowberto) :get 202 (str (dashcard-url dashcard
+                                                                            {:_embedding_params {:num_birds     :locked
+                                                                                                 :2nd_date_seen :enabled}
+                                                                             :params            {:num_birds 2}})
                                                               "?2nd_date_seen=2018-02-14")))
         :status)))
 
