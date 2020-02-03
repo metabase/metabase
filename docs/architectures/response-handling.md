@@ -1,8 +1,8 @@
 # Response Handling
 
-This document describes the worst-case performance constraints that
-Metabase deployments encounter, and how our response handling is
-tailored to address those constraints.
+This describes the worst-case performance constraints that Metabase
+deployments encounter, and how our response handling is tailored to
+address those constraints.
 
 ## Performance Constraints
 
@@ -56,9 +56,10 @@ Async and synchronous handlers differ in two ways:
   duration
 * The signature of the (Clojure ring) request handler
 
-Ring handlers are typically synchronous. Synchronous handlers are a
-function that takes a request map as the only arguments, and returns a
-response map:
+Ring handlers are typically synchronous because synchronous handlers
+are sufficient for the majority of use cases. Synchronous handlers are
+a function that takes a request map as the only arguments, and returns
+a response map:
 
 ```clojure
 (fn [request] {:status 200 :body "json blob"})
@@ -70,10 +71,13 @@ handling this request until a response is returned.
 This becomes problematic in Metabase because a request can involve
 querying a resource that has high latency for any number of reasons:
 the network might be slow, the query might have complex joins,
-etc. Consuming threads when waiting leads to poor performance.
+etc. Consuming threads when waiting leads to poor performance because
+it increases memory consumption and can eventually lead to thread
+starvation (when there are so many threads that no thread is able to
+get scheduled enough time to actually complete its work).
 
-Async handlers help by "off-loading" the handler from a thread while
-the handler generates a response, freeing the thread for other work or
+Async handlers help by off-loading the handler from a thread while the
+handler generates a response, freeing the thread for other work or
 garbage collection. Async handlers are normally written as [functions
 that take three
 arguments](https://www.booleanknot.com/blog/2016/07/15/asynchronous-ring.html):
@@ -85,30 +89,31 @@ arguments](https://www.booleanknot.com/blog/2016/07/15/asynchronous-ring.html):
 The handler's return value is not used for the response. Instead, you
 use the `response` function to send a response.
 
-Async request handling and streaming responses are independent of each
-other. It's possible to handle a request asynchronously by returning a
-response body that's not streaming, and it's possible to stream a
-response body without handling the request asynchronously.
+### Delayed Responses
 
-### Streaming responses
+Since some endpoints (both async and synchronous) might take longer
+than a minute to generate a response, and proxies or Heroku might kill
+a HTTP connection if there's no activity for a minute, some endpoints
+implement a strategy to stream newlines until a JSON response is
+ready. (JSON ignores leading newlines.)
 
-Some endpoints, both async and synchronous, respond with streaming
-bodies. One reason Metabase does this is to address the scenario where
-a proxy kills an HTTP request because the server takes too long to
-respond. By encoding the response body as a streaming response,
-Metabase is able to keep the connection alive by sending newlines to
-the client while it generates a JSON payload. Since JSON ignores
-leading newlines, everything works out great.
+This doesn't necessarily improve performance because it doesn't change
+the resource consumption needed to eventually produce a JSON
+response. Upcoming changes will improve performance by using
+transducers for streaming responses to reduce resource consumption.
 
-Streaming responses like this doesn't necessarily improve performance
-because it doesn't change the resource consumption needed to
-eventually produce a JSON response. Upcoming changes will improve
-performance by using transducers for streaming responses to reduce
-resource consumption.
+How does Metabase accomplish this? Ring responses are `OutputStreams`,
+and you tell ring how to create an output stream by implementing the
+`StreamableResponseBody` protocol. Out of the box, this is implemented
+for seqs, input streams, files, and strings. Metabase implements
+`StreamableResponseBody` for core.async channels, and that
+implementation includes the newline streaming.
 
-TODO explain core.async connection
-
-### core.async
+Async request handling and delayed response handling are independent
+of each other. It's possible to handle a request asynchronously by
+returning a response body that isn't implementing a delayed response,
+and it's possible to implement a delayed response without handling the
+request asynchronously.
 
 ### Query Processor
 
