@@ -2,12 +2,13 @@
   (:require [metabase.models
              [metric :refer [Metric]]
              [segment :refer [Segment]]]
-            [metabase.query-processor-test :refer :all]
+            [metabase
+             [query-processor-test :refer :all]
+             [util :as u]]
             [metabase.test
              [data :as data]
              [util :as tu]]
             [metabase.test.data.datasets :as datasets]
-            [metabase.util :as u]
             [toucan.util.test :as tt]))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
