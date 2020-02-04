@@ -15,6 +15,7 @@ import { defer } from "metabase/lib/promise";
 import { normalize, schema } from "normalizr";
 
 import Dashboards from "metabase/entities/dashboards";
+import Questions from "metabase/entities/questions";
 
 import {
   createParameter,
@@ -158,38 +159,39 @@ export const deleteCard = createThunkAction(DELETE_CARD, function(cardId) {
   };
 });
 
-export const addCardToDashboard = function({
+export const addCardToDashboard = ({
   dashId,
   cardId,
 }: {
   dashId: DashCardId,
   cardId: CardId,
-}) {
-  return function(dispatch, getState) {
-    const { dashboards, dashcards, cards } = getState().dashboard;
-    const dashboard: DashboardWithCards = dashboards[dashId];
-    const existingCards: Array<DashCard> = dashboard.ordered_cards
-      .map(id => dashcards[id])
-      .filter(dc => !dc.isRemoved);
-    const card: Card = cards[cardId];
-    const dashcard: DashCard = {
-      id: Math.random(), // temporary id
-      dashboard_id: dashId,
-      card_id: card.id,
-      card: card,
-      series: [],
-      ...getPositionForNewDashCard(existingCards),
-      parameter_mappings: [],
-      visualization_settings: {},
-    };
-    dispatch(createAction(ADD_CARD_TO_DASH)(dashcard));
-    dispatch(fetchCardData(card, dashcard, { reload: true, clear: true }));
-
-    // guard in case card was filtered
-    if (card.dataset_query && card.dataset_query.database) {
-      dispatch(fetchDatabaseMetadata(card.dataset_query.database));
-    }
+}) => async (dispatch, getState) => {
+  await dispatch(Questions.actions.fetch({ id: cardId }));
+  const card = Questions.selectors.getObject(getState(), {
+    entityId: cardId,
+  });
+  const { dashboards, dashcards } = getState().dashboard;
+  const dashboard: DashboardWithCards = dashboards[dashId];
+  const existingCards: Array<DashCard> = dashboard.ordered_cards
+    .map(id => dashcards[id])
+    .filter(dc => !dc.isRemoved);
+  const dashcard: DashCard = {
+    id: Math.random(), // temporary id
+    dashboard_id: dashId,
+    card_id: card.id,
+    card: card,
+    series: [],
+    ...getPositionForNewDashCard(existingCards),
+    parameter_mappings: [],
+    visualization_settings: {},
   };
+  dispatch(createAction(ADD_CARD_TO_DASH)(dashcard));
+  dispatch(fetchCardData(card, dashcard, { reload: true, clear: true }));
+
+  // guard in case card was filtered
+  if (card.dataset_query && card.dataset_query.database) {
+    dispatch(fetchDatabaseMetadata(card.dataset_query.database));
+  }
 };
 
 export const addDashCardToDashboard = function({

@@ -190,8 +190,6 @@ export default class Dashboard extends Component {
     try {
       await fetchDashboard(dashboardId, location.query);
       if (addCardOnLoad != null) {
-        // we have to load our cards before we can add one
-        await fetchCards();
         this.setEditing(this.props.dashboard);
         addCardToDashboard({ dashId: dashboardId, cardId: addCardOnLoad });
       }

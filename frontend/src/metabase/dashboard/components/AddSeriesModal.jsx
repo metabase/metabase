@@ -68,6 +68,7 @@ export default class AddSeriesModal extends Component {
 
   async componentDidMount() {
     try {
+      // FIXME: performance
       await this.props.fetchCards();
       await Promise.all(
         _.uniq(this.props.cards.map(c => c.database_id)).map(db_id =>
