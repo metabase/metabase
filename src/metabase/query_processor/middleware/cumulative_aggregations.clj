@@ -40,36 +40,36 @@
    :else
    (recur more last-row (update (vec row) index (partial + (nth last-row index))))))
 
-(defn- cumulative-ags-xform [{{breakouts :breakout} :query, :as query} query']
-  ;; figure out which indexes are being changed in the results. Since breakouts always get included in
-  ;; results first we need to offset the indexes to change by the number of breakouts
-  (let [replaced-indexes (set (for [i (diff-indecies (-> query  :query :aggregation)
-                                                     (-> query' :query :aggregation))]
-                                (+ (count breakouts) i)))]
-    (fn cumulative-ags-rf [rf]
-      {:pre [(fn? rf)]}
-      (let [last-row (volatile! nil)]
-        (fn
-          ([] (rf))
+(defn- cumulative-ags-xform [replaced-indecies]
+  (fn cumulative-ags-rf [rf]
+    {:pre [(fn? rf)]}
+    (let [last-row (volatile! nil)]
+      (fn
+        ([] (rf))
 
-          ([result] (rf result))
+        ([result] (rf result))
 
-          ([result row]
-           (let [row' (add-values-from-last-row replaced-indexes @last-row row)]
-             (vreset! last-row row')
-             (rf result row'))))))))
+        ([result row]
+         (let [row' (add-values-from-last-row replaced-indecies @last-row row)]
+           (vreset! last-row row')
+           (rf result row')))))))
 
 (defn handle-cumulative-aggregations
   "Middleware that implements `cum-count` and `cum-sum` aggregations. These clauses are replaced with `count` and `sum`
   clauses respectively and summation is performed on results in Clojure-land."
   [qp]
-  (fn [{{aggregations :aggregation} :query, :as query} xformf {:keys [raise-chan], :as chans}]
+  (fn [{{breakouts :breakout, aggregations :aggregation} :query, :as query} xformf {:keys [raise-chan], :as chans}]
     (if-not (mbql.u/match aggregations #{:cum-count :cum-sum})
       (qp query xformf chans)
       (try
-        (let [query'  (replace-cumulative-ags query)
-              xformf' (fn [metadata]
-                        (comp (cumulative-ags-xform query query') (xformf metadata)))]
+        (let [query'            (replace-cumulative-ags query)
+              ;; figure out which indexes are being changed in the results. Since breakouts always get included in
+              ;; results first we need to offset the indexes to change by the number of breakouts
+              replaced-indecies (set (for [i (diff-indecies (-> query  :query :aggregation)
+                                                            (-> query' :query :aggregation))]
+                                       (+ (count breakouts) i)))
+              xformf'           (fn [metadata]
+                                  (comp (cumulative-ags-xform replaced-indecies) (xformf metadata)))]
           (qp query' xformf' chans))
         (catch Throwable e
           (a/>!! raise-chan e))))))
