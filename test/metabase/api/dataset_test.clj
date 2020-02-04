@@ -6,7 +6,6 @@
             [clojure.data.csv :as csv]
             [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
-            [expectations :refer [expect]]
             [medley.core :as m]
             [metabase
              [query-processor-test :as qp.test]
@@ -60,8 +59,8 @@
 (deftest basic-query-test
   (testing "POST /api/meta/dataset"
     (testing "Just a basic sanity check to make sure Query Processor endpoint is still working correctly."
-      (let [result ((test-users/user->client :rasta) :post 200 "dataset" (data/mbql-query checkins
-                                                                           {:aggregation [[:count]]}))]
+      (let [result ((test-users/user->client :rasta) :post 202 "dataset" (data/mbql-query checkins
+                                                                                          {:aggregation [[:count]]}))]
         (is (= {:data                   {:rows             [[1000]]
                                          :cols             [(tu/obj->json->obj (qp.test/aggregate-col :count))]
                                          :native_form      true
@@ -70,7 +69,7 @@
                 :status                 "completed"
                 :context                "ad-hoc"
                 :json_query             (-> (data/mbql-query checkins
-                                              {:aggregation [[:count]]})
+                                                             {:aggregation [[:count]]})
                                             (assoc-in [:query :aggregation] [["count"]])
                                             (assoc :type "query")
                                             (merge query-defaults))
@@ -106,11 +105,11 @@
                                                          (re-find #"Syntax error in SQL statement")
                                                          boolean))))
           result              (tu.log/suppress-output
-                                ((test-users/user->client :rasta) :post 200 "dataset" {:database (data/id)
-                                                                                       :type     "native"
-                                                                                       :native   {:query "foobar"}}))]
-      (is (= {:data         {:rows    []
-                             :cols    []}
+                               ((test-users/user->client :rasta) :post 202 "dataset" {:database (data/id)
+                                                                                      :type     "native"
+                                                                                      :native   {:query "foobar"}}))]
+      (is (= {:data         {:rows []
+                             :cols []}
               :row_count    0
               :status       "failed"
               :context      "ad-hoc"
@@ -152,17 +151,17 @@
 
 (defrecord ^:private AnotherNastyClass [^String v])
 
-(expect
-  [{"Values" "values"}
-   {"Values" "Hello XLSX World!"}   ; should use the JSON encoding implementation for object
-   {"Values" "{:v \"No Encoder\"}"} ; fall back to the implementation of `str` for an object if no JSON encoder exists rather than barfing
-   {"Values" "ABC"}]
-  (->> (spreadsheet/create-workbook "Results" [["values"]
-                                               [(SampleNastyClass. "Hello XLSX World!")]
-                                               [(AnotherNastyClass. "No Encoder")]
-                                               ["ABC"]])
-       (spreadsheet/select-sheet "Results")
-       (spreadsheet/select-columns {:A "Values"})))
+(deftest export-spreadsheet
+  (is (= [{"Values" "values"}
+          {"Values" "Hello XLSX World!"}       ; should use the JSON encoding implementation for object
+          {"Values" "{:v \"No Encoder\"}"} ; fall back to the implementation of `str` for an object if no JSON encoder exists rather than barfing
+          {"Values" "ABC"}]
+         (->> (spreadsheet/create-workbook "Results" [["values"]
+                                                      [(SampleNastyClass. "Hello XLSX World!")]
+                                                      [(AnotherNastyClass. "No Encoder")]
+                                                      ["ABC"]])
+              (spreadsheet/select-sheet "Results")
+              (spreadsheet/select-columns {:A "Values"})))))
 
 (defn- parse-and-sort-csv [response]
   (sort-by
@@ -171,93 +170,94 @@
    ;; First row is the header
    (rest (csv/read-csv response))))
 
-;; Date columns should be emitted without time
-(expect
-  [["1" "2014-04-07" "5" "12"]
-   ["2" "2014-09-18" "1" "31"]
-   ["3" "2014-09-15" "8" "56"]
-   ["4" "2014-03-11" "5" "4"]
-   ["5" "2013-05-05" "3" "49"]]
-  (let [result ((test-users/user->client :rasta) :post 200 "dataset/csv" :query
-                (json/generate-string (data/mbql-query checkins)))]
-    (take 5 (parse-and-sort-csv result))))
+(deftest date-columns-should-be-emitted-without-time
+  (is (= [["1" "2014-04-07" "5" "12"]
+          ["2" "2014-09-18" "1" "31"]
+          ["3" "2014-09-15" "8" "56"]
+          ["4" "2014-03-11" "5" "4"]
+          ["5" "2013-05-05" "3" "49"]]
+         (let [result ((test-users/user->client :rasta) :post 202 "dataset/csv" :query
+                       (json/generate-string (data/mbql-query checkins)))]
+           (take 5 (parse-and-sort-csv result))))))
 
-;; Check an empty date column
-(expect
-  [["1" "2014-04-07" "" "5" "12"]
-   ["2" "2014-09-18" "" "1" "31"]
-   ["3" "2014-09-15" "" "8" "56"]
-   ["4" "2014-03-11" "" "5" "4"]
-   ["5" "2013-05-05" "" "3" "49"]]
-  (data/dataset defs/test-data-with-null-date-checkins
-    (let [result ((test-users/user->client :rasta) :post 200 "dataset/csv" :query
-                  (json/generate-string (data/mbql-query checkins)))]
-      (take 5 (parse-and-sort-csv result)))))
+
+(deftest check-an-empty-date-column
+  (is (= [["1" "2014-04-07" "" "5" "12"]
+          ["2" "2014-09-18" "" "1" "31"]
+          ["3" "2014-09-15" "" "8" "56"]
+          ["4" "2014-03-11" "" "5" "4"]
+          ["5" "2013-05-05" "" "3" "49"]]
+         (data/dataset defs/test-data-with-null-date-checkins
+                       (let [result ((test-users/user->client :rasta) :post 202 "dataset/csv" :query
+                                     (json/generate-string (data/mbql-query checkins)))]
+                         (take 5 (parse-and-sort-csv result)))))))
 
 ;; SQLite doesn't return proper date objects but strings, they just pass through the qp untouched
-(expect-with-driver :sqlite
-  [["1" "2014-04-07" "5" "12"]
-   ["2" "2014-09-18" "1" "31"]
-   ["3" "2014-09-15" "8" "56"]
-   ["4" "2014-03-11" "5" "4"]
-   ["5" "2013-05-05" "3" "49"]]
-  (let [result ((test-users/user->client :rasta) :post 200 "dataset/csv" :query
-                (json/generate-string (data/mbql-query checkins)))]
-    (take 5 (parse-and-sort-csv result))))
+(expect-with-driver
+ :sqlite
+ [["1" "2014-04-07" "5" "12"]
+  ["2" "2014-09-18" "1" "31"]
+  ["3" "2014-09-15" "8" "56"]
+  ["4" "2014-03-11" "5" "4"]
+  ["5" "2013-05-05" "3" "49"]]
+ (let [result ((test-users/user->client :rasta) :post 202 "dataset/csv" :query
+               (json/generate-string (data/mbql-query checkins)))]
+   (take 5 (parse-and-sort-csv result))))
 
-;; DateTime fields are untouched when exported
-(expect
-  [["1" "Plato Yeshua"        "2014-04-01T08:30:00Z"]
-   ["2" "Felipinho Asklepios" "2014-12-05T15:15:00Z"]
-   ["3" "Kaneonuskatew Eiran" "2014-11-06T16:15:00Z"]
-   ["4" "Simcha Yan"          "2014-01-01T08:30:00Z"]
-   ["5" "Quentin Sören"       "2014-10-03T17:30:00Z"]]
-  (let [result ((test-users/user->client :rasta) :post 200 "dataset/csv" :query
-                (json/generate-string (data/mbql-query users)))]
-    (take 5 (parse-and-sort-csv result))))
 
-;; Check that we can export the results of a nested query
-(expect
-  16
-  (tt/with-temp Card [card {:dataset_query {:database (data/id)
-                                            :type     :native
-                                            :native   {:query "SELECT * FROM USERS;"}}}]
-    (let [result ((test-users/user->client :rasta) :post 200 "dataset/csv"
-                  :query (json/generate-string
-                          {:database mbql.s/saved-questions-virtual-database-id
-                           :type     :query
-                           :query    {:source-table (str "card__" (u/get-id card))}}))]
-      (count (csv/read-csv result)))))
+(deftest datetime-fields-are-untouched-when-exported
+  (is (= [["1" "Plato Yeshua"        "2014-04-01T08:30:00Z"]
+          ["2" "Felipinho Asklepios" "2014-12-05T15:15:00Z"]
+          ["3" "Kaneonuskatew Eiran" "2014-11-06T16:15:00Z"]
+          ["4" "Simcha Yan"          "2014-01-01T08:30:00Z"]
+          ["5" "Quentin Sören"       "2014-10-03T17:30:00Z"]]
+         (let [result ((test-users/user->client :rasta) :post 202 "dataset/csv" :query
+                       (json/generate-string (data/mbql-query users)))]
+           (take 5 (parse-and-sort-csv result))))))
+
+(deftest check-that-we-can-export-the-results-of-a-nested-query
+  (is (= 16
+         (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                                   :type     :native
+                                                   :native   {:query "SELECT * FROM USERS;"}}}]
+           (let [result ((test-users/user->client :rasta) :post 202 "dataset/csv"
+                         :query (json/generate-string
+                                 {:database mbql.s/saved-questions-virtual-database-id
+                                  :type     :query
+                                  :query    {:source-table (str "card__" (u/get-id card))}}))]
+             (count (csv/read-csv result)))))))
+
 
 ;; POST /api/dataset/:format
 ;;
 ;; Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints
 ;; -- even if the query comes in with `add-default-userland-constraints` (as will be the case if the query gets saved
 ;; from one that had it -- see #9831)
-(expect
-  101
-  (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
-    (let [result ((test-users/user->client :rasta) :post 200 "dataset/csv"
-                  :query (json/generate-string
-                          {:database   (data/id)
-                           :type       :query
-                           :query      {:source-table (data/id :venues)}
-                           :middleware
-                           {:add-default-userland-constraints? true
-                            :userland-query?                   true}}))]
-      (count (csv/read-csv result)))))
+
+(deftest formatted-results-ignore-query-constraints
+  (is (= 101
+         (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+           (let [result ((test-users/user->client :rasta) :post 202 "dataset/csv"
+                         :query (json/generate-string
+                                 {:database   (data/id)
+                                  :type       :query
+                                  :query      {:source-table (data/id :venues)}
+                                  :middleware
+                                  {:add-default-userland-constraints? true
+                                   :userland-query?                   true}}))]
+             (count (csv/read-csv result)))))))
 
 ;; non-"download" queries should still get the default constraints
 ;; (this also is a sanitiy check to make sure the `with-redefs` in the test above actually works)
-(expect
-  10
-  (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
-    (let [{row-count :row_count, :as result}
-          ((test-users/user->client :rasta) :post 200 "dataset"
-           {:database (data/id)
-            :type     :query
-            :query    {:source-table (data/id :venues)}})]
-      (or row-count result))))
+(deftest non--download--queries-should-still-get-the-default-constraints
+  (is (= 10
+         (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+           (let [{row-count :row_count, :as result}
+                 ((test-users/user->client :rasta) :post 202 "dataset"
+                  {:database (data/id)
+                   :type     :query
+                   :query    {:source-table (data/id :venues)}})]
+             (or row-count result))))))
 
 ;; make sure `POST /dataset` calls check user permissions
 (tu/expect-schema
@@ -311,7 +311,7 @@
     (is (= {:requested_timezone "US/Pacific"
             :results_timezone   "US/Pacific"}
            (tu/with-temporary-setting-values [report-timezone "US/Pacific"]
-             (let [results ((test-users/user->client :rasta) :post 200 "dataset" (data/mbql-query checkins
+             (let [results ((test-users/user->client :rasta) :post 202 "dataset" (data/mbql-query checkins
                                                                                    {:aggregation [[:count]]}))]
                (-> results
                    :data

@@ -61,7 +61,7 @@
 (defn- find-and-load-task-namespaces!
   "Search Classpath for namespaces that start with `metabase.tasks.`, then `require` them so initialization can happen."
   []
-  (doseq [ns-symb @u/metabase-namespace-symbols
+  (doseq [ns-symb u/metabase-namespace-symbols
           :when   (.startsWith (name ns-symb) "metabase.task.")]
     (try
       (log/debug (trs "Loading tasks namespace:") (u/format-color 'blue ns-symb))

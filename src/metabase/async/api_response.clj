@@ -61,7 +61,12 @@
   (cond
     ;; An error has occurred, let the user know
     (instance? Throwable chunkk)
-    (json/generate-stream (:body (mw.exceptions/api-exception-response chunkk)) out)
+    (json/generate-stream (let [{:keys [body status]
+                                 :or   {status 500}} (mw.exceptions/api-exception-response chunkk)]
+                            (if (map? body)
+                              (assoc body :_status status)
+                              {:message body :_status status}))
+                          out)
 
     ;; We've recevied the response, write it to the output stream and we're done
     (seqable? chunkk)
@@ -189,6 +194,6 @@
 (extend-protocol Sendable
   ManyToManyChannel
   (send* [input-chan _ respond _]
-    (respond
-     (assoc (response/response input-chan)
-       :content-type "applicaton/json; charset=utf-8"))))
+    (respond (assoc (response/response input-chan)
+                    :content-type "applicaton/json; charset=utf-8"
+                    :status 202))))

@@ -52,6 +52,22 @@ executors:
           POSTGRES_USER: circle_test
           POSTGRES_DB: circle_test
 
+  postgres-latest:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1
+        environment:
+          MB_DB_TYPE: postgres
+          MB_DB_PORT: 5432
+          MB_DB_HOST: localhost
+          MB_DB_DBNAME: metabase_test
+          MB_DB_USER: metabase_test
+          MB_POSTGRESQL_TEST_USER: metabase_test
+      - image: postgres:latest
+        environment:
+          POSTGRES_USER: metabase_test
+          POSTGRES_DB: metabase_test
+
   mysql-5-7:
     parameters:
       # for testing the use of an at-rest encryption key. Optional.
@@ -684,9 +700,18 @@ workflows:
 
       - test-driver:
           name: be-tests-postgres
+          description: "(9.6)"
           requires:
             - be-tests
           e: postgres-9-6
+          driver: postgres
+
+      - test-driver:
+          name: be-tests-postgres-latest
+          description: "(Latest)"
+          requires:
+            - be-tests
+          e: postgres-latest
           driver: postgres
 
       - test-driver:
@@ -816,6 +841,7 @@ workflows:
             - be-tests-mariadb-latest
             - be-tests-oracle
             - be-tests-postgres
+            - be-tests-postgres-latest
             - be-tests-presto
             - be-tests-redshift
             - be-tests-snowflake

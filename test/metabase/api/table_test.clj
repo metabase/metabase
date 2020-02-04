@@ -451,7 +451,7 @@
                                  :fingerprint  (:latitude mutil/venue-fingerprints)})])})
   (do
     ;; run the Card which will populate its result_metadata column
-    ((test-users/user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
+    ((test-users/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
     ;; Now fetch the metadata for this "table"
     (->> card
          u/get-id
@@ -499,7 +499,7 @@
                                                                               :latest   "2014-12-05T15:15:00"}}}}]})
   (do
     ;; run the Card which will populate its result_metadata column
-    ((test-users/user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
+    ((test-users/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
     ;; Now fetch the metadata for this "table"
     (->> card
          u/get-id
@@ -679,7 +679,7 @@
                                             :type    :query
                                             :query    {:source-query {:source-table (data/id :venues)}}}}]
     ;; run the Card which will populate its result_metadata column
-    ((test-users/user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
+    ((test-users/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
     (let [response ((test-users/user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card)))]
       (map #(dimension-options-for-field response %)
            ["latitude" "longitude"]))))

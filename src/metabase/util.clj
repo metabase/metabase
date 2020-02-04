@@ -6,13 +6,10 @@
              [set :as set]
              [string :as str]
              [walk :as walk]]
-            [clojure.java
-             [classpath :as classpath]
-             [io :as io]]
+            [clojure.java.classpath :as classpath]
             [clojure.math.numeric-tower :as math]
             [clojure.tools.logging :as log]
             [clojure.tools.namespace.find :as ns-find]
-            [clojure.tools.reader.edn :as edn]
             [colorize.core :as colorize]
             [flatland.ordered.map :refer [ordered-map]]
             [medley.core :as m]
@@ -482,37 +479,15 @@
   (or (id object-or-id)
       (throw (Exception. (tru "Not something with an ID: {0}" object-or-id)))))
 
-(defn- metabase-namespace-symbs* []
+;; This is made `^:const` so it will get calculated when the uberjar is compiled. `find-namespaces` won't work if
+;; source is excluded; either way this takes a few seconds, so doing it at compile time speeds up launch as well.
+(defonce ^:const ^{:doc "Vector of symbols of all Metabase namespaces, excluding test namespaces. This is intended for
+  use by various routines that load related namespaces, such as task and events initialization."}
+  metabase-namespace-symbols
   (vec (sort (for [ns-symb (ns-find/find-namespaces (classpath/system-classpath))
                    :when   (and (.startsWith (name ns-symb) "metabase.")
                                 (not (.contains (name ns-symb) "test")))]
                ns-symb))))
-
-(def ^:private namespace-symbs-filename "namespaces.edn")
-
-(when *compile-files*
-  (let [filename (str "resources/" namespace-symbs-filename)]
-    (printf "Saving list of Metabase namespaces to %s...\n" filename)
-    (spit filename (with-out-str (pprint (metabase-namespace-symbs*))))))
-
-(def metabase-namespace-symbols
-  "Delay to a vector of symbols of all Metabase namespaces, excluding test namespaces. This is intended for use by
-  various routines that load related namespaces, such as task and events initialization."
-  ;; When building the uberjar we'll determine the symbols ahead of time ans save to an EDN file which will speed up
-  ;; initialization a bit and also fix an issue where the sequence would be empty if `:omit-source` was enabled.
-  ;; `ns-find` looks for Clojure source files.
-  ;;
-  ;; Use a delay for dev runs since `ns-find` is slow and can take several seconds or more
-  (if config/is-prod?
-    (delay
-      (try
-        (log/info (trs "Reading Metabase namespaces from {0}" namespace-symbs-filename))
-        (edn/read-string (slurp (io/resource namespace-symbs-filename)))
-        (catch Throwable e
-          (log/error e (trs "Failed to read Metabase namespaces from {0}" namespace-symbs-filename))
-          (metabase-namespace-symbs*))))
-    (delay
-      (metabase-namespace-symbs*))))
 
 (def ^java.util.regex.Pattern uuid-regex
   "A regular expression for matching canonical string representations of UUIDs."

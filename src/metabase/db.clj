@@ -216,13 +216,21 @@
 ;;; |                                      CONNECTION POOLS & TRANSACTION STUFF                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- create-connection-pool! [spec]
+(def ^:private application-db-connection-pool-props
+  "Options for c3p0 connection pool for the application DB. These are set in code instead of a properties file because
+  we use separate options for data warehouse DBs. See
+  https://www.mchange.com/projects/c3p0/#configuring_connection_testing for an overview of the options used
+  below (jump to the 'Simple advice on Connection testing' section.)"
+  {"idleConnectionTestPeriod" 60})
+
+(defn- create-connection-pool! [jdbc-spec]
   (db/set-default-quoting-style! (case (db-type)
                                    :postgres :ansi
                                    :h2       :h2
                                    :mysql    :mysql))
-  (db/set-default-db-connection! (connection-pool/connection-pool-spec spec))
-  (db/set-default-jdbc-options! {:read-columns db.jdbc-protocols/read-columns}))
+  (db/set-default-db-connection! (connection-pool/connection-pool-spec jdbc-spec application-db-connection-pool-props))
+  (db/set-default-jdbc-options! {:read-columns db.jdbc-protocols/read-columns})
+  nil)
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

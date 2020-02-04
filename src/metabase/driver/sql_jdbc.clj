@@ -49,8 +49,8 @@
   (sql-jdbc.execute/execute-query driver query))
 
 (defmethod driver/notify-database-updated :sql-jdbc
-  [driver database]
-  (sql-jdbc.conn/notify-database-updated driver database))
+  [_ database]
+  (sql-jdbc.conn/notify-database-updated database))
 
 (defmethod driver/describe-database :sql-jdbc
   [driver database]
