@@ -123,6 +123,7 @@ export default class TagEditorParam extends Component {
     }
 
     const isDimension = tag.type === "dimension";
+    const isCardTag = tag.type === "card";
     const hasSelectedDimensionField =
       isDimension && Array.isArray(tag.dimension);
     const hasWidgetOptions = widgetOptions && widgetOptions.length > 0;
@@ -152,10 +153,11 @@ export default class TagEditorParam extends Component {
             placeholder={t`Select…`}
             height={300}
           >
-            <Option value="text">{t`Text`}</Option>
-            <Option value="number">{t`Number`}</Option>
-            <Option value="date">{t`Date`}</Option>
-            <Option value="dimension">{t`Field Filter`}</Option>
+            <Option value="text" disabled={isCardTag}>{t`Text`}</Option>
+            <Option value="number" disabled={isCardTag}>{t`Number`}</Option>
+            <Option value="date" disabled={isCardTag}>{t`Date`}</Option>
+            <Option value="dimension" disabled={isCardTag}>{t`Field Filter`}</Option>
+            <Option value="card" disabled={!isCardTag}>{t`Question query`}</Option>
           </Select>
         </div>
 
@@ -220,6 +222,21 @@ export default class TagEditorParam extends Component {
                 </Link>
               </p>
             )}
+          </div>
+        )}
+
+        {tag.type === 'card' && (
+          <div className="pb3">
+            <h4 className="pb1">
+              {t`Refers to question `}
+              <Link
+                to={`/question/${tag.card}`}
+                target="_blank"
+                className="link"
+              >
+                {tag.card}
+              </Link>
+            </h4>
           </div>
         )}
 

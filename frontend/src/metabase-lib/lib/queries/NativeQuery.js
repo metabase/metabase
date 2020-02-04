@@ -262,16 +262,16 @@ export default class NativeQuery extends AtomicQuery {
       // a variable name can optionally end with :start or :end which is not considered part of the actual variable name
       // expected pattern is like mustache templates, so we are looking for something like {{category}} or {{date:start}}
       // anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
+      // variables referencing other questions, by their card ID, are also supported: {{#123}} references question with ID 123
       let match;
-      const re = /\{\{\s*([A-Za-z0-9_]+?)\s*\}\}/g;
+      const re = /\{\{\s*([A-Za-z0-9_]+?|#\d+)\s*\}\}/g;
       while ((match = re.exec(queryText)) != null) {
         tags.push(match[1]);
       }
 
       // eliminate any duplicates since it's allowed for a user to reference the same variable multiple times
-      const existingTemplateTags = this.templateTagsMap();
-
       tags = _.uniq(tags);
+      const existingTemplateTags = this.templateTagsMap();
       const existingTags = Object.keys(existingTemplateTags);
 
       // if we ended up with any variables in the query then update the card parameters list accordingly
@@ -297,6 +297,7 @@ export default class NativeQuery extends AtomicQuery {
           }
 
           // create new vars
+          const reCardTag = /^#(\d+)$/g;
           for (const tagName of newTags) {
             templateTags[tagName] = {
               id: Utils.uuid(),
@@ -304,6 +305,14 @@ export default class NativeQuery extends AtomicQuery {
               display_name: humanize(tagName),
               type: "text",
             };
+
+            // parse card ID from tag name for card query template tags
+            if ((match = reCardTag.exec(tagName)) != null) {
+              templateTags[tagName] = Object.assign(templateTags[tagName], {
+                type: "card",
+                card: parseInt(match[1]),
+              });
+            }
           }
         }
 
