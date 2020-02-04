@@ -47,7 +47,7 @@ describe("StructuredQuery nesting", () => {
       expect(
         q
           .nest()
-          .filterFieldOptions()
+          .filterDimensionOptions()
           .dimensions.map(d => d.mbql()),
       ).toEqual([
         ["field-literal", "PRODUCT_ID", "type/Integer"],

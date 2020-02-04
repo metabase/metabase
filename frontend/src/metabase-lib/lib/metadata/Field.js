@@ -19,7 +19,9 @@ import {
   isSummable,
   isCategory,
   isAddress,
+  isCity,
   isState,
+  isZipCode,
   isCountry,
   isCoordinate,
   isLocation,
@@ -73,8 +75,13 @@ export default class Field extends Base {
     return displayName;
   }
 
-  targetDisplayName() {
-    return stripId(this.display_name);
+  /**
+   * The name of the object type this field points to.
+   * Currently we try to guess this by stripping trailing `ID` from `display_name`, but ideally it would be configurable in metadata
+   * See also `table.objectName()`
+   */
+  targetObjectName() {
+    return stripId(this.displayName());
   }
 
   isDate() {
@@ -97,6 +104,12 @@ export default class Field extends Base {
   }
   isAddress() {
     return isAddress(this);
+  }
+  isCity() {
+    return isCity(this);
+  }
+  isZipCode() {
+    return isZipCode(this);
   }
   isState() {
     return isState(this);
