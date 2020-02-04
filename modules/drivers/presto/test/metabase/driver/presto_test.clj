@@ -15,10 +15,11 @@
             [metabase.models
              [field :refer [Field]]
              [table :as table :refer [Table]]]
+            [metabase.test.fixtures :as fixtures]
             [metabase.test.util.log :as tu.log]
             [toucan.db :as db]))
 
-(use-fixtures :once (mt/initialize-if-needed! :db))
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest details->uri-test
   (is (= "http://localhost:8080/"

@@ -341,7 +341,7 @@
   (tt/with-temp* [Database [db    {:engine :googleanalytics}]
                   Table    [table {:db_id (u/get-id db)}]
                   Field    [field {:table_id (u/get-id table)}]]
-    (let [cnt (->> ((users/user->client :crowberto) :post 200 "card"
+    (let [cnt (->> ((users/user->client :crowberto) :post 202 "card"
                     {:name                   "Metabase Websites, Sessions and 1 Day Active Users, Grouped by Date (day)"
                      :display                :table
                      :visualization_settings {}
