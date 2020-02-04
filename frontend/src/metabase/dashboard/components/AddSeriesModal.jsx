@@ -1,21 +1,24 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import _ from "underscore";
+import cx from "classnames";
+import { getIn } from "icepick";
+import { connect } from "react-redux";
 
 import Visualization from "metabase/visualizations/components/Visualization";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 import CheckBox from "metabase/components/CheckBox";
+
 import MetabaseAnalytics from "metabase/lib/analytics";
 import * as Q_DEPRECATED from "metabase/lib/query";
 import { color } from "metabase/lib/colors";
 
-import { getVisualizationRaw } from "metabase/visualizations";
+import Questions from "metabase/entities/questions";
 
-import _ from "underscore";
-import cx from "classnames";
-import { getIn } from "icepick";
+import { getVisualizationRaw } from "metabase/visualizations";
 
 function getQueryColumns(card, databases) {
   const dbId = card.dataset_query.database;
@@ -33,6 +36,15 @@ function getQueryColumns(card, databases) {
   return Q_DEPRECATED.getQueryColumns(table, query);
 }
 
+// TODO: rework this so we don't have to load all cards up front
+@connect(
+  state => ({
+    cards: Questions.selectors.getList(state, { entityQuery: { f: "all" } }),
+  }),
+  {
+    fetchCards: () => Questions.actions.fetchList({ f: "all" }),
+  },
+)
 export default class AddSeriesModal extends Component {
   constructor(props, context) {
     super(props, context);
@@ -68,7 +80,6 @@ export default class AddSeriesModal extends Component {
 
   async componentDidMount() {
     try {
-      // FIXME: performance
       await this.props.fetchCards();
       await Promise.all(
         _.uniq(this.props.cards.map(c => c.database_id)).map(db_id =>

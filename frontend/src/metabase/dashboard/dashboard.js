@@ -2,7 +2,6 @@
 
 import { assoc, dissoc, assocIn, getIn, chain } from "icepick";
 import _ from "underscore";
-import moment from "moment";
 
 import {
   handleActions,
@@ -30,7 +29,7 @@ import type {
   DashCard,
   DashCardId,
 } from "metabase/meta/types/Dashboard";
-import type { Card, CardId } from "metabase/meta/types/Card";
+import type { CardId } from "metabase/meta/types/Card";
 
 import Utils from "metabase/lib/utils";
 import { getPositionForNewDashCard } from "metabase/lib/dashboard_grid";
@@ -60,7 +59,6 @@ const DATASET_SLOW_TIMEOUT = 15 * 1000;
 
 // normalizr schemas
 const dashcard = new schema.Entity("dashcard");
-const card = new schema.Entity("card");
 const dashboard = new schema.Entity("dashboard", {
   ordered_cards: [dashcard],
 });
@@ -70,9 +68,6 @@ const dashboard = new schema.Entity("dashboard", {
 export const INITIALIZE = "metabase/dashboard/INITIALIZE";
 
 export const SET_EDITING_DASHBOARD = "metabase/dashboard/SET_EDITING_DASHBOARD";
-
-export const FETCH_CARDS = "metabase/dashboard/FETCH_CARDS";
-export const DELETE_CARD = "metabase/dashboard/DELETE_CARD";
 
 // NOTE: this is used in metabase/redux/metadata but can't be imported directly due to circular reference
 export const FETCH_DASHBOARD = "metabase/dashboard/FETCH_DASHBOARD";
@@ -138,26 +133,6 @@ export const markNewCardSeen = createAction(MARK_NEW_CARD_SEEN);
 // these operations don't get saved to server immediately
 export const setDashboardAttributes = createAction(SET_DASHBOARD_ATTRIBUTES);
 export const setDashCardAttributes = createAction(SET_DASHCARD_ATTRIBUTES);
-
-// TODO: consolidate with questions reducer
-export const fetchCards = createThunkAction(FETCH_CARDS, function(
-  filterMode = "all",
-) {
-  return async function(dispatch, getState) {
-    const cards = await CardApi.list({ f: filterMode });
-    for (const c of cards) {
-      c.updated_at = moment(c.updated_at);
-    }
-    return normalize(cards, [card]);
-  };
-});
-
-export const deleteCard = createThunkAction(DELETE_CARD, function(cardId) {
-  return async function(dispatch, getState) {
-    await CardApi.delete({ cardId });
-    return cardId;
-  };
-});
 
 export const addCardToDashboard = ({
   dashId,
@@ -919,24 +894,6 @@ const isEditing = handleActions(
   false,
 );
 
-// TODO: consolidate with questions reducer
-const cards = handleActions(
-  {
-    [FETCH_CARDS]: {
-      next: (state, { payload }) => ({ ...payload.entities.card }),
-    },
-  },
-  {},
-);
-
-const cardList = handleActions(
-  {
-    [FETCH_CARDS]: { next: (state, { payload }) => payload.result },
-    [DELETE_CARD]: { next: (state, { payload }) => state },
-  },
-  null,
-);
-
 export function syncParametersAndEmbeddingParams(before, after) {
   if (after.parameters && before.embedding_params) {
     return Object.keys(before.embedding_params).reduce((memo, embedSlug) => {
@@ -1129,8 +1086,6 @@ const parameterValues = handleActions(
 export default combineReducers({
   dashboardId,
   isEditing,
-  cards,
-  cardList,
   dashboards,
   dashcards,
   editingParameterId,

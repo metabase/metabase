@@ -23,7 +23,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import cx from "classnames";
 
 import type { LocationDescriptor, QueryParams } from "metabase/meta/types";
-import type { Card, CardId } from "metabase/meta/types/Card";
+import type { CardId } from "metabase/meta/types/Card";
 import type {
   Parameter,
   ParameterId,
