@@ -14,10 +14,9 @@
     (let [{:keys [replacement-snippet prepared-statement-args]} (substitution/->replacement-snippet-info driver/*driver* v)]
       [(str sql replacement-snippet) (concat args prepared-statement-args) missing])))
 
-(defn- subsistute-card-query [[sql args missing] in-optional? k {:keys [query] :as v}]
-  ;; FIXME Implementation is copied from `substitute-field-filter` and INCOMPLETE
-  (let [{:keys [replacement-snippet prepared-statement-args]} (substitution/->replacement-snippet-info driver/*driver* v)]
-    [(str sql replacement-snippet) (concat args prepared-statement-args) missing]))
+(defn- subsistute-card-query [[sql args missing] _in-optional? _k v]
+  (let [{:keys [replacement-snippet]} (substitution/->replacement-snippet-info driver/*driver* v)]
+    [(str sql replacement-snippet) args missing]))
 
 (defn- substitute-param [param->value [sql args missing] in-optional? {:keys [k]}]
   (if-not (contains? param->value k)

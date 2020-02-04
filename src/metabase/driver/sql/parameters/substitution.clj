@@ -24,7 +24,8 @@
            honeysql.types.SqlCall
            java.time.temporal.Temporal
            java.util.UUID
-           [metabase.driver.common.parameters CommaSeparatedNumbers Date DateRange FieldFilter MultipleValues]))
+           [metabase.driver.common.parameters CardQuery CommaSeparatedNumbers Date DateRange FieldFilter
+            MultipleValues]))
 
 ;;; ------------------------------------ ->prepared-substitution & default impls -------------------------------------
 
@@ -261,3 +262,11 @@
     :else
     (update (field-filter->replacement-snippet-info driver value)
             :replacement-snippet (partial str (field->identifier driver field (:type value)) " "))))
+
+
+;;; ------------------------------------- Field Filter replacement snippet info --------------------------------------
+
+(defmethod ->replacement-snippet-info [:sql CardQuery]
+  [_driver {:keys [query]}]
+  {:prepared-statement-args nil
+   :replacement-snippet (str "(" (get-in query [:native :query]) ")")})
