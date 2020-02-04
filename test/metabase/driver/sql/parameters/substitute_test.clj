@@ -110,6 +110,15 @@
                  (substitute query {"date" (assoc (date-field-filter-value) :value i/no-value)}))))))))
 
 
+;;; ------------------------------------------------- Card Queries ---------------------------------------------------
+
+(deftest substitute-card-query-test
+  (testing "card query substitution"
+    (let [query ["select * from " (param "#123")]]
+      (is (= ["select * from (select 1 `x`)"]
+             (substitute query {"#123" {:query {:native {:query "select 1 `x`"}}}}))))))
+
+
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
 
 (defn- substitute-e2e {:style/indent 1} [sql params]
