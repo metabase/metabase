@@ -295,7 +295,9 @@ export default class NativeQuery extends AtomicQuery {
         const templateTags = { ...existingTemplateTags };
         if (oldTags.length === 1 && newTags.length === 1) {
           // renaming
-          const newTag = templateTags[newTags[0]] = { ...templateTags[oldTags[0]] };
+          const newTag = (templateTags[newTags[0]] = {
+            ...templateTags[oldTags[0]],
+          });
 
           if (newTag.display_name === humanize(oldTags[0])) {
             newTag.display_name = humanize(newTags[0]);

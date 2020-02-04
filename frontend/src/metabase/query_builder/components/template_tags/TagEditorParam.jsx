@@ -156,8 +156,14 @@ export default class TagEditorParam extends Component {
             <Option value="text" disabled={isCardTag}>{t`Text`}</Option>
             <Option value="number" disabled={isCardTag}>{t`Number`}</Option>
             <Option value="date" disabled={isCardTag}>{t`Date`}</Option>
-            <Option value="dimension" disabled={isCardTag}>{t`Field Filter`}</Option>
-            <Option value="card" disabled={!isCardTag}>{t`Question query`}</Option>
+            <Option
+              value="dimension"
+              disabled={isCardTag}
+            >{t`Field Filter`}</Option>
+            <Option
+              value="card"
+              disabled={!isCardTag}
+            >{t`Question query`}</Option>
           </Select>
         </div>
 
@@ -225,7 +231,7 @@ export default class TagEditorParam extends Component {
           </div>
         )}
 
-        {tag.type === 'card' && (
+        {tag.type === "card" && (
           <div className="pb3">
             <h4 className="pb1">
               {t`Refers to question `}
