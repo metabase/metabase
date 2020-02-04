@@ -15,10 +15,13 @@
             [metabase.models
              [field :refer [Field]]
              [table :as table :refer [Table]]]
+            [metabase.test
+             [fixtures :as fixtures]
+             [util :as tu]]
             [metabase.test.util.log :as tu.log]
             [toucan.db :as db]))
 
-(use-fixtures :once (mt/initialize-if-needed! :db))
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest details->uri-test
   (is (= "http://localhost:8080/"
@@ -153,7 +156,7 @@
 (deftest db-default-timezone-test
   (mt/test-driver :presto
     (is (= "UTC"
-           (metabase.driver/db-default-timezone :presto (mt/db))))))
+           (tu/db-timezone-id)))))
 
 ;; Query cancellation test, needs careful coordination between the query thread, cancellation thread to ensure
 ;; everything works correctly together
@@ -162,7 +165,7 @@
     (let [called-cancel-promise (atom nil)]
       (with-redefs [http/delete (fn [& _]
                                   (deliver @called-cancel-promise true))]
-        (is (= ::mt/success
+        (is (= :metabase.test.util/success
                (mt/call-with-paused-query
                 (fn [query-thunk called-query? called-cancel? pause-query]
                   (reset! called-cancel-promise called-cancel?)

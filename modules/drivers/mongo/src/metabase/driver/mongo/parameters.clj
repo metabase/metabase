@@ -9,7 +9,9 @@
              [parse :as parse]
              [values :as values]]
             [metabase.driver.mongo.query-processor :as mongo.qp]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor
+             [error-type :as error-type]
+             [store :as qp.store]]
             [metabase.util :as u]
             [metabase.util
              [date-2 :as u.date]
@@ -32,10 +34,16 @@
       (pr-str x))))
 
 (defn- field->name [field]
+  ;; store parent Field(s) if needed, since `mongo.qp/field->name` attempts to look them up using the QP store
+  (letfn [(store-parent-field! [{parent-id :parent_id}]
+            (when parent-id
+              (qp.store/fetch-and-store-fields! #{parent-id})
+              (store-parent-field! (qp.store/field parent-id))))]
+    (store-parent-field! field))
   (pr-str (mongo.qp/field->name field ".")))
 
 (defn- substitute-one-field-filter-date-range [{field :field, {param-type :type, value :value} :value}]
-  (let [{:keys [start end]} (date-params/date-string->range value)
+  (let [{:keys [start end]} (date-params/date-string->range value {:inclusive-end? false})
         start-condition     (when start
                               (format "{%s: {$gte: %s}}" (field->name field) (param-value->str (u.date/parse start))))
         end-condition       (when end

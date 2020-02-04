@@ -28,7 +28,7 @@
   exists."
   []
   (when-not config/is-test?
-    (doseq [ns-symb @u/metabase-namespace-symbols
+    (doseq [ns-symb u/metabase-namespace-symbols
             :when   (.startsWith (name ns-symb) "metabase.events.")]
       (classloader/require ns-symb)
       ;; look for `events-init` function in the namespace and call it if it exists

@@ -214,6 +214,10 @@
   [_ [_ t]]
   (hx/cast :time (u.date/format-sql (t/local-time t))))
 
+(defmethod sql.qp/->float :presto
+  [_ value]
+  (hx/cast :double value))
+
 ;; See https://prestodb.io/docs/current/functions/datetime.html
 
 ;; This is only needed for test purposes, because some of the sample data still uses legacy types

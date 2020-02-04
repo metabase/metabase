@@ -123,7 +123,9 @@ Metabase will now need to know some things about your IdP. Here's a breakdown of
 
 ### Settings for signing SSO requests (optional)
 
-These are additional settings you can fill in to sign SSO requests to ensure they don’t get tampered with.
+These are additional settings you can fill in to sign SSO requests to ensure they don’t get tampered with. In addition, if your IdP encrypts SAML responses, you'll need to ensure this section is filled out.
+
+_Important note:_ If you change any of these settings, either during initial setup or after editing an existing value, you will need to restart Metabase due to the way the keystore file is read.
 
 **SAML keystore path:** the absolute path to the keystore file to use for signing SAML requests.
 

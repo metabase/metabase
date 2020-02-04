@@ -9,7 +9,15 @@
              [analyze :as analyze]
              [interface :as i]
              [sync-metadata :as sync-metadata]]
-            [metabase.test.data :as data]
+            [metabase.sync.analyze.classifiers
+             [category :as classifiers.category]
+             [name :as classifiers.name]
+             [no-preview-display :as classifiers.no-preview-display]
+             [text-fingerprint :as classifiers.text-fingerprint]]
+            [metabase.sync.analyze.fingerprint.fingerprinters :as fingerprinters]
+            [metabase.test
+             [data :as data]
+             [sync :as test.sync :refer [sync-survives-crash?]]]
             [metabase.util :as u]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
@@ -74,3 +82,18 @@
         (#'analyze/update-fields-last-analyzed! table)
         (is (= #{"Current fingerprint, not analyzed"}
                (db/select-field :name Field :table_id (u/get-id table), :last_analyzed [:> #t "2018-01-01"])))))))
+
+(deftest survive-fingerprinting-errors
+  (testing "Make sure we survive fingerprinting failing"
+    (sync-survives-crash? fingerprinters/fingerprinter)))
+
+(deftest survive-classify-fields-errors
+  (testing "Make sure we survive field classification failing"
+    (sync-survives-crash? classifiers.name/special-type-for-name-and-base-type)
+    (sync-survives-crash? classifiers.category/infer-is-category-or-list)
+    (sync-survives-crash? classifiers.no-preview-display/infer-no-preview-display)
+    (sync-survives-crash? classifiers.text-fingerprint/infer-special-type)))
+
+(deftest survive-classify-table-errors
+  (testing "Make sure we survive table classification failing"
+    (sync-survives-crash? classifiers.name/infer-entity-type)))
