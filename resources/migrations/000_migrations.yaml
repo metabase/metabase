@@ -5318,14 +5318,20 @@ databaseChangeLog:
         - onUpdateSQL: IGNORE
         - or:
             - and:
-                - dbms:
-                    type: mysql,mariadb
+                - or:
+                  - dbms:
+                    type: mysql
+                  - dbms:
+                    type: mariadb
                 - sqlCheck:
                     expectedResult: 0
                     sql: SELECT count(*) FROM (SELECT count(*) FROM `metabase_database` GROUP BY `name`, `engine` HAVING count(*) > 1) t1
             - and:
-                - dbms:
-                    type: h2,postgresql
+                - or:
+                  - dbms:
+                    type: h2
+                  - dbms:
+                    type: postgresql
                 - sqlCheck:
                     expectedResult: 0
                     sql: SELECT count(*) FROM (SELECT count(*) FROM METABASE_DATABASE GROUP BY NAME, ENGINE HAVING count(*) > 1) t1
