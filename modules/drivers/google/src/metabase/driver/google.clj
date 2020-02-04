@@ -6,10 +6,10 @@
              [driver :as driver]
              [util :as u]]
             [metabase.models.database :refer [Database]]
+            [metabase.query-processor.error-type :as error-type]
             [ring.util.codec :as codec]
             [toucan.db :as db])
-  (:import [com.google.api.client.googleapis.auth.oauth2 GoogleAuthorizationCodeFlow GoogleAuthorizationCodeFlow$Builder
-            GoogleCredential GoogleCredential$Builder GoogleTokenResponse]
+  (:import [com.google.api.client.googleapis.auth.oauth2 GoogleAuthorizationCodeFlow GoogleAuthorizationCodeFlow$Builder GoogleCredential GoogleCredential$Builder GoogleTokenResponse]
            com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
            [com.google.api.client.googleapis.json GoogleJsonError GoogleJsonResponseException]
            com.google.api.client.googleapis.services.AbstractGoogleClientRequest
@@ -30,7 +30,7 @@
 (def ^:private ^:const ^String redirect-uri "urn:ietf:wg:oauth:2.0:oob")
 
 (defn execute-no-auto-retry
-  "`execute` REQUEST, and catch any `GoogleJsonResponseException` is throws, converting them to `ExceptionInfo` and
+  "Execute `request`, and catch any `GoogleJsonResponseException` is throws, converting them to `ExceptionInfo` and
   rethrowing them."
   [^AbstractGoogleClientRequest request]
   (try (.execute request)
@@ -44,10 +44,13 @@
   "Execute `request`, and catch any `GoogleJsonResponseException` is throws, converting them to `ExceptionInfo` and
   rethrowing them.
 
-  This automatically retries any failed requests up to 2 times."
+  This automatically retries any failed requests."
   [^AbstractGoogleClientRequest request]
-  (u/auto-retry 2
-    (execute-no-auto-retry request)))
+  (try
+    (execute-no-auto-retry request)
+    (catch Throwable e
+      (when-not (error-type/client-error? (:type (u/all-ex-data e)))
+        (execute-no-auto-retry request)))))
 
 (defn- create-application-name
   "Creates the application name string, separated out from the `def` below so it's testable with different values"

@@ -140,8 +140,8 @@
     (= v "information_schema")))
 
 (defmethod driver/date-add :presto
-  [_ dt amount unit]
-  (hsql/call :date_add (hx/literal unit) amount dt))
+  [_ hsql-form amount unit]
+  (hsql/call :date_add (hx/literal unit) amount hsql-form))
 
 (s/defn ^:private database->all-schemas :- #{su/NonBlankString}
   "Return a set of all schema names in this `database`."

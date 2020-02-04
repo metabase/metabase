@@ -12,6 +12,7 @@
             [metabase.driver.google :as google]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor
+             [error-type :as error-type]
              [store :as qp.store]
              [timezone :as qp.timezone]
              [util :as qputil]]
@@ -20,8 +21,7 @@
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            com.google.api.client.http.HttpRequestInitializer
            [com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes]
-           [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema TableList
-            TableList$Tables TableReference TableRow TableSchema]
+           [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema TableList TableList$Tables TableReference TableRow TableSchema]
            java.util.Collections))
 
 (driver/register! :bigquery, :parent #{:google :sql})
@@ -204,9 +204,14 @@
 (defn- process-native* [database query-string]
   {:pre [(map? database) (map? (:details database))]}
   ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by
-  ;; `execute` so operations going through `process-native*` may be retried up to 3 times.
-  (u/auto-retry 1
-    (post-process-native (execute-bigquery database query-string))))
+  ;; `execute`
+  (letfn [(thunk []
+            (post-process-native (execute-bigquery database query-string)))]
+    (try
+      (thunk)
+      (catch Throwable e
+        (when-not (error-type/client-error? (:type (u/all-ex-data e)))
+          (thunk))))))
 
 (defn- effective-query-timezone-id [database]
   (if (get-in database [:details :use-jvm-timezone])
