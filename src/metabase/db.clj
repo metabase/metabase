@@ -170,10 +170,10 @@
    (migrate! :up))
 
   ([direction]
-   (migrate! @db-connection-details direction))
+   (migrate! (jdbc-spec) direction))
 
-  ([db-details direction]
-   (jdbc/with-db-transaction [conn (jdbc-spec db-details)]
+  ([jdbc-spec direction]
+   (jdbc/with-db-transaction [conn jdbc-spec]
      ;; Tell transaction to automatically `.rollback` instead of `.commit` when the transaction finishes
      (jdbc/db-set-rollback-only! conn)
      ;; Disable auto-commit. This should already be off but set it just to be safe
@@ -282,7 +282,7 @@
   "If we are not doing auto migrations then print out migration SQL for user to run manually.
    Then throw an exception to short circuit the setup process and make it clear we can't proceed."
   [db-details]
-  (let [sql (migrate! db-details :print)]
+  (let [sql (migrate! (jdbc-spec db-details) :print)]
     (log/info (str "Database Upgrade Required\n\n"
                    "NOTICE: Your database requires updates to work with this version of Metabase.  "
                    "Please execute the following sql commands on your database before proceeding.\n\n"
@@ -296,10 +296,10 @@
   [auto-migrate? db-details]
   (log/info (trs "Running Database Migrations..."))
   (if auto-migrate?
-    (migrate! db-details :up)
+    (migrate! (jdbc-spec db-details) :up)
     ;; if `MB_DB_AUTOMIGRATE` is false, and we have migrations that need to be ran, print and quit. Otherwise continue
     ;; to start normally
-    (when (liquibase/with-liquibase [liquibase (jdbc-spec)]
+    (when (liquibase/with-liquibase [liquibase (jdbc-spec db-details)]
             (liquibase/has-unrun-migrations? liquibase))
       (print-migrations-and-quit! db-details)))
   (log/info (trs "Database Migrations Current ... ") (u/emoji "✅")))
