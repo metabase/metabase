@@ -124,7 +124,10 @@
   "Returns the native query for the `:card` referenced by the given tag."
   [tag :- TagParam, _params :- (s/maybe [i/ParamValue])]
   (when-let [card-id (:card tag)]
-    (db/select-one-field :dataset_query Card :id card-id)))
+    (when-let [query (db/select-one-field :dataset_query Card :id card-id)]
+      (i/map->CardQuery
+       {:card-id card-id
+        :query   query}))))
 
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})

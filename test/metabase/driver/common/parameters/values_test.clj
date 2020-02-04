@@ -125,10 +125,11 @@
                      nil))))))
 
 (deftest card-query-test
-  (testing "Card template tag gets card's native query"
+  (testing "Card query template tag gets card's native query"
     (let [test-query "SELECT 1"]
       (tt/with-temp Card [card {:dataset_query {:native {:query test-query}}}]
-        (is (= {:native {:query test-query}}
+        (is (= (i/map->CardQuery {:card-id (:id card)
+                                  :query   {:native {:query test-query}}})
                (#'values/value-for-tag
                 {:name "card-template-tag-test", :display-name "Card template tag test",
                  :type :card, :card (:id card)}
