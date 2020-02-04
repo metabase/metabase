@@ -1,5 +1,7 @@
 import { signInAsNormalUser } from "__support__/cypress";
-describe("NativeQueryEditor", () => {
+
+describe("scenarios > question > native", () => {
+  before(restore);
   beforeEach(signInAsNormalUser);
 
   it("lets you create and run a SQL question", () => {

@@ -19,7 +19,7 @@ const USERS = {
   "anonymous user": () => signOut(),
 };
 
-describe("public and embeds", () => {
+describe("scenarios > public", () => {
   before(restore);
 
   beforeEach(() => {

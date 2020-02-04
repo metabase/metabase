@@ -1,6 +1,6 @@
 import { restore, signInAsAdmin, popover, modal } from "__support__/cypress";
 
-describe("question > notebook", () => {
+describe("scenarios > question > notebook", () => {
   before(restore);
   beforeEach(signInAsAdmin);
   describe("nested", () => {

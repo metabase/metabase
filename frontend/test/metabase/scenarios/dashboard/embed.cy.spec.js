@@ -1,6 +1,6 @@
 import { signInAsAdmin, restore } from "__support__/cypress";
 
-describe("dashboard", () => {
+describe("scenarios > dashboard > embed", () => {
   before(restore);
   beforeEach(signInAsAdmin);
 

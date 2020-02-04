@@ -13,7 +13,9 @@ const ORDER_USER_ID_FIELD_ID = 9;
 const PEOPLE_NAME_FIELD_ID = 20;
 const PEOPLE_ID_FIELD_ID = 21;
 
-describe("Parameters", () => {
+// NOTE: some overlap with parameters.cy.spec.js
+
+describe("scenarios > dashboard > parameters-embedded", () => {
   let dashboardId, questionId, dashcardId;
 
   before(() => {

@@ -1,6 +1,6 @@
 import { signInAsAdmin, restore } from "__support__/cypress";
 
-describe("admin/settings", () => {
+describe("scenarios > admin > settings", () => {
   before(restore);
   beforeEach(signInAsAdmin);
 

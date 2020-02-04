@@ -1,5 +1,6 @@
 import { restore, signOut, USERS } from "__support__/cypress";
-describe("sign in", () => {
+
+describe("scenarios > auth > signin", () => {
   before(restore);
   beforeEach(signOut);
 
