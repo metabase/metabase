@@ -67,7 +67,7 @@
 ;;; ---------------------------------------------------- Hashing -----------------------------------------------------
 
 (defn- select-keys-for-hashing
-  "Return QUERY with only the keys relevant to hashing kept.
+  "Return `query` with only the keys relevant to hashing kept.
   (This is done so irrelevant info or options that don't affect query results doesn't result in the same query
   producing different hashes.)"
   [query]
@@ -79,7 +79,7 @@
       (empty? parameters)  (dissoc :parameters))))
 
 (s/defn query-hash :- (Class/forName "[B")
-  "Return a 256-bit SHA3 hash of QUERY as a key for the cache. (This is returned as a byte array.)"
+  "Return a 256-bit SHA3 hash of `query` as a key for the cache. (This is returned as a byte array.)"
   [query]
   (hash/sha3-256 (json/generate-string (select-keys-for-hashing query))))
 

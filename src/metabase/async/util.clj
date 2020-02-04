@@ -8,6 +8,9 @@
            clojure.core.async.impl.channels.ManyToManyChannel
            java.util.concurrent.Future))
 
+;; TODO - most of this stuff can be removed now that we have the new-new reducible/async QP implementation of early
+;; 2020. No longer needed
+
 (defn promise-chan?
   "Is core.async `chan` a `promise-chan`?"
   [chan]
@@ -18,7 +21,7 @@
   "Schema for a core.async promise channel."
   (s/constrained ManyToManyChannel promise-chan? "promise chan"))
 
-(s/defn promise-canceled-chan :- PromiseChan
+(s/defn ^:deprecated promise-canceled-chan :- PromiseChan
   "Given a `promise-chan`, return a new channel that will receive a single message if `promise-chan` is closed before
   a message is written to it (i.e. if an API request is canceled). Automatically closes after `promise-chan` receives
   a message or is closed."
@@ -30,7 +33,7 @@
       (a/close! canceled-chan))
     canceled-chan))
 
-(s/defn single-value-pipe :- PromiseChan
+(s/defn ^:deprecated single-value-pipe :- PromiseChan
   "Pipe that will forward a single message from `in-chan` to `out-chan`, closing both afterward. If `out-chan` is closed
   before `in-chan` produces a value, closes `in-chan`; this can be used to automatically cancel QP requests and the
   like.

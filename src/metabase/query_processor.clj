@@ -272,8 +272,8 @@
    ;; TODO NOCOMMIT
    [#'results-metadata/record-and-return-metadata!
     #'constraints/add-default-userland-constraints
-    #'process-userland-query/process-userland-query
-    #'catch-exceptions/catch-exceptions]))
+    #'catch-exceptions/catch-exceptions
+    #'process-userland-query/process-userland-query]))
 
 (def ^{:arglists '([query] [query rff])} process-userland-query-async
   "Like `process-query-async`, but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."
