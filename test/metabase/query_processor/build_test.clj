@@ -1,7 +1,6 @@
 (ns metabase.query-processor.build-test
   "Tests/examples of the new QP/`qp.build`."
-  (:require [clojure.core.async :as a]
-            [clojure.java.io :as io]
+  (:require [clojure.java.io :as io]
             [clojure.test :refer :all]
             [metabase
              [driver :as driver]
@@ -118,28 +117,41 @@
                :query    {:source-table (mt/id :venues), :limit 2, :order-by [[:asc (mt/id :venues :id)]]}}
               maps-rff))))))
 
-(deftest cancel-chan-test
-  "Example of canceling a query early before results are returned."
-  []
-  (letfn [(process-query []
-            (qp/process-query-async
-             {:database (mt/id)
-              :type     :native
-              :native   {:query "SELECT * FROM users ORDER BY id ASC LIMIT 5;"}}
-             (fn [metadata]
-               (println "Sleeping for 1000!")
-               (Thread/sleep 1000)
-               (qp.build/default-rff metadata))))]
-    (let [{:keys [canceled-chan finished-chan]} (process-query)]
-      (a/put! canceled-chan :cancel)
-      (is (= :canceled
-             (a/<!! finished-chan))))
-    (let [{:keys [finished-chan]} (process-query)]
-      (future
-        (Thread/sleep 50)
-        (a/close! finished-chan))
-      (is (= nil
-             (a/<!! finished-chan))))))
+(deftest cancelation-test
+  (testing "Example of canceling a query early before results are returned."
+    (letfn [(process-query []
+              (qp/process-query-async
+               {:database (mt/id)
+                :type     :native
+                :native   {:query "SELECT * FROM users ORDER BY id ASC LIMIT 5;"}}
+               (fn [metadata]
+                 (Thread/sleep 1000)
+                 (qp.build/default-rff metadata))))]
+      (let [{:keys [canceled-chan finished-chan]} (process-query)]
+        (a/put! canceled-chan :cancel)
+        (is (= {:status :canceled}
+               (a/<!! finished-chan))))
+      (let [{:keys [finished-chan]} (process-query)]
+        (future
+          (Thread/sleep 50)
+          (a/close! finished-chan))
+        (is (= nil
+               (a/<!! finished-chan))))))
+
+  (testing "With a ridiculous timeout (1 ms) we should still get a result"
+    (let [qp (qp.build/sync-query-processor
+              (qp.build/async-query-processor
+               (qp.build/base-query-processor
+                (fn [_ _ _ respond]
+                  (Thread/sleep 10)
+                  (println "(Thread/currentThread):" (Thread/currentThread)) ; NOCOMMIT
+                  (respond {} []))
+                nil)
+               1))]
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Timed out after 1000\.0 µs\."
+           (qp {}))))))
 
 (deftest exceptions-test
   (testing "Test a query that throws an Exception."
@@ -156,8 +168,8 @@
           {:database (mt/id)
            :type     :query
            :query    {:source-table (mt/id :venues), :limit 20}}
-          (qp.build/in-context-rff
-           (fn [reduce-with-rff]
+          (qp.build/decorated-reducing-fn
+           (fn [_]
              (throw (Exception. "Cannot open file")))))))))
 
 (deftest custom-qp-test

@@ -336,18 +336,18 @@
 (defmulti execute-reducible-query
   "Execute a native query against that database and return rows that can be reduced using `transduce`/`reduce`.
 
-  Pass metadata about the columns and the reducible object to f, which has the signature
+  Pass metadata about the columns and the reducible object to `respond`, which has the signature
 
-    (f results-metadata rows)
+    (respond results-metadata rows)
 
   You can use `qp.util.reducible/reducible-rows` to create reducible, streaming results.
 
   Example impl:
 
     (defmethod reducible-query :my-driver
-      [_ query chans f]
+      [_ query chans respond]
       (with-open [results (run-query! query)]
-        (f
+        (respond
          {:cols [{:name \"my_col\"}]}
          (qp.util.reducible/reducible-rows (get-row results) chans)))"
   {:arglists '([driver query chans f])}

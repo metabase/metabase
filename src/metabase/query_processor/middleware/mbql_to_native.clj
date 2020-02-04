@@ -27,7 +27,10 @@
   "Middleware that handles conversion of MBQL queries to native (by calling driver QP methods) so the queries
    can be executed. For queries that are already native, this function is effectively a no-op."
   [qp]
-  (fn [{query-type :type, {:keys [disable-mbql->native?]} :middleware, :as query} xformf {:keys [raise-chan], :as chans}]
+  (fn [{query-type :type, {:keys [disable-mbql->native?]} :middleware, :as query}
+       xformf
+       {:keys [preprocessed-chan native-query-chan raise-chan], :as chans}]
+    (a/>!! preprocessed-chan query)
     (when-not i/*disable-qp-logging*
       (log/trace (u/format-color 'yellow "\nPreprocessed:\n%s" (u/pprint-to-str query))))
     ;; disabling mbql->native is only used by the `qp/query->preprocessed` function so we can get the fully
@@ -35,11 +38,13 @@
     (if disable-mbql->native?
       (qp query xformf chans)
       (try
-        (let [native-form  (query->native-form query)]
+        (let [native-form (query->native-form query)
+              query'      (if-not (= query-type :query)
+                            query
+                            (assoc query :native native-form))]
+          (a/>!! native-query-chan native-form)
           (qp
-           (if-not (= query-type :query)
-             query
-             (assoc query :native native-form))
+           query'
            (fn [metadata]
              (xformf (assoc metadata :native_form native-form)))
            chans))

@@ -105,8 +105,11 @@
       (cond
         (.supportsTransactionIsolationLevel dbmeta level)
         (do
-          (log/tracef "Set transaction isolation level for %s database to %s" driver level-name)
-          (.setTransactionIsolation conn level))
+          (log/tracef "Set transaction isolation level for %s database to %s" (name driver) level-name)
+          (try
+            (.setTransactionIsolation conn level)
+            (catch Throwable e
+              (log/error e (trs "Error setting transaction isolation level for {0} database to {1}" (name driver) level-name)))))
 
         (seq more)
         (recur more)))))
@@ -216,7 +219,7 @@
 
 (defn execute-reducible-query
   "Default impl of `execute-reducible-query` for sql-jdbc drivers."
-  [driver {{sql :query, params :params} :native} chans results-fn]
+  [driver {{sql :query, params :params} :native} chans respond]
   (with-open [conn (connection-with-timezone driver (qp.store/database) (qp.timezone/report-timezone-id-if-supported))
               stmt (prepared-statement* driver conn sql params chans)
               rs   (execute-query! driver stmt)]
@@ -226,6 +229,6 @@
           row-fn           (fn []
                              (when (.next rs)
                                (read-row)))]
-      (results-fn
+      (respond
        results-metadata
        (qp.util.reducible/reducible-rows row-fn chans)))))

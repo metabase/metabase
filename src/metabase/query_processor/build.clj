@@ -21,72 +21,80 @@
     config/is-test? (u/seconds->ms 30)
     config/is-dev?  (u/minutes->ms 3)))
 
-(defn- auto-closing-promise-chan
-  "A `core.async` promise chan that closes itself when it recieves a value."
-  [chan-name]
-  (let [chan (a/promise-chan)]
+(defn- async-chans-set-up-result-forwarding!
+  "Asynchronously forward the result of `canceled-chan`, `raise-chan`, or `reduced-chan` to `finished-chan`; close all
+  channels afterward."
+  [{:keys [canceled-chan raise-chan reduced-chan finished-chan], :as chans}]
+  (letfn [(close-all! []
+            (log/trace "<closing all core.async channels>")
+            (doseq [chan (vals chans)]
+              (a/close! chan)))]
     (a/go
-      (when (a/<! chan)
-        (a/close! chan)))
-    chan))
+      (let [[val port] (a/alts! [canceled-chan raise-chan reduced-chan finished-chan] :priority true)]
+        (log/tracef "%s got %s %s"
+                    (condp = port
+                      reduced-chan  "reduced-chan"
+                      canceled-chan "canceled-chan"
+                      raise-chan    "raised-chan"
+                      finished-chan "finished-chan")
+                    (class val)
+                    (if (= port finished-chan) "" "(forwarding result to finished-chan)"))
+        ;; send a cancelation message if appropriate
+        (cond
+          ;; if `finished-chan` is closed or otherwise gets a result before finishing the query, cancel it
+          (= port finished-chan)
+          (do
+            (log/trace "finished-chan closed or got result before query was finished. Canceling query.")
+            (a/>! canceled-chan ::canceled))
+
+          ;; if an Exception was thrown, cancel anything outstanding
+          (= port raise-chan)
+          (a/>! canceled-chan ::exception))
+        ;; now foward the result to finished-chan (if applicable)
+        (when-not (= port finished-chan)
+          (a/>! finished-chan (if (= port canceled-chan)
+                                {:status :interrupted}
+                                (or val "<nil>"))))
+        ;; finally, close all the channels once one of these channels gets a result
+        (close-all!)))))
+
+(defn- async-chans-set-up-timeout!
+  "If query isn't completely finished by `timeout-ms`, raise a timeout Exception."
+  [{:keys [raise-chan finished-chan]} timeout-ms]
+  (a/go
+    (let [[_ port] (a/alts! [finished-chan (a/timeout timeout-ms)])]
+      (when-not (= port finished-chan)
+        (log/tracef "Query timed out after %d ms, raising timeout exception." timeout-ms)
+        (a/>! raise-chan (ex-info (format "Timed out after %s." (u/format-milliseconds timeout-ms))
+                           {:status :timed-out
+                            :type   error-type/timed-out}))))))
 
 (defn async-chans
   ;; TODO - consider adding a `:preprocessed-chan` and a `:native` chan for getting the preprocessed and native
   ;; versions of the query respectfully
-  "* `:reducible-chan`    ­ sent a fn with the signature (reduce-results rff) when preprocessing completes successfully.
-   * `:start-reduce-chan` ­ sent a message when (reducible) query is executed successfully and first row is available (called automatically)
+  "* `:reducible-chan`    ­ sent a fn with the signature (reduce-results rff) when preprocessing completes successfully
+                            (used internally)
+   * `:preprocessed-chan` ­ sent the fully-preprocessed query before conversion before `mbql->native` is called.
+   * `:native-query-chan` ­ sent the query after calling `mbql->native`.
+   * `:start-reduce-chan` ­ sent a message when (reducible) query is executed successfully and first row is available
+                            (called automatically)
    * `:reduced-chan`      ­ sent the result of fully reducing a query. (called automatically)
    * `:raise-chan`        ­ sent any Exception that is thrown.
    * `:canceled-chan`     ­ sent a message if query is canceled before completion.
    * `:finished-chan`     ­ sent the result of either reduced, raise, or cancel."
   [timeout-ms]
-  (let [reducible-chan    (auto-closing-promise-chan "reducible-chan")
-        start-reduce-chan (auto-closing-promise-chan "start-reduce-chan")
-        reduced-chan      (auto-closing-promise-chan "reduced-chan")
-        raise-chan        (auto-closing-promise-chan "raise-chan")
-        canceled-chan     (auto-closing-promise-chan "canceled-chan")
-        finished-chan     (auto-closing-promise-chan "finished-chan")]
-    (letfn [(close-all! []
-              (log/trace "<closing all core.async channels>")
-              (a/close! reducible-chan)
-              (a/close! start-reduce-chan)
-              (a/close! reduced-chan)
-              (a/close! raise-chan)
-              (a/close! canceled-chan)
-              (a/close! finished-chan))]
-      ;; forward the result of `reduced`/`cancel`/`raise` to `finished`
-      (a/go
-        (when-let [reduced-result (a/<! reduced-chan)]
-          (a/>! finished-chan reduced-result)
-          (close-all!)))
-      (a/go
-        (when-let [e (a/<! raise-chan)]
-          (a/>! finished-chan e)
-          (close-all!)))
-      (a/go
-        (when (a/<! canceled-chan)
-          (a/>! finished-chan :canceled)
-          (close-all!)))
-      ;; if `start-reduce-chan` doesn't get something to start reducing by `timeout-ms`, throw a timeout Exception
-      (a/go
-        (let [[_ port] (a/alts! [start-reduce-chan (a/timeout timeout-ms)])]
-          (when-not (= port start-reduce-chan)
-            (a/>! raise-chan (ex-info (format "Timed out after %s." (u/format-milliseconds timeout-ms))
-                               {:status :timed-out
-                                :type   error-type/timed-out}))
-            ;; TODO - not sure this makes sense
-            (a/>! canceled-chan :timeout)
-            (close-all!))))
-      ;; if `finished-chan` is closed before getting a result, cancel the query
-      (a/go
-        (when-not (a/<! finished-chan)
-          (a/>! canceled-chan :canceled))))
-    {:reducible-chan    reducible-chan
-     :start-reduce-chan start-reduce-chan
-     :reduced-chan      reduced-chan
-     :raise-chan        raise-chan
-     :canceled-chan     canceled-chan
-     :finished-chan     finished-chan}))
+  {:pre [(integer? timeout-ms)]}
+  (let [chans {:reducible-chan    (a/promise-chan)
+               :preprocessed-chan (a/promise-chan)
+               :native-query-chan (a/promise-chan)
+               :start-reduce-chan (a/promise-chan)
+               :reduced-chan      (a/promise-chan)
+               :raise-chan        (a/promise-chan)
+               :canceled-chan     (a/promise-chan)
+               :finished-chan     (a/promise-chan)}]
+    (async-chans-set-up-result-forwarding! chans)
+    (async-chans-set-up-timeout! chans timeout-ms)
+    chans))
 
 (p.types/deftype+ ^:private DecoratedReducingFn [f]
   PrettyPrintable
@@ -103,18 +111,18 @@
 
   `decorated-reducing-fn` takes a single function that has the signature
 
-    (f reduce-with-rff)
+    (f do-reduce)
 
-  Obtain handles as needed and call it with an `rff`:
+  Obtain handles as needed, then call `do-reduce` with an `rff`:
 
-    (reduce-with-rff rff)
+    (do-reduce rff)
 
   Example:
 
     (decorated-reducing-fn
-     (fn [reduce-with-rff]
+     (fn [do-reduce]
        (with-open [w (io/writer filename)]
-         (reduce-with-rff
+         (do-reduce
           (fn [metadata]
             (fn
               ([] ...)
@@ -126,7 +134,7 @@
 (defn- execute-query-and-reduce-results
   [execute-reducible-query query xformf {:keys [reducible-chan start-reduce-chan reduced-chan raise-chan], :as chans}]
   {:pre [(fn? xformf)]}
-  (letfn [(return-results [rff metadata reducible-rows]
+  (letfn [(respond* [rff metadata reducible-rows]
             {:pre [(or (fn? rff) (instance? DecoratedReducingFn rff)) (map? metadata)]}
             (a/put! start-reduce-chan :start)
             (try
@@ -143,8 +151,8 @@
                 (a/>!! raise-chan e)))
             nil)
           (reduce-results [rff]
-            (execute-reducible-query driver/*driver* query chans (partial return-results rff)))]
-    (a/put! reducible-chan (bound-fn* reduce-results)))
+            (execute-reducible-query driver/*driver* query chans (partial respond* rff)))]
+    (a/>!! reducible-chan (bound-fn* reduce-results)))
   nil)
 
 (defn base-query-processor
@@ -161,11 +169,11 @@
 
   If `execute-reducible-query` is passed, it should have the same signature as `driver/execute-reducible-query`, i.e.:
 
-    (execute-reducible-query driver query chans return-results)
+    (execute-reducible-query driver query chans respond)
 
   and call
 
-    (return-results metadata rows)."
+    (respond metadata rows)."
   ([middleware]
    (base-query-processor driver/execute-reducible-query middleware))
 

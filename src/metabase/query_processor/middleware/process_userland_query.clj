@@ -2,7 +2,8 @@
   "Middleware related to doing extra steps for queries that are ran via API endpoints (i.e., most of them -- as opposed
   to queries ran internally e.g. as part of the sync process). These include things like saving QueryExecutions and
   formatting the results."
-  (:require [medley.core :as m]
+  (:require [clojure.core.async :as a]
+            [medley.core :as m]
             [metabase.models
              [query :as query]
              [query-execution :as query-execution :refer [QueryExecution]]]
@@ -70,49 +71,20 @@
 ;;; |                                                Handle Response                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- succeed [query-execution result]
-  (save-successful-query-execution! query-execution result)
-  (success-response query-execution result))
+(defn- succeed [execution-info result]
+  (save-successful-query-execution! execution-info result)
+  (success-response execution-info result))
 
-(defn- fail [query-execution result]
+(defn- fail [execution-info result]
   (let [message (get result :error (tru "Unknown error"))]
-    (save-failed-query-execution! query-execution message)
-    (failure-response query-execution message result)))
+    (save-failed-query-execution! execution-info message)
+    (failure-response execution-info message result)))
 
-(defn- format-userland-query-result
-  "Format QP response in the format expected by the frontend client, and save a QueryExecution entry."
-  [chans query-execution {:keys [status], :as result}]
-  #_(cond
-    ;; if the result itself is invalid there's something wrong in the QP -- not just with the query. Pass an
-    ;; Exception up to the top-level handler; this is basically a 500 situation
-    (nil? result)
-    (raise (Exception. (trs "Unexpected nil response from query processor.")))
-
-    (not status)
-    (raise (Exception. (str (deferred-tru "Invalid response from database driver. No :status provided.")
-                            " "
-                            result)))
-
-    ;; if query has been cancelled no need to save QueryExecution (or should we?) and no point formatting anything to
-    ;; be returned since it won't be returned
-    (and (= status :failed)
-         (instance? InterruptedException (:class result)))
-    (do
-      (when-not qp.i/*disable-qp-logging*
-        (log/info (trs "Query canceled")))
-      (respond {:status :interrupted}))
-
-    ;; 'Normal' query failures are usually caused by invalid queries -- equivalent of a HTTP 400. Save QueryExecution
-    ;; & return a "status = failed" response
-    (= status :failed)
-    (do
-      (when-not qp.i/*disable-qp-logging*
-        (log/warn (trs "Query failure") (u/pprint-to-str 'red result)))
-      (respond (fail query-execution result)))
-
-    ;; Successful query (~= HTTP 200): save QueryExecution & return "status = completed" response
-    (= status :completed)
-    (respond (succeed query-execution result))))
+#_(defn- add-and-save-execution-info [execution-info {:keys [status], :as result}]
+  (case status
+    :completed (succeed execution-info result)
+    :failed    (fail execution-info result)
+    result))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -141,12 +113,31 @@
    :result_rows       0
    :start_time_millis (System/currentTimeMillis)})
 
+(defn- add-and-save-execution-info-xform [execution-info]
+  (fn [rf]
+    (fn
+      ([] (rf))
+
+      ([result]
+       (if (map? result)
+         (succeed execution-info result)
+         result))
+
+      ([result row]
+       (rf result row)))))
+
 (defn process-userland-query
   "Do extra handling 'userland' queries (i.e. ones ran as a result of a user action, e.g. an API call, scheduled Pulse,
   etc.). This includes recording QueryExecution entries and returning the results in an FE-client-friendly format."
   [qp]
-  (fn [query xform {:keys [canceled-chan finished-chan], :as chans}]
-    ;; add calculated hash to query
-    (let [query'  (assoc-in query [:info :query-hash] (qputil/query-hash query))
-          respond (partial format-userland-query-result chans (query-execution-info query'))]
-      (qp query' xform chans))))
+  (fn [query xformf {:keys [raise-chan], :as chans}]
+    (let [query'         (assoc-in query [:info :query-hash] (qputil/query-hash query))
+          execution-info (query-execution-info query')
+          xformf'        (fn [metadata]
+                           (comp (add-and-save-execution-info-xform execution-info) (xformf metadata)))]
+      ;; TODO - need to add running time to failure responses as well.
+      (a/go
+        (let [result (a/<! finished-chan)]
+
+          ))
+      (qp query' xformf' chans))))

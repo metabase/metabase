@@ -2,7 +2,7 @@
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific
   implementations."
   (:require [clojure.core.async :as a]
-            [medley.core :as m]
+            [clojure.tools.logging :as log]
             [metabase.driver :as driver]
             [metabase.driver.util :as driver.u]
             [metabase.mbql.schema :as mbql.s]
@@ -143,52 +143,82 @@
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are passed to
 ;; `substitute-parameters`
 
-(def ^:private ^{:arglists '([query])} preprocess
-  "Run all the preprocessing steps on a query, returning it in the shape it looks immediately before it would normally
-  get executed by `execute-query`. If preprocessing fails for some reason, `preprocess` will throw an Exception.
+(def ^{:arglists '([query] [query rff])} process-query-async
+  "Process a query asynchronously, returning a handful of `core.async` channels that can be used to get the results (see
+  docstring for `metabase.query-processor.build/async-chans` for more details on what these channels are.)"
+  (qp.build/async-query-processor
+   (qp.build/base-query-processor default-middleware)))
 
-  (NOTE: Don't use this directly. You either want `query->preprocessed` (for the fully preprocessed query) or
-  `query->native` for the native form.)"
-  (let [qp (qp.build/sync-query-processor
-            (qp.build/async-query-processor
-             (qp.build/base-query-processor
-              (fn [_ query {:keys [finished-chan]} _]
-                (a/>!! finished-chan query))
-              default-middleware)))]
-    (fn [query]
-      (binding [async-wait/*disable-async-wait* true]
-        (qp query)))))
+(def ^{:arglists '([query] [query rff])} process-query-sync
+  "Process a query synchronously, blocking until results are returned. Throws raised Exceptions directly."
+  (qp.build/sync-query-processor process-query-async))
 
-(def ^:private ^:dynamic *preprocessing-level* 0)
+(defn process-query
+  "Process an MBQL query. This is the main entrypoint to the magical realm of the Query Processor. Returns a *single*
+  core.async channel if option `:async?` is true; otherwise returns results in the usual format. For async queries, if
+  the core.async channel is closed, the query will be canceled."
+  {:arglists '([query] [query rff])}
+  [{:keys [async?], :as query} & args]
+  (if-not async?
+    (apply process-query-sync query args)
+    (:finished-chan (apply process-query-async query args))))
+
+(def ^:private ^:dynamic *preprocessing-level* 1)
 
 (def ^:private ^:const max-preprocessing-level 20)
+
+(def ^:private ^:const preprocessing-timeout-ms 10000)
+
+(def ^:private ^{:arglists '([query])} preprocess-query
+  (let [qp (qp.build/async-query-processor
+            (qp.build/base-query-processor
+             (fn [_ _ _ respond]
+               (respond {} []))
+             default-middleware)
+            preprocessing-timeout-ms)]
+    (fn [query]
+      ;; record the number of recursive preprocesses taking place to prevent infinite preprocessing loops.
+      (log/tracef "*preprocessing-level*: %d" *preprocessing-level*)
+      (when (>= *preprocessing-level* max-preprocessing-level)
+        (throw (ex-info (str (tru "Infinite loop detected: recursively preprocessed query {0} times."
+                                  max-preprocessing-level))
+                 {:type error-type/qp})))
+      (binding [*preprocessing-level*           (inc *preprocessing-level*)
+                async-wait/*disable-async-wait* true]
+        (qp query)))))
 
 (defn query->preprocessed
   "Return the fully preprocessed form for `query`, the way it would look immediately before `mbql->native` is called.
   Especially helpful for debugging or testing driver QP implementations."
   {:style/indent 0}
   [query]
-  ;; record the number of recursive preprocesses taking place to prevent infinite preprocessing loops.
-  (binding [*preprocessing-level* (inc *preprocessing-level*)]
-    (when (>= *preprocessing-level* max-preprocessing-level)
-      (throw (ex-info (str (tru "Infinite loop detected: recursively preprocessed query {0} times."
-                                max-preprocessing-level))
-               {:type error-type/qp})))
-    (-> query        (update :middleware assoc :disable-mbql->native? true)
-        (update :preprocessing-level (fnil inc 0))
-        preprocess
-        (m/dissoc-in [:middleware :disable-mbql->native?]))))
+  (let [{:keys [preprocessed-chan finished-chan]} (preprocess-query query)]
+    ;; cancel the query as soon as we get the preprocessed version
+    (a/go
+      (when-let [preprocessed (a/<! preprocessed-chan)]
+        (a/>! finished-chan {::preprocessed preprocessed})))
+    (let [result (a/<!! finished-chan)]
+      (when (instance? Throwable result)
+        (throw result))
+      (when (or (not (map? result))
+                (not (::preprocessed result)))
+        (throw (ex-info (tru "Error preprocessing query: unexpected result")
+                 {:type error-type/qp, :result result})))
+      (::preprocessed result))))
 
 (defn query->expected-cols
   "Return the `:cols` you would normally see in MBQL query results by preprocessing the query and calling `annotate` on
-  it."
+  it. This only works for pure MBQL queries, since it does not actually run the queries. Native queries or MBQL
+  queries with native source queries won't work, since we don't need the results."
   [{query-type :type, :as query}]
   (when-not (= query-type :query)
-    (throw (Exception. (tru "Can only determine expected columns for MBQL queries."))))
+    (throw (ex-info (tru "Can only determine expected columns for MBQL queries.")
+             {:type error-type/qp})))
+  ;; TODO - we should throw an Exception if the query has a native source query or at least warn about it. Need to
+  ;; check where this is used.
   (qp.store/with-store
-    (let [preprocessed (query->preprocessed query)
-          results      ((annotate/add-column-info (constantly nil)) preprocessed)]
-      (seq (:cols results)))))
+    (let [preprocessed (query->preprocessed query)]
+      (seq (annotate/column-info preprocessed nil)))))
 
 (defn query->native
   "Return the native form for `query` (e.g. for a MBQL query on Postgres this would return a map containing the compiled
@@ -199,44 +229,32 @@
   {:style/indent 0}
   [query]
   (perms/check-current-user-has-adhoc-native-query-perms query)
-  (let [results (preprocess query)]
-    (or (get results :native)
-        (throw (ex-info (tru "No native form returned.")
-                 (or results {}))))))
+  (let [{:keys [native-query-chan finished-chan]} (preprocess-query query)]
+    ;; cancel the query as soon as we get the native-query
+    (a/go
+      (when-let [native-query (a/<! native-query-chan)]
+        (a/>! finished-chan {::native native-query})))
+    (let [result (a/<!! finished-chan)]
+      (when (instance? Throwable result)
+        (throw result))
+      (when (or (not (map? result))
+                (not (::native result)))
+        (throw (ex-info (tru "Error converting query to native: unexpected result")
+                 {:type error-type/qp, :result result})))
+      (::native result))))
 
 (defn query->native-with-spliced-params
-    "Return the native form for a `query`, with any prepared statement (or equivalent) parameters spliced into the query
+  "Return the native form for a `query`, with any prepared statement (or equivalent) parameters spliced into the query
   itself as literals. This is used to power features such as 'Convert this Question to SQL'.
 
   (Currently, this function is mostly used by tests and in the REPL; `splice-params-in-response` middleware handles
   simliar functionality for queries that are actually executed.)"
-    {:style/indent 0}
-    [query]
-    ;; We need to preprocess the query first to get a valid database in case we're dealing with a nested query whose DB
-    ;; ID is the virtual DB identifier
-    (let [driver (driver.u/database->driver (:database (query->preprocessed query)))]
-      (driver/splice-parameters-into-native-query driver
-        (query->native query))))
-
-(def ^{:arglists '([query] [query rf-fn])} process-query-async
-  "Process a query asynchronously, returning a handful of `core.async` channels that can be used to get the results (see
-  docstring for `metabase.query-processor.build/async-chans` for more details on what these channels are.)"
-  (qp.build/async-query-processor
-   (qp.build/base-query-processor default-middleware)))
-
-(def ^{:arglists '([query] [query rf-fn])} process-query-sync
-  "Process a query synchronously, blocking until results are returned. Throws raised Exceptions directly."
-  (qp.build/sync-query-processor process-query-async))
-
-(defn process-query
-  "Process an MBQL query. This is the main entrypoint to the magical realm of the Query Processor. Returns a *single*
-  core.async channel if option `:async?` is true; otherwise returns results in the usual format. For async queries, if
-  the core.async channel is closed, the query will be canceled."
-  {:arglists '([query] [query rf-fn])}
-  [{:keys [async?], :as query} & args]
-  (if-not async?
-    (apply process-query-sync query args)
-    (:finished-chan (apply process-query-async query args))))
+  {:style/indent 0}
+  [query]
+  ;; We need to preprocess the query first to get a valid database in case we're dealing with a nested query whose DB
+  ;; ID is the virtual DB identifier
+  (let [driver (driver.u/database->driver (:database (query->preprocessed query)))]
+    (driver/splice-parameters-into-native-query driver (query->native query))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -252,24 +270,23 @@
   (concat
    default-middleware
    ;; TODO NOCOMMIT
-   (comment #'process-userland-query/process-userland-query)
    [#'results-metadata/record-and-return-metadata!
-    #_#'process-userland-query/process-userland-query
     #'constraints/add-default-userland-constraints
+    #'process-userland-query/process-userland-query
     #'catch-exceptions/catch-exceptions]))
 
-(def ^{:arglists '([query] [query rf-fn])} process-userland-query-async
+(def ^{:arglists '([query] [query rff])} process-userland-query-async
   "Like `process-query-async`, but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."
   (qp.build/async-query-processor
    (qp.build/base-query-processor userland-middleware)))
 
-(def ^{:arglists '([query] [query rf-fn])} process-userland-query-sync
+(def ^{:arglists '([query] [query rff])} process-userland-query-sync
   "Like `process-query-sync`, but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."
   (qp.build/sync-query-processor process-userland-query-async))
 
 (defn process-userland-query
   "Like `process-query`, but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."
-  {:arglists '([query] [query rf-fn])}
+  {:arglists '([query] [query rff])}
   [{:keys [async?], :as query} & args]
   (if-not async?
     (apply process-userland-query-sync query args)
@@ -287,5 +304,6 @@
   "Same as `process-query-and-save-execution!` but will include the default max rows returned as a constraint. (This
   function is ulitmately what powers most API endpoints that run queries, including `POST /api/dataset`.)"
   [query, options :- mbql.s/Info]
-  (let [query' (assoc-in query [:middleware :add-default-userland-constraints?] true)]
-    (process-query-and-save-execution! query' options)))
+  (process-query-and-save-execution!
+   (assoc-in query [:middleware :add-default-userland-constraints?] true)
+   options))
