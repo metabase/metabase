@@ -311,7 +311,7 @@
     (is (= {:requested_timezone "US/Pacific"
             :results_timezone   "US/Pacific"}
            (tu/with-temporary-setting-values [report-timezone "US/Pacific"]
-             (let [results ((test-users/user->client :rasta) :post 200 "dataset" (data/mbql-query checkins
+             (let [results ((test-users/user->client :rasta) :post 202 "dataset" (data/mbql-query checkins
                                                                                    {:aggregation [[:count]]}))]
                (-> results
                    :data
