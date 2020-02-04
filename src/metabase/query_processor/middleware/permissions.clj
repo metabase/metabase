@@ -58,11 +58,19 @@
 ;;; |                                            Non-middleware util fns                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn current-user-has-adhoc-native-query-perms?
+  "If current user is bound, do they have ad-hoc native query permissions for `query`'s database? (This is used by
+  `qp/query->native` and the `catch-exceptions` middleware to check the user should be allowed to see the native query
+  before converting the MBQL query to native.)"
+  [{database-id :database, :as query}]
+  (or
+   (not *current-user-id*)
+   (let [required-perms (perms/adhoc-native-query-path database-id)]
+     (perms/set-has-full-permissions? @*current-user-permissions-set* required-perms))))
+
 (defn check-current-user-has-adhoc-native-query-perms
   "Check that the current user (if bound) has adhoc native query permissions to run `query`, or throw an
   Exception. (This is used by `qp/query->native` to check perms before converting an MBQL query to native.)"
   [{database-id :database, :as query}]
-  (when *current-user-id*
-    (let [required-perms (perms/adhoc-native-query-path database-id)]
-      (when-not (perms/set-has-full-permissions? @*current-user-permissions-set* required-perms)
-        (throw (perms-exception required-perms))))))
+  (when-not (current-user-has-adhoc-native-query-perms? query)
+    (throw (perms-exception (perms/adhoc-native-query-path database-id)))))

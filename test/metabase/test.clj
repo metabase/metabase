@@ -24,6 +24,7 @@
              [log :as tu.log]
              [timezone :as tu.tz]]
             [potemkin :as p]
+            [metabase.test.util.async :as tu.async]
             [toucan.util.test :as tt]))
 
 ;; Fool the linters into thinking these namespaces are used! See discussion on
@@ -40,6 +41,7 @@
   [test-users/keep-me]
   tt/keep-me
   tu/keep-me
+  tu.async/keep-me
   tu.log/keep-me
   tu.tz/keep-me
   tx/keep-me
@@ -131,6 +133,11 @@
   with-temp-scheduler
   with-temp-vals-in-db
   with-temporary-setting-values]
+
+ [tu.async
+  wait-for-close
+  wait-for-result
+  with-open-channels]
 
  [tu.log
   suppress-output]

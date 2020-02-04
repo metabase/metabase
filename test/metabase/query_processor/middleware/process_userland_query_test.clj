@@ -6,8 +6,7 @@
              [error-type :as error-type]
              [util :as qputil]]
             [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
-            [metabase.test :as mt]
-            [metabase.test.util.async :as tu.async]))
+            [metabase.test :as mt]))
 
 (defn- process-userland-query [query result chans]
   ((process-userland-query/process-userland-query
@@ -18,11 +17,11 @@
    chans))
 
 (defn- do-with-query-execution [query run]
-  (tu.async/with-open-channels [query-execution-chan (a/promise-chan)]
+  (mt/with-open-channels [query-execution-chan (a/promise-chan)]
     (with-redefs [process-userland-query/save-query-execution! (partial a/>!! query-execution-chan)]
       (run
         (fn qe-result* []
-          (let [qe (tu.async/wait-for-result query-execution-chan)]
+          (let [qe (mt/wait-for-result query-execution-chan)]
             (cond-> qe
               (:running_time qe) (update :running_time (fnil pos? 0))
               (:hash qe)         (update :hash #(java.util.Arrays/equals
@@ -34,11 +33,11 @@
 
 (defn- do-with-result [query result run]
   (mt/with-clock #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
-    (tu.async/with-open-channels [finished-chan (a/promise-chan)]
+    (mt/with-open-channels [finished-chan (a/promise-chan)]
       (run
         (fn result* []
           (process-userland-query query result {:finished-chan finished-chan})
-          (let [result (tu.async/wait-for-result finished-chan)]
+          (let [result (mt/wait-for-result finished-chan)]
             (is (= true
                    (a.protocols/closed? finished-chan))
                 "finished-chan should be closed")

@@ -196,7 +196,7 @@
     ;; cancel the query as soon as we get the preprocessed version
     (a/go
       (when-let [preprocessed (a/<! preprocessed-chan)]
-        (a/>! finished-chan {::preprocessed preprocessed})))
+        (a/>! finished-chan {:status :internal, ::preprocessed preprocessed})))
     (let [result (a/<!! finished-chan)]
       (when (instance? Throwable result)
         (throw result))
@@ -233,7 +233,7 @@
     ;; cancel the query as soon as we get the native-query
     (a/go
       (when-let [native-query (a/<! native-query-chan)]
-        (a/>! finished-chan {::native native-query})))
+        (a/>! finished-chan {:status :internal, ::native native-query})))
     (let [result (a/<!! finished-chan)]
       (when (instance? Throwable result)
         (throw result))
@@ -269,7 +269,6 @@
   the REST API)."
   (concat
    default-middleware
-   ;; TODO NOCOMMIT
    [#'results-metadata/record-and-return-metadata!
     #'constraints/add-default-userland-constraints
     #'catch-exceptions/catch-exceptions

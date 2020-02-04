@@ -159,18 +159,20 @@
   (fn [query xformf {:keys [finished-chan], :as chans}]
     (let [query'         (assoc-in query [:info :query-hash] (qputil/query-hash query))
           execution-info (query-execution-info query')
-          xformf'        (fn [metadata]
-                           (comp (add-and-save-execution-info-xform execution-info) (xformf metadata)))
           finished-chan' (a/promise-chan)]
       ;; intercept the final result and transform it with `add-and-save-execution-info!` (save happens asynchronously)
       (a/go
         (when-let [result (a/<! finished-chan')]
+          (log/tracef "finished-chan' got %s, transforming and forwarding to finished-chan" (class result))
           (let [result' (try
                           (add-and-save-execution-info! execution-info result)
                           (catch Throwable e
                             (log/error e (trs "Error adding query execution info"))
                             result))]
-            (a/>!! finished-chan result')))
-        (a/close! finished-chan')
-        (a/close! finished-chan))
-      (qp query' xformf' (assoc chans :finished-chan finished-chan')))))
+            (a/>!! finished-chan result'))))
+      ;; close `finished-chan'` when `finished-chan` is closed
+      (a/go
+        (a/<! finished-chan)
+        (log/trace "finished-chan done; closing finished-chan'")
+        (a/close! finished-chan'))
+      (qp query' xformf (assoc chans :finished-chan finished-chan')))))

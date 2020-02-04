@@ -34,7 +34,6 @@
        (finally
          (a/close! chan#)))))
 
-
 (defmacro with-chans
   "Create core.async channels and bind them; execute body, closing out the channels in a `finally` block. Useful for
   writing tests where you don't want to accidentally leave things open if something goes wrong.

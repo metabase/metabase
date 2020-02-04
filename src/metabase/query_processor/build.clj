@@ -37,7 +37,11 @@
                       canceled-chan "canceled-chan"
                       raise-chan    "raised-chan"
                       finished-chan "finished-chan")
-                    (class val)
+                    (cond
+                      (and (map? val) (:status val)) {:status (:status val)}
+                      (map? val)                     (format "map with keys %s" (vec (keys val)))
+                      (keyword? val)                 val
+                      :else                          (class val))
                     (if (= port finished-chan) "" "(forwarding result to finished-chan)"))
         ;; send a cancelation message if appropriate
         (cond
@@ -54,7 +58,7 @@
         (when-not (= port finished-chan)
           (a/>! finished-chan (if (= port canceled-chan)
                                 {:status :interrupted}
-                                (or val "<nil>"))))
+                                (if (some? val) val {:status :no-value}))))
         ;; finally, close all the channels once one of these channels gets a result
         (close-all!)))))
 
@@ -151,9 +155,41 @@
                 (a/>!! raise-chan e)))
             nil)
           (reduce-results [rff]
-            (execute-reducible-query driver/*driver* query chans (partial respond* rff)))]
+            (try
+              (execute-reducible-query driver/*driver* query chans (partial respond* rff))
+              (catch Throwable e
+                (a/>!! raise-chan e))))]
     (a/>!! reducible-chan (bound-fn* reduce-results)))
   nil)
+
+(defn- base-qp3 [qp]
+  (fn qp3* [query rff {:keys [reducible-chan raise-chan canceled-chan], :as chans}]
+    (a/go
+      (when-let [reduce-results (a/<! reducible-chan)]
+        ;; run on a different thread
+        ;; TODO ­ use dedicated threadpool (?)
+        (let [futur (future
+                      ;; check and make sure query hasn't been canceled yet!
+                      (when-not (a/poll! canceled-chan)
+                        (reduce-results rff)))]
+          (when (a/<! canceled-chan)
+            (future-cancel futur)))))
+    (try
+      (qp
+       query
+       (fn [metadata]
+         (fn [rff]
+           (rff metadata)))
+       chans)
+      (catch Throwable e
+        (a/>!! raise-chan e)))))
+
+(defn- apply-middleware [execute-reducible-query middleware]
+  (reduce
+   (fn [qp middleware]
+     (middleware qp))
+   (partial execute-query-and-reduce-results execute-reducible-query)
+   middleware))
 
 (defn base-query-processor
   "Returns a query processor function with the signature
@@ -178,34 +214,7 @@
    (base-query-processor driver/execute-reducible-query middleware))
 
   ([execute-reducible-query middleware]
-   (let [qp (reduce
-             (fn [qp middleware]
-               (middleware qp))
-             (partial execute-query-and-reduce-results execute-reducible-query)
-             middleware)]
-     (fn qp3* [query rff {:keys [reducible-chan reduced-chan raise-chan canceled-chan], :as chans}]
-       (a/go
-         (when-let [reduce-results (a/<! reducible-chan)]
-           ;; run on a different thread
-           ;; TODO ­ use dedicated threadpool (?)
-           (let [futur (future
-                         ;; check and make sure query hasn't been canceled yet!
-                         (when-not (a/poll! canceled-chan)
-                           (try
-                             (reduce-results rff)
-                             (catch Throwable e
-                               (a/>!! raise-chan e)))))]
-             (when (a/<! canceled-chan)
-               (future-cancel futur)))))
-       (try
-         (qp
-          query
-          (fn [metadata]
-            (fn [rff]
-              (rff metadata)))
-          chans)
-         (catch Throwable e
-           (a/>!! raise-chan e)))))))
+   (base-qp3 (apply-middleware execute-reducible-query middleware))))
 
 (defn default-rff
   "Default function returning a reducing function. Results are returned in the 'standard' map format e.g.
