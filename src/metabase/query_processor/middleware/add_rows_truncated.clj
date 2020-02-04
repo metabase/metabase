@@ -11,6 +11,7 @@
       i/absolute-max-results))
 
 (defn- add-rows-truncated-xform [limit]
+  {:pre [(int? limit)]}
   (fn add-rows-truncated-rf [rf]
     {:pre [(fn? rf)]}
     (fn
@@ -18,10 +19,9 @@
        (rf))
 
       ([result]
-       (let [result' (rf result)]
-         (if (and (map? result') (:row_count result') (= (:row_count result') limit))
-           (assoc-in result' [:data :rows_truncated] limit)
-           result')))
+       (rf (cond-> result
+             (and (map? result) (= (:row_count result) limit))
+             (assoc-in [:data :rows_truncated] limit))))
 
       ([result row]
        (rf result row)))))

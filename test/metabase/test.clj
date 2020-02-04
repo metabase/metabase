@@ -10,7 +10,9 @@
              [query-processor :as qp]
              [query-processor-test :as qp.test]]
             [metabase.driver.sql-jdbc-test :as sql-jdbc-test]
-            [metabase.query-processor.test-util :as qp.test-util]
+            [metabase.query-processor
+             [build :as qp.build]
+             [test-util :as qp.test-util]]
             [metabase.test
              [data :as data]
              [initialize :as initialize]
@@ -21,10 +23,10 @@
              [interface :as tx]
              [users :as test-users]]
             [metabase.test.util
+             [async :as tu.async]
              [log :as tu.log]
              [timezone :as tu.tz]]
             [potemkin :as p]
-            [metabase.test.util.async :as tu.async]
             [toucan.util.test :as tt]))
 
 ;; Fool the linters into thinking these namespaces are used! See discussion on
@@ -181,3 +183,35 @@
       ...)"
   [clock & body]
   `(do-with-clock ~clock (fn [] ~@body)))
+
+;; New QP middleware test util fns. Experimental. These will be put somewhere better if confirmed useful.
+
+(defn test-qp-middleware
+  "Helper for testing QP middleware. Changes are returned in a map with keys:
+
+    * `:pre`(`query` after preprocessing)
+    * `:metadata` (`metadata` after post-processing modification)
+    * `:post`(`rows` after post-processing transduction)"
+  ([middleware-fn query rows]
+   (test-qp-middleware middleware-fn query {} rows {}))
+
+  ([middleware-fn query metadata rows]
+   (test-qp-middleware middleware-fn query metadata rows {}))
+
+  ([middleware-fn query metadata rows chans]
+   ((middleware-fn
+     (fn [query xformf _]
+       (let [xform             (xformf metadata)
+             rf                (xform (qp.build/default-rff metadata))
+             [metadata result] (transduce identity rf rows)]
+         {:pre      query
+          :metadata metadata
+          :post     result})))
+    query
+    (fn xformf [metadata]
+      (fn xform [rf]
+        (fn rf*
+          ([] (rf))
+          ([result] [metadata (rf result)])
+          ([result row] (rf result row)))))
+    chans)))

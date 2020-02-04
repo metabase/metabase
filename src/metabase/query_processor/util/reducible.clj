@@ -3,8 +3,11 @@
             [clojure.tools.logging :as log]))
 
 (defn reducible-rows
-  "Utility function for generating reducible rows when implementing `metabase.driver/execute-reducible-query`."
-  [row-fn {:keys [canceled-chan]}]
+  "Utility function for generating reducible rows when implementing `metabase.driver/execute-reducible-query`.
+
+  `row-thunk` is a function that, when called, should return the next row in the results, or falsey if no more rows
+  exist."
+  [row-thunk {:keys [canceled-chan]}]
   (reify
     clojure.lang.IReduceInit
     (reduce [_ rf init]
@@ -17,11 +20,10 @@
           acc
 
           :else
-          (let [row (row-fn)]
-            (if-not row
-              (do
-                (log/trace "All rows consumed.")
-                acc)
-              (recur (rf acc row)))))))))
+          (if-let [row (row-thunk)]
+            (recur (rf acc row))
+            (do
+              (log/trace "All rows consumed.")
+              acc)))))))
 
 ;; TODO - an impl for QPs that return maps e.g. MongoDB

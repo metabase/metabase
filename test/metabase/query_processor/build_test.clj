@@ -1,73 +1,45 @@
 (ns metabase.query-processor.build-test
-  "Tests/examples of the new QP/`qp.build`."
-  (:require [clojure.java.io :as io]
-            [clojure.test :refer :all]
+  "Some basic tests around very-low-level QP logic in `qp.build`, and some of the new features of the QP (such as
+  support for different reducing functions.)"
+  (:require [clojure
+             [string :as str]
+             [test :refer :all]]
+            [clojure.core.async :as a]
+            [clojure.java.io :as io]
             [metabase
-             [driver :as driver]
              [query-processor :as qp]
-             [test :as mt]
-             [util :as u]]
-            [metabase.query-processor.build :as qp.build]))
-
-;; NOCOMMIT - examples for new reducing QP code
-
-(defn mbql-example
-  "An MBQL query ran via low-level `process-query` that includes multiple aggregations with the same name and a filter
-  with a param."
-  []
-  (qp/process-query
-   (driver/with-driver :postgres
-     {:database (mt/id)
-      :type     :query
-      :query    {:source-table (mt/id :venues)
-                 :aggregation  [[:sum (mt/id :venues :price)] [:sum (mt/id :venues :id)]]
-                 :breakout     [(mt/id :venues :price)]
-                 :filter       [:!= [:field-id (mt/id :venues :name)] "Mohawk Bend"]}})))
-
-(defn native-example
-  "A native query with a parameter. Triggers a sampling reducing fn in `annotate` that takes first 100 rows to determine
-  results metadata."
-  []
-  (qp/process-query
-   (driver/with-driver :postgres
-     {:database (mt/id)
-      :type     :native
-      :native   {:query  "SELECT * FROM venues WHERE name <> ? LIMIT 5;"
-                 :params ["Mohawk Bend"]}})))
-
-(defn userland-example
-  "MBQL query ran via higher-level userland mechanism that includes a cumulative count aggregation (added during
-  reduction) as well as a `:max-rows` constraint."
-  []
-  (qp/process-query-and-save-with-max-results-constraints!
-   (driver/with-driver :postgres
-     {:database    (mt/id)
-      :type        :query
-      :constraints {:max-results 3}
-      :query       {:source-table (mt/id :checkins)
-                    :aggregation  [[:cum-count]]
-                    :breakout     [[:datetime-field [:field-id (mt/id :checkins :date)] :month]]
-                    :limit        5}})
-   {}))
+             [test :as mt]]
+            [metabase.query-processor.build :as qp.build]
+            [metabase.util.files :as u.files]))
 
 (defn- print-rows-rff [metadata]
-  (println "results meta ->\n" (u/pprint-to-str 'blue metadata))
   (fn
     ([] 0)
-    ([row-count] row-count)
+
+    ([row-count]
+     (flush)
+     row-count)
+
     ([row-count row]
-     (locking println (println (u/format-color 'yellow "ROW %d ->" (inc row-count)) (pr-str row)))
+     (printf "ROW %d -> %s\n" (inc row-count) (pr-str row))
      (inc row-count))))
 
-(defn print-rows-example
-  "An example that prints rows as they come in (async)."
-  []
-  (qp/process-query-async
-   (driver/with-driver :postgres
-     {:database (mt/id)
-      :type     :query
-      :query    {:source-table (mt/id :venues), :limit 20}})
-   print-rows-rff))
+(deftest print-rows-test
+  (testing "An example of using a reducing function that prints rows as they come in."
+    (let [qp-result (atom nil)
+          output (str/split-lines
+                  (with-out-str
+                    (reset! qp-result (qp/process-query
+                                       {:database (mt/id)
+                                        :type     :query
+                                        :query    {:source-table (mt/id :venues), :limit 3}}
+                                       print-rows-rff))))]
+      (is (= 3
+             @qp-result))
+      (is (= ["ROW 1 -> [1 \"Red Medicine\" 4 10.0646 -165.374 3]"
+              "ROW 2 -> [2 \"Stout Burgers & Beers\" 11 34.0996 -118.329 2]"
+              "ROW 3 -> [3 \"The Apple Pan\" 11 34.0406 -118.428 2]"]
+             output)))))
 
 (defn- print-rows-to-writer-rff [filename]
   (qp.build/decorated-reducing-fn
@@ -79,22 +51,29 @@
           (fn [metadata]
             (fn
               ([] 0)
-              ([row-count] {:rows row-count})
+
+              ([row-count]
+               (.flush w)
+               {:rows row-count})
+
               ([row-count row]
                (.write w (format "ROW %d -> %s\n" (inc row-count) (pr-str row)))
                (inc row-count))))))
        (finally
          (locking println (println (format "<Closed writer to %s>" (pr-str filename)))))))))
 
-(defn print-rows-to-file-example
-  "Writes results to a file."
-  []
-  (qp/process-query
-   (driver/with-driver :postgres
-     {:database (mt/id)
-      :type     :query
-      :query    {:source-table (mt/id :venues), :limit 20}})
-   (print-rows-to-writer-rff "/tmp/results.txt")))
+(deftest write-rows-to-file-test
+  (let [filename (str (u.files/get-path (System/getProperty "java.io.tmpdir") "out.txt"))]
+    (is (= {:rows 3}
+           (qp/process-query
+            {:database (mt/id)
+             :type     :query
+             :query    {:source-table (mt/id :venues), :limit 3}}
+            (print-rows-to-writer-rff filename))))
+    (is (= ["ROW 1 -> [1 \"Red Medicine\" 4 10.0646 -165.374 3]"
+            "ROW 2 -> [2 \"Stout Burgers & Beers\" 11 34.0996 -118.329 2]"
+            "ROW 3 -> [3 \"The Apple Pan\" 11 34.0406 -118.428 2]"]
+           (str/split-lines (slurp filename))))))
 
 (defn- maps-rff [metadata]
   (let [ks (mapv (comp keyword :name) (:cols metadata))]
@@ -129,7 +108,7 @@
                  (qp.build/default-rff metadata))))]
       (let [{:keys [canceled-chan finished-chan]} (process-query)]
         (a/put! canceled-chan :cancel)
-        (is (= {:status :canceled}
+        (is (= {:status :interrupted}
                (a/<!! finished-chan))))
       (let [{:keys [finished-chan]} (process-query)]
         (future
@@ -184,22 +163,3 @@
                [])))
             {}
             maps-rff)))))
-
-;; NOCOMMIT
-(defn timezones-test [zone]
-  (mt/with-log-level :trace
-    (mt/with-temporary-setting-values [report-timezone zone]
-      (mt/rows
-        (qp/process-query
-         (driver/with-driver :postgres
-           {:database (mt/id)
-            :type     :native
-            :native   {:query "SHOW timezone;"}}))))))
-
-;; NOCOMMIT
-(defn x []
-  (qp/process-query
-   (driver/with-driver :postgres
-     {:database (mt/id)
-      :type     :query
-      :query    {:source-table (mt/id :venues), :limit 20}})))
