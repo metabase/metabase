@@ -74,39 +74,36 @@
 (deftest utf8-test
   (mt/test-driver :mysql
     (testing "Migrations 107-160\n"
-      ;; create a new application DB and run migrations.
-      (create-test-db!)
-      (jdbc/with-db-connection [conn-spec (test-db-spec)]
-        (mdb/migrate! conn-spec :up)
-        (doseq [{:keys [charset collation]} [{:charset "utf8", :collation "utf8_general_ci"}
-                                             {:charset "latin1", :collation "latin1_swedish_ci"}]]
+      (doseq [{:keys [charset collation]} [{:charset "utf8", :collation "utf8_general_ci"}
+                                           {:charset "latin1", :collation "latin1_swedish_ci"}]]
+        ;; create a new application DB and run migrations.
+        (create-test-db!)
+        (jdbc/with-db-connection [conn-spec (test-db-spec)]
+          (mdb/migrate! conn-spec :up)
           (testing (format "Migrating %s charset -> utf8mb4\n" charset)
             ;; Roll back the DB to act as if migrations 107-160 had never been ran
             (convert-to-charset! conn-spec charset collation)
             (remove-utf8mb4-migrations! conn-spec)
-            (try
-              (binding [db/*db-connection* conn-spec]
-                (testing (format "DB without migrations 107-160: UTF-8 shouldn't work when using the '%s' character set" charset)
-                  (is (= {:character-set charset, :collation collation}
-                         (db-charset)
-                         (table-charset)
-                         (column-charset))
-                      (format "Make sure we converted the DB to %s correctly" charset))
-                  (is (thrown?
-                       Exception
-                       (insert-row!))
-                      "Shouldn't be able to insert UTF-8 values"))
+            (binding [db/*db-connection* conn-spec]
+              (testing (format "DB without migrations 107-160: UTF-8 shouldn't work when using the '%s' character set" charset)
+                (is (= {:character-set charset, :collation collation}
+                       (db-charset)
+                       (table-charset)
+                       (column-charset))
+                    (format "Make sure we converted the DB to %s correctly" charset))
+                (is (thrown?
+                     Exception
+                     (insert-row!))
+                    "Shouldn't be able to insert UTF-8 values"))
 
-                (testing "If we run the migrations 107-160 then the DB should get converted to utf8mb4"
-                  (mdb/migrate! conn-spec :up)
-                  (is (= {:character-set "utf8mb4", :collation "utf8mb4_unicode_ci"}
-                         (db-charset)
-                         (table-charset)
-                         (column-charset))
-                      "DB should be converted back to `utf8mb4` after running migrations")
-                  (testing "We should be able to insert UTF-8 values"
-                    (insert-row!)
-                    (is (= test-unicode-str
-                           (db/select-one-field :name Database :name test-unicode-str))))))
-              (finally
-                (jdbc/execute! conn-spec ["DELETE FROM metabase_database;"])))))))))
+              (testing "If we run the migrations 107-160 then the DB should get converted to utf8mb4"
+                (mdb/migrate! conn-spec :up)
+                (is (= {:character-set "utf8mb4", :collation "utf8mb4_unicode_ci"}
+                       (db-charset)
+                       (table-charset)
+                       (column-charset))
+                    "DB should be converted back to `utf8mb4` after running migrations")
+                (testing "We should be able to insert UTF-8 values"
+                  (insert-row!)
+                  (is (= test-unicode-str
+                         (db/select-one-field :name Database :name test-unicode-str))))))))))))
