@@ -33,7 +33,7 @@
   "Remove the entries for the migrations that convert a DB to utf8mb4 from the Liquibase migration log so they can be
   ran again."
   [jdbc-spec]
-  (jdbc/execute! jdbc-spec [(format "DELETE FROM databasechangelog WHERE ID IN (%s);"
+  (jdbc/execute! jdbc-spec [(format "DELETE FROM `DATABASECHANGELOG` WHERE ID IN (%s);"
                                     (str/join "," (map #(str \' % \')
                                                        (range 107 161))))]))
 
