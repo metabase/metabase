@@ -3,7 +3,6 @@
 import Database from "../metadata/Database";
 
 import type { DatasetQuery } from "metabase/meta/types/Card";
-import type { TableId } from "metabase/meta/types/Table";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import type Question from "metabase-lib/lib/Question";
 import type Dimension from "metabase-lib/lib/Dimension";
@@ -115,10 +114,9 @@ export default class Query {
   }
 
   /**
-   * Table IDs this query needs metadata for to display correctly
-   * NOTE: we can't get table IDs for implicit joins (fk->) until the Metadata is loaded
+   * Metadata this query needs to display correctly
    */
-  dependentTableIds(): TableId[] {
+  dependentMetadata() {
     return [];
   }
 

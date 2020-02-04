@@ -68,7 +68,7 @@ const mapStateToProps = (state, props) => {
 
 const mapDispatchToProps = {
   fetchDatabaseMetadata: Databases.actions.fetchDatabaseMetadata,
-  fetchTableMetadata: Tables.actions.fetchTableMetadata,
+  fetchTableMetadata: Tables.actions.fetchMetadataAndForeignTables,
   fetchFieldValues: Fields.actions.fetchFieldValues,
   updateField: Fields.actions.update,
   updateFieldValues: Fields.actions.updateFieldValues,

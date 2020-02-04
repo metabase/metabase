@@ -1507,42 +1507,38 @@ export default class StructuredQuery extends AtomicQuery {
     return queries;
   }
 
-  dependentTableIds({ includeFKs = true } = {}) {
-    const tableIds = new Set();
+  /**
+   * Metadata this query needs to display correctly
+   */
+  dependentMetadata({ foreignTables = true } = {}) {
+    const dependencies = [];
+    function addDependency(dep) {
+      const existing = _.findWhere(dependencies, _.pick(dep, "type", "id"));
+      if (existing) {
+        Object.assign(existing, dep);
+      } else {
+        dependencies.push(dep);
+      }
+    }
 
     // source-table, if set
     const tableId = this.sourceTableId();
     if (tableId) {
-      tableIds.add(tableId);
-      // implicit joins via foreign keys
-      if (includeFKs) {
-        const table = this.table();
-        if (table) {
-          for (const field of table.fields) {
-            if (field.target && field.target.table_id) {
-              tableIds.add(field.target.table_id);
-            }
-          }
-        }
-      }
+      addDependency({ type: "table", id: tableId, foreignTables });
     }
 
     // any explicitly joined tables
     for (const join of this.joins()) {
-      for (const tableId of join.dependentTableIds()) {
-        tableIds.add(tableId);
-      }
+      join.dependentMetadata().forEach(addDependency);
     }
 
     // parent query's table IDs
     const sourceQuery = this.sourceQuery();
     if (sourceQuery) {
-      for (const tableId of sourceQuery.dependentTableIds({ includeFKs })) {
-        tableIds.add(tableId);
-      }
+      sourceQuery.dependentMetadata({ foreignTables }).forEach(addDependency);
     }
 
-    return Array.from(tableIds);
+    return dependencies;
   }
 
   // INTERNAL

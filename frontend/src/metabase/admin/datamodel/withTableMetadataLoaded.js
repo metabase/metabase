@@ -5,14 +5,14 @@ export default ComposedComponent => {
     componentDidMount() {
       const { table } = this.props;
       if (table) {
-        table.fetchTableMetadata();
+        table.fetchMetadataAndForeignTables();
       }
     }
 
     componentDidUpdate(prevProps) {
       const { table } = this.props;
       if (table !== prevProps.table) {
-        table.fetchTableMetadata();
+        table.fetchMetadataAndForeignTables();
       }
     }
 
