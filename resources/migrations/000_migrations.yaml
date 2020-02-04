@@ -5320,18 +5320,18 @@ databaseChangeLog:
             - and:
                 - or:
                   - dbms:
-                    type: mysql
+                      type: mysql
                   - dbms:
-                    type: mariadb
+                      type: mariadb
                 - sqlCheck:
                     expectedResult: 0
                     sql: SELECT count(*) FROM (SELECT count(*) FROM `metabase_database` GROUP BY `name`, `engine` HAVING count(*) > 1) t1
             - and:
                 - or:
                   - dbms:
-                    type: h2
+                      type: h2
                   - dbms:
-                    type: postgresql
+                      type: postgresql
                 - sqlCheck:
                     expectedResult: 0
                     sql: SELECT count(*) FROM (SELECT count(*) FROM METABASE_DATABASE GROUP BY NAME, ENGINE HAVING count(*) > 1) t1
