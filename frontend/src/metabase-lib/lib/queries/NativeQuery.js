@@ -37,6 +37,19 @@ export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
   },
 };
 
+function cardTagCardId(name) {
+  const reCardTag = /^#([0-9]+)$/g;
+  const match = reCardTag.exec(name);
+  if (match !== null) {
+    return parseInt(match[1]);
+  }
+  return null;
+}
+
+function isCardQueryName(name) {
+  return cardTagCardId(name) !== null;
+}
+
 export default class NativeQuery extends AtomicQuery {
   // For Flow type completion
   _nativeDatasetQuery: NativeDatasetQuery;
@@ -264,7 +277,7 @@ export default class NativeQuery extends AtomicQuery {
       // anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
       // variables referencing other questions, by their card ID, are also supported: {{#123}} references question with ID 123
       let match;
-      const re = /\{\{\s*([A-Za-z0-9_]+?|#\d+)\s*\}\}/g;
+      const re = /\{\{\s*([A-Za-z0-9_]+?|#[0-9]+)\s*\}\}/g;
       while ((match = re.exec(queryText)) != null) {
         tags.push(match[1]);
       }
@@ -282,13 +295,17 @@ export default class NativeQuery extends AtomicQuery {
         const templateTags = { ...existingTemplateTags };
         if (oldTags.length === 1 && newTags.length === 1) {
           // renaming
-          templateTags[newTags[0]] = { ...templateTags[oldTags[0]] };
+          const newTag = templateTags[newTags[0]] = { ...templateTags[oldTags[0]] };
 
-          if (templateTags[newTags[0]].display_name === humanize(oldTags[0])) {
-            templateTags[newTags[0]].display_name = humanize(newTags[0]);
+          if (newTag.display_name === humanize(oldTags[0])) {
+            newTag.display_name = humanize(newTags[0]);
           }
 
-          templateTags[newTags[0]].name = newTags[0];
+          newTag.name = newTags[0];
+          if (isCardQueryName(newTag.name)) {
+            newTag.type = "card";
+            newTag.card = cardTagCardId(newTag.name);
+          }
           delete templateTags[oldTags[0]];
         } else {
           // remove old vars
@@ -297,7 +314,6 @@ export default class NativeQuery extends AtomicQuery {
           }
 
           // create new vars
-          const reCardTag = /^#(\d+)$/g;
           for (const tagName of newTags) {
             templateTags[tagName] = {
               id: Utils.uuid(),
@@ -307,10 +323,10 @@ export default class NativeQuery extends AtomicQuery {
             };
 
             // parse card ID from tag name for card query template tags
-            if ((match = reCardTag.exec(tagName)) != null) {
+            if (isCardQueryName(tagName)) {
               templateTags[tagName] = Object.assign(templateTags[tagName], {
                 type: "card",
-                card: parseInt(match[1]),
+                card: cardTagCardId(tagName),
               });
             }
           }
