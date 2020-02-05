@@ -3,6 +3,7 @@
   (:require [expectations :refer [expect]]
             [metabase.models.query-cache :refer [QueryCache]]
             [metabase.query-processor.middleware.cache :as cache]
+            [metabase.test :as mt]
             [metabase.test.util :as tu]
             [toucan.db :as db]))
 
@@ -20,12 +21,6 @@
 
 (def ^:private ^:dynamic ^Integer *query-execution-delay-ms* 0)
 
-(defn- mock-qp [_ respond _ _]
-  (Thread/sleep *query-execution-delay-ms*)
-  (respond mock-results))
-
-(def ^:private maybe-return-cached-results (cache/maybe-return-cached-results mock-qp))
-
 (defn- clear-cache! [] (db/simple-delete! QueryCache))
 
 (defn- cached? [results]
@@ -35,11 +30,10 @@
 
 (defn- run-query [& {:as query-kvs}]
   (cached?
-   (maybe-return-cached-results
-    (merge {:cache-ttl 60, :query :abc} query-kvs)
-    identity
-    (fn [e] (throw e))
-    nil)))
+   ;; TODO - needs to delay for `*query-execution-delay-ms*`
+   (:post (mt/test-qp-middleware
+           cache/maybe-return-cached-results
+           (merge {:cache-ttl 60, :query :abc} query-kvs)))))
 
 
 ;;; -------------------------------------------- tests for is-cacheable? ---------------------------------------------

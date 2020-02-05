@@ -26,7 +26,6 @@
    :native   {:query sql}})
 
 (defn- card-metadata [card]
-  (println "(db/select-one-field :result_metadata Card :id (u/get-id card)):" (db/select-one-field :result_metadata Card :id (u/get-id card))) ; NOCOMMIT
   (db/select-one-field :result_metadata Card :id (u/get-id card)))
 
 (defn- round-to-2-decimals

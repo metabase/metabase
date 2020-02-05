@@ -552,8 +552,6 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
-(defmethod process-query-in-context ::driver [_ qp] qp)
-
 
 (defmulti table-rows-seq
   "Return a sequence of *all* the rows in a given TABLE, which is guaranteed to have at least `:name` and `:schema`

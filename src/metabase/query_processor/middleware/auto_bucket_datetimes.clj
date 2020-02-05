@@ -2,8 +2,7 @@
   "Middleware for automatically bucketing unbucketed `:type/Temporal` (but not `:type/Time`) Fields with `:day`
   bucketing. Applies to any unbucketed Field in a breakout, or fields in a filter clause being compared against
   `yyyy-MM-dd` format datetime strings."
-  (:require [clojure.core.async :as a]
-            [metabase.mbql
+  (:require [metabase.mbql
              [predicates :as mbql.preds]
              [schema :as mbql.s]
              [util :as mbql.u]]
@@ -122,8 +121,5 @@
   Applies to any unbucketed Field in a breakout, or fields in a filter clause being compared against `yyyy-MM-dd`
   format datetime strings."
   [qp]
-  (fn [query xform {:keys [raise-chan], :as chans}]
-    (try
-      (qp (auto-bucket-datetimes* query) xform chans)
-      (catch Throwable e
-        (a/>!! raise-chan e)))))
+  (fn [query xformf chans]
+    (qp (auto-bucket-datetimes* query) xformf chans)))

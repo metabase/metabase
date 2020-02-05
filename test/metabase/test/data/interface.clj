@@ -344,9 +344,8 @@
 
 (defmethod aggregate-column-info ::test-extensions
   ([_ aggregation-type]
-   ;; TODO - cumulative count doesn't require a FIELD !!!!!!!!!
-   (assert (= aggregation-type) :count)
-   {:base_type    :type/Integer
+   (assert (#{:count :cum-count} aggregation-type))
+   {:base_type    :type/BigInteger
     :special_type :type/Number
     :name         "count"
     :display_name "Count"

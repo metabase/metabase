@@ -31,9 +31,11 @@
 ;; for other places where we would want to do async saves (such as results-metadata for Cards?)
 (defn- save-query-execution!
   "Save a `QueryExecution` and update the average execution time for the corresponding `Query`."
-  [{query :json_query, query-hash :hash, running-time :running_time, :as query-execution}]
+  [{query :json_query, query-hash :hash, running-time :running_time, context :context :as query-execution}]
   (query/save-query-and-update-average-execution-time! query query-hash running-time)
-  (db/insert! QueryExecution (dissoc query-execution :json_query)))
+  (if-not context
+    (log/warn (trs "Cannot save QueryExecution, missing :context"))
+    (db/insert! QueryExecution (dissoc query-execution :json_query))))
 
 (def ^:private ^Long thread-pool-size 4)
 

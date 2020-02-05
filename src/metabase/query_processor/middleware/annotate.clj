@@ -478,7 +478,7 @@
   It's the responsibility of the driver to make sure the `:cols` are returned in the correct number and order."
   [cols cols-returned-by-driver]
   (if (seq cols-returned-by-driver)
-    (map merge cols-returned-by-driver cols)
+    (map merge cols cols-returned-by-driver)
     cols))
 
 (s/defn ^:private column-info* :- ColsWithUniqueNames

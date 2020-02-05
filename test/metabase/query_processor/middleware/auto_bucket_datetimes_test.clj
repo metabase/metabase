@@ -5,11 +5,11 @@
             [metabase.query-processor.middleware.auto-bucket-datetimes :as auto-bucket-datetimes]
             [metabase.test.data :as data]
             [metabase.util :as u]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt]
+            [metabase.test :as mt]))
 
 (defn- auto-bucket [query]
-  ((auto-bucket-datetimes/auto-bucket-datetimes identity)
-   query))
+  (:pre (mt/test-qp-middleware auto-bucket-datetimes/auto-bucket-datetimes query)))
 
 (defn- auto-bucket-mbql [mbql-query]
   (-> (auto-bucket {:database (data/id), :type :query, :query mbql-query})
