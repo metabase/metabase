@@ -20,7 +20,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest native-column-info-test
-  (testing "make sure that `column-info` for `:native` queries can still infer types even if the initial value(s) are `nil` (#4256)"
+  (testing (str "make sure that `column-info` for `:native` queries can still infer types even if the initial value(s) "
+                "are `nil` (#4256)")
     (is (= [{:name "a", :display_name "a", :base_type :type/Integer, :source :native, :field_ref [:field-literal "a" :type/Integer]}
             {:name "b", :display_name "b", :base_type :type/Integer, :source :native, :field_ref [:field-literal "b" :type/Integer]}]
            (annotate/column-info
@@ -28,7 +29,8 @@
             {:cols [{:name "a"} {:name "b"}]
              :rows [[1 nil] [2 nil] [3 nil] [4 5] [6 7]]}))))
 
-  (testing "make sure that `column-info` for `:native` queries defaults `base_type` to `type/*` if there are no non-nil values when we peek."
+  (testing (str "make sure that `column-info` for `:native` queries defaults `base_type` to `type/*` if there are no "
+                "non-nil values when we peek.")
     (is (= [{:name "a", :display_name "a", :base_type :type/*, :source :native, :field_ref [:field-literal "a" :type/*]}]
            (annotate/column-info
             {:type :native}
@@ -59,8 +61,8 @@
                  {:type :query, :query {:fields [$price]}}
                  {:columns [:price]}))))))))
 
-;; TODO - I think this can be removed, now that `fk->` forms are "sugar" and replaced with `:joined-field` clauses before the
-;; query ever makes it to the 'annotate' stage
+;; TODO - I think this can be removed, now that `fk->` forms are "sugar" and replaced with `:joined-field` clauses
+;; before the query ever makes it to the 'annotate' stage
 (deftest col-info-for-fks-and-joins-test
   (mt/with-everything-store
     (mt/$ids venues
@@ -217,7 +219,9 @@
               :expression_name "double-price"
               :field_ref       [:expression "double-price"]}
              (mt/$ids venues
-               (#'annotate/col-info-for-field-clause {:expressions {"double-price" [:* $price 2]}} [:expression "double-price"])))))
+               (#'annotate/col-info-for-field-clause
+                {:expressions {"double-price" [:* $price 2]}}
+                [:expression "double-price"])))))
 
     (testing "if there is no matching expression it should give a meaningful error message"
       (is (= {:message "No expression named double-price found. Found: (\"one-hundred\")"
@@ -324,23 +328,41 @@
 
     (testing "`:aggregation-options`"
       (testing "`:name` and `:display-name`"
-        (is (= {:base_type :type/Integer, :special_type :type/Category, :settings nil, :name "sum_2", :display_name "My custom name"}
+        (is (= {:base_type    :type/Integer
+                :special_type :type/Category
+                :settings     nil
+                :name         "sum_2"
+                :display_name "My custom name"}
                (mt/$ids venues
-                 (col-info-for-aggregation-clause [:aggregation-options [:sum $price] {:name "sum_2", :display-name "My custom name"}])))))
+                 (col-info-for-aggregation-clause
+                  [:aggregation-options [:sum $price] {:name "sum_2", :display-name "My custom name"}])))))
 
       (testing "`:name` only"
-        (is (= {:base_type :type/Integer, :special_type :type/Category, :settings nil, :name "sum_2", :display_name "Sum of Price"}
+        (is (= {:base_type    :type/Integer
+                :special_type :type/Category
+                :settings     nil
+                :name         "sum_2"
+                :display_name "Sum of Price"}
                (mt/$ids venues
                  (col-info-for-aggregation-clause [:aggregation-options [:sum $price] {:name "sum_2"}])))))
 
       (testing "`:display-name` only"
-        (is (= {:base_type :type/Integer, :special_type :type/Category, :settings nil, :name "sum", :display_name "My Custom Name"}
+        (is (= {:base_type    :type/Integer
+                :special_type :type/Category
+                :settings     nil
+                :name         "sum"
+                :display_name "My Custom Name"}
                (mt/$ids venues
-                 (col-info-for-aggregation-clause [:aggregation-options [:sum $price] {:display-name "My Custom Name"}]))))))
+                 (col-info-for-aggregation-clause
+                  [:aggregation-options [:sum $price] {:display-name "My Custom Name"}]))))))
 
     (testing (str "if a driver is kind enough to supply us with some information about the `:cols` that come back, we "
                   "should include that information in the results. Their information should be preferred over ours")
-      (is (= {:cols [{:name "totalEvents", :display_name "Total Events", :base_type :type/Text, :source :aggregation, :field_ref [:aggregation 0]}]}
+      (is (= {:cols [{:name         "totalEvents"
+                      :display_name "Total Events"
+                      :base_type    :type/Text
+                      :source       :aggregation
+                      :field_ref    [:aggregation 0]}]}
              (add-column-info
               (mt/mbql-query venues {:aggregation [[:metric "ga:totalEvents"]]})
               {:cols [{:name "totalEvents", :display_name "Total Events", :base_type :type/Text}]}))))
@@ -355,42 +377,60 @@
 ;;; |                                           Other MBQL col info tests                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Make sure `:cols` always come back with a unique `:name` key (#8759)
-(deftest
-  expect--1348197951
-  (testing
-      (format "metabase.query-processor.middleware.annotate-test:%d" (:line (meta #'expect--1348197951)))
-      (is
-       (=
-        {:cols
-         [{:base_type :type/Number, :special_type :type/Number, :name "count", :display_name "count", :source :aggregation, :field_ref [:aggregation 0]}
-          {:source :aggregation, :name "sum", :display_name "sum", :base_type :type/Number, :field_ref [:aggregation 1]}
-          {:base_type :type/Number, :special_type :type/Number, :name "count_2", :display_name "count", :source :aggregation, :field_ref [:aggregation 2]}
-          {:base_type :type/Number, :special_type :type/Number, :name "count_2_2", :display_name "count_2", :source :aggregation, :field_ref [:aggregation 3]}]}
-        (add-column-info
-         (mt/mbql-query venues {:aggregation [[:count] [:sum] [:count] [:aggregation-options [:count] {:display-name "count_2"}]]})
-         {:cols
-          [{:name "count", :display_name "count", :base_type :type/Number}
-           {:name "sum", :display_name "sum", :base_type :type/Number}
-           {:name "count", :display_name "count", :base_type :type/Number}
-           {:name "count_2", :display_name "count_2", :base_type :type/Number}]})))))
+(deftest unique-name-key-test
+  (testing "Make sure `:cols` always come back with a unique `:name` key (#8759)"
+    (is (= {:cols
+            [{:base_type    :type/Number,
+              :special_type :type/Number,
+              :name         "count"
+              :display_name "count"
+              :source       :aggregation
+              :field_ref    [:aggregation 0]}
+             {:source       :aggregation
+              :name         "sum"
+              :display_name "sum"
+              :base_type    :type/Number
+              :field_ref    [:aggregation 1]}
+             {:base_type    :type/Number
+              :special_type :type/Number
+              :name         "count_2"
+              :display_name "count"
+              :source       :aggregation
+              :field_ref    [:aggregation 2]}
+             {:base_type    :type/Number
+              :special_type :type/Number
+              :name         "count_2_2"
+              :display_name "count_2"
+              :source       :aggregation
+              :field_ref    [:aggregation 3]}]}
+           (add-column-info
+            (mt/mbql-query venues
+              {:aggregation [[:count]
+                             [:sum]
+                             [:count]
+                             [:aggregation-options [:count] {:display-name "count_2"}]]})
+            {:cols [{:name "count", :display_name "count", :base_type :type/Number}
+                    {:name "sum", :display_name "sum", :base_type :type/Number}
+                    {:name "count", :display_name "count", :base_type :type/Number}
+                    {:name "count_2", :display_name "count_2", :base_type :type/Number}]})))))
 
-;; make sure expressions come back with the right set of keys, including `:expression_name` (#8854)
-(deftest
-  expect-1963133663
-  (testing
-      (format "metabase.query-processor.middleware.annotate-test:%d" (:line (meta #'expect-1963133663)))
-      (is
-       (=
-        {:name "discount_price",
-         :display_name "discount_price",
-         :base_type :type/Float,
-         :special_type :type/Number,
-         :expression_name "discount_price",
-         :source :fields,
-         :field_ref [:expression "discount_price"]}
-        (-> (add-column-info (mt/mbql-query venues {:expressions {"discount_price" [:* 0.9 $price]}, :fields [$name [:expression "discount_price"]], :limit 10}) {}) :cols second)))))
-
+(deftest expressions-keys-test
+  (testing "make sure expressions come back with the right set of keys, including `:expression_name` (#8854)"
+    (is (= {:name            "discount_price",
+            :display_name    "discount_price",
+            :base_type       :type/Float,
+            :special_type    :type/Number,
+            :expression_name "discount_price",
+            :source          :fields,
+            :field_ref       [:expression "discount_price"]}
+           (-> (add-column-info
+                (mt/mbql-query venues
+                  {:expressions {"discount_price" [:* 0.9 $price]}
+                   :fields      [$name [:expression "discount_price"]]
+                   :limit       10})
+                {})
+               :cols
+               second)))))
 
 (deftest deduplicate-expression-names-test
   (testing "make sure multiple expressions come back with deduplicated names"
