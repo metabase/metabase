@@ -269,4 +269,4 @@
 (defmethod ->replacement-snippet-info [:sql CardQuery]
   [_driver {:keys [query]}]
   {:prepared-statement-args nil
-   :replacement-snippet (str "(" (get-in query [:native :query]) ")")})
+   :replacement-snippet (str "(" query ")")})

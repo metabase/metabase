@@ -116,7 +116,7 @@
   (testing "card query substitution"
     (let [query ["select * from " (param "#123")]]
       (is (= ["select * from (select 1 `x`)" nil]
-             (substitute query {"#123" (i/->CardQuery 123 {:native {:query "select 1 `x`"}})}))))))
+             (substitute query {"#123" (i/->CardQuery 123 "select 1 `x`")}))))))
 
 
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
