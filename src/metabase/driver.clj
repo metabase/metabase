@@ -315,7 +315,7 @@
   :hierarchy #'hierarchy)
 
 
-(defmulti ^:deprecated execute-query
+(defmulti execute-query
   "Execute a *native* query against the database and return the results.
 
   The query passed in will conform to the schema in `metabase.mbql.schema/Query`. MBQL queries are transformed to
@@ -328,8 +328,9 @@
      :rows    [[1 \"Lucky Bird\"]
                [2 \"Rasta Can\"]]}
 
-  DEPRECATED: This is phased out in favor of `execute-reducible-query`."
-  {:arglists '([driver query]), :style/indent 1}
+  DEPRECATED: This method is deprecated in favor of `execute-reducible-query` and will be removed from a future
+  release."
+  {:deprecated "0.35.0", :arglists '([driver query]), :style/indent 1}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -345,12 +346,12 @@
   Example impl:
 
     (defmethod reducible-query :my-driver
-      [_ query chans respond]
+      [_ query {:keys [canceled-chan], :as chans} respond]
       (with-open [results (run-query! query)]
         (respond
          {:cols [{:name \"my_col\"}]}
-         (qp.util.reducible/reducible-rows (get-row results) chans)))"
-  {:arglists '([driver query chans f])}
+         (qp.util.reducible/reducible-rows (get-row results) canceled-chan))))"
+  {:added "0.35.0", :arglists '([driver query chans respond])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
@@ -546,8 +547,8 @@
 
 
 (defmulti ^:deprecated process-query-in-context
-  "DEPRECATED: This method is no longer called and will be removed in the near future."
-  {:arglists '([driver qp])}
+  "DEPRECATED: This method is no longer called, and will be removed in the near future."
+  {:deprecated "0.35.0", :arglists '([driver qp])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

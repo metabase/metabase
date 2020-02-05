@@ -13,7 +13,9 @@
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor
+             [error-type :as error-type]
+             [store :as qp.store]]
             [metabase.util
              [honeysql-extensions :as hx]
              [i18n :refer [deferred-tru tru]]])
@@ -64,11 +66,13 @@
         (when (or (str/blank? user)
                   (= user "sa"))        ; "sa" is the default USER
           (throw
-           (Exception.
-            (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden."))))))))
+           (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
+             {:type error-type/db})))))))
 
-(defmethod driver/process-query-in-context :h2 [_ qp]
-  (comp qp check-native-query-not-using-default-user))
+(defmethod driver/execute-reducible-query :h2
+  [driver query chans respond]
+  (check-native-query-not-using-default-user query)
+  ((get-method driver/execute-reducible-query :sql-jdbc) driver query chans respond))
 
 (defmethod driver/date-add :h2 [driver dt amount unit]
   (if (= unit :quarter)
@@ -256,6 +260,18 @@
 (defmethod sql-jdbc.sync/active-tables :h2
   [& args]
   (apply sql-jdbc.sync/post-filtered-active-tables args))
+
+(defmethod sql-jdbc.execute/connection-with-timezone :h2
+  [driver database ^String timezone-id]
+  ;; h2 doesn't support setting timezones, or changing the transaction level without admin perms, so we can skip those
+  ;; steps that are in the default impl
+  (let [conn (.getConnection (sql-jdbc.execute/datasource database))]
+    (try
+      (doto conn
+        (.setReadOnly true))
+      (catch Throwable e
+        (.close conn)
+        (throw e)))))
 
 (defmethod sql-jdbc.execute/set-parameter [:h2 OffsetTime]
   [driver prepared-statement i t]

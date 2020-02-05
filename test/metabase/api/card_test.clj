@@ -10,7 +10,7 @@
              [email-test :as et]
              [http-client :as http :refer :all]
              [util :as u]]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
             [metabase.middleware.util :as middleware.u]
             [metabase.models
              [card :refer [Card]]
@@ -424,18 +424,19 @@
       (tt/with-temp Collection [collection]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (tu/with-model-cleanup [Card]
+          ;; TODO - FIXME - wrong impl
           ;; Rebind the `cancelable-run-query` function so that we can capture the generated SQL and inspect it
-          (let [orig-fn    (var-get #'sql-jdbc.execute/cancelable-run-query)
+          (let [orig-fn    (var-get #'sql-jdbc.execute.old/cancelable-run-query)
                 sql-result (atom [])]
-            (with-redefs [sql-jdbc.execute/cancelable-run-query (fn [db sql params opts]
-                                                                  (swap! sql-result conj sql)
-                                                                  (orig-fn db sql params opts))]
+            (with-redefs [sql-jdbc.execute.old/cancelable-run-query (fn [db sql params opts]
+                                                                      (swap! sql-result conj sql)
+                                                                      (orig-fn db sql params opts))]
               ;; create a card with the metadata
               ((test-users/user->client :rasta) :post 200 "card"
                (assoc (card-with-name-and-query card-name)
-                 :collection_id      (u/get-id collection)
-                 :result_metadata    metadata
-                 :metadata_checksum  "ABCDEF"))) ; bad checksum
+                      :collection_id      (u/get-id collection)
+                      :result_metadata    metadata
+                      :metadata_checksum  "ABCDEF"))) ; bad checksum
             ;; now check the correct metadata was fetched and was saved in the DB
             {:metadata-results    (db/select-one-field :result_metadata Card :name card-name)
              ;; Was the user id found in the generated SQL?

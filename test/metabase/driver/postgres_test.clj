@@ -13,6 +13,7 @@
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]]
+            [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models
              [database :refer [Database]]
@@ -410,10 +411,7 @@
           server-spec                       (sql-jdbc.conn/connection-details->spec :postgres
                                               (mt/dbdef->connection-details :postgres :server nil))
           get-timezone-with-report-timezone (fn [report-timezone]
-                                              (-> (#'sql-jdbc.execute/run-query-with-timezone
-                                                   :postgres report-timezone server-spec current-timezone-query)
-                                                  :rows
-                                                  ffirst))]
+                                              "TODO - FIXME")]
       (testing "check that if we set report-timezone to US/Pacific that the session timezone is in fact US/Pacific"
         (is  (= "US/Pacific"
                 (get-timezone-with-report-timezone "US/Pacific"))))
@@ -423,7 +421,7 @@
       (testing (str "ok, check that if we try to put in a fake timezone that the query still reëxecutes without a "
                     "custom timezone. This should give us the same result as if we didn't try to set a timezone at all")
         (mt/suppress-output
-          (is (= (-> (#'sql-jdbc.execute/run-query-without-timezone :postgres nil server-spec current-timezone-query)
+          (is (= (-> (#'sql-jdbc.execute.old/run-query-without-timezone :postgres nil server-spec current-timezone-query)
                      :rows
                      ffirst)
                  (get-timezone-with-report-timezone "Crunk Burger"))))))))

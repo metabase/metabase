@@ -1,4 +1,5 @@
-(ns metabase.driver.sql-jdbc.execute-test
+(ns ^{:deprecated "0.35.0"} metabase.driver.sql-jdbc.execute.old-impl-test
+  "Tests for the old impl. This will be removed in a future release."
   (:require [clojure.core.async :as a]
             [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
@@ -9,7 +10,7 @@
              [test :as mt]
              [util :as u]]
             [metabase.driver.sql-jdbc-test :as sql-jdbc-test]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute]
             [metabase.query-processor.test-util :as qp.tu]
             [metabase.test
              [data :as data]
@@ -252,3 +253,7 @@
        {:database (data/id)
         :type     :native
         :native   {:query "SELECT * FROM VENUES LIMIT 1;"}}))))
+
+;; just mark everything as deprecated so people don't try to use it
+(doseq [[_ varr] (ns-interns *ns*)]
+  (alter-meta! varr assoc :deprecated "0.35.0"))

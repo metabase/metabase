@@ -192,8 +192,11 @@
     * `:pre`(`query` after preprocessing)
     * `:metadata` (`metadata` after post-processing modification)
     * `:post`(`rows` after post-processing transduction)"
+  ([middleware-fn query]
+   (test-qp-middleware middleware-fn query []))
+
   ([middleware-fn query rows]
-   (test-qp-middleware middleware-fn query {} rows {}))
+   (test-qp-middleware middleware-fn query {} rows))
 
   ([middleware-fn query metadata rows]
    (test-qp-middleware middleware-fn query metadata rows {}))

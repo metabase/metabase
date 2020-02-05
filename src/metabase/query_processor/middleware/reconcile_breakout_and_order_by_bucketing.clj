@@ -95,8 +95,5 @@
    {:query {:breakout [[:datetime-field [:field-id 1] :day]]
             :order-by [[:datetime-field [:asc [:field-id 1]] :day]]}"
   [qp]
-  (fn [query xform {:keys [raise-chan], :as chans}]
-    (try
-      (qp (reconcile-bucketing-if-needed query) xform chans)
-      (catch Throwable e
-        (a/>!! raise-chan e)))))
+  (fn [query xformf chans]
+    (qp (reconcile-bucketing-if-needed query) xformf chans)))

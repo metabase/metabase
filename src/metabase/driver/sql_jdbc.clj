@@ -5,7 +5,6 @@
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]
-             [reducible-execute :as sql-jdbc.reducible-execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
@@ -41,6 +40,7 @@
   [driver database table]
   (query driver database table {:select [:*]}))
 
+;; TODO - this implementation should itself be deprecated! And have drivers implement it directly instead.
 (defmethod driver/supports? [:sql-jdbc :set-timezone]
   [driver _]
   (boolean (seq (sql-jdbc.execute/set-timezone-sql driver))))
@@ -51,7 +51,7 @@
 
 (defmethod driver/execute-reducible-query :sql-jdbc
   [driver query chans respond]
-  (sql-jdbc.reducible-execute/execute-reducible-query driver query chans respond))
+  (sql-jdbc.execute/execute-reducible-query driver query chans respond))
 
 (defmethod driver/notify-database-updated :sql-jdbc
   [_ database]
@@ -68,7 +68,6 @@
 (defmethod driver/describe-table-fks :sql-jdbc
   [driver database table]
   (sql-jdbc.sync/describe-table-fks driver database table))
-
 
 ;; `:sql-jdbc` drivers almost certainly don't need to override this method, and instead can implement
 ;; `unprepare/unprepare-value` for specific classes, or, in extereme cases, `unprepare/unprepare` itself.

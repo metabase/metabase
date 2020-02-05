@@ -5,11 +5,13 @@
   (:require [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute]
             [metabase.util.date-2 :as u.date])
   (:import [java.sql PreparedStatement ResultSet Types]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            [java.util Calendar TimeZone]))
+
+;; TODO - need to do a legacy implementation using the new methods as well...
 
 ;; method impls for JDBC drivers that aren't fully JDBC 4.2 compliant/don't support the new `java.time` methods
 (driver/register! ::use-legacy-classes-for-read-and-set, :abstract? true)
