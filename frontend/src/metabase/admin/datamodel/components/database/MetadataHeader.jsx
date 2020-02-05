@@ -23,7 +23,7 @@ export default class MetadataHeader extends Component {
   setDatabaseIdIfUnset() {
     const { databaseId, databases = [], selectDatabase } = this.props;
     if (databaseId === undefined && databases.length > 0) {
-      selectDatabase(databases[0]);
+      selectDatabase(databases[0], true);
     }
   }
 
