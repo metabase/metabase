@@ -37,8 +37,5 @@
 (defn pre-alias-aggregations
   "Middleware that generates aliases for all aggregations anywhere in a query, and makes sure they're unique."
   [qp]
-  (fn [query xform {:keys [raise-chan], :as chans}]
-    (try
-      (qp (maybe-pre-alias-aggregations query) xform chans)
-      (catch Throwable e
-        (a/>!! raise-chan e)))))
+  (fn [query xform chans]
+    (qp (maybe-pre-alias-aggregations query) xform chans)))

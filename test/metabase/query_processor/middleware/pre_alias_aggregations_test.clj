@@ -5,11 +5,12 @@
   (:require [expectations :refer [expect]]
             [metabase.driver :as driver]
             [metabase.query-processor.middleware.pre-alias-aggregations :as pre-alias-aggregations]
-            [metabase.test.data :as data]))
+            [metabase.test.data :as data]
+            [metabase.test :as mt]))
 
 (defn- pre-alias [query]
   (driver/with-driver (or driver/*driver* :h2)
-    ((pre-alias-aggregations/pre-alias-aggregations identity) query)))
+    (:pre (mt/test-qp-middleware pre-alias-aggregations/pre-alias-aggregations query))))
 
 ;; do aggregations get pre-aliased by this middleware?
 (expect

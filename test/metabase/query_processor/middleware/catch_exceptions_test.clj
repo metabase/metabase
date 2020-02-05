@@ -7,6 +7,7 @@
             [metabase.models
              [permissions :as perms]
              [permissions-group :as group]]
+            [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.middleware.catch-exceptions :as catch-exceptions]
             [metabase.test.data :as data]
             [metabase.test.data.users :as test-users]
@@ -22,21 +23,32 @@
 
 (deftest exception-response-test
   (testing "Should nicely format a chain of exceptions, with the top-level Exception appearing first"
-    (let [e1 (ex-info "1" {:level 1})
-          e2 (ex-info "2" {:level 2} e1)
-          e3 (ex-info "3" {:level 3} e2)]
-      (is (= {:status     :failed,
-              :class      clojure.lang.ExceptionInfo
-              :error      "1"
-              :stacktrace true
-              :ex-data    {:level 1}
-              :via        [{:status :failed, :class clojure.lang.ExceptionInfo, :error "2", :stacktrace true, :ex-data {:level 2}}
-                           {:status :failed, :class clojure.lang.ExceptionInfo, :error "3", :stacktrace true, :ex-data {:level 3}}]}
-             (-> (#'catch-exceptions/exception-response e3)
-                 (update :stacktrace sequential?)
-                 (update :via (fn [causes]
-                                (for [cause causes]
-                                  (update cause :stacktrace sequential?))))))))))
+    (testing "lowest-level error `:type` should be pulled up to the top-level"
+      (let [e1 (ex-info "1" {:level 1})
+            e2 (ex-info "2" {:level 2, :type error-type/qp} e1)
+            e3 (ex-info "3" {:level 3} e2)]
+        (is (= {:status     :failed,
+                :class      clojure.lang.ExceptionInfo
+                :error      "1"
+                :stacktrace true
+                :error_type :qp
+                :ex-data    {:level 1}
+                :via        [{:status     :failed
+                              :class      clojure.lang.ExceptionInfo
+                              :error      "2"
+                              :stacktrace true
+                              :ex-data    {:level 2, :type :qp}
+                              :error_type :qp}
+                             {:status     :failed
+                              :class      clojure.lang.ExceptionInfo
+                              :error      "3"
+                              :stacktrace true
+                              :ex-data    {:level 3}}]}
+               (-> (#'catch-exceptions/exception-response e3)
+                   (update :stacktrace sequential?)
+                   (update :via (fn [causes]
+                                  (for [cause causes]
+                                    (update cause :stacktrace sequential?)))))))))))
 
 (defn- catch-exceptions
   ([qp]

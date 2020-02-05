@@ -92,6 +92,7 @@
     (with-query-execution [qe query]
       (with-result [result query qp-result]
         (is (= {:status       :failed
+                :class        clojure.lang.ExceptionInfo
                 :data         {:rows [], :cols []}
                 :database_id  nil
                 :started_at   #t "2020-02-04T12:22-08:00[US/Pacific]"

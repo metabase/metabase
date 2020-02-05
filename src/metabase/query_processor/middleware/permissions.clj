@@ -1,12 +1,12 @@
 (ns metabase.query-processor.middleware.permissions
   "Middleware for checking that the current user has permissions to run the current query."
-  (:require [clojure.core.async :as a]
-            [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
+  (:require [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
             [metabase.models
              [card :refer [Card]]
              [interface :as mi]
              [permissions :as perms]]
             [metabase.models.query.permissions :as query-perms]
+            [metabase.query-processor.error-type :as error-type]
             [metabase.util
              [i18n :refer [tru]]
              [schema :as su]]
@@ -18,11 +18,13 @@
   [card-id :- su/IntGreaterThanZero]
   (when-not (mi/can-read? (or (db/select-one [Card :collection_id] :id card-id)
                               (throw (Exception. (tru "Card {0} does not exist." card-id)))))
-    (throw (Exception. (tru "You do not have permissions to view Card {0}." card-id)))))
+    (throw (ex-info (tru "You do not have permissions to view Card {0}." card-id)
+             {:type error-type/missing-required-permissions}))))
 
 (defn- perms-exception [required-perms]
   (ex-info (tru "You do not have permissions to run this query.")
-    {:required-permissions required-perms
+    {:type                 error-type/missing-required-permissions
+     :required-permissions required-perms
      :actual-permissions   @*current-user-permissions-set*
      :permissions-error?   true}))
 
@@ -46,12 +48,15 @@
   be checked separately before allowing the relevant objects to be create (e.g., when saving a new Pulse or
   'publishing' a Card)."
   [qp]
-  (fn [query xform {:keys [raise-chan], :as chans}]
-    (try
-      (check-query-permissions* query)
-      (qp query xform chans)
-      (catch Throwable e
-        (a/>!! raise-chan e)))))
+  (fn [query xform chans]
+    (check-query-permissions* query)
+    (qp query xform chans))
+  #_(fn [query xform {:keys [raise-chan], :as chans}]
+      (try
+        (check-query-permissions* query)
+        (qp query xform chans)
+        (catch Throwable e
+          (a/>!! raise-chan e)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -57,8 +57,7 @@
 
 (defmethod format-exception ExceptionInfo
   [e]
-  (let [{error :error, :as data} (ex-data e)
-        {error-type :type}       (u/all-ex-data e)]
+  (let [{error :error, error-type :type, :as data} (ex-data e)]
     (merge
      ((get-method format-exception Throwable) e)
      (when-let [error-msg (and (= error-type :schema.core/error)
@@ -66,6 +65,7 @@
        {:error error-msg})
      (when (qp.error-type/known-error-type? error-type)
        {:error_type error-type})
+     ;; TODO - we should probably change this key to `:data` so we're not mixing lisp-case and snake_case keys
      {:ex-data (dissoc data :schema)})))
 
 (defmethod format-exception SQLException
@@ -86,10 +86,13 @@
        reverse))
 
 (defn- exception-response [^Throwable e]
-  (let [[e-info & more] (for [e (exception-chain e)]
-                          (format-exception e))]
+  (let [[m & more :as ms] (for [e (exception-chain e)]
+                            (format-exception e))]
     (merge
-     e-info
+     m
+     ;; merge in the first error_type we see
+     (when-let [error-type (some :error_type ms)]
+       {:error_type error-type})
      (when (seq more)
        {:via (vec more)}))))
 
@@ -133,14 +136,3 @@
         (qp query xformf (assoc chans :raise-chan raise-chan'))
         (catch Throwable e
           (a/>!! raise-chan' e))))))
-
-
-;; TODO NOCOMMIT
-
-;; The following is a better way to return Exceptions I've been working on, returns the root Exception at the
-;; top-level and ones that wrap it in a `:via` sequence, similar to how they are displayed in the CIDER REPL
-;;
-;; Currently we nest causes inside `:cause` keys, meaning the root Exception is at the deepest level, and we see
-;; messages like "Query failed" as the top-level and "Cannot parse SQL" as the most-nested `:cause`. It is more useful
-;; to see the root Exception at the top-level IMO, and this would open us up to catching Exceptions and adding useful
-;; info more often.
