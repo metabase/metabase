@@ -200,6 +200,22 @@
   [_ rs _ i]
   (get-object-of-class-thunk rs i java.time.LocalDateTime))
 
+(defmethod read-column-thunk [:sql-jdbc Types/TIMESTAMP_WITH_TIMEZONE]
+  [_ rs _ i]
+  (get-object-of-class-thunk rs i java.time.OffsetDateTime))
+
+(defmethod read-column-thunk [:sql-jdbc Types/DATE]
+  [_ rs _ i]
+  (get-object-of-class-thunk rs i java.time.LocalDate))
+
+(defmethod read-column-thunk [:sql-jdbc Types/TIME]
+  [_ rs _ i]
+  (get-object-of-class-thunk rs i java.time.LocalTime))
+
+(defmethod read-column-thunk [:sql-jdbc Types/TIME_WITH_TIMEZONE]
+  [_ rs _ i]
+  (get-object-of-class-thunk rs i java.time.OffsetTime))
+
 (defn- column-range [^ResultSetMetaData rsmeta]
   (range 1 (inc (.getColumnCount rsmeta))))
 
@@ -244,13 +260,18 @@
   [driver ^ResultSetMetaData rsmeta]
   (mapv
    (fn [^Integer i]
-     ;; TODO - or .getColumnLabel (?)
-     {:name      (.getColumnName rsmeta i)
-      ;; TODO - disabled for now since it breaks a lot of tests. We can re-enable it when the tests are in a better state
-      #_:jdbc_type #_(u/ignore-exceptions
-                       (.getName (JDBCType/valueOf (.getColumnType rsmeta i))))
-      #_:db_type   #_(.getColumnTypeName rsmeta i)
-      :base_type (sql-jdbc.sync/database-type->base-type driver (keyword (.getColumnTypeName rsmeta i)))})
+     (let [col-name     (.getColumnName rsmeta i) ; TODO - or .getColumnLabel (?)
+           db-type-name (.getColumnTypeName rsmeta i)
+           base-type    (sql-jdbc.sync/database-type->base-type driver (keyword db-type-name))]
+       (log/tracef "Column %d '%s' is a %s which is mapped to base type %s for driver %s\n"
+                   i col-name db-type-name base-type driver)
+       {:name      col-name
+        ;; TODO - disabled for now since it breaks a lot of tests. We can re-enable it when the tests are in a better
+        ;; state
+        #_:jdbc_type #_ (u/ignore-exceptions
+                          (.getName (JDBCType/valueOf (.getColumnType rsmeta i))))
+        #_:db_type   #_db-type-name
+        :base_type   base-type}))
    (column-range rsmeta)))
 
 (defn reducible-rows

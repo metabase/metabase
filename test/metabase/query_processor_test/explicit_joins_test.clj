@@ -4,7 +4,8 @@
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :as qp.test]]
+             [query-processor-test :as qp.test]
+             [test :as mt]]
             [metabase.models.card :refer [Card]]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test.data :as data]
@@ -407,49 +408,50 @@
        :order-by [[:asc &c.checkins.id]]
        :limit    10})))
 
-;; Do we gracefully handle situtations where joins would produce multiple columns with the same name?
-;;
-;; (Multiple columns named `id` in the example below)
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
-  {:columns (mapv
-             data/format-name
-             ["id"     "date"   "user_id"     "venue_id"                       ; checkins
-              "id_2"   "name"   "last_login"                                   ; users
-              "id_2_2" "name_2" "category_id" "latitude" "longitude" "price"]) ; venues
-   :rows
-   [[1 "2014-04-07T00:00:00Z" 5 12
-     5 "Quentin Sören" "2014-10-03T17:30:00Z"
-     5 "Brite Spot Family Restaurant" 20 34.078 -118.261 2]
-    [2 "2014-09-18T00:00:00Z" 1 31
-     1 "Plato Yeshua" "2014-04-01T08:30:00Z"
-     1 "Red Medicine" 4 10.065 -165.374 3]]}
-  (qp.test/rows+column-names
-    (qp.test/format-rows-by [int    ; checkins.id
-                             str    ; checkins.date
-                             int    ; checkins.user_id
-                             int    ; checkins.venue_id
-                             int    ; users.id
-                             str    ; users.name
-                             str    ; users.last_login
-                             int    ; venues.id
-                             str    ; venues.name
-                             int    ; venues.category_id
-                             3.0    ; venues.latitude
-                             3.0    ; venues.longitude
-                             int]   ; venues.price
-      (data/run-mbql-query checkins
-        {:source-query {:source-table $$checkins
-                        :joins
-                        [{:fields       :all
-                          :alias        "u"
-                          :source-table $$users
-                          :condition    [:= $user_id &u.users.id]}]}
-         :joins        [{:fields       :all
-                         :alias        "v"
-                         :source-table $$venues
-                         :condition    [:= *user_id &v.venues.id]}]
-         :order-by     [[:asc $id]]
-         :limit        2}))))
+(deftest deduplicate-column-names-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
+    (testing (str "Do we gracefully handle situtations where joins would produce multiple columns with the same name? "
+                  "(Multiple columns named `id` in the example below)")
+      (let [{:keys [rows columns]} (qp.test/rows+column-names
+                                     (qp.test/format-rows-by [int  ; checkins.id
+                                                              str  ; checkins.date
+                                                              int  ; checkins.user_id
+                                                              int  ; checkins.venue_id
+                                                              int  ; users.id
+                                                              str  ; users.name
+                                                              str  ; users.last_login
+                                                              int  ; venues.id
+                                                              str  ; venues.name
+                                                              int  ; venues.category_id
+                                                              3.0  ; venues.latitude
+                                                              3.0  ; venues.longitude
+                                                              int] ; venues.price
+                                       (data/run-mbql-query checkins
+                                         {:source-query {:source-table $$checkins
+                                                         :joins
+                                                         [{:fields       :all
+                                                           :alias        "u"
+                                                           :source-table $$users
+                                                           :condition    [:= $user_id &u.users.id]}]}
+                                          :joins        [{:fields       :all
+                                                          :alias        "v"
+                                                          :source-table $$venues
+                                                          :condition    [:= *user_id &v.venues.id]}]
+                                          :order-by     [[:asc $id]]
+                                          :limit        2})))]
+        (is (= (mapv
+                data/format-name
+                ["id"     "date"   "user_id"     "venue_id"                       ; checkins
+                 "id_2"   "name"   "last_login"                                   ; users
+                 "id_2_2" "name_2" "category_id" "latitude" "longitude" "price"]) ; venues
+               columns))
+        (is (= [[1 "2014-04-07T00:00:00Z" 5 12
+                 5 "Quentin Sören" "2014-10-03T17:30:00Z"
+                 5 "Brite Spot Family Restaurant" 20 34.078 -118.261 2]
+                [2 "2014-09-18T00:00:00Z" 1 31
+                 1 "Plato Yeshua" "2014-04-01T08:30:00Z"
+                 1 "Red Medicine" 4 10.065 -165.374 3]]
+               rows))))))
 
 ;; we should be able to use a SQL question as a source query in a Join
 (datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :left-join)

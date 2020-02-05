@@ -344,7 +344,8 @@
 
 (defmethod aggregate-column-info ::test-extensions
   ([_ aggregation-type]
-   (assert (#{:count :cum-count} aggregation-type))
+   ;; TODO - Can `:cum-count` be used without args as well ??
+   (assert (= aggregation-type :count))
    {:base_type    :type/BigInteger
     :special_type :type/Number
     :name         "count"
@@ -358,12 +359,16 @@
      (qp.store/with-store
        (qp.store/fetch-and-store-database! (db/select-one-field :db_id Table :id table_id))
        (qp.store/fetch-and-store-fields! [field-id])
-       (merge
-        (annotate/col-info-for-aggregation-clause {} [aggregation-type [:field-id field-id]])
-        {:source    :aggregation
-         :field_ref [:aggregation 0]}
-        (when (#{:count :cum-count} aggregation-type)
-          {:base_type :type/Integer, :special_type :type/Number}))))))
+       (let [annotate-col-info (annotate/col-info-for-aggregation-clause {} [aggregation-type [:field-id field-id]])]
+         (merge
+          annotate-col-info
+          {:source    :aggregation
+           :field_ref [:aggregation 0]}
+          ;; TODO - not sure this applies to all columns now, but it at least applies to H2
+          (when (= (:base_type annotate-col-info) :type/Integer)
+            {:base_type :type/BigInteger})
+          (when (#{:count :cum-count} aggregation-type)
+            {:base_type :type/BigInteger, :special_type :type/Number})))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

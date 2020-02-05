@@ -12,6 +12,7 @@
              [util :as mbql.u]]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor
+             [error-type :as error-type]
              [interface :as qp.i]
              [store :as qp.store]]
             [metabase.util
@@ -60,9 +61,10 @@
 (s/defn ^:private source-metadata->fields :- mbql.s/Fields
   "Get implicit Fields for a query with a `:source-query` that has `source-metadata`."
   [source-metadata :- (su/non-empty [mbql.s/SourceQueryMetadata])]
+  (println "<FIELDS>" (u/pprint-to-str 'blue (for [{field-name :name, base-type :base_type} source-metadata]
+                                               [:field-literal field-name base-type])))
   (for [{field-name :name, base-type :base_type} source-metadata]
     [:field-literal field-name base-type]))
-
 
 (s/defn ^:private should-add-implicit-fields?
   "Whether we should add implicit Fields to this query. True if all of the following are true:
@@ -84,7 +86,7 @@
            (and source-query (seq source-metadata)))
        (every? empty? [aggregations breakouts fields])))
 
-(s/defn ^:private add-implicit-fields :- mbql.s/MBQLQuery
+(s/defn ^:private add-implicit-fields #_:- #_mbql.s/MBQLQuery
   "For MBQL queries with no aggregation, add a `:fields` key containing all Fields in the source Table as well as any
   expressions definied in the query."
   [{source-table-id :source-table, :keys [expressions source-metadata], :as inner-query} :- mbql.s/MBQLQuery]
@@ -100,8 +102,8 @@
                         [:expression (u/qualified-name expression-name)])]
       ;; if the Table has no Fields, throw an Exception, because there is no way for us to proceed
       (when-not (seq fields)
-        (throw (Exception. (tru "Table ''{0}'' has no Fields associated with it."
-                                (:name (qp.store/table source-table-id))))))
+        (throw (ex-info (tru "Table ''{0}'' has no Fields associated with it." (:name (qp.store/table source-table-id)))
+                 {:type error-type/invalid-query})))
       ;; add the fields & expressions under the `:fields` clause
       (assoc inner-query :fields (vec (concat fields expressions))))))
 
@@ -124,9 +126,9 @@
 ;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn add-implicit-mbql-clauses :- mbql.s/MBQLQuery
+(defn add-implicit-mbql-clauses
   "Add implicit clauses such as `:fields` and `:order-by` to an 'inner' MBQL query as needed."
-  [{:keys [source-query], :as inner-query} :- mbql.s/MBQLQuery]
+  [{:keys [source-query], :as inner-query}]
   (let [mbql-source-query? (and source-query (not (:native source-query)))
         inner-query        (-> inner-query add-implicit-breakout-order-by add-implicit-fields)]
     (if mbql-source-query?

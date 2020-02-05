@@ -161,14 +161,14 @@
                    :breakout     [[:datetime-field [:field-id (data/id :checkins :date)] :year]]}
         :info     {:card-id    (u/get-id card)
                    :query-hash (qputil/query-hash {})}})
-      (is (= [{:base_type    "type/Date"
+      (is (= [{:base_type    "type/DateTime"
                :display_name "Date"
                :name         "DATE"
                :unit         "year"
                :special_type nil
                :fingerprint  {:global {:distinct-count 618 :nil% 0.0}, :type {:type/DateTime {:earliest "2013-01-03"
                                                                                               :latest   "2015-12-29"}}}}
-              {:base_type    "type/Integer"
+              {:base_type    "type/BigInteger"
                :display_name "Count"
                :name         "count"
                :special_type "type/Quantity"

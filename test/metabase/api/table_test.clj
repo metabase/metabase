@@ -434,7 +434,7 @@
                                :fingerprint  (:name mutil/venue-fingerprints)}
                               {:name         "ID"
                                :display_name "ID"
-                               :base_type    "type/Integer"
+                               :base_type    "type/BigInteger"
                                :special_type nil
                                :fingerprint  (:id mutil/venue-fingerprints)}
                               (with-numeric-dimension-options

@@ -334,7 +334,7 @@
     [(_ :guard #{:count :distinct}) & args]
     (merge
      (col-info-for-aggregation-clause inner-query args)
-     {:base_type    :type/Integer
+     {:base_type    :type/BigInteger
       :special_type :type/Number}
      (ag->name-info inner-query &match))
 
