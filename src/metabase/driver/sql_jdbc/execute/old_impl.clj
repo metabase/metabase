@@ -47,7 +47,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmulti read-column
-  "Read a single value from a single column in a single row from the JDBC ResultSet of a Metabase query. Normal
+  "Read a single value from a single column in the current row from the JDBC ResultSet of a Metabase query. Normal
   implementations call an appropriate method on `ResultSet` to retrieve this value, such as `(.getObject rs
   i)`. (`i` is the index of the column whose value you should retrieve.)
 
@@ -57,7 +57,7 @@
 
   The second arg to this method is no longer used and should be ignored.
 
-  This method is deprecated in favor of "
+  This method is deprecated in favor of `read-column-thunk`, and will be removed in a future release."
   {:deprecated "0.35.0", :arglists '([driver _ rs rsmeta i])}
   (fn [driver _ _ ^ResultSetMetaData rsmeta ^Integer i]
     [(driver/dispatch-on-initialized-driver driver) (.getColumnType rsmeta i)])

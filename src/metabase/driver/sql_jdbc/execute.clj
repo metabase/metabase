@@ -186,19 +186,19 @@
   (.executeQuery stmt))
 
 (defmethod read-column-thunk :default
-  [_ ^ResultSet rs _ ^long col-idx]
-  ^{:name (format "(.getObject rs %d)" col-idx)}
+  [_ ^ResultSet rs _ ^long i]
+  ^{:name (format "(.getObject rs %d)" i)}
   (fn []
-    (.getObject rs col-idx)))
+    (.getObject rs i)))
 
-(defn- get-object-of-class-fn [^ResultSet rs, ^long col-idx, ^Class klass]
-  ^{:name (format "(.getObject rs %d %s)" col-idx (.getCanonicalName klass))}
+(defn- get-object-of-class-thunk [^ResultSet rs, ^long i, ^Class klass]
+  ^{:name (format "(.getObject rs %d %s)" i (.getCanonicalName klass))}
   (fn []
-    (.getObject rs col-idx klass)))
+    (.getObject rs i klass)))
 
 (defmethod read-column-thunk [:sql-jdbc Types/TIMESTAMP]
   [_ rs _ i]
-  (get-object-of-class-fn rs i java.time.LocalDateTime))
+  (get-object-of-class-thunk rs i java.time.LocalDateTime))
 
 (defn- column-range [^ResultSetMetaData rsmeta]
   (range 1 (inc (.getColumnCount rsmeta))))
@@ -220,9 +220,23 @@
                 (or (:name (meta f))
                     f)))))))
 
+(defn- old-read-column-thunk
+  "Implementation of deprecated method `old/read-column` if a non-default one is available."
+  [driver rs ^ResultSetMetaData rsmeta ^Integer i]
+  (let [col-type (.getColumnType rsmeta i)
+        method   (get-method execute.old/read-column [driver col-type])]
+    (when-not (or (= method
+                     (get-method execute.old/read-column :default)
+                     (get-method execute.old/read-column [::driver/driver col-type])
+                     (get-method execute.old/read-column [:sql-jdbc col-type])))
+      ^{:name (format "old-impl/read-column %s %d" driver i)}
+      (fn []
+        (method driver nil rs rsmeta i)))))
+
 (defn- read-row-fn [driver rs ^ResultSetMetaData rsmeta]
-  (let [fns (for [col-idx (column-range rsmeta)]
-              (read-column-thunk driver rs rsmeta (long col-idx)))]
+  (let [fns (for [i (column-range rsmeta)]
+              (or (old-read-column-thunk driver rs rsmeta i)
+                  (read-column-thunk driver rs rsmeta (long i))))]
     (log-readers driver rsmeta fns)
     (apply juxt fns)))
 
@@ -230,9 +244,11 @@
   [driver ^ResultSetMetaData rsmeta]
   (mapv
    (fn [^Integer i]
-     {:name      (.getColumnName rsmeta i) ; TODO - or .getColumnLabel (?)
-      :jdbc_type (u/ignore-exceptions
-                   (.getName (JDBCType/valueOf (.getColumnType rsmeta i))))
+     ;; TODO - or .getColumnLabel (?)
+     {:name      (.getColumnName rsmeta i)
+      ;; TODO - disabled for now since it breaks a lot of tests. We can re-enable it when the tests are in a better state
+      #_:jdbc_type #_(u/ignore-exceptions
+                       (.getName (JDBCType/valueOf (.getColumnType rsmeta i))))
       :db_type   (.getColumnTypeName rsmeta i)
       :base_type (sql-jdbc.sync/database-type->base-type driver (keyword (.getColumnTypeName rsmeta i)))})
    (column-range rsmeta)))
