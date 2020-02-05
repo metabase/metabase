@@ -128,7 +128,7 @@
     (when-let [query (db/select-one-field :dataset_query Card :id card-id)]
       (i/map->CardQuery
        {:card-id card-id
-        :query   (condp = (:query-type query)
+        :query   (condp = (name (:type query))
                    "native" (get-in query [:native :query])
                    "query"  (:query (driver/mbql->native driver/*driver* (:query query))))}))))
 

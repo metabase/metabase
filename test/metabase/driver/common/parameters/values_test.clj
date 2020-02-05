@@ -128,8 +128,8 @@
 (deftest card-query-test
   (testing "Card query template tag gets card's native query"
     (let [test-query "SELECT 1"]
-      (tt/with-temp Card [card {:dataset_query {:query-type "native"
-                                                :native     {:query test-query}}}]
+      (tt/with-temp Card [card {:dataset_query {:type   "native"
+                                                :native {:query test-query}}}]
         (is (= (i/->CardQuery (:id card) test-query)
                (#'values/value-for-tag
                 {:name "card-template-tag-test", :display-name "Card template tag test",
@@ -141,8 +141,8 @@
       (let [mbql-query   {:source-table (data/id :venues)
                           :filter       [:< [:field-id (data/id :venues :price)] 3]}
             native-query (driver/mbql->native driver/*driver* mbql-query)]
-        (tt/with-temp Card [card {:dataset_query {:query-type "query"
-                                                  :query      mbql-query}}]
+        (tt/with-temp Card [card {:dataset_query {:type  "query"
+                                                  :query mbql-query}}]
           (is (= (i/->CardQuery (:id card) native-query)
                  (#'values/value-for-tag
                   {:name "card-template-tag-test", :display-name "Card template tag test",
