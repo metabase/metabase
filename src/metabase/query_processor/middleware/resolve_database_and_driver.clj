@@ -7,8 +7,7 @@
             [metabase.query-processor
              [error-type :as error-type]
              [store :as qp.store]]
-            [metabase.util.i18n :refer [tru]]
-            [clojure.core.async :as a]))
+            [metabase.util.i18n :refer [tru]]))
 
 (defn- resolve-database* [{database-id :database, :as query}]
   (u/prog1 query
@@ -19,18 +18,15 @@
   "Middleware that resolves the Database referenced by the query under that `:database` key and stores it in the QP
   Store."
   [qp]
-  (fn [{database-id :database, :as query} xform {:keys [raise-chan], :as chans}]
-    (try
-      (when-not ((every-pred integer? pos?) database-id)
-        (throw (ex-info (tru "Unable to resolve database for query: missing or invalid `:database` ID.")
-                 {:database database-id
-                  :type     error-type/invalid-query})))
-      (resolve-database* query)
-      (driver/with-driver (try
-                            (driver/the-initialized-driver (driver.u/database->driver (qp.store/database)))
-                            (catch Throwable e
-                              (throw (ex-info (tru "Unable to resolve driver for query")
-                                       {:type error-type/invalid-query}))))
-        (qp query xform chans))
-      (catch Throwable e
-        (a/>!! raise-chan e)))))
+  (fn [{database-id :database, :as query} xformf chans]
+    (when-not ((every-pred integer? pos?) database-id)
+      (throw (ex-info (tru "Unable to resolve database for query: missing or invalid `:database` ID.")
+               {:database database-id
+                :type     error-type/invalid-query})))
+    (resolve-database* query)
+    (driver/with-driver (try
+                          (driver/the-initialized-driver (driver.u/database->driver (qp.store/database)))
+                          (catch Throwable e
+                            (throw (ex-info (tru "Unable to resolve driver for query")
+                                     {:type error-type/invalid-query}))))
+      (qp query xformf chans))))

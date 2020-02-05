@@ -2,8 +2,7 @@
   "Middleware that fetches tables that will need to be joined, referred to by `fk->` clauses, and adds information to
   the query about what joins should be done and how they should be performed."
   (:refer-clojure :exclude [alias])
-  (:require [clojure.core.async :as a]
-            [metabase.mbql
+  (:require [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.query-processor.middleware.add-implicit-clauses :as add-implicit-clauses]

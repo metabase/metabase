@@ -1,6 +1,5 @@
 (ns metabase.query-processor.middleware.pre-alias-aggregations
-  (:require [clojure.core.async :as a]
-            [metabase.driver :as driver]
+  (:require [metabase.driver :as driver]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.middleware.annotate :as annotate]))
 

@@ -1,12 +1,13 @@
 (ns metabase.query-processor.middleware.binning-test
   (:require [expectations :refer [expect]]
+            [metabase
+             [test :as mt]
+             [util :as u]]
             [metabase.models.field :as field :refer [Field]]
             [metabase.query-processor.middleware.binning :as binning]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test.data :as data]
-            [metabase.util :as u]
-            [toucan.util.test :as tt]
-            [metabase.test :as mt]))
+            [toucan.util.test :as tt]))
 
 (expect
   {}

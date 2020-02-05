@@ -33,8 +33,7 @@
   The frontend, on the rare occasion it generates a query that explicitly specifies an `order-by` clause, usually will
   generate one that directly corresponds to the bad example above. This middleware finds these cases and rewrites the
   query to look like the good example."
-  (:require [clojure.core.async :as a]
-            [metabase.mbql
+  (:require [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
             [schema.core :as s]))

@@ -16,7 +16,7 @@
   class)
 
 (defmethod format-exception Throwable
-  [e]
+  [^Throwable e]
   {:status     :failed
    :class      (class e)
    :error      (or (.getMessage e) (str e))

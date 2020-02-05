@@ -59,13 +59,12 @@
   regardless of whether results streaming is canceled, we want to continue the save; for this reason, we don't call
   `future-cancel` if we get a message to `canceled-chan` the way we normally do."
   ^Future [execution-info]
-  (.submit
-   (thread-pool)
-   ^Runnable (bound-fn []
-               (try
-                 (save-query-execution! (add-running-time execution-info))
-                 (catch Throwable e
-                   (log/error e (trs "Error saving query execution info")))))))
+  (let [^Runnable task (bound-fn []
+                         (try
+                           (save-query-execution! (add-running-time execution-info))
+                           (catch Throwable e
+                             (log/error e (trs "Error saving query execution info")))))]
+    (.submit (thread-pool) task)))
 
 (defn- save-successful-query-execution-async! [query-execution {cached? :cached, result-rows :row_count}]
   ;; only insert a new record into QueryExecution if the results *were not* cached (i.e., only if a Query was

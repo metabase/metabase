@@ -3,10 +3,11 @@
   logic, as that comes from the MBQL library and is tested thoroughly there -- we just need to test that it gets
   applied in the correct places."
   (:require [expectations :refer [expect]]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [test :as mt]]
             [metabase.query-processor.middleware.pre-alias-aggregations :as pre-alias-aggregations]
-            [metabase.test.data :as data]
-            [metabase.test :as mt]))
+            [metabase.test.data :as data]))
 
 (defn- pre-alias [query]
   (driver/with-driver (or driver/*driver* :h2)

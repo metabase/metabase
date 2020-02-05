@@ -2,11 +2,12 @@
   "Testings to make sure the parameter substitution middleware works as expected. Even though the below tests are
   SQL-specific, they still confirm that the middleware itself is working correctly."
   (:require [expectations :refer [expect]]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [test :as mt]]
             [metabase.mbql.normalize :as normalize]
             [metabase.query-processor.middleware.parameters :as parameters]
-            [metabase.test.data :as data]
-            [metabase.test :as mt]))
+            [metabase.test.data :as data]))
 
 (expect
   {:type   :native

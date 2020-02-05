@@ -1,12 +1,13 @@
 (ns metabase.query-processor.middleware.auto-bucket-datetimes-test
   (:require [clojure.test :refer :all]
             [expectations :refer [expect]]
+            [metabase
+             [test :as mt]
+             [util :as u]]
             [metabase.models.field :refer [Field]]
             [metabase.query-processor.middleware.auto-bucket-datetimes :as auto-bucket-datetimes]
             [metabase.test.data :as data]
-            [metabase.util :as u]
-            [toucan.util.test :as tt]
-            [metabase.test :as mt]))
+            [toucan.util.test :as tt]))
 
 (defn- auto-bucket [query]
   (:pre (mt/test-qp-middleware auto-bucket-datetimes/auto-bucket-datetimes query)))
