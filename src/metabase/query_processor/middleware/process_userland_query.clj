@@ -24,6 +24,11 @@
 ;;; |                                              Save Query Execution                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; TODO - I'm not sure whether this should happen async as is currently the case, or should happen synchronously e.g.
+;; in the completing arity of the rf
+;;
+;; Async seems like it makes sense from a performance standpoint, but should we have some sort of shared threadpool
+;; for other places where we would want to do async saves (such as results-metadata for Cards?)
 (defn- save-query-execution!
   "Save a `QueryExecution` and update the average execution time for the corresponding `Query`."
   [{query :json_query, query-hash :hash, running-time :running_time, :as query-execution}]

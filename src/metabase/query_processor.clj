@@ -3,7 +3,9 @@
   implementations."
   (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
-            [metabase.driver :as driver]
+            [metabase
+             [config :as config]
+             [driver :as driver]]
             [metabase.driver.util :as driver.u]
             [metabase.mbql.schema :as mbql.s]
             [metabase.query-processor
@@ -143,11 +145,20 @@
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are passed to
 ;; `substitute-parameters`
 
+;; In REPL-based dev rebuild the QP every time it is called; this way we don't need to reload this namespace when
+;; middleware is changed. Outside of dev only build the QP once for performance/locality
+(defn- base-qp [& args]
+  (letfn [(qp []
+            (apply qp.build/base-query-processor args))]
+    (if config/is-dev?
+      (fn [& args]
+        (apply (qp) args))
+      (qp))))
+
 (def ^{:arglists '([query] [query rff])} process-query-async
   "Process a query asynchronously, returning a handful of `core.async` channels that can be used to get the results (see
   docstring for `metabase.query-processor.build/async-chans` for more details on what these channels are.)"
-  (qp.build/async-query-processor
-   (qp.build/base-query-processor default-middleware)))
+  (qp.build/async-query-processor (base-qp default-middleware)))
 
 (def ^{:arglists '([query] [query rff])} process-query-sync
   "Process a query synchronously, blocking until results are returned. Throws raised Exceptions directly."
@@ -171,7 +182,7 @@
 
 (def ^:private ^{:arglists '([query])} preprocess-query
   (let [qp (qp.build/async-query-processor
-            (qp.build/base-query-processor
+            (base-qp
              (fn [_ _ _ respond]
                (respond {} []))
              default-middleware)
@@ -276,8 +287,7 @@
 
 (def ^{:arglists '([query] [query rff])} process-userland-query-async
   "Like `process-query-async`, but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."
-  (qp.build/async-query-processor
-   (qp.build/base-query-processor userland-middleware)))
+  (qp.build/async-query-processor (base-qp userland-middleware)))
 
 (def ^{:arglists '([query] [query rff])} process-userland-query-sync
   "Like `process-query-sync`, but for 'userland' queries (e.g., queries ran via the REST API). Adds extra middleware."

@@ -15,12 +15,9 @@
             [ring.util.codec :as codec]
             [toucan.db :as db]))
 
-;; TODO - is there some way we could avoid doing this every single time a Card is ran? Perhaps by passing the current
-;; Card metadata as part of the query context so we can compare for changes
-(defn- record-metadata! [card-id metadata]
-  (when metadata
-    (db/update! 'Card card-id
-      :result_metadata metadata)))
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                     Checksum Util Fns (some of these aren't used in the middleware itself)                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- prepare-for-serialization
   "Return version of `node` that will hash consistently"
@@ -79,32 +76,45 @@
        (= (encryption/maybe-decrypt (metadata-checksum metadata) :log-errors? false)
           (encryption/maybe-decrypt checksum                     :log-errors? false))))
 
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                   Middleware                                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; TODO -
+;;
+;; 1. Is there some way we could avoid doing this every single time a Card is ran? Perhaps by passing the current Card
+;;    metadata as part of the query context so we can compare for changes
+;;
+;; 2. Consider whether the actual save operation should be async as with
+;;    `metabase.query-processor.middleware.process-userland-query`
 (defn- record-metadata! [{{:keys [card-id nested?]} :info} metadata]
   (try
     ;; At the very least we can skip the Extra DB call to update this Card's metadata results
     ;; if its DB doesn't support nested queries in the first place
-    (when (and driver/*driver*
+    (when (and metadata
+               driver/*driver*
                (driver/supports? driver/*driver* :nested-queries)
                card-id
                (not nested?))
-      (record-metadata! card-id metadata))
+      (db/update! 'Card card-id :result_metadata metadata))
     ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
     ;; rather than failing the entire query
     (catch Throwable e
       (log/error e (tru "Error recording results metadata for query")))))
 
-(defn- insights-xform [metadata record!]
+(defn- insights-xform [orig-metadata record!]
   (fn insights-rf [rf]
     (redux/post-complete
-     (redux/juxt rf (analyze.results/insights-rf metadata))
+     (redux/juxt rf (analyze.results/insights-rf orig-metadata))
      (fn [[result {:keys [metadata insights]}]]
        (record! metadata)
        (if-not (map? result)
          result
-         (assoc result
-                :results_metadata {:checksum (metadata-checksum metadata)
-                                   :columns  metadata}
-                :insights insights))))))
+         (update result :data #(assoc %
+                                      :results_metadata {:checksum (metadata-checksum metadata)
+                                                         :columns  metadata}
+                                      :insights insights)))))))
 
 (defn record-and-return-metadata!
   "Middleware that records metadata about the columns returned when running the query."

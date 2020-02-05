@@ -55,33 +55,32 @@
   column. It is cheapest and easiest to just use that. This function takes what it can from the column metadata to
   populate the ResultColumnMetadata"
   [column]
-  (u/select-non-nil-keys column [:name :display_name :description :base_type :special_type :unit :fingerprint]))
+  ;; HACK - not sure why we don't have display_name yet in some cases
+  (merge
+   {:display_name (:name column)}
+   (u/select-non-nil-keys column [:name :display_name :description :base_type :special_type :unit :fingerprint])))
 
-(defn insights-rf [{result-metadata :cols}]
-  (redux/post-complete
-   (redux/juxt
-    (apply f/col-wise (for [{:keys [fingerprint], :as metadata} result-metadata]
-                        (if-not fingerprint
-                          (f/fingerprinter metadata)
-                          (f/constant-fingerprinter fingerprint))))
-    (insights/insights result-metadata))
-   (fn [[fingerprints insights]]
-     {:metadata (map (fn [fingerprint metadata]
-                       (if (instance? Throwable fingerprint)
-                         metadata
-                         (assoc metadata :fingerprint fingerprint)))
-                     fingerprints
-                     result-metadata)
-      :insights insights})))
-
-(defn- add-insights [rows result-metadata]
-  (transduce identity (insights-rf result-metadata) rows))
-
-(defn results->column-metadata
-  "Return the desired storage format for the column metadata coming back from `results` and fingerprint the `results`."
-  [{:keys [rows], :as results}]
-  (let [result-metadata (for [col (:cols results)]
-                          (-> col
-                              stored-column-metadata->result-column-metadata
-                              (maybe-infer-special-type col)))]
-    (add-insights rows result-metadata)))
+(defn insights-rf
+  "A reducing function that calculates what is ultimately returned as `[:data :results_metadata]` in userland QP
+  results. `metadata` is the usual QP results metadata e.g. as recieved by an `xformf`."
+  {:arglists '([metadata])}
+  [{:keys [cols]}]
+  (let [cols (for [col cols]
+               (-> col
+                   stored-column-metadata->result-column-metadata
+                   (maybe-infer-special-type col)))]
+    (redux/post-complete
+     (redux/juxt
+      (apply f/col-wise (for [{:keys [fingerprint], :as metadata} cols]
+                          (if-not fingerprint
+                            (f/fingerprinter metadata)
+                            (f/constant-fingerprinter fingerprint))))
+      (insights/insights cols))
+     (fn [[fingerprints insights]]
+       {:metadata (map (fn [fingerprint metadata]
+                         (if (instance? Throwable fingerprint)
+                           metadata
+                           (assoc metadata :fingerprint fingerprint)))
+                       fingerprints
+                       cols)
+        :insights insights}))))
