@@ -9,6 +9,7 @@
                                      :target [\"dimension\" [\"template-tag\" \"checkin_date\"]]
                                      :value  \"2015-01-01~2016-09-01\"}}}"
   (:require [clojure.string :as str]
+            [metabase.driver :as driver]
             [metabase.driver.common.parameters :as i]
             [metabase.models
              [card :refer [Card]]
@@ -120,14 +121,16 @@
                  (sequential? value-info-or-infos) (mapv #(dissoc % :target) value-info-or-infos))
                i/no-value)})))
 
-(s/defn ^:private card-native-query-for-tag :- (s/maybe (s/cond-pre su/Map (s/eq i/no-value)))
+(s/defn ^:private card-query-for-tag :- (s/maybe (s/cond-pre su/Map (s/eq i/no-value)))
   "Returns the native query for the `:card` referenced by the given tag."
   [tag :- TagParam, _params :- (s/maybe [i/ParamValue])]
   (when-let [card-id (:card tag)]
     (when-let [query (db/select-one-field :dataset_query Card :id card-id)]
       (i/map->CardQuery
        {:card-id card-id
-        :query   query}))))
+        :query   (condp = (:query-type query)
+                   "native" (get-in query [:native :query])
+                   "query"  (driver/mbql->native driver/*driver* (:query query)))}))))
 
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
@@ -227,7 +230,7 @@
   [tag :- TagParam, params :- (s/maybe [i/ParamValue])]
   (parse-value-for-type (:type tag) (or (param-value-for-tag tag params)
                                         (field-filter-value-for-tag tag params)
-                                        (card-native-query-for-tag tag params)
+                                        (card-query-for-tag tag params)
                                         (default-value-for-tag tag)
                                         i/no-value)))
 
