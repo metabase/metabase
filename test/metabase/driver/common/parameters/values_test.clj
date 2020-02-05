@@ -6,6 +6,7 @@
             [metabase.models
              [card :refer [Card]]
              [field :refer [map->FieldInstance]]]
+            [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test.data :as data]
             [toucan.util.test :as tt]))
 
@@ -137,14 +138,16 @@
                 []))))))
 
   (testing "Card query template tag generates native query for MBQL"
-    (driver/with-driver :h2
-      (let [mbql-query   {:source-table (data/id :venues)
-                          :filter       [:< [:field-id (data/id :venues :price)] 3]}
-            native-query (driver/mbql->native driver/*driver* mbql-query)]
-        (tt/with-temp Card [card {:dataset_query {:type  "query"
-                                                  :query mbql-query}}]
-          (is (= (i/->CardQuery (:id card) native-query)
-                 (#'values/value-for-tag
-                  {:name "card-template-tag-test", :display-name "Card template tag test",
-                   :type :card, :card (:id card)}
-                  []))))))))
+    (qp.test-util/with-everything-store
+      (driver/with-driver :h2
+        (let [mbql-query   {:database (data/id)
+                            :query    {:source-table (data/id :venues)
+                                       :filter       [:< [:field-id (data/id :venues :price)] 3]}}
+              native-query (driver/mbql->native :h2 mbql-query)]
+          (tt/with-temp Card [card {:dataset_query {:type  "query"
+                                                    :query mbql-query}}]
+            (is (= (i/->CardQuery (:id card) "SELECT \"PUBLIC\".\"VENUES\".* FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" < 3")
+                   (#'values/value-for-tag
+                    {:name "card-template-tag-test", :display-name "Card template tag test",
+                     :type :card, :card (:id card)}
+                    [])))))))))
