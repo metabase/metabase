@@ -10,7 +10,7 @@ import Field from "./Field";
 import type { SchemaName } from "metabase/meta/types/Table";
 import type { FieldMetadata } from "metabase/meta/types/Metadata";
 
-import { titleize, humanize } from "metabase/lib/formatting";
+import { titleize, singularize, humanize } from "metabase/lib/formatting";
 
 import Dimension from "../Dimension";
 
@@ -73,6 +73,15 @@ export default class Table extends Base {
         ? titleize(humanize(this.schema)) + "."
         : "") + this.display_name
     );
+  }
+
+  /**
+   * The singular form of the object type this table represents
+   * Currently we try to guess this by singularizing `display_name`, but ideally it would be configurable in metadata
+   * See also `field.targetObjectName()`
+   */
+  objectName() {
+    return singularize(this.displayName());
   }
 
   dateFields(): Field[] {

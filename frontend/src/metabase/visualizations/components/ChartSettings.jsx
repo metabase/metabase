@@ -191,12 +191,20 @@ class ChartSettings extends Component {
       visibleWidgets = sections[currentSection] || [];
     }
 
+    // This checks whether the current section contains a column settings widget
+    // at the top level. If it does, we avoid hiding the section tabs and
+    // overriding the sidebar title.
+    const currentSectionHasColumnSettings = (
+      sections[currentSection] || []
+    ).some(widget => widget.id === "column_settings");
+
     const extraWidgetProps = {
       // NOTE: special props to support adding additional fields
       question: question,
       addField: addField,
       onShowWidget: this.handleShowWidget,
       onEndShowWidget: this.handleEndShowWidget,
+      currentSectionHasColumnSettings,
     };
 
     const sectionPicker = (
@@ -239,7 +247,9 @@ class ChartSettings extends Component {
       // hide the section picker if the only widget is column_settings
       !(
         visibleWidgets.length === 1 &&
-        visibleWidgets[0].id === "column_settings"
+        visibleWidgets[0].id === "column_settings" &&
+        // and this section doesn't doesn't have that as a direct child
+        !currentSectionHasColumnSettings
       );
 
     // default layout with visualization
