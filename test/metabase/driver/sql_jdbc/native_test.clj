@@ -3,9 +3,7 @@
   (:require [clojure.test :refer :all]
             [medley.core :as m]
             [metabase.query-processor :as qp]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
+            [metabase.test.data :as data]
             [metabase.test.util.log :as tu.log]
             [metabase.util.schema :as su]
             [schema.core :as s]))
@@ -17,9 +15,9 @@
                                          [99]]
                       :cols             [{:name         "ID"
                                           :display_name "ID"
-                                          :base_type    :type/Integer
+                                          :base_type    :type/BigInteger
                                           :source       :native
-                                          :field_ref    [:field-literal "ID" :type/Integer]}]
+                                          :field_ref    [:field-literal "ID" :type/BigInteger]}]
                       :native_form      {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2"}
                       :results_timezone "UTC"}}
          (-> (qp/process-query {:native   {:query "SELECT ID FROM VENUES ORDER BY ID DESC LIMIT 2"}
@@ -37,8 +35,8 @@
                       :cols             [{:name         "ID"
                                           :display_name "ID"
                                           :source       :native
-                                          :base_type    :type/Integer
-                                          :field_ref    [:field-literal "ID" :type/Integer]}
+                                          :base_type    :type/BigInteger
+                                          :field_ref    [:field-literal "ID" :type/BigInteger]}
                                          {:name         "NAME"
                                           :display_name "NAME"
                                           :source       :native
@@ -58,17 +56,18 @@
              (m/dissoc-in [:data :insights])))
       "Check that column ordering is maintained"))
 
-;; Check that we get proper error responses for malformed SQL
-(tu/expect-schema
-  {:status     (s/eq :failed)
-   :class      (s/eq java.lang.Exception)
-   :error      (s/eq "Column \"ZID\" not found")
-   :stacktrace [su/NonBlankString]
-   :query      {:native {:query (s/eq "SELECT ZID FROM CHECKINS LIMIT 2")}
-                :type (s/eq :native)}
-   :cause      {:class (s/eq org.h2.jdbc.JdbcSQLException)
-                :error #"Column \"ZID\" not found; SQL statement:.*"}}
-  (tu.log/suppress-output
-    (qp/process-query {:native   {:query "SELECT ZID FROM CHECKINS LIMIT 2"}
-                       :type     :native
-                       :database (data/id)})))
+(deftest malformed-sql-response-test
+  (testing "Check that we get proper error responses for malformed SQL"
+    (tu.log/suppress-output
+      (is (schema= {:status     (s/eq :failed)
+                    :class      (s/eq org.h2.jdbc.JdbcSQLException)
+                    :error      #"^Column \"ZID\" not found"
+                    :stacktrace [su/NonBlankString]
+                    :query      {:native   {:query (s/eq "SELECT ZID FROM CHECKINS LIMIT 2")}
+                                 :type     (s/eq :native)
+                                 s/Keyword s/Any}
+                    s/Keyword   s/Any}
+                   (qp/process-userland-query
+                    {:native   {:query "SELECT ZID FROM CHECKINS LIMIT 2"}
+                     :type     :native
+                     :database (data/id)}))))))

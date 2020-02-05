@@ -249,7 +249,7 @@
       ;; TODO - disabled for now since it breaks a lot of tests. We can re-enable it when the tests are in a better state
       #_:jdbc_type #_(u/ignore-exceptions
                        (.getName (JDBCType/valueOf (.getColumnType rsmeta i))))
-      :db_type   (.getColumnTypeName rsmeta i)
+      #_:db_type   #_(.getColumnTypeName rsmeta i)
       :base_type (sql-jdbc.sync/database-type->base-type driver (keyword (.getColumnTypeName rsmeta i)))})
    (column-range rsmeta)))
 

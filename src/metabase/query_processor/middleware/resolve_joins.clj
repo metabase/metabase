@@ -180,8 +180,5 @@
 (defn resolve-joins
   "Add any Tables and Fields referenced by the `:joins` clause to the QP store."
   [qp]
-  (fn [query xform {:keys [raise-chan], :as chans}]
-    (try
-      (qp (resolve-joins* query) xform chans)
-      (catch Throwable e
-        (a/>!! raise-chan e)))))
+  (fn [query xformf chans]
+    (qp (resolve-joins* query) xformf chans)))

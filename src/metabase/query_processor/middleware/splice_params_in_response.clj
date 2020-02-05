@@ -1,6 +1,5 @@
 (ns metabase.query-processor.middleware.splice-params-in-response
-  (:require [clojure.core.async :as a]
-            [metabase.driver :as driver]))
+  (:require [metabase.driver :as driver]))
 
 (defn- splice-params-in-metadata [{{:keys [params]} :native_form, :as metadata}]
   ;; no need to i18n this since this message is something only developers who break the QP by changing middleware
@@ -29,12 +28,9 @@
   queries without `:params` (which will be all of them for drivers that don't support the equivalent of prepared
   statement parameters, like Druid), this middleware does nothing."
   [qp]
-  (fn [query xform-fn {:keys [raise-chan], :as chans}]
-    (try
-      (qp
-       query
-       (fn [metadata]
-         (xform-fn (splice-params-in-metadata metadata)))
-       chans)
-      (catch Throwable e
-        (a/>!! raise-chan e)))))
+  (fn [query xformf chans]
+    (qp
+     query
+     (fn [metadata]
+       (xformf (splice-params-in-metadata metadata)))
+     chans)))

@@ -5,7 +5,8 @@
             [metabase.driver :as driver]
             [metabase.mbql.normalize :as normalize]
             [metabase.query-processor.middleware.parameters :as parameters]
-            [metabase.test.data :as data]))
+            [metabase.test.data :as data]
+            [metabase.test :as mt]))
 
 (expect
   {:type   :native
@@ -14,7 +15,7 @@
 
 (defn- subsitute-params [query]
   (driver/with-driver :h2
-    ((parameters/substitute-parameters identity) (normalize/normalize query))))
+    (:pre (mt/test-qp-middleware parameters/substitute-parameters (normalize/normalize query)))))
 
 ;; can we expand MBQL params if they are specified at the top level?
 (expect
