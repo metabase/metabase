@@ -8,6 +8,7 @@
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :as qp.test]
+             [test :as mt]
              [util :as u]]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models
@@ -23,8 +24,7 @@
             [metabase.test.data
              [datasets :as datasets]
              [users :refer [user->client]]]
-            [toucan.util.test :as tt]
-            [metabase.test :as mt]))
+            [toucan.util.test :as tt]))
 
 ;; make sure we can do a basic query with MBQL source-query
 (datasets/expect-with-drivers (qp.test/normal-drivers-with-feature :nested-queries)
@@ -408,17 +408,23 @@
            {:aggregation [[:count]]
             :breakout    [!day.*date]}))))))
 
-;; make sure when doing a nested query we give you metadata that would suggest you should be able to break out a *YEAR*
-(expect
-  [(assoc (qp.test/field-literal-col :checkins :date) :unit :year)
-   (qp.test/field-literal-col (qp.test/aggregate-col :count))]
-  (qp.test/cols
-    (tt/with-temp Card [card (mbql-card-def
-                               (data/$ids checkins
-                                 {:source-table $$checkins
-                                  :aggregation  [[:count]]
-                                  :breakout     [!year.date]}))]
-      (qp/process-query (query-with-source-card card)))))
+(deftest breakout-year-test
+  (testing (str "make sure when doing a nested query we give you metadata that would suggest you should be able to "
+                "break out a *YEAR*")
+    (let [source-query (data/$ids checkins
+                         {:source-table $$checkins
+                          :aggregation  [[:count]]
+                          :breakout     [!year.date]})]
+      (tt/with-temp Card [card (mbql-card-def source-query)]
+        (let [[date-col count-col] (for [col (-> (qp/process-query {:database (mt/id), :type :query, :query source-query})
+                                                 :data :cols)]
+                                     (-> (into {} col)
+                                         (dissoc :description :parent_id :visibility_type)
+                                         (assoc :source :fields)))]
+          (is (= [(assoc date-col  :field_ref [:field-literal "DATE" :type/Date])
+                  (assoc count-col :field_ref [:field-literal "count" (:base_type count-col)])]
+                 (mt/cols
+                   (qp/process-query (query-with-source-card card))))))))))
 
 (defn- completed-status [{:keys [status], :as results}]
   (if (= status :completed)

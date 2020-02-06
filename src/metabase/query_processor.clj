@@ -141,6 +141,7 @@
    #'validate/validate-query
    #'normalize/normalize
    #'add-rows-truncated/add-rows-truncated
+   #'results-metadata/record-and-return-metadata!
    #'async/count-in-flight-queries])
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are passed to
 ;; `substitute-parameters`
@@ -280,8 +281,7 @@
   the REST API)."
   (concat
    default-middleware
-   [#'results-metadata/record-and-return-metadata!
-    #'constraints/add-default-userland-constraints
+   [#'constraints/add-default-userland-constraints
     #'process-userland-query/process-userland-query
     #'catch-exceptions/catch-exceptions]))
 

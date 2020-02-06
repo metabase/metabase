@@ -63,7 +63,7 @@
                     :class      (s/eq org.h2.jdbc.JdbcSQLException)
                     :error      #"^Column \"ZID\" not found"
                     :stacktrace [su/NonBlankString]
-                    :query      {:native   {:query (s/eq "SELECT ZID FROM CHECKINS LIMIT 2")}
+                    :json_query {:native   {:query (s/eq "SELECT ZID FROM CHECKINS LIMIT 2")}
                                  :type     (s/eq :native)
                                  s/Keyword s/Any}
                     s/Keyword   s/Any}

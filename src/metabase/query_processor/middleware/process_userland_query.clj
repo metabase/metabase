@@ -138,6 +138,7 @@
     (let [query'         (assoc-in query [:info :query-hash] (qputil/query-hash query))
           execution-info (query-execution-info query')]
       (some-> query-execution-chan (a/>!! execution-info))
+      ;; saxve failure QueryExecutions if we get an Exception
       (a/go
         (when-let [^Throwable e (a/<! raise-chan)]
           (save-failed-query-execution-async! execution-info (.getMessage e))))

@@ -9,8 +9,9 @@
             [metabase
              [email-test :as et]
              [http-client :as http :refer :all]
+             [test :as mt]
              [util :as u]]
-            [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.middleware.util :as middleware.u]
             [metabase.models
              [card :refer [Card]]
@@ -42,6 +43,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Helper Fns & Macros                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- count-base-type []
+  (-> (mt/run-mbql-query venues {:aggregation [[:count]]}) :data :cols first :base_type u/qualified-name))
 
 (def card-defaults
   {:archived            false
@@ -380,7 +384,7 @@
 
 ;; make sure when saving a Card the correct query metadata is fetched (if incorrect)
 (expect
-  [{:base_type    "type/Integer"
+  [{:base_type    (count-base-type)
     :display_name "Count"
     :name         "count"
     :special_type "type/Quantity"
@@ -405,45 +409,46 @@
           ;; now check the correct metadata was fetched and was saved in the DB
           (db/select-one-field :result_metadata Card :name card-name))))))
 
-;; Check that the generated query to fetch the query result metadata includes user information in the generated query
-(expect
-  {:metadata-results     [{:base_type    "type/Integer"
-                           :display_name "Count"
-                           :name         "count"
-                           :special_type "type/Quantity"
-                           :fingerprint  {:global {:distinct-count 1
-                                                   :nil%           0.0},
-                                          :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}}]
-   :has-user-id-remark? true}
-  (tu/with-non-admin-groups-no-root-collection-perms
-    (let [metadata  [{:base_type    :type/Integer
-                      :display_name "Count Chocula"
-                      :name         "count_chocula"
-                      :special_type :type/Quantity}]
-          card-name (tu/random-name)]
-      (tt/with-temp Collection [collection]
-        (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        (tu/with-model-cleanup [Card]
-          ;; TODO - FIXME - wrong impl
-          ;; Rebind the `cancelable-run-query` function so that we can capture the generated SQL and inspect it
-          (let [orig-fn    (var-get #'sql-jdbc.execute.old/cancelable-run-query)
-                sql-result (atom [])]
-            (with-redefs [sql-jdbc.execute.old/cancelable-run-query (fn [db sql params opts]
-                                                                      (swap! sql-result conj sql)
-                                                                      (orig-fn db sql params opts))]
-              ;; create a card with the metadata
-              ((test-users/user->client :rasta) :post 200 "card"
-               (assoc (card-with-name-and-query card-name)
-                      :collection_id      (u/get-id collection)
-                      :result_metadata    metadata
-                      :metadata_checksum  "ABCDEF"))) ; bad checksum
-            ;; now check the correct metadata was fetched and was saved in the DB
-            {:metadata-results    (db/select-one-field :result_metadata Card :name card-name)
-             ;; Was the user id found in the generated SQL?
-             :has-user-id-remark? (-> (str "userID: " (test-users/user->id :rasta))
-                                      re-pattern
-                                      (re-find (first @sql-result))
-                                      boolean)}))))))
+(deftest fetch-results-metadata-test
+  (testing "Check that the generated query to fetch the query result metadata includes user information in the generated query"
+    (tu/with-non-admin-groups-no-root-collection-perms
+      (let [metadata  [{:base_type    :type/Integer
+                        :display_name "Count Chocula"
+                        :name         "count_chocula"
+                        :special_type :type/Quantity}]
+            card-name (tu/random-name)]
+        (tt/with-temp Collection [collection]
+          (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+          (tu/with-model-cleanup [Card]
+            ;; TODO - FIXME - wrong impl
+            ;; Rebind the `cancelable-run-query` function so that we can capture the generated SQL and inspect it
+            (let [orig       (var-get #'sql-jdbc.execute/prepared-statement)
+                  sql-result (atom nil)]
+              (with-redefs [sql-jdbc.execute/prepared-statement
+                            (fn [driver conn sql params]
+                              (reset! sql-result sql)
+                              (orig driver conn sql params))]
+                ;; create a card with the metadata
+                ((test-users/user->client :rasta) :post 200 "card"
+                 (assoc (card-with-name-and-query card-name)
+                        :collection_id      (u/get-id collection)
+                        :result_metadata    metadata
+                        :metadata_checksum  "ABCDEF"))) ; bad checksum
+              (testing "check the correct metadata was fetched and was saved in the DB"
+                (is (= [{:base_type    (count-base-type)
+                         :display_name "Count"
+                         :name         "count"
+                         :special_type "type/Quantity"
+                         :fingerprint  {:global {:distinct-count 1
+                                                 :nil%           0.0},
+                                        :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}}]
+                       (db/select-one-field :result_metadata Card :name card-name))))
+              (testing "Was the user id found in the generated SQL?"
+                (is (= true
+                       (boolean
+                        (when-let [s @sql-result]
+                          (re-find (re-pattern (str "userID: " (test-users/user->id :rasta)))
+                                   s)))))))))))))
 
 ;; Make sure we can create a Card with a Collection position
 (expect
@@ -627,7 +632,7 @@
 
 ;; Make sure when updating a Card the correct query metadata is fetched (if incorrect)
 (expect
-  [{:base_type    "type/Integer"
+  [{:base_type    (count-base-type)
     :display_name "Count"
     :name         "count"
     :special_type "type/Quantity"
