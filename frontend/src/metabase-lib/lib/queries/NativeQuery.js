@@ -33,7 +33,7 @@ import Variable, { TemplateTagVariable } from "../Variable";
 import DimensionOptions from "../DimensionOptions";
 
 type DimensionFilter = (dimension: Dimension) => boolean;
-type VariableFilter = (tag: TemplateTag) => boolean;
+type VariableFilter = (variable: Variable) => boolean;
 
 export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
   database: null,

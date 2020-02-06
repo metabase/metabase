@@ -68,18 +68,4 @@ export function main() {
   return cy.get("nav").next();
 }
 
-// various Metabase-specific "scoping" functions like inside popover/modal/navbar/main content area
-export function popover() {
-  return cy.get(".PopoverContainer.PopoverContainer--open");
-}
-export function modal() {
-  return cy.get(".ModalContainer");
-}
-export function nav() {
-  return cy.get("nav");
-}
-export function main() {
-  return cy.get("nav").next();
-}
-
 Cypress.on("uncaught:exception", (err, runnable) => false);
