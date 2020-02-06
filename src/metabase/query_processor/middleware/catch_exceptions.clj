@@ -2,7 +2,7 @@
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
   (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
-            [metabase.query-processor.error-type :as qp.error-type]
+            [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.middleware.permissions :as perms]
             [metabase.util :as u]
             schema.utils)
@@ -63,7 +63,7 @@
      (when-let [error-msg (and (= error-type :schema.core/error)
                                (explain-schema-validation-error error))]
        {:error error-msg})
-     (when (qp.error-type/known-error-type? error-type)
+     (when (error-type/known-error-type? error-type)
        {:error_type error-type})
      ;; TODO - we should probably change this key to `:data` so we're not mixing lisp-case and snake_case keys
      {:ex-data (dissoc data :schema)})))
@@ -127,14 +127,20 @@
   exceptions to the `result-chan`."
   [qp]
   (fn [query xformf {:keys [raise-chan finished-chan], :as chans}]
-    (let [query-execution-chan    (a/promise-chan)
-          chans                   (assoc chans :query-execution-chan query-execution-chan)
-          raise-chan'             (a/promise-chan)]
+    (let [query-execution-chan (a/promise-chan)
+          chans                (assoc chans :query-execution-chan query-execution-chan)
+          raise-chan'          (a/promise-chan)]
       ;; forward exceptions to `finished-chan`
       (a/go
         (when-let [e (a/<! raise-chan')]
           (log/tracef "raise-chan' got %s, forwarding formatted exception to finished-chan" (class e))
-          (a/>! finished-chan (format-exception* query e chans))))
+          (let [e (if (instance? Throwable e)
+                    e
+                    ;; this should never happen unless there's a serious bug in the QP so don't bother i18ning it
+                    (ex-info (format "Unexpected object sent to raise-chan: expected Throwable, got a %s" (class e))
+                      {:e    e
+                       :type error-type/qp}))]
+            (a/>! finished-chan (format-exception* query e chans)))))
       ;; when the original `raise-chan` gets closed, close this one too
       (a/go
         (a/<! raise-chan)

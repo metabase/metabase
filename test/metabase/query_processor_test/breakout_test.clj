@@ -78,33 +78,35 @@
          :order-by    [[:desc $user_id]]
          :limit       10}))))
 
-;; TODO - I have no idea what exactly these tests are testing??? This and the one below. Someone please determine and
-;; then write a description.
-(qp.test/expect-with-non-timeseries-dbs
-  {:rows [[2 8 "Artisan"]
-          [3 2 "Asian"]
-          [4 2 "BBQ"]
-          [5 7 "Bakery"]
-          [6 2 "Bar"]]
-   :cols [(assoc (qp.test/breakout-col :venues :category_id)
-            :remapped_to "Foo")
-          (qp.test/aggregate-col :count)
-          (#'add-dim-projections/create-remapped-col "Foo" (data/format-name "category_id"))]}
-  (data/with-temp-objects
-    (fn []
-      (let [venue-names (data/dataset-field-values "categories" "name")]
-        [(db/insert! Dimension {:field_id (data/id :venues :category_id)
-                                :name     "Foo"
-                                :type     :internal})
-         (db/insert! FieldValues {:field_id              (data/id :venues :category_id)
-                                  :values                (json/generate-string (range 0 (count venue-names)))
-                                  :human_readable_values (json/generate-string venue-names)})]))
-    (qp.test/rows-and-cols
-      (qp.test/format-rows-by [int int str]
-        (data/run-mbql-query venues
-          {:aggregation [[:count]]
-           :breakout    [$category_id]
-           :limit       5})))))
+;; TODO - I have no idea what exactly this test is testing??? Someone please determine and then write a description.
+(deftest mystery-test
+  (mt/test-drivers (mt/normal-drivers)
+    (data/with-temp-objects
+      (fn []
+        (let [venue-names (data/dataset-field-values "categories" "name")]
+          [(db/insert! Dimension {:field_id (data/id :venues :category_id)
+                                  :name     "Foo"
+                                  :type     :internal})
+           (db/insert! FieldValues {:field_id              (data/id :venues :category_id)
+                                    :values                (json/generate-string (range 0 (count venue-names)))
+                                    :human_readable_values (json/generate-string venue-names)})]))
+      (let [{:keys [rows cols]} (qp.test/rows-and-cols
+                                  (qp.test/format-rows-by [int int str]
+                                    (data/run-mbql-query venues
+                                      {:aggregation [[:count]]
+                                       :breakout    [$category_id]
+                                       :limit       5})))]
+        (is (= [(assoc (qp.test/breakout-col :venues :category_id)
+                       :remapped_to "Foo")
+                (qp.test/aggregate-col :count)
+                (#'add-dim-projections/create-remapped-col "Foo" (data/format-name "category_id"))]
+               cols))
+        (is (= [[2 8 "Artisan"]
+                [3 2 "Asian"]
+                [4 2 "BBQ"]
+                [5 7 "Bakery"]
+                [6 2 "Bar"]]
+               rows))))))
 
 (deftest order-by-test
   (datasets/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
@@ -235,17 +237,18 @@
       qp.test/cols
       first))
 
-;;Validate binning info is returned with the binning-strategy
-(datasets/expect-with-drivers (mt/normal-drivers-with-feature :binning)
-  {:status :failed
-   :class  clojure.lang.ExceptionInfo
-   :error  "Unable to bin Field without a min/max value"}
-  (tu/with-temp-vals-in-db Field (data/id :venues :latitude) {:fingerprint {:type {:type/Number {:min nil, :max nil}}}}
-    (-> (tu.log/suppress-output
-          (data/run-mbql-query venues
-            {:aggregation [[:count]]
-             :breakout    [[:binning-strategy $latitude :default]]}))
-        (select-keys [:status :class :error]))))
+(deftest binning-error-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :binning)
+    (tu.log/suppress-output
+      (tu/with-temp-vals-in-db Field (data/id :venues :latitude) {:fingerprint {:type {:type/Number {:min nil, :max nil}}}}
+        (is (= {:status :failed
+                :class  clojure.lang.ExceptionInfo
+                :error  "Unable to bin Field without a min/max value"}
+               (-> (qp/process-userland-query
+                    (data/mbql-query venues
+                      {:aggregation [[:count]]
+                       :breakout    [[:binning-strategy $latitude :default]]}))
+                   (select-keys [:status :class :error]))))))))
 
 (defn- nested-venues-query [card-or-card-id]
   {:database mbql.s/saved-questions-virtual-database-id

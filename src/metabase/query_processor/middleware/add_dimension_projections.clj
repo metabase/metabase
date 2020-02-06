@@ -122,6 +122,7 @@
         id->remapped-from-dimension    (u/key-by :human_readable_field_id remapping-dimensions)]
     (for [{:keys [id], column-name :name, :as column} columns]
       (merge
+       {:base_type :type/*}
        column
        ;; if one of the internal remapped columns says it's remapped from this column, add a matching `:remapped_to`
        ;; entry

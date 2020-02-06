@@ -266,61 +266,62 @@
             :query    {:source-table (mt/id :venues)}})]
       (or row-count result))))
 
-;; make sure `POST /dataset` calls check user permissions
-(tu/expect-schema
-  {:status   (s/eq "failed")
-   :error    (s/eq "You do not have permissions to run this query.")
-   s/Keyword s/Any}
-  (data/with-temp-copy-of-db
-    ;; give all-users *partial* permissions for the DB, so we know we're checking more than just read permissions for
-    ;; the Database
-    (perms/revoke-permissions! (group/all-users) (mt/id))
-    (perms/grant-permissions! (group/all-users) (mt/id) "schema_that_does_not_exist")
-    ((mt/user->client :rasta) :post "dataset"
-     (mt/mbql-query venues {:limit 1}))))
+(deftest check-permissions-test
+  (testing "make sure `POST /dataset` calls check user permissions"
+    (data/with-temp-copy-of-db
+      ;; give all-users *partial* permissions for the DB, so we know we're checking more than just read permissions for
+      ;; the Database
+      (perms/revoke-permissions! (group/all-users) (mt/id))
+      (perms/grant-permissions! (group/all-users) (mt/id) "schema_that_does_not_exist")
+      (is (schema= {:status   (s/eq "failed")
+                    :error    (s/eq "You do not have permissions to run this query.")
+                    s/Keyword s/Any}
+                   ((mt/user->client :rasta) :post "dataset"
+                    (mt/mbql-query venues {:limit 1})))))))
 
 (deftest query->native-test
-  (testing "Can we fetch a native version of an MBQL query with `POST /api/dataset/native`?"
-    (is (= {:query  (str "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\" "
-                         "FROM \"PUBLIC\".\"VENUES\" "
-                         "LIMIT 1048576")
-            :params nil}
-           ((mt/user->client :rasta) :post 200 "dataset/native"
-            (mt/mbql-query venues
-              {:fields [$id $name]}))))
-    (is (= {:query (str "SELECT \"PUBLIC\".\"CHECKINS\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"CHECKINS\" "
-                        "WHERE (\"PUBLIC\".\"CHECKINS\".\"DATE\" >= timestamp with time zone '2015-11-13 00:00:00.000Z'"
-                        " AND \"PUBLIC\".\"CHECKINS\".\"DATE\" < timestamp with time zone '2015-11-14 00:00:00.000Z') "
-                        "LIMIT 1048576")
-            :params nil}
-           ((mt/user->client :rasta) :post 200 "dataset/native"
-            (mt/mbql-query checkins
-              {:fields [$id]
-               :filter [:= $date "2015-11-13"]})))
-        "Make sure parameters are spliced correctly")))
+  (testing "POST /api/dataset/native"
+    (testing "\nCan we fetch a native version of an MBQL query?"
+      (is (= {:query  (str "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", \"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\" "
+                           "FROM \"PUBLIC\".\"VENUES\" "
+                           "LIMIT 1048576")
+              :params nil}
+             ((mt/user->client :rasta) :post 200 "dataset/native"
+              (mt/mbql-query venues
+                {:fields [$id $name]}))))
 
-;; `POST /api/dataset/native` should require that the user have ad-hoc native perms for the DB
-(tu/expect-schema
-  {:permissions-error? (s/eq true)
-   :message            (s/eq "You do not have permissions to run this query.")
-   s/Any               s/Any}
-  (tu.log/suppress-output
-    (data/with-temp-copy-of-db
-      ;; Give All Users permissions to see the `venues` Table, but not ad-hoc native perms
-      (perms/revoke-permissions! (group/all-users) (mt/id))
-      (perms/grant-permissions! (group/all-users) (mt/id) "PUBLIC" (mt/id :venues))
-      ((mt/user->client :rasta) :post "dataset/native"
-       (mt/mbql-query venues
-         {:fields [$id $name]})))))
+      (testing "\nMake sure parameters are spliced correctly"
+        (is (= {:query  (str "SELECT \"PUBLIC\".\"CHECKINS\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"CHECKINS\" "
+                             "WHERE (\"PUBLIC\".\"CHECKINS\".\"DATE\" >= timestamp with time zone '2015-11-13 00:00:00.000Z'"
+                             " AND \"PUBLIC\".\"CHECKINS\".\"DATE\" < timestamp with time zone '2015-11-14 00:00:00.000Z') "
+                             "LIMIT 1048576")
+                :params nil}
+               ((mt/user->client :rasta) :post 200 "dataset/native"
+                (mt/mbql-query checkins
+                  {:fields [$id]
+                   :filter [:= $date "2015-11-13"]})))))
+
+      (testing "\nshould require that the user have ad-hoc native perms for the DB"
+        (tu.log/suppress-output
+          (data/with-temp-copy-of-db
+            ;; Give All Users permissions to see the `venues` Table, but not ad-hoc native perms
+            (perms/revoke-permissions! (group/all-users) (mt/id))
+            (perms/grant-permissions! (group/all-users) (mt/id) "PUBLIC" (mt/id :venues))
+            (is (schema= {:permissions-error? (s/eq true)
+                          :message            (s/eq "You do not have permissions to run this query.")
+                          s/Any               s/Any}
+                         ((mt/user->client :rasta) :post "dataset/native"
+                          (mt/mbql-query venues
+                            {:fields [$id $name]}))))))))))
 
 (deftest report-timezone-test
   (datasets/test-driver :postgres
-    (is (= {:requested_timezone "US/Pacific"
-            :results_timezone   "US/Pacific"}
-           (tu/with-temporary-setting-values [report-timezone "US/Pacific"]
-             (let [results ((mt/user->client :rasta) :post 200 "dataset" (mt/mbql-query checkins
-                                                                           {:aggregation [[:count]]}))]
-               (-> results
-                   :data
-                   (select-keys [:requested_timezone :results_timezone])))))
-        "expected (desired) and actual timezone should be returned as part of query results")))
+    (testing "expected (desired) and actual timezone should be returned as part of query results"
+      (tu/with-temporary-setting-values [report-timezone "US/Pacific"]
+        (let [results ((mt/user->client :rasta) :post 200 "dataset" (mt/mbql-query checkins
+                                                                      {:aggregation [[:count]]}))]
+          (is (= {:requested_timezone "US/Pacific"
+                  :results_timezone   "US/Pacific"}
+                 (-> results
+                     :data
+                     (select-keys [:requested_timezone :results_timezone])))))))))

@@ -3,14 +3,17 @@
   results. The current focus of this namespace is around column metadata from the results of a query. Going forward
   this is likely to extend beyond just metadata about columns but also about the query results as a whole and over
   time."
-  (:require [metabase.mbql.predicates :as mbql.preds]
+  (:require [clojure.tools.logging :as log]
+            [metabase.mbql.predicates :as mbql.preds]
             [metabase.sync.analyze.classifiers.name :as classify-name]
             [metabase.sync.analyze.fingerprint
              [fingerprinters :as f]
              [insights :as insights]]
             [metabase.sync.interface :as i]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [i18n :refer [trs]]
+             [schema :as su]]
             [redux.core :as redux]
             [schema.core :as s]))
 
@@ -66,9 +69,13 @@
   {:arglists '([metadata])}
   [{:keys [cols]}]
   (let [cols (for [col cols]
-               (-> col
-                   stored-column-metadata->result-column-metadata
-                   (maybe-infer-special-type col)))]
+               (try
+                 (-> col
+                     stored-column-metadata->result-column-metadata
+                     (maybe-infer-special-type col))
+                 (catch Throwable e
+                   (log/error e (trs "Error generating insights for column:") col)
+                   col)))]
     (redux/post-complete
      (redux/juxt
       (apply f/col-wise (for [{:keys [fingerprint], :as metadata} cols]

@@ -1,15 +1,16 @@
 (ns metabase.query-processor.middleware.binning
   "Middleware that handles `binning-strategy` Field clauses. This adds a `resolved-options` map to every
   `binning-strategy` clause that contains the information query processors will need in order to perform binning."
-  (:require [clojure.core.async :as a]
-            [clojure.math.numeric-tower :refer [ceil expt floor]]
+  (:require [clojure.math.numeric-tower :refer [ceil expt floor]]
             [metabase
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
-            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor
+             [error-type :as error-type]
+             [store :as qp.store]]
             [metabase.util
              [i18n :refer [tru]]
              [schema :as su]]
@@ -50,7 +51,9 @@
                                                global-max)]
     (when-not (and min-value max-value)
       (throw (ex-info (tru "Unable to bin Field without a min/max value")
-               {:field-id field-id, :fingerprint fingerprint})))
+               {:type        error-type/invalid-query
+                :field-id    field-id
+                :fingerprint fingerprint})))
     {:min-value min-value, :max-value max-value}))
 
 
@@ -222,8 +225,5 @@
   the binned field. This middleware looks for that criteria, then updates the related min/max values and calculates
   the bin-width based on the criteria values (or global min/max information)."
   [qp]
-  (fn [query xform {:keys [raise-chan], :as chans}]
-    (try
-      (qp (update-binning-strategy* query) xform chans)
-      (catch Throwable e
-        (a/>!! raise-chan chans)))))
+  (fn [query xformf chans]
+    (qp (update-binning-strategy* query) xformf chans)))
