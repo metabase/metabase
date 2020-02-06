@@ -45,7 +45,7 @@
        :order-by [[:asc $name]]})))
 
 ;; Can we supply a custom alias? Can we do a left outer join ??
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :left-join)
   [["Big Red"          "Bayview Brood"]
    ["Callie Crow"      "Mission Street Murder"]
    ["Camellia Crow"    nil]
@@ -69,7 +69,7 @@
       (query-with-strategy :left-join))))
 
 ;; Can we do a right outer join?
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :right-join)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :right-join)
   ;; the [nil "Fillmore Flock"] row will either come first or last depending on the driver; the rest of the rows will
   ;; be the same
   (let [rows [["Big Red"        "Bayview Brood"]
@@ -92,7 +92,7 @@
       (query-with-strategy :right-join))))
 
 ;; Can we do an inner join?
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :inner-join)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :inner-join)
   [["Big Red"        "Bayview Brood"]
    ["Callie Crow"    "Mission Street Murder"]
    ["Carson Crow"    "Mission Street Murder"]
@@ -110,7 +110,7 @@
       (query-with-strategy :inner-join))))
 
 ;; Can we do a full join?
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :full-join)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :full-join)
   (let [rows [["Big Red"          "Bayview Brood"]
               ["Callie Crow"      "Mission Street Murder"]
               ["Camellia Crow"    nil]
@@ -137,7 +137,7 @@
       (query-with-strategy :full-join))))
 
 ;; Can we automatically include `:all` Fields?
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :left-join)
   {:columns (mapv data/format-name ["id" "name" "flock_id" "id_2" "name_2"])
    :rows    [[2  "Big Red"          5   5   "Bayview Brood"]
              [7  "Callie Crow"      4   4   "Mission Street Murder"]
@@ -168,7 +168,7 @@
            :order-by [[:asc [:field-id $name]]]})))))
 
 ;; Can we include no Fields (with `:none`)
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :left-join)
   {:columns (mapv data/format-name ["id" "name" "flock_id"])
    :rows    [[2  "Big Red"          5  ]
              [7  "Callie Crow"      4  ]
@@ -199,7 +199,7 @@
            :order-by [[:asc [:field-id $name]]]})))))
 
 (deftest specific-fields-test
-  (datasets/test-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
+  (datasets/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we include a list of specific Fields?"
       (let [{:keys [columns rows]} (qp.test/format-rows-by [#(some-> % int) str identity]
                                      (qp.test/rows+column-names
@@ -234,7 +234,7 @@
                rows))))))
 
 (deftest all-fields-datetime-field-test
-  (datasets/test-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
+  (datasets/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing (str "Do Joins with `:fields``:all` work if the joined table includes Fields that come back wrapped in"
                   " `:datetime-field` forms?")
       (let [{:keys [columns rows]} (qp.test/format-rows-by [int identity identity int identity int int]
@@ -256,7 +256,7 @@
                rows))))))
 
 (deftest select-*-source-query-test
-  (datasets/test-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
+  (datasets/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "We should be able to run a query that for whatever reason ends up with a `SELECT *` for the source query"
       (let [{:keys [rows columns]} (qp.test/format-rows-by [int int]
                                      (qp.test/rows+column-names
@@ -275,7 +275,7 @@
                rows))))))
 
 ;; Can we join against a source nested MBQL query?
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :left-join)
   [[29 "20th Century Cafe" 12  37.775 -122.423 2]
    [ 8 "25°"               11 34.1015 -118.342 2]
    [93 "33 Taps"            7 34.1018 -118.326 2]]
@@ -290,7 +290,7 @@
         :limit        3}))))
 
 ;; Can we join against a `card__id` source query and use `:fields` `:all`?
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :left-join)
   {:rows
    [[29 "20th Century Cafe" 12 37.775  -122.423 2 12 "Café"]
     [8  "25°"               11 34.1015 -118.342 2 11 "Burger"]
@@ -313,7 +313,7 @@
 ;;
 ;; Also: if you join against an *explicit* source query, do all columns for both queries come back? (Only applies if
 ;; you include `:source-metadata`)
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :left-join)
   {:rows
    [["2013-01-01T00:00:00Z"  8 "2013-01-01T00:00:00Z"  8]
     ["2013-02-01T00:00:00Z" 11 "2013-02-01T00:00:00Z" 11]
@@ -345,7 +345,7 @@
            :limit        10})))))
 
 ;; Can we aggregate on the results of a JOIN?
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :left-join)
   ;; for whatever reason H2 gives slightly different answers :unamused:
   {:rows    (let [driver-avg #(if (= metabase.driver/*driver* :h2) %1 %2)]
               [["2014-01-01T00:00:00Z" 77]
@@ -372,7 +372,7 @@
            :breakout    [!month.last_login]})))))
 
 ;; NEW! Can we still get all of our columns, even if we *DON'T* specify the metadata?
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :left-join)
   {:rows    [["2013-01-01T00:00:00Z"  8 "2013-01-01T00:00:00Z"  8]
              ["2013-02-01T00:00:00Z" 11 "2013-02-01T00:00:00Z" 11]
              ["2013-03-01T00:00:00Z" 21 "2013-03-01T00:00:00Z" 21]]
@@ -395,7 +395,7 @@
            :limit        3})))))
 
 ;; Should be able to use a joined field in a `:time-interval` clause
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :left-join)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :left-join)
   {:rows    []
    :columns (mapv data/format-name ["id" "name" "category_id" "latitude" "longitude" "price"])}
   (qp.test/rows+column-names
@@ -454,7 +454,7 @@
                rows))))))
 
 ;; we should be able to use a SQL question as a source query in a Join
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :nested-queries :left-join)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
   [[1 "2014-04-07T00:00:00Z" 5 12 12 "The Misfit Restaurant + Bar" 2 34.0154 -118.497 2]
    [2 "2014-09-18T00:00:00Z" 1 31 31 "Bludso's BBQ"                5 33.8894 -118.207 2]]
   (tt/with-temp Card [{card-id :id, :as card} (qp.test-util/card-with-source-metadata-for-query

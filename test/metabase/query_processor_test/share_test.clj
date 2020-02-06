@@ -1,15 +1,17 @@
 (ns metabase.query-processor-test.share-test
-  (:require [metabase.models
+  (:require [metabase
+             [query-processor-test :refer :all]
+             [test :as mt]]
+            [metabase.models
              [metric :refer [Metric]]
              [segment :refer [Segment]]]
-            [metabase.query-processor-test :refer :all]
             [metabase.test
              [data :as data]
              [util :as tu]]
             [metabase.test.data.datasets :as datasets]
             [toucan.util.test :as tt]))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :basic-aggregations)
   0.94
   (->> {:aggregation [[:share [:< [:field-id (data/id :venues :price)] 4]]]}
        (data/run-mbql-query venues)
@@ -18,7 +20,7 @@
        double))
 
 ;; Test normalization
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :basic-aggregations)
   0.94
   (->> {:aggregation [["share" ["<" ["field-id" (data/id :venues :price)] 4]]]}
        (data/run-mbql-query venues)
@@ -26,7 +28,7 @@
        ffirst
        double))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :basic-aggregations)
   0.17
   (->> {:aggregation [[:share [:and [:< [:field-id (data/id :venues :price)] 4]
                                [:or [:starts-with [:field-id (data/id :venues :name)] "M"]
@@ -36,7 +38,7 @@
        ffirst
        double))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :basic-aggregations)
   nil
   (->> {:aggregation [[:share [:< [:field-id (data/id :venues :price)] 4]]]
         :filter      [:> [:field-id (data/id :venues :price)] Long/MAX_VALUE]}
@@ -44,7 +46,7 @@
        rows
        ffirst))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :basic-aggregations)
   [[2 0.0]
    [3 0.0]
    [4 0.5]
@@ -58,7 +60,7 @@
        (map (fn [[k v]]
               [(int k) v]))))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations :expressions)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions)
   1.47
   (->> {:aggregation [[:+ [:/ [:share [:< [:field-id (data/id :venues :price)] 4]] 2] 1]]}
        (data/run-mbql-query venues)
@@ -66,7 +68,7 @@
        ffirst
        double))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :basic-aggregations)
   0.94
   (tt/with-temp* [Segment [{segment-id :id} {:table_id   (data/id :venues)
                                              :definition {:source-table (data/id :venues)
@@ -77,7 +79,7 @@
          ffirst
          double)))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :basic-aggregations)
   0.94
   (tt/with-temp* [Metric [{metric-id :id} {:table_id   (data/id :venues)
                                            :definition {:source-table (data/id :venues)

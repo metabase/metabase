@@ -1,8 +1,7 @@
 (ns metabase.query-processor.middleware.format-rows
   "Middleware that formats the results of a query.
    Currently, the only thing this does is convert datetime types to ISO-8601 strings in the appropriate timezone."
-  (:require [clojure.core.async :as a]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util.i18n :refer [tru]]
@@ -77,12 +76,11 @@
 (defn format-rows
   "Format individual query result values as needed.  Ex: format temporal values as ISO-8601 strings w/ timezone offset."
   [qp]
-  (fn [{{:keys [format-rows?] :or {format-rows? true}} :middleware, :as query} xform-fn {:keys [raise-chan], :as chans}]
-    (let [xform-fn' (if format-rows?
-                      (fn [metadata]
-                        (comp format-rows-xform (xform-fn metadata)))
-                      xform-fn)]
-      (try
-        (qp query xform-fn' chans)
-        (catch Throwable e
-          (a/>!! raise-chan e))))))
+  (fn [{{:keys [format-rows?] :or {format-rows? true}} :middleware, :as query} xformf chans]
+    (qp
+     query
+     (if format-rows?
+       (fn [metadata]
+         (comp format-rows-xform (xformf metadata)))
+       xformf)
+     chans)))

@@ -80,6 +80,7 @@
             :error      "Something went wrong"
             :stacktrace true
             :json_query {}
+            :row_count  0
             :data       {:rows []
                          :cols []}}
            (-> (catch-exceptions (fn [& _] (throw (Exception. "Something went wrong"))))
@@ -92,6 +93,7 @@
             :error      "Something went wrong"
             :stacktrace true
             :json_query {}
+            :row_count  0
             :data       {:rows []
                          :cols []}}
            (-> (catch-exceptions (fn [_ _ {:keys [raise-chan]}] (a/>!! raise-chan (Exception. "Something went wrong"))))
@@ -104,6 +106,7 @@
             :error      "Something went wrong"
             :stacktrace true
             :json_query {}
+            :row_count  0
             :data       {:rows []
                          :cols []}
             :a          100

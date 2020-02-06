@@ -99,7 +99,7 @@
 
 ;; Custom aggregation expressions should include their type
 (datasets/expect-with-drivers (qp.test/normal-drivers-with-feature :expressions)
-  (conj #{{:name "x" :base_type :type/Float}}
+  (conj #{{:name "x" :base_type :type/BigInteger}}
         {:name      (data/format-name "category_id")
          :base_type (case driver/*driver*
                       :oracle    :type/Decimal

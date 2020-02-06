@@ -11,7 +11,8 @@
             [metabase.query-processor.middleware.expand-macros :as expand-macros]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt]
+            [metabase.test :as mt]))
 
 (defn- mbql-query [inner-query]
   {:database 1, :type :query, :query (merge {:source-table 1}
@@ -148,7 +149,7 @@
        :order-by     [[:asc [:field-id 1]]]}))))
 
 ;; Check that a metric w/ multiple aggregation syntax (nested vector) still works correctly
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :expression-aggregations)
   [[2 118]
    [3  39]
    [4  24]]

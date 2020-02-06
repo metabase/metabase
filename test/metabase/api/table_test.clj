@@ -7,6 +7,7 @@
              [http-client :as http]
              [query-processor-test :as qpt]
              [sync :as sync]
+             [test :as mt]
              [util :as u]]
             [metabase.api.table :as table-api]
             [metabase.driver.util :as driver.u]
@@ -660,11 +661,10 @@
   (let [response ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :checkins)))]
     (dimension-options-for-field response "date")))
 
-(qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift :sparksql}
+(datasets/expect-with-drivers (qpt/normal-drivers-except #{:sparksql :mongo :oracle :redshift})
   []
   (data/dataset test-data-with-time
-    (let [response ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :users)))]
-      (dimension-options-for-field response "last_login_time"))))
+    (let [response ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :users)))] (dimension-options-for-field response "last_login_time"))))
 
 ;; Test related/recommended entities
 (expect
@@ -672,7 +672,7 @@
   (-> ((test-users/user->client :crowberto) :get 200 (format "table/%s/related" (data/id :venues))) keys set))
 
 ;; Nested queries with a fingerprint should have dimension options for binning
-(datasets/expect-with-drivers (qpt/non-timeseries-drivers-with-feature :binning :nested-queries)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :binning :nested-queries)
   (repeat 2 (var-get #'table-api/coordinate-dimension-indexes))
   (tt/with-temp Card [card {:database_id   (data/id)
                             :dataset_query {:database (data/id)
@@ -685,7 +685,7 @@
            ["latitude" "longitude"]))))
 
 ;; Nested queries missing a fingerprint should not show binning-options
-(datasets/expect-with-drivers (qpt/non-timeseries-drivers-with-feature :binning :nested-queries)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :binning :nested-queries)
   [nil nil]
   (tt/with-temp Card [card {:database_id   (data/id)
                             :dataset_query {:database (data/id)
