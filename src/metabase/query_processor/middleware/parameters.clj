@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.parameters
   "Middleware for substituting parameters in queries."
-  (:require [clojure.core.async :as a]
-            [clojure.data :as data]
+  (:require [clojure.data :as data]
             [clojure.tools.logging :as log]
             [metabase.mbql
              [normalize :as normalize]
@@ -94,8 +93,5 @@
   A SQL query with a param like `{{param}}` will have that part of the query replaced with an appropriate snippet as
   well as any prepared statement args needed. MBQL queries will have additional filter clauses added."
   [qp]
-  (fn [query xform {:keys [raise-chan], :as chans}]
-    (try
-      (qp (substitute-parameters* query) xform chans)
-      (catch Throwable e
-        (a/>!! raise-chan e)))))
+  (fn [query xformf chans]
+    (qp (substitute-parameters* query) xformf chans)))

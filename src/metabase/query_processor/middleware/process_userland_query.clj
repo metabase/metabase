@@ -5,12 +5,11 @@
   (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
             [java-time :as t]
-            [medley.core :as m]
             [metabase.models
              [query :as query]
              [query-execution :as query-execution :refer [QueryExecution]]]
             [metabase.query-processor.util :as qputil]
-            [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
   (:import [java.util.concurrent Executors Future]
            org.apache.commons.lang3.concurrent.BasicThreadFactory$Builder))
@@ -51,33 +50,31 @@
                    (.daemon true)
                    ;; Save query executions should be lower priority than other stuff e.g. API responses
                    (.priority Thread/MIN_PRIORITY)))))]
-    (fn []
-      @pool)))
+    (fn [] @pool)))
 
 (defn- save-query-execution-async!
   "Asynchronously save a `QueryExecution` row containing `execution-info`. This is done when a query is finished, so
   regardless of whether results streaming is canceled, we want to continue the save; for this reason, we don't call
   `future-cancel` if we get a message to `canceled-chan` the way we normally do."
   ^Future [execution-info]
-  (let [^Runnable task (bound-fn []
-                         (try
-                           (save-query-execution! (add-running-time execution-info))
-                           (catch Throwable e
-                             (log/error e (trs "Error saving query execution info")))))]
-    (.submit (thread-pool) task)))
+  (log/trace "Saving QueryExecution info asynchronously")
+  (let [execution-info (add-running-time execution-info)]
+    (let [^Runnable task (bound-fn []
+                           (try
+                             (save-query-execution! execution-info)
+                             (catch Throwable e
+                               (log/error e (trs "Error saving query execution info")))))]
+      (.submit (thread-pool) task))))
 
-(defn- save-successful-query-execution-async! [query-execution {cached? :cached, result-rows :row_count}]
-  ;; only insert a new record into QueryExecution if the results *were not* cached (i.e., only if a Query was
-  ;; actually ran)
-  (when-not cached?
-    (save-query-execution-async! (assoc query-execution :result_rows (or result-rows 0)))))
+(defn- save-successful-query-execution-async! [query-execution result-rows]
+  (save-query-execution-async! (assoc query-execution :result_rows result-rows)))
 
 (defn- save-failed-query-execution-async! [query-execution message]
   (save-query-execution-async! (assoc query-execution :error (str message))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                Format Response                                                 |
+;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- success-response [{query-hash :hash, :as query-execution} {cached? :cached, :as result}]
@@ -90,48 +87,25 @@
     :average_execution_time (when cached?
                               (query/average-execution-time-ms query-hash))}))
 
-(defn- failure-response [query-execution message result]
-  (merge
-   (-> query-execution
-       add-running-time
-       (dissoc :result_rows :hash :executor_id :card_id :dashboard_id :pulse_id :native))
-   {:status    :failed
-    :error     message
-    :row_count 0
-    :data      {:rows []
-                :cols []}}
-   (m/dissoc-in result [:preprocessed :info])))
+(defn- add-and-save-execution-info-xform! [{:keys [cached?]} execution-info]
+  (fn [rf]
+    ;; don't do anything for cached results
+    ;; TODO - we should test for this
+    (if cached?
+      rf
+      (let [result-rows (volatile! 0)]
+        (fn
+          ([]
+           (rf))
 
+          ([result]
+           (save-successful-query-execution-async! execution-info @result-rows)
+           (rf (cond->> result
+                 (map? result) (success-response execution-info))))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                Handle Response                                                 |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- succeed [execution-info result]
-  (save-successful-query-execution-async! execution-info result)
-  (success-response execution-info result))
-
-(defn- fail [execution-info result]
-  (let [message (get result :error (tru "Unknown error"))]
-    (save-failed-query-execution-async! execution-info message)
-    (failure-response execution-info message result)))
-
-(defn- add-and-save-execution-info!
-  "Add some keys from `execution-info` to the query `result`. Asynchronously save the execution info as a row in the
-  `QueryExecution` table."
-  [execution-info result]
-  (let [status (when (map? result) (:status result))]
-    (case status
-      :completed (succeed execution-info result)
-      :failed (fail execution-info result)
-      (do
-        (log/error (trs "Unexpected result from query processor: unexpected status code {0}" (pr-str status)))
-        result))))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                   Middleware                                                   |
-;;; +----------------------------------------------------------------------------------------------------------------+
+          ([result row]
+           (vswap! result-rows inc)
+           (rf result row)))))))
 
 (defn- query-execution-info
   "Return the info for the QueryExecution entry for this `query`."
@@ -149,7 +123,8 @@
    :context           context
    :hash              query-hash
    :native            (= (keyword query-type) :native)
-   :json_query        (dissoc query :info)
+   :json_query        (cond-> (dissoc query :info)
+                        (empty? (:parameters query)) (dissoc :parameters))
    :started_at        (t/zoned-date-time)
    :running_time      0
    :result_rows       0
@@ -159,23 +134,15 @@
   "Do extra handling 'userland' queries (i.e. ones ran as a result of a user action, e.g. an API call, scheduled Pulse,
   etc.). This includes recording QueryExecution entries and returning the results in an FE-client-friendly format."
   [qp]
-  (fn [query xformf {:keys [finished-chan], :as chans}]
+  (fn [query xformf {:keys [query-execution-chan raise-chan], :as chans}]
     (let [query'         (assoc-in query [:info :query-hash] (qputil/query-hash query))
-          execution-info (query-execution-info query')
-          finished-chan' (a/promise-chan)]
-      ;; intercept the final result and transform it with `add-and-save-execution-info!` (save happens asynchronously)
+          execution-info (query-execution-info query')]
+      (some-> query-execution-chan (a/>!! execution-info))
       (a/go
-        (when-let [result (a/<! finished-chan')]
-          (log/tracef "finished-chan' got %s, transforming and forwarding to finished-chan" (class result))
-          (let [result' (try
-                          (add-and-save-execution-info! execution-info result)
-                          (catch Throwable e
-                            (log/error e (trs "Error adding query execution info"))
-                            result))]
-            (a/>!! finished-chan result'))))
-      ;; close `finished-chan'` when `finished-chan` is closed
-      (a/go
-        (a/<! finished-chan)
-        (log/trace "finished-chan done; closing finished-chan'")
-        (a/close! finished-chan'))
-      (qp query' xformf (assoc chans :finished-chan finished-chan')))))
+        (when-let [^Throwable e (a/<! raise-chan)]
+          (save-failed-query-execution-async! execution-info (.getMessage e))))
+      (qp
+       query'
+       (fn [metadata]
+         (comp (add-and-save-execution-info-xform! metadata execution-info) (xformf metadata)))
+       chans))))

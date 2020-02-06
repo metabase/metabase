@@ -57,11 +57,14 @@
   ([qp query]
    (mt/with-open-channels [raise-chan    (a/promise-chan)
                            finished-chan (a/promise-chan)]
-     ((catch-exceptions/catch-exceptions qp)
-      query
-      (constantly identity)
-      {:raise-chan raise-chan, :finished-chan finished-chan})
-     (mt/wait-for-result finished-chan))))
+     (catch-exceptions qp query {:raise-chan raise-chan, :finished-chan finished-chan})
+     (mt/wait-for-result finished-chan)))
+
+  ([qp query chans]
+   ((catch-exceptions/catch-exceptions qp)
+    query
+    (constantly identity)
+    chans)))
 
 (deftest no-exception-test
   (testing "No Exception -- should return response as-is"
@@ -70,13 +73,15 @@
             (fn [query _ {:keys [finished-chan]}]
               (a/>!! finished-chan query)))))))
 
-(deftest async-exception-test
+(deftest sync-exception-test
   (testing "if the QP throws an Exception (synchronously), should format the response appropriately"
     (is (= {:status     :failed
             :class      java.lang.Exception
             :error      "Something went wrong"
             :stacktrace true
-            :query      {}}
+            :json_query {}
+            :data       {:rows []
+                         :cols []}}
            (-> (catch-exceptions (fn [& _] (throw (Exception. "Something went wrong"))))
                (update :stacktrace boolean))))))
 
@@ -86,8 +91,38 @@
             :class      java.lang.Exception
             :error      "Something went wrong"
             :stacktrace true
-            :query      {}}
+            :json_query {}
+            :data       {:rows []
+                         :cols []}}
            (-> (catch-exceptions (fn [_ _ {:keys [raise-chan]}] (a/>!! raise-chan (Exception. "Something went wrong"))))
+               (update :stacktrace boolean))))))
+
+(deftest include-query-execution-info-test
+  (testing "Should include info from QueryExecution if sent to our secret `query-execution-chan`"
+    (is (= {:status     :failed
+            :class      java.lang.Exception
+            :error      "Something went wrong"
+            :stacktrace true
+            :json_query {}
+            :data       {:rows []
+                         :cols []}
+            :a          100
+            :b          200}
+           (-> (catch-exceptions
+                (fn [_ _ {:keys [query-execution-chan raise-chan]}]
+                  {}
+                  (a/>!! query-execution-chan
+                         {:a            100
+                          :b            200
+                          ;; these keys should all get removed
+                          :result_rows  300
+                          :hash         400
+                          :executor_id  500
+                          :card_id      600
+                          :dashboard_id 700
+                          :pulse_id     800
+                          :native       900})
+                  (a/>!! raise-chan (Exception. "Something went wrong"))))
                (update :stacktrace boolean))))))
 
 (deftest permissions-test

@@ -73,11 +73,12 @@
 
 (defn successful-query-results
   ([]
-   {:data   {:cols             [(tu/obj->json->obj (qp.test/aggregate-col :count))]
-             :rows             [[100]]
-             :insights         nil
-             :results_timezone "UTC"}
-    :status "completed"})
+   {:data       {:cols             [(tu/obj->json->obj (qp.test/aggregate-col :count))]
+                 :rows             [[100]]
+                 :insights         nil
+                 :results_timezone "UTC"}
+    :json_query {}
+    :status     "completed"})
 
   ([results-format]
    (case results-format
@@ -102,12 +103,12 @@
    :display                "table"
    :visualization_settings {}
    :dataset_query          {:type "query"}
-   :parameters             ()
+   :parameters             []
    :param_values           nil
    :param_fields           nil})
 
 (def successful-dashboard-info
-  {:description nil, :parameters (), :ordered_cards (), :param_values nil, :param_fields nil})
+  {:description nil, :parameters [], :ordered_cards [], :param_values nil, :param_fields nil})
 
 (def ^:private yesterday (time/minus (time/now) (time/days 1)))
 

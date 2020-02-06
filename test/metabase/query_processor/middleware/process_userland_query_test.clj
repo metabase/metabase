@@ -1,20 +1,11 @@
 (ns metabase.query-processor.middleware.process-userland-query-test
   (:require [clojure.core.async :as a]
-            [clojure.core.async.impl.protocols :as a.protocols]
             [clojure.test :refer :all]
             [metabase.query-processor
              [error-type :as error-type]
              [util :as qputil]]
             [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
             [metabase.test :as mt]))
-
-(defn- process-userland-query [query result chans]
-  ((process-userland-query/process-userland-query
-    (fn [_ _ {:keys [finished-chan], :as chans}]
-      (a/>!! finished-chan result)))
-   query
-   (constantly identity)
-   chans))
 
 (defn- do-with-query-execution [query run]
   (mt/with-open-channels [query-execution-chan (a/promise-chan)]
@@ -23,87 +14,62 @@
         (fn qe-result* []
           (let [qe (mt/wait-for-result query-execution-chan)]
             (cond-> qe
-              (:running_time qe) (update :running_time (fnil pos? 0))
-              (:hash qe)         (update :hash #(java.util.Arrays/equals
-                                                 %
-                                                 (qputil/query-hash query))))))))))
+              (:running_time qe) (update :running_time int?)
+              (:hash qe)         (update :hash (fn [^bytes a-hash]
+                                                 (when a-hash
+                                                   (java.util.Arrays/equals a-hash (qputil/query-hash query))))))))))))
 
 (defmacro ^:private with-query-execution {:style/indent 1} [[qe-result-binding query] & body]
   `(do-with-query-execution ~query (fn [~qe-result-binding] ~@body)))
 
-(defn- do-with-result [query result run]
-  (mt/with-clock #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
-    (mt/with-open-channels [finished-chan (a/promise-chan)]
-      (run
-        (fn result* []
-          (process-userland-query query result {:finished-chan finished-chan})
-          (let [result (mt/wait-for-result finished-chan)]
-            (is (= true
-                   (a.protocols/closed? finished-chan))
-                "finished-chan should be closed")
-            (update result :running_time (fnil pos? 0))))))))
+(defn- process-userland-query
+  ([query]
+   (mt/with-open-channels [raise-chan (a/promise-chan)]
+     (process-userland-query query {:chans {:raise-chan raise-chan}})))
 
-(defmacro ^:private with-result {:style/indent 1} [[result-binding query result] & body]
-  `(do-with-result ~query ~result (fn [~result-binding] ~@body)))
-
-(defn- do-with-result-and-query-execution [query qp-result]
-  (with-query-execution [qe query]
-    (with-result [result query qp-result]
-      {:result          (result)
-       :query-execution (qe)})))
+  ([query options]
+   (mt/with-clock #t "2020-02-04T12:22-08:00[US/Pacific]"
+     (-> (:post (mt/test-qp-middleware process-userland-query/process-userland-query query {} [] options))
+         (update :running_time int?)))))
 
 (deftest success-test
-  (let [query     {:query? true}
-        qp-result {:status :completed
-                   :data   {:rows []}}]
+  (let [query {:query? true}]
     (with-query-execution [qe query]
-      (with-result [result query qp-result]
-        (is (= {:status                 :completed
-                :data                   {:rows []}
-                :database_id            nil
-                :started_at             #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
-                :json_query             {:query? true}
-                :average_execution_time nil
-                :context                nil
-                :running_time           true}
-               (result))
-            "Result should have query execution info ")
-        (is (= {:hash         true
-                :database_id  nil
-                :result_rows  0
-                :started_at   #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
-                :executor_id  nil
-                :json_query   {:query? true}
-                :native       false
-                :pulse_id     nil
-                :card_id      nil
-                :context      nil
-                :running_time true
-                :dashboard_id nil}
-               (qe))
-            "QueryExecution should be saved")))))
+      (is (= {:status                 :completed
+              :data                   {:rows []}
+              :row_count              0
+              :database_id            nil
+              :started_at             #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
+              :json_query             {:query? true}
+              :average_execution_time nil
+              :context                nil
+              :running_time           true}
+             (process-userland-query query))
+          "Result should have query execution info ")
+      (is (= {:hash         true
+              :database_id  nil
+              :result_rows  0
+              :started_at   #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
+              :executor_id  nil
+              :json_query   {:query? true}
+              :native       false
+              :pulse_id     nil
+              :card_id      nil
+              :context      nil
+              :running_time true
+              :dashboard_id nil}
+             (qe))
+          "QueryExecution should be saved"))))
 
 (deftest failure-test
-  (let [query     {:query? true}
-        qp-result {:status     :failed
-                   :class      clojure.lang.ExceptionInfo
-                   :error      "Oops!"
-                   :error_type error-type/qp}]
+  (let [query {:query? true}]
     (with-query-execution [qe query]
-      (with-result [result query qp-result]
-        (is (= {:status       :failed
-                :class        clojure.lang.ExceptionInfo
-                :data         {:rows [], :cols []}
-                :database_id  nil
-                :started_at   #t "2020-02-04T12:22-08:00[US/Pacific]"
-                :error_type   :qp
-                :json_query   {:query? true}
-                :context      nil
-                :error        "Oops!"
-                :row_count    0
-                :running_time true}
-               (result))
-            "Result should have (failure) query execution info ")
+      (mt/with-open-channels [raise-chan (a/promise-chan)]
+        (process-userland-query query {:chans {:raise-chan raise-chan}
+                                       :run   (fn []
+                                                (a/>!! raise-chan (ex-info "Oops!"
+                                                                    {:type error-type/qp}))
+                                                (Thread/sleep 100))})
         (is (= {:hash         true
                 :database_id  nil
                 :error        "Oops!"
@@ -122,13 +88,14 @@
 
 (deftest cancel-test
   (let [query                  {:query? true}
-        qp-result              {:status :interrupted}
         saved-query-execution? (atom false)]
     (with-redefs [process-userland-query/save-query-execution-async! (fn [] (reset! saved-query-execution? true))]
-      (with-result [result query qp-result]
-        (is (= {:status :interrupted, :running_time false}
-               (result))
-            "Result should have not get added query execution info for canceled query")
+      (mt/with-open-channels [canceled-chan (a/promise-chan)
+                              raise-chan    (a/promise-chan)]
+        (process-userland-query query {:chans {:canceled-chan canceled-chan, :raise-chan raise-chan}
+                                       :run   (fn []
+                                                (a/>!! canceled-chan :cancel)
+                                                (Thread/sleep 100))})
         (is (= false
                @saved-query-execution?)
             "No QueryExecution should get saved when a query is canceled")))))

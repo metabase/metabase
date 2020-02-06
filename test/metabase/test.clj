@@ -198,23 +198,24 @@
   ([middleware-fn query rows]
    (test-qp-middleware middleware-fn query {} rows))
 
-  ([middleware-fn query metadata rows]
-   (test-qp-middleware middleware-fn query metadata rows {}))
-
-  ([middleware-fn query metadata rows chans]
-   ((middleware-fn
-     (fn [query xformf _]
-       (let [xform             (xformf metadata)
-             rf                (xform (qp.build/default-rff metadata))
-             [metadata result] (transduce identity rf rows)]
-         {:pre      query
-          :metadata metadata
-          :post     result})))
-    query
-    (fn xformf [metadata]
-      (fn xform [rf]
-        (fn rf*
-          ([] (rf))
-          ([result] [metadata (rf result)])
-          ([result row] (rf result row)))))
-    chans)))
+  ([middleware-fn query metadata rows & [{:keys [chans run]
+                                          :or   {chans {}}}]]
+   (let [qp (middleware-fn
+             (fn [query xformf _]
+               (if run
+                 (run)
+                 (let [xform             (xformf metadata)
+                       rf                (xform (qp.build/default-rff metadata))
+                       [metadata result] (transduce identity rf rows)]
+                   {:pre      query
+                    :metadata metadata
+                    :post     result}))))]
+     (qp
+      query
+      (fn xformf [metadata]
+        (fn xform [rf]
+          (fn rf*
+            ([] (rf))
+            ([result] [metadata (rf result)])
+            ([result row] (rf result row)))))
+      chans))))

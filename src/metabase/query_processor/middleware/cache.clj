@@ -116,14 +116,29 @@
 
       ([result row] (rf result row)))))
 
+(defn- return-cached-results
+  ;; TODO - no idea if this works...
+  [result xformf {:keys [reducible-chan raise-chan], :as chans}]
+  (let [metadata (-> (dissoc result :rows)
+                     (assoc :cached? true))
+        rows     (:rows result)
+        xform    (xformf metadata)]
+    (a/>!! reducible-chan (fn reduce-results [rff]
+                            (try
+                              (let [rf (xform (rff metadata))]
+                                (transduce identity rf rows))
+                              (catch Throwable e
+                                (a/>!! raise-chan e)))))
+    nil))
+
 (defn- run-query-with-cache
-  [qp {:keys [cache-ttl], :as query} xformf {:keys [finished-chan], :as chans}]
+  [qp {:keys [cache-ttl], :as query} xformf chans]
   ;; TODO - Query will already have `info.hash` if it's a userland query. I'm not 100% sure it will be the same hash,
   ;; because this is calculated after normalization, instead of before
   (let [query-hash (qputil/query-hash query)
         start-time (System/currentTimeMillis)]
     (if-let [result (cached-results query-hash cache-ttl)]
-      (a/>!! finished-chan result)
+      (return-cached-results result xformf chans)
       (qp
        query
        (fn [metadata]

@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.constraints
   "Middleware that adds default constraints to limit the maximum number of rows returned to queries that specify the
-  `:add-default-userland-constraints?` `:middleware` option."
-  (:require [clojure.core.async :as a]))
+  `:add-default-userland-constraints?` `:middleware` option.")
 
 (def ^:private max-results-bare-rows
   "Maximum number of rows to return specifically on :rows type queries via the API."
@@ -39,8 +38,5 @@
   "Middleware that optionally adds default `max-results` and `max-results-bare-rows` constraints to queries, meant for
   use with `process-query-and-save-with-max-results-constraints!`, which ultimately powers most QP API endpoints."
   [qp]
-  (fn [query xform-fn {:keys [raise-chan], :as chans}]
-    (try
-      (qp (add-default-userland-constraints* query) xform-fn chans)
-      (catch Throwable e
-        (a/>!! raise-chan e)))))
+  (fn [query xformf chans]
+    (qp (add-default-userland-constraints* query) xformf chans)))

@@ -123,7 +123,6 @@
                (qp.build/base-query-processor
                 (fn [_ _ _ respond]
                   (Thread/sleep 10)
-                  (println "(Thread/currentThread):" (Thread/currentThread)) ; NOCOMMIT
                   (respond {} []))
                 nil)
                1))]

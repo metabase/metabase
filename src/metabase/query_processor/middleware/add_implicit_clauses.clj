@@ -61,8 +61,6 @@
 (s/defn ^:private source-metadata->fields :- mbql.s/Fields
   "Get implicit Fields for a query with a `:source-query` that has `source-metadata`."
   [source-metadata :- (su/non-empty [mbql.s/SourceQueryMetadata])]
-  (println "<FIELDS>" (u/pprint-to-str 'blue (for [{field-name :name, base-type :base_type} source-metadata]
-                                               [:field-literal field-name base-type])))
   (for [{field-name :name, base-type :base_type} source-metadata]
     [:field-literal field-name base-type]))
 

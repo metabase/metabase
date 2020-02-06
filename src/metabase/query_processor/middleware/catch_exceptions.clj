@@ -100,17 +100,23 @@
   "Map of about `query` to add to the exception response."
   [{query-type :type, :as query} {:keys [preprocessed-chan native-query-chan]}]
   (merge
-   {:query (dissoc query :database :driver)}
+   {:json_query (-> (dissoc query :info :driver))}
    ;; add the fully-preprocessed and native forms to the error message for MBQL queries, since they're extremely
    ;; useful for debugging purposes.
    (when (= (keyword query-type) :query)
-     {:preprocessed (a/poll! preprocessed-chan)
+     {:preprocessed (dissoc (a/poll! preprocessed-chan) :info)
       :native       (when (perms/current-user-has-adhoc-native-query-perms? query)
                       (a/poll! native-query-chan))})))
 
-(defn- format-exception* [query e chans]
+(defn- query-execution-info [query-execution]
+  (dissoc query-execution :result_rows :hash :executor_id :card_id :dashboard_id :pulse_id :native :start_time_millis))
+
+(defn- format-exception* [query e {:keys [query-execution-chan], :as chans}]
   (try
     (merge
+     {:data {:rows [], :cols []}, :row_count 0}
+     (when-let [query-execution (some-> query-execution-chan a/poll!)]
+       (query-execution-info query-execution))
      (exception-response e)
      (query-info query chans))
     (catch Throwable e
@@ -121,7 +127,9 @@
   exceptions to the `result-chan`."
   [qp]
   (fn [query xformf {:keys [raise-chan finished-chan], :as chans}]
-    (let [raise-chan' (a/promise-chan)]
+    (let [query-execution-chan    (a/promise-chan)
+          chans                   (assoc chans :query-execution-chan query-execution-chan)
+          raise-chan'             (a/promise-chan)]
       ;; forward exceptions to `finished-chan`
       (a/go
         (when-let [e (a/<! raise-chan')]
@@ -132,6 +140,10 @@
         (a/<! raise-chan)
         (log/trace "raise-chan done; closing raise-chan'")
         (a/close! raise-chan'))
+      ;; when finished-chan gets closed close our 'bonus' chans
+      (a/go
+        (a/<! finished-chan)
+        (a/close! query-execution-chan))
       (try
         (qp query xformf (assoc chans :raise-chan raise-chan'))
         (catch Throwable e

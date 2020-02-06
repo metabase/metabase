@@ -80,12 +80,11 @@
                             (used internally)
    * `:preprocessed-chan` ­ sent the fully-preprocessed query before conversion before `mbql->native` is called.
    * `:native-query-chan` ­ sent the query after calling `mbql->native`.
-   * `:start-reduce-chan` ­ sent a message when (reducible) query is executed successfully and first row is available
-                            (called automatically)
-   * `:reduced-chan`      ­ sent the result of fully reducing a query. (called automatically)
+   * `:start-reduce-chan` ­ sent a message when query is executed successfully and first row is available
+   * `:reduced-chan`      ­ sent the the fully reduced result. (Called automatically)
    * `:raise-chan`        ­ sent any Exception that is thrown.
    * `:canceled-chan`     ­ sent a message if query is canceled before completion.
-   * `:finished-chan`     ­ sent the result of either reduced, raise, or cancel."
+   * `:finished-chan`     ­ sent the first result from `reduced-chan`, `raise-chan`, or `canceled-chan`."
   [timeout-ms]
   {:pre [(integer? timeout-ms)]}
   (let [chans {:reducible-chan    (a/promise-chan)

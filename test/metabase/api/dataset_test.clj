@@ -10,6 +10,7 @@
             [medley.core :as m]
             [metabase
              [query-processor-test :as qp.test]
+             [test :as mt]
              [util :as u]]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models
@@ -53,92 +54,98 @@
 (defn- most-recent-query-execution [] (db/select-one QueryExecution {:order-by [[:id :desc]]}))
 
 (def ^:private query-defaults
-  {:constraints constraints/default-query-constraints
-   :middleware  {:add-default-userland-constraints? true, :userland-query? true}
-   :async?      true})
+  {:middleware {:add-default-userland-constraints? true}
+   :async?     true})
 
 (deftest basic-query-test
   (testing "POST /api/meta/dataset"
-    (testing "Just a basic sanity check to make sure Query Processor endpoint is still working correctly."
-      (let [result ((test-users/user->client :rasta) :post 200 "dataset" (data/mbql-query checkins
-                                                                           {:aggregation [[:count]]}))]
-        (is (= {:data                   {:rows             [[1000]]
-                                         :cols             [(tu/obj->json->obj (qp.test/aggregate-col :count))]
-                                         :native_form      true
-                                         :results_timezone "UTC"}
-                :row_count              1
-                :status                 "completed"
-                :context                "ad-hoc"
-                :json_query             (-> (data/mbql-query checkins
-                                              {:aggregation [[:count]]})
-                                            (assoc-in [:query :aggregation] [["count"]])
-                                            (assoc :type "query")
-                                            (merge query-defaults))
-                :started_at             true
-                :running_time           true
-                :average_execution_time nil
-                :database_id            (data/id)}
-               (format-response result)))
-        (is (= {:hash         true
-                :row_count    1
-                :result_rows  1
-                :context      :ad-hoc
-                :executor_id  (test-users/user->id :rasta)
-                :native       false
-                :pulse_id     nil
-                :card_id      nil
-                :dashboard_id nil
-                :error        nil
-                :id           true
-                :database_id  (data/id)
-                :started_at   true
-                :running_time true}
-               (format-response (most-recent-query-execution))))))))
+    (testing "\nJust a basic sanity check to make sure Query Processor endpoint is still working correctly."
+      (let [result ((mt/user->client :rasta) :post 200 "dataset" (mt/mbql-query checkins
+                                                                   {:aggregation [[:count]]}))]
+        (testing "\nAPI Response"
+          (is (= {:data                   {:rows             [[1000]]
+                                           :cols             [(tu/obj->json->obj (qp.test/aggregate-col :count))]
+                                           :native_form      true
+                                           :results_timezone "UTC"}
+                  :row_count              1
+                  :status                 "completed"
+                  :context                "ad-hoc"
+                  :json_query             (-> (mt/mbql-query checkins
+                                                {:aggregation [[:count]]})
+                                              (assoc-in [:query :aggregation] [["count"]])
+                                              (assoc :type "query")
+                                              (merge query-defaults))
+                  :started_at             true
+                  :running_time           true
+                  :average_execution_time nil
+                  :database_id            (mt/id)}
+                 (format-response result))))
+        (testing "\nSaved QueryExecution"
+          (is (= {:hash         true
+                  :row_count    1
+                  :result_rows  1
+                  :context      :ad-hoc
+                  :executor_id  (test-users/user->id :rasta)
+                  :native       false
+                  :pulse_id     nil
+                  :card_id      nil
+                  :dashboard_id nil
+                  :error        nil
+                  :id           true
+                  :database_id  (mt/id)
+                  :started_at   true
+                  :running_time true}
+                 (format-response (most-recent-query-execution)))))))))
 
 (deftest failure-test
-  (testing "Even if a query fails we still expect a 200 response from the api"
-    ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check that
-    ;; it exists and contains the substring "Syntax error in SQL statement"
-    (let [check-error-message (fn [output]
-                                (update output :error (fn [error-message]
-                                                        (some->>
-                                                         error-message
-                                                         (re-find #"Syntax error in SQL statement")
-                                                         boolean))))
-          result              (tu.log/suppress-output
-                                ((test-users/user->client :rasta) :post 200 "dataset" {:database (data/id)
-                                                                                       :type     "native"
-                                                                                       :native   {:query "foobar"}}))]
-      (is (= {:data         {:rows    []
-                             :cols    []}
-              :row_count    0
-              :status       "failed"
-              :context      "ad-hoc"
-              :error        true
-              :json_query   (merge
-                             query-defaults
-                             {:database (data/id)
-                              :type     "native"
-                              :native   {:query "foobar"}})
-              :database_id  (data/id)
-              :started_at   true
-              :running_time true}
-             (check-error-message (dissoc (format-response result) :stacktrace))))
-      (is (= {:hash         true
-              :id           true
-              :result_rows  0
-              :row_count    0
-              :context      :ad-hoc
-              :error        true
-              :database_id  (data/id)
-              :started_at   true
-              :running_time true
-              :executor_id  (test-users/user->id :rasta)
-              :native       true
-              :pulse_id     nil
-              :card_id      nil
-              :dashboard_id nil}
-             (check-error-message (format-response (most-recent-query-execution))))))))
+  (testing "POST /api/meta/dataset"
+    (testing "\nEven if a query fails we still expect a 200 response from the API"
+      ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check
+      ;; that it exists and contains the substring "Syntax error in SQL statement"
+      (let [check-error-message (fn [output]
+                                  (update output :error (fn [error-message]
+                                                          (some->>
+                                                           error-message
+                                                           (re-find #"Syntax error in SQL statement")
+                                                           boolean))))
+            result              (tu.log/suppress-output
+                                  ((mt/user->client :rasta) :post 200 "dataset" {:database (mt/id)
+                                                                                 :type     "native"
+                                                                                 :native   {:query "foobar"}}))]
+        (testing "\nAPI Response"
+          (is (= {:data         {:rows []
+                                 :cols []}
+                  :row_count    0
+                  :status       "failed"
+                  :context      "ad-hoc"
+                  :error        true
+                  :json_query   (merge
+                                 query-defaults
+                                 {:database (mt/id)
+                                  :type     "native"
+                                  :native   {:query "foobar"}})
+                  :database_id  (mt/id)
+                  :state        "42001"
+                  :class        "class org.h2.jdbc.JdbcSQLException"
+                  :started_at   true
+                  :running_time true}
+                 (check-error-message (dissoc (format-response result) :stacktrace)))))
+        (testing "\nSaved QueryExecution"
+          (is (= {:hash         true
+                  :id           true
+                  :result_rows  0
+                  :row_count    0
+                  :context      :ad-hoc
+                  :error        true
+                  :database_id  (mt/id)
+                  :started_at   true
+                  :running_time true
+                  :executor_id  (test-users/user->id :rasta)
+                  :native       true
+                  :pulse_id     nil
+                  :card_id      nil
+                  :dashboard_id nil}
+                 (check-error-message (format-response (most-recent-query-execution))))))))))
 
 
 ;;; Make sure that we're piggybacking off of the JSON encoding logic when encoding strange values in XLSX (#5145,
@@ -178,8 +185,8 @@
    ["3" "2014-09-15" "8" "56"]
    ["4" "2014-03-11" "5" "4"]
    ["5" "2013-05-05" "3" "49"]]
-  (let [result ((test-users/user->client :rasta) :post 200 "dataset/csv" :query
-                (json/generate-string (data/mbql-query checkins)))]
+  (let [result ((mt/user->client :rasta) :post 200 "dataset/csv" :query
+                (json/generate-string (mt/mbql-query checkins)))]
     (take 5 (parse-and-sort-csv result))))
 
 ;; Check an empty date column
@@ -190,8 +197,8 @@
    ["4" "2014-03-11" "" "5" "4"]
    ["5" "2013-05-05" "" "3" "49"]]
   (data/dataset defs/test-data-with-null-date-checkins
-    (let [result ((test-users/user->client :rasta) :post 200 "dataset/csv" :query
-                  (json/generate-string (data/mbql-query checkins)))]
+    (let [result ((mt/user->client :rasta) :post 200 "dataset/csv" :query
+                  (json/generate-string (mt/mbql-query checkins)))]
       (take 5 (parse-and-sort-csv result)))))
 
 ;; SQLite doesn't return proper date objects but strings, they just pass through the qp untouched
@@ -201,8 +208,8 @@
    ["3" "2014-09-15" "8" "56"]
    ["4" "2014-03-11" "5" "4"]
    ["5" "2013-05-05" "3" "49"]]
-  (let [result ((test-users/user->client :rasta) :post 200 "dataset/csv" :query
-                (json/generate-string (data/mbql-query checkins)))]
+  (let [result ((mt/user->client :rasta) :post 200 "dataset/csv" :query
+                (json/generate-string (mt/mbql-query checkins)))]
     (take 5 (parse-and-sort-csv result))))
 
 ;; DateTime fields are untouched when exported
@@ -212,17 +219,17 @@
    ["3" "Kaneonuskatew Eiran" "2014-11-06T16:15:00Z"]
    ["4" "Simcha Yan"          "2014-01-01T08:30:00Z"]
    ["5" "Quentin Sören"       "2014-10-03T17:30:00Z"]]
-  (let [result ((test-users/user->client :rasta) :post 200 "dataset/csv" :query
-                (json/generate-string (data/mbql-query users)))]
+  (let [result ((mt/user->client :rasta) :post 200 "dataset/csv" :query
+                (json/generate-string (mt/mbql-query users)))]
     (take 5 (parse-and-sort-csv result))))
 
 ;; Check that we can export the results of a nested query
 (expect
   16
-  (tt/with-temp Card [card {:dataset_query {:database (data/id)
+  (tt/with-temp Card [card {:dataset_query {:database (mt/id)
                                             :type     :native
                                             :native   {:query "SELECT * FROM USERS;"}}}]
-    (let [result ((test-users/user->client :rasta) :post 200 "dataset/csv"
+    (let [result ((mt/user->client :rasta) :post 200 "dataset/csv"
                   :query (json/generate-string
                           {:database mbql.s/saved-questions-virtual-database-id
                            :type     :query
@@ -237,11 +244,11 @@
 (expect
   101
   (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
-    (let [result ((test-users/user->client :rasta) :post 200 "dataset/csv"
+    (let [result ((mt/user->client :rasta) :post 200 "dataset/csv"
                   :query (json/generate-string
-                          {:database   (data/id)
+                          {:database   (mt/id)
                            :type       :query
-                           :query      {:source-table (data/id :venues)}
+                           :query      {:source-table (mt/id :venues)}
                            :middleware
                            {:add-default-userland-constraints? true
                             :userland-query?                   true}}))]
@@ -253,24 +260,24 @@
   10
   (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
     (let [{row-count :row_count, :as result}
-          ((test-users/user->client :rasta) :post 200 "dataset"
-           {:database (data/id)
+          ((mt/user->client :rasta) :post 200 "dataset"
+           {:database (mt/id)
             :type     :query
-            :query    {:source-table (data/id :venues)}})]
+            :query    {:source-table (mt/id :venues)}})]
       (or row-count result))))
 
 ;; make sure `POST /dataset` calls check user permissions
 (tu/expect-schema
- {:status   (s/eq "failed")
-  :error    (s/eq "You do not have permissions to run this query.")
-  s/Keyword s/Any}
- (data/with-temp-copy-of-db
-   ;; give all-users *partial* permissions for the DB, so we know we're checking more than just read permissions for
-   ;; the Database
-   (perms/revoke-permissions! (group/all-users) (data/id))
-   (perms/grant-permissions! (group/all-users) (data/id) "schema_that_does_not_exist")
-   ((test-users/user->client :rasta) :post "dataset"
-    (data/mbql-query venues {:limit 1}))))
+  {:status   (s/eq "failed")
+   :error    (s/eq "You do not have permissions to run this query.")
+   s/Keyword s/Any}
+  (data/with-temp-copy-of-db
+    ;; give all-users *partial* permissions for the DB, so we know we're checking more than just read permissions for
+    ;; the Database
+    (perms/revoke-permissions! (group/all-users) (mt/id))
+    (perms/grant-permissions! (group/all-users) (mt/id) "schema_that_does_not_exist")
+    ((mt/user->client :rasta) :post "dataset"
+     (mt/mbql-query venues {:limit 1}))))
 
 (deftest query->native-test
   (testing "Can we fetch a native version of an MBQL query with `POST /api/dataset/native`?"
@@ -278,16 +285,16 @@
                          "FROM \"PUBLIC\".\"VENUES\" "
                          "LIMIT 1048576")
             :params nil}
-           ((test-users/user->client :rasta) :post 200 "dataset/native"
-            (data/mbql-query venues
+           ((mt/user->client :rasta) :post 200 "dataset/native"
+            (mt/mbql-query venues
               {:fields [$id $name]}))))
     (is (= {:query (str "SELECT \"PUBLIC\".\"CHECKINS\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"CHECKINS\" "
                         "WHERE (\"PUBLIC\".\"CHECKINS\".\"DATE\" >= timestamp with time zone '2015-11-13 00:00:00.000Z'"
                         " AND \"PUBLIC\".\"CHECKINS\".\"DATE\" < timestamp with time zone '2015-11-14 00:00:00.000Z') "
                         "LIMIT 1048576")
             :params nil}
-           ((test-users/user->client :rasta) :post 200 "dataset/native"
-            (data/mbql-query checkins
+           ((mt/user->client :rasta) :post 200 "dataset/native"
+            (mt/mbql-query checkins
               {:fields [$id]
                :filter [:= $date "2015-11-13"]})))
         "Make sure parameters are spliced correctly")))
@@ -300,10 +307,10 @@
   (tu.log/suppress-output
     (data/with-temp-copy-of-db
       ;; Give All Users permissions to see the `venues` Table, but not ad-hoc native perms
-      (perms/revoke-permissions! (group/all-users) (data/id))
-      (perms/grant-permissions! (group/all-users) (data/id) "PUBLIC" (data/id :venues))
-      ((test-users/user->client :rasta) :post "dataset/native"
-       (data/mbql-query venues
+      (perms/revoke-permissions! (group/all-users) (mt/id))
+      (perms/grant-permissions! (group/all-users) (mt/id) "PUBLIC" (mt/id :venues))
+      ((mt/user->client :rasta) :post "dataset/native"
+       (mt/mbql-query venues
          {:fields [$id $name]})))))
 
 (deftest report-timezone-test
@@ -311,8 +318,8 @@
     (is (= {:requested_timezone "US/Pacific"
             :results_timezone   "US/Pacific"}
            (tu/with-temporary-setting-values [report-timezone "US/Pacific"]
-             (let [results ((test-users/user->client :rasta) :post 200 "dataset" (data/mbql-query checkins
-                                                                                   {:aggregation [[:count]]}))]
+             (let [results ((mt/user->client :rasta) :post 200 "dataset" (mt/mbql-query checkins
+                                                                           {:aggregation [[:count]]}))]
                (-> results
                    :data
                    (select-keys [:requested_timezone :results_timezone])))))
