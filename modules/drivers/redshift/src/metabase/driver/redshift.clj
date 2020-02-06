@@ -82,8 +82,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod driver/date-add :redshift
-  [_ dt amount unit]
-  (hsql/call :dateadd (hx/literal unit) amount (hx/->timestamp dt)))
+  [_ hsql-form amount unit]
+  (hsql/call :dateadd (hx/literal unit) amount (hx/->timestamp hsql-form)))
 
 (defmethod sql.qp/unix-timestamp->timestamp [:redshift :seconds]
   [_ _ expr]

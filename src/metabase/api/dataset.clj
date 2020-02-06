@@ -40,7 +40,7 @@
     (api/read-check Card source-card-id)
     source-card-id))
 
-(api/defendpoint POST "/"
+(api/defendpoint ^:returns-chan POST "/"
   "Execute a query and retrieve the results in the usual format."
   [:as {{:keys [database], :as query} :body}]
   {database s/Int}
@@ -108,7 +108,7 @@
   (api/let-404 [export-conf (ex/export-formats export-format)]
     (if (= status :completed)
       ;; successful query, send file
-      {:status  200
+      {:status  202
        :body    ((:export-fn export-conf)
                  (map #(some % [:display_name :name]) cols)
                  (maybe-modify-date-values cols rows))
@@ -146,7 +146,7 @@
      (api/defendpoint POST [\"/:export-format\", :export-format export-format-regex]"
   (re-pattern (str "(" (str/join "|" (keys ex/export-formats)) ")")))
 
-(api/defendpoint-async POST ["/:export-format", :export-format export-format-regex]
+(api/defendpoint-async ^:returns-chan POST ["/:export-format", :export-format export-format-regex]
   "Execute a query and download the result data as a file in the specified format."
   [{{:keys [export-format query]} :params} respond raise]
   {query         su/JSONString

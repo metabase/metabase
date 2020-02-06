@@ -521,7 +521,7 @@
                       Collection [dest-card-collection]]
         (perms/grant-collection-read-permissions!      (group/all-users) source-card-collection)
         (perms/grant-collection-readwrite-permissions! (group/all-users) dest-card-collection)
-        (save-card-via-API-with-native-source-query! 200 (data/db) source-card-collection dest-card-collection)
+        (save-card-via-API-with-native-source-query! 202 (data/db) source-card-collection dest-card-collection)
         :ok))))
 
 ;; however, if we do *not* have read permissions for the source Card's collection we shouldn't be allowed to save the

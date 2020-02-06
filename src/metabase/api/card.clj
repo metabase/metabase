@@ -144,8 +144,8 @@
   `all`, but other options include `mine`, `fav`, `database`, `table`, `recent`, `popular`, and `archived`. See
   corresponding implementation functions above for the specific behavior of each filter option. :card_index:"
   [f model_id]
-  {f          (s/maybe CardFilterOption)
-   model_id   (s/maybe su/IntGreaterThanZero)}
+  {f        (s/maybe CardFilterOption)
+   model_id (s/maybe su/IntGreaterThanZero)}
   (let [f (keyword f)]
     (when (contains? #{:database :table} f)
       (api/checkp (integer? model_id) "model_id" (format "model_id is a required parameter when filter mode is '%s'"
@@ -157,7 +157,6 @@
          ;; filterv because we want make sure all the filtering is done while current user perms set is still bound
          (filterv mi/can-read?))))
 
-
 (api/defendpoint GET "/:id"
   "Get `Card` with ID."
   [id]
@@ -166,7 +165,6 @@
                api/read-check)
     (events/publish-event! :card-read (assoc <> :actor_id api/*current-user-id*))))
 
-
 ;;; -------------------------------------------------- Saving Cards --------------------------------------------------
 
 ;; When a new Card is saved, we wouldn't normally have the results metadata for it until the first time its query is
@@ -174,8 +172,6 @@
 ;; frontend pass it back to us when saving or updating a Card.  As a basic step to make sure the Metadata is valid
 ;; we'll also pass a simple checksum and have the frontend pass it back to us.  See the QP `results-metadata`
 ;; middleware namespace for more details
-
-
 
 (s/defn ^:private result-metadata-async :- ManyToManyChannel
   "Get the right results metadata for this `card`, and return them in a channel. We'll check to see whether the
@@ -224,7 +220,7 @@
   (let [data-keys            [:dataset_query :description :display :name
                               :visualization_settings :collection_id :collection_position]
         card-data            (assoc (zipmap data-keys (map card-data data-keys))
-                               :creator_id api/*current-user-id*)
+                                    :creator_id api/*current-user-id*)
         result-metadata-chan (result-metadata-async dataset_query result_metadata metadata_checksum)
         out-chan             (a/chan 1)]
     (a/go
@@ -236,12 +232,12 @@
           (async.u/single-value-pipe (save-new-card-async! card-data) out-chan))
         (catch Throwable e
           (a/put! out-chan e)
-          (a/close! e))))
+          (a/close! out-chan))))
     ;; Return a channel
     out-chan))
 
 
-(api/defendpoint POST "/"
+(api/defendpoint ^:returns-chan POST "/"
   "Create a new `Card`."
   [:as {{:keys [collection_id collection_position dataset_query description display metadata_checksum name
                 result_metadata visualization_settings], :as body} :body}]
@@ -418,7 +414,7 @@
        ;; has with returned one -- See #4142
        (hydrate card :creator :dashboard_count :can_write :collection)))))
 
-(api/defendpoint PUT "/:id"
+(api/defendpoint ^:returns-chan PUT "/:id"
   "Update a `Card`."
   [id :as {{:keys [dataset_query description display name visualization_settings archived collection_id
                    collection_position enable_embedding embedding_params result_metadata metadata_checksum]
@@ -526,6 +522,7 @@
           (reverse (range starting-position (+ (count sorted-cards) starting-position)))
           (reverse sorted-cards)))))
 
+
 (defn- move-cards-to-collection! [new-collection-id-or-nil card-ids]
   ;; if moving to a collection, make sure we have write perms for it
   (when new-collection-id-or-nil
@@ -615,14 +612,14 @@
     (api/check-not-archived card)
     (qp.async/process-query-and-save-execution! query options)))
 
-(api/defendpoint POST "/:card-id/query"
+(api/defendpoint ^:returns-chan POST "/:card-id/query"
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters ignore_cache], :or {ignore_cache false}} :body}]
   {ignore_cache (s/maybe s/Bool)}
   (binding [cache/*ignore-cached-results* ignore_cache]
     (run-query-for-card-async card-id, :parameters parameters)))
 
-(api/defendpoint-async POST "/:card-id/query/:export-format"
+(api/defendpoint-async ^:returns-chan POST "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format. Note that this
   expects the parameters as serialized JSON in the 'parameters' parameter"
   [{{:keys [card-id export-format parameters]} :params} respond raise]

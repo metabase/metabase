@@ -5,7 +5,7 @@ import { stripId, FK_SYMBOL } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";
 
 import Field from "./metadata/Field";
-import Metadata from "./metadata/Metadata";
+import type Metadata from "./metadata/Metadata";
 
 import type {
   ConcreteField,
@@ -37,6 +37,7 @@ type DimensionOption = {
  *     - DatetimeFieldDimension
  *   - ExpressionDimension
  *   - AggregationDimension
+ *   - TemplateTagDimension
  */
 
 /**
@@ -51,6 +52,7 @@ export default class Dimension {
   _parent: ?Dimension;
   _args: any;
   _metadata: ?Metadata;
+  _query: ?Query;
 
   // Display names provided by the backend
   _subDisplayName: ?String;
@@ -974,6 +976,31 @@ export class JoinedDimension extends FieldDimension {
 
   render() {
     return `${this.joinAlias()} ${FK_SYMBOL} ${super.render()}`;
+  }
+}
+
+export class TemplateTagDimension extends FieldDimension {
+  dimension() {
+    if (this._query) {
+      const tag = this._query.templateTagsMap()[this.tagName()];
+      if (tag && tag.type === "dimension") {
+        return this.parseMBQL(tag.dimension);
+      }
+    }
+    return null;
+  }
+
+  field() {
+    const dimension = this.dimension();
+    return dimension ? dimension.field() : super.field();
+  }
+
+  tagName() {
+    return this._args[0];
+  }
+
+  mbql() {
+    return ["template-tag", this.tagName()];
   }
 }
 

@@ -96,8 +96,8 @@
         one-day))
 
 (defmethod driver/date-add :vertica
-  [_ dt amount unit]
-  (hx/+ (hx/->timestamp dt) (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit)))))
+  [_ hsql-form amount unit]
+  (hx/+ (hx/->timestamp hsql-form) (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit)))))
 
 (defn- materialized-views
   "Fetch the Materialized Views for a Vertica `database`.

@@ -5304,3 +5304,875 @@ databaseChangeLog:
             tableName: metabase_field
             columnName: database_type
             newDataType: text
+
+#
+#  Migrations 107-160 are used to convert a MySQL or MariaDB database to utf8mb4 on launch -- see #11753 for a detailed explanation of these migrations
+#
+
+  - changeSet:
+        id: 107
+        author: camsaul
+        comment: Added 0.34.2
+        # If this migration fails for any reason continue with the next migration; do not fail the entire process if this one fails
+        failOnError: false
+        preConditions:
+          # If preconditions fail (i.e., dbms is not mysql or mariadb) then mark this migration as 'ran'
+          - onFail: MARK_RAN
+          # If we're generating SQL output for migrations instead of running via liquibase, fail the preconditions which means these migrations will be skipped
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER DATABASE CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+  - changeSet:
+        id: 108
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `DATABASECHANGELOG` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 109
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `DATABASECHANGELOGLOCK` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 110
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `QRTZ_CALENDARS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 111
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `QRTZ_FIRED_TRIGGERS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 112
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `QRTZ_JOB_DETAILS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 113
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `QRTZ_LOCKS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 114
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `QRTZ_PAUSED_TRIGGER_GRPS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 115
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `QRTZ_SCHEDULER_STATE` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 116
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `core_user` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 117
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `data_migrations` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 118
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `dependency` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 119
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `label` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 120
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `metabase_database` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 121
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `permissions_group` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 122
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `query` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 123
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `query_cache` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 124
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `query_execution` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 125
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `setting` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 126
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `task_history` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 127
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `QRTZ_TRIGGERS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 128
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `activity` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 129
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `collection` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 130
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `collection_revision` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 131
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `computation_job` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 132
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `core_session` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 133
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `metabase_table` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 134
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `permissions` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 135
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `permissions_revision` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 136
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `revision` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 137
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `view_log` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 138
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `QRTZ_BLOB_TRIGGERS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 139
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `QRTZ_CRON_TRIGGERS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 140
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `QRTZ_SIMPLE_TRIGGERS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 141
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `QRTZ_SIMPROP_TRIGGERS` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 142
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `computation_job_result` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 143
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `metabase_field` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 144
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `permissions_group_membership` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 145
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `pulse` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 146
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `report_dashboard` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 147
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `dashboard_favorite` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 148
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `dimension` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 149
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `metabase_fieldvalues` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 150
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `metric` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 151
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `pulse_channel` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 152
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `segment` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 153
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `pulse_channel_recipient` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 154
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `report_card` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 155
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `metric_important_field` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 156
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `report_cardfavorite` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 157
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `card_label` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 158
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `pulse_card` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 159
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `report_dashboardcard` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  - changeSet:
+        id: 160
+        author: camsaul
+        comment: Added 0.34.2
+        failOnError: false
+        preConditions:
+          - onFail: MARK_RAN
+          - onSqlOutput: FAIL
+          - or:
+              - dbms:
+                    type: mysql
+              - dbms:
+                    type: mariadb
+        changes:
+          - sql:
+                sql: ALTER TABLE `dashboardcard_series` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

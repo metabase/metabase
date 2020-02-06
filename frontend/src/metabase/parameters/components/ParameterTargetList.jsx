@@ -26,7 +26,7 @@ export default class ParameterTargetList extends React.Component {
 
     const mappingOptionSections = _.groupBy(mappingOptions, "sectionName");
 
-    const hasFkOption = _.any(mappingOptions, o => !!o.isFk);
+    const hasForeignOption = _.any(mappingOptions, o => !!o.isForeign);
 
     const sections = _.map(mappingOptionSections, options => ({
       name: options[0].sectionName,
@@ -44,7 +44,7 @@ export default class ParameterTargetList extends React.Component {
           <Icon name={item.icon || "unknown"} size={18} />
         )}
         alwaysExpanded={true}
-        hideSingleSectionTitle={!hasFkOption}
+        hideSingleSectionTitle={!hasForeignOption}
       />
     );
   }
