@@ -209,8 +209,9 @@
                                                                      :type     :native
                                                                      :native   {:query "SELECT * FROM XYZ"}}}]
         ;; since results are keepalive-streamed for normal queries (i.e., not CSV, JSON, or XLSX) we have to return a
-        ;; status code right away, so streaming responses always return 200
-        (http/client :get (if (seq response-format) 400 200) (card-query-url card response-format))))))
+        ;; status code right away, so streaming responses always return 202 and the actual status code is returned
+        ;; in the _status property of the response body
+        (http/client :get (if (seq response-format) 400 202) (card-query-url card response-format))))))
 
 ;; check that the endpoint doesn't work if embedding isn't enabled
 (expect-for-response-formats [response-format]
