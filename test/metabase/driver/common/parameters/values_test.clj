@@ -137,15 +137,14 @@
                  :type :card, :card (:id card)}
                 []))))))
 
-  (testing "Card query template tag generates native query for MBQL"
+  (testing "Card query template tag generates native query for MBQL query"
     (qp.test-util/with-everything-store
       (driver/with-driver :h2
-        (let [mbql-query   {:database (data/id)
+        (let [mbql-query   {:type     :query
+                            :database (data/id)
                             :query    {:source-table (data/id :venues)
-                                       :filter       [:< [:field-id (data/id :venues :price)] 3]}}
-              native-query (driver/mbql->native :h2 mbql-query)]
-          (tt/with-temp Card [card {:dataset_query {:type  "query"
-                                                    :query mbql-query}}]
+                                       :filter       [:< [:field-id (data/id :venues :price)] 3]}}]
+          (tt/with-temp Card [card {:dataset_query mbql-query}]
             (is (= (i/->CardQuery (:id card) "SELECT \"PUBLIC\".\"VENUES\".* FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" < 3")
                    (#'values/value-for-tag
                     {:name "card-template-tag-test", :display-name "Card template tag test",

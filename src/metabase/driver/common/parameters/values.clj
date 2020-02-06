@@ -130,7 +130,7 @@
        {:card-id card-id
         :query   (condp = (name (:type query))
                    "native" (get-in query [:native :query])
-                   "query"  (:query (driver/mbql->native driver/*driver* (:query query))))}))))
+                   "query"  (:query (driver/mbql->native driver/*driver* query)))}))))
 
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
