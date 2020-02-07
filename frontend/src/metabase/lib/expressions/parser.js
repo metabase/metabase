@@ -264,7 +264,7 @@ class ExpressionMBQLCompiler extends BaseCstVisitor {
     const dimensionName = this.visit(ctx.dimensionName);
     const dimension = this._getDimensionForName(dimensionName);
     if (!dimension) {
-      throw new Error(`Unknown Field: ${fieldName}`);
+      throw new Error(`Unknown Field: ${dimensionName}`);
     }
     return dimension.mbql();
   }
@@ -299,6 +299,9 @@ class ExpressionMBQLCompiler extends BaseCstVisitor {
     return getAggregationFromName(aggregationName);
   }
 }
+
+//class ExpressionMBQLCompiler extends BaseCstVisitor {
+// }
 
 // const syntax = (type, ...children) => ({
 //   type: type,
@@ -375,7 +378,8 @@ function getTokenSource(TokenClass) {
   return TokenClass.PATTERN.source.replace(/^\\/, "");
 }
 
-function run(Visitor, source, { ...startRule, options }) {
+function run(Visitor, source, options) {
+  const { startRule } = options || {};
   if (!source) {
     return [];
   }
