@@ -1,5 +1,3 @@
-// Note: this file is imported by webpack.config.js
-
 import { Lexer, createToken } from "chevrotain";
 
 import {
@@ -128,3 +126,5 @@ export const allTokens = [
   NumberLiteral,
   Identifier,
 ];
+
+export const ExpressionLexer = new Lexer(allTokens);
