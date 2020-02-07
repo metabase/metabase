@@ -12,19 +12,21 @@
 
 (defn- add-rows-truncated-xform [limit]
   {:pre [(int? limit)]}
-  (fn add-rows-truncated-rf [rf]
-    {:pre [(fn? rf)]}
-    (fn
-      ([]
-       (rf))
+  (let [row-count (volatile! 0)]
+    (fn add-rows-truncated-rf [rf]
+      {:pre [(fn? rf)]}
+      (fn
+        ([]
+         (rf))
 
-      ([result]
-       (rf (cond-> result
-             (and (map? result) (= (:row_count result) limit))
-             (assoc-in [:data :rows_truncated] limit))))
+        ([result]
+         (rf (cond-> result
+               (and (map? result) (= @row-count limit))
+               (assoc-in [:data :rows_truncated] limit))))
 
-      ([result row]
-       (rf result row)))))
+        ([result row]
+         (vswap! row-count inc)
+         (rf result row))))))
 
 (defn add-rows-truncated
   "Add `:rows_truncated` to the result if the results were truncated because of the query's constraints. Only affects QP
