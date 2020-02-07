@@ -48,6 +48,7 @@
              [resolve-fields :as resolve-fields]
              [resolve-joins :as resolve-joins]
              [resolve-source-table :as resolve-source-table]
+             [resolve-referenced :as resolve-referenced]
              [results-metadata :as results-metadata]
              [splice-params-in-response :as splice-params-in-response]
              [store :as store]
@@ -134,6 +135,7 @@
    ;; TODO - I think we should add row count and status much later, perhaps at the very end right before
    ;; `catch-exceptions`
    #'parameters/substitute-parameters
+   #'resolve-referenced/resolve-referenced-card-resources
    #'expand-macros/expand-macros
    ;; (drivers can inject custom middleware if they implement `process-query-in-context`)
    #'driver-specific/process-query-in-context

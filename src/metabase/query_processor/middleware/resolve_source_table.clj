@@ -31,7 +31,7 @@
    flatten
    set))
 
-(defn- resolve-source-tables*
+(defn resolve-source-tables*
   "Resolve all Tables referenced in the `query`, and store them in the QP Store."
   [query]
   (check-all-source-table-ids-are-valid query)
