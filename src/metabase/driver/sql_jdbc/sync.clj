@@ -90,7 +90,8 @@
 
 (defmulti has-select-privilege?
   "Does the user `user` have (SELECT) access to a given table?"
-  {:arglists '([driver, ^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil])}
+  {:arglists '([driver, ^DatabaseMetaData metadata, ^String user, ^String db-name-or-nil, ^String schema-or-nil,
+                ^String table])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
