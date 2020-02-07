@@ -5,19 +5,11 @@
             [metabase
              [driver :as driver]
              [test :as mt]]
-            [metabase.query-processor
-             [store :as qp.store]
-             [test-util :as qp.test-util]]
-            [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]))
+            [metabase.query-processor.middleware.add-source-metadata :as add-source-metadata]))
 
 (defn- add-source-metadata [query]
   (driver/with-driver :h2
-    (qp.store/with-store
-      (qp.test-util/store-referenced-database! query)
-      (qp.test-util/store-referenced-tables! query)
+    (mt/with-everything-store
       (:pre (mt/test-qp-middleware add-source-metadata/add-source-metadata-for-source-queries query)))))
 
 (defn- results-metadata [query-results]
@@ -60,26 +52,26 @@
 
 (deftest basic-test
   (testing "Can we automatically add source metadata to the parent level of a query? If the source query has `:fields`"
-    (is (= (data/mbql-query venues
+    (is (= (mt/mbql-query venues
              {:source-query    {:source-table $$venues
                                 :fields       [$id $name]}
               :source-metadata (venues-source-metadata :id :name)})
            (add-source-metadata
-            (data/mbql-query venues
+            (mt/mbql-query venues
               {:source-query {:source-table $$venues
                               :fields       [$id $name]}})))))
 
   (testing (str "Can we automatically add source metadata to the parent level of a query? If the source query does not "
                 "have `:fields`")
-    (is (= (data/mbql-query venues
+    (is (= (mt/mbql-query venues
              {:source-query    {:source-table $$venues}
               :source-metadata (venues-source-metadata)})
            (add-source-metadata
-            (data/mbql-query venues
+            (mt/mbql-query venues
               {:source-query {:source-table $$venues}})))))
 
   (testing "Can we add source metadata for a source query that has breakouts/aggregations?"
-    (is (= (data/mbql-query venues
+    (is (= (mt/mbql-query venues
              {:source-query    {:source-table $$venues
                                 :aggregation  [[:count]]
                                 :breakout     [$price]}
@@ -87,13 +79,13 @@
                                 (venues-source-metadata :price)
                                 (results-metadata (mt/run-mbql-query venues {:aggregation [[:count]]})))})
            (add-source-metadata
-            (data/mbql-query venues
+            (mt/mbql-query venues
               {:source-query {:source-table $$venues
                               :aggregation  [[:count]]
                               :breakout     [$price]}})))))
 
   (testing "Can we add source metadata for a source query that has an aggregation for a specific Field?"
-    (is (= (data/mbql-query venues
+    (is (= (mt/mbql-query venues
              {:source-query    {:source-table $$venues
                                 :aggregation  [[:avg $id]]
                                 :breakout     [$price]}
@@ -105,7 +97,7 @@
                                   :special_type :type/PK
                                   :settings     nil}])})
            (add-source-metadata
-            (data/mbql-query venues
+            (mt/mbql-query venues
               {:source-query {:source-table $$venues
                               :aggregation  [[:avg $id]]
                               :breakout     [$price]}}))))))
@@ -116,7 +108,7 @@
 (deftest named-aggregations-test
   (testing "adding source metadata for source queries with named aggregations"
     (testing "w/ `:name` and `:display-name`"
-      (is (= (data/mbql-query venues
+      (is (= (mt/mbql-query venues
                {:source-query    {:source-table $$venues
                                   :aggregation  [[:aggregation-options
                                                   [:avg $id]
@@ -130,7 +122,7 @@
                                     :special_type :type/PK
                                     :settings     nil}])})
              (add-source-metadata
-              (data/mbql-query venues
+              (mt/mbql-query venues
                 {:source-query {:source-table $$venues
                                 :aggregation  [[:aggregation-options
                                                 [:avg $id]
@@ -145,7 +137,7 @@
                :settings     nil}]
              (source-metadata
               (add-source-metadata
-               (data/mbql-query venues
+               (mt/mbql-query venues
                  {:source-query {:source-table $$venues
                                  :aggregation  [[:aggregation-options [:avg $id] {:name "some_generated_name"}]]}}))))))
 
@@ -157,33 +149,33 @@
                :settings     nil}]
              (source-metadata
               (add-source-metadata
-               (data/mbql-query venues
+               (mt/mbql-query venues
                  {:source-query {:source-table $$venues
                                  :aggregation  [[:aggregation-options [:avg $id] {:display-name "My Cool Ag"}]]}}))))))))
 
 (deftest nested-sources-test
   (testing (str "Can we automatically add source metadata to the parent level of a query? If the source query has a "
                 "source query with source metadata")
-    (is (= (data/mbql-query venues
+    (is (= (mt/mbql-query venues
              {:source-query    {:source-query    {:source-table $$venues
                                                   :fields       [$id $name]}
                                 :source-metadata (venues-source-metadata :id :name)}
               :source-metadata (metadata-from-source-query (venues-source-metadata :id :name))})
            (add-source-metadata
-            (data/mbql-query venues
+            (mt/mbql-query venues
               {:source-query {:source-query    {:source-table $$venues
                                                 :fields       [$id $name]}
                               :source-metadata (venues-source-metadata :id :name)}})))))
 
   (testing "Can we automatically add source metadata if a source-query nested 3 levels has `:source-metadata`?"
-    (is (= (data/mbql-query venues
+    (is (= (mt/mbql-query venues
              {:source-query    {:source-query    {:source-query    {:source-table $$venues
                                                                     :fields       [$id $name]}
                                                   :source-metadata (venues-source-metadata :id :name)}
                                 :source-metadata (metadata-from-source-query (venues-source-metadata :id :name))}
               :source-metadata (metadata-from-source-query (venues-source-metadata :id :name))})
            (add-source-metadata
-            (data/mbql-query venues
+            (mt/mbql-query venues
               {:source-query
                {:source-query
                 {:source-query    {:source-table $$venues
@@ -191,24 +183,24 @@
                  :source-metadata (venues-source-metadata :id :name)}}})))))
 
   (testing "Ok, how about a source query nested 3 levels with no `source-metadata`?"
-    (is (= (data/mbql-query venues
+    (is (= (mt/mbql-query venues
              {:source-query    {:source-query    {:source-query    {:source-table $$venues}
                                                   :source-metadata (venues-source-metadata)}
                                 :source-metadata (metadata-from-source-query (venues-source-metadata))}
               :source-metadata (metadata-from-source-query (venues-source-metadata))})
            (add-source-metadata
-            (data/mbql-query venues
+            (mt/mbql-query venues
               {:source-query {:source-query {:source-query {:source-table $$venues}}}})))))
 
   (testing "Ok, how about a source query nested 3 levels with no `source-metadata`, but with `fields`"
-    (is (= (data/mbql-query venues
+    (is (= (mt/mbql-query venues
              {:source-query    {:source-query    {:source-query    {:source-table $$venues
                                                                     :fields       [$id $name]}
                                                   :source-metadata (venues-source-metadata :id :name)}
                                 :source-metadata (metadata-from-source-query (venues-source-metadata :id :name))}
               :source-metadata (metadata-from-source-query (venues-source-metadata :id :name))})
            (add-source-metadata
-            (data/mbql-query venues
+            (mt/mbql-query venues
               {:source-query {:source-query {:source-query {:source-table $$venues
                                                             :fields       [$id $name]}}}})))))
 
@@ -216,7 +208,7 @@
     (is (= (let [metadata (concat
                            (venues-source-metadata :price)
                            (results-metadata (mt/run-mbql-query venues {:aggregation [[:count]]})))]
-             (data/mbql-query venues
+             (mt/mbql-query venues
                {:source-query    {:source-query    {:source-query    {:source-table $$venues
                                                                       :aggregation  [[:count]]
                                                                       :breakout     [$price]}
@@ -224,47 +216,66 @@
                                   :source-metadata (metadata-from-source-query metadata)}
                 :source-metadata (metadata-from-source-query metadata)}))
            (add-source-metadata
-            (data/mbql-query venues
+            (mt/mbql-query venues
               {:source-query {:source-query {:source-query {:source-table $$venues
                                                             :aggregation  [[:count]]
                                                             :breakout     [$price]}}}})))))
 
   (testing "can we add `source-metadata` to the parent level if the source query has a native source query, but itself has `source-metadata`?"
-    (is (= (data/mbql-query venues
+    (is (= (mt/mbql-query venues
              {:source-query    {:source-query    {:native "SELECT \"ID\", \"NAME\" FROM \"VENUES\";"}
                                 :source-metadata (venues-source-metadata :id :name)}
               :source-metadata (metadata-from-source-query (venues-source-metadata :id :name))})
            (add-source-metadata
-            (data/mbql-query venues
+            (mt/mbql-query venues
               {:source-query {:source-query    {:native "SELECT \"ID\", \"NAME\" FROM \"VENUES\";"}
                               :source-metadata (venues-source-metadata :id :name)}}))))))
 
 (deftest joins-test
   (testing "should work inside JOINS as well"
-    (is (= (data/mbql-query venues
+    (is (= (mt/mbql-query venues
              {:source-table $$venues
               :joins        [{:source-query    {:source-table $$venues
                                                 :fields       [$id $name]}
                               :source-metadata (venues-source-metadata :id :name)}]})
            (add-source-metadata
-            (data/mbql-query venues
+            (mt/mbql-query venues
               {:source-table $$venues
                :joins        [{:source-query {:source-table $$venues
                                               :fields       [$id $name]}}]}))))))
 
 (deftest binned-fields-test
   (testing "source metadata should handle source queries that have binned fields"
-    (is (= (data/mbql-query venues
-             {:source-query    {:source-table $$venues
-                                :aggregation  [[:count]]
-                                :breakout     [[:binning-strategy $latitude :default]]}
-              :source-metadata (concat
-                                (venues-source-metadata :latitude)
-                                (results-metadata (mt/run-mbql-query venues {:aggregation [[:count]]})))})
-           (tu/with-temporary-setting-values [breakout-bin-width 5.0]
+    (mt/with-temporary-setting-values [breakout-bin-width 5.0]
+      (is (= (mt/mbql-query venues
+               {:source-query    {:source-table $$venues
+                                  :aggregation  [[:count]]
+                                  :breakout     [[:binning-strategy $latitude :default]]}
+                :source-metadata (concat
+                                  (venues-source-metadata :latitude)
+                                  (results-metadata (mt/run-mbql-query venues {:aggregation [[:count]]})))})
              (add-source-metadata
-              (data/mbql-query venues
+              (mt/mbql-query venues
                 {:source-query
                  {:source-table $$venues
                   :aggregation  [[:count]]
                   :breakout     [[:binning-strategy $latitude :default]]}})))))))
+
+(deftest deduplicate-column-names-test
+  (testing "Metadata that gets added to source queries should have deduplicated column names"
+    (let [query (add-source-metadata
+                 (mt/mbql-query checkins
+                   {:source-query {:source-table $$checkins
+                                   :joins
+                                   [{:fields       :all
+                                     :alias        "u"
+                                     :source-table $$users
+                                     :condition    [:= $user_id &u.users.id]}]}
+                    :joins        [{:fields       :all
+                                    :alias        "v"
+                                    :source-table $$venues
+                                    :condition    [:= *user_id &v.venues.id]}]
+                    :order-by     [[:asc $id]]
+                    :limit        2}))]
+      (is (= ["ID" "DATE" "USER_ID" "VENUE_ID" "ID_2" "NAME" "LAST_LOGIN"]
+             (map :name (get-in query [:query :source-metadata])))))))

@@ -157,10 +157,10 @@
              [13 "Paul Pelican"     2   2   "SoMa Squadron"]
              [4  "Peter Pelican"    2   2   "SoMa Squadron"]
              [1  "Russell Crow"     4   4   "Mission Street Murder"]]}
-  (qp.test/format-rows-by [int str #(some-> % int) #(some-> % int) identity]
+  (mt/format-rows-by [int str #(some-> % int) #(some-> % int) identity]
     (qp.test/rows+column-names
       (data/dataset bird-flocks
-        (data/run-mbql-query bird
+        (mt/run-mbql-query bird
           {:joins    [{:source-table $$flock
                        :condition    [:= $flock_id &f.flock.id]
                        :alias        "f"
@@ -188,10 +188,10 @@
              [13 "Paul Pelican"     2  ]
              [4  "Peter Pelican"    2  ]
              [1  "Russell Crow"     4  ]]}
-  (qp.test/format-rows-by [#(some-> % int) str #(some-> % int)]
+  (mt/format-rows-by [#(some-> % int) str #(some-> % int)]
     (qp.test/rows+column-names
       (data/dataset bird-flocks
-        (data/run-mbql-query bird
+        (mt/run-mbql-query bird
           {:joins    [{:source-table $$flock
                        :condition    [:= $flock_id &f.flock.id]
                        :alias        "f"
@@ -201,10 +201,10 @@
 (deftest specific-fields-test
   (datasets/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "Can we include a list of specific Fields?"
-      (let [{:keys [columns rows]} (qp.test/format-rows-by [#(some-> % int) str identity]
+      (let [{:keys [columns rows]} (mt/format-rows-by [#(some-> % int) str identity]
                                      (qp.test/rows+column-names
                                        (data/dataset bird-flocks
-                                         (data/run-mbql-query bird
+                                         (mt/run-mbql-query bird
                                            {:fields   [$id $name]
                                             :joins    [{:source-table $$flock
                                                         :condition    [:= $flock_id &f.flock.id]
@@ -237,9 +237,9 @@
   (datasets/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing (str "Do Joins with `:fields``:all` work if the joined table includes Fields that come back wrapped in"
                   " `:datetime-field` forms?")
-      (let [{:keys [columns rows]} (qp.test/format-rows-by [int identity identity int identity int int]
+      (let [{:keys [columns rows]} (mt/format-rows-by [int identity identity int identity int int]
                                      (qp.test/rows+column-names
-                                       (data/run-mbql-query users
+                                       (mt/run-mbql-query users
                                          {:source-table $$users
                                           :joins        [{:source-table $$checkins
                                                           :alias        "c"
@@ -258,9 +258,9 @@
 (deftest select-*-source-query-test
   (datasets/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "We should be able to run a query that for whatever reason ends up with a `SELECT *` for the source query"
-      (let [{:keys [rows columns]} (qp.test/format-rows-by [int int]
+      (let [{:keys [rows columns]} (mt/format-rows-by [int int]
                                      (qp.test/rows+column-names
-                                       (data/run-mbql-query checkins
+                                       (mt/run-mbql-query checkins
                                          {:source-query {:source-table $$checkins
                                                          :aggregation  [[:sum $user_id->users.id]]
                                                          :breakout     [$id]}
@@ -279,15 +279,15 @@
   [[29 "20th Century Cafe" 12  37.775 -122.423 2]
    [ 8 "25°"               11 34.1015 -118.342 2]
    [93 "33 Taps"            7 34.1018 -118.326 2]]
-  (qp.test/format-rows-by :venues
-   (qp.test/rows
-     (data/run-mbql-query venues
-       {:source-table $$venues
-        :joins        [{:alias        "cat"
-                        :source-query {:source-table $$categories}
-                        :condition    [:= $category_id &cat.*categories.id]}]
-        :order-by     [[:asc $name]]
-        :limit        3}))))
+  (mt/format-rows-by :venues
+    (qp.test/rows
+      (mt/run-mbql-query venues
+        {:source-table $$venues
+         :joins        [{:alias        "cat"
+                         :source-query {:source-table $$categories}
+                         :condition    [:= $category_id &cat.*categories.id]}]
+         :order-by     [[:asc $name]]
+         :limit        3}))))
 
 ;; Can we join against a `card__id` source query and use `:fields` `:all`?
 (datasets/expect-with-drivers (mt/normal-drivers-with-feature :left-join)
@@ -299,9 +299,9 @@
    :columns
    (mapv data/format-name ["id" "name" "category_id" "latitude" "longitude" "price" "id_2" "name_2"])}
   (tt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query (data/mbql-query categories))]
-    (qp.test/format-rows-by [int identity int 4.0 4.0 int int identity]
+    (mt/format-rows-by [int identity int 4.0 4.0 int int identity]
       (qp.test/rows+column-names
-        (data/run-mbql-query venues
+        (mt/run-mbql-query venues
           {:joins    [{:alias        "cat"
                        :source-table (str "card__" card-id)
                        :fields       :all
@@ -326,13 +326,13 @@
     ["2013-09-01T00:00:00Z" 13 "2013-09-01T00:00:00Z" 13]
     ["2013-10-01T00:00:00Z" 26 "2013-10-01T00:00:00Z" 26]]
    :columns [(data/format-name "date") "count" (data/format-name "date_2") "count_2"]}
-  (qp.test/format-rows-by [identity int identity int]
+  (mt/format-rows-by [identity int identity int]
     (qp.test/rows+column-names
       (tt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
                                          (data/mbql-query checkins
                                            {:aggregation [[:count]]
                                             :breakout    [!month.date]}))]
-        (data/run-mbql-query checkins
+        (mt/run-mbql-query checkins
           {:source-query {:source-table $$checkins
                           :aggregation  [[:count]]
                           :breakout     [!month.date]}
@@ -357,13 +357,13 @@
                ["2014-11-01T00:00:00Z" (driver-avg 75 74)]
                ["2014-12-01T00:00:00Z" 70]])
    :columns [(data/format-name "last_login") "avg"]}
-  (qp.test/format-rows-by [identity int]
+  (mt/format-rows-by [identity int]
     (qp.test/rows+column-names
       (tt/with-temp Card [{card-id :id} (qp.test-util/card-with-source-metadata-for-query
                                          (data/mbql-query checkins
                                            {:aggregation [[:count]]
                                             :breakout    [$user_id]}))]
-        (data/run-mbql-query users
+        (mt/run-mbql-query users
           {:joins       [{:fields       :all
                           :alias        "checkins_by_user"
                           :source-table (str "card__" card-id)
@@ -380,12 +380,12 @@
   (tt/with-temp Card [{card-id               :id
                        {source-query :query} :dataset_query
                        source-metadata       :result_metadata} (qp.test-util/card-with-source-metadata-for-query
-                                                                (data/mbql-query checkins
-                                                                  {:aggregation [[:count]]
-                                                                   :breakout    [!month.date]}))]
+                       (data/mbql-query checkins
+                         {:aggregation [[:count]]
+                          :breakout    [!month.date]}))]
     (qp.test/rows+column-names
-      (qp.test/format-rows-by [identity int identity int]
-        (data/run-mbql-query checkins
+      (mt/format-rows-by [identity int identity int]
+        (mt/run-mbql-query checkins
           {:source-query source-query
            :joins        [{:source-table (str "card__" card-id)
                            :alias        "checkins_by_month"
@@ -399,7 +399,7 @@
   {:rows    []
    :columns (mapv data/format-name ["id" "name" "category_id" "latitude" "longitude" "price"])}
   (qp.test/rows+column-names
-    (data/run-mbql-query venues
+    (mt/run-mbql-query venues
       {:joins    [{:source-table $$checkins
                    :alias        "c"
                    :strategy     :right-join
@@ -413,20 +413,20 @@
     (testing (str "Do we gracefully handle situtations where joins would produce multiple columns with the same name? "
                   "(Multiple columns named `id` in the example below)")
       (let [{:keys [rows columns]} (qp.test/rows+column-names
-                                     (qp.test/format-rows-by [int  ; checkins.id
-                                                              str  ; checkins.date
-                                                              int  ; checkins.user_id
-                                                              int  ; checkins.venue_id
-                                                              int  ; users.id
-                                                              str  ; users.name
-                                                              str  ; users.last_login
-                                                              int  ; venues.id
-                                                              str  ; venues.name
-                                                              int  ; venues.category_id
-                                                              3.0  ; venues.latitude
-                                                              3.0  ; venues.longitude
-                                                              int] ; venues.price
-                                       (data/run-mbql-query checkins
+                                     (mt/format-rows-by [int       ; checkins.id
+                                                         str       ; checkins.date
+                                                         int       ; checkins.user_id
+                                                         int       ; checkins.venue_id
+                                                         int       ; users.id
+                                                         str       ; users.name
+                                                         str       ; users.last_login
+                                                         int       ; venues.id
+                                                         str       ; venues.name
+                                                         int       ; venues.category_id
+                                                         3.0       ; venues.latitude
+                                                         3.0       ; venues.longitude
+                                                         int]      ; venues.price
+                                       (mt/run-mbql-query checkins
                                          {:source-query {:source-table $$checkins
                                                          :joins
                                                          [{:fields       :all
@@ -460,7 +460,7 @@
   (tt/with-temp Card [{card-id :id, :as card} (qp.test-util/card-with-source-metadata-for-query
                                                (data/native-query (qp/query->native (data/mbql-query venues))))]
     (qp.test/formatted-rows [int identity int int int identity int 4.0 4.0 int]
-      (data/run-mbql-query checkins
+      (mt/run-mbql-query checkins
         {:joins    [{:fields       :all
                      :source-table (str "card__" card-id)
                      :alias        "card"

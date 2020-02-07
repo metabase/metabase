@@ -481,7 +481,9 @@
     (map merge cols cols-returned-by-driver)
     cols))
 
-(s/defn ^:private column-info* :- ColsWithUniqueNames
+(s/defn column-info* :- ColsWithUniqueNames
+  "Returns deduplicated `:cols` metadata given a query and the initial results metadata returned by the driver's impl
+  of `execute-reducible-query`."
   [query {cols-returned-by-driver :cols, :as result}]
   ;; merge in `:cols` if returned by the driver, then make sure the `:name` of each map in `:cols` is unique, since
   ;; the FE uses it as a key for stuff like column settings
@@ -504,7 +506,7 @@
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
   [qp]
-  (fn [{query-type :type, :as query} xformf chans]
+  (fn [{query-type :type, :as query} xformf context]
     (qp
      query
      (fn [metadata]
@@ -513,4 +515,4 @@
          ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
          ;; queries...
          (comp (add-column-info-xform query metadata) (xformf metadata))))
-     chans)))
+     context)))

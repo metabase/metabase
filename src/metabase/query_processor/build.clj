@@ -11,6 +11,16 @@
             [potemkin.types :as p.types]
             [pretty.core :refer [PrettyPrintable]]))
 
+(defn quit
+  ([]
+   (quit ::quit))
+
+  ([result]
+   (ex-info "Quit early!" {::quit-result result})))
+
+(defn quit-result [e]
+  (::quit-result (ex-data e)))
+
 (def query-timeout-ms
   "Maximum amount of time to wait for a running query to complete before throwing an Exception."
   ;; I don't know if these numbers make sense, but my thinking is we want to enable (somewhat) long-running queries on
@@ -73,6 +83,7 @@
                            {:status :timed-out
                             :type   error-type/timed-out}))))))
 
+;; TODO - rename this to `default-context`
 (defn async-chans
   ;; TODO - consider adding a `:preprocessed-chan` and a `:native` chan for getting the preprocessed and native
   ;; versions of the query respectfully
@@ -220,19 +231,21 @@
 
     {:data {:cols [...], :rows [...]}, :row_count ...}"
   [metadata]
-  (fn default-rf
-    ([]
-     {:data      (assoc metadata :rows [])
-      :row_count 0})
+  (let [row-count (volatile! 0)]
+    (fn default-rf
+      ([]
+       {:data      (assoc metadata :rows [])
+        :row_count 0})
 
-    ([result]
-     {:pre [(map? result)]}
-     (assoc result :status :completed))
+      ([result]
+       {:pre [(map? result)]}
+       (assoc result
+              :row_count @row-count
+              :status :completed))
 
-    ([result row]
-     (-> result
-         (update-in [:data :rows] conj row)
-         (update :row_count inc)))))
+      ([result row]
+       (vswap! row-count inc)
+       (update-in result [:data :rows] conj row)))))
 
 (defn async-query-processor
   "Returns an async query processor function from a `base-query-processor`. QP function has the signatures
@@ -277,5 +290,6 @@
      (let [{:keys [finished-chan]} (async-qp query rff)
            result                  (a/<!! finished-chan)]
        (if (instance? Throwable result)
-         (throw result)
+         (or (quit-result result)
+             (throw result))
          result)))))

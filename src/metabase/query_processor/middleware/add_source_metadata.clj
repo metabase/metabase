@@ -1,6 +1,5 @@
 (ns metabase.query-processor.middleware.add-source-metadata
-  (:require [clojure.core.async :as a]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [metabase.api.common :as api]
             [metabase.mbql
@@ -102,8 +101,5 @@
   source queries that do not specify this information, we can often infer it by looking at the shape of the source
   query."
   [qp]
-  (fn [query xform {:keys [raise-chan], :as chans}]
-    (try
-      (qp (add-source-metadata-for-source-queries* query) xform chans)
-      (catch Throwable e
-        (a/>!! raise-chan e)))))
+  (fn [query xformf context]
+    (qp (add-source-metadata-for-source-queries* query) xformf context)))
