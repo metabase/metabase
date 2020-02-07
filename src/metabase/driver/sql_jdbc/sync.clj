@@ -5,7 +5,6 @@
              [string :as str]]
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
-            [clojure.tools.trace :refer [trace]]
             [metabase
              [driver :as driver]
              [util :as u]]
