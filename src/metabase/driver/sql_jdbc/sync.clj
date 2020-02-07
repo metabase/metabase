@@ -103,14 +103,14 @@
         (some (comp #{[table user "SELECT"]} (juxt :table_name :grantee :privilege))
               (jdbc/metadata-result rs)))))
 
-(defmulti get-tables
+(defmulti db-tables
   "Fetch a JDBC Metadata ResultSet of tables accessable to us in the DB, optionally limited to ones belonging to a given
   schema."
   {:arglists '([driver, ^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod get-tables :sql-jdbc
+(defmethod db-tables :sql-jdbc
   [_, ^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
   ;; tablePattern "%" = match all tables
   (with-open [rs (.getTables metadata db-name-or-nil schema-or-nil "%"
@@ -119,8 +119,8 @@
 
 (defn- accessible-tables
   [^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
-    (let [user (.getUserName metadata)]
-    (vec (for [{:keys [table_name table_schem] :as table} (get-tables :sql-jdbc
+  (let [user (.getUserName metadata)]
+    (vec (for [{:keys [table_name table_schem] :as table} (db-tables :sql-jdbc
                                                                       metadata schema-or-nil db-name-or-nil)
                :when (has-select-privilege? :sql-jdbc metadata user db-name-or-nil table_schem table_name)]
            table))))
