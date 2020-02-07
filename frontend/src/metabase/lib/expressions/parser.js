@@ -300,8 +300,119 @@ class ExpressionMBQLCompiler extends BaseCstVisitor {
   }
 }
 
-//class ExpressionMBQLCompiler extends BaseCstVisitor {
-// }
+const syntax = (type, ...children) => ({
+  type: type,
+  children: children.filter(child => child),
+});
+const token = token =>
+  token && {
+    type: "token",
+    text: token.image,
+    start: token.startOffset,
+    end: token.endOffset,
+  };
+
+class ExpressionsParserSyntax extends BaseCstVisitor {
+  constructor(options) {
+    super();
+    this._options = options;
+    this.validateVisitor();
+  }
+
+  expression(ctx) {
+    return this.aggregation(ctx);
+  }
+  aggregation(ctx) {
+    return syntax(
+      "aggregation",
+      this.visit(ctx.additionExpression)
+    );
+  }
+
+  additionExpression(ctx) {
+    return this._arithmeticExpression(ctx);
+  }
+  multiplicationExpression(ctx) {
+    return this._arithmeticExpression(ctx);
+  }
+  
+  _arithmeticExpression(ctx) {
+    let initial = this.visit(ctx.lhs);
+    if (ctx.rhs) {
+      for (const index of ctx.rhs.keys()) {
+        const operator = token(ctx.operator[index]);
+        const operand = this.visit(ctx.rhs[index]);
+        // collapse multiple consecutive operators into a single MBQL statement
+        if (Array.isArray(initial) && initial[0] === operator) {
+          initial.push(operand);
+        } else {
+          initial = [operator, initial, operand];
+        }
+      }
+    }
+    return initial;
+  }
+
+  aggregationExpression(ctx) {
+    const agg = this._getAggregationForName(ctx.aggregation[0].image);
+    const args = ctx.call ? this.visit(ctx.call) : [];
+    return [agg, ...args];
+  }
+  nullaryCall(ctx) {
+    return [];
+  }
+  unaryCall(ctx) {
+    return [this.visit(ctx.expression)];
+  }
+
+  metricExpression(ctx) {
+    const metricName = this.visit(ctx.metricName);
+    const metric = this._getMetricForName(metricName);
+    if (!metric) {
+      throw new Error(`Unknown Metric: ${metricName}`);
+    }
+    return ["metric", metric.id];
+  }
+  dimensionExpression(ctx) {
+    const dimensionName = this.visit(ctx.dimensionName);
+    const dimension = this._getDimensionForName(dimensionName);
+    if (!dimension) {
+      throw new Error(`Unknown Field: ${dimensionName}`);
+    }
+    return dimension.mbql();
+  }
+
+  identifier(ctx) {
+    return syntax("identifier", token(ctx.Identifier[0]));
+  }
+  stringLiteral(ctx) {
+    return syntax("string", token(ctx.StringLiteral[0]));
+  }
+  numberLiteral(ctx) {
+    return syntax("number", token(ctx.Minus), token(ctx.NumberLiteral[0]));
+  }
+  atomicExpression(ctx) {
+    return this.visit(ctx.expression);
+  }
+  parenthesisExpression(ctx) {
+    return this.visit(ctx.expression);
+  }
+
+  _getDimensionForName(dimensionName) {
+    return getDimensionFromName(dimensionName, this._options.query);
+  }
+  _getMetricForName(metricName) {
+    return this._options.query
+      .table()
+      .metrics.find(
+        metric => metric.name.toLowerCase() === metricName.toLowerCase(),
+      );
+  }
+  _getAggregationForName(aggregationName) {
+    return getAggregationFromName(aggregationName);
+  }
+}
+
 
 // const syntax = (type, ...children) => ({
 //   type: type,
