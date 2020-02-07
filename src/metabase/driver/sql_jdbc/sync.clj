@@ -5,6 +5,7 @@
              [string :as str]]
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
+            [clojure.tools.trace :refer [trace]]
             [metabase
              [driver :as driver]
              [util :as u]]
@@ -88,25 +89,41 @@
 ;; TODO - we should reduce the metadata ResultSets instead of realizing the entire thing in memory at once and then
 ;; filtering/transforming in Clojure-land
 
-(defn- has-select-privilege?
+(defmulti has-select-privilege?
   "Does the user `user` have (SELECT) access to a given table?"
-  [^DatabaseMetaData metadata, ^String user, ^String db-name-or-nil, ^String schema-or-nil, ^String table]
+  {:arglists '([driver, ^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod has-select-privilege? :sql-jdbc
+  [_, ^DatabaseMetaData metadata, ^String user, ^String db-name-or-nil, ^String schema-or-nil, ^String table]
   (or (str/blank? user) ; DBs such as H2 and Druid don't require a username when connecting.
                         ; In that case assume all tables are visible.
       (with-open [rs (.getTablePrivileges metadata db-name-or-nil schema-or-nil table)]
         (some (comp #{[table user "SELECT"]} (juxt :table_name :grantee :privilege))
               (jdbc/metadata-result rs)))))
 
-(defn- get-tables
-  "Fetch a JDBC Metadata ResultSet of tables accessable to us in the DB, optionally limited to ones belonging to a given schema."
-  [^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
+(defmulti get-tables
+  "Fetch a JDBC Metadata ResultSet of tables accessable to us in the DB, optionally limited to ones belonging to a given
+  schema."
+  {:arglists '([driver, ^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod get-tables :sql-jdbc
+  [_, ^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
   ;; tablePattern "%" = match all tables
   (with-open [rs (.getTables metadata db-name-or-nil schema-or-nil "%"
-                             (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))]
+                             (into-array String ["TABLE", "VIEW", "FOREIGN TABLE", "MATERIALIZED VIEW"]))]
+    (vec (jdbc/metadata-result rs))))
+
+(defn- accessible-tables
+  [^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
     (let [user (.getUserName metadata)]
-      (vec (for [{:keys [table_name table_schem] :as table} (jdbc/metadata-result rs)
-                 :when (has-select-privilege? metadata user db-name-or-nil table_schem table_name)]
-             table)))))
+    (vec (for [{:keys [table_name table_schem] :as table} (get-tables :sql-jdbc
+                                                                      metadata schema-or-nil db-name-or-nil)
+               :when (has-select-privilege? :sql-jdbc metadata user db-name-or-nil table_schem table_name)]
+           table))))
 
 (defn fast-active-tables
   "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch
@@ -119,7 +136,7 @@
     (let [all-schemas (set (map :table_schem (jdbc/metadata-result rs)))
           schemas     (set/difference all-schemas (excluded-schemas driver))]
       (set (for [schema schemas
-                 table  (get-tables metadata schema db-name-or-nil)]
+                 table  (accessible-tables metadata schema db-name-or-nil)]
              (let [remarks (:remarks table)]
                {:name        (:table_name table)
                 :schema      schema
@@ -131,7 +148,7 @@
   Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
   [driver, ^DatabaseMetaData metadata, & [db-name-or-nil]]
   (set (for [table   (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
-                             (get-tables metadata nil nil))]
+                             (accessible-tables metadata nil nil))]
          (let [remarks (:remarks table)]
            {:name        (:table_name  table)
             :schema      (:table_schem table)
