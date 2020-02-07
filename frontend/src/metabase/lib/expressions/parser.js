@@ -1,4 +1,4 @@
-import { Lexer, Parser, getImage } from "chevrotain";
+import { Lexer, EmbeddedActionsParser } from "chevrotain";
 
 import _ from "underscore";
 import { t } from "ttag";
@@ -31,16 +31,21 @@ import { ExpressionDimension } from "metabase-lib/lib/Dimension";
 
 const ExpressionsLexer = new Lexer(allTokens);
 
-class ExpressionsParser extends Parser {
-  constructor(input, options = {}) {
-    const parserOptions = {
-      // recoveryEnabled: false,
-      ignoredIssues: {
-        // uses GATE to disambiguate fieldName and metricName
-        atomicExpression: { OR1: true },
-      },
-    };
-    super(input, allTokens, parserOptions);
+function getImage(token) {
+  return token.image;
+}
+
+function isTokenType(tokenType, name) {
+  return (
+    tokenType &&
+    (tokenType.name === name ||
+      _.any(tokenType.CATEGORIES, c => isTokenType(c, name)))
+  );
+}
+
+class ExpressionsParser extends EmbeddedActionsParser {
+  constructor(options = {}) {
+    super(allTokens);
 
     const $ = this;
 
@@ -63,24 +68,26 @@ class ExpressionsParser extends Parser {
       const initial = $.SUBRULE($.multiplicationExpression, [
         outsideAggregation,
       ]);
-      const operations = $.MANY(() => {
+      const operations = [];
+      $.MANY(() => {
         const op = $.CONSUME(AdditiveOperator);
         const rhsVal = $.SUBRULE2($.multiplicationExpression, [
           outsideAggregation,
         ]);
-        return [op, rhsVal];
+        operations.push([op, rhsVal]);
       });
-      return this._math(initial, operations);
+      return $.ACTION(() => this._math(initial, operations));
     });
 
     $.RULE("multiplicationExpression", outsideAggregation => {
       const initial = $.SUBRULE($.atomicExpression, [outsideAggregation]);
-      const operations = $.MANY(() => {
+      const operations = [];
+      $.MANY(() => {
         const op = $.CONSUME(MultiplicativeOperator);
         const rhsVal = $.SUBRULE2($.atomicExpression, [outsideAggregation]);
-        return [op, rhsVal];
+        operations.push([op, rhsVal]);
       });
-      return this._math(initial, operations);
+      return $.ACTION(() => this._math(initial, operations));
     });
 
     $.RULE("nullaryCall", () => {
@@ -112,7 +119,9 @@ class ExpressionsParser extends Parser {
           }),
         },
       ]);
-      return this._aggregation(aggregation, lParen, arg, rParen);
+      return $.ACTION(() =>
+        this._aggregation(aggregation, lParen, arg, rParen),
+      );
     });
 
     $.RULE("metricExpression", () => {
@@ -121,11 +130,13 @@ class ExpressionsParser extends Parser {
         { ALT: () => $.SUBRULE($.identifier) },
       ]);
 
-      const metric = this.getMetricForName(this._toString(metricName));
-      if (metric != null) {
-        return this._metricReference(metricName, metric.id);
-      }
-      return this._unknownMetric(metricName);
+      return $.ACTION(() => {
+        const metric = this.getMetricForName(this._toString(metricName));
+        if (metric != null) {
+          return this._metricReference(metricName, metric.id);
+        }
+        return this._unknownMetric(metricName);
+      });
     });
 
     $.RULE("dimensionExpression", () => {
@@ -134,32 +145,36 @@ class ExpressionsParser extends Parser {
         { ALT: () => $.SUBRULE($.identifier) },
       ]);
 
-      const dimension = this.getDimensionForName(this._toString(dimensionName));
-      if (dimension != null) {
-        return this._dimensionReference(dimensionName, dimension);
-      }
-      return this._unknownField(dimensionName);
+      return $.ACTION(() => {
+        const dimension = this.getDimensionForName(
+          this._toString(dimensionName),
+        );
+        if (dimension != null) {
+          return this._dimensionReference(dimensionName, dimension);
+        }
+        return this._unknownField(dimensionName);
+      });
     });
 
     $.RULE("identifier", () => {
       const identifier = $.CONSUME(Identifier);
-      return this._identifier(identifier);
+      return $.ACTION(() => this._identifier(identifier));
     });
 
     $.RULE("stringLiteral", () => {
       const stringLiteral = $.CONSUME(StringLiteral);
-      return this._stringLiteral(stringLiteral);
+      return $.ACTION(() => this._stringLiteral(stringLiteral));
     });
 
     $.RULE("numberLiteral", () => {
       const minus = $.OPTION(() => $.CONSUME(Minus));
       const numberLiteral = $.CONSUME(NumberLiteral);
-      return this._numberLiteral(minus, numberLiteral);
+      return $.ACTION(() => this._numberLiteral(minus, numberLiteral));
     });
 
     $.RULE("atomicExpression", outsideAggregation => {
-      return $.OR(
-        [
+      return $.OR({
+        DEF: [
           // aggregations are not allowed inside other aggregations
           {
             GATE: () => outsideAggregation,
@@ -180,20 +195,20 @@ class ExpressionsParser extends Parser {
           },
           { ALT: () => $.SUBRULE($.numberLiteral) },
         ],
-        outsideAggregation
+        ERR_MSG: outsideAggregation
           ? "aggregation, number, or expression"
           : "field name, number, or expression",
-      );
+      });
     });
 
     $.RULE("parenthesisExpression", outsideAggregation => {
       const lParen = $.CONSUME(LParen);
       const expValue = $.SUBRULE($.expression, [outsideAggregation]);
       const rParen = $.CONSUME(RParen);
-      return this._parens(lParen, expValue, rParen);
+      return $.ACTION(() => this._parens(lParen, expValue, rParen));
     });
 
-    Parser.performSelfAnalysis(this);
+    this.performSelfAnalysis();
   }
 
   getDimensionForName(dimensionName) {
@@ -335,7 +350,8 @@ function run(Parser, source, options) {
     return [];
   }
   const { startRule } = options;
-  const parser = new Parser(ExpressionsLexer.tokenize(source).tokens, options);
+  const parser = new Parser(options);
+  parser.input = ExpressionsLexer.tokenize(source).tokens;
   const expression = parser[startRule]();
   if (parser.errors.length > 0) {
     for (const error of parser.errors) {
@@ -362,7 +378,7 @@ export function parse(source, options = {}) {
 }
 
 // No need for more than one instance.
-const parserInstance = new ExpressionsParser([]);
+const parserInstance = new ExpressionsParser();
 export function suggest(
   source,
   { query, startRule, index = source.length, expressionName } = {},
@@ -379,7 +395,8 @@ export function suggest(
 
   // we have requested assistance while inside an Identifier
   if (
-    lastInputToken instanceof Identifier &&
+    lastInputToken &&
+    isTokenType(lastInputToken.tokenType, "Identifier") &&
     /\w/.test(partialSource[partialSource.length - 1])
   ) {
     assistanceTokenVector = assistanceTokenVector.slice(0, -1);
@@ -391,7 +408,7 @@ export function suggest(
   // TODO: is there a better way to figure out which aggregation we're inside of?
   const currentAggregationToken = _.find(
     assistanceTokenVector.slice().reverse(),
-    t => t instanceof Aggregation,
+    t => t && isTokenType(t.tokenType, "Aggregation"),
   );
 
   const syntacticSuggestions = parserInstance.computeContentAssist(

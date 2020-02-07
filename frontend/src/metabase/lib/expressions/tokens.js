@@ -1,6 +1,6 @@
 // Note: this file is imported by webpack.config.js
 
-import { Lexer, extendToken } from "chevrotain";
+import { Lexer, createToken } from "chevrotain";
 
 import {
   VALID_AGGREGATIONS,
@@ -8,61 +8,104 @@ import {
   UNARY_AGGREGATIONS,
 } from "./config";
 
-export const AdditiveOperator = extendToken("AdditiveOperator", Lexer.NA);
-export const Plus = extendToken("Plus", /\+/, AdditiveOperator);
-export const Minus = extendToken("Minus", /-/, AdditiveOperator);
+export const Identifier = createToken({
+  name: "Identifier",
+  pattern: /\w+/,
+});
+export const NumberLiteral = createToken({
+  name: "NumberLiteral",
+  pattern: /-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?/,
+});
+export const StringLiteral = createToken({
+  name: "StringLiteral",
+  pattern: /"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*"/,
+});
 
-export const MultiplicativeOperator = extendToken(
-  "MultiplicativeOperator",
-  Lexer.NA,
-);
-export const Multi = extendToken("Multi", /\*/, MultiplicativeOperator);
-export const Div = extendToken("Div", /\//, MultiplicativeOperator);
+export const AdditiveOperator = createToken({
+  name: "AdditiveOperator",
+  pattern: Lexer.NA,
+});
+export const Plus = createToken({
+  name: "Plus",
+  pattern: /\+/,
+  categories: [AdditiveOperator],
+});
+export const Minus = createToken({
+  name: "Minus",
+  pattern: /-/,
+  categories: [AdditiveOperator],
+});
 
-export const Aggregation = extendToken("Aggregation", Lexer.NA);
+export const MultiplicativeOperator = createToken({
+  name: "MultiplicativeOperator",
+  pattern: Lexer.NA,
+});
+export const Multi = createToken({
+  name: "Multi",
+  pattern: /\*/,
+  categories: [MultiplicativeOperator],
+});
+export const Div = createToken({
+  name: "Div",
+  pattern: /\//,
+  categories: [MultiplicativeOperator],
+});
 
-export const NullaryAggregation = extendToken(
-  "NullaryAggregation",
-  Aggregation,
-);
+export const Aggregation = createToken({
+  name: "Aggregation",
+  pattern: Lexer.NA,
+});
+
+export const NullaryAggregation = createToken({
+  name: "NullaryAggregation",
+  pattern: Lexer.NA,
+  categories: [Aggregation],
+});
 const nullaryAggregationTokens = NULLARY_AGGREGATIONS.map(short =>
-  extendToken(
-    VALID_AGGREGATIONS.get(short),
-    new RegExp(VALID_AGGREGATIONS.get(short), "i"),
-    NullaryAggregation,
-  ),
+  createToken({
+    name: VALID_AGGREGATIONS.get(short),
+    pattern: new RegExp(VALID_AGGREGATIONS.get(short), "i"),
+    categories: [NullaryAggregation],
+    longer_alt: Identifier,
+  }),
 );
 
-export const UnaryAggregation = extendToken("UnaryAggregation", Aggregation);
+export const UnaryAggregation = createToken({
+  name: "UnaryAggregation",
+  pattern: Lexer.NA,
+  categories: [Aggregation],
+});
 const unaryAggregationTokens = UNARY_AGGREGATIONS.map(short =>
-  extendToken(
-    VALID_AGGREGATIONS.get(short),
-    new RegExp(VALID_AGGREGATIONS.get(short), "i"),
-    UnaryAggregation,
-  ),
+  createToken({
+    name: VALID_AGGREGATIONS.get(short),
+    pattern: new RegExp(VALID_AGGREGATIONS.get(short), "i"),
+    categories: [UnaryAggregation],
+    longer_alt: Identifier,
+  }),
 );
+export const Comma = createToken({
+  name: "Comma",
+  pattern: /,/,
+  label: "comma",
+});
 
-export const Identifier = extendToken("Identifier", /\w+/);
-export const NumberLiteral = extendToken(
-  "NumberLiteral",
-  /-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?/,
-);
-export const StringLiteral = extendToken(
-  "StringLiteral",
-  /"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*"/,
-);
+export const LParen = createToken({
+  name: "LParen",
+  pattern: /\(/,
+  label: "opening parenthesis",
+});
 
-export const Comma = extendToken("Comma", /,/);
-Comma.LABEL = "comma";
+export const RParen = createToken({
+  name: "RParen",
+  pattern: /\)/,
+  label: "closing parenthesis",
+});
 
-export const LParen = extendToken("LParen", /\(/);
-LParen.LABEL = "opening parenthesis";
-
-export const RParen = extendToken("RParen", /\)/);
-RParen.LABEL = "closing parenthesis";
-
-export const WhiteSpace = extendToken("WhiteSpace", /\s+/);
-WhiteSpace.GROUP = Lexer.SKIPPED;
+export const WhiteSpace = createToken({
+  name: "WhiteSpace",
+  pattern: /\s+/,
+  group: Lexer.SKIPPED,
+});
 
 // whitespace is normally very common so it is placed first to speed up the lexer
 export const allTokens = [
