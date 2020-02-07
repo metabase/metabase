@@ -1,6 +1,5 @@
 (ns metabase.query-processor.middleware.resolve-referenced-test
   (:require [clojure.test :refer :all]
-            [clojure.tools.trace :refer [trace]]
             [metabase.models.card :refer [Card]]
             [metabase.query-processor.middleware.resolve-referenced :as referenced]
             [metabase.query-processor.store :as qp.store]
