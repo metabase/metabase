@@ -13,6 +13,7 @@ import {
 } from "../expressions";
 
 import {
+  ExpressionLexer,
   allTokens,
   LParen,
   RParen,
@@ -25,11 +26,9 @@ import {
   NumberLiteral,
   Minus,
   Identifier,
-} from "./tokens";
+} from "./lexer";
 
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
-
-const ExpressionsLexer = new Lexer(allTokens);
 
 function getImage(token) {
   return token.image;
@@ -241,7 +240,8 @@ class ExpressionMBQLCompiler extends BaseCstVisitor {
   }
 
   aggregationExpression(ctx) {
-    const agg = this._getAggregationForName(ctx.aggregation[0].image);
+    const aggregationName = ctx.aggregation[0].image;
+    const agg = this._getAggregationForName(aggregationName);
     const args = ctx.call ? this.visit(ctx.call) : [];
     return [agg, ...args];
   }
@@ -495,7 +495,7 @@ function run(Visitor, source, options) {
     return [];
   }
   const visitor = new Visitor(options);
-  parser.input = ExpressionsLexer.tokenize(source).tokens;
+  parser.input = ExpressionLexer.tokenize(source).tokens;
   const cst = parser[startRule]();
   const expression = visitor.visit(cst);
 
@@ -515,11 +515,11 @@ function run(Visitor, source, options) {
   return expression;
 }
 
-export function compile(source, options) {
+export function compile(source, options = {}) {
   return run(ExpressionMBQLCompiler, source, options);
 }
 
-export function parse(source, options) {
+export function parse(source, options = {}) {
   return run(ExpressionsParserSyntax, source, options);
 }
 
@@ -528,7 +528,7 @@ export function suggest(
   { query, startRule, index = source.length, expressionName } = {},
 ) {
   const partialSource = source.slice(0, index);
-  const lexResult = ExpressionsLexer.tokenize(partialSource);
+  const lexResult = ExpressionLexer.tokenize(partialSource);
   if (lexResult.errors.length > 0) {
     throw new Error(t`sad sad panda, lexing errors detected`);
   }
