@@ -6,6 +6,7 @@
              [util :as u]]
             [metabase.api.common :as api]
             [metabase.models
+             [card :refer [Card]]
              [database :refer [Database]]
              [permissions :as perms]
              [permissions-group :as perms-group]
@@ -135,3 +136,37 @@
              :type     :query
              :query    {:source-table (data/id :venues)
                         :limit        1}}))))))
+
+(deftest template-tags-referenced-queries-test
+  (testing "Fails for query referenced in template tag, when user has no perms to referenced query"
+    (is (= 1 0 "This test is incomplete!"))
+
+    (is (thrown-with-msg? ExceptionInfo perms-error-msg
+          (tt/with-temp* [Database [db]
+                          Table    [table-1 {:db_id (u/get-id db)}]
+                          Table    [table-2 {:db_id (u/get-id db)}]
+                          Card     [card    {:dataset_query {:database (u/get-id db), :type :query,
+                                                             :query {:source-table (u/get-id table-2)}}}]]
+            ;; All users get perms for all new DBs by default
+            (perms/revoke-permissions! (perms-group/all-users) (u/get-id db) nil (u/get-id table-2))
+            (let [card-id  (:id card)
+                  tag-name (str "#" card-id)]
+              (check-perms-for-rasta
+               {:database (u/get-id db)
+                :type     :native
+                :native   {:query         (format "SELECT * FROM {{%s}} AS x" tag-name)
+                           :template-tags {tag-name
+                                           {:id tag-name, :name tag-name, :display-name tag-name,
+                                            :type "card", :card card-id}}}}))))))
+
+  (testing "...but it should work if user has perms [template tag referenced query]"
+    (tt/with-temp* [Database [db]
+                    Table    [table {:db_id (u/get-id db)}]]
+      ;; query should be returned by middleware unchanged
+      (= {:database (u/get-id db)
+          :type     :query
+          :query    {:source-table (u/get-id table)}}
+         (check-perms-for-rasta
+          {:database (u/get-id db)
+           :type     :query
+           :query    {:source-table (u/get-id table)}})))))
