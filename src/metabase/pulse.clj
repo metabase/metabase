@@ -158,9 +158,10 @@
     [(alert-or-pulse pulse) (keyword channel_type)]))
 
 (defmethod notification [:pulse :email]
-  [{:keys [id name] :as pulse} results {:keys [recipients] :as channel}]
-  (log/debug (trs "Sending Pulse ({0}: {1}) via email" id name))
-  (let [email-subject    (trs "Pulse: {0}" name)
+  [{pulse-id :id, pulse-name :name, :as pulse} results {:keys [recipients] :as channel}]
+  (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via email"
+                                        pulse-id (pr-str pulse-name) (count results))))
+  (let [email-subject    (trs "Pulse: {0}" pulse-name)
         email-recipients (filterv u/email? (map :email recipients))
         timezone         (-> results first :card defaulted-timezone)]
     {:subject      email-subject
@@ -169,10 +170,11 @@
      :message      (messages/render-pulse-email timezone pulse results)}))
 
 (defmethod notification [:pulse :slack]
-  [pulse results {{channel-id :channel} :details :as channel}]
-  (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) via Slack" (:id pulse) (:name pulse))))
+  [{pulse-id :id, pulse-name :name, :as pulse} results {{channel-id :channel} :details :as channel}]
+  (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via Slack"
+                                        pulse-id (pr-str pulse-name) (count results))))
   {:channel-id  channel-id
-   :message     (str "Pulse: " (:name pulse))
+   :message     (str "Pulse: " pulse-name)
    :attachments (create-slack-attachment-data results)})
 
 (defmethod notification [:alert :email]

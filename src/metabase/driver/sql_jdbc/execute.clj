@@ -263,14 +263,16 @@
   [driver ^ResultSetMetaData rsmeta]
   (mapv
    (fn [^Integer i]
-     (let [col-name     (.getColumnName rsmeta i) ; TODO - or .getColumnLabel (?)
+     (let [col-name     (.getColumnLabel rsmeta i)
            db-type-name (.getColumnTypeName rsmeta i)
            base-type    (sql-jdbc.sync/database-type->base-type driver (keyword db-type-name))]
        (log/tracef "Column %d '%s' is a %s which is mapped to base type %s for driver %s\n"
                    i col-name db-type-name base-type driver)
        {:name      col-name
+
         ;; TODO - disabled for now since it breaks a lot of tests. We can re-enable it when the tests are in a better
         ;; state
+        #_:original_name #_(.getColumnName rsmeta i)
         #_:jdbc_type #_ (u/ignore-exceptions
                           (.getName (JDBCType/valueOf (.getColumnType rsmeta i))))
         #_:db_type   #_db-type-name

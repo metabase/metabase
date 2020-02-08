@@ -61,7 +61,7 @@
 ;;; ### Public Interface
 
 (defn send-new-user-email!
-  "Send an email to INVITIED letting them know INVITOR has invited them to join Metabase."
+  "Send an email to `invitied` letting them know `invitor` has invited them to join Metabase."
   [invited invitor join-url]
   (let [company      (or (public-settings/site-name) "Unknown")
         message-body (stencil/render-file "metabase/email/new_user_invite"
@@ -91,7 +91,7 @@
           (db/select-field :email 'User, :is_superuser true, :is_active true, {:order-by [[:id :asc]]})))
 
 (defn send-user-joined-admin-notification-email!
-  "Send an email to the INVITOR (the Admin who invited NEW-USER) letting them know NEW-USER has joined."
+  "Send an email to the `invitor` (the Admin who invited `new-user`) letting them know `new-user` has joined."
   [new-user & {:keys [google-auth?]}]
   {:pre [(map? new-user)]}
   (let [recipients (all-admin-recipients)]
@@ -229,16 +229,34 @@
 
 (defn- include-csv-attachment?
   "Should this `card` and `results` include a CSV attachment?"
-  [card {:keys [cols rows] :as result-data}]
-  (or (:include_csv card)
-      (and (not (:include_xls card))
-           (= :table (render/detect-pulse-card-type card result-data))
-           (or
-            ;; If some columns are not shown, include an attachment
-            (some (complement render.body/show-in-table?) cols)
-            ;; If there are too many rows or columns, include an attachment
-            (>= (count cols) render.body/cols-limit)
-            (>= (count rows) render.body/rows-limit)))))
+  [{include-csv? :include_csv, include-xls? :include_xls, card-name :name, :as card} {:keys [cols rows], :as result-data}]
+  (letfn [(yes [reason & args]
+            (log/tracef "Including CSV attachement for Card %s because %s" (pr-str card-name) (apply format reason args))
+            true)
+          (no [reason & args]
+            (log/tracef "NOT including CSV attachement for Card %s because %s" (pr-str card-name) (apply format reason args))
+            false)]
+    (cond
+      include-csv?
+      (yes "it has `:include_csv`")
+
+      include-xls?
+      (no "it has `:include_xls`")
+
+      (some (complement render.body/show-in-table?) cols)
+      (yes "some columns are not included in rendered results")
+
+      (not= :table (render/detect-pulse-chart-type card result-data))
+      (no "we've determined it should not be rendered as a table")
+
+      (= (count (take render.body/cols-limit cols)) render.body/cols-limit)
+      (yes "the results have >= %d columns" render.body/cols-limit)
+
+      (= (count (take render.body/rows-limit rows)) render.body/rows-limit)
+      (yes "the results have >= %d rows" render.body/rows-limit)
+
+      :else
+      (no "less than %d columns, %d rows in results" render.body/cols-limit render.body/rows-limit))))
 
 (defn- result-attachments [results]
   (remove
@@ -261,7 +279,7 @@
 (defn- render-message-body [message-template message-context timezone results]
   (let [rendered-cards (binding [render/*include-title* true]
                          ;; doall to ensure we haven't exited the binding before the valures are created
-                         (doall (map #(render/render-pulse-section timezone %) results)))
+                         (mapv #(render/render-pulse-section timezone %) results))
         message-body   (assoc message-context :pulse (html (vec (cons :div (map :content rendered-cards)))))
         attachments    (apply merge (map :attachments rendered-cards))]
     (vec (concat [{:type "text/html; charset=utf-8" :content (stencil/render-file message-template message-body)}]
@@ -279,7 +297,7 @@
   (render-message-body "metabase/email/pulse" (pulse-context pulse) timezone (assoc-attachment-booleans pulse results)))
 
 (defn pulse->alert-condition-kwd
-  "Given an `ALERT` return a keyword representing what kind of goal needs to be met."
+  "Given an `alert` return a keyword representing what kind of goal needs to be met."
   [{:keys [alert_above_goal alert_condition card creator] :as alert}]
   (if (= "goal" alert_condition)
     (if (true? alert_above_goal)

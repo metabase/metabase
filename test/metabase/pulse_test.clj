@@ -7,7 +7,8 @@
             [medley.core :as m]
             [metabase
              [email-test :as et]
-             [pulse :as pulse]]
+             [pulse :as pulse]
+             [test :as mt]]
             [metabase.integrations.slack :as slack]
             [metabase.models
              [card :refer [Card]]
@@ -204,8 +205,10 @@
 
 (deftest two-cards-in-one-pulse-test
   (testing "1 pulse that has 2 cards, should contain two attachments"
-    (tt/with-temp* [Card                 [{card-id-1 :id}  (checkins-query {:breakout [["datetime-field" (data/id :checkins :date) "hour"]]})]
-                    Card                 [{card-id-2 :id}  (checkins-query {:breakout [["datetime-field" (data/id :checkins :date) "day-of-week"]]})]
+    (tt/with-temp* [Card                 [{card-id-1 :id}  (assoc (checkins-query (mt/$ids checkins {:breakout [!hour.date]}))
+                                                                  :name "card 1")]
+                    Card                 [{card-id-2 :id}  (assoc (checkins-query (mt/$ids checkins {:breakout [!month.date]}))
+                                                                  :name "card 2")]
                     Pulse                [{pulse-id :id} {:name          "Pulse Name"
                                                           :skip_if_empty false}]
                     PulseCard             [_             {:pulse_id pulse-id

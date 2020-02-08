@@ -1,8 +1,7 @@
 (ns metabase.query-processor
   "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific
   implementations."
-  (:require [clojure.core.async :as a]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [metabase
              [config :as config]
              [driver :as driver]]
@@ -56,52 +55,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                QUERY PROCESSOR                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; Query processor middleware has the signature
-;;
-;;    (defn middleware [qp]
-;;      (fn [query xformf chans]
-;;        (qp query xformf chans)))
-;;
-;; Preprocessing the query can be done in-line by modifying `query`, e.g.:
-;;
-;;    (defn middleware [qp]
-;;      (fn [query xformf {:keys [raise-chan], :as chans}]
-;;        (try
-;;          (qp (modify-query query) xformf chans)
-;;          (catch Throwable e
-;;            (a/>!! raise-chan e)))))
-;;
-;; Post-processing results (i.e., modifying the results metadata or the rows) can be done by applying a composing
-;; transducing functions. `xformf` is called with results metadata before reducing results like:
-;;
-;;    (xformf metadata) -> xform
-;;
-;; You can compose the xforms as follows:
-;;
-;;    (defn my-xform [metadata]
-;;      (fn [rf]
-;;        ([]        (rf))
-;;        ([acc]     (transform-final-result (rf acc)))
-;;        ([acc row] (rf acc (transform-row row)))))
-;;
-;;    (defn middleware [qp]
-;;      (fn [query xformf chans]
-;;        (qp
-;;         query
-;;         (fn [metadata]
-;;           (let [metadata' (transform-metadata metadata)]
-;;             (comp (my-xform metadata') (xformf metadata'))))
-;;         chans)))
-;;
-;; Note that the final reduced result varies depending on which reducing function is used; it is *NOT* safe to assume
-;; results will always be returned in the "normal" map format. Stick to modifying the metadata or rows instead.
-;;
-;; chans are a map of `core.async` channels used for different purposes. For writing most middleware you should only
-;; need `raise-chan` or `canceled-chan`. Instead of throwing Exceptions directly, you should send them to
-;; `raise-chan`, since the query processor is asynchronous, as demonstrated in the example above. `canceled-chan` can
-;; be used to listen for a message if the query is canceled before completion. See
-;; `metabase.query-processor.build/async-chans` for details about the other channels.
 
 ;; ▼▼▼ POST-PROCESSING ▼▼▼  happens from TOP-TO-BOTTOM, e.g. the results of `f` are (eventually) passed to `limit`
 (def default-middleware
@@ -181,13 +134,19 @@
 
 (def ^:private ^:const preprocessing-timeout-ms 10000)
 
+;; TODO - simpler impl if we can just pass context instead.
 (def ^:private ^{:arglists '([query])} preprocess-query
-  (let [qp (qp.build/async-query-processor
-            (base-qp
-             (fn [_ _ _ respond]
-               (respond {} []))
-             default-middleware)
-            preprocessing-timeout-ms)]
+  (let [qp (qp.build/sync-query-processor
+            (qp.build/async-query-processor
+             (base-qp
+              (fn [_ _ _ respond]
+                (respond {} []))
+              (cons
+               (fn [qp]
+                 (fn [query _ _]
+                   (throw (qp.build/quit query))))
+               default-middleware))
+             preprocessing-timeout-ms))]
     (fn [query]
       ;; record the number of recursive preprocesses taking place to prevent infinite preprocessing loops.
       (log/tracef "*preprocessing-level*: %d" *preprocessing-level*)
@@ -204,19 +163,7 @@
   Especially helpful for debugging or testing driver QP implementations."
   {:style/indent 0}
   [query]
-  (let [{:keys [preprocessed-chan finished-chan]} (preprocess-query query)]
-    ;; cancel the query as soon as we get the preprocessed version
-    (a/go
-      (when-let [preprocessed (a/<! preprocessed-chan)]
-        (a/>! finished-chan {:status :internal, ::preprocessed preprocessed})))
-    (let [result (a/<!! finished-chan)]
-      (when (instance? Throwable result)
-        (throw result))
-      (when (or (not (map? result))
-                (not (::preprocessed result)))
-        (throw (ex-info (tru "Error preprocessing query: unexpected result")
-                 {:type error-type/qp, :result result})))
-      (::preprocessed result))))
+  (dissoc (preprocess-query query) :native))
 
 (defn query->expected-cols
   "Return the `:cols` you would normally see in MBQL query results by preprocessing the query and calling `annotate` on
@@ -241,19 +188,7 @@
   {:style/indent 0}
   [query]
   (perms/check-current-user-has-adhoc-native-query-perms query)
-  (let [{:keys [native-query-chan finished-chan]} (preprocess-query query)]
-    ;; cancel the query as soon as we get the native-query
-    (a/go
-      (when-let [native-query (a/<! native-query-chan)]
-        (a/>! finished-chan {:status :internal, ::native native-query})))
-    (let [result (a/<!! finished-chan)]
-      (when (instance? Throwable result)
-        (throw result))
-      (when (or (not (map? result))
-                (not (::native result)))
-        (throw (ex-info (tru "Error converting query to native: unexpected result")
-                 {:type error-type/qp, :result result})))
-      (::native result))))
+  (:native (preprocess-query query)))
 
 (defn query->native-with-spliced-params
   "Return the native form for a `query`, with any prepared statement (or equivalent) parameters spliced into the query

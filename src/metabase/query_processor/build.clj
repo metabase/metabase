@@ -16,6 +16,7 @@
    (quit ::quit))
 
   ([result]
+   (log/trace "Quitting query processing early.")
    (ex-info "Quit early!" {::quit-result result})))
 
 (defn quit-result [e]

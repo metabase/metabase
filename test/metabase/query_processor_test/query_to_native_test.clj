@@ -1,13 +1,13 @@
 (ns metabase.query-processor-test.query-to-native-test
   "Tests around the `query->native` function."
   (:require [clojure.test :refer :all]
+            [metabase
+             [query-processor :as qp]
+             [test :as mt]]
             [metabase.api.common :as api]
             [metabase.models.permissions :as perms]
-            [metabase.query-processor :as qp]
             [metabase.query-processor.middleware.async-wait :as async-wait]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
+            [metabase.test.util :as tu]
             [schema.core :as s]))
 
 (deftest query->native-test
@@ -21,14 +21,14 @@
                          "FROM \"PUBLIC\".\"VENUES\" "
                          "LIMIT 1048576")
             :params nil}
-           (qp/query->native (data/mbql-query venues))))))
+           (qp/query->native (mt/mbql-query venues))))))
 
 (deftest already-native-test
   (testing "If query is already native, `query->native` should still do stuff like parsing parameters"
     (is (= {:query  "SELECT * FROM VENUES WHERE price = 3;"
             :params []}
            (qp/query->native
-             {:database   (data/id)
+             {:database   (mt/id)
               :type       :native
               :native     {:query         "SELECT * FROM VENUES [[WHERE price = {{price}}]];"
                            :template-tags {"price" {:name "price", :display-name "Price", :type :number, :required false}}}
@@ -38,7 +38,7 @@
   (testing "`query->native` should not be subject to async waiting")
   (is (= :ok
          (tu/throw-if-called async-wait/run-in-thread-pool
-           (qp/query->native (data/mbql-query venues))
+           (qp/query->native (mt/mbql-query venues))
            :ok))))
 
 
@@ -63,22 +63,22 @@
       (is (= true
              (boolean
               (query->native-with-user-perms
-               (data/mbql-query venues)
+               (mt/mbql-query venues)
                {:object-perms? true, :native-perms? true})))))
     (testing "If you don't have MBQL permissions for the original query it should throw an error"
       (is (schema= {:error (s/eq "You do not have permissions to run this query.")
                     s/Any  s/Any}
                    (query->native-with-user-perms
-                    (data/mbql-query venues)
+                    (mt/mbql-query venues)
                     {:object-perms? false, :native-perms? true}))))
     (testing "If you don't have have native query execution permissions for the DB it should throw an error"
       (is (= {:error                "You do not have permissions to run this query."
-              :required-permissions (perms/adhoc-native-query-path (data/id))
-              :actual-permissions   #{(perms/object-path (data/id) "PUBLIC" (data/id :venues))}
+              :required-permissions (perms/adhoc-native-query-path (mt/id))
+              :actual-permissions   #{(perms/object-path (mt/id) "PUBLIC" (mt/id :venues))}
               :permissions-error?   true
               :type                 :missing-required-permissions}
              (query->native-with-user-perms
-              (data/mbql-query venues)
+              (mt/mbql-query venues)
               {:object-perms? true, :native-perms? false}))))))
 
 (deftest error-test
