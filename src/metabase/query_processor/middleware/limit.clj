@@ -33,11 +33,11 @@
   "Add an implicit `limit` clause to MBQL queries without any aggregations, and limit the maximum number of rows that
   can be returned in post-processing."
   [qp]
-  (fn [query xformf chans]
+  (fn [query xformf context]
     (let [max-rows (or (mbql.u/query->max-rows-limit query)
                        i/absolute-max-results)]
       (qp
        (add-limit max-rows query)
        (fn [metadata]
          (comp (limit-xform max-rows) (xformf metadata)))
-       chans))))
+       context))))

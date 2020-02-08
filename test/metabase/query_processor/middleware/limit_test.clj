@@ -1,24 +1,17 @@
 (ns metabase.query-processor.middleware.limit-test
   "Tests for the `:limit` clause and `:max-results` constraints."
   (:require [clojure.test :refer :all]
-            [metabase.query-processor
-             [build :as qp.build]
-             [interface :as i]]
-            [metabase.query-processor.middleware.limit :as limit]))
+            [metabase.query-processor.interface :as i]
+            [metabase.query-processor.middleware.limit :as limit]
+            [metabase.test :as mt]))
 
 (defn- limit [query]
-  ((qp.build/sync-query-processor
-    (qp.build/async-query-processor
-     (qp.build/base-query-processor
-      (fn [_ query _ return-results]
-        (return-results query (repeat [:ok])))
-      [limit/limit])))
-   query))
+  (mt/test-qp-middleware-2 limit/limit query (repeat (inc i/absolute-max-results) [:ok])))
 
 (deftest limit-results-rows-test
   (testing "Apply to an infinite sequence and make sure it gets capped at `i/absolute-max-results`"
     (is (= i/absolute-max-results
-           (-> (limit {:type :native}) :data :rows count)))))
+           (-> (limit {:type :native}) :post count)))))
 
 (deftest max-results-constraint-test
   (testing "Apply an arbitrary max-results on the query and ensure our results size is appropriately constrained"
@@ -26,15 +19,19 @@
            (-> (limit {:constraints {:max-results 1234}
                        :type        :query
                        :query       {:aggregation [[:count]]}})
-               :data :rows count)))))
+               :post count)))))
 
 (deftest no-aggregation-test
   (testing "Apply a max-results-bare-rows limit specifically on no-aggregation query"
     (let [result (limit {:constraints {:max-results 46}
                          :type        :query
-                         :query       {}
-                         :rows        (repeat [:ok])})]
+                         :query       {}})]
       (is (= 46
-             (-> result :data :rows count)
-             (-> result :row_count)
-             (-> result :data :query :limit))))))
+             (-> result :post count))
+          "number of rows in results should match limit added by middleware")
+      (is (= 46
+             (-> result :metadata :row_count))
+          ":row_count should match the limit added by middleware")
+      (is (= 46
+             (-> result :pre :query :limit))
+          "Preprocessed query should have :limit added to it"))))

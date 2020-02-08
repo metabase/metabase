@@ -1,36 +1,28 @@
-(ns metabase.query-processor.build
+(ns ^:deprecated metabase.query-processor.build
   "Logic for building a function that can process MBQL queries. TODO ­ consider renaming this namespace to
   `metabase.query-processor.impl`."
   (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
             [metabase
-             [config :as config]
              [driver :as driver]
              [util :as u]]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor
+             [error-type :as error-type]
+             [reducible :as qp.reducible]]
+            [metabase.query-processor.context.default :as context.default]
+            [potemkin :as p]
             [potemkin.types :as p.types]
             [pretty.core :refer [PrettyPrintable]]))
 
-(defn quit
-  ([]
-   (quit ::quit))
+(comment qp.reducible/keep-me context.default/keep-me)
 
-  ([result]
-   (log/trace "Quitting query processing early.")
-   (ex-info "Quit early!" {::quit-result result})))
+(p/import-vars
+ [qp.reducible
+  quit
+  quit-result]
 
-(defn quit-result [e]
-  (::quit-result (ex-data e)))
-
-(def query-timeout-ms
-  "Maximum amount of time to wait for a running query to complete before throwing an Exception."
-  ;; I don't know if these numbers make sense, but my thinking is we want to enable (somewhat) long-running queries on
-  ;; prod but for test and dev purposes we want to fail faster because it usually means I broke something in the QP
-  ;; code
-  (cond
-    config/is-prod? (u/minutes->ms 20)
-    config/is-test? (u/seconds->ms 30)
-    config/is-dev?  (u/minutes->ms 3)))
+ [context.default
+  query-timeout-ms])
 
 (defn- async-chans-set-up-result-forwarding!
   "Asynchronously forward the result of `canceled-chan`, `raise-chan`, or `reduced-chan` to `finished-chan`; close all
@@ -288,9 +280,15 @@
      (qp* query default-rff))
 
     ([query rff]
-     (let [{:keys [finished-chan]} (async-qp query rff)
-           result                  (a/<!! finished-chan)]
-       (if (instance? Throwable result)
-         (or (quit-result result)
-             (throw result))
-         result)))))
+     (try
+       (let [{:keys [finished-chan]} (async-qp query rff)
+             result                  (a/<!! finished-chan)]
+         (if (instance? Throwable result)
+           (throw result)
+           result))
+       (catch Throwable e
+         (or (quit-result e)
+             (throw e)))))))
+
+(doseq [[_ varr] (ns-interns *ns*)]
+  (alter-meta! varr assoc :deprecated true))

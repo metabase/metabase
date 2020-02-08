@@ -13,15 +13,16 @@
 
    Refer to `metabase.query-processor.middleware.cache-backend.interface` for more details about how the cache
   backends themselves."
-  (:require [clojure.core.async :as a]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [metabase
              [config :as config]
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.plugins.classloader :as classloader]
+            [metabase.query-processor
+             [reducible :as qp.reducible]
+             [util :as qputil]]
             [metabase.query-processor.middleware.cache-backend.interface :as i]
-            [metabase.query-processor.util :as qputil]
             [metabase.util.i18n :refer [trs]]))
 
 ;; TODO - Why not make this an option in the query itself? :confused:
@@ -82,26 +83,21 @@
       (log/info "Returning cached results for query" (u/emoji "💾"))
       (assoc results :cached true))))
 
-(defn- save-results!  [query-hash results]
-  (log/info "Caching results for next time for query" (u/emoji "💾"))
-  (i/save-results! @backend-instance query-hash results))
-
 
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
 
-(defn- is-cacheable? ^Boolean [{:keys [cache-ttl]}]
-  (boolean (and (public-settings/enable-query-caching)
-                cache-ttl)))
+(defn- is-cacheable? [{:keys [cache-ttl]}]
+  (and (public-settings/enable-query-caching)
+       cache-ttl))
 
-(defn- save-results-if-successful! [query-hash start-time-ms {:keys [status], :as results}]
+(defn- save-results! [query-hash start-time-ms results]
   (let [total-time-ms (- (System/currentTimeMillis) start-time-ms)
         min-ttl-ms    (* (public-settings/query-caching-min-ttl) 1000)]
     (log/info (format "Query took %d ms to run; miminum for cache eligibility is %d ms" total-time-ms min-ttl-ms))
-    (when (and (= status :completed)
-               (>= total-time-ms min-ttl-ms))
-      (save-results! query-hash results))))
+    (when (>= total-time-ms min-ttl-ms)
+      (log/info "Caching results for next time for query" (u/emoji "💾"))
+      (i/save-results! @backend-instance query-hash results))))
 
-;; TODO
 (defn- save-results-xform [query-hash start-time]
   (fn [rf]
     (fn
@@ -109,41 +105,23 @@
        (rf))
 
       ([result]
-       (let [result (rf result)]
-         ;; TODO - should this be saved async??
-         (save-results-if-successful! query-hash start-time result)
-         result))
+       (save-results! query-hash start-time result)
+       (rf result))
 
       ([result row] (rf result row)))))
 
-(defn- return-cached-results
-  ;; TODO - no idea if this works...
-  [result xformf {:keys [reducible-chan raise-chan], :as chans}]
-  (let [metadata (-> (dissoc result :rows)
-                     (assoc :cached? true))
-        rows     (:rows result)
-        xform    (xformf metadata)]
-    (a/>!! reducible-chan (fn reduce-results [rff]
-                            (try
-                              (let [rf (xform (rff metadata))]
-                                (transduce identity rf rows))
-                              (catch Throwable e
-                                (a/>!! raise-chan e)))))
-    nil))
-
 (defn- run-query-with-cache
-  [qp {:keys [cache-ttl], :as query} xformf chans]
+  [qp {:keys [cache-ttl], :as query} xformf context]
   ;; TODO - Query will already have `info.hash` if it's a userland query. I'm not 100% sure it will be the same hash,
   ;; because this is calculated after normalization, instead of before
   (let [query-hash (qputil/query-hash query)
         start-time (System/currentTimeMillis)]
     (if-let [result (cached-results query-hash cache-ttl)]
-      (return-cached-results result xformf chans)
-      (qp
-       query
-       (fn [metadata]
-         (comp (save-results-xform query-hash start-time) (xformf metadata)))
-       chans))))
+      (throw (qp.reducible/quit result))
+      (qp query
+          (fn [metadata]
+            (comp (save-results-xform query-hash start-time) (xformf metadata)))
+          context))))
 
 (defn maybe-return-cached-results
   "Middleware for caching results of a query if applicable.
@@ -158,10 +136,10 @@
         running the query, satisfying this requirement.)
      *  The result *rows* of the query must be less than `query-caching-max-kb` when serialized (before compression)."
   [qp]
-  (fn [query xformf chans]
+  (fn [query xformf context]
     (if-not (is-cacheable? query)
-      (qp query xformf chans)
+      (qp query xformf context)
       ;; wait until we're actually going to use the cache before initializing the backend. We don't want to initialize
       ;; it when the files get compiled, because that would give it the wrong version of the
       ;; `IQueryProcessorCacheBackend` protocol
-      (run-query-with-cache qp query xformf chans))))
+      (run-query-with-cache qp query xformf context))))

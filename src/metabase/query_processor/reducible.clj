@@ -4,7 +4,7 @@
             [metabase.query-processor.context :as context]
             [metabase.query-processor.context.default :as context.default]))
 
-(defn prepare-context! [context]
+(defn- prepare-context! [context]
   ;; 1) If query doesn't complete by `timeoutf`, call `timeoutf`, which should raise an Exception
   ;; 2) when `out-chan` is closed prematurely, call `cancelf` to send a message to `canceled-chan`
   ;; 3) when `out-chan` is closed or gets a result, close both out-chan and canceled-chan
@@ -13,12 +13,15 @@
         timeout       (context/timeout context)]
     (a/go
       (let [[val port] (a/alts! [out-chan (a/timeout timeout)] :priority true)]
+        (println "val:" val)                                                                       ; NOCOMMIT
+        (println "port:" (if (= port out-chan) "out-chan" (format "timeout after %d ms" timeout))) ; NOCOMMIT
         (cond
           (not= port out-chan) (context/timeoutf context)
           (nil? val)           (context/cancelf context))
         (log/tracef "Closing out-chan and canceled-chan.")
         (a/close! out-chan)
-        (a/close! canceled-chan)))))
+        (a/close! canceled-chan)))
+    nil))
 
 (defn pivot [query xformf context]
   (context/runf query xformf context))
@@ -37,7 +40,6 @@
 
     ([query context]
      (let [context (merge (context.default/default-context) context)]
-       (prepare-context! context)
        (try
          (qp query (context/default-xformf context) context)
          (catch Throwable e

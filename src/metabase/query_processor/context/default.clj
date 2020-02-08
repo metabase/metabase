@@ -40,11 +40,11 @@
        (vswap! row-count inc)
        (update-in result [:data :rows] conj row)))))
 
-(defn default-reducedf [metadata reduced-result context]
+(defn- default-reducedf [metadata reduced-result context]
   #_(assoc-in metadata [:data :rows] reduced-rows)
   (context/resultf reduced-result context))
 
-(defn default-reducef [xformf context metadata reducible-rows]
+(defn- default-reducef [xformf context metadata reducible-rows]
   {:pre [(fn? xformf)]}
   (let [metadata (context/metadataf metadata context)
         xform    (xformf metadata)
@@ -53,18 +53,19 @@
         rf       (xform rf)]
     (context/reducedf metadata (transduce identity rf reducible-rows) context)))
 
-(defn default-runf [query xformf context]
+(defn- default-runf [query xformf context]
   (context/executef driver/*driver* query context (fn respond* [metadata reducible-rows]
                                                     (context/reducef xformf context metadata reducible-rows))))
 
-(defn default-raisef [e context]
+(defn- default-raisef [e context]
   {:pre [(instance? Throwable e)]}
   (context/resultf e context))
 
-(defn default-resultf [result context]
+(defn- default-resultf [result context]
   (a/>!! (context/out-chan context) result))
 
-(defn default-timeoutf [context]
+(defn- default-timeoutf
+  [context]
   (let [timeout (context/timeout context)]
     (log/debug (trs "Query timed out after {0} ms, raising timeout exception." timeout))
     (context/raisef (ex-info (tru "Timed out after {0}." (u/format-milliseconds timeout))
@@ -72,16 +73,18 @@
                        :type   error-type/timed-out})
                     context)))
 
-(defn default-cancelf [context]
+(defn- default-cancelf [context]
   (log/debug (trs "Query canceled before finishing."))
   (a/>!! (context/canceled-chan context) :cancel))
 
-(defn identity1
+(defn- identity1
   "Util fn. Takes 2 args and returns the first arg as-is."
   [x _]
   x)
 
-(defn default-context []
+(defn default-context
+  "Return a new context for executing queries using the default values. These can be overrided as needed."
+  []
   {:timeout        query-timeout-ms
    :rff            default-rff
    :default-xformf (constantly identity)
@@ -94,6 +97,7 @@
    :preprocessedf  identity1
    :nativef        identity1
    :cancelf        default-cancelf
+   :timeoutf       default-timeoutf
    :resultf        default-resultf
    :canceled-chan  (a/promise-chan)
    :out-chan       (a/promise-chan)})

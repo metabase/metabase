@@ -12,6 +12,8 @@
             [metabase.driver.sql-jdbc-test :as sql-jdbc-test]
             [metabase.query-processor
              [build :as qp.build]
+             [context :as qp.context]
+             [reducible :as qp.reducible]
              [test-util :as qp.test-util]]
             [metabase.test
              [data :as data]
@@ -186,7 +188,7 @@
 
 ;; New QP middleware test util fns. Experimental. These will be put somewhere better if confirmed useful.
 
-(defn test-qp-middleware
+(defn ^:deprecated test-qp-middleware
   "Helper for testing QP middleware. Changes are returned in a map with keys:
 
     * `:pre`(`query` after preprocessing)
@@ -219,3 +221,32 @@
             ([result] [metadata (rf result)])
             ([result row] (rf result row)))))
       chans))))
+
+(defn test-qp-middleware-2
+  ([middleware-fn]
+   (test-qp-middleware-2 middleware-fn {}))
+
+  ([middleware-fn query]
+   (test-qp-middleware-2 middleware-fn query []))
+
+  ([middleware-fn query rows]
+   (test-qp-middleware-2 middleware-fn query nil rows))
+
+  ([middleware-fn query metadata rows]
+   (test-qp-middleware-2 middleware-fn query metadata rows nil))
+
+  ([middleware-fn query metadata rows {:keys [run], :as context}]
+   (let [qp     (qp.reducible/sync-qp
+                 (qp.reducible/async-qp
+                  (qp.reducible/combine-middleware
+                   [middleware-fn])))
+         result (qp query (merge
+                           {:timeout 500}
+                           context
+                           {:runf (fn [query xformf context]
+                                    (when run (run))
+                                    (let [metadata (qp.context/metadataf metadata context)]
+                                      (qp.context/reducef xformf context (assoc metadata :pre query) rows)))}))]
+     {:pre      (-> result :data :pre)
+      :post     (-> result :data :rows)
+      :metadata (update result :data #(dissoc % :pre :rows))})))
