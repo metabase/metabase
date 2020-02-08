@@ -11,12 +11,11 @@
              [permissions-group :as perms-group]
              [table :refer [Table]]]
             [metabase.query-processor.middleware.permissions :refer [check-query-permissions]]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
+            [metabase.test.data :as data]
             [metabase.test.data.users :as users]
             [schema.core :as s]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt])
+  (:import clojure.lang.ExceptionInfo))
 
 (def ^:private ^{:arglists '([query]), :style/indent 0} check-perms (check-query-permissions identity))
 
@@ -32,13 +31,15 @@
   [query]
   (do-with-rasta (fn [] (check-perms query))))
 
+(def perms-error-msg #"^You do not have permissions to run this query\.")
+
 (deftest native-query-perms-test
   (testing "Make sure the NATIVE query fails to run if current user doesn't have perms"
-    (is (thrown?  Exception
-                 (check-perms-for-rasta
-                  {:database 1000
-                   :type     :native
-                   :native   {:query "SELECT * FROM VENUES"}}))))
+    (is (thrown-with-msg? ExceptionInfo perms-error-msg
+          (check-perms-for-rasta
+           {:database 1000
+            :type     :native
+            :native   {:query "SELECT * FROM VENUES"}}))))
 
   (testing "...but it should work if user has perms"
     (tt/with-temp Database [db]
@@ -53,15 +54,15 @@
 
 (deftest mbql-query-perms-test
   (testing "Make sure the MBQL query fails to run if current user doesn't have perms"
-    (is (thrown? Exception
-                 (tt/with-temp* [Database [db]
-                                 Table    [table {:db_id (u/get-id db)}]]
-                   ;; All users get perms for all new DBs by default
-                   (perms/revoke-permissions! (perms-group/all-users) (u/get-id db))
-                   (check-perms-for-rasta
-                    {:database (u/get-id db)
-                     :type     :query
-                     :query    {:source-table {:name "Toucans", :id (u/get-id table)}}})))))
+    (is (thrown-with-msg? ExceptionInfo perms-error-msg
+          (tt/with-temp* [Database [db]
+                          Table    [table {:db_id (u/get-id db)}]]
+            ;; All users get perms for all new DBs by default
+            (perms/revoke-permissions! (perms-group/all-users) (u/get-id db))
+            (check-perms-for-rasta
+             {:database (u/get-id db)
+              :type     :query
+              :query    {:source-table (u/get-id table)}})))))
 
   (testing "...but it should work if user has perms [MBQL]"
     (tt/with-temp* [Database [db]
@@ -77,11 +78,11 @@
 
 (deftest nested-native-query-test
   (testing "Make sure nested native query fails to run if current user doesn't have perms"
-    (is (thrown? Exception
-                 (check-perms-for-rasta
-                  {:database 1000
-                   :type     :query
-                   :query   {:source-query {:native "SELECT * FROM VENUES"}}}))))
+    (is (thrown-with-msg? ExceptionInfo perms-error-msg
+          (check-perms-for-rasta
+           {:database 1000
+            :type     :query
+            :query   {:source-query {:native "SELECT * FROM VENUES"}}}))))
 
   (testing "...but it should work if user has perms [nested native queries]"
     (tt/with-temp Database [db]
@@ -96,15 +97,15 @@
 
 (deftest nested-mbql-query-test
   (testing "Make sure nested MBQL query fails to run if current user doesn't have perms"
-    (is (thrown? Exception
-                 (tt/with-temp* [Database [db]
-                                 Table    [table {:db_id (u/get-id db)}]]
-                   ;; All users get perms for all new DBs by default
-                   (perms/revoke-permissions! (perms-group/all-users) (u/get-id db))
-                   (check-perms-for-rasta
-                    {:database (u/get-id db)
-                     :type     :query
-                     :query    {:source-query {:source-table {:name "Toucans", :id (u/get-id table)}}}})))))
+    (is (thrown-with-msg? ExceptionInfo perms-error-msg
+          (tt/with-temp* [Database [db]
+                          Table    [table {:db_id (u/get-id db)}]]
+            ;; All users get perms for all new DBs by default
+            (perms/revoke-permissions! (perms-group/all-users) (u/get-id db))
+            (check-perms-for-rasta
+             {:database (u/get-id db)
+              :type     :query
+              :query    {:source-query {:source-table (u/get-id table)}}})))))
 
   (testing "...but it should work if user has perms [nested MBQL queries]"
     (tt/with-temp* [Database [db]
