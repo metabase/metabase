@@ -5,7 +5,8 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
-(defn- tags-referenced-cards
+(defn tags-referenced-cards
+  "Returns Card instances referenced by the given native `query`."
   [query]
   (->> (get-in query [:native :template-tags])
        vals
