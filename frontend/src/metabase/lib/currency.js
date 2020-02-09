@@ -828,7 +828,7 @@ export default {
     name_plural: "Serbian dinars",
   },
   RUB: {
-    symbol: "RUB",
+    symbol: "₽",
     name: "Russian Ruble",
     symbol_native: "руб.",
     decimal_digits: 2,
