@@ -103,7 +103,8 @@ describe("The Reference Section", () => {
     it("should update the sample database", async () => {
       // create a new db by cloning #1
       const d1 = await MetabaseApi.db_get({ dbId: 1 });
-      const { id } = await MetabaseApi.db_create(d1);
+      const cloned = { ...d1, ...{ name: "cloned-db" } };
+      const { id } = await MetabaseApi.db_create(cloned);
 
       // go to that db's reference page
       const store = await createTestStore();
