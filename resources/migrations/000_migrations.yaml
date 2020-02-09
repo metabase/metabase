@@ -6185,7 +6185,7 @@ databaseChangeLog:
   - changeSet:
       id: 161
       author: mohammedamarnah
-      comment: 'Added 0.34.0'
+      comment: 'Added 0.34.3'
       preConditions:
         - onFail: MARK_RAN
         - onUpdateSQL: IGNORE
