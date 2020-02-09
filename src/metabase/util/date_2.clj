@@ -115,6 +115,8 @@
     :iso-week-of-year
     :month-of-year
     :quarter-of-year
+    ;; TODO - in this namespace `:year` is something you can both extract and truncate to. In MBQL `:year` is a truncation
+    ;; operation. Maybe we should rename this unit to clear up the potential confusion (?)
     :year})
 
 (def ^:private week-fields*

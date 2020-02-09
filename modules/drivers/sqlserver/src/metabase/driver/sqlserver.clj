@@ -180,8 +180,8 @@
   (hsql/call :datefromparts (hx/year expr) 1 1))
 
 (defmethod driver/date-add :sqlserver
-  [_ dt amount unit]
-  (date-add unit amount dt))
+  [_ hsql-form amount unit]
+  (date-add unit amount hsql-form))
 
 (defmethod sql.qp/unix-timestamp->timestamp [:sqlserver :seconds]
   [_ _ expr]
