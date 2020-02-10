@@ -39,7 +39,12 @@ export default class Smart extends React.Component {
         ],
         settings,
       ) => [
-        _.find(cols, col => col.name === settings["scalar.field"]) || cols[1],
+        // try and find a selected field setting
+        cols.find(col => col.name === settings["scalar.field"]) ||
+          // fall back to the second column
+          cols[1] ||
+          // but if there's only one column use that
+          cols[0],
       ],
     }),
     "scalar.switch_positive_negative": {
