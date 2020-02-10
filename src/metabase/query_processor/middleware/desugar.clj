@@ -18,5 +18,5 @@
   `inside` with lower-level clauses like `between`. This is done to minimize the number of MBQL clauses individual
   drivers need to support. Clauses replaced by this middleware are marked `^:sugar` in the MBQL schema."
   [qp]
-  (fn [query xform context]
-    (qp (desugar* query) xform context)))
+  (fn [query xformf context]
+    (qp (desugar* query) xformf context)))

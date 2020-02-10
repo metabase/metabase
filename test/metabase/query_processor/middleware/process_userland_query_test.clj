@@ -91,7 +91,6 @@
 (defn- async-middleware [qp]
   (fn async-middleware-qp [query xformf context]
     (future
-      (println "< IN ANOTHER THREAD >")
       (try
         (qp query xformf context)
         (catch Throwable e

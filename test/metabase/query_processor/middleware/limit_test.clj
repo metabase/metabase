@@ -5,12 +5,15 @@
             [metabase.query-processor.middleware.limit :as limit]
             [metabase.test :as mt]))
 
+(def ^:private test-max-results 10000)
+
 (defn- limit [query]
-  (mt/test-qp-middleware limit/limit query (repeat (inc i/absolute-max-results) [:ok])))
+  (with-redefs [i/absolute-max-results test-max-results]
+    (mt/test-qp-middleware limit/limit query (repeat (inc test-max-results) [:ok]))))
 
 (deftest limit-results-rows-test
   (testing "Apply to an infinite sequence and make sure it gets capped at `i/absolute-max-results`"
-    (is (= i/absolute-max-results
+    (is (= test-max-results
            (-> (limit {:type :native}) :post count)))))
 
 (deftest max-results-constraint-test

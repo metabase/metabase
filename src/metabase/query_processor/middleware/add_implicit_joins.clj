@@ -238,5 +238,5 @@
 
   This middleware also replaces all `fk->` clauses with `joined-field` clauses, which are easier to work with."
   [qp]
-  (fn [query xform context]
-    (qp (add-implicit-joins* query) xform context)))
+  (fn [query xformf context]
+    (qp (add-implicit-joins* query) xformf context)))

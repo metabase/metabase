@@ -5,6 +5,6 @@
 (defn validate-query
   "Middleware that validates a query immediately after normalization."
   [qp]
-  (fn [query xform context]
+  (fn [query xformf context]
     (mbql.s/validate-query query)
-    (qp query xform context)))
+    (qp query xformf context)))

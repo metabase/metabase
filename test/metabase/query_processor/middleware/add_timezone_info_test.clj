@@ -25,6 +25,8 @@
       (mt/with-temporary-setting-values [report-timezone timezone]
         (driver/with-driver driver
           (mt/with-database-timezone-id nil
-            (is (= expected
-                   (-> (mt/test-qp-middleware add-timezone-info/add-timezone-info nil nil nil)
+            (is (= {:data      expected
+                    :row_count 0
+                    :status    :completed}
+                   (-> (mt/test-qp-middleware add-timezone-info/add-timezone-info {} {} [])
                        :metadata)))))))))

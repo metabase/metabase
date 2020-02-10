@@ -102,7 +102,7 @@
   "Map of about `query` to add to the exception response."
   [{query-type :type, :as query} {:keys [preprocessed native]}]
   (merge
-   {:json_query (-> (dissoc query :info :driver))}
+   {:json_query (dissoc query :info :driver)}
    ;; add the fully-preprocessed and native forms to the error message for MBQL queries, since they're extremely
    ;; useful for debugging purposes.
    (when (= (keyword query-type) :query)

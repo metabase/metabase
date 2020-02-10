@@ -154,5 +154,5 @@
   "Middleware that looks for `:metric` and `:segment` macros in an unexpanded MBQL query and substitute the macros for
   their contents."
   [qp]
-  (fn [query xform context]
-    (qp (expand-macros* query) xform context)))
+  (fn [query xformf context]
+    (qp (expand-macros* query) xformf context)))

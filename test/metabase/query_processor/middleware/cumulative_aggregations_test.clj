@@ -84,12 +84,11 @@
         [3 3]
         [4 4]
         [5 5]])
-      :post
-      :data))
+      :post))
 
 (deftest e2e-test
   (testing "make sure we take breakout fields into account"
-    (is (= {:rows [[1 1] [2 3] [3 6] [4 10] [5 15]]}
+    (is (= [[1 1] [2 3] [3 6] [4 10] [5 15]]
            (handle-cumulative-aggregations
             {:database 1
              :type     :query
@@ -98,7 +97,7 @@
                         :aggregation  [[:cum-sum [:field-id 1]]]}}))))
   (testing "make sure we sum up cumulative aggregations inside expressions correctly"
     (testing "we shouldn't be doing anything special with the expressions, let the database figure that out. We will just SUM"
-      (is (= {:rows [[1 1] [2 3] [3 6] [4 10] [5 15]]}
+      (is (= [[1 1] [2 3] [3 6] [4 10] [5 15]]
              (handle-cumulative-aggregations
               {:database 1
                :type     :query

@@ -292,19 +292,19 @@
 
 (defn execute-reducible-query
   "Default impl of `execute-reducible-query` for sql-jdbc drivers."
-  {:added "0.35.0", :arglists '([driver query chans respond] [driver sql params canceled-chan respond])}
-  ([driver {{sql :query, params :params} :native, :as outer-query} {:keys [canceled-chan]} respond]
-   (let [remark   (qputil/query->remark outer-query)
-         sql      (str "-- " remark "\n" sql)
-         max-rows (or (mbql.u/query->max-rows-limit outer-query)
-                      qp.i/absolute-max-results)]
-     (with-open [conn (connection-with-timezone driver (qp.store/database) (qp.timezone/report-timezone-id-if-supported))
-                 stmt (doto (prepared-statement* driver conn sql params canceled-chan)
-                        (.setMaxRows max-rows))
-                 rs   (execute-query! driver stmt)]
-       (let [rsmeta           (.getMetaData rs)
-             results-metadata {:cols (column-metadata driver rsmeta)}]
-         (respond results-metadata (reducible-rows driver rs rsmeta canceled-chan)))))))
+  {:added "0.35.0", :arglists '([driver query context respond])}
+  [driver {{sql :query, params :params} :native, :as outer-query} {:keys [canceled-chan]} respond]
+  (let [remark   (qputil/query->remark outer-query)
+        sql      (str "-- " remark "\n" sql)
+        max-rows (or (mbql.u/query->max-rows-limit outer-query)
+                     qp.i/absolute-max-results)]
+    (with-open [conn (connection-with-timezone driver (qp.store/database) (qp.timezone/report-timezone-id-if-supported))
+                stmt (doto (prepared-statement* driver conn sql params canceled-chan)
+                       (.setMaxRows max-rows))
+                rs   (execute-query! driver stmt)]
+      (let [rsmeta           (.getMetaData rs)
+            results-metadata {:cols (column-metadata driver rsmeta)}]
+        (respond results-metadata (reducible-rows driver rs rsmeta canceled-chan))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Convenience Imports from Old Impl                                        |

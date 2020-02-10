@@ -8,7 +8,7 @@
   into standard `lisp-case` ones, removing/rewriting legacy clauses, removing empty ones, etc. This is done to
   simplifiy the logic in the QP steps following this."
   [qp]
-  (fn [query xform context]
+  (fn [query xformf context]
     (let [query' (try
                    (normalize/normalize query)
                    (catch Throwable e
@@ -16,4 +16,4 @@
                               {:type  error-type/invalid-query
                                :query query}
                               e))))]
-      (qp query' xform context))))
+      (qp query' xformf context))))

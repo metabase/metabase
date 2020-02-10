@@ -48,9 +48,9 @@
   be checked separately before allowing the relevant objects to be create (e.g., when saving a new Pulse or
   'publishing' a Card)."
   [qp]
-  (fn [query xform context]
+  (fn [query xformf context]
     (check-query-permissions* query)
-    (qp query xform context)))
+    (qp query xformf context)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

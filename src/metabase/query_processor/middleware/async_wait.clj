@@ -76,19 +76,19 @@
   InterruptedExceptions."
   false)
 
-(defn- runnable ^Runnable [qp query xform context]
+(defn- runnable ^Runnable [qp query xformf context]
   (bound-fn []
     (binding [*already-in-thread-pool?* true]
       (try
-        (qp query xform context)
+        (qp query xformf context)
         (catch Throwable e
           (context/raisef e context))))))
 
-(defn- run-in-thread-pool [qp {database-id :database, :as query} xform context]
+(defn- run-in-thread-pool [qp {database-id :database, :as query} xformf context]
   {:pre [(integer? database-id)]}
   (try
     (let [pool          (db-thread-pool database-id)
-          futur         (.submit pool (runnable qp query xform context))
+          futur         (.submit pool (runnable qp query xformf context))
           canceled-chan (context/canceled-chan context)]
       (a/go
         (when (a/<! canceled-chan)
@@ -102,8 +102,8 @@
   "Middleware that throttles the number of concurrent queries for each connected database, parking the thread until it
   is allowed to run."
   [qp]
-  (fn [query xform context]
+  (fn [query xformf context]
     {:pre [(map? query)]}
     (if (or *already-in-thread-pool?* *disable-async-wait*)
-      (qp query xform context)
-      (run-in-thread-pool qp query xform context))))
+      (qp query xformf context)
+      (run-in-thread-pool qp query xformf context))))

@@ -13,7 +13,7 @@
 (defn- add-column-info [query metadata]
   (mt/with-everything-store
     (driver/with-driver :h2
-      (:metadata (mt/test-qp-middleware annotate/add-column-info query metadata [])))))
+      (-> (mt/test-qp-middleware annotate/add-column-info query metadata []) :metadata :data))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             column-info (:native)                                              |
@@ -380,8 +380,8 @@
 (deftest unique-name-key-test
   (testing "Make sure `:cols` always come back with a unique `:name` key (#8759)"
     (is (= {:cols
-            [{:base_type    :type/Number,
-              :special_type :type/Number,
+            [{:base_type    :type/Number
+              :special_type :type/Number
               :name         "count"
               :display_name "count"
               :source       :aggregation

@@ -21,13 +21,16 @@
 (defn- splice-params [metadata]
   (with-splice-params-call?
     (driver/with-driver :h2
-      (:metadata (mt/test-qp-middleware
-                  splice-params-in-response/splice-params-in-response
-                  {} metadata [])))))
+      (-> (mt/test-qp-middleware
+           splice-params-in-response/splice-params-in-response
+           {} metadata [])
+          :metadata
+          :data))))
 
 (deftest basic-test
   (testing "Middleware should attempt to splice parameters into native query for queries that have params"
-    (is (= {:native_form '(splice-parameters-into-native-query :h2 {:query "SELECT * FROM birds WHERE name = ?", :params ["Reggae"]})}
+    (is (= {:native_form '(splice-parameters-into-native-query :h2 {:query  "SELECT * FROM birds WHERE name = ?"
+                                                                    :params ["Reggae"]})}
            (splice-params {:native_form {:query "SELECT * FROM birds WHERE name = ?", :params ["Reggae"]}})))))
 
 (deftest empty-params-test
@@ -51,13 +54,15 @@
     (with-splice-params-call?
       (is (= '(splice-parameters-into-native-query
                :h2
-               {:query "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = ? LIMIT 1", :params ["Beyond Sushi"]})
+               {:query  "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = ? LIMIT 1"
+                :params ["Beyond Sushi"]})
              (qp/query->native-with-spliced-params (sushi-query)))))))
 
 (deftest query->native-test
   (testing "`query->native` should not call `splice-parameters-into-native-query`"
     (with-splice-params-call?
-      (is (= {:query "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = ? LIMIT 1", :params ["Beyond Sushi"]}
+      (is (= {:query  "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = ? LIMIT 1"
+              :params ["Beyond Sushi"]}
              (qp/query->native (sushi-query)))))))
 
 (deftest e2e-test
@@ -70,4 +75,5 @@
            (boolean
             '(splice-parameters-into-native-query
               :h2
-              {:query "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = ? LIMIT 1", :params ["Beyond Sushi"]}))))))
+              {:query  "SELECT \"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\" FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"NAME\" = ? LIMIT 1"
+               :params ["Beyond Sushi"]}))))))
