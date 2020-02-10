@@ -119,10 +119,10 @@
 (defn record-and-return-metadata!
   "Middleware that records metadata about the columns returned when running the query."
   [qp]
-  (fn [{{:keys [skip-results-metadata?]} :middleware, :as query} xformf chans]
+  (fn [{{:keys [skip-results-metadata?]} :middleware, :as query} xformf context]
     (if skip-results-metadata?
-      (qp query xformf chans)
+      (qp query xformf context)
       (let [record! (partial record-metadata! query)
             xformf' (fn [metadata]
                       (comp (insights-xform metadata record!) (xformf metadata)))]
-        (qp query xformf' chans)))))
+        (qp query xformf' context)))))

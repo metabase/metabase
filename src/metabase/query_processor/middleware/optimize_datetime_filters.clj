@@ -1,8 +1,7 @@
 (ns metabase.query-processor.middleware.optimize-datetime-filters
   "Middlware that optimizes equality (`=` and `!=`) and comparison (`<`, `between`, etc.) filter clauses against
   bucketed datetime fields. See docstring for `optimize-datetime-filters` for more details."
-  (:require [clojure.core.async :as a]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [metabase.mbql.util :as mbql.u]
             [metabase.util.date-2 :as u.date]))
 
@@ -130,8 +129,5 @@
   This namespace expects to run *after* the `wrap-value-literals` middleware, meaning datetime literal strings like
   `\"2019-09-24\"` should already have been converted to `:absolute-datetime` clauses."
   [qp]
-  (fn [query xform {:keys [raise-chan], :as chans}]
-    (try
-      (qp (optimize-datetime-filters* query) xform chans)
-      (catch Throwable e
-        (a/>!! raise-chan e)))))
+  (fn [query xform context]
+    (qp (optimize-datetime-filters* query) xform context)))

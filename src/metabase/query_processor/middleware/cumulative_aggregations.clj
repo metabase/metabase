@@ -57,9 +57,9 @@
   "Middleware that implements `cum-count` and `cum-sum` aggregations. These clauses are replaced with `count` and `sum`
   clauses respectively and summation is performed on results in Clojure-land."
   [qp]
-  (fn [{{breakouts :breakout, aggregations :aggregation} :query, :as query} xformf chans]
+  (fn [{{breakouts :breakout, aggregations :aggregation} :query, :as query} xformf context]
     (if-not (mbql.u/match aggregations #{:cum-count :cum-sum})
-      (qp query xformf chans)
+      (qp query xformf context)
       (let [query'            (replace-cumulative-ags query)
             ;; figure out which indexes are being changed in the results. Since breakouts always get included in
             ;; results first we need to offset the indexes to change by the number of breakouts
@@ -68,4 +68,4 @@
                                      (+ (count breakouts) i)))
             xformf'           (fn [metadata]
                                 (comp (cumulative-ags-xform replaced-indecies) (xformf metadata)))]
-        (qp query' xformf' chans)))))
+        (qp query' xformf' context)))))

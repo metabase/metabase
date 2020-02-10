@@ -48,15 +48,9 @@
   be checked separately before allowing the relevant objects to be create (e.g., when saving a new Pulse or
   'publishing' a Card)."
   [qp]
-  (fn [query xform chans]
+  (fn [query xform context]
     (check-query-permissions* query)
-    (qp query xform chans))
-  #_(fn [query xform {:keys [raise-chan], :as chans}]
-      (try
-        (check-query-permissions* query)
-        (qp query xform chans)
-        (catch Throwable e
-          (a/>!! raise-chan e)))))
+    (qp query xform context)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

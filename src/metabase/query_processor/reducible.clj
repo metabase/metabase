@@ -13,8 +13,9 @@
         timeout       (context/timeout context)]
     (a/go
       (let [[val port] (a/alts! [out-chan (a/timeout timeout)] :priority true)]
-        (println "val:" val)                                                                       ; NOCOMMIT
-        (println "port:" (if (= port out-chan) "out-chan" (format "timeout after %d ms" timeout))) ; NOCOMMIT
+        (log/tracef "Port %s got %s"
+                    (if (= port out-chan) "out-chan" (format "[timeout after %d ms]" timeout))
+                    val)
         (cond
           (not= port out-chan) (context/timeoutf context)
           (nil? val)           (context/cancelf context))
@@ -40,8 +41,9 @@
 
     ([query context]
      (let [context (merge (context.default/default-context) context)]
+       (prepare-context! context)
        (try
-         (qp query (context/default-xformf context) context)
+         (qp query (context/base-xformf context) context)
          (catch Throwable e
            (context/raisef e context)))
        (context/out-chan context)))))

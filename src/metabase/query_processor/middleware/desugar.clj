@@ -1,6 +1,5 @@
 (ns metabase.query-processor.middleware.desugar
-  (:require [clojure.core.async :as a]
-            [metabase.mbql
+  (:require [metabase.mbql
              [predicates :as mbql.preds]
              [schema :as mbql.s]
              [util :as mbql.u]]
@@ -19,8 +18,5 @@
   `inside` with lower-level clauses like `between`. This is done to minimize the number of MBQL clauses individual
   drivers need to support. Clauses replaced by this middleware are marked `^:sugar` in the MBQL schema."
   [qp]
-  (fn [query xform {:keys [raise-chan], :as chans}]
-    (try
-      (qp (desugar* query) xform chans)
-      (catch Throwable e
-        (a/>!! raise-chan e)))))
+  (fn [query xform context]
+    (qp (desugar* query) xform context)))

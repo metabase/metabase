@@ -40,18 +40,32 @@
        (vswap! row-count inc)
        (update-in result [:data :rows] conj row)))))
 
+;; TODO - not 100% this makes sense -- should rows always be merged into metadata?
 (defn- default-reducedf [metadata reduced-result context]
-  #_(assoc-in metadata [:data :rows] reduced-rows)
   (context/resultf reduced-result context))
+
+(defn- default-base-xformf [metadata]
+  (fn [f]
+    (f metadata)))
 
 (defn- default-reducef [xformf context metadata reducible-rows]
   {:pre [(fn? xformf)]}
-  (let [metadata (context/metadataf metadata context)
-        xform    (xformf metadata)
-        rff      (context/rff context)
-        rf       (rff metadata)
-        rf       (xform rf)]
-    (context/reducedf metadata (transduce identity rf reducible-rows) context)))
+  (let [metadata  (context/metadataf metadata context)
+        metadata* (volatile! nil)]
+    (let [rf ((xformf metadata)
+              (fn [metadata]
+                (vreset! metadata* metadata)
+                ((context/rff context) metadata)))]
+      (assert (fn? rf))
+      (when-let [reduced-rows (try
+                                (transduce identity rf reducible-rows)
+                                (catch Throwable e
+                                  (context/raisef (ex-info (tru "Error reducing result rows")
+                                                    {:type error-type/qp}
+                                                    e)
+                                                  context)
+                                  nil))]
+        (context/reducedf @metadata* reduced-rows context)))))
 
 (defn- default-runf [query xformf context]
   (context/executef driver/*driver* query context (fn respond* [metadata reducible-rows]
@@ -85,19 +99,19 @@
 (defn default-context
   "Return a new context for executing queries using the default values. These can be overrided as needed."
   []
-  {:timeout        query-timeout-ms
-   :rff            default-rff
-   :default-xformf (constantly identity)
-   :raisef         default-raisef
-   :runf           default-runf
-   :executef       driver/execute-reducible-query
-   :reducef        default-reducef
-   :reducedf       default-reducedf
-   :metadataf      identity1
-   :preprocessedf  identity1
-   :nativef        identity1
-   :cancelf        default-cancelf
-   :timeoutf       default-timeoutf
-   :resultf        default-resultf
-   :canceled-chan  (a/promise-chan)
-   :out-chan       (a/promise-chan)})
+  {:timeout       query-timeout-ms
+   :rff           default-rff
+   :base-xformf   default-base-xformf
+   :raisef        default-raisef
+   :runf          default-runf
+   :executef      driver/execute-reducible-query
+   :reducef       default-reducef
+   :reducedf      default-reducedf
+   :metadataf     identity1
+   :preprocessedf identity1
+   :nativef       identity1
+   :cancelf       default-cancelf
+   :timeoutf      default-timeoutf
+   :resultf       default-resultf
+   :canceled-chan (a/promise-chan)
+   :out-chan      (a/promise-chan)})

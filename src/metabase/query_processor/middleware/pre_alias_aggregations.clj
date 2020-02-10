@@ -36,5 +36,5 @@
 (defn pre-alias-aggregations
   "Middleware that generates aliases for all aggregations anywhere in a query, and makes sure they're unique."
   [qp]
-  (fn [query xform chans]
-    (qp (maybe-pre-alias-aggregations query) xform chans)))
+  (fn [query xformf context]
+    (qp (maybe-pre-alias-aggregations query) xformf context)))

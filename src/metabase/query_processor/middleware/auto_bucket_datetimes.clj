@@ -121,5 +121,5 @@
   Applies to any unbucketed Field in a breakout, or fields in a filter clause being compared against `yyyy-MM-dd`
   format datetime strings."
   [qp]
-  (fn [query xformf chans]
-    (qp (auto-bucket-datetimes* query) xformf chans)))
+  (fn [query xformf context]
+    (qp (auto-bucket-datetimes* query) xformf context)))

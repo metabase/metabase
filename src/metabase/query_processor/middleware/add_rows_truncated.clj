@@ -33,9 +33,8 @@
   results that are reduced to a map (e.g. the default reducing function; other reducing functions such as streaming to
   a CSV are unaffected.)"
   [qp]
-  (fn [query xformf chans]
-    (qp
-     query
-     (fn [metadata]
-       (comp (add-rows-truncated-xform (results-limit query)) (xformf metadata)))
-     chans)))
+  (fn [query xformf context]
+    (qp query
+        (fn [metadata]
+          (comp (add-rows-truncated-xform (results-limit query)) (xformf metadata)))
+        context)))

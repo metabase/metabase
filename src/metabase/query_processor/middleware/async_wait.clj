@@ -10,6 +10,7 @@
   (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
             [metabase.models.setting :refer [defsetting]]
+            [metabase.query-processor.context :as context]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-trs trs]]
             [schema.core :as s])
@@ -75,33 +76,34 @@
   InterruptedExceptions."
   false)
 
-(defn- runnable ^Runnable [qp query xform {:keys [raise-chan], :as chans}]
+(defn- runnable ^Runnable [qp query xform context]
   (bound-fn []
     (binding [*already-in-thread-pool?* true]
       (try
-        (qp query xform chans)
+        (qp query xform context)
         (catch Throwable e
-          (a/>!! raise-chan e))))))
+          (context/raisef e context))))))
 
-(defn- run-in-thread-pool [qp {database-id :database, :as query} xform {:keys [canceled-chan raise-chan], :as chans}]
+(defn- run-in-thread-pool [qp {database-id :database, :as query} xform context]
   {:pre [(integer? database-id)]}
   (try
-    (let [pool  (db-thread-pool database-id)
-          futur (.submit pool (runnable qp query xform chans))]
+    (let [pool          (db-thread-pool database-id)
+          futur         (.submit pool (runnable qp query xform context))
+          canceled-chan (context/canceled-chan context)]
       (a/go
         (when (a/<! canceled-chan)
           (log/debug (trs "Request canceled, canceling pending query"))
           (future-cancel futur))))
     (catch Throwable e
-      (a/>!! raise-chan e)))
+      (context/raisef e context)))
   nil)
 
 (defn wait-for-turn
   "Middleware that throttles the number of concurrent queries for each connected database, parking the thread until it
   is allowed to run."
   [qp]
-  (fn [query xform chans]
+  (fn [query xform context]
     {:pre [(map? query)]}
     (if (or *already-in-thread-pool?* *disable-async-wait*)
-      (qp query xform chans)
-      (run-in-thread-pool qp query xform chans))))
+      (qp query xform context)
+      (run-in-thread-pool qp query xform context))))

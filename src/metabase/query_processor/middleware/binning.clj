@@ -225,5 +225,5 @@
   the binned field. This middleware looks for that criteria, then updates the related min/max values and calculates
   the bin-width based on the criteria values (or global min/max information)."
   [qp]
-  (fn [query xformf chans]
-    (qp (update-binning-strategy* query) xformf chans)))
+  (fn [query xformf context]
+    (qp (update-binning-strategy* query) xformf context)))

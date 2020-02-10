@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.add-dimension-projections-test
   (:require [clojure.test :refer :all]
-            [metabase.query-processor.build :as qp.build]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dim-projections]
+            [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [toucan.hydrate :as hydrate]))
 
@@ -117,13 +117,7 @@
    :display_name    "Foo"})
 
 (defn- add-remapping [query metadata rows]
-  ((qp.build/sync-query-processor
-    (qp.build/async-query-processor
-     (qp.build/base-query-processor
-      (fn [_ _ _ return-results]
-        (return-results metadata rows))
-      [add-dim-projections/add-remapping])))
-   query))
+  (:result (mt/test-qp-middleware add-dim-projections/add-remapping query metadata rows)))
 
 (def ^:private example-result-cols-category
   (merge

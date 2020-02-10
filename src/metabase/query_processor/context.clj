@@ -55,7 +55,7 @@
   "Called upon receiving metadata from driver."
   {:arglists '([metadata context])}
   [metadata {:keys [metadataf], :as context}]
-  {:pre [(fn? metadataf)]}
+  {:pre [(fn? metadataf)], :post [(map? %)]}
   (metadataf metadata context))
 
 (defn preprocessedf
@@ -87,7 +87,7 @@
   (cancelf context))
 
 (defn resultf
-  "Called with the final result. Either `reducedf` or `raisef`."
+  "ALWAYS alled exactly once with the final result, which is the result of either `reducedf` or `raisef`."
   {:arglists '([result context])}
   [result {:keys [resultf], :as context}]
   {:pre [(fn? resultf)]}
@@ -100,14 +100,14 @@
   {:pre [(int? timeout)]}
   timeout)
 
-(defn default-xformf
+(defn base-xformf
   "xformf passed to the first middleware.
 
     (xformf metadata) -> xform"
   {:arglists '([context])}
-  [{:keys [default-xformf]}]
-  {:pre [(fn? default-xformf)]}
-  default-xformf)
+  [{:keys [base-xformf]}]
+  {:pre [(fn? base-xformf)]}
+  base-xformf)
 
 (defn rff
   "Reducing function.

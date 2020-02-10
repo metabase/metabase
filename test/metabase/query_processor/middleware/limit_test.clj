@@ -6,7 +6,7 @@
             [metabase.test :as mt]))
 
 (defn- limit [query]
-  (mt/test-qp-middleware-2 limit/limit query (repeat (inc i/absolute-max-results) [:ok])))
+  (mt/test-qp-middleware limit/limit query (repeat (inc i/absolute-max-results) [:ok])))
 
 (deftest limit-results-rows-test
   (testing "Apply to an infinite sequence and make sure it gets capped at `i/absolute-max-results`"

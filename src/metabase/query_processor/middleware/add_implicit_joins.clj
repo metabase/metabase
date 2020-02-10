@@ -2,8 +2,7 @@
   "Middleware that creates corresponding `:joins` for Tables referred to by `:fk->` clauses and replaces those clauses
   with `:joined-field` clauses."
   (:refer-clojure :exclude [alias])
-  (:require [clojure.core.async :as a]
-            [metabase
+  (:require [metabase
              [db :as mdb]
              [driver :as driver]
              [util :as u]]
@@ -239,8 +238,5 @@
 
   This middleware also replaces all `fk->` clauses with `joined-field` clauses, which are easier to work with."
   [qp]
-  (fn [query xform {:keys [raise-chan], :as chans}]
-    (try
-      (qp (add-implicit-joins* query) xform chans)
-      (catch Throwable e
-        (a/>!! raise-chan e)))))
+  (fn [query xform context]
+    (qp (add-implicit-joins* query) xform context)))

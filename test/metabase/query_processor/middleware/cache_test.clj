@@ -27,7 +27,7 @@
   (cached?
    ;; TODO - needs to delay for `*query-execution-delay-ms*`
    (:metadata
-    (mt/test-qp-middleware-2
+    (mt/test-qp-middleware
      cache/maybe-return-cached-results
      (merge {:cache-ttl 60, :query :abc} query-kvs)
      {}

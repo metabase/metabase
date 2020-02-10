@@ -43,12 +43,18 @@
 ;;; ------------------------------------------------ Result Metadata -------------------------------------------------
 
 (defn- transform-result-metadata-query-results
-  [{:keys [status], :as results}]
-  (when (= status :failed)
+  [result]
+  (if (instance? Throwable result)
     (log/error (trs "Error running query to determine Card result metadata:")
-               (u/pprint-to-str 'red results)))
-  (or (get-in results [:data :results_metadata :columns])
-      []))
+               (u/pprint-to-str 'red result))
+    (or (get-in result [:data :results_metadata :columns])
+        [])))
+
+(defn- transform-result-metadata-xform [rf]
+  (fn
+    ([]    (rf))
+    ([x]   (rf x))
+    ([x y] (rf x (transform-result-metadata-query-results y)))))
 
 (defn- query-for-result-metadata [query]
   ;; for purposes of calculating the actual Fields & types returned by this query we really only need the first
@@ -70,13 +76,12 @@
    results."
   [query]
   (binding [qpi/*disable-qp-logging* true]
-    (let [query                   (query-for-result-metadata query)
-          finished-chan'          (a/promise-chan)
-          {:keys [finished-chan]} (qp/process-query-async query)]
+    (let [query     (query-for-result-metadata query)
+          out-chan  (qp/process-query-async query)
+          out-chan* (a/promise-chan transform-result-metadata-xform)]
+      (a/pipe out-chan out-chan*)
+      ;; close original `out-chan` when `out-chan*` closes
       (a/go
-        (let [[val port] (a/alts! [finished-chan finished-chan'] :priority true)]
-          (when (and val (= port finished-chan))
-            (a/>! finished-chan' (transform-result-metadata-query-results val))))
-        (a/close! finished-chan)
-        (a/close! finished-chan'))
-      finished-chan')))
+        (a/<! out-chan*)
+        (a/close! out-chan))
+      out-chan*)))

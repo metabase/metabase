@@ -11,7 +11,6 @@
              [query-processor-test :as qp.test]]
             [metabase.driver.sql-jdbc-test :as sql-jdbc-test]
             [metabase.query-processor
-             [build :as qp.build]
              [context :as qp.context]
              [reducible :as qp.reducible]
              [test-util :as qp.test-util]]
@@ -188,65 +187,47 @@
 
 ;; New QP middleware test util fns. Experimental. These will be put somewhere better if confirmed useful.
 
-(defn ^:deprecated test-qp-middleware
+(defn test-qp-middleware
   "Helper for testing QP middleware. Changes are returned in a map with keys:
 
-    * `:pre`(`query` after preprocessing)
-    * `:metadata` (`metadata` after post-processing modification)
-    * `:post`(`rows` after post-processing transduction)"
+    * `:result`   ­ final result
+    * `:pre`      ­ `query` after preprocessing
+    * `:metadata` ­ `metadata` after post-processing
+    * `:post`     ­ `rows` after post-processing transduction"
+  ([middleware-fn]
+   (test-qp-middleware middleware-fn {}))
+
   ([middleware-fn query]
    (test-qp-middleware middleware-fn query []))
 
   ([middleware-fn query rows]
-   (test-qp-middleware middleware-fn query {} rows))
-
-  ([middleware-fn query metadata rows & [{:keys [chans run]
-                                          :or   {chans {}}}]]
-   (let [qp (middleware-fn
-             (fn [query xformf _]
-               (if run
-                 (run)
-                 (let [xform             (xformf metadata)
-                       rf                (xform (qp.build/default-rff metadata))
-                       [metadata result] (transduce identity rf rows)]
-                   {:pre      query
-                    :metadata metadata
-                    :post     result}))))]
-     (qp
-      query
-      (fn xformf [metadata]
-        (fn xform [rf]
-          (fn rf*
-            ([] (rf))
-            ([result] [metadata (rf result)])
-            ([result row] (rf result row)))))
-      chans))))
-
-(defn test-qp-middleware-2
-  ([middleware-fn]
-   (test-qp-middleware-2 middleware-fn {}))
-
-  ([middleware-fn query]
-   (test-qp-middleware-2 middleware-fn query []))
-
-  ([middleware-fn query rows]
-   (test-qp-middleware-2 middleware-fn query nil rows))
+   (test-qp-middleware middleware-fn query nil rows))
 
   ([middleware-fn query metadata rows]
-   (test-qp-middleware-2 middleware-fn query metadata rows nil))
+   (test-qp-middleware middleware-fn query metadata rows nil))
 
-  ([middleware-fn query metadata rows {:keys [run], :as context}]
-   (let [qp     (qp.reducible/sync-qp
-                 (qp.reducible/async-qp
-                  (qp.reducible/combine-middleware
-                   [middleware-fn])))
-         result (qp query (merge
-                           {:timeout 500}
-                           context
-                           {:runf (fn [query xformf context]
-                                    (when run (run))
-                                    (let [metadata (qp.context/metadataf metadata context)]
-                                      (qp.context/reducef xformf context (assoc metadata :pre query) rows)))}))]
-     {:pre      (-> result :data :pre)
-      :post     (-> result :data :rows)
-      :metadata (update result :data #(dissoc % :pre :rows))})))
+  ([middleware-fn query metadata rows {:keys [run async?], :as context}]
+   (let [async-qp (qp.reducible/async-qp
+                   (qp.reducible/combine-middleware
+                    (if (sequential? middleware-fn)
+                      middleware-fn
+                      [middleware-fn])))
+         context  (merge
+                   {:timeout 500}
+                   {:runf (fn [query xformf context]
+                            (try
+                              (when run (run))
+                              (let [metadata (qp.context/metadataf metadata context)]
+                                (qp.context/reducef xformf context (assoc metadata :pre query) rows))
+                              (catch Throwable e
+                                (println "Error in test-qp-middleware runf:" e)
+                                (throw e))))}
+                   context)]
+     (if async?
+       (async-qp query context)
+       (let [qp     (qp.reducible/sync-qp async-qp)
+             result (qp query context)]
+         {:result   (dissoc result :pre)
+          :pre      (-> result :data :pre)
+          :post     (-> result :data :rows)
+          :metadata (update result :data #(dissoc % :pre :rows))})))))

@@ -1,7 +1,6 @@
 (ns metabase.query-processor.middleware.resolve-fields
   "Middleware that resolves the Fields referenced by a query."
-  (:require [clojure.core.async :as a]
-            [metabase.mbql.util :as mbql.u]
+  (:require [metabase.mbql.util :as mbql.u]
             [metabase.query-processor.store :as qp.store]
             [metabase.util :as u]))
 
@@ -18,8 +17,5 @@
   "Fetch the Fields referenced by `:field-id` clauses in a query and store them in the Query Processor Store for the
   duration of the Query Execution."
   [qp]
-  (fn [query xform {:keys [raise-chan], :as chans}]
-    (try
-      (qp (resolve-fields* query) xform chans)
-      (catch Throwable e
-        (a/>!! raise-chan e)))))
+  (fn [query xform context]
+    (qp (resolve-fields* query) xform context)))

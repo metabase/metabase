@@ -2,17 +2,18 @@
   (:require [clojure.core.async :as a]
             [clojure.test :refer :all]
             [metabase.query-processor
+             [context :as context]
              [error-type :as error-type]
              [util :as qputil]]
             [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
             [metabase.test :as mt]))
 
 (defn- do-with-query-execution [query run]
-  (mt/with-open-channels [query-execution-chan (a/promise-chan)]
-    (with-redefs [process-userland-query/save-query-execution! (partial a/>!! query-execution-chan)]
+  (mt/with-open-channels [save-chan (a/promise-chan)]
+    (with-redefs [process-userland-query/save-query-execution! (partial a/>!! save-chan)]
       (run
         (fn qe-result* []
-          (let [qe (mt/wait-for-result query-execution-chan)]
+          (let [qe (mt/wait-for-result save-chan)]
             (cond-> qe
               (:running_time qe) (update :running_time int?)
               (:hash qe)         (update :hash (fn [^bytes a-hash]
@@ -24,19 +25,20 @@
 
 (defn- process-userland-query
   ([query]
-   (mt/with-open-channels [raise-chan (a/promise-chan)]
-     (process-userland-query query {:chans {:raise-chan raise-chan}})))
+   (process-userland-query query nil))
 
-  ([query options]
+  ([query context]
    (mt/with-clock #t "2020-02-04T12:22-08:00[US/Pacific]"
-     (-> (:post (mt/test-qp-middleware process-userland-query/process-userland-query query {} [] options))
-         (update :running_time int?)))))
+     (let [result (mt/test-qp-middleware process-userland-query/process-userland-query query {} [] context)]
+       (if-not (map? result)
+         result
+         (update (:metadata result) :running_time int?))))))
 
 (deftest success-test
   (let [query {:query? true}]
     (with-query-execution [qe query]
       (is (= {:status                 :completed
-              :data                   {:rows []}
+              :data                   {}
               :row_count              0
               :database_id            nil
               :started_at             #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
@@ -64,38 +66,59 @@
 (deftest failure-test
   (let [query {:query? true}]
     (with-query-execution [qe query]
-      (mt/with-open-channels [raise-chan (a/promise-chan)]
-        (process-userland-query query {:chans {:raise-chan raise-chan}
-                                       :run   (fn []
-                                                (a/>!! raise-chan (ex-info "Oops!"
-                                                                    {:type error-type/qp}))
-                                                (Thread/sleep 100))})
-        (is (= {:hash         true
-                :database_id  nil
-                :error        "Oops!"
-                :result_rows  0
-                :started_at   #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
-                :executor_id  nil
-                :json_query   {:query? true}
-                :native       false
-                :pulse_id     nil
-                :card_id      nil
-                :context      nil
-                :running_time true
-                :dashboard_id nil}
-               (qe))
-            "Result should have query execution info. empty `:data` should get added to failures")))))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"Oops!"
+           (process-userland-query query {:runf (fn [_ _ context]
+                                                  (context/raisef (ex-info "Oops!" {:type error-type/qp})
+                                                                  context))})))
+      (is (= {:hash         true
+              :database_id  nil
+              :error        "Oops!"
+              :result_rows  0
+              :started_at   #t "2020-02-04T12:22:00.000-08:00[US/Pacific]"
+              :executor_id  nil
+              :json_query   {:query? true}
+              :native       false
+              :pulse_id     nil
+              :card_id      nil
+              :context      nil
+              :running_time true
+              :dashboard_id nil}
+             (qe))
+          "Result should have query execution info. empty `:data` should get added to failures"))))
+
+(defn- async-middleware [qp]
+  (fn async-middleware-qp [query xformf context]
+    (future
+      (println "< IN ANOTHER THREAD >")
+      (try
+        (qp query xformf context)
+        (catch Throwable e
+          (context/raisef e context))))
+    nil))
 
 (deftest cancel-test
-  (let [query                  {:query? true}
-        saved-query-execution? (atom false)]
-    (with-redefs [process-userland-query/save-query-execution-async! (fn [] (reset! saved-query-execution? true))]
-      (mt/with-open-channels [canceled-chan (a/promise-chan)
-                              raise-chan    (a/promise-chan)]
-        (process-userland-query query {:chans {:canceled-chan canceled-chan, :raise-chan raise-chan}
-                                       :run   (fn []
-                                                (a/>!! canceled-chan :cancel)
-                                                (Thread/sleep 100))})
-        (is (= false
-               @saved-query-execution?)
-            "No QueryExecution should get saved when a query is canceled")))))
+  (let [saved-query-execution? (atom false)]
+    (with-redefs [process-userland-query/save-query-execution-async! (fn [_] (reset! saved-query-execution? true))]
+      (mt/with-open-channels [canceled-chan (a/promise-chan)]
+        (future
+          (let [out-chan (mt/test-qp-middleware [process-userland-query/process-userland-query async-middleware]
+                                                {} {} []
+                                                {:canceled-chan canceled-chan
+                                                 :async?        true
+                                                 :runf          (fn [_ _ _]
+                                                                  (Thread/sleep 1000))})]
+            (Thread/sleep 100)
+            (a/close! out-chan)))
+        (testing "canceled-chan should get get a :cancel message"
+          (let [[val port] (a/alts!! [canceled-chan (a/timeout 500)])]
+            (is (= 'canceled-chan
+                   (if (= port canceled-chan) 'canceled-chan 'timeout))
+                "port")
+            (is (= :cancel
+                   val)
+                "val")))
+        (testing "No QueryExecution should get saved when a query is canceled"
+          (is (= false
+                 @saved-query-execution?)))))))

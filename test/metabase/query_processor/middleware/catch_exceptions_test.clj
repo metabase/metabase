@@ -1,13 +1,14 @@
 (ns metabase.query-processor.middleware.catch-exceptions-test
-  (:require [clojure.core.async :as a]
-            [clojure.test :refer :all]
+  (:require [clojure.test :refer :all]
             [metabase
              [query-processor :as qp]
              [test :as mt]]
             [metabase.models
              [permissions :as perms]
              [permissions-group :as group]]
-            [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor
+             [context :as context]
+             [error-type :as error-type]]
             [metabase.query-processor.middleware.catch-exceptions :as catch-exceptions]
             [metabase.test.data :as data]
             [metabase.test.data.users :as test-users]
@@ -50,28 +51,19 @@
                                   (for [cause causes]
                                     (update cause :stacktrace sequential?)))))))))))
 
+
 (defn- catch-exceptions
-  ([qp]
-   (catch-exceptions qp {}))
+  ([run]
+   (catch-exceptions run {}))
 
-  ([qp query]
-   (mt/with-open-channels [raise-chan    (a/promise-chan)
-                           finished-chan (a/promise-chan)]
-     (catch-exceptions qp query {:raise-chan raise-chan, :finished-chan finished-chan})
-     (mt/wait-for-result finished-chan)))
-
-  ([qp query chans]
-   ((catch-exceptions/catch-exceptions qp)
-    query
-    (constantly identity)
-    chans)))
+  ([run query]
+   (:metadata (mt/test-qp-middleware catch-exceptions/catch-exceptions query {} [] {:run run}))))
 
 (deftest no-exception-test
   (testing "No Exception -- should return response as-is"
-    (is (= {}
+    (is (= {:data {}, :row_count 0, :status :completed}
            (catch-exceptions
-            (fn [query _ {:keys [finished-chan]}]
-              (a/>!! finished-chan query)))))))
+            (fn []))))))
 
 (deftest sync-exception-test
   (testing "if the QP throws an Exception (synchronously), should format the response appropriately"
@@ -81,9 +73,8 @@
             :stacktrace true
             :json_query {}
             :row_count  0
-            :data       {:rows []
-                         :cols []}}
-           (-> (catch-exceptions (fn [& _] (throw (Exception. "Something went wrong"))))
+            :data       {:cols []}}
+           (-> (catch-exceptions (fn [] (throw (Exception. "Something went wrong"))))
                (update :stacktrace boolean))))))
 
 (deftest async-exception-test
@@ -94,9 +85,12 @@
             :stacktrace true
             :json_query {}
             :row_count  0
-            :data       {:rows []
-                         :cols []}}
-           (-> (catch-exceptions (fn [_ _ {:keys [raise-chan]}] (a/>!! raise-chan (Exception. "Something went wrong"))))
+            :data       {:cols []}}
+           (-> (mt/test-qp-middleware catch-exceptions/catch-exceptions
+                                      {} {} []
+                                      {:runf (fn [_ _ context]
+                                               (context/raisef (Exception. "Something went wrong") context))})
+               :metadata
                (update :stacktrace boolean))))))
 
 (deftest include-query-execution-info-test
@@ -107,25 +101,26 @@
             :stacktrace true
             :json_query {}
             :row_count  0
-            :data       {:rows []
-                         :cols []}
+            :data       {:cols []}
             :a          100
             :b          200}
-           (-> (catch-exceptions
-                (fn [_ _ {:keys [query-execution-chan raise-chan]}]
-                  {}
-                  (a/>!! query-execution-chan
-                         {:a            100
-                          :b            200
-                          ;; these keys should all get removed
-                          :result_rows  300
-                          :hash         400
-                          :executor_id  500
-                          :card_id      600
-                          :dashboard_id 700
-                          :pulse_id     800
-                          :native       900})
-                  (a/>!! raise-chan (Exception. "Something went wrong"))))
+           (-> (mt/test-qp-middleware catch-exceptions/catch-exceptions
+                                      {} {} []
+                                      {:runf (fn [_ _ context]
+                                               (context/raisef (ex-info "Something went wrong."
+                                                                 {:query-execution {:a            100
+                                                                                    :b            200
+                                                                                    ;; these keys should all get removed
+                                                                                    :result_rows  300
+                                                                                    :hash         400
+                                                                                    :executor_id  500
+                                                                                    :card_id      600
+                                                                                    :dashboard_id 700
+                                                                                    :pulse_id     800
+                                                                                    :native       900}}
+                                                                 (Exception. "Something went wrong"))
+                                                               context))})
+               :metadata
                (update :stacktrace boolean))))))
 
 (deftest permissions-test

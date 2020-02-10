@@ -179,5 +179,5 @@
 (defn resolve-joins
   "Add any Tables and Fields referenced by the `:joins` clause to the QP store."
   [qp]
-  (fn [query xformf chans]
-    (qp (resolve-joins* query) xformf chans)))
+  (fn [query xformf context]
+    (qp (resolve-joins* query) xformf context)))

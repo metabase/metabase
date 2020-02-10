@@ -1,8 +1,10 @@
 (ns metabase.query-processor.middleware.catch-exceptions
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
-  (:require [clojure.core.async :as a]
-            [clojure.tools.logging :as log]
-            [metabase.query-processor.error-type :as error-type]
+  (:require [clojure.tools.logging :as log]
+            [metabase.query-processor
+             [context :as context]
+             [error-type :as error-type]
+             [reducible :as qp.reducible]]
             [metabase.query-processor.middleware.permissions :as perms]
             [metabase.util :as u]
             schema.utils)
@@ -98,27 +100,28 @@
 
 (defn- query-info
   "Map of about `query` to add to the exception response."
-  [{query-type :type, :as query} {:keys [preprocessed-chan native-query-chan]}]
+  [{query-type :type, :as query} {:keys [preprocessed native]}]
   (merge
    {:json_query (-> (dissoc query :info :driver))}
    ;; add the fully-preprocessed and native forms to the error message for MBQL queries, since they're extremely
    ;; useful for debugging purposes.
    (when (= (keyword query-type) :query)
-     {:preprocessed (dissoc (a/poll! preprocessed-chan) :info)
+     {:preprocessed preprocessed
       :native       (when (perms/current-user-has-adhoc-native-query-perms? query)
-                      (a/poll! native-query-chan))})))
+                      native)})))
 
 (defn- query-execution-info [query-execution]
   (dissoc query-execution :result_rows :hash :executor_id :card_id :dashboard_id :pulse_id :native :start_time_millis))
 
-(defn- format-exception* [query e {:keys [query-execution-chan], :as chans}]
+(defn- format-exception* [query ^Throwable e extra-info]
   (try
-    (merge
-     {:data {:rows [], :cols []}, :row_count 0}
-     (when-let [query-execution (some-> query-execution-chan a/poll!)]
-       (query-execution-info query-execution))
-     (exception-response e)
-     (query-info query chans))
+    (if-let [query-execution (:query-execution (ex-data e))]
+      (merge (query-execution-info query-execution)
+             (format-exception* query (.getCause e) extra-info))
+      (merge
+       {:data {:rows [], :cols []}, :row_count 0}
+       (exception-response e)
+       (query-info query extra-info)))
     (catch Throwable e
       e)))
 
@@ -126,31 +129,25 @@
   "Middleware for catching exceptions thrown by the query processor and returning them in a 'normal' format. Forwards
   exceptions to the `result-chan`."
   [qp]
-  (fn [query xformf {:keys [raise-chan finished-chan], :as chans}]
-    (let [query-execution-chan (a/promise-chan)
-          chans                (assoc chans :query-execution-chan query-execution-chan)
-          raise-chan'          (a/promise-chan)]
-      ;; forward exceptions to `finished-chan`
-      (a/go
-        (when-let [e (a/<! raise-chan')]
-          (log/tracef "raise-chan' got %s, forwarding formatted exception to finished-chan" (class e))
-          (let [e (if (instance? Throwable e)
-                    e
-                    ;; this should never happen unless there's a serious bug in the QP so don't bother i18ning it
-                    (ex-info (format "Unexpected object sent to raise-chan: expected Throwable, got a %s" (class e))
-                      {:e    e
-                       :type error-type/qp}))]
-            (a/>! finished-chan (format-exception* query e chans)))))
-      ;; when the original `raise-chan` gets closed, close this one too
-      (a/go
-        (a/<! raise-chan)
-        (log/trace "raise-chan done; closing raise-chan'")
-        (a/close! raise-chan'))
-      ;; when finished-chan gets closed close our 'bonus' chans
-      (a/go
-        (a/<! finished-chan)
-        (a/close! query-execution-chan))
-      (try
-        (qp query xformf (assoc chans :raise-chan raise-chan'))
-        (catch Throwable e
-          (a/>!! raise-chan' e))))))
+
+  (fn [query xformf {:keys [preprocessedf nativef raisef], :as context}]
+    (let [extra-info (atom nil)]
+      (letfn [(preprocessedf* [query context]
+                (swap! extra-info assoc :preprocessed query)
+                (preprocessedf query context))
+              (nativef* [query context]
+                (swap! extra-info assoc :native query)
+                (nativef query context))
+              (raisef* [e context]
+                (if (qp.reducible/quit-result e)
+                  (raisef e context)
+                  (do
+                    (log/tracef "raisef* got %s, returning formatted exception" (class e))
+                    (context/resultf (format-exception* query e @extra-info) context))))]
+        (try
+          (qp query xformf (assoc context
+                                  :preprocessedf preprocessedf*
+                                  :nativef nativef*
+                                  :raisef raisef*))
+          (catch Throwable e
+            (raisef* e context)))))))
