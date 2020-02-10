@@ -370,7 +370,7 @@ class ExpressionsParserSyntax extends BaseCstVisitor {
     return syntax("aggregation expression", token(ctx.aggregation[0]), ...args);
   }
   nullaryCall(ctx) {
-    return [];
+    return [this.parenthesisExpression(ctx)];
   }
   unaryCall(ctx) {
     return [this.parenthesisExpression(ctx)];
