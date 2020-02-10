@@ -384,7 +384,7 @@
 
 ;; make sure when saving a Card the correct query metadata is fetched (if incorrect)
 (deftest saving-card-fetches-correct-metadata
-  (is (= [{:base_type    "type/Integer"
+  (is (= [{:base_type    "type/BigInteger"
            :display_name "Count"
            :name         "count"
            :special_type "type/Quantity"
@@ -392,7 +392,7 @@
                                    :nil%           0.0},
                           :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}}]
          (tu/with-non-admin-groups-no-root-collection-perms
-           (let [metadata  [{:base_type    (count-base-type)
+           (let [metadata  [{:base_type    :type/BigInteger
                              :display_name "Count Chocula"
                              :name         "count_chocula"
                              :special_type :type/Quantity}]
@@ -429,7 +429,7 @@
                               (reset! sql-result sql)
                               (orig driver conn sql params))]
                 ;; create a card with the metadata
-                ((test-users/user->client :rasta) :post 200 "card"
+                ((test-users/user->client :rasta) :post 202 "card"
                  (assoc (card-with-name-and-query card-name)
                         :collection_id      (u/get-id collection)
                         :result_metadata    metadata
@@ -623,14 +623,14 @@
                (db/select-one-field :result_metadata Card :id (u/get-id card))))))))
 
 (deftest make-sure-when-updating-a-card-the-correct-query-metadata-is-fetched--if-incorrect-
-  (is (= [{:base_type    "type/Integer"
+  (is (= [{:base_type    "type/BigInteger"
            :display_name "Count"
            :name         "count"
            :special_type "type/Quantity"
            :fingerprint  {:global {:distinct-count 1
                                    :nil%           0.0},
                           :type   {:type/Number {:min 100.0, :max 100.0, :avg 100.0, :q1 100.0, :q3 100.0 :sd nil}}}}]
-         (let [metadata [{:base_type    :type/Integer
+         (let [metadata [{:base_type    :type/BigInteger
                           :display_name "Count Chocula"
                           :name         "count_chocula"
                           :special_type :type/Quantity}]]

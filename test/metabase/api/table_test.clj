@@ -472,7 +472,7 @@
                                               :native   {:query (format "SELECT NAME, LAST_LOGIN FROM USERS")}}}]
       (let [card-virtual-table-id (str "card__" (u/get-id card))]
         ;; run the Card which will populate its result_metadata column
-        ((test-users/user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
+        ((test-users/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
         ;; Now fetch the metadata for this "table" via the API
         (let [[name-metadata last-login-metadata] (db/select-one-field :result_metadata Card :id (u/get-id card))]
           (is (= {:display_name      "Users"
@@ -499,7 +499,7 @@
                                        :default_dimension_option (var-get #'table-api/date-default-index)
                                        :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
                                        :fingerprint              (:fingerprint last-login-metadata)}]}
-                 ((test-users/user->client :crowberto) :get 202
+                 ((test-users/user->client :crowberto) :get 200
                   (format "table/card__%d/query_metadata" (u/get-id card))))))))))
 
 
