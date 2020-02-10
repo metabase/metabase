@@ -1,4 +1,4 @@
-import { Lexer, CstParser } from "chevrotain";
+import { CstParser } from "chevrotain";
 
 import _ from "underscore";
 import { t } from "ttag";
@@ -334,15 +334,8 @@ class ExpressionsParserSyntax extends BaseCstVisitor {
     return this._arithmeticExpression(ctx);
   }
 
-  //   _math(initial, operations) {
-  //     return syntax(
-  //       "math",
-  //       ...[initial].concat(...operations.map(([op, arg]) => [token(op), arg])),
-  //     );
-  //   }
-
   _arithmeticExpression(ctx) {
-    let initial = [this.visit(ctx.lhs)];
+    const initial = [this.visit(ctx.lhs)];
 
     if (ctx.rhs) {
       //initial = initial.concat(...ctx.rhs.map((node) => this.visit(node)));
