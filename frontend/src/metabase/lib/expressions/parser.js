@@ -324,10 +324,7 @@ class ExpressionsParserSyntax extends BaseCstVisitor {
     return this.aggregation(ctx);
   }
   aggregation(ctx) {
-    return syntax(
-      "aggregation",
-      this.visit(ctx.additionExpression)
-    );
+    return syntax("aggregation", this.visit(ctx.additionExpression));
   }
 
   additionExpression(ctx) {
@@ -337,16 +334,16 @@ class ExpressionsParserSyntax extends BaseCstVisitor {
     return this._arithmeticExpression(ctx);
   }
 
-//   _math(initial, operations) {
-//     return syntax(
-//       "math",
-//       ...[initial].concat(...operations.map(([op, arg]) => [token(op), arg])),
-//     );
-//   }
-  
+  //   _math(initial, operations) {
+  //     return syntax(
+  //       "math",
+  //       ...[initial].concat(...operations.map(([op, arg]) => [token(op), arg])),
+  //     );
+  //   }
+
   _arithmeticExpression(ctx) {
     let initial = [this.visit(ctx.lhs)];
-    
+
     if (ctx.rhs) {
       //initial = initial.concat(...ctx.rhs.map((node) => this.visit(node)));
       for (const index of ctx.rhs.keys()) {
@@ -358,10 +355,7 @@ class ExpressionsParserSyntax extends BaseCstVisitor {
       }
     }
 
-    return syntax(
-      "math",
-      ...initial,
-    );
+    return syntax("math", ...initial);
   }
 
   aggregationExpression(ctx) {
@@ -386,8 +380,10 @@ class ExpressionsParserSyntax extends BaseCstVisitor {
   }
   dimensionExpression(ctx) {
     const dimensionName = this.visit(ctx.dimensionName);
-    if (dimensionName.children[0].name === "identifier"){
-      const dimension = this._getDimensionForName(dimensionName.children[0].text);
+    if (dimensionName.children[0].name === "identifier") {
+      const dimension = this._getDimensionForName(
+        dimensionName.children[0].text,
+      );
       if (!dimension) {
         throw new Error(`Unknown Field: ${dimensionName}`);
       }
@@ -410,7 +406,12 @@ class ExpressionsParserSyntax extends BaseCstVisitor {
     return this.visit(ctx.expression);
   }
   parenthesisExpression(ctx) {
-    return syntax("group", token(ctx.LParen[0]), this.visit(ctx.expression), token(ctx.RParen[0]));
+    return syntax(
+      "group",
+      token(ctx.LParen[0]),
+      this.visit(ctx.expression),
+      token(ctx.RParen[0]),
+    );
   }
 
   _getDimensionForName(dimensionName) {
@@ -427,7 +428,6 @@ class ExpressionsParserSyntax extends BaseCstVisitor {
     return getAggregationFromName(aggregationName);
   }
 }
-
 
 // const syntax = (type, ...children) => ({
 //   type: type,
