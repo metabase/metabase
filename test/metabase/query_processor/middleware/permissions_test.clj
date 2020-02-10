@@ -142,7 +142,7 @@
                         :limit        1}}))))))
 
 (deftest template-tags-referenced-queries-test
-  (testing "Fails for query referenced in template tag, when user has no perms to referenced query"
+  (testing "Fails for MBQL query referenced in template tag, when user has no perms to referenced query"
     (is (thrown-with-msg? ExceptionInfo perms-error-msg
           (tt/with-temp* [Database [db]
                           Table    [table-1 {:db_id (u/get-id db)}]
@@ -167,8 +167,8 @@
                     Table    [table-2 {:db_id (u/get-id db)}]
                     Card     [card    {:dataset_query {:database (u/get-id db), :type :query,
                                                        :query {:source-table (u/get-id table-2)}}}]]
-      (let [card-id  (:id card)
-            tag-name (str "#" card-id)
+      (let [card-id   (:id card)
+            tag-name  (str "#" card-id)
             query-sql (format "SELECT * FROM {{%s}} AS x" tag-name)]
         ;; query should be returned by middleware unchanged
         (is (= {:database (u/get-id db)
@@ -176,6 +176,47 @@
                 :native {:query         query-sql,
                          :template-tags {tag-name {:id tag-name, :name tag-name, :display-name tag-name, :type "card",
                                                    :card card-id}}}}
+               (check-perms-for-rasta
+                {:database (u/get-id db)
+                 :type     :native
+                 :native   {:query         query-sql
+                            :template-tags {tag-name
+                                            {:id tag-name, :name tag-name, :display-name tag-name,
+                                             :type "card", :card card-id}}}}))))))
+
+
+  (testing "Fails for native query referenced in template tag, when user has no perms to referenced query"
+    (is (thrown-with-msg? ExceptionInfo perms-error-msg
+          (tt/with-temp* [Database [db]
+                          Card     [card {:dataset_query
+                                          {:database (u/get-id db), :type :native,
+                                           :native {:query "SELECT 1 AS \"foo\", 2 AS \"bar\", 3 AS \"baz\""}}}]]
+            ;; All users get perms for all new DBs by default
+            (perms/revoke-permissions! (perms-group/all-users) (u/get-id db))
+            (let [card-id  (:id card)
+                  tag-name (str "#" card-id)]
+              (check-perms-for-rasta
+               {:database (u/get-id db)
+                :type     :native
+                :native   {:query         (format "SELECT * FROM {{%s}} AS x" tag-name)
+                           :template-tags {tag-name
+                                           {:id tag-name, :name tag-name, :display-name tag-name,
+                                            :type "card", :card card-id}}}}))))))
+
+  (testing "...but it should work if user has perms [template tag referenced query]"
+    (tt/with-temp* [Database [db]
+                    Card     [card {:dataset_query
+                                    {:database (u/get-id db), :type :native,
+                                     :native {:query "SELECT 1 AS \"foo\", 2 AS \"bar\", 3 AS \"baz\""}}}]]
+      (let [card-id  (:id card)
+            tag-name (str "#" card-id)
+            query-sql (format "SELECT * FROM {{%s}} AS x" tag-name)]
+        ;; query should be returned by middleware unchanged
+        (is (= {:database (u/get-id db)
+                :type     :native
+                :native   {:query query-sql
+                           :template-tags {tag-name {:id tag-name, :name tag-name, :display-name tag-name, :type "card",
+                                                     :card card-id}}}}
                (check-perms-for-rasta
                 {:database (u/get-id db)
                  :type     :native
