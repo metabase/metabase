@@ -5,8 +5,8 @@
              [card :refer [Card]]
              [interface :as mi]
              [permissions :as perms]]
-            [metabase.query-processor.middleware.resolve-referenced :as qp.resolve-referenced]
             [metabase.models.query.permissions :as query-perms]
+            [metabase.query-processor.middleware.resolve-referenced :as qp.resolve-referenced]
             [metabase.util
              [i18n :refer [tru]]
              [schema :as su]]
