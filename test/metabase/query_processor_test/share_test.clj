@@ -1,7 +1,8 @@
 (ns metabase.query-processor-test.share-test
   (:require [metabase
              [query-processor-test :refer :all]
-             [test :as mt]]
+             [test :as mt]
+             [util :as u]]
             [metabase.models
              [metric :refer [Metric]]
              [segment :refer [Segment]]]
@@ -66,7 +67,8 @@
        (data/run-mbql-query venues)
        rows
        ffirst
-       double))
+       double
+       (u/round-to-decimals 2)))
 
 (datasets/expect-with-drivers (mt/normal-drivers-with-feature :basic-aggregations)
   0.94

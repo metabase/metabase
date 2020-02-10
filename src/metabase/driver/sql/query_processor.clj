@@ -60,13 +60,27 @@
 ;;; |                                            Interface (Multimethods)                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmulti current-datetime-fn
-  "HoneySQL form that should be used to get the current `datetime` (or equivalent). Defaults to `:%now`."
+(defmulti ^{:deprecated "0.34.2"} current-datetime-fn
+  "HoneySQL form that should be used to get the current `datetime` (or equivalent). Defaults to `:%now`.
+
+  DEPRECATED: `current-datetime-fn` is a misnomer, since the result can actually be any valid HoneySQL form.
+  `current-datetime-honeysql-form` replaces this method; implement and call that method instead. This method will be
+  removed in favor of `current-datetime-honeysql-form` at some point in the future."
   {:arglists '([driver])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmethod current-datetime-fn :sql [_] :%now)
+
+(defmulti current-datetime-honeysql-form
+  "HoneySQL form that should be used to get the current `datetime` (or equivalent). Defaults to `:%now`."
+  {:arglists '([driver])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod current-datetime-honeysql-form :sql
+  [driver]
+  (current-datetime-fn driver))
 
 ;; TODO - rename this to `date-bucket` or something that better describes what it actually does
 (defmulti date
@@ -79,6 +93,17 @@
 ;; default implementation for `:default` bucketing returns expression as-is
 (defmethod date [:sql :default] [_ _ expr] expr)
 
+
+(defmulti add-interval-honeysql-form
+  "Return a HoneySQL form that performs represents addition of some temporal interval to the original `hsql-form`.
+
+    (add-interval-honeysql-form :my-driver hsql-form 1 :day) -> (hsql/call :date_add hsql-form 1 (hx/literal 'day'))"
+  {:arglists '([driver hsql-form amount unit])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod add-interval-honeysql-form :sql [driver hsql-form amount unit]
+  (driver/date-add driver hsql-form amount unit))
 
 (defmulti field->identifier
   "Return a HoneySQL form that should be used as the identifier for `field`, an instance of the Field model. The default
@@ -266,8 +291,8 @@
 (defmethod ->honeysql [:sql :+] [driver [_ & args]]
   (if (mbql.u/datetime-arithmetics? args)
     (let [[field & intervals] args]
-      (reduce (fn [result [_ amount unit]]
-                (driver/date-add driver result amount unit))
+      (reduce (fn [hsql-form [_ amount unit]]
+                (add-interval-honeysql-form driver hsql-form amount unit))
               (->honeysql driver field)
               intervals))
     (apply hsql/call :+ (map (partial ->honeysql driver) args))))
@@ -280,16 +305,29 @@
 ;;
 ;; also, we want to gracefully handle situations where the column is ZERO and just swap it out with NULL instead, so
 ;; we don't get divide by zero errors. SQL DBs always return NULL when dividing by NULL (AFAIK)
+
+(defmulti ->float
+  "Cast to float"
+  {:arglists '([driver value])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod ->float :sql
+  [_ value]
+  (hx/cast :float value))
+
 (defmethod ->honeysql [:sql :/]
   [driver [_ & args]]
-  (let [args (for [arg args]
-               (->honeysql driver (if (integer? arg)
-                                    (double arg)
-                                    arg)))]
-    (apply hsql/call :/ (first args) (for [arg (rest args)]
-                                       (hsql/call :case
-                                         (hsql/call := arg 0) nil
-                                         :else                arg)))))
+  (let [[numerator & denominators] (for [arg args]
+                                     (->honeysql driver (if (integer? arg)
+                                                          (double arg)
+                                                          arg)))]
+    (apply hsql/call :/
+           (->float driver numerator)
+           (for [denominator denominators]
+             (hsql/call :case
+               (hsql/call := denominator 0) nil
+               :else                        denominator)))))
 
 (defmethod ->honeysql [:sql :sum-where]
   [driver [_ arg pred]]
@@ -343,8 +381,8 @@
 (defmethod ->honeysql [:sql :relative-datetime]
   [driver [_ amount unit]]
   (date driver unit (if (zero? amount)
-                      (current-datetime-fn driver)
-                      (driver/date-add driver (current-datetime-fn driver) amount unit))))
+                      (current-datetime-honeysql-form driver)
+                      (add-interval-honeysql-form driver (current-datetime-honeysql-form driver) amount unit))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

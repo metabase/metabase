@@ -862,10 +862,10 @@
               ;; generating Java classes here so they'll be in the DB's native timezone. Some DBs refuse to use
               ;; the same timezone we're running the tests from *cough* SQL Server *cough*
               [(u/prog1 (if (isa? driver/hierarchy driver/*driver* :sql)
-                          (driver/date-add driver/*driver*
-                                           (sql.qp/current-datetime-fn driver/*driver*)
-                                           (* i interval-seconds)
-                                           :second)
+                          (sql.qp/add-interval-honeysql-form driver/*driver*
+                                                             (sql.qp/current-datetime-honeysql-form driver/*driver*)
+                                                             (* i interval-seconds)
+                                                             :second)
                           (u.date/add :second (* i interval-seconds)))
                  (assert <>))]))])))
 

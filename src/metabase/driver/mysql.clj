@@ -72,8 +72,8 @@
        :placeholder  "tinyInt1isBit=false")]))
 
 (defmethod driver/date-add :mysql
-  [_ dt amount unit]
-  (hsql/call :date_add dt (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit)))))
+  [_ hsql-form amount unit]
+  (hsql/call :date_add hsql-form (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit)))))
 
 (defmethod driver/humanize-connection-error-message :mysql
   [_ message]
@@ -135,6 +135,13 @@
 
 (defn- date-format [format-str expr] (hsql/call :date_format expr (hx/literal format-str)))
 (defn- str-to-date [format-str expr] (hsql/call :str_to_date expr (hx/literal format-str)))
+
+
+(defmethod sql.qp/->float :mysql
+  [_ value]
+  ;; no-op as MySQL doesn't support cast to float
+  value)
+
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
 ;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an

@@ -41,7 +41,7 @@ describe("StructuredQuery behavioral tests", () => {
 
     const queryWithBreakout = query.breakout(breakoutDimension.mbql());
 
-    const filterDimensionOptions = queryWithBreakout.filterFieldOptions()
+    const filterDimensionOptions = queryWithBreakout.filterDimensionOptions()
       .dimensions;
     const filterDimension = filterDimensionOptions.find(
       d => d.field().id === ORDERS.TOTAL.id,
@@ -370,7 +370,7 @@ describe("StructuredQuery", () => {
       pending();
     });
 
-    describe("filterFieldOptions", () => {
+    describe("filterDimensionOptions", () => {
       pending();
     });
     describe("filterSegmentOptions", () => {

@@ -39,6 +39,20 @@
                   :order-by    [[:asc $id]]}))))
         "Make sure FLOATING POINT division is done")))
 
+;; Make sure FLOATING POINT division is done when dividing by expressions/fields
+(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expressions)
+  [[0.6]
+   [0.5]
+   [0.5]]
+  (qp.test/format-rows-by [1.0]
+    (qp.test/rows
+      (data/run-mbql-query venues
+        {:expressions {:big-price         [:+ $price 2]
+                       :my-cool-new-field [:/ $price [:expression "big-price"]]}
+         :fields      [[:expression "my-cool-new-field"]]
+         :limit       3
+         :order-by    [[:asc $id]]}))))
+
 ;; Can we do NESTED EXPRESSIONS ?
 (datasets/expect-with-drivers (qp.test/normal-drivers-with-feature :expressions)
   [[1 "Red Medicine"           4 10.0646 -165.374 3 3.0]
