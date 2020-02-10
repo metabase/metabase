@@ -316,7 +316,7 @@
   (datasets/test-driver :postgres
     (testing "expected (desired) and actual timezone should be returned as part of query results"
       (tu/with-temporary-setting-values [report-timezone "US/Pacific"]
-        (let [results ((mt/user->client :rasta) :post 200 "dataset" (mt/mbql-query checkins
+        (let [results ((mt/user->client :rasta) :post 202 "dataset" (mt/mbql-query checkins
                                                                       {:aggregation [[:count]]}))]
           (is (= {:requested_timezone "US/Pacific"
                   :results_timezone   "US/Pacific"}

@@ -243,11 +243,13 @@
   "Implementation of deprecated method `old/read-column` if a non-default one is available."
   [driver rs ^ResultSetMetaData rsmeta ^Integer i]
   (let [col-type (.getColumnType rsmeta i)
-        method   (get-method execute.old/read-column [driver col-type])]
-    (when-not (or (= method
-                     (get-method execute.old/read-column :default)
-                     (get-method execute.old/read-column [::driver/driver col-type])
-                     (get-method execute.old/read-column [:sql-jdbc col-type])))
+        method   (get-method execute.old/read-column [driver col-type])
+        default? (some (fn [dispatch-val]
+                         (= method (get-method execute.old/read-column dispatch-val)))
+                       [:default
+                        [::driver/driver col-type]
+                        [:sql-jdbc col-type]])]
+    (when-not default?
       ^{:name (format "old-impl/read-column %s %d" driver i)}
       (fn []
         (method driver nil rs rsmeta i)))))
@@ -269,7 +271,6 @@
        (log/tracef "Column %d '%s' is a %s which is mapped to base type %s for driver %s\n"
                    i col-name db-type-name base-type driver)
        {:name      col-name
-
         ;; TODO - disabled for now since it breaks a lot of tests. We can re-enable it when the tests are in a better
         ;; state
         #_:original_name #_(.getColumnName rsmeta i)

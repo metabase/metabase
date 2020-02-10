@@ -32,7 +32,7 @@
 
   The implementation of `executef` should call `respond` with this information once it is available."
   {:arglists '([driver query context respond])}
-  [driver query {executef* :execute, :as context} respond]
+  [driver query {executef* :executef, :as context} respond]
   {:pre [(ifn? executef*)]}
   (executef* driver query context respond))
 

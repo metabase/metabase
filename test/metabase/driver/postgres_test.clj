@@ -13,7 +13,6 @@
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]]
-            [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models
              [database :refer [Database]]
@@ -357,61 +356,67 @@
     (testing "check that values for enum types get wrapped in appropriate CAST() fn calls in `->honeysql`"
       (is (= (hsql/call :cast "toucan" (keyword "bird type"))
              (sql.qp/->honeysql :postgres [:value "toucan" {:database_type "bird type", :base_type :type/PostgresEnum}]))))
+
     (do-with-enums-db
-     (fn [db]
-       (testing "check that we can actually fetch the enum types from a DB"
-         (is (= #{(keyword "bird type") :bird_status}
-                (#'postgres/enum-types :postgres db))))
-       (testing "check that describe-table properly describes the database & base types of the enum fields"
-         (is (= {:name   "birds"
-                 :fields #{{:name          "name",
-                            :database-type "varchar"
-                            :base-type     :type/Text
-                            :pk?           true}
-                           {:name          "status"
-                            :database-type "bird_status"
-                            :base-type     :type/PostgresEnum}
-                           {:name          "type"
-                            :database-type "bird type"
-                            :base-type     :type/PostgresEnum}}}
-                (driver/describe-table :postgres db {:name "birds"}))))
-       (testing "check that when syncing the DB the enum types get recorded appropriately"
-         (let [table-id (db/select-one-id Table :db_id (u/get-id db), :name "birds")]
-           (is (= #{{:name "name", :database_type "varchar", :base_type :type/Text}
-                    {:name "type", :database_type "bird type", :base_type :type/PostgresEnum}
-                    {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}}
-                  (set (map (partial into {})
-                            (db/select [Field :name :database_type :base_type] :table_id table-id)))))))
-       (testing "End-to-end check: make sure everything works as expected when we run an actual query"
-         (let [table-id           (db/select-one-id Table :db_id (u/get-id db), :name "birds")
-               bird-type-field-id (db/select-one-id Field :table_id table-id, :name "type")]
-           (is (= {:rows        [["Rasta" "good bird" "toucan"]]
-                   :native_form {:query  (str "SELECT \"public\".\"birds\".\"name\" AS \"name\","
-                                              " \"public\".\"birds\".\"status\" AS \"status\","
-                                              " \"public\".\"birds\".\"type\" AS \"type\" "
-                                              "FROM \"public\".\"birds\" "
-                                              "WHERE \"public\".\"birds\".\"type\" = CAST('toucan' AS \"bird type\") "
-                                              "LIMIT 10")
-                                 :params nil}}
-                  (-> (qp/process-query
+      (fn [db]
+        (testing "check that we can actually fetch the enum types from a DB"
+          (is (= #{(keyword "bird type") :bird_status}
+                 (#'postgres/enum-types :postgres db))))
+
+        (testing "check that describe-table properly describes the database & base types of the enum fields"
+          (is (= {:name   "birds"
+                  :fields #{{:name          "name",
+                             :database-type "varchar"
+                             :base-type     :type/Text
+                             :pk?           true}
+                            {:name          "status"
+                             :database-type "bird_status"
+                             :base-type     :type/PostgresEnum}
+                            {:name          "type"
+                             :database-type "bird type"
+                             :base-type     :type/PostgresEnum}}}
+                 (driver/describe-table :postgres db {:name "birds"}))))
+
+        (testing "check that when syncing the DB the enum types get recorded appropriately"
+          (let [table-id (db/select-one-id Table :db_id (u/get-id db), :name "birds")]
+            (is (= #{{:name "name", :database_type "varchar", :base_type :type/Text}
+                     {:name "type", :database_type "bird type", :base_type :type/PostgresEnum}
+                     {:name "status", :database_type "bird_status", :base_type :type/PostgresEnum}}
+                   (set (map (partial into {})
+                             (db/select [Field :name :database_type :base_type] :table_id table-id)))))))
+
+        (testing "End-to-end check: make sure everything works as expected when we run an actual query"
+          (let [table-id           (db/select-one-id Table :db_id (u/get-id db), :name "birds")
+                bird-type-field-id (db/select-one-id Field :table_id table-id, :name "type")]
+            (is (= {:rows        [["Rasta" "good bird" "toucan"]]
+                    :native_form {:query  (str "SELECT \"public\".\"birds\".\"name\" AS \"name\","
+                                               " \"public\".\"birds\".\"status\" AS \"status\","
+                                               " \"public\".\"birds\".\"type\" AS \"type\" "
+                                               "FROM \"public\".\"birds\" "
+                                               "WHERE \"public\".\"birds\".\"type\" = CAST('toucan' AS \"bird type\") "
+                                               "LIMIT 10")
+                                  :params nil}}
+                   (-> (qp/process-query
                         {:database (u/get-id db)
                          :type     :query
                          :query    {:source-table table-id
                                     :filter       [:= [:field-id (u/get-id bird-type-field-id)] "toucan"]
                                     :limit        10}})
-                      :data
-                      (select-keys [:rows :native_form]))))))))))
+                       :data
+                       (select-keys [:rows :native_form]))))))))))
 
 
 ;;; ------------------------------------------------ Timezone-related ------------------------------------------------
 
 (deftest timezone-test
   (mt/test-driver :postgres
-    (let [current-timezone-query            {:query "SELECT current_setting('TIMEZONE') AS timezone;"}
-          server-spec                       (sql-jdbc.conn/connection-details->spec :postgres
-                                              (mt/dbdef->connection-details :postgres :server nil))
-          get-timezone-with-report-timezone (fn [report-timezone]
-                                              "TODO - FIXME")]
+    (letfn [(get-timezone-with-report-timezone [report-timezone]
+              (mt/with-temporary-setting-values [report-timezone report-timezone]
+                (ffirst
+                 (mt/rows
+                   (qp/process-query {:database (mt/id)
+                                      :type     :native
+                                      :native   {:query "SELECT current_setting('TIMEZONE') AS timezone;"}})))))]
       (testing "check that if we set report-timezone to US/Pacific that the session timezone is in fact US/Pacific"
         (is  (= "US/Pacific"
                 (get-timezone-with-report-timezone "US/Pacific"))))
@@ -421,9 +426,7 @@
       (testing (str "ok, check that if we try to put in a fake timezone that the query still reëxecutes without a "
                     "custom timezone. This should give us the same result as if we didn't try to set a timezone at all")
         (mt/suppress-output
-          (is (= (-> (#'sql-jdbc.execute.old/run-query-without-timezone :postgres nil server-spec current-timezone-query)
-                     :rows
-                     ffirst)
+          (is (= (get-timezone-with-report-timezone nil)
                  (get-timezone-with-report-timezone "Crunk Burger"))))))))
 
 (deftest fingerprint-time-fields-test
@@ -465,11 +468,10 @@
   (mt/test-driver :postgres
     (testing (str "If the DB throws an exception, is it properly returned by the query processor? Is it status "
                   ":failed? (#9942)")
-      (is (= {:status :failed
-              :class  org.postgresql.util.PSQLException
-              :error  "ERROR: column \"adsasdasd\" does not exist\n  Position: 20"}
-             (-> (qp/process-query
-                   {:database (mt/id)
-                    :type     :native
-                    :native   {:query "SELECT adsasdasd;"}})
-                 (select-keys [:status :class :error])))))))
+      (is (thrown-with-msg?
+           org.postgresql.util.PSQLException
+           #"ERROR: column \"adsasdasd\" does not exist\s+Position: 20"
+           (qp/process-query
+            {:database (mt/id)
+             :type     :native
+             :native   {:query "SELECT adsasdasd;"}}))))))

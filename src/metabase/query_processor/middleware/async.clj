@@ -7,23 +7,6 @@
   []
   @in-flight*)
 
-(defn- call-thunk-on-completion-xform
-  "A transducer that will call `thunk` when results are finished."
-  [call-thunk-on-completion xf]
-  (fn
-    ([]
-     (xf))
-
-    ([result]
-     (call-thunk-on-completion)
-     (xf result))
-
-    ([result results-metadata]
-     (xf result results-metadata))
-
-    ([result results-metadata row]
-     (xf result results-metadata row))))
-
 (defn count-in-flight-queries
   "Middleware that tracks the current number of queries in flight."
   [qp]
