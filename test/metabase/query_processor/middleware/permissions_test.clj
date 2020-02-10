@@ -12,11 +12,15 @@
              [permissions-group :as perms-group]
              [table :refer [Table]]]
             [metabase.query-processor.middleware.permissions :refer [check-query-permissions]]
-            [metabase.test.data :as data]
+            [metabase.test
+             [data :as data]
+             [util :as tu]]
             [metabase.test.data.users :as users]
             [schema.core :as s]
             [toucan.util.test :as tt])
   (:import clojure.lang.ExceptionInfo))
+
+(identity tu/random-name) ; Avoid "unused namespace" for `tu`
 
 (def ^:private ^{:arglists '([query]), :style/indent 0} check-perms (check-query-permissions identity))
 
@@ -139,8 +143,6 @@
 
 (deftest template-tags-referenced-queries-test
   (testing "Fails for query referenced in template tag, when user has no perms to referenced query"
-    (is (= 1 0 "This test is incomplete!"))
-
     (is (thrown-with-msg? ExceptionInfo perms-error-msg
           (tt/with-temp* [Database [db]
                           Table    [table-1 {:db_id (u/get-id db)}]
@@ -161,12 +163,23 @@
 
   (testing "...but it should work if user has perms [template tag referenced query]"
     (tt/with-temp* [Database [db]
-                    Table    [table {:db_id (u/get-id db)}]]
-      ;; query should be returned by middleware unchanged
-      (= {:database (u/get-id db)
-          :type     :query
-          :query    {:source-table (u/get-id table)}}
-         (check-perms-for-rasta
-          {:database (u/get-id db)
-           :type     :query
-           :query    {:source-table (u/get-id table)}})))))
+                    Table    [table-1 {:db_id (u/get-id db)}]
+                    Table    [table-2 {:db_id (u/get-id db)}]
+                    Card     [card    {:dataset_query {:database (u/get-id db), :type :query,
+                                                       :query {:source-table (u/get-id table-2)}}}]]
+      (let [card-id  (:id card)
+            tag-name (str "#" card-id)
+            query-sql (format "SELECT * FROM {{%s}} AS x" tag-name)]
+        ;; query should be returned by middleware unchanged
+        (is (= {:database (u/get-id db)
+                :type :native
+                :native {:query         query-sql,
+                         :template-tags {tag-name {:id tag-name, :name tag-name, :display-name tag-name, :type "card",
+                                                   :card card-id}}}}
+               (check-perms-for-rasta
+                {:database (u/get-id db)
+                 :type     :native
+                 :native   {:query         query-sql
+                            :template-tags {tag-name
+                                            {:id tag-name, :name tag-name, :display-name tag-name,
+                                             :type "card", :card card-id}}}})))))))
