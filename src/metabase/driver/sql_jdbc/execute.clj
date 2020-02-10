@@ -16,6 +16,7 @@
             [metabase.driver.sql-jdbc.execute.old-impl :as execute.old]
             [metabase.mbql.util :as mbql.u]
             [metabase.query-processor
+             [context :as context]
              [interface :as qp.i]
              [store :as qp.store]
              [timezone :as qp.timezone]
@@ -294,18 +295,18 @@
 (defn execute-reducible-query
   "Default impl of `execute-reducible-query` for sql-jdbc drivers."
   {:added "0.35.0", :arglists '([driver query context respond])}
-  [driver {{sql :query, params :params} :native, :as outer-query} {:keys [canceled-chan]} respond]
+  [driver {{sql :query, params :params} :native, :as outer-query} context respond]
   (let [remark   (qputil/query->remark outer-query)
         sql      (str "-- " remark "\n" sql)
         max-rows (or (mbql.u/query->max-rows-limit outer-query)
                      qp.i/absolute-max-results)]
     (with-open [conn (connection-with-timezone driver (qp.store/database) (qp.timezone/report-timezone-id-if-supported))
-                stmt (doto (prepared-statement* driver conn sql params canceled-chan)
+                stmt (doto (prepared-statement* driver conn sql params (context/canceled-chan context))
                        (.setMaxRows max-rows))
                 rs   (execute-query! driver stmt)]
       (let [rsmeta           (.getMetaData rs)
             results-metadata {:cols (column-metadata driver rsmeta)}]
-        (respond results-metadata (reducible-rows driver rs rsmeta canceled-chan))))))
+        (respond results-metadata (reducible-rows driver rs rsmeta (context/canceled-chan context)))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                       Convenience Imports from Old Impl                                        |

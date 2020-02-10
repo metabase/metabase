@@ -142,7 +142,7 @@
           execution-info (query-execution-info query)]
       (letfn [(xformf* [metadata]
                 (comp (add-and-save-execution-info-xform! metadata execution-info) (xformf metadata)))
-              (raisef* [e context]
+              (raisef* [^Throwable e context]
                 (save-failed-query-execution-async! execution-info (.getMessage e))
                 (raisef (ex-info (.getMessage e)
                           {:query-execution execution-info}
