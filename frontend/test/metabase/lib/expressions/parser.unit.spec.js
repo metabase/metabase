@@ -279,11 +279,31 @@ describe("lib/expressions/parser", () => {
       const tree = parse(source, aggregationOpts);
       expect(serialize(tree)).toEqual(source);
     });
-    it("should parse source with whitespace into a recoverable syntax tree", () => {
+
+    it("should parse source without whitespace into a recoverable syntax tree", () => {
+      const source = 'Sum(A*2)';
+      const tree = parse(source, aggregationOpts);
+      expect(serialize(tree)).toEqual(source);
+    });
+
+    it("should parse source without whitespace into a recoverable syntax tree", () => {
+      const source = '1-Sum(A*2)';
+      const tree = parse(source, aggregationOpts);
+      expect(serialize(tree)).toEqual(source);
+    });
+
+    it("should parse source without whitespace into a recoverable syntax tree", () => {
+      const source = '1-Sum(A*2+"Toucan Sam")';
+      const tree = parse(source, aggregationOpts);
+      expect(serialize(tree)).toEqual(source);
+    });
+
+    xit("should parse source with whitespace into a recoverable syntax tree", () => {
       const source = 'Sum( A )';
       const tree = parse(source, aggregationOpts);
       expect(serialize(tree)).toEqual(source);
     });
+    
     xit("should parse source without whitespace into a recoverable syntax tree", () => {
       const source = '1-Sum(A*2+"Toucan Sam")/Count()';
       const tree = parse(source, aggregationOpts);
@@ -299,7 +319,7 @@ describe("lib/expressions/parser", () => {
 });
 
 function serialize(tree) {
-  console.log("PARSE TREE", tree)
+  console.log("PARSE TREE", tree);
   if (tree.type === "token") {
     return tree.text;
   } else {

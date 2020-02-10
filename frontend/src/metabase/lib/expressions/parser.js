@@ -336,22 +336,32 @@ class ExpressionsParserSyntax extends BaseCstVisitor {
   multiplicationExpression(ctx) {
     return this._arithmeticExpression(ctx);
   }
+
+//   _math(initial, operations) {
+//     return syntax(
+//       "math",
+//       ...[initial].concat(...operations.map(([op, arg]) => [token(op), arg])),
+//     );
+//   }
   
   _arithmeticExpression(ctx) {
-    let initial = this.visit(ctx.lhs);
+    let initial = [this.visit(ctx.lhs)];
+    
     if (ctx.rhs) {
+      //initial = initial.concat(...ctx.rhs.map((node) => this.visit(node)));
       for (const index of ctx.rhs.keys()) {
         const operator = token(ctx.operator[index]);
         const operand = this.visit(ctx.rhs[index]);
         // collapse multiple consecutive operators into a single MBQL statement
-        if (Array.isArray(initial) && initial[0] === operator) {
-          initial.push(operand);
-        } else {
-          initial = [operator, initial, operand];
-        }
+        initial.push(operator);
+        initial.push(operand);
       }
     }
-    return initial;
+
+    return syntax(
+      "math",
+      ...initial,
+    );
   }
 
   aggregationExpression(ctx) {
@@ -376,11 +386,15 @@ class ExpressionsParserSyntax extends BaseCstVisitor {
   }
   dimensionExpression(ctx) {
     const dimensionName = this.visit(ctx.dimensionName);
-    const dimension = this._getDimensionForName(dimensionName.children[0].text);
-    if (!dimension) {
-      throw new Error(`Unknown Field: ${dimensionName}`);
+    if (dimensionName.children[0].name === "identifier"){
+      const dimension = this._getDimensionForName(dimensionName.children[0].text);
+      if (!dimension) {
+        throw new Error(`Unknown Field: ${dimensionName}`);
+      }
+      return syntax("field", dimensionName);
+    } else {
+      return dimensionName;
     }
-    return syntax("field", dimensionName);
   }
 
   identifier(ctx) {
