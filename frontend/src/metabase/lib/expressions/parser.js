@@ -202,6 +202,7 @@ class ExpressionPure extends CstParser {
 const parser = new ExpressionPure();
 
 const BaseCstVisitor = parser.getBaseCstVisitorConstructor();
+
 class ExpressionMBQLCompiler extends BaseCstVisitor {
   constructor(options) {
     super();
@@ -354,15 +355,15 @@ class ExpressionsParserSyntax extends BaseCstVisitor {
   }
 
   aggregationExpression(ctx) {
-    const agg = this._getAggregationForName(ctx.aggregation[0].image);
+    // const agg = this._getAggregationForName(ctx.aggregation[0]);
     const args = ctx.call ? this.visit(ctx.call) : [];
-    return [agg, ...args];
+    return syntax("aggregation expression", token(ctx.aggregation[0]), ...args);
   }
   nullaryCall(ctx) {
     return [];
   }
   unaryCall(ctx) {
-    return [this.visit(ctx.expression)];
+    return [this.parenthesisExpression(ctx)];
   }
 
   metricExpression(ctx) {
@@ -375,11 +376,11 @@ class ExpressionsParserSyntax extends BaseCstVisitor {
   }
   dimensionExpression(ctx) {
     const dimensionName = this.visit(ctx.dimensionName);
-    const dimension = this._getDimensionForName(dimensionName);
+    const dimension = this._getDimensionForName(dimensionName.children[0].text);
     if (!dimension) {
       throw new Error(`Unknown Field: ${dimensionName}`);
     }
-    return dimension.mbql();
+    return syntax("field", dimensionName);
   }
 
   identifier(ctx) {
@@ -395,7 +396,7 @@ class ExpressionsParserSyntax extends BaseCstVisitor {
     return this.visit(ctx.expression);
   }
   parenthesisExpression(ctx) {
-    return this.visit(ctx.expression);
+    return syntax("group", token(ctx.LParen[0]), this.visit(ctx.expression), token(ctx.RParen[0]));
   }
 
   _getDimensionForName(dimensionName) {
