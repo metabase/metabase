@@ -60,14 +60,12 @@
 
 (deftest write-rows-to-file-test
   (let [filename (str (u.files/get-path (System/getProperty "java.io.tmpdir") "out.txt"))]
-    (is (= {:rows 3}
-           (-> (qp/process-query
-                {:database (mt/id)
-                 :type     :query
-                 :query    {:source-table (mt/id :venues), :limit 3}}
-                (print-rows-to-writer-context filename))
-               :data
-               (select-keys [:rows]))))
+    (is (= 3
+           (qp/process-query
+            {:database (mt/id)
+             :type     :query
+             :query    {:source-table (mt/id :venues), :limit 3}}
+            (print-rows-to-writer-context filename))))
     (is (= ["ROW 1 -> [1 \"Red Medicine\" 4 10.0646 -165.374 3]"
             "ROW 2 -> [2 \"Stout Burgers & Beers\" 11 34.0996 -118.329 2]"
             "ROW 3 -> [3 \"The Apple Pan\" 11 34.0406 -118.428 2]"]
@@ -76,22 +74,23 @@
 (defn- maps-rff [metadata]
   (let [ks (mapv (comp keyword :name) (:cols metadata))]
     (fn
-      ([] [])
+      ([] {:data (assoc metadata :rows [])})
 
       ([acc] acc)
 
-      ([rows row]
-       (conj rows (zipmap ks row))))))
+      ([acc row]
+       (update-in acc [:data :rows] conj (zipmap ks row))))))
 
 (deftest maps-test
   (testing "Example using an alternative reducing function that returns rows as a sequence of maps."
     (is (= [{:ID 1, :CATEGORY_ID 4,  :LATITUDE 10.0646, :LONGITUDE -165.374, :NAME "Red Medicine",          :PRICE 3}
             {:ID 2, :CATEGORY_ID 11, :LATITUDE 34.0996, :LONGITUDE -118.329, :NAME "Stout Burgers & Beers", :PRICE 2}]
-           (qp/process-query
-            {:database (mt/id)
-             :type     :query
-             :query    {:source-table (mt/id :venues), :limit 2, :order-by [[:asc (mt/id :venues :id)]]}}
-            {:rff maps-rff})))))
+           (mt/rows
+             (qp/process-query
+              {:database (mt/id)
+               :type     :query
+               :query    {:source-table (mt/id :venues), :limit 2, :order-by [[:asc (mt/id :venues :id)]]}}
+              {:rff maps-rff}))))))
 
 ;; TODO - fix me
 (deftest cancelation-test

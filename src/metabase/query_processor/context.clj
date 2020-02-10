@@ -62,7 +62,7 @@
   "Called when query is fully preprocessed."
   {:arglsts '([query context])}
   [query {:keys [preprocessedf], :as context}]
-  {:pre [(fn? preprocessedf)]}
+  {:pre [(fn? preprocessedf)], :post [(map? %)]}
   (preprocessedf query context))
 
 (defn nativef

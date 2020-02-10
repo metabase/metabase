@@ -5,6 +5,7 @@
   reduces the cognitive load required to write tests.)"
   (:require [clojure.test :refer :all]
             [java-time :as t]
+            [medley.core :as m]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
@@ -201,7 +202,7 @@
    (test-qp-middleware middleware-fn query []))
 
   ([middleware-fn query rows]
-   (test-qp-middleware middleware-fn query nil rows))
+   (test-qp-middleware middleware-fn query {} rows))
 
   ([middleware-fn query metadata rows]
    (test-qp-middleware middleware-fn query metadata rows nil))
@@ -227,7 +228,7 @@
        (async-qp query context)
        (let [qp     (qp.reducible/sync-qp async-qp)
              result (qp query context)]
-         {:result   (dissoc result :pre)
+         {:result   (m/dissoc-in result [:data :pre])
           :pre      (-> result :data :pre)
           :post     (-> result :data :rows)
           :metadata (update result :data #(dissoc % :pre :rows))})))))

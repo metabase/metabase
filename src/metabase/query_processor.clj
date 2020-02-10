@@ -134,10 +134,7 @@
 
 (def ^:private ^:const preprocessing-timeout-ms 10000)
 
-(defn query->preprocessed
-  "Return the fully preprocessed form for `query`, the way it would look immediately before `mbql->native` is called.
-  Especially helpful for debugging or testing driver QP implementations."
-  [query]
+(defn- preprocess-query [query context]
   (binding [*preprocessing-level*           (inc *preprocessing-level*)
             async-wait/*disable-async-wait* true]
     ;; record the number of recursive preprocesses taking place to prevent infinite preprocessing loops.
@@ -146,9 +143,15 @@
       (throw (ex-info (str (tru "Infinite loop detected: recursively preprocessed query {0} times."
                                 max-preprocessing-level))
                {:type error-type/qp})))
-    (process-query-sync query {:preprocessedf
-                               (fn [query context]
-                                 (context/raisef (qp.reducible/quit query) context))})))
+    (process-query-sync query context)))
+
+(defn query->preprocessed
+  "Return the fully preprocessed form for `query`, the way it would look immediately before `mbql->native` is called.
+  Especially helpful for debugging or testing driver QP implementations."
+  [query]
+  (preprocess-query query {:preprocessedf
+                           (fn [query context]
+                             (context/raisef (qp.reducible/quit query) context))}))
 
 (defn query->expected-cols
   "Return the `:cols` you would normally see in MBQL query results by preprocessing the query and calling `annotate` on
@@ -169,18 +172,17 @@
   SQL form). (Like `preprocess`, this function will throw an Exception if preprocessing was not successful.)
   (Currently, this function is mostly used by tests and in the REPL; `mbql-to-native/mbql->native` middleware handles
   simliar functionality for queries that are actually executed.)"
-  {:style/indent 0}
   [query]
-  (process-query-sync query {:nativef
-                             (fn [query context]
-                               (context/raisef (qp.reducible/quit query) context))}))
+  (perms/check-current-user-has-adhoc-native-query-perms query)
+  (preprocess-query query {:nativef
+                           (fn [query context]
+                             (context/raisef (qp.reducible/quit query) context))}))
 
 (defn query->native-with-spliced-params
   "Return the native form for a `query`, with any prepared statement (or equivalent) parameters spliced into the query
   itself as literals. This is used to power features such as 'Convert this Question to SQL'.
   (Currently, this function is mostly used by tests and in the REPL; `splice-params-in-response` middleware handles
   simliar functionality for queries that are actually executed.)"
-  {:style/indent 0}
   [query]
   ;; We need to preprocess the query first to get a valid database in case we're dealing with a nested query whose DB
   ;; ID is the virtual DB identifier
@@ -224,7 +226,6 @@
   "Process and run a 'userland' MBQL query (e.g. one ran as the result of an API call, scheduled Pulse, MetaBot query,
   etc.). Returns results in a format appropriate for consumption by FE client. Saves QueryExecution row in application
   DB."
-  {:style/indent 1}
   [query, options :- mbql.s/Info]
   (process-userland-query (update query :info merge options)))
 

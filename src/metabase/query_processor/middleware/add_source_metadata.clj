@@ -55,7 +55,7 @@
       (for [col cols]
         (select-keys col [:name :id :table_id :display_name :base_type :special_type :unit :fingerprint :settings])))
     (catch Throwable e
-      (log/error #_e (str (trs "Error determining expected columns for query")))
+      (log/error e (str (trs "Error determining expected columns for query")))
       nil)))
 
 (s/defn ^:private add-source-metadata :- {:source-metadata [mbql.s/SourceQueryMetadata], s/Keyword s/Any}

@@ -3,8 +3,8 @@
             [metabase.query-processor.middleware.add-rows-truncated :as add-rows-truncated]
             [metabase.test :as mt]))
 
-(defn add-rows-truncated [query rows]
-  (:post
+(defn- add-rows-truncated [query rows]
+  (:result
    (mt/test-qp-middleware add-rows-truncated/add-rows-truncated query rows)))
 
 (deftest add-rows-truncated-test
@@ -17,6 +17,7 @@
             {:constraints {:max-results           10
                            :max-results-bare-rows 5}}
             [[1] [1] [1] [1] [1]]))))
+
   (testing "when we aren't a no-aggregation query the then we use :max-results for our limit"
     (is (= {:status    :completed
             :row_count 5
