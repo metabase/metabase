@@ -137,7 +137,7 @@
                 :params ["Reggae"]}))))
 
     (testing "splicing with no params should no-op"
-      (is (= (sql-jdbc.tu/sql-jdbc-drivers) {:query "SELECT * FROM birds;", :params []}
+      (is (= {:query "SELECT * FROM birds;", :params []}
              (driver/splice-parameters-into-native-query driver/*driver*
                {:query  "SELECT * FROM birds;"
                 :params []}))))))
@@ -184,6 +184,7 @@
       (testing "splicing a date"
         (is (= 3
                (spliced-count-of :checkins [:= $date "2014-03-05"]))))))
+
   ;; Oracle, Redshift, and SparkSQL don't have 'Time' types
   (mt/test-drivers (disj (sql-jdbc.tu/sql-jdbc-drivers) :oracle :redshift :sparksql)
     (testing "splicing a time"

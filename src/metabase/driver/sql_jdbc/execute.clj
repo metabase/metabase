@@ -111,7 +111,7 @@
           (try
             (.setReadOnly conn false)
             (catch Throwable e
-              (log/error e (trs "Error setting connection to read/write"))))
+              (log/error e (trs "Error setting connection to readwrite"))))
           (with-open [stmt (.createStatement conn)]
             (.execute stmt sql)
             (log/tracef "Successfully set timezone for %s database to %s" driver timezone-id)))
@@ -119,7 +119,7 @@
           (log/error e (trs "Failed to set timezone ''{0}'' for {1} database" timezone-id driver)))))))
 
 ;; TODO - since we're not running the queries in a transaction, does this make any difference at all?
-(defn set-transaction-level!
+(defn set-best-transaction-level!
   "Set the connection transaction isolation level to the least-locking level supported by the DB. See
   https://docs.oracle.com/cd/E19830-01/819-4721/beamv/index.html for an explanation of these levels."
   {:added "0.35.0"}
@@ -144,7 +144,7 @@
   [driver database ^String timezone-id]
   (let [conn (.getConnection (datasource database))]
     (try
-      (set-transaction-level! driver conn)
+      (set-best-transaction-level! driver conn)
       (set-time-zone-if-supported! driver conn timezone-id)
       (try
         (.setReadOnly conn true)
@@ -173,7 +173,10 @@
                                 ResultSet/CONCUR_READ_ONLY
                                 ResultSet/CLOSE_CURSORS_AT_COMMIT)]
     (try
-      (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
+      (try
+        (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
+        (catch Throwable e
+          (log/error e (trs "Error setting result set fetch direction to FETCH_FORWARD"))))
       (set-parameters! driver stmt params)
       stmt
       (catch Throwable e
