@@ -1,4 +1,6 @@
-(ns metabase.query-processor.middleware.async)
+(ns metabase.query-processor.middleware.async
+  (:require [clojure.core.async :as a]
+            [metabase.query-processor.context :as context]))
 
 (def ^:private in-flight* (agent 0))
 
@@ -10,8 +12,10 @@
 (defn count-in-flight-queries
   "Middleware that tracks the current number of queries in flight."
   [qp]
-  (fn [query xformf {:keys [resultf], :as context}]
+  (fn [query xformf context]
     (send in-flight* inc)
-    (qp query xformf (assoc context :resultf (fn [result context]
-                                               (send in-flight* dec)
-                                               (resultf result context))))))
+    (comment (let [out-chan (context/out-chan context)]
+               (a/go
+                 (a/<! out-chan)
+                 (send in-flight* dec))))
+    (qp query xformf context)))

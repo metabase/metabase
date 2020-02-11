@@ -104,19 +104,18 @@
        :aggregation [[:count]]
        :breakout    [[:expression :x]]})))
 
-;; Custom aggregation expressions should include their type
-(datasets/expect-with-drivers (mt/normal-drivers-with-feature :expressions)
-  (conj #{{:name "x" :base_type :type/BigInteger}}
-        {:name      (data/format-name "category_id")
-         :base_type (case driver/*driver*
-                      :oracle    :type/Decimal
-                      :snowflake :type/Number
-                      :type/Integer)})
-  (set (map #(select-keys % [:name :base_type])
-            (qp.test/cols
-              (mt/run-mbql-query venues
-                {:aggregation [[:aggregation-options [:sum [:* $price -1]] {:name "x"}]]
-                 :breakout    [$category_id]})))))
+(deftest expressions-should-include-type-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (testing "Custom aggregation expressions should include their type"
+      (is (= (conj #{{:name "x" :base_type (:base_type (qp.test/aggregate-col :sum :venues :price))}}
+                   {:name      (data/format-name "category_id")
+                    :base_type (:base_type (qp.test/breakout-col :venues :category_id))})
+             (set (map #(select-keys % [:name :base_type])
+                       (qp.test/cols
+                         (mt/run-mbql-query venues
+                           {:aggregation [[:aggregation-options [:sum [:* $price -1]] {:name "x"}]]
+                            :breakout    [$category_id]})))))))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           HANDLING NULLS AND ZEROES                                            |

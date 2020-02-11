@@ -57,22 +57,20 @@
   [e]
   (::quit-result (ex-data e)))
 
+(defn- unpack-quit-result-xform [rf]
+  (fn
+    ([]    (rf))
+    ([x]   (rf x))
+    ([x y] (rf x (or (quit-result y)
+                     y)))))
+
 (defn- quittable-out-chan
   "Take a core.async promise chan `out-chan` and return a piped one that will unwrap a `quit-result` automatically."
   [out-chan]
-  (let [out-chan* (a/promise-chan (fn [rf]
-                                    (fn
-                                      ([] (rf))
-                                      ([x] (rf x))
-                                      ([x y]
-                                       (rf x (or (quit-result y)
-                                                 y))))))]
-    ;; out-chan* will be closed when out-chan closes
-    (a/pipe out-chan out-chan*)
-    ;; close `out-chan` when `out-chan*` closes or gets a result
-    (a/go
-      (a/<! out-chan*)
-      (a/close! out-chan))
+  (let [out-chan* (a/promise-chan unpack-quit-result-xform
+                                  (fn [e]
+                                    (a/>!! out-chan e)))]
+    (async.u/promise-pipe out-chan out-chan*)
     out-chan*))
 
 (defn async-qp
@@ -95,11 +93,21 @@
     ([query context]
      (let [context (merge (context.default/default-context) context)]
        (prepare-context! context)
-       (try
-         (qp query (context/base-xformf context) context)
-         (catch Throwable e
-           (context/raisef e context)))
+       ;; NOCOMMIT
+       (future
+         (try
+           (qp query (context/base-xformf context) context)
+           (catch Throwable e
+             (context/raisef e context))))
        (quittable-out-chan (context/out-chan context))))))
+
+(defn- wait-for-async-result [out-chan]
+  {:pre [(async.u/promise-chan? out-chan)]}
+  ;; TODO - consider whether we should have another timeout here as well
+  (let [result (a/<!! out-chan)]
+    (if (instance? Throwable result)
+      (throw result)
+      result)))
 
 (defn sync-qp
   "Wraps a QP function created by `async-qp` into one that synchronously waits for query results and rethrows any
@@ -109,12 +117,4 @@
     (qp query context)"
   [qp]
   {:pre [(fn? qp)]}
-  (comp
-   (fn [out-chan]
-     {:pre [(async.u/promise-chan? out-chan)]}
-     (let [result (a/<!! out-chan)]
-       (if (instance? Throwable result)
-         (or (quit-result result)
-             (throw result))
-         result)))
-   qp))
+  (comp wait-for-async-result qp))

@@ -10,7 +10,7 @@
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :as qp.test]]
-            [metabase.driver.sql-jdbc-test :as sql-jdbc-test]
+            [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
             [metabase.query-processor
              [context :as qp.context]
              [reducible :as qp.reducible]
@@ -41,7 +41,7 @@
   qp/keep-me
   qp.test-util/keep-me
   qp.test/keep-me
-  sql-jdbc-test/keep-me
+  sql-jdbc.tu/keep-me
   [test-users/keep-me]
   tt/keep-me
   tu/keep-me
@@ -103,7 +103,7 @@
   with-report-timezone-id
   with-results-timezone-id]
 
- [sql-jdbc-test
+ [sql-jdbc.tu
   sql-jdbc-drivers]
 
  [test-users

@@ -78,11 +78,8 @@
   (binding [qpi/*disable-qp-logging* true]
     (let [query     (query-for-result-metadata query)
           out-chan  (qp/process-query-async query)
-          out-chan* (a/promise-chan transform-result-metadata-xform)]
-      ;; out-chan* will be closed when out-chan closes
-      (a/pipe out-chan out-chan*)
-      ;; close `out-chan` when `out-chan*` closes or gets a result
-      (a/go
-        (a/<! out-chan*)
-        (a/close! out-chan))
+          out-chan* (a/promise-chan transform-result-metadata-xform
+                                    (fn [e]
+                                      (a/>!! out-chan e)))]
+      (async.u/promise-pipe out-chan out-chan*)
       out-chan*)))

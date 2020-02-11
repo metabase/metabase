@@ -21,6 +21,21 @@
   "Schema for a core.async promise channel."
   (s/constrained ManyToManyChannel promise-chan? "promise chan"))
 
+(defn promise-pipe
+  "Like `core.async/pipe` but for promise channels, and closes `in-chan` if `out-chan` is closed before receiving a
+  result. Closes both channels when `in-chan` closes or receives a result."
+  [in-chan out-chan]
+  ;; forward result of `in-chan` to `out-chan`, then close both
+  (a/go
+    (when-let [result (a/<! in-chan)]
+      (a/>! out-chan result))
+    (a/close! in-chan)
+    (a/close! out-chan))
+  ;; close `in-chan` if `out-chan` gets closed without a result
+  (a/go
+    (when-not (a/<! out-chan)
+      (a/close! in-chan))))
+
 (s/defn ^:deprecated promise-canceled-chan :- PromiseChan
   "Given a `promise-chan`, return a new channel that will receive a single message if `promise-chan` is closed before
   a message is written to it (i.e. if an API request is canceled). Automatically closes after `promise-chan` receives
