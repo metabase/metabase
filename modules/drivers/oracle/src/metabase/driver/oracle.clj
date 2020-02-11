@@ -217,16 +217,6 @@
   [_ bool]
   (if bool 1 0))
 
-(defn- remove-rownum-column
-  "Remove the `:__rownum__` column from results, if present."
-  [{:keys [columns rows], :as results}]
-  (if-not (contains? (set columns) "__rownum__")
-    results
-    ;; if we added __rownum__ it will always be the last column and value so we can just remove that
-    {:columns (butlast columns)
-     :rows    (for [row rows]
-                (butlast row))}))
-
 (defmethod driver/humanize-connection-error-message :oracle
   [_ message]
   ;; if the connection error message is caused by the assertion above checking whether sid or service-name is set,
@@ -235,8 +225,23 @@
     "You must specify the SID and/or the Service Name."
     message))
 
-(defmethod driver/execute-query :oracle [driver query]
-  (remove-rownum-column ((get-method driver/execute-query :sql-jdbc) driver query)))
+(defn- remove-rownum-column
+  "Remove the `:__rownum__` column from results, if present."
+  [respond {:keys [cols], :as metadata} rows]
+  (if-not (contains? (set (map :name cols)) "__rownum__")
+    (respond metadata rows)
+    ;; if we added __rownum__ it will always be the last column and value so we can just remove that
+    (respond (butlast columns)
+             (eduction
+              (fn [rf]
+                (fn
+                  ([] (rf))
+                  ([acc] (rf x))
+                  ([acc row] (rf acc (butlast row)))))))))
+
+(defmethod driver/execute-reducible-query :oracle
+  [driver query context respond]
+  ((get-method driver/execute-reducible-query :sql-jdbc) driver query context (partial remove-rownum-column respond)))
 
 (defmethod driver.common/current-db-time-date-formatters :oracle
   [_]

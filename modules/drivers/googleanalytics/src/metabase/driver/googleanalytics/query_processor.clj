@@ -485,12 +485,13 @@
 
 (defn execute-query
   "Execute a `query` using the provided `do-query` function, and return the results in the usual format."
-  [do-query query]
-  (let [^GaData response (do-query query)
-        columns          (map header->column (.getColumnHeaders response))
-        getters          (map header->getter-fn (.getColumnHeaders response))]
-    {:cols     columns
-     :columns  (map :name columns)
-     :rows     (for [row (.getRows response)]
-                 (for [[data getter] (map vector row getters)]
-                   (getter data)))}))
+  [execute* query respond]
+  (let [^GaData response (execute* query)
+        headers          (.getColumnHeaders response)
+        columns          (map header->column headers)
+        getters          (map header->getter-fn headers)]
+    (respond
+     columns
+     (for [row (.getRows response)]
+       (for [[data getter] (map vector row getters)]
+         (getter data))))))

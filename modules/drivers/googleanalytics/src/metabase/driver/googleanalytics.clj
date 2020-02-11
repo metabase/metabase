@@ -55,7 +55,8 @@
   (set (for [[_, ^Profile profile] (properties+profiles database)]
          (.getId profile))))
 
-(defmethod driver/describe-database :googleanalytics [_ database]
+(defmethod driver/describe-database :googleanalytics
+  [_ database]
   ;; Include a `_metabase_metadata` table in the list of Tables so we can provide custom metadata. See below.
   {:tables (set (for [table-id (cons "_metabase_metadata" (profile-ids database))]
                   {:name   table-id
@@ -116,7 +117,8 @@
                            (qp/ga-type->base-type ga-type))
           :database-type ga-type})))
 
-(defmethod driver/describe-table :googleanalytics [_ database table]
+(defmethod driver/describe-table :googleanalytics
+  [_ database table]
   {:name   (:name table)
    :schema (:schema table)
    :fields (describe-columns database)})
@@ -139,7 +141,8 @@
       property-name
       (str property-name " (" profile-name ")"))))
 
-(defmethod driver/table-rows-seq :googleanalytics [_ database table]
+(defmethod driver/table-rows-seq :googleanalytics
+  [_ database table]
   ;; this method is only supposed to be called for _metabase_metadata, make sure that's the case
   {:pre [(= (:name table) "_metabase_metadata")]}
   ;; now build a giant sequence of all the things we want to set
@@ -158,7 +161,8 @@
 
 ;;; -------------------------------------------------- can-connect? --------------------------------------------------
 
-(defmethod driver/can-connect? :googleanalytics [_ details-map]
+(defmethod driver/can-connect? :googleanalytics
+  [_ details-map]
   {:pre [(map? details-map)]}
   (boolean (profile-ids {:details details-map})))
 
@@ -227,7 +231,8 @@
 
 ;;; ----------------------------------------------------- Driver -----------------------------------------------------
 
-(defmethod driver/humanize-connection-error-message :googleanalytics [_ message]
+(defmethod driver/humanize-connection-error-message :googleanalytics
+  [_ message]
   ;; if we get a big long message about how we need to enable the GA API, then replace it with a short message about
   ;; how we need to enable the API
   (if-let [[_ enable-api-url] (re-find #"Enable it by visiting ([^\s]+) then retry." message)]
@@ -235,12 +240,14 @@
          enable-api-url)
     message))
 
-(defmethod driver/mbql->native :googleanalytics [_ query]
+(defmethod driver/mbql->native :googleanalytics
+  [_ query]
   (qp/mbql->native query))
 
-(defn- do-query
+(defn- execute*
   [query]
   (google/execute (mbql-query->request query)))
 
-(defmethod driver/execute-query :googleanalytics [_ query]
-  (qp/execute-query do-query query))
+(defmethod driver/execute-reducible-query :googleanalytics
+  [_ query _ respond]
+  (qp/execute-query execute* query respond))

@@ -21,7 +21,6 @@
              [store :as qp.store]
              [timezone :as qp.timezone]
              [util :as qputil]]
-            [metabase.query-processor.util.reducible :as qp.util.reducible]
             [metabase.util.i18n :refer [trs]]
             [potemkin :as p])
   (:import [java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData Types]
@@ -299,7 +298,7 @@
         row-fn   (fn []
                    (when (.next rs)
                      (read-row)))]
-    (qp.util.reducible/reducible-rows row-fn canceled-chan)))
+    (qp.reducible/reducible-rows row-fn canceled-chan)))
 
 (defn execute-reducible-query
   "Default impl of `execute-reducible-query` for sql-jdbc drivers."

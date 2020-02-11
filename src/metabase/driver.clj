@@ -342,7 +342,7 @@
 
     (respond results-metadata rows)
 
-  You can use `qp.util.reducible/reducible-rows` to create reducible, streaming results.
+  You can use `qp.reducible/reducible-rows` to create reducible, streaming results.
 
   Example impl:
 
@@ -351,7 +351,7 @@
       (with-open [results (run-query! query)]
         (respond
          {:cols [{:name \"my_col\"}]}
-         (qp.util.reducible/reducible-rows (get-row results) canceled-chan))))"
+         (qp.reducible/reducible-rows (get-row results) canceled-chan))))"
   {:added "0.35.0", :arglists '([driver query context respond])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
