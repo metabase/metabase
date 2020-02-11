@@ -108,7 +108,10 @@
       (try
         (let [sql (format format-string (str \' timezone-id \'))]
           (log/debug (trs "Setting {0} database timezone with statement: {1}" driver (pr-str sql)))
-          (.setReadOnly conn false)
+          (try
+            (.setReadOnly conn false)
+            (catch Throwable e
+              (log/error e (trs "Error setting connection to read/write"))))
           (with-open [stmt (.createStatement conn)]
             (.execute stmt sql)
             (log/tracef "Successfully set timezone for %s database to %s" driver timezone-id)))
@@ -143,8 +146,11 @@
     (try
       (set-transaction-level! driver conn)
       (set-time-zone-if-supported! driver conn timezone-id)
-      (doto conn
-        (.setReadOnly true))
+      (try
+        (.setReadOnly conn true)
+        (catch Throwable e
+          (log/error e (trs "Error setting connection to read-only"))))
+      conn
       (catch Throwable e
         (.close conn)
         (throw e)))))
