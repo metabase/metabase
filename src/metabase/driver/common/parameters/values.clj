@@ -9,12 +9,12 @@
                                      :target [\"dimension\" [\"template-tag\" \"checkin_date\"]]
                                      :value  \"2015-01-01~2016-09-01\"}}}"
   (:require [clojure.string :as str]
-            [metabase.driver :as driver]
             [metabase.driver.common.parameters :as i]
             [metabase.models
              [card :refer [Card]]
              [field :refer [Field]]]
             [metabase.query-processor.error-type :as qp.error-type]
+            [metabase.query-processor.middleware.mbql-to-native :as qp.mbql-to-native]
             [metabase.util
              [i18n :as ui18n :refer [tru]]
              [schema :as su]]
@@ -128,9 +128,8 @@
     (when-let [query (db/select-one-field :dataset_query Card :id card-id)]
       (i/map->CardQuery
        {:card-id card-id
-        :query   (condp = (name (:type query))
-                   "native" (get-in query [:native :query])
-                   "query"  (:query (driver/mbql->native driver/*driver* query)))}))))
+        :query   (get-in ((qp.mbql-to-native/mbql->native identity) query)
+                         [:native :query])}))))
 
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
