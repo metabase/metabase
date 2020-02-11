@@ -1,5 +1,6 @@
-import { signInAsNormalUser } from "__support__/cypress";
+import { signInAsNormalUser, restore, popover } from "__support__/cypress";
 describe("NativeQueryEditor", () => {
+  before(restore);
   beforeEach(signInAsNormalUser);
 
   it("lets you create and run a SQL question", () => {
@@ -105,5 +106,38 @@ describe("NativeQueryEditor", () => {
     cy.get("@variableLabels")
       .last()
       .should("have.text", "bar");
+  });
+
+  it("should show referenced cards in the template tag sidebar", () => {
+    cy.visit("/question/new");
+    cy.contains("Native query").click();
+
+    // Write a query with parameter x. It defaults to a text parameter.
+    cy.get(".ace_content").type("select * from {{#1}}", {
+      parseSpecialCharSequences: false,
+      delay: 0,
+    });
+
+    // run query and see that a value from the results appears
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.contains("37.65");
+
+    // sidebar should show question title and name
+    cy.contains("Question #1")
+      .parent()
+      .parent()
+      .contains("Orders")
+      .click();
+
+    // selecting a new question should update the query
+    popover()
+      .contains("Orders, Count")
+      .click();
+
+    cy.contains("select * from {{#2}}");
+
+    // run query again and see new result
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.contains("18,760");
   });
 });

@@ -264,6 +264,14 @@ export default class NativeQuery extends AtomicQuery {
     return new NativeQuery(this._originalQuestion, datasetQuery);
   }
 
+  // `replaceCardId` updates the query text to reference a different card.
+  // Template tags are updated as a result of calling `setQueryText`.
+  replaceCardId(oldId, newId) {
+    const re = new RegExp(`{{\\s*#${oldId}\\s*}}`, "g");
+    const newQueryText = this.queryText().replace(re, () => `{{#${newId}}}`);
+    return this.setQueryText(newQueryText);
+  }
+
   /**
    * special handling for NATIVE cards to automatically detect parameters ... {{varname}}
    */
@@ -295,9 +303,7 @@ export default class NativeQuery extends AtomicQuery {
         const templateTags = { ...existingTemplateTags };
         if (oldTags.length === 1 && newTags.length === 1) {
           // renaming
-          const newTag = (templateTags[newTags[0]] = {
-            ...templateTags[oldTags[0]],
-          });
+          const newTag = { ...templateTags[oldTags[0]] };
 
           if (newTag.display_name === humanize(oldTags[0])) {
             newTag.display_name = humanize(newTags[0]);
@@ -308,6 +314,7 @@ export default class NativeQuery extends AtomicQuery {
             newTag.type = "card";
             newTag.card = cardTagCardId(newTag.name);
           }
+          templateTags[newTag.name] = newTag;
           delete templateTags[oldTags[0]];
         } else {
           // remove old vars
