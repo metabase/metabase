@@ -10,15 +10,22 @@
   [query]
   (->> (get-in query [:native :template-tags])
        vals
-       (filter #(= (:type %) :card))
+       (filter #(= (keyword (:type %)) :card))
        (map :card)
        (mapv #(db/select-one 'Card :id %))))
+
+(defn- check-query-database-id=
+  [query database-id]
+  (when-not (= (:database query) database-id)
+    (throw (ex-info "Referenced query is from a different database"
+                    {:referenced-query     query
+                     :expected-database-id database-id}))))
 
 (s/defn ^:private resolve-referenced-card-resources* :- clojure.lang.IPersistentMap
   [query]
   (doseq [referenced-card (tags-referenced-cards query)
-          :let [referenced-query (:dataset_query referenced-card)]
-          :when (= (name (:type referenced-query)) "query")]
+          :let [referenced-query (:dataset_query referenced-card)]]
+    (check-query-database-id= referenced-query (:database query))
     (qp.resolve-tables/resolve-source-tables* referenced-query)
     (qp.resolve-fields/resolve-fields* referenced-query))
   query)
