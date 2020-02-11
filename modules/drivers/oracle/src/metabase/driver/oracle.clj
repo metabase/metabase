@@ -237,7 +237,8 @@
                 (fn
                   ([] (rf))
                   ([acc] (rf x))
-                  ([acc row] (rf acc (butlast row)))))))))
+                  ([acc row] (rf acc (butlast row)))))
+              rows))))
 
 (defmethod driver/execute-reducible-query :oracle
   [driver query context respond]

@@ -12,14 +12,13 @@
             [metabase
              [db :as mdb]
              [driver :as driver]
+             [query-processor :as qp]
              [util :as u]]
             [metabase.models
              [database :refer [Database]]
              [field :as field :refer [Field]]
              [table :refer [Table]]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.query-processor.store :as qp.store]
             [metabase.test.initialize :as initialize]
             [metabase.util
              [date-2 :as u.date]
@@ -353,22 +352,12 @@
     :source       :aggregation
     :field_ref    [:aggregation 0]})
 
-  ([driver aggregation-type {field-id :id, :keys [table_id]}]
-   {:pre [table_id]}
-   (driver/with-driver driver
-     (qp.store/with-store
-       (qp.store/fetch-and-store-database! (db/select-one-field :db_id Table :id table_id))
-       (qp.store/fetch-and-store-fields! [field-id])
-       (let [annotate-col-info (annotate/col-info-for-aggregation-clause {} [aggregation-type [:field-id field-id]])]
-         (merge
-          annotate-col-info
-          {:source    :aggregation
-           :field_ref [:aggregation 0]}
-          ;; TODO - not sure this applies to all columns now, but it at least applies to H2
-          (when (= (:base_type annotate-col-info) :type/Integer)
-            {:base_type :type/BigInteger})
-          (when (#{:count :cum-count} aggregation-type)
-            {:base_type :type/BigInteger, :special_type :type/Number})))))))
+  ([driver aggregation-type {field-id :id, table-id :table_id}]
+   {:pre [(some? table-id)]}
+   (first (qp/query->expected-cols {:database (db/select-one-field :db_id Table :id table-id)
+                                    :type     :query
+                                    :query    {:source-table table-id
+                                               :aggregation  [[aggregation-type [:field-id field-id]]]}}))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

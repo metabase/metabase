@@ -18,6 +18,7 @@
             [metabase.query-processor
              [context :as context]
              [interface :as qp.i]
+             [reducible :as qp.reducible]
              [store :as qp.store]
              [timezone :as qp.timezone]
              [util :as qputil]]
