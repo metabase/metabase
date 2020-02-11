@@ -45,32 +45,62 @@
 
 (deftest referenced-query-from-different-db-test
   (testing "fails on query that references a native query from a different database"
-    (tt/with-temp* [Database [db-1]
-                    Database [db-2]
+    (tt/with-temp* [Database [outer-query-db]
                     Card     [card {:dataset_query
-                                    {:database (:id db-2)
+                                    {:database (data/id)
                                      :type     :native
                                      :native   {:query "SELECT 1 AS \"foo\", 2 AS \"bar\", 3 AS \"baz\""}}}]]
-      (let [card-id    (:id card)
-            card-query (:dataset_query card)
-            tag-name   (str "#" card-id)
-            query      {:database (:id db-1) ; Note db-1 is used here
-                        :type     :native
-                        :native   {:query         (format "SELECT * FROM {{%s}} AS x" tag-name)
-                                   :template-tags {tag-name ; This tag's query is from db-2
-                                                   {:id tag-name, :name tag-name, :display-name tag-name,
-                                                    :type "card", :card card-id}}}}]
+      (let [card-id     (:id card)
+            card-query  (:dataset_query card)
+            tag-name    (str "#" card-id)
+            query-db-id (:id outer-query-db)
+            query       {:database query-db-id ; Note db-1 is used here
+                         :type     :native
+                         :native   {:query         (format "SELECT * FROM {{%s}} AS x" tag-name)
+                                    :template-tags {tag-name ; This tag's query is from the test db
+                                                    {:id tag-name, :name tag-name, :display-name tag-name,
+                                                     :type "card", :card card-id}}}}]
         (is (= {:referenced-query     card-query
-                :expected-database-id (:id db-1)}
+                :expected-database-id query-db-id}
                (try
-                (#'referenced/check-query-database-id= card-query (:id db-1))
+                (#'referenced/check-query-database-id= card-query query-db-id)
                 (catch ExceptionInfo exc
                   (ex-data exc)))))
 
-        (is (nil? (#'referenced/check-query-database-id= card-query (:id db-2))))
+        (is (nil? (#'referenced/check-query-database-id= card-query (data/id))))
 
         (is (= {:referenced-query     card-query
-                :expected-database-id (:id db-1)}
+                :expected-database-id query-db-id}
+               (try
+                (#'referenced/resolve-referenced-card-resources* query)
+                (catch ExceptionInfo exc
+                  (ex-data exc))))))))
+
+  (testing "fails on query that references an MBQL query from a different database"
+    (tt/with-temp* [Database [outer-query-db]
+                    Card     [card {:dataset_query (data/mbql-query venues
+                                                     {:filter [:< [:field-id $price] 3]})}]]
+      (let [card-id     (:id card)
+            card-query  (:dataset_query card)
+            tag-name    (str "#" card-id)
+            query-db-id (:id outer-query-db)
+            query       {:database query-db-id ; Note outer-query-db is used here
+                         :type     :native
+                         :native   {:query         (format "SELECT * FROM {{%s}} AS x" tag-name)
+                                    :template-tags {tag-name ; This tag's query is from the test db
+                                                    {:id tag-name, :name tag-name, :display-name tag-name,
+                                                     :type "card", :card card-id}}}}]
+        (is (= {:referenced-query     card-query
+                :expected-database-id query-db-id}
+               (try
+                (#'referenced/check-query-database-id= card-query query-db-id)
+                (catch ExceptionInfo exc
+                  (ex-data exc)))))
+
+        (is (nil? (#'referenced/check-query-database-id= card-query (data/id))))
+
+        (is (= {:referenced-query     card-query
+                :expected-database-id query-db-id}
                (try
                 (#'referenced/resolve-referenced-card-resources* query)
                 (catch ExceptionInfo exc

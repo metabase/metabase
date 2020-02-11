@@ -184,7 +184,6 @@
                                             {:id tag-name, :name tag-name, :display-name tag-name,
                                              :type "card", :card card-id}}}}))))))
 
-
   (testing "Fails for native query referenced in template tag, when user has no perms to referenced query"
     (is (thrown-with-msg? ExceptionInfo perms-error-msg
           (tt/with-temp* [Database [db]
