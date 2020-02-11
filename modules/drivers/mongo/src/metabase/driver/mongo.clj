@@ -79,12 +79,6 @@
     #".*"                               ; default
     message))
 
-(defmethod driver/process-query-in-context :mongo
-  [_ qp]
-  (fn [{database-id :database, :as query}]
-    (with-mongo-connection [_ (qp.store/database)]
-      (qp query))))
-
 
 ;;; ### Syncing
 
@@ -210,9 +204,10 @@
   [_ query]
   (qp/mbql->native query))
 
-(defmethod driver/execute-query :mongo
-  [_ query]
-  (qp/execute-query query))
+(defmethod driver/execute-reducible-query :mongo
+  [_ query _ respond]
+  (with-mongo-connection [_ (qp.store/database)]
+    (qp/execute-reducible-query query respond)))
 
 (defmethod driver/substitue-native-parameters :mongo
   [driver inner-query]

@@ -589,51 +589,6 @@
            handle-limit
            handle-page]))
 
-(s/defn ^:private create-unescaping-rename-map :- {s/Keyword s/Keyword}
-  [original-keys :- Projections]
-  (into
-   (ordered-map/ordered-map)
-   (for [k original-keys
-         :let [k-str     (name k)
-               unescaped (-> k-str
-                             (str/replace #"___" ".")
-                             (str/replace #"~~~(.+)$" ""))]
-         :when (not (= k-str unescaped))]
-     [k (keyword unescaped)])))
-
-(defn- unescape-names
-  "Restore the original, unescaped nested Field names in the keys of `results`.
-  e.g. `:source___service` becomes `:source.service`"
-  [results]
-  ;; Build a map of escaped key -> unescaped key by looking at the keys in the first result
-  ;; e.g. {:source___username :source.username}
-  (let [replacements (create-unescaping-rename-map (keys (first results)))]
-    ;; If the map is non-empty then map set/rename-keys over the results with it
-    (if-not (seq replacements)
-      results
-      (do (log/debug "Unescaping fields:" (u/pprint-to-str 'green replacements))
-          (for [row results]
-            (set/rename-keys row replacements))))))
-
-
-(defn- unstringify-dates
-  "Convert string dates, which we wrap in dictionaries like `{:___date <str>}`, back to `Timestamps`.
-  This can't be done within the Mongo aggregation framework itself."
-  [results]
-  (for [row results]
-    (into
-     (ordered-map/ordered-map)
-     (for [[k v] row]
-       [k (if (and (map? v)
-                   (contains? v :___date))
-            (u.date/parse (:___date v))
-            v)]))))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                Query Execution                                                 |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 (defn mbql->native
   "Process and run an MBQL query."
   [{{source-table-id :source-table} :query, :as query}]
@@ -646,16 +601,103 @@
          :collection  source-table-name
          :mbql?       true}))))
 
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                            Results Metadata & Rows                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;;; ---------------------------------------------------- Metadata ----------------------------------------------------
+
 (defn check-columns
   "Make sure there are no columns coming back from `results` that we weren't expecting. If there are, we did something
   wrong here and the query we generated is off."
-  [columns results]
-  (when (seq results)
+  [columns rows]
+  (when (seq rows)
     (let [expected-cols   (set columns)
-          actual-cols     (set (keys (first results)))
+          actual-cols     (set (keys (first rows)))
           not-in-expected (set/difference actual-cols expected-cols)]
       (when (seq not-in-expected)
-        (throw (Exception. (tru "Unexpected columns in results: {0}" (sort not-in-expected))))))))
+        (throw (ex-info (tru "Unexpected columns in results: {0}" (sort not-in-expected))
+                 {:type error-type/driver}))))))
+
+(defn- result-col-names [{:keys [mbql? projections]} rows]
+  ;; some of the columns may or may not come back in every row, because of course with mongo some key can be missing.
+  ;; That's ok, the logic below where we call `(mapv row columns)` will end up adding `nil` results for those columns.
+  (let [rename-map (create-unescaping-rename-map projections)]
+    (if-not mbql?
+      (keys (first rows))
+      (for [proj projections]
+        (if (contains? rename-map proj)
+          (get rename-map proj)
+          proj)))))
+
+(defn- result-metadata [{:keys [mbql?]} col-names rows]
+  ;; ...but, on the other hand, if columns come back that we weren't expecting, our code is broken. Check to make
+  ;; sure that didn't happen.
+  ;; NOCOMMIT
+  #_(when mbql?
+      (check-columns col-names rows))
+  {:cols (vec (for [col-name col-names]
+                {:name (u/qualified-name col-name)}))})
+
+
+;;; ------------------------------------------------------ Rows ------------------------------------------------------
+
+(s/defn ^:private create-unescaping-rename-map :- {s/Keyword s/Keyword}
+  [original-keys :- Projections]
+  (into
+   {}
+   (for [k original-keys
+         :let [k-str     (name k)
+               unescaped (-> k-str
+                             (str/replace #"___" ".")
+                             (str/replace #"~~~(.+)$" ""))]
+         :when (not (= k-str unescaped))]
+     [k (keyword unescaped)])))
+
+(defn- unescape-names-xform
+  "Restore the original, unescaped nested Field names in the keys of `results`.
+  e.g. `:source___service` becomes `:source.service`"
+  [col-names]
+  (let [replacements (create-unescaping-rename-map col-names)]
+    (println "replacements:" replacements) ; NOCOMMIT
+    ;; If the map is non-empty then map set/rename-keys over the results with it
+    (if-not (seq replacements)
+      identity
+      (do
+        (log/debug "Unescaping fields:" (u/pprint-to-str 'green replacements))
+        (map (fn [row]
+               (set/rename-keys row replacements)))))))
+
+(defn- map->vec-xform [col-names]
+  (map
+   (fn [row]
+     (mapv row col-names))))
+
+(def ^:private ^{:arglists '([rf])} unstringify-dates-xform
+  "Convert string dates, which we wrap in dictionaries like `{:___date <str>}`, back to `Timestamps`.
+  This can't be done within the Mongo aggregation framework itself."
+  (map
+   (fn [row]
+     (mapv (fn [v]
+             (if (and (map? v)
+                      (contains? v :___date))
+               (u.date/parse (:___date v))
+               v))
+           row))))
+
+(defn- result-rows [{:keys [mbql? projections]} col-names rows]
+  ;; if we formed the query using MBQL then we apply a couple post processing functions
+  (let [xform (if mbql?
+                (comp (unescape-names-xform projections)
+                      (map->vec-xform col-names)
+                      unstringify-dates-xform)
+                (map->vec-xform col-names))]
+    (eduction xform rows)))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                      Run                                                       |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn parse-query-string
   "Parse a serialized native query. Like a normal JSON parse, but handles BSON/MongoDB extended JSON forms."
@@ -669,37 +711,23 @@
                 :query s}
                e)))))
 
-(defn execute-query
+(defn execute-reducible-query
   "Process and run a native MongoDB query."
-  [{{:keys [collection query mbql? projections]} :native}]
+  [{{:keys [collection query], :as native-query} :native, :as q} respond]
   {:pre [query (string? collection)]}
-  (let [query      (cond-> query
-                     (string? query) parse-query-string)
-        results    (mc/aggregate *mongo-connection* collection query
-                                 :allow-disk-use true
-                                 ;; options that control the creation of the cursor object. Empty map means use default
-                                 ;; options. Needed for Mongo 3.6+
-                                 :cursor {})
-        results    (if (sequential? results)
-                     results
-                     [results])
-        ;; if we formed the query using MBQL then we apply a couple post processing functions
-        results    (cond-> results
-                     mbql? (-> unescape-names unstringify-dates))
-        rename-map (create-unescaping-rename-map projections)
-        ;; some of the columns may or may not come back in every row, because of course with mongo some key can be
-        ;; missing. That's ok, the logic below where we call `(mapv row columns)` will end up adding `nil` results for
-        ;; those columns.
-        columns    (if-not mbql?
-                     (keys (first results))
-                     (for [proj projections]
-                       (if (contains? rename-map proj)
-                         (get rename-map proj)
-                         proj)))]
-    ;; ...but, on the other hand, if columns come back that we weren't expecting, our code is broken. Check to make
-    ;; sure that didn't happen.
-    (when mbql?
-      (check-columns columns results))
-    ;; The `annotate/result-rows-maps->vectors` middleware will handle converting result rows from maps to vectors in
-    ;; the correct sort order
-    {:rows results}))
+  (let [query     (cond-> query
+                    (string? query) parse-query-string)
+        result    (mc/aggregate *mongo-connection* collection query
+                                :allow-disk-use true
+                                ;; options that control the creation of the cursor object. Empty map means use default
+                                ;; options. Needed for Mongo 3.6+
+                                :cursor {})
+        rows      (if (sequential? result)
+                    result
+                    [result])
+        col-names (result-col-names native-query rows)]
+    (println "Q:" (u/pprint-to-str 'green q)) ; NOCOMMIT
+    (println "(u/pprint-to-str 'yellow rows):\n" (u/pprint-to-str 'yellow rows)) ; NOCOMMIT
+    (respond
+     (result-metadata native-query col-names rows)
+     (result-rows native-query col-names rows))))
