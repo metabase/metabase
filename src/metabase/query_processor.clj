@@ -250,7 +250,8 @@
       (throw (ex-info (str (tru "Infinite loop detected: recursively preprocessed query {0} times."
                                 max-preprocessing-level))
                {:type :bug})))
-    (-> query        (update :middleware assoc :disable-mbql->native? true)
+    (-> query
+        (update :middleware assoc :disable-mbql->native? true)
         (update :preprocessing-level (fnil inc 0))
         preprocess
         (m/dissoc-in [:middleware :disable-mbql->native?]))))
