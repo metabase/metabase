@@ -152,9 +152,9 @@
   [_ query]
   (qp/mbql->native query))
 
-(defmethod driver/execute-query :druid
-  [_ query]
-  (qp/execute-query do-query-with-cancellation query))
+(defmethod driver/execute-reducible-query :druid
+  [_ query _ respond]
+  (qp/execute-reducible-query do-query-with-cancellation query respond))
 
 (defmethod driver/supports? [:druid :set-timezone]            [_ _] true)
 (defmethod driver/supports? [:druid :expression-aggregations] [_ _] true)

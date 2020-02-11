@@ -1231,7 +1231,7 @@
       (build-druid-query query))))
 
 
-(s/defn ^:private columns->getter-fns :- {s/Keyword (s/cond-pre s/Keyword (s/pred fn?))}
+(s/defn ^:private col-names->getter-fns :- {s/Keyword (s/cond-pre s/Keyword (s/pred fn?))}
   "Given a sequence of `columns` keywords, return a map of appropriate getter functions to get values from a single
   result row. Normally, these are just the keyword column names themselves, but for `:timestamp___int`, we'll also
   parse the result as an integer (for further explanation, see the docstring for
@@ -1257,44 +1257,54 @@
   (when-not (= (t/zone-id (qp.timezone/results-timezone-id)) (t/zone-id "UTC"))
     (qp.timezone/results-timezone-id)))
 
-(defn execute-query
+(defn- result-metadata [col-names]
+  ;; rename any occurances of `:timestamp___int` to `:timestamp` in the results so the user doesn't know about
+  ;; our behind-the-scenes conversion and apply any other post-processing on the value such as parsing some
+  ;; units to int and rounding up approximate cardinality values.
+  (let [fixed-col-names (for [col-name col-names]
+                          (case col-name
+                            :timestamp___int  :timestamp
+                            :distinct___count :count
+                            col-name))]
+    {:cols (vec (for [col-name fixed-col-names]
+                  {:name (u/qualified-name col-name)}))}))
+
+(defn- result-rows [result col-names]
+  (let [col-name->getter (col-names->getter-fns col-names)
+        getters          (vec (vals col-name->getter))]
+    (for [row (:results result)]
+      (mapv row getters))))
+
+(defn- respond-with-results
+  [{{:keys [query query-type mbql? projections]} :native} result respond]
+  (let [col-names       (if mbql?
+                          (->> result
+                               :projections
+                               remove-bonus-keys
+                               vec)
+                          (-> result :results first keys))]
+    (respond
+     (result-metadata col-names)
+     (result-rows result col-names))))
+
+(defn execute-reducible-query
   "Execute a query for a Druid DB."
-  [do-query {database-id                                  :database
-             {:keys [query query-type mbql? projections]} :native
-             middleware                                   :middleware
-             :as                                          mbql-query}]
+  [execute*
+   {database-id                                  :database
+    {:keys [query query-type mbql? projections]} :native
+    middleware                                   :middleware
+    :as                                          mbql-query}
+   respond]
   {:pre [query]}
-  (let [details        (:details (qp.store/database))
-        query          (if (string? query)
-                         (json/parse-string query keyword)
-                         query)
-        query-type     (or query-type
-                           (keyword (namespace ::query) (name (:queryType query))))
-        post-proc-map  (->> query
-                            (do-query details)
-                            (post-process query-type projections
-                                          {:timezone   (resolve-timezone mbql-query)
-                                           :middleware middleware}))
-        columns        (if mbql?
-                         (->> post-proc-map
-                              :projections
-                              remove-bonus-keys
-                              vec)
-                         (-> post-proc-map :results first keys))
-        column->getter (columns->getter-fns columns)]
-    ;; Leave `:rows` as a sequence of maps and the `annotate` middleware will take care of converting them to vectors
-    ;; in the correct column order
-    {:rows (for [row (:results post-proc-map)]
-             ;; use ordered-map to preseve the column ordering because for native queries results are returned in
-             ;; whatever order the keys come out when calling `keys`
-             (into
-              (ordered-map/ordered-map)
-              (for [[column getter] column->getter]
-                ;; rename any occurances of `:timestamp___int` to `:timestamp` in the results so the user doesn't know
-                ;; about our behind-the-scenes conversion and apply any other post-processing on the value such as
-                ;; parsing some units to int and rounding up approximate cardinality values.
-                [(case column
-                   :timestamp___int  :timestamp
-                   :distinct___count :count
-                   column)
-                 (getter row)])))}))
+  (let [details    (:details (qp.store/database))
+        query      (if (string? query)
+                     (json/parse-string query keyword)
+                     query)
+        query-type (or query-type
+                       (keyword (namespace ::query) (name (:queryType query))))
+        result     (->> query
+                        (execute* details)
+                        (post-process query-type projections
+                                      {:timezone   (resolve-timezone mbql-query)
+                                       :middleware middleware}))]
+    (respond-with-results query result respond)))
