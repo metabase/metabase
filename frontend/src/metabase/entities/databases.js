@@ -18,6 +18,8 @@ import { createSelector } from "reselect";
 export const FETCH_DATABASE_METADATA =
   "metabase/entities/database/FETCH_DATABASE_METADATA";
 
+export const FETCH_DATABASE_SCHEMAS =
+  "metabase/entities/database/FETCH_DATABASE_SCHEMAS";
 export const FETCH_DATABASE_IDFIELDS =
   "metabase/entities/database/FETCH_DATABASE_IDFIELDS";
 

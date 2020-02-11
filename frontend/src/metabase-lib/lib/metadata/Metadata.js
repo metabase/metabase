@@ -6,6 +6,7 @@ import Base from "./Base";
 
 import Database from "./Database";
 import Table from "./Table";
+import Schema from "./Schema";
 import Field from "./Field";
 import Segment from "./Segment";
 import Metric from "./Metric";
@@ -63,6 +64,10 @@ export default class Metadata extends Base {
 
   database(databaseId): ?Database {
     return (databaseId != null && this.databases[databaseId]) || null;
+  }
+
+  schema(schemaId): ?Schema {
+    return (schemaId != null && this.schemas[schemaId]) || null;
   }
 
   table(tableId): ?Table {

@@ -150,7 +150,7 @@ export default class StructuredQuery extends AtomicQuery {
    */
   database(): ?Database {
     const databaseId = this.databaseId();
-    return databaseId != null ? this._metadata.databases[databaseId] : null;
+    return databaseId != null ? this._metadata.database(databaseId) : null;
   }
 
   /**
@@ -159,6 +159,13 @@ export default class StructuredQuery extends AtomicQuery {
   engine(): ?DatabaseEngine {
     const database = this.database();
     return database && database.engine;
+  }
+
+  /**
+   * Returns true if the database metadata (or lack thererof indicates the user can modify and run this query
+   */
+  readOnly(): boolean {
+    return !this.database();
   }
 
   /* Methods unique to this query type */

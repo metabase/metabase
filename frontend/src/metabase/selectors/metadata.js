@@ -8,6 +8,7 @@ import {
 
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Database from "metabase-lib/lib/metadata/Database";
+import Schema from "metabase-lib/lib/metadata/Schema";
 import Table from "metabase-lib/lib/metadata/Table";
 import Field from "metabase-lib/lib/metadata/Field";
 import Metric from "metabase-lib/lib/metadata/Metric";
@@ -25,6 +26,7 @@ import { getIn } from "icepick";
 
 // fully nomalized, raw "entities"
 export const getNormalizedDatabases = state => state.entities.databases;
+export const getNormalizedSchemas = state => state.entities.schemas;
 export const getNormalizedTables = state => state.entities.tables;
 export const getNormalizedFields = state => state.entities.fields;
 export const getNormalizedMetrics = state => state.entities.metrics;
@@ -59,21 +61,26 @@ export const getShallowSegments = getNormalizedSegments;
 export const getMetadata = createSelector(
   [
     getNormalizedDatabases,
+    getNormalizedSchemas,
     getNormalizedTables,
     getNormalizedFields,
     getNormalizedSegments,
     getNormalizedMetrics,
   ],
-  (databases, tables, fields, segments, metrics): Metadata => {
+  (databases, schemas, tables, fields, segments, metrics): Metadata => {
     const meta = new Metadata();
     meta.databases = copyObjects(meta, databases, Database);
+    meta.schemas = copyObjects(meta, schemas, Schema);
     meta.tables = copyObjects(meta, tables, Table);
     meta.fields = copyObjects(meta, fields, Field);
     meta.segments = copyObjects(meta, segments, Segment);
     meta.metrics = copyObjects(meta, metrics, Metric);
-    // meta.loaded    = getLoadedStatuses(requestStates)
 
     hydrateList(meta.databases, "tables", meta.tables);
+    // hydrateList(meta.databases, "schemas", meta.schemas);
+
+    hydrateList(meta.schemas, "tables", meta.tables);
+    hydrate(meta.schemas, "database", s => meta.database(s.database_id));
 
     hydrateList(meta.tables, "fields", meta.fields);
     hydrateList(meta.tables, "segments", meta.segments);

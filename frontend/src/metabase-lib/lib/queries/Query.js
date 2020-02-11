@@ -1,7 +1,5 @@
 /* @flow weak */
 
-import Database from "../metadata/Database";
-
 import type { DatasetQuery } from "metabase/meta/types/Card";
 import type { TableId } from "metabase/meta/types/Table";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
@@ -86,10 +84,10 @@ export default class Query {
   }
 
   /**
-   * Databases this query could use
+   * Returns true if the database metadata (or lack thererof indicates the user can modify and run this query
    */
-  databases(): Database[] {
-    return this._metadata.databasesList();
+  readOnly(): boolean {
+    return true;
   }
 
   /**

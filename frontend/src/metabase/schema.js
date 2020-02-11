@@ -8,12 +8,19 @@ export const PulseSchema = new schema.Entity("pulses");
 export const CollectionSchema = new schema.Entity("collections");
 
 export const DatabaseSchema = new schema.Entity("databases");
+export const SchemaSchema = new schema.Entity("schemas");
 export const TableSchema = new schema.Entity("tables");
 export const FieldSchema = new schema.Entity("fields");
 export const SegmentSchema = new schema.Entity("segments");
 export const MetricSchema = new schema.Entity("metrics");
 
 DatabaseSchema.define({
+  tables: [TableSchema],
+  schemas: [SchemaSchema],
+});
+
+SchemaSchema.define({
+  database: DatabaseSchema,
   tables: [TableSchema],
 });
 

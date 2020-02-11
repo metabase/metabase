@@ -110,6 +110,14 @@ export default class NativeQuery extends AtomicQuery {
     return database && database.engine;
   }
 
+  /**
+   * Returns true if the database metadata (or lack thererof indicates the user can modify and run this query
+   */
+  readOnly(): boolean {
+    const database = this.database();
+    return !database || database.native_permissions !== "write";
+  }
+
   /* Methods unique to this query type */
 
   /**

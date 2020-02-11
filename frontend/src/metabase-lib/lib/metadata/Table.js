@@ -75,6 +75,10 @@ export default class Table extends Base {
     );
   }
 
+  isQueryable() {
+    return this.visibility_type == null;
+  }
+
   dateFields(): Field[] {
     return this.fields.filter(field => field.isDate());
   }

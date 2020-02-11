@@ -16,7 +16,6 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 
 import cx from "classnames";
-import _ from "underscore";
 
 import type { TableId } from "metabase/meta/types/Table";
 import type { DatabaseId } from "metabase/meta/types/Database";
@@ -423,12 +422,8 @@ export default class GuiQueryEditor extends React.Component {
   }
 
   render() {
-    const { databases, query } = this.props;
-    const datasetQuery = query.datasetQuery();
-    const readOnly =
-      datasetQuery.database != null &&
-      !_.findWhere(databases, { id: datasetQuery.database });
-    if (readOnly) {
+    const { query } = this.props;
+    if (query.readOnly()) {
       return <div className="border-bottom border-medium" />;
     }
 
@@ -436,7 +431,6 @@ export default class GuiQueryEditor extends React.Component {
       <div
         className={cx("GuiBuilder rounded shadowed", {
           "GuiBuilder--expand": this.state.expanded,
-          disabled: readOnly,
         })}
         ref="guiBuilder"
       >

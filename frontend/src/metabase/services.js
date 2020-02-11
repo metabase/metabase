@@ -136,6 +136,8 @@ export const MetabaseApi = {
   db_update: PUT("/api/database/:id"),
   db_delete: DELETE("/api/database/:dbId"),
   db_metadata: GET("/api/database/:dbId/metadata"),
+  db_schemas: GET("/api/database/:dbId/schemas"),
+  db_schema_tables: GET("/api/database/:dbId/schema/:schemaName"),
   //db_tables:   GET("/api/database/:dbId/tables"),
   db_fields: GET("/api/database/:dbId/fields"),
   db_idfields: GET("/api/database/:dbId/idfields"),

@@ -579,8 +579,7 @@
 
 ;;; ------------------------------------- GET /api/database/:id/schema/:schema ---------------------------------------
 
-(api/defendpoint GET "/:id/schema/:schema"
-  "Returns a list of tables for the given database `id` and `schema`"
+(defn- list-schema-tables
   [id schema]
   (api/read-check Database id)
   (api/check-403 (can-read-schema? id schema))
@@ -589,5 +588,14 @@
        seq
        api/check-404))
 
+(api/defendpoint GET "/:id/schema/:schema"
+  "Returns a list of tables for the given database `id` and `schema`"
+  [id schema]
+  (list-schema-tables id schema))
+
+(api/defendpoint GET "/:id/schema/"
+  "Returns a list of tables for the given database `id` and null `schema`"
+  [id]
+  (list-schema-tables id nil))
 
 (api/define-routes)

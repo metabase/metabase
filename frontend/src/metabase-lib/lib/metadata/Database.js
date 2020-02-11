@@ -29,6 +29,13 @@ export default class Database extends Base {
 
   auto_run_queries: boolean;
 
+  get schemas() {
+    // return this.schemaNames().map(name => new Schema(name, this));
+    return Object.values(this.metadata.schemas).filter(
+      s => s.database && s.database.id === this.id,
+    );
+  }
+
   displayName(): string {
     return this.name;
   }
