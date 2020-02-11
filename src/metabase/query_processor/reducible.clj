@@ -1,6 +1,7 @@
 (ns metabase.query-processor.reducible
   (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
+            [metabase.async.util :as async.u]
             [metabase.query-processor.context :as context]
             [metabase.query-processor.context.default :as context.default]))
 
@@ -66,8 +67,9 @@
                                       ([x y]
                                        (rf x (or (quit-result y)
                                                  y))))))]
+    ;; out-chan* will be closed when out-chan closes
     (a/pipe out-chan out-chan*)
-    ;; close original `out-chan` when `out-chan*` closes
+    ;; close `out-chan` when `out-chan*` closes or gets a result
     (a/go
       (a/<! out-chan*)
       (a/close! out-chan))
@@ -106,8 +108,10 @@
     (qp query)
     (qp query context)"
   [qp]
+  {:pre [(fn? qp)]}
   (comp
    (fn [out-chan]
+     {:pre [(async.u/promise-chan? out-chan)]}
      (let [result (a/<!! out-chan)]
        (if (instance? Throwable result)
          (or (quit-result result)

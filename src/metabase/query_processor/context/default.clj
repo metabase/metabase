@@ -76,7 +76,9 @@
   (context/resultf e context))
 
 (defn- default-resultf [result context]
-  (a/>!! (context/out-chan context) result))
+  (let [out-chan (context/out-chan context)]
+    (a/>!! out-chan result)
+    (a/close! out-chan)))
 
 (defn- default-timeoutf
   [context]
@@ -89,7 +91,9 @@
 
 (defn- default-cancelf [context]
   (log/debug (trs "Query canceled before finishing."))
-  (a/>!! (context/canceled-chan context) :cancel))
+  (let [canceled-chan (context/canceled-chan context)]
+    (a/>!! canceled-chan :cancel)
+    (a/close! canceled-chan)))
 
 (defn- identity1
   "Util fn. Takes 2 args and returns the first arg as-is."

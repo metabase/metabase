@@ -79,8 +79,9 @@
     (let [query     (query-for-result-metadata query)
           out-chan  (qp/process-query-async query)
           out-chan* (a/promise-chan transform-result-metadata-xform)]
+      ;; out-chan* will be closed when out-chan closes
       (a/pipe out-chan out-chan*)
-      ;; close original `out-chan` when `out-chan*` closes
+      ;; close `out-chan` when `out-chan*` closes or gets a result
       (a/go
         (a/<! out-chan*)
         (a/close! out-chan))

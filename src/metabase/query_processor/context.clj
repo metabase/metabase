@@ -18,11 +18,12 @@
 ;;
 (defn runf
   "Called by pivot fn to run preprocessed query. Normally, this simply calls `executef`, but you can override this for
-  test purposes."
+  test purposes. The result of this function is ignored."
   {:arglists '([query xformf context])}
   [query xformf {runf* :runf, :as context}]
   {:pre [(fn? runf*)]}
-  (runf* query xformf context))
+  (runf* query xformf context)
+  nil)
 
 (defn executef
   "Called by `runf` to have driver run query. By default, `driver/execute-reducible-query`. `respond` is a callback with
@@ -30,11 +31,13 @@
 
     (respond results-metadata reducible-rows)
 
-  The implementation of `executef` should call `respond` with this information once it is available."
+  The implementation of `executef` should call `respond` with this information once it is available. The result of
+  this function is ignored."
   {:arglists '([driver query context respond])}
   [driver query {executef* :executef, :as context} respond]
   {:pre [(ifn? executef*)]}
-  (executef* driver query context respond))
+  (executef* driver query context respond)
+  nil)
 
 (defn reducef
   "Called by `runf` (inside the `respond` callback provided by it) to reduce results of query. `reducedf` is called with
