@@ -711,6 +711,22 @@
                 :query s}
                e)))))
 
+#_(defn aggregate
+  "Executes an aggregation query. MongoDB 2.2+ only.
+   Accepts the options :allow-disk-use and :cursor (a map with the :batch-size
+   key), as described in the MongoDB manual. Additionally, the :max-time option
+  is supported, for specifying a limit on the execution time of the query in
+  milliseconds.
+
+  :keywordize option that control if resulting map keys will be turned into keywords, default is true.
+
+  See http://docs.mongodb.org/manual/applications/aggregation/ to learn more."
+  [^DB db ^String coll stages & opts]
+  (let [coll     (.getCollection db coll)
+        agg-opts (#'monger.collection/build-aggregation-options opts)
+        pipe     (monger.util/into-array-list (monger.conversion/to-db-object stages))
+        cursor   (.aggregate coll pipe agg-opts)]))
+
 (defn execute-reducible-query
   "Process and run a native MongoDB query."
   [{{:keys [collection query], :as native-query} :native, :as q} respond]
@@ -726,7 +742,7 @@
                     result
                     [result])
         col-names (result-col-names native-query rows)]
-    (println "Q:" (u/pprint-to-str 'green q)) ; NOCOMMIT
+    (println "Q:" (u/pprint-to-str 'green q))                                    ; NOCOMMIT
     (println "(u/pprint-to-str 'yellow rows):\n" (u/pprint-to-str 'yellow rows)) ; NOCOMMIT
     (respond
      (result-metadata native-query col-names rows)
