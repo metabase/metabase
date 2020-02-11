@@ -129,8 +129,9 @@
 (deftest card-query-test
   (testing "Card query template tag gets card's native query"
     (let [test-query "SELECT 1"]
-      (tt/with-temp Card [card {:dataset_query {:type   "native"
-                                                :native {:query test-query}}}]
+      (tt/with-temp Card [card {:dataset_query {:database (data/id)
+                                                :type     "native"
+                                                :native   {:query test-query}}}]
         (is (= (i/->CardQuery (:id card) test-query)
                (#'values/value-for-tag
                 {:name "card-template-tag-test", :display-name "Card template tag test",
@@ -141,9 +142,20 @@
     (qp.test-util/with-everything-store
       (driver/with-driver :h2
         (let [mbql-query   (data/mbql-query venues
-                             {:filter [:< [:field-id $price] 3]})]
+                             {:database (data/id)
+                              :filter [:< [:field-id $price] 3]})
+              expected-sql (str "SELECT "
+                                  "\"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", "
+                                  "\"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\", "
+                                  "\"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" AS \"CATEGORY_ID\", "
+                                  "\"PUBLIC\".\"VENUES\".\"LATITUDE\" AS \"LATITUDE\", "
+                                  "\"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", "
+                                  "\"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
+                                "FROM \"PUBLIC\".\"VENUES\" "
+                                "WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" < 3 "
+                                "LIMIT 1048576")]
           (tt/with-temp Card [card {:dataset_query mbql-query}]
-            (is (= (i/->CardQuery (:id card) "SELECT \"PUBLIC\".\"VENUES\".* FROM \"PUBLIC\".\"VENUES\" WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" < 3")
+            (is (= (i/->CardQuery (:id card) expected-sql)
                    (#'values/value-for-tag
                     {:name "card-template-tag-test", :display-name "Card template tag test",
                      :type :card, :card (:id card)}

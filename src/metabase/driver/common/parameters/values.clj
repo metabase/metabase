@@ -13,8 +13,8 @@
             [metabase.models
              [card :refer [Card]]
              [field :refer [Field]]]
+            [metabase.query-processor :as qp]
             [metabase.query-processor.error-type :as qp.error-type]
-            [metabase.query-processor.middleware.mbql-to-native :as qp.mbql-to-native]
             [metabase.util
              [i18n :as ui18n :refer [tru]]
              [schema :as su]]
@@ -128,8 +128,7 @@
     (when-let [query (db/select-one-field :dataset_query Card :id card-id)]
       (i/map->CardQuery
        {:card-id card-id
-        :query   (get-in ((qp.mbql-to-native/mbql->native identity) query)
-                         [:native :query])}))))
+        :query   (:query (qp/query->native query))}))))
 
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
