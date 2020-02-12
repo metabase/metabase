@@ -1,7 +1,6 @@
 (ns metabase.query-processor-test.aggregation-test
   "Tests for MBQL aggregations."
   (:require [clojure.test :refer :all]
-            [expectations :refer [expect]]
             [metabase
              [query-processor-test :as qp.test]
              [test :as mt]]
@@ -54,21 +53,22 @@
                (mt/run-mbql-query checkins
                  {:aggregation [[:distinct $user_id]]})))))))
 
-;; standard deviation aggregations
-(datasets/expect-with-drivers (mt/normal-drivers-with-feature :standard-deviation-aggregations)
-  {:cols [(qp.test/aggregate-col :stddev :venues :latitude)]
-   :rows [[3.4]]}
-  (qp.test/rows-and-cols
-   (mt/format-rows-by [1.0]
-     (mt/run-mbql-query venues {:aggregation [[:stddev $latitude]]}))))
+(deftest standard-deviation-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :standard-deviation-aggregations)
+    (testing "standard deviation aggregations"
+      (is (= {:cols [(qp.test/aggregate-col :stddev :venues :latitude)]
+              :rows [[3.4]]}
+             (qp.test/rows-and-cols
+               (mt/format-rows-by [1.0]
+                 (mt/run-mbql-query venues {:aggregation [[:stddev $latitude]]})))))))
 
-;; Make sure standard deviation fails for the Mongo driver since its not supported
-(datasets/expect-with-drivers (mt/normal-drivers-without-feature :standard-deviation-aggregations)
-  {:status :failed
-   :error  "standard-deviation-aggregations is not supported by this driver."}
-  (select-keys (mt/run-mbql-query venues
-                 {:aggregation [[:stddev $latitude]]})
-               [:status :error]))
+  (mt/test-drivers (mt/normal-drivers-without-feature :standard-deviation-aggregations)
+    (testing "Make sure standard deviations fail for drivers that don't support it"
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"standard-deviation-aggregations is not supported by this driver"
+           (mt/run-mbql-query venues
+             {:aggregation [[:stddev $latitude]]}))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -249,15 +249,15 @@
         {:aggregation [[:cum-count $id]]
          :breakout    [$price]}))))
 
-;; Does Field.settings show up for aggregate Fields?
-(expect
-  (assoc (qp.test/aggregate-col :sum :venues :price)
-    :settings {:is_priceless false})
-  (tu/with-temp-vals-in-db Field (data/id :venues :price) {:settings {:is_priceless false}}
-    (let [results (mt/run-mbql-query venues
-                    {:aggregation [[:sum [:field-id $price]]]})]
-      (or (-> results mt/cols first)
-          results))))
+(deftest field-settings-for-aggregate-fields-test
+  (testing "Does `:settings` show up for aggregate Fields?"
+    (tu/with-temp-vals-in-db Field (data/id :venues :price) {:settings {:is_priceless false}}
+      (let [results (mt/run-mbql-query venues
+                      {:aggregation [[:sum [:field-id $price]]]})]
+        (is (= (assoc (qp.test/aggregate-col :sum :venues :price)
+                      :settings {:is_priceless false})
+               (or (-> results mt/cols first)
+                   results)))))))
 
 (deftest duplicate-aggregations-test
   (mt/test-drivers (mt/normal-drivers)

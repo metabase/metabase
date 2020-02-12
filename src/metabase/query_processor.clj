@@ -165,7 +165,6 @@
   ;; check where this is used.
   (qp.store/with-store
     (let [preprocessed (query->preprocessed query)]
-      (seq (annotate/column-info* preprocessed nil))
       (driver/with-driver (driver.u/database->driver (:database preprocessed))
         (seq (annotate/column-info* preprocessed nil))))))
 

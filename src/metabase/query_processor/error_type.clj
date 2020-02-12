@@ -64,6 +64,11 @@
   :parent invalid-query
   :show-in-embeds? true)
 
+(deferror unsupported-feature
+  "The query is using a feature that is not supported by the database/driver."
+  :parent invalid-query
+  :show-in-embeds? true)
+
 ;;;; ### Server-Side Errors
 
 (deferror server

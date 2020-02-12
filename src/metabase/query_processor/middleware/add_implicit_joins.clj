@@ -230,7 +230,7 @@
       (when-not (driver/supports? driver/*driver* :foreign-keys)
         (throw (ex-info (tru "{0} driver does not support foreign keys." driver/*driver*)
                  {:driver driver/*driver*
-                  :type   error-type/client})))
+                  :type   error-type/unsupported-feature})))
       (update query :query resolve-fk-clauses))
     query))
 

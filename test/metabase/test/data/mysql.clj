@@ -44,8 +44,8 @@
    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type))
 
   ([driver ag-type field]
-   ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
    (merge
+    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
     (when (= ag-type :sum)
       {:base_type :type/Decimal}))))
 
