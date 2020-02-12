@@ -29,25 +29,18 @@ export default class Database extends Base {
 
   auto_run_queries: boolean;
 
-  get schemas() {
-    // return this.schemaNames().map(name => new Schema(name, this));
-    return Object.values(this.metadata.schemas).filter(
-      s => s.database && s.database.id === this.id,
-    );
-  }
-
   displayName(): string {
     return this.name;
   }
 
   tablesInSchema(schemaName: ?SchemaName) {
-    return this.tables.filter(table => table.schema === schemaName);
+    return this.tables.filter(table => table.schema_name === schemaName);
   }
 
   schemaNames(): Array<SchemaName> {
     return _.uniq(
       this.tables
-        .map(table => table.schema)
+        .map(table => table.schema_name)
         .filter(schemaName => schemaName != null),
     );
   }

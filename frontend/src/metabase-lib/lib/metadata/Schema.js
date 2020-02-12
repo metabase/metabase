@@ -14,7 +14,6 @@ export default class Schema extends Base {
   tables: Table[];
 
   displayName() {
-    console.log(this);
     return titleize(humanize(this.name));
   }
 }

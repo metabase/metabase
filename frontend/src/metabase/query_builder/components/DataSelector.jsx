@@ -12,7 +12,7 @@ import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import MetabaseSettings from "metabase/lib/settings";
 
 import Databases from "metabase/entities/databases";
-import Schemas, { generateSchemaId } from "metabase/entities/schemas";
+import Schemas from "metabase/entities/schemas";
 import Tables from "metabase/entities/tables";
 
 import { getMetadata } from "metabase/selectors/metadata";
@@ -87,11 +87,11 @@ const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
   } else {
     const hasMultipleSchemas =
       selectedDatabase &&
-      _.uniq(selectedDatabase.tables, t => t.schema).length > 1;
+      _.uniq(selectedDatabase.tables, t => t.schema_name).length > 1;
     return (
       <div className="flex-full cursor-pointer">
         <div className="h6 text-bold text-uppercase text-light">
-          {hasMultipleSchemas && selectedField.table.schema + " > "}
+          {hasMultipleSchemas && selectedField.table.schema_name + " > "}
           {selectedField.table.display_name}
         </div>
         <div className="h4 text-bold text-default">
@@ -114,12 +114,13 @@ const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
   }),
   {
     fetchDatabases: databaseQuery => Databases.actions.fetchList(databaseQuery),
+    // FIXME: this doesn't work for "Saved Questions" database
     fetchSchemas: databaseId => Schemas.actions.fetchList({ dbId: databaseId }),
     fetchDatabaseTables: databaseId =>
       // FIXME: this also fetches fields
       Databases.actions.fetchDatabaseMetadata({ id: databaseId }),
-    fetchSchemaTables: (databaseId, schemaName) =>
-      Schemas.actions.fetch({ id: generateSchemaId(databaseId, schemaName) }),
+    // FIXME: this doesn't work for "Saved Questions" database
+    fetchSchemaTables: schemaId => Schemas.actions.fetch({ id: schemaId }),
     fetchFields: tableId => Tables.actions.fetchTableMetadata({ id: tableId }),
   },
 )
@@ -129,7 +130,7 @@ export default class DataSelector extends Component {
 
     const state = {
       selectedDatabaseId: props.selectedDatabaseId,
-      selectedSchemaName: props.selectedSchemaName,
+      selectedSchemaId: props.selectedSchemaId,
       selectedTableId: props.selectedTableId,
       selectedFieldId: props.selectedFieldId,
     };
@@ -137,6 +138,7 @@ export default class DataSelector extends Component {
     this.state = {
       activeStep: null,
       isLoading: false,
+      isError: false,
       ...state,
       ...computedState,
     };
@@ -144,7 +146,7 @@ export default class DataSelector extends Component {
 
   static propTypes = {
     selectedDatabaseId: PropTypes.number,
-    selectedSchemaName: PropTypes.string,
+    selectedSchemaId: PropTypes.string,
     selectedTableId: PropTypes.number,
     selectedFieldId: PropTypes.number,
     databases: PropTypes.array.isRequired,
@@ -168,13 +170,118 @@ export default class DataSelector extends Component {
     hideSingleDatabase: false,
   };
 
+  // computes selected metadata objects (`selectedDatabase`, etc) and options (`databases`, etc)
+  // from props (`metadata`, `databases`, etc) and state (`selectedDatabaseId`, etc)
+  //
+  // NOTE: this is complicated because we allow you to:
+  // 1. pass in databases/schemas/tables/fields as props
+  // 2. pull them from the currently selected "parent" metadata object
+  // 3. pull them out of metadata
+  //
+  // We also want to recompute the selected objects from their selected ID
+  // each time rather than storing the object itself in case new metadata is
+  // asynchronously loaded
+  //
+  _getComputedState(props, state) {
+    const { metadata } = props;
+    const {
+      selectedDatabaseId,
+      selectedSchemaId,
+      selectedTableId,
+      selectedFieldId,
+    } = state;
+
+    let { databases, schemas, tables, fields } = props;
+    let selectedDatabase = null,
+      selectedSchema = null,
+      selectedTable = null,
+      selectedField = null;
+
+    const getDatabase = id =>
+      _.findWhere(databases, { id }) || metadata.database(id);
+    const getSchema = id => _.findWhere(schemas, { id }) || metadata.schema(id);
+    const getTable = id => _.findWhere(tables, { id }) || metadata.table(id);
+    const getField = id => _.findWhere(fields, { id }) || metadata.field(id);
+
+    function setSelectedDatabase(database) {
+      selectedDatabase = database;
+      if (!schemas && database) {
+        schemas = database.schemas;
+      }
+    }
+    function setSelectedSchema(schema) {
+      selectedSchema = schema;
+      if (!tables && schema) {
+        tables = schema.tables;
+      }
+    }
+    function setSelectedTable(table) {
+      selectedTable = table;
+      if (!fields && table) {
+        fields = table.fields;
+      }
+    }
+    function setSelectedField(field) {
+      selectedField = field;
+    }
+
+    if (selectedDatabaseId != null) {
+      setSelectedDatabase(getDatabase(selectedDatabaseId));
+    }
+    if (selectedSchemaId != null && selectedDatabaseId) {
+      setSelectedSchema(getSchema(selectedSchemaId));
+    }
+    if (selectedTableId != null) {
+      setSelectedTable(getTable(selectedTableId));
+    }
+    if (selectedFieldId != null) {
+      setSelectedField(getField(selectedFieldId));
+    }
+    // now do it in in reverse to propagate it back up
+    if (!selectedTable && selectedField) {
+      setSelectedTable(selectedField.table);
+    }
+    if (!selectedSchema && selectedTable) {
+      setSelectedSchema(selectedTable.schema);
+    }
+    if (!selectedDatabase && selectedSchema) {
+      setSelectedDatabase(selectedSchema.database);
+    }
+
+    const computedState = {
+      databases: databases || [],
+      selectedDatabase: selectedDatabase,
+      schemas: schemas || [],
+      selectedSchema: selectedSchema,
+      tables: tables || [],
+      selectedTable: selectedTable,
+      fields: fields || [],
+      selectedField: selectedField,
+    };
+
+    // filter out steps if `hideSingle*` is provided and there's a single option
+    computedState.steps = props.steps.filter(step => {
+      if (step === DATABASE_STEP && props.hideSingleDatabase) {
+        const { databases } = computedState;
+        return databases && databases.length !== 1;
+      }
+      if (step === SCHEMA_STEP && props.hideSingleSchema) {
+        const { schemas } = computedState;
+        return schemas && schemas.length !== 1;
+      }
+      return true;
+    });
+    return computedState;
+  }
+
+  // Like setState, but automatically adds computed state so we don't have to recalculate
+  // repeatedly. Also returns a promise resolves after state is updated
   setStateWithComputedState(newState, newProps = this.props) {
     return new Promise(resolve => {
       const computedState = this._getComputedState(newProps, {
         ...this.state,
         ...newState,
       });
-      console.log(computedState);
       this.setState({ ...newState, ...computedState }, resolve);
     });
   }
@@ -187,11 +294,14 @@ export default class DataSelector extends Component {
     const newState = {};
     for (const propName of [
       "selectedDatabaseId",
-      "selectedSchemaName",
+      "selectedSchemaId",
       "selectedTableId",
       "selectedFieldId",
     ]) {
-      if (nextProps[propName] !== this.props[propName]) {
+      if (
+        nextProps[propName] !== this.props[propName] &&
+        this.state[propName] !== nextProps[propName]
+      ) {
         newState[propName] = nextProps[propName];
       }
     }
@@ -202,20 +312,60 @@ export default class DataSelector extends Component {
     }
   }
 
+  async componentDidUpdate() {
+    // this logic cleans up invalid states, e.x. if a selectedSchema's database
+    // doesn't match selectedDatabase we clear it and go to the SCHEMA_STEP
+    const {
+      selectedDatabase,
+      selectedSchema,
+      selectedTable,
+      selectedField,
+    } = this.state;
+    const invalidSchema =
+      selectedDatabase &&
+      selectedSchema &&
+      selectedSchema.database.id !== selectedDatabase.id;
+    const invalidTable =
+      selectedSchema &&
+      selectedTable &&
+      selectedTable.schema.id !== selectedSchema.id;
+    const invalidField =
+      selectedTable &&
+      selectedField &&
+      selectedField.table.id !== selectedTable.id;
+
+    if (invalidSchema) {
+      await this.switchToStep(SCHEMA_STEP, {
+        selectedSchemaId: null,
+        selectedTableId: null,
+        selectedFieldId: null,
+      });
+    } else if (invalidTable) {
+      await this.switchToStep(TABLE_STEP, {
+        selectedTableId: null,
+        selectedFieldId: null,
+      });
+    } else if (invalidField) {
+      await this.switchToStep(FIELD_STEP, { selectedFieldId: null });
+    }
+  }
+
   async hydrateActiveStep() {
     if (this.state.selectedFieldId) {
       await this.switchToStep(FIELD_STEP);
     } else if (this.state.selectedTableId) {
       await this.switchToStep(TABLE_STEP);
-    } else if (this.state.selectedSchemaName) {
+    } else if (this.state.selectedSchemaId) {
       await this.switchToStep(SCHEMA_STEP);
     } else if (this.state.selectedDatabaseId) {
       await this.switchToStep(DATABASE_STEP);
+    } else {
+      await this.switchToStep(this.state.steps[0]);
     }
-    this.skipSteps();
   }
 
   // for steps where there's a single option sometimes we want to automatically select it
+  // if `useOnlyAvailable*` prop is provided
   skipSteps() {
     const { activeStep } = this.state;
     if (
@@ -231,7 +381,7 @@ export default class DataSelector extends Component {
     if (
       activeStep === SCHEMA_STEP &&
       this.props.useOnlyAvailableSchema &&
-      this.props.selectedSchemaName == null
+      this.props.selectedSchemaId == null
     ) {
       const { schemas } = this.state;
       if (schemas && schemas.length === 1) {
@@ -266,21 +416,20 @@ export default class DataSelector extends Component {
     return null;
   }
 
-  nextStep = async (stateChange = {}) => {
+  nextStep = async (stateChange = {}, skipSteps = true) => {
     const nextStep = this.getNextStep();
     if (!nextStep) {
       await this.setStateWithComputedState(stateChange);
       this.refs.popover.toggle();
     } else {
-      await this.switchToStep(nextStep, stateChange);
-      this.skipSteps();
+      await this.switchToStep(nextStep, stateChange, skipSteps);
     }
   };
 
   previousStep = () => {
     const previousStep = this.getPreviousStep();
     if (previousStep) {
-      this.switchToStep(previousStep);
+      this.switchToStep(previousStep, {}, false);
     }
   };
 
@@ -295,11 +444,8 @@ export default class DataSelector extends Component {
       },
       [TABLE_STEP]: () => {
         if (this.state.selectedDatabaseId != null) {
-          if (this.state.selectedSchemaName !== undefined) {
-            return this.props.fetchSchemaTables(
-              this.state.selectedDatabaseId,
-              this.state.selectedSchemaName,
-            );
+          if (this.state.selectedSchemaId != null) {
+            return this.props.fetchSchemaTables(this.state.selectedSchemaId);
           } else {
             return this.props.fetchDatabaseTables(
               this.state.selectedDatabaseId,
@@ -334,16 +480,18 @@ export default class DataSelector extends Component {
     }
   }
 
-  switchToStep = async (stepName, stateChange = {}) => {
-    console.log("SWITCH", stepName);
+  switchToStep = async (stepName, stateChange = {}, skipSteps = true) => {
     await this.setStateWithComputedState({
       ...stateChange,
       activeStep: stepName,
     });
     await this.loadStepData(stepName);
+    if (skipSteps) {
+      await this.skipSteps();
+    }
   };
 
-  onChangeDatabase = async database => {
+  onChangeDatabase = async (database, schemaInSameStep = false) => {
     if (this.props.setDatabaseFn) {
       this.props.setDatabaseFn(database && database.id);
     }
@@ -351,10 +499,8 @@ export default class DataSelector extends Component {
   };
 
   onChangeSchema = async schema => {
-    if (this.props.setSchemaFn) {
-      this.props.setSchemaFn(schema && schema.name);
-    }
-    await this.nextStep({ selectedSchemaName: schema && schema.name });
+    // NOTE: not really any need to have a setSchemaFn since schemas are just a namespace
+    await this.nextStep({ selectedSchemaId: schema && schema.id });
   };
 
   onChangeTable = async table => {
@@ -408,81 +554,6 @@ export default class DataSelector extends Component {
     return this.props.renderAsSelect
       ? "border-medium bg-white block no-decoration"
       : "flex align-center";
-  }
-
-  // this should only be called by setStateWithComputedState
-  _getComputedState(props, state) {
-    const { metadata } = props;
-    const {
-      selectedDatabaseId,
-      selectedSchemaName,
-      selectedTableId,
-      selectedFieldId,
-    } = state;
-
-    // for databases, tables, schemas, and fields, in each case we want to:
-    //
-    // 1. get the list of selectable entities
-    //    a. from props if explicitly provided
-    //    b. otherwise from the selected parent entity
-    // 2. get the currently selected entity
-    //    a. from the list of selectable entities
-    //    b. directly from metadata
-
-    const databases = props.databases;
-    const selectedDatabase =
-      selectedDatabaseId != null &&
-      (_.findWhere(databases, { id: selectedDatabaseId }) ||
-        metadata.database(selectedDatabaseId));
-
-    const schemas =
-      props.schemas || (selectedDatabase && selectedDatabase.schemas) || [];
-    const selectedSchema =
-      selectedSchemaName !== undefined &&
-      (_.findWhere(schemas, { name: selectedSchemaName }) ||
-        metadata.schema(
-          // NOTE: schema IDs are of the form `databaseId:schemaName`
-          generateSchemaId(selectedDatabaseId, selectedSchemaName),
-        ));
-
-    const tables =
-      props.tables || (selectedSchema && selectedSchema.tables) || [];
-    const selectedTable =
-      selectedTableId != null &&
-      (_.findWhere(tables, { id: selectedTableId }) ||
-        metadata.table(selectedTableId));
-
-    const fields =
-      props.fields || (selectedTable && selectedTable.fields) || [];
-    const selectedField =
-      selectedFieldId != null &&
-      (_.findWhere(fields, { id: selectedFieldId }) ||
-        metadata.field(selectedFieldId));
-
-    const computedState = {
-      databases: databases,
-      selectedDatabase: selectedDatabase,
-      schemas: schemas,
-      selectedSchema: selectedSchema,
-      tables: tables,
-      selectedTable: selectedTable,
-      fields: fields,
-      selectedField: selectedField,
-    };
-
-    const steps = props.steps.filter(step => {
-      if (step === DATABASE_STEP && props.hideSingleDatabase) {
-        const { databases } = computedState;
-        return databases && databases.length !== 1;
-      }
-      if (step === SCHEMA_STEP && props.hideSingleSchema) {
-        const { schemas } = computedState;
-        return schemas && schemas.length !== 1;
-      }
-      return true;
-    });
-
-    return { ...computedState, steps };
   }
 
   renderActiveStep() {

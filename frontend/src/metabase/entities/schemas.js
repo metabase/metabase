@@ -2,16 +2,12 @@ import { createEntity } from "metabase/lib/entities";
 
 import { GET } from "metabase/lib/api";
 
-import { SchemaSchema } from "metabase/schema";
+import { SchemaSchema, generateSchemaId, parseSchemaId } from "metabase/schema";
 
 // This is a weird entity because we don't have actual schema objects
 
 const listDastabaseSchemas = GET("/api/database/:dbId/schemas");
 const getSchemaTables = GET("/api/database/:dbId/schema/:schemaName");
-
-export const parseSchemaId = id => String(id || "").split(":");
-export const generateSchemaId = (dbId, schemaName) =>
-  `${dbId}:${schemaName || ""}`;
 
 export default createEntity({
   name: "schemas",
@@ -26,7 +22,7 @@ export default createEntity({
         // NOTE: needs unqiue IDs for entities to work correctly
         id: generateSchemaId(dbId, schemaName),
         name: schemaName,
-        database_id: dbId,
+        database: { id: dbId },
       }));
     },
     get: async ({ id }) => {
@@ -39,7 +35,7 @@ export default createEntity({
         id,
         name: schemaName,
         tables: tables,
-        database_id: dbId,
+        database: { id: dbId },
       };
     },
   },

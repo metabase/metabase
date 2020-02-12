@@ -35,7 +35,7 @@ export default class MetadataTablePicker extends Component {
     const schemas = {};
     let selectedSchema;
     for (const table of tables) {
-      const name = table.schema || ""; // possibly null
+      const name = table.schemaName() || ""; // possibly null
       schemas[name] = schemas[name] || {
         name: titleize(humanize(name)),
         tables: [],

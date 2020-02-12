@@ -5,7 +5,7 @@ import Icon from "metabase/components/Icon";
 
 const DatabaseSchemasPane = ({ database, show, ...props }) => {
   const schemaNames = Array.from(
-    new Set(database.tables.map(t => t.schema)),
+    new Set(database.tables.map(t => t.schema_name)),
   ).sort((a, b) => a.localeCompare(b));
   return (
     <div>

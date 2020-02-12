@@ -6,7 +6,7 @@ import Icon from "metabase/components/Icon";
 
 const SchemaPane = ({ schema: { database, schema }, show, ...props }) => {
   const tables = database.tables
-    .filter(t => t.schema === schema)
+    .filter(t => t.schema_name === schema)
     .filter(isQueryable)
     .sort((a, b) => a.name.localeCompare(b.name));
   return (

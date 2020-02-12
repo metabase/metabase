@@ -177,7 +177,7 @@ export function downgradeNativePermissionsIfNeeded(
 
 const metadataTableToTableEntityId = (table: Table): TableEntityId => ({
   databaseId: table.db_id,
-  schemaName: table.schema || "",
+  schemaName: table.schema_name || "",
   tableId: table.id,
 });
 
@@ -313,7 +313,9 @@ export function updateTablesPermission(
   const database = metadata && metadata.databases[databaseId];
   const tableIds: ?(number[]) =
     database &&
-    database.tables.filter(t => (t.schema || "") === schemaName).map(t => t.id);
+    database.tables
+      .filter(t => (t.schema_name || "") === schemaName)
+      .map(t => t.id);
 
   permissions = updateSchemasPermission(
     permissions,
@@ -439,12 +441,12 @@ function diffDatabasePermissions(
   for (const table of database.tables) {
     const oldFieldsPerm = getFieldsPermission(oldPerms, groupId, {
       databaseId: database.id,
-      schemaName: table.schema || "",
+      schemaName: table.schema_name || "",
       tableId: table.id,
     });
     const newFieldsPerm = getFieldsPermission(newPerms, groupId, {
       databaseId: database.id,
-      schemaName: table.schema || "",
+      schemaName: table.schema_name || "",
       tableId: table.id,
     });
     if (oldFieldsPerm !== newFieldsPerm) {
