@@ -9,9 +9,7 @@
   "Returns Card instances referenced by the given native `query`."
   [query]
   (->> (get-in query [:native :template-tags])
-       vals
-       (filter #(= (keyword (:type %)) :card))
-       (map :card)
+       (keep (comp :card val))
        (mapv #(db/select-one 'Card :id %))))
 
 (defn- check-query-database-id=
