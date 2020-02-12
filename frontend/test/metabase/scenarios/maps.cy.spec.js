@@ -10,7 +10,6 @@ describe("maps", () => {
     cy.contains("Native query").click();
     cy.get(".ace_content").type(
       "select -80 as lng, 40 as lat union all select -120 as lng, 40 as lat",
-      { delay: 0 },
     );
     cy.get(".NativeQueryEditor .Icon-play").click();
 
