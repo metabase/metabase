@@ -24,8 +24,8 @@
            honeysql.types.SqlCall
            java.time.temporal.Temporal
            java.util.UUID
-           [metabase.driver.common.parameters ReferencedCardQuery CommaSeparatedNumbers Date DateRange FieldFilter
-            MultipleValues]))
+           [metabase.driver.common.parameters CommaSeparatedNumbers Date DateRange FieldFilter MultipleValues
+            ReferencedCardQuery]))
 
 ;;; ------------------------------------ ->prepared-substitution & default impls -------------------------------------
 
