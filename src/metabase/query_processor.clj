@@ -165,7 +165,9 @@
   ;; check where this is used.
   (qp.store/with-store
     (let [preprocessed (query->preprocessed query)]
-      (seq (annotate/column-info* preprocessed nil)))))
+      (seq (annotate/column-info* preprocessed nil))
+      (driver/with-driver (driver.u/database->driver (:database preprocessed))
+        (seq (annotate/column-info* preprocessed nil))))))
 
 (defn query->native
   "Return the native form for `query` (e.g. for a MBQL query on Postgres this would return a map containing the compiled

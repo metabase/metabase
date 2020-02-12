@@ -15,6 +15,7 @@
              [parameters :as parameters]
              [query-processor :as qp]
              [util :refer [with-mongo-connection]]]
+            [metabase.driver.mongo.query-processor.execute :as execute]
             [metabase.plugins.classloader :as classloader]
             [metabase.query-processor
              [store :as qp.store]
@@ -205,9 +206,9 @@
   (qp/mbql->native query))
 
 (defmethod driver/execute-reducible-query :mongo
-  [_ query _ respond]
+  [_ query context respond]
   (with-mongo-connection [_ (qp.store/database)]
-    (qp/execute-reducible-query query respond)))
+    (execute/execute-reducible-query query context respond)))
 
 (defmethod driver/substitue-native-parameters :mongo
   [driver inner-query]
