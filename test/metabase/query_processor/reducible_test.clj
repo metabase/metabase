@@ -7,12 +7,10 @@
             [clojure.core.async :as a]
             [clojure.java.io :as io]
             [metabase
-             [driver :as driver]
              [query-processor :as qp]
              [test :as mt]]
-            [metabase.query-processor
-             [context :as context]
-             [reducible :as qp.reducible]]
+            [metabase.query-processor.context.default :as context.default]
+            [metabase.query-processor.reducible :as qp.reducible]
             [metabase.util.files :as u.files]))
 
 (deftest quit-test
@@ -52,18 +50,12 @@
              output)))))
 
 (defn print-rows-to-writer-context [filename]
-  (letfn [(runf* [query xformf context]
-            (letfn [(respond* [metadata reducible-rows]
-                      (with-open [w (io/writer filename)]
-                        (println (format "<Opening writer to %s>" (pr-str filename)))
-                        (try
-                          (binding [*out* w]
-                            (context/reducef xformf (assoc context :writer w) metadata reducible-rows))
-                          (finally
-                            (println (format "<Closed writer to %s>" (pr-str filename)))))))]
-              (context/executef driver/*driver* query context respond*)))]
-    {:runf runf*
-     :rff  print-rows-rff}))
+  (letfn [(reducef* [xformf context metadata reducible-rows]
+            (with-open [w (io/writer filename)]
+              (binding [*out* w]
+                (context.default/default-reducef xformf context metadata reducible-rows))))]
+    {:reducef reducef*
+     :rff     print-rows-rff}))
 
 (deftest write-rows-to-file-test
   (let [filename (str (u.files/get-path (System/getProperty "java.io.tmpdir") "out.txt"))]

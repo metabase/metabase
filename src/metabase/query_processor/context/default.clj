@@ -48,7 +48,11 @@
   (fn [f]
     (f metadata)))
 
-(defn- default-reducef [xformf context metadata reducible-rows]
+(defn default-reducef
+  "Default implementation of `reducef`. When using a custom implementation of `reducef` it's easiest to call this
+  function inside the custom impl instead of attempting to duplicate the logic. See
+  `metabase.query-processor.reducible-test/write-rows-to-file-test` for an example of a custom implementation."
+  [xformf context metadata reducible-rows]
   {:pre [(fn? xformf)]}
   (let [metadata  (context/metadataf metadata context)
         metadata* (volatile! nil)]
