@@ -57,17 +57,12 @@
   [e]
   (::quit-result (ex-data e)))
 
-(defn- unpack-quit-result-xform [rf]
-  (fn
-    ([]    (rf))
-    ([x]   (rf x))
-    ([x y] (rf x (or (quit-result y)
-                     y)))))
-
 (defn- quittable-out-chan
   "Take a core.async promise chan `out-chan` and return a piped one that will unwrap a `quit-result` automatically."
   [out-chan]
-  (let [out-chan* (a/promise-chan unpack-quit-result-xform
+  (let [out-chan* (a/promise-chan (map (fn [result]
+                                         (or (quit-result result)
+                                             result)))
                                   (fn [e]
                                     (a/>!! out-chan e)))]
     (async.u/promise-pipe out-chan out-chan*)

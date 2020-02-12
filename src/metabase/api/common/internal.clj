@@ -251,7 +251,7 @@
         symbol)))
 
 (defn wrap-response-if-needed
-  "If RESPONSE isn't already a map with keys `:status` and `:body`, wrap it in one (using status 200)."
+  "If `response` isn't already a map with keys `:status` and `:body`, wrap it in one (using status 200)."
   [response]
   ;; Not sure why this is but the JSON serialization middleware barfs if response is just a plain boolean
   (when (m/boolean? response)

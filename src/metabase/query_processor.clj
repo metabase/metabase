@@ -223,17 +223,27 @@
          query
          args))
 
+(s/defn ^:private add-info [query options :- mbql.s/Info]
+  (update query :info merge options))
+
 (s/defn process-query-and-save-execution!
   "Process and run a 'userland' MBQL query (e.g. one ran as the result of an API call, scheduled Pulse, MetaBot query,
   etc.). Returns results in a format appropriate for consumption by FE client. Saves QueryExecution row in application
   DB."
-  [query, options :- mbql.s/Info]
-  (process-userland-query (update query :info merge options)))
+  ([query options]
+   (process-userland-query (add-info query options)))
+
+  ([query options context]
+   (process-userland-query (add-info query options) context)))
+
+(defn- add-default-constraints [query]
+  (assoc-in query [:middleware :add-default-userland-constraints?] true))
 
 (s/defn process-query-and-save-with-max-results-constraints!
   "Same as `process-query-and-save-execution!` but will include the default max rows returned as a constraint. (This
   function is ulitmately what powers most API endpoints that run queries, including `POST /api/dataset`.)"
-  [query, options :- mbql.s/Info]
-  (process-query-and-save-execution!
-   (assoc-in query [:middleware :add-default-userland-constraints?] true)
-   options))
+  ([query options]
+   (process-query-and-save-execution! (add-default-constraints query) options))
+
+  ([query options context]
+   (process-query-and-save-execution! (add-default-constraints query) options context)))

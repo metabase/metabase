@@ -99,8 +99,8 @@
                           :parameters parameters
                           :context    :public-question
                           options))
-        out-chan (a/chan 1 (map transform-results))]
-    (async.u/single-value-pipe in-chan out-chan)
+        out-chan (a/promise-chan (map transform-results))]
+    (async.u/promise-pipe in-chan out-chan)
     out-chan))
 
 (defn- run-query-for-card-with-public-uuid-async

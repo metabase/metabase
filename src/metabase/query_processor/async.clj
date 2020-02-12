@@ -50,12 +50,6 @@
     (or (get-in result [:data :results_metadata :columns])
         [])))
 
-(defn- transform-result-metadata-xform [rf]
-  (fn
-    ([]    (rf))
-    ([x]   (rf x))
-    ([x y] (rf x (transform-result-metadata-query-results y)))))
-
 (defn- query-for-result-metadata [query]
   ;; for purposes of calculating the actual Fields & types returned by this query we really only need the first
   ;; row in the results
@@ -78,7 +72,7 @@
   (binding [qpi/*disable-qp-logging* true]
     (let [query     (query-for-result-metadata query)
           out-chan  (qp/process-query-async query)
-          out-chan* (a/promise-chan transform-result-metadata-xform
+          out-chan* (a/promise-chan (map transform-result-metadata-query-results)
                                     (fn [e]
                                       (a/>!! out-chan e)))]
       (async.u/promise-pipe out-chan out-chan*)

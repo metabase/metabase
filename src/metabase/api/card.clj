@@ -222,14 +222,14 @@
         card-data            (assoc (zipmap data-keys (map card-data data-keys))
                                     :creator_id api/*current-user-id*)
         result-metadata-chan (result-metadata-async dataset_query result_metadata metadata_checksum)
-        out-chan             (a/chan 1)]
+        out-chan             (a/promise-chan)]
     (a/go
       (try
         (let [card-data (assoc card-data :result_metadata (a/<! result-metadata-chan))]
           (a/close! result-metadata-chan)
           ;; now do the actual saving on a separate thread so we don't tie up our precious core.async thread. Pipe the
           ;; result into `out-chan`.
-          (async.u/single-value-pipe (save-new-card-async! card-data) out-chan))
+          (async.u/promise-pipe (save-new-card-async! card-data) out-chan))
         (catch Throwable e
           (a/put! out-chan e)
           (a/close! out-chan))))
@@ -443,15 +443,13 @@
                                 dataset_query
                                 result_metadata
                                 metadata_checksum)
-          out-chan             (a/chan 1)]
+          out-chan             (a/promise-chan)]
       ;; asynchronously wait for our updated result metadata, then after that call `update-card-async!`, which is done
       ;; on a non-core.async thread. Pipe the results of that into `out-chan`.
       (a/go
         (try
           (let [card-updates (assoc card-updates :result_metadata (a/<! result-metadata-chan))]
-            (async.u/single-value-pipe
-             (update-card-async! card-before-update card-updates)
-             out-chan))
+            (async.u/promise-pipe (update-card-async! card-before-update card-updates) out-chan))
           (finally
             (a/close! result-metadata-chan))))
       out-chan)))
