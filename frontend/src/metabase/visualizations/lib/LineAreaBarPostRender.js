@@ -271,6 +271,21 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
     return { x, y, showLabelBelow };
   });
 
+  const formattingSetting = chart.settings["graph.label_value_formatting"];
+  let compact;
+  if (formattingSetting === "compact") {
+    compact = true;
+  } else if (formattingSetting === "full") {
+    compact = false;
+  } else {
+    // for "auto" we use compact if it shortens avg label length by >3 chars
+    const getAvgLength = compact => {
+      const lengths = data.map(d => formatYValue(d.y, { compact }).length);
+      return lengths.reduce((sum, l) => sum + l, 0) / lengths.length;
+    };
+    compact = getAvgLength(true) < getAvgLength(false) - 3;
+  }
+
   // use the chart body so things line up properly
   const parent = chart.svg().select(".chart-body");
 
@@ -322,7 +337,7 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
         .append("text")
         .attr("class", klass)
         .attr("text-anchor", "middle")
-        .text(({ y }) => formatYValue(y, { compact: true })),
+        .text(({ y }) => formatYValue(y, { compact })),
     );
   };
 
