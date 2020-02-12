@@ -103,11 +103,6 @@ export default class CardTagEditor extends Component {
             <Link to={questionUrl(id)}>{t`Question #${id}`}</Link>
           )}
         </h3>
-        {this.errorMessage() && (
-          <p className="text-error bg-light p2 mb2 mt0">
-            {this.errorMessage()}
-          </p>
-        )}
         {loading ? (
           <LoadingSpinner />
         ) : (
@@ -123,6 +118,11 @@ export default class CardTagEditor extends Component {
               onChange={this.handleQuestionSelection}
             />
           </PopoverWithTrigger>
+        )}
+        {this.errorMessage() && (
+          <p className="text-error bg-light p2 mt2 mb0">
+            {this.errorMessage()}
+          </p>
         )}
         {question && !this.errorMessage() && (
           <div className="bg-light text-medium p1 mt2">
