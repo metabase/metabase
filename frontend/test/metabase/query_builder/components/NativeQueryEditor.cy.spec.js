@@ -112,29 +112,38 @@ describe("NativeQueryEditor", () => {
     cy.visit("/question/new");
     cy.contains("Native query").click();
 
-    // Write a query with parameter x. It defaults to a text parameter.
-    cy.get(".ace_content").type("select * from {{#1}}", {
+    // start typing a question referenced
+    cy.get(".ace_content").type("select * from {{#}}", {
       parseSpecialCharSequences: false,
       delay: 0,
     });
+
+    cy.contains("Question #…")
+      .parent()
+      .parent()
+      .contains("Pick a saved question")
+      .click();
+
+    // selecting a question should update the query
+    popover()
+      .contains("Orders")
+      .click();
+
+    cy.contains("select * from {{#1}}");
 
     // run query and see that a value from the results appears
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains("37.65");
 
-    // sidebar should show question title and name
-    cy.contains("Question #1")
+    // update the text of the query to reference question 2
+    // :visible is needed because there is an unused .ace_content present in the DOM
+    cy.get(".ace_content:visible").type("{leftarrow}{leftarrow}{backspace}2");
+
+    // sidebar should show updated question title and name
+    cy.contains("Question #2")
       .parent()
       .parent()
-      .contains("Orders")
-      .click();
-
-    // selecting a new question should update the query
-    popover()
-      .contains("Orders, Count")
-      .click();
-
-    cy.contains("select * from {{#2}}");
+      .contains("Orders, Count");
 
     // run query again and see new result
     cy.get(".NativeQueryEditor .Icon-play").click();

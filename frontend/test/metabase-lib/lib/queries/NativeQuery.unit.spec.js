@@ -233,6 +233,14 @@ describe("NativeQuery", () => {
 
         expect(query.queryText()).toBe("{{#321}} {{foo}} {{#1234}} {{#321}}");
       });
+
+      it("should replace a blank id", () => {
+        const query = makeQuery()
+          .setQueryText("{{#}} {{#123}}")
+          .replaceCardId("", 321);
+
+        expect(query.queryText()).toBe("{{#321}} {{#123}}");
+      });
     });
   });
 });

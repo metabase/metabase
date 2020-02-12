@@ -38,16 +38,16 @@ export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
 };
 
 function cardTagCardId(name) {
-  const reCardTag = /^#([0-9]+)$/g;
+  const reCardTag = /^#([0-9]*)$/g;
   const match = reCardTag.exec(name);
-  if (match !== null) {
+  if (match !== null && match[1].length > 0) {
     return parseInt(match[1]);
   }
   return null;
 }
 
 function isCardQueryName(name) {
-  return cardTagCardId(name) !== null;
+  return /^#[0-9]*$/.test(name);
 }
 
 export default class NativeQuery extends AtomicQuery {
@@ -285,7 +285,7 @@ export default class NativeQuery extends AtomicQuery {
       // anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
       // variables referencing other questions, by their card ID, are also supported: {{#123}} references question with ID 123
       let match;
-      const re = /\{\{\s*([A-Za-z0-9_]+?|#[0-9]+)\s*\}\}/g;
+      const re = /\{\{\s*([A-Za-z0-9_]+?|#[0-9]*)\s*\}\}/g;
       while ((match = re.exec(queryText)) != null) {
         tags.push(match[1]);
       }
