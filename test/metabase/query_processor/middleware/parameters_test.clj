@@ -13,7 +13,7 @@
          (#'parameters/move-top-level-params-to-inner-query
           {:type :native, :native {:query "WOW"}, :parameters ["My Param"]}))))
 
-(defn- subsitute-params [query]
+(defn- substitute-params [query]
   (driver/with-driver :h2
     ((parameters/substitute-parameters identity) (normalize/normalize query))))
 
@@ -22,7 +22,7 @@
     (is (= (data/mbql-query venues
              {:aggregation [[:count]]
               :filter      [:= $price 1]})
-           (subsitute-params
+           (substitute-params
             (data/mbql-query venues
              {:aggregation [[:count]]
               :parameters  [{:name "price", :type :category, :target $price, :value 1}]}))))))
@@ -32,7 +32,7 @@
     (is (= (data/query nil
              {:type   :native
               :native {:query "SELECT * FROM venues WHERE price = 1;", :params []}})
-           (subsitute-params
+           (substitute-params
             (data/query nil
               {:type       :native
                :native     {:query         "SELECT * FROM venues WHERE price = {{price}};"
@@ -45,7 +45,7 @@
              {:source-query {:source-table $$venues
                              :filter       [:= $price 1]}
               :aggregation  [[:count]]})
-           (subsitute-params
+           (substitute-params
             (data/mbql-query venues
               {:source-query {:source-table $$venues
                               :parameters   [{:name "price", :type :category, :target $price, :value 1}]}
@@ -56,7 +56,7 @@
     (is (= (data/mbql-query nil
              {:source-query {:native "SELECT * FROM categories WHERE name = ?;"
                              :params ["BBQ"]}})
-           (subsitute-params
+           (substitute-params
             (data/mbql-query nil
               {:source-query {:native         "SELECT * FROM categories WHERE name = {{cat}};"
                               :template-tags {"cat" {:name "cat", :display-name "Category", :type :text}}
@@ -70,7 +70,7 @@
                                             :filter       [:= $categories.name "BBQ"]}
                              :alias        "c"
                              :condition    [:= $category_id &c.categories.id]}]})
-           (subsitute-params
+           (substitute-params
             (data/mbql-query venues
               {:aggregation [[:count]]
                :joins       [{:source-table $$categories
@@ -86,7 +86,7 @@
                                             :params ["BBQ"]}
                              :alias        "c"
                              :condition    [:= $category_id &c.*categories.id]}]})
-           (subsitute-params
+           (substitute-params
             (data/mbql-query venues
               {:aggregation [[:count]]
                :joins       [{:source-query {:native        "SELECT * FROM categories WHERE name = {{cat}};"
@@ -106,7 +106,7 @@
                                            :filter       [:= $categories.name "BBQ"]}
                             :alias        "c"
                             :condition    [:= $category_id &c.categories.id]}]})
-         (subsitute-params
+         (substitute-params
           (data/mbql-query venues
             {:source-query {:source-table $$venues
                             :parameters   [{:name "price", :type :category, :target $price, :value 1}]}
@@ -128,7 +128,7 @@
                                                            [:= $categories.id 5]]}
                              :alias        "c"
                              :condition    [:= $category_id &c.categories.id]}]})
-           (subsitute-params
+           (substitute-params
             (data/mbql-query venues
               {:aggregation [[:count]]
                :joins       [{:source-query {:source-table $$categories
