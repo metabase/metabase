@@ -132,7 +132,7 @@
       (tt/with-temp Card [card {:dataset_query {:database (data/id)
                                                 :type     "native"
                                                 :native   {:query test-query}}}]
-        (is (= (i/->CardQuery (:id card) test-query)
+        (is (= (i/->ReferencedCardQuery (:id card) test-query)
                (#'values/value-for-tag
                 {:name "card-template-tag-test", :display-name "Card template tag test",
                  :type :card, :card (:id card)}
@@ -155,7 +155,7 @@
                                 "WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" < 3 "
                                 "LIMIT 1048576")]
           (tt/with-temp Card [card {:dataset_query mbql-query}]
-            (is (= (i/->CardQuery (:id card) expected-sql)
+            (is (= (i/->ReferencedCardQuery (:id card) expected-sql)
                    (#'values/value-for-tag
                     {:name "card-template-tag-test", :display-name "Card template tag test",
                      :type :card, :card (:id card)}

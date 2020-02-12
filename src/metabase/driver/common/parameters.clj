@@ -27,20 +27,20 @@
   [x]
   (instance? FieldFilter x))
 
-;; A "CardQuery" parameter expands to the native query of the referenced card.
+;; A "ReferencedCardQuery" parameter expands to the native query of the referenced card.
 ;;
 ;; `card-id` is the ID of the Card instance whose query is the value for this parameter.
 ;;
 ;; `query` is the native query as stored in the Card
-(p.types/defrecord+ CardQuery [card-id query]
+(p.types/defrecord+ ReferencedCardQuery [card-id query]
   PrettyPrintable
   (pretty [this]
-    (list 'map->CardQuery (into {} this))))
+    (list 'map->ReferencedCardQuery (into {} this))))
 
-(defn CardQuery?
-  "Is `x` an instance of the `CardQuery` record type?"
+(defn ReferencedCardQuery?
+  "Is `x` an instance of the `ReferencedCardQuery` record type?"
   [x]
-  (instance? CardQuery x))
+  (instance? ReferencedCardQuery x))
 
 ;; as in a literal date, defined by date-string S
 ;;

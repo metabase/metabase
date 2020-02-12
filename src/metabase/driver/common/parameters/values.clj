@@ -126,7 +126,7 @@
   [tag :- TagParam, _params :- (s/maybe [i/ParamValue])]
   (when-let [card-id (:card tag)]
     (when-let [query (db/select-one-field :dataset_query Card :id card-id)]
-      (i/map->CardQuery
+      (i/map->ReferencedCardQuery
        {:card-id card-id
         :query   (:query (qp/query->native query))}))))
 

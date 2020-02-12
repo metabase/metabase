@@ -26,7 +26,7 @@
         (i/FieldFilter? v)
         (substitute-field-filter [sql args missing] in-optional? k v)
 
-        (i/CardQuery? v)
+        (i/ReferencedCardQuery? v)
         (subsistute-card-query [sql args missing] in-optional? k v)
 
         (= i/no-value v)

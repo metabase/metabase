@@ -110,13 +110,13 @@
                  (substitute query {"date" (assoc (date-field-filter-value) :value i/no-value)}))))))))
 
 
-;;; ------------------------------------------------- Card Queries ---------------------------------------------------
+;;; -------------------------------------------- Referenced Card Queries ---------------------------------------------
 
-(deftest substitute-card-query-test
-  (testing "card query substitution"
+(deftest substitute-referenced-card-query-test
+  (testing "Referenced card query substitution"
     (let [query ["select * from " (param "#123")]]
       (is (= ["select * from (select 1 `x`)" nil]
-             (substitute query {"#123" (i/->CardQuery 123 "select 1 `x`")}))))))
+             (substitute query {"#123" (i/->ReferencedCardQuery 123 "select 1 `x`")}))))))
 
 
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
