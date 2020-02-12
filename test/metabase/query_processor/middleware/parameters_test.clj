@@ -3,8 +3,8 @@
   SQL-specific, they still confirm that the middleware itself is working correctly."
   (:require [clojure.test :refer :all]
             [metabase.driver :as driver]
-            [metabase.models.card :refer [Card]]
             [metabase.mbql.normalize :as normalize]
+            [metabase.models.card :refer [Card]]
             [metabase.query-processor.middleware.parameters :as parameters]
             [metabase.test.data :as data]
             [toucan.util.test :as tt]))
