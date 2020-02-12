@@ -24,6 +24,8 @@
    :error      (or (.getMessage e) (str e))
    :stacktrace (u/filtered-stacktrace e)})
 
+;; TODO - consider moving this into separate middleware as part of a try-catch setup so queries running in a
+;; non-userland context can still have sane Exceptions
 (defn- explain-schema-validation-error
   "Return a nice error message to explain the Schema validation error."
   [error]
@@ -62,9 +64,11 @@
   (let [{error :error, error-type :type, :as data} (ex-data e)]
     (merge
      ((get-method format-exception Throwable) e)
-     (when-let [error-msg (and (= error-type :schema.core/error)
-                               (explain-schema-validation-error error))]
-       {:error error-msg})
+     (when (= error-type :schema.core/error)
+       (merge
+        {:error_type error-type/invalid-query}
+        (when-let [error-msg (explain-schema-validation-error error)]
+          {:error error-msg})))
      (when (error-type/known-error-type? error-type)
        {:error_type error-type})
      ;; TODO - we should probably change this key to `:data` so we're not mixing lisp-case and snake_case keys

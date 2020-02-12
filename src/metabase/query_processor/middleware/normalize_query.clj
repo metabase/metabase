@@ -1,7 +1,9 @@
 (ns metabase.query-processor.middleware.normalize-query
   "Middleware that converts a query into a normalized, canonical form."
-  (:require [metabase.mbql.normalize :as normalize]
-            [metabase.query-processor.error-type :as error-type]))
+  (:require [clojure.tools.logging :as log]
+            [metabase.mbql.normalize :as normalize]
+            [metabase.query-processor.error-type :as error-type]
+            [metabase.util :as u]))
 
 (defn normalize
   "Middleware that converts a query into a normalized, canonical form, including things like converting all identifiers
@@ -10,7 +12,8 @@
   [qp]
   (fn [query xformf context]
     (let [query' (try
-                   (normalize/normalize query)
+                   (u/prog1 (normalize/normalize query)
+                     (log/tracef "Normalized query:\n%s" (u/pprint-to-str <>)))
                    (catch Throwable e
                      (throw (ex-info (.getMessage e)
                               {:type  error-type/invalid-query

@@ -2,6 +2,7 @@
   "Tests for the `:share` aggregation."
   (:require [clojure.test :refer :all]
             [metabase
+             [driver :as driver]
              [query-processor-test :refer :all]
              [test :as mt]]
             [metabase.models
@@ -33,7 +34,10 @@
                                    [:ends-with $name "t"]]]]]})))))
 
     (testing "empty results"
-      (is (= [[nil]]
+      ;; due to a bug in the Mongo counts are returned as empty when there are no results (#5419)
+      (is (= (if (= driver/*driver* :mongo)
+               []
+               [[nil]])
              (mt/rows
                (mt/run-mbql-query venues
                  {:aggregation [[:share [:< $price 4]]]

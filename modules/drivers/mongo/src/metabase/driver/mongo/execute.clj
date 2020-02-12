@@ -1,4 +1,4 @@
-(ns metabase.driver.mongo.query-processor.execute
+(ns metabase.driver.mongo.execute
   (:require [clojure
              [set :as set]
              [string :as str]]
@@ -109,18 +109,6 @@
   (when row
     (.keySet row)))
 
-(defn parse-query-string
-  "Parse a serialized native query. Like a normal JSON parse, but handles BSON/MongoDB extended JSON forms."
-  [^String s]
-  (try
-    (for [^org.bson.BsonValue v (org.bson.BsonArray/parse s)]
-      (com.mongodb.BasicDBObject. (.asDocument v)))
-    (catch Throwable e
-      (throw (ex-info (tru "Unable to parse query: {0}" (.getMessage e))
-               {:type  error-type/invalid-query
-                :query s}
-               e)))))
-
 (defn- aggregation-options ^AggregationOptions [timeout-ms]
   ;; see https://mongodb.github.io/mongo-java-driver/3.7/javadoc/com/mongodb/AggregationOptions.Builder.html
   (.build (doto (AggregationOptions/builder)
@@ -166,6 +154,18 @@
                  (reducible-rows context cursor first-row (post-process-row native-query row-col-names)))))
     (finally
       (.close cursor))))
+
+(defn- parse-query-string
+  "Parse a serialized native query. Like a normal JSON parse, but handles BSON/MongoDB extended JSON forms."
+  [^String s]
+  (try
+    (for [^org.bson.BsonValue v (org.bson.BsonArray/parse s)]
+      (com.mongodb.BasicDBObject. (.asDocument v)))
+    (catch Throwable e
+      (throw (ex-info (tru "Unable to parse query: {0}" (.getMessage e))
+               {:type  error-type/invalid-query
+                :query s}
+               e)))))
 
 (defn execute-reducible-query
   "Process and run a native MongoDB query."

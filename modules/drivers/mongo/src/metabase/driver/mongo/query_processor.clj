@@ -448,10 +448,10 @@
 (defmethod expand-aggregation :share
   [[_ pred :as ag]]
   (let [count-where-name (name (gensym "count-where"))
-        count-name    (name (gensym "count-"))
-        pred          (if (= (first pred) :share)
-                        (second pred)
-                        pred)]
+        count-name       (name (gensym "count-"))
+        pred             (if (= (first pred) :share)
+                           (second pred)
+                           pred)]
     [[[count-where-name (aggregation->rvalue [:count-where pred])]
       [count-name (aggregation->rvalue [:count])]]
      [[(annotate/aggregation-name ag) {$divide [(str "$" count-where-name) (str "$" count-name)]}]]]))
