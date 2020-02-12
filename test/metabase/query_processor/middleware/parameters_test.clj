@@ -3,9 +3,11 @@
   SQL-specific, they still confirm that the middleware itself is working correctly."
   (:require [clojure.test :refer :all]
             [metabase.driver :as driver]
+            [metabase.models.card :refer [Card]]
             [metabase.mbql.normalize :as normalize]
             [metabase.query-processor.middleware.parameters :as parameters]
-            [metabase.test.data :as data]))
+            [metabase.test.data :as data]
+            [toucan.util.test :as tt]))
 
 (deftest move-top-level-params-to-inner-query-test
   (is (= {:type   :native
@@ -136,3 +138,29 @@
                               :alias        "c"
                               :condition    [:= $category_id &c.categories.id]
                               :parameters   [{:type "category", :target $categories.name, :value "BBQ"}]}]}))))))
+
+(deftest expand-multiple-referenced-cards-in-template-tags
+  (testing "multiple queries, referenced in template tags, are correctly substituted"
+    (tt/with-temp* [Card [card-1 {:dataset_query {:database (data/id)
+                                                  :type     "native"
+                                                  :native   {:query "SELECT 1"}}}]
+                    Card [card-2 {:dataset_query {:database (data/id)
+                                                  :type     "native"
+                                                  :native   {:query "SELECT 2"}}}]]
+      (let [card-1-id  (:id card-1)
+            card-1-tag (str "#" card-1-id)
+            card-2-id  (:id card-2)
+            card-2-tag (str "#" card-2-id)]
+        (= {:database 439
+            :type :native
+            :native {:query "SELECT COUNT(*) FROM (SELECT 1) AS c1, (SELECT 2) AS c2", :params nil}}
+           (substitute-params
+            (data/native-query
+             {:query         (str "SELECT COUNT(*) FROM {{" card-1-tag "}} AS c1, {{" card-2-tag "}} AS c2")
+              :template-tags {card-1-tag
+                              {:id card-1-tag, :name card-1-tag, :display-name card-1-tag,
+                               :type "card", :card card-1-id}
+
+                              card-2-tag
+                              {:id card-2-tag, :name card-2-tag, :display-name card-2-tag,
+                               :type "card", :card card-2-id}}})))))))
