@@ -1,11 +1,11 @@
 (ns metabase.query-processor-test.implicit-joins-test
   "Test for JOIN behavior."
-  (:require [expectations :refer [expect]]
+  (:require [clojure.test :refer :all]
+            [expectations :refer [expect]]
             [metabase
              [driver :as driver]
              [query-processor-test :as qp.test]
              [test :as mt]]
-            [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]))
 
 ;; The top 10 cities by number of Tupac sightings
@@ -21,8 +21,8 @@
    ["Houston"      11]
    ["Irvine"       11]
    ["Lakeland"     11]]
-  (->> (data/dataset tupac-sightings
-         (data/run-mbql-query sightings
+  (->> (mt/dataset tupac-sightings
+         (mt/run-mbql-query sightings
            {:aggregation [[:count]]
             :breakout    [$city_id->cities.name]
             :order-by    [[:desc [:aggregation 0]]]
@@ -36,8 +36,8 @@
 ;; Test that we can filter on an FK field
 (datasets/expect-with-drivers (mt/normal-drivers-with-feature :foreign-keys)
   [[60]]
-  (->> (data/dataset tupac-sightings
-         (data/run-mbql-query sightings
+  (->> (mt/dataset tupac-sightings
+         (mt/run-mbql-query sightings
            {:aggregation [[:count]]
             :filter      [:= $category_id->categories.id 8]}))
        qp.test/rows
@@ -58,8 +58,8 @@
    [996 "At a Restaurant"]
    [897 "Wearing a Biggie Shirt"]
    [499 "In the Expa Office"]]
-  (->> (data/dataset tupac-sightings
-         (data/run-mbql-query sightings
+  (->> (mt/dataset tupac-sightings
+         (mt/run-mbql-query sightings
            {:fields   [$id $category_id->categories.name]
             :order-by [[:desc $timestamp]]
             :limit    10}))
@@ -84,8 +84,8 @@
    [2 11 524]
    [2 13  77]
    [2 13 202]]
-  (->> (data/dataset tupac-sightings
-         (data/run-mbql-query sightings
+  (->> (mt/dataset tupac-sightings
+         (mt/run-mbql-query sightings
            {:order-by [[:asc $city_id->cities.name]
                        [:desc $category_id->categories.name]
                        [:asc $id]]
@@ -98,23 +98,24 @@
 
 
 ;; Check that trying to use a Foreign Key fails for Mongo and other DBs
-(datasets/expect-with-drivers (mt/normal-drivers-without-feature :foreign-keys)
-  {:status :failed
-   :error  (format "%s driver does not support foreign keys." driver/*driver*)}
-  (select-keys
-   (data/dataset tupac-sightings
-     (data/run-mbql-query sightings
-       {:order-by [[:asc $city_id->cities.name]
-                   [:desc $category_id->categories.name]
-                   [:asc $id]]
-        :limit    10}))
-   [:status :error]))
+(deftest feature-check-test
+  (mt/test-drivers (mt/normal-drivers-without-feature :foreign-keys)
+    (is
+     (thrown-with-msg?
+      clojure.lang.ExceptionInfo
+      (re-pattern (format "%s driver does not support foreign keys" driver/*driver*))
+      (mt/dataset tupac-sightings
+        (mt/run-mbql-query sightings
+          {:order-by [[:asc $city_id->cities.name]
+                      [:desc $category_id->categories.name]
+                      [:asc $id]]
+           :limit    10}))))))
 
 ;; Implicit joins should come back with `:fk->` field refs
 (expect
-  (data/$ids venues $category_id->categories.name)
-  (-> (qp.test/cols
-        (data/run-mbql-query :venues
+  (mt/$ids venues $category_id->categories.name)
+  (-> (mt/cols
+        (mt/run-mbql-query :venues
           {:fields   [$category_id->categories.name]
            :order-by [[:asc $id]]
            :limit    1}))
@@ -143,10 +144,10 @@
    ["Lucky Pigeon"     2]
    ["Peter Pelican"    5]
    ["Ronald Raven"     1]]
-  (data/dataset avian-singles
+  (mt/dataset avian-singles
     (qp.test/format-rows-by [str int]
       (qp.test/rows
-        (data/run-mbql-query messages
+        (mt/run-mbql-query messages
           {:aggregation [[:count]]
            :breakout    [$sender_id->users.name]
            :filter      [:= $reciever_id->users.name "Rasta Toucan"]})))))

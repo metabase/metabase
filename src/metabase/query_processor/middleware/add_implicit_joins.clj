@@ -12,7 +12,9 @@
             [metabase.models
              [field :refer [Field]]
              [table :refer [Table]]]
-            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor
+             [error-type :as error-type]
+             [store :as qp.store]]
             [metabase.util
              [i18n :refer [tru]]
              [schema :as su]]
@@ -227,7 +229,8 @@
     (do
       (when-not (driver/supports? driver/*driver* :foreign-keys)
         (throw (ex-info (tru "{0} driver does not support foreign keys." driver/*driver*)
-                 {:driver driver/*driver*})))
+                 {:driver driver/*driver*
+                  :type   error-type/client})))
       (update query :query resolve-fk-clauses))
     query))
 

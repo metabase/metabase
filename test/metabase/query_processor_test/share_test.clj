@@ -13,7 +13,7 @@
     (is (= [[0.94]]
            (mt/formatted-rows [2.0]
              (mt/run-mbql-query venues
-               {:aggregation [[:share [:< [:field-id (mt/id :venues :price)] 4]]]}))))
+               {:aggregation [[:share [:< $price 4]]]}))))
 
     (testing "Normalization"
       (= [[0.94]]
@@ -27,17 +27,17 @@
                (mt/run-mbql-query venues
                  {:aggregation [[:share
                                  [:and
-                                  [:< [:field-id (mt/id :venues :price)] 4]
+                                  [:< [:field-id $price] 4]
                                   [:or
-                                   [:starts-with [:field-id (mt/id :venues :name)] "M"]
-                                   [:ends-with [:field-id (mt/id :venues :name)] "t"]]]]]})))))
+                                   [:starts-with $name "M"]
+                                   [:ends-with $name "t"]]]]]})))))
 
     (testing "empty results"
       (is (= [[nil]]
              (mt/rows
                (mt/run-mbql-query venues
-                 {:aggregation [[:share [:< [:field-id (mt/id :venues :price)] 4]]]
-                  :filter      [:> [:field-id (mt/id :venues :price)] Long/MAX_VALUE]})))))))
+                 {:aggregation [[:share [:< $price 4]]]
+                  :filter      [:> $price Long/MAX_VALUE]})))))))
 
 (deftest segments-metrics-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
