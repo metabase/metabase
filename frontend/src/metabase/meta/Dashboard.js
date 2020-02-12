@@ -1,10 +1,9 @@
 /* @flow */
 
-import Metadata from "metabase-lib/lib/metadata/Metadata";
-import Table from "metabase-lib/lib/metadata/Table";
-import Field from "metabase-lib/lib/metadata/Field";
+import Question from "metabase-lib/lib/Question";
 
-import type { FieldId } from "./types/Field";
+import type Metadata from "metabase-lib/lib/metadata/Metadata";
+import type Field from "metabase-lib/lib/metadata/Field";
 import type { TemplateTag } from "./types/Query";
 import type { Card } from "./types/Card";
 import type {
@@ -12,19 +11,25 @@ import type {
   Parameter,
   ParameterType,
   ParameterMappingUIOption,
-  DimensionTarget,
-  VariableTarget,
 } from "./types/Parameter";
+
+import Dimension, {
+  FKDimension,
+  JoinedDimension,
+} from "metabase-lib/lib/Dimension";
+import Variable, { TemplateTagVariable } from "metabase-lib/lib/Variable";
+
 import { t } from "ttag";
-import { getTemplateTags } from "./Card";
-
-import { slugify, stripId } from "metabase/lib/formatting";
-import * as Q_DEPRECATED from "metabase/lib/query";
-import { TYPE, isa } from "metabase/lib/types";
-
 import _ from "underscore";
 
-export const PARAMETER_OPTIONS: Array<ParameterOption> = [
+import { slugify } from "metabase/lib/formatting";
+
+type DimensionFilter = (dimension: Dimension) => boolean;
+type TemplateTagFilter = (tag: TemplateTag) => boolean;
+type FieldFilter = (field: Field) => boolean;
+type VariableFilter = (variable: Variable) => boolean;
+
+export const PARAMETER_OPTIONS: ParameterOption[] = [
   {
     type: "date/month-year",
     name: t`Month and Year`,
@@ -86,10 +91,10 @@ export type ParameterSection = {
   id: string,
   name: string,
   description: string,
-  options: Array<ParameterOption>,
+  options: ParameterOption[],
 };
 
-export const PARAMETER_SECTIONS: Array<ParameterSection> = [
+export const PARAMETER_SECTIONS: ParameterSection[] = [
   {
     id: "date",
     name: t`Time`,
@@ -128,153 +133,11 @@ for (const option of PARAMETER_OPTIONS) {
   }
 }
 
-type Dimension = {
-  name: string,
-  parentName: string,
-  target: DimensionTarget,
-  field_id: number,
-  depth: number,
-};
-
-type Variable = {
-  name: string,
-  target: VariableTarget,
-  type: string,
-};
-
-type FieldFilter = (field: Field) => boolean;
-type TemplateTagFilter = (tag: TemplateTag) => boolean;
-
-export function getFieldDimension(field: Field): Dimension {
-  return {
-    name: field.display_name,
-    field_id: field.id,
-    parentName: field.table.display_name,
-    target: ["field-id", field.id],
-    depth: 0,
-  };
-}
-
-export function getTagDimension(
-  tag: TemplateTag,
-  dimension: Dimension,
-): Dimension {
-  return {
-    name: dimension.name,
-    parentName: dimension.parentName,
-    target: ["template-tag", tag.name],
-    field_id: dimension.field_id,
-    depth: 0,
-  };
-}
-
-export function getCardDimensions(
-  metadata: Metadata,
-  card: Card,
-  filter: FieldFilter = () => true,
-): Array<Dimension> {
-  if (card.dataset_query.type === "query") {
-    const table =
-      card.dataset_query.query["source-table"] != null
-        ? metadata.tables[card.dataset_query.query["source-table"]]
-        : null;
-    if (table) {
-      return getTableDimensions(table, 1, filter);
-    }
-  } else if (card.dataset_query.type === "native") {
-    const dimensions = [];
-    for (const tag of getTemplateTags(card)) {
-      if (
-        tag.type === "dimension" &&
-        Array.isArray(tag.dimension) &&
-        tag.dimension[0] === "field-id"
-      ) {
-        const field = metadata.fields[tag.dimension[1]];
-        if (field && filter(field)) {
-          const fieldDimension = getFieldDimension(field);
-          dimensions.push(getTagDimension(tag, fieldDimension));
-        }
-      }
-    }
-    return dimensions;
-  }
-  return [];
-}
-
-function getDimensionTargetFieldId(target: DimensionTarget): ?FieldId {
-  if (Array.isArray(target) && target[0] === "template-tag") {
-    return null;
-  } else {
-    return Q_DEPRECATED.getFieldTargetId(target);
-  }
-}
-
-export function getTableDimensions(
-  table: Table,
-  depth: number,
-  filter: FieldFilter = () => true,
-): Array<Dimension> {
-  return _.chain(table.fields)
-    .map(field => {
-      const targetField = field.target;
-      if (targetField && depth > 0 && targetField.table) {
-        const targetTable = targetField.table;
-        const dimensions = getTableDimensions(
-          targetTable,
-          depth - 1,
-          filter,
-        ).map((dimension: Dimension) => ({
-          ...dimension,
-          parentName: stripId(field.display_name),
-          target: [
-            "fk->",
-            field.id,
-            getDimensionTargetFieldId(dimension.target),
-          ],
-          depth: dimension.depth + 1,
-        }));
-        if (filter(field)) {
-          dimensions.push(getFieldDimension(field));
-        }
-        return dimensions;
-      } else if (filter(field)) {
-        return [getFieldDimension(field)];
-      }
-    })
-    .flatten()
-    .filter(dimension => dimension != null)
-    .value();
-}
-
-export function getCardVariables(
-  metadata: Metadata,
-  card: Card,
-  filter: TemplateTagFilter = () => true,
-): Array<Variable> {
-  if (card.dataset_query.type === "native") {
-    const variables = [];
-    for (const tag of getTemplateTags(card)) {
-      if (!filter || filter(tag)) {
-        variables.push({
-          name: tag["display-name"] || tag.name,
-          type: tag.type,
-          target: ["template-tag", tag.name],
-        });
-      }
-    }
-    return variables;
-  }
-  return [];
-}
-
-function fieldFilterForParameter(parameter: ?Parameter = null) {
-  if (!parameter) {
-    return () => true;
-  }
+function fieldFilterForParameter(parameter: Parameter) {
   return fieldFilterForParameterType(parameter.type);
 }
 
-export function fieldFilterForParameterType(
+function fieldFilterForParameterType(
   parameterType: ParameterType,
 ): FieldFilter {
   const [type] = parameterType.split("/");
@@ -289,13 +152,13 @@ export function fieldFilterForParameterType(
 
   switch (parameterType) {
     case "location/city":
-      return (field: Field) => isa(field.special_type, TYPE.City);
+      return (field: Field) => field.isCity();
     case "location/state":
-      return (field: Field) => isa(field.special_type, TYPE.State);
+      return (field: Field) => field.isState();
     case "location/zip_code":
-      return (field: Field) => isa(field.special_type, TYPE.ZipCode);
+      return (field: Field) => field.isZipCode();
     case "location/country":
-      return (field: Field) => isa(field.special_type, TYPE.Country);
+      return (field: Field) => field.isCountry();
   }
   return (field: Field) => false;
 }
@@ -306,12 +169,23 @@ export function parameterOptionsForField(field: Field): ParameterOption[] {
   );
 }
 
-function tagFilterForParameter(
-  parameter: ?Parameter = null,
-): TemplateTagFilter {
-  if (!parameter) {
-    return () => true;
-  }
+function dimensionFilterForParameter(parameter: Parameter): DimensionFilter {
+  const fieldFilter = fieldFilterForParameter(parameter);
+  return dimension => fieldFilter(dimension.field());
+}
+
+function variableFilterForParameter(parameter: Parameter): VariableFilter {
+  const tagFilter = tagFilterForParameter(parameter);
+  return variable => {
+    if (variable instanceof TemplateTagVariable) {
+      const tag = variable.tag();
+      return tag ? tagFilter(tag) : false;
+    }
+    return false;
+  };
+}
+
+function tagFilterForParameter(parameter: Parameter): TemplateTagFilter {
   const [type, subtype] = parameter.type.split("/");
   switch (type) {
     case "date":
@@ -326,48 +200,43 @@ function tagFilterForParameter(
   return (tag: TemplateTag) => false;
 }
 
-const VARIABLE_ICONS = {
-  text: "string",
-  number: "int",
-  date: "calendar",
-};
-
 export function getParameterMappingOptions(
   metadata: Metadata,
   parameter: ?Parameter = null,
   card: Card,
-): Array<ParameterMappingUIOption> {
+): ParameterMappingUIOption[] {
   const options = [];
+
+  const query = new Question(card, metadata).query();
 
   // dimensions
   options.push(
-    ...getCardDimensions(
-      metadata,
-      card,
-      fieldFilterForParameter(parameter),
-    ).map((dimension: Dimension) => {
-      const field = metadata.fields[dimension.field_id];
-      return {
-        name: dimension.name,
-        target: ["dimension", dimension.target],
-        icon: field && field.icon(),
-        sectionName: dimension.parentName,
-        isFk: dimension.depth > 0,
-      };
-    }),
+    ...query
+      .dimensionOptions(parameter && dimensionFilterForParameter(parameter))
+      .sections()
+      .flatMap(section =>
+        section.items.map(({ dimension }) => ({
+          sectionName: section.name,
+          name: dimension.displayName(),
+          icon: dimension.icon(),
+          target: ["dimension", dimension.mbql()],
+          isForeign:
+            dimension instanceof FKDimension ||
+            dimension instanceof JoinedDimension,
+        })),
+      ),
   );
 
   // variables
   options.push(
-    ...getCardVariables(metadata, card, tagFilterForParameter(parameter)).map(
-      (variable: Variable) => ({
-        name: variable.name,
-        target: ["variable", variable.target],
-        icon: VARIABLE_ICONS[variable.type],
+    ...query
+      .variables(parameter && variableFilterForParameter(parameter))
+      .map(variable => ({
         sectionName: "Variables",
-        isVariable: true,
-      }),
-    ),
+        name: variable.displayName(),
+        icon: variable.icon(),
+        target: ["variable", variable.mbql()],
+      })),
   );
 
   return options;
@@ -375,7 +244,7 @@ export function getParameterMappingOptions(
 
 export function createParameter(
   option: ParameterOption,
-  parameters: Array<ParameterOption> = [],
+  parameters: Parameter[] = [],
 ): Parameter {
   let name = option.name;
   let nameIndex = 0;

@@ -140,8 +140,8 @@
     (= v "information_schema")))
 
 (defmethod driver/date-add :presto
-  [_ dt amount unit]
-  (hsql/call :date_add (hx/literal unit) amount dt))
+  [_ hsql-form amount unit]
+  (hsql/call :date_add (hx/literal unit) amount hsql-form))
 
 (s/defn ^:private database->all-schemas :- #{su/NonBlankString}
   "Return a set of all schema names in this `database`."
@@ -213,6 +213,10 @@
 (defmethod sql.qp/->honeysql [:presto :time]
   [_ [_ t]]
   (hx/cast :time (u.date/format-sql (t/local-time t))))
+
+(defmethod sql.qp/->float :presto
+  [_ value]
+  (hx/cast :double value))
 
 ;; See https://prestodb.io/docs/current/functions/datetime.html
 

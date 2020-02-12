@@ -41,8 +41,8 @@
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
 (defmethod driver/date-add :postgres
-  [_ dt amount unit]
-  (hx/+ (hx/->timestamp dt)
+  [_ hsql-form amount unit]
+  (hx/+ (hx/->timestamp hsql-form)
         (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit)))))
 
 (defmethod driver/humanize-connection-error-message :postgres

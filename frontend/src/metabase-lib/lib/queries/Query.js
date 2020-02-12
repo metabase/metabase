@@ -5,7 +5,12 @@ import Database from "../metadata/Database";
 import type { DatasetQuery } from "metabase/meta/types/Card";
 import type Metadata from "metabase-lib/lib/metadata/Metadata";
 import type Question from "metabase-lib/lib/Question";
+import type Dimension from "metabase-lib/lib/Dimension";
+import type Variable from "metabase-lib/lib/Variable";
+
 import { memoize } from "metabase-lib/lib/utils";
+
+import DimensionOptions from "metabase-lib/lib/DimensionOptions";
 
 type QueryUpdateFn = (datasetQuery: DatasetQuery) => void;
 
@@ -89,6 +94,23 @@ export default class Query {
    */
   databases(): Database[] {
     return this._metadata.databasesList();
+  }
+
+  /**
+   * Dimensions exposed by this query
+   * NOTE: Ideally we'd also have `dimensions()` that returns a flat list, but currently StructuredQuery has it's own `dimensions()` for another purpose.
+   */
+  dimensionOptions(
+    filter: (dimension: Dimension) => boolean,
+  ): DimensionOptions {
+    return new DimensionOptions();
+  }
+
+  /**
+   * Variables exposed by this query
+   */
+  variables(filter: (variable: Variable) => boolean): Variable[] {
+    return [];
   }
 
   /**

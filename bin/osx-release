@@ -93,35 +93,67 @@ sub build {
     remove_tree($xcarchive);
 }
 
-# Codesign Metabase.app
-sub codesign {
-    Readonly my $codesigning_cert_name => config_or_die('codesigningIdentity');
+sub codesign_file {
+    my ($filename) = @_;
 
-    announce "Codesigning $app...";
+    Readonly my $codesigning_cert_name => config_or_die('codesigningIdentity');
+    Readonly my $entitlements_file => get_file_or_die('OSX/Metabase/Metabase.entitlements');
+
+    announce "Codesigning $filename...";
 
     system('codesign', '--force', '--verify',
            '--sign', $codesigning_cert_name,
            '-r=designated => anchor trusted',
            '--timestamp',
            '--options', 'runtime',
-           '--deep', get_file_or_die($app)) == 0 or die "Code signing failed: $!\n";
+           '--entitlements', $entitlements_file,
+           '--deep', get_file_or_die($filename)) == 0 or die "Code signing failed: $!\n";
+}
+
+# Codesign Metabase.app
+sub codesign {
+    codesign_file($app) or die $1;
+}
+
+sub verify_file_codesign {
+    my ($filename) = @_;
+    get_file_or_die($filename);
+
+    config_or_die('codesigningIdentity');
+
+    announce "Verifying codesigning for $filename...";
+
+    system('codesign', '--verify', '--deep',
+           '--display',
+           '--strict',
+           '--verbose=4',
+           get_file_or_die($filename)) == 0 or die "Code signing verification failed: $!\n";
+
+    announce "codesign --verify $filename successful";
+
+    # Double-check with System Policy Security tool
+    system('spctl', '--assess', '--verbose=4', get_file_or_die($filename)) == 0 or die "Codesigning verification (spctl) failed: $!\n";
+
+    announce "spctl --assess $filename successful";
+
 }
 
 # Verify that Metabase.app was signed correctly
 sub verify_codesign {
-    config_or_die('codesigningIdentity');
-
-    announce "Verifying codesigning for $app...";
-
-    system('codesign', '--verify', '--deep', '--display',
-           '--verbose=4', get_file_or_die($app)) == 0 or die "Code signing verification failed: $!\n";
-
-    # Double-check with System Policy Security tool
-    system('spctl', '--assess', '--verbose=4', get_file_or_die($app)) == 0
+    verify_file_codesign($app) or die $!;
 }
 
 
 # ------------------------------------------------------------ PACKAGING FOR SPARKLE ------------------------------------------------------------
+
+sub verify_zip_codesign {
+    remove_tree('/tmp/Metabase.zip');
+
+    system('unzip', get_file_or_die($zipfile),
+           '-d', '/tmp/Metabase.zip');
+
+    verify_file_codesign('/tmp/Metabase.zip/Metabase.app') or die $!;
+}
 
 # Create ZIP containing Metabase.app
 sub archive {
@@ -131,8 +163,11 @@ sub archive {
 
     get_file_or_die($app);
 
-    system('cd ' . OSX_ARTIFACTS_DIR . ' && zip -r Metabase.zip Metabase.app') == 0 or die $!;
+    # Use ditto instead of zip to preserve the codesigning -- see https://forums.developer.apple.com/thread/116831
+    system('cd ' . OSX_ARTIFACTS_DIR . ' && ditto -c -k --sequesterRsrc --keepParent Metabase.app Metabase.zip') == 0 or die $!;
     get_file_or_die($zipfile);
+
+    verify_zip_codesign;
 }
 
 sub generate_signature {
@@ -323,6 +358,9 @@ sub notarize_file {
            '--asc-provider', $ascProvider,
            '--file', $filename
           ) == 0 or die $!;
+
+    print 'You can keep an eye on the notarization status (and get the LogFileURL) with the command:' . "\n\n";
+    print '    xcrun altool --notarization-info <RequestUUID> -u "$METABASE_MAC_APP_BUILD_APPLE_ID" -p "@keychain:METABASE_MAC_APP_BUILD_PASSWORD"' . "\n\n";
 }
 
 sub wait_for_notarization {
@@ -351,7 +389,7 @@ sub staple_notorization {
     announce "Stapling notarization to $filename...";
 
     system('xcrun', 'stapler', 'staple',
-           '-v', $filename) == 0 or die $1;
+           '-v', $filename) == 0 or die $!;
 
     announce "Notarization stapled successfully.";
 }

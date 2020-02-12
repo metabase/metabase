@@ -55,8 +55,6 @@ import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
 import { NotFound, Unauthorized } from "metabase/containers/ErrorPages";
 
-// Reference Guide
-import GettingStartedGuideContainer from "metabase/reference/guide/GettingStartedGuideContainer";
 // Reference Metrics
 import MetricListContainer from "metabase/reference/metrics/MetricListContainer";
 import MetricDetailContainer from "metabase/reference/metrics/MetricDetailContainer";
@@ -263,11 +261,6 @@ export const getRoutes = store => (
       {/* REFERENCE */}
       <Route path="/reference" title={`Data Reference`}>
         <IndexRedirect to="/reference/databases" />
-        <Route
-          path="guide"
-          title={`Getting Started`}
-          component={GettingStartedGuideContainer}
-        />
         <Route path="metrics" component={MetricListContainer} />
         <Route path="metrics/:metricId" component={MetricDetailContainer} />
         <Route

@@ -28,6 +28,13 @@ import type { DatabaseEngine, DatabaseId } from "metabase/meta/types/Database";
 
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 
+import Dimension, { TemplateTagDimension } from "../Dimension";
+import Variable, { TemplateTagVariable } from "../Variable";
+import DimensionOptions from "../DimensionOptions";
+
+type DimensionFilter = (dimension: Dimension) => boolean;
+type VariableFilter = (variable: Variable) => boolean;
+
 export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
   database: null,
   type: "native",
@@ -260,6 +267,12 @@ export default class NativeQuery extends AtomicQuery {
     );
   }
 
+  setTemplateTag(name, tag) {
+    return this.setDatasetQuery(
+      assocIn(this.datasetQuery(), ["native", "template-tags", name], tag),
+    );
+  }
+
   setDatasetQuery(datasetQuery: DatasetQuery): NativeQuery {
     return new NativeQuery(this._originalQuestion, datasetQuery);
   }
@@ -270,6 +283,29 @@ export default class NativeQuery extends AtomicQuery {
     const re = new RegExp(`{{\\s*#${oldId}\\s*}}`, "g");
     const newQueryText = this.queryText().replace(re, () => `{{#${newId}}}`);
     return this.setQueryText(newQueryText);
+  }
+
+  dimensionOptions(
+    dimensionFilter: DimensionFilter = () => true,
+  ): DimensionOptions {
+    const dimensions = this.templateTags()
+      .filter(tag => tag.type === "dimension")
+      .map(
+        tag =>
+          new TemplateTagDimension(null, [tag.name], this.metadata(), this),
+      )
+      .filter(dimensionFilter);
+    return new DimensionOptions({
+      dimensions: dimensions,
+      count: dimensions.length,
+    });
+  }
+
+  variables(variableFilter: VariableFilter = () => true): Variable[] {
+    return this.templateTags()
+      .filter(tag => tag.type !== "dimension")
+      .map(tag => new TemplateTagVariable([tag.name], this.metadata(), this))
+      .filter(variableFilter);
   }
 
   /**
