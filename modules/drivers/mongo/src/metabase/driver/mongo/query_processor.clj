@@ -266,16 +266,23 @@
 
 ;;; ----------------------------------------------- initial projection -----------------------------------------------
 
+(defn- identity-projection? [m]
+  (every? (fn [[k v]]
+            (= (str \$ k) v))
+          m))
+
 (s/defn ^:private add-initial-projection :- {:projections Projections, :query Pipeline}
   [inner-query pipeline-ctx]
   (let [all-fields (distinct (mbql.u/match inner-query #{:field-id :datetime-field}))]
     (if-not (seq all-fields)
       pipeline-ctx
       (let [projection+initial-rvalue (for [field all-fields]
-                                        [(->lvalue field) (->initial-rvalue field)])]
-        (-> pipeline-ctx
-            (assoc :projections (mapv first projection+initial-rvalue))
-            (update :query conj {$project (into (ordered-map/ordered-map) projection+initial-rvalue)}))))))
+                                        [(->lvalue field) (->initial-rvalue field)])
+            initial-projection        (into (ordered-map/ordered-map) projection+initial-rvalue)]
+        (cond-> (assoc pipeline-ctx :projections (mapv first projection+initial-rvalue))
+          ;; add the initial projection only if it's actually doing something
+          (not (identity-projection? initial-projection))
+          (update :query conj {$project initial-projection}))))))
 
 
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
