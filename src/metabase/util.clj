@@ -801,6 +801,11 @@
   [minutes]
   (-> minutes minutes->seconds seconds->ms))
 
+(defn hours->ms
+  "Convert `hours` to milliseconds. More readable than doing this math inline."
+  [hours]
+  (-> (* 60 hours) minutes->seconds seconds->ms))
+
 (defn parse-currency
   "Parse a currency String to a BigDecimal. Handles a variety of different formats, such as:
 

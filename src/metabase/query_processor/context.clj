@@ -41,11 +41,13 @@
 
 (defn reducef
   "Called by `runf` (inside the `respond` callback provided by it) to reduce results of query. `reducedf` is called with
-  the reduced resullts."
+  the reduced results. The actual output of this function is ignored, but the entire result set must be reduced and
+  passed to `reducedf` before this function completes."
   {:arglists '([xformf context metadata reducible-rows])}
   [xformf {reducef* :reducef, :as context} metadata reducible-rows]
   {:pre [(fn? reducef*)]}
-  (reducef* xformf context metadata reducible-rows))
+  (reducef* xformf context metadata reducible-rows)
+  nil)
 
 (defn reducedf
   "Called in `reducedf` with fully reduced results. This result is passed to `resultf`."
