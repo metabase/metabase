@@ -281,12 +281,17 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
   } else {
     // for "auto" we use compact if it shortens avg label length by >3 chars
     const getAvgLength = compact => {
-      const lengths = data.map(
+      const options = {
+        compact,
         // We include compact currency options here for both compact and
         // non-compact formatting. This prevents auto's logic from depending on
         // those settings.
-        d => formatYValue(d.y, { compact, ...COMPACT_CURRENCY_OPTIONS }).length,
-      );
+        ...COMPACT_CURRENCY_OPTIONS,
+        // We need this to ensure the settings are used. Otherwise, a cached
+        // _numberFormatter would take precedence.
+        _numberFormatter: undefined,
+      };
+      const lengths = data.map(d => formatYValue(d.y, options).length);
       return lengths.reduce((sum, l) => sum + l, 0) / lengths.length;
     };
     compact = getAvgLength(true) < getAvgLength(false) - 3;

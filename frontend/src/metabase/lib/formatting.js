@@ -257,9 +257,6 @@ export const COMPACT_CURRENCY_OPTIONS = {
   // I couldn't figure out how to use it here.
   digits: 2,
   currency_style: "symbol",
-  // We need this to ensure the settings are used. Otherwise, a cached
-  // _numberFormatter would take precedence.
-  _numberFormatter: undefined,
 };
 
 function formatNumberCompact(value: number, options: FormattingOptions) {
