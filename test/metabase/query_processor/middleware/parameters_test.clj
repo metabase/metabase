@@ -139,53 +139,37 @@
                               :condition    [:= $category_id &c.categories.id]
                               :parameters   [{:type "category", :target $categories.name, :value "BBQ"}]}]}))))))
 
+(defn- card-template-tag
+  [card-id]
+  (let [tag (str "#" card-id)]
+    {:id tag, :name tag, :display-name tag, :type "card", :card card-id}))
+
+(defn- card-template-tags
+  [card-ids]
+  (into {} (for [card-id card-ids]
+             [(str "#" card-id) (card-template-tag card-id)])))
+
 (deftest expand-multiple-referenced-cards-in-template-tags
   (testing "multiple sub-queries, referenced in template tags, are correctly substituted"
-    (tt/with-temp* [Card [card-1 {:dataset_query {:database (data/id)
-                                                  :type     "native"
-                                                  :native   {:query "SELECT 1"}}}]
-                    Card [card-2 {:dataset_query {:database (data/id)
-                                                  :type     "native"
-                                                  :native   {:query "SELECT 2"}}}]]
+    (tt/with-temp* [Card [card-1 {:dataset_query (data/native-query {:query "SELECT 1"})}]
+                    Card [card-2 {:dataset_query (data/native-query {:query "SELECT 2"})}]]
       (let [card-1-id  (:id card-1)
-            card-1-tag (str "#" card-1-id)
-            card-2-id  (:id card-2)
-            card-2-tag (str "#" card-2-id)]
-        (= {:database 439
-            :type :native
-            :native {:query "SELECT COUNT(*) FROM (SELECT 1) AS c1, (SELECT 2) AS c2", :params nil}}
-           (substitute-params
-            (data/native-query
-             {:query         (str "SELECT COUNT(*) FROM {{" card-1-tag "}} AS c1, {{" card-2-tag "}} AS c2")
-              :template-tags {card-1-tag
-                              {:id card-1-tag, :name card-1-tag, :display-name card-1-tag,
-                               :type "card", :card card-1-id}
-
-                              card-2-tag
-                              {:id card-2-tag, :name card-2-tag, :display-name card-2-tag,
-                               :type "card", :card card-2-id}}}))))))
+            card-2-id  (:id card-2)]
+        (is (= (data/native-query
+                {:query "SELECT COUNT(*) FROM (SELECT 1) AS c1, (SELECT 2) AS c2" :params nil})
+               (substitute-params
+                (data/native-query
+                 {:query         (str "SELECT COUNT(*) FROM {{#" card-1-id "}} AS c1, {{#" card-2-id "}} AS c2")
+                  :template-tags (card-template-tags [card-1-id card-2-id])})))))))
 
   (testing "multiple CTE queries, referenced in template tags, are correctly substituted"
-    (tt/with-temp* [Card [card-1 {:dataset_query {:database (data/id)
-                                                  :type     "native"
-                                                  :native   {:query "SELECT 1"}}}]
-                    Card [card-2 {:dataset_query {:database (data/id)
-                                                  :type     "native"
-                                                  :native   {:query "SELECT 2"}}}]]
+    (tt/with-temp* [Card [card-1 {:dataset_query (data/native-query {:query "SELECT 1"})}]
+                    Card [card-2 {:dataset_query (data/native-query {:query "SELECT 2"})}]]
       (let [card-1-id  (:id card-1)
-            card-1-tag (str "#" card-1-id)
-            card-2-id  (:id card-2)
-            card-2-tag (str "#" card-2-id)]
-        (= {:database 439
-            :type :native
-            :native {:query "WITH c1 AS (SELECT 1), c2 AS (SELECT 2) SELECT COUNT(*) FROM c1, c2", :params nil}}
-           (substitute-params
-            (data/native-query
-             {:query         (str "WITH c1 AS {{" card-1-tag "}}, c2 AS {{" card-2-tag "}} SELECT COUNT(*) FROM c1, c2")
-              :template-tags {card-1-tag
-                              {:id card-1-tag, :name card-1-tag, :display-name card-1-tag,
-                               :type "card", :card card-1-id}
-
-                              card-2-tag
-                              {:id card-2-tag, :name card-2-tag, :display-name card-2-tag,
-                               :type "card", :card card-2-id}}})))))))
+            card-2-id  (:id card-2)]
+        (is (= (data/native-query
+                {:query "WITH c1 AS (SELECT 1), c2 AS (SELECT 2) SELECT COUNT(*) FROM c1, c2" :params nil})
+               (substitute-params
+                (data/native-query
+                 {:query         (str "WITH c1 AS {{#" card-1-id "}}, c2 AS {{#" card-2-id "}} SELECT COUNT(*) FROM c1, c2")
+                  :template-tags (card-template-tags [card-1-id card-2-id])})))))))
