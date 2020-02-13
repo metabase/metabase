@@ -109,7 +109,7 @@ function getDefaultNumberOptions(options) {
   return defaults;
 }
 
-const PRECISION_NUMBER_FORMATTER = d3.format(".2r");
+const PRECISION_NUMBER_FORMATTER = d3.format(".2f");
 const FIXED_NUMBER_FORMATTER = d3.format(",.f");
 const DECIMAL_DEGREES_FORMATTER = d3.format(".08f");
 const DECIMAL_DEGREES_FORMATTER_COMPACT = d3.format(".02f");
@@ -250,23 +250,26 @@ function formatNumberScientific(
   }
 }
 
+const DISPLAY_CENTS_CUTOFF = 1000;
+
 function formatNumberCompact(value: number, options: FormattingOptions) {
   if (options.number_style === "percent") {
     return formatNumberCompactWithoutOptions(value * 100) + "%";
   }
   if (options.number_style === "currency") {
     try {
-      const { value: currency } = numberFormatterForOptions({
+      const nf = numberFormatterForOptions({
         ...options,
         currency_style: "symbol",
-      })
+        minimumFractionDigits: 2,
+      });
+
+      if (Math.abs(value) < DISPLAY_CENTS_CUTOFF) {
+        return nf.format(value);
+      }
+      const { value: currency } = nf
         .formatToParts(value)
         .find(p => p.type === "currency");
-
-      // this special case ensures the "~" comes before the currency
-      if (value !== 0 && value >= -0.01 && value <= 0.01) {
-        return `~${currency}0`;
-      }
       return currency + formatNumberCompactWithoutOptions(value);
     } catch (e) {
       // Intl.NumberFormat failed, so we fall back to a non-currency number
@@ -288,10 +291,7 @@ function formatNumberCompactWithoutOptions(value: number) {
   if (value === 0) {
     // 0 => 0
     return "0";
-  } else if (value >= -0.01 && value <= 0.01) {
-    // 0.01 => ~0
-    return "~ 0";
-  } else if (value > -1 && value < 1) {
+  } else if (Math.abs(value) < 10) {
     // 0.1 => 0.1
     return PRECISION_NUMBER_FORMATTER(value).replace(/\.?0+$/, "");
   } else {
