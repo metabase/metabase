@@ -250,7 +250,7 @@ function formatNumberScientific(
   }
 }
 
-const DISPLAY_CENTS_CUTOFF = 1000;
+const DISPLAY_COMPACT_DECIMALS_CUTOFF = 1000;
 
 function formatNumberCompact(value: number, options: FormattingOptions) {
   if (options.number_style === "percent") {
@@ -261,10 +261,13 @@ function formatNumberCompact(value: number, options: FormattingOptions) {
       const nf = numberFormatterForOptions({
         ...options,
         currency_style: "symbol",
-        minimumFractionDigits: 2,
+        // Currencies vary in how many decimals they display, so this is
+        // probably wrong in some cases. Intl.NumberFormat has some of that data
+        // built-in, but I couldn't figure out how to use it here.
+        digits: 2,
       });
 
-      if (Math.abs(value) < DISPLAY_CENTS_CUTOFF) {
+      if (Math.abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
         return nf.format(value);
       }
       const { value: currency } = nf
@@ -291,7 +294,7 @@ function formatNumberCompactWithoutOptions(value: number) {
   if (value === 0) {
     // 0 => 0
     return "0";
-  } else if (Math.abs(value) < 10) {
+  } else if (Math.abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
     // 0.1 => 0.1
     return PRECISION_NUMBER_FORMATTER(value).replace(/\.?0+$/, "");
   } else {
