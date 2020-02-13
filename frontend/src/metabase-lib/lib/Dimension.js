@@ -847,22 +847,30 @@ export class AggregationDimension extends Dimension {
   }
 
   column(extra = {}) {
-    const aggregation = this.aggregation();
-    const { special_type, ...column } = super.column();
     return {
-      ...column,
-      // don't pass through `special_type` when aggregating these types
-      ...(!UNAGGREGATED_SPECIAL_TYPES.has(special_type) && { special_type }),
-      base_type: aggregation ? aggregation.baseType() : TYPE.Float,
+      ...super.column(),
       source: "aggregation",
       ...extra,
     };
   }
 
   field() {
-    // FIXME: it isn't really correct to return the unaggregated field. return a fake Field object?
-    const dimension = this.aggregation().dimension();
-    return dimension ? dimension.field() : super.field();
+    const aggregation = this.aggregation();
+    if (!aggregation) {
+      return super.field();
+    }
+    const dimension = aggregation.dimension();
+    const field = dimension && dimension.field();
+    const { special_type } = field || {};
+    return new Field({
+      name: aggregation.columnName(),
+      display_name: aggregation.displayName(),
+      base_type: aggregation.baseType(),
+      // don't pass through `special_type` when aggregating these types
+      ...(!UNAGGREGATED_SPECIAL_TYPES.has(special_type) && { special_type }),
+      query: this._query,
+      metadata: this._metadata,
+    });
   }
 
   /**
