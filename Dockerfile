@@ -3,7 +3,7 @@
 ###################
 
 # Build currently doesn't work on > Java 11 (i18n utils are busted) so build on 8 until we fix this
-FROM adoptopenjdk/openjdk8:alpine-jre as builder
+FROM adoptopenjdk/openjdk8:alpine as builder
 
 WORKDIR /app/source
 
