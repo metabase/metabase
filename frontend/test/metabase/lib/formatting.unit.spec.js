@@ -41,8 +41,10 @@ describe("formatting", () => {
         expect(formatNumber(-0.01, { compact: true })).toEqual("-0.01");
       });
       it("should round up and down", () => {
-        expect(formatNumber(1.001, { compact: true })).toEqual("1");
-        expect(formatNumber(-1.009, { compact: true })).toEqual("-1.01");
+        expect(formatNumber(1.01, { compact: true })).toEqual("1.01");
+        expect(formatNumber(-1.01, { compact: true })).toEqual("-1.01");
+        expect(formatNumber(1.9, { compact: true })).toEqual("1.9");
+        expect(formatNumber(-1.9, { compact: true })).toEqual("-1.9");
       });
       it("should format large numbers with metric units", () => {
         expect(formatNumber(1, { compact: true })).toEqual("1");
@@ -56,7 +58,7 @@ describe("formatting", () => {
         expect(formatNumber(0.0001, options)).toEqual("0.01%");
         expect(formatNumber(0.001234, options)).toEqual("0.12%");
         expect(formatNumber(0.1, options)).toEqual("10%");
-        expect(formatNumber(0.1234, options)).toEqual("12%");
+        expect(formatNumber(0.1234, options)).toEqual("12.34%");
         expect(formatNumber(0.019, options)).toEqual("1.9%");
         expect(formatNumber(0.021, options)).toEqual("2.1%");
         expect(formatNumber(11.11, options)).toEqual("1.1k%");
@@ -79,12 +81,9 @@ describe("formatting", () => {
         };
         expect(formatNumber(0, options)).toEqual("$0.00");
         expect(formatNumber(0.001, options)).toEqual("$0.00");
-        expect(formatNumber(0.00987654, options)).toEqual("$0.01");
-        expect(formatNumber(0.09876543, options)).toEqual("$0.10");
         expect(formatNumber(7.24, options)).toEqual("$7.24");
-        expect(formatNumber(7.301, options)).toEqual("$7.30");
-        expect(formatNumber(73.01, options)).toEqual("$73.01");
-        expect(formatNumber(730.1, options)).toEqual("$730.10");
+        expect(formatNumber(7.249, options)).toEqual("$7.25");
+        expect(formatNumber(724.9, options)).toEqual("$724.90");
         expect(formatNumber(1234.56, options)).toEqual("$1.2k");
         expect(formatNumber(1234567.89, options)).toEqual("$1.2M");
         expect(formatNumber(-1234567.89, options)).toEqual("$-1.2M");
@@ -300,6 +299,16 @@ describe("formatting", () => {
         }),
       ).toEqual("data:text/plain;charset=utf-8,hello%20world");
     });
+    it("should return link component for type/URL and  view_as = link", () => {
+      const formatted = formatUrl("http://whatever", {
+        jsx: true,
+        rich: true,
+        column: { special_type: TYPE.URL },
+        view_as: "link",
+      });
+      expect(isElementOfType(formatted, ExternalLink)).toEqual(true);
+    });
+
     it("should not crash if column is null", () => {
       expect(
         formatUrl("foobar", {
