@@ -251,6 +251,16 @@ function formatNumberScientific(
 }
 
 const DISPLAY_COMPACT_DECIMALS_CUTOFF = 1000;
+export const COMPACT_CURRENCY_OPTIONS = {
+  // Currencies vary in how many decimals they display, so this is probably
+  // wrong in some cases. Intl.NumberFormat has some of that data built-in, but
+  // I couldn't figure out how to use it here.
+  digits: 2,
+  currency_style: "symbol",
+  // We need this to ensure the settings are used. Otherwise, a cached
+  // _numberFormatter would take precedence.
+  _numberFormatter: undefined,
+};
 
 function formatNumberCompact(value: number, options: FormattingOptions) {
   if (options.number_style === "percent") {
@@ -260,11 +270,7 @@ function formatNumberCompact(value: number, options: FormattingOptions) {
     try {
       const nf = numberFormatterForOptions({
         ...options,
-        currency_style: "symbol",
-        // Currencies vary in how many decimals they display, so this is
-        // probably wrong in some cases. Intl.NumberFormat has some of that data
-        // built-in, but I couldn't figure out how to use it here.
-        digits: 2,
+        ...COMPACT_CURRENCY_OPTIONS,
       });
 
       if (Math.abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
