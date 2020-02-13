@@ -5,7 +5,9 @@ import Select, { Option } from "metabase/components/Select";
 import cx from "classnames";
 
 const ChartSettingSelect = ({
-  value,
+  // Use null if value is undefined. If we pass undefined, Select will create an
+  // uncontrolled component because it's wrapped with Uncontrollable.
+  value = null,
   onChange,
   options = [],
   isInitiallyOpen,
