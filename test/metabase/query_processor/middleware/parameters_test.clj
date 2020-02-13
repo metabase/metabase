@@ -171,5 +171,43 @@
                 {:query "WITH c1 AS (SELECT 1), c2 AS (SELECT 2) SELECT COUNT(*) FROM c1, c2" :params nil})
                (substitute-params
                 (data/native-query
-                 {:query         (str "WITH c1 AS {{#" card-1-id "}}, c2 AS {{#" card-2-id "}} SELECT COUNT(*) FROM c1, c2")
+                 {:query         (str "WITH c1 AS {{#" card-1-id "}}, "
+                                      "c2 AS {{#" card-2-id "}} SELECT COUNT(*) FROM c1, c2")
                   :template-tags (card-template-tags [card-1-id card-2-id])})))))))
+
+  (testing "recursive native queries, referenced in template tags, are correctly substituted"
+    (tt/with-temp* [Card [card-1 {:dataset_query (data/native-query {:query "SELECT 1"})}]
+                    Card [card-2 {:dataset_query (data/native-query
+                                                  {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
+                                                   :template-tags (card-template-tags [(:id card-1)])})}]]
+      (let [card-1-id  (:id card-1)
+            card-2-id  (:id card-2)]
+        (is (= (data/native-query
+                {:query "SELECT COUNT(*) FROM (SELECT * FROM (SELECT 1) AS c1) AS c2" :params nil})
+               (substitute-params
+                (data/native-query
+                 {:query         (str "SELECT COUNT(*) FROM {{#" card-2-id "}} AS c2")
+                  :template-tags (card-template-tags [card-2-id])})))))))
+
+  (testing "recursive native/MBQL queries, referenced in template tags, are correctly substituted"
+    (tt/with-temp* [Card [card-1 {:dataset_query (data/mbql-query venues)}]
+                    Card [card-2 {:dataset_query (data/native-query
+                                                  {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
+                                                   :template-tags (card-template-tags [(:id card-1)])})}]]
+      (let [card-1-id  (:id card-1)
+            card-2-id  (:id card-2)
+            card-1-subquery (str "SELECT "
+                                   "\"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", "
+                                   "\"PUBLIC\".\"VENUES\".\"NAME\" AS \"NAME\", "
+                                   "\"PUBLIC\".\"VENUES\".\"CATEGORY_ID\" AS \"CATEGORY_ID\", "
+                                   "\"PUBLIC\".\"VENUES\".\"LATITUDE\" AS \"LATITUDE\", "
+                                   "\"PUBLIC\".\"VENUES\".\"LONGITUDE\" AS \"LONGITUDE\", "
+                                   "\"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\" "
+                                 "FROM \"PUBLIC\".\"VENUES\" "
+                                 "LIMIT 1048576")]
+        (is (= (data/native-query
+                {:query (str "SELECT COUNT(*) FROM (SELECT * FROM (" card-1-subquery ") AS c1) AS c2") :params nil})
+               (substitute-params
+                (data/native-query
+                 {:query         (str "SELECT COUNT(*) FROM {{#" card-2-id "}} AS c2")
+                  :template-tags (card-template-tags [card-2-id])}))))))))
