@@ -1,8 +1,6 @@
 (ns metabase.query-processor.streaming.common
   "Shared util fns for various export (download) streaming formats."
-  (:require [clojure.data.csv :as csv]
-            [java-time :as t]
-            [metabase.query-processor.streaming.interface :as i]
+  (:require [java-time :as t]
             [metabase.util.date-2 :as u.date]))
 
 (defprotocol FormatValue

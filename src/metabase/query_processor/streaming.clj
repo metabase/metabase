@@ -5,15 +5,18 @@
              [streaming-response :as streaming-response]
              [util :as async.u]]
             [metabase.query-processor.context :as context]
-            [metabase.query-processor.streaming csv json xlsx
-             [interface :as i]]
+            [metabase.query-processor.streaming
+             [csv :as streaming.csv]
+             [interface :as i]
+             [json :as streaming.json]
+             [xlsx :as streaming.xlsx]]
             [metabase.util :as u])
   (:import [java.io BufferedWriter OutputStreamWriter]))
 
 ;; these are loaded for side-effects so their impls of `i/results-writer` will be available
-(comment metabase.query-processor.streaming.csv/keep-me
-         metabase.query-processor.streaming.json/keep-me
-         metabase.query-processor.streaming.xlsx/keep-me)
+(comment streaming.csv/keep-me
+         streaming.json/keep-me
+         streaming.xlsx/keep-me)
 
 (defn- streaming-rff [results-writer]
   (fn [initial-metadata]
