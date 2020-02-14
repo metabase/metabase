@@ -144,7 +144,8 @@
   (let [tag (str "#" card-id)]
     {:id tag, :name tag, :display-name tag, :type "card", :card card-id}))
 
-(defn- card-template-tags
+(defn card-template-tags
+  "Generate the map representing card template tags (sub-queries) for the given `card-ids`."
   [card-ids]
   (into {} (for [card-id card-ids]
              [(str "#" card-id) (card-template-tag card-id)])))

@@ -1,9 +1,11 @@
 (ns metabase.query-processor.middleware.resolve-referenced
-  (:require [metabase.query-processor.middleware
+  (:require [metabase.models.card :refer [Card]]
+            [metabase.query-processor.middleware
              [resolve-fields :as qp.resolve-fields]
              [resolve-source-table :as qp.resolve-tables]]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [weavejester.dependency :as dep]))
 
 (defn tags-referenced-cards
   "Returns Card instances referenced by the given native `query`."
@@ -28,7 +30,33 @@
     (qp.resolve-fields/resolve-fields* referenced-query))
   query)
 
+(defn- query->template-tags
+  [query]
+  (vals (get-in query [:native :template-tags])))
+
+(defn- query->tag-card-ids
+  [query]
+  (keep :card (query->template-tags query)))
+
+(defn- card-subquery-graph
+  ([card-id]
+   (card-subquery-graph (dep/graph) card-id))
+  ([graph card-id]
+   (let [card-query (db/select-one-field :dataset_query Card :id card-id)]
+     (reduce
+      (fn [g sub-card-id]
+        (card-subquery-graph (dep/depend g card-id sub-card-id)
+                        sub-card-id))
+      graph
+      (query->tag-card-ids card-query)))))
+
+(defn- check-for-circular-references
+  [query]
+  ;; `card-subquery-graph` will throw if there are circular references
+  (reduce card-subquery-graph (dep/graph) (query->tag-card-ids query))
+  query)
+
 (defn resolve-referenced-card-resources
   "Resolves tables and fields referenced in card query template tags."
   [qp]
-  (comp qp resolve-referenced-card-resources*))
+  (comp qp resolve-referenced-card-resources* check-for-circular-references))

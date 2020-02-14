@@ -5,7 +5,9 @@
              [database :refer [Database]]]
             [metabase.query-processor.middleware.resolve-referenced :as referenced]
             [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor.middleware.parameters-test :refer [card-template-tags]]
             [metabase.test.data :as data]
+            [toucan.db :as db]
             [toucan.util.test :as tt])
   (:import clojure.lang.ExceptionInfo))
 
@@ -106,3 +108,21 @@
                 (#'referenced/resolve-referenced-card-resources* query)
                 (catch ExceptionInfo exc
                   (ex-data exc)))))))))
+
+(deftest circular-referencing-tags-test
+  (testing "fails on query with circular referencing sub-queries"
+    (tt/with-temp* [Card [card-1 {:dataset_query (data/native-query {:query "SELECT 1"})}]
+                    Card [card-2 {:dataset_query (data/native-query
+                                                  {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
+                                                   :template-tags (card-template-tags [(:id card-1)])})}]]
+      ;; Setup circular reference from card-1 to card-2 (card-2 already references card-1)
+      (let [card-1-id  (:id card-1)
+            card-1-tag (str "#" card-1-id)]
+        (db/update! Card (:id card-1) :dataset_query (data/native-query
+                                                      {:query         (str "SELECT * FROM {{#" (:id card-2) "}} AS c2")
+                                                       :template-tags (card-template-tags [(:id card-2)])}))
+        (let [entrypoint-query (data/native-query
+                                {:query (str "SELECT * FROM {{#" (:id card-1) "}}")
+                                 :template-tags (card-template-tags [card-1-id])})]
+          (is (thrown? ExceptionInfo
+                (#'referenced/check-for-circular-references entrypoint-query))))))))
