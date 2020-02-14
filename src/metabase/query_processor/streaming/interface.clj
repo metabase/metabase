@@ -19,9 +19,10 @@
 
   (finish! [this final-metadata]
     "Write anything needed after writing the last row. `final-metadata` is the final, complete metadata available
-    after reducing all rows." ))
+    after reducing all rows. Very important: This method *must* `.close` the underlying OutputStream when it is
+    finshed."))
 
 (defmulti streaming-results-writer
   "Given a `stream-type` and `java.io.Writer`, return an object that implements `StreamingResultsWriter`."
-  {:arglists '(^metabase.query_processor.streaming.interface.StreamingResultsWriter [stream-type ^java.io.Writer writer])}
+  {:arglists '(^metabase.query_processor.streaming.interface.StreamingResultsWriter [stream-type ^java.io.OutputStream os])}
   (fn [stream-type _] (keyword stream-type)))

@@ -3,7 +3,6 @@
   until the real results are ready to begin streaming, then streams those to the client."
   (:require [cheshire.core :as json]
             [clojure.core.async :as a]
-            [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             compojure.response
             [metabase.query-processor.middleware.catch-exceptions :as qp.middleware.exceptions]
@@ -13,7 +12,8 @@
             [pretty.core :as pretty]
             [ring.core.protocols :as ring.protocols]
             [ring.util.response :as ring.response])
-  (:import java.io.Writer
+  (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
+           [org.apache.commons.io Charsets IOUtils]
            org.eclipse.jetty.io.EofException))
 
 (def ^:private keepalive-interval-ms
@@ -29,55 +29,45 @@
   (u/hours->ms 4))
 
 (defn write-error-and-close!
-  "Util fn for writing an Exception to the writer provided by `streaming-response`."
-  [^Writer writer ^Throwable e]
-  ;; TODO - QP middleware code shouldn't really be used in this non-QP-specific context, but it's the nicest
-  ;; Exception formatting code we have rn. Move the formatting logic somewhere more generic and have both this and
-  ;; the middleware use it.
-  (json/generate-stream (merge (qp.middleware.exceptions/exception-response e)
-                               {:message (.getMessage e)
-                                :_status (get (ex-data e) :status 500)})
-                        writer)
-  (.close writer))
+  "Util fn for writing an Exception to the OutputStream provided by `streaming-response`."
+  [^OutputStream os, ^Throwable e]
+  ;; TODO - QP middleware code shouldn't really be used in this non-QP-specific context, but it's the nicest Exception
+  ;; formatting code we have rn. Move the formatting logic somewhere more generic and have both this and the
+  ;; middleware use it.
+  (with-open [writer (BufferedWriter. (OutputStreamWriter. os))]
+    (json/generate-stream (merge (qp.middleware.exceptions/exception-response e)
+                                 {:message (.getMessage e)
+                                  :_status (get (ex-data e) :status 500)})
+                          writer))
+  (.close os))
 
-(defn- proxy-writer
-  "Proxy that wraps `writer` and:
+;; TODO - what's the overhead of this?
+(defn- proxy-output-stream
+  "Proxy that wraps an `OutputStream` and:
 
   1.  Sends a message to `they-have-started-writing-chan` whenever someone writes something
-  2.  Sends a message to `they-are-done-chan` whenever someone closes the writer"
-  ^Writer [^Writer writer {:keys [they-have-started-writing-chan they-are-done-chan]}]
-  (proxy [Writer] []
-    (append
-      ([x]
-       (a/>!! they-have-started-writing-chan ::wrote-something)
-       (if (char? x)
-         (.append writer ^Character x)
-         (.append writer ^CharSequence x)))
-      ([^CharSequence csq ^Integer start ^Integer end]
-       (a/>!! they-have-started-writing-chan ::wrote-something)
-       (.append writer csq start end)))
+  2.  Sends a message to `they-are-done-chan` whenever someone closes the output stream"
+  ^OutputStream [^OutputStream os {:keys [they-have-started-writing-chan they-are-done-chan]}]
+  (proxy [OutputStream] []
+    (flush []
+      (.flush os))
     (close []
       (a/>!! they-are-done-chan ::closed)
-      (.close writer))
-    (flush []
-      (.flush writer))
+      (.close os))
     (write
       ([x]
        (a/>!! they-have-started-writing-chan ::wrote-something)
-       (cond
-         (int? x)    (.write writer ^Integer x)
-         (string? x) (.write writer ^String x)
-         :else       (.write writer ^chars x)))
-      ([x ^Integer off ^Integer len]
+       (if (int? x)
+         (.write os ^int x)
+         (.write os ^bytes x)))
+      ([^bytes ba ^Integer off ^Integer len]
        (a/>!! they-have-started-writing-chan ::wrote-something)
-       (if (string? x)
-         (.write writer ^String x off len)
-         (.write writer ^chars x off len))))))
+       (.write os ba off len)))))
 
 (defn- start-newline-loop!
-  "Write a newline every `keepalive-interval-ms` (e.g., one second) until they start using the writer."
-  [^Writer writer {:keys [they-have-started-writing-chan canceled-chan]} {:keys [write-keepalive-newlines?]
-                                                                          :or   {write-keepalive-newlines? true}}]
+  "Write a newline every `keepalive-interval-ms` (e.g., one second) until 'they' start writing to the output stream."
+  [^OutputStream os {:keys [they-have-started-writing-chan canceled-chan]} {:keys [write-keepalive-newlines?]
+                                                                            :or   {write-keepalive-newlines? true}}]
   (a/go-loop []
     (let [timeout-chan (a/timeout keepalive-interval-ms)
           [val port]   (a/alts! [they-have-started-writing-chan timeout-chan] :priority true)]
@@ -88,8 +78,8 @@
         (log/debug (u/format-color 'blue (trs "Response not ready, writing one byte & sleeping...")))
         (when (try
                 (when write-keepalive-newlines?
-                  (.write writer (str \newline)))
-                (.flush writer)
+                  (IOUtils/write (str \newline) os Charsets/UTF_8))
+                (.flush os)
                 true
                 (catch EofException _
                   (log/debug (u/format-color 'yellow (trs "connection closed, canceling request")))
@@ -99,8 +89,8 @@
 
 (defn- setup-timeout-and-close!
   "Once `they-are-done-chan` or `canceled-chan` gets a message, or is closed; or if we not finished by the timeout, shut
-  everything down and flush/close the writer."
-  [^Writer writer {:keys [they-are-done-chan canceled-chan], :as chans}]
+  everything down and flush/close the output stream."
+  [^OutputStream os {:keys [they-are-done-chan canceled-chan], :as chans}]
   (a/go
     (let [timeout-chan (a/timeout absolute-max-keepalive-ms)
           [val port]   (a/alts! [canceled-chan they-are-done-chan timeout-chan])]
@@ -110,33 +100,33 @@
       ;; go ahead and close all the channels now
       (doseq [chan (vals chans)]
         (a/close! chan))
-      ;; we can write the timeout error (if needed) and flush/close the writer on another thread. To avoid tying up our
-      ;; precious core.async thread.
+      ;; we can write the timeout error (if needed) and flush/close the stream on another thread. To avoid tying up
+      ;; our precious core.async thread.
       (a/thread
-        (when (= port timeout-chan)
+        (if (= port timeout-chan)
           (u/ignore-exceptions
-            (write-error-and-close! writer (ex-info (trs "Response not finished after waiting {0}. Canceling request."
-                                               (u/format-milliseconds absolute-max-keepalive-ms))
-                                          {:status 504}))))
-        (.close writer)))))
+            (write-error-and-close! os (ex-info (trs "Response not finished after waiting {0}. Canceling request."
+                                                     (u/format-milliseconds absolute-max-keepalive-ms))
+                                                {:status 504})))
+          (.close os))))))
 
 (defn- streaming-chans []
-  ;; this channel will get a message when they start writing to the proxy writer
+  ;; this channel will get a message when they start writing to the proxy output stream
   {:they-have-started-writing-chan (a/promise-chan)
    ;; this channel will get a message when the request is canceled.
    :canceled-chan                  (a/promise-chan)
-   ;; this channel will get a message when they .close() the proxy writer
+   ;; this channel will get a message when they .close() the proxy output stream
    :they-are-done-chan             (a/promise-chan)})
 
-(defn- do-streaming-response* [^Writer writer f options]
+(defn- do-streaming-response [^OutputStream os f options]
   (let [chans (streaming-chans)]
-    (start-newline-loop! writer chans options)
-    (setup-timeout-and-close! writer chans)
-    ;; ok, we can call f now with a proxy-writer
+    (start-newline-loop! os chans options)
+    (setup-timeout-and-close! os chans)
+    ;; ok, we can call f now with a proxy-output-stream
     (try
-      (f (proxy-writer writer chans) (:canceled-chan chans))
+      (f (proxy-output-stream os chans) (:canceled-chan chans))
       (catch Throwable e
-        (write-error-and-close! writer e)
+        (write-error-and-close! os e)
         (a/>!! (:canceled-chan chans) ::exception)
         (doseq [chan (vals chans)]
           (a/close! chan))))
@@ -151,7 +141,7 @@
   ;; both sync and async responses
   ring.protocols/StreamableResponseBody
   (write-body-to-stream [_ _ ostream]
-    (do-streaming-response* (io/writer ostream) f options))
+    (do-streaming-response ostream f options))
 
   ;; async responses only
   compojure.response/Sendable
@@ -165,12 +155,12 @@
 
   Minimal example:
 
-    (streaming-response {:content-type \"applicaton/json; charset=utf-8\"} [writer canceled-chan]
+    (streaming-response {:content-type \"applicaton/json; charset=utf-8\"} [os canceled-chan]
       (let [futur (future
                     ;; start writing stuff (possibly async)
-                    (write-stuff! writer)
-                    ;; close the writer when you are finished
-                    (.close writer))]
+                    (write-stuff! os)
+                    ;; close the output stream when you are finished
+                    (.close os))]
         ;; canceled-chan will get a message if the API request is canceled. Listen to it and kill any async stuff
         (a/go
           (when (nil? (a/<! canceled-chan))
@@ -184,7 +174,7 @@
   *  `:write-keepalive-newlines?` -- whether we should write keepalive newlines every `keepalive-interval-ms`. Default
       `true`; you can disable this for formats where it wouldn't work, such as CSV."
   {:style/indent 2}
-  [options [writer-binding canceled-chan-binding :as bindings] & body]
+  [options [os-binding canceled-chan-binding :as bindings] & body]
   {:pre [(= (count bindings) 2)]}
-  `(->StreamingResponse (fn [~(vary-meta writer-binding assoc :tag 'java.io.Writer) ~canceled-chan-binding] ~@body)
+  `(->StreamingResponse (fn [~(vary-meta os-binding assoc :tag 'java.io.OutputStream) ~canceled-chan-binding] ~@body)
                         ~options))

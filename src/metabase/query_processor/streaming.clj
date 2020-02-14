@@ -4,13 +4,14 @@
              [streaming-response :as streaming-response]
              [util :as async.u]]
             [metabase.query-processor.context :as context]
-            [metabase.query-processor.streaming csv json
+            [metabase.query-processor.streaming csv json xlsx
              [interface :as i]]
             [metabase.util :as u]))
 
 ;; these are loaded for side-effects so their impls of `i/results-writer` will be available
 (comment metabase.query-processor.streaming.csv/keep-me
-         metabase.query-processor.streaming.json/keep-me)
+         metabase.query-processor.streaming.json/keep-me
+         metabase.query-processor.streaming.xlsx/keep-me)
 
 (defn- streaming-rff [results-writer]
   (fn [initial-metadata]
@@ -39,8 +40,8 @@
 (defn do-streaming-response
   "Impl for `streaming-response`."
   ^metabase.async.streaming_response.StreamingResponse [stream-type run-query-fn]
-  (streaming-response/streaming-response (i/stream-options stream-type) [writer canceled-chan]
-    (let [results-writer (i/streaming-results-writer stream-type writer)
+  (streaming-response/streaming-response (i/stream-options stream-type) [os canceled-chan]
+    (let [results-writer (i/streaming-results-writer stream-type os)
           out-chan       (run-query-fn {:rff      (streaming-rff results-writer)
                                         :reducedf (streaming-reducedf results-writer)})]
       (assert (async.u/promise-chan? out-chan)
@@ -50,7 +51,7 @@
           (cond
             (and (= port out-chan)
                  (instance? Throwable val))
-            (streaming-response/write-error-and-close! writer val)
+            (streaming-response/write-error-and-close! os val)
 
             (and (= port canceled-chan)
                  (nil? val))
