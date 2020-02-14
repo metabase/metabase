@@ -3,9 +3,10 @@
             [metabase.models
              [card :refer [Card]]
              [database :refer [Database]]]
-            [metabase.query-processor.middleware.resolve-referenced :as referenced]
+            [metabase.query-processor.middleware
+             [parameters-test :refer [card-template-tags]]
+             [resolve-referenced :as referenced]]
             [metabase.query-processor.store :as qp.store]
-            [metabase.query-processor.middleware.parameters-test :refer [card-template-tags]]
             [metabase.test.data :as data]
             [toucan.db :as db]
             [toucan.util.test :as tt])
