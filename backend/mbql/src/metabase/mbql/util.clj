@@ -576,7 +576,7 @@
   [clause]
   (boolean
    (match-one clause
-              #{:datetime-field :interval :relative-datetime})))
+     #{:datetime-field :interval :relative-datetime})))
 
 
 ;;; --------------------------------- Unique names & transforming ags to have names ----------------------------------

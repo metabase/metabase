@@ -2,7 +2,7 @@
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
   (:refer-clojure
    :exclude
-   [count distinct min max + - / * and or not = < > <= >= time])
+   [count distinct min max + - / * and or not = < > <= >= time case])
   (:require [clojure
              [core :as core]
              [set :as set]]
@@ -271,52 +271,6 @@
     Field))
 
 
-;;; -------------------------------------------------- Expressions ---------------------------------------------------
-
-;; Expressions are "calculated column" definitions, defined once and then used elsewhere in the MBQL query.
-
-(declare ArithmeticExpression)
-
-(def ^:private ExpressionArg
-  (s/conditional
-   number?
-   s/Num
-
-   (partial is-clause? #{:+ :- :/ :*})
-   (s/recursive #'ArithmeticExpression)
-
-   :else
-   Field))
-
-(def ^:private ExpressionArgOrInterval
-  (s/if (partial is-clause? :interval)
-    interval
-    ExpressionArg))
-
-(defclause ^{:requires-features #{:expressions}} +
-  x ExpressionArg, y ExpressionArgOrInterval, more (rest ExpressionArgOrInterval))
-
-(defclause ^{:requires-features #{:expressions}} -
-  x ExpressionArg, y ExpressionArgOrInterval, more (rest ExpressionArgOrInterval))
-
-(defclause ^{:requires-features #{:expressions}} /, x ExpressionArg, y ExpressionArg, more (rest ExpressionArg))
-(defclause ^{:requires-features #{:expressions}} *, x ExpressionArg, y ExpressionArg, more (rest ExpressionArg))
-
-(def ^:private ArithmeticExpression*
-  (one-of + - / *))
-
-(def ^:private ArithmeticExpression
-  "Schema for the definition of an arithmetic expression."
-  (s/recursive #'ArithmeticExpression*))
-
-(def FieldOrExpressionDef
-  "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
-  `:+` clause or a Field clause such as `:field-id`."
-  (s/if (partial is-clause? #{:+ :- :* :/})
-    ArithmeticExpression
-    Field))
-
-
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
 
 (declare Filter)
@@ -454,6 +408,70 @@
   (s/recursive #'Filter*))
 
 
+;;; -------------------------------------------------- Expressions ---------------------------------------------------
+
+;; Expressions are "calculated column" definitions, defined once and then used elsewhere in the MBQL query.
+
+(declare ArithmeticExpression)
+
+(def ^:private ExpressionArg
+  (s/conditional
+   number?
+   s/Num
+
+   (partial is-clause? #{:+ :- :/ :*})
+   (s/recursive #'ArithmeticExpression)
+
+   :else
+   Field))
+
+(def ^:private ExpressionArgOrInterval
+  (s/if (partial is-clause? :interval)
+    interval
+    ExpressionArg))
+
+(defclause ^{:requires-features #{:expressions}} +
+  x ExpressionArg, y ExpressionArgOrInterval, more (rest ExpressionArgOrInterval))
+
+(defclause ^{:requires-features #{:expressions}} -
+  x ExpressionArg, y ExpressionArgOrInterval, more (rest ExpressionArgOrInterval))
+
+(defclause ^{:requires-features #{:expressions}} /, x ExpressionArg, y ExpressionArg, more (rest ExpressionArg))
+(defclause ^{:requires-features #{:expressions}} *, x ExpressionArg, y ExpressionArg, more (rest ExpressionArg))
+
+(def ^:private ArithmeticExpression*
+  (one-of + - / *))
+
+(def ^:private ArithmeticExpression
+  "Schema for the definition of an arithmetic expression."
+  (s/recursive #'ArithmeticExpression*))
+
+(def ^:private ExpressionOrValue
+  (s/conditional
+   number?                             s/Num
+   string?                             s/Str
+   (partial is-clause? #{:+ :- :* :/}) ArithmeticExpression
+   :else                               Field))
+
+(def ^:private CaseClause [(s/one Filter "pred") (s/one ExpressionOrValue "expr")])
+
+(def ^:private CaseClauses [CaseClause])
+
+(def ^:private CaseOptions
+  {(s/optional-key :default) ExpressionOrValue})
+
+(defclause ^{:requires-features #{:basic-aggregations}} case
+  clauses CaseClauses, options (optional CaseOptions))
+
+(def FieldOrExpressionDef
+  "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
+  `:+` clause or a Field clause such as `:field-id`."
+  (s/conditional
+   (partial is-clause? #{:+ :- :* :/}) ArithmeticExpression
+   (partial is-clause? :case)          case
+   :else                               Field))
+
+
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------
 
 ;; For all of the 'normal' Aggregations below (excluding Metrics) fields are implicit Field IDs
@@ -519,9 +537,10 @@
   x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
 ;; ag:/ isn't a valid token
 
+
 (def ^:private UnnamedAggregation*
   (one-of count avg cum-count cum-sum distinct stddev sum min max ag:+ ag:- ag:* ag:div metric share count-where
-          sum-where))
+          sum-where case))
 
 (def ^:private UnnamedAggregation
   (s/recursive #'UnnamedAggregation*))
@@ -961,7 +980,7 @@
     "Query must specify either `:native` or `:query`, but not both.")
    (s/constrained
     (fn [{native :native, mbql :query, query-type :type}]
-      (case query-type
+      (core/case query-type
         :native native
         :query  mbql))
     "Native queries must specify `:native`; MBQL queries must specify `:query`.")
