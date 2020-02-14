@@ -3,7 +3,9 @@
   response with all the metadata for `:api`."
   (:require [cheshire.core :as json]
             [java-time :as t]
-            [metabase.query-processor.streaming.interface :as i]
+            [metabase.query-processor.streaming
+             [common :as common]
+             [interface :as i]]
             [metabase.util.date-2 :as u.date])
   (:import [java.io BufferedWriter OutputStream OutputStreamWriter]))
 
@@ -25,7 +27,7 @@
       (write-row! [_ row row-num]
         (when-not (zero? row-num)
           (.write writer ",\n"))
-        (json/generate-stream (zipmap @col-names row)
+        (json/generate-stream (zipmap @col-names (map common/format-value row))
                               writer)
         (.flush writer))
 

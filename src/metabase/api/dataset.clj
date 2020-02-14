@@ -16,6 +16,7 @@
              [database :as database :refer [Database]]
              [query :as query]]
             [metabase.query-processor
+             [error-type :as qp.error-type]
              [streaming :as qp.streaming]
              [util :as qputil]]
             [metabase.query-processor.middleware.constraints :as constraints]

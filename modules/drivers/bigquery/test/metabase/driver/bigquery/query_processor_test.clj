@@ -170,15 +170,17 @@
 ;; if I run a BigQuery query, does it get a remark added to it?
 (defn- query->native [query]
   (let [native-query (atom nil)]
-    (with-redefs [bigquery/process-native* (fn [_ sql]
+    (with-redefs [bigquery/process-native* (fn [_ _ sql]
+                                             (println "sql:" sql) ; NOCOMMIT
                                              (reset! native-query sql)
                                              (throw (Exception. "Done.")))]
-      (qp/process-query {:database (mt/id)
-                         :type     :query
-                         :query    {:source-table (mt/id :venues)
-                                    :limit        1}
-                         :info     {:executed-by 1000
-                                    :query-hash  (byte-array [1 2 3 4])}})
+      (u/ignore-exceptions
+        (qp/process-query {:database (mt/id)
+                           :type     :query
+                           :query    {:source-table (mt/id :venues)
+                                      :limit        1}
+                           :info     {:executed-by 1000
+                                      :query-hash  (byte-array [1 2 3 4])}}))
       @native-query)))
 
 (deftest remark-test

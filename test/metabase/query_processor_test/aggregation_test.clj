@@ -7,8 +7,7 @@
             [metabase.models.field :refer [Field]]
             [metabase.test
              [data :as data]
-             [util :as tu]]
-            [metabase.test.data.datasets :as datasets]))
+             [util :as tu]]))
 
 (deftest no-aggregation-test
   (mt/test-drivers (mt/normal-drivers)
@@ -122,17 +121,19 @@
     (mt/run-mbql-query venues
       {:aggregation [[:avg $price] [:count] [:sum $price]]})))
 
-;; make sure that multiple aggregations of the same type have the correct metadata (#4003)
-;;
-;; TODO - this isn't tested against Mongo because those driver doesn't currently work correctly with multiple columns
-;; with the same name. It seems like it would be pretty easy to take the stuff we have for BigQuery and generalize it
-;; so we can use it with Mongo
-(datasets/expect-with-drivers (disj (mt/normal-drivers) :mongo)
-  [(qp.test/aggregate-col :count)
-   (assoc (qp.test/aggregate-col :count) :name "count_2", :field_ref [:aggregation 1])]
-  (mt/cols
-    (mt/run-mbql-query venues
-      {:aggregation [[:count] [:count]]})))
+(deftest multiple-aggregations-metadata-test
+  ;; TODO - this isn't tested against Mongo because those driver doesn't currently work correctly with multiple
+  ;; columns with the same name. It seems like it would be pretty easy to take the stuff we have for BigQuery and
+  ;; generalize it so we can use it with Mongo
+  ;;
+  ;; TODO part 2 -- not sure if this is still the case?
+  (mt/test-drivers (disj (mt/normal-drivers) :mongo)
+    (testing "make sure that multiple aggregations of the same type have the correct metadata (#4003)"
+      (is (= [(qp.test/aggregate-col :count)
+              (assoc (qp.test/aggregate-col :count) :name "count_2", :field_ref [:aggregation 1])]
+             (mt/cols
+               (mt/run-mbql-query venues
+                 {:aggregation [[:count] [:count]]})))))))
 
 
 ;;; ------------------------------------------------- CUMULATIVE SUM -------------------------------------------------

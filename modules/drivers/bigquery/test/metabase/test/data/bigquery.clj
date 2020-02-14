@@ -281,7 +281,10 @@
 
 (defmethod tx/aggregate-column-info :bigquery
   ([driver aggregation-type]
-   ((get-method tx/aggregate-column-info :sql-jdbc/test-extensions) driver aggregation-type))
+   (merge
+    ((get-method tx/aggregate-column-info :sql-jdbc/test-extensions) driver aggregation-type)
+    (when (#{:count :cum-count} aggregation-type)
+      {:base_type :type/Integer})))
 
   ([driver aggregation-type field]
    (merge
@@ -290,5 +293,5 @@
     ;; add them as we come across them.
     (when (#{:avg :stddev} aggregation-type)
       {:base_type :type/Float})
-    (when (= :count aggregation-type)
+    (when (#{:count :cum-count} aggregation-type)
       {:base_type :type/Integer}))))

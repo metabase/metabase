@@ -204,7 +204,7 @@
   (mt/test-driver :sqlite
     (testing "SQLite doesn't return proper date objects but strings, they just pass through the qp untouched"
       (let [result ((test-users/user->client :rasta) :post 202 "dataset/csv" :query
-                    (json/generate-string (data/mbql-query checkins)))]
+                    (json/generate-string (data/mbql-query checkins {:limit 5})))]
         (is (= [["1" "2014-04-07" "5" "12"]
                 ["2" "2014-09-18" "1" "31"]
                 ["3" "2014-09-15" "8" "56"]
@@ -213,11 +213,11 @@
                (take 5 (parse-and-sort-csv result))))))))
 
 (deftest datetime-fields-are-untouched-when-exported
-  (is (= [["1" "Plato Yeshua"        "2014-04-01T08:30"]
-          ["2" "Felipinho Asklepios" "2014-12-05T15:15"]
-          ["3" "Kaneonuskatew Eiran" "2014-11-06T16:15"]
-          ["4" "Simcha Yan"          "2014-01-01T08:30"]
-          ["5" "Quentin Sören"       "2014-10-03T17:30"]]
+  (is (= [["1" "Plato Yeshua"        "2014-04-01T08:30:00"]
+          ["2" "Felipinho Asklepios" "2014-12-05T15:15:00"]
+          ["3" "Kaneonuskatew Eiran" "2014-11-06T16:15:00"]
+          ["4" "Simcha Yan"          "2014-01-01T08:30:00"]
+          ["5" "Quentin Sören"       "2014-10-03T17:30:00"]]
          (let [result ((test-users/user->client :rasta) :post 202 "dataset/csv" :query
                        (json/generate-string (data/mbql-query users)))]
            (take 5 (parse-and-sort-csv result))))))

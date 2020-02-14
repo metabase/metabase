@@ -1,7 +1,9 @@
 (ns metabase.query-processor.streaming.csv
   (:require [clojure.data.csv :as csv]
             [java-time :as t]
-            [metabase.query-processor.streaming.interface :as i]
+            [metabase.query-processor.streaming
+             [common :as common]
+             [interface :as i]]
             [metabase.util.date-2 :as u.date])
   (:import [java.io BufferedWriter OutputStream OutputStreamWriter]))
 
@@ -21,7 +23,7 @@
         (.flush writer))
 
       (write-row! [_ row _]
-        (csv/write-csv writer [row]))
+        (csv/write-csv writer [(map common/format-value row)]))
 
       (finish! [_ _]
         (.close writer)
