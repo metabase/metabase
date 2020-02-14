@@ -219,6 +219,7 @@ export class SpecialTypeAndTargetPicker extends Component {
           optionValueFn={o => o.id}
           optionSectionFn={o => o.section}
           placeholder={t`Select a special type`}
+          searchProp="name"
         />
         {showCurrencyTypeSelect && selectSeparator}
         {// TODO - now that we have multiple "nested" options like choosing a
@@ -252,6 +253,7 @@ export class SpecialTypeAndTargetPicker extends Component {
           <Select
             className={cx("TableEditor-field-target text-wrap", className)}
             placeholder={t`Select a target`}
+            searchProp="name"
             value={field.fk_target_field_id}
             onChange={this.handleChangeTarget}
             options={idfields}
