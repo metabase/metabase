@@ -12,10 +12,6 @@
             [ring.core.protocols :as ring.protocols])
   (:import java.io.Writer))
 
-(deftest map->serialized-json-kvs-test
-  (is (= "\"a\":100,\"b\":200"
-         (#'streaming/map->serialized-json-kvs {:a 100, :b 200}))))
-
 (defn- proxy-writer [^Writer writer close-chan]
   (proxy [Writer] []
     (append
@@ -48,7 +44,7 @@
         (with-open [writer (io/writer filename)]
           (let [proxy-writer (proxy-writer writer close-chan)]
             (ring.protocols/write-body-to-stream
-             (qp.streaming/streaming-response [context]
+             (qp.streaming/streaming-response [context :json]
                (Thread/sleep 10)
                (qp/process-query-async query context))
              nil

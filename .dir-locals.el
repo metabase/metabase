@@ -15,7 +15,6 @@
                             ;; Define custom indentation for functions inside metabase.
                             ;; This list isn't complete; add more forms as we come across them.
                             (define-clojure-indent
-                              (assert 1)
                               (let-404 1)
                               (match 1)
                               (merge-with 1)
