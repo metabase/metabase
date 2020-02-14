@@ -109,7 +109,6 @@
    [me.raynes/fs "1.4.6"]                                             ; Filesystem tools
    [medley "1.2.0"]                                                   ; lightweight lib of useful functions
    [metabase/connection-pool "1.1.1"]                                 ; simple wrapper around C3P0. JDBC connection pools
-   [metabase/mbql "1.4.3"]                                            ; MBQL language schema & util fns
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
    [org.apache.commons/commons-lang3 "3.9"]                           ; helper methods for working with java.lang stuff
@@ -158,6 +157,9 @@
   :javac-options
   ["-target" "1.8", "-source" "1.8"]
 
+  :source-paths
+  ["src" "backend/mbql/src"]
+
   :java-source-paths
   ["java"]
 
@@ -167,6 +169,8 @@
   :profiles
   {:dev
    {:source-paths ["dev/src" "local/src"]
+
+    :test-paths ["test" "backend/mbql/test"]
 
     :dependencies
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
@@ -330,7 +334,7 @@
    :check-namespace-decls
    [:include-all-drivers
     {:plugins               [[lein-check-namespace-decls "1.0.2"]]
-     :source-paths          ^:replace ["src" "test"]
+     :source-paths          ^:replace ["src" "backend/mbql/src" "test" "backend/mbql/test"]
      :check-namespace-decls {:prefix-rewriting true}}]
 
    ;; build the uberjar with `lein uberjar`

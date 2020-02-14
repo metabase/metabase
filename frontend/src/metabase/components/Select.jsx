@@ -7,6 +7,8 @@ import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton from "./SelectButton";
 
 import _ from "underscore";
+import cx from "classnames";
+
 import AccordionList from "./AccordionList";
 import { createSelector } from "reselect";
 
@@ -174,7 +176,10 @@ export default class Select extends Component {
       <PopoverWithTrigger
         ref={ref => (this._popover = ref)}
         triggerElement={
-          <SelectButton hasValue={selectedNames.length > 0}>
+          <SelectButton
+            className="full-width"
+            hasValue={selectedNames.length > 0}
+          >
             {selectedNames.length > 0
               ? selectedNames.map((name, index) => (
                   <span key={index}>
@@ -185,7 +190,7 @@ export default class Select extends Component {
               : placeholder}
           </SelectButton>
         }
-        triggerClasses={className}
+        triggerClasses={cx("flex", className)}
         isInitiallyOpen={isInitiallyOpen}
         verticalAttachments={["top", "bottom"]}
         // keep the popover from jumping around one its been opened,
