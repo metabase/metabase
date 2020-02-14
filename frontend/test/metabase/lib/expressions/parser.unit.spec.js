@@ -1,4 +1,7 @@
-import { compile, suggest, parse } from "metabase/lib/expressions/parser";
+import { suggest } from "metabase/lib/expressions/suggest";
+import { compile } from "metabase/lib/expressions/compile";
+import { parse, serialize } from "metabase/lib/expressions/syntax";
+
 import _ from "underscore";
 
 import { TYPE } from "metabase/lib/types";
@@ -274,58 +277,46 @@ describe("lib/expressions/parser", () => {
   });
 
   describe("compile() in syntax mode", () => {
-    it("should parse source without whitespace into a recoverable syntax tree", () => {
-      const source = "Sum(A)";
+    describe("source without whitespace", () => {
+      for (const source of [
+        "Sum(A)",
+        "Sum(A*2)",
+        "1-Sum(A*2)",
+        '1-Sum(A*2+"Toucan Sam")',
+        '1-Sum(A*2+"Toucan Sam")/Count()',
+      ]) {
+        it(`should parse and serialize '${source}'`, () => {
+          const tree = parse(source, aggregationOpts);
+          expect(serialize(tree)).toEqual(source);
+        });
+      }
+    });
+    describe("source with whitespace", () => {
+      for (const source of [
+        "Sum( A )",
+        "Sum( A * 2)",
+        "1 - Sum( A * 2 )",
+        '1 - Sum( A * 2 + "Toucan Sam" )',
+        '1 -  Sum( A * 2 + "Toucan Sam" ) / Count()',
+      ]) {
+        it(`should parse and serialize '${source}'`, () => {
+          const tree = parse(source, aggregationOpts);
+          expect(serialize(tree)).toEqual(source);
+        });
+      }
+    });
+    it(`should parse and serialize source with leading whitespace`, () => {
+      const source = " Sum(A)";
       const tree = parse(source, aggregationOpts);
       expect(serialize(tree)).toEqual(source);
     });
-
-    it("should parse source without whitespace into a recoverable syntax tree", () => {
-      const source = "Sum(A*2)";
-      const tree = parse(source, aggregationOpts);
-      expect(serialize(tree)).toEqual(source);
-    });
-
-    it("should parse source without whitespace into a recoverable syntax tree", () => {
-      const source = "1-Sum(A*2)";
-      const tree = parse(source, aggregationOpts);
-      expect(serialize(tree)).toEqual(source);
-    });
-
-    it("should parse source without whitespace into a recoverable syntax tree", () => {
-      const source = '1-Sum(A*2+"Toucan Sam")';
-      const tree = parse(source, aggregationOpts);
-      expect(serialize(tree)).toEqual(source);
-    });
-
-    it("should parse source without whitespace into a recoverable syntax tree", () => {
-      const source = '1-Sum(A*2+"Toucan Sam")/Count()';
-      const tree = parse(source, aggregationOpts);
-      expect(serialize(tree)).toEqual(source);
-    });
-
-    xit("should parse source with whitespace into a recoverable syntax tree", () => {
-      const source = "Sum( A )";
-      const tree = parse(source, aggregationOpts);
-      expect(serialize(tree)).toEqual(source);
-    });
-
-    xit("should parse source with whitespace into a recoverable syntax tree", () => {
-      // FIXME: not preserving whitespace
-      const source = '1 - Sum(A * 2 + "Toucan Sam") / Count';
+    it(`should parse and serialize source with trailing whitespace`, () => {
+      const source = "Sum(A) ";
       const tree = parse(source, aggregationOpts);
       expect(serialize(tree)).toEqual(source);
     });
   });
 });
-
-function serialize(tree) {
-  if (tree.type === "token") {
-    return tree.text;
-  } else {
-    return tree.children.map(serialize).join("");
-  }
-}
 
 function cleanSuggestions(suggestions) {
   return _.chain(suggestions)
