@@ -7,7 +7,8 @@
             [metabase.models.card :refer [Card]]
             [metabase.query-processor.middleware.parameters :as parameters]
             [metabase.test.data :as data]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt])
+  (:import clojure.lang.ExceptionInfo))
 
 (deftest move-top-level-params-to-inner-query-test
   (is (= {:type   :native
@@ -212,3 +213,29 @@
                 (data/native-query
                  {:query         (str "SELECT COUNT(*) FROM {{#" card-2-id "}} AS c2")
                   :template-tags (card-template-tags [card-2-id])}))))))))
+
+(deftest referencing-cards-with-parameters-test
+  (testing "referencing card with parameter and default value substitutes correctly"
+    (tt/with-temp Card [param-card {:dataset_query (data/native-query
+                                                    {:query "SELECT {{x}}"
+                                                     :template-tags {"x"
+                                                                     {:id "x", :name "x", :display-name "Number x",
+                                                                      :type :number, :default "1", :required true}}})}]
+      (is (= (data/native-query
+              {:query (str "SELECT * FROM (SELECT 1) AS x") :params nil})
+             (substitute-params
+              (data/native-query
+               {:query         (str "SELECT * FROM {{#" (:id param-card) "}} AS x")
+                :template-tags (card-template-tags [(:id param-card)])}))))))
+
+  (testing "referencing card with parameter and NO default value, fails substitution"
+    (tt/with-temp Card [param-card {:dataset_query (data/native-query
+                                                    {:query "SELECT {{x}}"
+                                                     :template-tags {"x"
+                                                                     {:id "x", :name "x", :display-name "Number x",
+                                                                      :type :number, :required false}}})}]
+      (is (thrown? ExceptionInfo
+            (substitute-params
+             (data/native-query
+              {:query         (str "SELECT * FROM {{#" (:id param-card) "}} AS x")
+               :template-tags (card-template-tags [(:id param-card)])})))))))
