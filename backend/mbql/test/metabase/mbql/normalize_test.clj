@@ -148,10 +148,10 @@
 
 ;; case
 (expect
-  {:query {:aggregation [sum [:case [[[:> [:field-id 12] 10] 10]
+  {:query {:aggregation [:sum [:case [[[:> [:field-id 12] 10] 10]
                                      [[:> [:field-id 12] 100] [:field-id 1]]
                                      [[:= [:field-id 2] 1] "foo"]]
-                              {:default [:field-id 2]}]]}}
+                               {:default [:field-id 2]}]]}}
   (#'normalize/normalize-tokens {:query {:aggregation ["sum" ["case" [[[">" ["field-id" 12] 10] 10]
                                                                       [[">" ["field-id" 12] 100] ["field-id" 1]]
                                                                      [["=" ["field-id" 2] 1] "foo"]]
