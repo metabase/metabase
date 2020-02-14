@@ -25,20 +25,23 @@
 
     {:data {:cols [...], :rows [...]}, :row_count ...}"
   [metadata]
-  (let [row-count (volatile! 0)]
+  (let [row-count (volatile! 0)
+        rows      (volatile! [])]
     (fn default-rf
       ([]
-       {:data (assoc metadata :rows [])})
+       {:data metadata})
 
       ([result]
        {:pre [(map? result)]}
-       (assoc result
-              :row_count @row-count
-              :status :completed))
+       (-> result
+           (assoc :row_count @row-count
+                  :status :completed)
+           (assoc-in [:data :rows] @rows)))
 
       ([result row]
        (vswap! row-count inc)
-       (update-in result [:data :rows] conj row)))))
+       (vswap! rows conj row)
+       result))))
 
 ;; TODO - not 100% this makes sense -- should rows always be merged into metadata?
 (defn- default-reducedf [metadata reduced-result context]

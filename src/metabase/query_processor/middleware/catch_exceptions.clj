@@ -91,7 +91,9 @@
        (take-while some?)
        reverse))
 
-(defn- exception-response [^Throwable e]
+(defn exception-response
+  "Convert an Exception to a nicely-formatted Clojure map suitable for returning in userland QP responses."
+  [^Throwable e]
   (let [[m & more :as ms] (for [e (exception-chain e)]
                             (format-exception e))]
     (merge

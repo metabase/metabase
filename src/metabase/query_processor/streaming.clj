@@ -1,70 +1,101 @@
 (ns metabase.query-processor.streaming
-  (:require [clojure.core.async :as a]
-            [clojure.java.io :as io]
-            [metabase
-             [query-processor :as qp]
-             [test :as mt]]
-            [metabase.async.api-response-3 :as api-response]
-            [metabase.query-processor.context.default :as context.default]))
+  (:require [cheshire.core :as json]
+            [clojure.core.async :as a]
+            [metabase.async
+             [streaming-response :as streaming-response]
+             [util :as async.u]]
+            [metabase.query-processor.context :as context])
+  (:import java.io.Writer))
 
-(defn- print-rows-rff [metadata]
-  (fn
-    ([] 0)
+(defn- write-beginning! [^Writer writer]
+  (.write writer "{\"data\":{\"rows\":[\n"))
 
-    ([acc]
-     acc)
+(defn- write-row! [^Writer writer row first-row?]
+  (when-not first-row?
+    (.write writer ",\n"))
+  (json/generate-stream row writer)
+  (.flush writer))
 
-    ([row-count row]
-     (printf "ROW %d -> %s\n" (inc row-count) (pr-str row))
-     (flush)
-     (Thread/sleep 50)
-     (inc row-count))))
+(defn- map->serialized-json-kvs
+  "{:a 100, :b 200} ; -> \"a\":100,\"b\":200"
+  ^String [m]
+  (when (seq m)
+    (let [s (json/generate-string m)]
+      (.substring s 1 (dec (count s))))))
 
-(defn streaming-response [query]
-  (api-response/keepalive-response [writerf]
-    (letfn [(reducef* [xformf context metadata reducible-rows]
-              (when-let [writer (writerf)]
-                (binding [*out* writer]
-                  (context.default/default-reducef xformf context metadata reducible-rows))))]
-      (qp/process-query-async query {:reducef reducef*
-                                     :rff     print-rows-rff}))))
+(defn- write-metadata! [^Writer writer {:keys [data], :as metadata}]
+  (let [data-kvs-str           (map->serialized-json-kvs data)
+        other-metadata-kvs-str (map->serialized-json-kvs (dissoc metadata :data))]
+    ;; close data.rows
+    (.write writer "\n]")
+    ;; write any remaining keys in data
+    (when (seq data-kvs-str)
+      (.write writer ",\n")
+      (.write writer data-kvs-str))
+    ;; close data
+    (.write writer "}")
+    ;; write any remaining top-level keys
+    (when (seq other-metadata-kvs-str)
+      (.write writer ",\n")
+      (.write writer other-metadata-kvs-str))
+    ;; close top-level map
+    (.write writer "}")
+    (.flush writer)))
 
-(defn- x []
-  (with-open [writer (io/writer "/tmp/wow.txt")]
-    (let [result-chan (a/promise-chan)]
-      (ring.core.protocols/write-body-to-stream
-       (api-response/keepalive-response [writerf]
-         (future
-           (try
-             (Thread/sleep 5000)
-             (when-let [^java.io.Writer writer (writerf)]
-               (println "writer:" writer)                    ; NOCOMMIT
-               (println "<< BEGIN STREAMING RESULTS >>")     ; NOCOMMIT
-               (dotimes [_ 3]
-                 (Thread/sleep 1000)
-                 (println "<WRITE LINE>")
-                 (.write writer "WOW!\n")
-                 (.flush writer)))
-             (catch Throwable e
-               (println "e:" e)         ; NOCOMMIT
-               )))
-         (future
-           (Thread/sleep 10000)
-           (println "<<DONE>>")
-           (a/>!! result-chan "DONE!"))
-         result-chan)
-       nil
-       writer))
-    (Thread/sleep 15000)))
+(defn- streaming-json-rff [writer]
+  {:pre [(instance? Writer writer)]}
+  (fn [metadata]
+    (let [row-count (volatile! 0)]
+      (fn
+        ([]
+         (write-beginning! writer)
+         {:data metadata})
 
-(defn- y []
-  (let [writer      (io/writer "/tmp/wow.txt")
-        result-chan (a/promise-chan)]
-    (ring.core.protocols/write-body-to-stream
-     (streaming-response (mt/mbql-query venues {:limit 10}))
-     nil
-     writer)
-    (future
-      (Thread/sleep 10000)
-      (.close writer))
-    nil))
+        ([metadata]
+         (assoc metadata
+                :row_count @row-count
+                :status :completed))
+
+        ([metadata row]
+         (let [first-row? (= 1 (vswap! row-count inc))]
+           (write-row! writer row first-row?))
+         metadata)))))
+
+(defn- streaming-json-reducedf [writer]
+  {:pre [(instance? Writer writer)]}
+  (fn [_ metadata context]
+    (write-metadata! writer metadata)
+    (.close writer)
+    (context/resultf metadata context)))
+
+;; TODO -- consider whether it makes sense to begin writing keepalive chars right away or if maybe we should wait to
+;; call `respond` in async endpoints for 30-60 seconds that way we're not wasting a Ring thread right away
+(defn do-streaming-response
+  "Impl for `streaming-response`."
+  ^metabase.async.streaming_response.StreamingResponse [run-query-with-context]
+  (streaming-response/streaming-response [writer canceled-chan]
+    (let [out-chan (run-query-with-context {:rff      (streaming-json-rff writer)
+                                            :reducedf (streaming-json-reducedf writer)})]
+      (assert (async.u/promise-chan? out-chan)
+        "The body of streaming-response should return a core.async promise chan (use an async QP fn).")
+      (a/go
+        (let [[val port] (a/alts! [out-chan canceled-chan] :priority true)]
+          (cond
+            (and (= port out-chan)
+                 (instance? Throwable val))
+            (streaming-response/write-error-and-close! writer val)
+
+            (and (= port canceled-chan)
+                 (nil? val))
+            (a/close! out-chan))))
+      nil)))
+
+(defmacro streaming-response
+  "Return results of
+    (api/defendpoint GET \"/whatever\" []
+      (streaming-response [context]
+        (qp/process-query-async my-query context)))"
+  {:style/indent 1}
+  [[context-binding :as bindings] & body]
+  {:pre [(= (count bindings) 1)]}
+  `(do-streaming-response (fn [~context-binding] ~@body)))

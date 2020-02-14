@@ -16,10 +16,8 @@
       (throw (TimeoutException. "Timed out."))
 
       :else
-      (do
-        (println "Waiting for channel to close, but got unexpected result:" result)
-        (throw (ex-info "Waiting for channel to close, but got unexpected result"
-                 {:result result}))))))
+      (throw (ex-info (format "Waiting for channel to close, but got unexpected result %s" (pr-str result))
+                      {:result result})))))
 
 (defmacro with-open-channels
   "Like `with-open`, but closes core.async channels at the conclusion of `body`."

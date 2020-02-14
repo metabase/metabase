@@ -86,6 +86,7 @@
      (qp* query nil))
 
     ([query context]
+     {:pre [(map? query) ((some-fn nil? map?) context)]}
      (let [context (merge (context.default/default-context) context)]
        (prepare-context! context)
        ;; NOCOMMIT
