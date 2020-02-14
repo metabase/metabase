@@ -127,7 +127,7 @@ export default class TagEditorParam extends Component {
       isDimension && Array.isArray(tag.dimension);
     const hasWidgetOptions = widgetOptions && widgetOptions.length > 0;
     return (
-      <Card className="p2 mb2">
+      <div className="p2 mb3 rounded bg-light">
         <h3 className="pb2 text-brand">{tag.name}</h3>
 
         <div className="pb3">
@@ -249,7 +249,7 @@ export default class TagEditorParam extends Component {
             />
           </div>
         )}
-      </Card>
+      </div>
     );
   }
 }
