@@ -684,7 +684,7 @@
 
 (defn topological-sort
   "Topologically sorts vertexs in graph g. Graph is a map of vertexs to edges. Optionally takes an
-   additional argument `edge-fn`, a function used to extract edges. Returns data in the same shape
+   additional argument `edges-fn`, a function used to extract edges. Returns data in the same shape
    (a graph), only sorted.
 
    Say you have a graph shaped like:
