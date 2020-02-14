@@ -44,3 +44,27 @@
         ;; close top-level map
         (.write writer "}"))
       (.close writer))))
+
+;; JSON-download streams a simple array of maps as opposed to the full response with all the metadata
+(defmethod i/stream-options :json-download
+  [stream-type]
+  ((get-method i/stream-options :json) stream-type))
+
+(defmethod i/streaming-results-writer :json-download
+  [_ ^Writer writer]
+  (let [col-names (volatile! nil)]
+    (reify i/StreamingResultsWriter
+      (begin! [_ {{:keys [cols]} :data}]
+        (vreset! col-names (mapv :display_name cols))
+        (.write writer "[\n"))
+
+      (write-row! [_ row row-num]
+        (when-not (zero? row-num)
+          (.write writer ",\n"))
+        (json/generate-stream (zipmap @col-names row)
+                              writer)
+        (.flush writer))
+
+      (finish! [_ _]
+        (.write writer "\n]")
+        (.close writer)))))

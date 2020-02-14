@@ -40,15 +40,10 @@
          (.write writer ^String x off len)
          (.write writer ^chars x off len))))))
 
-(defn- newlines? [stream-type]
-  (case stream-type
-    :json true
-    :csv false))
-
 (defn- parse-file [stream-type ^java.io.Reader reader]
   (case stream-type
-    :json (json/parse-stream reader true)
-    :csv  (doall (csv/read-csv reader))))
+    (:json :json-download) (json/parse-stream reader true)
+    :csv                   (doall (csv/read-csv reader))))
 
 (defn- process-query-streaming [stream-type query]
   (let [filename (str (u.files/get-path (System/getProperty "java.io.tmpdir") (mt/random-name)))]
@@ -73,6 +68,16 @@
     ;; TODO -- not 100% sure why they two might be different. Will have to investigate.
     (is (= (m/dissoc-in normal-results    [:data :results_metadata :checksum])
            (m/dissoc-in streaming-results [:data :results_metadata :checksum])))))
+
+(deftest streaming-json-download-test []
+  (let [query                       (mt/mbql-query venues {:limit 5})
+        streaming-results           (process-query-streaming :json-download query)
+        {{:keys [cols rows]} :data} (tu/obj->json->obj (qp/process-query query))
+        normal-results              (for [row rows]
+                                      (zipmap (map (comp keyword :display_name) cols)
+                                              row))]
+    (is (= normal-results
+           streaming-results))))
 
 (deftest streaming-csv-test []
   (let [query                       (mt/mbql-query venues {:limit 5})
