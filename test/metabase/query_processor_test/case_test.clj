@@ -112,10 +112,12 @@
 
 ;; Can we use case in expressions
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
-  [[nil] [-2] [-1]]
-  (->> {:expressions {"case-test" [:case [[[:< [:field-id (data/id :venues :price)] 2] -1]
-                                          [[:< [:field-id (data/id :venues :price)] 3] -2]] ]}
+  [nil -2.0 -1.0]
+  (->> {:expressions {"case-test" [:case [[[:< [:field-id (data/id :venues :price)] 2] -1.0]
+                                          [[:< [:field-id (data/id :venues :price)] 3] -2.0]] ]}
         :fields [[:expression "case-test"]]}
        (data/run-mbql-query venues)
        rows
-       distinct))
+       (map (comp #(some-> % double) first))
+       distinct
+       sort))
