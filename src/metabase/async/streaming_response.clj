@@ -140,7 +140,7 @@
     ;; result of this fn is ignored
     nil))
 
-(p.types/defrecord+ StreamingResponse [f]
+(p.types/defrecord+ StreamingResponse [f options]
   pretty/PrettyPrintable
   (pretty [_]
     (list '->StreamingResponse f))
@@ -154,8 +154,7 @@
   compojure.response/Sendable
   (send* [this request respond raise]
     (respond (merge (ring.response/response this)
-                    ;; TODO - should this be configurable?
-                    {:content-type "applicaton/json; charset=utf-8"
+                    {:content-type (:content-type options)
                      :status       202}))))
 
 (defmacro streaming-response
@@ -163,7 +162,7 @@
 
   Minimal example:
 
-    (streaming-response [writer canceled-chan]
+    (streaming-response {:content-type \"applicaton/json; charset=utf-8\"} [writer canceled-chan]
       (let [futur (future
                     ;; start writing stuff (possibly async)
                     (write-stuff! writer)
@@ -175,7 +174,8 @@
             (future-cancel futur)))
         ;; result of `streaming-response` is ignored
         nil))"
-  {:style/indent 1}
-  [[writer-binding canceled-chan-binding :as bindings] & body]
+  {:style/indent 2}
+  [options [writer-binding canceled-chan-binding :as bindings] & body]
   {:pre [(= (count bindings) 2)]}
-  `(->StreamingResponse (fn [~(vary-meta writer-binding assoc :tag 'java.io.Writer) ~canceled-chan-binding] ~@body)))
+  `(->StreamingResponse (fn [~(vary-meta writer-binding assoc :tag 'java.io.Writer) ~canceled-chan-binding] ~@body)
+                        ~options))

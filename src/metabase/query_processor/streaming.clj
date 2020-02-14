@@ -6,8 +6,7 @@
             [metabase.query-processor.context :as context]
             [metabase.query-processor.streaming
              [interface :as i]
-             [json :as streaming.json]]
-            [metabase.util.i18n :refer [tru]]))
+             [json :as streaming.json]]))
 
 ;; these are loaded for side-effects so their impls of `i/results-writer` will be available
 (comment metabase.query-processor.streaming.json/keep-me)
@@ -39,9 +38,7 @@
 (defn do-streaming-response
   "Impl for `streaming-response`."
   ^metabase.async.streaming_response.StreamingResponse [stream-type run-query-fn]
-  (assert (get-method i/streaming-results-writer (keyword stream-type))
-          (tru "Invalid streaming results type {0}" stream-type))
-  (streaming-response/streaming-response [writer canceled-chan]
+  (streaming-response/streaming-response {:content-type (i/content-type stream-type)} [writer canceled-chan]
     (let [results-writer (i/streaming-results-writer stream-type writer)
           out-chan       (run-query-fn {:rff      (streaming-rff results-writer)
                                         :reducedf (streaming-reducedf results-writer)})]

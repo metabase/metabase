@@ -3,6 +3,10 @@
             [metabase.query-processor.streaming.interface :as i])
   (:import java.io.Writer))
 
+(defmethod i/content-type :json
+  [_]
+  "applicaton/json; charset=utf-8")
+
 (defn- map->serialized-json-kvs
   "{:a 100, :b 200} ; -> \"a\":100,\"b\":200"
   ^String [m]

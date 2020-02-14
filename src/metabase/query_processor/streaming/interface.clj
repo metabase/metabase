@@ -1,6 +1,11 @@
 (ns metabase.query-processor.streaming.interface
   (:require [potemkin.types :as p.types]))
 
+(defmulti content-type
+  "Return the String Content-Type that should be used in the API response header for this stream type."
+  {:arglists '(^String [content-type])}
+  keyword)
+
 (p.types/defprotocol+ StreamingResultsWriter
   "Protocol for the methods needed to write streaming QP results. This protocol is a higher-level interface to intended
   to have multiple implementations."
