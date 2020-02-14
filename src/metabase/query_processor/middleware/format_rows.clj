@@ -17,7 +17,8 @@
 
 (extend-protocol FormatValue
   nil
-  (format-value [_ _] nil)
+  (format-value [_ _]
+    nil)
 
   Object
   (format-value [v _]

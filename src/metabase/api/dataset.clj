@@ -6,23 +6,23 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [POST]]
             [java-time :as t]
-            [medley.core :as m]
+            [metabase
+             [query-processor :as qp]
+             [util :as u]]
             [metabase.api.common :as api]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models
              [card :refer [Card]]
              [database :as database :refer [Database]]
              [query :as query]]
-            [metabase.query-processor :as qp]
             [metabase.query-processor
-             [async :as qp.async]
-             [error-type :as qp.error-type]
+             [streaming :as qp.streaming]
              [util :as qputil]]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.util
              [date-2 :as u.date]
              [export :as ex]
-             [i18n :refer [trs tru]]
+             [i18n :refer [trs]]
              [schema :as su]]
             [schema.core :as s])
   (:import clojure.core.async.impl.channels.ManyToManyChannel))
@@ -40,7 +40,7 @@
     (api/read-check Card source-card-id)
     source-card-id))
 
-(api/defendpoint ^:returns-chan POST "/"
+(api/defendpoint ^:streaming POST "/"
   "Execute a query and retrieve the results in the usual format."
   [:as {{:keys [database], :as query} :body}]
   {database s/Int}
@@ -49,16 +49,19 @@
     (api/read-check Database database))
   ;; add sensible constraints for results limits on our query
   (let [source-card-id (query->source-card-id query)
-        options        {:executed-by api/*current-user-id*, :context :ad-hoc,
-                        :card-id     source-card-id,        :nested? (boolean source-card-id)}]
-    (qp.async/process-query-and-save-with-max-results-constraints! query options)))
+        info           {:executed-by api/*current-user-id*
+                        :context     :ad-hoc
+                        :card-id     source-card-id
+                        :nested?     (boolean source-card-id)}]
+    (qp.streaming/streaming-response [context :api]
+      (qp/process-query-and-save-with-max-results-constraints! query info context))))
 
 
 ;;; ----------------------------------- Downloading Query Results in Other Formats -----------------------------------
 
 (def ExportFormat
   "Schema for valid export formats for downloading query results."
-  (apply s/enum (keys ex/export-formats)))
+  (apply s/enum (map u/qualified-name (qp.streaming/stream-types))))
 
 (defn export-format->context
   "Return the `:context` that should be used when saving a QueryExecution triggered by a request to download results
@@ -66,10 +69,13 @@
 
     (export-format->context :json) ;-> :json-download"
   [export-format]
-  (or (get-in ex/export-formats [export-format :context])
-      (throw (Exception. (tru "Invalid export format: {0}" export-format)))))
+  (keyword (str (u/qualified-name export-format) "-download")))
 
-(defn- datetime-str->date
+;; TODO - 99% sure all this hacky datetime magic is no longer needed since we can just add `:format-rows?` `false` to
+;; the QP middleware options like we're doing now. We can remove all the black magic once we remove `as-format-async`
+;; from everywhere else that's using it.
+
+(defn- ^:deprecated datetime-str->date
   "Dates are iso formatted, i.e. 2014-09-18T00:00:00.000-07:00. We can just drop the T and everything after it since
   we don't want to change the timezone or alter the date part. SQLite dates are not iso formatted and separate the
   date from the time using a space, this function handles that as well"
@@ -81,12 +87,12 @@
     (subs date-str 0 time-index)
     date-str))
 
-(defn- swap-date-columns [date-col-indexes]
+(defn- ^:deprecated swap-date-columns [date-col-indexes]
   (fn [row]
     (reduce (fn [acc idx]
               (update acc idx datetime-str->date)) row date-col-indexes)))
 
-(defn- date-column-indexes
+(defn- ^:deprecated date-column-indexes
   "Given `column-metadata` find the `:type/Date` columns"
   [column-metadata]
   (transduce (comp (map-indexed (fn [idx col-map] [idx (:base_type col-map)]))
@@ -94,14 +100,14 @@
                    (map first))
              conj [] column-metadata))
 
-(defn- maybe-modify-date-values [column-metadata rows]
+(defn- ^:deprecated maybe-modify-date-values [column-metadata rows]
   (let [date-indexes (date-column-indexes column-metadata)]
     (if (seq date-indexes)
       ;; Not sure why, but rows aren't vectors, they're lists which makes updating difficult
       (map (comp (swap-date-columns date-indexes) vec) rows)
       rows)))
 
-(defn- as-format-response
+(defn- ^:deprecated as-format-response
   "Return a response containing the `results` of a query in the specified format."
   {:style/indent 1, :arglists '([export-format results])}
   [export-format {{:keys [rows cols]} :data, :keys [status error], error-type :error_type, :as response}]
@@ -122,7 +128,7 @@
                  400)
        :body   error})))
 
-(s/defn as-format-async
+(s/defn ^:deprecated as-format-async
   "Write the results of an async query to API `respond` or `raise` functions in `export-format`. `in-chan` should be a
   core.async channel that can be used to fetch the results of the query."
   {:style/indent 3}
@@ -144,9 +150,9 @@
    Inteneded for use in an endpoint definition:
 
      (api/defendpoint POST [\"/:export-format\", :export-format export-format-regex]"
-  (re-pattern (str "(" (str/join "|" (keys ex/export-formats)) ")")))
+  (re-pattern (str "(" (str/join "|" (map u/qualified-name (qp.streaming/stream-types))) ")")))
 
-(api/defendpoint-async ^:returns-chan POST ["/:export-format", :export-format export-format-regex]
+(api/defendpoint-async ^:streaming POST ["/:export-format", :export-format export-format-regex]
   "Execute a query and download the result data as a file in the specified format."
   [{{:keys [export-format query]} :params} respond raise]
   {query         su/JSONString
@@ -154,13 +160,15 @@
   (let [{:keys [database] :as query} (json/parse-string query keyword)]
     (when-not (= database mbql.s/saved-questions-virtual-database-id)
       (api/read-check Database database))
-    (as-format-async export-format respond raise
-      (qp.async/process-query-and-save-execution!
-       (-> query
-           (dissoc :constraints)
-           (m/dissoc-in [:middleware :add-default-userland-constraints?])
-           (assoc-in [:middleware :skip-results-metadata?] true))
-       {:executed-by api/*current-user-id*, :context (export-format->context export-format)}))))
+    (let [query (-> (assoc query :async? true)
+                    (dissoc :constraints)
+                    (update :middleware #(-> %
+                                             (dissoc :add-default-userland-constraints?)
+                                             (assoc :skip-results-metadata? true
+                                                    :format-rows? false))))
+          info  {:executed-by api/*current-user-id*, :context (export-format->context export-format)}]
+      (respond (qp.streaming/streaming-response [context export-format]
+                 (qp/process-query-and-save-execution! query info context))))))
 
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------

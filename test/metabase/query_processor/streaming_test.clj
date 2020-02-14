@@ -34,14 +34,14 @@
 
 (defn- parse-file [stream-type filename]
   (case stream-type
-    (:json :json-download) (with-open [reader (io/reader filename)]
-                             (json/parse-stream reader true))
-    :csv                   (with-open [reader (io/reader filename)]
-                             (doall (csv/read-csv reader)))
-    :xlsx                  (->> (spreadsheet/load-workbook-from-file filename)
-                                (spreadsheet/select-sheet "Query result")
-                                (spreadsheet/select-columns {:A "ID", :B "Name", :C "Category ID", :D "Latitude", :E "Longitude", :F "Price"})
-                                rest)))
+    (:api :json) (with-open [reader (io/reader filename)]
+                   (json/parse-stream reader true))
+    :csv         (with-open [reader (io/reader filename)]
+                   (doall (csv/read-csv reader)))
+    :xlsx        (->> (spreadsheet/load-workbook-from-file filename)
+                      (spreadsheet/select-sheet "Query result")
+                      (spreadsheet/select-columns {:A "ID", :B "Name", :C "Category ID", :D "Latitude", :E "Longitude", :F "Price"})
+                      rest)))
 
 (defn- process-query-streaming [stream-type query]
   (let [filename (str (u.files/get-path (System/getProperty "java.io.tmpdir") (mt/random-name)))]
@@ -60,7 +60,7 @@
 
 (deftest streaming-json-test []
   (let [query             (mt/mbql-query venues {:limit 5})
-        streaming-results (process-query-streaming :json query)
+        streaming-results (process-query-streaming :api query)
         expected-results    (tu/obj->json->obj (qp/process-query query))]
     ;; TODO -- not 100% sure why they two might be different. Will have to investigate.
     (is (= (m/dissoc-in expected-results    [:data :results_metadata :checksum])
@@ -68,7 +68,7 @@
 
 (deftest streaming-json-download-test []
   (let [query                       (mt/mbql-query venues {:limit 5})
-        streaming-results           (process-query-streaming :json-download query)
+        streaming-results           (process-query-streaming :json query)
         {{:keys [cols rows]} :data} (tu/obj->json->obj (qp/process-query query))
         expected-results              (for [row rows]
                                       (zipmap (map (comp keyword :display_name) cols)

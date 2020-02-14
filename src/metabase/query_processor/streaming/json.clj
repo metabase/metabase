@@ -1,11 +1,42 @@
 (ns metabase.query-processor.streaming.json
+  "Impls for JSON-based QP streaming response types. `:json` streams a simple array of maps as opposed to the full
+  response with all the metadata for `:api`."
   (:require [cheshire.core :as json]
-            [metabase.query-processor.streaming.interface :as i])
+            [java-time :as t]
+            [metabase.query-processor.streaming.interface :as i]
+            [metabase.util.date-2 :as u.date])
   (:import [java.io BufferedWriter OutputStream OutputStreamWriter]))
 
 (defmethod i/stream-options :json
   [_]
-  {:content-type "applicaton/json; charset=utf-8"})
+  {:content-type "applicaton/json; charset=utf-8"
+   :headers      {"Content-Disposition" (format "attachment; filename=\"query_result_%s.json\""
+                                                (u.date/format (t/zoned-date-time)))}})
+
+(defmethod i/streaming-results-writer :json
+  [_ ^OutputStream os]
+  (let [writer    (BufferedWriter. (OutputStreamWriter. os))
+        col-names (volatile! nil)]
+    (reify i/StreamingResultsWriter
+      (begin! [_ {{:keys [cols]} :data}]
+        (vreset! col-names (mapv :display_name cols))
+        (.write writer "[\n"))
+
+      (write-row! [_ row row-num]
+        (when-not (zero? row-num)
+          (.write writer ",\n"))
+        (json/generate-stream (zipmap @col-names row)
+                              writer)
+        (.flush writer))
+
+      (finish! [_ _]
+        (.write writer "\n]")
+        (.close writer)
+        (.close os)))))
+
+(defmethod i/stream-options :api
+  [stream-type]
+  ((get-method i/stream-options :json) stream-type))
 
 (defn- map->serialized-json-kvs
   "{:a 100, :b 200} ; -> \"a\":100,\"b\":200"
@@ -14,7 +45,7 @@
     (let [s (json/generate-string m)]
       (.substring s 1 (dec (count s))))))
 
-(defmethod i/streaming-results-writer :json
+(defmethod i/streaming-results-writer :api
   [_ ^OutputStream os]
   (let [writer (BufferedWriter. (OutputStreamWriter. os))]
     (reify i/StreamingResultsWriter
@@ -44,31 +75,5 @@
             (.write writer other-metadata-kvs-str))
           ;; close top-level map
           (.write writer "}"))
-        (.close writer)
-        (.close os)))))
-
-;; JSON-download streams a simple array of maps as opposed to the full response with all the metadata
-(defmethod i/stream-options :json-download
-  [stream-type]
-  ((get-method i/stream-options :json) stream-type))
-
-(defmethod i/streaming-results-writer :json-download
-  [_ ^OutputStream os]
-  (let [writer    (BufferedWriter. (OutputStreamWriter. os))
-        col-names (volatile! nil)]
-    (reify i/StreamingResultsWriter
-      (begin! [_ {{:keys [cols]} :data}]
-        (vreset! col-names (mapv :display_name cols))
-        (.write writer "[\n"))
-
-      (write-row! [_ row row-num]
-        (when-not (zero? row-num)
-          (.write writer ",\n"))
-        (json/generate-stream (zipmap @col-names row)
-                              writer)
-        (.flush writer))
-
-      (finish! [_ _]
-        (.write writer "\n]")
         (.close writer)
         (.close os)))))

@@ -1,8 +1,11 @@
 (ns metabase.query-processor.streaming.xlsx
   (:require [cheshire.core :as json]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
+            [java-time :as t]
             [metabase.query-processor.streaming.interface :as i]
-            [metabase.util.i18n :refer [tru]])
+            [metabase.util
+             [date-2 :as u.date]
+             [i18n :refer [tru]]])
   (:import java.io.OutputStream
            org.apache.poi.ss.usermodel.Cell
            org.apache.poi.xssf.usermodel.XSSFWorkbook))
@@ -10,7 +13,9 @@
 (defmethod i/stream-options :xlsx
   [_]
   {:content-type              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-   :write-keepalive-newlines? false})
+   :write-keepalive-newlines? false
+   :headers                   {"Content-Disposition" (format "attachment; filename=\"query_result_%s.xlsx\""
+                                                             (u.date/format (t/zoned-date-time)))}})
 
 ;; add a generic implementation for the method that writes values to XLSX cells that just piggybacks off the
 ;; implementations we've already defined for encoding things as JSON. These implementations live in
@@ -25,6 +30,7 @@
                                (json/parse-string keyword)
                                :v))))
 
+;; TODO -- this is obviously not streaming! SAD!
 (defmethod i/streaming-results-writer :xlsx
   [_ ^OutputStream os]
   (let [workbook (XSSFWorkbook.)

@@ -23,7 +23,7 @@
              [util :as tu]]
             [metabase.test.data
              [dataset-definitions :as defs]
-             [datasets :as datasets :refer [expect-with-driver]]
+             [datasets :as datasets]
              [users :as test-users]]
             [metabase.test.util.log :as tu.log]
             [schema.core :as s]
@@ -53,11 +53,10 @@
 (defn- most-recent-query-execution [] (db/select-one QueryExecution {:order-by [[:id :desc]]}))
 
 (def ^:private query-defaults
-  {:middleware {:add-default-userland-constraints? true}
-   :async?     true})
+  {:middleware {:add-default-userland-constraints? true}})
 
 (deftest basic-query-test
-  (testing "POST /api/meta/dataset"
+  (testing "POST /api/dataset"
     (testing "\nJust a basic sanity check to make sure Query Processor endpoint is still working correctly."
       (let [result ((mt/user->client :rasta) :post 202 "dataset" (mt/mbql-query checkins
                                                                    {:aggregation [[:count]]}))]
@@ -97,7 +96,9 @@
                  (format-response (most-recent-query-execution)))))))))
 
 (deftest failure-test
-  (testing "POST /api/meta/dataset"
+  ;; clear out recent query executions!
+  (db/delete! QueryExecution)
+  (testing "POST /api/dataset"
     (testing "\nEven if a query fails we still expect a 202 response from the API"
       ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check
       ;; that it exists and contains the substring "Syntax error in SQL statement"
@@ -187,8 +188,8 @@
                        (json/generate-string (data/mbql-query checkins)))]
            (take 5 (parse-and-sort-csv result))))))
 
-
 (deftest check-an-empty-date-column
+
   (is (= [["1" "2014-04-07" "" "5" "12"]
           ["2" "2014-09-18" "" "1" "31"]
           ["3" "2014-09-15" "" "8" "56"]
@@ -199,25 +200,24 @@
                                      (json/generate-string (data/mbql-query checkins)))]
                          (take 5 (parse-and-sort-csv result)))))))
 
-;; SQLite doesn't return proper date objects but strings, they just pass through the qp untouched
-(expect-with-driver
- :sqlite
- [["1" "2014-04-07" "5" "12"]
-  ["2" "2014-09-18" "1" "31"]
-  ["3" "2014-09-15" "8" "56"]
-  ["4" "2014-03-11" "5" "4"]
-  ["5" "2013-05-05" "3" "49"]]
- (let [result ((test-users/user->client :rasta) :post 202 "dataset/csv" :query
-               (json/generate-string (data/mbql-query checkins)))]
-   (take 5 (parse-and-sort-csv result))))
-
+(deftest sqlite-datetime-test
+  (mt/test-driver :sqlite
+    (testing "SQLite doesn't return proper date objects but strings, they just pass through the qp untouched"
+      (let [result ((test-users/user->client :rasta) :post 202 "dataset/csv" :query
+                    (json/generate-string (data/mbql-query checkins)))]
+        (is (= [["1" "2014-04-07" "5" "12"]
+                ["2" "2014-09-18" "1" "31"]
+                ["3" "2014-09-15" "8" "56"]
+                ["4" "2014-03-11" "5" "4"]
+                ["5" "2013-05-05" "3" "49"]]
+               (take 5 (parse-and-sort-csv result))))))))
 
 (deftest datetime-fields-are-untouched-when-exported
-  (is (= [["1" "Plato Yeshua"        "2014-04-01T08:30:00Z"]
-          ["2" "Felipinho Asklepios" "2014-12-05T15:15:00Z"]
-          ["3" "Kaneonuskatew Eiran" "2014-11-06T16:15:00Z"]
-          ["4" "Simcha Yan"          "2014-01-01T08:30:00Z"]
-          ["5" "Quentin Sören"       "2014-10-03T17:30:00Z"]]
+  (is (= [["1" "Plato Yeshua"        "2014-04-01T08:30"]
+          ["2" "Felipinho Asklepios" "2014-12-05T15:15"]
+          ["3" "Kaneonuskatew Eiran" "2014-11-06T16:15"]
+          ["4" "Simcha Yan"          "2014-01-01T08:30"]
+          ["5" "Quentin Sören"       "2014-10-03T17:30"]]
          (let [result ((test-users/user->client :rasta) :post 202 "dataset/csv" :query
                        (json/generate-string (data/mbql-query users)))]
            (take 5 (parse-and-sort-csv result))))))

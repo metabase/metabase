@@ -1,11 +1,15 @@
 (ns metabase.query-processor.streaming.csv
   (:require [clojure.data.csv :as csv]
-            [metabase.query-processor.streaming.interface :as i])
+            [java-time :as t]
+            [metabase.query-processor.streaming.interface :as i]
+            [metabase.util.date-2 :as u.date])
   (:import [java.io BufferedWriter OutputStream OutputStreamWriter]))
 
 (defmethod i/stream-options :csv
   [_]
   {:content-type              "text/csv"
+   :headers                   {"Content-Disposition" (format "attachment; filename=\"query_result_%s.csv\""
+                                                             (u.date/format (t/zoned-date-time)))}
    :write-keepalive-newlines? false})
 
 (defmethod i/streaming-results-writer :csv

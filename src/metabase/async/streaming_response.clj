@@ -5,8 +5,10 @@
             [clojure.core.async :as a]
             [clojure.tools.logging :as log]
             compojure.response
+            [metabase
+             [config :as config]
+             [util :as u]]
             [metabase.query-processor.middleware.catch-exceptions :as qp.middleware.exceptions]
-            [metabase.util :as u]
             [metabase.util.i18n :refer [trs]]
             [potemkin.types :as p.types]
             [pretty.core :as pretty]
@@ -26,7 +28,10 @@
   forever. Normally we'll eventually give up when a connection is closed, but if someone keeps the connection open
   forever, or if there's a bug in the API code (and `respond` is never called, or a value is never written to the
   channel it returns) give up after 4 hours."
-  (u/hours->ms 4))
+  (cond
+    config/is-prod? (u/hours->ms 4)
+    config/is-dev?  (u/minutes->ms 10)
+    config/is-test? (u/minutes->ms 2)))
 
 (defn write-error-and-close!
   "Util fn for writing an Exception to the OutputStream provided by `streaming-response`."
@@ -108,7 +113,8 @@
             (write-error-and-close! os (ex-info (trs "Response not finished after waiting {0}. Canceling request."
                                                      (u/format-milliseconds absolute-max-keepalive-ms))
                                                 {:status 504})))
-          (.close os))))))
+          (u/ignore-exceptions
+            (.close os)))))))
 
 (defn- streaming-chans []
   ;; this channel will get a message when they start writing to the proxy output stream
@@ -133,10 +139,10 @@
     ;; result of this fn is ignored
     nil))
 
-(p.types/defrecord+ StreamingResponse [f options]
+(p.types/deftype+ StreamingResponse [f options]
   pretty/PrettyPrintable
   (pretty [_]
-    (list '->StreamingResponse f))
+    (list '->StreamingResponse f options))
 
   ;; both sync and async responses
   ring.protocols/StreamableResponseBody
@@ -148,6 +154,7 @@
   (send* [this request respond raise]
     (respond (merge (ring.response/response this)
                     {:content-type (:content-type options)
+                     :headers      (:headers options)
                      :status       202}))))
 
 (defmacro streaming-response
@@ -170,7 +177,8 @@
 
   Current options:
 
-  *  `:content-type` -- string content type to return in the results. This is required
+  *  `:content-type` -- string content type to return in the results. This is required!
+  *  `:headers` -- other headers to include in the API response.
   *  `:write-keepalive-newlines?` -- whether we should write keepalive newlines every `keepalive-interval-ms`. Default
       `true`; you can disable this for formats where it wouldn't work, such as CSV."
   {:style/indent 2}

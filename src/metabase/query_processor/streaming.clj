@@ -1,12 +1,14 @@
 (ns metabase.query-processor.streaming
-  (:require [clojure.core.async :as a]
+  (:require [cheshire.core :as json]
+            [clojure.core.async :as a]
             [metabase.async
              [streaming-response :as streaming-response]
              [util :as async.u]]
             [metabase.query-processor.context :as context]
             [metabase.query-processor.streaming csv json xlsx
              [interface :as i]]
-            [metabase.util :as u]))
+            [metabase.util :as u])
+  (:import [java.io BufferedWriter OutputStreamWriter]))
 
 ;; these are loaded for side-effects so their impls of `i/results-writer` will be available
 (comment metabase.query-processor.streaming.csv/keep-me
@@ -44,25 +46,40 @@
     (let [results-writer (i/streaming-results-writer stream-type os)
           out-chan       (run-query-fn {:rff      (streaming-rff results-writer)
                                         :reducedf (streaming-reducedf results-writer)})]
-      (assert (async.u/promise-chan? out-chan)
-              "The body of streaming-response should return a core.async promise chan (use an async QP fn).")
-      (a/go
-        (let [[val port] (a/alts! [out-chan canceled-chan] :priority true)]
-          (cond
-            (and (= port out-chan)
-                 (instance? Throwable val))
-            (streaming-response/write-error-and-close! os val)
+      (if (async.u/promise-chan? out-chan)
+        (a/go
+          (let [[val port] (a/alts! [out-chan canceled-chan] :priority true)]
+            (cond
+              (and (= port out-chan)
+                   (instance? Throwable val))
+              (streaming-response/write-error-and-close! os val)
 
-            (and (= port canceled-chan)
-                 (nil? val))
-            (a/close! out-chan))))
+              (and (= port canceled-chan)
+                   (nil? val))
+              (a/close! out-chan))))
+        ;; if we got something besides a channel?
+        (do
+          (with-open [writer (BufferedWriter. (OutputStreamWriter. os))]
+            (json/generate-stream out-chan writer))
+          (.close os)))
       nil)))
 
 (defmacro streaming-response
-  "Return results of
+  "Return results of processing a query as a streaming response. This response implements the appropriate Ring/Compojure
+  protocols, so return or `respond` with it directly. Pass the provided `context` to your query processor function of
+  choice. `stream-type` is one of `:api` (for normal JSON API responses), `:json`, `:csv`, or `:xlsx` (for downloads).
+
+  Typical example:
+
     (api/defendpoint GET \"/whatever\" []
-      (streaming-response [context :json]
-        (qp/process-query-async my-query context)))"
+      (qp.streaming/streaming-response [context :json]
+        (qp/process-query-and-save-with-max-results-constraints! (assoc my-query :async? true) context)))"
   {:style/indent 1}
   [[context-binding stream-type] & body]
   `(do-streaming-response ~stream-type (fn [~context-binding] ~@body)))
+
+(defn stream-types
+  "Set of valid streaming response formats. Currently, `:json`, `:csv`, `:xlsx`, and `:api` (normal JSON API results
+  with extra metadata), but other types may be available if plugins are installed. (The interface is extensible.)"
+  []
+  (set (keys (methods i/stream-options))))
