@@ -2,11 +2,12 @@
   (:require [cheshire.core :as json]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [java-time :as t]
-            [metabase.query-processor.streaming.interface :as i]
+            [metabase.query-processor.streaming
+             [common :as common]
+             [interface :as i]]
             [metabase.util
              [date-2 :as u.date]
-             [i18n :refer [tru]]]
-            [metabase.query-processor.streaming.common :as common])
+             [i18n :refer [tru]]])
   (:import java.io.OutputStream
            org.apache.poi.ss.usermodel.Cell
            org.apache.poi.xssf.usermodel.XSSFWorkbook))

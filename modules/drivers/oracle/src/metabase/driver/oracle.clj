@@ -235,8 +235,8 @@
              (eduction
               (fn [rf]
                 (fn
-                  ([] (rf))
-                  ([acc] (rf x))
+                  ([]        (rf))
+                  ([acc]     (rf acc))
                   ([acc row] (rf acc (butlast row)))))
               rows))))
 

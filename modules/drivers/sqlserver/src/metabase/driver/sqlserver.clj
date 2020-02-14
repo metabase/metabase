@@ -17,7 +17,7 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor.interface :as qp.i]
             [metabase.util.honeysql-extensions :as hx])
-  (:import [java.sql ResultSet Time]
+  (:import [java.sql Connection ResultSet Time Types]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            java.util.Date))
 
@@ -251,6 +251,21 @@
 (defmethod sql-jdbc.sync/excluded-schemas :sqlserver
   [_]
   #{"sys" "INFORMATION_SCHEMA"})
+
+;; SQL Server doesn't support setting the holdability of an individual result set, otherwise this impl is basically
+;; the same as the defaul
+(defmethod sql-jdbc.execute/prepared-statement :sqlserver
+  [driver ^Connection conn ^String sql params]
+  (let [stmt (.prepareStatement conn sql
+                                ResultSet/TYPE_FORWARD_ONLY
+                                ResultSet/CONCUR_READ_ONLY)]
+    (try
+      (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
+      (sql-jdbc.execute/set-parameters! driver stmt params)
+      stmt
+      (catch Throwable e
+        (.close stmt)
+        (throw e)))))
 
 (defmethod unprepare/unprepare-value [:sqlserver LocalDate]
   [_ ^LocalDate t]

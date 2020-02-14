@@ -141,7 +141,11 @@
    ;; this channel will get a message when they .close() the proxy output stream
    :they-are-done-chan             (a/promise-chan)})
 
-(defn- do-streaming-response [^OutputStream os f options]
+(defn do-streaming-response
+  "Stream results of `f` to output stream, writing newlines as appropiate. You shouldn't use this function directly --
+  use `streaming-response` instead -- but I had to make it public because Eastwood isn't able to figure out it's being
+  used since the only use is inside the `deftype+` below."
+  [^OutputStream os f options]
   (let [chans (streaming-chans)]
     (start-newline-loop! os chans options)
     (setup-timeout-and-close! os chans)

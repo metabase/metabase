@@ -111,7 +111,7 @@
           (try
             (.setReadOnly conn false)
             (catch Throwable e
-              (log/error e (trs "Error setting connection to readwrite"))))
+              (log/debug e (trs "Error setting connection to readwrite"))))
           (with-open [stmt (.createStatement conn)]
             (.execute stmt sql)
             (log/tracef "Successfully set timezone for %s database to %s" driver timezone-id)))
@@ -135,7 +135,7 @@
           (try
             (.setTransactionIsolation conn level)
             (catch Throwable e
-              (log/error e (trs "Error setting transaction isolation level for {0} database to {1}" (name driver) level-name)))))
+              (log/debug e (trs "Error setting transaction isolation level for {0} database to {1}" (name driver) level-name)))))
 
         (seq more)
         (recur more)))))
@@ -149,7 +149,11 @@
       (try
         (.setReadOnly conn true)
         (catch Throwable e
-          (log/error e (trs "Error setting connection to read-only"))))
+          (log/debug e (trs "Error setting connection to read-only"))))
+      (try
+        (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
+        (catch Throwable e
+          (log/debug e (trs "Error setting default holdability for connection"))))
       conn
       (catch Throwable e
         (.close conn)
@@ -176,7 +180,7 @@
       (try
         (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
         (catch Throwable e
-          (log/error e (trs "Error setting result set fetch direction to FETCH_FORWARD"))))
+          (log/debug e (trs "Error setting result set fetch direction to FETCH_FORWARD"))))
       (set-parameters! driver stmt params)
       stmt
       (catch Throwable e
