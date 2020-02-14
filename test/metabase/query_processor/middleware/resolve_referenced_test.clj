@@ -125,5 +125,8 @@
         (let [entrypoint-query (data/native-query
                                 {:query (str "SELECT * FROM {{#" (:id card-1) "}}")
                                  :template-tags (card-template-tags [card-1-id])})]
-          (is (thrown? ExceptionInfo
-                (#'referenced/check-for-circular-references entrypoint-query))))))))
+          (is (= (#'referenced/circular-ref-error (:id card-2) card-1-id)
+                 (try
+                  (#'referenced/check-for-circular-references entrypoint-query)
+                  (catch ExceptionInfo e
+                    (.getMessage e))))))))))

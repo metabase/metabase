@@ -3,9 +3,11 @@
             [metabase.query-processor.middleware
              [resolve-fields :as qp.resolve-fields]
              [resolve-source-table :as qp.resolve-tables]]
+            [metabase.util.i18n :refer [tru]]
             [schema.core :as s]
             [toucan.db :as db]
-            [weavejester.dependency :as dep]))
+            [weavejester.dependency :as dep])
+  (:import clojure.lang.ExceptionInfo))
 
 (defn tags-referenced-cards
   "Returns Card instances referenced by the given native `query`."
@@ -50,10 +52,23 @@
       graph
       (query->tag-card-ids card-query)))))
 
+(defn- circular-ref-error
+  [from-card to-card]
+  (tru
+   "Your query includes circular referencing sub-queries between cards \"{0}\" and \"{1}\"."
+   (db/select-one-field :name Card :id from-card)
+   (db/select-one-field :name Card :id to-card)))
+
 (defn- check-for-circular-references
   [query]
   ;; `card-subquery-graph` will throw if there are circular references
-  (reduce card-subquery-graph (dep/graph) (query->tag-card-ids query))
+  (try
+   (reduce card-subquery-graph (dep/graph) (query->tag-card-ids query))
+   (catch ExceptionInfo e
+     (let [{:keys [reason node dependency]} (ex-data e)]
+       (if (= reason :weavejester.dependency/circular-dependency)
+         (throw (ex-info (circular-ref-error node dependency) {:original-exception e}))
+         (throw e)))))
   query)
 
 (defn resolve-referenced-card-resources
