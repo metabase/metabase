@@ -18,6 +18,26 @@
        ffirst
        double))
 
+;; Can use fields as values
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
+  179.0
+  (->> {:aggregation [[:sum [:case [[[:< [:field-id (data/id :venues :price)] 2] [:field-id (data/id :venues :price)]]
+                                    [[:< [:field-id (data/id :venues :price)] 4] [:field-id (data/id :venues :price)]]] ]]]}
+       (data/run-mbql-query venues)
+       rows
+       ffirst
+       double))
+
+;; Can use expressions as values
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
+  194.5
+  (->> {:aggregation [[:sum [:case [[[:< [:field-id (data/id :venues :price)] 2] [:+ [:field-id (data/id :venues :price)] 1]]
+                                    [[:< [:field-id (data/id :venues :price)] 4] [:+ [:/ [:field-id (data/id :venues :price)] 2] 1]]] ]]]}
+       (data/run-mbql-query venues)
+       rows
+       ffirst
+       double))
+
 ;; Test else clause
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
   122.0
@@ -113,9 +133,9 @@
 ;; Can we use case in expressions
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
   [nil -2.0 -1.0]
-  (->> {:expressions {"case-test" [:case [[[:< [:field-id (data/id :venues :price)] 2] -1.0]
+  (->> {:expressions {"case_test" [:case [[[:< [:field-id (data/id :venues :price)] 2] -1.0]
                                           [[:< [:field-id (data/id :venues :price)] 3] -2.0]] ]}
-        :fields [[:expression "case-test"]]}
+        :fields [[:expression "case_test"]]}
        (data/run-mbql-query venues)
        rows
        (map (comp #(some-> % double) first))

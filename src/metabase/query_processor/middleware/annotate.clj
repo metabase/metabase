@@ -342,11 +342,6 @@
     ;; `col-info-for-ag-clause`, and this info is added into the results)
     (_ :guard mbql.preds/Field?)
     (select-keys (col-info-for-field-clause inner-query &match) [:base_type :special_type :settings])
-
-    ;; For the time being every Expression is an arithmetic operator and returns a floating-point number, so
-    ;; hardcoding these types is fine; In the future when we extend Expressions to handle more functionality
-    ;; we'll want to introduce logic that associates a return type with a given expression. But this will work
-    ;; for the purposes of a patch release.
     #{:expression :+ :- :/ :*}
     (merge
      (infer-expression-type &match)
