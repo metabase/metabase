@@ -8,7 +8,6 @@
             [metabase
              [config :as config]
              [util :as u]]
-            [metabase.query-processor.middleware.catch-exceptions :as qp.middleware.exceptions]
             [metabase.util.i18n :refer [trs]]
             [potemkin.types :as p.types]
             [pretty.core :as pretty]
@@ -33,6 +32,26 @@
     config/is-dev?  (u/minutes->ms 10)
     config/is-test? (u/minutes->ms 2)))
 
+(defn- exception-chain [^Throwable e]
+  (->> (iterate #(.getCause ^Throwable %) e)
+       (take-while some?)
+       reverse))
+
+(defn- format-exception [e]
+  (let [format-ex*           (fn [^Throwable e]
+                               {:message    (.getMessage e)
+                                :class      (class e)
+                                :stacktrace (seq (.getStackTrace e))
+                                :data       (ex-data e)})
+        [e & more :as chain] (exception-chain e)]
+    (merge
+     (format-ex* e)
+     {:_status (or (some #(:status (ex-data %))
+                         chain)
+                   500)}
+     (when (seq more)
+       {:via (map format-ex* more)}))))
+
 (defn write-error-and-close!
   "Util fn for writing an Exception to the OutputStream provided by `streaming-response`."
   [^OutputStream os, ^Throwable e]
@@ -40,9 +59,7 @@
   ;; formatting code we have rn. Move the formatting logic somewhere more generic and have both this and the
   ;; middleware use it.
   (with-open [writer (BufferedWriter. (OutputStreamWriter. os))]
-    (json/generate-stream (merge (qp.middleware.exceptions/exception-response e)
-                                 {:message (.getMessage e)
-                                  :_status (get (ex-data e) :status 500)})
+    (json/generate-stream (format-exception e)
                           writer))
   (.close os))
 
