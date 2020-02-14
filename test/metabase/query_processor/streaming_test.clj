@@ -8,6 +8,7 @@
              [test :as mt]]
             [metabase.async.streaming-response :as streaming-response]
             [metabase.query-processor.streaming :as qp.streaming]
+            [metabase.test.util :as tu]
             [metabase.util.files :as u.files]
             [ring.core.protocols :as ring.protocols])
   (:import java.io.Writer))
