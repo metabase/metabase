@@ -17,7 +17,7 @@ const ChartSettingSelect = ({
   ...props
 }) => (
   <Select
-    className={cx(className, "block flex-auto", {
+    className={cx(className, "block", {
       disabled:
         options.length === 0 ||
         (options.length === 1 && options[0].value === value),
