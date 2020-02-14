@@ -118,7 +118,7 @@ I.e., if a user belongs to two user groups, both of which have been given sandbo
 
 #### Data sandboxes do not support non-SQL databases
 
-Non-SQL databases such as Google Analytics, Apache Druid, and MongoDB are not currently supported by data sandboxes.
+You can't currently create data sandboxes with non-SQL databases such as Google Analytics, Apache Druid, or MongoDB .
 
 #### Data sandboxes do not work on SQL/native queries
 
