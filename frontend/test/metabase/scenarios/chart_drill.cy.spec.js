@@ -31,6 +31,7 @@ describe("chart drill", () => {
     // wait for chart to expand and display legend/labels
     cy.contains("Gadget");
     cy.contains("January, 2017");
+    cy.wait(500); // wait longer to avoid grabbing the svg before a chart redraw
 
     // drag across to filter
     cy.get(".dc-chart svg")
