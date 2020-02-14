@@ -3,9 +3,9 @@
             [metabase.query-processor.streaming.interface :as i])
   (:import java.io.Writer))
 
-(defmethod i/content-type :json
+(defmethod i/stream-options :json
   [_]
-  "applicaton/json; charset=utf-8")
+  {:content-type "applicaton/json; charset=utf-8"})
 
 (defn- map->serialized-json-kvs
   "{:a 100, :b 200} ; -> \"a\":100,\"b\":200"
@@ -20,7 +20,7 @@
     (begin! [_ _]
       (.write writer "{\"data\":{\"rows\":[\n"))
 
-    (write-row! [this row row-num]
+    (write-row! [_ row row-num]
       (when-not (zero? row-num)
         (.write writer ",\n"))
       (json/generate-stream row writer)

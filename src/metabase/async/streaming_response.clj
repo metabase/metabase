@@ -1,4 +1,6 @@
 (ns metabase.async.streaming-response
+  "A special Ring response type that can handle async, streaming results. It writes newlines as 'heartbeats' to the client
+  until the real results are ready to begin streaming, then streams those to the client."
   (:require [cheshire.core :as json]
             [clojure.core.async :as a]
             [clojure.java.io :as io]
@@ -74,7 +76,8 @@
 
 (defn- start-newline-loop!
   "Write a newline every `keepalive-interval-ms` (e.g., one second) until they start using the writer."
-  [^Writer writer {:keys [they-have-started-writing-chan canceled-chan]}]
+  [^Writer writer {:keys [they-have-started-writing-chan canceled-chan]} {:keys [write-keepalive-newlines?]
+                                                                          :or   {write-keepalive-newlines? true}}]
   (a/go-loop []
     (let [timeout-chan (a/timeout keepalive-interval-ms)
           [val port]   (a/alts! [they-have-started-writing-chan timeout-chan] :priority true)]
@@ -84,8 +87,8 @@
       (when (= port timeout-chan)
         (log/debug (u/format-color 'blue (trs "Response not ready, writing one byte & sleeping...")))
         (when (try
-                ;; double-check that they haven't written something since we schedub
-                (.write writer (str \newline))
+                (when write-keepalive-newlines?
+                  (.write writer (str \newline)))
                 (.flush writer)
                 true
                 (catch EofException _
@@ -125,9 +128,9 @@
    ;; this channel will get a message when they .close() the proxy writer
    :they-are-done-chan             (a/promise-chan)})
 
-(defn- do-streaming-response* [^Writer writer f]
+(defn- do-streaming-response* [^Writer writer f options]
   (let [chans (streaming-chans)]
-    (start-newline-loop! writer chans)
+    (start-newline-loop! writer chans options)
     (setup-timeout-and-close! writer chans)
     ;; ok, we can call f now with a proxy-writer
     (try
@@ -148,7 +151,7 @@
   ;; both sync and async responses
   ring.protocols/StreamableResponseBody
   (write-body-to-stream [_ _ ostream]
-    (do-streaming-response* (io/writer ostream) f))
+    (do-streaming-response* (io/writer ostream) f options))
 
   ;; async responses only
   compojure.response/Sendable
@@ -173,7 +176,13 @@
           (when (nil? (a/<! canceled-chan))
             (future-cancel futur)))
         ;; result of `streaming-response` is ignored
-        nil))"
+        nil))
+
+  Current options:
+
+  *  `:content-type` -- string content type to return in the results. This is required
+  *  `:write-keepalive-newlines?` -- whether we should write keepalive newlines every `keepalive-interval-ms`. Default
+      `true`; you can disable this for formats where it wouldn't work, such as CSV."
   {:style/indent 2}
   [options [writer-binding canceled-chan-binding :as bindings] & body]
   {:pre [(= (count bindings) 2)]}

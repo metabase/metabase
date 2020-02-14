@@ -1,4 +1,5 @@
-(ns metabase.util.export
+(ns ^{:deprecated "0.35.0"} metabase.util.export
+  "Deprecated in favor of `metabase.query-processor.streaming.*` implementations."
   (:require [cheshire.core :as json]
             [clojure.data.csv :as csv]
             [dk.ative.docjure.spreadsheet :as spreadsheet])
@@ -70,3 +71,7 @@
            :content-type "applicaton/json"
            :ext          "json"
            :context      :json-download}})
+
+;; everthing in this namespace is deprecated!
+(doseq [[symb varr] (ns-interns *ns*)]
+  (alter-meta! varr assoc :deprecated "0.35.0"))

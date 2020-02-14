@@ -4,20 +4,21 @@
              [streaming-response :as streaming-response]
              [util :as async.u]]
             [metabase.query-processor.context :as context]
-            [metabase.query-processor.streaming
-             [interface :as i]
-             [json :as streaming.json]]))
+            [metabase.query-processor.streaming csv json
+             [interface :as i]]
+            [metabase.util :as u]))
 
 ;; these are loaded for side-effects so their impls of `i/results-writer` will be available
-(comment metabase.query-processor.streaming.json/keep-me)
+(comment metabase.query-processor.streaming.csv/keep-me
+         metabase.query-processor.streaming.json/keep-me)
 
 (defn- streaming-rff [results-writer]
   (fn [initial-metadata]
-    (i/begin! results-writer initial-metadata)
     (let [row-count (volatile! 0)]
       (fn
         ([]
-         {:data initial-metadata})
+         (u/prog1 {:data initial-metadata}
+           (i/begin! results-writer <>)))
 
         ([metadata]
          (assoc metadata
@@ -38,7 +39,7 @@
 (defn do-streaming-response
   "Impl for `streaming-response`."
   ^metabase.async.streaming_response.StreamingResponse [stream-type run-query-fn]
-  (streaming-response/streaming-response {:content-type (i/content-type stream-type)} [writer canceled-chan]
+  (streaming-response/streaming-response (i/stream-options stream-type) [writer canceled-chan]
     (let [results-writer (i/streaming-results-writer stream-type writer)
           out-chan       (run-query-fn {:rff      (streaming-rff results-writer)
                                         :reducedf (streaming-reducedf results-writer)})]

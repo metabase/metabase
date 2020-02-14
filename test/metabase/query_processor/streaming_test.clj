@@ -1,6 +1,7 @@
 (ns metabase.query-processor.streaming-test
   (:require [cheshire.core :as json]
             [clojure.core.async :as a]
+            [clojure.data.csv :as csv]
             [clojure.java.io :as io]
             [clojure.test :refer :all]
             [metabase
@@ -38,24 +39,46 @@
          (.write writer ^String x off len)
          (.write writer ^chars x off len))))))
 
-(defn- process-query-streaming [query]
-  (let [filename (str (u.files/get-path (System/getProperty "java.io.tmpdir") (str (mt/random-name) ".json")))]
+(defn- newlines? [stream-type]
+  (case stream-type
+    :json true
+    :csv false))
+
+(defn- parse-file [stream-type ^java.io.Reader reader]
+  (case stream-type
+    :json (json/parse-stream reader true)
+    :csv  (doall (csv/read-csv reader))))
+
+(defn- process-query-streaming [stream-type query]
+  (let [filename (str (u.files/get-path (System/getProperty "java.io.tmpdir") (mt/random-name)))]
     (with-redefs [streaming-response/keepalive-interval-ms 2]
       (mt/with-open-channels [close-chan (a/promise-chan)]
         (with-open [writer (io/writer filename)]
           (let [proxy-writer (proxy-writer writer close-chan)]
             (ring.protocols/write-body-to-stream
-             (qp.streaming/streaming-response [context :json]
+             (qp.streaming/streaming-response [context stream-type]
                (Thread/sleep 10)
                (qp/process-query-async query context))
              nil
              proxy-writer)
             (mt/wait-for-close close-chan 1000)
-            (json/parse-stream (io/reader filename) true)))))))
+            (with-open [reader (io/reader filename)]
+              (parse-file stream-type reader))))))))
 
 (deftest streaming-json-test []
   (let [query             (mt/mbql-query venues {:limit 5})
-        streaming-results (process-query-streaming query)
+        streaming-results (process-query-streaming :json query)
         normal-results    (tu/obj->json->obj (qp/process-query query))]
+    (is (= normal-results
+           streaming-results))))
+
+(deftest streaming-csv-test []
+  (let [query                       (mt/mbql-query venues {:limit 5})
+        streaming-results           (process-query-streaming :csv query)
+        {{:keys [cols rows]} :data} (qp/process-query query)
+        normal-results              (cons (map :display_name cols)
+                                          (for [row rows]
+                                            (for [v row]
+                                              (str v))))]
     (is (= normal-results
            streaming-results))))

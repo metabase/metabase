@@ -1,9 +1,10 @@
 (ns metabase.query-processor.streaming.interface
   (:require [potemkin.types :as p.types]))
 
-(defmulti content-type
-  "Return the String Content-Type that should be used in the API response header for this stream type."
-  {:arglists '(^String [content-type])}
+(defmulti stream-options
+  "Options for the streaming response for this specific stream type. See `metabase.async.streaming-response` for all
+  available options."
+  {:arglists '([stream-type])}
   keyword)
 
 (p.types/defprotocol+ StreamingResultsWriter
