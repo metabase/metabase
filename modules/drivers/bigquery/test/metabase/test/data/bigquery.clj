@@ -289,4 +289,6 @@
     ;; BigQuery averages, standard deviations come back as Floats. This might apply to some other ag types as well;
     ;; add them as we come across them.
     (when (#{:avg :stddev} aggregation-type)
-      {:base_type :type/Float}))))
+      {:base_type :type/Float})
+    (when (= :count aggregation-type)
+      {:base_type :type/Integer}))))

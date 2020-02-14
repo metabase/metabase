@@ -15,6 +15,16 @@
 
 (defmethod sql.tx/pk-sql-type :postgres [_] "SERIAL")
 
+(defmethod tx/aggregate-column-info :postgres
+  ([driver ag-type]
+   ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type))
+
+  ([driver ag-type field]
+   (merge
+    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
+    (when (= ag-type :sum)
+      {:base_type :type/BigInteger}))))
+
 (doseq [[base-type db-type] {:type/BigInteger     "BIGINT"
                              :type/Boolean        "BOOL"
                              :type/Date           "DATE"
