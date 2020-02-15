@@ -3,7 +3,7 @@
             [metabase.query-processor.middleware
              [resolve-fields :as qp.resolve-fields]
              [resolve-source-table :as qp.resolve-tables]]
-            [metabase.util.i18n :refer [tru]]
+            [metabase.util.i18n :refer [deferred-tru]]
             [schema.core :as s]
             [toucan.db :as db]
             [weavejester.dependency :as dep])
@@ -54,10 +54,10 @@
 
 (defn- circular-ref-error
   [from-card to-card]
-  (tru
-   "This query has circular referencing sub-queries. These questions seem to be part of the problem: "\"{0}\" and \"{1}\"."
-   (db/select-one-field :name Card :id from-card)
-   (db/select-one-field :name Card :id to-card)))
+  (let [[from-name to-name] (map :name (db/select ['Card :name] :id [:in [from-card to-card]]))]
+    (str
+     (deferred-tru "This query has circular referencing sub-queries. ")
+     (deferred-tru "These questions seem to be part of the problem: \"{0}\" and \"{1}\"." from-name to-name))))
 
 (defn- check-for-circular-references
   [query]
