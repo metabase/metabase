@@ -82,8 +82,8 @@ export default class TagEditorSidebar extends React.Component {
 
     return (
       <SidebarContent title={t`Variables`} onClose={onClose}>
-        <div className="mx3">
-          <div className="text-centered Button-group Button-group--brand text-uppercase mb2 flex flex-full">
+        <div>
+          <div className="mx3 text-centered Button-group Button-group--brand text-uppercase mb2 flex flex-full">
             <a
               className={cx("Button flex-full Button--small", {
                 "Button--active": section === "settings",

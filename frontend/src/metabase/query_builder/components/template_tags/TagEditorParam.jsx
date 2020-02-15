@@ -5,7 +5,6 @@ import { connect } from "react-redux";
 import { Link } from "react-router";
 
 import Toggle from "metabase/components/Toggle";
-import Card from "metabase/components/Card";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/components/Select";
 import ParameterValueWidget from "metabase/parameters/components/ParameterValueWidget";
@@ -126,11 +125,16 @@ export default class TagEditorParam extends Component {
     const hasSelectedDimensionField =
       isDimension && Array.isArray(tag.dimension);
     const hasWidgetOptions = widgetOptions && widgetOptions.length > 0;
-    return (
-      <div className="p2 mb3 rounded bg-light">
-        <h3 className="pb2 text-brand">{tag.name}</h3>
 
-        <div className="pb3">
+    return (
+      <div className="px3 pt3 mb1 rounded border-top">
+        <div className="mt1 mb2">
+          <h4 className="py1 px2 inline text-white bg-purple circular">
+            {tag.name}
+          </h4>
+        </div>
+
+        <div className="pt2 pb3">
           <h4 className="pb1">{t`Filter label`}</h4>
           <InputBlurChange
             type="text"
