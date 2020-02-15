@@ -116,6 +116,10 @@ Now, when I log in as this user and look at the `Orders` table, I only see the c
 
 I.e., if a user belongs to two user groups, both of which have been given sandboxed access to the same table, that user will not be able to access data from that table. You will either need to remove that user from one of those groups, or remove the sandboxed access from one of those groups.
 
+#### Data sandboxes do not support non-SQL databases
+
+You can't currently create data sandboxes with non-SQL databases such as Google Analytics, Apache Druid, or MongoDB .
+
 #### Data sandboxes do not work on SQL/native queries
 
 This goes for both saved or unsaved SQL queries. The reason is that Metabase does not currently parse the contents of SQL queries, and therefore can't know conclusively which table(s) are referenced in a query. There are three specific situations to be aware of when it comes to SQL and sandboxes:
