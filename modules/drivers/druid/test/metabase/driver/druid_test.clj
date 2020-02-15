@@ -8,6 +8,7 @@
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :as qp.test]
+             [test :as mt]
              [util :as u]]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver
@@ -392,36 +393,38 @@
                (println "Error running query:" e)
                (throw e)))))))))
 
-;; Make sure Druid cols + columns come back in the same order and that that order is the expected MBQL columns order
-;; (#9294)
-(datasets/expect-with-driver :druid
-  {:cols ["id"
-          "timestamp"
-          "count"
-          "user_last_login"
-          "user_name"
-          "venue_category_name"
-          "venue_latitude"
-          "venue_longitude"
-          "venue_name"
-          "venue_price"]
-   :rows [["931"
-           "2013-01-03T08:00:00Z"
-           1
-           "2014-01-01T08:30:00.000Z"
-           "Simcha Yan"
-           "Thai"
-           "34.094"
-           "-118.344"
-           "Kinaree Thai Bistro"
-           "1"]]}
-  (tqpt/with-flattened-dbdef
-    (let [results (data/run-mbql-query checkins
-                    {:limit 1})]
-      (assert (= (:status results) :completed)
-        (u/pprint-to-str 'red results))
-      {:cols (->> results :data :cols (map :name))
-       :rows (-> results :data :rows)})))
+(deftest results-order-test
+  (mt/test-driver :druid
+    (testing "Make sure Druid cols + columns come back in the same order and that that order is the expected MBQL columns order (#9294)"
+      (tqpt/with-flattened-dbdef
+        (let [results (data/run-mbql-query checkins
+                        {:limit 1})]
+          (assert (= (:status results) :completed)
+            (u/pprint-to-str 'red results))
+          (testing "cols"
+            (is (= ["id"
+                    "timestamp"
+                    "count"
+                    "user_last_login"
+                    "user_name"
+                    "venue_category_name"
+                    "venue_latitude"
+                    "venue_longitude"
+                    "venue_name"
+                    "venue_price"]
+                   (->> results :data :cols (map :name)))))
+          (testing "rows"
+            (is (= [["931"
+                     "2013-01-03T08:00:00Z"
+                     1
+                     "2014-01-01T08:30:00.000Z"
+                     "Simcha Yan"
+                     "Thai"
+                     "34.094"
+                     "-118.344"
+                     "Kinaree Thai Bistro"
+                     "1"]]
+                   (-> results :data :rows)))))))))
 
 (datasets/expect-with-driver :druid
   [["Bar" "Felipinho Asklepios"      8]

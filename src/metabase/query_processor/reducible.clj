@@ -89,12 +89,10 @@
      {:pre [(map? query) ((some-fn nil? map?) context)]}
      (let [context (merge (context.default/default-context) context)]
        (prepare-context! context)
-       ;; NOCOMMIT
-       (future
-         (try
-           (qp query (context/base-xformf context) context)
-           (catch Throwable e
-             (context/raisef e context))))
+       (try
+         (qp query (context/base-xformf context) context)
+         (catch Throwable e
+           (context/raisef e context)))
        (quittable-out-chan (context/out-chan context))))))
 
 (defn- wait-for-async-result [out-chan]

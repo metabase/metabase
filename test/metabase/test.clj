@@ -214,15 +214,15 @@
                       middleware-fn
                       [middleware-fn])))
          context  (merge
-                   {:timeout 500}
-                   {:runf (fn [query xformf context]
-                            (try
-                              (when run (run))
-                              (let [metadata (qp.context/metadataf metadata context)]
-                                (qp.context/reducef xformf context (assoc metadata :pre query) rows))
-                              (catch Throwable e
-                                (println "Error in test-qp-middleware runf:" e)
-                                (throw e))))}
+                   {:timeout 500
+                    :runf    (fn [query xformf context]
+                               (try
+                                 (when run (run))
+                                 (let [metadata (qp.context/metadataf metadata context)]
+                                   (qp.context/reducef xformf context (assoc metadata :pre query) rows))
+                                 (catch Throwable e
+                                   (println "Error in test-qp-middleware runf:" e)
+                                   (throw e))))}
                    context)]
      (if async?
        (async-qp query context)

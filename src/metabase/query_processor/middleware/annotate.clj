@@ -393,18 +393,18 @@
   [{:keys [fields], :as inner-query} :- su/Map]
   (for [field fields]
     (assoc (col-info-for-field-clause inner-query field)
-      :source :fields)))
+           :source :fields)))
 
 (s/defn ^:private cols-for-ags-and-breakouts
   [{aggregations :aggregation, breakouts :breakout, :as inner-query} :- su/Map]
   (concat
    (for [breakout breakouts]
      (assoc (col-info-for-field-clause inner-query breakout)
-       :source :breakout))
+            :source :breakout))
    (for [[i aggregation] (m/indexed aggregations)]
      (assoc (col-info-for-aggregation-clause inner-query aggregation)
-       :source    :aggregation
-       :field_ref [:aggregation i]))))
+            :source    :aggregation
+            :field_ref [:aggregation i]))))
 
 (s/defn cols-for-mbql-query
   "Return results metadata about the expected columns in an 'inner' MBQL query."
@@ -430,7 +430,7 @@
     (maybe-merge-source-metadata source-metadata (column-info {:type :native} results))
     (mbql-cols source-query results)))
 
-(s/defn ^:private mbql-cols
+(s/defn mbql-cols
   "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the
   query."
   [{:keys [source-metadata source-query fields], :as inner-query} :- su/Map, results]
@@ -479,7 +479,11 @@
   [cols cols-returned-by-driver]
   (if (seq cols-returned-by-driver)
     (map (fn [col driver-col]
-           (merge col (m/filter-vals some? driver-col)))
+           ;; 1. Prefer our `:name` if it's something different that what's returned by the driver
+           ;;    (e.g. for named aggregations)
+           ;; 2. Then, prefer any non-nil keys returned by the driver
+           ;; 3. Finally, merge in any of our other keys
+           (merge col (m/filter-vals some? driver-col) (u/select-non-nil-keys col [:name])))
          cols
          cols-returned-by-driver)
     cols))

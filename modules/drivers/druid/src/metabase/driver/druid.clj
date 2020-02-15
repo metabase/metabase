@@ -6,7 +6,9 @@
             [metabase
              [driver :as driver]
              [util :as u]]
-            [metabase.driver.druid.query-processor :as qp]
+            [metabase.driver.druid
+             [execute :as execute]
+             [query-processor :as qp]]
             [metabase.util
              [i18n :refer [trs tru]]
              [ssh :as ssh]]))
@@ -154,7 +156,8 @@
 
 (defmethod driver/execute-reducible-query :druid
   [_ query _ respond]
-  (qp/execute-reducible-query do-query-with-cancellation query respond))
+  (execute/execute-reducible-query do-query-with-cancellation query respond))
 
-(defmethod driver/supports? [:druid :set-timezone]            [_ _] true)
-(defmethod driver/supports? [:druid :expression-aggregations] [_ _] true)
+(doseq [[feature supported?] {:set-timezone            true
+                              :expression-aggregations true}]
+  (defmethod driver/supports? [:druid feature] [_ _] supported?))
