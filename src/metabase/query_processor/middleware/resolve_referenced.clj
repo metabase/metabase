@@ -55,7 +55,7 @@
 (defn- circular-ref-error
   [from-card to-card]
   (tru
-   "Your query includes circular referencing sub-queries between cards \"{0}\" and \"{1}\"."
+   "This query has circular referencing sub-queries. These questions seem to be part of the problem: "\"{0}\" and \"{1}\"."
    (db/select-one-field :name Card :id from-card)
    (db/select-one-field :name Card :id to-card)))
 
