@@ -43,14 +43,6 @@
 (defn- add-col-metadata [{database-id :database} col]
   (merge col (memoized-column-metadata (u/get-id database-id) (:name col))))
 
-(defn- header->column [^GaData$ColumnHeaders header]
-  (let [formatter (ga-dimension->formatter (.getName header))]
-    (if formatter
-      {:name      "ga:date"
-       :base_type :type/DateTime}
-      {:name      (.getName header)
-       :base_type (ga-type->base-type (.getDataType header))})))
-
 (def ^:const ga-type->base-type
   "Map of Google Analytics field types to Metabase types."
   {"STRING"      :type/Text
@@ -106,6 +98,14 @@
    "ga:year"           parse-number
    "ga:yearMonth"      year-month-formatter
    "ga:yearWeek"       parse-year-week})
+
+(defn- header->column [^GaData$ColumnHeaders header]
+  (let [formatter (ga-dimension->formatter (.getName header))]
+    (if formatter
+      {:name      "ga:date"
+       :base_type :type/DateTime}
+      {:name      (.getName header)
+       :base_type (ga-type->base-type (.getDataType header))})))
 
 (defn- header->getter-fn [^GaData$ColumnHeaders header]
   (let [formatter (ga-dimension->formatter (.getName header))
