@@ -346,6 +346,24 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     default: "fit",
     readDependencies: ["graph.show_values"],
   },
+  "graph.label_value_formatting": {
+    section: t`Display`,
+    title: t`Value formatting`,
+    widget: "radio",
+    getHidden: (series, vizSettings) =>
+      series.length > 1 ||
+      vizSettings["graph.show_values"] !== true ||
+      vizSettings["stackable.stack_type"] === "normalized",
+    props: {
+      options: [
+        { name: t`Auto`, value: "auto" },
+        { name: t`Compact`, value: "compact" },
+        { name: t`Full`, value: "full" },
+      ],
+    },
+    default: "auto",
+    readDependencies: ["graph.show_values"],
+  },
 };
 
 export const GRAPH_COLORS_SETTINGS = {
