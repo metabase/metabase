@@ -5,6 +5,7 @@ import _ from "underscore";
 
 import { color } from "metabase/lib/colors";
 import { clipPathReference } from "metabase/lib/dom";
+import { COMPACT_CURRENCY_OPTIONS } from "metabase/lib/formatting";
 import { adjustYAxisTicksIfNeeded } from "./apply_axis";
 import { isHistogramBar } from "./renderer_utils";
 
@@ -271,6 +272,31 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
     return { x, y, showLabelBelow };
   });
 
+  const formattingSetting = chart.settings["graph.label_value_formatting"];
+  let compact;
+  if (formattingSetting === "compact") {
+    compact = true;
+  } else if (formattingSetting === "full") {
+    compact = false;
+  } else {
+    // for "auto" we use compact if it shortens avg label length by >3 chars
+    const getAvgLength = compact => {
+      const options = {
+        compact,
+        // We include compact currency options here for both compact and
+        // non-compact formatting. This prevents auto's logic from depending on
+        // those settings.
+        ...COMPACT_CURRENCY_OPTIONS,
+        // We need this to ensure the settings are used. Otherwise, a cached
+        // _numberFormatter would take precedence.
+        _numberFormatter: undefined,
+      };
+      const lengths = data.map(d => formatYValue(d.y, options).length);
+      return lengths.reduce((sum, l) => sum + l, 0) / lengths.length;
+    };
+    compact = getAvgLength(true) < getAvgLength(false) - 3;
+  }
+
   // use the chart body so things line up properly
   const parent = chart.svg().select(".chart-body");
 
@@ -322,7 +348,7 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
         .append("text")
         .attr("class", klass)
         .attr("text-anchor", "middle")
-        .text(({ y }) => formatYValue(y, { compact: true })),
+        .text(({ y }) => formatYValue(y, { compact })),
     );
   };
 
