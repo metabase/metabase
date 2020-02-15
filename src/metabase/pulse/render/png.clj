@@ -37,7 +37,8 @@
                                io/resource
                                io/input-stream))))))
 
-@register-fonts
+(when-not *compile-files*
+  @register-fonts)
 
 (defn- write-image!
   [^BufferedImage image, ^String format-name, ^ByteArrayOutputStream output-stream]
