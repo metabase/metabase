@@ -67,6 +67,7 @@ executors:
         environment:
           POSTGRES_USER: metabase_test
           POSTGRES_DB: metabase_test
+          POSTGRES_HOST_AUTH_METHOD: trust
 
   mysql-5-7:
     parameters:
