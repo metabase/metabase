@@ -480,12 +480,26 @@ export default class DataSelector extends Component {
     }
   }
 
+  hasStepData(stepName) {
+    if (stepName === DATABASE_STEP) {
+      return this.state.databases.length > 0;
+    } else if (stepName === SCHEMA_STEP) {
+      return this.state.schemas.length > 0;
+    } else if (stepName === TABLE_STEP) {
+      return this.state.tables.length > 0;
+    } else if (stepName === FIELD_STEP) {
+      return this.state.fields.length > 0;
+    }
+  }
+
   switchToStep = async (stepName, stateChange = {}, skipSteps = true) => {
     await this.setStateWithComputedState({
       ...stateChange,
       activeStep: stepName,
     });
-    await this.loadStepData(stepName);
+    if (!this.hasStepData(stepName)) {
+      await this.loadStepData(stepName);
+    }
     if (skipSteps) {
       await this.skipSteps();
     }
