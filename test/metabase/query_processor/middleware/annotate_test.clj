@@ -508,7 +508,7 @@
 ;; make sure we do type inference for case right
 (expect
   {:base_type    :type/Text
-   :special_type :nil}
+   :special_type nil}
   (-> (qp.test-util/with-everything-store
         ((annotate/add-column-info (constantly {}))
          (data/mbql-query venues
@@ -521,7 +521,7 @@
 
 (expect
   {:base_type    :type/Number
-   :special_type :nil}
+   :special_type nil}
   (-> (qp.test-util/with-everything-store
         ((annotate/add-column-info (constantly {}))
          (data/mbql-query venues
@@ -535,7 +535,7 @@
 ;; do we skip nil values when infering type
 (expect
   {:base_type    :type/Number
-   :special_type :nil}
+   :special_type nil}
   (-> (qp.test-util/with-everything-store
         ((annotate/add-column-info (constantly {}))
          (data/mbql-query venues
@@ -548,8 +548,8 @@
       (select-keys [:base_type :special_type])))
 
 (expect
-  {:base_type    :type/Number
-   :special_type :nil}
+  {:base_type    :type/Float
+   :special_type :type/Number}
   (-> (qp.test-util/with-everything-store
         ((annotate/add-column-info (constantly {}))
          (data/mbql-query venues
