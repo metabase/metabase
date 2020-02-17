@@ -505,6 +505,57 @@
       :cols
       second))
 
+(expect
+  {:base_type    :type/Text
+   :special_type nil}
+  (-> (qp.test-util/with-everything-store
+        ((annotate/add-column-info (constantly {}))
+         (data/mbql-query venues
+           {:expressions {"string_extract" [:trim "foo"]}
+            :fields      [[:expression "string_extract"]]
+            :limit       10})))
+      :cols
+      first
+      (select-keys [:base_type :special_type])))
+
+(expect
+  {:base_type    :type/Text
+   :special_type nil}
+  (-> (qp.test-util/with-everything-store
+        ((annotate/add-column-info (constantly {}))
+         (data/mbql-query venues
+           {:expressions {"coalesce_extract" [:coalesce "foo" "bar"]}
+            :fields      [[:expression "coalesce_extract"]]
+            :limit       10})))
+      :cols
+      first
+      (select-keys [:base_type :special_type])))
+
+(expect
+  {:base_type    :type/Text
+   :special_type :type/Name}
+  (-> (qp.test-util/with-everything-store
+        ((annotate/add-column-info (constantly {}))
+         (data/mbql-query venues
+           {:expressions {"coalesce_extract" [:coalesce $name "bar"]}
+            :fields      [[:expression "coalesce_extract"]]
+            :limit       10})))
+      :cols
+      first
+      (select-keys [:base_type :special_type])))
+
+(expect
+  {:base_type    :type/Text
+   :special_type nil}
+  (-> (qp.test-util/with-everything-store
+        ((annotate/add-column-info (constantly {}))
+         (data/mbql-query venues
+           {:expressions {"case_test" [:case [[[:> $price 2] "big"]]]}
+            :fields      [$name [:expression "case_test"]]
+            :limit       10})))
+      :cols
+      second
+      (select-keys [:base_type :special_type])))
 
 ;; make sure multiple expressions come back with deduplicated names
 (expect

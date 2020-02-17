@@ -36,6 +36,10 @@
 (defmethod hformat/fn-handler "distinct-count" [_ field]
   (str "count(distinct " (hformat/to-sql field) ")"))
 
+(defmethod hformat/fn-handler "trim" [_ expr pattern]
+  (str "trim(" (when pattern (str (hformat/to-sql pattern) " from ")) (hformat/to-sql expr) ")"))
+
+
 
 ;; HoneySQL 0.7.0+ parameterizes numbers to fix issues with NaN and infinity -- see
 ;; https://github.com/jkk/honeysql/pull/122. However, this broke some of Metabase's behavior, specifically queries

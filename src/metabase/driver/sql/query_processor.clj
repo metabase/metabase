@@ -343,6 +343,38 @@
   [driver [_ pred]]
   (hsql/call :/ (->honeysql driver [:count-where pred]) :%count.*))
 
+(defmethod ->honeysql [:sql :trim]
+  [driver [_ arg pattern]]
+  (hsql/call :trim (->honeysql driver arg) (->honeysql driver pattern)))
+
+(defmethod ->honeysql [:sql :ltrim]
+  [driver [_ arg]]
+  (hsql/call :ltrim (->honeysql driver arg)))
+
+(defmethod ->honeysql [:sql :rtrim]
+  [driver [_ arg]]
+  (hsql/call :rtrim (->honeysql driver arg)))
+
+(defmethod ->honeysql [:sql :upper]
+  [driver [_ arg]]
+  (hsql/call :upper (->honeysql driver arg)))
+
+(defmethod ->honeysql [:sql :lower]
+  [driver [_ arg]]
+  (hsql/call :lower (->honeysql driver arg)))
+
+(defmethod ->honeysql [:sql :coalesce]
+  [driver [_ & args]]
+  (apply hsql/call :coalesce (map (partial ->honsql driver) args)))
+
+(defmethod ->honeysql [:sql :replace]
+  [driver [_ arg pattern replacement]]
+  (hsql/call :replace (->honeysql driver arg) (->honeysql driver pattern) (->honeysql driver replacement)))
+
+(defmethod ->honeysql [:sql :substring]
+  [driver [_ arg start length]]
+  (hsql/call :substring (->honeysql driver arg) (->honeysql driver start) (->honeysql driver length)))
+
 ;; actual handling of the name is done in the top-level clause handler for aggregations
 (defmethod ->honeysql [:sql :aggregation-options] [driver [_ ag]]
   (->honeysql driver ag))
