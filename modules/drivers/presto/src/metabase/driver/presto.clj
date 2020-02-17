@@ -62,13 +62,15 @@
   (str/replace cancel-uri (str host ":" port) (get (str/split info-uri #"/") 2)))
 
 (defn- field-type->parser [field-type]
-  (condp re-matches field-type
-    #"decimal.*"                bigdec
-    #"time"                     #(u.date/parse % (qp.timezone/results-timezone-id))
-    #"time with time zone"      #(u.date/parse % (qp.timezone/results-timezone-id))
-    #"timestamp"                #(u.date/parse % (qp.timezone/results-timezone-id))
-    #"timestamp with time zone" #(u.date/parse % (qp.timezone/results-timezone-id))
-    #".*"                       identity))
+  (letfn [(parse-temporal [s]
+            (u.date/parse s (qp.timezone/results-timezone-id)))]
+    (condp re-matches field-type
+      #"decimal.*"                bigdec
+      #"time"                     parse-temporal
+      #"time with time zone"      parse-temporal
+      #"timestamp"                parse-temporal
+      #"timestamp with time zone" parse-temporal
+      #".*"                       identity)))
 
 (defn- parse-presto-results [columns data]
   (let [parsers (map (comp field-type->parser :type) columns)]
@@ -233,29 +235,25 @@
   [_ t]
   (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-id t)))
 
-(defmethod driver/execute-query :presto
-  [driver {database-id                  :database
-           :keys                        [settings]
-           {sql :query, params :params} :native
-           query-type                   :type
-           :as                          outer-query}]
+(defmethod driver/execute-reducible-query :presto
+  [driver
+   {database-id                  :database
+    :keys                        [settings]
+    {sql :query, params :params} :native
+    query-type                   :type
+    :as                          outer-query}
+   _
+   respond]
+  ;; TODO - not really very streaming!
   (let [sql                    (str "-- "
                                     (qputil/query->remark outer-query) "\n"
                                     (unprepare/unprepare driver (cons sql params)))
         details                (merge (:details (qp.store/database))
                                       settings)
         {:keys [columns rows]} (execute-presto-query! details sql)
-        columns                (for [[col name] (map vector columns (map :name columns))]
+        cols                   (for [[col name] (map vector columns (map :name columns))]
                                  {:name name, :base_type (presto-type->base-type (:type col))})]
-    (merge
-     {:columns (map (comp u/qualified-name :name) columns)
-      :rows    rows}
-     ;; only include `:cols` info for native queries for the time being, since it changes all the types up for MBQL
-     ;; queries (e.g. `:count` aggregations come back as `:type/BigInteger` instead of `:type/Integer`.) I don't want
-     ;; to deal with fixing a million tests to make it work at this second since it doesn't make a difference from an
-     ;; FE perspective. Perhaps when we get our test story sorted out a bit better we can fix this
-     (when (= query-type :native)
-       {:cols columns}))))
+    (respond {:cols cols} rows)))
 
 (defmethod driver/humanize-connection-error-message :presto
   [_ message]
@@ -269,7 +267,7 @@
     #"^java.net.UnknownHostException.*$"
     (driver.common/connection-error-messages :invalid-hostname)
 
-    #".*" ; default
+    #".*"                               ; default
     message))
 
 ;;; `:sql-driver` methods

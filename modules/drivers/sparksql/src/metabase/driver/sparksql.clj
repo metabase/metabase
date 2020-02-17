@@ -7,14 +7,12 @@
              [core :as hsql]
              [helpers :as h]]
             [metabase.driver :as driver]
-            [metabase.driver.hive-like :as hive-like]
             [metabase.driver.sql
              [query-processor :as sql.qp]
              [util :as sql.u]]
             [metabase.driver.sql-jdbc
              [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
@@ -124,30 +122,27 @@
            :database-type data-type
            :base-type     (sql-jdbc.sync/database-type->base-type :hive-like (keyword data-type))}))))})
 
-;; we need this because transactions are not supported in Hive 1.2.1
 ;; bound variables are not supported in Spark SQL (maybe not Hive either, haven't checked)
-(defmethod driver/execute-query :sparksql
-  [driver {:keys [database settings], query :native, :as outer-query}]
+(defmethod driver/execute-reducible-query :sparksql
+  [driver {:keys [database settings], query :native, :as outer-query} context respond]
   (let [query (-> (assoc query
-                    :remark (qputil/query->remark outer-query)
-                    :query  (if (seq (:params query))
-                              (unprepare/unprepare driver (cons (:query query) (:params query)))
-                              (:query query))
-                    :max-rows (mbql.u/query->max-rows-limit outer-query))
+                         :remark (qputil/query->remark outer-query)
+                         :query  (if (seq (:params query))
+                                   (unprepare/unprepare driver (cons (:query query) (:params query)))
+                                   (:query query))
+                         :max-rows (mbql.u/query->max-rows-limit outer-query))
                   (dissoc :params))]
-    (sql-jdbc.execute/do-with-try-catch
-      (fn []
-        (let [db-connection (sql-jdbc.conn/db->pooled-connection-spec database)]
-          (hive-like/run-query-without-timezone driver settings db-connection query))))))
+    ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond)))
 
 
-(defmethod driver/supports? [:sparksql :basic-aggregations]              [_ _] true)
-(defmethod driver/supports? [:sparksql :binning]                         [_ _] true)
-(defmethod driver/supports? [:sparksql :expression-aggregations]         [_ _] true)
-(defmethod driver/supports? [:sparksql :expressions]                     [_ _] true)
-(defmethod driver/supports? [:sparksql :native-parameters]               [_ _] true)
-(defmethod driver/supports? [:sparksql :nested-queries]                  [_ _] true)
-(defmethod driver/supports? [:sparksql :standard-deviation-aggregations] [_ _] true)
+(doseq [feature [:basic-aggregations
+                 :binning
+                 :expression-aggregations
+                 :expressions
+                 :native-parameters
+                 :nested-queries
+                 :standard-deviation-aggregations]]
+  (defmethod driver/supports? [:sparksql feature] [_ _] true))
 
 ;; only define an implementation for `:foreign-keys` if none exists already. In test extensions we define an alternate
 ;; implementation, and we don't want to stomp over that if it was loaded already

@@ -8,6 +8,7 @@
              [store :as qp.store]
              [timezone :as qp.timezone]]
             [metabase.util :as u]
+            [metabase.util.date-2 :as u.date]
             [schema.core :as s]))
 
 (defmulti ^:private post-process
