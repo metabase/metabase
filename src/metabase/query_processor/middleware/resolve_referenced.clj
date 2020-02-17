@@ -48,7 +48,7 @@
      (reduce
       (fn [g sub-card-id]
         (card-subquery-graph (dep/depend g card-id sub-card-id)
-                        sub-card-id))
+                             sub-card-id))
       graph
       (query->tag-card-ids card-query)))))
 
