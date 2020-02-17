@@ -529,7 +529,8 @@
             :fields      [$name [:expression "case_test"]]
             :limit       10})))
       :cols
-      second))
+      second
+      (select-keys [:base_type :special_type])))
 
 ;; do we skip nil values when infering type
 (expect
@@ -543,7 +544,8 @@
             :fields      [$name [:expression "case_test"]]
             :limit       10})))
       :cols
-      second))
+      second
+      (select-keys [:base_type :special_type])))
 
 (expect
   {:base_type    :type/Number
@@ -555,7 +557,8 @@
             :fields      [$name [:expression "case_test"]]
             :limit       10})))
       :cols
-      second))
+      second
+      (select-keys [:base_type :special_type])))
 
 
 ;; make sure multiple expressions come back with deduplicated names
