@@ -4,6 +4,7 @@
             [java-time :as t]
             [medley.core :as m]
             [metabase
+             [driver :as driver]
              [models :refer [Card Database Field Table]]
              [query-processor :as qp]
              [test :as mt]
@@ -42,7 +43,7 @@
   (binding [qp.store/*store* (atom {:tables {1 #metabase.models.table.TableInstance{:name   "0123456"
                                                                                     :schema nil
                                                                                     :id     1}}})]
-    (ga.qp/mbql->native (update query :query (partial merge {:source-table 1})))))
+    (driver/mbql->native :googleanalytics (update query :query (partial merge {:source-table 1})))))
 
 (deftest basic-compilation-test
   (testing "just check that a basic almost-empty MBQL query can be compiled"

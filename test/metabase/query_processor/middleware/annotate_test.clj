@@ -358,7 +358,7 @@
 
     (testing (str "if a driver is kind enough to supply us with some information about the `:cols` that come back, we "
                   "should include that information in the results. Their information should be preferred over ours")
-      (is (= {:cols [{:name         "totalEvents"
+      (is (= {:cols [{:name         "metric"
                       :display_name "Total Events"
                       :base_type    :type/Text
                       :source       :aggregation
@@ -399,7 +399,7 @@
               :field_ref    [:aggregation 2]}
              {:base_type    :type/Number
               :special_type :type/Number
-              :name         "count_2_2"
+              :name         "count_3"
               :display_name "count_2"
               :source       :aggregation
               :field_ref    [:aggregation 3]}]}
