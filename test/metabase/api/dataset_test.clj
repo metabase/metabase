@@ -189,7 +189,6 @@
            (take 5 (parse-and-sort-csv result))))))
 
 (deftest check-an-empty-date-column
-
   (is (= [["1" "2014-04-07" "" "5" "12"]
           ["2" "2014-09-18" "" "1" "31"]
           ["3" "2014-09-15" "" "8" "56"]

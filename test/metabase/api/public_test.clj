@@ -78,52 +78,51 @@
 
 ;;; ------------------------------------------- GET /api/public/card/:uuid -------------------------------------------
 
-
 (deftest check-that-we--cannot--fetch-a-publiccard-if-the-setting-is-disabled
-  (is (= "An error occurred."
-         (tu/with-temporary-setting-values [enable-public-sharing false]
-           (with-temp-public-card [{uuid :public_uuid}]
+  (tu/with-temporary-setting-values [enable-public-sharing false]
+    (with-temp-public-card [{uuid :public_uuid}]
+      (is (= "An error occurred."
              (http/client :get 400 (str "public/card/" uuid)))))))
 
 
 (deftest check-that-we-get-a-400-if-the-publiccard-doesn-t-exist
-  (is (= "An error occurred."
-         (tu/with-temporary-setting-values [enable-public-sharing true]
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (is (= "An error occurred."
            (http/client :get 400 (str "public/card/" (UUID/randomUUID)))))))
 
 (deftest check-that-we--cannot--fetch-a-publiccard-if-the-card-has-been-archived
-  (is (= "An error occurred."
-         (tu/with-temporary-setting-values [enable-public-sharing true]
-           (with-temp-public-card [{uuid :public_uuid} {:archived true}]
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (with-temp-public-card [{uuid :public_uuid} {:archived true}]
+      (is (= "An error occurred."
              (http/client :get 400 (str "public/card/" uuid)))))))
 
 
 (deftest check-that-we-can-fetch-a-publiccard
-  (is (= #{:dataset_query :description :display :id :name :visualization_settings :param_values :param_fields}
-         (tu/with-temporary-setting-values [enable-public-sharing true]
-           (with-temp-public-card [{uuid :public_uuid}]
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (with-temp-public-card [{uuid :public_uuid}]
+      (is (= #{:dataset_query :description :display :id :name :visualization_settings :param_values :param_fields}
              (set (keys (http/client :get 200 (str "public/card/" uuid)))))))))
 
 
 
 (deftest make-sure--param-values-get-returned-as-expected
-  (is (= {(data/id :categories :name) {:values                75
-                                       :human_readable_values {}
-                                       :field_id              (data/id :categories :name)}}
-         (tt/with-temp Card [card {:dataset_query
-                                   {:database (data/id)
-                                    :type     :native
-                                    :native   {:query         (str "SELECT COUNT(*) "
-                                                                   "FROM venues "
-                                                                   "LEFT JOIN categories ON venues.category_id = categories.id "
-                                                                   "WHERE {{category}}")
-                                               :collection    "CATEGORIES"
-                                               :template-tags {:category {:name         "category"
-                                                                          :display-name "Category"
-                                                                          :type         "dimension"
-                                                                          :dimension    ["field-id" (data/id :categories :name)]
-                                                                          :widget-type  "category"
-                                                                          :required     true}}}}}]
+  (tt/with-temp Card [card {:dataset_query
+                            {:database (data/id)
+                             :type     :native
+                             :native   {:query         (str "SELECT COUNT(*) "
+                                                            "FROM venues "
+                                                            "LEFT JOIN categories ON venues.category_id = categories.id "
+                                                            "WHERE {{category}}")
+                                        :collection    "CATEGORIES"
+                                        :template-tags {:category {:name         "category"
+                                                                   :display-name "Category"
+                                                                   :type         "dimension"
+                                                                   :dimension    ["field-id" (data/id :categories :name)]
+                                                                   :widget-type  "category"
+                                                                   :required     true}}}}}]
+    (is (= {(data/id :categories :name) {:values                75
+                                         :human_readable_values {}
+                                         :field_id              (data/id :categories :name)}}
            (-> (:param_values (#'public-api/public-card :id (u/get-id card)))
                (update-in [(data/id :categories :name) :values] count)
                (update (data/id :categories :name) #(into {} %)))))))
@@ -154,34 +153,32 @@
            (with-temp-public-card [{uuid :public_uuid} {:archived true}]
              (http/client :get 400 (str "public/card/" uuid "/query")))))))
 
+(defn- parse-xlsx-response [response]
+  (->> (ByteArrayInputStream. response)
+       spreadsheet/load-workbook
+       (spreadsheet/select-sheet "Query result")
+       (spreadsheet/select-columns {:A :col})))
 
-(deftest check-that-we-can-exec-a-publiccard
-  (is (= [[100]]
-         (tu/with-temporary-setting-values [enable-public-sharing true]
-           (with-temp-public-card [{uuid :public_uuid}]
-             (qp.test/rows (http/client :get 202 (str "public/card/" uuid "/query"))))))))
+(deftest execute-public-card-test
+  (testing "GET /api/public/card/:uuid/query"
+    (tu/with-temporary-setting-values [enable-public-sharing true]
+      (with-temp-public-card [{uuid :public_uuid}]
+        (testing "Default :api response format"
+          (is (= [[100]]
+                 (qp.test/rows (http/client :get 202 (str "public/card/" uuid "/query"))))))
 
+        (testing ":json download response format"
+          (is (= [{:Count 100}]
+                 (http/client :get 202 (str "public/card/" uuid "/query/json")))))
 
-(deftest check-that-we-can-exec-a-publiccard-and-get-results-as-json
-  (tu/with-temporary-setting-values [enable-public-sharing true]
-    (with-temp-public-card [{uuid :public_uuid}]
-      (http/client :get 202 (str "public/card/" uuid "/query/json")))))
+        (testing ":csv download response format"
+          (is (= "Count\n100\n"
+                 (http/client :get 202 (str "public/card/" uuid "/query/csv"), :format :csv))))
 
-(deftest get-csv
-  (is (= "Count\n100\n"
-         (tu/with-temporary-setting-values [enable-public-sharing true]
-           (with-temp-public-card [{uuid :public_uuid}]
-             (http/client :get 202 (str "public/card/" uuid "/query/csv"), :format :csv))))))
-
-(deftest check-that-we-can-exec-a-publiccard-and-get-results-as-xlsx
-  (is (= [{:col "Count"} {:col 100.0}]
-         (tu/with-temporary-setting-values [enable-public-sharing true]
-           (with-temp-public-card [{uuid :public_uuid}]
-             (->> (http/client :get 202 (str "public/card/" uuid "/query/xlsx") {:request-options {:as :byte-array}})
-                  ByteArrayInputStream.
-                  spreadsheet/load-workbook
-                  (spreadsheet/select-sheet "Query result")
-                  (spreadsheet/select-columns {:A :col})))))))
+        (testing ":xlsx download response format"
+          (is (= [{:col "Count"} {:col 100.0}]
+                 (parse-xlsx-response
+                  (http/client :get 202 (str "public/card/" uuid "/query/xlsx") {:request-options {:as :byte-array}})))))))))
 
 (deftest check-that-we-can-exec-a-publiccard-with---parameters-
   (is (= [{:name "Venue ID", :slug "venue_id", :type "id", :value 2}]

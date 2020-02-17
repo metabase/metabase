@@ -19,7 +19,7 @@
   (let [writer (BufferedWriter. (OutputStreamWriter. os))]
     (reify i/StreamingResultsWriter
       (begin! [_ {{:keys [cols]} :data}]
-        (csv/write-csv writer [(map :display_name cols)])
+        (csv/write-csv writer [(map (some-fn :display_name :name) cols)])
         (.flush writer))
 
       (write-row! [_ row _]

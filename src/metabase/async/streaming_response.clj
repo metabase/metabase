@@ -1,6 +1,6 @@
 (ns metabase.async.streaming-response
-  "A special Ring response type that can handle async, streaming results. It writes newlines as 'heartbeats' to the client
-  until the real results are ready to begin streaming, then streams those to the client."
+  "A special Ring response type that can handle async, streaming results. It writes newlines as 'heartbeats' to the
+  client until the real results are ready to begin streaming, then streams those to the client."
   (:require [cheshire.core :as json]
             [clojure.core.async :as a]
             [clojure.tools.logging :as log]
@@ -30,8 +30,10 @@
   (cond
     config/is-prod? (u/hours->ms 4)
     config/is-dev?  (u/minutes->ms 10)
-    config/is-test? (u/minutes->ms 2)))
+    config/is-test? (u/minutes->ms 1)))
 
+;; TODO - this code is basically duplicated with the code in the QP catch-exceptions middleware; we should refactor to
+;; remove the duplication
 (defn- exception-chain [^Throwable e]
   (->> (iterate #(.getCause ^Throwable %) e)
        (take-while some?)
@@ -46,7 +48,7 @@
         [e & more :as chain] (exception-chain e)]
     (merge
      (format-ex* e)
-     {:_status (or (some #(:status (ex-data %))
+     {:_status (or (some #((some-fn :status-code :status) (ex-data %))
                          chain)
                    500)}
      (when (seq more)
@@ -55,9 +57,6 @@
 (defn write-error-and-close!
   "Util fn for writing an Exception to the OutputStream provided by `streaming-response`."
   [^OutputStream os, ^Throwable e]
-  ;; TODO - QP middleware code shouldn't really be used in this non-QP-specific context, but it's the nicest Exception
-  ;; formatting code we have rn. Move the formatting logic somewhere more generic and have both this and the
-  ;; middleware use it.
   (with-open [writer (BufferedWriter. (OutputStreamWriter. os))]
     (json/generate-stream (format-exception e)
                           writer))
@@ -75,7 +74,8 @@
       (.flush os))
     (close []
       (a/>!! they-are-done-chan ::closed)
-      (.close os))
+      (u/ignore-exceptions
+        (.close os)))
     (write
       ([x]
        (a/>!! they-have-started-writing-chan ::wrote-something)

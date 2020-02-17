@@ -58,44 +58,48 @@
             (mt/wait-for-close close-chan 1000)
             (parse-file stream-type filename)))))))
 
-(deftest streaming-json-test []
-  (let [query             (mt/mbql-query venues {:limit 5})
-        streaming-results (process-query-streaming :api query)
-        expected-results    (tu/obj->json->obj (qp/process-query query))]
-    ;; TODO -- not 100% sure why they two might be different. Will have to investigate.
-    (is (= (m/dissoc-in expected-results    [:data :results_metadata :checksum])
-           (m/dissoc-in streaming-results [:data :results_metadata :checksum])))))
+(deftest streaming-json-api-test []
+  (testing "Streaming results in the normal :api response format"
+    (let [query             (mt/mbql-query venues {:limit 5})
+          streaming-results (process-query-streaming :api query)
+          expected-results  (tu/obj->json->obj (qp/process-query query))]
+      ;; TODO -- not 100% sure why they two might be different. Will have to investigate.
+      (is (= (m/dissoc-in expected-results    [:data :results_metadata :checksum])
+             (m/dissoc-in streaming-results [:data :results_metadata :checksum]))))))
 
 (deftest streaming-json-download-test []
-  (let [query                       (mt/mbql-query venues {:limit 5})
-        streaming-results           (process-query-streaming :json query)
-        {{:keys [cols rows]} :data} (tu/obj->json->obj (qp/process-query query))
-        expected-results              (for [row rows]
-                                      (zipmap (map (comp keyword :display_name) cols)
-                                              row))]
-    (is (= expected-results
-           streaming-results))))
+  (testing "Streaming results in the :json download (i.e., sequence of maps) format"
+    (let [query                       (mt/mbql-query venues {:limit 5})
+          streaming-results           (process-query-streaming :json query)
+          {{:keys [cols rows]} :data} (tu/obj->json->obj (qp/process-query query))
+          expected-results            (for [row rows]
+                                        (zipmap (map (comp keyword :display_name) cols)
+                                                row))]
+      (is (= expected-results
+             streaming-results)))))
 
 (deftest streaming-csv-test []
-  (let [query                       (mt/mbql-query venues {:limit 5})
-        streaming-results           (process-query-streaming :csv query)
-        {{:keys [cols rows]} :data} (qp/process-query query)
-        expected-results              (cons (map :display_name cols)
-                                          (for [row rows]
-                                            (for [v row]
-                                              (str v))))]
-    (is (= expected-results
-           streaming-results))))
+  (testing "streaming results in the :csv download format"
+    (let [query                       (mt/mbql-query venues {:limit 5})
+          streaming-results           (process-query-streaming :csv query)
+          {{:keys [cols rows]} :data} (qp/process-query query)
+          expected-results            (cons (map :display_name cols)
+                                            (for [row rows]
+                                              (for [v row]
+                                                (str v))))]
+      (is (= expected-results
+             streaming-results)))))
 
 (deftest streaming-xlsx-test []
-  (let [query                       (mt/mbql-query venues {:limit 5})
-        streaming-results           (process-query-streaming :xlsx query)
-        {{:keys [cols rows]} :data} (qp/process-query query)
-        expected-results            (for [row rows]
-                                      (zipmap (map :display_name cols)
-                                              (for [v row]
-                                                (if (number? v)
-                                                  (double v)
-                                                  v))))]
-    (is (= expected-results
-           streaming-results))))
+  (testing "streaming results in the :xlsx download format"
+    (let [query                       (mt/mbql-query venues {:limit 5})
+          streaming-results           (process-query-streaming :xlsx query)
+          {{:keys [cols rows]} :data} (qp/process-query query)
+          expected-results            (for [row rows]
+                                        (zipmap (map :display_name cols)
+                                                (for [v row]
+                                                  (if (number? v)
+                                                    (double v)
+                                                    v))))]
+      (is (= expected-results
+             streaming-results)))))

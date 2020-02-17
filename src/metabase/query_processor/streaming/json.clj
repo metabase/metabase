@@ -21,7 +21,7 @@
         col-names (volatile! nil)]
     (reify i/StreamingResultsWriter
       (begin! [_ {{:keys [cols]} :data}]
-        (vreset! col-names (mapv :display_name cols))
+        (vreset! col-names (mapv (some-fn :display_name :name) cols))
         (.write writer "[\n"))
 
       (write-row! [_ row row-num]

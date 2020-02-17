@@ -39,7 +39,7 @@
         sheet    (spreadsheet/add-sheet! workbook (tru "Query result"))]
     (reify i/StreamingResultsWriter
       (begin! [_ {{:keys [cols]} :data}]
-        (spreadsheet/add-row! sheet (map :display_name cols)))
+        (spreadsheet/add-row! sheet (map (some-fn :display_name :name) cols)))
 
       (write-row! [_ row _]
         (spreadsheet/add-row! sheet (map common/format-value row)))

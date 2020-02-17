@@ -105,7 +105,8 @@
   (for [sql+args ((get-method ddl/insert-rows-ddl-statements :sql-jdbc/test-extensions) driver table-identifier row-or-rows)]
     (unprepare/unprepare driver sql+args)))
 
-(defmethod execute/execute-sql! :snowflake [& args]
+(defmethod execute/execute-sql! :snowflake
+  [& args]
   (apply execute/sequentially-execute-sql! args))
 
 (defmethod sql.tx/pk-sql-type :snowflake [_] "INTEGER AUTOINCREMENT")
