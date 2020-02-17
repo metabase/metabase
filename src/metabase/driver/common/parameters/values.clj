@@ -20,7 +20,8 @@
              [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import java.text.NumberFormat
+  (:import clojure.lang.ExceptionInfo
+           java.text.NumberFormat
            java.util.UUID
            [metabase.driver.common.parameters CommaSeparatedNumbers FieldFilter MultipleValues]))
 
@@ -126,9 +127,22 @@
   [tag :- TagParam, _params :- (s/maybe [i/ParamValue])]
   (when-let [card-id (:card tag)]
     (when-let [query (db/select-one-field :dataset_query Card :id card-id)]
-      (i/map->ReferencedCardQuery
-       {:card-id card-id
-        :query   (:query (qp/query->native query))}))))
+      (try
+       (i/map->ReferencedCardQuery
+        {:card-id card-id
+         :query   (:query (qp/query->native query))})
+       (catch ExceptionInfo e
+         (let [{:keys [error] :as data} (ex-data e)]
+           (throw
+            (if (string? error)
+              (ex-info (tru "The sub-query from referenced question #{0} failed with the following error: {1}"
+                            (str card-id) error)
+                       (-> data
+                           (dissoc :error)
+                           (merge {:card-query-error? true
+                                   :card-id           card-id
+                                   :tag               tag})))
+              e))))))))
 
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
