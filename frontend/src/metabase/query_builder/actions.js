@@ -60,8 +60,6 @@ import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/util
 import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
 import Questions from "metabase/entities/questions";
-import Tables from "metabase/entities/tables";
-import Databases from "metabase/entities/databases";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { setRequestUnloaded } from "metabase/redux/requests";

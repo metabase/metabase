@@ -186,7 +186,7 @@ const entityIdToMetadataTableFields = (entityId: EntityId) => ({
   ...(entityId.databaseId ? { db_id: entityId.databaseId } : {}),
   // $FlowFixMe Because schema name can be an empty string, which means an empty schema, this check becomes a little nasty
   ...(entityId.schemaName !== undefined
-    ? { schema: entityId.schemaName !== "" ? entityId.schemaName : null }
+    ? { schema_name: entityId.schemaName !== "" ? entityId.schemaName : null }
     : {}),
   ...(entityId.tableId ? { id: entityId.tableId } : {}),
 });
@@ -310,12 +310,8 @@ export function updateTablesPermission(
   value: string,
   metadata: Metadata,
 ): GroupsPermissions {
-  const database = metadata && metadata.databases[databaseId];
-  const tableIds: ?(number[]) =
-    database &&
-    database.tables
-      .filter(t => (t.schema_name || "") === schemaName)
-      .map(t => t.id);
+  const schema = metadata && metadata.database(databaseId).schema(schemaName);
+  const tableIds = schema && schema.tables.map(t => t.id);
 
   permissions = updateSchemasPermission(
     permissions,

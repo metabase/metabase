@@ -54,6 +54,7 @@ export function makeMetadata(metadata) {
     databases: {
       1: { name: "database", tables: [] },
     },
+    schemas: {},
     tables: {
       1: { display_name: "table", fields: [], segments: [], metrics: [] },
     },

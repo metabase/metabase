@@ -5,8 +5,10 @@ import DatabaseSchemasPane from "./DatabaseSchemasPane";
 import DatabaseTablesPane from "./DatabaseTablesPane";
 
 const DatabasePane = props => {
-  const schemas = new Set(props.database.tables.map(t => t.schema_name));
-  const Component = schemas.size > 1 ? DatabaseSchemasPane : DatabaseTablesPane;
+  const Component =
+    props.database.schemas.length > 1
+      ? DatabaseSchemasPane
+      : DatabaseTablesPane;
   return <Component {...props} />;
 };
 

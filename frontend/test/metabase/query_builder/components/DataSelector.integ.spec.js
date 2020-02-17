@@ -16,8 +16,8 @@ describe("DatabaseSchemaAndTableDataSelector", () => {
             id: 1,
             name: "db-1",
             tables: [
-              { display_name: "table-1", schema: "schema-1" },
-              { display_name: "table-2", schema: "schema-2" },
+              { display_name: "table-1", schema: { name: "schema-1" } },
+              { display_name: "table-2", schema: { name: "schema-2" } },
             ],
           },
         ]}

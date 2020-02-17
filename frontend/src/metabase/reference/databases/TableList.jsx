@@ -67,9 +67,9 @@ export const separateTablesBySchema = (
 ) =>
   Object.values(tables)
     .sort((table1, table2) =>
-      table1.schema > table2.schema
+      table1.schema_name > table2.schema_name
         ? 1
-        : table1.schema === table2.schema
+        : table1.schema_name === table2.schema_name
         ? 0
         : -1,
     )

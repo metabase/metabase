@@ -4,9 +4,8 @@ import PropTypes from "prop-types";
 import { isQueryable } from "metabase/lib/table";
 import Icon from "metabase/components/Icon";
 
-const SchemaPane = ({ schema: { database, schema }, show, ...props }) => {
-  const tables = database.tables
-    .filter(t => t.schema_name === schema)
+const SchemaPane = ({ schema, show, ...props }) => {
+  const tables = schema.tables
     .filter(isQueryable)
     .sort((a, b) => a.name.localeCompare(b.name));
   return (
@@ -14,7 +13,7 @@ const SchemaPane = ({ schema: { database, schema }, show, ...props }) => {
       <div className="ml1 my2 flex align-center justify-between border-bottom pb1">
         <div className="flex align-center">
           <Icon name="folder" className="text-medium pr1" size={14} />
-          <h3 className="text-wrap">{schema}</h3>
+          <h3 className="text-wrap">{schema.name}</h3>
         </div>
         <div className="flex align-center">
           <Icon name="table2" className="text-light pr1" size={12} />

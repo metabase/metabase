@@ -1,25 +1,46 @@
 import React from "react";
 import { render, cleanup, fireEvent } from "@testing-library/react";
 import DataReference from "metabase/query_builder/components/dataref/DataReference";
+import { makeMetadata } from "__support__/sample_dataset_fixture";
 
-const databases = [
-  {
-    name: "db1",
-    id: 1,
-    tables: [
-      { name: "t1", id: 1, schema: "s1" },
-      { name: "t2", id: 2, schema: "s2" },
-      { name: "t3", id: 3, schema: "s2", visibility_type: "hidden" },
-    ],
+const metadata = makeMetadata({
+  databases: {
+    1: {
+      name: "db1",
+      tables: [1, 2, 3],
+    },
+    2: {
+      name: "db2",
+      tables: [4],
+    },
+    3: {
+      name: "saved questions",
+      tables: [5],
+      is_saved_questions: true,
+    },
   },
-  { name: "db2", id: 2, tables: [{ name: "t4", id: 4 }] },
-  {
-    name: "saved questions",
-    is_saved_questions: true,
-    tables: [{ name: "t5", id: 5 }],
+  schemas: {
+    "1:s1": { name: "s1" },
+    "1:s2": { name: "s2" },
+    "2:": { name: "" },
+    "3:": { name: "" },
   },
-  { name: "empty", tables: [] },
-];
+  tables: {
+    1: { name: "t1", id: 1, schema: "1:s1", schema_name: "s1" },
+    2: { name: "t2", id: 2, schema: "1:s2", schema_name: "s2" },
+    3: {
+      name: "t3",
+      id: 3,
+      schema: "1:s2",
+      schema_name: "s3",
+      visibility_type: "hidden",
+    },
+    4: { name: "t4", id: 4, schema: "2:" },
+    5: { name: "t5", id: 5, schema: "3:" },
+  },
+});
+
+const databases = Object.values(metadata.databases);
 
 describe("DatabasePane", () => {
   afterEach(cleanup);

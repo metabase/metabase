@@ -25,16 +25,18 @@ import _ from "underscore";
 export default class Table extends Base {
   description: string;
 
-  schema_name: ?SchemaName;
-  schema: ?Schema;
   db: Database;
+
+  schema: ?Schema;
+  // @deprecated: use schema.name (all tables should have a schema object, in theory)
+  schema_name: ?SchemaName;
 
   fields: FieldMetadata[];
 
   entity_type: ?EntityType;
 
   hasSchema(): boolean {
-    return (this.schema_name && this.db.schemaNames().length > 1) || false;
+    return (this.schema_name && this.db.schemas.length > 1) || false;
   }
 
   // $FlowFixMe Could be replaced with hydrated database property in selectors/metadata.js (instead / in addition to `table.db`)

@@ -305,7 +305,7 @@ export const getTablesPermissionsGrid = createSelector(
       return null;
     }
 
-    const tables = database.tablesInSchema(schemaName || null);
+    const tables = database.schema(schemaName).tables;
     const defaultGroup = _.find(groups, isDefaultGroup);
 
     return {
