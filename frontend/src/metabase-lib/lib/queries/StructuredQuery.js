@@ -815,9 +815,9 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   filterFieldOptionSections(filter?: ?(Filter | FilterWrapper)) {
-    const filterFieldOptions = this.filterFieldOptions();
+    const filterDimensionOptions = this.filterDimensionOptions();
     const filterSegmentOptions = this.filterSegmentOptions(filter);
-    return filterFieldOptions.sections({
+    return filterDimensionOptions.sections({
       extraItems: filterSegmentOptions.map(segment => ({
         name: segment.name,
         icon: "star_outline",
@@ -863,8 +863,8 @@ export default class StructuredQuery extends AtomicQuery {
   /**
    * @returns @type {DimensionOptions} that can be used in filters.
    */
-  filterFieldOptions(): DimensionOptions {
-    return this.fieldOptions();
+  filterDimensionOptions(): DimensionOptions {
+    return this.dimensionOptions();
   }
 
   /**
@@ -903,7 +903,7 @@ export default class StructuredQuery extends AtomicQuery {
   canAddFilter(): boolean {
     return (
       Q.canAddFilter(this.query()) &&
-      (this.filterFieldOptions().count > 0 ||
+      (this.filterDimensionOptions().count > 0 ||
         this.filterSegmentOptions().length > 0)
     );
   }
@@ -1514,42 +1514,38 @@ export default class StructuredQuery extends AtomicQuery {
     return queries;
   }
 
-  dependentTableIds({ includeFKs = true } = {}) {
-    const tableIds = new Set();
+  /**
+   * Metadata this query needs to display correctly
+   */
+  dependentMetadata({ foreignTables = true } = {}) {
+    const dependencies = [];
+    function addDependency(dep) {
+      const existing = _.findWhere(dependencies, _.pick(dep, "type", "id"));
+      if (existing) {
+        Object.assign(existing, dep);
+      } else {
+        dependencies.push(dep);
+      }
+    }
 
     // source-table, if set
     const tableId = this.sourceTableId();
     if (tableId) {
-      tableIds.add(tableId);
-      // implicit joins via foreign keys
-      if (includeFKs) {
-        const table = this.table();
-        if (table) {
-          for (const field of table.fields) {
-            if (field.target && field.target.table_id) {
-              tableIds.add(field.target.table_id);
-            }
-          }
-        }
-      }
+      addDependency({ type: "table", id: tableId, foreignTables });
     }
 
     // any explicitly joined tables
     for (const join of this.joins()) {
-      for (const tableId of join.dependentTableIds()) {
-        tableIds.add(tableId);
-      }
+      join.dependentMetadata().forEach(addDependency);
     }
 
     // parent query's table IDs
     const sourceQuery = this.sourceQuery();
     if (sourceQuery) {
-      for (const tableId of sourceQuery.dependentTableIds({ includeFKs })) {
-        tableIds.add(tableId);
-      }
+      sourceQuery.dependentMetadata({ foreignTables }).forEach(addDependency);
     }
 
-    return Array.from(tableIds);
+    return dependencies;
   }
 
   // INTERNAL

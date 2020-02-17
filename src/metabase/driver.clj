@@ -230,12 +230,13 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti ^{:deprecated "0.34.2"} date-add
+  "DEPRECATED -- this method is only used or implemented by `:sql` drivers. It has been superseded by
+  `metabase.driver.sql.query-processor/add-interval-honeysql-form`. Use/implement that method instead. DO NOT use or
+  implement this method for non-`:sql` drivers.
 
-;; TODO - this is only used (or implemented for that matter) by SQL drivers. This should probably be moved into the
-;; `:sql` driver. Don't bother to implement this for non-SQL drivers.
-(defmulti date-add
-  "Return an driver-appropriate representation of a moment relative to the given time."
-  {:arglists '([driver dt amount unit])}
+  This method will be removed at some point in the future."
+  {:arglists '([driver hsql-form amount unit])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

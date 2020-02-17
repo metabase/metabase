@@ -65,23 +65,34 @@ export default class Database extends Base {
       .setDefaultDisplay();
   }
 
-  question(): Question {
+  question(query = { "source-table": null }): Question {
     return Question.create({
-      databaseId: this.id,
       metadata: this.metadata,
+      dataset_query: {
+        database: this.id,
+        type: "query",
+        query: query,
+      },
     });
   }
 
-  nativeQuestion(): Question {
+  nativeQuestion(native = {}): Question {
     return Question.create({
-      databaseId: this.id,
       metadata: this.metadata,
-      native: "native",
+      dataset_query: {
+        database: this.id,
+        type: "native",
+        native: {
+          query: "",
+          "template-tags": {},
+          ...native,
+        },
+      },
     });
   }
 
-  nativeQuery() {
-    return this.nativeQuestion().query();
+  nativeQuery(native) {
+    return this.nativeQuestion(native).query();
   }
 
   /** Returns a database containing only the saved questions from the same database, if any */

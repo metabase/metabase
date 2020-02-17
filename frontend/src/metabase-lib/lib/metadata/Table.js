@@ -11,6 +11,8 @@ import Field from "./Field";
 import type { SchemaName } from "metabase/meta/types/Table";
 import type { FieldMetadata } from "metabase/meta/types/Metadata";
 
+import { singularize } from "metabase/lib/formatting";
+
 import Dimension from "../Dimension";
 
 import type StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
@@ -76,6 +78,15 @@ export default class Table extends Base {
 
   isQueryable() {
     return this.visibility_type == null;
+  }
+
+  /**
+   * The singular form of the object type this table represents
+   * Currently we try to guess this by singularizing `display_name`, but ideally it would be configurable in metadata
+   * See also `field.targetObjectName()`
+   */
+  objectName() {
+    return singularize(this.displayName());
   }
 
   dateFields(): Field[] {

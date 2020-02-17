@@ -12,6 +12,7 @@ import * as Urls from "metabase/lib/urls";
 import { createThunkAction } from "metabase/lib/redux";
 import { push, replace } from "react-router-redux";
 import { setErrorPage } from "metabase/redux/app";
+import { loadMetadataForQuery } from "metabase/redux/metadata";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
@@ -60,6 +61,7 @@ import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/
 
 import Questions from "metabase/entities/questions";
 import Tables from "metabase/entities/tables";
+import Databases from "metabase/entities/databases";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { setRequestUnloaded } from "metabase/redux/requests";
@@ -513,39 +515,10 @@ export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
   };
 });
 
-// TODO Atte Keinänen 6/8/17: Could (should?) use the stored question by default instead of always requiring the explicit `card` parameter
-export const LOAD_METADATA_FOR_CARD = "metabase/qb/LOAD_METADATA_FOR_CARD";
-export const loadMetadataForCard = createThunkAction(
-  LOAD_METADATA_FOR_CARD,
-  card => {
-    return async (dispatch, getState) => {
-      // Short-circuit if we're in a weird state where the card isn't completely loaded
-      if (!card || !card.dataset_query) {
-        return;
-      }
-      const query = new Question(card, getMetadata(getState())).query();
-      if (query instanceof StructuredQuery) {
-        try {
-          const rootTableId = query.rootTableId();
-          if (rootTableId != null) {
-            await Promise.all([
-              dispatch(Tables.actions.fetchTableMetadata({ id: rootTableId })),
-              dispatch(Tables.actions.fetchForeignKeys({ id: rootTableId })),
-            ]);
-          }
-          await Promise.all(
-            query
-              .dependentTableIds()
-              .map(id => dispatch(Tables.actions.fetchMetadata({ id }))),
-          );
-        } catch (e) {
-          console.error("Error loading metadata for card", e);
-          throw e;
-        }
-      }
-    };
-  },
-);
+export const loadMetadataForCard = card => (dispatch, getState) =>
+  dispatch(
+    loadMetadataForQuery(new Question(card, getMetadata(getState())).query()),
+  );
 
 function hasNewColumns(question, queryResult) {
   // NOTE: this assume column names will change
@@ -764,11 +737,11 @@ export const updateQuestion = (
     try {
       if (
         !_.isEqual(
-          oldQuestion.query().dependentTableIds(),
-          newQuestion.query().dependentTableIds(),
+          oldQuestion.query().dependentMetadata(),
+          newQuestion.query().dependentMetadata(),
         )
       ) {
-        await dispatch(loadMetadataForCard(newQuestion.card()));
+        await dispatch(loadMetadataForQuery(newQuestion.query()));
       }
 
       // setDefaultQuery requires metadata be loaded, need getQuestion to use new metadata
@@ -781,6 +754,7 @@ export const updateQuestion = (
       }
     } catch (e) {
       // this will fail if user doesn't have data permissions but thats ok
+      console.warn("Couldn't load metadata", e);
     }
 
     // run updated query

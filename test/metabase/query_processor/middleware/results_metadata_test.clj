@@ -87,7 +87,7 @@
                                     :dataset_query   (native-query "SELECT * FROM VENUES")
                                     :result_metadata [{:name "NAME", :display_name "Name", :base_type "type/Text"}]}]]
     (perms/grant-collection-read-permissions! (group/all-users) collection)
-    ((users/user->client :rasta) :post 200 "dataset" {:database mbql.s/saved-questions-virtual-database-id
+    ((users/user->client :rasta) :post 202 "dataset" {:database mbql.s/saved-questions-virtual-database-id
                                                       :type     :query
                                                       :query    {:source-table (str "card__" (u/get-id card))}})
     (card-metadata card)))

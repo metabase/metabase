@@ -41,7 +41,7 @@ describe("StructuredQuery behavioral tests", () => {
 
     const queryWithBreakout = query.breakout(breakoutDimension.mbql());
 
-    const filterDimensionOptions = queryWithBreakout.filterFieldOptions()
+    const filterDimensionOptions = queryWithBreakout.filterDimensionOptions()
       .dimensions;
     const filterDimension = filterDimensionOptions.find(
       d => d.field().id === ORDERS.TOTAL.id,
@@ -51,7 +51,7 @@ describe("StructuredQuery behavioral tests", () => {
   });
 });
 
-describe("StructuredQuery unit tests", () => {
+describe("StructuredQuery", () => {
   describe("DB METADATA METHODS", () => {
     describe("tables", () => {
       it("Tables should return multiple tables", () => {
@@ -80,6 +80,31 @@ describe("StructuredQuery unit tests", () => {
       it("identifies the engine of a query", () => {
         // This is a magic constant and we should probably pull this up into an enum
         expect(query.engine()).toBe("h2");
+      });
+    });
+    describe("dependentMetadata", () => {
+      it("should include source table with foreignTables = true", () => {
+        expect(query.dependentMetadata()).toEqual([
+          { type: "table", id: ORDERS.id, foreignTables: true },
+        ]);
+      });
+      it("should include source table for nested queries with foreignTables = true", () => {
+        expect(query.nest().dependentMetadata()).toEqual([
+          { type: "table", id: ORDERS.id, foreignTables: true },
+        ]);
+      });
+      it("should include joined tables with foreignTables = false", () => {
+        expect(
+          query
+            .join({
+              alias: "x",
+              "source-table": PRODUCTS.id,
+            })
+            .dependentMetadata(),
+        ).toEqual([
+          { type: "table", id: ORDERS.id, foreignTables: true },
+          { type: "table", id: PRODUCTS.id, foreignTables: false },
+        ]);
       });
     });
   });
@@ -345,7 +370,7 @@ describe("StructuredQuery unit tests", () => {
       pending();
     });
 
-    describe("filterFieldOptions", () => {
+    describe("filterDimensionOptions", () => {
       pending();
     });
     describe("filterSegmentOptions", () => {

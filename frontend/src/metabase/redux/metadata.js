@@ -129,7 +129,7 @@ export const fetchTables = (reload = false) => {
 export { FETCH_TABLE_METADATA } from "metabase/entities/tables";
 export const fetchTableMetadata = (id, reload = false) => {
   deprecated("metabase/redux/metadata fetchTableMetadata");
-  return Tables.actions.fetchTableMetadata({ id }, { reload });
+  return Tables.actions.fetchMetadataAndForeignTables({ id }, { reload });
 };
 
 export const fetchField = (id, reload = false) => {
@@ -357,3 +357,18 @@ export const fetchRealDatabasesWithMetadata = createThunkAction(
     };
   },
 );
+
+export const loadMetadataForQuery = query => dispatch =>
+  Promise.all(
+    query.dependentMetadata().map(({ type, id, ...options }) => {
+      if (type === "table") {
+        if (options.foreignTables) {
+          return dispatch(Tables.actions.fetchMetadataAndForeignTables({ id }));
+        } else {
+          return dispatch(Tables.actions.fetchMetadata({ id }));
+        }
+      } else {
+        console.warn(`loadQueryMetadata: type ${type} not implemented`);
+      }
+    }),
+  );

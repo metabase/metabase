@@ -70,10 +70,10 @@
 (defmethod driver/process-query-in-context :h2 [_ qp]
   (comp qp check-native-query-not-using-default-user))
 
-(defmethod driver/date-add :h2 [driver dt amount unit]
+(defmethod driver/date-add :h2 [driver hsql-form amount unit]
   (if (= unit :quarter)
-    (recur driver dt (hx/* amount 3) :month)
-    (hsql/call :dateadd (hx/literal unit) amount dt)))
+    (recur driver hsql-form (hx/* amount 3) :month)
+    (hsql/call :dateadd (hx/literal unit) amount hsql-form)))
 
 (defmethod driver/humanize-connection-error-message :h2 [_ message]
   (condp re-matches message

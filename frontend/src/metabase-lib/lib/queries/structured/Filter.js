@@ -79,7 +79,7 @@ export default class Filter extends MBQLClause {
       const query = this.query();
       if (
         !dimension ||
-        !(query && query.filterFieldOptions().hasDimension(dimension))
+        !(query && query.filterDimensionOptions().hasDimension(dimension))
       ) {
         return false;
       }

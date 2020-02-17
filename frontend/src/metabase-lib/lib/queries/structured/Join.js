@@ -158,7 +158,7 @@ export default class Join extends MBQLObjectClause {
   setDefaultAlias() {
     const parentDimension = this.parentDimension();
     if (parentDimension && parentDimension.field().isFK()) {
-      return this.setAlias(parentDimension.field().targetDisplayName());
+      return this.setAlias(parentDimension.field().targetObjectName());
     } else {
       const table = this.joinedTable();
       // $FlowFixMe
@@ -355,10 +355,10 @@ export default class Join extends MBQLObjectClause {
     ]);
   }
 
-  dependentTableIds() {
+  dependentMetadata() {
     const joinedQuery = this.joinedQuery();
     return joinedQuery
-      ? joinedQuery.dependentTableIds({ includeFKs: false })
+      ? joinedQuery.dependentMetadata({ foreignTables: false })
       : [];
   }
 

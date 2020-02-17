@@ -10,7 +10,8 @@
             [metabase.util
              [i18n :as ui18n :refer [tru]]
              [schema :as su]]
-            [schema.core :as s]))
+            [schema.core :as s])
+  (:import clojure.core.async.impl.channels.ManyToManyChannel))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              DOCSTRING GENERATION                                              |
@@ -33,8 +34,8 @@
   [form]
   (cond
     (map? form) (args-form-flatten (mapcat (fn [[k v]]
-                                          [(args-form-flatten k) (args-form-flatten v)])
-                                        form))
+                                             [(args-form-flatten k) (args-form-flatten v)])
+                                           form))
     (sequential? form) (mapcat args-form-flatten form)
     :else       [form]))
 
@@ -59,7 +60,7 @@
           (log/warn
            (u/format-color 'red (str "We don't have a nice error message for schema: %s\n"
                                      "Consider wrapping it in `su/with-api-error-message`.")
-             (u/pprint-to-str schema)))))))
+                           (u/pprint-to-str schema)))))))
 
 (defn- param-name
   "Return the appropriate name for this PARAM-SYMB based on its SCHEMA. Usually this is just the name of the
@@ -259,5 +260,7 @@
            (contains? response :status)
            (contains? response :body))
     response
-    {:status 200
+    {:status (if (instance? ManyToManyChannel response)
+               202
+               200)
      :body   response}))

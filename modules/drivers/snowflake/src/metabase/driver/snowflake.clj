@@ -106,11 +106,11 @@
   :%current_timestamp)
 
 (defmethod driver/date-add :snowflake
-  [_ dt amount unit]
+  [_ hsql-form amount unit]
   (hsql/call :dateadd
     (hsql/raw (name unit))
     (hsql/raw (int amount))
-    (hx/->timestamp dt)))
+    (hx/->timestamp hsql-form)))
 
 (defn- extract    [unit expr] (hsql/call :date_part unit (hx/->timestamp expr)))
 (defn- date-trunc [unit expr] (hsql/call :date_trunc unit (hx/->timestamp expr)))
