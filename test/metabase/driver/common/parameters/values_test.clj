@@ -8,7 +8,8 @@
              [field :refer [map->FieldInstance]]]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test.data :as data]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt])
+  (:import clojure.lang.ExceptionInfo))
 
 (deftest variable-value-test
   (testing "Specified value"
@@ -159,4 +160,32 @@
                    (#'values/value-for-tag
                     {:name "card-template-tag-test", :display-name "Card template tag test",
                      :type :card, :card (:id card)}
-                    [])))))))))
+                    []))))))))
+
+  (testing "Card query template tag wraps error in tag details"
+    (tt/with-temp Card [param-card {:dataset_query
+                                    (data/native-query
+                                     {:query "SELECT {{x}}"
+                                      :template-tags
+                                      {"x"
+                                       {:id "x-tag", :name "x", :display-name "Number x",
+                                        :type :number, :required false}}})}]
+      (let [param-card-id  (:id param-card)
+            param-card-tag (str "#" param-card-id)]
+        (tt/with-temp Card [card {:dataset_query
+                                  (data/native-query
+                                   {:query         (str "SELECT * FROM {{#" param-card-id "}} AS y")
+                                    :template-tags
+                                    {param-card-tag
+                                     {:id param-card-tag, :name param-card-tag, :display-name param-card-tag
+                                      :type "card", :card param-card-id}}})}]
+          (let [card-id  (:id card)
+                tag      {:name "card-template-tag-test", :display-name "Card template tag test",
+                          :type :card, :card card-id}
+                exc-data (try
+                          (#'values/value-for-tag tag [])
+                          (catch ExceptionInfo e
+                            (ex-data e)))]
+            (is (true?     (:card-query-error? exc-data)))
+            (is (= card-id (:card-id exc-data)))
+            (is (= tag     (:tag exc-data)))))))))
