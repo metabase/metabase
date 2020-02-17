@@ -9,6 +9,7 @@
              [query-processor :as qp]
              [test :as mt]
              [util :as u]]
+            metabase.driver.googleanalytics
             [metabase.driver.googleanalytics
              [execute :as ga.execute]
              [query-processor :as ga.qp]]
@@ -22,6 +23,8 @@
             [metabase.test.data.users :as users]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
+
+(comment metabase.driver.googleanalytics/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
 

@@ -60,7 +60,7 @@
          {:name          (.getId column)
           :base-type     (if (= (.getId column) "ga:date")
                            :type/Date
-                           (qp/ga-type->base-type ga-type))
+                           (execute/ga-type->base-type ga-type))
           :database-type ga-type})))
 
 (defmethod driver/describe-table :googleanalytics
