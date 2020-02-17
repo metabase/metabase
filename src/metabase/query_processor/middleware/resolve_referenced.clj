@@ -41,16 +41,14 @@
   (keep :card (query->template-tags query)))
 
 (defn- card-subquery-graph
-  ([card-id]
-   (card-subquery-graph (dep/graph) card-id))
-  ([graph card-id]
-   (let [card-query (db/select-one-field :dataset_query Card :id card-id)]
-     (reduce
-      (fn [g sub-card-id]
-        (card-subquery-graph (dep/depend g card-id sub-card-id)
-                             sub-card-id))
-      graph
-      (query->tag-card-ids card-query)))))
+  [graph card-id]
+  (let [card-query (db/select-one-field :dataset_query Card :id card-id)]
+    (reduce
+     (fn [g sub-card-id]
+       (card-subquery-graph (dep/depend g card-id sub-card-id)
+                            sub-card-id))
+     graph
+     (query->tag-card-ids card-query))))
 
 (defn- circular-ref-error
   [from-card to-card]
