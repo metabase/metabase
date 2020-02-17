@@ -127,4 +127,4 @@ export const allTokens = [
   Identifier,
 ];
 
-export const ExpressionLexer = new Lexer(allTokens);
+export const lexer = new Lexer(allTokens);

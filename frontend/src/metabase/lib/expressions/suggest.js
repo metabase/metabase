@@ -13,7 +13,7 @@ import {
 } from "../expressions";
 
 import {
-  ExpressionLexer,
+  lexer,
   allTokens,
   LParen,
   RParen,
@@ -57,7 +57,7 @@ export function suggest(
   { query, startRule, index = source.length, expressionName } = {},
 ) {
   const partialSource = source.slice(0, index);
-  const lexResult = ExpressionLexer.tokenize(partialSource);
+  const lexResult = lexer.tokenize(partialSource);
   if (lexResult.errors.length > 0) {
     throw new Error(t`sad sad panda, lexing errors detected`);
   }

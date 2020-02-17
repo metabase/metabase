@@ -1,24 +1,24 @@
 import _ from "underscore";
 
 import { ExpressionCstVisitor, parse as parserParse } from "./parser";
+import { lexer } from "./lexer";
 
-const syntax = (type, ...rest) => {
-  const children = rest.filter(child => child);
-  return {
-    type: type,
-    children: children,
-    // start: (children[0] || {}).start,
-    // end: (children[children.length - 1] || {}).end,
-  };
-};
+const TOKENIZED_NODES = new Set(["dimension", "metric", "aggregation"]);
+
+const syntax = (type, ...children) => ({
+  type: type,
+  tokenized: TOKENIZED_NODES.has(type),
+  children: children.filter(child => child),
+});
 
 const token = token =>
-  token && {
+  (token && token.recoveredNode ? console.log("RECOVERED", token) : null) ||
+  (token && {
     type: "token",
     text: token.image,
     start: token.startOffset,
     end: token.endOffset,
-  };
+  });
 
 export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
   constructor(options) {
@@ -55,12 +55,12 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
       }
     }
 
-    return syntax("math", ...initial);
+    return initial.length === 1 ? initial[0] : syntax("math", ...initial);
   }
 
   aggregationExpression(ctx) {
     const args = ctx.call ? this.visit(ctx.call) : [];
-    return syntax("aggregation expression", token(ctx.aggregation[0]), ...args);
+    return syntax("aggregation", token(ctx.aggregation[0]), ...args);
   }
 
   nullaryCall(ctx) {
@@ -74,15 +74,12 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
     ];
   }
   metricExpression(ctx) {
-    throw "not yet implemented";
+    const metricName = this.visit(ctx.metricName);
+    return syntax("metric", metricName);
   }
   dimensionExpression(ctx) {
     const dimensionName = this.visit(ctx.dimensionName);
-    if (dimensionName.children[0].name === "identifier") {
-      return syntax("field", dimensionName);
-    } else {
-      return dimensionName;
-    }
+    return syntax("dimension", dimensionName);
   }
 
   identifier(ctx) {
@@ -92,7 +89,11 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
     return syntax("string", token(ctx.StringLiteral[0]));
   }
   numberLiteral(ctx) {
-    return syntax("number", token(ctx.Minus), token(ctx.NumberLiteral[0]));
+    return syntax(
+      "number",
+      ctx.Minus && token(ctx.Minus[0]),
+      token(ctx.NumberLiteral[0]),
+    );
   }
   atomicExpression(ctx) {
     return this.visit(ctx.expression);
@@ -107,79 +108,86 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
   }
 }
 
-// const syntax = (type, ...children) => ({
-//   type: type,
-//   children: children.filter(child => child),
-// });
-// const token = token =>
-//   token && {
-//     type: "token",
-//     text: token.image,
-//     start: token.startOffset,
-//     end: token.endOffset,
-//   };
+export function parse(
+  source,
+  { whitespace = true, recover = true, ...options } = {},
+) {
+  const visitor = new ExpressionSyntaxVisitor(options);
+  const strategies = recover
+    ? [
+        recoveryStrategy,
+        // this is required because string literals are a single token, can't be handled by parser recovery
+        insertTrailingStringStrategy('"'),
+        // FIXME: this should be handled by single token insertion recovery?
+        insertTrailingStringStrategy(")"),
+        // FIXME: this should be handled by single token deletion recovery?
+        skipLastTokenStrategy,
+      ]
+    : [defaultStrategy];
 
-// class ExpressionsParserSyntax extends ExpressionsParser {
-//   _math(initial, operations) {
-//     return syntax(
-//       "math",
-//       ...[initial].concat(...operations.map(([op, arg]) => [token(op), arg])),
-//     );
-//   }
-//   _aggregation(aggregation, lParen, arg, rParen) {
-//     return syntax(
-//       "aggregation",
-//       token(aggregation),
-//       token(lParen),
-//       arg,
-//       token(rParen),
-//     );
-//   }
-//   _metricReference(metricName, metricId) {
-//     return syntax("metric", metricName);
-//   }
-//   _dimensionReference(dimensionName, dimension) {
-//     return syntax("field", dimensionName);
-//   }
-//   _unknownField(fieldName) {
-//     return syntax("unknown", fieldName);
-//   }
-//   _unknownMetric(metricName) {
-//     return syntax("unknown", metricName);
-//   }
-
-//   _identifier(identifier) {
-//     return syntax("identifier", token(identifier));
-//   }
-//   _stringLiteral(stringLiteral) {
-//     return syntax("string", token(stringLiteral));
-//   }
-//   _numberLiteral(minus, numberLiteral) {
-//     return syntax("number", token(minus), token(numberLiteral));
-//   }
-//   _parens(lParen, expValue, rParen) {
-//     return syntax("group", token(lParen), expValue, token(rParen));
-//   }
-//   _toString(x) {
-//     if (typeof x === "string") {
-//       return x;
-//     } else if (x.type === "string") {
-//       return JSON.parse(x.children[0].text);
-//     } else if (x.type === "identifier") {
-//       return x.children[0].text;
-//     }
-//   }
-// }
-
-export function parse(source, { whitespace = true, ...options } = {}) {
-  const cst = parserParse(source, options);
-  const vistor = new ExpressionSyntaxVisitor(options);
-  const tree = vistor.visit(cst);
+  let tree;
+  while (!tree) {
+    try {
+      const strategy = strategies.shift();
+      tree = strategy(source, options, visitor);
+    } catch (e) {
+      if (strategies.length === 0) {
+        throw e;
+      }
+    }
+  }
   if (whitespace) {
     return recoverWhitespace(tree, source);
   } else {
     return tree;
   }
+}
+
+function defaultStrategy(source, options, visitor) {
+  const cst = parserParse(source, { ...options, recover: false });
+  return visitor.visit(cst);
+}
+
+function recoveryStrategy(source, options, visitor) {
+  const cst = parserParse(source, { ...options, recover: true });
+  return visitor.visit(cst);
+}
+
+function insertTrailingStringStrategy(token) {
+  return function(source, options, visitor) {
+    // special case, try inserting closing quote at the end, then remove it from the syntax tree
+    const cst = parserParse(source + token, { ...options, recover: false });
+    const tree = visitor.visit(cst);
+    trimTrailingString(tree, token);
+    return tree;
+  };
+}
+
+function skipLastTokenStrategy(source, options, visitor) {
+  // special case, try skipping the last token
+  // FIXME: shouldn't this be handled by single token deletion in recovery mode?
+  const { tokens, errors } = lexer.tokenize(source);
+  if (errors.length > 0) {
+    throw errors;
+  }
+  const lastToken = tokens[tokens.length - 1];
+  if (lastToken) {
+    source = source.substring(0, lastToken.startOffset);
+  }
+  const cst = parserParse(source, {
+    ...options,
+    recover: true,
+  });
+  return visitor.visit(cst);
+}
+
+function trimTrailingString(tree, string = '"') {
+  let node = tree;
+  while (node.children && node.children.length > 0) {
+    node = node.children[node.children.length - 1];
+  }
+  node.text = node.text.slice(0, -string.length);
+  node.end--;
 }
 
 // inserts whitespace tokens back into the syntax tree

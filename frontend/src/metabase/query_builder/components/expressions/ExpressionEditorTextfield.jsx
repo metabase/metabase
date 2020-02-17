@@ -6,7 +6,8 @@ import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
 
-import { compile, suggest } from "metabase/lib/expressions/parser";
+import { compile } from "metabase/lib/expressions/compile";
+import { suggest } from "metabase/lib/expressions/suggest";
 import { format } from "metabase/lib/expressions/formatter";
 import { setCaretPosition, getSelectionPosition } from "metabase/lib/dom";
 import {

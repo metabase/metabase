@@ -3,7 +3,7 @@ import { CstParser } from "chevrotain";
 import _ from "underscore";
 
 import {
-  ExpressionLexer,
+  lexer,
   allTokens,
   LParen,
   RParen,
@@ -17,9 +17,9 @@ import {
   Identifier,
 } from "./lexer";
 
-class ExpressionPure extends CstParser {
-  constructor() {
-    super(allTokens);
+export class ExpressionParser extends CstParser {
+  constructor(config = {}) {
+    super(allTokens, config);
 
     const $ = this;
 
@@ -172,18 +172,53 @@ class ExpressionPure extends CstParser {
 
     this.performSelfAnalysis();
   }
+
+  canTokenTypeBeInsertedInRecovery(tokType) {
+    console.log("canTokenTypeBeInsertedInRecovery", tokType);
+    switch (tokType) {
+      case RParen:
+      case LParen:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  getTokenToInsert(tokType) {
+    console.log("getTokenToInsert", tokType);
+    switch (tokType) {
+      case RParen:
+        return { image: ")" };
+      case LParen:
+        return { image: "(" };
+    }
+  }
 }
 
-export const parser = new ExpressionPure();
+export const parser = new ExpressionParser();
+export const parserWithRecovery = new ExpressionParser({
+  recoveryEnabled: true,
+});
+
 export const ExpressionCstVisitor = parser.getBaseCstVisitorConstructor();
 
-export function parse(source, options, Vistor = null) {
-  const { startRule } = options || {};
-  parser.input = ExpressionLexer.tokenize(source).tokens;
-  const cst = parser[startRule]();
+export function parse(
+  source,
+  { startRule = "expression", recover = false } = {},
+) {
+  // Lex
+  const { tokens, errors } = lexer.tokenize(source);
+  if (errors.length > 0) {
+    throw errors;
+  }
 
-  if (parser.errors.length > 0) {
-    for (const error of parser.errors) {
+  // Parse
+  const p = recover ? parserWithRecovery : parser;
+  p.input = tokens;
+  const cst = p[startRule]();
+
+  if (p.errors.length > 0) {
+    for (const error of p.errors) {
       // clean up error messages
       error.message =
         error.message &&
@@ -193,7 +228,7 @@ export function parse(source, options, Vistor = null) {
           .replace(/(\n|\s)*but found:?/, " but found ")
           .replace(/\s*but found\s+''$/, "");
     }
-    throw parser.errors;
+    throw p.errors;
   }
 
   return cst;

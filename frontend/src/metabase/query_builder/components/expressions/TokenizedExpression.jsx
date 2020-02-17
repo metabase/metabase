@@ -4,12 +4,18 @@ import "./TokenizedExpression.css";
 
 import cx from "classnames";
 
+import { parse as parseExpression } from "metabase/lib/expressions/syntax";
+
 export default class TokenizedExpression extends React.Component {
   render() {
-    // TODO: use the Chevrotain parser or tokenizer
-    // let parsed = parse(this.props.source, this.props.parserInfo);
-    const parsed = parse(this.props.source);
-    return renderSyntaxTree(parsed);
+    console.log(this.props);
+    try {
+      const parsed = parseExpression(this.props.source, this.props.parserInfo);
+      return renderSyntaxTree(parsed);
+    } catch (e) {
+      console.warn("parse error", e);
+      return <span className="Expression-node">{this.props.source}</span>;
+    }
   }
 }
 
@@ -35,7 +41,7 @@ function nextNonWhitespace(tokens, index) {
   return tokens[index];
 }
 
-function parse(expressionString) {
+export function parse(expressionString) {
   const tokens = (expressionString || " ").match(
     /[a-zA-Z]\w*|"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*"|\(|\)|\d+|\s+|[*/+-]|.+/g,
   );
