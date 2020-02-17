@@ -505,6 +505,58 @@
       :cols
       second))
 
+;; make sure we do type inference for case right
+(expect
+  {:base_type    :type/Text
+   :special_type :nil}
+  (-> (qp.test-util/with-everything-store
+        ((annotate/add-column-info (constantly {}))
+         (data/mbql-query venues
+           {:expressions {"case_test" [:case [[[:> $price 2] "big"]]]}
+            :fields      [$name [:expression "case_test"]]
+            :limit       10})))
+      :cols
+      second
+      (select-keys [:base_type :special_type])))
+
+(expect
+  {:base_type    :type/Number
+   :special_type :nil}
+  (-> (qp.test-util/with-everything-store
+        ((annotate/add-column-info (constantly {}))
+         (data/mbql-query venues
+           {:expressions {"case_test" [:case [[[:> $price 2] 10]]]}
+            :fields      [$name [:expression "case_test"]]
+            :limit       10})))
+      :cols
+      second))
+
+;; do we skip nil values when infering type
+(expect
+  {:base_type    :type/Number
+   :special_type :nil}
+  (-> (qp.test-util/with-everything-store
+        ((annotate/add-column-info (constantly {}))
+         (data/mbql-query venues
+           {:expressions {"case_test" [:case [[[:< $price 10] nil]
+                                              [[:> $price 2] 10]]]}
+            :fields      [$name [:expression "case_test"]]
+            :limit       10})))
+      :cols
+      second))
+
+(expect
+  {:base_type    :type/Number
+   :special_type :nil}
+  (-> (qp.test-util/with-everything-store
+        ((annotate/add-column-info (constantly {}))
+         (data/mbql-query venues
+           {:expressions {"case_test" [:case [[[:> $price 2] [:+ $price 1]]]]}
+            :fields      [$name [:expression "case_test"]]
+            :limit       10})))
+      :cols
+      second))
+
 
 ;; make sure multiple expressions come back with deduplicated names
 (expect

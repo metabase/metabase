@@ -112,11 +112,22 @@
 
 (defn- infer-expression-type
   [expression]
-  (if (mbql.u/datetime-arithmetics? expression)
-    {:base_type    :type/DateTime
-     :special_type nil}
-    {:base_type    :type/Float
-     :special_type :type/Number}))
+  (cond
+    (string? expression)                       {:base_type    :type/Text
+                                                :special_type nil}
+    (number? expression)                       {:base_type    :type/Number
+                                                :special_type nil}
+    (mbql.u/is-clause? :case expression)       (->> expression
+                                                    second
+                                                    ;; get the first non-nil val
+                                                    (keep second)
+                                                    first
+                                                    infer-expression-type)
+    (mbql.u/datetime-arithmetics? expression) {:base_type    :type/DateTime
+                                               :special_type nil}
+    ;; Either numeric literal or expression
+    :else                                     {:base_type    :type/Float
+                                               :special_type :type/Number}))
 
 (s/defn ^:private col-info-for-field-clause :- {:field_ref mbql.s/Field, s/Keyword s/Any}
   [{:keys [source-metadata expressions], :as inner-query} :- su/Map, clause :- mbql.s/Field]
