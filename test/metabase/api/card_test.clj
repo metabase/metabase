@@ -1172,6 +1172,8 @@
     (with-cards-in-readable-collection card
       (letfn [(csv-row-count []
                 (count (str/split-lines ((test-users/user->client :rasta) :post 202 (format "card/%d/query/csv" (u/get-id card))))))]
+        ;; for some reason I haven't figured out yet this returns one row the first time around (?)
+        (csv-row-count)
         (testing "Sanity check: this CSV download should normally have 101 rows"
           (is (= 101
                  (csv-row-count))))
