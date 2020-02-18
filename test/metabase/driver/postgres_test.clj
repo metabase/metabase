@@ -294,12 +294,13 @@
   (mt/test-driver :postgres
     (testing "We should support the Postgres MONEY type"
       (testing "It should be possible to return money column results (#3754)"
-        (is (= [{:money 1000.00M}]
-               (jdbc/query
-                (sql-jdbc.conn/connection-details->spec :postgres (mt/dbdef->connection-details :postgres :server nil))
-                "SELECT 1000::money AS \"money\";"
-                {:read-columns   (partial sql-jdbc.execute/read-columns :postgres)
-                 :set-parameters (partial sql-jdbc.execute/set-parameters :postgres)}))))
+        (with-open [conn (sql-jdbc.execute/connection-with-timezone :postgres (mt/db) nil)
+                    stmt (sql-jdbc.execute/prepared-statement :postgres conn "SELECT 1000::money AS \"money\";" nil)
+                    rs   (sql-jdbc.execute/execute-query! :postgres stmt)]
+          (let [row-thunk (sql-jdbc.execute/row-thunk :postgres rs (.getMetaData rs))]
+            (is (= [1000.00M]
+                   (row-thunk))))))
+
       (do-with-money-test-db
        (fn []
          (testing "We should be able to select avg() of a money column (#11498)"

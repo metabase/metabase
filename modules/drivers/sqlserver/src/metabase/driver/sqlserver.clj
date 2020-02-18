@@ -316,9 +316,10 @@
   (sql-jdbc.execute/set-parameter driver ps i (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
 
 ;; instead of default `microsoft.sql.DateTimeOffset`
-(defmethod sql-jdbc.execute/read-column [:sqlserver microsoft.sql.Types/DATETIMEOFFSET]
-  [_ _^ResultSet rs _ ^Integer i]
-  (.getObject rs i OffsetDateTime))
+(defmethod sql-jdbc.execute/read-column-thunk [:sqlserver microsoft.sql.Types/DATETIMEOFFSET]
+  [_^ResultSet rs _ ^Integer i]
+  (fn []
+    (.getObject rs i OffsetDateTime)))
 
 ;; SQL Server doesn't really support boolean types so use bits instead (#11592)
 (defmethod sql/->prepared-substitution [:sqlserver Boolean]

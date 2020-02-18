@@ -268,12 +268,18 @@
       (fn []
         (method driver nil rs rsmeta i)))))
 
-(defn- read-row-fn [driver rs ^ResultSetMetaData rsmeta]
+(defn row-thunk
+  "Returns a thunk that can be called repeatedly to get the next row in the result set, using appropriate methods to
+  fetch each value in the row. Returns `nil` when the result set has no more rows."
+  [driver ^ResultSet rs ^ResultSetMetaData rsmeta]
   (let [fns (for [i (column-range rsmeta)]
               (or (old-read-column-thunk driver rs rsmeta i)
                   (read-column-thunk driver rs rsmeta (long i))))]
     (log-readers driver rsmeta fns)
-    (apply juxt fns)))
+    (let [thunk (apply juxt fns)]
+      (fn row-thunk* []
+        (when (.next rs)
+          (thunk))))))
 
 (defmethod column-metadata :sql-jdbc
   [driver ^ResultSetMetaData rsmeta]
@@ -299,11 +305,8 @@
   by using `read-column-thunk` to fetch values)."
   {:added "0.35.0"}
   [driver ^ResultSet rs ^ResultSetMetaData rsmeta canceled-chan]
-  (let [read-row (read-row-fn driver rs rsmeta)
-        row-fn   (fn []
-                   (when (.next rs)
-                     (read-row)))]
-    (qp.reducible/reducible-rows row-fn canceled-chan)))
+  (let [row-thunk (row-thunk driver rs rsmeta)]
+    (qp.reducible/reducible-rows row-thunk canceled-chan)))
 
 (defn execute-reducible-query
   "Default impl of `execute-reducible-query` for sql-jdbc drivers."
@@ -330,9 +333,4 @@
  [execute.old
   ;; interface (set-parameter is imported as well at the top of the namespace)
   set-timezone-sql
-  read-column
-  ;; util fns
-  read-columns
-  set-parameters
-  ;; default impl of driver method
-  execute-query])
+  read-column])

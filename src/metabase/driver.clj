@@ -315,26 +315,6 @@
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
 
-
-(defmulti execute-query
-  "Execute a *native* query against the database and return the results.
-
-  The query passed in will conform to the schema in `metabase.mbql.schema/Query`. MBQL queries are transformed to
-  native queries via the `mbql->native` QP middleware, which in turn calls this driver's implementation of
-  `mbql->native` before reaching this method.
-
-  Results should look like:
-
-    {:columns [\"id\", \"name\"]
-     :rows    [[1 \"Lucky Bird\"]
-               [2 \"Rasta Can\"]]}
-
-  DEPRECATED: This method is deprecated in favor of `execute-reducible-query` and will be removed from a future
-  release."
-  {:deprecated "0.35.0", :arglists '([driver query]), :style/indent 1}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
 (defmulti execute-reducible-query
   "Execute a native query against that database and return rows that can be reduced using `transduce`/`reduce`.
 
@@ -479,7 +459,7 @@
   appropriate message and include that in an appropriate place; alternatively a driver might directly include the
   query's `:info` dictionary if the underlying language is JSON-based.
 
-  The result of this function will be passed directly into calls to `execute-query`.
+  The result of this function will be passed directly into calls to `execute-reducible-query`.
 
   For example, a driver like Postgres would build a valid SQL expression and return a map such as:
 

@@ -4,22 +4,10 @@
 
   All methods and functions in this namespace should be considered deprecated with the exception of `set-parameter`,
   which will be moved to `metabase.driver.sql-jdbc.execute` when this namespace is removed."
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [java-time :as t]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
-            [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
-            [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor
-             [error-type :as qp.error-type]
-             [interface :as qp.i]
-             [store :as qp.store]
-             [timezone :as qp.timezone]
-             [util :as qputil]]
-            [metabase.util.i18n :refer [tru]])
-  (:import [java.sql JDBCType PreparedStatement ResultSet ResultSetMetaData SQLException Types]
+            [metabase.driver :as driver])
+  (:import [java.sql JDBCType PreparedStatement ResultSet ResultSetMetaData Types]
            [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -90,38 +78,6 @@
   [_ _ rs _ i]
   (get-object-of-class rs i OffsetTime))
 
-(defn read-columns
-  "Read columns from a JDBC `ResultSet` for the current row. This function uses `read-column` to read each individual
-  value; `read-column` dispatches on `driver` and the JDBC type of each column — override this as needed.
-
-  You can pass this method to `clojure.java.jdbc/query` and related functions as the `:read-columns` option:
-
-    (jdbc/query spec sql {:read-columns (partial :read-columns driver)})
-
-  DEPRECATED in favor of implementing `read-column-thunk`, and using `reducible-rows` to fetch results using its
-  implementations."
-  {:deprecated "0.35.0"}
-  [driver rs ^ResultSetMetaData rsmeta indexes]
-  (mapv
-   (fn [^Integer i]
-     ;; JDBCType/valueOf won't work for custom driver-specific enums
-     (let [jdbc-type      (.getColumnType rsmeta i)
-           jdbc-type-name (or (u/ignore-exceptions
-                                (.getName (JDBCType/valueOf jdbc-type)))
-                              jdbc-type)]
-       (try
-         (let [result (read-column driver nil rs rsmeta i)]
-           (log/tracef "(read-column %s nil rs rsmeta %d) \"%s\" [JDBC Type: %s; DB type: %s] -> ^%s %s"
-                       driver i
-                       (.getColumnName rsmeta i) jdbc-type-name (.getColumnTypeName rsmeta i)
-                       (.getName (class result)) (pr-str result))
-           result)
-         (catch Throwable e
-           (log/errorf e "Error reading %s column %d %s %s"
-                       driver i (.getColumnName rsmeta i) jdbc-type-name)
-           nil))))
-   indexes))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 Setting Params                                                 |
@@ -186,173 +142,6 @@
 (defmethod set-parameter [::driver/driver ZonedDateTime]
   [driver prepared-statement i t]
   (set-parameter driver prepared-statement i (t/offset-date-time t)))
-
-(defn set-parameters
-  "Set a sequence of `prepared-statement` `params`. This method calls `set-parameter` for each param; `set-parameter`
-  dispatches on `driver` and the class of the param — override this as needed.
-
-  You can pass this method to `clojure.java.jdbc/query` and related functions as the `:set-parameters` option:
-
-    (jdbc/query spec sql {:set-parameters (partial set-parameters driver)})
-
-  This helper function is DEPRECATED, and will be removed from a future release. Its functionality is replaced by
-  `set-parameters!`, and will be removed in a future release."
-  {:deprecated "0.35.0"}
-  [driver prepared-statement params]
-  (doseq [[i param] (map-indexed vector params)]
-    (log/tracef "Query parameter %d came in as ^%s %s" (inc i) (.getName (class param)) (pr-str param))
-    (set-parameter driver prepared-statement (inc i) param)))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                Running Queries                                                 |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- cancelable-run-query
-  "Runs JDBC query, canceling it if an InterruptedException is caught (e.g. if there query is canceled before
-  finishing)."
-  [conn-spec sql params opts]
-  ;; This is normally done for us by java.jdbc as a result of our `jdbc/query` call
-  (with-open [^PreparedStatement stmt (jdbc/prepare-statement (jdbc/get-connection conn-spec) sql opts)]
-    ;; specifiy that we'd like this statement to close once its dependent result sets are closed
-    ;; (Not all drivers support this so ignore Exceptions if they don't)
-    (u/ignore-exceptions
-      (.closeOnCompletion stmt))
-    (try
-      (jdbc/query conn-spec (into [stmt] params) opts)
-      (catch InterruptedException e
-        (try
-          (log/warn (tru "Client closed connection, canceling query"))
-          ;; This is what does the real work of canceling the query. We aren't checking the result of
-          ;; `query-future` but this will cause an exception to be thrown, saying the query has been cancelled.
-          (.cancel stmt)
-          (finally
-            (throw e)))))))
-
-(defn- run-query
-  "Run the query itself."
-  [driver {sql :query, :keys [params remark max-rows]} conn-spec]
-  (let [sql              (str "-- " remark "\n" sql)
-        [columns & rows] (cancelable-run-query
-                          conn-spec
-                          sql
-                          params
-                          {:identifiers    identity
-                           :as-arrays?     true
-                           :read-columns   (partial read-columns driver)
-                           :set-parameters (partial set-parameters driver)
-                           :max-rows       max-rows})]
-    {:rows    (or rows [])
-     :columns (map u/qualified-name columns)}))
-
-
-;;; -------------------------- Running queries: exception handling & disabling auto-commit ---------------------------
-
-(defn- exception->nice-error-message ^String [^SQLException e]
-  ;; error message comes back like 'Column "ZID" not found; SQL statement: ... [error-code]' sometimes
-  ;; the user already knows the SQL, and error code is meaningless
-  ;; so just return the part of the exception that is relevant
-  (some->> (.getMessage e)
-           (re-find #"^(.*);")
-           second))
-
-(defn ^{:deprecated "0.35.0"} do-with-try-catch
-  "Tries to run the function `f`, catching and printing exception chains if SQLException is thrown,
-  and rethrowing the exception as an Exception with a nicely formatted error message.
-
-  DEPRECATED: not used for implementation of `execute-reducible-query`, and will be removed in a future release."
-  {:style/indent 0}
-  [f]
-  (try
-    (f)
-    (catch SQLException e
-      (log/error (jdbc/print-sql-exception-chain e))
-      (throw
-       (if-let [nice-error-message (exception->nice-error-message e)]
-         (Exception. nice-error-message e)
-         e)))))
-
-(defn- do-with-auto-commit-disabled
-  "Disable auto-commit for this transaction, and make the transaction `rollback-only`, which means when the
-  transaction finishes `.rollback` will be called instead of `.commit`. Furthermore, execute F in a try-finally block;
-  in the `finally`, manually call `.rollback` just to be extra-double-sure JDBC any changes made by the transaction
-  aren't committed."
-  {:style/indent 1}
-  [conn-spec f]
-  (jdbc/db-set-rollback-only! conn-spec)
-  (.setAutoCommit (jdbc/get-connection conn-spec) false)
-  ;; TODO - it would be nice if we could also `.setReadOnly` on the transaction as well, but that breaks setting the
-  ;; timezone. Is there some way we can have our cake and eat it too?
-  (try
-    (f)
-    (finally (.rollback (jdbc/get-connection conn-spec)))))
-
-(defn- do-in-transaction [conn-spec f]
-  (jdbc/with-db-transaction [transaction-conn-spec conn-spec]
-    (do-with-auto-commit-disabled transaction-conn-spec (partial f transaction-conn-spec))))
-
-
-;;; ---------------------------------------------- Running w/ Timezone -----------------------------------------------
-
-(defn- set-timezone!
-  "Set the timezone for the current connection."
-  [driver timezone conn-spec]
-  (when-not (re-matches #"[A-Za-z\/_]+" timezone)
-    (throw (ex-info (tru "Invalid timezone ''{0}''" timezone)
-             {:type qp.error-type/qp})))
-  (let [timezone      timezone
-        format-string (set-timezone-sql driver)]
-    (when-not (seq format-string)
-      (throw (ex-info (str (tru "Cannot set timezone: invalid or missing SQL format string for driver {0}." driver)
-                           " "
-                           (tru "Did you implement set-timezone-sql?"))
-               {:type qp.error-type/driver})))
-    (let [sql (format format-string (str \' timezone \'))]
-      (log/debug (u/format-color 'green (tru "Setting timezone with statement: {0}" sql)))
-      (jdbc/db-do-prepared conn-spec [sql]))))
-
-(defn- run-query-without-timezone [driver _ conn-spec query]
-  (do-in-transaction conn-spec (partial run-query driver query)))
-
-(defn- run-query-with-timezone [driver ^String report-timezone conn-spec query]
-  (let [result (do-in-transaction
-                conn-spec
-                (fn [transaction-conn-spec]
-                  (let [set-timezone? (try
-                                        (set-timezone! driver report-timezone transaction-conn-spec)
-                                        true
-                                        (catch SQLException e
-                                          (log/error (tru "Failed to set timezone ''{0}''" report-timezone)
-                                                     "\n"
-                                                     (with-out-str (jdbc/print-sql-exception-chain e))))
-                                        (catch Throwable e
-                                          (log/error e (tru "Failed to set timezone ''{0}''" report-timezone))))]
-                    (if-not set-timezone?
-                      ::set-timezone-failed
-                      (run-query driver query transaction-conn-spec)))))]
-    (if (= result ::set-timezone-failed)
-      (run-query-without-timezone driver report-timezone conn-spec query)
-      result)))
-
-
-;;; ------------------------------------------------- execute-query --------------------------------------------------
-
-(defn execute-query
-  "Process and run a native (raw SQL) `query`. DEPRECATED in favor of `execute-query-reducible`; this will be removed in
-  a future release."
-  {:deprecated "0.35.0"}
-  [driver {query :native, :as outer-query}]
-  (let [report-timezone (qp.timezone/report-timezone-id-if-supported)
-        query           (assoc query
-                               :remark   (qputil/query->remark outer-query)
-                               :max-rows (or (mbql.u/query->max-rows-limit outer-query) qp.i/absolute-max-results))]
-    (do-with-try-catch
-      (fn []
-        (let [conn-spec (sql-jdbc.conn/db->pooled-connection-spec (qp.store/database))
-              run-query*    (if (seq report-timezone)
-                              run-query-with-timezone
-                              run-query-without-timezone)]
-          (run-query* driver report-timezone conn-spec query))))))
 
 ;; just mark everything as deprecated so people don't try to use it
 (doseq [[symb varr] (ns-interns *ns*)

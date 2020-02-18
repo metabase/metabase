@@ -45,10 +45,6 @@
   [driver _]
   (boolean (seq (sql-jdbc.execute/set-timezone-sql driver))))
 
-(defmethod driver/execute-query :sql-jdbc
-  [driver query]
-  (sql-jdbc.execute/execute-query driver query))
-
 (defmethod driver/execute-reducible-query :sql-jdbc
   [driver query chans respond]
   (sql-jdbc.execute/execute-reducible-query driver query chans respond))

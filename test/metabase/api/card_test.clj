@@ -418,7 +418,7 @@
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
           (tu/with-model-cleanup [Card]
             ;; TODO - FIXME - wrong impl
-            ;; Rebind the `cancelable-run-query` function so that we can capture the generated SQL and inspect it
+            ;; Rebind the `prepared-statement` function so that we can capture the generated SQL and inspect it
             (let [orig       (var-get #'sql-jdbc.execute/prepared-statement)
                   sql-result (atom nil)]
               (with-redefs [sql-jdbc.execute/prepared-statement
