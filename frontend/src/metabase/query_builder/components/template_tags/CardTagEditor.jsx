@@ -1,5 +1,4 @@
 import React, { Component } from "react";
-import { connect } from "react-redux";
 import { Link } from "react-router";
 import { t } from "ttag";
 
@@ -15,36 +14,11 @@ import { question as questionUrl } from "metabase/lib/urls";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import MetabaseSettings from "metabase/lib/settings";
 
-function mapStateToProps(state, props) {
-  const id = props.tag.card;
-  return {
-    id,
-    question: Questions.selectors.getObject(state, { entityId: id }),
-    loading: Questions.selectors.getLoading(state, { entityId: id }),
-    error: Questions.selectors.getError(state, { entityId: id }),
-  };
-}
-const mapDispatchToProps = { fetchQuestion: Questions.actions.fetch };
-
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@Questions.load({
+  id: (state, { tag }) => tag.card_id,
+  loadingAndErrorWrapper: false,
+})
 export default class CardTagEditor extends Component {
-  componentDidMount() {
-    const { id, fetchQuestion } = this.props;
-    if (id != null) {
-      fetchQuestion({ id });
-    }
-  }
-
-  componentDidUpdate(prevProps) {
-    const { id, fetchQuestion } = this.props;
-    if (id != null && id !== prevProps.id) {
-      fetchQuestion({ id });
-    }
-  }
-
   handleQuestionSelection = id => {
     const { question, query, setDatasetQuery } = this.props;
     setDatasetQuery(
@@ -74,10 +48,10 @@ export default class CardTagEditor extends Component {
   }
 
   triggerElement() {
-    const { id, question } = this.props;
+    const { tag, question } = this.props;
     return (
       <SelectButton>
-        {id == null ? (
+        {tag.card_id == null ? (
           <span className="text-medium">{t`Pick a saved question`}</span>
         ) : this.errorMessage() ? (
           <span className="text-medium">{t`Pick a different question`}</span>
@@ -92,15 +66,19 @@ export default class CardTagEditor extends Component {
   }
 
   render() {
-    const { id, loading, question } = this.props;
+    const {
+      tag: { card_id },
+      loading,
+      question,
+    } = this.props;
 
     return (
       <Card className="p2 mb2">
         <h3 className="text-brand mb2">
-          {id == null ? (
+          {card_id == null ? (
             t`Question #…`
           ) : (
-            <Link to={questionUrl(id)}>{t`Question #${id}`}</Link>
+            <Link to={questionUrl(card_id)}>{t`Question #${card_id}`}</Link>
           )}
         </h3>
         {loading ? (

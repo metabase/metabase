@@ -221,8 +221,8 @@ describe("NativeQuery", () => {
         expect(query.queryText()).toBe("SELECT * from {{#321}}");
         const tags = query.templateTags();
         expect(tags.length).toBe(1);
-        const [{ card, type, name }] = tags;
-        expect(card).toEqual(321);
+        const [{ card_id, type, name }] = tags;
+        expect(card_id).toEqual(321);
         expect(type).toEqual("card");
         expect(name).toEqual("#321");
       });
