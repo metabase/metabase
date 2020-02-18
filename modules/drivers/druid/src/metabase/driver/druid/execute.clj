@@ -6,9 +6,17 @@
             [metabase.query-processor
              [store :as qp.store]
              [timezone :as qp.timezone]]
+            [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.util :as u]
             [metabase.util.date-2 :as u.date]
             [schema.core :as s]))
+
+(defn- resolve-timezone
+  "Returns the timezone object (either report-timezone or JVM timezone). Returns nil if the timezone is UTC as the
+  timestamps from Druid are already in UTC and don't need to be converted"
+  [_]
+  (when-not (= (t/zone-id (qp.timezone/results-timezone-id)) (t/zone-id "UTC"))
+    (qp.timezone/results-timezone-id)))
 
 (defmulti ^:private post-process
   "Do appropriate post-processing on the results of a query based on the `query-type`."
@@ -63,20 +71,13 @@
   cardinality and HLL)."
   [columns :- [s/Keyword]]
   (for [k columns]
-    (case k
+    (case (keyword k)
       :distinct___count (comp math/round k)
       :timestamp___int  (comp (fn [^String s]
                                 (when (some? s)
                                   (Integer/parseInt s)))
                               k)
       k)))
-
-(defn- resolve-timezone
-  "Returns the timezone object (either report-timezone or JVM timezone). Returns nil if the timezone is UTC as the
-  timestamps from Druid are already in UTC and don't need to be converted"
-  [_]
-  (when-not (= (t/zone-id (qp.timezone/results-timezone-id)) (t/zone-id "UTC"))
-    (qp.timezone/results-timezone-id)))
 
 (defn- result-metadata [col-names]
   ;; rename any occurances of `:timestamp___int` to `:timestamp` in the results so the user doesn't know about
@@ -90,10 +91,9 @@
     {:cols (vec (for [col-name fixed-col-names]
                   {:name (u/qualified-name col-name)}))}))
 
-(defn- result-rows [result col-names]
+(defn- result-rows [{rows :results} col-names]
   (let [getters (vec (col-names->getter-fns col-names))]
-    (println "(u/pprint-to-str 'yellow col-name->getter):\n" (u/pprint-to-str 'yellow getters)) ; NOCOMMIT
-    (for [row (:results result)]
+    (for [row rows]
       (mapv row getters))))
 
 (defn- remove-bonus-keys
@@ -102,16 +102,15 @@
   (vec (remove #(re-find #"^___" (name %)) columns)))
 
 (defn- reduce-results
-  [{{:keys [query query-type mbql? projections]} :native, :as outer-query} result respond]
-  (let [col-names       (if mbql?
-                          (->> result
-                               :projections
-                               remove-bonus-keys
-                               vec)
-                          (-> result :results first keys))]
-    (respond
-     (result-metadata col-names)
-     (result-rows result col-names))))
+  [{{:keys [query query-type mbql?]} :native, :as outer-query} {:keys [projections], :as result} respond]
+  (let [col-names          (if mbql?
+                             (->> projections
+                                  remove-bonus-keys
+                                  vec)
+                             (-> result :results first keys))
+        metadata           (result-metadata col-names)
+        annotate-col-names (map (comp keyword :name) (annotate/column-info* outer-query metadata))]
+    (respond metadata (result-rows result annotate-col-names))))
 
 (defn execute-reducible-query
   "Execute a query for a Druid DB."

@@ -1,5 +1,6 @@
 (ns metabase.driver.presto-test
-  (:require [clojure.core.async :as a]
+  (:require [clj-http.client :as http]
+            [clojure.core.async :as a]
             [clojure.test :refer :all]
             [expectations :refer [expect]]
             [java-time :as t]
@@ -161,8 +162,6 @@
     (is (= "UTC"
            (tu/db-timezone-id)))))
 
-;; Query cancellation test, needs careful coordination between the query thread, cancellation thread to ensure
-;; everything works correctly together
 (deftest query-cancelation-test
   (mt/test-driver :presto
     (let [query (mt/mbql-query venues)]

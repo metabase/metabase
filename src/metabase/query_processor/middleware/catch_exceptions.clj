@@ -24,6 +24,10 @@
    :error      (or (.getMessage e) (str e))
    :stacktrace (u/filtered-stacktrace e)})
 
+(defmethod format-exception InterruptedException
+  [^InterruptedException e]
+  {:status :interrupted})
+
 ;; TODO - consider moving this into separate middleware as part of a try-catch setup so queries running in a
 ;; non-userland context can still have sane Exceptions
 (defn- explain-schema-validation-error

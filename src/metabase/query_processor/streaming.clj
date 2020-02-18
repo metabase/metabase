@@ -11,7 +11,8 @@
              [json :as streaming.json]
              [xlsx :as streaming.xlsx]]
             [metabase.util :as u])
-  (:import [java.io BufferedWriter OutputStream OutputStreamWriter]))
+  (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
+           org.eclipse.jetty.io.EofException))
 
 ;; these are loaded for side-effects so their impls of `i/results-writer` will be available
 (comment streaming.csv/keep-me
@@ -42,7 +43,9 @@
 
 (defn- write-qp-failure-and-close! [^OutputStream os result]
   (with-open [writer (BufferedWriter. (OutputStreamWriter. os))]
-    (json/generate-stream result writer))
+    (try
+      (json/generate-stream result writer)
+      (catch EofException _)))
   (.close os))
 
 ;; TODO -- consider whether it makes sense to begin writing keepalive chars right away or if maybe we should wait to

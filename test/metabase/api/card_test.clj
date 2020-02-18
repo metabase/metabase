@@ -1186,13 +1186,15 @@
                       "gets saved from one that had it -- see #9831)")
           (let [results ((test-users/user->client :rasta) :post 202 (format "card/%d/query/csv" (u/get-id card)))]
             (is (= 101
-                   (count (csv/read-csv results))))))
+                   (count (csv/read-csv results)))
+                (format "Results = %s" (u/pprint-to-str results)))))
         (testing (str "non-\"download\" queries should still get the default constraints (this also is a sanitiy "
                       "check to make sure the `with-redefs` in the test above actually works)")
-          (let [{row-count :row_count, :as result}
-                ((test-users/user->client :rasta) :post 202 (format "card/%d/query" (u/get-id card)))]
+          (let [{row-count :row_count, :as result} ((test-users/user->client :rasta) :post 202
+                                                    (format "card/%d/query" (u/get-id card)))]
             (is (= 10
-                   (or row-count result)))))))))
+                   (or row-count result))
+                (format "Result = %s" (u/pprint-to-str result)))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

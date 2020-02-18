@@ -130,6 +130,19 @@
                    :base_type (presto-type->base-type col-type)})
                 (:cols @next-page)))})))
 
+(defn- cancel-query-with-id! [details query-id info-uri]
+  (if-not query-id
+    (log/warn (trs "Client connection closed, no query-id found, can't cancel query"))
+    ;; If we have a query id, we can cancel the query
+    (try
+      (let [tunneled-uri (details->uri details (str "/v1/query/" query-id))
+            adjusted-uri (create-cancel-url tunneled-uri (get details :host) (get details :port) info-uri)]
+        (http/delete adjusted-uri (details->request details)))
+      ;; If we fail to cancel the query, log it but propogate the interrupted exception, instead of
+      ;; covering it up with a failed cancel
+      (catch Exception e
+        (log/error e (trs "Error canceling query with ID {0}" query-id))))))
+
 (defn- fetch-results-async [details canceled-chan query-id info-uri uri]
   ;; When executing the query, it doesn't return the results, but is geared toward async queries. After
   ;; issuing the query, the below will ask for the results. Asking in a future so that this thread can be
@@ -138,32 +151,22 @@
                 (try
                   (fetch-next-page details uri)
                   (catch Throwable e
-                    e)))]
+                    e)))
+        cancel! (delay
+                  (cancel-query-with-id! details query-id info-uri))]
     (when canceled-chan
       (a/go
         (when (a/<! canceled-chan)
-          (future-cancel futur))))
+          (future-cancel futur)
+          @cancel!)))
     (try
       (let [more-rows @futur]
         (when (instance? Throwable more-rows)
           (throw more-rows))
         more-rows)
       (catch InterruptedException e
-        (try
-          (if query-id
-            ;; If we have a query id, we can cancel the query
-            (try
-              (let [tunneled-uri (details->uri details (str "/v1/query/" query-id))
-                    adjusted-uri (create-cancel-url tunneled-uri (get details :host) (get details :port) info-uri)]
-                (http/delete adjusted-uri (details->request details)))
-              ;; If we fail to cancel the query, log it but propogate the interrupted exception, instead of
-              ;; covering it up with a failed cancel
-              (catch Exception e
-                (log/error e (trs "Error canceling query with ID {0}" query-id))))
-            (log/warn (trs "Client connection closed, no query-id found, can't cancel query")))
-          (finally
-            ;; Propagate the error so that any finalizers can still run
-            (throw e)))))))
+        @cancel!
+        (throw e)))))
 
 (defn- execute-presto-query
   {:style/indent 1}
@@ -185,7 +188,6 @@
             async-results (delay
                             (when nextUri
                               (fetch-results-async details canceled-chan id infoUri nextUri)))]
-        (println "cols:" cols) ; NOCOMMIT
         (respond {:cols (if (seq cols)
                           cols
                           (:cols @async-results))}

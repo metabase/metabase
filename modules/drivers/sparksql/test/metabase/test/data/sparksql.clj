@@ -51,10 +51,10 @@
 (defmethod tx/dbdef->connection-details :sparksql
   [driver context {:keys [database-name]}]
   (merge
-   {:host     "localhost"
-    :port     10000
-    :user     "admin"
-    :password "admin"}
+   {:host     (tx/db-test-env-var-or-throw :sparksql :host "localhost")
+    :port     (Integer/parseUnsignedInt (tx/db-test-env-var-or-throw :sparksql :port "10000"))
+    :user     (tx/db-test-env-var-or-throw :sparksql :user "admin")
+    :password (tx/db-test-env-var-or-throw :sparksql :password "admin")}
    (when (= context :db)
      {:db (tx/format-name driver database-name)})))
 

@@ -1,5 +1,6 @@
 (ns metabase.driver.druid-test
   (:require [cheshire.core :as json]
+            [clojure.core.async :as a]
             [clojure.test :refer :all]
             [expectations :refer [expect]]
             [java-time :as t]
@@ -211,72 +212,68 @@
   (druid-query-returning-rows
    {:aggregation [[:sum-where $venue_price [:< $venue_price 4]]]}))
 
-;; post-aggregation math w/ 2 args: count + sum
-(datasets/expect-with-driver :druid
-  [["1"  442.0]
-   ["2" 1845.0]
-   ["3"  460.0]
-   ["4"  245.0]]
-  (druid-query-returning-rows
-    {:aggregation [[:+ [:count $id] [:sum $venue_price]]]
-     :breakout    [$venue_price]}))
+(deftest post-aggregation-math-test
+  (mt/test-driver :druid
+    (testing "post-aggregation math w/ 2 args: count + sum"
+      (is (= [["1"  442.0]
+              ["2" 1845.0]
+              ["3"  460.0]
+              ["4"  245.0]]
+             (druid-query-returning-rows
+               {:aggregation [[:+ [:count $id] [:sum $venue_price]]]
+                :breakout    [$venue_price]}))))
 
-;; post-aggregation math w/ 3 args: count + sum + count
-(datasets/expect-with-driver :druid
-  [["1"  663.0]
-   ["2" 2460.0]
-   ["3"  575.0]
-   ["4"  294.0]]
-  (druid-query-returning-rows
-    {:aggregation [[:+
-                    [:count $id]
-                    [:sum $venue_price]
-                    [:count $venue_price]]]
-     :breakout    [$venue_price]}))
+    (testing "post-aggregation math w/ 3 args: count + sum + count"
+      (is (= [["1"  663.0]
+              ["2" 2460.0]
+              ["3"  575.0]
+              ["4"  294.0]]
+             (druid-query-returning-rows
+               {:aggregation [[:+
+                               [:count $id]
+                               [:sum $venue_price]
+                               [:count $venue_price]]]
+                :breakout    [$venue_price]}))))
 
-;; post-aggregation math w/ a constant: count * 10
-(datasets/expect-with-driver :druid
-  [["1" 2210.0]
-   ["2" 6150.0]
-   ["3" 1150.0]
-   ["4"  490.0]]
-  (druid-query-returning-rows
-    {:aggregation [[:* [:count $id] 10]]
-     :breakout    [$venue_price]}))
+    (testing "post-aggregation math w/ a constant: count * 10"
+      (is (= [["1" 2210.0]
+              ["2" 6150.0]
+              ["3" 1150.0]
+              ["4"  490.0]]
+             (druid-query-returning-rows
+               {:aggregation [[:* [:count $id] 10]]
+                :breakout    [$venue_price]}))))
 
-;; nested post-aggregation math: count + (count * sum)
-(datasets/expect-with-driver :druid
-  [["1"  49062.0]
-   ["2" 757065.0]
-   ["3"  39790.0]
-   ["4"  9653.0]]
-  (druid-query-returning-rows
-    {:aggregation [[:+
-                    [:count $id]
-                    [:* [:count $id] [:sum $venue_price]]]]
-     :breakout    [$venue_price]}))
+    (testing "nested post-aggregation math: count + (count * sum)"
+      (is (= [["1"  49062.0]
+              ["2" 757065.0]
+              ["3"  39790.0]
+              ["4"  9653.0]]
+             (druid-query-returning-rows
+               {:aggregation [[:+
+                               [:count $id]
+                               [:* [:count $id] [:sum $venue_price]]]]
+                :breakout    [$venue_price]}))))
 
-;; post-aggregation math w/ avg: count + avg
-(datasets/expect-with-driver :druid
-  [["1"  721.8506787330316]
-   ["2" 1116.388617886179]
-   ["3"  635.7565217391304]
-   ["4"  489.2244897959184]]
-  (druid-query-returning-rows
-    {:aggregation [[:+ [:count $id] [:avg $id]]]
-     :breakout    [$venue_price]}))
+    (testing "post-aggregation math w/ avg: count + avg"
+      (is (= [["1"  721.8506787330316]
+              ["2" 1116.388617886179]
+              ["3"  635.7565217391304]
+              ["4"  489.2244897959184]]
+             (druid-query-returning-rows
+               {:aggregation [[:+ [:count $id] [:avg $id]]]
+                :breakout    [$venue_price]}))))
 
-;; post aggregation math + math inside aggregations: max(venue_price) + min(venue_price - id)
-(datasets/expect-with-driver :druid
-  [["1" -998.0]
-   ["2" -995.0]
-   ["3" -990.0]
-   ["4" -985.0]]
-  (druid-query-returning-rows
-    {:aggregation [[:+
-                    [:max $venue_price]
-                    [:min [:- $venue_price $id]]]]
-     :breakout    [$venue_price]}))
+    (testing "post aggregation math + math inside aggregations: max(venue_price) + min(venue_price - id)"
+      (is (= [["1" -998.0]
+              ["2" -995.0]
+              ["3" -990.0]
+              ["4" -985.0]]
+             (druid-query-returning-rows
+               {:aggregation [[:+
+                               [:max $venue_price]
+                               [:min [:- $venue_price $id]]]]
+                :breakout    [$venue_price]}))))))
 
 ;; aggregation w/o field
 (datasets/expect-with-driver :druid
@@ -309,26 +306,27 @@
       {:aggregation [[:aggregation-options [:sum [:+ $venue_price 1]] {:name "New Price"}]]
        :breakout    [$venue_price]})))
 
-;; check that we can name an expression aggregation w/ expression at top-level
-(datasets/expect-with-driver :druid
-  {:rows    [["1"  180.0]
-             ["2" 1189.0]
-             ["3"  304.0]
-             ["4"  155.0]]
-   :columns ["venue_price" "Sum-41"]}
-  (qp.test/rows+column-names
-    (druid-query
-      {:aggregation [[:aggregation-options [:- [:sum $venue_price] 41] {:name "Sum-41"}]]
-       :breakout    [$venue_price]})))
+(deftest named-expression-aggregations-test
+  (mt/test-driver :druid
+    (testing "check that we can name an expression aggregation w/ expression at top-level"
+      (is (= {:rows    [["1"  180.0]
+                        ["2" 1189.0]
+                        ["3"  304.0]
+                        ["4"  155.0]]
+              :columns ["venue_price" "Sum-41"]}
+             (qp.test/rows+column-names
+               (druid-query
+                 {:aggregation [[:aggregation-options [:- [:sum $venue_price] 41] {:name "Sum-41"}]]
+                  :breakout    [$venue_price]})))))))
 
-;; distinct count of two dimensions
-(datasets/expect-with-driver :druid
-   {:rows [[98]]
-    :columns ["count"]}
-   (qp.test/rows+column-names
-    (druid-query
-     {:aggregation [[:distinct [:+  $checkins.venue_category_name
-                                    $checkins.venue_name]]]})))
+(deftest distinct-count-of-two-dimensions-test
+  (mt/test-driver :druid
+    (is (= {:rows    [[98]]
+            :columns ["count"]}
+           (qp.test/rows+column-names
+             (druid-query
+               {:aggregation [[:distinct [:+  $checkins.venue_category_name
+                                          $checkins.venue_name]]]}))))))
 
 ;; check that we can handle METRICS (ick) inside expression aggregation clauses
 (datasets/expect-with-driver :druid
@@ -365,33 +363,26 @@
               e)
             (some-> (.getCause e) recur))))))
 
-;; Query cancellation test, needs careful coordination between the query thread, cancellation thread to ensure
-;; everything works correctly together
-(datasets/expect-with-driver :druid
-  ::tu/success
-  ;; the `call-with-paused-query` helper is kind of wack and we need to redefine functions for the duration of the
-  ;; test, and redefine them to operate on things that don't get bound unitl `call-with-paused-query` calls its fn
-  ;;
-  ;; that's why we're doing things this way
-  (let [promises (atom nil)]
-    (with-redefs [druid/do-query (fn [details query]
-                                   (deliver (:called-query? @promises) true)
-                                   @(:pause-query @promises))
-                  druid/DELETE   (fn [url]
-                                   (deliver (:called-cancel? @promises) true))]
-      (tu/call-with-paused-query
-       (fn [query-thunk called-query? called-cancel? pause-query]
-         (reset! promises {:called-query?  called-query?
-                           :called-cancel? called-cancel?
-                           :pause-query    pause-query})
-         (future
-           (try
-             (data/run-mbql-query checkins
-               {:aggregation [[:count]]})
-             (query-thunk)
-             (catch Throwable e
-               (println "Error running query:" e)
-               (throw e)))))))))
+(deftest query-cancelation-test
+  (mt/test-driver :druid
+    (tqpt/with-flattened-dbdef
+      (let [query (mt/mbql-query checkins)]
+        (mt/with-open-channels [running-chan (a/promise-chan)
+                                cancel-chan  (a/promise-chan)]
+          (with-redefs [druid/DELETE   (fn [& _]
+                                         (a/>!! cancel-chan ::cancel))
+                        druid/do-query (fn [& _]
+                                         (a/>!! running-chan ::running)
+                                         (Thread/sleep 5000)
+                                         (throw (Exception. "Don't actually run!")))]
+
+            (let [out-chan (qp/process-query-async query)]
+              ;; wait for query to start running, then close `out-chan`
+              (a/go
+                (a/<! running-chan)
+                (a/close! out-chan)))
+            (is (= ::cancel
+                   (mt/wait-for-result cancel-chan 2000)))))))))
 
 (deftest results-order-test
   (mt/test-driver :druid
