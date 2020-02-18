@@ -606,9 +606,11 @@
   be returned as the result of an API endpoint fn. Will throw an Exception if preconditions (such as read perms) are
   not met before returning the `StreamingResponse`."
   ^StreamingResponse [card-id export-format
-                      & {:keys [parameters constraints context dashboard-id middleware run run]
+                      & {:keys [parameters constraints context dashboard-id middleware run]
                          :or   {constraints constraints/default-query-constraints
                                 context     :question
+                                ;; param `run` can be used to control how the query is ran, e.g. if you need to
+                                ;; customize the `context` passed to the QP
                                 run         (^:once fn* [query info]
                                              (qp.streaming/streaming-response [context export-format]
                                                (qp/process-query-and-save-execution! query info context)))}}]
