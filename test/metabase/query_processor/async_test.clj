@@ -1,26 +1,9 @@
 (ns metabase.query-processor.async-test
   (:require [clojure.test :refer :all]
-            [metabase
-             [query-processor :as qp]
-             [test :as mt]]
             [metabase.query-processor.async :as qp.async]
+            [metabase.test :as mt]
             [metabase.test.data :as data]
-            [metabase.test.util.async :as tu.async]
-            [metabase.util.encryption :as encrypt]))
-
-;; Metadata checksum might be encrypted if a encryption key is set on this system (to make it hard for bad
-;; actors to forge one) in which case the checksums won't be equal.
-(defn- maybe-decrypt-checksum [result]
-  (some-> result (update-in [:data :results_metadata :checksum] encrypt/maybe-decrypt)))
-
-(deftest run-async-test
-  (testing "running a query async should give you the same results as running that query synchronously"
-    (let [query (mt/mbql-query venues
-                  {:fields [$name]
-                   :limit  5})]
-      (mt/with-open-channels [result-chan (qp.async/process-query query)]
-        (is (= (maybe-decrypt-checksum (qp/process-query query))
-               (maybe-decrypt-checksum (mt/wait-for-result result-chan 1000))))))))
+            [metabase.test.util.async :as tu.async]))
 
 (deftest async-result-metadata-test
   (testing "Should be able to get result metadata async"
