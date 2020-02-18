@@ -9,12 +9,17 @@ import {
   RParen,
   AdditiveOperator,
   MultiplicativeOperator,
-  NullaryAggregation,
-  UnaryAggregation,
+  AggregationName,
+  FunctionName,
+  FilterName,
+  FilterOperator,
+  BooleanFilterOperator,
   StringLiteral,
   NumberLiteral,
   Minus,
   Identifier,
+  IdentifierString,
+  Comma,
 } from "./lexer";
 
 export class ExpressionParser extends CstParser {
@@ -22,6 +27,8 @@ export class ExpressionParser extends CstParser {
     super(allTokens, config);
 
     const $ = this;
+
+    // START RULES:
 
     // an expression without aggregations in it
     $.RULE("expression", (outsideAggregation = false) => {
@@ -32,6 +39,13 @@ export class ExpressionParser extends CstParser {
     $.RULE("aggregation", () => {
       $.SUBRULE($.additionExpression, { ARGS: [true] });
     });
+
+    // a filter expression
+    $.RULE("filter", () => {
+      $.SUBRULE($.filterBooleanExpression);
+    });
+
+    // EXPRESSIONS:
 
     // Lowest precedence thus it is first in the rule chain
     // The precedence of binary expressions is determined by
@@ -64,49 +78,58 @@ export class ExpressionParser extends CstParser {
       });
     });
 
-    $.RULE("nullaryCall", () => {
+    $.RULE("call", outsideAggregation => {
       $.CONSUME(LParen);
-      $.CONSUME(RParen);
-    });
-    $.RULE("unaryCall", () => {
-      $.CONSUME(LParen);
-      $.SUBRULE($.expression, { ARGS: [false] });
+      $.OPTION(() => {
+        $.SUBRULE($.expression, {
+          LABEL: "arguments",
+          ARGS: [outsideAggregation],
+        });
+        $.MANY(() => {
+          $.CONSUME(Comma);
+          $.SUBRULE2($.expression, {
+            LABEL: "arguments",
+            ARGS: [outsideAggregation],
+          });
+        });
+      });
       $.CONSUME(RParen);
     });
 
-    $.RULE("aggregationExpression", outsideAggregation => {
-      $.OR([
-        {
-          ALT: () => {
-            $.CONSUME(NullaryAggregation, { LABEL: "aggregation" });
-            $.OPTION(() => $.SUBRULE($.nullaryCall, { LABEL: "call" }));
-          },
-        },
-        {
-          ALT: () => {
-            $.CONSUME(UnaryAggregation, { LABEL: "aggregation" });
-            $.SUBRULE($.unaryCall, { LABEL: "call" });
-          },
-        },
-      ]);
+    $.RULE("aggregationExpression", () => {
+      $.CONSUME(AggregationName, { LABEL: "aggregationName" });
+      $.OPTION(() => {
+        $.SUBRULE($.call, { LABEL: "call", ARGS: [false] });
+      });
+    });
+
+    $.RULE("functionExpression", outsideAggregation => {
+      $.CONSUME(FunctionName, { LABEL: "functionName" });
+      $.SUBRULE($.call, { LABEL: "call", ARGS: [outsideAggregation] });
     });
 
     $.RULE("metricExpression", () => {
       $.OR([
-        { ALT: () => $.SUBRULE($.stringLiteral, { LABEL: "metricName" }) },
+        { ALT: () => $.SUBRULE($.identifierString, { LABEL: "metricName" }) },
         { ALT: () => $.SUBRULE($.identifier, { LABEL: "metricName" }) },
       ]);
     });
 
     $.RULE("dimensionExpression", () => {
       $.OR([
-        { ALT: () => $.SUBRULE($.stringLiteral, { LABEL: "dimensionName" }) },
+        {
+          ALT: () => $.SUBRULE($.identifierString, { LABEL: "dimensionName" }),
+        },
         { ALT: () => $.SUBRULE($.identifier, { LABEL: "dimensionName" }) },
       ]);
     });
 
     $.RULE("identifier", () => {
       $.CONSUME(Identifier);
+    });
+
+    $.RULE("identifierString", () => {
+      $.CONSUME(IdentifierString);
     });
 
     $.RULE("stringLiteral", () => {
@@ -138,6 +161,13 @@ export class ExpressionParser extends CstParser {
           // },
           // dimensions are not allowed outside aggregations
           {
+            ALT: () =>
+              $.SUBRULE($.functionExpression, {
+                ARGS: [outsideAggregation],
+                LABEL: "expression",
+              }),
+          },
+          {
             GATE: () => !outsideAggregation,
             ALT: () =>
               $.SUBRULE($.dimensionExpression, {
@@ -148,6 +178,12 @@ export class ExpressionParser extends CstParser {
             ALT: () =>
               $.SUBRULE($.parenthesisExpression, {
                 ARGS: [outsideAggregation],
+                LABEL: "expression",
+              }),
+          },
+          {
+            ALT: () =>
+              $.SUBRULE($.stringLiteral, {
                 LABEL: "expression",
               }),
           },
@@ -170,11 +206,71 @@ export class ExpressionParser extends CstParser {
       $.CONSUME(RParen);
     });
 
+    // FILTERS
+
+    $.RULE("filterBooleanExpression", () => {
+      $.SUBRULE($.filterAtomicExpression, {
+        LABEL: "lhs",
+      });
+      $.MANY(() => {
+        $.CONSUME(BooleanFilterOperator, { LABEL: "operator" });
+        $.SUBRULE2($.filterAtomicExpression, {
+          LABEL: "rhs",
+        });
+      });
+    });
+
+    $.RULE("filterFunctionExpression", () => {
+      $.CONSUME(FilterName, { LABEL: "functionName" });
+      $.SUBRULE($.call, { LABEL: "call" });
+    });
+
+    $.RULE("filterOperatorExpression", () => {
+      $.SUBRULE($.dimensionExpression, {
+        LABEL: "lhs",
+      });
+      $.CONSUME(FilterOperator, { LABEL: "operator" });
+      $.SUBRULE($.expression, {
+        LABEL: "rhs",
+      });
+    });
+
+    $.RULE("filterAtomicExpression", () => {
+      $.OR({
+        DEF: [
+          {
+            ALT: () =>
+              $.SUBRULE($.filterOperatorExpression, {
+                LABEL: "filter",
+              }),
+          },
+          {
+            ALT: () =>
+              $.SUBRULE($.filterFunctionExpression, {
+                LABEL: "filter",
+              }),
+          },
+          {
+            ALT: () =>
+              $.SUBRULE($.filterParenthesisExpression, {
+                LABEL: "filter",
+              }),
+          },
+        ],
+      });
+    });
+
+    $.RULE("filterParenthesisExpression", () => {
+      $.CONSUME(LParen);
+      $.SUBRULE($.filter);
+      $.CONSUME(RParen);
+    });
+
     this.performSelfAnalysis();
   }
 
   canTokenTypeBeInsertedInRecovery(tokType) {
-    console.log("canTokenTypeBeInsertedInRecovery", tokType);
+    // console.log("canTokenTypeBeInsertedInRecovery", tokType);
     switch (tokType) {
       case RParen:
       case LParen:
@@ -185,7 +281,7 @@ export class ExpressionParser extends CstParser {
   }
 
   getTokenToInsert(tokType) {
-    console.log("getTokenToInsert", tokType);
+    // console.log("getTokenToInsert", tokType);
     switch (tokType) {
       case RParen:
         return { image: ")" };

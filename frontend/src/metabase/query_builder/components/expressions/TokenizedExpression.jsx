@@ -86,7 +86,7 @@ export function parse(expressionString) {
       /^"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*"$/.test(token)
     ) {
       current.children.push({
-        type: "string-literal",
+        type: "identifier-string",
         tokenized: true,
         children: [
           { type: "open-quote", text: '"' },

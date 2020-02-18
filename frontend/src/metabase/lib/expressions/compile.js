@@ -1,9 +1,11 @@
 import _ from "underscore";
 import {
-  // aggregations:
-  getAggregationFromName,
-  // dimensions:
-  getDimensionFromName,
+  parseAggregationName,
+  parseFunctionName,
+  parseDimension,
+  parseMetric,
+  parseStringLiteral,
+  parseIdentifierString,
 } from "../expressions";
 
 import { ExpressionCstVisitor, parse } from "./parser";
@@ -23,44 +25,33 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
   }
 
   additionExpression(ctx) {
-    return this._arithmeticExpression(ctx);
+    return this._collapsibleOperatorExpression(ctx);
   }
   multiplicationExpression(ctx) {
-    return this._arithmeticExpression(ctx);
-  }
-  _arithmeticExpression(ctx) {
-    let initial = this.visit(ctx.lhs);
-    if (ctx.rhs) {
-      for (const index of ctx.rhs.keys()) {
-        const operator = ctx.operator[index].image;
-        const operand = this.visit(ctx.rhs[index]);
-        // collapse multiple consecutive operators into a single MBQL statement
-        if (Array.isArray(initial) && initial[0] === operator) {
-          initial.push(operand);
-        } else {
-          initial = [operator, initial, operand];
-        }
-      }
-    }
-    return initial;
+    return this._collapsibleOperatorExpression(ctx);
   }
 
   aggregationExpression(ctx) {
-    const aggregationName = ctx.aggregation[0].image;
-    const agg = this._getAggregationForName(aggregationName);
+    const aggregationName = ctx.aggregationName[0].image;
+    const agg = parseAggregationName(aggregationName);
     const args = ctx.call ? this.visit(ctx.call) : [];
     return [agg, ...args];
   }
-  nullaryCall(ctx) {
-    return [];
+
+  functionExpression(ctx) {
+    const functionName = ctx.functionName[0].image;
+    const fn = parseFunctionName(functionName);
+    const args = ctx.call ? this.visit(ctx.call) : [];
+    return [fn, ...args];
   }
-  unaryCall(ctx) {
-    return [this.visit(ctx.expression)];
+
+  call(ctx) {
+    return (ctx.arguments || []).map(argument => this.visit(argument));
   }
 
   metricExpression(ctx) {
     const metricName = this.visit(ctx.metricName);
-    const metric = this._getMetricForName(metricName);
+    const metric = parseMetric(metricName, this._options.query);
     if (!metric) {
       throw new Error(`Unknown Metric: ${metricName}`);
     }
@@ -68,7 +59,7 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
   }
   dimensionExpression(ctx) {
     const dimensionName = this.visit(ctx.dimensionName);
-    const dimension = this._getDimensionForName(dimensionName);
+    const dimension = parseDimension(dimensionName, this._options.query);
     if (!dimension) {
       throw new Error(`Unknown Field: ${dimensionName}`);
     }
@@ -78,8 +69,11 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
   identifier(ctx) {
     return ctx.Identifier[0].image;
   }
+  identifierString(ctx) {
+    return parseIdentifierString(ctx.IdentifierString[0].image);
+  }
   stringLiteral(ctx) {
-    return JSON.parse(ctx.StringLiteral[0].image);
+    return parseStringLiteral(ctx.StringLiteral[0].image);
   }
   numberLiteral(ctx) {
     return parseFloat(ctx.NumberLiteral[0].image) * (ctx.Minus ? -1 : 1);
@@ -91,18 +85,49 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
     return this.visit(ctx.expression);
   }
 
-  _getDimensionForName(dimensionName) {
-    return getDimensionFromName(dimensionName, this._options.query);
+  // FILTERS
+  filter(ctx) {
+    return this.visit(ctx.filterBooleanExpression);
   }
-  _getMetricForName(metricName) {
-    return this._options.query
-      .table()
-      .metrics.find(
-        metric => metric.name.toLowerCase() === metricName.toLowerCase(),
-      );
+  filterBooleanExpression(ctx) {
+    return this._collapsibleOperatorExpression(ctx);
   }
-  _getAggregationForName(aggregationName) {
-    return getAggregationFromName(aggregationName);
+  filterFunctionExpression(ctx) {
+    const functionName = ctx.functionName[0].image;
+    const agg = this._getFunctionForName(functionName);
+    const args = ctx.call ? this.visit(ctx.call) : [];
+    return [agg, ...args];
+  }
+  filterOperatorExpression(ctx) {
+    const operator = ctx.operator[0].image.toLowerCase();
+    const lhs = this.visit(ctx.lhs);
+    const rhs = this.visit(ctx.rhs);
+    return [operator, lhs, rhs];
+  }
+  filterParenthesisExpression(ctx) {
+    return this.visit(ctx.filter);
+  }
+  filterAtomicExpression(ctx) {
+    return this.visit(ctx.filter);
+  }
+
+  // HELPERS:
+
+  _collapsibleOperatorExpression(ctx) {
+    let initial = this.visit(ctx.lhs);
+    if (ctx.rhs) {
+      for (const index of ctx.rhs.keys()) {
+        const operator = ctx.operator[index].image.toLowerCase();
+        const operand = this.visit(ctx.rhs[index]);
+        // collapse multiple consecutive operators into a single MBQL statement
+        if (Array.isArray(initial) && initial[0] === operator) {
+          initial.push(operand);
+        } else {
+          initial = [operator, initial, operand];
+        }
+      }
+    }
+    return initial;
   }
 }
 

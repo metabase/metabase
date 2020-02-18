@@ -2,44 +2,82 @@ import _ from "underscore";
 
 import Dimension from "metabase-lib/lib/Dimension";
 
-import { VALID_OPERATORS, VALID_AGGREGATIONS } from "./config";
-export { VALID_OPERATORS, VALID_AGGREGATIONS } from "./config";
+import {
+  OPERATORS,
+  AGGREGATIONS,
+  FUNCTIONS,
+  FILTERS,
+  FILTER_OPERATORS,
+  getMBQLName,
+  getExpressionName,
+} from "./config";
+export {
+  OPERATORS,
+  AGGREGATIONS,
+  FUNCTIONS,
+  FILTERS,
+  FILTER_OPERATORS,
+} from "./config";
 
-const AGG_NAMES_MAP = new Map(
-  Array.from(VALID_AGGREGATIONS).map(([short, displayName]) =>
-    // case-insensitive
-    [displayName.toLowerCase(), short],
-  ),
-);
+// aggregations
 
-export function getAggregationFromName(name) {
-  // case-insensitive
-  return AGG_NAMES_MAP.get(name.toLowerCase());
+export function parseAggregationName(expressionName) {
+  return getMBQLName(expressionName);
 }
 
-export function getDimensionFromName(name, query) {
-  return query
-    .dimensionOptions()
-    .all()
-    .find(d => getDimensionName(d) === name);
+export function formatAggregationName(mbqlName) {
+  return getExpressionName(mbqlName);
 }
 
-export function isReservedWord(word) {
-  return !!getAggregationFromName(word);
+// functions
+
+export function parseFunctionName(expressionName) {
+  return getMBQLName(expressionName);
 }
 
-export function formatAggregationName(aggregationOperator) {
-  return VALID_AGGREGATIONS.get(aggregationOperator.short);
+export function formatFunctionName(mbqlName) {
+  return getExpressionName(mbqlName);
 }
 
+// IDENTIFIERS
+
+// can be double-quoted, but are not by default unless they have non-word characters or are reserved
 export function formatIdentifier(name) {
   return /^\w+$/.test(name) && !isReservedWord(name)
     ? name
     : JSON.stringify(name);
 }
 
+export function parseIdentifierString(identifierString) {
+  return JSON.parse(identifierString);
+}
+
+export function isReservedWord(word) {
+  return !!getMBQLName(word);
+}
+
+// METRICS
+
+export function parseMetric(metricName) {
+  return this._options.query
+    .table()
+    .metrics.find(
+      metric => metric.name.toLowerCase() === metricName.toLowerCase(),
+    );
+}
+
 export function formatMetricName(metric) {
   return formatIdentifier(metric.name);
+}
+
+// DIMENSIONS
+
+export function parseDimension(name, query) {
+  // FIXME: this is pretty inefficient, create a lookup table?
+  return query
+    .dimensionOptions()
+    .all()
+    .find(d => getDimensionName(d) === name);
 }
 
 export function formatDimensionName(dimension) {
@@ -50,6 +88,20 @@ export function getDimensionName(dimension) {
   return dimension.render();
 }
 
+// STRING LITERALS
+
+export function formatStringLiteral(mbqlString) {
+  // HACK: use JSON.stringify to escape single quotes by swapping single and doulble quotes before/after
+  return swapQuotes(JSON.stringify(swapQuotes(mbqlString)));
+}
+export function parseStringLiteral(expressionString) {
+  // HACK: use JSON.parse to unescape single quotes by swapping single and doulble quotes before/after
+  return swapQuotes(JSON.parse(swapQuotes(expressionString)));
+}
+function swapQuotes(str) {
+  return str.replace(/['"]/g, q => (q === "'" ? '"' : "'"));
+}
+
 // move to query lib
 
 export function isExpression(expr) {
@@ -57,7 +109,9 @@ export function isExpression(expr) {
     isMath(expr) ||
     isAggregation(expr) ||
     isFieldReference(expr) ||
-    isMetric(expr)
+    isMetric(expr) ||
+    isFilter(expr) ||
+    isFunction(expr)
   );
 }
 
@@ -78,7 +132,7 @@ export function isMetric(expr) {
 export function isMath(expr) {
   return (
     Array.isArray(expr) &&
-    VALID_OPERATORS.has(expr[0]) &&
+    OPERATORS.has(expr[0]) &&
     _.all(expr.slice(1), isValidArg)
   );
 }
@@ -86,10 +140,23 @@ export function isMath(expr) {
 export function isAggregation(expr) {
   return (
     Array.isArray(expr) &&
-    VALID_AGGREGATIONS.has(expr[0]) &&
+    AGGREGATIONS.has(expr[0]) &&
     _.all(expr.slice(1), isValidArg)
   );
 }
+
+export function isFilter(expr) {
+  return (
+    Array.isArray(expr) &&
+    (FILTERS.has(expr[0]) || FILTER_OPERATORS.has(expr[0]))
+  ); // && _.all(expr.slice(1), isValidArg)
+}
+
+export function isFunction(expr) {
+  return Array.isArray(expr) && FUNCTIONS.has(expr[0]); // && _.all(expr.slice(1), isValidArg)
+}
+
+// UTILS
 
 export function isValidArg(arg) {
   return isExpression(arg) || isFieldReference(arg) || typeof arg === "number";

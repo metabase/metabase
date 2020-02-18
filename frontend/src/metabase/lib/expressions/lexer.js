@@ -1,14 +1,27 @@
 import { Lexer, createToken } from "chevrotain";
 
 import {
-  VALID_AGGREGATIONS,
-  NULLARY_AGGREGATIONS,
-  UNARY_AGGREGATIONS,
+  getExpressionName as getExpressionName_,
+  AGGREGATIONS,
+  FUNCTIONS,
+  FILTERS,
 } from "./config";
+
+function getExpressionName(mbqlName) {
+  const expressionName = getExpressionName_(mbqlName);
+  if (!expressionName) {
+    throw new Error("Missing expression name for " + mbqlName);
+  }
+  return expressionName;
+}
 
 export const Identifier = createToken({
   name: "Identifier",
   pattern: /\w+/,
+});
+export const IdentifierString = createToken({
+  name: "IdentifierString",
+  pattern: /"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*"/,
 });
 export const NumberLiteral = createToken({
   name: "NumberLiteral",
@@ -16,7 +29,7 @@ export const NumberLiteral = createToken({
 });
 export const StringLiteral = createToken({
   name: "StringLiteral",
-  pattern: /"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*"/,
+  pattern: /'(?:[^\\']+|\\(?:[bfnrtv'\\/]|u[0-9a-fA-F]{4}))*'/,
 });
 
 export const AdditiveOperator = createToken({
@@ -49,38 +62,77 @@ export const Div = createToken({
   categories: [MultiplicativeOperator],
 });
 
-export const Aggregation = createToken({
+export const AggregationName = createToken({
   name: "Aggregation",
   pattern: Lexer.NA,
 });
 
-export const NullaryAggregation = createToken({
-  name: "NullaryAggregation",
-  pattern: Lexer.NA,
-  categories: [Aggregation],
-});
-const nullaryAggregationTokens = NULLARY_AGGREGATIONS.map(short =>
+const aggregationNameTokens = Array.from(AGGREGATIONS).map(short =>
   createToken({
-    name: VALID_AGGREGATIONS.get(short),
-    pattern: new RegExp(VALID_AGGREGATIONS.get(short), "i"),
-    categories: [NullaryAggregation],
+    name: getExpressionName(short),
+    pattern: new RegExp(getExpressionName(short), "i"),
+    categories: [AggregationName],
     longer_alt: Identifier,
   }),
 );
 
-export const UnaryAggregation = createToken({
-  name: "UnaryAggregation",
+export const FunctionName = createToken({
+  name: "FunctionName",
   pattern: Lexer.NA,
-  categories: [Aggregation],
 });
-const unaryAggregationTokens = UNARY_AGGREGATIONS.map(short =>
+
+const functionNameTokens = Array.from(FUNCTIONS).map(short =>
   createToken({
-    name: VALID_AGGREGATIONS.get(short),
-    pattern: new RegExp(VALID_AGGREGATIONS.get(short), "i"),
-    categories: [UnaryAggregation],
+    name: getExpressionName(short),
+    pattern: new RegExp(getExpressionName(short), "i"),
+    categories: [FunctionName],
     longer_alt: Identifier,
   }),
 );
+
+export const FilterName = createToken({
+  name: "FilterName",
+  pattern: Lexer.NA,
+});
+
+const filterNameTokens = Array.from(FILTERS).map(short =>
+  createToken({
+    name: getExpressionName(short),
+    pattern: new RegExp(getExpressionName(short), "i"),
+    categories: [FilterName],
+    longer_alt: Identifier,
+  }),
+);
+
+export const FilterOperator = createToken({
+  name: "FilterOperator",
+  pattern: Lexer.NA,
+});
+
+export const BooleanFilterOperator = createToken({
+  name: "BooleanFilterOperator",
+  pattern: Lexer.NA,
+});
+
+const filterOperatorTokens = [
+  createToken({ name: "NE", pattern: /\!\=/, categories: [FilterOperator] }),
+  createToken({ name: "LTE", pattern: /\<\=/, categories: [FilterOperator] }),
+  createToken({ name: "GTE", pattern: /\>\=/, categories: [FilterOperator] }),
+  createToken({ name: "LT", pattern: /\</, categories: [FilterOperator] }),
+  createToken({ name: "GT", pattern: /\>/, categories: [FilterOperator] }),
+  createToken({ name: "EQ", pattern: /\=/, categories: [FilterOperator] }),
+  createToken({
+    name: "And",
+    pattern: /and/i,
+    categories: [BooleanFilterOperator],
+  }),
+  createToken({
+    name: "Or",
+    pattern: /or/i,
+    categories: [BooleanFilterOperator],
+  }),
+];
+
 export const Comma = createToken({
   name: "Comma",
   pattern: /,/,
@@ -117,13 +169,19 @@ export const allTokens = [
   Div,
   AdditiveOperator,
   MultiplicativeOperator,
-  Aggregation,
-  NullaryAggregation,
-  ...nullaryAggregationTokens,
-  UnaryAggregation,
-  ...unaryAggregationTokens,
+  AggregationName,
+  ...aggregationNameTokens,
+  FunctionName,
+  ...functionNameTokens,
+  FilterName,
+  ...filterNameTokens,
+  FilterOperator,
+  BooleanFilterOperator,
+  ...filterOperatorTokens,
   StringLiteral,
   NumberLiteral,
+  IdentifierString,
+  // must come last:
   Identifier,
 ];
 

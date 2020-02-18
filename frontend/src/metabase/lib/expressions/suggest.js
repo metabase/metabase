@@ -6,7 +6,7 @@ import { parser } from "./parser";
 import {
   // aggregations:
   formatAggregationName,
-  getAggregationFromName,
+  parseAggregationName,
   // dimensions:
   getDimensionName,
   formatDimensionName,
@@ -19,12 +19,13 @@ import {
   RParen,
   AdditiveOperator,
   MultiplicativeOperator,
-  Aggregation,
-  NullaryAggregation,
-  UnaryAggregation,
+  AggregationName,
+  FunctionName,
   StringLiteral,
   NumberLiteral,
+  Minus,
   Identifier,
+  IdentifierString,
 } from "./lexer";
 
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
@@ -130,12 +131,12 @@ export function suggest(
       });
     } else if (
       nextTokenType === Identifier ||
-      nextTokenType === StringLiteral
+      nextTokenType === IdentifierString
     ) {
       if (!outsideAggregation) {
         let dimensions = [];
         if (startRule === "aggregation" && currentAggregationToken) {
-          const aggregationShort = getAggregationFromName(
+          const aggregationShort = parseAggregationName(
             getImage(currentAggregationToken),
           );
           dimensions = query.aggregationFieldOptions(aggregationShort).all();
@@ -163,25 +164,19 @@ export function suggest(
           })),
         );
       }
-    } else if (
-      nextTokenType === Aggregation ||
-      nextTokenType === NullaryAggregation ||
-      nextTokenType === UnaryAggregation ||
-      nextTokenType === Identifier ||
-      nextTokenType === StringLiteral
-    ) {
+    } else if (nextTokenType === AggregationName) {
       if (outsideAggregation) {
         finalSuggestions.push(
           ...query
             .aggregationOperatorsWithoutRows()
-            .filter(a => formatAggregationName(a))
+            .filter(a => formatAggregationName(a.short))
             .map(aggregationOperator => {
               const arity = aggregationOperator.fields.length;
               return {
                 type: "aggregations",
-                name: formatAggregationName(aggregationOperator),
+                name: formatAggregationName(aggregationOperator.short),
                 text:
-                  formatAggregationName(aggregationOperator) +
+                  formatAggregationName(aggregationOperator.short) +
                   (arity > 0 ? "(" : " "),
                 postfixText: arity > 0 ? ")" : " ",
                 prefixTrim: /\w+$/,
@@ -198,10 +193,16 @@ export function suggest(
         //     postfixTrim: /^\w+\s*/
         // })))
       }
-    } else if (nextTokenType === NumberLiteral) {
-      // skip number literal
+    } else if (nextTokenType === FunctionName) {
+      // TODO
+    } else if (
+      nextTokenType === StringLiteral ||
+      nextTokenType === NumberLiteral ||
+      nextTokenType === Minus
+    ) {
+      // skip number/string literal
     } else {
-      // console.warn("non exhaustive match", nextTokenType.name, suggestion);
+      console.warn("non exhaustive match", nextTokenType.name, suggestion);
     }
   }
 

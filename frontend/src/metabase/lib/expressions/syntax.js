@@ -60,19 +60,33 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
 
   aggregationExpression(ctx) {
     const args = ctx.call ? this.visit(ctx.call) : [];
-    return syntax("aggregation", token(ctx.aggregation[0]), ...args);
+    return syntax("aggregation", token(ctx.aggregationName[0]), ...args);
   }
 
-  nullaryCall(ctx) {
-    return [token(ctx.LParen[0]), token(ctx.RParen[0])];
+  functionExpression(ctx) {
+    const args = ctx.call ? this.visit(ctx.call) : [];
+    return syntax("function", token(ctx.functionName[0]), ...args);
   }
-  unaryCall(ctx) {
-    return [
-      token(ctx.LParen[0]),
-      this.visit(ctx.expression),
-      token(ctx.RParen[0]),
-    ];
+
+  call(ctx) {
+    const parts = [];
+    if (ctx.LParen) {
+      parts.push(token(ctx.LParen[0]));
+    }
+    if (ctx.arguments) {
+      for (let i = 0; i < ctx.arguments.length; i++) {
+        parts.push(this.visit(ctx.arguments[i]));
+        if (ctx.Comma && ctx.Comma[i]) {
+          parts.push(token(ctx.Comma[i]));
+        }
+      }
+    }
+    if (ctx.RParen) {
+      parts.push(token(ctx.RParen[0]));
+    }
+    return parts;
   }
+
   metricExpression(ctx) {
     const metricName = this.visit(ctx.metricName);
     return syntax("metric", metricName);
@@ -84,6 +98,9 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
 
   identifier(ctx) {
     return syntax("identifier", token(ctx.Identifier[0]));
+  }
+  identifierString(ctx) {
+    return syntax("identifier-string", token(ctx.IdentifierString[0]));
   }
   stringLiteral(ctx) {
     return syntax("string", token(ctx.StringLiteral[0]));
@@ -106,6 +123,15 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
       token(ctx.RParen[0]),
     );
   }
+
+  // FILTERS
+
+  filter() {}
+  filterBooleanExpression() {}
+  filterFunctionExpression() {}
+  filterParenthesisExpression() {}
+  filterOperatorExpression() {}
+  filterAtomicExpression() {}
 }
 
 export function parse(
@@ -191,14 +217,21 @@ function trimTrailingString(tree, string = '"') {
 }
 
 // inserts whitespace tokens back into the syntax tree
+function whitespace(text) {
+  if (!/^\s+$/.test(text)) {
+    throw new Error("Recovered non-whitespace: " + text);
+  }
+  return { text };
+}
+
 function recoverWhitespace(root, source) {
   const node = _recoverWhitespace(root, source);
   if (node.start > 0) {
-    node.children.unshift({ text: source.substring(0, node.start) });
+    node.children.unshift(whitespace(source.substring(0, node.start)));
     node.start = 0;
   }
   if (node.end < source.length - 1) {
-    node.children.push({ text: source.substring(node.end + 1) });
+    node.children.push(whitespace(source.substring(node.end + 1)));
     node.end = source.length - 1;
   }
   return node;
@@ -212,9 +245,9 @@ function _recoverWhitespace(node, source) {
       const current = _recoverWhitespace(child, source);
       // if the current node doesn't start where the previous node ended then add whitespace token back in
       if (previous && current.start > previous.end + 1) {
-        children.push({
-          text: source.substring(previous.end + 1, current.start),
-        });
+        children.push(
+          whitespace(source.substring(previous.end + 1, current.start)),
+        );
       }
       children.push(current);
       previous = current;
