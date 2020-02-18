@@ -27,5 +27,7 @@
         (.flush writer))
 
       (finish! [_ _]
+        (.flush writer) ; NOCOMMIT
+        (.flush os)
         (.close writer)
         (.close os)))))
