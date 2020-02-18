@@ -9,12 +9,24 @@
             [weavejester.dependency :as dep])
   (:import clojure.lang.ExceptionInfo))
 
+(defn- query->template-tags
+  [query]
+  (vals (get-in query [:native :template-tags])))
+
+(defn- query->tag-card-ids
+  [query]
+  (keep :card (query->template-tags query)))
+
 (defn tags-referenced-cards
   "Returns Card instances referenced by the given native `query`."
   [query]
-  (->> (get-in query [:native :template-tags])
-       (keep (comp :card val))
-       (mapv #(db/select-one 'Card :id %))))
+  (mapv
+   (fn [card-id]
+     (if-let [card (db/select-one 'Card :id card-id)]
+       card
+       (throw (ex-info (str (deferred-tru "Referenced question #{0} could not be found" (str card-id)))
+                       {:card-id card-id}))))
+   (query->tag-card-ids query)))
 
 (defn- check-query-database-id=
   [query database-id]
@@ -31,14 +43,6 @@
     (qp.resolve-tables/resolve-source-tables* referenced-query)
     (qp.resolve-fields/resolve-fields* referenced-query))
   query)
-
-(defn- query->template-tags
-  [query]
-  (vals (get-in query [:native :template-tags])))
-
-(defn- query->tag-card-ids
-  [query]
-  (keep :card (query->template-tags query)))
 
 (defn- card-subquery-graph
   [graph card-id]
