@@ -38,9 +38,11 @@
    ;; various other stuff from the original Field can and should be included such as `:settings`
    s/Any                          s/Any})
 
+;; TODO - I think we should change the signature of this to `(column-info query cols rows)`
 (defmulti column-info
   "Determine the `:cols` info that should be returned in the query results, which is a sequence of maps containing
-  information about the columns in the results. Dispatches on query type."
+  information about the columns in the results. Dispatches on query type. `results` is a map with keys `:cols` and,
+  optionally, `:rows`, if available."
   {:arglists '([query results])}
   (fn [query _]
     (:type query)))

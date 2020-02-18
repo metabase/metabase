@@ -58,8 +58,9 @@
   "Util fn for writing an Exception to the OutputStream provided by `streaming-response`."
   [^OutputStream os, ^Throwable e]
   (with-open [writer (BufferedWriter. (OutputStreamWriter. os))]
-    (json/generate-stream (format-exception e)
-                          writer))
+    (u/ignore-exceptions
+      (json/generate-stream (format-exception e)
+                            writer)))
   (.close os))
 
 ;; TODO - what's the overhead of this?

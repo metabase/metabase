@@ -2,6 +2,7 @@
   "Druid driver."
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
+            [clojure.core.async :as a]
             [clojure.tools.logging :as log]
             [metabase
              [driver :as driver]
@@ -9,6 +10,7 @@
             [metabase.driver.druid
              [execute :as execute]
              [query-processor :as qp]]
+            [metabase.query-processor.context :as context]
             [metabase.util
              [i18n :refer [trs tru]]
              [ssh :as ssh]]))
@@ -76,10 +78,13 @@
           ;; Re-throw a new exception with `message` set to the extracted message
           (throw (Exception. message e)))))))
 
-(defn- do-query-with-cancellation [details query]
+(defn- do-query-with-cancellation [canceled-chan details query]
   {:pre [(map? details) (map? query)]}
   (let [query-id  (get-in query [:context :queryId])
         query-fut (future (do-query details query))]
+    (a/go
+      (when (a/<! canceled-chan)
+        (future-cancel query-fut)))
     (try
       ;; Run the query in a future so that this thread will be interrupted, not the thread running the query (which is
       ;; not interrupt aware)
@@ -155,8 +160,8 @@
   (qp/mbql->native query))
 
 (defmethod driver/execute-reducible-query :druid
-  [_ query _ respond]
-  (execute/execute-reducible-query do-query-with-cancellation query respond))
+  [_ query context respond]
+  (execute/execute-reducible-query (partial do-query-with-cancellation (context/canceled-chan context)) query respond))
 
 (doseq [[feature supported?] {:set-timezone            true
                               :expression-aggregations true}]

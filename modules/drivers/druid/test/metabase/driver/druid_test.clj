@@ -395,7 +395,8 @@
 
 (deftest results-order-test
   (mt/test-driver :druid
-    (testing "Make sure Druid cols + columns come back in the same order and that that order is the expected MBQL columns order (#9294)"
+    (testing (str "Make sure Druid cols + columns come back in the same order and that that order is the expected MBQL "
+                  "columns order (#9294)")
       (tqpt/with-flattened-dbdef
         (let [results (data/run-mbql-query checkins
                         {:limit 1})]

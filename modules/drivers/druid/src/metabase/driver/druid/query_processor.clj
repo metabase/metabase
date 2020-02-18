@@ -1047,7 +1047,7 @@
    (fn
      ([updated-query]
       (-> updated-query
-          (update :projections conj :timestamp)
+          #_(update :projections conj :timestamp)
           ;; If you specify nil or empty `:dimensions` or `:metrics` Druid will just return all of the ones available.
           ;; In cases where we don't want anything to be returned in one or the other, we'll ask for a `:___dummy`
           ;; column tead. Druid happily returns `nil` for the column in every row, and it will get auto-filtered out
@@ -1057,9 +1057,9 @@
 
      ([updated-query field]
       (cond
-        ;; the `:timestamp` field
-        (datetime-field? field)
-        updated-query
+        (and (datetime-field? field)
+             (= (keyword (field-clause->name field)) :timestamp))
+        (update updated-query :projections conj :timestamp)
 
         (= (dimension-or-metric? field) :dimension)
         (-> updated-query

@@ -1,7 +1,6 @@
 (ns metabase.driver.druid.execute
   (:require [cheshire.core :as json]
             [clojure.math.numeric-tower :as math]
-            [flatland.ordered.map :as ordered-map]
             [java-time :as t]
             [metabase.driver.druid.query-processor :as druid.qp]
             [metabase.query-processor
@@ -55,24 +54,22 @@
                     (merge {:timestamp (ts-getter event)} (:result event))))})
 
 
-(s/defn ^:private col-names->getter-fns :- {s/Keyword (s/cond-pre s/Keyword (s/pred fn?))}
-  "Given a sequence of `columns` keywords, return a map of appropriate getter functions to get values from a single
+(s/defn ^:private col-names->getter-fns :- [(s/cond-pre s/Keyword (s/pred fn?))]
+  "Given a sequence of `columns` keywords, return a sequence of appropriate getter functions to get values from a single
   result row. Normally, these are just the keyword column names themselves, but for `:timestamp___int`, we'll also
   parse the result as an integer (for further explanation, see the docstring for
   `units-that-need-post-processing-int-parsing`). We also round `:distinct___count` in order to return an integer
   since Druid returns the approximate floating point value for cardinality queries (See Druid documentation regarding
   cardinality and HLL)."
   [columns :- [s/Keyword]]
-  (into
-   (ordered-map/ordered-map)
-   (for [k columns]
-     [k (case k
-          :distinct___count (comp math/round k)
-          :timestamp___int  (comp (fn [^String s]
-                                    (when (some? s)
-                                      (Integer/parseInt s)))
-                                  k)
-          k)])))
+  (for [k columns]
+    (case k
+      :distinct___count (comp math/round k)
+      :timestamp___int  (comp (fn [^String s]
+                                (when (some? s)
+                                  (Integer/parseInt s)))
+                              k)
+      k)))
 
 (defn- resolve-timezone
   "Returns the timezone object (either report-timezone or JVM timezone). Returns nil if the timezone is UTC as the
@@ -94,8 +91,8 @@
                   {:name (u/qualified-name col-name)}))}))
 
 (defn- result-rows [result col-names]
-  (let [col-name->getter (col-names->getter-fns col-names)
-        getters          (vec (vals col-name->getter))]
+  (let [getters (vec (col-names->getter-fns col-names))]
+    (println "(u/pprint-to-str 'yellow col-name->getter):\n" (u/pprint-to-str 'yellow getters)) ; NOCOMMIT
     (for [row (:results result)]
       (mapv row getters))))
 

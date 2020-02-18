@@ -83,10 +83,10 @@
            (and source-query (seq source-metadata)))
        (every? empty? [aggregations breakouts fields])))
 
-(s/defn ^:private add-implicit-fields #_:- #_mbql.s/MBQLQuery
+(s/defn ^:private add-implicit-fields
   "For MBQL queries with no aggregation, add a `:fields` key containing all Fields in the source Table as well as any
   expressions definied in the query."
-  [{source-table-id :source-table, :keys [expressions source-metadata], :as inner-query} :- mbql.s/MBQLQuery]
+  [{source-table-id :source-table, :keys [expressions source-metadata], :as inner-query}]
   (if-not (should-add-implicit-fields? inner-query)
     inner-query
     (let [fields      (if source-table-id
