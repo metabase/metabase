@@ -15,6 +15,7 @@
             [metabase.pulse.render
              [body :as render.body]
              [style :as render.style]]
+            [metabase.query-processor.streaming.interface :as qp.streaming.i]
             [metabase.util
              [export :as export]
              [i18n :refer [deferred-trs trs tru]]
@@ -220,10 +221,10 @@
         (throw (IOException. ex-msg e))))))
 
 (defn- create-result-attachment-map [export-type card-name ^File attachment-file]
-  (let [{:keys [content-type ext]} (get export/export-formats export-type)]
+  (let [{:keys [content-type]} (qp.streaming.i/stream-options export-type)]
     {:type         :attachment
      :content-type content-type
-     :file-name    (format "%s.%s" card-name ext)
+     :file-name    (format "%s.%s" card-name (name export-type))
      :content      (-> attachment-file .toURI .toURL)
      :description  (format "More results for '%s'" card-name)}))
 
