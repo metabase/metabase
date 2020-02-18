@@ -321,10 +321,10 @@
 ;; JDBC driver where it can't parse those correctly. We can do it ourselves in that case.
 (defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/TIME]
   [driver ^ResultSet rs rsmeta ^Integer i]
-  (let [parent-method (get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/TIME])]
+  (let [parent-thunk ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/TIME]) driver rs rsmeta i)]
     (fn []
       (try
-        (parent-method driver rs rsmeta i)
+        (parent-thunk)
         (catch Throwable _
           (let [s (.getString rs i)]
             (log/tracef "Error in Postgres JDBC driver reading TIME value, fetching as string '%s'" s)
