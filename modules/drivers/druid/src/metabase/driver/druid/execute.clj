@@ -74,7 +74,7 @@
      some?
      (for [k actual-col-names]
        (case k
-         :distinct___count (defn- get-distinct-count [row]
+         :distinct___count (fn get-distinct-count [row]
                              (some-> (get row :distinct___count) math/round))
          :timestamp___int  (fn get-timestamp-int [row]
                              (some-> (get row :timestamp___int) Integer/parseInt))

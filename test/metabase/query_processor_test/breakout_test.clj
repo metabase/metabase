@@ -214,28 +214,33 @@
         (update-in [:binning_info :min_value] round-to-decimal)
         (update-in [:binning_info :max_value] round-to-decimal))))
 
-;;Validate binning info is returned with the binning-strategy
-(datasets/expect-with-drivers (mt/normal-drivers-with-feature :binning)
-  (assoc (qp.test/breakout-col :venues :latitude)
-    :binning_info {:min_value 10.0, :max_value 50.0, :num_bins 4, :bin_width 10.0, :binning_strategy :bin-width}
-    :field_ref    [:binning-strategy (data/$ids venues $latitude) :bin-width nil
-                   {:min-value 10.0, :max-value 50.0, :num-bins 4, :bin-width 10.0}])
-  (-> (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :breakout    [[:binning-strategy $latitude :default]]})
-      qp.test/cols
-      first))
+(deftest binning-info-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :binning)
+    (testing "Validate binning info is returned with the binning-strategy"
+      (testing "binning-strategy = default"
+        ;; base_type can differ slightly between drivers and it's really not important for the purposes of this test
+        (is (= (assoc (dissoc (qp.test/breakout-col :venues :latitude) :base_type)
+                      :binning_info {:min_value 10.0, :max_value 50.0, :num_bins 4, :bin_width 10.0, :binning_strategy :bin-width}
+                      :field_ref    [:binning-strategy (data/$ids venues $latitude) :bin-width nil
+                                     {:min-value 10.0, :max-value 50.0, :num-bins 4, :bin-width 10.0}])
+               (-> (data/run-mbql-query venues
+                     {:aggregation [[:count]]
+                      :breakout    [[:binning-strategy $latitude :default]]})
+                   qp.test/cols
+                   first
+                   (dissoc :base_type)))))
 
-(datasets/expect-with-drivers (mt/normal-drivers-with-feature :binning)
-  (assoc (qp.test/breakout-col :venues :latitude)
-    :binning_info {:min_value 7.5, :max_value 45.0, :num_bins 5, :bin_width 7.5, :binning_strategy :num-bins}
-    :field_ref    [:binning-strategy (data/$ids venues $latitude) :num-bins 5
-                   {:min-value 7.5, :max-value 45.0, :num-bins 5, :bin-width 7.5}])
-  (-> (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :breakout    [[:binning-strategy $latitude :num-bins 5]]})
-      qp.test/cols
-      first))
+      (testing "binning-strategy = num-bins: 5"
+        (is (= (assoc (dissoc (qp.test/breakout-col :venues :latitude) :base_type)
+                      :binning_info {:min_value 7.5, :max_value 45.0, :num_bins 5, :bin_width 7.5, :binning_strategy :num-bins}
+                      :field_ref    [:binning-strategy (data/$ids venues $latitude) :num-bins 5
+                                     {:min-value 7.5, :max-value 45.0, :num-bins 5, :bin-width 7.5}])
+               (-> (data/run-mbql-query venues
+                     {:aggregation [[:count]]
+                      :breakout    [[:binning-strategy $latitude :num-bins 5]]})
+                   qp.test/cols
+                   first
+                   (dissoc :base_type))))))))
 
 (deftest binning-error-test
   (mt/test-drivers (mt/normal-drivers-with-feature :binning)

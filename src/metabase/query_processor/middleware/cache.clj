@@ -93,7 +93,7 @@
 (defn- save-results! [query-hash start-time-ms results]
   (let [total-time-ms (- (System/currentTimeMillis) start-time-ms)
         min-ttl-ms    (* (public-settings/query-caching-min-ttl) 1000)]
-    (log/info (format "Query took %d ms to run; miminum for cache eligibility is %d ms" total-time-ms min-ttl-ms))
+    (log/info (format "Query took %d ms to run; miminum for cache eligibility is %.0f ms" total-time-ms min-ttl-ms))
     (when (>= total-time-ms min-ttl-ms)
       (log/info "Caching results for next time for query" (u/emoji "💾"))
       (i/save-results! @backend-instance query-hash results))))

@@ -40,7 +40,8 @@
                              :type/UUID           "UUID"}]
   (defmethod sql.tx/field-base-type->sql-type [:postgres base-type] [_ _] db-type))
 
-(defmethod tx/dbdef->connection-details :postgres [_ context {:keys [database-name]}]
+(defmethod tx/dbdef->connection-details :postgres
+  [_ context {:keys [database-name]}]
   (merge
    {:host     (tx/db-test-env-var-or-throw :postgresql :host "localhost")
     :port     (tx/db-test-env-var-or-throw :postgresql :port 5432)

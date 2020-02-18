@@ -4,7 +4,9 @@
             [metabase.models.query-cache :refer [QueryCache]]
             [metabase.query-processor.middleware.cache :as cache]
             [metabase.test :as mt]
-            [toucan.db :as db]))
+            [toucan.db :as db]
+            [metabase.util :as u]
+            [clojure.core.async :as a]))
 
 (deftest is-cacheable-test
   (testing "something is-cacheable? if it includes a cach_ttl and the caching setting is enabled"
@@ -25,7 +27,6 @@
 
 (defn- run-query [& {:as query-kvs}]
   (cached?
-   ;; TODO - needs to delay for `*query-execution-delay-ms*`
    (:metadata
     (mt/test-qp-middleware
      cache/maybe-return-cached-results
@@ -68,10 +69,10 @@
     (testing "...but if the cache entry is past it's TTL, the cached results shouldn't be returned"
       (mt/with-temporary-setting-values [enable-query-caching  true
                                          query-caching-min-ttl 0]
-        (run-query :cache-ttl 1)
-        (Thread/sleep 2000)
+        (run-query :cache-ttl 0.1)
+        (Thread/sleep 200)
         (is (= :not-cached
-               (run-query :cache-ttl 1)))))
+               (run-query :cache-ttl 0.1)))))
 
     (testing "if caching is disabled then cache shouldn't be used even if there's something valid in there"
       (mt/with-temporary-setting-values [enable-query-caching  true
@@ -91,15 +92,15 @@
                (run-query)))))
 
     (testing (str "check that `query-caching-max-ttl` is respected. Whenever a new query is cached the cache should "
-                  "evict any entries older that `query-caching-max-ttl`. Set max-ttl to one second, run query `:abc`, "
-                  "then wait two seconds, and run `:def`. This should trigger the cache flush for entries past "
+                  "evict any entries older that `query-caching-max-ttl`. Set max-ttl to 100 ms, run query `:abc`, "
+                  "then wait 200 ms, and run `:def`. This should trigger the cache flush for entries past "
                   "`:max-ttl`; and the cached entry for `:abc` should be deleted. Running `:abc` a subsequent time "
                   "should not return cached results")
       (mt/with-temporary-setting-values [enable-query-caching  true
-                                         query-caching-max-ttl 1
+                                         query-caching-max-ttl 0.1
                                          query-caching-min-ttl 0]
         (run-query)
-        (Thread/sleep 2000)
+        (Thread/sleep 200)
         (run-query, :query :def)
         (is (= :not-cached
                (run-query)))))
@@ -129,8 +130,8 @@
 
     (testing "...but if it takes *longer* than the min TTL, it should be cached"
       (mt/with-temporary-setting-values [enable-query-caching  true
-                                         query-caching-min-ttl 1]
-        (binding [*query-execution-delay-ms* 1200]
+                                         query-caching-min-ttl 0.1]
+        (binding [*query-execution-delay-ms* 120]
           (run-query)
           (is (= :cached
                  (run-query))))))))

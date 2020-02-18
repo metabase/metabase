@@ -233,7 +233,7 @@
   (if-not (contains? (set (map :name cols)) "__rownum__")
     (respond metadata rows)
     ;; if we added __rownum__ it will always be the last column and value so we can just remove that
-    (respond (butlast cols)
+    (respond (update metadata :cols butlast)
              (eduction
               (fn [rf]
                 (fn
