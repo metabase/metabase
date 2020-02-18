@@ -3,6 +3,7 @@
              [string :as str]
              [test :refer :all]]
             [colorize.core :as colorize]
+            [honeysql.core :as hsql]
             [java-time :as t]
             [medley.core :as m]
             [metabase

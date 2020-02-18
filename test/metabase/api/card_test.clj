@@ -1170,27 +1170,26 @@
                                             :middleware {:add-default-userland-constraints? true
                                                          :userland-query?                   true}}}]
     (with-cards-in-readable-collection card
-      (letfn [(csv-row-count []
-                (count (str/split-lines ((test-users/user->client :rasta) :post 202 (format "card/%d/query/csv" (u/get-id card))))))]
-        ;; for some reason I haven't figured out yet this returns one row the first time around (?)
-        (csv-row-count)
-        (testing "Sanity check: this CSV download should normally have 101 rows"
-          (is (= 101
-                 (csv-row-count))))
-        (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
-          (testing (str "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even "
-                        "if the query comes in with `add-default-userland-constraints` (as will be the case if the query "
-                        "gets saved from one that had it -- see #9831)")
-            (is (= 101
-                   (csv-row-count))))
+      (let [orig card-api/run-query-for-card-async]
+        (with-redefs [card-api/run-query-for-card-async (fn [card-id export-format & options]
+                                                          (apply orig card-id export-format
+                                                                 :run (fn [{:keys [constraints]} _]
+                                                                        {:constraints constraints})
+                                                                 options))]
+          (testing "Sanity check: this CSV download should not be subject to C O N S T R A I N T S"
+            (is (= {:constraints nil}
+                   ((test-users/user->client :rasta) :post 200 (format "card/%d/query/csv" (u/get-id card))))))
+          (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+            (testing (str "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even "
+                          "if the query comes in with `add-default-userland-constraints` (as will be the case if the query "
+                          "gets saved from one that had it -- see #9831)")
+              (is (= {:constraints nil}
+                     ((test-users/user->client :rasta) :post 200 (format "card/%d/query/csv" (u/get-id card))))))
 
-          (testing (str "non-\"download\" queries should still get the default constraints (this also is a sanitiy "
-                        "check to make sure the `with-redefs` in the test above actually works)")
-            (let [{row-count :row_count, :as result} ((test-users/user->client :rasta) :post 202
-                                                      (format "card/%d/query" (u/get-id card)))]
-              (is (= 10
-                     (or row-count result))
-                  (format "Result = %s" (u/pprint-to-str result))))))))))
+            (testing (str "non-\"download\" queries should still get the default constraints (this also is a sanitiy "
+                          "check to make sure the `with-redefs` in the test above actually works)")
+              (is (= {:constraints {:max-results 10, :max-results-bare-rows 10}}
+                     ((test-users/user->client :rasta) :post 200 (format "card/%d/query" (u/get-id card))))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

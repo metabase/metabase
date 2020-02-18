@@ -4,7 +4,10 @@
             [metabase.models.query-cache :refer [QueryCache]]
             [metabase.query-processor.middleware.cache :as cache]
             [metabase.test :as mt]
+            [metabase.test.fixtures :as fixtures]
             [toucan.db :as db]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest is-cacheable-test
   (testing "something is-cacheable? if it includes a cach_ttl and the caching setting is enabled"
@@ -50,6 +53,8 @@
   `(do ~@(interleave (repeat `(clear-cache!)) body)))
 
 (deftest end-to-end-test
+  ;; run the query at least once so stuff like loading data can happen before the timed stuff below
+  (run-query)
   (with-cache-cleared-before-each
     (testing "if there's nothing in the cache, cached results should *not* be returned"
       (mt/with-temporary-setting-values [enable-query-caching  true
