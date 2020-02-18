@@ -1166,12 +1166,12 @@
                  {:request-options {:as :byte-array}}))))))))
 
 (deftest download-default-constraints-test
-  (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
-    (tt/with-temp Card [card {:dataset_query {:database   (data/id)
-                                              :type       :query
-                                              :query      {:source-table (data/id :venues)}
-                                              :middleware {:add-default-userland-constraints? true
-                                                           :userland-query?                   true}}}]
+  (tt/with-temp Card [card {:dataset_query {:database   (data/id)
+                                            :type       :query
+                                            :query      {:source-table (data/id :venues)}
+                                            :middleware {:add-default-userland-constraints? true
+                                                         :userland-query?                   true}}}]
+    (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
       (with-cards-in-readable-collection card
         (testing (str "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even "
                       "if the query comes in with `add-default-userland-constraints` (as will be the case if the query "

@@ -13,16 +13,12 @@
             [expectations :refer [expect]]
             [metabase
              [http-client :as http]
+             [models :refer [Card Dashboard DashboardCard DashboardCardSeries]]
              [query-processor-test :as qp.test]
              [util :as u]]
             [metabase.api
              [embed :as embed-api]
              [public-test :as public-test]]
-            [metabase.models
-             [card :refer [Card]]
-             [dashboard :refer [Dashboard]]
-             [dashboard-card :refer [DashboardCard]]
-             [dashboard-card-series :refer [DashboardCardSeries]]]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.test
              [data :as data]
@@ -439,72 +435,50 @@
         (is (= "Message seems corrupt or manipulated."
                (http/client :get 400 (with-new-secret-key (dashcard-url dashcard)))))))))
 
-;;; LOCKED params
+(deftest locked-params-test
+  (with-embedding-enabled-and-new-secret-key
+    (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:abc "locked"}}}]
+      (testing (str "check that if embedding is enabled globally and for the object requests fail if the token is "
+                    "missing a `:locked` parameter")
+        (is (= "You must specify a value for :abc in the JWT."
+               (http/client :get 400 (dashcard-url dashcard)))))
 
-;; check that if embedding is enabled globally and for the object requests fail if the token is missing a `:locked`
-;; parameter
+      (testing "if `:locked` param is supplied, request should succeed"
+        (is (expect= (successful-query-results)
+                     (http/client :get 202 (dashcard-url dashcard {:params {:abc 100}})))))
 
-(deftest check-missing-locked-param
-  (is (= "You must specify a value for :abc in the JWT."
-         (with-embedding-enabled-and-new-secret-key
-           (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:abc "locked"}}}]
-             (http/client :get 400 (dashcard-url dashcard)))))))
+      (testing "if `:locked` parameter is present in URL params, request should fail"
+        (is (= "You must specify a value for :abc in the JWT."
+               (http/client :get 400 (str (dashcard-url dashcard) "?abc=100"))))))))
 
-;; if `:locked` param is supplied, request should succeed
-(deftest if---locked--param-is-supplied--request-should-succeed
-  (is (expect= (successful-query-results)
-               (with-embedding-enabled-and-new-secret-key
-                 (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:abc "locked"}}}]
-                   (http/client :get 202 (dashcard-url dashcard {:params {:abc 100}})))))))
+(deftest disabled-params-test
+  (with-embedding-enabled-and-new-secret-key
+    (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:abc "disabled"}}}]
+      (testing (str "check that if embedding is enabled globally and for the object requests fail if they pass a "
+                    "`:disabled` parameter")
+        (is (= "You're not allowed to specify a value for :abc."
+               (http/client :get 400 (dashcard-url dashcard {:params {:abc 100}})))))
 
+      (testing "If a `:disabled` param is passed in the URL the request should fail"
+        (is (= "You're not allowed to specify a value for :abc."
+               (http/client :get 400 (str (dashcard-url dashcard) "?abc=200"))))))))
 
-;; if `:locked` parameter is present in URL params, request should fail
-(deftest if---locked--parameter-is-present-in-url-params--request-should-fail
-  (is (= "You must specify a value for :abc in the JWT."
-         (with-embedding-enabled-and-new-secret-key
-           (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:abc "locked"}}}]
-             (http/client :get 400 (str (dashcard-url dashcard) "?abc=100")))))))
-
-
-;;; DISABLED params
-
-;; check that if embedding is enabled globally and for the object requests fail if they pass a `:disabled` parameter
-(deftest check-that-if-embedding-is-enabled-globally-and-for-the-object-requests-fail-if-they-pass-a---disabled--parameter
-  (is (= "You're not allowed to specify a value for :abc."
-         (with-embedding-enabled-and-new-secret-key
-           (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:abc "disabled"}}}]
-             (http/client :get 400 (dashcard-url dashcard {:params {:abc 100}})))))))
-
-;; If a `:disabled` param is passed in the URL the request should fail
-(deftest if-a---disabled--param-is-passed-in-the-url-the-request-should-fail
-  (is (= "You're not allowed to specify a value for :abc."
-         (with-embedding-enabled-and-new-secret-key
-           (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:abc "disabled"}}}]
-             (http/client :get 400 (str (dashcard-url dashcard) "?abc=200")))))))
+(deftest enabled-params-test
+  (with-embedding-enabled-and-new-secret-key
+    (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:abc "enabled"}}}]
+      (testing "If `:enabled` param is present in both JWT and the URL, the request should fail"
+        (is (= "You can't specify a value for :abc if it's already set in the JWT."
+               (http/client :get 400 (str (dashcard-url dashcard {:params {:abc 100}}) "?abc=200")))))
 
 
-;;; ENABLED params
+      (testing "If an `:enabled` param is present in the JWT, that's ok"
+        (is (expect= (successful-query-results)
+                     (http/client :get 202 (dashcard-url dashcard {:params {:abc 100}})))))
 
-;; If `:enabled` param is present in both JWT and the URL, the request should fail
-(deftest if---enabled--param-is-present-in-both-jwt-and-the-url--the-request-should-fail
-  (is (= "You can't specify a value for :abc if it's already set in the JWT."
-         (with-embedding-enabled-and-new-secret-key
-           (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:abc "enabled"}}}]
-             (http/client :get 400 (str (dashcard-url dashcard {:params {:abc 100}}) "?abc=200")))))))
+      (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
+        (is (expect= (successful-query-results)
+                     (http/client :get 202 (str (dashcard-url dashcard) "?abc=200"))))))))
 
-;; If an `:enabled` param is present in the JWT, that's ok
-(deftest if-an---enabled--param-is-present-in-the-jwt--that-s-ok
-  (is (expect= (successful-query-results)
-               (with-embedding-enabled-and-new-secret-key
-                 (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:abc "enabled"}}}]
-                   (http/client :get 202 (dashcard-url dashcard {:params {:abc 100}})))))))
-
-;; If an `:enabled` param is present in URL params but *not* the JWT, that's ok
-(deftest if-an---enabled--param-is-present-in-url-params-but--not--the-jwt--that-s-ok
-  (is (expect= (successful-query-results)
-               (with-embedding-enabled-and-new-secret-key
-                 (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:abc "enabled"}}}]
-                   (http/client :get 202 (str (dashcard-url dashcard) "?abc=200")))))))
 
 ;;; -------------------------------------------------- Other Tests ---------------------------------------------------
 

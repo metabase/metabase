@@ -55,7 +55,7 @@
     (log/tracef "(.setTimestamp %d ^%s %s <%s Calendar>)" i (.getName (class t)) (pr-str t) (.. cal getTimeZone getID))
     (.setTimestamp ps i t cal)))
 
-(defmethod sql-jdbc.execute/read-column-thunk [:use-legacy-classes-for-read-and-set Types/TIME]
+(defmethod sql-jdbc.execute/read-column-thunk [::use-legacy-classes-for-read-and-set Types/TIME]
   [_ ^ResultSet rs _ ^Integer i]
   (fn []
     (when-let [s (.getString rs i)]
@@ -78,3 +78,9 @@
       (let [t (u.date/parse s)]
         (log/tracef "(.getString rs i) [TIMESTAMP] -> %s -> %s" (pr-str s) (pr-str t))
         t))))
+
+(doseq [dispatch-val (keys (methods sql-jdbc.execute/read-column-thunk))
+        :when        (sequential? dispatch-val)
+        :let         [[driver jdbc-type] dispatch-val]
+        :when        (= driver ::use-legacy-classes-for-read-and-set)]
+  (prefer-method sql-jdbc.execute/read-column-thunk dispatch-val [:sql-jdbc jdbc-type]))
