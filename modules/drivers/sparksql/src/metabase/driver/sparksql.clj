@@ -13,6 +13,7 @@
             [metabase.driver.sql-jdbc
              [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn]
+             [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
@@ -20,7 +21,8 @@
             [metabase.query-processor
              [store :as qp.store]
              [util :as qputil]]
-            [metabase.util.honeysql-extensions :as hx]))
+            [metabase.util.honeysql-extensions :as hx])
+  (:import [java.sql Connection ResultSet]))
 
 (driver/register! :sparksql, :parent :hive-like)
 
@@ -124,15 +126,44 @@
 
 ;; bound variables are not supported in Spark SQL (maybe not Hive either, haven't checked)
 (defmethod driver/execute-reducible-query :sparksql
-  [driver {:keys [database settings], query :native, :as outer-query} context respond]
-  (let [query (-> (assoc query
-                         :remark (qputil/query->remark outer-query)
-                         :query  (if (seq (:params query))
-                                   (unprepare/unprepare driver (cons (:query query) (:params query)))
-                                   (:query query))
-                         :max-rows (mbql.u/query->max-rows-limit outer-query))
-                  (dissoc :params))]
+  [driver {:keys [database settings], {sql :query, :keys [params], :as inner-query} :native, :as outer-query} context respond]
+  (let [inner-query (-> (assoc inner-query
+                               :remark (qputil/query->remark outer-query)
+                               :query  (if (seq params)
+                                         (unprepare/unprepare driver (cons sql params))
+                                         sql)
+                               :max-rows (mbql.u/query->max-rows-limit outer-query))
+                        (dissoc :params))
+        query       (assoc outer-query :native inner-query)]
     ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond)))
+
+;; 1.  SparkSQL doesn't support `.supportsTransactionIsolationLevel`
+;; 2.  SparkSQL doesn't support session timezones (at least our driver doesn't support it)
+;; 3.  SparkSQL doesn't support making connections read-only
+;; 4.  SparkSQL doesn't support setting the default result set holdability
+(defmethod sql-jdbc.execute/connection-with-timezone :sparksql
+  [driver database ^String timezone-id]
+  (let [conn (.getConnection (sql-jdbc.execute/datasource database))]
+    (try
+      (.setTransactionIsolation conn Connection/TRANSACTION_READ_UNCOMMITTED)
+      conn
+      (catch Throwable e
+        (.close conn)
+        (throw e)))))
+
+;; 1.  SparkSQL doesn't support setting holdability type to `CLOSE_CURSORS_AT_COMMIT`
+(defmethod sql-jdbc.execute/prepared-statement :sparksql
+  [driver ^Connection conn ^String sql params]
+  (let [stmt (.prepareStatement conn sql
+                                ResultSet/TYPE_FORWARD_ONLY
+                                ResultSet/CONCUR_READ_ONLY)]
+    (try
+      (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
+      (sql-jdbc.execute/set-parameters! driver stmt params)
+      stmt
+      (catch Throwable e
+        (.close stmt)
+        (throw e)))))
 
 
 (doseq [feature [:basic-aggregations

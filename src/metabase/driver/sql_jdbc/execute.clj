@@ -309,6 +309,7 @@
   "Default impl of `execute-reducible-query` for sql-jdbc drivers."
   {:added "0.35.0", :arglists '([driver query context respond])}
   [driver {{sql :query, params :params} :native, :as outer-query} context respond]
+  {:pre [(string? sql) (seq sql)]}
   (let [remark   (qputil/query->remark outer-query)
         sql      (str "-- " remark "\n" sql)
         max-rows (or (mbql.u/query->max-rows-limit outer-query)
