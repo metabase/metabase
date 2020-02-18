@@ -25,16 +25,21 @@
 (defn- cached-results
   "Return cached results for `query-hash` if they exist and are newer than `max-age-seconds`."
   [query-hash max-age-seconds]
-  (when-let [{:keys [results updated_at]} (db/select-one [QueryCache :results :updated_at]
-                                            :query_hash query-hash
-                                            :updated_at [:>= (seconds-ago-honeysql-form max-age-seconds)])]
-    (assoc results :updated_at updated_at)))
+  ;; NOCOMMIT
+  (db/debug-print-queries
+    (when-let [{:keys [results updated_at]} (db/select-one [QueryCache :results :updated_at]
+                                              :query_hash query-hash
+                                              :updated_at [:>= (seconds-ago-honeysql-form max-age-seconds)])]
+      (println "results:" (u/pprint-to-str 'blue (assoc results :updated_at updated_at))) ; NOCOMMIT
+      (assoc results :updated_at updated_at))))
 
 (defn- purge-old-cache-entries!
   "Delete any cache entries that are older than the global max age `max-cache-entry-age-seconds` (currently 3 months)."
   []
-  (db/simple-delete! QueryCache
-    :updated_at [:<= (seconds-ago-honeysql-form (public-settings/query-caching-max-ttl))]))
+  ;; NOCOMMIT
+  (db/debug-print-queries
+    (db/simple-delete! QueryCache
+      :updated_at [:<= (seconds-ago-honeysql-form (public-settings/query-caching-max-ttl))])))
 
 (defn- throw-if-max-exceeded [max-num-bytes bytes-in-flight]
   (when (< max-num-bytes bytes-in-flight)
