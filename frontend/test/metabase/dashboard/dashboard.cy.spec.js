@@ -112,4 +112,59 @@ var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=tru
     cy.contains("Remove").click();
     cy.contains("Save").click();
   });
+
+  it("should parse duplicate parameter query params", () => {
+    cy.visit("/browse/1");
+    cy.contains("Orders").click();
+    cy.contains("Save").click();
+    modal()
+      .contains("button", "Save")
+      .click();
+    modal()
+      .contains("Yes please!")
+      .click();
+    modal()
+      .contains("Create a new dashboard")
+      .click();
+    modal()
+      .contains("Name")
+      .next()
+      .type("my dash");
+    cy.url().as("questionUrl"); // this is for resetting
+    modal()
+      .contains("Create")
+      .click();
+
+    // add an id parameter
+    cy.get(".Icon-funnel_add").click();
+    popover()
+      .contains("ID")
+      .click();
+    cy.contains("Select…").click();
+    popover()
+      .contains("ID")
+      .first()
+      .click({ force: true });
+    cy.contains("Done").click();
+    cy.contains("Save").click();
+
+    // reload page with param
+    cy.url().as("dashboardUrl");
+    cy.get("@dashboardUrl").then(url => cy.visit(url + "?id=123&id=321"));
+
+    // wait for dashboard load
+    cy.contains("my dash");
+    // card should be filtered to two ids
+    cy.contains("Rows 1-1 of 2");
+
+    //reset
+    cy.get("@dashboardUrl").then(url => {
+      const id = url.match(/\d+$/)[0];
+      cy.request("PUT", `/api/dashboard/${id}`, { archive: true });
+    });
+    cy.get("@questionUrl").then(url => {
+      const id = url.match(/\d+$/)[0];
+      cy.request("PUT", `/api/card/${id}`, { archive: true });
+    });
+  });
 });

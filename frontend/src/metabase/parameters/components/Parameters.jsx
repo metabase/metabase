@@ -1,10 +1,13 @@
 /* @flow */
 
 import React, { Component } from "react";
+import { connect } from "react-redux";
 
 import StaticParameterWidget from "./ParameterWidget";
 import Icon from "metabase/components/Icon";
 import { color } from "metabase/lib/colors";
+
+import { getMetadata } from "metabase/selectors/metadata";
 
 import querystring from "querystring";
 import cx from "classnames";
@@ -46,6 +49,7 @@ type Props = {
   setEditingParameter?: (parameterId: ParameterId) => void,
 };
 
+@connect(state => ({ metadata: getMetadata(state) }))
 export default class Parameters extends Component {
   props: Props;
 
@@ -57,11 +61,13 @@ export default class Parameters extends Component {
 
   componentWillMount() {
     // sync parameters from URL query string
-    const { parameters, setParameterValue, query } = this.props;
+    const { parameters, setParameterValue, query, metadata } = this.props;
     if (setParameterValue) {
       for (const parameter of parameters) {
         if (query && query[parameter.slug] != null) {
-          setParameterValue(parameter.id, query[parameter.slug]);
+          const fields = parameter.field_ids.map(id => metadata.field(id));
+          const value = parseQueryParam(query[parameter.slug], fields);
+          setParameterValue(parameter.id, value);
         } else if (parameter.default != null) {
           setParameterValue(parameter.id, parameter.default);
         }
@@ -231,3 +237,16 @@ const SortableParameterWidget = SortableElement(StaticParameterWidget);
 const SortableParameterWidgetList = SortableContainer(
   StaticParameterWidgetList,
 );
+
+export function parseQueryParam(value, fields) {
+  if (Array.isArray(value)) {
+    return value.map(v => parseQueryParam(v, fields));
+  }
+  if (fields.every(f => f.isNumeric())) {
+    return parseFloat(value);
+  }
+  if (fields.every(f => f.isBoolean())) {
+    return value === "true" ? true : value === "false" ? false : value;
+  }
+  return value;
+}
