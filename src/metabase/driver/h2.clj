@@ -76,9 +76,18 @@
 
 (defmethod sql.qp/add-interval-honeysql-form :h2
   [driver hsql-form amount unit]
-  (if (= unit :quarter)
+  (cond
+    (= unit :quarter)
     (recur driver hsql-form (hx/* amount 3) :month)
-    (hsql/call :dateadd (hx/literal unit) amount hsql-form)))
+
+    ;; H2 only supports long ints in the `dateadd` amount field; since we want to support fractional seconds (at least
+    ;; for application DB purposes) convert to `:millisecond`
+    (and (= unit :second)
+         (not (zero? (rem amount 1))))
+    (recur driver hsql-form (* amount 1000.0) :millisecond)
+
+    :else
+    (hsql/call :dateadd (hx/literal unit) (long amount) hsql-form)))
 
 (defmethod driver/humanize-connection-error-message :h2
   [_ message]

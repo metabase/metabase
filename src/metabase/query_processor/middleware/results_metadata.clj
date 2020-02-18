@@ -7,11 +7,11 @@
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
             [metabase.driver :as driver]
+            [metabase.query-processor.reducible :as qp.reducible]
             [metabase.sync.analyze.query-results :as analyze.results]
             [metabase.util
              [encryption :as encryption]
              [i18n :refer [tru]]]
-            [redux.core :as redux]
             [ring.util.codec :as codec]
             [toucan.db :as db]))
 
@@ -104,17 +104,18 @@
       (log/error e (tru "Error recording results metadata for query")))))
 
 (defn- insights-xform [orig-metadata record!]
-  (fn insights-rf [rf]
-    (redux/post-complete
-     (redux/juxt rf (analyze.results/insights-rf orig-metadata))
-     (fn [[result {:keys [metadata insights]}]]
+  (fn [rf]
+    (qp.reducible/combine-additional-reducing-fns
+     rf
+     [(analyze.results/insights-rf orig-metadata)]
+     (fn combine [result {:keys [metadata insights]}]
        (record! metadata)
-       (if-not (map? result)
-         result
-         (update result :data #(assoc %
-                                      :results_metadata {:checksum (metadata-checksum metadata)
-                                                         :columns  metadata}
-                                      :insights insights)))))))
+       (rf (cond-> result
+             (map? result)
+             (update :data assoc
+                     :results_metadata {:checksum (metadata-checksum metadata)
+                                        :columns  metadata}
+                     :insights insights)))))))
 
 (defn record-and-return-metadata!
   "Middleware that records metadata about the columns returned when running the query."

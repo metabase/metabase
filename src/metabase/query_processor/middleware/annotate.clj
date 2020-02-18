@@ -13,11 +13,11 @@
             [metabase.models.humanization :as humanization]
             [metabase.query-processor
              [error-type :as error-type]
+             [reducible :as qp.reducible]
              [store :as qp.store]]
             [metabase.util
              [i18n :refer [deferred-tru tru]]
              [schema :as su]]
-            [redux.core :as redux]
             [schema.core :as s]))
 
 (def ^:private Col
@@ -505,12 +505,13 @@
 
 (defn- add-column-info-xform [{query-type :type, :as query} metadata]
   (fn [rf]
-    (redux/post-complete
-     (redux/juxt rf ((take column-info-sample-size) conj))
-     (fn [[result sampled-rows]]
-       (if-not (map? result)
-         result
-         (assoc-in result [:data :cols] (column-info* query (assoc metadata :rows sampled-rows))))))))
+    (qp.reducible/combine-additional-reducing-fns
+     rf
+     [((take column-info-sample-size) conj)]
+     (fn combine [result sampled-rows]
+       (rf (cond-> result
+             (map? result)
+             (assoc-in [:data :cols] (column-info* query (assoc metadata :rows sampled-rows)))))))))
 
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."

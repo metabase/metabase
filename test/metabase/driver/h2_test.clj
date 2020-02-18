@@ -1,5 +1,6 @@
 (ns metabase.driver.h2-test
   (:require [clojure.test :refer :all]
+            [honeysql.core :as hsql]
             [metabase
              [db :as mdb]
              [driver :as driver]
@@ -7,7 +8,9 @@
              [query-processor :as qp]
              [test :as mt]]
             [metabase.driver.h2 :as h2]
-            [metabase.test.util :as tu]))
+            [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.test.util :as tu]
+            [metabase.util.honeysql-extensions :as hx]))
 
 (deftest parse-connection-string-test
   (testing "Check that the functions for exploding a connection string's options work as expected"
@@ -70,3 +73,12 @@
            (qp/process-query {:database (:id db)
                               :type     :native
                               :native   {:query "SELECT 1"}}))))))
+
+(deftest add-interval-honeysql-form-test
+  (testing "Should convert fractional seconds to milliseconds"
+    (is (= (hsql/call :dateadd (hx/literal "millisecond") 100500 :%now)
+           (sql.qp/add-interval-honeysql-form :h2 :%now 100.5 :second))))
+
+  (testing "Non-fractional seconds should remain seconds, but be cast to longs"
+    (is (= (hsql/call :dateadd (hx/literal "second") 100 :%now)
+           (sql.qp/add-interval-honeysql-form :h2 :%now 100.0 :second)))))

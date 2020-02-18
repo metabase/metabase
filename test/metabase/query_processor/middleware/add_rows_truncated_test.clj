@@ -31,10 +31,12 @@
             [[1] [1] [1] [1] [1]])))))
 
 (deftest e2e-test
-  (is (= {:rows_truncated 5}
-         (-> (qp/process-userland-query
-              (assoc (mt/mbql-query venues {:order-by [[:asc $id]]})
-                     :constraints {:max-results-bare-rows 5
-                                   :max-result            10}))
-             :data
-             (select-keys [:rows_truncated])))))
+  (let [result         (qp/process-userland-query
+                        (assoc (mt/mbql-query venues {:order-by [[:asc $id]]})
+                               :constraints {:max-results-bare-rows 5
+                                             :max-result            10}))
+        rows-truncated-info (select-keys (:data result) [:rows_truncated])]
+    (is (= {:rows_truncated 5}
+           (if (seq rows-truncated-info)
+             rows-truncated-info
+             result)))))
