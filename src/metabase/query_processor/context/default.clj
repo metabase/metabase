@@ -75,17 +75,24 @@
         (context/reducedf @metadata* reduced-rows context)))))
 
 (defn- default-runf [query xformf context]
-  (context/executef driver/*driver* query context (fn respond* [metadata reducible-rows]
-                                                    (context/reducef xformf context metadata reducible-rows))))
+  (try
+    (context/executef driver/*driver* query context (fn respond* [metadata reducible-rows]
+                                                      (context/reducef xformf context metadata reducible-rows)))
+    (catch Throwable e
+      (context/raisef e context))))
 
 (defn- default-raisef [e context]
   {:pre [(instance? Throwable e)]}
   (context/resultf e context))
 
 (defn- default-resultf [result context]
-  (let [out-chan (context/out-chan context)]
-    (a/>!! out-chan result)
-    (a/close! out-chan)))
+  (if (nil? result)
+    (do
+      (log/error (ex-info (trs "Unexpected nil result") {}) (trs "Unexpected nil result"))
+      (recur false context))
+    (let [out-chan (context/out-chan context)]
+      (a/>!! out-chan result)
+      (a/close! out-chan))))
 
 (defn- default-timeoutf
   [context]

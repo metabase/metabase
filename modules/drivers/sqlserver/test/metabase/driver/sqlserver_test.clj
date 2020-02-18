@@ -14,7 +14,9 @@
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.query-processor.test-util :as qp.test-util]
+            [metabase.query-processor
+             [test-util :as qp.test-util]
+             [timezone :as qp.timezone]]
             [metabase.test
              [data :as data]
              [util :as tu :refer [obj->json->obj]]]
@@ -184,16 +186,17 @@
                             ;; LocalTime (?)
                             [(t/offset-time time (t/zone-offset -8)) (t/local-time 3 27)]
                             [(t/offset-date-time (t/local-date-time date time) (t/zone-offset -8))]
-                            ;; since SQL Server doesn't support timezone IDs it should be converted to an offset in the literal
+                            ;; since SQL Server doesn't support timezone IDs it should be converted to an offset in
+                            ;; the literal
                             [(t/zoned-date-time  date time (t/zone-id "America/Los_Angeles"))
                              (t/offset-date-time (t/local-date-time date time) (t/zone-offset -8))]]]
         (let [expected (or expected t)]
           (testing (format "Convert %s to SQL literal" (colorize/magenta (with-out-str (pr t))))
             (let [sql (format "SELECT %s AS t;" (unprepare/unprepare-value :sqlserver t))]
-              (with-open [conn (sql-jdbc.execute/connection-with-timezone :sqlserver (mt/db) (qp.timezone/report-timezone-id-if-supported))
+              (with-open [conn (sql-jdbc.execute/connection-with-timezone :sqlserver (mt/db) nil)
                           stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql nil)
                           rs   (sql-jdbc.execute/execute-query! :sqlserver stmt)]
                 (let [row-thunk (sql-jdbc.execute/row-thunk :sqlserver rs (.getMetaData rs))]
                   (is (= [expected]
                          (row-thunk))
-                      (format "SQL %s should return %s" (colorize/blue sql) (colorize/green expected))))))))))))
+                      (format "SQL %s should return %s" (colorize/blue (pr-str sql)) (colorize/green expected))))))))))))

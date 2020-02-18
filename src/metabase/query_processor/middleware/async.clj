@@ -14,8 +14,8 @@
   [qp]
   (fn [query xformf context]
     (send in-flight* inc)
-    (comment (let [out-chan (context/out-chan context)]
-               (a/go
-                 (a/<! out-chan)
-                 (send in-flight* dec))))
+    (let [out-chan (context/out-chan context)]
+      (a/go
+        (a/<! out-chan)
+        (send in-flight* dec)))
     (qp query xformf context)))

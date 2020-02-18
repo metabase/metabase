@@ -4,14 +4,12 @@
             [clojure
              [string :as str]
              [test :refer :all]]
-            [clojure.data.csv :as csv]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [medley.core :as m]
             [metabase
              [email-test :as et]
              [http-client :as http :refer :all]
-             [models :refer [Card CardFavorite Collection Dashboard Database Pulse PulseCard PulseChannel
-                             PulseChannelRecipient Table ViewLog]]
+             [models :refer [Card CardFavorite Collection Dashboard Database Pulse PulseCard PulseChannel PulseChannelRecipient Table ViewLog]]
              [test :as mt]
              [util :as u]]
             [metabase.api.card :as card-api]
@@ -1171,23 +1169,26 @@
                                             :query      {:source-table (data/id :venues)}
                                             :middleware {:add-default-userland-constraints? true
                                                          :userland-query?                   true}}}]
-    (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
-      (with-cards-in-readable-collection card
-        (testing (str "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even "
-                      "if the query comes in with `add-default-userland-constraints` (as will be the case if the query "
-                      "gets saved from one that had it -- see #9831)")
-          (let [results ((test-users/user->client :rasta) :post 202 (format "card/%d/query/csv" (u/get-id card)))]
+    (with-cards-in-readable-collection card
+      (letfn [(csv-row-count []
+                (count (str/split-lines ((test-users/user->client :rasta) :post 202 (format "card/%d/query/csv" (u/get-id card))))))]
+        (testing "Sanity check: this CSV download should normally have 101 rows"
+          (is (= 101
+                 (csv-row-count))))
+        (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
+          (testing (str "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even "
+                        "if the query comes in with `add-default-userland-constraints` (as will be the case if the query "
+                        "gets saved from one that had it -- see #9831)")
             (is (= 101
-                   (count (csv/read-csv results)))
-                (format "Results = %s" (u/pprint-to-str results)))))
+                   (csv-row-count))))
 
-        (testing (str "non-\"download\" queries should still get the default constraints (this also is a sanitiy "
-                      "check to make sure the `with-redefs` in the test above actually works)")
-          (let [{row-count :row_count, :as result} ((test-users/user->client :rasta) :post 202
-                                                    (format "card/%d/query" (u/get-id card)))]
-            (is (= 10
-                   (or row-count result))
-                (format "Result = %s" (u/pprint-to-str result)))))))))
+          (testing (str "non-\"download\" queries should still get the default constraints (this also is a sanitiy "
+                        "check to make sure the `with-redefs` in the test above actually works)")
+            (let [{row-count :row_count, :as result} ((test-users/user->client :rasta) :post 202
+                                                      (format "card/%d/query" (u/get-id card)))]
+              (is (= 10
+                     (or row-count result))
+                  (format "Result = %s" (u/pprint-to-str result))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

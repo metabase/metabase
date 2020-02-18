@@ -33,7 +33,7 @@
 
 (defn- async-result-metdata-raisef [e context]
   (log/error e (trs "Error running query to determine Card result metadata:"))
-  (context/resultf nil context))
+  (context/resultf [] context))
 
 (s/defn result-metadata-for-query-async :- ManyToManyChannel
   "Fetch the results metadata for a `query` by running the query and seeing what the QP gives us in return.
