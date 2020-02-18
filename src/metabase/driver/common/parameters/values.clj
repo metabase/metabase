@@ -48,7 +48,7 @@
     :display-name                 su/NonBlankString
     :type                         ParamType
     (s/optional-key :dimension)   [s/Any]
-    (s/optional-key :card)        su/IntGreaterThanZero
+    (s/optional-key :card-id)     su/IntGreaterThanZero
     (s/optional-key :widget-type) s/Keyword         ; type of the [default] value if `:type` itself is `dimension`
     (s/optional-key :required)    s/Bool
     (s/optional-key :default)     s/Any}
@@ -124,9 +124,9 @@
                i/no-value)})))
 
 (s/defn ^:private card-query-for-tag :- (s/maybe (s/cond-pre su/Map (s/eq i/no-value)))
-  "Returns the native query for the `:card` referenced by the given tag."
+  "Returns the native query for the `:card-id` referenced by the given tag."
   [tag :- TagParam, _params :- (s/maybe [i/ParamValue])]
-  (when-let [card-id (:card tag)]
+  (when-let [card-id (:card-id tag)]
     (when-let [query (db/select-one-field :dataset_query Card :id card-id)]
       (try
        (i/map->ReferencedCardQuery

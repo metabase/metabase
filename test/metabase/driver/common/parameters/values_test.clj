@@ -136,7 +136,7 @@
         (is (= (i/->ReferencedCardQuery (:id card) test-query)
                (#'values/value-for-tag
                 {:name "card-template-tag-test", :display-name "Card template tag test",
-                 :type :card, :card (:id card)}
+                 :type :card, :card-id (:id card)}
                 []))))))
 
   (testing "Card query template tag generates native query for MBQL query"
@@ -159,7 +159,7 @@
             (is (= (i/->ReferencedCardQuery (:id card) expected-sql)
                    (#'values/value-for-tag
                     {:name "card-template-tag-test", :display-name "Card template tag test",
-                     :type :card, :card (:id card)}
+                     :type :card, :card-id (:id card)}
                     []))))))))
 
   (testing "Card query template tag wraps error in tag details"
@@ -178,10 +178,10 @@
                                     :template-tags
                                     {param-card-tag
                                      {:id param-card-tag, :name param-card-tag, :display-name param-card-tag
-                                      :type "card", :card param-card-id}}})}]
+                                      :type "card", :card-id param-card-id}}})}]
           (let [card-id  (:id card)
                 tag      {:name "card-template-tag-test", :display-name "Card template tag test",
-                          :type :card, :card card-id}
+                          :type :card, :card-id card-id}
                 exc-data (try
                           (#'values/value-for-tag tag [])
                           (catch ExceptionInfo e

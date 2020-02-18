@@ -15,7 +15,7 @@
 
 (defn- query->tag-card-ids
   [query]
-  (keep :card (query->template-tags query)))
+  (keep :card-id (query->template-tags query)))
 
 (defn tags-referenced-cards
   "Returns Card instances referenced by the given native `query`."
