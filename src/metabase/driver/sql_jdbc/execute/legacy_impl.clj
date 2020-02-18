@@ -5,7 +5,7 @@
   (:require [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase.driver :as driver]
-            [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.util.date-2 :as u.date])
   (:import [java.sql PreparedStatement ResultSet Types]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
@@ -55,23 +55,26 @@
     (log/tracef "(.setTimestamp %d ^%s %s <%s Calendar>)" i (.getName (class t)) (pr-str t) (.. cal getTimeZone getID))
     (.setTimestamp ps i t cal)))
 
-(defmethod sql-jdbc.execute/read-column [:use-legacy-classes-for-read-and-set Types/TIME]
-  [_ _ ^ResultSet rs _ ^Integer i]
-  (when-let [s (.getString rs i)]
-    (let [t (u.date/parse s)]
-      (log/tracef "(.getString rs i) [TIME] -> %s -> %s" (pr-str s) (pr-str t))
-      t)))
+(defmethod sql-jdbc.execute/read-column-thunk [:use-legacy-classes-for-read-and-set Types/TIME]
+  [_ ^ResultSet rs _ ^Integer i]
+  (fn []
+    (when-let [s (.getString rs i)]
+      (let [t (u.date/parse s)]
+        (log/tracef "(.getString rs i) [TIME] -> %s -> %s" (pr-str s) (pr-str t))
+        t))))
 
-(defmethod sql-jdbc.execute/read-column [::use-legacy-classes-for-read-and-set Types/DATE]
-  [_ _ ^ResultSet rs _ ^Integer i]
-  (when-let [s (.getString rs i)]
-    (let [t (u.date/parse s)]
-      (log/tracef "(.getString rs i) [DATE] -> %s -> %s" (pr-str s) (pr-str t))
-      t)))
+(defmethod sql-jdbc.execute/read-column-thunk [::use-legacy-classes-for-read-and-set Types/DATE]
+  [_ ^ResultSet rs _ ^Integer i]
+  (fn []
+    (when-let [s (.getString rs i)]
+      (let [t (u.date/parse s)]
+        (log/tracef "(.getString rs i) [DATE] -> %s -> %s" (pr-str s) (pr-str t))
+        t))))
 
-(defmethod sql-jdbc.execute/read-column [::use-legacy-classes-for-read-and-set Types/TIMESTAMP]
-  [_ _ ^ResultSet rs _ ^Integer i]
-  (when-let [s (.getString rs i)]
-    (let [t (u.date/parse s)]
-      (log/tracef "(.getString rs i) [TIMESTAMP] -> %s -> %s" (pr-str s) (pr-str t))
-      t)))
+(defmethod sql-jdbc.execute/read-column-thunk [::use-legacy-classes-for-read-and-set Types/TIMESTAMP]
+  [_ ^ResultSet rs _ ^Integer i]
+  (fn []
+    (when-let [s (.getString rs i)]
+      (let [t (u.date/parse s)]
+        (log/tracef "(.getString rs i) [TIMESTAMP] -> %s -> %s" (pr-str s) (pr-str t))
+        t))))
