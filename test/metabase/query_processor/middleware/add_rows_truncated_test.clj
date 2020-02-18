@@ -1,7 +1,9 @@
 (ns metabase.query-processor.middleware.add-rows-truncated-test
   (:require [clojure.test :refer :all]
-            [metabase.query-processor.middleware.add-rows-truncated :as add-rows-truncated]
-            [metabase.test :as mt]))
+            [metabase
+             [query-processor :as qp]
+             [test :as mt]]
+            [metabase.query-processor.middleware.add-rows-truncated :as add-rows-truncated]))
 
 (defn- add-rows-truncated [query rows]
   (:result
@@ -27,3 +29,12 @@
              :constraints {:max-results           10
                            :max-results-bare-rows 5}}
             [[1] [1] [1] [1] [1]])))))
+
+(deftest e2e-test
+  (is (= {:rows_truncated 5}
+         (-> (qp/process-userland-query
+              (assoc (mt/mbql-query venues {:order-by [[:asc $id]]})
+                     :constraints {:max-results-bare-rows 5
+                                   :max-result            10}))
+             :data
+             (select-keys [:rows_truncated])))))

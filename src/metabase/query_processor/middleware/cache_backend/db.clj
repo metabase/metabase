@@ -1,9 +1,10 @@
 (ns metabase.query-processor.middleware.cache-backend.db
   (:require [clojure.tools.logging :as log]
-            [java-time :as t]
             [metabase
+             [db :as mdb]
              [public-settings :as public-settings]
              [util :as u]]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.query-cache :refer [QueryCache]]
             [metabase.query-processor.middleware.cache-backend.interface :as i]
             [taoensso.nippy :as nippy]
@@ -11,19 +12,29 @@
   (:import [java.io BufferedOutputStream ByteArrayOutputStream DataOutputStream]
            java.util.zip.GZIPOutputStream))
 
+(defn- seconds-ago-honeysql-form
+  "Generate appropriate HoneySQL for `now() - seconds` for the application DB. `seconds` is not neccessarily an
+  integer! It can be floating-point for fractional seconds."
+  [seconds]
+  (sql.qp/add-interval-honeysql-form
+   (mdb/db-type)
+   (sql.qp/current-datetime-honeysql-form (mdb/db-type))
+   (- seconds)
+   :seconds))
+
 (defn- cached-results
   "Return cached results for `query-hash` if they exist and are newer than `max-age-seconds`."
   [query-hash max-age-seconds]
   (when-let [{:keys [results updated_at]} (db/select-one [QueryCache :results :updated_at]
                                             :query_hash query-hash
-                                            :updated_at [:>= (t/minus (t/instant) (t/seconds max-age-seconds))])]
+                                            :updated_at [:>= (seconds-ago-honeysql-form max-age-seconds)])]
     (assoc results :updated_at updated_at)))
 
 (defn- purge-old-cache-entries!
   "Delete any cache entries that are older than the global max age `max-cache-entry-age-seconds` (currently 3 months)."
   []
   (db/simple-delete! QueryCache
-    :updated_at [:<= (t/minus (t/instant) (t/seconds (public-settings/query-caching-max-ttl)))]))
+    :updated_at [:<= (seconds-ago-honeysql-form (public-settings/query-caching-max-ttl))]))
 
 (defn- throw-if-max-exceeded [max-num-bytes bytes-in-flight]
   (when (< max-num-bytes bytes-in-flight)

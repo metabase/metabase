@@ -43,7 +43,7 @@
 (defmethod sql.qp/add-interval-honeysql-form :postgres
   [_ hsql-form amount unit]
   (hx/+ (hx/->timestamp hsql-form)
-        (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit)))))
+        (hsql/raw (format "(INTERVAL '%s %s')" amount (name unit)))))
 
 (defmethod driver/humanize-connection-error-message :postgres
   [_ message]

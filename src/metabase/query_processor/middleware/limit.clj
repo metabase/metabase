@@ -12,18 +12,18 @@
     (assoc-in [:query :limit] max-rows)))
 
 (defn- limit-xform [max-rows]
-  (fn [xf]
-    {:pre [(fn? xf)]}
+  (fn [rf]
+    {:pre [(fn? rf)]}
     (let [row-count (volatile! 0)]
       (fn
         ([]
-         (xf))
+         (rf))
 
         ([result]
-         (xf result))
+         (rf result))
 
         ([result row]
-         (let [result'       (xf result row)
+         (let [result'       (rf result row)
                new-row-count (vswap! row-count inc)]
            (if (>= new-row-count max-rows)
              (reduced result')

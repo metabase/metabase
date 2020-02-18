@@ -74,12 +74,14 @@
   (check-native-query-not-using-default-user query)
   ((get-method driver/execute-reducible-query :sql-jdbc) driver query chans respond))
 
-(defmethod driver/date-add :h2 [driver hsql-form amount unit]
+(defmethod sql.qp/add-interval-honeysql-form :h2
+  [driver hsql-form amount unit]
   (if (= unit :quarter)
     (recur driver hsql-form (hx/* amount 3) :month)
     (hsql/call :dateadd (hx/literal unit) amount hsql-form)))
 
-(defmethod driver/humanize-connection-error-message :h2 [_ message]
+(defmethod driver/humanize-connection-error-message :h2
+  [_ message]
   (condp re-matches message
     #"^A file path that is implicitly relative to the current working directory is not allowed in the database URL .*$"
     (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
@@ -95,13 +97,16 @@
 
 (def ^:private date-format-str "yyyy-MM-dd HH:mm:ss.SSS zzz")
 
-(defmethod driver.common/current-db-time-date-formatters :h2 [_]
+(defmethod driver.common/current-db-time-date-formatters :h2
+  [_]
   (driver.common/create-db-time-formatters date-format-str))
 
-(defmethod driver.common/current-db-time-native-query :h2 [_]
+(defmethod driver.common/current-db-time-native-query :h2
+  [_]
   (format "select formatdatetime(current_timestamp(),'%s') AS VARCHAR" date-format-str))
 
-(defmethod driver/current-db-time :h2 [& args]
+(defmethod driver/current-db-time :h2
+  [& args]
   (apply driver.common/current-db-time args))
 
 

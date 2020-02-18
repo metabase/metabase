@@ -60,19 +60,19 @@
     (t/format :iso-offset-date-time
               (t/offset-date-time (t/with-zone-same-instant t timezone-id)))))
 
-(defn- format-rows-xform [xf]
-  {:pre [(fn? xf)]}
+(defn- format-rows-xform [rf]
+  {:pre [(fn? rf)]}
   (log/debug (tru "Formatting rows with results timezone ID {0}" (qp.timezone/results-timezone-id)))
   (let [timezone-id (t/zone-id (qp.timezone/results-timezone-id))]
     (fn
       ([]
-       (xf))
+       (rf))
 
       ([result]
-       (xf result))
+       (rf result))
 
       ([result row]
-       (xf result (mapv #(format-value % timezone-id) row))))))
+       (rf result (mapv #(format-value % timezone-id) row))))))
 
 (defn format-rows
   "Format individual query result values as needed.  Ex: format temporal values as ISO-8601 strings w/ timezone offset."

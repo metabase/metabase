@@ -20,9 +20,11 @@
          (rf))
 
         ([result]
-         (rf (cond-> result
-               (and (map? result) (= @row-count limit))
-               (assoc-in [:data :rows_truncated] limit))))
+         (let [result (rf result)]
+           (cond-> result
+             (and (map? result)
+                  (= @row-count limit))
+             (assoc-in [:data :rows_truncated] limit))))
 
         ([result row]
          (vswap! row-count inc)
