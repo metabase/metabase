@@ -73,25 +73,28 @@
   The overhead of this compared to the wrapped `OutputStream` is relatively low -- ~85 ms for 1 million writes to disk
   vs ~25 ms for a raw OutputStream."
   ^OutputStream [^OutputStream os {:keys [they-have-started-writing-chan they-are-done-chan]}]
-  (let [begin! (delay
-                 (a/>!! they-have-started-writing-chan ::wrote-something))
-        close! (delay
-                 (a/>!! they-are-done-chan ::closed)
-                 (u/ignore-exceptions
-                   (.close os)))]
+  (let [send-begin-message! (delay
+                              (a/>!! they-have-started-writing-chan ::wrote-something))
+        send-close-message! (delay
+                              (a/>!! they-are-done-chan ::closed))]
+    ;; TODO -- consider making this a `FilterInputStream` so it can actually take `os` as a constructor arg and
+    ;; provide default impls for some methods
     (proxy [OutputStream] []
-      (flush []
-        (.flush os))
       (close []
-        @close!)
+        @send-close-message!
+        (u/ignore-exceptions
+          (.close os)))
+      (flush []
+        (u/ignore-exceptions
+          (.flush os)))
       (write
         ([x]
-         @begin!
+         @send-begin-message!
          (if (int? x)
            (.write os ^int x)
            (.write os ^bytes x)))
         ([^bytes ba ^Integer off ^Integer len]
-         @begin!
+         @send-begin-message!
          (.write os ba off len))))))
 
 (defn- start-newline-loop!

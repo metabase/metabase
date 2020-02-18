@@ -23,7 +23,8 @@
         (.flush writer))
 
       (write-row! [_ row _]
-        (csv/write-csv writer [(map common/format-value row)]))
+        (csv/write-csv writer [(map common/format-value row)])
+        (.flush writer))
 
       (finish! [_ _]
         (.close writer)

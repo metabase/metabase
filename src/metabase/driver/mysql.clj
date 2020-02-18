@@ -92,7 +92,7 @@
   ;; MySQL doesn't support `:millisecond` as an option, but does support fractional seconds
   (if (= unit :millisecond)
     (recur driver hsql-form (/ amount 1000.0) :second)
-    (hsql/call :date_add hsql-form (hsql/raw (format "INTERVAL %d %s" amount (name unit))))))
+    (hsql/call :date_add hsql-form (hsql/raw (format "INTERVAL %s %s" amount (name unit))))))
 
 (defmethod driver/humanize-connection-error-message :mysql
   [_ message]
