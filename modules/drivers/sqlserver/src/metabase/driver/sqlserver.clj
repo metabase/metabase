@@ -253,7 +253,7 @@
   #{"sys" "INFORMATION_SCHEMA"})
 
 ;; SQL Server doesn't support setting the holdability of an individual result set, otherwise this impl is basically
-;; the same as the defaul
+;; the same as the default
 (defmethod sql-jdbc.execute/prepared-statement :sqlserver
   [driver ^Connection conn ^String sql params]
   (let [stmt (.prepareStatement conn sql

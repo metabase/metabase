@@ -280,7 +280,8 @@
   [& args]
   (apply sql-jdbc.sync/post-filtered-active-tables args))
 
-(defmethod sql.qp/current-datetime-fn :sqlite [_]
+(defmethod sql.qp/current-datetime-fn :sqlite
+  [_]
   (hsql/call :datetime (hx/literal :now)))
 
 ;; SQLite's JDBC driver is fussy and won't let you change connections to read-only after you create them

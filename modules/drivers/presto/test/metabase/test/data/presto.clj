@@ -111,5 +111,15 @@
   [_ s]
   (str/lower-case s))
 
+(defmethod tx/aggregate-column-info :presto
+  ([driver ag-type]
+   ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type))
+
+  ([driver ag-type field]
+   (merge
+    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
+    (when (= ag-type :sum)
+      {:base_type :type/BigInteger}))))
+
 ;; FIXME Presto actually has very good timezone support
 (defmethod tx/has-questionable-timezone-support? :presto [_] true)
