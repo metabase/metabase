@@ -108,7 +108,10 @@
        (rf))
 
       ([result]
-       (save-results! query-hash start-time result)
+       (try
+         (save-results! query-hash start-time result)
+         (catch Throwable e
+           (log/error e (trs "Error saving cached results"))))
        (rf result))
 
       ([result row] (rf result row)))))

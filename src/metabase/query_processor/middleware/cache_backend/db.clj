@@ -20,7 +20,7 @@
    (mdb/db-type)
    (sql.qp/current-datetime-honeysql-form (mdb/db-type))
    (- seconds)
-   :seconds))
+   :second))
 
 (defn- cached-results
   "Return cached results for `query-hash` if they exist and are newer than `max-age-seconds`."
