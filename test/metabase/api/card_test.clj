@@ -10,24 +10,16 @@
             [metabase
              [email-test :as et]
              [http-client :as http :refer :all]
+             [models :refer [Card CardFavorite Collection Dashboard Database Pulse PulseCard PulseChannel
+                             PulseChannelRecipient Table ViewLog]]
              [test :as mt]
              [util :as u]]
+            [metabase.api.card :as card-api]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.middleware.util :as middleware.u]
             [metabase.models
-             [card :refer [Card]]
-             [card-favorite :refer [CardFavorite]]
-             [collection :refer [Collection]]
-             [dashboard :refer [Dashboard]]
-             [database :refer [Database]]
              [permissions :as perms]
-             [permissions-group :as perms-group]
-             [pulse :as pulse :refer [Pulse]]
-             [pulse-card :refer [PulseCard]]
-             [pulse-channel :refer [PulseChannel]]
-             [pulse-channel-recipient :refer [PulseChannelRecipient]]
-             [table :refer [Table]]
-             [view-log :refer [ViewLog]]]
+             [permissions-group :as perms-group]]
             [metabase.query-processor.async :as qp.async]
             [metabase.query-processor.middleware
              [constraints :as constraints]
@@ -40,6 +32,8 @@
             [toucan.util.test :as tt])
   (:import java.io.ByteArrayInputStream
            java.util.UUID))
+
+(comment card-api/keep-me)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Helper Fns & Macros                                               |
@@ -66,6 +60,7 @@
 (defn- mbql-count-query
   ([]
    (mbql-count-query (data/id) (data/id :venues)))
+
   ([db-or-id table-or-id]
    {:database (u/get-id db-or-id)
     :type     :query
@@ -81,7 +76,6 @@
     :display                "scalar"
     :dataset_query          query
     :visualization_settings {:global {:title nil}}}))
-
 
 (defn- do-with-temp-native-card
   {:style/indent 0}
@@ -1171,15 +1165,13 @@
                                                                     (u/get-id card) encoded-params)
                  {:request-options {:as :byte-array}}))))))))
 
-
 (deftest download-default-constraints-test
   (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
-    (tt/with-temp Card [card {:dataset_query {:database (data/id)
-                                              :type     :query
-                                              :query    {:source-table (data/id :venues)}
-                                              :middleware
-                                              {:add-default-userland-constraints? true
-                                               :userland-query?                   true}}}]
+    (tt/with-temp Card [card {:dataset_query {:database   (data/id)
+                                              :type       :query
+                                              :query      {:source-table (data/id :venues)}
+                                              :middleware {:add-default-userland-constraints? true
+                                                           :userland-query?                   true}}}]
       (with-cards-in-readable-collection card
         (testing (str "Downloading CSV/JSON/XLSX results shouldn't be subject to the default query constraints -- even "
                       "if the query comes in with `add-default-userland-constraints` (as will be the case if the query "
@@ -1188,6 +1180,7 @@
             (is (= 101
                    (count (csv/read-csv results)))
                 (format "Results = %s" (u/pprint-to-str results)))))
+
         (testing (str "non-\"download\" queries should still get the default constraints (this also is a sanitiy "
                       "check to make sure the `with-redefs` in the test above actually works)")
           (let [{row-count :row_count, :as result} ((test-users/user->client :rasta) :post 202
@@ -1233,7 +1226,8 @@
          (tu/with-non-admin-groups-no-root-collection-perms
            (tt/with-temp* [Collection [collection]
                            Card       [card       {:collection_id (u/get-id collection)}]]
-             ((test-users/user->client :rasta) :put 403 (str "card/" (u/get-id card)) {:name "Number of Blueberries Consumed Per Month"}))))))
+             ((test-users/user->client :rasta) :put 403 (str "card/" (u/get-id card))
+              {:name "Number of Blueberries Consumed Per Month"}))))))
 
 
 ;; Make sure that we can't change the `collection_id` of a Card if we don't have write permissions for the new
@@ -1245,7 +1239,8 @@
                            Collection [new-collection]
                            Card       [card                {:collection_id (u/get-id original-collection)}]]
              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) original-collection)
-             ((test-users/user->client :rasta) :put 403 (str "card/" (u/get-id card)) {:collection_id (u/get-id new-collection)}))))))
+             ((test-users/user->client :rasta) :put 403 (str "card/" (u/get-id card))
+              {:collection_id (u/get-id new-collection)}))))))
 
 
 ;; Make sure that we can't change the `collection_id` of a Card if we don't have write permissions for the current
@@ -1257,7 +1252,8 @@
                            Collection [new-collection]
                            Card       [card                {:collection_id (u/get-id original-collection)}]]
              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) new-collection)
-             ((test-users/user->client :rasta) :put 403 (str "card/" (u/get-id card)) {:collection_id (u/get-id new-collection)}))))))
+             ((test-users/user->client :rasta) :put 403 (str "card/" (u/get-id card))
+              {:collection_id (u/get-id new-collection)}))))))
 
 
 
@@ -1447,10 +1443,10 @@
 ;;; ---------------------------------------- DELETE /api/card/:id/public_link ----------------------------------------
 
 (deftest test-that-we-can-unshare-a-card
-  (is (= false
-         (tu/with-temporary-setting-values [enable-public-sharing true]
-           (tt/with-temp Card [card (shared-card)]
-             ((test-users/user->client :crowberto) :delete 204 (format "card/%d/public_link" (u/get-id card)))
+  (tu/with-temporary-setting-values [enable-public-sharing true]
+    (tt/with-temp Card [card (shared-card)]
+      ((test-users/user->client :crowberto) :delete 204 (format "card/%d/public_link" (u/get-id card)))
+      (is (= false
              (db/exists? Card :id (u/get-id card), :public_uuid (:public_uuid card)))))))
 
 (deftest test-that-we--cannot--unshare-a-card-if-we-are-not-admins

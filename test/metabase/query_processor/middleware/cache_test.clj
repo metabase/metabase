@@ -4,9 +4,7 @@
             [metabase.models.query-cache :refer [QueryCache]]
             [metabase.query-processor.middleware.cache :as cache]
             [metabase.test :as mt]
-            [toucan.db :as db]
-            [metabase.util :as u]
-            [clojure.core.async :as a]))
+            [toucan.db :as db]))
 
 (deftest is-cacheable-test
   (testing "something is-cacheable? if it includes a cach_ttl and the caching setting is enabled"
