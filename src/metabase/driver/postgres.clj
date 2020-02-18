@@ -40,7 +40,7 @@
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
-(defmethod driver/date-add :postgres
+(defmethod sql.qp/add-interval-honeysql-form :postgres
   [_ hsql-form amount unit]
   (hx/+ (hx/->timestamp hsql-form)
         (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit)))))

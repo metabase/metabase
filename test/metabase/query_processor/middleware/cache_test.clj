@@ -45,6 +45,9 @@
       :run     (fn []
                  (Thread/sleep *query-execution-delay-ms*))}))))
 
+(defn- cacheable? [& {:as query-kvs}]
+  (boolean (#'cache/is-cacheable? (merge {:cache-ttl 60, :query :abc} query-kvs))))
+
 (defn- clear-cache! [] (db/simple-delete! QueryCache))
 
 (defmacro ^:private with-cache-cleared-before-each
@@ -65,6 +68,8 @@
     (testing "if we run the query twice, the second run should return cached results"
       (mt/with-temporary-setting-values [enable-query-caching  true
                                          query-caching-min-ttl 0]
+        (is (= true
+               (cacheable?)))
         (run-query)
         (is (= :cached
                (run-query)))))
@@ -83,6 +88,8 @@
         (run-query)
         (mt/with-temporary-setting-values [enable-query-caching  false
                                            query-caching-min-ttl 0]
+          (is (= false
+                 (cacheable?)))
           (is (= :not-cached
                  (run-query))))))
 
@@ -120,6 +127,8 @@
       (mt/with-temporary-setting-values [enable-query-caching  true
                                          query-caching-min-ttl 0]
         (binding [cache/*ignore-cached-results* true]
+          (is (= true
+                 (cacheable?)))
           (run-query))
         (is (= :cached
                (run-query)))))

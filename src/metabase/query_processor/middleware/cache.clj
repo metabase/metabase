@@ -96,6 +96,9 @@
     (log/info (format "Query took %d ms to run; miminum for cache eligibility is %.0f ms" total-time-ms min-ttl-ms))
     (when (>= total-time-ms min-ttl-ms)
       (log/info "Caching results for next time for query" (u/emoji "💾"))
+      ;; wait until we're actually going to use the cache before initializing the backend. We don't want to initialize
+      ;; it when the files get compiled, because that would give it the wrong version of the
+      ;; `IQueryProcessorCacheBackend` protocol
       (i/save-results! @backend-instance query-hash results))))
 
 (defn- save-results-xform [query-hash start-time]
@@ -137,9 +140,6 @@
      *  The result *rows* of the query must be less than `query-caching-max-kb` when serialized (before compression)."
   [qp]
   (fn [query xformf context]
-    (if-not (is-cacheable? query)
-      (qp query xformf context)
-      ;; wait until we're actually going to use the cache before initializing the backend. We don't want to initialize
-      ;; it when the files get compiled, because that would give it the wrong version of the
-      ;; `IQueryProcessorCacheBackend` protocol
-      (run-query-with-cache qp query xformf context))))
+    (if (is-cacheable? query)
+      (run-query-with-cache qp query xformf context)
+      (qp query xformf context))))

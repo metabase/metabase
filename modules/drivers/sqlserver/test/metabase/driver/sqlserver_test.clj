@@ -14,6 +14,7 @@
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor
              [test-util :as qp.test-util]
