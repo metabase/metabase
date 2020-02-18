@@ -93,7 +93,7 @@
                          :native   {:query         (format "SELECT * FROM {{%s}} AS x" tag-name)
                                     :template-tags {tag-name ; This tag's query is from the test db
                                                     {:id tag-name, :name tag-name, :display-name tag-name,
-                                                     :type "card", :card card-id}}}}]
+                                                     :type "card", :card-id card-id}}}}]
         (is (= {:referenced-query     card-query
                 :expected-database-id query-db-id}
                (try
