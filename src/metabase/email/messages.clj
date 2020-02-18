@@ -2,6 +2,7 @@
   "Convenience functions for sending templated email messages.  Each function here should represent a single email.
    NOTE: we want to keep this about email formatting, so don't put heavy logic here RE: building data for emails."
   (:require [clojure.core.cache :as cache]
+            [clojure.java.io :as io]
             [clojure.tools.logging :as log]
             [hiccup.core :refer [html]]
             [java-time :as t]
@@ -15,9 +16,9 @@
             [metabase.pulse.render
              [body :as render.body]
              [style :as render.style]]
+            [metabase.query-processor.streaming :as qp.streaming]
             [metabase.query-processor.streaming.interface :as qp.streaming.i]
             [metabase.util
-             [export :as export]
              [i18n :refer [deferred-trs trs tru]]
              [quotation :as quotation]
              [urls :as url]]
@@ -259,23 +260,22 @@
       :else
       (no "less than %d columns, %d rows in results" render.body/cols-limit render.body/rows-limit))))
 
-(defn- result-attachments [results]
-  (remove
-   nil?
-   (apply
-    concat
-    (for [{{card-name :name, :as card} :card :as result} results
-          :let [{:keys [rows] :as result-data} (get-in result [:result :data])]
-          :when (seq rows)]
-      [(when-let [temp-file (and (include-csv-attachment? card result-data)
-                                 (create-temp-file-or-throw "csv"))]
-         (export/export-to-csv-writer temp-file result)
-         (create-result-attachment-map "csv" card-name temp-file))
+(defn- result-attachment
+  [{{card-name :name, :as card} :card, {{:keys [rows], :as result-data} :data, :as result} :result}]
+  (when (seq rows)
+    [(when-let [temp-file (and (include-csv-attachment? card result-data)
+                               (create-temp-file-or-throw "csv"))]
+       (with-open [os (io/output-stream temp-file)]
+         (qp.streaming/stream-api-results-to-export-format :csv os result))
+       (create-result-attachment-map "csv" card-name temp-file))
+     (when-let [temp-file (and (:include_xls card)
+                               (create-temp-file-or-throw "xlsx"))]
+       (with-open [os (io/output-stream temp-file)]
+         (qp.streaming/stream-api-results-to-export-format :xlsx os result))
+       (create-result-attachment-map "xlsx" card-name temp-file))]))
 
-       (when-let [temp-file (and (:include_xls card)
-                                 (create-temp-file-or-throw "xlsx"))]
-         (export/export-to-xlsx-file temp-file result)
-         (create-result-attachment-map "xlsx" card-name temp-file))]))))
+(defn- result-attachments [results]
+  (filter some? (mapcat result-attachment results)))
 
 (defn- render-message-body [message-template message-context timezone results]
   (let [rendered-cards (binding [render/*include-title* true]

@@ -64,29 +64,35 @@
       (catch EofException _)))
   (.close os))
 
-;; TODO - what's the overhead of this?
 (defn- proxy-output-stream
   "Proxy that wraps an `OutputStream` and:
 
   1.  Sends a message to `they-have-started-writing-chan` whenever someone writes something
-  2.  Sends a message to `they-are-done-chan` whenever someone closes the output stream"
+  2.  Sends a message to `they-are-done-chan` whenever someone closes the output stream
+
+  The overhead of this compared to the wrapped `OutputStream` is relatively low -- ~85 ms for 1 million writes to disk
+  vs ~25 ms for a raw OutputStream."
   ^OutputStream [^OutputStream os {:keys [they-have-started-writing-chan they-are-done-chan]}]
-  (proxy [OutputStream] []
-    (flush []
-      (.flush os))
-    (close []
-      (a/>!! they-are-done-chan ::closed)
-      (u/ignore-exceptions
-        (.close os)))
-    (write
-      ([x]
-       (a/>!! they-have-started-writing-chan ::wrote-something)
-       (if (int? x)
-         (.write os ^int x)
-         (.write os ^bytes x)))
-      ([^bytes ba ^Integer off ^Integer len]
-       (a/>!! they-have-started-writing-chan ::wrote-something)
-       (.write os ba off len)))))
+  (let [begin! (delay
+                 (a/>!! they-have-started-writing-chan ::wrote-something))
+        close! (delay
+                 (a/>!! they-are-done-chan ::closed)
+                 (u/ignore-exceptions
+                   (.close os)))]
+    (proxy [OutputStream] []
+      (flush []
+        (.flush os))
+      (close []
+        @close!)
+      (write
+        ([x]
+         @begin!
+         (if (int? x)
+           (.write os ^int x)
+           (.write os ^bytes x)))
+        ([^bytes ba ^Integer off ^Integer len]
+         @begin!
+         (.write os ba off len))))))
 
 (defn- start-newline-loop!
   "Write a newline every `keepalive-interval-ms` (e.g., one second) until 'they' start writing to the output stream."

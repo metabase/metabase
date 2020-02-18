@@ -8,7 +8,8 @@
             [clojure.java.io :as io]
             [metabase
              [query-processor :as qp]
-             [test :as mt]]
+             [test :as mt]
+             [util :as u]]
             [metabase.query-processor.context.default :as context.default]
             [metabase.query-processor.reducible :as qp.reducible]
             [metabase.util.files :as u.files]))
@@ -59,16 +60,20 @@
 
 (deftest write-rows-to-file-test
   (let [filename (str (u.files/get-path (System/getProperty "java.io.tmpdir") "out.txt"))]
-    (is (= 3
-           (qp/process-query
-            {:database (mt/id)
-             :type     :query
-             :query    {:source-table (mt/id :venues), :limit 3}}
-            (print-rows-to-writer-context filename))))
-    (is (= ["ROW 1 -> [1 \"Red Medicine\" 4 10.0646 -165.374 3]"
-            "ROW 2 -> [2 \"Stout Burgers & Beers\" 11 34.0996 -118.329 2]"
-            "ROW 3 -> [3 \"The Apple Pan\" 11 34.0406 -118.428 2]"]
-           (str/split-lines (slurp filename))))))
+    (try
+      (is (= 3
+             (qp/process-query
+              {:database (mt/id)
+               :type     :query
+               :query    {:source-table (mt/id :venues), :limit 3}}
+              (print-rows-to-writer-context filename))))
+      (is (= ["ROW 1 -> [1 \"Red Medicine\" 4 10.0646 -165.374 3]"
+              "ROW 2 -> [2 \"Stout Burgers & Beers\" 11 34.0996 -118.329 2]"
+              "ROW 3 -> [3 \"The Apple Pan\" 11 34.0406 -118.428 2]"]
+             (str/split-lines (slurp filename))))
+      (finally
+        (u/ignore-exceptions
+          (.delete (io/file filename)))))))
 
 (defn- maps-rff [metadata]
   (let [ks (mapv (comp keyword :name) (:cols metadata))]

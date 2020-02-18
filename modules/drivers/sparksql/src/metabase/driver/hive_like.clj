@@ -54,7 +54,7 @@
     #"map"              :type/Dictionary
     #".*"               :type/*))
 
-(defmethod sql.qp/current-datetime-fn :hive-like [_] :%now)
+(defmethod sql.qp/current-datetime-honeysql-form :hive-like [_] :%now)
 
 (defmethod sql.qp/unix-timestamp->timestamp [:hive-like :seconds]
   [_ _ expr]
@@ -147,19 +147,19 @@
 
 ;; TIMEZONE FIXME — not sure what timezone the results actually come back as
 (defmethod sql-jdbc.execute/read-column-thunk [:hive-like Types/TIME]
-  [_ _ ^ResultSet rs rsmeta ^Integer i]
+  [_ ^ResultSet rs rsmeta ^Integer i]
   (fn []
     (when-let [t (.getTimestamp rs i)]
       (t/offset-time (t/local-time t) (t/zone-offset 0)))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:hive-like Types/DATE]
-  [_ _ ^ResultSet rs rsmeta ^Integer i]
+  [_ ^ResultSet rs rsmeta ^Integer i]
   (fn []
     (when-let [t (.getDate rs i)]
       (t/zoned-date-time (t/local-date t) (t/local-time 0) (t/zone-id "UTC")))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:hive-like Types/TIMESTAMP]
-  [_ _ ^ResultSet rs rsmeta ^Integer i]
+  [_ ^ResultSet rs rsmeta ^Integer i]
   (fn []
     (when-let [t (.getTimestamp rs i)]
       (t/zoned-date-time (t/local-date-time t) (t/zone-id "UTC")))))

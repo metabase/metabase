@@ -8,7 +8,8 @@
             [medley.core :as m]
             [metabase
              [query-processor :as qp]
-             [test :as mt]]
+             [test :as mt]
+             [util :as u]]
             [metabase.async.streaming-response :as streaming-response]
             [metabase.query-processor.streaming :as qp.streaming]
             [metabase.test.util :as tu]
@@ -45,18 +46,22 @@
 
 (defn- process-query-streaming [stream-type query]
   (let [filename (str (u.files/get-path (System/getProperty "java.io.tmpdir") (mt/random-name)))]
-    (with-redefs [streaming-response/keepalive-interval-ms 2]
-      (mt/with-open-channels [close-chan (a/promise-chan)]
-        (with-open [os (FileOutputStream. filename)]
-          (let [proxy-os (proxy-output-stream os close-chan)]
-            (ring.protocols/write-body-to-stream
-             (qp.streaming/streaming-response [context stream-type]
-               (Thread/sleep 10)
-               (qp/process-query-async query context))
-             nil
-             proxy-os)
-            (mt/wait-for-close close-chan 1000)
-            (parse-file stream-type filename)))))))
+    (try
+      (with-redefs [streaming-response/keepalive-interval-ms 2]
+        (mt/with-open-channels [close-chan (a/promise-chan)]
+          (with-open [os (FileOutputStream. filename)]
+            (let [proxy-os (proxy-output-stream os close-chan)]
+              (ring.protocols/write-body-to-stream
+               (qp.streaming/streaming-response [context stream-type]
+                 (Thread/sleep 10)
+                 (qp/process-query-async query context))
+               nil
+               proxy-os)
+              (mt/wait-for-close close-chan 1000)
+              (parse-file stream-type filename)))))
+      (finally
+        (u/ignore-exceptions
+          (.delete (io/file filename)))))))
 
 (deftest streaming-json-api-test []
   (testing "Streaming results in the normal :api response format"

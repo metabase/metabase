@@ -56,7 +56,7 @@
 
 (def ExportFormat
   "Schema for valid export formats for downloading query results."
-  (apply s/enum (map u/qualified-name (qp.streaming/stream-types))))
+  (apply s/enum (map u/qualified-name (qp.streaming/export-formats))))
 
 (defn export-format->context
   "Return the `:context` that should be used when saving a QueryExecution triggered by a request to download results
@@ -71,7 +71,7 @@
    Inteneded for use in an endpoint definition:
 
      (api/defendpoint POST [\"/:export-format\", :export-format export-format-regex]"
-  (re-pattern (str "(" (str/join "|" (map u/qualified-name (qp.streaming/stream-types))) ")")))
+  (re-pattern (str "(" (str/join "|" (map u/qualified-name (qp.streaming/export-formats))) ")")))
 
 (api/defendpoint ^:streaming POST ["/:export-format", :export-format export-format-regex]
   "Execute a query and download the result data as a file in the specified format."

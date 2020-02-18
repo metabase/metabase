@@ -311,12 +311,12 @@
 
 ;; instead of returning a CLOB object, return the String. (#9026)
 (defmethod sql-jdbc.execute/read-column-thunk [:oracle Types/CLOB]
-  [_ _ ^ResultSet rs _ ^Integer i]
+  [_ ^ResultSet rs _ ^Integer i]
   (fn []
     (.getString rs i)))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:oracle OracleTypes/TIMESTAMPTZ]
-  [driver _ ^ResultSet rs _ ^Integer i]
+  [driver ^ResultSet rs _ ^Integer i]
   ;; Oracle `TIMESTAMPTZ` types can have either a zone offset *or* a zone ID; you could fetch either `OffsetDateTime`
   ;; or `ZonedDateTime` using `.getObject`, but fetching the wrong type will result in an Exception, meaning we have
   ;; try both and wrap the first in a try-catch. As far as I know there's now way to tell whether the value has a zone

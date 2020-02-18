@@ -61,7 +61,6 @@
                   (for [event results]
                     (merge {:timestamp (ts-getter event)} (:result event))))})
 
-
 (s/defn ^:private col-names->getter-fns :- [(s/cond-pre s/Keyword (s/pred fn?))]
   "Given a sequence of `columns` keywords, return a sequence of appropriate getter functions to get values from a single
   result row. Normally, these are just the keyword column names themselves, but for `:timestamp___int`, we'll also
@@ -69,15 +68,18 @@
   `units-that-need-post-processing-int-parsing`). We also round `:distinct___count` in order to return an integer
   since Druid returns the approximate floating point value for cardinality queries (See Druid documentation regarding
   cardinality and HLL)."
-  [columns :- [s/Keyword]]
-  (for [k columns]
-    (case (keyword k)
-      :distinct___count (comp math/round k)
-      :timestamp___int  (comp (fn [^String s]
-                                (when (some? s)
-                                  (Integer/parseInt s)))
-                              k)
-      k)))
+  [actual-col-names :- [s/Keyword], annotate-col-names :- [s/Keyword]]
+  (let [annotate-col-names (set annotate-col-names)]
+    (filter
+     some?
+     (for [k actual-col-names]
+       (case k
+         :distinct___count (defn- get-distinct-count [row]
+                             (some-> (get row :distinct___count) math/round))
+         :timestamp___int  (fn get-timestamp-int [row]
+                             (some-> (get row :timestamp___int) Integer/parseInt))
+         (when (contains? annotate-col-names k)
+           k))))))
 
 (defn- result-metadata [col-names]
   ;; rename any occurances of `:timestamp___int` to `:timestamp` in the results so the user doesn't know about
@@ -91,10 +93,9 @@
     {:cols (vec (for [col-name fixed-col-names]
                   {:name (u/qualified-name col-name)}))}))
 
-(defn- result-rows [{rows :results} col-names]
-  (let [getters (vec (col-names->getter-fns col-names))]
-    (for [row rows]
-      (mapv row getters))))
+(defn- result-rows [{rows :results} actual-col-names annotate-col-names]
+  (let [getters (vec (col-names->getter-fns actual-col-names annotate-col-names))]
+    (map (apply juxt getters) rows)))
 
 (defn- remove-bonus-keys
   "Remove keys that start with `___` from the results -- they were temporary, and we don't want to return them."
@@ -110,7 +111,7 @@
                              (-> result :results first keys))
         metadata           (result-metadata col-names)
         annotate-col-names (map (comp keyword :name) (annotate/column-info* outer-query metadata))]
-    (respond metadata (result-rows result annotate-col-names))))
+    (respond metadata (result-rows result col-names annotate-col-names))))
 
 (defn execute-reducible-query
   "Execute a query for a Druid DB."

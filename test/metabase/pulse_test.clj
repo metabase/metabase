@@ -3,6 +3,7 @@
              [string :as str]
              [test :refer :all]
              [walk :as walk]]
+            [clojure.java.io :as io]
             [expectations :refer [expect]]
             [medley.core :as m]
             [metabase
@@ -167,18 +168,22 @@
        (with-redefs [constraints/default-query-constraints {:max-results           10000
                                                             :max-results-bare-rows 30}]
          (pulse/send-pulse! (models.pulse/retrieve-pulse pulse-id))
-         (is (= 31
-                ;; Slurp in the generated CSV and count the lines found in the file
-                (-> @et/inbox
-                    vals
-                    ffirst
-                    :body
-                    last
-                    :content
-                    slurp
-                    str/split-lines
-                    count))
-             "Should return 30 results (the redef'd limit) plus the header row"))))))
+         (let [first-message (-> @et/inbox vals ffirst)]
+           (is (= true
+                  (some? first-message))
+               "Should have a message in the inbox")
+           (when first-message
+             (let [filename (-> first-message :body last :content)
+                   exists?  (some-> filename io/file .exists)]
+               (is (= true
+                      exists?)
+                   "File should exist")
+               (testing (str "tmp file = %s" filename)
+                 (testing "Slurp in the generated CSV and count the lines found in the file"
+                   (when exists?
+                     (is (= 31
+                            (-> (slurp filename) str/split-lines count))
+                         "Should return 30 results (the redef'd limit) plus the header row"))))))))))))
 
 (deftest multiple-recipients-test
   (testing "Pulse should be sent to two recipients"

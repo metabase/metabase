@@ -332,7 +332,6 @@
   set-timezone-sql
   read-column
   ;; util fns
-  do-with-try-catch
   read-columns
   set-parameters
   ;; default impl of driver method

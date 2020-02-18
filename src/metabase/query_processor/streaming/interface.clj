@@ -4,7 +4,7 @@
 (defmulti stream-options
   "Options for the streaming response for this specific stream type. See `metabase.async.streaming-response` for all
   available options."
-  {:arglists '([stream-type])}
+  {:arglists '([export-format])}
   keyword)
 
 (p.types/defprotocol+ StreamingResultsWriter
@@ -15,7 +15,7 @@
     rows begin reduction; some metadata such as insights won't be available until we finish.")
 
   (write-row! [this row row-num]
-    "Write a row. `row-num` is the zero-indexed row number.")
+    "Write a row. `row` is a sequence of values in the row. `row-num` is the zero-indexed row number.")
 
   (finish! [this final-metadata]
     "Write anything needed after writing the last row. `final-metadata` is the final, complete metadata available
@@ -23,6 +23,6 @@
     finshed."))
 
 (defmulti streaming-results-writer
-  "Given a `stream-type` and `java.io.Writer`, return an object that implements `StreamingResultsWriter`."
-  {:arglists '(^metabase.query_processor.streaming.interface.StreamingResultsWriter [stream-type ^java.io.OutputStream os])}
-  (fn [stream-type _] (keyword stream-type)))
+  "Given a `export-format` and `java.io.Writer`, return an object that implements `StreamingResultsWriter`."
+  {:arglists '(^metabase.query_processor.streaming.interface.StreamingResultsWriter [export-format ^java.io.OutputStream os])}
+  (fn [export-format _] (keyword export-format)))
