@@ -78,7 +78,7 @@
 
 (defn- missing-required-param-exception [param-display-name]
   (ex-info (tru "You''ll need to pick a value for ''{0}'' before this query can run." param-display-name)
-    {:type qp.error-type/missing-required-parameter}))
+           {:type qp.error-type/missing-required-parameter}))
 
 (s/defn ^:private default-value-for-field-filter
   "Return the default value for a FieldFilter (`:type` = `:dimension`) param defined by the map `tag`, if one is set."
@@ -104,7 +104,7 @@
      {:field (let [field-id (field-filter->field-id field-filter)]
                (or (db/select-one [Field :name :parent_id :table_id :base_type] :id field-id)
                    (throw (ex-info (tru "Can''t find field with ID: {0}" field-id)
-                            {:field-id field-id, :type qp.error-type/invalid-parameter}))))
+                                   {:field-id field-id, :type qp.error-type/invalid-parameter}))))
       :value (if-let [value-info-or-infos (or
                                            ;; look in the sequence of params we were passed to see if there's anything
                                            ;; that matches
@@ -118,8 +118,8 @@
                ;;
                ;; (or it will be a vector of these maps for multiple values)
                (cond
-                 (map? value-info-or-infos)        (dissoc value-info-or-infos :target)
-                 (sequential? value-info-or-infos) (mapv #(dissoc % :target) value-info-or-infos))
+                (map? value-info-or-infos)        (dissoc value-info-or-infos :target)
+                (sequential? value-info-or-infos) (mapv #(dissoc % :target) value-info-or-infos))
                i/no-value)})))
 
 (s/defn ^:private card-query-for-tag :- (s/maybe (s/cond-pre su/Map (s/eq i/no-value)))
@@ -177,20 +177,20 @@
   converted to SQL as a simple comma-separated list.)"
   [value]
   (cond
-    ;; if not a string it's already been parsed
-    (number? value) value
-    ;; same goes for an instance of CommaSeperated values
-    (instance? CommaSeparatedNumbers value) value
-    ;; if the value is a string, then split it by commas in the string. Usually there should be none.
-    ;; Parse each part as a number.
-    (string? value)
-    (let [parts (for [part (str/split value #",")]
-                  (parse-number part))]
-      (if (> (count parts) 1)
-        ;; If there's more than one number return an instance of `CommaSeparatedNumbers`
-        (i/map->CommaSeparatedNumbers {:numbers parts})
-        ;; otherwise just return the single number
-        (first parts)))))
+   ;; if not a string it's already been parsed
+   (number? value) value
+   ;; same goes for an instance of CommaSeperated values
+   (instance? CommaSeparatedNumbers value) value
+   ;; if the value is a string, then split it by commas in the string. Usually there should be none.
+   ;; Parse each part as a number.
+   (string? value)
+   (let [parts (for [part (str/split value #",")]
+                 (parse-number part))]
+     (if (> (count parts) 1)
+       ;; If there's more than one number return an instance of `CommaSeparatedNumbers`
+       (i/map->CommaSeparatedNumbers {:numbers parts})
+       ;; otherwise just return the single number
+       (first parts)))))
 
 (s/defn ^:private parse-value-for-field-base-type :- s/Any
   "Do special parsing for value for a (presumably textual) FieldFilter (`:type` = `:dimension`) param (i.e., attempt
@@ -198,9 +198,9 @@
   handling types that do not have an associated parameter type (such as `date` or `number`), such as UUID fields."
   [base-type :- su/FieldType, value]
   (cond
-    (isa? base-type :type/UUID)   (UUID/fromString value)
-    (isa? base-type :type/Number) (value->number value)
-    :else                         value))
+   (isa? base-type :type/UUID)   (UUID/fromString value)
+   (isa? base-type :type/Number) (value->number value)
+   :else                         value))
 
 (s/defn ^:private parse-value-for-type :- ParsedParamValue
   "Parse a `value` based on the type chosen for the param, such as `text` or `number`. (Depending on the type of param
@@ -210,31 +210,31 @@
   base type Fields as UUIDs."
   [param-type :- ParamType, value]
   (cond
-    (= value i/no-value)
-    value
+   (= value i/no-value)
+   value
 
-    (= param-type :number)
-    (value->number value)
+   (= param-type :number)
+   (value->number value)
 
-    (= param-type :date)
-    (i/map->Date {:s value})
+   (= param-type :date)
+   (i/map->Date {:s value})
 
-    ;; Field Filters
-    (and (= param-type :dimension)
-         (= (get-in value [:value :type]) :number))
-    (update-in value [:value :value] value->number)
+   ;; Field Filters
+   (and (= param-type :dimension)
+        (= (get-in value [:value :type]) :number))
+   (update-in value [:value :value] value->number)
 
-    (sequential? value)
-    (i/map->MultipleValues {:values (for [v value]
-                                      (parse-value-for-type param-type v))})
+   (sequential? value)
+   (i/map->MultipleValues {:values (for [v value]
+                                     (parse-value-for-type param-type v))})
 
-    (and (= param-type :dimension)
-         (get-in value [:field :base_type])
-         (string? (get-in value [:value :value])))
-    (update-in value [:value :value] (partial parse-value-for-field-base-type (get-in value [:field :base_type])))
+   (and (= param-type :dimension)
+        (get-in value [:field :base_type])
+        (string? (get-in value [:value :value])))
+   (update-in value [:value :value] (partial parse-value-for-field-base-type (get-in value [:field :base_type])))
 
-    :else
-    value))
+   :else
+   value))
 
 (s/defn ^:private value-for-tag :- ParsedParamValue
   "Given a map `tag` (a value in the `:template-tags` dictionary) return the corresponding value from the `params`
@@ -254,15 +254,15 @@
     {:checkin_date #t \"2019-09-19T23:30:42.233-07:00\"}"
   [{tags :template-tags, params :parameters}]
   (try
-    (into {} (for [[k tag] tags
-                   :let    [v (value-for-tag tag params)]
-                   :when   v]
-               ;; TODO - if V is `nil` *on purpose* this still won't give us a query like `WHERE field = NULL`. That
-               ;; kind of query shouldn't be possible from the frontend anyway
-               {k v}))
-    (catch Throwable e
-      (throw (ex-info (.getMessage e)
-               {:type   (or (:type (ex-data e)) qp.error-type/invalid-parameter)
-                :tags   tags
-                :params params}
-               e)))))
+   (into {} (for [[k tag] tags
+                  :let    [v (value-for-tag tag params)]
+                  :when   v]
+              ;; TODO - if V is `nil` *on purpose* this still won't give us a query like `WHERE field = NULL`. That
+              ;; kind of query shouldn't be possible from the frontend anyway
+              {k v}))
+   (catch Throwable e
+     (throw (ex-info (.getMessage e)
+                     {:type   (or (:type (ex-data e)) qp.error-type/invalid-parameter)
+                      :tags   tags
+                      :params params}
+                     e)))))

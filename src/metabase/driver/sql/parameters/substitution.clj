@@ -269,4 +269,4 @@
 (defmethod ->replacement-snippet-info [:sql ReferencedCardQuery]
   [_driver {:keys [query]}]
   {:prepared-statement-args nil
-   :replacement-snippet (str "(" query ")")})
+   :replacement-snippet     (str "(" query ")")})
