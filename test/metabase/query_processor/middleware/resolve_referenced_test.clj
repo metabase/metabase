@@ -20,10 +20,10 @@
              (#'referenced/tags-referenced-cards
               {:native
                {:template-tags
-                {"tag-name-not-important1" {:type :card
-                                            :card (:id c1)}
-                 "tag-name-not-important2" {:type :card
-                                            :card (:id c2)}}}}))))))
+                {"tag-name-not-important1" {:type    :card
+                                            :card-id (:id c1)}
+                 "tag-name-not-important2" {:type    :card
+                                            :card-id (:id c2)}}}}))))))
 
 (deftest resolve-card-resources-test
   (testing "resolve stores source table from referenced card"
@@ -31,8 +31,8 @@
                                                     {:filter [:< [:field-id $price] 3]})}]
       (let [query {:database (data/id)
                    :native   {:template-tags
-                              {"tag-name-not-important1" {:type :card
-                                                          :card (:id mbql-card)}}}}]
+                              {"tag-name-not-important1" {:type    :card
+                                                          :card-id (:id mbql-card)}}}}]
         (qp.store/with-store
           (qp.store/fetch-and-store-database! (data/id))
 
@@ -63,7 +63,7 @@
                          :native   {:query         (format "SELECT * FROM {{%s}} AS x" tag-name)
                                     :template-tags {tag-name ; This tag's query is from the test db
                                                     {:id tag-name, :name tag-name, :display-name tag-name,
-                                                     :type "card", :card card-id}}}}]
+                                                     :type "card", :card-id card-id}}}}]
         (is (= {:referenced-query     card-query
                 :expected-database-id query-db-id}
                (try
