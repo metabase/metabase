@@ -19,7 +19,7 @@
 (defn- check-query-database-id=
   [query database-id]
   (when-not (= (:database query) database-id)
-    (throw (ex-info "Referenced query is from a different database"
+    (throw (ex-info (str (deferred-tru "Referenced query is from a different database"))
                     {:referenced-query     query
                      :expected-database-id database-id}))))
 

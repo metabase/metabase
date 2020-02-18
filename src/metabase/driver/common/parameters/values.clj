@@ -16,7 +16,7 @@
             [metabase.query-processor :as qp]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util
-             [i18n :as ui18n :refer [tru]]
+             [i18n :as ui18n :refer [deferred-tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db])
@@ -77,7 +77,8 @@
 ;;; FieldFilter Params (Field Filters) (e.g. WHERE {{x}})
 
 (defn- missing-required-param-exception [param-display-name]
-  (ex-info (tru "You''ll need to pick a value for ''{0}'' before this query can run." param-display-name)
+  (ex-info (str (deferred-tru "You''ll need to pick a value for ''{0}'' before this query can run."
+                              param-display-name))
            {:type qp.error-type/missing-required-parameter}))
 
 (s/defn ^:private default-value-for-field-filter
@@ -103,7 +104,7 @@
      ;; TODO - shouldn't this use the QP Store?
      {:field (let [field-id (field-filter->field-id field-filter)]
                (or (db/select-one [Field :name :parent_id :table_id :base_type] :id field-id)
-                   (throw (ex-info (tru "Can''t find field with ID: {0}" field-id)
+                   (throw (ex-info (str (deferred-tru "Can''t find field with ID: {0}" field-id))
                                    {:field-id field-id, :type qp.error-type/invalid-parameter}))))
       :value (if-let [value-info-or-infos (or
                                            ;; look in the sequence of params we were passed to see if there's anything
@@ -135,8 +136,9 @@
          (let [{:keys [error] :as data} (ex-data e)]
            (throw
             (if (string? error)
-              (ex-info (tru "The sub-query from referenced question #{0} failed with the following error: {1}"
-                            (str card-id) error)
+              (ex-info (str (deferred-tru
+                             "The sub-query from referenced question #{0} failed with the following error: {1}"
+                             (str card-id) error))
                        (-> data
                            (dissoc :error)
                            (merge {:card-query-error? true
