@@ -20,5 +20,9 @@ describe("Parameters", () => {
       const result = parseQueryParam("123", [PRODUCTS.ID, PRODUCTS.TITLE]);
       expect(result).toBe("123");
     });
+    it("should not parse if there are no fields", () => {
+      const result = parseQueryParam("123", []);
+      expect(result).toBe("123");
+    });
   });
 });

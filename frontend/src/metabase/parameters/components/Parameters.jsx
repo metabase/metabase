@@ -251,11 +251,14 @@ export function parseQueryParam(
   if (Array.isArray(value)) {
     return value.map(v => parseQueryParam(v, fields));
   }
-  if (fields.every(f => f.isNumeric())) {
-    return parseFloat(value);
-  }
-  if (fields.every(f => f.isBoolean())) {
-    return value === "true" ? true : value === "false" ? false : value;
+  // [].every is always true, so only check if there are some fields
+  if (fields.length > 0) {
+    if (fields.every(f => f.isNumeric())) {
+      return parseFloat(value);
+    }
+    if (fields.every(f => f.isBoolean())) {
+      return value === "true" ? true : value === "false" ? false : value;
+    }
   }
   return value;
 }
