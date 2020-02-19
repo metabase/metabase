@@ -7,17 +7,14 @@
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [metabase
              [http-client :as http]
+             [models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Dimension Field]]
              [query-processor-test :as qp.test]
+             [test :as mt]
              [util :as u]]
             [metabase.api.public :as public-api]
             [metabase.models
-             [card :refer [Card]]
-             [dashboard :refer [Dashboard]]
-             [dashboard-card :refer [DashboardCard]]
-             [dashboard-card-series :refer [DashboardCardSeries]]
-             [dimension :refer [Dimension]]
-             [field :refer [Field]]
-             [field-values :refer [FieldValues]]]
+             [permissions :as perms]
+             [permissions-group :as group]]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -30,10 +27,8 @@
 ;;; --------------------------------------------------- Helper Fns ---------------------------------------------------
 
 (defn count-of-venues-card []
-  {:dataset_query {:database (data/id)
-                   :type     :query
-                   :query    {:source-table (data/id :venues)
-                              :aggregation  [:count]}}})
+  {:dataset_query (mt/mbql-query venues
+                    {:aggregation [[:count]]})})
 
 (defn- shared-obj []
   {:public_uuid       (str (UUID/randomUUID))
@@ -138,14 +133,10 @@
            (with-temp-public-card [{uuid :public_uuid}]
              (http/client :get 400 (str "public/card/" uuid "/query")))))))
 
-
-
-
 (deftest check-that-we-get-a-400-if-the-publiccard-doesn-t-exist
   (is (= "An error occurred."
          (tu/with-temporary-setting-values [enable-public-sharing true]
            (http/client :get 400 (str "public/card/" (UUID/randomUUID) "/query"))))))
-
 
 (deftest check-that-we--cannot--execute-a-publiccard-if-the-card-has-been-archived
   (is (= "An error occurred."
@@ -165,7 +156,7 @@
       (with-temp-public-card [{uuid :public_uuid}]
         (testing "Default :api response format"
           (is (= [[100]]
-                 (qp.test/rows (http/client :get 202 (str "public/card/" uuid "/query"))))))
+                 (mt/rows (http/client :get 202 (str "public/card/" uuid "/query"))))))
 
         (testing ":json download response format"
           (is (= [{:Count 100}]
@@ -179,6 +170,19 @@
           (is (= [{:col "Count"} {:col 100.0}]
                  (parse-xlsx-response
                   (http/client :get 202 (str "public/card/" uuid "/query/xlsx") {:request-options {:as :byte-array}})))))))))
+
+(deftest execute-public-card-as-user-without-perms-test
+  (testing "A user that doesn't have permissions to run the query normally should still be able to run a public Card as if they weren't logged in"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (tt/with-temp Collection [{collection-id :id}]
+        (perms/revoke-collection-permissions! (group/all-users) collection-id)
+        (with-temp-public-card [{card-id :id, uuid :public_uuid} {:collection_id collection-id}]
+          (is (= "You don't have permissions to do that."
+                 ((mt/user->client :rasta) :post 403 (format "card/%d/query" card-id)))
+              "Sanity check: shouldn't be allowed to run the query normally")
+          (is (= [[100]]
+                 (mt/rows
+                   ((mt/user->client :rasta) :get 202 (str "public/card/" uuid "/query"))))))))))
 
 (deftest check-that-we-can-exec-a-publiccard-with---parameters-
   (is (= [{:name "Venue ID", :slug "venue_id", :type "id", :value 2}]
@@ -277,9 +281,7 @@
                  set))))))
 
 
-
 ;;; ---------------------------------------- GET /api/public/dashboard/:uuid -----------------------------------------
-
 
 (deftest check-that-we--cannot--fetch-publicdashboard-if-setting-is-disabled
   (is (= "An error occurred."
@@ -314,10 +316,10 @@
 
 ;;; --------------------------------- GET /api/public/dashboard/:uuid/card/:card-id ----------------------------------
 
-(defn- dashcard-url [dash card]
+(defn- dashcard-url
+  "URL for fetching results of a public DashCard."
+  [dash card]
   (str "public/dashboard/" (:public_uuid dash) "/card/" (u/get-id card)))
-
-
 
 (deftest check-that-we--cannot--exec-publiccard-via-publicdashboard-if-setting-is-disabled
   (is (= "An error occurred."
@@ -343,7 +345,6 @@
            (with-temp-public-dashboard-and-card [dash _]
              (tt/with-temp Card [card]
                (http/client :get 400 (dashcard-url dash card))))))))
-
 
 (deftest check-that-we--cannot--execute-a-publiccard-via-a-publicdashboard-if-the-card-has-been-archived
   (is (= "An error occurred."
@@ -373,6 +374,20 @@
                                                              :target [:dimension (data/id :venues :id)]
                                                              :value  [10]}]))
                      [:json_query :parameters]))))))
+
+(deftest execute-public-dashcard-as-user-without-perms-test
+  (testing "A user that doesn't have permissions to run the query normally should still be able to run a public DashCard"
+    (mt/with-temporary-setting-values [enable-public-sharing true]
+      (tt/with-temp Collection [{collection-id :id}]
+        (perms/revoke-collection-permissions! (group/all-users) collection-id)
+        (with-temp-public-dashboard-and-card [dash {card-id :id, :as card}]
+          (db/update! Card card-id :collection_id collection-id)
+          (is (= "You don't have permissions to do that."
+                 ((mt/user->client :rasta) :post 403 (format "card/%d/query" card-id)))
+              "Sanity check: shouldn't be allowed to run the query normally")
+          (is (= [[100]]
+                 (mt/rows
+                   ((mt/user->client :rasta) :get 202 (dashcard-url dash card))))))))))
 
 
 ;; Make sure params are validated: this should pass because venue_id *is* one of the Dashboard's :parameters

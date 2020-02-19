@@ -1,6 +1,7 @@
 (ns metabase.query-processor.middleware.permissions
   "Middleware for checking that the current user has permissions to run the current query."
-  (:require [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
+  (:require [clojure.tools.logging :as log]
+            [metabase.api.common :refer [*current-user-id* *current-user-permissions-set*]]
             [metabase.models
              [card :refer [Card]]
              [interface :as mi]
@@ -16,10 +17,13 @@
 (s/defn ^:private check-card-read-perms
   "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
   [card-id :- su/IntGreaterThanZero]
-  (when-not (mi/can-read? (or (db/select-one [Card :collection_id] :id card-id)
-                              (throw (Exception. (tru "Card {0} does not exist." card-id)))))
-    (throw (ex-info (tru "You do not have permissions to view Card {0}." card-id)
-             {:type error-type/missing-required-permissions}))))
+  (let [{collection-id :collection_id, :as card} (or (db/select-one [Card :collection_id] :id card-id)
+                                                     (throw (ex-info (tru "Card {0} does not exist." card-id)
+                                                                     {:type error-type/invalid-query})))]
+    (log/tracef "Required perms to run Card: %s" (pr-str (mi/perms-objects-set card :read)))
+    (when-not (mi/can-read? card)
+      (throw (ex-info (tru "You do not have permissions to view Card {0}." card-id)
+                      {:type error-type/missing-required-permissions})))))
 
 (defn- perms-exception [required-perms]
   (ex-info (tru "You do not have permissions to run this query.")
@@ -31,6 +35,7 @@
 (s/defn ^:private check-ad-hoc-query-perms
   [outer-query]
   (let [required-perms (query-perms/perms-set outer-query, :throw-exceptions? true, :already-preprocessed? true)]
+    (log/tracef "Required ad-hoc perms: %s" (pr-str required-perms))
     (when-not (perms/set-has-full-permissions-for-set? @*current-user-permissions-set* required-perms)
       (throw (perms-exception required-perms)))))
 
@@ -38,6 +43,7 @@
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."
   [{{:keys [card-id]} :info, :as outer-query} :- su/Map]
   (when *current-user-id*
+    (log/tracef "Checking query permissions. Current user perms set = %s" (pr-str @*current-user-permissions-set*))
     (if card-id
       (check-card-read-perms card-id)
       (check-ad-hoc-query-perms outer-query))))

@@ -29,7 +29,7 @@
              [field :refer [Field]]
              [params :as params]]
             [metabase.query-processor
-             [error-type :as qp.error-type]
+             [error-type :as error-type]
              [streaming :as qp.streaming]]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.util
@@ -110,6 +110,10 @@
   [card-id export-format parameters & options]
   {:pre [(integer? card-id)]}
   ;; run this query with full superuser perms
+  ;;
+  ;; we actually need to bind the current user perms here twice, once so `card-api` will have the full perms when it
+  ;; tries to do the `read-check`, and a second time for when the query is ran (async) so the QP middleware will have
+  ;; the correct perms
   (binding [api/*current-user-permissions-set* (atom #{"/"})]
     (apply card-api/run-query-for-card-async card-id export-format
            :parameters parameters
@@ -117,7 +121,8 @@
            :run        (fn [query info]
                          (qp.streaming/streaming-response [{:keys [reducedf], :as context} export-format]
                            (let [context  (assoc context :reducedf (public-reducedf reducedf))
-                                 in-chan  (qp/process-query-and-save-execution! query info context)
+                                 in-chan  (binding [api/*current-user-permissions-set* (atom #{"/"})]
+                                            (qp/process-query-and-save-execution! query info context))
                                  out-chan (a/promise-chan (map transform-results))]
                              (async.u/promise-pipe in-chan out-chan)
                              out-chan)))
@@ -247,7 +252,8 @@
                    (matching-dashboard-param-with-target dashboard-params dashcard-param-mappings target)
                    ;; ...but if we *still* couldn't find a match, throw an Exception, because we don't want people
                    ;; trying to inject new params
-                   (throw (Exception. (tru "Invalid param: {0}" slug))))]]
+                   (throw (ex-info (tru "Invalid param: {0}" slug)
+                                   {:type error-type/invalid-parameter})))]]
         (merge query-param dashboard-param)))))
 
 (defn- check-card-is-in-dashboard

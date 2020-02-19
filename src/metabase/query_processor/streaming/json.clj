@@ -33,8 +33,9 @@
 
       (finish! [_ _]
         (.write writer "\n]")
-        (.close writer)
-        (.close os)))))
+        (.flush writer)
+        (.flush os)
+        (.close writer)))))
 
 (defmethod i/stream-options :api
   [stream-type]
