@@ -139,9 +139,12 @@
   [driver [_ arg pattern]]
   (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
 
-(defmethod sql.qp/->honeysql [:sqlite :trim]
+(defmethod sql.qp/->honeysql [:snowflake :trim]
   [driver [_ arg pattern]]
-  (str "trim(" (hformat/to-sql arg) (when pattern " ," (str (hformat/to-sql pattern))) ")"))
+  (hsql/raw (str "trim("
+                 (hformat/to-sql (sql.qp/->honeysql driver arg))
+                 (when pattern
+                   (str " ," (hformat/to-sql (sql.qp/->honeysql driver pattern)))) ")")))
 
 (defn- db-name
   "As mentioned above, old versions of the Snowflake driver used `details.dbname` to specify the physical database, but

@@ -221,7 +221,10 @@
 
 (defmethod sql.qp/->honeysql [:sqlite :trim]
   [driver [_ arg pattern]]
-  (str "trim(" (hformat/to-sql arg) (when pattern " ," (str (hformat/to-sql pattern))) ")"))
+  (hsql/raw (str "trim("
+                 (hformat/to-sql (sql.qp/->honeysql driver arg))
+                 (when pattern
+                   (str " ," (hformat/to-sql (sql.qp/->honeysql driver pattern)))) ")")))
 
 ;; See https://sqlite.org/lang_datefunc.html
 
