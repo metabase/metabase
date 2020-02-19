@@ -365,7 +365,7 @@
 
 (defmethod ->honeysql [:sql :coalesce]
   [driver [_ & args]]
-  (apply hsql/call :coalesce (map (partial ->honsql driver) args)))
+  (apply hsql/call :coalesce (map (partial ->honeysql driver) args)))
 
 (defmethod ->honeysql [:sql :replace]
   [driver [_ arg pattern replacement]]
