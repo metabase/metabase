@@ -17,9 +17,12 @@ import type {
   ParameterId,
   Parameter,
   ParameterValues,
+  ParameterValueOrArray,
 } from "metabase/meta/types/Parameter";
 
 import type { DashboardWithCards } from "metabase/meta/types/Dashboard";
+import type Field from "metabase-lib/lib/metadata/Field";
+import type Metadata from "metabase-lib/lib/metadata/Metadata";
 
 type Props = {
   className?: string,
@@ -36,6 +39,7 @@ type Props = {
   vertical?: boolean,
   commitImmediately?: boolean,
 
+  metadata?: Metadata,
   query?: QueryParams,
 
   setParameterName?: (parameterId: ParameterId, name: string) => void,
@@ -64,12 +68,14 @@ export default class Parameters extends Component {
     const { parameters, setParameterValue, query, metadata } = this.props;
     if (setParameterValue) {
       for (const parameter of parameters) {
-        if (query && query[parameter.slug] != null) {
-          const fields = parameter.field_ids.map(id => metadata.field(id));
-          const value = parseQueryParam(query[parameter.slug], fields);
-          setParameterValue(parameter.id, value);
-        } else if (parameter.default != null) {
-          setParameterValue(parameter.id, parameter.default);
+        const queryParam = query && query[parameter.slug];
+        if (queryParam != null || parameter.default != null) {
+          const value = queryParam != null ? queryParam : parameter.default;
+          const fieldIds = parameter.field_ids || [];
+          // $FlowFixMe
+          const fields = fieldIds.map(id => metadata.field(id));
+          // $FlowFixMe
+          setParameterValue(parameter.id, parseQueryParam(value, fields));
         }
       }
     }
@@ -238,7 +244,10 @@ const SortableParameterWidgetList = SortableContainer(
   StaticParameterWidgetList,
 );
 
-export function parseQueryParam(value, fields) {
+export function parseQueryParam(
+  value: ParameterValueOrArray,
+  fields: Field[],
+): any {
   if (Array.isArray(value)) {
     return value.map(v => parseQueryParam(v, fields));
   }
