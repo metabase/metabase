@@ -29,7 +29,7 @@
              [field :refer [Field]]
              [params :as params]]
             [metabase.query-processor
-             [error-type :as error-type]
+             [error-type :as qp.error-type]
              [streaming :as qp.streaming]]
             [metabase.query-processor.middleware.constraints :as constraints]
             [metabase.util
@@ -253,7 +253,7 @@
                    ;; ...but if we *still* couldn't find a match, throw an Exception, because we don't want people
                    ;; trying to inject new params
                    (throw (ex-info (tru "Invalid param: {0}" slug)
-                                   {:type error-type/invalid-parameter})))]]
+                                   {:type qp.error-type/invalid-parameter})))]]
         (merge query-param dashboard-param)))))
 
 (defn- check-card-is-in-dashboard
