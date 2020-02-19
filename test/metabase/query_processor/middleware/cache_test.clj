@@ -113,7 +113,7 @@
                                                                             ::exception)))))))]
             (u/prog1 (thunk)
               (is (= expected-result
-                     (mt/wait-for-result save-chan 200))))))
+                     (mt/wait-for-result save-chan 500))))))
         (finally
           (reset! save-chan* orig))))))
 
@@ -130,7 +130,7 @@
         (reset! purge-chan* purge-chan)
         (u/prog1 (thunk)
           (is (= expected-result
-                 (mt/wait-for-result purge-chan 200))))
+                 (mt/wait-for-result purge-chan 500))))
         (finally (reset! purge-chan* orig))))))
 
 (defmacro ^:private wait-for-purge-result {:style/indent 1} [expected-result & body]
