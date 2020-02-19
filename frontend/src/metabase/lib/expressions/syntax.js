@@ -68,6 +68,27 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
     return syntax("function", token(ctx.functionName[0]), ...args);
   }
 
+  caseExpression(ctx) {
+    const parts = [];
+    parts.push(token(ctx.Case[0]));
+    parts.push(token(ctx.LParen[0]));
+    const commas = [...ctx.Comma];
+    for (let i = 0; i < ctx.filter.length; i++) {
+      if (i > 0) {
+        parts.push(token(commas.shift()));
+      }
+      parts.push(this.visit(ctx.filter[i]));
+      parts.push(token(commas.shift()));
+      parts.push(this.visit(ctx.expression[i]));
+    }
+    if (commas.length > 0) {
+      parts.push(token(commas.shift()));
+      parts.push(this.visit(ctx.default[0]));
+    }
+    parts.push(token(ctx.RParen[0]));
+    return syntax("case", ...parts);
+  }
+
   call(ctx) {
     const parts = [];
     if (ctx.LParen) {
@@ -126,12 +147,35 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
 
   // FILTERS
 
-  filter() {}
-  filterBooleanExpression() {}
-  filterFunctionExpression() {}
-  filterParenthesisExpression() {}
-  filterOperatorExpression() {}
-  filterAtomicExpression() {}
+  filter(ctx) {
+    return this.visit(ctx.filterBooleanExpression);
+  }
+  filterBooleanExpression(ctx) {
+    return this._arithmeticExpression(ctx);
+  }
+  filterFunctionExpression(ctx) {
+    const args = ctx.call ? this.visit(ctx.call) : [];
+    return syntax("filter", token(ctx.functionName[0]), ...args);
+  }
+  filterOperatorExpression(ctx) {
+    return syntax(
+      "filter",
+      this.visit(ctx.lhs),
+      token(ctx.operator[0]),
+      this.visit(ctx.rhs),
+    );
+  }
+  filterParenthesisExpression(ctx) {
+    return syntax(
+      "group",
+      token(ctx.LParen[0]),
+      this.visit(ctx.filter),
+      token(ctx.RParen[0]),
+    );
+  }
+  filterAtomicExpression(ctx) {
+    return this.visit(ctx.filter);
+  }
 }
 
 export function parse(

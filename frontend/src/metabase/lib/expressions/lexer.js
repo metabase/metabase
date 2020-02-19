@@ -76,6 +76,8 @@ const aggregationNameTokens = Array.from(AGGREGATIONS).map(short =>
   }),
 );
 
+// FUNCTIONS
+
 export const FunctionName = createToken({
   name: "FunctionName",
   pattern: Lexer.NA,
@@ -89,6 +91,15 @@ const functionNameTokens = Array.from(FUNCTIONS).map(short =>
     longer_alt: Identifier,
   }),
 );
+
+// special-case Case since it uses different syntax
+export const Case = createToken({
+  name: "Case",
+  pattern: /Case/i,
+  longer_alt: Identifier,
+});
+
+// FILTERS
 
 export const FilterName = createToken({
   name: "FilterName",
@@ -173,6 +184,7 @@ export const allTokens = [
   ...aggregationNameTokens,
   FunctionName,
   ...functionNameTokens,
+  Case,
   FilterName,
   ...filterNameTokens,
   FilterOperator,
@@ -181,7 +193,7 @@ export const allTokens = [
   StringLiteral,
   NumberLiteral,
   IdentifierString,
-  // must come last:
+  // must come after keywords (which should have "longer_alt: Identifier" set)
   Identifier,
 ];
 

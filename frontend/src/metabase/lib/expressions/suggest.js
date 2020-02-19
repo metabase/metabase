@@ -21,6 +21,7 @@ import {
   MultiplicativeOperator,
   AggregationName,
   FunctionName,
+  Case,
   StringLiteral,
   NumberLiteral,
   Minus,
@@ -193,7 +194,7 @@ export function suggest(
         //     postfixTrim: /^\w+\s*/
         // })))
       }
-    } else if (nextTokenType === FunctionName) {
+    } else if (nextTokenType === FunctionName || nextTokenType === Case) {
       // TODO
     } else if (
       nextTokenType === StringLiteral ||

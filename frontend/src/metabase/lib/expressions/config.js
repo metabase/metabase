@@ -1,8 +1,9 @@
 import { t } from "ttag";
-import { capitalize } from "metabase/lib/formatting";
 
+// Reserved token names
 const MBQL_TO_EXPRESSION_NAME = new Map(
   Object.entries({
+    // aggregations
     count: t`Count`,
     "cum-count": t`CumulativeCount`,
     sum: t`Sum`,
@@ -12,6 +13,7 @@ const MBQL_TO_EXPRESSION_NAME = new Map(
     avg: t`Average`,
     min: t`Min`,
     max: t`Max`,
+    // functions
     lower: t`Lower`,
     upper: t`Upper`,
     substring: t`Substring`,
@@ -23,7 +25,10 @@ const MBQL_TO_EXPRESSION_NAME = new Map(
     rtrim: t`RightTrim`,
     ltrim: t`LeftTrim`,
     case: t`Case`,
+    // filters
     contains: t`Contains`,
+    and: t`AND`,
+    or: t`OR`,
   }),
 );
 const EXPRESSION_TO_MBQL_NAME = new Map(

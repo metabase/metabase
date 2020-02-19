@@ -11,6 +11,7 @@ import {
   MultiplicativeOperator,
   AggregationName,
   FunctionName,
+  Case,
   FilterName,
   FilterOperator,
   BooleanFilterOperator,
@@ -108,6 +109,25 @@ export class ExpressionParser extends CstParser {
       $.SUBRULE($.call, { LABEL: "call", ARGS: [outsideAggregation] });
     });
 
+    $.RULE("caseExpression", () => {
+      $.CONSUME(Case);
+      $.CONSUME(LParen);
+      $.SUBRULE($.filter);
+      $.CONSUME(Comma);
+      $.SUBRULE($.expression);
+      $.MANY(() => {
+        $.CONSUME2(Comma);
+        $.SUBRULE2($.filter);
+        $.CONSUME3(Comma);
+        $.SUBRULE3($.expression);
+      });
+      $.OPTION(() => {
+        $.CONSUME4(Comma);
+        $.SUBRULE4($.expression, { LABEL: "default" });
+      });
+      $.CONSUME(RParen);
+    });
+
     $.RULE("metricExpression", () => {
       $.OR([
         { ALT: () => $.SUBRULE($.identifierString, { LABEL: "metricName" }) },
@@ -159,14 +179,23 @@ export class ExpressionParser extends CstParser {
           //   GATE: () => outsideAggregation,
           //   ALT: () => $.SUBRULE($.metricExpression, { LABEL: "expression" }),
           // },
-          // dimensions are not allowed outside aggregations
           {
+            // in theory numeric functions could be used in aggregations, but we don't have any currently?
+            GATE: () => !outsideAggregation,
             ALT: () =>
               $.SUBRULE($.functionExpression, {
                 ARGS: [outsideAggregation],
                 LABEL: "expression",
               }),
           },
+          {
+            GATE: () => !outsideAggregation,
+            ALT: () =>
+              $.SUBRULE($.caseExpression, {
+                LABEL: "expression",
+              }),
+          },
+          // dimensions are not allowed outside aggregations
           {
             GATE: () => !outsideAggregation,
             ALT: () =>

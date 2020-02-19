@@ -17,6 +17,8 @@ import {
   formatStringLiteral,
 } from "../expressions";
 
+const isCase = expr => Array.isArray(expr) && expr[0] === "case";
+
 // convert a MBQL expression back into an expression string
 export function format(
   expr,
@@ -53,6 +55,9 @@ export function format(
   }
   if (isFunction(expr)) {
     return formatFunction(expr, info);
+  }
+  if (isCase(expr)) {
+    return formatCase(expr, info);
   }
   if (isFilter(expr)) {
     return formatFilter(expr, info);
@@ -111,9 +116,29 @@ function formatCall(formattedName, args, info) {
     : `${formattedName}(${formattedArgs})`;
 }
 
-function formatOperator([operator, ...args], info, parens) {
+const precedence = {
+  "+": 1,
+  "-": 1,
+  "*": 2,
+  "/": 2,
+};
+
+function formatOperator([op, ...args], info, parens) {
   const formatted = args
-    .map(arg => format(arg, info, true))
-    .join(` ${operator} `);
+    .map(arg => {
+      const isLowerPrecedence =
+        isMath(arg) && precedence[op] > precedence[arg[0]];
+      return format(arg, info, isLowerPrecedence);
+    })
+    .join(` ${op} `);
   return parens ? `(${formatted})` : formatted;
+}
+
+function formatCase([_, clauses, options = {}], info) {
+  const formattedClauses = clauses
+    .map(([filter, expr]) => format(filter, info) + ", " + format(expr, info))
+    .join(", ");
+  const defaultExpression =
+    options.default !== undefined ? ", " + format(options.default, info) : "";
+  return `Case(${formattedClauses}${defaultExpression})`;
 }

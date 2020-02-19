@@ -34,6 +34,9 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
   aggregationExpression(ctx) {
     const aggregationName = ctx.aggregationName[0].image;
     const agg = parseAggregationName(aggregationName);
+    if (!agg) {
+      throw new Error(`Unknown Aggregation: ${aggregationName}`);
+    }
     const args = ctx.call ? this.visit(ctx.call) : [];
     return [agg, ...args];
   }
@@ -41,8 +44,22 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
   functionExpression(ctx) {
     const functionName = ctx.functionName[0].image;
     const fn = parseFunctionName(functionName);
+    if (!fn) {
+      throw new Error(`Unknown Function: ${functionName}`);
+    }
     const args = ctx.call ? this.visit(ctx.call) : [];
     return [fn, ...args];
+  }
+
+  caseExpression(ctx) {
+    const mbql = [
+      "case",
+      ctx.filter.map((f, i) => [this.visit(f), this.visit(ctx.expression[i])]),
+    ];
+    if (ctx.default) {
+      mbql.push({ default: this.visit(ctx.default) });
+    }
+    return mbql;
   }
 
   call(ctx) {
