@@ -134,6 +134,12 @@
 (defn- num-to-ym-interval [unit v] (hsql/call :numtoyminterval v (hx/literal unit)))
 
 
+(defmethod ->honeysql [:oracle :substring]
+  [driver [_ arg start length]]
+  (if length
+    (hsql/call :substr (->honeysql driver arg) (->honeysql driver start) (->honeysql driver length))
+    (hsql/call :substr (->honeysql driver arg) (->honeysql driver start))))
+
 (defmethod sql.qp/->honeysql [:oracle :regex-match-first]
   [driver [_ arg pattern]]
   (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))

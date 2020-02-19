@@ -45,16 +45,20 @@
   (test-string-extract [:substring [:field-id (data/id :venues :name)] 1 3]))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
+  "ed Medicine"
+  (test-string-extract [:substring [:field-id (data/id :venues :name)] 2]))
+
+(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
   "Blue Medicine"
   (test-string-extract [:replace [:field-id (data/id :venues :name)] "Red" "Blue"]))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
   1
-  (test-string-extract [:coalesce 1 2]))
+  (int (test-string-extract [:coalesce 1 2])))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions :regex)
-  "R"
-  (test-string-extract [:regex-match-first [:field-id (data/id :venues :name)] "[A-Z]+"]))
+  "Red"
+  (test-string-extract [:regex-match-first [:field-id (data/id :venues :name)] ".ed+"]))
 
 ;; test nesting
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)

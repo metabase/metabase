@@ -291,7 +291,7 @@
    Field))
 
 (defclause ^{:requires-features #{:expressions}} substring
-  s StringExpressionArg, start s/Int, length s/Int)
+  s StringExpressionArg, start s/Int, length (optional s/Int))
 
 (defclause ^{:requires-features #{:expressions}} trim
   s StringExpressionArg, pattern (optional s/Str))

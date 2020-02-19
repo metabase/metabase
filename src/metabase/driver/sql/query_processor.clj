@@ -373,7 +373,9 @@
 
 (defmethod ->honeysql [:sql :substring]
   [driver [_ arg start length]]
-  (hsql/call :substring (->honeysql driver arg) (->honeysql driver start) (->honeysql driver length)))
+  (if length
+    (hsql/call :substring (->honeysql driver arg) (->honeysql driver start) (->honeysql driver length))
+    (hsql/call :substring (->honeysql driver arg) (->honeysql driver start))))
 
 ;; actual handling of the name is done in the top-level clause handler for aggregations
 (defmethod ->honeysql [:sql :aggregation-options] [driver [_ ag]]
