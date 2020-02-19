@@ -279,13 +279,15 @@ export default class LineAreaBarChart extends Component {
 
     const hasTitle = showTitle && settings["card.title"];
 
-    const defaultSeries = [{
-      card: {
-        name: " ",
-        id: series[0].card.id,
-        dataset_query: series[0].card.dataset_query,
+    const defaultSeries = [
+      {
+        card: {
+          name: " ",
+          id: series[0].card.id,
+          dataset_query: series[0].card.dataset_query,
+        },
       },
-    }];
+    ];
 
     return (
       <div

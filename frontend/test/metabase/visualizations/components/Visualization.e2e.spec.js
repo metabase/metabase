@@ -120,7 +120,7 @@ describe("Visualization", () => {
           showTitle: true,
         });
         expect(getTitles(viz)).toEqual([["_name"]]);
-      })
+      });
       it("should render normal title and breakout multiseries titles", () => {
         const viz = renderVisualization({
           rawSeries: [MultiseriesLineCard("Foo")],
