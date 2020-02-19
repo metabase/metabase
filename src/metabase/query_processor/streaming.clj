@@ -12,6 +12,7 @@
              [xlsx :as streaming.xlsx]]
             [metabase.util :as u])
   (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
+           java.nio.charset.StandardCharsets
            org.eclipse.jetty.io.EofException))
 
 ;; these are loaded for side-effects so their impls of `i/results-writer` will be available
@@ -40,12 +41,13 @@
 (defn- streaming-reducedf [results-writer ^OutputStream os]
   (fn [_ final-metadata context]
     (i/finish! results-writer final-metadata)
-    (.flush os)
-    (.close os)
+    (u/ignore-exceptions
+      (.flush os)
+      (.close os))
     (context/resultf final-metadata context)))
 
 (defn- write-qp-failure-and-close! [^OutputStream os result]
-  (with-open [writer (BufferedWriter. (OutputStreamWriter. os))]
+  (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
     (try
       (json/generate-stream result writer)
       (catch EofException _)))

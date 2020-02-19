@@ -75,7 +75,7 @@
   [response-seq opts]
   (rui/piped-input-stream
    (fn [^OutputStream output-stream]
-     (with-open [output-writer   (OutputStreamWriter. ^OutputStream output-stream ^Charset StandardCharsets/UTF_8)
+     (with-open [output-writer   (OutputStreamWriter. output-stream StandardCharsets/UTF_8)
                  buffered-writer (BufferedWriter. output-writer)]
        (json/generate-stream response-seq buffered-writer opts)))))
 

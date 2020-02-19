@@ -7,7 +7,8 @@
              [common :as common]
              [interface :as i]]
             [metabase.util.date-2 :as u.date])
-  (:import [java.io BufferedWriter OutputStream OutputStreamWriter]))
+  (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
+           java.nio.charset.StandardCharsets))
 
 (defmethod i/stream-options :json
   [_]
@@ -17,7 +18,7 @@
 
 (defmethod i/streaming-results-writer :json
   [_ ^OutputStream os]
-  (let [writer    (BufferedWriter. (OutputStreamWriter. os))
+  (let [writer    (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))
         col-names (volatile! nil)]
     (reify i/StreamingResultsWriter
       (begin! [_ {{:keys [cols]} :data}]
@@ -50,7 +51,7 @@
 
 (defmethod i/streaming-results-writer :api
   [_ ^OutputStream os]
-  (let [writer (BufferedWriter. (OutputStreamWriter. os))]
+  (let [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
     (reify i/StreamingResultsWriter
       (begin! [_ _]
         (.write writer "{\"data\":{\"rows\":[\n"))

@@ -14,8 +14,18 @@
             [ring.core.protocols :as ring.protocols]
             [ring.util.response :as ring.response])
   (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
-           [org.apache.commons.io Charsets IOUtils]
+           java.nio.charset.StandardCharsets
            org.eclipse.jetty.io.EofException))
+
+;; TODO - this whole namespace seems a lot more complicated than it needs to be, simplify it. We can probably simplify
+;; it by 50% or so
+
+;; 1. Change `proxy-output-stream` to something like a `keepalive-output-steam` that can encapsulate all the logic for
+;; maintaining the keepalive loop
+;;
+;; 2. I don't remember why we need to wait for code elsewhere the output stream? It seems totally reasonable to
+;; require `f` to block until it's done writing to the stream, since we have to wait anyway. The keepalive bytes are
+;; already being handled on a separate thread
 
 (def ^:private keepalive-interval-ms
   "Interval between sending newline characters to keep Heroku from terminating requests like queries that take a long
@@ -42,8 +52,8 @@
 (defn- format-exception [e]
   (let [format-ex*           (fn [^Throwable e]
                                {:message    (.getMessage e)
-                                :class      (class e)
-                                :stacktrace (seq (.getStackTrace e))
+                                :class      (.getCanonicalName (class e))
+                                :stacktrace (map str (.getStackTrace e))
                                 :data       (ex-data e)})
         [e & more :as chain] (exception-chain e)]
     (merge
@@ -57,12 +67,15 @@
 (defn write-error-and-close!
   "Util fn for writing an Exception to the OutputStream provided by `streaming-response`."
   [^OutputStream os, ^Throwable e]
-  (with-open [writer (BufferedWriter. (OutputStreamWriter. os))]
+  (with-open [os os
+              writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
     (try
       (json/generate-stream (format-exception e)
                             writer)
-      (catch EofException _)))
-  (.close os))
+      (.flush writer)
+      (catch EofException _)
+      (catch Throwable e
+        (log/error e (trs "Error writing error to stream"))))))
 
 (defn- proxy-output-stream
   "Proxy that wraps an `OutputStream` and:
@@ -111,7 +124,7 @@
         (log/debug (u/format-color 'blue (trs "Response not ready, writing one byte & sleeping...")))
         (when (try
                 (when write-keepalive-newlines?
-                  (IOUtils/write (str \newline) os Charsets/UTF_8))
+                  (.write os (char \newline)))
                 (.flush os)
                 true
                 (catch EofException _
@@ -178,8 +191,8 @@
 
   ;; both sync and async responses
   ring.protocols/StreamableResponseBody
-  (write-body-to-stream [_ _ ostream]
-    (do-streaming-response ostream f options))
+  (write-body-to-stream [_ _ os]
+    (do-streaming-response os f options))
 
   ;; async responses only
   compojure.response/Sendable

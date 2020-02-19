@@ -7,7 +7,7 @@
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [metabase
              [http-client :as http]
-             [models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Dimension Field]]
+             [models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Dimension Field FieldValues]]
              [query-processor-test :as qp.test]
              [test :as mt]
              [util :as u]]

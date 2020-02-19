@@ -5,7 +5,8 @@
              [common :as common]
              [interface :as i]]
             [metabase.util.date-2 :as u.date])
-  (:import [java.io BufferedWriter OutputStream OutputStreamWriter]))
+  (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
+           java.nio.charset.StandardCharsets))
 
 (defmethod i/stream-options :csv
   [_]
@@ -16,7 +17,7 @@
 
 (defmethod i/streaming-results-writer :csv
   [_ ^OutputStream os]
-  (let [writer (BufferedWriter. (OutputStreamWriter. os))]
+  (let [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
     (reify i/StreamingResultsWriter
       (begin! [_ {{:keys [cols]} :data}]
         (csv/write-csv writer [(map (some-fn :display_name :name) cols)])

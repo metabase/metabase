@@ -5,7 +5,7 @@
             [metabase.query-processor.context :as context]
             [metabase.query-processor.context.default :as context.default]))
 
-(defn- prepare-context!
+(defn- wire-up-context-channels!
   "Wire up the core.async channels in a QP `context`."
   [context]
   ;; 1) If query doesn't complete by `timeoutf`, call `timeoutf`, which should raise an Exception
@@ -88,7 +88,7 @@
     ([query context]
      {:pre [(map? query) ((some-fn nil? map?) context)]}
      (let [context (merge (context.default/default-context) context)]
-       (prepare-context! context)
+       (wire-up-context-channels! context)
        (try
          (qp query (context/base-xformf context) context)
          (catch Throwable e

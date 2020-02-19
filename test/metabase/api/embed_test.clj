@@ -410,7 +410,7 @@
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
                                        :card {:dataset_query (data/native-query {:query "SELECT * FROM XYZ"})}}]
           (is (= {:status "failed"
-                  :error  "An error occurred while running the query."}
+                  :error  "An error occurred while running the query." }
                  (http/client :get 202 (dashcard-url dashcard)))))))))
 
 
