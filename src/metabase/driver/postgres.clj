@@ -161,6 +161,10 @@
         :type/PostgresEnum (hx/quoted-cast database-type value)
         (sql.qp/->honeysql driver value)))))
 
+(defmethod sql.qp/->honeysql [:postgres :regex-match-first]
+  [driver arg pattern]
+  (hsql/call :substring (hsql/raw (str (hformat/to-sql (sql.qp/->honeysql arg)) " from "  (hformat/to-sql (sql.qp/->honeysql arg))))))
+
 (defmethod sql.qp/->honeysql [:postgres Time]
   [_ time-value]
   (hx/->time time-value))

@@ -1,13 +1,7 @@
 (ns metabase.query-processor-test.string-extracts-test
-  (:require [metabase.models
-             [metric :refer [Metric]]
-             [segment :refer [Segment]]]
-            [metabase.query-processor-test :refer :all]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
-            [metabase.test.data.datasets :as datasets]
-            [toucan.util.test :as tt]))
+  (:require [metabase.query-processor-test :refer :all]
+            [metabase.test.data :as data]
+            [metabase.test.data.datasets :as datasets]))
 
 (defn- test-string-extract
   [expr]
