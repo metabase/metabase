@@ -9,10 +9,12 @@
              [util :as u]]
             [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
             [metabase.models.query-cache :refer [QueryCache]]
+            [metabase.query-processor
+             [streaming :as qp.streaming]
+             [util :as qputil]]
             [metabase.query-processor.middleware.cache :as cache]
             [metabase.query-processor.middleware.cache-backend.interface :as i]
             [metabase.query-processor.middleware.cache.impl :as impl]
-            [metabase.query-processor.streaming :as qp.streaming]
             [metabase.test.fixtures :as fixtures]
             [toucan.db :as db]))
 
@@ -27,8 +29,8 @@
 (defn- test-backend []
   (let [db-backend (i/cache-backend :db)]
     (reify i/CacheBackend
-      (cached-results [_ query-hash max-age-seconds]
-        (i/cached-results db-backend query-hash max-age-seconds))
+      (cached-results [_ query-hash max-age-seconds f]
+        (i/cached-results db-backend query-hash max-age-seconds f))
 
       (save-results! [_ query-hash results]
         (i/save-results! db-backend query-hash results)
@@ -69,11 +71,14 @@
 
 (def ^:private ^:dynamic ^Integer *query-execution-delay-ms* 10)
 
+(defn- test-query [query-kvs]
+  (merge {:cache-ttl 60, :query :abc} query-kvs))
+
 (defn- run-query* [& {:as query-kvs}]
   (:metadata
    (mt/test-qp-middleware
     cache/maybe-return-cached-results
-    (merge {:cache-ttl 60, :query :abc} query-kvs)
+    (test-query query-kvs)
     {}
     [[:toucan      71]
      [:bald-eagle  92]
@@ -225,6 +230,23 @@
           (run-query))
         (is (= :cached
                (run-query)))))))
+
+(deftest invalid-cache-entry-test
+  (testing "We should handle invalid cache entries gracefully"
+    (wait-for-save
+      (run-query))
+    (let [query-hash (qputil/query-hash (test-query nil))]
+      (is (= true
+             (i/cached-results cache/*backend* query-hash 100
+               (fn respond [is]
+                 (when is
+                   true))))
+          "Cached results should exist")
+      (i/save-results! cache/*backend* query-hash (byte-array [0 0 0]))
+      (is (= :not-cached
+             (mt/suppress-output
+               (run-query)))
+          "Invalid cache entry should be handled gracefully"))))
 
 (deftest metadata-test
   (testing "Verify that correct metadata about caching such as `:updated_at` and `:cached` come back with cached results."

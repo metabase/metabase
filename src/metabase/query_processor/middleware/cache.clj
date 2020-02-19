@@ -24,12 +24,16 @@
              [db :as backend.db]
              [interface :as i]]
             [metabase.query-processor.middleware.cache.impl :as impl]
-            [metabase.util.i18n :refer [trs]]))
+            [metabase.util.i18n :refer [trs]])
+  (:import java.io.InputStream))
 
 (comment backend.db/keep-me)
 
-;; serialized results format is basically [initial-metadata & rows]
-(def ^:private cache-version 2)
+(def ^:private cache-version
+  "Current serialization format version. Basically
+
+    [initial-metadata & rows]"
+  2)
 
 ;; TODO - Why not make this an option in the query itself? :confused:
 (def ^:dynamic ^Boolean *ignore-cached-results*
@@ -38,6 +42,7 @@
   false)
 
 (def ^:dynamic *backend*
+  "Current cache backend. Dynamically rebindable primary for test purposes."
   (i/cache-backend (config/config-kw :mb-qp-cache-backend)))
 
 
@@ -116,20 +121,6 @@
 
 ;;; ----------------------------------------------------- Fetch ------------------------------------------------------
 
-(defn- cached-results [query-hash max-age-seconds]
-  (when-not *ignore-cached-results*
-    (log/tracef "Looking for cached-results for query with hash %s younger than %s\n"
-                (pr-str (i/short-hex-hash query-hash)) (u/format-seconds max-age-seconds))
-    (try
-      (when-let [bytea (i/cached-results *backend* query-hash max-age-seconds)]
-        ;; TODO - would be better if we actually reduced things
-        (when-let [[metadata :as cached-results] (impl/deserialize bytea)]
-          (when (= (:cache-version metadata) cache-version)
-            cached-results)))
-      (catch Throwable e
-        (log/debug e "Error reading cached results for query. These might be in an old cache format.")
-        nil))))
-
 (defn- add-cached-metadata-xform [rf]
   (fn
     ([] (rf))
@@ -145,13 +136,27 @@
     ([acc row]
      (rf acc row))))
 
-;; TODO
-(defn- return-cached-results [xformf context [metadata & rows]]
-  (context/reducef (fn [metadata]
-                     (comp add-cached-metadata-xform (xformf metadata)))
-                   context
-                   metadata
-                   rows))
+(defn- do-with-cached-results
+  "Reduces cached results if there is a hit. Otherwise, returns `::miss` directly."
+  [query-hash max-age-seconds xformf context]
+  (if *ignore-cached-results*
+    ::miss
+    (do
+      (log/tracef "Looking for cached-results for query with hash %s younger than %s\n"
+                  (pr-str (i/short-hex-hash query-hash)) (u/format-seconds max-age-seconds))
+      (i/cached-results *backend* query-hash max-age-seconds
+        (fn [^InputStream is]
+          (if (nil? is)
+            ::miss
+            (impl/reducible-deserialized-results is
+              (fn
+                ([_]
+                 ::miss)
+
+                ([metadata reducible-rows]
+                 (context/reducef (fn [metadata]
+                                    (comp add-cached-metadata-xform (xformf metadata)))
+                                  context metadata reducible-rows))))))))))
 
 
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
@@ -160,9 +165,10 @@
   [qp {:keys [cache-ttl], :as query} xformf context]
   ;; TODO - Query will already have `info.hash` if it's a userland query. I'm not 100% sure it will be the same hash,
   ;; because this is calculated after normalization, instead of before
-  (let [query-hash (qputil/query-hash query)]
-    (if-let [cached-results (cached-results query-hash cache-ttl)]
-      (return-cached-results xformf context cached-results)
+  (let [query-hash (qputil/query-hash query)
+        result     (do-with-cached-results query-hash cache-ttl xformf context)]
+    (if-not (= ::miss result)
+      result
       (let [start-time-ms (System/currentTimeMillis)]
         (qp query
             (fn [metadata]

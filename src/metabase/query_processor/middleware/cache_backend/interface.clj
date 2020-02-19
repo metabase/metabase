@@ -13,18 +13,19 @@
    cache entry key. `results` are passed as a compressed byte array.
 
   The implementation is responsible for purging old cache entries when appropriate."
-  ;; TODO - consider whether these should use Input/OutputStreams instead
-  (cached-results ^bytes [this ^bytes query-hash max-age-seconds]
-    "Return cached results (as a byte array) for the query with byte array `query-hash` if those results are present
-  in the cache and are less than `max-age-seconds` old. Otherwise, return `nil`. `max-age-seconds` may be
-  floating-point.")
+  (^{:style/indent 3} cached-results [this ^bytes query-hash max-age-seconds respond]
+    "Call `respond` with cached results for the query (as an `InputStream` to the raw bytes) if present and not
+  expired; otherwise, call `respond` with `nil.
+
+    (cached-results [_ hash _ respond]
+      (with-open [is (...)]
+        (respond is)))
+
+  `max-age-seconds` may be floating-point.")
 
   (save-results! [this ^bytes query-hash ^bytes results]
     "Add a cache entry with the `results` of running query with byte array `query-hash`. This should replace any prior
-  entries for `query-hash` and update the cache timestamp to the current system time.
-
-  This method will be called on a separate thread from the main query results, but should complete synchronously
-  before returning.")
+  entries for `query-hash` and update the cache timestamp to the current system time.")
 
   (purge-old-entries! [this max-age-seconds]
     "Purge all cache entires older than `max-age-seconds`. Will be called periodically when this backend is in use.

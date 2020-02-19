@@ -1,13 +1,17 @@
 (ns metabase.query-processor.middleware.cache-backend.db
   (:require [clojure.tools.logging :as log]
-            [metabase
-             [db :as mdb]
-             [util :as u]]
+            [honeysql.core :as hsql]
+            [metabase.db :as mdb]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.models.query-cache :refer [QueryCache]]
             [metabase.query-processor.middleware.cache-backend.interface :as i]
             [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db]))
+            [toucan.db :as db])
+  (:import java.sql.ResultSet
+           javax.sql.DataSource))
+
+(defn- ^DataSource datasource []
+  (:datasource (toucan.db/connection)))
 
 (defn- seconds-ago-honeysql-form
   "Generate appropriate HoneySQL for `now() - seconds` for the application DB. `seconds` is not neccessarily an
@@ -20,12 +24,30 @@
    (- seconds)
    :second))
 
-(defn- cached-results ^bytes [^bytes query-hash max-age-seconds]
-  {:pre [(number? max-age-seconds)]}
-  (u/prog1 (db/select-one-field :results QueryCache
-             :query_hash query-hash
-             :updated_at [:>= (seconds-ago-honeysql-form max-age-seconds)])
-    (log/debug (trs "Found cached result for query with hash {0}." (pr-str (i/short-hex-hash query-hash))))))
+(defn- cached-results-sql [max-age-seconds]
+  (first (hsql/format {:select   [:results]
+                       :from     [QueryCache]
+                       :where    [:and
+                                  [:= :query_hash (hsql/raw "?")]
+                                  [:>= :updated_at (seconds-ago-honeysql-form max-age-seconds)]]
+                       :order-by [[:updated_at :desc]]
+                       :limit    1}
+           :quoting (db/quoting-style))))
+
+(defn- cached-results [query-hash max-age-seconds respond]
+  (with-open [conn (.getConnection (datasource))
+              stmt (doto (.prepareStatement conn (cached-results-sql max-age-seconds)
+                                            ResultSet/TYPE_FORWARD_ONLY
+                                            ResultSet/CONCUR_READ_ONLY
+                                            ResultSet/CLOSE_CURSORS_AT_COMMIT)
+                     (.setFetchDirection ResultSet/FETCH_FORWARD)
+                     (.setBytes 1 query-hash)
+                     (.setMaxRows 1))
+              rs   (.executeQuery stmt)]
+    (if-not (.next rs)
+      (respond nil)
+      (with-open [is (.getBinaryStream rs 1)]
+        (respond is)))))
 
 (defn- purge-old-cache-entries!
   "Delete any cache entries that are older than the global max age `max-cache-entry-age-seconds` (currently 3 months)."
@@ -60,11 +82,11 @@
 (defmethod i/cache-backend :db
   [_]
   (reify i/CacheBackend
-    (cached-results [_ query-hash max-age-seconds]
-      (cached-results query-hash max-age-seconds))
+    (cached-results [_ query-hash max-age-seconds respond]
+      (cached-results query-hash max-age-seconds respond))
 
-    (save-results! [_ query-hash results]
-      (save-results! query-hash results)
+    (save-results! [_ query-hash is]
+      (save-results! query-hash is)
       nil)
 
     (purge-old-entries! [_ max-age-seconds]

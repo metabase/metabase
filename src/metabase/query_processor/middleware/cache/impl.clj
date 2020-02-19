@@ -6,8 +6,8 @@
              [util :as u]]
             [metabase.util.i18n :refer [trs tru]]
             [taoensso.nippy :as nippy])
-  (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream DataInputStream
-            DataOutputStream EOFException FilterOutputStream OutputStream]
+  (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayOutputStream DataInputStream DataOutputStream
+            EOFException FilterOutputStream InputStream OutputStream]
            [java.util.zip GZIPInputStream GZIPOutputStream]))
 
 (defn- max-bytes-output-stream ^OutputStream [max-bytes ^OutputStream os]
@@ -31,7 +31,7 @@
          (check-total (swap! byte-count + len))
          (.write os ba off len))))))
 
-(def ^:private serialization-timeout-ms (u/minutes->ms 1 #_10)) ; NOCOMMIT
+(def ^:private serialization-timeout-ms (u/minutes->ms 10))
 
 (defn- start-out-chan-close-block!
   "When `out-chan` closes, close everything. Wait up to 10 minutes for `out-chan` to close, and throw an Exception if
@@ -115,39 +115,41 @@
      (start-input-loop! in-chan out-chan bos os)
      {:in-chan in-chan, :out-chan out-chan})))
 
-(defn deserialize
-  "Deserialize objects serialized with `serialize-async`."
-  [^bytes b]
-  (with-open [bis (ByteArrayInputStream. b)
-              is  (DataInputStream. (GZIPInputStream. (BufferedInputStream. bis)))]
-    (let [result (reduce conj [] (reify clojure.lang.IReduceInit
-                                   (reduce [_ rf init]
-                                     (loop [acc init]
-                                       (if-let [x (try
-                                                    (nippy/thaw-from-in! is)
-                                                    (catch EOFException _
-                                                      nil))]
-                                         (recur (rf acc x))
-                                         acc)))))]
-      (when (seq result)
-        result))))
+(defn- thaw! [^InputStream is]
+  (try (nippy/thaw-from-in! is)
+       (catch EOFException _
+         ::eof)))
 
-(defn deserialize
-  "Deserialize objects serialized with `serialize-async` using reducing function `rf`."
-  ([^bytes bytea]
-   (deserialize bytea conj))
+(defn- reducible-rows [^InputStream is]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ rf init]
+      (loop [acc init]
+        (if (reduced? acc)
+          (reduced acc)
+          (let [row (thaw! is)]
+            (if (= ::eof row)
+              acc
+              (recur (rf acc row)))))))))
 
-  ([^bytes bytea rf]
-   (with-open [bis (ByteArrayInputStream. bytea)
-               is  (DataInputStream. (GZIPInputStream. (BufferedInputStream. bis)))]
-     (let [result (transduce identity rf (rf) (reify clojure.lang.IReduceInit
-                                                (reduce [_ rf init]
-                                                  (loop [acc init]
-                                                    (if-let [x (try
-                                                                 (nippy/thaw-from-in! is)
-                                                                 (catch EOFException _
-                                                                   nil))]
-                                                      (recur (rf acc x))
-                                                      acc)))))]
-       (when (seq result)
-         result)))))
+(defn reducible-deserialized-results
+  "Take cached result bytes from `is` and call `respond` like
+
+    (respond metadata reducible-rows)
+
+  If cached results cannot be deserialized, calls
+
+    (respond nil)"
+  {:style/indent 1}
+  [^InputStream is respond]
+  (let [result (try
+                 (with-open [is (DataInputStream. (GZIPInputStream. (BufferedInputStream. is)))]
+                   (let [metadata (thaw! is)]
+                     (if (= metadata ::eof)
+                       ::invalid
+                       (respond metadata (reducible-rows is)))))
+                 (catch Throwable e
+                   (log/error e (trs "Error parsing serialized results"))
+                   ::invalid))]
+    (if (= result ::invalid)
+      (respond nil)
+      result)))
