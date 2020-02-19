@@ -109,6 +109,18 @@
                             :nil%           0.0},
                    :type   {:type/Number {:min 235.0, :max 498.0, :avg 333.33 :q1 243.0, :q3 440.0 :sd 143.5}}}}])
 
+(deftest valid-encrypted-checksum-test
+  (testing (str "While metadata checksums won't be exactly the same when using an encryption key, `valid-checksum?` "
+                "should still consider them to be valid checksums.")
+    (with-redefs [encrypt/default-secret-key (encrypt/secret-key->hash "0123456789abcdef")]
+      (let [checksum-1 (#'results-metadata/metadata-checksum example-metadata)
+            checksum-2 (#'results-metadata/metadata-checksum example-metadata)]
+        (is (not= checksum-1
+                  checksum-2))
+        (is (= true
+               (boolean (results-metadata/valid-checksum? example-metadata checksum-1))
+               (boolean (results-metadata/valid-checksum? example-metadata checksum-2))))))))
+
 (defn- array-map->hash-map
   "Calling something like `(into (hash-map) ...)` will only return a hash-map if there are enough elements to push it
   over the limit of an array-map. By passing the keyvals into `hash-map`, you can be sure it will be a hash-map."

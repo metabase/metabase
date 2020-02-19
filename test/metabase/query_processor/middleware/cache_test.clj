@@ -3,6 +3,7 @@
   (:require [clojure.core.async :as a]
             [clojure.data.csv :as csv]
             [clojure.test :refer :all]
+            [medley.core :as m]
             [metabase
              [query-processor :as qp]
              [test :as mt]
@@ -278,8 +279,12 @@
                 :status     :completed}
                (dissoc cached-result :data))
             "Results should be cached")
-        (is (= (qp/process-query (dissoc query :cache-ttl))
-               (dissoc cached-result :cached :updated_at))
+        ;; remove metadata checksums because they can be different between runs when using an encryption key
+        (is (= (-> (qp/process-query (dissoc query :cache-ttl))
+                   (m/dissoc-in [:data :results_metadata :checksum]))
+               (-> cached-result
+                   (dissoc :cached :updated_at)
+                   (m/dissoc-in [:data :results_metadata :checksum])))
             "Cached result should be in the same format as the uncached result, except for added keys")))))
 
 (deftest export-test
