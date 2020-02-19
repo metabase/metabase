@@ -2,7 +2,9 @@
   "Amazon Redshift Driver."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
-            [honeysql.core :as hsql]
+            [honeysql
+             [core :as hsql]
+             [format :as hformat]]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc
@@ -102,7 +104,9 @@
 
 (defmethod sql.qp/->honeysql [:redshift :regex-match-first]
   [driver [_ arg pattern]]
-  (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+  (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (hsql/raw (hformat/to-sql (sql.qp/->honeysql driver pattern)))))
+
+;(hformat/to-sql "foo")
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
