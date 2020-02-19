@@ -127,6 +127,6 @@
                                  :template-tags (card-template-tags [card-1-id])})]
           (is (= (#'referenced/circular-ref-error (:id card-2) card-1-id)
                  (try
-                  (#'referenced/check-for-circular-references entrypoint-query)
+                  (#'referenced/check-for-circular-references! entrypoint-query)
                   (catch ExceptionInfo e
                     (.getMessage e))))))))))

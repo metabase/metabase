@@ -61,10 +61,10 @@
      (deferred-tru "This query has circular referencing sub-queries. ")
      (deferred-tru "These questions seem to be part of the problem: \"{0}\" and \"{1}\"." from-name to-name))))
 
-(defn- check-for-circular-references
+(defn- check-for-circular-references!
   [query]
-  ;; `card-subquery-graph` will throw if there are circular references
   (try
+   ;; `card-subquery-graph` will throw if there are circular references
    (reduce card-subquery-graph (dep/graph) (query->tag-card-ids query))
    (catch ExceptionInfo e
      (let [{:keys [reason node dependency]} (ex-data e)]
@@ -76,4 +76,6 @@
 (defn resolve-referenced-card-resources
   "Resolves tables and fields referenced in card query template tags."
   [qp]
-  (comp qp resolve-referenced-card-resources* check-for-circular-references))
+  (fn [query xformf context]
+    (qp (-> query check-for-circular-references! resolve-referenced-card-resources*)
+        xformf context)))
