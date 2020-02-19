@@ -127,11 +127,9 @@
     (let [orig @purge-chan*]
       (try
         (reset! purge-chan* purge-chan)
-        (println (u/format-color 'red "<wait-for-purge>"))
         (u/prog1 (thunk)
           (is (= expected-result
-                 (u/prog1 (mt/wait-for-result purge-chan 100)
-                   (println (u/format-color 'red "</wait-for-purge>"))))))
+                 (mt/wait-for-result purge-chan 100))))
         (finally (reset! purge-chan* orig))))))
 
 (defmacro ^:private wait-for-purge-result {:style/indent 1} [expected-result & body]

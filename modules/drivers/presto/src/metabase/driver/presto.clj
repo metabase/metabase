@@ -108,7 +108,7 @@
        parsers))))
 
 (defn- fetch-next-page [details uri]
-  (println "fetch-next-page w/ URI" uri)
+  (log/debug (trs "fetch-next-page w/ URI") uri)
   (let [{{:keys [columns data nextUri error]} :body} (http/get uri (assoc (details->request details) :as :json))]
     (when error
       (throw (ex-info (or (:message error) (tru "Error running query.")) error)))

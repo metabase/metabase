@@ -7,6 +7,7 @@
   (:require [clojure.core.async :as a]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [java-time :as t]
             [metabase
              [driver :as driver]
              [util :as u]]
@@ -25,11 +26,8 @@
             [metabase.util.i18n :refer [trs]]
             [potemkin :as p])
   (:import [java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData Types]
+           [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            javax.sql.DataSource))
-
-;; when we finally remove `execute.old`, we can move `set-parameter` into this namespace (and delete the rest)
-(p/import-vars
- [execute.old set-parameter])
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        SQL JDBC Reducible QP Interface                                         |
@@ -57,6 +55,15 @@
   {:added    "0.35.0"
    :arglists '(^java.sql.Connection [driver database ^String timezone-id])}
   driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmulti set-parameter
+  "Set the `PreparedStatement` parameter at index `i` to `object`. Dispatches on driver and class of `object`. By
+  default, this calls `.setObject`, but drivers can override this method to convert the object to a different class or
+  set it with a different intended JDBC type as needed."
+  {:arglists '([driver prepared-statement i object])}
+  (fn [driver _ _ object]
+    [(driver/dispatch-on-initialized-driver driver) (class object)])
   :hierarchy #'driver/hierarchy)
 
 (defmulti ^PreparedStatement prepared-statement
@@ -158,6 +165,58 @@
       (catch Throwable e
         (.close conn)
         (throw e)))))
+
+;; TODO - would a more general method to convert a parameter to the desired class (and maybe JDBC type) be more
+;; useful? Then we can actually do things like log what transformations are taking place
+
+
+(defn- set-object
+  ([^PreparedStatement prepared-statement, ^Integer index, object]
+   (log/tracef "(set-object prepared-statement %d ^%s %s)" index (.getName (class object)) (pr-str object))
+   (.setObject prepared-statement index object))
+
+  ([^PreparedStatement prepared-statement, ^Integer index, object, ^Integer target-sql-type]
+   (log/tracef "(set-object prepared-statement %d ^%s %s java.sql.Types/%s)" index (.getName (class object))
+               (pr-str object) (.getName (JDBCType/valueOf target-sql-type)))
+   (.setObject prepared-statement index object target-sql-type)))
+
+(defmethod set-parameter :default
+  [_ prepared-statement i object]
+  (set-object prepared-statement i object))
+
+(defmethod set-parameter [::driver/driver LocalDate]
+  [_ prepared-statement i t]
+  (set-object prepared-statement i t Types/DATE))
+
+(defmethod set-parameter [::driver/driver LocalTime]
+  [_ prepared-statement i t]
+  (set-object prepared-statement i t Types/TIME))
+
+(defmethod set-parameter [::driver/driver LocalDateTime]
+  [_ prepared-statement i t]
+  (set-object prepared-statement i t Types/TIMESTAMP))
+
+(defmethod set-parameter [::driver/driver OffsetTime]
+  [_ prepared-statement i t]
+  (set-object prepared-statement i t Types/TIME_WITH_TIMEZONE))
+
+(defmethod set-parameter [::driver/driver OffsetDateTime]
+  [_ prepared-statement i t]
+  (set-object prepared-statement i t Types/TIMESTAMP_WITH_TIMEZONE))
+
+(defmethod set-parameter [::driver/driver ZonedDateTime]
+  [_ prepared-statement i t]
+  (set-object prepared-statement i t Types/TIMESTAMP_WITH_TIMEZONE))
+
+(defmethod set-parameter [::driver/driver Instant]
+  [driver prepared-statement i t]
+  (set-parameter driver prepared-statement i (t/offset-date-time t (t/zone-offset 0))))
+
+;; TODO - this might not be needed for all drivers. It is at least needed for H2 and Postgres. Not sure which, if any
+;; JDBC drivers support `ZonedDateTime`.
+(defmethod set-parameter [::driver/driver ZonedDateTime]
+  [driver prepared-statement i t]
+  (set-parameter driver prepared-statement i (t/offset-date-time t)))
 
 (defn set-parameters!
   "Set parameters for the prepared statement by calling `set-parameter` for each parameter."

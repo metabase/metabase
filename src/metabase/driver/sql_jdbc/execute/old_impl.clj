@@ -4,15 +4,9 @@
 
   All methods and functions in this namespace should be considered deprecated with the exception of `set-parameter`,
   which will be moved to `metabase.driver.sql-jdbc.execute` when this namespace is removed."
-  (:require [clojure.tools.logging :as log]
-            [java-time :as t]
-            [metabase.driver :as driver])
-  (:import [java.sql JDBCType PreparedStatement ResultSet ResultSetMetaData Types]
-           [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                            Interface (Multimethods)                                            |
-;;; +----------------------------------------------------------------------------------------------------------------+
+  (:require [metabase.driver :as driver])
+  (:import [java.sql ResultSet ResultSetMetaData Types]
+           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime]))
 
 (defmulti set-timezone-sql
   "Return a format string containing a SQL statement to be used to set the timezone for the current transaction.
@@ -28,11 +22,6 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod set-timezone-sql :sql-jdbc [_] nil)
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                Parsing Results                                                 |
-;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmulti read-column
   "Read a single value from a single column in the current row from the JDBC ResultSet of a Metabase query. Normal
@@ -77,74 +66,3 @@
 (defmethod read-column [::driver/driver Types/TIME_WITH_TIMEZONE]
   [_ _ rs _ i]
   (get-object-of-class rs i OffsetTime))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                 Setting Params                                                 |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; TODO - would a more general method to convert a parameter to the desired class (and maybe JDBC type) be more
-;; useful? Then we can actually do things like log what transformations are taking place
-(defmulti set-parameter
-  "Set the `PreparedStatement` parameter at index `i` to `object`. Dispatches on driver and class of `object`. By
-  default, this calls `.setObject`, but drivers can override this method to convert the object to a different class or
-  set it with a different intended JDBC type as needed."
-  {:arglists '([driver prepared-statement i object])}
-  (fn [driver _ _ object]
-    [(driver/dispatch-on-initialized-driver driver) (class object)])
-  :hierarchy #'driver/hierarchy)
-
-(defn- set-object
-  ([^PreparedStatement prepared-statement, ^Integer index, object]
-   (log/tracef "(set-object prepared-statement %d ^%s %s)" index (.getName (class object)) (pr-str object))
-   (.setObject prepared-statement index object))
-
-  ([^PreparedStatement prepared-statement, ^Integer index, object, ^Integer target-sql-type]
-   (log/tracef "(set-object prepared-statement %d ^%s %s java.sql.Types/%s)" index (.getName (class object))
-               (pr-str object) (.getName (JDBCType/valueOf target-sql-type)))
-   (.setObject prepared-statement index object target-sql-type)))
-
-(defmethod set-parameter :default
-  [_ prepared-statement i object]
-  (set-object prepared-statement i object))
-
-(defmethod set-parameter [::driver/driver LocalDate]
-  [_ prepared-statement i t]
-  (set-object prepared-statement i t Types/DATE))
-
-(defmethod set-parameter [::driver/driver LocalTime]
-  [_ prepared-statement i t]
-  (set-object prepared-statement i t Types/TIME))
-
-(defmethod set-parameter [::driver/driver LocalDateTime]
-  [_ prepared-statement i t]
-  (set-object prepared-statement i t Types/TIMESTAMP))
-
-(defmethod set-parameter [::driver/driver OffsetTime]
-  [_ prepared-statement i t]
-  (set-object prepared-statement i t Types/TIME_WITH_TIMEZONE))
-
-(defmethod set-parameter [::driver/driver OffsetDateTime]
-  [_ prepared-statement i t]
-  (set-object prepared-statement i t Types/TIMESTAMP_WITH_TIMEZONE))
-
-(defmethod set-parameter [::driver/driver ZonedDateTime]
-  [_ prepared-statement i t]
-  (set-object prepared-statement i t Types/TIMESTAMP_WITH_TIMEZONE))
-
-;; TODO - remove this
-(defmethod set-parameter [::driver/driver Instant]
-  [driver prepared-statement i t]
-  (set-parameter driver prepared-statement i (t/offset-date-time t (t/zone-offset 0))))
-
-;; TODO - this might not be needed for all drivers. It is at least needed for H2 and Postgres. Not sure which, if any
-;; JDBC drivers support `ZonedDateTime`.
-(defmethod set-parameter [::driver/driver ZonedDateTime]
-  [driver prepared-statement i t]
-  (set-parameter driver prepared-statement i (t/offset-date-time t)))
-
-;; just mark everything as deprecated so people don't try to use it
-(doseq [[symb varr] (ns-interns *ns*)
-        :when (and (not (:deprecated (meta varr)))
-                   (not= symb 'set-parameter))]
-  (alter-meta! varr assoc :deprecated "0.35.0"))
