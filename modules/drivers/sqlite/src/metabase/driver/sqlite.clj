@@ -219,6 +219,10 @@
     (hsql/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
     (hsql/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start))))
 
+(defmethod sql.qp/->honeysql [:sqlite :trim]
+  [driver [_ arg pattern]]
+  (str "trim(" (hformat/to-sql arg) (when pattern " ," (str (hformat/to-sql pattern))) ")"))
+
 ;; See https://sqlite.org/lang_datefunc.html
 
 ;; MEGA HACK

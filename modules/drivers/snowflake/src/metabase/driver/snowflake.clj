@@ -5,7 +5,9 @@
              [string :as str]]
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
+            [honeysql
+             [core :as hsql]
+             [format :as hformat]]
             [java-time :as t]
             [metabase
              [driver :as driver]
@@ -136,6 +138,10 @@
 (defmethod sql.qp/->honeysql [:snowflake :regex-match-first]
   [driver [_ arg pattern]]
   (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+
+(defmethod sql.qp/->honeysql [:sqlite :trim]
+  [driver [_ arg pattern]]
+  (str "trim(" (hformat/to-sql arg) (when pattern " ," (str (hformat/to-sql pattern))) ")"))
 
 (defn- db-name
   "As mentioned above, old versions of the Snowflake driver used `details.dbname` to specify the physical database, but

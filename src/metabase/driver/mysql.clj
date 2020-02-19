@@ -31,6 +31,8 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
+(defmethod driver/supports? [:mysql :regex] [_ _] false)
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
