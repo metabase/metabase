@@ -218,6 +218,11 @@
   [_ value]
   (hx/cast :double value))
 
+(defmethod sql.qp/->honeysql [:presto :regex-match-first]
+  [driver arg pattern]
+  (hsql/call :regexp_extract (sql.qp/->honeysql arg) (sql.qp/->honeysql pattern)))
+
+
 ;; See https://prestodb.io/docs/current/functions/datetime.html
 
 ;; This is only needed for test purposes, because some of the sample data still uses legacy types

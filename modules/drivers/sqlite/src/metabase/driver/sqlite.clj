@@ -27,6 +27,8 @@
 
 (driver/register! :sqlite, :parent :sql-jdbc)
 
+(defmethod driver/supports? [:sqlite :regex] [_ _] false)
+
 (defmethod sql-jdbc.conn/connection-details->spec :sqlite
   [_ {:keys [db]
       :or   {db "sqlite.db"}

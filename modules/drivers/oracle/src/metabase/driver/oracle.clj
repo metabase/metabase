@@ -133,6 +133,11 @@
 (defn- num-to-ds-interval [unit v] (hsql/call :numtodsinterval v (hx/literal unit)))
 (defn- num-to-ym-interval [unit v] (hsql/call :numtoyminterval v (hx/literal unit)))
 
+
+(defmethod sql.qp/->honeysql [:oracle :regex-match-first]
+  [driver arg pattern]
+  (hsql/call :regexp_substr (sql.qp/->honeysql arg) (sql.qp/->honeysql pattern)))
+
 (defmethod driver/date-add :oracle
   [_ hsql-form amount unit]
   (hx/+

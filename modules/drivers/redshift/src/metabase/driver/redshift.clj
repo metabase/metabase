@@ -99,6 +99,11 @@
   [_]
   "SET TIMEZONE TO %s;")
 
+
+(defmethod sql.qp/->honeysql [:redshift :regex-match-first]
+  [driver arg pattern]
+  (hsql/call :regexp_substr (sql.qp/->honeysql arg) (sql.qp/->honeysql pattern)))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+

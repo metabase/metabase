@@ -323,6 +323,11 @@
   (hx/cast :float64 value))
 
 
+(defmethod sql.qp/->honeysql [:bigquery :regex-match-first]
+  [driver arg pattern]
+  (hsql/call :regexp_extract (sql.qp/->honeysql arg) (sql.qp/->honeysql pattern)))
+
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Query Processor                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+

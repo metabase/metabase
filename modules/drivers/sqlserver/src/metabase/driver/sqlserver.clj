@@ -23,6 +23,8 @@
 
 (driver/register! :sqlserver, :parent :sql-jdbc)
 
+(defmethod driver/supports? [:sqlserver :regex] [_ _] false)
+
 ;; See the list here: https://docs.microsoft.com/en-us/sql/connect/jdbc/using-basic-data-types
 (defmethod sql-jdbc.sync/database-type->base-type :sqlserver
   [_ column-type]

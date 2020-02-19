@@ -142,6 +142,10 @@
   ;; no-op as MySQL doesn't support cast to float
   value)
 
+(defmethod sql.qp/->honeysql [:mysql :regex-match-first]
+  [driver arg pattern]
+  (hsql/call :regexp_substr (sql.qp/->honeysql arg) (sql.qp/->honeysql pattern)))
+
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
 ;; back to a date. See http://dev.mysql.com/doc/refman/5.6/en/date-and-time-functions.html#function_date-format for an

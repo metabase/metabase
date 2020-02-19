@@ -112,6 +112,11 @@
                 1)
           3)))
 
+
+(defmethod sql.qp/->honeysql [:hive-like :regex-match-first]
+  [driver arg pattern]
+  (hsql/call :regexp_extract (sql.qp/->honeysql arg) (sql.qp/->honeysql pattern)))
+
 (defmethod driver/date-add :hive-like
   [_ hsql-form amount unit]
   (hx/+ (hx/->timestamp hsql-form) (hsql/raw (format "(INTERVAL '%d' %s)" (int amount) (name unit)))))

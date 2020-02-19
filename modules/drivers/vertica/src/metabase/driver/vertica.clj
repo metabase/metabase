@@ -95,6 +95,10 @@
                                 one-day))
         one-day))
 
+(defmethod sql.qp/->honeysql [:vertica :regex-match-first]
+  [driver arg pattern]
+  (hsql/call :regexp_substr (sql.qp/->honeysql arg) (sql.qp/->honeysql pattern)))
+
 (defmethod driver/date-add :vertica
   [_ hsql-form amount unit]
   (hx/+ (hx/->timestamp hsql-form) (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit)))))
