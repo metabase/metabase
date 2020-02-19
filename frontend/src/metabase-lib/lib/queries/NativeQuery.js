@@ -45,11 +45,11 @@ export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
 };
 
 // This regex needs to match logic in replaceCardId and _getUpdatedTemplateTags.
-const CARD_TAG_REGEX = /^#\s*([0-9]*)\s*$/;
+const CARD_TAG_REGEX = /^#([0-9]*)$/;
 
 function cardTagCardId(name) {
   const match = name.match(CARD_TAG_REGEX);
-  if (match != null && match[1].length > 0) {
+  if (match && match[1].length > 0) {
     return parseInt(match[1]);
   }
   return null;
@@ -282,7 +282,7 @@ export default class NativeQuery extends AtomicQuery {
   // `replaceCardId` updates the query text to reference a different card.
   // Template tags are updated as a result of calling `setQueryText`.
   replaceCardId(oldId, newId) {
-    const re = new RegExp(`{{\\s*#\\s*${oldId}\\s*}}`, "g");
+    const re = new RegExp(`{{\\s*#${oldId}\\s*}}`, "g");
     const newQueryText = this.queryText().replace(re, () => `{{#${newId}}}`);
     return this.setQueryText(newQueryText);
   }
@@ -323,7 +323,7 @@ export default class NativeQuery extends AtomicQuery {
       // anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
       // variables referencing other questions, by their card ID, are also supported: {{#123}} references question with ID 123
       let match;
-      const re = /\{\{\s*([A-Za-z0-9_]+?|#\s*[0-9]*)\s*\}\}/g;
+      const re = /\{\{\s*([A-Za-z0-9_]+?|#[0-9]*)\s*\}\}/g;
       while ((match = re.exec(queryText)) != null) {
         tags.push(match[1]);
       }

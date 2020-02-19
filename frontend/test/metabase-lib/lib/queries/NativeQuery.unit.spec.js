@@ -212,6 +212,12 @@ describe("NativeQuery", () => {
       );
       expect(q.canRun()).toBe(true);
     });
+    describe("card template tags", () => {
+      it("should parse card tags", () => {
+        const q = makeQuery().setQueryText("{{#1}} {{ #2 }} {{ #1 }}");
+        expect(q.templateTags().map(v => v.card_id)).toEqual([1, 2]);
+      });
+    });
     describe("replaceCardId", () => {
       it("should update the query text", () => {
         const query = makeQuery()
