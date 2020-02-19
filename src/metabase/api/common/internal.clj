@@ -7,11 +7,15 @@
             [metabase
              [config :as config]
              [util :as u]]
+            metabase.async.streaming-response
             [metabase.util
              [i18n :as ui18n :refer [tru]]
              [schema :as su]]
             [schema.core :as s])
-  (:import clojure.core.async.impl.channels.ManyToManyChannel))
+  (:import clojure.core.async.impl.channels.ManyToManyChannel
+           metabase.async.streaming_response.StreamingResponse))
+
+(comment metabase.async.streaming-response/keep-me)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              DOCSTRING GENERATION                                              |
@@ -251,7 +255,7 @@
         symbol)))
 
 (defn wrap-response-if-needed
-  "If RESPONSE isn't already a map with keys `:status` and `:body`, wrap it in one (using status 200)."
+  "If `response` isn't already a map with keys `:status` and `:body`, wrap it in one (using status 200)."
   [response]
   ;; Not sure why this is but the JSON serialization middleware barfs if response is just a plain boolean
   (when (m/boolean? response)
@@ -260,7 +264,8 @@
            (contains? response :status)
            (contains? response :body))
     response
-    {:status (if (instance? ManyToManyChannel response)
+    {:status (if (or (instance? ManyToManyChannel response)
+                     (instance? StreamingResponse response))
                202
                200)
      :body   response}))

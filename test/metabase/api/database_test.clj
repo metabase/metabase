@@ -183,7 +183,9 @@
       (merge
        (select-keys table [:active :created_at :db_id :description :display_name :entity_name :entity_type :fields_hash
                            :id :name :rows :schema :updated_at :visibility_type]))
-      (update :entity_type (comp (partial str "entity/") name))))
+      (update :entity_type (fn [entity-type]
+                             (when entity-type
+                               (str "entity/" (name entity-type)))))))
 
 ;; ## `GET /api/database`
 ;; Test that we can get all the DBs (ordered by name, then driver)

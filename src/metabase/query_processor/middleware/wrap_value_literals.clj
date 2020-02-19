@@ -133,4 +133,5 @@
   to make it easier for drivers to write implementations that rely on multimethod dispatch (by clause name) -- they
   can dispatch directly off of these clauses."
   [qp]
-  (comp qp wrap-value-literals*))
+  (fn [query xformf context]
+    (qp (wrap-value-literals* query) xformf context)))

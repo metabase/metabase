@@ -4,19 +4,19 @@
 
   Your new tests almost certainly do not belong in this namespace. Please put them in ones mirroring the location of
   the specific part of sync you're testing."
-  (:require [expectations :refer :all]
+  (:require [clojure.test :refer :all]
             [metabase
              [driver :as driver]
              [sync :as sync]
+             [test :as mt]
              [util :as u]]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]
              [table :refer [Table]]]
-            [metabase.test.mock.util :as mock-util]
+            [metabase.test.mock.util :as mock.u]
             [metabase.test.util :as tu]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+            [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                        End-to-end 'MovieDB' Sync Tests                                         |
@@ -51,25 +51,34 @@
 
 (driver/register! ::sync-test, :abstract? true)
 
-(defmethod driver/describe-database ::sync-test [& _]
+(defmethod driver/describe-database ::sync-test
+  [& _]
   {:tables (set (for [table (vals sync-test-tables)]
                   (dissoc table :fields)))})
 
-(defmethod driver/describe-table ::sync-test [_ _ table]
+(defmethod driver/describe-table ::sync-test
+  [_ _ table]
   (get sync-test-tables (:name table)))
 
-(defmethod driver/describe-table-fks ::sync-test [_ _ table]
+(defmethod driver/describe-table-fks ::sync-test
+  [_ _ table]
   (set (when (= "movie" (:name table))
          #{{:fk-column-name   "studio"
             :dest-table       {:name   "studio"
                                :schema nil}
             :dest-column-name "studio"}})))
 
-(defmethod driver/supports? [::sync-test :foreign-keys] [_ _] true)
+(defmethod driver/supports? [::sync-test :foreign-keys]
+  [_ _]
+  true)
 
-(defmethod driver/process-query-in-context ::sync-test [& args]
-  (apply mock-util/process-query-in-context args))
+(defmethod driver/mbql->native ::sync-test
+  [_ query]
+  query)
 
+(defmethod driver/execute-reducible-query ::sync-test
+  [_ query _ respond]
+  (mock.u/mock-execute-reducible-query query respond))
 
 (defn- table-details [table]
   (into {} (-> (dissoc table :db :pk_field :field_values)
@@ -170,45 +179,35 @@
     :base_type     :type/Text
     :special_type  :type/PK}))
 
-;; ## SYNC DATABASE
-(expect
-  [(merge table-defaults
-          {:schema       "default"
-           :name         "movie"
-           :display_name "Movie"
-           :fields       [field:movie-id
-                          field:movie-studio
-                          field:movie-title]})
-   (merge table-defaults
-          {:name         "studio"
-           :display_name "Studio"
-           :fields       [field:studio-name
-                          field:studio-studio]})]
-  (tt/with-temp Database [db {:engine ::sync-test}]
+(deftest sync-database-test
+  (mt/with-temp Database [db {:engine :metabase.sync-database-test/sync-test}]
     (sync/sync-database! db)
-    ;; we are purposely running the sync twice to test for possible logic issues which only manifest on resync of a
-    ;; database, such as adding tables that already exist or duplicating fields
     (sync/sync-database! db)
-    (mapv table-details (db/select Table, :db_id (u/get-id db), {:order-by [:name]}))))
+    (let [[movie studio] (mapv table-details (db/select Table :db_id (u/get-id db) {:order-by [:name]}))]
+      (is (= (merge table-defaults {:schema       "default"
+                                    :name         "movie"
+                                    :display_name "Movie"
+                                    :fields       [field:movie-id field:movie-studio field:movie-title]})
+             movie))
+      (is (= (merge table-defaults {:name         "studio"
+                                    :display_name "Studio"
+                                    :fields       [field:studio-name field:studio-studio]})
+             studio)))))
 
 
-;; ## SYNC TABLE
-
-(expect
-  (merge table-defaults
-         {:schema       "default"
-          :name         "movie"
-          :display_name "Movie"
-          :fields       [field:movie-id
-                         ;; FKs only get synced when you sync the whole DB
-                         (assoc field:movie-studio :fk_target_field_id false, :special_type nil)
-                         field:movie-title]})
-  (tt/with-temp* [Database [db    {:engine ::sync-test}]
-                  Table    [table {:name   "movie"
-                                   :schema "default"
-                                   :db_id  (u/get-id db)}]]
+(deftest sync-table-test
+  (mt/with-temp* [Database [db {:engine :metabase.sync-database-test/sync-test}]
+                  Table    [table {:name "movie", :schema "default", :db_id (u/get-id db)}]]
     (sync/sync-table! table)
-    (table-details (Table (:id table)))))
+    (is (= (merge
+            table-defaults
+            {:schema       "default"
+             :name         "movie"
+             :display_name "Movie"
+             :fields       [field:movie-id
+                            (assoc field:movie-studio :fk_target_field_id false :special_type nil)
+                            field:movie-title]})
+           (table-details (Table (:id table)))))))
 
 
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!

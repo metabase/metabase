@@ -58,7 +58,7 @@
   (log/info (trs "Checking with the MetaStore to see whether {0} is valid..." token))
   (deref
    (future
-     (println (u/format-color 'green (trs "Using this URL to check token: {0}" (token-status-url token))))
+     (log/debug (u/format-color 'green (trs "Using this URL to check token: {0}" (token-status-url token))))
      (try (some-> (token-status-url token)
                   slurp
                   (json/parse-string keyword))

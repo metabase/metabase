@@ -1,7 +1,7 @@
 (ns dev
   "Put everything needed for REPL development within easy reach"
-  (:require [clojure.java.jdbc :as jdbc]
-            [dev.render-png :as render-png]
+  (:require [clojure.core.async :as a]
+            [honeysql.core :as hsql]
             [metabase
              [core :as mbc]
              [db :as mdb]
@@ -9,12 +9,11 @@
              [handler :as handler]
              [plugins :as pluguns]
              [server :as server]
+             [test :as mt]
              [util :as u]]
             [metabase.api.common :as api-common]
-            [metabase.driver.sql-jdbc
-             [connection :as sql-jdbc.conn]
-             [execute :as sql-jdbc.execute]]
-            [metabase.test.data :as data]
+            [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.test.data.impl :as data.impl]))
 
 (defn init!
@@ -87,24 +86,31 @@
     (dev/query-jdbc-db
      [:sqlserver 'test-data-with-time]
      [\"SELECT * FROM dbo.users WHERE dbo.users.last_login_time > ?\" (java-time/offset-time \"16:00Z\")])"
-  {:arglists     '([driver sql-args]         [[driver dataset] sql-args]
-                   [driver sql-args options] [[driver dataset] sql-args options])}
-  ([driver-or-driver+dataset sql-args]
-   (let [[driver dataset] (u/one-or-many driver-or-driver+dataset)]
-     (query-jdbc-db
-      driver-or-driver+dataset
-      sql-args
-      {:read-columns   (partial sql-jdbc.execute/read-columns driver)
-       :set-parameters (partial sql-jdbc.execute/set-parameters driver)})))
-
-  ([driver-or-driver+dataset sql-args options]
-   (let [[driver dataset] (u/one-or-many driver-or-driver+dataset)]
-     (driver/with-driver driver
-       (letfn [(thunk []
-                 (let [spec (sql-jdbc.conn/db->pooled-connection-spec (data/db))]
-                   (jdbc/query spec sql-args options)))]
-         (if dataset
-           (data.impl/do-with-dataset (data.impl/resolve-dataset-definition *ns* dataset) thunk)
-           (thunk)))))))
-
-(def render-card-to-png render-png/render-card-to-png)
+  {:arglists '([driver sql]            [[driver dataset] sql]
+               [driver honeysql-form]  [[driver dataset] honeysql-form]
+               [driver [sql & params]] [[driver dataset] [sql & params]])}
+  [driver-or-driver+dataset sql-args]
+  (if (map? sql-args)
+    (recur driver-or-driver+dataset (hsql/format sql-args))
+    (let [[driver dataset] (u/one-or-many driver-or-driver+dataset)
+          [sql & params]   (u/one-or-many sql-args)
+          canceled-chan    (a/promise-chan)]
+      (try
+        (driver/with-driver driver
+          (letfn [(thunk []
+                    (with-open [conn (sql-jdbc.execute/connection-with-timezone driver (mt/db) (qp.timezone/report-timezone-id-if-supported))
+                                stmt (sql-jdbc.execute/prepared-statement driver conn sql params)
+                                rs   (sql-jdbc.execute/execute-query! driver stmt)]
+                      (let [rsmeta (.getMetaData rs)]
+                        (reduce
+                         (fn [result row]
+                           (update result :rows conj row))
+                         {:rows []
+                          :cols (sql-jdbc.execute/column-metadata driver rsmeta)}
+                         (sql-jdbc.execute/reducible-rows driver rs rsmeta canceled-chan)))))]
+            (if dataset
+              (data.impl/do-with-dataset (data.impl/resolve-dataset-definition *ns* dataset) thunk)
+              (thunk))))
+        (catch InterruptedException e
+          (a/>!! canceled-chan :cancel)
+          (throw e))))))

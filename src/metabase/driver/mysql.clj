@@ -29,6 +29,9 @@
 
 (driver/register! :mysql, :parent :sql-jdbc)
 
+(def ^:private ^:const min-supported-mysql-version 5.7)
+(def ^:private ^:const min-supported-mariadb-version 10.2)
+
 (defmethod driver/display-name :mysql [_] "MySQL")
 
 
@@ -36,18 +39,31 @@
 ;;; |                                             metabase.driver impls                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- mariadb? [^DatabaseMetaData metadata]
+  (= (.getDatabaseProductName metadata) "MariaDB"))
+
 (defn- db-version [^DatabaseMetaData metadata]
   (Double/parseDouble
    (format "%d.%d" (.getDatabaseMajorVersion metadata) (.getDatabaseMinorVersion metadata))))
 
+(defn- unsupported-version? [^DatabaseMetaData metadata]
+  (< (db-version metadata)
+     (if (mariadb? metadata) min-supported-mariadb-version min-supported-mysql-version)))
+
 (defn- warn-on-unsupported-versions [driver details]
   (let [jdbc-spec (sql-jdbc.conn/details->connection-spec-for-testing-connection driver details)]
     (jdbc/with-db-metadata [metadata jdbc-spec]
-      (when (< (db-version metadata) 5.7)
+      (when (unsupported-version? metadata)
         (log/warn
-         (u/format-color 'red (str (trs "WARNING: Metabase only officially supports MySQL/MariaDB 5.7 and above.")
-                                   " "
-                                   (trs "All Metabase features may not work properly when using an unsupported version of MySQL."))))))))
+         (u/format-color 'red
+             (str
+              "\n\n********************************************************************************\n"
+              (trs "WARNING: Metabase only officially supports MySQL {0}/MariaDB {1} and above."
+                   min-supported-mysql-version
+                   min-supported-mariadb-version)
+              "\n"
+              (trs "All Metabase features may not work properly when using an unsupported version.")
+              "\n********************************************************************************\n")))))))
 
 (defmethod driver/can-connect? :mysql
   [driver details]
@@ -71,9 +87,12 @@
      (assoc driver.common/default-additional-options-details
        :placeholder  "tinyInt1isBit=false")]))
 
-(defmethod driver/date-add :mysql
-  [_ hsql-form amount unit]
-  (hsql/call :date_add hsql-form (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit)))))
+(defmethod sql.qp/add-interval-honeysql-form :mysql
+  [driver hsql-form amount unit]
+  ;; MySQL doesn't support `:millisecond` as an option, but does support fractional seconds
+  (if (= unit :millisecond)
+    (recur driver hsql-form (/ amount 1000.0) :second)
+    (hsql/call :date_add hsql-form (hsql/raw (format "INTERVAL %s %s" amount (name unit))))))
 
 (defmethod driver/humanize-connection-error-message :mysql
   [_ message]
