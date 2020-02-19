@@ -24,6 +24,7 @@
              [async-wait :as async-wait]
              [auto-bucket-datetimes :as bucket-datetime]
              [binning :as binning]
+             [cache :as cache]
              [catch-exceptions :as catch-exceptions]
              [check-features :as check-features]
              [constraints :as constraints]
@@ -61,8 +62,6 @@
 (def default-middleware
   "The default set of middleware applied to queries ran via `process-query`."
   [#'mbql-to-native/mbql->native
-   ;; TODO ­ implement this, or come up with a new `reducible-query` util fn that can be used in its place.
-   #_#'annotate/result-rows-maps->vectors ; TODO
    #'check-features/check-features
    #'optimize-datetime-filters/optimize-datetime-filters
    #'wrap-value-literals/wrap-value-literals
@@ -91,7 +90,7 @@
    #'fetch-source-query/resolve-card-id-source-tables
    #'store/initialize-store
    #'async-wait/wait-for-turn
-   #_#'cache/maybe-return-cached-results ; TODO
+   #'cache/maybe-return-cached-results
    #'validate/validate-query
    #'normalize/normalize
    #'add-rows-truncated/add-rows-truncated

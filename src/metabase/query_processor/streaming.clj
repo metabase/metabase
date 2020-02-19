@@ -15,6 +15,7 @@
            org.eclipse.jetty.io.EofException))
 
 ;; these are loaded for side-effects so their impls of `i/results-writer` will be available
+;; TODO - consider whether we should lazy-load these!
 (comment streaming.csv/keep-me
          streaming.json/keep-me
          streaming.xlsx/keep-me)
