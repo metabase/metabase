@@ -213,6 +213,12 @@
   [_ bool]
   (if bool 1 0))
 
+(defmethod ->honeysql [:sqlite :substring]
+  [driver [_ arg start length]]
+  (if length
+    (hsql/call :substr (->honeysql driver arg) (->honeysql driver start) (->honeysql driver length))
+    (hsql/call :substr (->honeysql driver arg) (->honeysql driver start))))
+
 ;; See https://sqlite.org/lang_datefunc.html
 
 ;; MEGA HACK
