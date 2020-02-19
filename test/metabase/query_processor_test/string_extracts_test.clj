@@ -7,6 +7,8 @@
   [expr]
   (->> {:expressions {"test" expr}
         :fields      [[:expression "test"]]
+        ;; To ensure stable ordering
+        :order-by    [[:asc [:field-id (data/id :venues :id)]]]
         :limit       1}
        (data/run-mbql-query venues)
        rows
