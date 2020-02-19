@@ -5,6 +5,7 @@
             [metabase
              [query-processor :as qp]
              [query-processor-test :as qp.test]
+             [test :as mt]
              [util :as u]]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models
@@ -77,36 +78,38 @@
          :order-by    [[:desc $user_id]]
          :limit       10}))))
 
-;; TODO - I have no idea what exactly these tests are testing??? This and the one below. Someone please determine and
-;; then write a description.
-(qp.test/expect-with-non-timeseries-dbs
-  {:rows [[2 8 "Artisan"]
-          [3 2 "Asian"]
-          [4 2 "BBQ"]
-          [5 7 "Bakery"]
-          [6 2 "Bar"]]
-   :cols [(assoc (qp.test/breakout-col :venues :category_id)
-            :remapped_to "Foo")
-          (qp.test/aggregate-col :count)
-          (#'add-dim-projections/create-remapped-col "Foo" (data/format-name "category_id"))]}
-  (data/with-temp-objects
-    (fn []
-      (let [venue-names (data/dataset-field-values "categories" "name")]
-        [(db/insert! Dimension {:field_id (data/id :venues :category_id)
-                                :name     "Foo"
-                                :type     :internal})
-         (db/insert! FieldValues {:field_id              (data/id :venues :category_id)
-                                  :values                (json/generate-string (range 0 (count venue-names)))
-                                  :human_readable_values (json/generate-string venue-names)})]))
-    (qp.test/rows-and-cols
-      (qp.test/format-rows-by [int int str]
-        (data/run-mbql-query venues
-          {:aggregation [[:count]]
-           :breakout    [$category_id]
-           :limit       5})))))
+;; TODO - I have no idea what exactly this test is testing??? Someone please determine and then write a description.
+(deftest mystery-test
+  (mt/test-drivers (mt/normal-drivers)
+    (data/with-temp-objects
+      (fn []
+        (let [venue-names (data/dataset-field-values "categories" "name")]
+          [(db/insert! Dimension {:field_id (data/id :venues :category_id)
+                                  :name     "Foo"
+                                  :type     :internal})
+           (db/insert! FieldValues {:field_id              (data/id :venues :category_id)
+                                    :values                (json/generate-string (range 0 (count venue-names)))
+                                    :human_readable_values (json/generate-string venue-names)})]))
+      (let [{:keys [rows cols]} (qp.test/rows-and-cols
+                                  (qp.test/format-rows-by [int int str]
+                                    (data/run-mbql-query venues
+                                      {:aggregation [[:count]]
+                                       :breakout    [$category_id]
+                                       :limit       5})))]
+        (is (= [(assoc (qp.test/breakout-col :venues :category_id)
+                       :remapped_to "Foo")
+                (qp.test/aggregate-col :count)
+                (#'add-dim-projections/create-remapped-col "Foo" (data/format-name "category_id"))]
+               cols))
+        (is (= [[2 8 "Artisan"]
+                [3 2 "Asian"]
+                [4 2 "BBQ"]
+                [5 7 "Bakery"]
+                [6 2 "Bar"]]
+               rows))))))
 
 (deftest order-by-test
-  (datasets/test-drivers (qp.test/non-timeseries-drivers-with-feature :foreign-keys)
+  (datasets/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
     (data/with-temp-objects
       (fn []
         [(db/insert! Dimension {:field_id                (data/id :venues :category_id)
@@ -126,21 +129,21 @@
         ["American" "American" "American" "American" "American" "American" "American" "American" "Artisan" "Artisan"]
         :asc))))
 
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :binning)
   [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]
   (qp.test/formatted-rows [1.0 int]
     (data/run-mbql-query venues
       {:aggregation [[:count]]
        :breakout    [[:binning-strategy $latitude :num-bins 20]]})))
 
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :binning)
   [[0.0 1] [20.0 90] [40.0 9]]
   (qp.test/formatted-rows [1.0 int]
     (data/run-mbql-query venues
       {:aggregation [[:count]]
        :breakout    [[:binning-strategy $latitude :num-bins 3]]})))
 
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :binning)
   [[10.0 -170.0 1] [32.0 -120.0 4] [34.0 -120.0 57] [36.0 -125.0 29] [40.0 -75.0 9]]
   (qp.test/formatted-rows [1.0 1.0 int]
     (data/run-mbql-query venues
@@ -150,14 +153,14 @@
 
 ;; Currently defaults to 8 bins when the number of bins isn't
 ;; specified
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :binning)
   [[10.0 1] [30.0 90] [40.0 9]]
   (qp.test/formatted-rows [1.0 int]
     (data/run-mbql-query venues
       {:aggregation [[:count]]
        :breakout    [[:binning-strategy $latitude :default]]})))
 
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :binning)
   [[10.0 1] [30.0 61] [35.0 29] [40.0 9]]
   (tu/with-temporary-setting-values [breakout-bin-width 5.0]
     (qp.test/formatted-rows [1.0 int]
@@ -166,7 +169,7 @@
          :breakout    [[:binning-strategy $latitude :default]]}))))
 
 ;; Can I use `:default` binning in a nested query?
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :binning)
   [[10.0 1] [30.0 61] [35.0 29] [40.0 9]]
   (tu/with-temporary-setting-values [breakout-bin-width 5.0]
     (qp.test/formatted-rows [1.0 int]
@@ -177,7 +180,7 @@
           :breakout     [[:binning-strategy $latitude :default]]}}))))
 
 ;; Testing bin-width
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :binning)
   [[10.0 1] [33.0 4] [34.0 57] [37.0 29] [40.0 9]]
   (qp.test/formatted-rows [1.0 int]
     (data/run-mbql-query venues
@@ -185,14 +188,14 @@
        :breakout    [[:binning-strategy $latitude :bin-width 1]]})))
 
 ;; Testing bin-width using a float
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :binning)
   [[10.0 1] [32.5 61] [37.5 29] [40.0 9]]
   (qp.test/formatted-rows [1.0 int]
     (data/run-mbql-query venues
       {:aggregation [[:count]]
        :breakout    [[:binning-strategy $latitude :bin-width 2.5]]})))
 
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :binning)
   [[33.0 4] [34.0 57]]
   (tu/with-temporary-setting-values [breakout-bin-width 1.0]
     (qp.test/formatted-rows [1.0 int]
@@ -211,40 +214,46 @@
         (update-in [:binning_info :min_value] round-to-decimal)
         (update-in [:binning_info :max_value] round-to-decimal))))
 
-;;Validate binning info is returned with the binning-strategy
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning)
-  (assoc (qp.test/breakout-col :venues :latitude)
-    :binning_info {:min_value 10.0, :max_value 50.0, :num_bins 4, :bin_width 10.0, :binning_strategy :bin-width}
-    :field_ref    [:binning-strategy (data/$ids venues $latitude) :bin-width nil
-                   {:min-value 10.0, :max-value 50.0, :num-bins 4, :bin-width 10.0}])
-  (-> (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :breakout    [[:binning-strategy $latitude :default]]})
-      qp.test/cols
-      first))
+(deftest binning-info-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :binning)
+    (testing "Validate binning info is returned with the binning-strategy"
+      (testing "binning-strategy = default"
+        ;; base_type can differ slightly between drivers and it's really not important for the purposes of this test
+        (is (= (assoc (dissoc (qp.test/breakout-col :venues :latitude) :base_type)
+                      :binning_info {:min_value 10.0, :max_value 50.0, :num_bins 4, :bin_width 10.0, :binning_strategy :bin-width}
+                      :field_ref    [:binning-strategy (data/$ids venues $latitude) :bin-width nil
+                                     {:min-value 10.0, :max-value 50.0, :num-bins 4, :bin-width 10.0}])
+               (-> (data/run-mbql-query venues
+                     {:aggregation [[:count]]
+                      :breakout    [[:binning-strategy $latitude :default]]})
+                   qp.test/cols
+                   first
+                   (dissoc :base_type)))))
 
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning)
-  (assoc (qp.test/breakout-col :venues :latitude)
-    :binning_info {:min_value 7.5, :max_value 45.0, :num_bins 5, :bin_width 7.5, :binning_strategy :num-bins}
-    :field_ref    [:binning-strategy (data/$ids venues $latitude) :num-bins 5
-                   {:min-value 7.5, :max-value 45.0, :num-bins 5, :bin-width 7.5}])
-  (-> (data/run-mbql-query venues
-        {:aggregation [[:count]]
-         :breakout    [[:binning-strategy $latitude :num-bins 5]]})
-      qp.test/cols
-      first))
+      (testing "binning-strategy = num-bins: 5"
+        (is (= (assoc (dissoc (qp.test/breakout-col :venues :latitude) :base_type)
+                      :binning_info {:min_value 7.5, :max_value 45.0, :num_bins 5, :bin_width 7.5, :binning_strategy :num-bins}
+                      :field_ref    [:binning-strategy (data/$ids venues $latitude) :num-bins 5
+                                     {:min-value 7.5, :max-value 45.0, :num-bins 5, :bin-width 7.5}])
+               (-> (data/run-mbql-query venues
+                     {:aggregation [[:count]]
+                      :breakout    [[:binning-strategy $latitude :num-bins 5]]})
+                   qp.test/cols
+                   first
+                   (dissoc :base_type))))))))
 
-;;Validate binning info is returned with the binning-strategy
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning)
-  {:status :failed
-   :class  clojure.lang.ExceptionInfo
-   :error  "Unable to bin Field without a min/max value"}
-  (tu/with-temp-vals-in-db Field (data/id :venues :latitude) {:fingerprint {:type {:type/Number {:min nil, :max nil}}}}
-    (-> (tu.log/suppress-output
-          (data/run-mbql-query venues
-            {:aggregation [[:count]]
-             :breakout    [[:binning-strategy $latitude :default]]}))
-        (select-keys [:status :class :error]))))
+(deftest binning-error-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :binning)
+    (tu.log/suppress-output
+      (tu/with-temp-vals-in-db Field (data/id :venues :latitude) {:fingerprint {:type {:type/Number {:min nil, :max nil}}}}
+        (is (= {:status :failed
+                :class  clojure.lang.ExceptionInfo
+                :error  "Unable to bin Field without a min/max value"}
+               (-> (qp/process-userland-query
+                    (data/mbql-query venues
+                      {:aggregation [[:count]]
+                       :breakout    [[:binning-strategy $latitude :default]]}))
+                   (select-keys [:status :class :error]))))))))
 
 (defn- nested-venues-query [card-or-card-id]
   {:database mbql.s/saved-questions-virtual-database-id
@@ -254,7 +263,7 @@
               :breakout     [[:binning-strategy [:field-literal (data/format-name :latitude) :type/Float] :num-bins 20]]}})
 
 ;; Binning should be allowed on nested queries that have result metadata
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning :nested-queries)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :binning :nested-queries)
   [[10.0 1] [32.0 4] [34.0 57] [36.0 29] [40.0 9]]
   (tt/with-temp Card [card (qp.test-util/card-with-source-metadata-for-query
                             (data/mbql-query nil
@@ -264,7 +273,7 @@
         (nested-venues-query card)))))
 
 ;; Binning is not supported when there is no fingerprint to determine boundaries
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :binning :nested-queries)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :binning :nested-queries)
   Exception
   (tu.log/suppress-output
     ;; Unfortunately our new `add-source-metadata` middleware is just too good at what it does and will pull in

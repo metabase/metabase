@@ -2,7 +2,6 @@
   (:require [clojure
              [string :as str]
              [test :refer :all]]
-            [clojure.java.jdbc :as jdbc]
             [colorize.core :as colorize]
             [honeysql.core :as hsql]
             [java-time :as t]
@@ -10,13 +9,16 @@
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :as qp.test]]
+             [query-processor-test :as qp.test]
+             [test :as mt]]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
-            [metabase.query-processor.test-util :as qp.test-util]
+            [metabase.query-processor
+             [test-util :as qp.test-util]
+             [timezone :as qp.timezone]]
             [metabase.test
              [data :as data]
              [util :as tu :refer [obj->json->obj]]]
@@ -149,30 +151,29 @@
   (datasets/test-driver :sqlserver
     (testing (str "Make sure datetime bucketing functions work properly with languages that format dates like "
                   "yyyy-dd-MM instead of yyyy-MM-dd (i.e. not American English) (#9057)")
-      ;; we're doing things here with low-level calls to HoneySQL (emulating what the QP does) instead of using normal QP
-      ;; pathways because `SET LANGUAGE` doesn't seem to persist to subsequent executions so to test that things are
-      ;; working we need to add to in from of the query we're trying to check
-      (jdbc/with-db-transaction [t-conn (sql-jdbc.conn/connection-details->spec :sqlserver
-                                          (tx/dbdef->connection-details :sqlserver :db {:database-name "test-data"}))]
+      ;; we're doing things here with low-level calls to HoneySQL (emulating what the QP does) instead of using normal
+      ;; QP pathways because `SET LANGUAGE` doesn't seem to persist to subsequent executions so to test that things
+      ;; are working we need to add to in from of the query we're trying to check
+      (with-open [conn (sql-jdbc.execute/connection-with-timezone :sqlserver (mt/db) (qp.timezone/report-timezone-id-if-supported))]
+        (.setAutoCommit conn false)
         (try
-          (jdbc/execute! t-conn "CREATE TABLE temp (d DATETIME2);")
-          (jdbc/execute! t-conn ["INSERT INTO temp (d) VALUES (?)" #t "2019-02-08T00:00:00Z"])
-          (let [[sql & args] (hsql/format {:select [[(sql.qp/date :sqlserver :month :temp.d) :my-date]]
-                                           :from   [:temp]}
-                               :quoting :ansi, :allow-dashed-names? true)
-                result       (jdbc/query t-conn (cons (str "SET LANGUAGE Italian; " sql) args)
-                                         {:read-columns   (partial sql-jdbc.execute/read-columns :sqlserver)
-                                          :set-parameters (partial sql-jdbc.execute/set-parameters :sqlserver)})]
-            (is (= [{:my-date #t "2019-02-01"}]
-                   result)))
+          (doseq [[sql & params] [["DROP TABLE IF EXISTS temp;"]
+                                  ["CREATE TABLE temp (d DATETIME2);"]
+                                  ["INSERT INTO temp (d) VALUES (?)" #t "2019-02-08T00:00:00Z"]
+                                  ["SET LANGUAGE Italian;"]]]
+            (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql params)]
+              (.execute stmt)))
+          (let [[sql & params] (hsql/format {:select [[(sql.qp/date :sqlserver :month :temp.d) :my-date]]
+                                             :from   [:temp]}
+                                 :quoting :ansi, :allow-dashed-names? true)]
+            (with-open [stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql params)
+                        rs   (sql-jdbc.execute/execute-query! :sqlserver stmt)]
+              (let [row-thunk (sql-jdbc.execute/row-thunk :sqlserver rs (.getMetaData rs))]
+                (is (= [#t "2019-02-01"]
+                       (row-thunk))))))
           ;; rollback transaction so `temp` table gets discarded
-          (finally (.rollback (jdbc/get-connection t-conn))))))))
-
-(defn- query [sql-args]
-  (jdbc/query
-   (sql-jdbc.conn/db->pooled-connection-spec (data/db))
-   sql-args
-   {:read-columns (partial sql-jdbc.execute/read-columns driver/*driver*)}))
+          (finally
+            (.rollback conn)))))))
 
 (deftest unprepare-test
   (datasets/test-driver :sqlserver
@@ -187,12 +188,17 @@
                             ;; LocalTime (?)
                             [(t/offset-time time (t/zone-offset -8)) (t/local-time 3 27)]
                             [(t/offset-date-time (t/local-date-time date time) (t/zone-offset -8))]
-                            ;; since SQL Server doesn't support timezone IDs it should be converted to an offset in the literal
+                            ;; since SQL Server doesn't support timezone IDs it should be converted to an offset in
+                            ;; the literal
                             [(t/zoned-date-time  date time (t/zone-id "America/Los_Angeles"))
                              (t/offset-date-time (t/local-date-time date time) (t/zone-offset -8))]]]
         (let [expected (or expected t)]
           (testing (format "Convert %s to SQL literal" (colorize/magenta (with-out-str (pr t))))
             (let [sql (format "SELECT %s AS t;" (unprepare/unprepare-value :sqlserver t))]
-              (is (= expected
-                     (-> (query sql) first :t))
-                  (format "SQL %s should return %s" (colorize/blue sql) (colorize/green expected))))))))))
+              (with-open [conn (sql-jdbc.execute/connection-with-timezone :sqlserver (mt/db) nil)
+                          stmt (sql-jdbc.execute/prepared-statement :sqlserver conn sql nil)
+                          rs   (sql-jdbc.execute/execute-query! :sqlserver stmt)]
+                (let [row-thunk (sql-jdbc.execute/row-thunk :sqlserver rs (.getMetaData rs))]
+                  (is (= [expected]
+                         (row-thunk))
+                      (format "SQL %s should return %s" (colorize/blue (pr-str sql)) (colorize/green expected))))))))))))

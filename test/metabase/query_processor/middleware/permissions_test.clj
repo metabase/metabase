@@ -3,6 +3,7 @@
   (:require [clojure.test :refer :all]
             [metabase
              [query-processor :as qp]
+             [test :as mt]
              [util :as u]]
             [metabase.api.common :as api]
             [metabase.models
@@ -11,18 +12,16 @@
              [permissions :as perms]
              [permissions-group :as perms-group]
              [table :refer [Table]]]
+            [metabase.query-processor.error-type :as error-type]
             [metabase.query-processor.middleware.permissions :refer [check-query-permissions]]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
+            [metabase.test.data :as data]
             [metabase.test.data.users :as users]
             [schema.core :as s]
             [toucan.util.test :as tt])
   (:import clojure.lang.ExceptionInfo))
 
-(identity tu/random-name) ; Avoid "unused namespace" for `tu`
-
-(def ^:private ^{:arglists '([query]), :style/indent 0} check-perms (check-query-permissions identity))
+(defn- check-perms [query]
+  (:pre (mt/test-qp-middleware check-query-permissions query)))
 
 (defn- do-with-rasta
   "Call `f` with Rasta as the current user."
@@ -121,25 +120,7 @@
          (check-perms-for-rasta
           {:database (u/get-id db)
            :type     :query
-           :query    {:source-query {:source-table (u/get-id table)}}}))))
-
-  ;; Make sure it works end-to-end:
-  (testing "make sure `*current-user-id*` and `*current-user-permissions-set*` are used to check query permissions"
-    (is (schema=
-         {:status   (s/eq :failed)
-          :class    (s/eq clojure.lang.ExceptionInfo)
-          :error    (s/eq "You do not have permissions to run this query.")
-          :ex-data  (s/eq {:required-permissions #{(perms/table-query-path (data/id) "PUBLIC" (data/id :venues))}
-                           :actual-permissions   #{}
-                           :permissions-error?   true})
-          s/Keyword s/Any}
-         (binding [api/*current-user-id*              (users/user->id :rasta)
-                   api/*current-user-permissions-set* (delay #{})]
-           (qp/process-query
-            {:database (data/id)
-             :type     :query
-             :query    {:source-table (data/id :venues)
-                        :limit        1}}))))))
+           :query    {:source-query {:source-table (u/get-id table)}}})))))
 
 (deftest template-tags-referenced-queries-test
   (testing "Fails for MBQL query referenced in template tag, when user has no perms to referenced query"
@@ -223,3 +204,23 @@
                             :template-tags {tag-name
                                             {:id tag-name, :name tag-name, :display-name tag-name,
                                              :type "card", :card card-id}}}})))))))
+
+(deftest end-to-end-test
+  (testing (str "Make sure it works end-to-end: make sure bound `*current-user-id*` and `*current-user-permissions-set*` "
+                "are used to permissions check queries")
+    (binding [api/*current-user-id*              (users/user->id :rasta)
+              api/*current-user-permissions-set* (delay #{})]
+      (is (schema= {:status   (s/eq :failed)
+                    :class    (s/eq clojure.lang.ExceptionInfo)
+                    :error    (s/eq "You do not have permissions to run this query.")
+                    :ex-data  {:required-permissions (s/eq #{(perms/table-query-path (data/id) "PUBLIC" (data/id :venues))})
+                               :actual-permissions   (s/eq #{})
+                               :permissions-error?   (s/eq true)
+                               :type                 (s/eq error-type/missing-required-permissions)
+                               s/Keyword             s/Any}
+                    s/Keyword s/Any}
+                   (qp/process-userland-query
+                    {:database (data/id)
+                     :type     :query
+                     :query    {:source-table (data/id :venues)
+                                :limit        1}}))))))

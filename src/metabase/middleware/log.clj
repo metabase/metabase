@@ -127,16 +127,14 @@
 (defn- log-core-async-response
   "For async responses that return a `core.async` channel, wait for the channel to return a response before logging the
   API request info."
-  [{{in-chan :body, :as response} :response, :as info}]
-  ;; create a new out channel, and pipe response from `in-chan` to `out-chan` using the async util single value pipe.
-  ;; The channel returned by that function can be used to listen for either in or out channels to close
-  (let [out-chan              (a/chan 1)
-        in-or-out-closed-chan (async.u/single-value-pipe in-chan out-chan)]
-    ;; [async] wait for the pipe to close the canceled/finished channel and log the API response
-    (a/go
-      (log-info (assoc info :async-status (if (a/<! in-or-out-closed-chan) "canceled" "completed"))))
-    ;; [sync] return updated response with our new body
-    (assoc response :body out-chan)))
+  [{{chan :body, :as response} :response, :as info}]
+  {:pre [(async.u/promise-chan? chan)]}
+  ;; [async] wait for the pipe to close the canceled/finished channel and log the API response
+  (a/go
+    (let [result (a/<! chan)]
+      (log-info (assoc info :async-status (if (nil? result) "canceled" "completed")))))
+  ;; [sync] return response as-is
+  response)
 
 (defn- logged-response
   "Log an API response. Returns resonse, possibly modified (i.e., core.async channels will be wrapped); this value

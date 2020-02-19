@@ -5,10 +5,14 @@
              [db :as mdb]
              [public-settings :as public-settings]]
             [metabase.api.common :as api]
+            metabase.async.streaming-response
             [metabase.middleware.util :as middleware.u]
             [metabase.util.i18n :refer [trs]]
             [puppetlabs.i18n.core :as puppet-i18n])
-  (:import clojure.core.async.impl.channels.ManyToManyChannel))
+  (:import clojure.core.async.impl.channels.ManyToManyChannel
+           metabase.async.streaming_response.StreamingResponse))
+
+(comment metabase.async.streaming-response/keep-me)
 
 (defn- add-content-type* [request response]
   (update-in
@@ -77,9 +81,10 @@
 ;;; ------------------------------------------ Disable Streaming Buffering -------------------------------------------
 
 (defn- maybe-add-disable-buffering-header [{:keys [body], :as response}]
-  (cond-> response
-    (instance? ManyToManyChannel body)
-    (assoc-in [:headers "X-Accel-Buffering"] "no")))
+  (if (or (instance? StreamingResponse body)
+          (instance? ManyToManyChannel body))
+    (assoc-in response [:headers "X-Accel-Buffering"] "no")
+    response))
 
 (defn disable-streaming-buffering
   "Tell nginx not to batch streaming responses -- otherwise the keepalive bytes aren't written and

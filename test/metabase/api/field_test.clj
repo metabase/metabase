@@ -1,6 +1,7 @@
 (ns metabase.api.field-test
   "Tests for `/api/field` endpoints."
-  (:require [expectations :refer :all]
+  (:require [clojure.test :refer :all]
+            [expectations :refer :all]
             [metabase
              [query-processor-test :as qp.test]
              [util :as u]]
@@ -218,22 +219,26 @@
             {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]})
            ((test-users/user->client :crowberto) :get 200 (format "field/%d/values" field-id))])))
 
-;; Field values are created when not present
-(expect
-  [{:values [], :field_id true}
-   {:status "success"}
-   {:values [1 2 3 4], :human_readable_values ["$" "$$" "$$$" "$$$$"]}
-   {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true}]
-  (tt/with-temp* [Field [{field-id :id} list-field]]
-    (mapv tu/boolean-ids-and-timestamps
-          [ ;; this will print an error message because it will try to fetch the FieldValues, but the Field doesn't
-           ;; exist; we can ignore that
-           (tu.log/suppress-output
-             ((test-users/user->client :crowberto) :get 200 (format "field/%d/values" field-id)))
-           ((test-users/user->client :crowberto) :post 200 (format "field/%d/values" field-id)
-            {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]})
-           (db/select-one [FieldValues :values :human_readable_values] :field_id field-id)
-           ((test-users/user->client :crowberto) :get 200 (format "field/%d/values" field-id))])))
+(deftest create-field-values-when-not-present-test
+  (testing "Field values should be created when not present"
+    ;; this will print an error message because it will try to fetch the FieldValues, but the Field doesn't
+    ;; exist; we can ignore that
+    (tu.log/suppress-output
+      (tt/with-temp Field [{field-id :id} list-field]
+        (is (= {:values [], :field_id true}
+               (tu/boolean-ids-and-timestamps
+                ((test-users/user->client :crowberto) :get 200 (format "field/%d/values" field-id)))))
+
+        (is (= {:status "success"}
+               ((test-users/user->client :crowberto) :post 200 (format "field/%d/values" field-id)
+                {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]]})))
+
+        (is (= {:values [1 2 3 4], :human_readable_values ["$" "$$" "$$$" "$$$$"]}
+               (into {} (db/select-one [FieldValues :values :human_readable_values] :field_id field-id))))
+
+        (is (= {:values [[1 "$"] [2 "$$"] [3 "$$$"] [4 "$$$$"]], :field_id true}
+               (tu/boolean-ids-and-timestamps
+                ((test-users/user->client :crowberto) :get 200 (format "field/%d/values" field-id)))))))))
 
 ;; Can unset values
 (expect

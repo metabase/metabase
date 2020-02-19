@@ -40,13 +40,14 @@
   [driver database table]
   (query driver database table {:select [:*]}))
 
+;; TODO - this implementation should itself be deprecated! And have drivers implement it directly instead.
 (defmethod driver/supports? [:sql-jdbc :set-timezone]
   [driver _]
   (boolean (seq (sql-jdbc.execute/set-timezone-sql driver))))
 
-(defmethod driver/execute-query :sql-jdbc
-  [driver query]
-  (sql-jdbc.execute/execute-query driver query))
+(defmethod driver/execute-reducible-query :sql-jdbc
+  [driver query chans respond]
+  (sql-jdbc.execute/execute-reducible-query driver query chans respond))
 
 (defmethod driver/notify-database-updated :sql-jdbc
   [_ database]
@@ -63,7 +64,6 @@
 (defmethod driver/describe-table-fks :sql-jdbc
   [driver database table]
   (sql-jdbc.sync/describe-table-fks driver database table))
-
 
 ;; `:sql-jdbc` drivers almost certainly don't need to override this method, and instead can implement
 ;; `unprepare/unprepare-value` for specific classes, or, in extereme cases, `unprepare/unprepare` itself.

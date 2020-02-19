@@ -330,7 +330,7 @@
   "Set the value of double `setting-or-name`."
   [setting-or-name new-value]
   (set-string! setting-or-name (when new-value
-                                 (assert (or (float? new-value)
+                                 (assert (or (number? new-value)
                                              (and (string? new-value)
                                                   (re-matches #"[+-]?([0-9]*[.])?[0-9]+" new-value) )))
                                  (str new-value))))

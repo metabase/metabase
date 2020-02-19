@@ -1,6 +1,7 @@
 (ns metabase.driver.oracle
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [java-time :as t]
             [metabase.driver :as driver]
@@ -17,9 +18,10 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.util
              [honeysql-extensions :as hx]
+             [i18n :refer [trs]]
              [ssh :as ssh]])
   (:import com.mchange.v2.c3p0.C3P0ProxyConnection
-           [java.sql ResultSet Types]
+           [java.sql Connection ResultSet Types]
            [java.time Instant OffsetDateTime ZonedDateTime]
            [oracle.jdbc OracleConnection OracleTypes]
            oracle.sql.TIMESTAMPTZ))
@@ -128,12 +130,12 @@
 
 (def ^:private now (hsql/raw "SYSDATE"))
 
-(defmethod sql.qp/current-datetime-fn :oracle [_] now)
+(defmethod sql.qp/current-datetime-honeysql-form :oracle [_] now)
 
 (defn- num-to-ds-interval [unit v] (hsql/call :numtodsinterval v (hx/literal unit)))
 (defn- num-to-ym-interval [unit v] (hsql/call :numtoyminterval v (hx/literal unit)))
 
-(defmethod driver/date-add :oracle
+(defmethod sql.qp/add-interval-honeysql-form :oracle
   [_ hsql-form amount unit]
   (hx/+
    (hx/->timestamp hsql-form)
@@ -217,16 +219,6 @@
   [_ bool]
   (if bool 1 0))
 
-(defn- remove-rownum-column
-  "Remove the `:__rownum__` column from results, if present."
-  [{:keys [columns rows], :as results}]
-  (if-not (contains? (set columns) "__rownum__")
-    results
-    ;; if we added __rownum__ it will always be the last column and value so we can just remove that
-    {:columns (butlast columns)
-     :rows    (for [row rows]
-                (butlast row))}))
-
 (defmethod driver/humanize-connection-error-message :oracle
   [_ message]
   ;; if the connection error message is caused by the assertion above checking whether sid or service-name is set,
@@ -235,8 +227,24 @@
     "You must specify the SID and/or the Service Name."
     message))
 
-(defmethod driver/execute-query :oracle [driver query]
-  (remove-rownum-column ((get-method driver/execute-query :sql-jdbc) driver query)))
+(defn- remove-rownum-column
+  "Remove the `:__rownum__` column from results, if present."
+  [respond {:keys [cols], :as metadata} rows]
+  (if-not (contains? (set (map :name cols)) "__rownum__")
+    (respond metadata rows)
+    ;; if we added __rownum__ it will always be the last column and value so we can just remove that
+    (respond (update metadata :cols butlast)
+             (eduction
+              (fn [rf]
+                (fn
+                  ([]        (rf))
+                  ([acc]     (rf acc))
+                  ([acc row] (rf acc (butlast row)))))
+              rows))))
+
+(defmethod driver/execute-reducible-query :oracle
+  [driver query context respond]
+  ((get-method driver/execute-reducible-query :sql-jdbc) driver query context (partial remove-rownum-column respond)))
 
 (defmethod driver.common/current-db-time-date-formatters :oracle
   [_]
@@ -284,24 +292,45 @@
   [_]
   "ALTER session SET time_zone = %s")
 
-;; instead of returning a CLOB object, return the String. (#9026)
-(defmethod sql-jdbc.execute/read-column [:oracle Types/CLOB]
-  [_ _ ^ResultSet rs _ ^Integer i]
-  (.getString rs i))
+;; Oracle doesn't support `CLOSE_CURSORS_AT_COMMIT`. Otherwise this method is basically the same as the default impl
+(defmethod sql-jdbc.execute/prepared-statement :oracle
+  [driver ^Connection conn ^String sql params]
+  (let [stmt (.prepareStatement conn sql
+                                ResultSet/TYPE_FORWARD_ONLY
+                                ResultSet/CONCUR_READ_ONLY)]
+    (try
+      (try
+        (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
+        (catch Throwable e
+          (log/debug e (trs "Error setting result set fetch direction to FETCH_FORWARD"))))
+      (sql-jdbc.execute/set-parameters! driver stmt params)
+      stmt
+      (catch Throwable e
+        (.close stmt)
+        (throw e)))))
 
-(defmethod sql-jdbc.execute/read-column [:oracle OracleTypes/TIMESTAMPTZ]
-  [driver _ ^ResultSet rs _ ^Integer i]
+;; instead of returning a CLOB object, return the String. (#9026)
+(defmethod sql-jdbc.execute/read-column-thunk [:oracle Types/CLOB]
+  [_ ^ResultSet rs _ ^Integer i]
+  (fn []
+    (.getString rs i)))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:oracle OracleTypes/TIMESTAMPTZ]
+  [driver ^ResultSet rs _ ^Integer i]
   ;; Oracle `TIMESTAMPTZ` types can have either a zone offset *or* a zone ID; you could fetch either `OffsetDateTime`
   ;; or `ZonedDateTime` using `.getObject`, but fetching the wrong type will result in an Exception, meaning we have
   ;; try both and wrap the first in a try-catch. As far as I know there's now way to tell whether the value has a zone
   ;; offset or ID without first fetching a `TIMESTAMPTZ` object. So to avoid the try-catch we can fetch the
   ;; `TIMESTAMPTZ` and use `.offsetDateTimeValue` instead.
-  (when-let [^TIMESTAMPTZ t (.getObject rs i TIMESTAMPTZ)]
-    (let [^C3P0ProxyConnection proxy-conn (.. rs getStatement getConnection)
-          conn                            (.unwrap proxy-conn OracleConnection)]
-      ;; TIMEZONE FIXME - we need to warn if the Oracle JDBC driver is `ojdbc7.jar`, which probably won't have this method
-      ;; I think we can call `(oracle.jdbc.OracleDriver/getJDBCVersion)` and check whether it returns 4.2+
-      (.offsetDateTimeValue t conn))))
+  (fn []
+    (when-let [^TIMESTAMPTZ t (.getObject rs i TIMESTAMPTZ)]
+      (let [^C3P0ProxyConnection proxy-conn (.. rs getStatement getConnection)
+            conn                            (.unwrap proxy-conn OracleConnection)]
+        ;; TIMEZONE FIXME - we need to warn if the Oracle JDBC driver is `ojdbc7.jar`, which probably won't have this
+        ;; method
+        ;;
+        ;; I think we can call `(oracle.jdbc.OracleDriver/getJDBCVersion)` and check whether it returns 4.2+
+        (.offsetDateTimeValue t conn)))))
 
 (defmethod unprepare/unprepare-value [:oracle OffsetDateTime]
   [_ t]

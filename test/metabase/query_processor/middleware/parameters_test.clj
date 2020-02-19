@@ -2,7 +2,9 @@
   "Testings to make sure the parameter substitution middleware works as expected. Even though the below tests are
   SQL-specific, they still confirm that the middleware itself is working correctly."
   (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [test :as mt]]
             [metabase.mbql.normalize :as normalize]
             [metabase.models.card :refer [Card]]
             [metabase.query-processor.middleware.parameters :as parameters]
@@ -18,7 +20,7 @@
 
 (defn- substitute-params [query]
   (driver/with-driver :h2
-    ((parameters/substitute-parameters identity) (normalize/normalize query))))
+    (:pre (mt/test-qp-middleware parameters/substitute-parameters (normalize/normalize query)))))
 
 (deftest expand-mbql-top-level-params-test
   (testing "can we expand MBQL params if they are specified at the top level?"

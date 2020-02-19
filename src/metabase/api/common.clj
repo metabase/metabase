@@ -252,11 +252,13 @@
         validate-param-calls   (validate-params arg->schema)]
     (when-not docstr
       (log/warn (deferred-trs "Warning: endpoint {0}/{1} does not have a docstring." (ns-name *ns*) fn-name)))
-    `(def ~(vary-meta fn-name assoc
+    `(def ~(vary-meta fn-name
+                      merge
+                      (meta method)
                       ;; eval the vals in arg->schema to make sure the actual schemas are resolved so we can document
                       ;; their API error messages
-                      :doc (route-dox method route docstr args (m/map-vals eval arg->schema) body)
-                      :is-endpoint? true)
+                      {:doc          (route-dox method route docstr args (m/map-vals eval arg->schema) body)
+                       :is-endpoint? true})
        (~method ~route ~args
         (auto-parse ~args
           ~@validate-param-calls

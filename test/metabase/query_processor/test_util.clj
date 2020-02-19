@@ -101,9 +101,9 @@
                               (data/mbql-query venues {:aggregation [[:count]]}))]
       ...)"
   [query]
-  (let [results  (qp/process-query query)
+  (let [results  (qp/process-userland-query query)
         metadata (or (get-in results [:data :results_metadata :columns])
-                     (throw (ex-info "Query failure" results)))]
+                     (throw (ex-info "Missing [:data :results_metadata :columns] from query results" results)))]
     {:dataset_query   query
      :result_metadata metadata}))
 

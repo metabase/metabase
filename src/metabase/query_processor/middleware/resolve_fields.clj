@@ -19,4 +19,5 @@
   "Fetch the Fields referenced by `:field-id` clauses in a query and store them in the Query Processor Store for the
   duration of the Query Execution."
   [qp]
-  (comp qp resolve-fields*))
+  (fn [query xformf context]
+    (qp (resolve-fields* query) xformf context)))
