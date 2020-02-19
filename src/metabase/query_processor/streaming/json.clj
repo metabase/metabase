@@ -77,8 +77,6 @@
             (.write writer other-metadata-kvs-str))
           ;; close top-level map
           (.write writer "}"))
-        ; NOCOMMIT
         (.flush writer)
         (.flush os)
-        (.close writer)
-        (.close os)))))
+        (.close writer)))))

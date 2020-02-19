@@ -16,13 +16,16 @@
 (defn- seconds-ago-honeysql-form
   "Generate appropriate HoneySQL for `now() - seconds` for the application DB. `seconds` is not neccessarily an
   integer! It can be floating-point for fractional seconds."
-  [seconds]
-  {:pre [(number? seconds)]}
-  (sql.qp/add-interval-honeysql-form
-   (mdb/db-type)
-   (sql.qp/current-datetime-honeysql-form (mdb/db-type))
-   (- seconds)
-   :second))
+  ([seconds]
+   (seconds-ago-honeysql-form (mdb/db-type) seconds))
+
+  ([driver seconds]
+   {:pre [(number? seconds)]}
+   (sql.qp/add-interval-honeysql-form
+    driver
+    (sql.qp/current-datetime-honeysql-form driver)
+    (- seconds)
+    :second)))
 
 (defn- cached-results-sql [max-age-seconds]
   (first (hsql/format {:select   [:results]

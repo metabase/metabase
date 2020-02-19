@@ -37,9 +37,11 @@
          (i/write-row! results-writer row (dec (vswap! row-count inc)))
          metadata)))))
 
-(defn- streaming-reducedf [results-writer]
+(defn- streaming-reducedf [results-writer ^OutputStream os]
   (fn [_ final-metadata context]
     (i/finish! results-writer final-metadata)
+    (.flush os)
+    (.close os)
     (context/resultf final-metadata context)))
 
 (defn- write-qp-failure-and-close! [^OutputStream os result]
@@ -58,7 +60,7 @@
   [export-format ^OutputStream os]
   (let [results-writer (i/streaming-results-writer export-format os)]
     {:rff      (streaming-rff results-writer)
-     :reducedf (streaming-reducedf results-writer)}))
+     :reducedf (streaming-reducedf results-writer os)}))
 
 ;; TODO -- consider whether it makes sense to begin writing keepalive chars right away or if maybe we should wait to
 ;; call `respond` in async endpoints for 30-60 seconds that way we're not wasting a Ring thread right away
