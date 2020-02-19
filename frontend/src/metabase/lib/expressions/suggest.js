@@ -29,24 +29,28 @@ import {
   IdentifierString,
 } from "./lexer";
 
+import memoize from "lodash.memoize";
+
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
 
 function getImage(token) {
   return token.image;
 }
 
-function isTokenType(tokenType, name) {
-  return (
-    tokenType &&
-    (tokenType.name === name ||
-      _.any(tokenType.CATEGORIES, c => isTokenType(c, name)))
-  );
-}
+const tokensByIdx = new Map(allTokens.map(t => [t.tokenTypeIdx, t]));
+
+const isTokenType = memoize(
+  (child, ancestor) => {
+    return (
+      child === ancestor ||
+      child.CATEGORIES.some(token => isTokenType(token, ancestor))
+    );
+  },
+  (child, ancestor) => `${child.tokenTypeIdx},${ancestor.tokenTypeIdx}`,
+);
 
 function getSubTokenTypes(TokenClass) {
-  return TokenClass.extendingTokenTypes.map(tokenType =>
-    _.findWhere(allTokens, { tokenType }),
-  );
+  return TokenClass.categoryMatches.map(idx => tokensByIdx.get(idx));
 }
 
 function getTokenSource(TokenClass) {
@@ -71,7 +75,7 @@ export function suggest(
   // we have requested assistance while inside an Identifier
   if (
     lastInputToken &&
-    isTokenType(lastInputToken.tokenType, "Identifier") &&
+    isTokenType(lastInputToken.tokenType, Identifier) &&
     /\w/.test(partialSource[partialSource.length - 1])
   ) {
     assistanceTokenVector = assistanceTokenVector.slice(0, -1);
@@ -83,13 +87,14 @@ export function suggest(
   // TODO: is there a better way to figure out which aggregation we're inside of?
   const currentAggregationToken = _.find(
     assistanceTokenVector.slice().reverse(),
-    t => t && isTokenType(t.tokenType, "Aggregation"),
+    t => t && isTokenType(t.tokenType, AggregationName),
   );
 
   const syntacticSuggestions = parser.computeContentAssist(
     startRule,
     assistanceTokenVector,
   );
+
   for (const suggestion of syntacticSuggestions) {
     const { nextTokenType, ruleStack } = suggestion;
     // no nesting of aggregations or field references outside of aggregations
@@ -165,7 +170,7 @@ export function suggest(
           })),
         );
       }
-    } else if (nextTokenType === AggregationName) {
+    } else if (isTokenType(nextTokenType, AggregationName)) {
       if (outsideAggregation) {
         finalSuggestions.push(
           ...query
@@ -203,7 +208,7 @@ export function suggest(
     ) {
       // skip number/string literal
     } else {
-      console.warn("non exhaustive match", nextTokenType.name, suggestion);
+      console.warn("non exhaustive match", nextTokenType.name);
     }
   }
 

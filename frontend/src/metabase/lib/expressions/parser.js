@@ -9,7 +9,6 @@ import {
   RParen,
   AdditiveOperator,
   MultiplicativeOperator,
-  AggregationName,
   FunctionName,
   Case,
   FilterName,
@@ -21,6 +20,8 @@ import {
   Identifier,
   IdentifierString,
   Comma,
+  aggregationArgsTokens,
+  getArgsForToken,
 } from "./lexer";
 
 export class ExpressionParser extends CstParser {
@@ -79,29 +80,104 @@ export class ExpressionParser extends CstParser {
       });
     });
 
-    $.RULE("call", outsideAggregation => {
-      $.CONSUME(LParen);
-      $.OPTION(() => {
-        $.SUBRULE($.expression, {
-          LABEL: "arguments",
-          ARGS: [outsideAggregation],
-        });
-        $.MANY(() => {
-          $.CONSUME(Comma);
-          $.SUBRULE2($.expression, {
-            LABEL: "arguments",
-            ARGS: [outsideAggregation],
-          });
-        });
-      });
-      $.CONSUME(RParen);
+    $.RULE("arg", (outsideAggregation, type = "expression") => {
+      $.OR([
+        {
+          GATE: () => type === "expression",
+          ALT: () => {
+            $.SUBRULE($.expression, {
+              LABEL: "argument",
+              ARGS: [outsideAggregation],
+            });
+          },
+        },
+        {
+          GATE: () => type === "filter",
+          ALT: () => {
+            $.SUBRULE($.filter, {
+              LABEL: "argument",
+              ARGS: [outsideAggregation],
+            });
+          },
+        },
+      ]);
+    });
+
+    $.RULE("call", (outsideAggregation, args) => {
+      $.OR([
+        {
+          GATE: () => !args || args.length > 2,
+          ALT: () => {
+            $.CONSUME5(LParen);
+            $.SUBRULE5($.arg, {
+              LABEL: "arguments",
+              ARGS: [outsideAggregation, "expression"],
+            });
+            $.MANY(() => {
+              $.CONSUME5(Comma);
+              $.SUBRULE6($.arg, {
+                LABEL: "arguments",
+                ARGS: [outsideAggregation, "expression"],
+              });
+            });
+            $.CONSUME5(RParen);
+          },
+        },
+        {
+          GATE: () => args && args.length === 0,
+          ALT: () => {
+            $.CONSUME(LParen);
+            $.CONSUME(RParen);
+          },
+        },
+        {
+          GATE: () => args && args.length === 1,
+          ALT: () => {
+            $.CONSUME2(LParen);
+            $.SUBRULE2($.arg, {
+              LABEL: "arguments",
+              ARGS: [outsideAggregation, args && args[0]],
+            });
+            $.CONSUME2(RParen);
+          },
+        },
+        {
+          GATE: () => args && args.length === 2,
+          ALT: () => {
+            $.CONSUME3(LParen);
+            $.SUBRULE3($.arg, {
+              LABEL: "arguments",
+              ARGS: [outsideAggregation, args && args[0]],
+            });
+            $.CONSUME3(Comma);
+            $.SUBRULE4($.arg, {
+              LABEL: "arguments",
+              ARGS: [outsideAggregation, args && args[1]],
+            });
+            $.CONSUME3(RParen);
+          },
+        },
+      ]);
     });
 
     $.RULE("aggregationExpression", () => {
-      $.CONSUME(AggregationName, { LABEL: "aggregationName" });
-      $.OPTION(() => {
-        $.SUBRULE($.call, { LABEL: "call", ARGS: [false] });
-      });
+      // creates alternatives for each permutation of arguments
+      $.OR(
+        Object.values(aggregationArgsTokens).map((token, index) => ({
+          ALT: () => {
+            $.CONSUME(token, { LABEL: "aggregationName" });
+            const SUBRULE = `SUBRULE${index === 0 ? "" : index + 1}`;
+            const args = getArgsForToken(token);
+            if (args && args.length === 0) {
+              $.OPTION(() => {
+                $[SUBRULE]($.call, { LABEL: "call", ARGS: [false, args] });
+              });
+            } else {
+              $[SUBRULE]($.call, { LABEL: "call", ARGS: [false, args] });
+            }
+          },
+        })),
+      );
     });
 
     $.RULE("functionExpression", outsideAggregation => {

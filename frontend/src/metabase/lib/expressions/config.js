@@ -13,6 +13,9 @@ const MBQL_TO_EXPRESSION_NAME = new Map(
     avg: t`Average`,
     min: t`Min`,
     max: t`Max`,
+    share: t`Share`,
+    "count-where": t`CountWhere`,
+    "sum-where": t`SumWhere`,
     // functions
     lower: t`Lower`,
     upper: t`Upper`,
@@ -49,6 +52,9 @@ export function getMBQLName(expressionName) {
 export const OPERATORS = new Set(["+", "-", "*", "/"]);
 
 export const AGGREGATIONS = new Set([
+  // count-where/sum-where must come before count/sum
+  "count-where",
+  "sum-where",
   "count",
   "cum-count",
   "sum",
@@ -58,7 +64,23 @@ export const AGGREGATIONS = new Set([
   "avg",
   "min",
   "max",
+  "share",
 ]);
+
+export const AGGREGATION_ARGUMENTS = {
+  count: [],
+  "cum-count": [],
+  sum: ["expression"],
+  "cum-sum": ["expression"],
+  distinct: ["expression"],
+  stddev: ["expression"],
+  avg: ["expression"],
+  min: ["expression"],
+  max: ["expression"],
+  share: ["filter"],
+  "count-where": ["filter"],
+  "sum-where": ["expression", "filter"],
+};
 
 // the order of these matters for the lexer
 export const FILTER_OPERATORS = new Set([

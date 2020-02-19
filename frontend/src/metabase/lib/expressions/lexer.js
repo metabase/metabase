@@ -1,10 +1,13 @@
 import { Lexer, createToken } from "chevrotain";
 
+import { capitalize } from "metabase/lib/formatting";
+
 import {
   getExpressionName as getExpressionName_,
   AGGREGATIONS,
   FUNCTIONS,
   FILTERS,
+  AGGREGATION_ARGUMENTS,
 } from "./config";
 
 function getExpressionName(mbqlName) {
@@ -63,15 +66,36 @@ export const Div = createToken({
 });
 
 export const AggregationName = createToken({
-  name: "Aggregation",
+  name: "AggregationName",
   pattern: Lexer.NA,
 });
 
-const aggregationNameTokens = Array.from(AGGREGATIONS).map(short =>
+const argsForToken = new Map();
+export function getArgsForToken(token) {
+  return argsForToken.get(token);
+}
+
+// this groups aggregation tokens by their argument types
+export const aggregationArgsTokens = {};
+function getAggregationArgumentsToken(args) {
+  const categoryName =
+    "AggregationArgs" + args.map(arg => capitalize(arg)).join("");
+  if (!aggregationArgsTokens[categoryName]) {
+    const token = (aggregationArgsTokens[categoryName] = createToken({
+      name: categoryName,
+      pattern: Lexer.NA,
+      categories: [AggregationName],
+    }));
+    argsForToken.set(token, args);
+  }
+  return aggregationArgsTokens[categoryName];
+}
+
+export const aggregationNameTokens = Array.from(AGGREGATIONS).map(short =>
   createToken({
     name: getExpressionName(short),
     pattern: new RegExp(getExpressionName(short), "i"),
-    categories: [AggregationName],
+    categories: [getAggregationArgumentsToken(AGGREGATION_ARGUMENTS[short])],
     longer_alt: Identifier,
   }),
 );
@@ -182,6 +206,7 @@ export const allTokens = [
   MultiplicativeOperator,
   AggregationName,
   ...aggregationNameTokens,
+  ...Object.values(aggregationArgsTokens),
   FunctionName,
   ...functionNameTokens,
   Case,

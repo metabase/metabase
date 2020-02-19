@@ -65,6 +65,9 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
   call(ctx) {
     return (ctx.arguments || []).map(argument => this.visit(argument));
   }
+  arg(ctx) {
+    return this.visit(ctx.argument[0]);
+  }
 
   metricExpression(ctx) {
     const metricName = this.visit(ctx.metricName);

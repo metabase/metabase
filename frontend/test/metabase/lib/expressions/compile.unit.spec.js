@@ -20,23 +20,23 @@ describe("metabase/lib/expressions/compile", () => {
 
     // NOTE: only add tests below for things that don't fit the shared test cases above
 
-    it("should return empty array for null or empty string", () => {
-      expect(compile()).toEqual([]);
-      expect(compile(null)).toEqual([]);
-      expect(compile("")).toEqual([]);
-    });
+    // it("should return empty array for null or empty string", () => {
+    //   expect(compile()).toEqual([]);
+    //   expect(compile(null)).toEqual([]);
+    //   expect(compile("")).toEqual([]);
+    // });
 
-    it("should throw exception on invalid input", () => {
-      expect(() => compile("1 + ", expressionOpts)).toThrow();
-    });
+    // it("should throw exception on invalid input", () => {
+    //   expect(() => compile("1 + ", expressionOpts)).toThrow();
+    // });
 
-    it("should treat aggregations as case-insensitive", () => {
-      expect(compile("count", aggregationOpts)).toEqual(["count"]);
-      expect(compile("cOuNt", aggregationOpts)).toEqual(["count"]);
-      expect(compile("average(A)", aggregationOpts)).toEqual([
-        "avg",
-        ["field-id", 1],
-      ]);
-    });
+    // it("should treat aggregations as case-insensitive", () => {
+    //   expect(compile("count", aggregationOpts)).toEqual(["count"]);
+    //   expect(compile("cOuNt", aggregationOpts)).toEqual(["count"]);
+    //   expect(compile("average(A)", aggregationOpts)).toEqual([
+    //     "avg",
+    //     ["field-id", 1],
+    //   ]);
+    // });
   });
 });

@@ -71,6 +71,17 @@ const aggregation = [
   ],
   // ['"Total Order Value"', metric, "metric"],
   // ['"Total Order Value" * 2', ["*", metric, 2], "metric with math"],
+  ["Share(Total > 50)", ["share", [">", total, 50]], "share aggregation"],
+  [
+    "CountWhere(Total > 50)",
+    ["count-where", [">", total, 50]],
+    "count-where aggregation",
+  ],
+  [
+    "SumWhere(Total, Total > 50)",
+    ["sum-where", total, [">", total, 50]],
+    "sum-where aggregation",
+  ],
 ];
 
 const filter = [

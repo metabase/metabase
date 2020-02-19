@@ -45,7 +45,6 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
     const initial = [this.visit(ctx.lhs)];
 
     if (ctx.rhs) {
-      //initial = initial.concat(...ctx.rhs.map((node) => this.visit(node)));
       for (const index of ctx.rhs.keys()) {
         const operator = token(ctx.operator[index]);
         const operand = this.visit(ctx.rhs[index]);
@@ -106,6 +105,9 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
       parts.push(token(ctx.RParen[0]));
     }
     return parts;
+  }
+  arg(ctx) {
+    return this.visit(ctx.argument[0]);
   }
 
   metricExpression(ctx) {
@@ -268,6 +270,8 @@ function whitespace(text) {
   return { text };
 }
 
+// NOTE: could we use token groups instead to collect whitespace tokens?
+// https://sap.github.io/chevrotain/docs/features/token_grouping.html
 function recoverWhitespace(root, source) {
   const node = _recoverWhitespace(root, source);
   if (node.start > 0) {

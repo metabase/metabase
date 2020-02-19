@@ -139,9 +139,8 @@ export function isMath(expr) {
 
 export function isAggregation(expr) {
   return (
-    Array.isArray(expr) &&
-    AGGREGATIONS.has(expr[0]) &&
-    _.all(expr.slice(1), isValidArg)
+    Array.isArray(expr) && AGGREGATIONS.has(expr[0])
+    // &&  _.all(expr.slice(1), isValidArg)
   );
 }
 

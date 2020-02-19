@@ -30,31 +30,33 @@ export function setContent(clause, content) {
 
 // predicate function to test if a given aggregation clause is fully formed
 export function isValid(aggregation) {
-  if (
-    aggregation &&
-    _.isArray(aggregation) &&
-    ((aggregation.length === 1 && aggregation[0] !== null) ||
-      (aggregation.length === 2 &&
-        aggregation[0] !== null &&
-        aggregation[1] !== null))
-  ) {
-    return true;
-  }
-  return false;
+  return Array.isArray(aggregation) && aggregation.every(a => a != null);
 }
 
-// predicate function to test if the given aggregation clause represents a Bare Rows aggregation
+// DEPRECATED: predicate function to test if the given aggregation clause represents a Bare Rows aggregation
 export function isBareRows(aggregation) {
   return isValid(aggregation) && aggregation[0] === "rows";
 }
 
 // predicate function to test if a given aggregation clause represents a standard aggregation
 export function isStandard(aggregation) {
-  return isValid(aggregation) && aggregation[0] !== "metric";
+  return (
+    isValid(aggregation) && !isSpecial(aggregation) && !isMetric(aggregation)
+  );
 }
 
 export function getAggregation(aggregation) {
   return aggregation && aggregation[0];
+}
+
+export const SPECIAL_AGGREGATIONS = new Set([
+  "share",
+  "sum-where",
+  "count-where",
+]);
+
+export function isSpecial(aggregation) {
+  return isValid(aggregation) && SPECIAL_AGGREGATIONS.has(aggregation[0]);
 }
 
 // predicate function to test if a given aggregation clause represents a metric
@@ -76,6 +78,7 @@ export function isCustom(aggregation) {
   return (
     (aggregation && hasOptions(aggregation)) ||
     isMath(aggregation) ||
+    isSpecial(aggregation) ||
     (isStandard(aggregation) && _.any(aggregation.slice(1), arg => isMath(arg)))
   );
 }
