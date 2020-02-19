@@ -10,7 +10,7 @@
              [response :as rr]])
   (:import com.fasterxml.jackson.core.JsonGenerator
            [java.io BufferedWriter OutputStream OutputStreamWriter]
-           [java.nio.charset Charset StandardCharsets]
+           java.nio.charset.StandardCharsets
            java.time.temporal.Temporal))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

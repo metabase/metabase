@@ -67,7 +67,7 @@
 (defn write-error-and-close!
   "Util fn for writing an Exception to the OutputStream provided by `streaming-response`."
   [^OutputStream os, ^Throwable e]
-  (with-open [os os
+  (with-open [os     os
               writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
     (try
       (json/generate-stream (format-exception e)
@@ -124,7 +124,7 @@
         (log/debug (u/format-color 'blue (trs "Response not ready, writing one byte & sleeping...")))
         (when (try
                 (when write-keepalive-newlines?
-                  (.write os (char \newline)))
+                  (.write os (byte \newline)))
                 (.flush os)
                 true
                 (catch EofException _
