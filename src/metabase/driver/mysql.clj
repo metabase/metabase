@@ -143,8 +143,8 @@
   value)
 
 (defmethod sql.qp/->honeysql [:mysql :regex-match-first]
-  [driver arg pattern]
-  (hsql/call :regexp_substr (sql.qp/->honeysql arg) (sql.qp/->honeysql pattern)))
+  [driver [_ arg pattern]]
+  (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
 
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting

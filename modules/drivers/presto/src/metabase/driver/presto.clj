@@ -219,8 +219,8 @@
   (hx/cast :double value))
 
 (defmethod sql.qp/->honeysql [:presto :regex-match-first]
-  [driver arg pattern]
-  (hsql/call :regexp_extract (sql.qp/->honeysql arg) (sql.qp/->honeysql pattern)))
+  [driver [_ arg pattern]]
+  (hsql/call :regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
 
 
 ;; See https://prestodb.io/docs/current/functions/datetime.html

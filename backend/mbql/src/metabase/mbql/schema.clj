@@ -2,7 +2,7 @@
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
   (:refer-clojure
    :exclude
-   [count distinct min max + - / * and or not = < > <= >= time concat])
+   [count distinct min max + - / * and or not = < > <= >= time concat replace])
   (:require [clojure
              [core :as core]
              [set :as set]]

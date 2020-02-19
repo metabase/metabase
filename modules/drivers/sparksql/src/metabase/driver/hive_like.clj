@@ -114,8 +114,8 @@
 
 
 (defmethod sql.qp/->honeysql [:hive-like :regex-match-first]
-  [driver arg pattern]
-  (hsql/call :regexp_extract (sql.qp/->honeysql arg) (sql.qp/->honeysql pattern)))
+  [driver [_ arg pattern]]
+  (hsql/call :regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
 
 (defmethod driver/date-add :hive-like
   [_ hsql-form amount unit]

@@ -101,8 +101,8 @@
 
 
 (defmethod sql.qp/->honeysql [:redshift :regex-match-first]
-  [driver arg pattern]
-  (hsql/call :regexp_substr (sql.qp/->honeysql arg) (sql.qp/->honeysql pattern)))
+  [driver [_ arg pattern]]
+  (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |

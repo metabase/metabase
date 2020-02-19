@@ -134,8 +134,8 @@
 
 
 (defmethod sql.qp/->honeysql [:snowflake :regex-match-first]
-  [driver arg pattern]
-  (hsql/call :regexp_substr (sql.qp/->honeysql arg) (sql.qp/->honeysql pattern)))
+  [driver [_ arg pattern]]
+  (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
 
 (defn- db-name
   "As mentioned above, old versions of the Snowflake driver used `details.dbname` to specify the physical database, but
