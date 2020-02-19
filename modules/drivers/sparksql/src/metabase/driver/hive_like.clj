@@ -112,9 +112,9 @@
                 1)
           3)))
 
-(defmethod ->honeysql [:hive-like :replace]
+(defmethod sql.qp/->honeysql [:hive-like :replace]
   [driver [_ arg pattern replacement]]
-  (hsql/call :regexp_replace (->honeysql driver arg) (->honeysql driver pattern) (->honeysql driver replacement)))
+  (hsql/call :regexp_replace (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern) (sql.qp/->honeysql driver replacement)))
 
 (defmethod sql.qp/->honeysql [:hive-like :regex-match-first]
   [driver [_ arg pattern]]
