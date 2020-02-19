@@ -231,11 +231,11 @@
   [driver [_ field]]
   (hsql/call :stdev (sql.qp/->honeysql driver field)))
 
-(defmethod ->honeysql [:sqlserver :substring]
+(defmethod sql.qp/->honeysql [:sqlserver :substring]
   [driver [_ arg start length]]
   (if length
-    (hsql/call :substring (->honeysql driver arg) (->honeysql driver start) (->honeysql driver length))
-    (hsql/call :substring (->honeysql driver arg) (->honeysql driver start) (hsql/call :len (->honeysql driver arg)))))
+    (hsql/call :substring (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
+    (hsql/call :substring (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (hsql/call :len (sql.qp/->honeysql driver arg)))))
 
 (defmethod driver.common/current-db-time-date-formatters :sqlserver
   [_]
