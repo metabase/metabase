@@ -21,7 +21,7 @@
   [^Throwable e]
   {:status     :failed
    :class      (class e)
-   :error      (or (.getMessage e) (str e))
+   :error      (.getMessage e)
    :stacktrace (u/filtered-stacktrace e)})
 
 (defmethod format-exception InterruptedException
@@ -84,9 +84,7 @@
          :state (.getSQLState e)))
 
 (defn- cause [^Throwable e]
-  (let [cause (or (when (instance? java.sql.SQLException e)
-                    (.getNextException ^java.sql.SQLException e))
-                  (.getCause e))]
+  (let [cause (.getCause e)]
     (when-not (= cause e)
       cause)))
 
@@ -95,15 +93,25 @@
        (take-while some?)
        reverse))
 
+(defn- best-top-level-error
+  "In cases where the top-level Exception doesn't have the best error message, return a better one to use instead. We
+  usually want to show SQLExceptions at the top level since they contain more useful information."
+  [maps]
+  (some (fn [m]
+          (when (isa? (:class m) SQLException)
+            (select-keys m [:error])))
+        maps))
+
 (defn exception-response
   "Convert an Exception to a nicely-formatted Clojure map suitable for returning in userland QP responses."
   [^Throwable e]
-  (let [[m & more :as ms] (for [e (exception-chain e)]
-                            (format-exception e))]
+  (let [[m & more :as maps] (for [e (exception-chain e)]
+                              (format-exception e))]
     (merge
      m
+     (best-top-level-error maps)
      ;; merge in the first error_type we see
-     (when-let [error-type (some :error_type ms)]
+     (when-let [error-type (some :error_type maps)]
        {:error_type error-type})
      (when (seq more)
        {:via (vec more)}))))

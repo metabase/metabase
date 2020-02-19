@@ -79,7 +79,8 @@
     (context/executef driver/*driver* query context (fn respond* [metadata reducible-rows]
                                                       (context/reducef xformf context metadata reducible-rows)))
     (catch Throwable e
-      (context/raisef e context))))
+      (context/raisef (ex-info (trs "Error running query") {:type  error-type/driver, :query query} e)
+                      context))))
 
 (defn- default-raisef [e context]
   {:pre [(instance? Throwable e)]}

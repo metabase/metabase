@@ -38,7 +38,9 @@
 
 ;;; ----------------------------------------------- Other Basic Utils ------------------------------------------------
 
-(defn- exists? [^Path path]
+(defn exists?
+  "Does file at `path` actually exist?"
+  [^Path path]
   (Files/exists path (u/varargs LinkOption)))
 
 (defn regular-file?

@@ -22,7 +22,7 @@
         (csv/write-csv writer [(map (some-fn :display_name :name) cols)])
         (.flush writer))
 
-      (write-row! [_ row _]
+      (write-row! [_ row row-num]
         (csv/write-csv writer [(map common/format-value row)])
         (.flush writer))
 
