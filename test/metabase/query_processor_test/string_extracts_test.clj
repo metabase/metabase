@@ -15,14 +15,6 @@
        ffirst))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
-  "ed Medicine"
-  (test-string-extract [:trim [:field-id (data/id :venues :name)] "R"]))
-
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
-  "Red Medicin"
-  (test-string-extract [:trim [:field-id (data/id :venues :name)] "e"]))
-
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
   "foo"
   (test-string-extract [:trim " foo "]))
 
@@ -64,5 +56,5 @@
 
 ;; test nesting
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
-  "ED"
-  (test-string-extract [:upper [:rtrim [:substring [:trim [:field-id (data/id :venues :name)] "R"] 1 3]]]))
+  "MED"
+  (test-string-extract [:upper [:substring [:trim [:substring [:field-id (data/id :venues :name)] 4]] 1 3]]))

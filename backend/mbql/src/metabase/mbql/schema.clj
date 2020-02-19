@@ -294,7 +294,7 @@
   s StringExpressionArg, start s/Int, length (optional s/Int))
 
 (defclause ^{:requires-features #{:expressions}} trim
-  s StringExpressionArg, pattern (optional s/Str))
+  s StringExpressionArg)
 
 (defclause ^{:requires-features #{:expressions}} rtrim
   s StringExpressionArg)

@@ -344,8 +344,8 @@
   (hsql/call :/ (->honeysql driver [:count-where pred]) :%count.*))
 
 (defmethod ->honeysql [:sql :trim]
-  [driver [_ arg pattern]]
-  (hsql/call :trim (->honeysql driver arg) (->honeysql driver pattern)))
+  [driver [_ arg]]
+  (hsql/call :trim (->honeysql driver arg)))
 
 (defmethod ->honeysql [:sql :ltrim]
   [driver [_ arg]]
