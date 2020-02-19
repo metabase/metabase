@@ -52,7 +52,7 @@
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions :regex)
   "Red"
-  (test-string-extract [:regex-match-first [:field-id (data/id :venues :name)] ".ed+"]))
+  (test-string-extract [:regex-match-first [:field-id (data/id :venues :name)] "(.ed+)"]))
 
 ;; test nesting
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
