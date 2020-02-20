@@ -6,12 +6,15 @@
             [metabase
              [server :as server]
              [util :as u]]
-            [metabase.async.util :as async.u]
+            [metabase.async
+             [streaming-response :as streaming-response]
+             [util :as async.u]]
             [metabase.middleware.util :as middleware.u]
             [metabase.query-processor.middleware.async :as qp.middleware.async]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
   (:import clojure.core.async.impl.channels.ManyToManyChannel
+           metabase.async.streaming_response.StreamingResponse
            org.eclipse.jetty.util.thread.QueuedThreadPool))
 
 ;; To simplify passing large amounts of arguments around most functions in this namespace take an "info" map that
@@ -132,18 +135,24 @@
   ;; [async] wait for the pipe to close the canceled/finished channel and log the API response
   (a/go
     (let [result (a/<! chan)]
-      (log-info (assoc info :async-status (if (nil? result) "canceled" "completed")))))
-  ;; [sync] return response as-is
-  response)
+      (log-info (assoc info :async-status (if (nil? result) "canceled" "completed"))))))
+
+(defn- log-streaming-response [{{streaming-response :body, :as response} :response, :as info}]
+  ;; [async] wait for the streaming response to be canceled/finished channel and log the API response
+  (let [finished-chan (streaming-response/finished-chan streaming-response)]
+    (a/go
+      (let [result (a/<! finished-chan)]
+        (log-info (assoc info :async-status (if (:canceled result) "canceled" "completed")))))))
 
 (defn- logged-response
   "Log an API response. Returns resonse, possibly modified (i.e., core.async channels will be wrapped); this value
   should be passed to the normal `respond` function."
   [{{:keys [body], :as response} :response, :as info}]
-  (if (instance? ManyToManyChannel body)
-    (log-core-async-response info)
-    (do (log-info info)
-        response)))
+  (condp instance? body
+    ManyToManyChannel (log-core-async-response info)
+    StreamingResponse (log-streaming-response info)
+    (log-info info))
+  response)
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
