@@ -19,17 +19,7 @@ export {
   FILTER_OPERATORS,
 } from "./config";
 
-// aggregations
-
-export function parseAggregationName(expressionName) {
-  return getMBQLName(expressionName);
-}
-
-export function formatAggregationName(mbqlName) {
-  return getExpressionName(mbqlName);
-}
-
-// functions
+// functions (includes aggregations, string extracts, filters)
 
 export function parseFunctionName(expressionName) {
   return getMBQLName(expressionName);

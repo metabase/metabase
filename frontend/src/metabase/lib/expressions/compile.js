@@ -1,6 +1,5 @@
 import _ from "underscore";
 import {
-  parseAggregationName,
   parseFunctionName,
   parseDimension,
   parseMetric,
@@ -17,6 +16,10 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
     this.validateVisitor();
   }
 
+  any(ctx) {
+    return this.visit(ctx.expression);
+  }
+
   expression(ctx) {
     return this.visit(ctx.additionExpression);
   }
@@ -31,23 +34,13 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
     return this._collapsibleOperatorExpression(ctx);
   }
 
-  aggregationExpression(ctx) {
-    const aggregationName = ctx.aggregationName[0].image;
-    const agg = parseAggregationName(aggregationName);
-    if (!agg) {
-      throw new Error(`Unknown Aggregation: ${aggregationName}`);
-    }
-    const args = ctx.call ? this.visit(ctx.call) : [];
-    return [agg, ...args];
-  }
-
   functionExpression(ctx) {
     const functionName = ctx.functionName[0].image;
     const fn = parseFunctionName(functionName);
     if (!fn) {
       throw new Error(`Unknown Function: ${functionName}`);
     }
-    const args = ctx.call ? this.visit(ctx.call) : [];
+    const args = (ctx.arguments || []).map(argument => this.visit(argument));
     return [fn, ...args];
   }
 
@@ -60,13 +53,6 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
       mbql.push({ default: this.visit(ctx.default) });
     }
     return mbql;
-  }
-
-  call(ctx) {
-    return (ctx.arguments || []).map(argument => this.visit(argument));
-  }
-  arg(ctx) {
-    return this.visit(ctx.argument[0]);
   }
 
   metricExpression(ctx) {
@@ -107,28 +93,16 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
 
   // FILTERS
   filter(ctx) {
-    return this.visit(ctx.filterBooleanExpression);
+    return this.visit(ctx.booleanExpression);
   }
-  filterBooleanExpression(ctx) {
+  booleanExpression(ctx) {
     return this._collapsibleOperatorExpression(ctx);
-  }
-  filterFunctionExpression(ctx) {
-    const functionName = ctx.functionName[0].image;
-    const agg = this._getFunctionForName(functionName);
-    const args = ctx.call ? this.visit(ctx.call) : [];
-    return [agg, ...args];
   }
   filterOperatorExpression(ctx) {
     const operator = ctx.operator[0].image.toLowerCase();
     const lhs = this.visit(ctx.lhs);
     const rhs = this.visit(ctx.rhs);
     return [operator, lhs, rhs];
-  }
-  filterParenthesisExpression(ctx) {
-    return this.visit(ctx.filter);
-  }
-  filterAtomicExpression(ctx) {
-    return this.visit(ctx.filter);
   }
 
   // HELPERS:

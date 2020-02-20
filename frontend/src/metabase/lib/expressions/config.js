@@ -3,7 +3,7 @@ import { t } from "ttag";
 // Reserved token names
 const MBQL_TO_EXPRESSION_NAME = new Map(
   Object.entries({
-    // aggregations
+    // aggregation functions
     count: t`Count`,
     "cum-count": t`CumulativeCount`,
     sum: t`Sum`,
@@ -16,7 +16,7 @@ const MBQL_TO_EXPRESSION_NAME = new Map(
     share: t`Share`,
     "count-where": t`CountWhere`,
     "sum-where": t`SumWhere`,
-    // functions
+    // expression functions
     lower: t`Lower`,
     upper: t`Upper`,
     substring: t`Substring`,
@@ -28,8 +28,11 @@ const MBQL_TO_EXPRESSION_NAME = new Map(
     rtrim: t`RightTrim`,
     ltrim: t`LeftTrim`,
     case: t`Case`,
-    // filters
+    // filters functions
     contains: t`Contains`,
+    "starts-with": t`StartsWith`,
+    "ends-with": t`EndsWith`,
+    // filter operators
     and: t`AND`,
     or: t`OR`,
   }),
@@ -67,7 +70,7 @@ export const AGGREGATIONS = new Set([
   "share",
 ]);
 
-export const AGGREGATION_ARGUMENTS = {
+export const CLAUSE_ARGUMENTS = {
   count: [],
   "cum-count": [],
   sum: ["expression"],
@@ -77,9 +80,22 @@ export const AGGREGATION_ARGUMENTS = {
   avg: ["expression"],
   min: ["expression"],
   max: ["expression"],
-  share: ["filter"],
-  "count-where": ["filter"],
-  "sum-where": ["expression", "filter"],
+  share: ["boolean"],
+  "count-where": ["boolean"],
+  "sum-where": ["expression", "boolean"],
+  lower: ["expression"],
+  upper: ["expression"],
+  substring: ["expression", "expression", "expression"],
+  extract: ["expression"],
+  concat: ["expression"],
+  coalesce: ["expression"],
+  replace: ["expression", "expression", "expression"],
+  trim: ["expression"],
+  rtrim: ["expression"],
+  ltrim: ["expression"],
+  contains: ["expression", "expression"],
+  "starts-with": ["expression", "expression"],
+  "ends-with": ["expression", "expression"],
 };
 
 // the order of these matters for the lexer
@@ -95,7 +111,7 @@ export const FILTER_OPERATORS = new Set([
   "not",
 ]);
 
-export const FILTERS = new Set(["contains"]);
+export const FILTERS = new Set(["contains", "ends-with", "starts-with"]);
 
 export const FUNCTIONS = new Set([
   "lower", // concrete-field

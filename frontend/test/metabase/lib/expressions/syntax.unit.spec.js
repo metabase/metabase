@@ -11,10 +11,12 @@ describe("metabase/lib/expressions/syntax", () => {
     for (const [name, cases, opts] of shared) {
       describe(name, () => {
         for (const [source, mbql, description] of cases) {
-          it(`should parse ${description}`, () => {
-            const tree = parse(source, opts);
-            expect(serialize(tree)).toEqual(source);
-          });
+          if (mbql) {
+            it(`should parse ${description}`, () => {
+              const tree = parse(source, opts);
+              expect(serialize(tree)).toEqual(source);
+            });
+          }
         }
       });
     }

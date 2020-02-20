@@ -10,7 +10,6 @@ import {
   isAggregation,
   isFunction,
   isFilter,
-  formatAggregationName,
   formatMetricName,
   formatDimensionName,
   formatFunctionName,
@@ -91,7 +90,7 @@ function formatMath(mbql, info, parens) {
 }
 
 function formatAggregation([agg, ...args], info) {
-  return formatCall(formatAggregationName(agg), args, info);
+  return formatCall(formatFunctionName(agg), args, info);
 }
 
 function formatFunction([fn, ...args], info) {

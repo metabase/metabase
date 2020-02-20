@@ -9,19 +9,17 @@ import {
   RParen,
   AdditiveOperator,
   MultiplicativeOperator,
-  FunctionName,
   Case,
-  FilterName,
   FilterOperator,
-  BooleanFilterOperator,
+  BooleanOperator,
   StringLiteral,
   NumberLiteral,
   Minus,
   Identifier,
   IdentifierString,
   Comma,
-  aggregationArgsTokens,
-  getArgsForToken,
+  FUNCTION_TOKENS,
+  FunctionName,
 } from "./lexer";
 
 export class ExpressionParser extends CstParser {
@@ -32,19 +30,42 @@ export class ExpressionParser extends CstParser {
 
     // START RULES:
 
+    $.RULE("any", returnType => {
+      $.OR([
+        {
+          GATE: () => !returnType || returnType === "expression",
+          ALT: () => {
+            $.SUBRULE($.expression, { LABEL: "expression" });
+          },
+        },
+        {
+          GATE: () => !returnType || returnType === "aggregation",
+          ALT: () => {
+            $.SUBRULE($.aggregation, { LABEL: "expression" });
+          },
+        },
+        {
+          GATE: () => !returnType || returnType === "boolean",
+          ALT: () => {
+            $.SUBRULE($.filter, { LABEL: "expression" });
+          },
+        },
+      ]);
+    });
+
     // an expression without aggregations in it
-    $.RULE("expression", (outsideAggregation = false) => {
-      $.SUBRULE($.additionExpression, { ARGS: [outsideAggregation] });
+    $.RULE("expression", (returnType = "expression") => {
+      $.SUBRULE($.additionExpression, { ARGS: [returnType] });
     });
 
     // an expression with aggregations in it
     $.RULE("aggregation", () => {
-      $.SUBRULE($.additionExpression, { ARGS: [true] });
+      $.SUBRULE($.additionExpression, { ARGS: ["aggregation"] });
     });
 
     // a filter expression
     $.RULE("filter", () => {
-      $.SUBRULE($.filterBooleanExpression);
+      $.SUBRULE($.booleanExpression);
     });
 
     // EXPRESSIONS:
@@ -52,137 +73,84 @@ export class ExpressionParser extends CstParser {
     // Lowest precedence thus it is first in the rule chain
     // The precedence of binary expressions is determined by
     // how far down the Parse Tree the binary expression appears.
-    $.RULE("additionExpression", outsideAggregation => {
+    $.RULE("additionExpression", returnType => {
       $.SUBRULE($.multiplicationExpression, {
-        ARGS: [outsideAggregation],
+        ARGS: [returnType],
         LABEL: "lhs",
       });
       $.MANY(() => {
         $.CONSUME(AdditiveOperator, { LABEL: "operator" });
         $.SUBRULE2($.multiplicationExpression, {
-          ARGS: [outsideAggregation],
+          ARGS: [returnType],
           LABEL: "rhs",
         });
       });
     });
 
-    $.RULE("multiplicationExpression", outsideAggregation => {
+    $.RULE("multiplicationExpression", returnType => {
       $.SUBRULE($.atomicExpression, {
-        ARGS: [outsideAggregation],
+        ARGS: [returnType],
         LABEL: "lhs",
       });
       $.MANY(() => {
         $.CONSUME(MultiplicativeOperator, { LABEL: "operator" });
         $.SUBRULE2($.atomicExpression, {
-          ARGS: [outsideAggregation],
+          ARGS: [returnType],
           LABEL: "rhs",
         });
       });
     });
 
-    $.RULE("arg", (outsideAggregation, type = "expression") => {
+    $.RULE("functionExpression", returnType => {
       $.OR([
         {
-          GATE: () => type === "expression",
-          ALT: () => {
-            $.SUBRULE($.expression, {
-              LABEL: "argument",
-              ARGS: [outsideAggregation],
-            });
+          GATE: () => {
+            const fn = FUNCTION_TOKENS.get(this.LA(1).tokenType);
+            return !fn || fn.type === returnType;
           },
-        },
-        {
-          GATE: () => type === "filter",
           ALT: () => {
-            $.SUBRULE($.filter, {
-              LABEL: "argument",
-              ARGS: [outsideAggregation],
-            });
+            $.CONSUME(FunctionName, { LABEL: "functionName" });
           },
         },
       ]);
-    });
-
-    $.RULE("call", (outsideAggregation, args) => {
-      $.OR([
+      $.OR1([
         {
-          GATE: () => !args || args.length > 2,
+          GATE: () => {
+            const fn = FUNCTION_TOKENS.get(this.LA(0).tokenType);
+            return !fn || fn.args.length > 0;
+          },
           ALT: () => {
-            $.CONSUME5(LParen);
-            $.SUBRULE5($.arg, {
+            // TODO: this validates the argument types but not the number of arguments?
+            const fn = FUNCTION_TOKENS.get(this.LA(0).tokenType);
+            $.CONSUME(LParen);
+            let i = 0;
+            $.SUBRULE($.any, {
               LABEL: "arguments",
-              ARGS: [outsideAggregation, "expression"],
+              ARGS: fn && [fn.args[i++]],
             });
             $.MANY(() => {
-              $.CONSUME5(Comma);
-              $.SUBRULE6($.arg, {
+              $.CONSUME(Comma);
+              $.SUBRULE1($.any, {
                 LABEL: "arguments",
-                ARGS: [outsideAggregation, "expression"],
+                ARGS: fn && [fn.args[i++]],
               });
             });
-            $.CONSUME5(RParen);
-          },
-        },
-        {
-          GATE: () => args && args.length === 0,
-          ALT: () => {
-            $.CONSUME(LParen);
             $.CONSUME(RParen);
           },
         },
         {
-          GATE: () => args && args.length === 1,
-          ALT: () => {
-            $.CONSUME2(LParen);
-            $.SUBRULE2($.arg, {
-              LABEL: "arguments",
-              ARGS: [outsideAggregation, args && args[0]],
-            });
-            $.CONSUME2(RParen);
+          GATE: () => {
+            const fn = FUNCTION_TOKENS.get(this.LA(0).tokenType);
+            return !fn || fn.args.length === 0;
           },
-        },
-        {
-          GATE: () => args && args.length === 2,
           ALT: () => {
-            $.CONSUME3(LParen);
-            $.SUBRULE3($.arg, {
-              LABEL: "arguments",
-              ARGS: [outsideAggregation, args && args[0]],
+            $.OPTION(() => {
+              $.CONSUME1(LParen);
+              $.CONSUME1(RParen);
             });
-            $.CONSUME3(Comma);
-            $.SUBRULE4($.arg, {
-              LABEL: "arguments",
-              ARGS: [outsideAggregation, args && args[1]],
-            });
-            $.CONSUME3(RParen);
           },
         },
       ]);
-    });
-
-    $.RULE("aggregationExpression", () => {
-      // creates alternatives for each permutation of arguments
-      $.OR(
-        Object.values(aggregationArgsTokens).map((token, index) => ({
-          ALT: () => {
-            $.CONSUME(token, { LABEL: "aggregationName" });
-            const SUBRULE = `SUBRULE${index === 0 ? "" : index + 1}`;
-            const args = getArgsForToken(token);
-            if (args && args.length === 0) {
-              $.OPTION(() => {
-                $[SUBRULE]($.call, { LABEL: "call", ARGS: [false, args] });
-              });
-            } else {
-              $[SUBRULE]($.call, { LABEL: "call", ARGS: [false, args] });
-            }
-          },
-        })),
-      );
-    });
-
-    $.RULE("functionExpression", outsideAggregation => {
-      $.CONSUME(FunctionName, { LABEL: "functionName" });
-      $.SUBRULE($.call, { LABEL: "call", ARGS: [outsideAggregation] });
     });
 
     $.RULE("caseExpression", () => {
@@ -237,97 +205,84 @@ export class ExpressionParser extends CstParser {
       $.CONSUME(NumberLiteral);
     });
 
-    $.RULE("atomicExpression", outsideAggregation => {
+    $.RULE("atomicExpression", returnType => {
       $.OR({
         DEF: [
-          // aggregations are not allowed inside other aggregations
           {
-            GATE: () => outsideAggregation,
-            ALT: () =>
-              $.SUBRULE($.aggregationExpression, {
-                ARGS: [false],
-                LABEL: "expression",
-              }),
-          },
-          // metrics are not allowed inside other aggregations
-          // NOTE: DISABLE METRICS
-          // {
-          //   GATE: () => outsideAggregation,
-          //   ALT: () => $.SUBRULE($.metricExpression, { LABEL: "expression" }),
-          // },
-          {
-            // in theory numeric functions could be used in aggregations, but we don't have any currently?
-            GATE: () => !outsideAggregation,
             ALT: () =>
               $.SUBRULE($.functionExpression, {
-                ARGS: [outsideAggregation],
+                ARGS: [returnType],
                 LABEL: "expression",
               }),
           },
           {
-            GATE: () => !outsideAggregation,
+            GATE: () => returnType === "boolean",
+            ALT: () =>
+              $.SUBRULE($.filterOperatorExpression, {
+                LABEL: "expression",
+              }),
+          },
+          {
+            GATE: () => returnType === "expression",
             ALT: () =>
               $.SUBRULE($.caseExpression, {
                 LABEL: "expression",
               }),
           },
-          // dimensions are not allowed outside aggregations
           {
-            GATE: () => !outsideAggregation,
+            GATE: () => returnType === "expression",
             ALT: () =>
               $.SUBRULE($.dimensionExpression, {
                 LABEL: "expression",
               }),
           },
           {
-            ALT: () =>
-              $.SUBRULE($.parenthesisExpression, {
-                ARGS: [outsideAggregation],
-                LABEL: "expression",
-              }),
-          },
-          {
+            GATE: () => returnType === "expression",
             ALT: () =>
               $.SUBRULE($.stringLiteral, {
                 LABEL: "expression",
               }),
           },
           {
+            GATE: () =>
+              returnType === "expression" || returnType === "aggregation",
             ALT: () =>
               $.SUBRULE($.numberLiteral, {
                 LABEL: "expression",
               }),
           },
+          {
+            ALT: () =>
+              $.SUBRULE($.parenthesisExpression, {
+                ARGS: [returnType],
+                LABEL: "expression",
+              }),
+          },
         ],
-        ERR_MSG: outsideAggregation
-          ? "aggregation, number, or expression"
-          : "field name, number, or expression",
+        ERR_MSG: returnType,
       });
     });
 
-    $.RULE("parenthesisExpression", outsideAggregation => {
+    $.RULE("parenthesisExpression", returnType => {
       $.CONSUME(LParen);
-      $.SUBRULE($.expression, { ARGS: [outsideAggregation] });
+      $.SUBRULE($.any, { LABEL: "expression", ARGS: [returnType] });
       $.CONSUME(RParen);
     });
 
     // FILTERS
 
-    $.RULE("filterBooleanExpression", () => {
-      $.SUBRULE($.filterAtomicExpression, {
+    $.RULE("booleanExpression", () => {
+      $.SUBRULE($.atomicExpression, {
+        ARGS: ["boolean"],
         LABEL: "lhs",
       });
       $.MANY(() => {
-        $.CONSUME(BooleanFilterOperator, { LABEL: "operator" });
-        $.SUBRULE2($.filterAtomicExpression, {
+        $.CONSUME(BooleanOperator, { LABEL: "operator" });
+        $.SUBRULE2($.atomicExpression, {
+          ARGS: ["boolean"],
           LABEL: "rhs",
         });
       });
-    });
-
-    $.RULE("filterFunctionExpression", () => {
-      $.CONSUME(FilterName, { LABEL: "functionName" });
-      $.SUBRULE($.call, { LABEL: "call" });
     });
 
     $.RULE("filterOperatorExpression", () => {
@@ -338,37 +293,6 @@ export class ExpressionParser extends CstParser {
       $.SUBRULE($.expression, {
         LABEL: "rhs",
       });
-    });
-
-    $.RULE("filterAtomicExpression", () => {
-      $.OR({
-        DEF: [
-          {
-            ALT: () =>
-              $.SUBRULE($.filterOperatorExpression, {
-                LABEL: "filter",
-              }),
-          },
-          {
-            ALT: () =>
-              $.SUBRULE($.filterFunctionExpression, {
-                LABEL: "filter",
-              }),
-          },
-          {
-            ALT: () =>
-              $.SUBRULE($.filterParenthesisExpression, {
-                LABEL: "filter",
-              }),
-          },
-        ],
-      });
-    });
-
-    $.RULE("filterParenthesisExpression", () => {
-      $.CONSUME(LParen);
-      $.SUBRULE($.filter);
-      $.CONSUME(RParen);
     });
 
     this.performSelfAnalysis();

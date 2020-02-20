@@ -7,9 +7,11 @@ describe("metabase/lib/expressions/formatter", () => {
     for (const [name, cases, opts] of shared) {
       describe(name, () => {
         for (const [source, mbql, description] of cases) {
-          it(`should format ${description}`, () => {
-            expect(format(mbql, opts)).toEqual(source);
-          });
+          if (mbql) {
+            it(`should format ${description}`, () => {
+              expect(format(mbql, opts)).toEqual(source);
+            });
+          }
         }
       });
     }

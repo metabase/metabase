@@ -10,6 +10,12 @@ const metric = ORDERS.metrics[0];
 
 const query = ORDERS.query().addExpression("foo", 42);
 
+// shared test cases used in compile, formatter, and syntax tests:
+//
+//  [expression, mbql, description]
+//
+// (if mbql is `null` then expression should NOT compile)
+//
 const expression = [
   ["1", 1, "number literal"],
   ["1 + -1", ["+", 1, -1], "negative number literal"],
@@ -82,6 +88,10 @@ const aggregation = [
     ["sum-where", total, [">", total, 50]],
     "sum-where aggregation",
   ],
+  // should not compile:
+  ["Sum(Count)", undefined, "aggregation nested inside another aggregation"],
+  ["Count(Total)", undefined, "invalid count arguments"],
+  ["SumWhere(Total > 50, Total)", undefined, "invalid sum-where arguments"],
 ];
 
 const filter = [

@@ -4,9 +4,8 @@ import { t } from "ttag";
 import { parser } from "./parser";
 
 import {
-  // aggregations:
-  formatAggregationName,
-  parseAggregationName,
+  formatFunctionName,
+  parseFunctionName,
   // dimensions:
   getDimensionName,
   formatDimensionName,
@@ -19,7 +18,7 @@ import {
   RParen,
   AdditiveOperator,
   MultiplicativeOperator,
-  AggregationName,
+  AggregationFunctionName,
   FunctionName,
   Case,
   StringLiteral,
@@ -87,7 +86,7 @@ export function suggest(
   // TODO: is there a better way to figure out which aggregation we're inside of?
   const currentAggregationToken = _.find(
     assistanceTokenVector.slice().reverse(),
-    t => t && isTokenType(t.tokenType, AggregationName),
+    t => t && isTokenType(t.tokenType, AggregationFunctionName),
   );
 
   const syntacticSuggestions = parser.computeContentAssist(
@@ -142,7 +141,7 @@ export function suggest(
       if (!outsideAggregation) {
         let dimensions = [];
         if (startRule === "aggregation" && currentAggregationToken) {
-          const aggregationShort = parseAggregationName(
+          const aggregationShort = parseFunctionName(
             getImage(currentAggregationToken),
           );
           dimensions = query.aggregationFieldOptions(aggregationShort).all();
@@ -170,19 +169,19 @@ export function suggest(
           })),
         );
       }
-    } else if (isTokenType(nextTokenType, AggregationName)) {
+    } else if (isTokenType(nextTokenType, FunctionName)) {
       if (outsideAggregation) {
         finalSuggestions.push(
           ...query
             .aggregationOperatorsWithoutRows()
-            .filter(a => formatAggregationName(a.short))
+            .filter(a => formatFunctionName(a.short))
             .map(aggregationOperator => {
               const arity = aggregationOperator.fields.length;
               return {
                 type: "aggregations",
-                name: formatAggregationName(aggregationOperator.short),
+                name: formatFunctionName(aggregationOperator.short),
                 text:
-                  formatAggregationName(aggregationOperator.short) +
+                  formatFunctionName(aggregationOperator.short) +
                   (arity > 0 ? "(" : " "),
                 postfixText: arity > 0 ? ")" : " ",
                 prefixTrim: /\w+$/,
@@ -199,7 +198,7 @@ export function suggest(
         //     postfixTrim: /^\w+\s*/
         // })))
       }
-    } else if (nextTokenType === FunctionName || nextTokenType === Case) {
+    } else if (nextTokenType === Case) {
       // TODO
     } else if (
       nextTokenType === StringLiteral ||

@@ -1,13 +1,11 @@
 import { Lexer, createToken } from "chevrotain";
 
-import { capitalize } from "metabase/lib/formatting";
-
 import {
   getExpressionName as getExpressionName_,
   AGGREGATIONS,
   FUNCTIONS,
   FILTERS,
-  AGGREGATION_ARGUMENTS,
+  CLAUSE_ARGUMENTS,
 } from "./config";
 
 function getExpressionName(mbqlName) {
@@ -65,56 +63,58 @@ export const Div = createToken({
   categories: [MultiplicativeOperator],
 });
 
-export const AggregationName = createToken({
-  name: "AggregationName",
-  pattern: Lexer.NA,
-});
-
-const argsForToken = new Map();
-export function getArgsForToken(token) {
-  return argsForToken.get(token);
-}
-
-// this groups aggregation tokens by their argument types
-export const aggregationArgsTokens = {};
-function getAggregationArgumentsToken(args) {
-  const categoryName =
-    "AggregationArgs" + args.map(arg => capitalize(arg)).join("");
-  if (!aggregationArgsTokens[categoryName]) {
-    const token = (aggregationArgsTokens[categoryName] = createToken({
-      name: categoryName,
-      pattern: Lexer.NA,
-      categories: [AggregationName],
-    }));
-    argsForToken.set(token, args);
-  }
-  return aggregationArgsTokens[categoryName];
-}
-
-export const aggregationNameTokens = Array.from(AGGREGATIONS).map(short =>
-  createToken({
-    name: getExpressionName(short),
-    pattern: new RegExp(getExpressionName(short), "i"),
-    categories: [getAggregationArgumentsToken(AGGREGATION_ARGUMENTS[short])],
-    longer_alt: Identifier,
-  }),
-);
-
-// FUNCTIONS
-
 export const FunctionName = createToken({
   name: "FunctionName",
   pattern: Lexer.NA,
 });
+export const FUNCTION_TOKENS = new Map();
 
-const functionNameTokens = Array.from(FUNCTIONS).map(short =>
-  createToken({
-    name: getExpressionName(short),
-    pattern: new RegExp(getExpressionName(short), "i"),
-    categories: [FunctionName],
+function createFunctionToken(parentToken, clause, args, type) {
+  if (!args) {
+    throw new Error("Missing args for " + clause);
+  }
+  const token = createToken({
+    name: getExpressionName(clause),
+    pattern: new RegExp(getExpressionName(clause), "i"),
+    categories: [parentToken],
     longer_alt: Identifier,
-  }),
-);
+  });
+  FUNCTION_TOKENS.set(token, { args, type });
+}
+
+// AGGREGATION
+
+export const AggregationFunctionName = createToken({
+  name: "AggregationFunctionName",
+  pattern: Lexer.NA,
+  categories: [FunctionName],
+});
+
+for (const clause of Array.from(AGGREGATIONS)) {
+  createFunctionToken(
+    AggregationFunctionName,
+    clause,
+    CLAUSE_ARGUMENTS[clause],
+    "aggregation",
+  );
+}
+
+// EXPRESSIONS
+
+export const ExpressionFunctionName = createToken({
+  name: "ExpressionFunctionName",
+  pattern: Lexer.NA,
+  categories: [FunctionName],
+});
+
+for (const clause of Array.from(FUNCTIONS)) {
+  createFunctionToken(
+    ExpressionFunctionName,
+    clause,
+    CLAUSE_ARGUMENTS[clause],
+    "expression",
+  );
+}
 
 // special-case Case since it uses different syntax
 export const Case = createToken({
@@ -125,27 +125,28 @@ export const Case = createToken({
 
 // FILTERS
 
-export const FilterName = createToken({
-  name: "FilterName",
+export const FilterFunctionName = createToken({
+  name: "FilterFunctionName",
   pattern: Lexer.NA,
+  categories: [FunctionName],
 });
 
-const filterNameTokens = Array.from(FILTERS).map(short =>
-  createToken({
-    name: getExpressionName(short),
-    pattern: new RegExp(getExpressionName(short), "i"),
-    categories: [FilterName],
-    longer_alt: Identifier,
-  }),
-);
+for (const clause of Array.from(FILTERS)) {
+  createFunctionToken(
+    FilterFunctionName,
+    clause,
+    CLAUSE_ARGUMENTS[clause],
+    "boolean",
+  );
+}
 
 export const FilterOperator = createToken({
   name: "FilterOperator",
   pattern: Lexer.NA,
 });
 
-export const BooleanFilterOperator = createToken({
-  name: "BooleanFilterOperator",
+export const BooleanOperator = createToken({
+  name: "BooleanOperator",
   pattern: Lexer.NA,
 });
 
@@ -159,12 +160,12 @@ const filterOperatorTokens = [
   createToken({
     name: "And",
     pattern: /and/i,
-    categories: [BooleanFilterOperator],
+    categories: [BooleanOperator],
   }),
   createToken({
     name: "Or",
     pattern: /or/i,
-    categories: [BooleanFilterOperator],
+    categories: [BooleanOperator],
   }),
 ];
 
@@ -192,8 +193,8 @@ export const WhiteSpace = createToken({
   group: Lexer.SKIPPED,
 });
 
-// whitespace is normally very common so it is placed first to speed up the lexer
 export const allTokens = [
+  // whitespace is normally very common so it is placed first to speed up the lexer
   WhiteSpace,
   LParen,
   RParen,
@@ -204,17 +205,19 @@ export const allTokens = [
   Div,
   AdditiveOperator,
   MultiplicativeOperator,
-  AggregationName,
-  ...aggregationNameTokens,
-  ...Object.values(aggregationArgsTokens),
+  // aggregation, expression, and filter functions:
   FunctionName,
-  ...functionNameTokens,
+  AggregationFunctionName,
+  ExpressionFunctionName,
+  FilterFunctionName,
+  ...FUNCTION_TOKENS.keys(),
+  // expression
   Case,
-  FilterName,
-  ...filterNameTokens,
+  // filter
   FilterOperator,
-  BooleanFilterOperator,
+  BooleanOperator,
   ...filterOperatorTokens,
+  // literals
   StringLiteral,
   NumberLiteral,
   IdentifierString,

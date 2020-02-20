@@ -27,6 +27,10 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
     this.validateVisitor();
   }
 
+  any(ctx) {
+    return this.visit(ctx.expression[0]);
+  }
+
   expression(ctx) {
     return this.visit(ctx.additionExpression);
   }
@@ -57,14 +61,24 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
     return initial.length === 1 ? initial[0] : syntax("math", ...initial);
   }
 
-  aggregationExpression(ctx) {
-    const args = ctx.call ? this.visit(ctx.call) : [];
-    return syntax("aggregation", token(ctx.aggregationName[0]), ...args);
-  }
-
   functionExpression(ctx) {
-    const args = ctx.call ? this.visit(ctx.call) : [];
-    return syntax("function", token(ctx.functionName[0]), ...args);
+    const parts = [];
+    parts.push(token(ctx.functionName[0]));
+    if (ctx.LParen) {
+      parts.push(token(ctx.LParen[0]));
+    }
+    if (ctx.arguments) {
+      for (let i = 0; i < ctx.arguments.length; i++) {
+        parts.push(this.visit(ctx.arguments[i]));
+        if (ctx.Comma && ctx.Comma[i]) {
+          parts.push(token(ctx.Comma[i]));
+        }
+      }
+    }
+    if (ctx.RParen) {
+      parts.push(token(ctx.RParen[0]));
+    }
+    return syntax("function", ...parts);
   }
 
   caseExpression(ctx) {
@@ -86,28 +100,6 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
     }
     parts.push(token(ctx.RParen[0]));
     return syntax("case", ...parts);
-  }
-
-  call(ctx) {
-    const parts = [];
-    if (ctx.LParen) {
-      parts.push(token(ctx.LParen[0]));
-    }
-    if (ctx.arguments) {
-      for (let i = 0; i < ctx.arguments.length; i++) {
-        parts.push(this.visit(ctx.arguments[i]));
-        if (ctx.Comma && ctx.Comma[i]) {
-          parts.push(token(ctx.Comma[i]));
-        }
-      }
-    }
-    if (ctx.RParen) {
-      parts.push(token(ctx.RParen[0]));
-    }
-    return parts;
-  }
-  arg(ctx) {
-    return this.visit(ctx.argument[0]);
   }
 
   metricExpression(ctx) {
@@ -150,14 +142,10 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
   // FILTERS
 
   filter(ctx) {
-    return this.visit(ctx.filterBooleanExpression);
+    return this.visit(ctx.booleanExpression);
   }
-  filterBooleanExpression(ctx) {
+  booleanExpression(ctx) {
     return this._arithmeticExpression(ctx);
-  }
-  filterFunctionExpression(ctx) {
-    const args = ctx.call ? this.visit(ctx.call) : [];
-    return syntax("filter", token(ctx.functionName[0]), ...args);
   }
   filterOperatorExpression(ctx) {
     return syntax(
@@ -166,17 +154,6 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
       token(ctx.operator[0]),
       this.visit(ctx.rhs),
     );
-  }
-  filterParenthesisExpression(ctx) {
-    return syntax(
-      "group",
-      token(ctx.LParen[0]),
-      this.visit(ctx.filter),
-      token(ctx.RParen[0]),
-    );
-  }
-  filterAtomicExpression(ctx) {
-    return this.visit(ctx.filter);
   }
 }
 
