@@ -119,13 +119,13 @@
              (substitute query {"#123" (i/->ReferencedCardQuery 123 "SELECT 1 `x`")}))))))
 
 
-;;; ---------------------------------------------- SQL Snippet Queries -----------------------------------------------
+;;; --------------------------------------------- Native Query Snippets ----------------------------------------------
 
-(deftest substitute-sql-snippets-test
-  (testing "SQL snippet substitution"
+(deftest substitute-native-query-snippets-test
+  (testing "Native query snippet substitution"
     (let [query ["SELECT * FROM test_scores WHERE " (param "snippet:symbol_is_A")]]
       (is (= ["SELECT * FROM test_scores WHERE symbol = 'A'" nil]
-             (substitute query {"snippet:symbol_is_A" (i/->SqlSnippet "symbol_is_A" "symbol = 'A'")}))))))
+             (substitute query {"snippet:symbol_is_A" (i/->NativeQuerySnippet "symbol_is_A" "symbol = 'A'")}))))))
 
 
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------

@@ -42,20 +42,20 @@
   [x]
   (instance? ReferencedCardQuery x))
 
-;; An "SqlSnippet" parameter expands to the SQL stored in the snippet with the specified name.
+;; An "NativeQuerySnippet" parameter expands to the partial query snippet stored in the snippet with the specified name.
 ;;
-;; `snippet-name` is the unique name of the SQL snippet that is referenced.
+;; `snippet-name` is the unique name of the native query snippet that is referenced.
 ;;
-;; `sql` is the SQL that the snippet contains, which will be replaced, verbatim, for this template tag.
-(p.types/defrecord+ SqlSnippet [snippet-name sql]
+;; `query-snippet` is the raw query snippet which will be replaced, verbatim, for this template tag.
+(p.types/defrecord+ NativeQuerySnippet [snippet-name query-snippet]
   PrettyPrintable
   (pretty [this]
-    (list 'map->SqlSnippet (into {} this))))
+    (list 'map->NativeQuerySnippet (into {} this))))
 
-(defn SqlSnippet?
-  "Is `x` an instance of the `SqlSnippet` record type?"
+(defn NativeQuerySnippet?
+  "Is `x` an instance of the `NativeQuerySnippet` record type?"
   [x]
-  (instance? SqlSnippet x))
+  (instance? NativeQuerySnippet x))
 
 ;; as in a literal date, defined by date-string S
 ;;
