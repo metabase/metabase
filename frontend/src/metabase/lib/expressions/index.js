@@ -101,7 +101,8 @@ export function isExpression(expr) {
     isFieldReference(expr) ||
     isMetric(expr) ||
     isFilter(expr) ||
-    isFunction(expr)
+    isFunction(expr) ||
+    isCase(expr)
   );
 }
 
@@ -143,6 +144,10 @@ export function isFilter(expr) {
 
 export function isFunction(expr) {
   return Array.isArray(expr) && FUNCTIONS.has(expr[0]); // && _.all(expr.slice(1), isValidArg)
+}
+
+export function isCase(expr) {
+  return Array.isArray(expr) && expr[0] === "case"; // && _.all(expr.slice(1), isValidArg)
 }
 
 // UTILS

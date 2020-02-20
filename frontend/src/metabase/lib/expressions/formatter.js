@@ -8,15 +8,14 @@ import {
   isMath,
   isMetric,
   isAggregation,
-  isFunction,
   isFilter,
+  isFunction,
+  isCase,
   formatMetricName,
   formatDimensionName,
   formatFunctionName,
   formatStringLiteral,
 } from "../expressions";
-
-const isCase = expr => Array.isArray(expr) && expr[0] === "case";
 
 // convert a MBQL expression back into an expression string
 export function format(
