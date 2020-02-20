@@ -239,7 +239,7 @@ const TagEditorHelp = ({
   }
 
   return (
-    <div className="px3 text-paragraph">
+    <div className="px3 text-spaced">
       <h4>{t`What's this for?`}</h4>
       <p>
         {t`Variables in native queries let you dynamically replace values in your queries using filter widgets or through the URL.`}

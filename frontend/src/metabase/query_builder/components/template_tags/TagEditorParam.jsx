@@ -127,29 +127,14 @@ export default class TagEditorParam extends Component {
     const hasWidgetOptions = widgetOptions && widgetOptions.length > 0;
 
     return (
-      <div className="px3 pt3 mb1 rounded border-top">
-        <div className="mt1 mb2">
-          <h4 className="py1 px2 inline text-white bg-purple circular">
-            {tag.name}
-          </h4>
-        </div>
+      <div className="px3 pt3 mb1 border-top">
+        <h4 className="text-medium py1">{t`Variable name`}</h4>
+        <h3 className="text-heavy text-brand align-self-end mb4">{tag.name}</h3>
 
-        <div className="pt2 pb3">
-          <h4 className="pb1">{t`Filter label`}</h4>
-          <InputBlurChange
-            type="text"
-            value={tag["display-name"]}
-            className="AdminSelect p1 text-bold text-dark bordered border-medium rounded full"
-            onBlurChange={e =>
-              this.setParameterAttribute("display-name", e.target.value)
-            }
-          />
-        </div>
-
-        <div className="pb3">
-          <h4 className="pb1">{t`Variable type`}</h4>
+        <div className="pb4">
+          <h4 className="text-medium pb1">{t`Variable type`}</h4>
           <Select
-            className="border-medium bg-white block"
+            className="block"
             value={tag.type}
             onChange={e => this.setType(e.target.value)}
             isInitiallyOpen={!tag.type}
@@ -164,8 +149,8 @@ export default class TagEditorParam extends Component {
         </div>
 
         {tag.type === "dimension" && (
-          <div className="pb3">
-            <h4 className="pb1">
+          <div className="pb4">
+            <h4 className="text-medium pb1">
               {t`Field to map to`}
               {tag.dimension == null && (
                 <span className="text-error mx1">(required)</span>
@@ -190,10 +175,10 @@ export default class TagEditorParam extends Component {
         )}
 
         {hasSelectedDimensionField && (
-          <div className="pb3">
-            <h4 className="pb1">{t`Filter widget type`}</h4>
+          <div className="pb4">
+            <h4 className="text-medium pb1">{t`Filter widget type`}</h4>
             <Select
-              className="border-med bg-white block"
+              className="block"
               value={tag["widget-type"]}
               onChange={e =>
                 this.setParameterAttribute("widget-type", e.target.value)
@@ -210,7 +195,7 @@ export default class TagEditorParam extends Component {
                 ))}
             </Select>
             {!hasWidgetOptions && (
-              <p className="pb1">
+              <p>
                 {t`There aren't any filter widgets for this type of field yet.`}{" "}
                 <Link
                   to={MetabaseSettings.docsUrl(
@@ -227,8 +212,22 @@ export default class TagEditorParam extends Component {
           </div>
         )}
 
-        <div className="pb2">
-          <h4 className="pb1">{t`Required?`}</h4>
+        {(hasWidgetOptions || !isDimension) && (
+          <div className="pb4">
+            <h4 className="text-medium pb1">{t`Filter widget label`}</h4>
+            <InputBlurChange
+              type="text"
+              value={tag["display-name"]}
+              className="AdminSelect p1 text-bold text-dark bordered border-medium rounded full"
+              onBlurChange={e =>
+                this.setParameterAttribute("display-name", e.target.value)
+              }
+            />
+          </div>
+        )}
+
+        <div className="pb3">
+          <h4 className="text-medium pb1">{t`Required?`}</h4>
           <Toggle
             value={tag.required}
             onChange={value => this.setRequired(value)}
@@ -237,8 +236,8 @@ export default class TagEditorParam extends Component {
 
         {((tag.type !== "dimension" && tag.required) ||
           (tag.type === "dimension" || tag["widget-type"])) && (
-          <div className="pb2">
-            <h4 className="pb1">{t`Default filter widget value`}</h4>
+          <div className="pb3">
+            <h4 className="text-medium pb1">{t`Default filter widget value`}</h4>
             <ParameterValueWidget
               parameter={{
                 type:
