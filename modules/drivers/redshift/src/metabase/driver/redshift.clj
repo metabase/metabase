@@ -110,7 +110,7 @@
 
 (defmethod sql.qp/->honeysql [:redshift :replace]
   [driver [_ arg pattern replacement]]
-  (hsql/call :replace (->honeysql driver arg) (splice-raw-stirng-value driver pattern)
+  (hsql/call :replace (sql.qp/->honeysql driver arg) (splice-raw-stirng-value driver pattern)
              (splice-raw-stirng-value driver replacement)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
