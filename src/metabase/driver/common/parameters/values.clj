@@ -134,12 +134,13 @@
          :query   (:query (qp/query->native query))})
        (catch ExceptionInfo e
          (throw (ex-info
-                 (.getMessage e)
+                 (str (deferred-tru
+                        "The sub-query from referenced question #{0} failed with the following error: {1}"
+                        (str card-id) (.getMessage e)))
                  (merge (ex-data e)
                         {:card-query-error? true
                          :card-id           card-id
-                         :tag               tag})
-                 e)))))))
+                         :tag               tag}))))))))
 
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
