@@ -47,37 +47,30 @@
 (defn- default-reducedf [metadata reduced-result context]
   (context/resultf reduced-result context))
 
-(defn- default-base-xformf [metadata]
-  (fn [f]
-    (f metadata)))
-
 (defn default-reducef
   "Default implementation of `reducef`. When using a custom implementation of `reducef` it's easiest to call this
   function inside the custom impl instead of attempting to duplicate the logic. See
   `metabase.query-processor.reducible-test/write-rows-to-file-test` for an example of a custom implementation."
-  [xformf context metadata reducible-rows]
-  {:pre [(fn? xformf)]}
-  (let [metadata  (context/metadataf metadata context)
-        metadata* (volatile! nil)]
-    (let [rf ((xformf metadata)
-              (fn [metadata]
-                (vreset! metadata* metadata)
-                ((context/rff context) metadata)))]
+  [rff context metadata reducible-rows]
+  {:pre [(fn? rff)]}
+  (let [metadata  (context/metadataf metadata context)]
+    ;; TODO -- how to pass updated metadata to reducedf?
+    (let [rf (rff metadata)]
       (assert (fn? rf))
       (when-let [reduced-rows (try
                                 (transduce identity rf reducible-rows)
                                 (catch Throwable e
                                   (context/raisef (ex-info (tru "Error reducing result rows")
-                                                    {:type error-type/qp}
-                                                    e)
+                                                           {:type error-type/qp}
+                                                           e)
                                                   context)
                                   nil))]
-        (context/reducedf @metadata* reduced-rows context)))))
+        (context/reducedf metadata reduced-rows context)))))
 
-(defn- default-runf [query xformf context]
+(defn- default-runf [query rf context]
   (try
     (context/executef driver/*driver* query context (fn respond* [metadata reducible-rows]
-                                                      (context/reducef xformf context metadata reducible-rows)))
+                                                      (context/reducef rf context metadata reducible-rows)))
     (catch Throwable e
       (context/raisef e context))))
 
@@ -119,7 +112,6 @@
   []
   {:timeout       query-timeout-ms
    :rff           default-rff
-   :base-xformf   default-base-xformf
    :raisef        default-raisef
    :runf          default-runf
    :executef      driver/execute-reducible-query

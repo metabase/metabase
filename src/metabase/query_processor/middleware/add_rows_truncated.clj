@@ -10,32 +10,30 @@
       max-results
       i/absolute-max-results))
 
-(defn- add-rows-truncated-xform [limit]
-  {:pre [(int? limit)]}
+(defn- add-rows-truncated-xform [limit rf]
+  {:pre [(int? limit) (fn? rf)]}
   (let [row-count (volatile! 0)]
-    (fn add-rows-truncated-rf [rf]
-      {:pre [(fn? rf)]}
-      (fn
-        ([]
-         (rf))
+    (fn
+      ([]
+       (rf))
 
-        ([result]
-         (rf (cond-> result
-               (and (map? result)
-                    (= @row-count limit))
-               (assoc-in [:data :rows_truncated] limit))))
+      ([result]
+       (rf (cond-> result
+             (and (map? result)
+                  (= @row-count limit))
+             (assoc-in [:data :rows_truncated] limit))))
 
-        ([result row]
-         (vswap! row-count inc)
-         (rf result row))))))
+      ([result row]
+       (vswap! row-count inc)
+       (rf result row)))))
 
 (defn add-rows-truncated
   "Add `:rows_truncated` to the result if the results were truncated because of the query's constraints. Only affects QP
   results that are reduced to a map (e.g. the default reducing function; other reducing functions such as streaming to
   a CSV are unaffected.)"
   [qp]
-  (fn [query xformf context]
+  (fn [query rff context]
     (qp query
         (fn [metadata]
-          (comp (add-rows-truncated-xform (results-limit query)) (xformf metadata)))
+          (add-rows-truncated-xform (results-limit query) (rff metadata)))
         context)))

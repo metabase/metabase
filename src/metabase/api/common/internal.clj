@@ -264,8 +264,7 @@
            (contains? response :status)
            (contains? response :body))
     response
-    {:status (if (or (instance? ManyToManyChannel response)
-                     (instance? StreamingResponse response))
+    {:status (if (some #(instance? % response) [ManyToManyChannel StreamingResponse])
                202
                200)
      :body   response}))

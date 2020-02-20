@@ -41,6 +41,6 @@
   "Middleware that will take any `:source-table`s (integer IDs) anywhere in the query and fetch and save the
   corresponding Table in the Query Processor Store."
   [qp]
-  (fn [query xformf context]
+  (fn [query rff context]
     (resolve-source-tables* query)
-    (qp query xformf context)))
+    (qp query rff context)))

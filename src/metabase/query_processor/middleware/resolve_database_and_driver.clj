@@ -18,7 +18,7 @@
   "Middleware that resolves the Database referenced by the query under that `:database` key and stores it in the QP
   Store."
   [qp]
-  (fn [{database-id :database, :as query} xformf context]
+  (fn [{database-id :database, :as query} rff context]
     (when-not ((every-pred integer? pos?) database-id)
       (throw (ex-info (tru "Unable to resolve database for query: missing or invalid `:database` ID.")
                {:database database-id
@@ -29,4 +29,4 @@
                           (catch Throwable e
                             (throw (ex-info (tru "Unable to resolve driver for query")
                                      {:type error-type/invalid-query}))))
-      (qp query xformf context))))
+      (qp query rff context))))

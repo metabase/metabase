@@ -143,5 +143,5 @@
   "Add an implicit `fields` clause to queries with no `:aggregation`, `breakout`, or explicit `:fields` clauses.
    Add implicit `:order-by` clauses for fields specified in a `:breakout`."
   [qp]
-  (fn [query xformf context]
-    (qp (maybe-add-implicit-clauses query) xformf context)))
+  (fn [query rff context]
+    (qp (maybe-add-implicit-clauses query) rff context)))

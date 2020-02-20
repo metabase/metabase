@@ -16,7 +16,7 @@
 
 (deftest quit-test
   (testing "async-qp should properly handle `quit` exceptions"
-    (let [out-chan ((qp.reducible/async-qp (fn [query xformf context]
+    (let [out-chan ((qp.reducible/async-qp (fn [query rff context]
                                              (throw (qp.reducible/quit ::bye)))) {})]
       (is (= ::bye
              (metabase.test/wait-for-result out-chan))))))
@@ -51,10 +51,10 @@
              output)))))
 
 (defn print-rows-to-writer-context [filename]
-  (letfn [(reducef* [xformf context metadata reducible-rows]
+  (letfn [(reducef* [rff context metadata reducible-rows]
             (with-open [w (io/writer filename)]
               (binding [*out* w]
-                (context.default/default-reducef xformf context metadata reducible-rows))))]
+                (context.default/default-reducef rff context metadata reducible-rows))))]
     {:reducef reducef*
      :rff     print-rows-rff}))
 
@@ -100,8 +100,8 @@
 (deftest cancelation-test
   (testing "Example of canceling a query early before results are returned."
     (letfn [(process-query [canceled-chan timeout]
-              ((qp.reducible/async-qp (fn [query xformf {:keys [canceled-chan reducef], :as context}]
-                                        (let [futur (future (reducef query xformf context))]
+              ((qp.reducible/async-qp (fn [query rff {:keys [canceled-chan reducef], :as context}]
+                                        (let [futur (future (reducef query rff context))]
                                           (a/go
                                             (when (a/<! canceled-chan)
                                               (future-cancel futur))))))

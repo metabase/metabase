@@ -503,26 +503,25 @@
   "Number of result rows to sample when adding column info to results."
   100)
 
-(defn- add-column-info-xform [{query-type :type, :as query} metadata]
-  (fn [rf]
-    (qp.reducible/combine-additional-reducing-fns
-     rf
-     [((take column-info-sample-size) conj)]
-     (fn combine [result sampled-rows]
-       (rf (cond-> result
-             (map? result)
-             (assoc-in [:data :cols] (column-info* query (assoc metadata :rows sampled-rows)))))))))
+(defn- add-column-info-xform [{query-type :type, :as query} metadata rf]
+  (qp.reducible/combine-additional-reducing-fns
+   rf
+   [((take column-info-sample-size) conj)]
+   (fn combine [result sampled-rows]
+     (rf (cond-> result
+           (map? result)
+           (assoc-in [:data :cols] (column-info* query (assoc metadata :rows sampled-rows))))))))
 
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
   [qp]
-  (fn [{query-type :type, :as query} xformf context]
+  (fn [{query-type :type, :as query} rff context]
     (qp
      query
      (fn [metadata]
        (if (= query-type :query)
-         (xformf (assoc metadata :cols (column-info* query metadata)))
+         (rff (assoc metadata :cols (column-info* query metadata)))
          ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
          ;; queries...
-         (comp (add-column-info-xform query metadata) (xformf metadata))))
+         (add-column-info-xform query metadata (rff metadata))))
      context)))

@@ -38,5 +38,5 @@
   "Middleware that optionally adds default `max-results` and `max-results-bare-rows` constraints to queries, meant for
   use with `process-query-and-save-with-max-results-constraints!`, which ultimately powers most QP API endpoints."
   [qp]
-  (fn [query xformf context]
-    (qp (add-default-userland-constraints* query) xformf context)))
+  (fn [query rff context]
+    (qp (add-default-userland-constraints* query) rff context)))

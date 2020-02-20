@@ -172,6 +172,7 @@
               (spreadsheet/select-columns {:A "Values"})))))
 
 (defn- parse-and-sort-csv [response]
+  (assert (some? response))
   (sort-by
    ;; ID in CSV is a string, parse it and sort it to get the first 5
    (comp #(Integer/parseInt %) first)
@@ -230,8 +231,10 @@
                           {:database mbql.s/saved-questions-virtual-database-id
                            :type     :query
                            :query    {:source-table (str "card__" (u/get-id card))}}))]
-      (is (= 16
-             (count (csv/read-csv result)))))))
+      (is (some? result))
+      (when (some? result)
+        (is (= 16
+               (count (csv/read-csv result))))))))
 
 ;; POST /api/dataset/:format
 ;;
@@ -248,8 +251,10 @@
                            :middleware
                            {:add-default-userland-constraints? true
                             :userland-query?                   true}}))]
-      (is (= 101
-             (count (csv/read-csv result)))))))
+      (is (some? result))
+      (when (some? result)
+        (is (= 101
+               (count (csv/read-csv result))))))))
 
 ;; non-"download" queries should still get the default constraints
 ;; (this also is a sanitiy check to make sure the `with-redefs` in the test above actually works)

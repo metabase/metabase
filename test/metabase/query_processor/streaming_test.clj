@@ -1,6 +1,5 @@
 (ns metabase.query-processor.streaming-test
   (:require [cheshire.core :as json]
-            [clojure.core.async :as a]
             [clojure.data.csv :as csv]
             [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
@@ -13,8 +12,7 @@
             [metabase.test.util :as tu]
             [ring.core.protocols :as ring.protocols]
             [toucan.db :as db])
-  (:import [java.io BufferedInputStream BufferedOutputStream FilterOutputStream InputStream InputStreamReader
-            OutputStream PipedInputStream PipedOutputStream]))
+  (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream InputStream InputStreamReader]))
 
 (defmulti ^:private parse-result
   {:arglists '([export-format ^InputStream input-stream])}
@@ -41,29 +39,31 @@
        (spreadsheet/select-columns {:A "ID", :B "Name", :C "Category ID", :D "Latitude", :E "Longitude", :F "Price"})
        rest))
 
-(defn- close-notifying-stream
-  ^FilterOutputStream [close-chan ^OutputStream os]
-  (proxy [FilterOutputStream] [os]
-    (close []
-      (a/put! close-chan ::close)
-      (try
-        (.flush os)
-        (.close os)
-        (catch Throwable _)))))
-
-(defn- process-query-streaming [export-format query]
+(defn- process-query-basic-streaming [export-format query]
   (with-redefs [streaming-response/keepalive-interval-ms 2]
-    (mt/with-open-channels [close-chan (a/promise-chan)]
-      (with-open [pos (PipedOutputStream.)
-                  os  (close-notifying-stream close-chan (BufferedOutputStream. pos))
-                  is  (BufferedInputStream. (PipedInputStream. pos))]
-        (ring.protocols/write-body-to-stream
-         (qp.streaming/streaming-response [context export-format]
-           (qp/process-query-async query (assoc context :timeout 5000)))
-         nil
-         os)
-        (mt/wait-for-result close-chan 100)
-        (parse-result export-format is)))))
+    (with-open [bos (ByteArrayOutputStream.)
+                os  (BufferedOutputStream. bos)]
+      (qp/process-query query (assoc (qp.streaming/streaming-context export-format os)
+                                     :timeout 15000))
+      (.flush os)
+      (let [bytea (.toByteArray bos)]
+        (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]
+          (parse-result export-format is))))))
+
+(defn- process-query-api-response-streaming [export-format query]
+  (with-redefs [streaming-response/keepalive-interval-ms 2]
+    (with-open [bos (ByteArrayOutputStream.)
+                os  (BufferedOutputStream. bos)]
+      (ring.protocols/write-body-to-stream
+       (qp.streaming/streaming-response [context export-format]
+         (qp/process-query-async query (assoc context :timeout 5000)))
+       nil
+       os)
+      (.flush os)
+      (.flush bos)
+      (let [bytea (.toByteArray bos)]
+        (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]
+          (parse-result export-format is))))))
 
 (defmulti ^:private expected-results
   {:arglists '([export-format normal-results])}
@@ -104,17 +104,34 @@
   (cond-> x
     (map? x) (m/dissoc-in [:data :results_metadata :checksum])))
 
-(defn- compare-results-for-query [export-format query]
-  (let [query             query
-        streaming-results (maybe-remove-checksum (process-query-streaming export-format query))
-        expected-results  (maybe-remove-checksum (expected-results export-format (qp/process-query query)))]
-    (is (= expected-results
-           streaming-results))))
+(defn- expected-results* [export-format query]
+  (maybe-remove-checksum (expected-results export-format (qp/process-query query))))
+
+(defn- basic-actual-results* [export-format query]
+  (maybe-remove-checksum (process-query-basic-streaming export-format query)))
+
+(deftest basic-streaming-test []
+  (testing "Test that the underlying qp.streaming context logic itself works correctly. Not an end-to-end test!"
+    (let [query (mt/mbql-query venues
+                  {:order-by [[:asc $id]]
+                   :limit    5})]
+      (doseq [export-format (qp.streaming/export-formats)]
+        (testing export-format
+          (is (= (expected-results* export-format query)
+                 (basic-actual-results* export-format query))))))))
+
+(defn- actual-results* [export-format query]
+  (maybe-remove-checksum (process-query-api-response-streaming export-format query)))
+
+(defn- compare-results [export-format query]
+  (is (= (expected-results* export-format query)
+         (actual-results* export-format query))))
 
 (deftest streaming-response-test
-  (doseq [export-format (qp.streaming/export-formats)]
-    (testing export-format
-      (compare-results-for-query export-format (mt/mbql-query venues {:limit 5})))))
+  (testing "Test that the actual results going thru the same steps as an API response are correct."
+    (doseq [export-format (qp.streaming/export-formats)]
+      (testing export-format
+        (compare-results export-format (mt/mbql-query venues {:limit 5}))))))
 
 (deftest utf8-test
   ;; UTF-8 isn't currently working for XLSX -- fix me
@@ -122,11 +139,11 @@
     (testing export-format
       (testing "Make sure our various streaming formats properly write values as UTF-8."
         (testing "A query that will have a little → in its name"
-          (compare-results-for-query export-format (mt/mbql-query venues
-                                                     {:fields   [$name $category_id->categories.name]
-                                                      :order-by [[:asc $id]]
-                                                      :limit    5})))
+          (compare-results export-format (mt/mbql-query venues
+                                           {:fields   [$name $category_id->categories.name]
+                                            :order-by [[:asc $id]]
+                                            :limit    5})))
         (testing "A query with emoji and other fancy unicode"
           (let [[sql & args] (db/honeysql->sql {:select [["Cam 𝌆 Saul 💩" :cam]]})]
-            (compare-results-for-query export-format (mt/native-query {:query  sql
-                                                                       :params args}))))))))
+            (compare-results export-format (mt/native-query {:query  sql
+                                                             :params args}))))))))

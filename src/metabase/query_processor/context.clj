@@ -19,10 +19,10 @@
 (defn runf
   "Called by pivot fn to run preprocessed query. Normally, this simply calls `executef`, but you can override this for
   test purposes. The result of this function is ignored."
-  {:arglists '([query xformf context])}
-  [query xformf {runf* :runf, :as context}]
+  {:arglists '([query rff context])}
+  [query rff {runf* :runf, :as context}]
   {:pre [(fn? runf*)]}
-  (runf* query xformf context)
+  (runf* query rff context)
   nil)
 
 (defn executef
@@ -43,10 +43,10 @@
   "Called by `runf` (inside the `respond` callback provided by it) to reduce results of query. `reducedf` is called with
   the reduced results. The actual output of this function is ignored, but the entire result set must be reduced and
   passed to `reducedf` before this function completes."
-  {:arglists '([xformf context metadata reducible-rows])}
-  [xformf {reducef* :reducef, :as context} metadata reducible-rows]
+  {:arglists '([rff context metadata reducible-rows])}
+  [rff {reducef* :reducef, :as context} metadata reducible-rows]
   {:pre [(fn? reducef*)]}
-  (reducef* xformf context metadata reducible-rows)
+  (reducef* rff context metadata reducible-rows)
   nil)
 
 (defn reducedf
@@ -104,15 +104,6 @@
   [{timeout* :timeout}]
   {:pre [(int? timeout*)]}
   timeout*)
-
-(defn base-xformf
-  "xformf passed to the first middleware.
-
-    (xformf metadata) -> xform"
-  {:arglists '([context])}
-  [{base-xformf* :base-xformf}]
-  {:pre [(fn? base-xformf*)]}
-  base-xformf*)
 
 (defn rff
   "Reducing function.

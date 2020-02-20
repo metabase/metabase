@@ -25,11 +25,10 @@
            (#'cumulative-aggregations/diff-indecies [:a :b :c] [:a 100 :c])))))
 
 (defn- sum-rows [replaced-indecies rows]
-  (let [xform (#'cumulative-aggregations/cumulative-ags-xform replaced-indecies)
-        rf    (xform (fn
-                       ([] [])
-                       ([acc] acc)
-                       ([acc row] (conj acc row))))]
+  (let [rf (#'cumulative-aggregations/cumulative-ags-xform replaced-indecies (fn
+                                                                               ([] [])
+                                                                               ([acc] acc)
+                                                                               ([acc row] (conj acc row))))]
     (transduce identity rf rows)))
 
 (deftest transduce-results-test
