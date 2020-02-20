@@ -130,6 +130,8 @@
   [{{:strs [accept-encoding]} :headers}]
   (re-find #"gzip|\*" accept-encoding))
 
+(declare render)
+
 (p.types/deftype+ StreamingResponse [f options]
   pretty/PrettyPrintable
   (pretty [_]
@@ -143,19 +145,21 @@
   ;; sync responses only
   compojure.response/Renderable
   (render [this request]
-    (let [gzip? (should-gzip-response? request)]
-      (assoc (ring.response/response (if gzip?
-                                       (StreamingResponse. f (assoc options :gzip? true))
-                                       this))
-             :content-type (:content-type options)
-             :headers      (cond-> (:headers options)
-                             gzip? (assoc "Content-Encoding" "gzip"))
-             :status       202)))
+    (render this (should-gzip-response? request)))
 
   ;; async responses only
   compojure.response/Sendable
   (send* [this request respond _]
     (respond (compojure.response/render this request))))
+
+(defn- render [streaming-response gzip?]
+  (let [{:keys [headers content-type], :as options} (.options streaming-response)]
+    (assoc (ring.response/response (if gzip?
+                                     (StreamingResponse. (.f streaming-response) (assoc options :gzip? true))
+                                     streaming-response))
+           :headers      (cond-> (assoc headers "Content-Type" content-type)
+                           gzip? (assoc "Content-Encoding" "gzip"))
+           :status       202)))
 
 (defmacro streaming-response
   "Return an streaming response that writes keepalive newline bytes.

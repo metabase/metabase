@@ -11,7 +11,8 @@
              [i18n :as ui18n :refer [tru]]
              [schema :as su]]
             [schema.core :as s])
-  (:import clojure.core.async.impl.channels.ManyToManyChannel))
+  (:import clojure.core.async.impl.channels.ManyToManyChannel
+           metabase.async.streaming_response.StreamingResponse))
 
 (comment metabase.async.streaming-response/keep-me)
 
@@ -260,6 +261,10 @@
 
 (extend-protocol EndpointResponse
   Object
+  (wrap-response-if-needed [this]
+    {:status 200, :body this})
+
+  StreamingResponse
   (wrap-response-if-needed [this]
     this)
 

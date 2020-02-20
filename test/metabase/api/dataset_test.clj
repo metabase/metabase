@@ -3,11 +3,14 @@
   (:require [cheshire
              [core :as json]
              [generate :as generate]]
+            [clojure
+             [string :as str]
+             [test :refer :all]]
             [clojure.data.csv :as csv]
-            [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
             [medley.core :as m]
             [metabase
+             [http-client :as http-client]
              [query-processor-test :as qp.test]
              [test :as mt]
              [util :as u]]
@@ -189,6 +192,21 @@
                        (json/generate-string (data/mbql-query checkins)))]
            (take 5 (parse-and-sort-csv result))))))
 
+(deftest download-response-headers-test
+  (testing "Make sure CSV/etc. download requests come back with the correct headers"
+    (is (= {"Cache-Control"       "max-age=0, no-cache, must-revalidate, proxy-revalidate"
+            "Content-Disposition" "attachment; filename=\"query_result_<timestamp>.csv\""
+            "Content-Type"        "text/csv"
+            "Expires"             "Tue, 03 Jul 2001 06:00:00 GMT"
+            "X-Accel-Buffering"   "no"}
+           (-> (http-client/client-full-response (test-users/username->token :rasta)
+                                                 :post 202 "dataset/csv"
+                                                 :query (json/generate-string (data/mbql-query checkins {:limit 1})))
+               :headers
+               (select-keys ["Cache-Control" "Content-Disposition" "Content-Type" "Expires" "X-Accel-Buffering"])
+               (update "Content-Disposition" #(some-> % (str/replace #"query_result_.+(\.\w+)"
+                                                                                   "query_result_<timestamp>$1"))))))))
+
 (deftest check-an-empty-date-column
   (is (= [["1" "2014-04-07" "" "5" "12"]
           ["2" "2014-09-18" "" "1" "31"]
@@ -196,9 +214,9 @@
           ["4" "2014-03-11" "" "5" "4"]
           ["5" "2013-05-05" "" "3" "49"]]
          (data/dataset defs/test-data-with-null-date-checkins
-                       (let [result ((test-users/user->client :rasta) :post 202 "dataset/csv" :query
-                                     (json/generate-string (data/mbql-query checkins)))]
-                         (take 5 (parse-and-sort-csv result)))))))
+           (let [result ((test-users/user->client :rasta) :post 202 "dataset/csv" :query
+                         (json/generate-string (data/mbql-query checkins)))]
+             (take 5 (parse-and-sort-csv result)))))))
 
 (deftest sqlite-datetime-test
   (mt/test-driver :sqlite
