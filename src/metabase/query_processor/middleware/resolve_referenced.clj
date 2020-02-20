@@ -76,6 +76,6 @@
 (defn resolve-referenced-card-resources
   "Resolves tables and fields referenced in card query template tags."
   [qp]
-  (fn [query xformf context]
+  (fn [query rff context]
     (qp (-> query check-for-circular-references! resolve-referenced-card-resources*)
-        xformf context)))
+        rff context)))
