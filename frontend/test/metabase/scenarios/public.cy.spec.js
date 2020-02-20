@@ -51,7 +51,7 @@ describe("public and embeds", () => {
         win.document.querySelectorAll(".ace_text-input")[0].disabled = true;
       });
 
-      cy.contains("Filter label")
+      cy.contains("Filter widget label")
         .siblings("input")
         .type("Category");
 
