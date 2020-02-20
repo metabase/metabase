@@ -43,8 +43,8 @@
   (test-string-extract [:substring [:field-id (data/id :venues :name)] 2]))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
-  "Blue Medicine"
-  (test-string-extract [:replace [:field-id (data/id :venues :name)] "Red" "Blue"]))
+  "Red Baloon"
+  (test-string-extract [:replace [:field-id (data/id :venues :name)] "Medicine" "Baloon"]))
 
 (datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
   1

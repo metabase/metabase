@@ -473,19 +473,13 @@
 (def ^:private StringFilterOptions
   {(s/optional-key :case-sensitive) s/Bool}) ; default true
 
-(def ^:private StringOrField
-  (s/cond-pre
-   s/Str
-   Field
-   value))
-
-(defclause starts-with, field Field, string-or-field StringOrField, options (optional StringFilterOptions))
-(defclause ends-with,   field Field, string-or-field StringOrField, options (optional StringFilterOptions))
-(defclause contains,    field Field, string-or-field StringOrField, options (optional StringFilterOptions))
+(defclause starts-with, field StringExpression, string-or-field StringExpression, options (optional StringFilterOptions))
+(defclause ends-with,   field StringExpression, string-or-field StringExpression, options (optional StringFilterOptions))
+(defclause contains,    field StringExpression, string-or-field StringExpression, options (optional StringFilterOptions))
 
 ;; SUGAR: this is rewritten as [:not [:contains ...]]
 (defclause ^:sugar does-not-contain
-  field Field, string-or-field StringOrField, options (optional StringFilterOptions))
+  field StringExpression, string-or-field StringExpression, options (optional StringFilterOptions))
 
 (def ^:private TimeIntervalOptions
   ;; Should we include partial results for the current day/month/etc? Defaults to `false`; set this to `true` to
