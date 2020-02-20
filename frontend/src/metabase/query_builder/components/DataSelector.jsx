@@ -124,7 +124,13 @@ const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
     fetchFields: tableId => Tables.actions.fetchTableMetadata({ id: tableId }),
   },
 )
-export default class DataSelector extends Component {
+class DataSelector extends Component {
+  render() {
+    return <UnconnectedDataSelector {...this.props} />;
+  }
+}
+
+export class UnconnectedDataSelector extends Component {
   constructor(props) {
     super();
 
