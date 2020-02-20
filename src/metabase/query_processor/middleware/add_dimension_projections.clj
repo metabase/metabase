@@ -226,33 +226,32 @@
   added and each row flowing through needs to include the remapped data for the new column. For external remappings,
   the column information needs to be updated with what it's being remapped from and the user specified name for the
   remapped column."
-  [{:keys [cols], :as metadata} {:keys [internal-only-dims]}]
+  [{:keys [cols], :as metadata} {:keys [internal-only-dims]} rf]
   (if-let [remap-fn (make-row-map-fn internal-only-dims)]
-    (fn [rf]
-      (fn
-        ([]
-         (rf))
+    (fn
+      ([]
+       (rf))
 
-        ([result]
-         (rf result))
+      ([result]
+       (rf result))
 
-        ([result row]
-         (rf result (remap-fn row)))))
-    identity))
+      ([result row]
+       (rf result (remap-fn row))))
+    rf))
 
-(defn- remap-results-xformf [remapping-dimensions xformf]
+(defn- remap-results-rff [remapping-dimensions rff]
   (fn [metadata]
     (let [internal-cols-info (internal-columns-info (:cols metadata))
           metadata           (add-remapped-cols metadata remapping-dimensions internal-cols-info)]
-      (comp (remap-results-xform metadata internal-cols-info) (xformf metadata)))))
+      (remap-results-xform metadata internal-cols-info (rff metadata)))))
 
 (defn add-remapping
   "Query processor middleware. `qp` is the query processor, returns a function that works on a `query` map. Delgates to
   `add-fk-remaps` for making remapping changes to the query (before executing the query). Then delegates to
   `remap-results` to munge the results after query execution."
   [qp]
-  (fn [{query-type :type, :as query} xformf context]
+  (fn [{query-type :type, :as query} rff context]
     (if (= query-type :native)
-      (qp query xformf context)
+      (qp query rff context)
       (let [[remapping-dimensions query'] (add-fk-remaps query)]
-        (qp query' (remap-results-xformf remapping-dimensions xformf) context)))))
+        (qp query' (remap-results-rff remapping-dimensions rff) context)))))

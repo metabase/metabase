@@ -89,10 +89,10 @@
           "Result should have query execution info. empty `:data` should get added to failures"))))
 
 (defn- async-middleware [qp]
-  (fn async-middleware-qp [query xformf context]
+  (fn async-middleware-qp [query rff context]
     (future
       (try
-        (qp query xformf context)
+        (qp query rff context)
         (catch Throwable e
           (context/raisef e context))))
     nil))

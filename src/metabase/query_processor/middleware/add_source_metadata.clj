@@ -101,5 +101,5 @@
   source queries that do not specify this information, we can often infer it by looking at the shape of the source
   query."
   [qp]
-  (fn [query xformf context]
-    (qp (add-source-metadata-for-source-queries* query) xformf context)))
+  (fn [query rff context]
+    (qp (add-source-metadata-for-source-queries* query) rff context)))

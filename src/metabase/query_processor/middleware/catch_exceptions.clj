@@ -148,7 +148,7 @@
   exceptions to the `result-chan`."
   [qp]
 
-  (fn [query xformf {:keys [preprocessedf nativef raisef], :as context}]
+  (fn [query rff {:keys [preprocessedf nativef raisef], :as context}]
     (let [extra-info (atom nil)]
       (letfn [(preprocessedf* [query context]
                 (swap! extra-info assoc :preprocessed query)
@@ -163,7 +163,7 @@
                     (log/tracef "raisef* got %s, returning formatted exception" (class e))
                     (context/resultf (format-exception* query e @extra-info) context))))]
         (try
-          (qp query xformf (assoc context
+          (qp query rff (assoc context
                                   :preprocessedf preprocessedf*
                                   :nativef nativef*
                                   :raisef raisef*))

@@ -11,8 +11,8 @@
 (defn add-timezone-info
   "Add `:results_timezone` and `:requested_timezone` info to query results."
   [qp]
-  (fn [query xformf context]
+  (fn [query rff context]
     (qp query
         (fn [metadata]
-          (xformf (add-timezone-metadata metadata)))
+          (rff (add-timezone-metadata metadata)))
         context)))

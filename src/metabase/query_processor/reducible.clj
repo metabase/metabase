@@ -29,14 +29,14 @@
 
 (defn pivot
   "The initial value of `qp` passed to QP middleware."
-  [query xformf context]
-  (context/runf query xformf context))
+  [query rff context]
+  (context/runf query rff context))
 
 (defn combine-middleware
   "Combine a collection of QP middleware into a single QP function. The QP function, like the middleware, will have the
   signature:
 
-    (qp query xformf context)"
+    (qp query rff context)"
   [middleware]
   (reduce
    (fn [qp middleware]
@@ -71,7 +71,7 @@
 (defn async-qp
   "Wrap a QP function (middleware or a composition of middleware created with `combine-middleware`) with the signature:
 
-    (qp query xformf context)
+    (qp query rff context)
 
   And return a function with the signatures:
 
@@ -79,7 +79,7 @@
     (qp query context)
 
   While you can use a 3-arg QP function directly, this makes the function more user-friendly by providing a base
-  `xformf` and a default `context`,"
+  `rff` and a default `context`,"
   [qp]
   (fn qp*
     ([query]
@@ -90,7 +90,7 @@
      (let [context (merge (context.default/default-context) context)]
        (wire-up-context-channels! context)
        (try
-         (qp query (context/base-xformf context) context)
+         (qp query (context/rff context) context)
          (catch Throwable e
            (context/raisef e context)))
        (quittable-out-chan (context/out-chan context))))))

@@ -77,10 +77,10 @@
 (defn format-rows
   "Format individual query result values as needed.  Ex: format temporal values as ISO-8601 strings w/ timezone offset."
   [qp]
-  (fn [{{:keys [format-rows?] :or {format-rows? true}} :middleware, :as query} xformf context]
+  (fn [{{:keys [format-rows?] :or {format-rows? true}} :middleware, :as query} rff context]
     (qp query
         (if format-rows?
           (fn [metadata]
-            (comp format-rows-xform (xformf metadata)))
-          xformf)
+            (format-rows-xform (rff metadata)))
+          rff)
         context)))

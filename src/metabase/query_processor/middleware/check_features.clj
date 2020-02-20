@@ -38,5 +38,5 @@
 (defn check-features
   "Middleware that checks that drivers support the `:features` required to use certain clauses, like `:stddev`."
   [qp]
-  (fn [query xformf context]
-    (qp (check-features* query) xformf context)))
+  (fn [query rff context]
+    (qp (check-features* query) rff context)))

@@ -96,28 +96,27 @@
               (log/debug (trs "Successfully cached results for query."))
               (purge-async!))))))))
 
-(defn- save-results-xform [start-time metadata query-hash]
-  (fn [rf]
-    (let [{:keys [in-chan out-chan]} (impl/serialize-async)]
-      (a/put! in-chan (assoc metadata
-                             :cache-version cache-version
-                             :last-ran      (t/zoned-date-time)))
-      (fn
-        ([] (rf))
+(defn- save-results-xform [start-time metadata query-hash rf]
+  (let [{:keys [in-chan out-chan]} (impl/serialize-async)]
+    (a/put! in-chan (assoc metadata
+                           :cache-version cache-version
+                           :last-ran      (t/zoned-date-time)))
+    (fn
+      ([] (rf))
 
-        ([result]
-         ;; TODO - what about the final result? Are we ignoring it completely?
-         (a/close! in-chan)
-         (let [duration-ms (- (System/currentTimeMillis) start-time)]
-           (log/info (trs "Query took {0} to run; miminum for cache eligibility is {1}"
-                          (u/format-milliseconds duration-ms) (u/format-milliseconds (min-duration-ms))))
-           (when (> duration-ms (min-duration-ms))
-             (cache-results-async! query-hash out-chan)))
-         (rf result))
+      ([result]
+       ;; TODO - what about the final result? Are we ignoring it completely?
+       (a/close! in-chan)
+       (let [duration-ms (- (System/currentTimeMillis) start-time)]
+         (log/info (trs "Query took {0} to run; miminum for cache eligibility is {1}"
+                        (u/format-milliseconds duration-ms) (u/format-milliseconds (min-duration-ms))))
+         (when (> duration-ms (min-duration-ms))
+           (cache-results-async! query-hash out-chan)))
+       (rf result))
 
-        ([acc row]
-         (a/put! in-chan row)
-         (rf acc row))))))
+      ([acc row]
+       (a/put! in-chan row)
+       (rf acc row)))))
 
 ;;; ----------------------------------------------------- Fetch ------------------------------------------------------
 
@@ -138,7 +137,7 @@
 
 (defn- do-with-cached-results
   "Reduces cached results if there is a hit. Otherwise, returns `::miss` directly."
-  [query-hash max-age-seconds xformf context]
+  [query-hash max-age-seconds rff context]
   (if *ignore-cached-results*
     ::miss
     (do
@@ -155,24 +154,24 @@
 
                 ([metadata reducible-rows]
                  (context/reducef (fn [metadata]
-                                    (comp add-cached-metadata-xform (xformf metadata)))
+                                    (add-cached-metadata-xform (rff metadata)))
                                   context metadata reducible-rows))))))))))
 
 
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
 
 (defn- run-query-with-cache
-  [qp {:keys [cache-ttl], :as query} xformf context]
+  [qp {:keys [cache-ttl], :as query} rff context]
   ;; TODO - Query will already have `info.hash` if it's a userland query. I'm not 100% sure it will be the same hash,
   ;; because this is calculated after normalization, instead of before
   (let [query-hash (qputil/query-hash query)
-        result     (do-with-cached-results query-hash cache-ttl xformf context)]
+        result     (do-with-cached-results query-hash cache-ttl rff context)]
     (if-not (= ::miss result)
       result
       (let [start-time-ms (System/currentTimeMillis)]
         (qp query
             (fn [metadata]
-              (comp (save-results-xform start-time-ms metadata query-hash) (xformf metadata)))
+              (save-results-xform start-time-ms metadata query-hash (rff metadata)))
             context)))))
 
 (defn- is-cacheable? {:arglists '([query])} [{:keys [cache-ttl]}]
@@ -192,7 +191,7 @@
         running the query, satisfying this requirement.)
      *  The result *rows* of the query must be less than `query-caching-max-kb` when serialized (before compression)."
   [qp]
-  (fn [query xformf context]
+  (fn [query rff context]
     (if (is-cacheable? query)
-      (run-query-with-cache qp query xformf context)
-      (qp query xformf context))))
+      (run-query-with-cache qp query rff context)
+      (qp query rff context))))

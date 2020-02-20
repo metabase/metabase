@@ -39,33 +39,32 @@
    :else
    (recur more last-row (update (vec row) index (partial + (nth last-row index))))))
 
-(defn- cumulative-ags-xform [replaced-indecies]
-  (fn cumulative-ags-rf [rf]
-    {:pre [(fn? rf)]}
-    (let [last-row (volatile! nil)]
-      (fn
-        ([] (rf))
+(defn- cumulative-ags-xform [replaced-indecies rf]
+  {:pre [(fn? rf)]}
+  (let [last-row (volatile! nil)]
+    (fn
+      ([] (rf))
 
-        ([result] (rf result))
+      ([result] (rf result))
 
-        ([result row]
-         (let [row' (add-values-from-last-row replaced-indecies @last-row row)]
-           (vreset! last-row row')
-           (rf result row')))))))
+      ([result row]
+       (let [row' (add-values-from-last-row replaced-indecies @last-row row)]
+         (vreset! last-row row')
+         (rf result row'))))))
 
 (defn handle-cumulative-aggregations
   "Middleware that implements `cum-count` and `cum-sum` aggregations. These clauses are replaced with `count` and `sum`
   clauses respectively and summation is performed on results in Clojure-land."
   [qp]
-  (fn [{{breakouts :breakout, aggregations :aggregation} :query, :as query} xformf context]
+  (fn [{{breakouts :breakout, aggregations :aggregation} :query, :as query} rff context]
     (if-not (mbql.u/match aggregations #{:cum-count :cum-sum})
-      (qp query xformf context)
+      (qp query rff context)
       (let [query'            (replace-cumulative-ags query)
             ;; figure out which indexes are being changed in the results. Since breakouts always get included in
             ;; results first we need to offset the indexes to change by the number of breakouts
             replaced-indecies (set (for [i (diff-indecies (-> query  :query :aggregation)
                                                           (-> query' :query :aggregation))]
                                      (+ (count breakouts) i)))
-            xformf'           (fn [metadata]
-                                (comp (cumulative-ags-xform replaced-indecies) (xformf metadata)))]
-        (qp query' xformf' context)))))
+            rff'              (fn [metadata]
+                                (cumulative-ags-xform replaced-indecies (rff metadata)))]
+        (qp query' rff' context)))))

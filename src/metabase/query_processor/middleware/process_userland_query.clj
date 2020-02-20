@@ -88,27 +88,26 @@
     :average_execution_time (when cached?
                               (query/average-execution-time-ms query-hash))}))
 
-(defn- add-and-save-execution-info-xform! [{:keys [cached?]} execution-info]
-  (fn execution-info-xform* [rf]
-    {:pre [(fn? rf)]}
-    ;; don't do anything for cached results
-    ;; TODO - we should test for this
-    (if cached?
-      rf
-      (let [row-count (volatile! 0)]
-        (fn execution-info-rf*
-          ([]
-           (rf))
+(defn- add-and-save-execution-info-xform! [{:keys [cached?]} execution-info rf]
+  {:pre [(fn? rf)]}
+  ;; don't do anything for cached results
+  ;; TODO - we should test for this
+  (if cached?
+    rf
+    (let [row-count (volatile! 0)]
+      (fn execution-info-rf*
+        ([]
+         (rf))
 
-          ([acc]
-           (save-successful-query-execution-async! execution-info @row-count)
-           (rf (if (map? acc)
-                 (success-response execution-info acc)
-                 acc)))
+        ([acc]
+         (save-successful-query-execution-async! execution-info @row-count)
+         (rf (if (map? acc)
+               (success-response execution-info acc)
+               acc)))
 
-          ([result row]
-           (vswap! row-count inc)
-           (rf result row)))))))
+        ([result row]
+         (vswap! row-count inc)
+         (rf result row))))))
 
 (defn- query-execution-info
   "Return the info for the QueryExecution entry for this `query`."
@@ -137,11 +136,11 @@
   "Do extra handling 'userland' queries (i.e. ones ran as a result of a user action, e.g. an API call, scheduled Pulse,
   etc.). This includes recording QueryExecution entries and returning the results in an FE-client-friendly format."
   [qp]
-  (fn [query xformf {:keys [raisef], :as context}]
+  (fn [query rff {:keys [raisef], :as context}]
     (let [query          (assoc-in query [:info :query-hash] (qputil/query-hash query))
           execution-info (query-execution-info query)]
-      (letfn [(xformf* [metadata]
-                (comp (add-and-save-execution-info-xform! metadata execution-info) (xformf metadata)))
+      (letfn [(rff* [metadata]
+                (add-and-save-execution-info-xform! metadata execution-info (rff metadata)))
               (raisef* [^Throwable e context]
                 (save-failed-query-execution-async! execution-info (.getMessage e))
                 (raisef (ex-info (.getMessage e)
@@ -149,6 +148,6 @@
                           e)
                         context))]
         (try
-          (qp query xformf* (assoc context :raisef raisef*))
+          (qp query rff* (assoc context :raisef raisef*))
           (catch Throwable e
             (raisef* e context)))))))
