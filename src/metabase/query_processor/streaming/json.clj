@@ -40,7 +40,7 @@
 
 (defmethod i/stream-options :api
   [stream-type]
-  ((get-method i/stream-options :json) stream-type))
+  {:content-type "applicaton/json; charset=utf-8"})
 
 (defn- map->serialized-json-kvs
   "{:a 100, :b 200} ; -> \"a\":100,\"b\":200"
