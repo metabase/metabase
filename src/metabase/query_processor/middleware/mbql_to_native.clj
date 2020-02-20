@@ -18,7 +18,7 @@
   "Middleware that handles conversion of MBQL queries to native (by calling driver QP methods) so the queries
    can be executed. For queries that are already native, this function is effectively a no-op."
   [qp]
-  (fn [{query-type :type, :as query} xformf context]
+  (fn [{query-type :type, :as query} rff context]
     (let [query        (context/preprocessedf query context)
           native-query (context/nativef (query->native-form query) context)]
       (log/trace (u/format-color 'yellow "\nPreprocessed:\n%s" (u/pprint-to-str query)))
@@ -28,5 +28,5 @@
          (= query-type :query)
          (assoc :native native-query))
        (fn [metadata]
-         (xformf (assoc metadata :native_form native-query)))
+         (rff (assoc metadata :native_form native-query)))
        context))))

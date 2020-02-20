@@ -6,6 +6,6 @@
 (defn initialize-store
   "Initialize the QP Store (resolved objects cache) for this query execution."
   [qp]
-  (fn [query xformf context]
+  (fn [query rff context]
     (qp.store/with-store
-      (qp query xformf context))))
+      (qp query rff context))))

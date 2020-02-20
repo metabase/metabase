@@ -103,27 +103,26 @@
     (catch Throwable e
       (log/error e (tru "Error recording results metadata for query")))))
 
-(defn- insights-xform [orig-metadata record!]
-  (fn [rf]
-    (qp.reducible/combine-additional-reducing-fns
-     rf
-     [(analyze.results/insights-rf orig-metadata)]
-     (fn combine [result {:keys [metadata insights]}]
-       (record! metadata)
-       (rf (cond-> result
-             (map? result)
-             (update :data assoc
-                     :results_metadata {:checksum (metadata-checksum metadata)
-                                        :columns  metadata}
-                     :insights insights)))))))
+(defn- insights-xform [orig-metadata record! rf]
+  (qp.reducible/combine-additional-reducing-fns
+   rf
+   [(analyze.results/insights-rf orig-metadata)]
+   (fn combine [result {:keys [metadata insights]}]
+     (record! metadata)
+     (rf (cond-> result
+           (map? result)
+           (update :data assoc
+                   :results_metadata {:checksum (metadata-checksum metadata)
+                                      :columns  metadata}
+                   :insights insights))))))
 
 (defn record-and-return-metadata!
   "Middleware that records metadata about the columns returned when running the query."
   [qp]
-  (fn [{{:keys [skip-results-metadata?]} :middleware, :as query} xformf context]
+  (fn [{{:keys [skip-results-metadata?]} :middleware, :as query} rff context]
     (if skip-results-metadata?
-      (qp query xformf context)
+      (qp query rff context)
       (let [record! (partial record-metadata! query)
-            xformf' (fn [metadata]
-                      (comp (insights-xform metadata record!) (xformf metadata)))]
-        (qp query xformf' context)))))
+            rff' (fn [metadata]
+                   (insights-xform metadata record! (rff metadata)))]
+        (qp query rff' context)))))

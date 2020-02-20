@@ -94,5 +94,5 @@
    {:query {:breakout [[:datetime-field [:field-id 1] :day]]
             :order-by [[:datetime-field [:asc [:field-id 1]] :day]]}"
   [qp]
-  (fn [query xformf context]
-    (qp (reconcile-bucketing-if-needed query) xformf context)))
+  (fn [query rff context]
+    (qp (reconcile-bucketing-if-needed query) rff context)))

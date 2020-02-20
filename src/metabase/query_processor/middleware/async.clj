@@ -12,10 +12,10 @@
 (defn count-in-flight-queries
   "Middleware that tracks the current number of queries in flight."
   [qp]
-  (fn [query xformf context]
+  (fn [query rff context]
     (send in-flight* inc)
     (let [out-chan (context/out-chan context)]
       (a/go
         (a/<! out-chan)
         (send in-flight* dec)))
-    (qp query xformf context)))
+    (qp query rff context)))

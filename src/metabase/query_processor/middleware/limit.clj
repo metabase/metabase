@@ -11,33 +11,32 @@
          (qputil/query-without-aggregations-or-limits? query))
     (assoc-in [:query :limit] max-rows)))
 
-(defn- limit-xform [max-rows]
-  (fn [rf]
-    {:pre [(fn? rf)]}
-    (let [row-count (volatile! 0)]
-      (fn
-        ([]
-         (rf))
+(defn- limit-xform [max-rows rf]
+  {:pre [(fn? rf)]}
+  (let [row-count (volatile! 0)]
+    (fn
+      ([]
+       (rf))
 
-        ([result]
-         (rf result))
+      ([result]
+       (rf result))
 
-        ([result row]
-         (let [result'       (rf result row)
-               new-row-count (vswap! row-count inc)]
-           (if (>= new-row-count max-rows)
-             (reduced result')
-             result')))))))
+      ([result row]
+       (let [result'       (rf result row)
+             new-row-count (vswap! row-count inc)]
+         (if (>= new-row-count max-rows)
+           (reduced result')
+           result'))))))
 
 (defn limit
   "Add an implicit `limit` clause to MBQL queries without any aggregations, and limit the maximum number of rows that
   can be returned in post-processing."
   [qp]
-  (fn [query xformf context]
+  (fn [query rff context]
     (let [max-rows (or (mbql.u/query->max-rows-limit query)
                        i/absolute-max-results)]
       (qp
        (add-limit max-rows query)
        (fn [metadata]
-         (comp (limit-xform max-rows) (xformf metadata)))
+         (limit-xform max-rows (rff metadata)))
        context))))
