@@ -9,6 +9,7 @@
             [ring.util.response :as ring.response])
   (:import [java.io BufferedWriter FilterOutputStream OutputStream OutputStreamWriter]
            java.nio.charset.StandardCharsets
+           java.util.zip.GZIPOutputStream
            org.eclipse.jetty.io.EofException))
 
 (def ^:private keepalive-interval-ms
@@ -107,18 +108,27 @@
         (.flush writer))
       (catch Throwable _))))
 
-(defn- write-to-stream! [f {:keys [write-keepalive-newlines?]} ^OutputStream os]
-  (with-open-chan [canceled-chan (a/promise-chan)]
-    (with-open [os os
-                os (jetty-eof-canceling-output-stream os canceled-chan)
-                os (keepalive-output-stream os write-keepalive-newlines?)]
+(defn- write-to-stream! [f {:keys [write-keepalive-newlines? gzip?], :as options} ^OutputStream os]
+  (if gzip?
+    (with-open [gzos (GZIPOutputStream. os true)]
+      (write-to-stream! f (dissoc options :gzip?) gzos))
+    (with-open-chan [canceled-chan (a/promise-chan)]
+      (with-open [os os
+                  os (jetty-eof-canceling-output-stream os canceled-chan)
+                  os (keepalive-output-stream os write-keepalive-newlines?)]
 
-      (try
-        (f os canceled-chan)
-        (catch Throwable e
-          (write-error! os {:message (.getMessage e)}))
-        (finally
-          (.flush os))))))
+        (try
+          (f os canceled-chan)
+          (catch Throwable e
+            (write-error! os {:message (.getMessage e)}))
+          (finally
+            (.flush os)))))))
+
+;; `ring.middleware.gzip` doesn't work on our StreamingResponse class.
+(defn- should-gzip-response?
+  "GZIP a response if the client accepts GZIP encoding, and, if quality is specified, quality > 0."
+  [{{:strs [accept-encoding]} :headers}]
+  (re-find #"gzip|\*" accept-encoding))
 
 (p.types/deftype+ StreamingResponse [f options]
   pretty/PrettyPrintable
@@ -132,11 +142,15 @@
 
   ;; sync responses only
   compojure.response/Renderable
-  (render [this _]
-    (merge (ring.response/response this)
-           {:content-type (:content-type options)
-            :headers      (:headers options)
-            :status       202}))
+  (render [this request]
+    (let [gzip? (should-gzip-response? request)]
+      (assoc (ring.response/response (if gzip?
+                                       (StreamingResponse. f (assoc options :gzip? true))
+                                       this))
+             :content-type (:content-type options)
+             :headers      (cond-> (:headers options)
+                             gzip? (assoc "Content-Encoding" "gzip"))
+             :status       202)))
 
   ;; async responses only
   compojure.response/Sendable

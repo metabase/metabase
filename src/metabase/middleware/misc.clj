@@ -81,10 +81,10 @@
 ;;; ------------------------------------------ Disable Streaming Buffering -------------------------------------------
 
 (defn- maybe-add-disable-buffering-header [{:keys [body], :as response}]
-  (if (or (instance? StreamingResponse body)
-          (instance? ManyToManyChannel body))
-    (assoc-in response [:headers "X-Accel-Buffering"] "no")
-    response))
+  (cond-> response
+    (or (instance? StreamingResponse body)
+        (instance? ManyToManyChannel body))
+    (assoc-in [:headers "X-Accel-Buffering"] "no")))
 
 (defn disable-streaming-buffering
   "Tell nginx not to batch streaming responses -- otherwise the keepalive bytes aren't written and
