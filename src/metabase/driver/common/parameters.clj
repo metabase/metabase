@@ -42,6 +42,21 @@
   [x]
   (instance? ReferencedCardQuery x))
 
+;; An "SqlSnippet" parameter expands to the SQL stored in the snippet with the specified name.
+;;
+;; `snippet-name` is the unique name of the SQL snippet that is referenced.
+;;
+;; `sql` is the SQL that the snippet contains, which will be replaced, verbatim, for this template tag.
+(p.types/defrecord+ SqlSnippet [snippet-name sql]
+  PrettyPrintable
+  (pretty [this]
+    (list 'map->SqlSnippet (into {} this))))
+
+(defn SqlSnippet?
+  "Is `x` an instance of the `SqlSnippet` record type?"
+  [x]
+  (instance? SqlSnippet x))
+
 ;; as in a literal date, defined by date-string S
 ;;
 ;; TODO - why don't we just parse this into a Temporal type and let drivers handle it.

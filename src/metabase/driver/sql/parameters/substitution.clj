@@ -25,7 +25,7 @@
            java.time.temporal.Temporal
            java.util.UUID
            [metabase.driver.common.parameters CommaSeparatedNumbers Date DateRange FieldFilter MultipleValues
-            ReferencedCardQuery]))
+            ReferencedCardQuery SqlSnippet]))
 
 ;;; ------------------------------------ ->prepared-substitution & default impls -------------------------------------
 
@@ -264,9 +264,17 @@
             :replacement-snippet (partial str (field->identifier driver field (:type value)) " "))))
 
 
-;;; ------------------------------------- Field Filter replacement snippet info --------------------------------------
+;;; ------------------------------------ Referenced Card replacement snippet info ------------------------------------
 
 (defmethod ->replacement-snippet-info [:sql ReferencedCardQuery]
   [_driver {:keys [query]}]
   {:prepared-statement-args nil
    :replacement-snippet     (str "(" query ")")})
+
+
+;;; -------------------------------------- SQL Snippet replacement snippet info --------------------------------------
+
+(defmethod ->replacement-snippet-info [:sql SqlSnippet]
+  [_driver {:keys [sql]}]
+  {:prepared-statement-args nil
+   :replacement-snippet     sql})
