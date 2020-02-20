@@ -287,6 +287,9 @@
    (partial is-clause? string-expressions)
    (s/recursive #'StringExpression)
 
+   (partial is-clause? :value)
+   value
+
    :else
    Field))
 
@@ -334,6 +337,9 @@
    (partial is-clause? arithmetic-expressions)
    (s/recursive #'ArithmeticExpression)
 
+   (partial is-clause? :value)
+   value
+
    :else
    Field))
 
@@ -350,6 +356,9 @@
 
    (partial is-clause? string-expressions)
    (s/recursive #'StringExpression)
+
+   (partial is-clause? :value)
+   value
 
    :else
    Field))
@@ -473,13 +482,13 @@
 (def ^:private StringFilterOptions
   {(s/optional-key :case-sensitive) s/Bool}) ; default true
 
-(defclause starts-with, field StringExpression, string-or-field StringExpression, options (optional StringFilterOptions))
-(defclause ends-with,   field StringExpression, string-or-field StringExpression, options (optional StringFilterOptions))
-(defclause contains,    field StringExpression, string-or-field StringExpression, options (optional StringFilterOptions))
+(defclause starts-with, field StringExpressionArg, string-or-field StringExpressionArg, options (optional StringFilterOptions))
+(defclause ends-with,   field StringExpressionArg, string-or-field StringExpressionArg, options (optional StringFilterOptions))
+(defclause contains,    field StringExpressionArg, string-or-field StringExpressionArg, options (optional StringFilterOptions))
 
 ;; SUGAR: this is rewritten as [:not [:contains ...]]
 (defclause ^:sugar does-not-contain
-  field StringExpression, string-or-field StringExpression, options (optional StringFilterOptions))
+  field StringExpressionArg, string-or-field StringExpressionArg, options (optional StringFilterOptions))
 
 (def ^:private TimeIntervalOptions
   ;; Should we include partial results for the current day/month/etc? Defaults to `false`; set this to `true` to
