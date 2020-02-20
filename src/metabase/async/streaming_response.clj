@@ -107,7 +107,7 @@
         (.flush writer))
       (catch Throwable _))))
 
-(defn- write-to-stream! [f {:keys [write-keepalive-newlines?]} ^OutputStream os]
+(defn- write-to-stream! [f {:keys [write-keepalive-newlines?]} ^OutputStream os finished-chan]
   (with-open-chan [canceled-chan (a/promise-chan)]
     (with-open [os os
                 os (jetty-eof-canceling-output-stream os canceled-chan)
@@ -118,9 +118,13 @@
         (catch Throwable e
           (write-error! os {:message (.getMessage e)}))
         (finally
-          (.flush os))))))
+          (.flush os)
+          (a/>!! finished-chan (if (a/poll! canceled-chan)
+                                 :canceled
+                                 :done))
+          (a/close! finished-chan))))))
 
-(p.types/deftype+ StreamingResponse [f options]
+(p.types/deftype+ StreamingResponse [f options donechan]
   pretty/PrettyPrintable
   (pretty [_]
     (list (symbol (str (.getCanonicalName StreamingResponse) \.)) f options))
@@ -128,7 +132,7 @@
   ;; both sync and async responses
   ring.protocols/StreamableResponseBody
   (write-body-to-stream [_ _ os]
-    (write-to-stream! f options os))
+    (write-to-stream! f options os donechan))
 
   ;; async responses only
   compojure.response/Sendable
@@ -137,6 +141,12 @@
                     {:content-type (:content-type options)
                      :headers      (:headers options)
                      :status       202}))))
+
+(defn finished-chan
+  "Fetch a promise channel that will get a message when a `StreamingResponse` is completely finished. Provided primarily
+  for logging purposes."
+  [^StreamingResponse response]
+  (.donechan response))
 
 (defmacro streaming-response
   "Return an streaming response that writes keepalive newline bytes.
@@ -159,4 +169,5 @@
   [options [os-binding canceled-chan-binding :as bindings] & body]
   {:pre [(= (count bindings) 2)]}
   `(->StreamingResponse (fn [~(vary-meta os-binding assoc :tag 'java.io.OutputStream) ~canceled-chan-binding] ~@body)
-                        ~options))
+                        ~options
+                        (a/promise-chan)))
