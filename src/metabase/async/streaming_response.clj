@@ -98,7 +98,7 @@
 
 (defn write-error!
   "Write an error to the output stream, formatting it nicely."
-  [os obj]
+  [^OutputStream os obj]
   (if (instance? Throwable obj)
     (recur os (format-exception obj))
     (try
@@ -107,7 +107,7 @@
         (.flush writer))
       (catch Throwable _))))
 
-(defn- write-to-stream! [f {:keys [write-keepalive-newlines?]} os]
+(defn- write-to-stream! [f {:keys [write-keepalive-newlines?]} ^OutputStream os]
   (with-open-chan [canceled-chan (a/promise-chan)]
     (with-open [os os
                 os (jetty-eof-canceling-output-stream os canceled-chan)
