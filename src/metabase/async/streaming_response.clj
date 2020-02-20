@@ -130,13 +130,18 @@
   (write-body-to-stream [_ _ os]
     (write-to-stream! f options os))
 
+  ;; sync responses only
+  compojure.response/Renderable
+  (render [this _]
+    (merge (ring.response/response this)
+           {:content-type (:content-type options)
+            :headers      (:headers options)
+            :status       202}))
+
   ;; async responses only
   compojure.response/Sendable
-  (send* [this _ respond _]
-    (respond (merge (ring.response/response this)
-                    {:content-type (:content-type options)
-                     :headers      (:headers options)
-                     :status       202}))))
+  (send* [this request respond _]
+    (respond (compojure.response/render this request))))
 
 (defmacro streaming-response
   "Return an streaming response that writes keepalive newline bytes.
