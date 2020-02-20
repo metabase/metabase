@@ -2,9 +2,7 @@
   "Amazon Redshift Driver."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
-            [honeysql
-             [core :as hsql]
-             [format :as hformat]]
+            [honeysql.core :as hsql]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc
@@ -102,10 +100,18 @@
   "SET TIMEZONE TO %s;")
 
 
+(defn- splice-raw-string-value
+  [driver s]
+  (hsql/raw (str "'" (sql.qp/->honeysql driver s) "'")))
+
 (defmethod sql.qp/->honeysql [:redshift :regex-match-first]
   [driver [_ arg pattern]]
-  (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (hsql/raw (str "'" (sql.qp/->honeysql driver pattern) "'"))))
+  (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (splice-raw-stirng-value driver pattern)))
 
+(defmethod sql.qp/->honeysql [:redshift :replace]
+  [driver [_ arg pattern replacement]]
+  (hsql/call :replace (->honeysql driver arg) (splice-raw-stirng-value driver pattern)
+             (splice-raw-stirng-value driver replacement)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
