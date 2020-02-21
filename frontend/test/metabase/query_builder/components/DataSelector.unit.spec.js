@@ -106,27 +106,32 @@ describe("DataSelector", () => {
       );
     };
 
+    // on initial load, we fetch databases
     await delay(1);
     expect(fetchDatabases).toHaveBeenCalled();
-
     getByText("Loading...");
 
+    // select a db
     rerenderWith({ databases });
     getByText("Sample Dataset");
     getByText("Multi-schema Database");
     fireEvent.click(getByText("Multi-schema Database"));
 
+    // that triggers fetching schemas
     await delay(1);
     expect(fetchSchemas).toHaveBeenCalled();
 
+    // select a schema
     rerenderWith({ databases, schemas });
     getByText("first_schema");
     getByText("second_schema");
     fireEvent.click(getByText("second_schema"));
 
+    // that triggers fetching tables
     await delay(1);
     expect(fetchSchemaTables).toHaveBeenCalled();
 
+    // table is displayed
     rerenderWith({ databases, schemas, tables });
     getByText("Table in Second Schema");
   });
