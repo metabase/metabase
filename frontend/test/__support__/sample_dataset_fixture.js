@@ -6,7 +6,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { chain } from "icepick";
 
 import state from "./sample_dataset_fixture.json";
-export state from "./sample_dataset_fixture.json";
+export { default as state } from "./sample_dataset_fixture.json";
 
 export const SAMPLE_DATASET_ID = 1;
 export const ANOTHER_DATABASE_ID = 2;

@@ -162,7 +162,7 @@
           "native-parameters",
           "expressions"
         ],
-        "name": "Multi-schema Dataset",
+        "name": "Multi-schema Database",
         "caveats": null,
         "tables": [],
         "is_full_sync": true,
