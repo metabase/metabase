@@ -156,7 +156,7 @@
   (send* [this request respond _]
     (respond (compojure.response/render this request))))
 
-(defn- render [streaming-response gzip?]
+(defn- render [^StreamingResponse streaming-response gzip?]
   (let [{:keys [headers content-type], :as options} (.options streaming-response)]
     (assoc (ring.response/response (if gzip?
                                      (StreamingResponse. (.f streaming-response)
