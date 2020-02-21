@@ -1133,7 +1133,7 @@ const loadingDashCards = handleActions(
       next: (state, { payload }) => ({
         ...state,
         dashcardIds: Object.values(payload.entities.dashcard || {})
-          .filter(dc => dc.card.display !== "text")
+          .filter(dc => !isVirtualDashCard(dc))
           .map(dc => dc.id),
       }),
     },
