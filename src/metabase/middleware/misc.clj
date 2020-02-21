@@ -14,26 +14,23 @@
 
 (comment metabase.async.streaming-response/keep-me)
 
-(defn- add-content-type* [request response]
-  (update-in
-   response
-   [:headers "Content-Type"]
-   (fn [content-type]
-     (or content-type
-         (when (middleware.u/api-call? request)
-           (if (string? (:body response))
-             "text/plain"
-             "application/json; charset=utf-8"))))))
+(defn- add-content-type* [request {:keys [body], {:strs [Content-Type]} :headers, :as response}]
+  (cond-> response
+    (not Content-Type)
+    (assoc-in [:headers "Content-Type"] (if (string? body)
+                                          "text/plain"
+                                          "application/json; charset=utf-8"))))
 
 (defn add-content-type
   "Add an appropriate Content-Type header to response if it doesn't already have one. Most responses should already
   have one, so this is a fallback for ones that for one reason or another do not."
   [handler]
   (fn [request respond raise]
-    (handler
-     request
-     (comp respond (partial add-content-type* request))
-     raise)))
+    (handler request
+             (if-not (middleware.u/api-call? request)
+               respond
+               (comp respond (partial add-content-type* request)))
+             raise)))
 
 
 ;;; ------------------------------------------------ SETTING SITE-URL ------------------------------------------------
@@ -81,10 +78,10 @@
 ;;; ------------------------------------------ Disable Streaming Buffering -------------------------------------------
 
 (defn- maybe-add-disable-buffering-header [{:keys [body], :as response}]
-  (if (or (instance? StreamingResponse body)
-          (instance? ManyToManyChannel body))
-    (assoc-in response [:headers "X-Accel-Buffering"] "no")
-    response))
+  (cond-> response
+    (or (instance? StreamingResponse body)
+        (instance? ManyToManyChannel body))
+    (assoc-in [:headers "X-Accel-Buffering"] "no")))
 
 (defn disable-streaming-buffering
   "Tell nginx not to batch streaming responses -- otherwise the keepalive bytes aren't written and

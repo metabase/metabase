@@ -9,6 +9,7 @@
             [ring.util.response :as ring.response])
   (:import [java.io BufferedWriter FilterOutputStream OutputStream OutputStreamWriter]
            java.nio.charset.StandardCharsets
+           java.util.zip.GZIPOutputStream
            org.eclipse.jetty.io.EofException))
 
 (def ^:private keepalive-interval-ms
@@ -107,22 +108,33 @@
         (.flush writer))
       (catch Throwable _))))
 
-(defn- write-to-stream! [f {:keys [write-keepalive-newlines?]} ^OutputStream os finished-chan]
-  (with-open-chan [canceled-chan (a/promise-chan)]
-    (with-open [os os
-                os (jetty-eof-canceling-output-stream os canceled-chan)
-                os (keepalive-output-stream os write-keepalive-newlines?)]
+(defn- write-to-stream! [f {:keys [write-keepalive-newlines? gzip?], :as options} ^OutputStream os finished-chan]
+  (if gzip?
+    (with-open [gzos (GZIPOutputStream. os true)]
+      (write-to-stream! f (dissoc options :gzip?) gzos finished-chan))
+    (with-open-chan [canceled-chan (a/promise-chan)]
+      (with-open [os os
+                  os (jetty-eof-canceling-output-stream os canceled-chan)
+                  os (keepalive-output-stream os write-keepalive-newlines?)]
 
-      (try
-        (f os canceled-chan)
-        (catch Throwable e
-          (write-error! os {:message (.getMessage e)}))
-        (finally
-          (.flush os)
-          (a/>!! finished-chan (if (a/poll! canceled-chan)
-                                 :canceled
-                                 :done))
-          (a/close! finished-chan))))))
+        (try
+          (f os canceled-chan)
+          (catch Throwable e
+            (write-error! os {:message (.getMessage e)}))
+          (finally
+            (.flush os)
+            (a/>!! finished-chan (if (a/poll! canceled-chan)
+                                   :canceled
+                                   :done))
+            (a/close! finished-chan)))))))
+
+;; `ring.middleware.gzip` doesn't work on our StreamingResponse class.
+(defn- should-gzip-response?
+  "GZIP a response if the client accepts GZIP encoding, and, if quality is specified, quality > 0."
+  [{{:strs [accept-encoding]} :headers}]
+  (re-find #"gzip|\*" accept-encoding))
+
+(declare render)
 
 (p.types/deftype+ StreamingResponse [f options donechan]
   pretty/PrettyPrintable
@@ -134,13 +146,26 @@
   (write-body-to-stream [_ _ os]
     (write-to-stream! f options os donechan))
 
+  ;; sync responses only
+  compojure.response/Renderable
+  (render [this request]
+    (render this (should-gzip-response? request)))
+
   ;; async responses only
   compojure.response/Sendable
-  (send* [this _ respond _]
-    (respond (merge (ring.response/response this)
-                    {:content-type (:content-type options)
-                     :headers      (:headers options)
-                     :status       202}))))
+  (send* [this request respond _]
+    (respond (compojure.response/render this request))))
+
+(defn- render [^StreamingResponse streaming-response gzip?]
+  (let [{:keys [headers content-type], :as options} (.options streaming-response)]
+    (assoc (ring.response/response (if gzip?
+                                     (StreamingResponse. (.f streaming-response)
+                                                         (assoc options :gzip? true)
+                                                         (.donechan streaming-response))
+                                     streaming-response))
+           :headers      (cond-> (assoc headers "Content-Type" content-type)
+                           gzip? (assoc "Content-Encoding" "gzip"))
+           :status       202)))
 
 (defn finished-chan
   "Fetch a promise channel that will get a message when a `StreamingResponse` is completely finished. Provided primarily
