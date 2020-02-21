@@ -114,7 +114,7 @@
                        ['Revision                   :user_id]
                        ['Segment                    :creator_id]
                        ['Session                    :user_id]
-                       [PermissionsGroupMembership :user_id]
+                       [PermissionsGroupMembership  :user_id]
                        ['PermissionsRevision        :user_id]
                        ['ViewLog                    :user_id]]]
       (db/delete! model k id))))
