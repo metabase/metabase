@@ -1,33 +1,8 @@
+export * from "./config";
+
 import _ from "underscore";
-
 import Dimension from "metabase-lib/lib/Dimension";
-
-import {
-  OPERATORS,
-  AGGREGATIONS,
-  FUNCTIONS,
-  FILTERS,
-  FILTER_OPERATORS,
-  getMBQLName,
-  getExpressionName,
-} from "./config";
-export {
-  OPERATORS,
-  AGGREGATIONS,
-  FUNCTIONS,
-  FILTERS,
-  FILTER_OPERATORS,
-} from "./config";
-
-// functions (includes aggregations, string extracts, filters)
-
-export function parseFunctionName(expressionName) {
-  return getMBQLName(expressionName);
-}
-
-export function formatFunctionName(mbqlName) {
-  return getExpressionName(mbqlName);
-}
+import { OPERATORS, FUNCTIONS, getMBQLName } from "./config";
 
 // IDENTIFIERS
 
@@ -96,62 +71,68 @@ function swapQuotes(str) {
 
 export function isExpression(expr) {
   return (
-    isMath(expr) ||
-    isAggregation(expr) ||
-    isFieldReference(expr) ||
-    isMetric(expr) ||
-    isFilter(expr) ||
+    isLiteral(expr) ||
+    isOperator(expr) ||
     isFunction(expr) ||
+    isDimension(expr) ||
+    isMetric(expr) ||
     isCase(expr)
   );
 }
 
-export function isFieldReference(expr) {
+export function isLiteral(expr) {
+  return isStringLiteral(expr) || isNumberLiteral(expr);
+}
+
+export function isStringLiteral(expr) {
+  return typeof expr === "string";
+}
+
+export function isNumberLiteral(expr) {
+  return typeof expr === "number";
+}
+
+export function isOperator(expr) {
+  return (
+    Array.isArray(expr) &&
+    OPERATORS.has(expr[0]) &&
+    expr
+      .slice(1, hasOptions(expr) ? -1 : 0) // skip options object at the end
+      .every(isExpression)
+  );
+}
+
+function isPlainObject(obj) {
+  return obj && Object.getPrototypeOf(obj) === Object.prototype;
+}
+
+export function hasOptions(expr) {
+  return isPlainObject(expr[expr.length - 1]);
+}
+
+export function isFunction(expr) {
+  return (
+    Array.isArray(expr) &&
+    FUNCTIONS.has(expr[0]) &&
+    expr
+      .slice(1, hasOptions(expr) ? -1 : 0) // skip options object at the end
+      .every(isExpression)
+  );
+}
+
+export function isDimension(expr) {
   return !!Dimension.parseMBQL(expr);
 }
 
 export function isMetric(expr) {
-  // case sensitive, unlike most mbql
   return (
     Array.isArray(expr) &&
-    expr.length === 2 &&
     expr[0] === "metric" &&
+    expr.length === 2 &&
     typeof expr[1] === "number"
   );
 }
 
-export function isMath(expr) {
-  return (
-    Array.isArray(expr) &&
-    OPERATORS.has(expr[0]) &&
-    _.all(expr.slice(1), isValidArg)
-  );
-}
-
-export function isAggregation(expr) {
-  return (
-    Array.isArray(expr) && AGGREGATIONS.has(expr[0])
-    // &&  _.all(expr.slice(1), isValidArg)
-  );
-}
-
-export function isFilter(expr) {
-  return (
-    Array.isArray(expr) &&
-    (FILTERS.has(expr[0]) || FILTER_OPERATORS.has(expr[0]))
-  ); // && _.all(expr.slice(1), isValidArg)
-}
-
-export function isFunction(expr) {
-  return Array.isArray(expr) && FUNCTIONS.has(expr[0]); // && _.all(expr.slice(1), isValidArg)
-}
-
 export function isCase(expr) {
   return Array.isArray(expr) && expr[0] === "case"; // && _.all(expr.slice(1), isValidArg)
-}
-
-// UTILS
-
-export function isValidArg(arg) {
-  return isExpression(arg) || isFieldReference(arg) || typeof arg === "number";
 }

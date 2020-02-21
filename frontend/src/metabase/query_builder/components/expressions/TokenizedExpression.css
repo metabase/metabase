@@ -16,28 +16,28 @@
 
 /* DIMENSION */
 .Expression-dimension .Expression-identifier,
-.Expression-dimension .Expression-string {
+.Expression-dimension .Expression-identifier-string {
   margin: 1px 1px;
   padding: 1px 3px;
   border: 1px solid var(--color-brand);
   background-color: var(--color-bg-medium);
 }
 .Expression-selected.Expression-dimension .Expression-identifier,
-.Expression-selected.Expression-dimension .Expression-string {
+.Expression-selected.Expression-dimension .Expression-identifier-string {
   color: white;
   background-color: var(--color-brand);
 }
 
 /* METRIC */
 .Expression-metric .Expression-identifier,
-.Expression-metric .Expression-string {
+.Expression-metric .Expression-identifier-string {
   margin: 1px 1px;
   padding: 1px 3px;
   border: 1px solid var(--color-accent1);
   background-color: var(--color-bg-white);
 }
 .Expression-metric.Expression-selected .Expression-identifier,
-.Expression-metric.Expression-selected .Expression-string {
+.Expression-metric.Expression-selected .Expression-identifier-string {
   color: white;
   background-color: var(--color-brand);
 }

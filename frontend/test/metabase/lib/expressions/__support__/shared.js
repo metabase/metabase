@@ -1,5 +1,6 @@
 import { ORDERS, PEOPLE } from "__support__/sample_dataset_fixture";
 
+const created = ORDERS.CREATED_AT.dimension().mbql();
 const total = ORDERS.TOTAL.dimension().mbql();
 const subtotal = ORDERS.SUBTOTAL.dimension().mbql();
 const tax = ORDERS.TAX.dimension().mbql();
@@ -96,10 +97,16 @@ const aggregation = [
 
 const filter = [
   ["Total < 10", ["<", total, 10], "filter operator"],
+  ["NOT Total < 10", ["not", ["<", total, 10]], "filter with not"],
   [
-    "Total < 10 and Tax >= 1",
+    "Total < 10 AND Tax >= 1",
     ["and", ["<", total, 10], [">=", tax, 1]],
     "filter with AND",
+  ],
+  [
+    "Interval(\"Created At\", -1, 'month')",
+    ["time-interval", created, -1, "month"],
+    "time interval filter",
   ],
 ];
 

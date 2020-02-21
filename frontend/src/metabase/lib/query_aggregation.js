@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { isMath } from "metabase/lib/expressions";
+import { isOperator } from "metabase/lib/expressions";
 
 export function hasOptions(clause) {
   return Array.isArray(clause) && clause[0] === "aggregation-options";
@@ -74,12 +74,13 @@ export function getMetric(aggregation) {
 }
 
 export function isCustom(aggregation) {
-  // for now treal all named clauses as custom
+  // for now treat all named clauses as custom
   return (
     (aggregation && hasOptions(aggregation)) ||
-    isMath(aggregation) ||
+    isOperator(aggregation) ||
     isSpecial(aggregation) ||
-    (isStandard(aggregation) && _.any(aggregation.slice(1), arg => isMath(arg)))
+    (isStandard(aggregation) &&
+      _.any(aggregation.slice(1), arg => isOperator(arg)))
   );
 }
 

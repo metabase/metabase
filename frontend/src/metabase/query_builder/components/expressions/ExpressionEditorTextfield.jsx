@@ -188,6 +188,9 @@ export default class ExpressionEditorTextfield extends Component {
 
     // whenever our input blurs we push the updated expression to our parent if valid
     if (this.state.parsedExpression) {
+      if (!isExpression(this.state.parsedExpression)) {
+        console.warn("isExpression=false", this.state.parsedExpression);
+      }
       this.props.onChange(this.state.parsedExpression);
     } else if (this.state.expressionErrorMessage) {
       this.props.onError(this.state.expressionErrorMessage);

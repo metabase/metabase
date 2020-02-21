@@ -147,13 +147,16 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
   booleanExpression(ctx) {
     return this._arithmeticExpression(ctx);
   }
-  filterOperatorExpression(ctx) {
+  binaryOperatorExpression(ctx) {
     return syntax(
       "filter",
       this.visit(ctx.lhs),
       token(ctx.operator[0]),
       this.visit(ctx.rhs),
     );
+  }
+  unaryOperatorExpression(ctx) {
+    return syntax("filter", token(ctx.operator[0]), this.visit(ctx.operand));
   }
 }
 

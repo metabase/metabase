@@ -12,6 +12,7 @@ import {
   Case,
   FilterOperator,
   BooleanOperator,
+  Not,
   StringLiteral,
   NumberLiteral,
   Minus,
@@ -96,6 +97,20 @@ export class ExpressionParser extends CstParser {
         $.CONSUME(MultiplicativeOperator, { LABEL: "operator" });
         $.SUBRULE2($.atomicExpression, {
           ARGS: [returnType],
+          LABEL: "rhs",
+        });
+      });
+    });
+
+    $.RULE("booleanExpression", () => {
+      $.SUBRULE($.atomicExpression, {
+        ARGS: ["boolean"],
+        LABEL: "lhs",
+      });
+      $.MANY(() => {
+        $.CONSUME(BooleanOperator, { LABEL: "operator" });
+        $.SUBRULE2($.atomicExpression, {
+          ARGS: ["boolean"],
           LABEL: "rhs",
         });
       });
@@ -218,7 +233,14 @@ export class ExpressionParser extends CstParser {
           {
             GATE: () => returnType === "boolean",
             ALT: () =>
-              $.SUBRULE($.filterOperatorExpression, {
+              $.SUBRULE($.binaryOperatorExpression, {
+                LABEL: "expression",
+              }),
+          },
+          {
+            GATE: () => returnType === "boolean",
+            ALT: () =>
+              $.SUBRULE($.unaryOperatorExpression, {
                 LABEL: "expression",
               }),
           },
@@ -269,23 +291,14 @@ export class ExpressionParser extends CstParser {
       $.CONSUME(RParen);
     });
 
-    // FILTERS
-
-    $.RULE("booleanExpression", () => {
-      $.SUBRULE($.atomicExpression, {
-        ARGS: ["boolean"],
-        LABEL: "lhs",
-      });
-      $.MANY(() => {
-        $.CONSUME(BooleanOperator, { LABEL: "operator" });
-        $.SUBRULE2($.atomicExpression, {
-          ARGS: ["boolean"],
-          LABEL: "rhs",
-        });
-      });
+    $.RULE("unaryOperatorExpression", () => {
+      $.CONSUME(Not, { LABEL: "operator" });
+      $.SUBRULE($.atomicExpression, { LABEL: "operand", ARGS: ["boolean"] });
     });
 
-    $.RULE("filterOperatorExpression", () => {
+    // FILTERS
+
+    $.RULE("binaryOperatorExpression", () => {
       $.SUBRULE($.dimensionExpression, {
         LABEL: "lhs",
       });

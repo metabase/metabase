@@ -8,7 +8,6 @@ import { parse as parseExpression } from "metabase/lib/expressions/syntax";
 
 export default class TokenizedExpression extends React.Component {
   render() {
-    console.log(this.props);
     try {
       const parsed = parseExpression(this.props.source, this.props.parserInfo);
       return renderSyntaxTree(parsed);

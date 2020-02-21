@@ -2,10 +2,10 @@ import { Lexer, createToken } from "chevrotain";
 
 import {
   getExpressionName as getExpressionName_,
-  AGGREGATIONS,
-  FUNCTIONS,
-  FILTERS,
-  CLAUSE_ARGUMENTS,
+  AGGREGATION_FUNCTIONS,
+  EXPRESSION_FUNCTIONS,
+  FILTER_FUNCTIONS,
+  MBQL_CLAUSES,
 } from "./config";
 
 function getExpressionName(mbqlName) {
@@ -90,12 +90,12 @@ export const AggregationFunctionName = createToken({
   categories: [FunctionName],
 });
 
-for (const clause of Array.from(AGGREGATIONS)) {
+for (const clause of Array.from(AGGREGATION_FUNCTIONS)) {
   createFunctionToken(
     AggregationFunctionName,
     clause,
-    CLAUSE_ARGUMENTS[clause],
-    "aggregation",
+    MBQL_CLAUSES[clause].args,
+    MBQL_CLAUSES[clause].type,
   );
 }
 
@@ -107,12 +107,12 @@ export const ExpressionFunctionName = createToken({
   categories: [FunctionName],
 });
 
-for (const clause of Array.from(FUNCTIONS)) {
+for (const clause of Array.from(EXPRESSION_FUNCTIONS)) {
   createFunctionToken(
     ExpressionFunctionName,
     clause,
-    CLAUSE_ARGUMENTS[clause],
-    "expression",
+    MBQL_CLAUSES[clause].args,
+    MBQL_CLAUSES[clause].type,
   );
 }
 
@@ -131,12 +131,12 @@ export const FilterFunctionName = createToken({
   categories: [FunctionName],
 });
 
-for (const clause of Array.from(FILTERS)) {
+for (const clause of Array.from(FILTER_FUNCTIONS)) {
   createFunctionToken(
     FilterFunctionName,
     clause,
-    CLAUSE_ARGUMENTS[clause],
-    "boolean",
+    MBQL_CLAUSES[clause].args,
+    MBQL_CLAUSES[clause].type,
   );
 }
 
@@ -158,16 +158,21 @@ const filterOperatorTokens = [
   createToken({ name: "GT", pattern: /\>/, categories: [FilterOperator] }),
   createToken({ name: "EQ", pattern: /\=/, categories: [FilterOperator] }),
   createToken({
-    name: "And",
-    pattern: /and/i,
+    name: "AND",
+    pattern: /AND/i,
     categories: [BooleanOperator],
   }),
   createToken({
-    name: "Or",
-    pattern: /or/i,
+    name: "OR",
+    pattern: /OR/i,
     categories: [BooleanOperator],
   }),
 ];
+
+export const Not = createToken({
+  name: "NOT",
+  pattern: /NOT/i,
+});
 
 export const Comma = createToken({
   name: "Comma",
@@ -216,6 +221,7 @@ export const allTokens = [
   // filter
   FilterOperator,
   BooleanOperator,
+  Not,
   ...filterOperatorTokens,
   // literals
   StringLiteral,

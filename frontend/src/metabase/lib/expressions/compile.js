@@ -1,6 +1,6 @@
 import _ from "underscore";
 import {
-  parseFunctionName,
+  getMBQLName,
   parseDimension,
   parseMetric,
   parseStringLiteral,
@@ -36,7 +36,7 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
 
   functionExpression(ctx) {
     const functionName = ctx.functionName[0].image;
-    const fn = parseFunctionName(functionName);
+    const fn = getMBQLName(functionName);
     if (!fn) {
       throw new Error(`Unknown Function: ${functionName}`);
     }
@@ -98,11 +98,17 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
   booleanExpression(ctx) {
     return this._collapsibleOperatorExpression(ctx);
   }
-  filterOperatorExpression(ctx) {
+
+  binaryOperatorExpression(ctx) {
     const operator = ctx.operator[0].image.toLowerCase();
     const lhs = this.visit(ctx.lhs);
     const rhs = this.visit(ctx.rhs);
     return [operator, lhs, rhs];
+  }
+  unaryOperatorExpression(ctx) {
+    const operator = ctx.operator[0].image.toLowerCase();
+    const operand = this.visit(ctx.operand);
+    return [operator, operand];
   }
 
   // HELPERS:

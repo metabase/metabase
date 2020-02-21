@@ -4,8 +4,8 @@ import { t } from "ttag";
 import { parser } from "./parser";
 
 import {
-  formatFunctionName,
-  parseFunctionName,
+  getExpressionName,
+  getMBQLName,
   // dimensions:
   getDimensionName,
   formatDimensionName,
@@ -141,7 +141,7 @@ export function suggest(
       if (!outsideAggregation) {
         let dimensions = [];
         if (startRule === "aggregation" && currentAggregationToken) {
-          const aggregationShort = parseFunctionName(
+          const aggregationShort = getMBQLName(
             getImage(currentAggregationToken),
           );
           dimensions = query.aggregationFieldOptions(aggregationShort).all();
@@ -174,14 +174,14 @@ export function suggest(
         finalSuggestions.push(
           ...query
             .aggregationOperatorsWithoutRows()
-            .filter(a => formatFunctionName(a.short))
+            .filter(a => getExpressionName(a.short))
             .map(aggregationOperator => {
               const arity = aggregationOperator.fields.length;
               return {
                 type: "aggregations",
-                name: formatFunctionName(aggregationOperator.short),
+                name: getExpressionName(aggregationOperator.short),
                 text:
-                  formatFunctionName(aggregationOperator.short) +
+                  getExpressionName(aggregationOperator.short) +
                   (arity > 0 ? "(" : " "),
                 postfixText: arity > 0 ? ")" : " ",
                 prefixTrim: /\w+$/,
