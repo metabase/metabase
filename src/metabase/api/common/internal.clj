@@ -10,6 +10,7 @@
             [metabase.util
              [i18n :as ui18n :refer [tru]]
              [schema :as su]]
+            [potemkin.types :as p.types]
             [schema.core :as s])
   (:import clojure.core.async.impl.channels.ManyToManyChannel
            metabase.async.streaming_response.StreamingResponse))
@@ -253,7 +254,7 @@
         (^String .replace "/" "_")
         symbol)))
 
-(defprotocol EndpointResponse
+(p.types/defprotocol+ EndpointResponse
   "Protocol for transformations that should be done to the value returned by a `defendpoint` form before it
   Compojure/Ring see it."
   (wrap-response-if-needed [this]
@@ -263,6 +264,10 @@
   Object
   (wrap-response-if-needed [this]
     {:status 200, :body this})
+
+  nil
+  (wrap-response-if-needed [_]
+    {:status 204, :body nil})
 
   StreamingResponse
   (wrap-response-if-needed [this]
@@ -274,7 +279,7 @@
 
   clojure.lang.IPersistentMap
   (wrap-response-if-needed [m]
-    (if ((every-pred :status :body) m)
+    (if (and (:status m) (contains? m :body))
       m
       {:status 200, :body m}))
 

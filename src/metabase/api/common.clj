@@ -215,7 +215,7 @@
   [bindings & body]
   `(do-api-let ~generic-500 ~bindings ~@body))
 
-(def ^:const generic-204-no-content
+(def generic-204-no-content
   "A 'No Content' response for `DELETE` endpoints to return."
   {:status 204, :body nil})
 
@@ -231,11 +231,11 @@
    -  calls `auto-parse` to automatically parse certain args. e.g. `id` is converted from `String` to `Integer` via
       `Integer/parseInt`
 
-   -  converts ROUTE from a simple form like `\"/:id\"` to a typed one like `[\"/:id\" :id #\"[0-9]+\"]`
+   -  converts `route` from a simple form like `\"/:id\"` to a typed one like `[\"/:id\" :id #\"[0-9]+\"]`
 
    -  sequentially applies specified annotation functions on args to validate them.
 
-   -  automatically calls `wrap-response-if-needed` on the result of BODY
+   -  automatically calls `wrap-response-if-needed` on the result of `body`
 
    -  tags function's metadata in a way that subsequent calls to `define-routes` (see below) will automatically include
       the function in the generated `defroutes` form.

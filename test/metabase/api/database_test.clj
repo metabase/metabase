@@ -475,10 +475,11 @@
            ((test-users/user->client :crowberto) :get 200
             (format "database/%d/metadata" mbql.s/saved-questions-virtual-database-id))))))
 
-;; if no eligible Saved Questions exist the virtual DB metadata endpoint should just return `nil`
 (deftest return-nil-when-no-eligible-saved-questions
-  (is (nil? ((test-users/user->client :crowberto) :get 200
-             (format "database/%d/metadata" mbql.s/saved-questions-virtual-database-id)))))
+  (testing "if no eligible Saved Questions exist the virtual DB metadata endpoint should just return `nil`"
+    (is (= nil
+           ((test-users/user->client :crowberto) :get 204
+            (format "database/%d/metadata" mbql.s/saved-questions-virtual-database-id))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
