@@ -167,6 +167,49 @@ describe("DataSelector", () => {
     await delay(1); // fetchDatabases hasn't been called until the next tick
     expect(fetchDatabases).toHaveBeenCalled();
   });
+
+  it("should click into a single-schema db after expanding a multi-schema db", () => {
+    const { getByText, queryByText } = render(
+      <DataSelector
+        steps={["DATABASE", "SCHEMA", "TABLE"]}
+        combineDatabaseSchemaSteps
+        triggerElement={<div />}
+        databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATASET]}
+        metadata={metadata}
+        isOpen={true}
+      />,
+    );
+
+    fireEvent.click(getByText("Multi-schema Database"));
+    getByText("first_schema");
+    fireEvent.click(getByText("Sample Dataset"));
+    getByText("Orders");
+  });
+
+  it("should expand multi-schema after clicking into single-schema", async () => {
+    const { getByText, queryByText } = render(
+      <DataSelector
+        steps={["DATABASE", "SCHEMA", "TABLE"]}
+        combineDatabaseSchemaSteps
+        triggerElement={<div />}
+        databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATASET]}
+        metadata={metadata}
+        isOpen={true}
+      />,
+    );
+
+    fireEvent.click(getByText("Sample Dataset"));
+    await delay(1);
+    // check that tables are listed
+    getByText("Orders");
+    // click header to return to db list
+    fireEvent.click(getByText("Sample Dataset"));
+    // click on a multi-schema db
+    fireEvent.click(getByText("Multi-schema Database"));
+    // see schema appear and click to view tables for good measure
+    fireEvent.click(getByText("first_schema"));
+    getByText("Table in First Schema");
+  });
 });
 
 // removes associated ids from entities so we can load only some of them
