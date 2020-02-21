@@ -4,6 +4,7 @@
              [permissions :as perms]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-tru]]
+            [schema.core :as s]
             [toucan.models :as models]))
 
 ;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
@@ -33,3 +34,12 @@
    {:can-read?         (partial i/current-user-has-full-permissions? :read)
     :can-write?        (partial i/current-user-has-full-permissions? :write)
     :perms-objects-set perms-objects-set}))
+
+
+;;; ---------------------------------------------------- Schemas -----------------------------------------------------
+
+(def NativeQuerySnippetName
+  "Schema checking that snippet names do not include \"}}\""
+  (s/pred (comp
+           (complement #(boolean (re-find #"}}" %)))
+           string?)))
