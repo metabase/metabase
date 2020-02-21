@@ -1023,7 +1023,7 @@ exports[`Select should render "kitchen_sink" correctly 1`] = `
         , 
       </span>
       <span>
-        Avatar Image URL
+        Category
         
       </span>
     </span>
@@ -1064,7 +1064,7 @@ exports[`Select should render "multiple" correctly 1`] = `
         , 
       </span>
       <span>
-        Avatar Image URL
+        Category
         
       </span>
     </span>
