@@ -335,7 +335,7 @@ function transformSingleSeries(s, series, seriesIndex) {
   const { card, data } = s;
 
   // HACK: prevents cards from being transformed too many times
-  if (card._transformed) {
+  if (data._transformed) {
     return [s];
   }
 
@@ -396,7 +396,6 @@ function transformSingleSeries(s, series, seriesIndex) {
         ]
           .filter(n => n)
           .join(": "),
-        _transformed: true,
         _breakoutValue: breakoutValue,
         _breakoutColumn: cols[seriesColumnIndex],
       },
@@ -404,6 +403,7 @@ function transformSingleSeries(s, series, seriesIndex) {
         rows: breakoutRowsByValue.get(breakoutValue),
         cols: rowColumnIndexes.map(i => cols[i]),
         _rawCols: cols,
+        _transformed: true,
       },
       // for when the legend header for the breakout is clicked
       clicked: {
@@ -439,7 +439,6 @@ function transformSingleSeries(s, series, seriesIndex) {
         card: {
           ...card,
           name: name,
-          _transformed: true,
           _seriesIndex: seriesIndex,
           // use underlying column name as the seriesKey since it should be unique
           // EXCEPT for dashboard multiseries, so check seriesIndex == 0
@@ -453,6 +452,7 @@ function transformSingleSeries(s, series, seriesIndex) {
             return newRow;
           }),
           cols: rowColumnIndexes.map(i => cols[i]),
+          _transformed: true,
           _rawCols: cols,
         },
       };
