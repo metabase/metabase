@@ -210,7 +210,6 @@ export class UnconnectedDataSelector extends Component {
     const getField = id => _.findWhere(fields, { id }) || metadata.field(id);
 
     function setSelectedDatabase(database) {
-      console.log("setSelectedDatabase", database);
       selectedDatabase = database;
       if (!schemas && database) {
         schemas = database.schemas;
@@ -220,7 +219,6 @@ export class UnconnectedDataSelector extends Component {
       }
     }
     function setSelectedSchema(schema) {
-      console.log("setSelectedSchema", schema);
       selectedSchema = schema;
       if (!tables && schema) {
         tables = schema.tables;
@@ -288,7 +286,6 @@ export class UnconnectedDataSelector extends Component {
   // Like setState, but automatically adds computed state so we don't have to recalculate
   // repeatedly. Also returns a promise resolves after state is updated
   setStateWithComputedState(newState, newProps = this.props) {
-    console.log("setStateWithComputedState", { newState, newProps });
     return new Promise(resolve => {
       const computedState = this._getComputedState(newProps, {
         ...this.state,
@@ -446,7 +443,6 @@ export class UnconnectedDataSelector extends Component {
   };
 
   async loadStepData(stepName) {
-    console.log("loadStepData", stepName);
     const loadersForSteps = {
       // NOTE: make sure to return the action's resulting promise
       [DATABASE_STEP]: () => {
@@ -458,10 +454,8 @@ export class UnconnectedDataSelector extends Component {
       [TABLE_STEP]: () => {
         if (this.state.selectedDatabaseId != null) {
           if (this.state.selectedSchemaId != null) {
-            console.log("fetching schema tables");
             return this.props.fetchSchemaTables(this.state.selectedSchemaId);
           } else {
-            console.log("fetching database tables");
             return this.props.fetchDatabaseTables(
               this.state.selectedDatabaseId,
             );
@@ -477,19 +471,15 @@ export class UnconnectedDataSelector extends Component {
 
     if (loadersForSteps[stepName]) {
       try {
-        console.log("loading a");
         await this.setStateWithComputedState({
           isLoading: true,
           isError: false,
         });
-        console.log("loading b");
         await loadersForSteps[stepName]();
-        console.log("loading c");
         await this.setStateWithComputedState({
           isLoading: false,
           isError: false,
         });
-        console.log("loading d");
       } catch (e) {
         await this.setStateWithComputedState({
           isLoading: false,
@@ -500,9 +490,7 @@ export class UnconnectedDataSelector extends Component {
   }
 
   hasStepData(stepName) {
-    console.log("hasStepData", stepName);
     if (stepName === DATABASE_STEP) {
-      console.log("this.state.databases.length", this.state.databases.length);
       return this.state.databases.length > 0;
     } else if (stepName === SCHEMA_STEP) {
       return this.state.schemas.length > 0;
