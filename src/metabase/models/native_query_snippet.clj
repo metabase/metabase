@@ -3,7 +3,6 @@
              [interface :as i]
              [permissions :as perms]]
             [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru]]
             [schema.core :as s]
             [toucan.models :as models]))
 
@@ -14,7 +13,7 @@
 (defn- perms-objects-set
   "Permissions to read or write a native query snippet are the same as those of its parent Database."
   [snippet _]
-  #{(perms/object-path (u/get-id (:database-id snippet)))})
+  #{(perms/object-path (u/get-id (:database_id snippet)))})
 
 (u/strict-extend (class NativeQuerySnippet)
   models/IModel
