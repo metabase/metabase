@@ -2,12 +2,31 @@
   "Tests for /api/native-query-snippet endpoints."
   (:require [clojure.string :as str]
             [clojure.test :refer :all]
-            [metabase.test.data.users :refer [user->client]]))
+            [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
+            [metabase.test.data :as data]
+            [metabase.test.data.users :refer [fetch-user user->client]]
+            [toucan.util.test :as tt]))
 
 ;; GET /api/native-query-snippet
 (deftest list-snippets-api-test
-  (testing "TODO complete this"
-    (is false)))
+  (testing "list returns all snippets"
+    (let [rasta (fetch-user :rasta)]
+      (tt/with-temp* [NativeQuerySnippet [snippet-1 {:content     "1"
+                                                     :creator_id  (:id rasta)
+                                                     :database_id (data/id)
+                                                     :description "Test snippet 1"
+                                                     :name        "snippet_1"}]
+                      NativeQuerySnippet [snippet-2 {:content     "2"
+                                                     :creator_id  (:id rasta)
+                                                     :database_id (data/id)
+                                                     :description "Test snippet 2"
+                                                     :name        "snippet_2"}]]
+        (let [test-fields       [:content :creator_id :database_id :description :name]
+              snippets-from-api (->> ((user->client :crowberto) :get 200 "native-query-snippet")
+                                     (map #(select-keys % test-fields))
+                                     set)]
+          (is (contains? snippets-from-api (select-keys snippet-1 test-fields)))
+          (is (contains? snippets-from-api (select-keys snippet-2 test-fields))))))))
 
 ;; GET /api/native-query-snippet/:id
 (deftest read-snippet-api-test
