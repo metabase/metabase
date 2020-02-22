@@ -6,7 +6,7 @@
              [datasets :as datasets]
              [interface :as tx]]))
 
-(def event-based-dbs
+(defn timeseries-drivers []
   #{:druid})
 
 (def ^:private flattened-db-def
@@ -23,9 +23,15 @@
   [& body]
   `(do-with-flattened-dbdef (fn [] ~@body)))
 
-(defmacro expect-with-timeseries-dbs
+(defmacro ^:deprecated expect-with-timeseries-dbs
+  "DEPRECATED: Prefer
+
+    (deftest my-test
+      (mt/with-drivers (timeseries-drivers)
+        (with-flattened-dbdef
+          ...)))"
   {:style/indent 0}
   [expected actual]
-  `(datasets/expect-with-drivers event-based-dbs
+  `(datasets/expect-with-drivers (timeseries-drivers)
      (with-flattened-dbdef ~expected)
      (with-flattened-dbdef ~actual)))

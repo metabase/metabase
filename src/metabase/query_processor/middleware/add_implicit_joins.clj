@@ -12,7 +12,9 @@
             [metabase.models
              [field :refer [Field]]
              [table :refer [Table]]]
-            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor
+             [error-type :as error-type]
+             [store :as qp.store]]
             [metabase.util
              [i18n :refer [tru]]
              [schema :as su]]
@@ -227,11 +229,10 @@
     (do
       (when-not (driver/supports? driver/*driver* :foreign-keys)
         (throw (ex-info (tru "{0} driver does not support foreign keys." driver/*driver*)
-                 {:driver driver/*driver*})))
+                 {:driver driver/*driver*
+                  :type   error-type/unsupported-feature})))
       (update query :query resolve-fk-clauses))
     query))
-
-
 
 (defn add-implicit-joins
   "Fetch and store any Tables other than the source Table referred to by `fk->` clauses in an MBQL query, and add a
@@ -240,4 +241,5 @@
 
   This middleware also replaces all `fk->` clauses with `joined-field` clauses, which are easier to work with."
   [qp]
-  (comp qp add-implicit-joins*))
+  (fn [query rff context]
+    (qp (add-implicit-joins* query) rff context)))

@@ -1,11 +1,8 @@
 (ns metabase.driver.hive-like
-  (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as str]
+  (:require [clojure.string :as str]
             [honeysql.core :as hsql]
             [java-time :as t]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
+            [metabase.driver :as driver]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]
@@ -18,7 +15,7 @@
              [date-2 :as u.date]
              [honeysql-extensions :as hx]]
             [toucan.db :as db])
-  (:import [java.sql PreparedStatement ResultSet Types]
+  (:import [java.sql ResultSet Types]
            [java.time LocalDate OffsetDateTime ZonedDateTime]))
 
 (driver/register! :hive-like
@@ -57,7 +54,7 @@
     #"map"              :type/Dictionary
     #".*"               :type/*))
 
-(defmethod sql.qp/current-datetime-fn :hive-like [_] :%now)
+(defmethod sql.qp/current-datetime-honeysql-form :hive-like [_] :%now)
 
 (defmethod sql.qp/unix-timestamp->timestamp [:hive-like :seconds]
   [_ _ expr]
@@ -112,7 +109,7 @@
                 1)
           3)))
 
-(defmethod driver/date-add :hive-like
+(defmethod sql.qp/add-interval-honeysql-form :hive-like
   [_ hsql-form amount unit]
   (hx/+ (hx/->timestamp hsql-form) (hsql/raw (format "(INTERVAL '%d' %s)" (int amount) (name unit)))))
 
@@ -125,27 +122,6 @@
 (defmethod sql.qp/field->identifier :hive-like
   [_ field]
   (apply hsql/qualify (qualified-name-components field)))
-
-(defn- run-query
-  "Run the query itself."
-  [driver {sql :query, :keys [params remark max-rows]} connection]
-  (let [sql     (str "-- " remark "\n" sql)
-        options {:identifiers    identity
-                 :as-arrays?     true
-                 :max-rows       max-rows
-                 :read-columns   (partial sql-jdbc.execute/read-columns driver)
-                 :set-parameters (partial sql-jdbc.execute/set-parameters driver)}]
-    (with-open [connection (jdbc/get-connection connection)]
-      (with-open [^PreparedStatement statement (jdbc/prepare-statement connection sql options)]
-        (let [statement        (into [statement] params)
-              [columns & rows] (jdbc/query connection statement options)]
-          {:rows    (or rows [])
-           :columns (map u/qualified-name columns)})))))
-
-(defn run-query-without-timezone
-  "Runs the given query without trying to set a timezone"
-  [driver _ connection query]
-  (run-query driver query connection))
 
 (defmethod unprepare/unprepare-value [:hive-like String]
   [_ value]
@@ -170,17 +146,20 @@
   (sql-jdbc.execute/set-parameter driver ps i (t/local-date-time t (t/local-time 0))))
 
 ;; TIMEZONE FIXME — not sure what timezone the results actually come back as
-(defmethod sql-jdbc.execute/read-column [:hive-like Types/TIME]
-  [_ _ ^ResultSet rs rsmeta ^Integer i]
-  (when-let [t (.getTimestamp rs i)]
-    (t/offset-time (t/local-time t) (t/zone-offset 0))))
+(defmethod sql-jdbc.execute/read-column-thunk [:hive-like Types/TIME]
+  [_ ^ResultSet rs rsmeta ^Integer i]
+  (fn []
+    (when-let [t (.getTimestamp rs i)]
+      (t/offset-time (t/local-time t) (t/zone-offset 0)))))
 
-(defmethod sql-jdbc.execute/read-column [:hive-like Types/DATE]
-  [_ _ ^ResultSet rs rsmeta ^Integer i]
-  (when-let [t (.getDate rs i)]
-    (t/zoned-date-time (t/local-date t) (t/local-time 0) (t/zone-id "UTC"))))
+(defmethod sql-jdbc.execute/read-column-thunk [:hive-like Types/DATE]
+  [_ ^ResultSet rs rsmeta ^Integer i]
+  (fn []
+    (when-let [t (.getDate rs i)]
+      (t/zoned-date-time (t/local-date t) (t/local-time 0) (t/zone-id "UTC")))))
 
-(defmethod sql-jdbc.execute/read-column [:hive-like Types/TIMESTAMP]
-  [_ _ ^ResultSet rs rsmeta ^Integer i]
-  (when-let [t (.getTimestamp rs i)]
-    (t/zoned-date-time (t/local-date-time t) (t/zone-id "UTC"))))
+(defmethod sql-jdbc.execute/read-column-thunk [:hive-like Types/TIMESTAMP]
+  [_ ^ResultSet rs rsmeta ^Integer i]
+  (fn []
+    (when-let [t (.getTimestamp rs i)]
+      (t/zoned-date-time (t/local-date-time t) (t/zone-id "UTC")))))

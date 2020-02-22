@@ -1,7 +1,7 @@
 (ns metabase.api.setting-test
   (:require [clojure.test :refer :all]
-            [expectations :refer [expect]]
             [metabase.models.setting-test :refer [test-sensitive-setting test-setting-1 test-setting-2 test-setting-3]]
+            [metabase.test :as mt]
             [metabase.test.data.users :as test-users]
             [metabase.test.fixtures :as fixtures]))
 
@@ -16,106 +16,93 @@
 (defn- fetch-setting [setting-name status]
   ((test-users/user->client :crowberto) :get status (format "setting/%s" (name setting-name))))
 
-;; ## GET /api/setting
-;; Check that we can fetch all Settings for Org, except `:visiblity :internal` ones
-(expect
-  [{:key            "test-setting-1"
-    :value          nil
-    :is_env_setting true
-    :env_name       "MB_TEST_SETTING_1"
-    :description    "Test setting - this only shows up in dev (1)"
-    :default        "Using value of env var $MB_TEST_SETTING_1"}
-   {:key            "test-setting-2"
-    :value          "FANCY"
-    :is_env_setting false
-    :env_name       "MB_TEST_SETTING_2"
-    :description    "Test setting - this only shows up in dev (2)"
-    :default        "[Default Value]"}]
-  (do
-    (test-setting-1 nil)
-    (test-setting-2 "FANCY")
-    ; internal setting that should not be returned:
-    (test-setting-3 "oh hai")
-    (fetch-test-settings)))
+(deftest fetch-setting-test
+  (testing "GET /api/setting"
+    (testing "Check that we can fetch all Settings, except `:visiblity :internal` ones"
+      (test-setting-1 nil)
+      (test-setting-2 "FANCY")
+      (test-setting-3 "oh hai")         ; internal setting that should not be returned
+      (is (= [{:key            "test-setting-1"
+               :value          nil
+               :is_env_setting true
+               :env_name       "MB_TEST_SETTING_1"
+               :description    "Test setting - this only shows up in dev (1)"
+               :default        "Using value of env var $MB_TEST_SETTING_1"}
+              {:key            "test-setting-2"
+               :value          "FANCY"
+               :is_env_setting false
+               :env_name       "MB_TEST_SETTING_2"
+               :description    "Test setting - this only shows up in dev (2)"
+               :default        "[Default Value]"}]
+             (fetch-test-settings))))
 
-;; Check that non-superusers are denied access
-(expect "You don't have permissions to do that."
-  ((test-users/user->client :rasta) :get 403 "setting"))
+    (testing "Check that non-superusers are denied access"
+      (is (= "You don't have permissions to do that."
+             ((test-users/user->client :rasta) :get 403 "setting")))))
 
+  (testing "GET /api/setting/:key"
+    (testing "Test that we can fetch a single setting"
+      (test-setting-2 "OK!")
+      (is (= "OK!"
+             (fetch-setting :test-setting-2 200))))))
 
-;; ## GET /api/setting/:key
-;; Test that we can fetch a single setting
-(expect
- "OK!"
- (do (test-setting-2 "OK!")
-     (fetch-setting :test-setting-2 200)))
-
-;; Test that we can't fetch internal settings
-(expect
- "Setting :test-setting-3 is internal"
- (do (test-setting-3 "NOPE!")
-     (:message (fetch-setting :test-setting-3 500))))
+(deftest fetch-internal-settings-test
+  (testing "Test that we can't fetch internal settings"
+    (test-setting-3 "NOPE!")
+    (is (= "Setting :test-setting-3 is internal"
+           (mt/suppress-output
+             (:message (fetch-setting :test-setting-3 500)))))))
 
 (deftest update-settings-test
   (testing "PUT /api/setting/:key"
-    ((test-users/user->client :crowberto) :put 200 "setting/test-setting-1" {:value "NICE!"})
+    ((test-users/user->client :crowberto) :put 204 "setting/test-setting-1" {:value "NICE!"})
     (is (= "NICE!"
            (test-setting-1))
         "Updated setting should be visible from setting getter")
 
     (is (= "NICE!"
            (fetch-setting :test-setting-1 200))
-        "Updated setting should be visible from API endpoint")))
+        "Updated setting should be visible from API endpoint")
 
-;; ## Check non-superuser can't set a Setting
-(expect "You don't have permissions to do that."
-  ((test-users/user->client :rasta) :put 403 "setting/test-setting-1" {:value "NICE!"}))
+    (testing "Check non-superuser can't set a Setting"
+      (= "You don't have permissions to do that."
+         ((test-users/user->client :rasta) :put 403 "setting/test-setting-1" {:value "NICE!"})))))
 
+(deftest fetch-sensitive-setting-test
+  (testing "Sensitive settings should always come back obfuscated"
+    (testing "GET /api/setting/:name"
+      (test-sensitive-setting "ABCDEF")
+      (is (= "**********EF"
+             (fetch-setting :test-sensitive-setting 200))))
 
-;;; ----------------------------------------------- Sensitive Settings -----------------------------------------------
+    (testing "GET /api/setting"
+      (test-sensitive-setting "GHIJKLM")
+      (is (= {:key            "test-sensitive-setting"
+               :value          "**********LM"
+               :is_env_setting false
+               :env_name       "MB_TEST_SENSITIVE_SETTING"
+               :description    "This is a sample sensitive Setting."
+              :default        nil}
+             (some (fn [{setting-name :key, :as setting}]
+                     (when (= setting-name "test-sensitive-setting")
+                       setting))
+                   ((test-users/user->client :crowberto) :get 200 "setting")))))))
 
-;; Sensitive settings should always come back obfuscated
+(deftest set-sensitive-setting-test
+  (testing "Setting the Setting via an endpoint should still work as expected; the normal getter functions should *not* obfuscate sensitive Setting values -- that should be done by the API"
+    ((test-users/user->client :crowberto) :put 204 "setting/test-sensitive-setting" {:value "123456"})
+    (is (= "123456"
+           (test-sensitive-setting))))
 
-;; GET /api/setting/:name should obfuscate sensitive settings
-(expect
-  "**********EF"
-  (do
-    (test-sensitive-setting "ABCDEF")
-    (fetch-setting :test-sensitive-setting 200)))
+  (testing "Attempts to set the Setting to an obfuscated value should be ignored"
+    (testing "PUT /api/setting/:name"
+      (test-sensitive-setting "123456")
+      ((test-users/user->client :crowberto) :put 204 "setting/test-sensitive-setting" {:value "**********56"})
+      (is (= "123456"
+             (test-sensitive-setting))))
 
-;; GET /api/setting should obfuscate sensitive settings
-(expect
-  {:key            "test-sensitive-setting"
-   :value          "**********LM"
-   :is_env_setting false
-   :env_name       "MB_TEST_SENSITIVE_SETTING"
-   :description    "This is a sample sensitive Setting."
-   :default        nil}
-  (do
-    (test-sensitive-setting "GHIJKLM")
-    (some (fn [{setting-name :key, :as setting}]
-            (when (= setting-name "test-sensitive-setting")
-              setting))
-          ((test-users/user->client :crowberto) :get 200 "setting"))))
-
-;; Setting the Setting via an endpoint should still work as expected; the normal getter functions should *not*
-;; obfuscate sensitive Setting values -- that should be done by the API
-(expect
-  "123456"
-  (do
-    ((test-users/user->client :crowberto) :put 200 "setting/test-sensitive-setting" {:value "123456"})
-    (test-sensitive-setting)))
-
-;; Attempts to set the Setting to an obfuscated value should be ignored
-(expect
-  "123456"
-  (do
-    (test-sensitive-setting "123456")
-    ((test-users/user->client :crowberto) :put 200 "setting/test-sensitive-setting" {:value "**********56"})
-    (test-sensitive-setting)))
-
-(expect
-  (do
-    (test-sensitive-setting "123456")
-    ((test-users/user->client :crowberto) :put 200 "setting" {:test-sensitive-setting "**********56"})
-    (test-sensitive-setting)))
+    (testing "PUT /api/setting"
+      (test-sensitive-setting "123456")
+      ((test-users/user->client :crowberto) :put 204 "setting" {:test-sensitive-setting "**********56"})
+      (is (= "123456"
+             (test-sensitive-setting))))))

@@ -183,7 +183,9 @@
       (merge
        (select-keys table [:active :created_at :db_id :description :display_name :entity_name :entity_type :fields_hash
                            :id :name :rows :schema :updated_at :visibility_type]))
-      (update :entity_type (comp (partial str "entity/") name))))
+      (update :entity_type (fn [entity-type]
+                             (when entity-type
+                               (str "entity/" (name entity-type)))))))
 
 ;; ## `GET /api/database`
 ;; Test that we can get all the DBs (ordered by name, then driver)
@@ -473,10 +475,11 @@
            ((test-users/user->client :crowberto) :get 200
             (format "database/%d/metadata" mbql.s/saved-questions-virtual-database-id))))))
 
-;; if no eligible Saved Questions exist the virtual DB metadata endpoint should just return `nil`
 (deftest return-nil-when-no-eligible-saved-questions
-  (is (nil? ((test-users/user->client :crowberto) :get 200
-             (format "database/%d/metadata" mbql.s/saved-questions-virtual-database-id)))))
+  (testing "if no eligible Saved Questions exist the virtual DB metadata endpoint should just return `nil`"
+    (is (= nil
+           ((test-users/user->client :crowberto) :get 204
+            (format "database/%d/metadata" mbql.s/saved-questions-virtual-database-id))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

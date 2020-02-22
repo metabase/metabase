@@ -456,16 +456,28 @@
        {:group_ids (map u/get-id [(group/all-users) group])})
       (user-test/user-group-names user))))
 
+(defn- do-with-preserved-rasta-personal-collection-name [thunk]
+  (let [{collection-name :name, collection-id :id} (collection/user->personal-collection (test-users/user->id :rasta))]
+    (tu/with-temp-vals-in-db Collection collection-id {:name collection-name}
+      (thunk))))
+
+(defmacro ^:private with-preserved-rasta-personal-collection-name
+  "Preserve the name of Rasta's personal collection inside a body that might cause it to change (e.g. changing user name
+  via the API.)"
+  [& body]
+  `(do-with-preserved-rasta-personal-collection-name (fn [] ~@body)))
+
 ;; if we pass group_ids, and are updating ourselves as a non-superuser, the entire call should fail
 (expect
   {:groups     #{"All Users"}
    :first-name "Rasta"}
   ;; By wrapping the test in this macro even if the test fails it will restore the original values
   (tu/with-temp-vals-in-db User (test-users/user->id :rasta) {:first_name "Rasta"}
-    (tt/with-temp PermissionsGroup [group {:name "Blue Man Group"}]
-      ((test-users/user->client :rasta) :put 403 (str "user/" (test-users/user->id :rasta))
-       {:group_ids  (map u/get-id [(group/all-users) group])
-        :first_name "Reggae"}))
+    (with-preserved-rasta-personal-collection-name
+      (tt/with-temp PermissionsGroup [group {:name "Blue Man Group"}]
+        ((test-users/user->client :rasta) :put 403 (str "user/" (test-users/user->id :rasta))
+         {:group_ids  (map u/get-id [(group/all-users) group])
+          :first_name "Reggae"})))
     {:groups     (user-test/user-group-names (test-users/user->id :rasta))
      :first-name (db/select-one-field :first_name User :id (test-users/user->id :rasta))}))
 
@@ -474,9 +486,10 @@
   {:groups     #{"All Users"}
    :first-name "Reggae"}
   (tu/with-temp-vals-in-db User (test-users/user->id :rasta) {:first_name "Rasta"}
-    ((test-users/user->client :rasta) :put 200 (str "user/" (test-users/user->id :rasta))
-     {:group_ids  [(u/get-id (group/all-users))]
-      :first_name "Reggae"})
+    (with-preserved-rasta-personal-collection-name
+      ((test-users/user->client :rasta) :put 200 (str "user/" (test-users/user->id :rasta))
+       {:group_ids  [(u/get-id (group/all-users))]
+        :first_name "Reggae"}))
     {:groups     (user-test/user-group-names (test-users/user->id :rasta))
      :first-name (db/select-one-field :first_name User :id (test-users/user->id :rasta))}))
 

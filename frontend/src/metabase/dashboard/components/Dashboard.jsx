@@ -24,11 +24,7 @@ import type {
   QueryParams,
 } from "metabase/meta/types";
 
-import type {
-  Card,
-  CardId,
-  VisualizationSettings,
-} from "metabase/meta/types/Card";
+import type { CardId, VisualizationSettings } from "metabase/meta/types/Card";
 import type {
   DashboardWithCards,
   DashboardId,
@@ -47,7 +43,6 @@ type Props = {
 
   dashboardId: DashboardId,
   dashboard: DashboardWithCards,
-  cards: Card[],
   revisions: { [key: string]: Revision[] },
 
   isAdmin: boolean,
@@ -64,7 +59,6 @@ type Props = {
   addCardToDashboard: ({ dashId: DashCardId, cardId: CardId }) => void,
   addTextDashCardToDashboard: ({ dashId: DashCardId }) => void,
   archiveDashboard: (dashboardId: DashboardId) => void,
-  fetchCards: (filterMode?: string) => void,
   fetchDashboard: (dashboardId: DashboardId, queryParams: ?QueryParams) => void,
   saveDashboardAndCards: () => Promise<void>,
   setDashboardAttributes: ({ [attribute: string]: any }) => void,
@@ -133,12 +127,10 @@ export default class Dashboard extends Component {
     isEditingParameter: PropTypes.bool.isRequired,
 
     dashboard: PropTypes.object,
-    cards: PropTypes.array,
     parameters: PropTypes.array,
 
     addCardToDashboard: PropTypes.func.isRequired,
     archiveDashboard: PropTypes.func.isRequired,
-    fetchCards: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
     saveDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttributes: PropTypes.func.isRequired,
@@ -181,7 +173,6 @@ export default class Dashboard extends Component {
     const {
       addCardOnLoad,
       fetchDashboard,
-      fetchCards,
       addCardToDashboard,
       setErrorPage,
       location,
@@ -190,8 +181,6 @@ export default class Dashboard extends Component {
     try {
       await fetchDashboard(dashboardId, location.query);
       if (addCardOnLoad != null) {
-        // we have to load our cards before we can add one
-        await fetchCards();
         this.setEditing(this.props.dashboard);
         addCardToDashboard({ dashId: dashboardId, cardId: addCardOnLoad });
       }

@@ -1,11 +1,7 @@
 (ns metabase.driver.druid.query-processor
-  (:require [cheshire.core :as json]
-            [clojure.core.match :refer [match]]
-            [clojure.math.numeric-tower :as math]
+  (:require [clojure.core.match :refer [match]]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [flatland.ordered.map :as ordered-map]
-            [java-time :as t]
             [metabase
              [types :as types]
              [util :as u]]
@@ -14,6 +10,7 @@
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.query-processor
+             [error-type :as error-type]
              [interface :as i]
              [store :as qp.store]
              [timezone :as qp.timezone]]
@@ -1045,34 +1042,40 @@
 
 (defmethod handle-fields ::select
   [_ {fields :fields} updated-query]
-  (if-not (seq fields)
-    updated-query
-    (loop [dimensions     []
-           metrics        []
-           projections    (:projections updated-query)
-           [field & more] fields]
-      (cond
-        ;; If you specify nil or empty `:dimensions` or `:metrics` Druid will just return all of the ones available.
-        ;; In cases where we don't want anything to be returned in one or the other, we'll ask for a `:___dummy`
-        ;; column tead. Druid happily returns `nil` for the column in every row, and it will get auto-filtered out
-        ;; of the results so the User will never see it.
-        (nil? field)
-        (-> updated-query
-            (assoc :projections (conj projections :timestamp))
-            (assoc-in [:query :dimensions] (or (seq dimensions) [:___dummy]))
-            (assoc-in [:query :metrics]    (or (seq metrics)    [:___dummy])))
+  (transduce
+   identity
+   (fn
+     ([updated-query]
+      (-> updated-query
+          #_(update :projections conj :timestamp)
+          ;; If you specify nil or empty `:dimensions` or `:metrics` Druid will just return all of the ones available.
+          ;; In cases where we don't want anything to be returned in one or the other, we'll ask for a `:___dummy`
+          ;; column tead. Druid happily returns `nil` for the column in every row, and it will get auto-filtered out
+          ;; of the results so the User will never see it.
+          (update-in [:query :dimensions] #(or (seq %) [:___dummy]))
+          (update-in [:query :metrics]    #(or (seq %) [:___dummy]))))
 
-        (datetime-field? field)
-        (recur dimensions metrics projections more)
+     ([updated-query field]
+      (cond
+        (and (datetime-field? field)
+             (= (keyword (field-clause->name field)) :timestamp))
+        (update updated-query :projections conj :timestamp)
 
         (= (dimension-or-metric? field) :dimension)
-        (recur (conj dimensions (->rvalue field)) metrics (conj projections (keyword (field-clause->name field))) more)
+        (-> updated-query
+            (update :projections conj (keyword (field-clause->name field)))
+            (update-in [:query :dimensions] conj (->rvalue field)))
 
         (= (dimension-or-metric? field) :metric)
-        (recur dimensions (conj metrics (->rvalue field)) (conj projections (keyword (field-clause->name field))) more)
+        (-> updated-query
+            (update :projections conj (keyword (field-clause->name field)))
+            (update-in [:query :metrics] conj (->rvalue field)))
 
         :else
-        (throw (Exception. "bad field"))))))
+        (throw (ex-info (tru "Invalid Druid field!")
+                 {:type error-type/invalid-query})))))
+   updated-query
+   fields))
 
 
 ;;; -------------------------------------------------- handle-limit --------------------------------------------------
@@ -1167,59 +1170,6 @@
              handle-limit
              handle-page])))
 
-
-;;; ------------------------------------------------ post-processing -------------------------------------------------
-
-(defmulti ^:private post-process
-  "Do appropriate post-processing on the results of a query based on the `query-type`."
-  {:arglists '([query-type projections timezone-and-middleware-settings results])}
-  query-type-dispatch-fn)
-
-(defmethod post-process ::select
-  [_ projections {:keys [middleware]} [{{:keys [events]} :result} first-result]]
-  {:projections projections
-   :results     (for [event (map :event events)]
-                  (update event :timestamp u.date/parse))})
-
-(defmethod post-process ::total
-  [_ projections _ results]
-  {:projections projections
-   :results     (map :result results)})
-
-(defmethod post-process ::topN
-  [_ projections {:keys [middleware]} results]
-  {:projections projections
-   :results     (let [results (-> results first :result)]
-                  (if (:format-rows? middleware true)
-                    results
-                    (map #(u/update-when % :timestamp u.date/parse) results)))})
-
-(defmethod post-process ::groupBy
-  [_ projections {:keys [middleware]} results]
-  {:projections projections
-   :results     (if (:format-rows? middleware true)
-                  (map :event results)
-                  (map (comp #(u/update-when % :timestamp u.date/parse)
-                             :event)
-                       results))})
-
-(defmethod post-process ::timeseries
-  [_ projections {:keys [middleware]} results]
-  {:projections (conj projections :timestamp)
-   :results     (let [ts-getter (if (:format-rows? middleware true)
-                                  :timestamp
-                                  (comp u.date/parse :timestamp))]
-                  (for [event results]
-                    (merge {:timestamp (ts-getter event)} (:result event))))})
-
-(defn- remove-bonus-keys
-  "Remove keys that start with `___` from the results -- they were temporary, and we don't want to return them."
-  [columns]
-  (vec (remove #(re-find #"^___" (name %)) columns)))
-
-
-;;; ------------------------------------------------- MBQL Processor -------------------------------------------------
-
 (defn mbql->native
   "Transpile an MBQL (inner) query into a native form suitable for a Druid DB."
   [query]
@@ -1229,72 +1179,3 @@
     (binding [*query*                   query
               *query-unique-identifier-counter* (atom 0)]
       (build-druid-query query))))
-
-
-(s/defn ^:private columns->getter-fns :- {s/Keyword (s/cond-pre s/Keyword (s/pred fn?))}
-  "Given a sequence of `columns` keywords, return a map of appropriate getter functions to get values from a single
-  result row. Normally, these are just the keyword column names themselves, but for `:timestamp___int`, we'll also
-  parse the result as an integer (for further explanation, see the docstring for
-  `units-that-need-post-processing-int-parsing`). We also round `:distinct___count` in order to return an integer
-  since Druid returns the approximate floating point value for cardinality queries (See Druid documentation regarding
-  cardinality and HLL)."
-  [columns :- [s/Keyword]]
-  (into
-   (ordered-map/ordered-map)
-   (for [k columns]
-     [k (case k
-          :distinct___count (comp math/round k)
-          :timestamp___int  (comp (fn [^String s]
-                                    (when (some? s)
-                                      (Integer/parseInt s)))
-                                  k)
-          k)])))
-
-(defn- resolve-timezone
-  "Returns the timezone object (either report-timezone or JVM timezone). Returns nil if the timezone is UTC as the
-  timestamps from Druid are already in UTC and don't need to be converted"
-  [_]
-  (when-not (= (t/zone-id (qp.timezone/results-timezone-id)) (t/zone-id "UTC"))
-    (qp.timezone/results-timezone-id)))
-
-(defn execute-query
-  "Execute a query for a Druid DB."
-  [do-query {database-id                                  :database
-             {:keys [query query-type mbql? projections]} :native
-             middleware                                   :middleware
-             :as                                          mbql-query}]
-  {:pre [query]}
-  (let [details        (:details (qp.store/database))
-        query          (if (string? query)
-                         (json/parse-string query keyword)
-                         query)
-        query-type     (or query-type
-                           (keyword (namespace ::query) (name (:queryType query))))
-        post-proc-map  (->> query
-                            (do-query details)
-                            (post-process query-type projections
-                                          {:timezone   (resolve-timezone mbql-query)
-                                           :middleware middleware}))
-        columns        (if mbql?
-                         (->> post-proc-map
-                              :projections
-                              remove-bonus-keys
-                              vec)
-                         (-> post-proc-map :results first keys))
-        column->getter (columns->getter-fns columns)]
-    ;; Leave `:rows` as a sequence of maps and the `annotate` middleware will take care of converting them to vectors
-    ;; in the correct column order
-    {:rows (for [row (:results post-proc-map)]
-             ;; use ordered-map to preseve the column ordering because for native queries results are returned in
-             ;; whatever order the keys come out when calling `keys`
-             (into
-              (ordered-map/ordered-map)
-              (for [[column getter] column->getter]
-                ;; rename any occurances of `:timestamp___int` to `:timestamp` in the results so the user doesn't know
-                ;; about our behind-the-scenes conversion and apply any other post-processing on the value such as
-                ;; parsing some units to int and rounding up approximate cardinality values.
-                [(case column
-                   :timestamp___int  :timestamp
-                   :distinct___count :count
-                   column)
-                 (getter row)])))}))

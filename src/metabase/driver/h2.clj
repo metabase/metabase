@@ -13,7 +13,9 @@
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor
+             [error-type :as error-type]
+             [store :as qp.store]]
             [metabase.util
              [honeysql-extensions :as hx]
              [i18n :refer [deferred-tru tru]]])
@@ -64,18 +66,31 @@
         (when (or (str/blank? user)
                   (= user "sa"))        ; "sa" is the default USER
           (throw
-           (Exception.
-            (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden."))))))))
+           (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
+             {:type error-type/db})))))))
 
-(defmethod driver/process-query-in-context :h2 [_ qp]
-  (comp qp check-native-query-not-using-default-user))
+(defmethod driver/execute-reducible-query :h2
+  [driver query chans respond]
+  (check-native-query-not-using-default-user query)
+  ((get-method driver/execute-reducible-query :sql-jdbc) driver query chans respond))
 
-(defmethod driver/date-add :h2 [driver hsql-form amount unit]
-  (if (= unit :quarter)
+(defmethod sql.qp/add-interval-honeysql-form :h2
+  [driver hsql-form amount unit]
+  (cond
+    (= unit :quarter)
     (recur driver hsql-form (hx/* amount 3) :month)
-    (hsql/call :dateadd (hx/literal unit) amount hsql-form)))
 
-(defmethod driver/humanize-connection-error-message :h2 [_ message]
+    ;; H2 only supports long ints in the `dateadd` amount field; since we want to support fractional seconds (at least
+    ;; for application DB purposes) convert to `:millisecond`
+    (and (= unit :second)
+         (not (zero? (rem amount 1))))
+    (recur driver hsql-form (* amount 1000.0) :millisecond)
+
+    :else
+    (hsql/call :dateadd (hx/literal unit) (long amount) hsql-form)))
+
+(defmethod driver/humanize-connection-error-message :h2
+  [_ message]
   (condp re-matches message
     #"^A file path that is implicitly relative to the current working directory is not allowed in the database URL .*$"
     (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
@@ -91,13 +106,16 @@
 
 (def ^:private date-format-str "yyyy-MM-dd HH:mm:ss.SSS zzz")
 
-(defmethod driver.common/current-db-time-date-formatters :h2 [_]
+(defmethod driver.common/current-db-time-date-formatters :h2
+  [_]
   (driver.common/create-db-time-formatters date-format-str))
 
-(defmethod driver.common/current-db-time-native-query :h2 [_]
+(defmethod driver.common/current-db-time-native-query :h2
+  [_]
   (format "select formatdatetime(current_timestamp(),'%s') AS VARCHAR" date-format-str))
 
-(defmethod driver/current-db-time :h2 [& args]
+(defmethod driver/current-db-time :h2
+  [& args]
   (apply driver.common/current-db-time args))
 
 
@@ -256,6 +274,18 @@
 (defmethod sql-jdbc.sync/active-tables :h2
   [& args]
   (apply sql-jdbc.sync/post-filtered-active-tables args))
+
+(defmethod sql-jdbc.execute/connection-with-timezone :h2
+  [driver database ^String timezone-id]
+  ;; h2 doesn't support setting timezones, or changing the transaction level without admin perms, so we can skip those
+  ;; steps that are in the default impl
+  (let [conn (.getConnection (sql-jdbc.execute/datasource database))]
+    (try
+      (doto conn
+        (.setReadOnly true))
+      (catch Throwable e
+        (.close conn)
+        (throw e)))))
 
 (defmethod sql-jdbc.execute/set-parameter [:h2 OffsetTime]
   [driver prepared-statement i t]

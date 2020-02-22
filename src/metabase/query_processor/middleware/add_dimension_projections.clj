@@ -122,6 +122,7 @@
         id->remapped-from-dimension    (u/key-by :human_readable_field_id remapping-dimensions)]
     (for [{:keys [id], column-name :name, :as column} columns]
       (merge
+       {:base_type :type/*}
        column
        ;; if one of the internal remapped columns says it's remapped from this column, add a matching `:remapped_to`
        ;; entry
@@ -188,48 +189,69 @@
                                 human-readable-values)
        :new-column      (create-remapped-col remap-to remap-from)})))
 
-(s/defn ^:private make-row-map-fn :- (s/pred fn? "function")
-  "Return a function that will add internally-remapped values to each row in the results."
-  [dim-seq :- [InternalDimensionInfo]]
-  (fn [row]
-    (concat row (map (fn [{:keys [col-index value->readable]}]
-                       (value->readable (nth row col-index)))
-                     dim-seq))))
+(s/defn ^:private make-row-map-fn :- (s/maybe (s/pred fn? "function"))
+  "Return a function that will add internally-remapped values to each row in the results. (If there is no remapping to
+  be done, this function returns `nil`.)"
+  [dims :- [InternalDimensionInfo]]
+  (when (seq dims)
+    (let [f (apply juxt (for [{:keys [col-index value->readable]} dims]
+                          (fn [row]
+                            (value->readable (nth row col-index)))))]
+      (fn [row]
+        (into (vec row) (f row))))))
 
-(s/defn ^:private remap-results
+(defn- internal-columns-info
+  "Info about the internal-only columns we add to the query."
+  [cols]
+  ;; hydrate Dimensions and FieldValues for all of the columns in the results, then make a map of dimension info for
+  ;; each one that is `internal` type
+  (let [internal-only-dims (->> (hydrate cols :values :dimensions)
+                                (keep-indexed col->dim-map)
+                                (filter identity))]
+    {:internal-only-dims internal-only-dims
+     ;; Get the entires we're going to add to `:cols` for each of the remapped values we add
+     :internal-only-cols (map :new-column internal-only-dims)}))
+
+(defn- add-remapped-cols
+  "Add remapping info `:remapped_from` and `:remapped_to` to each existing column in the results metadata, and add
+  entries for each newly added column to the end of `:cols`."
+  [metadata remapping-dimensions {:keys [internal-only-cols]}]
+  (update metadata :cols (fn [cols]
+                           (-> cols
+                               (add-remapping-info remapping-dimensions internal-only-cols)
+                               (concat internal-only-cols)))))
+
+(defn- remap-results-xform
   "Munges results for remapping after the query has been executed. For internal remappings, a new column needs to be
   added and each row flowing through needs to include the remapped data for the new column. For external remappings,
   the column information needs to be updated with what it's being remapped from and the user specified name for the
   remapped column."
-  [remapping-dimensions :- (s/maybe [ExternalRemappingDimension]), results]
-  (let [ ;; hydrate Dimensions and FieldValues for all of the columns in the results, then make a map of dimension info
-        ;; for each one that is `internal` type
-        internal-only-dims (->> (hydrate (:cols results) :values :dimensions)
-                                (keep-indexed col->dim-map)
-                                (filter identity))
-        ;; now using `indexed-dims` create a function that will add internal remapped values to each row in the results
-        remap-fn           (make-row-map-fn internal-only-dims)
-        ;; Get the entires we're going to add to `:cols` for each of the remapped values we add
-        internal-only-cols (map :new-column internal-only-dims)]
-    (-> results
-        ;; add remapping info `:remapped_from` and `:remapped_to` to each existing `:col`
-        (update :cols add-remapping-info remapping-dimensions internal-only-cols)
-        ;; now add the entries for each newly added column to the end of `:cols`
-        (update :cols concat internal-only-cols)
-        ;; Call our `remap-fn` on each row to add the new values to the end
-        (update :rows (partial map remap-fn)))))
+  [{:keys [cols], :as metadata} {:keys [internal-only-dims]} rf]
+  (if-let [remap-fn (make-row-map-fn internal-only-dims)]
+    (fn
+      ([]
+       (rf))
 
+      ([result]
+       (rf result))
 
-;;; --------------------------------------------------- middleware ---------------------------------------------------
+      ([result row]
+       (rf result (remap-fn row))))
+    rf))
+
+(defn- remap-results-rff [remapping-dimensions rff]
+  (fn [metadata]
+    (let [internal-cols-info (internal-columns-info (:cols metadata))
+          metadata           (add-remapped-cols metadata remapping-dimensions internal-cols-info)]
+      (remap-results-xform metadata internal-cols-info (rff metadata)))))
 
 (defn add-remapping
   "Query processor middleware. `qp` is the query processor, returns a function that works on a `query` map. Delgates to
   `add-fk-remaps` for making remapping changes to the query (before executing the query). Then delegates to
   `remap-results` to munge the results after query execution."
   [qp]
-  (fn [{query-type :type, :as query}]
+  (fn [{query-type :type, :as query} rff context]
     (if (= query-type :native)
-      (qp query)
-      (let [[remapping-dimensions query] (add-fk-remaps query)
-            results                      (qp query)]
-        (remap-results remapping-dimensions results)))))
+      (qp query rff context)
+      (let [[remapping-dimensions query'] (add-fk-remaps query)]
+        (qp query' (remap-results-rff remapping-dimensions rff) context)))))

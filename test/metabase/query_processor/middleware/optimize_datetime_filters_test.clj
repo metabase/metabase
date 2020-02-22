@@ -15,11 +15,12 @@
 (defmethod driver/supports? [::timezone-driver :set-timezone] [_ _] true)
 
 (defn- optimize-datetime-filters [filter-clause]
-  (-> ((optimize-datetime-filters/optimize-datetime-filters identity)
-       {:database 1
-        :type     :query
-        :query    {:filter filter-clause}})
-      (get-in [:query :filter])))
+  (let [query {:database 1
+               :type     :query
+               :query    {:filter filter-clause}}]
+    (-> (mt/test-qp-middleware optimize-datetime-filters/optimize-datetime-filters query)
+        :pre
+        (get-in [:query :filter]))))
 
 (deftest optimize-day-bucketed-filter-test
   (testing "Make sure we aren't doing anything wacky when optimzing filters against fields bucketed by day"
@@ -144,13 +145,14 @@
                      [:absolute-datetime filter-value unit]])))))))))
 
 (defn- optimize-with-timezone [t]
-  (-> ((optimize-datetime-filters/optimize-datetime-filters identity)
-       {:database 1
-        :type     :query
-        :query    {:filter [:=
-                            [:datetime-field [:field-id 1] :day]
-                            [:absolute-datetime t :day]]}})
-      (get-in [:query :filter])))
+  (let [query {:database 1
+               :type     :query
+               :query    {:filter [:=
+                                   [:datetime-field [:field-id 1] :day]
+                                   [:absolute-datetime t :day]]}}]
+    (-> (mt/test-qp-middleware optimize-datetime-filters/optimize-datetime-filters query)
+        :pre
+        (get-in [:query :filter]))))
 
 (deftest timezones-test
   (driver/with-driver ::timezone-driver

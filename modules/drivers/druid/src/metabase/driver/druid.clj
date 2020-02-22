@@ -2,11 +2,15 @@
   "Druid driver."
   (:require [cheshire.core :as json]
             [clj-http.client :as http]
+            [clojure.core.async :as a]
             [clojure.tools.logging :as log]
             [metabase
              [driver :as driver]
              [util :as u]]
-            [metabase.driver.druid.query-processor :as qp]
+            [metabase.driver.druid
+             [execute :as execute]
+             [query-processor :as qp]]
+            [metabase.query-processor.context :as context]
             [metabase.util
              [i18n :refer [trs tru]]
              [ssh :as ssh]]))
@@ -61,6 +65,9 @@
   (ssh/with-ssh-tunnel [details-with-tunnel details]
     (try
       (POST (details->url details-with-tunnel "/druid/v2"), :body query)
+      ;; don't need to do anything fancy if the query was killed
+      (catch InterruptedException e
+        (throw e))
       (catch Throwable e
         ;; try to extract the error
         (let [message (or (u/ignore-exceptions
@@ -74,30 +81,40 @@
           ;; Re-throw a new exception with `message` set to the extracted message
           (throw (Exception. message e)))))))
 
-(defn- do-query-with-cancellation [details query]
+(defn- cancel-query-with-id! [details query-id]
+  (if-not query-id
+    (log/warn (trs "Client closed connection, no queryId found, can't cancel query"))
+    (ssh/with-ssh-tunnel [details-with-tunnel details]
+      (log/warn (trs "Client closed connection, canceling Druid queryId {0}" query-id))
+      (try
+        (log/debug (trs "Canceling Druid query with ID {0}" query-id))
+        (DELETE (details->url details-with-tunnel (format "/druid/v2/%s" query-id)))
+        (catch Exception cancel-e
+          (log/warn cancel-e (trs "Failed to cancel Druid query with queryId {0}" query-id)))))))
+
+(defn- do-query-with-cancellation [canceled-chan details query]
   {:pre [(map? details) (map? query)]}
   (let [query-id  (get-in query [:context :queryId])
-        query-fut (future (do-query details query))]
+        query-fut (future
+                    (try
+                      (do-query details query)
+                      (catch Throwable e
+                        e)))
+        cancel! (delay
+                  (cancel-query-with-id! details query-id))]
+    (a/go
+      (when (a/<! canceled-chan)
+        (future-cancel query-fut)
+        @cancel!))
     (try
       ;; Run the query in a future so that this thread will be interrupted, not the thread running the query (which is
       ;; not interrupt aware)
-      @query-fut
+      (u/prog1 @query-fut
+        (when (instance? Throwable <>)
+          (throw <>)))
       (catch InterruptedException e
-        ;; The future has been cancelled, if we ahve a query id, try to cancel the query
-        (try
-          (if-not query-id
-            (log/warn e (trs "Client closed connection, no queryId found, can't cancel query"))
-            (ssh/with-ssh-tunnel [details-with-tunnel details]
-              (log/warn (trs "Client closed connection, canceling Druid queryId {0}" query-id))
-              (try
-                ;; If we can't cancel the query, we don't want to hide the original exception, attempt to cancel, but if
-                ;; we can't, we should rethrow the InterruptedException, not an exception from the cancellation
-                (DELETE (details->url details-with-tunnel (format "/druid/v2/%s" query-id)))
-                (catch Exception cancel-e
-                  (log/warn cancel-e (trs "Failed to cancel Druid query with queryId {0}" query-id))))))
-          (finally
-            ;; Propogate the exception, will cause any other catch/finally clauses to fire
-            (throw e)))))))
+        @cancel!
+        (throw e)))))
 
 
 ;;; ### Sync
@@ -152,9 +169,10 @@
   [_ query]
   (qp/mbql->native query))
 
-(defmethod driver/execute-query :druid
-  [_ query]
-  (qp/execute-query do-query-with-cancellation query))
+(defmethod driver/execute-reducible-query :druid
+  [_ query context respond]
+  (execute/execute-reducible-query (partial do-query-with-cancellation (context/canceled-chan context)) query respond))
 
-(defmethod driver/supports? [:druid :set-timezone]            [_ _] true)
-(defmethod driver/supports? [:druid :expression-aggregations] [_ _] true)
+(doseq [[feature supported?] {:set-timezone            true
+                              :expression-aggregations true}]
+  (defmethod driver/supports? [:druid feature] [_ _] supported?))

@@ -6177,15 +6177,35 @@ databaseChangeLog:
           - sql:
                 sql: ALTER TABLE `dashboardcard_series` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
+# Change query_cache.updated_at from datetime to timestamp [with time zone] to get > second resolution on MySQL.
+
+  - property:
+      name: cache_timestamp_type
+      value: timestamp with time zone
+      dbms: postgresql,h2
+  - property:
+      name: cache_timestamp_type
+      value: timestamp
+      dbms: mysql,mariadb
+  - changeSet:
+      id: 161
+      author: camsaul
+      comment: Added 0.35.0
+      changes:
+        - modifyDataType:
+            tableName: query_cache
+            columnName: updated_at
+            newDataType: ${cache_timestamp_type}
+
 #
 # Add a unique constraint on (name + engine). This is to fix the issue where creating two databases
 # with the same name will override each other (Check #11106).
 # There is no need for an additional postgresql constraint cause neither name nor engine are nullable.
 #
   - changeSet:
-      id: 161
+      id: 162
       author: mohammedamarnah
-      comment: 'Added 0.34.3'
+      comment: Added 0.35.0
       preConditions:
         - onFail: MARK_RAN
         - onUpdateSQL: IGNORE

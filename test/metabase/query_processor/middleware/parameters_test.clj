@@ -2,7 +2,9 @@
   "Testings to make sure the parameter substitution middleware works as expected. Even though the below tests are
   SQL-specific, they still confirm that the middleware itself is working correctly."
   (:require [expectations :refer [expect]]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [test :as mt]]
             [metabase.mbql.normalize :as normalize]
             [metabase.query-processor.middleware.parameters :as parameters]
             [metabase.test.data :as data]))
@@ -14,7 +16,7 @@
 
 (defn- subsitute-params [query]
   (driver/with-driver :h2
-    ((parameters/substitute-parameters identity) (normalize/normalize query))))
+    (:pre (mt/test-qp-middleware parameters/substitute-parameters (normalize/normalize query)))))
 
 ;; can we expand MBQL params if they are specified at the top level?
 (expect

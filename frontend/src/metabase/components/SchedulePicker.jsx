@@ -125,7 +125,7 @@ export default class SchedulePicker extends Component {
     DAY_OPTIONS.unshift({ name: t`Calendar Day`, value: null });
 
     return (
-      <span className="mt1">
+      <span className="flex align-center">
         <span className="h4 text-bold mx1">on the</span>
         <Select
           className="h4 text-bold bg-white"
@@ -136,7 +136,7 @@ export default class SchedulePicker extends Component {
           options={MONTH_DAY_OPTIONS}
         />
         {schedule.schedule_frame !== "mid" && (
-          <span className="mt1 mx1">
+          <span className="mx1">
             <Select
               className="h4 text-bold bg-white"
               value={schedule.schedule_day}
@@ -155,7 +155,7 @@ export default class SchedulePicker extends Component {
     const { schedule } = this.props;
 
     return (
-      <span className="mt1">
+      <span className="flex align-center">
         <span className="h4 text-bold mx1">on</span>
         <Select
           className="h4 text-bold bg-white"
@@ -180,23 +180,25 @@ export default class SchedulePicker extends Component {
     const timezone = Settings.get("report-timezone-short");
     return (
       <div className="mt1">
-        <span className="h4 text-bold mr1">at</span>
-        <Select
-          className="mr1 h4 text-bold bg-white"
-          value={hour}
-          options={HOUR_OPTIONS}
-          onChange={({ target: { value } }) =>
-            this.handleChangeProperty("schedule_hour", value + amPm * 12)
-          }
-        />
-        <Select
-          className="h4 text-bold bg-white"
-          value={amPm}
-          onChange={({ target: { value } }) =>
-            this.handleChangeProperty("schedule_hour", hour + value * 12)
-          }
-          options={AM_PM_OPTIONS}
-        />
+        <div className="flex align-center">
+          <span className="h4 text-bold mr1">at</span>
+          <Select
+            className="mr1 h4 text-bold bg-white"
+            value={hour}
+            options={HOUR_OPTIONS}
+            onChange={({ target: { value } }) =>
+              this.handleChangeProperty("schedule_hour", value + amPm * 12)
+            }
+          />
+          <Select
+            className="h4 text-bold bg-white"
+            value={amPm}
+            onChange={({ target: { value } }) =>
+              this.handleChangeProperty("schedule_hour", hour + value * 12)
+            }
+            options={AM_PM_OPTIONS}
+          />
+        </div>
         {textBeforeSendTime && (
           <div className="mt2 h4 text-bold text-medium border-top pt2">
             {textBeforeSendTime} {hour === 0 ? 12 : hour}:00{" "}
@@ -214,19 +216,21 @@ export default class SchedulePicker extends Component {
 
     return (
       <div className="mt1">
-        <span className="h4 text-bold mr1">{textBeforeInterval}</span>
-        <Select
-          className="h4 text-bold bg-white"
-          value={scheduleType}
-          onChange={({ target: { value } }) =>
-            this.handleChangeProperty("schedule_type", value)
-          }
-          options={scheduleOptions}
-          optionNameFn={o => capitalize(o)}
-          optionValueFn={o => o}
-        />
-        {scheduleType === "monthly" && this.renderMonthlyPicker()}
-        {scheduleType === "weekly" && this.renderDayPicker()}
+        <div className="flex align-center">
+          <span className="h4 text-bold mr1">{textBeforeInterval}</span>
+          <Select
+            className="h4 text-bold bg-white"
+            value={scheduleType}
+            onChange={({ target: { value } }) =>
+              this.handleChangeProperty("schedule_type", value)
+            }
+            options={scheduleOptions}
+            optionNameFn={o => capitalize(o)}
+            optionValueFn={o => o}
+          />
+          {scheduleType === "monthly" && this.renderMonthlyPicker()}
+          {scheduleType === "weekly" && this.renderDayPicker()}
+        </div>
         {(scheduleType === "daily" ||
           scheduleType === "weekly" ||
           scheduleType === "monthly") &&
