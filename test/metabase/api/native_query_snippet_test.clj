@@ -26,11 +26,20 @@
                                      (map #(select-keys % test-fields))
                                      set)]
           (is (contains? snippets-from-api (select-keys snippet-1 test-fields)))
-          (is (contains? snippets-from-api (select-keys snippet-2 test-fields))))))))
+          (is (contains? snippets-from-api (select-keys snippet-2 test-fields)))))))
+
+  (testing "list fails for user without read permission"
+    ;; TODO implement this
+    (is false)))
 
 ;; GET /api/native-query-snippet/:id
 (deftest read-snippet-api-test
-  (testing "TODO complete this"
+  (testing "read returns all snippet fields"
+    ;; TODO implement this
+    (is false))
+
+  (testing "read fails for user without read permissions"
+    ;; TODO implement this
     (is false)))
 
 ;; POST /api/native-query-snippet
@@ -44,9 +53,17 @@
                     :post 400 "native-query-snippet"
                     {:content "NULL", :database_id 1})]
       (is (str/starts-with? (get-in response [:errors :name])
-                            "Value does not match schema: ")))))
+                            "Value does not match schema: "))))
+
+  (testing "create fails for non-admin user"
+    ;; TODO implement this
+    (is false)))
 
 ;; PUT /api/native-query-snippet/:id
 (deftest update-snippet-api-test
-  (testing "TODO complete this"
+  (testing "update stores updated snippet"
+    (is false))
+
+  (testing "update fails for non-admin user"
+    ;; TODO implement this
     (is false)))
