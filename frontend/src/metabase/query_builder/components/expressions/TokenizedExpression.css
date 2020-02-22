@@ -3,6 +3,7 @@
   /*display: inline-block;*/
   border-radius: 3px;
   font-size: 14px;
+  font-weight: bold;
 }
 
 .Expression-open-quote,
@@ -20,7 +21,7 @@
   margin: 1px 1px;
   padding: 1px 3px;
   border: 1px solid var(--color-brand);
-  background-color: var(--color-bg-medium);
+  background-color: color(var(--color-brand) alpha(30%));
 }
 .Expression-selected.Expression-dimension .Expression-identifier,
 .Expression-selected.Expression-dimension .Expression-identifier-string {
@@ -34,12 +35,26 @@
   margin: 1px 1px;
   padding: 1px 3px;
   border: 1px solid var(--color-accent1);
-  background-color: var(--color-bg-white);
+  background-color: color(var(--color-accent1) alpha(30%));
 }
 .Expression-metric.Expression-selected .Expression-identifier,
 .Expression-metric.Expression-selected .Expression-identifier-string {
   color: white;
-  background-color: var(--color-brand);
+  background-color: var(--color-accent1);
+}
+
+/* SEGMENT */
+.Expression-segment .Expression-identifier,
+.Expression-segment .Expression-identifier-string {
+  margin: 1px 1px;
+  padding: 1px 3px;
+  border: 1px solid var(--color-accent2);
+  background-color: color(var(--color-accent2) alpha(30%));
+}
+.Expression-segment.Expression-selected .Expression-identifier,
+.Expression-segment.Expression-selected .Expression-identifier-string {
+  color: white;
+  background-color: var(--color-accent2);
 }
 
 /* AGGREGATION */
@@ -48,7 +63,6 @@
   border: 1px solid var(--color-accent1);
   background-color: var(--color-bg-white);
 }
-
 .Expression-selected.Expression-aggregation {
   color: white;
   background-color: var(--color-accent1);

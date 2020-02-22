@@ -23,8 +23,8 @@ export function isReservedWord(word) {
 
 // METRICS
 
-export function parseMetric(metricName) {
-  return this._options.query
+export function parseMetric(metricName, query) {
+  return query
     .table()
     .metrics.find(
       metric => metric.name.toLowerCase() === metricName.toLowerCase(),
@@ -33,6 +33,20 @@ export function parseMetric(metricName) {
 
 export function formatMetricName(metric) {
   return formatIdentifier(metric.name);
+}
+
+// SEGMENTS
+
+export function parseSegment(segmentName, query) {
+  return query
+    .table()
+    .segments.find(
+      segment => segment.name.toLowerCase() === segmentName.toLowerCase(),
+    );
+}
+
+export function formatSegmentName(segment) {
+  return formatIdentifier(segment.name);
 }
 
 // DIMENSIONS
@@ -76,6 +90,7 @@ export function isExpression(expr) {
     isFunction(expr) ||
     isDimension(expr) ||
     isMetric(expr) ||
+    isSegment(expr) ||
     isCase(expr)
   );
 }
@@ -128,6 +143,15 @@ export function isMetric(expr) {
   return (
     Array.isArray(expr) &&
     expr[0] === "metric" &&
+    expr.length === 2 &&
+    typeof expr[1] === "number"
+  );
+}
+
+export function isSegment(expr) {
+  return (
+    Array.isArray(expr) &&
+    expr[0] === "segment" &&
     expr.length === 2 &&
     typeof expr[1] === "number"
   );

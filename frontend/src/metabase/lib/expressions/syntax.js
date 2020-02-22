@@ -3,6 +3,8 @@ import _ from "underscore";
 import { ExpressionCstVisitor, parse as parserParse } from "./parser";
 import { lexer } from "./lexer";
 
+import { MBQL_CLAUSES, getMBQLName } from ".";
+
 const TOKENIZED_NODES = new Set(["dimension", "metric", "aggregation"]);
 
 const syntax = (type, ...children) => ({
@@ -78,7 +80,11 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
     if (ctx.RParen) {
       parts.push(token(ctx.RParen[0]));
     }
-    return syntax("function", ...parts);
+
+    const fn = getMBQLName(ctx.functionName[0].image);
+    const clause = MBQL_CLAUSES[fn];
+
+    return syntax(clause.type, ...parts);
   }
 
   caseExpression(ctx) {
@@ -105,6 +111,10 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
   metricExpression(ctx) {
     const metricName = this.visit(ctx.metricName);
     return syntax("metric", metricName);
+  }
+  segmentExpression(ctx) {
+    const segmentName = this.visit(ctx.segmentName);
+    return syntax("segment", segmentName);
   }
   dimensionExpression(ctx) {
     const dimensionName = this.visit(ctx.dimensionName);

@@ -194,6 +194,13 @@ export class ExpressionParser extends CstParser {
       ]);
     });
 
+    $.RULE("segmentExpression", () => {
+      $.OR([
+        { ALT: () => $.SUBRULE($.identifierString, { LABEL: "segmentName" }) },
+        { ALT: () => $.SUBRULE($.identifier, { LABEL: "segmentName" }) },
+      ]);
+    });
+
     $.RULE("dimensionExpression", () => {
       $.OR([
         {
@@ -223,6 +230,7 @@ export class ExpressionParser extends CstParser {
     $.RULE("atomicExpression", returnType => {
       $.OR({
         DEF: [
+          // functions: used by aggregations, expressions, and filters
           {
             ALT: () =>
               $.SUBRULE($.functionExpression, {
@@ -230,6 +238,15 @@ export class ExpressionParser extends CstParser {
                 LABEL: "expression",
               }),
           },
+          // aggregations
+          {
+            GATE: () => returnType === "aggregation",
+            ALT: () =>
+              $.SUBRULE($.metricExpression, {
+                LABEL: "expression",
+              }),
+          },
+          // filters
           {
             GATE: () => returnType === "boolean",
             ALT: () =>
@@ -245,6 +262,14 @@ export class ExpressionParser extends CstParser {
               }),
           },
           {
+            GATE: () => returnType === "boolean",
+            ALT: () =>
+              $.SUBRULE($.segmentExpression, {
+                LABEL: "expression",
+              }),
+          },
+          // expressions
+          {
             GATE: () => returnType === "expression",
             ALT: () =>
               $.SUBRULE($.caseExpression, {
@@ -258,6 +283,7 @@ export class ExpressionParser extends CstParser {
                 LABEL: "expression",
               }),
           },
+          // number and string literals
           {
             GATE: () => returnType === "expression",
             ALT: () =>
@@ -273,6 +299,7 @@ export class ExpressionParser extends CstParser {
                 LABEL: "expression",
               }),
           },
+          // grouping
           {
             ALT: () =>
               $.SUBRULE($.parenthesisExpression, {

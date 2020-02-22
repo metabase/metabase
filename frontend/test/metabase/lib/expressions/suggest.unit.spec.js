@@ -18,6 +18,7 @@ describe("metabase/lib/expression/suggest", () => {
         { type: "aggregations", text: "Min(" },
         { type: "aggregations", text: "StandardDeviation(" },
         { type: "aggregations", text: "Sum(" },
+        { type: "metrics", text: "metric" },
         { type: "other", text: " (" },
       ]);
     });

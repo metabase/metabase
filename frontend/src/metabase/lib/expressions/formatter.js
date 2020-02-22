@@ -8,8 +8,10 @@ import {
   isFunction,
   isDimension,
   isMetric,
+  isSegment,
   isCase,
   formatMetricName,
+  formatSegmentName,
   formatDimensionName,
   getExpressionName,
   formatStringLiteral,
@@ -43,6 +45,8 @@ export function format(mbql, info, parens = false) {
     return formatDimension(mbql, info);
   } else if (isMetric(mbql)) {
     return formatMetric(mbql, info);
+  } else if (isSegment(mbql)) {
+    return formatSegment(mbql, info);
   } else if (isCase(mbql)) {
     return formatCase(mbql, info);
   }
@@ -68,6 +72,14 @@ function formatMetric([, metricId], { query }) {
     throw "metric with ID does not exist: " + metricId;
   }
   return formatMetricName(metric);
+}
+
+function formatSegment([, segmentId], { query }) {
+  const segment = _.findWhere(query.table().segments, { id: segmentId });
+  if (!segment) {
+    throw "segment with ID does not exist: " + segment;
+  }
+  return formatSegmentName(segment);
 }
 
 function formatFunction([fn, ...args], info) {

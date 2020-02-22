@@ -3,6 +3,7 @@ import {
   getMBQLName,
   parseDimension,
   parseMetric,
+  parseSegment,
   parseStringLiteral,
   parseIdentifierString,
 } from "../expressions";
@@ -62,6 +63,14 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
       throw new Error(`Unknown Metric: ${metricName}`);
     }
     return ["metric", metric.id];
+  }
+  segmentExpression(ctx) {
+    const segmentName = this.visit(ctx.segmentName);
+    const segment = parseSegment(segmentName, this._options.query);
+    if (!segment) {
+      throw new Error(`Unknown Segment: ${segmentName}`);
+    }
+    return ["segment", segment.id];
   }
   dimensionExpression(ctx) {
     const dimensionName = this.visit(ctx.dimensionName);

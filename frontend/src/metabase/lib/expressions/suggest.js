@@ -9,6 +9,8 @@ import {
   // dimensions:
   getDimensionName,
   formatDimensionName,
+  // metrics
+  formatMetricName,
 } from "../expressions";
 
 import {
@@ -189,14 +191,15 @@ export function suggest(
               };
             }),
         );
-        // NOTE: DISABLE METRICS
-        // finalSuggestions.push(...tableMetadata.metrics.map(metric => ({
-        //     type: "metrics",
-        //     name: metric.name,
-        //     text: formatMetricName(metric),
-        //     prefixTrim: /\w+$/,
-        //     postfixTrim: /^\w+\s*/
-        // })))
+        finalSuggestions.push(
+          ...query.table().metrics.map(metric => ({
+            type: "metrics",
+            name: metric.name,
+            text: formatMetricName(metric),
+            prefixTrim: /\w+$/,
+            postfixTrim: /^\w+\s*/,
+          })),
+        );
       }
     } else if (nextTokenType === Case) {
       // TODO
