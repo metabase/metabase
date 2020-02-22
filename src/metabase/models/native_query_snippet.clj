@@ -11,11 +11,6 @@
 
 (models/defmodel NativeQuerySnippet :native_query_snippet)
 
-(defn- pre-delete
-  [{:keys [id]}]
-  (throw (ex-info (deferred-tru "Can''t delete snippets; mark as archived instead")
-                  {:native-query-snippet-id id})))
-
 (defn- perms-objects-set
   "Permissions to read or write a native query snippet are the same as those of its parent Database."
   [snippet _]
@@ -25,8 +20,7 @@
   models/IModel
   (merge
    models/IModelDefaults
-   {:properties (constantly {:timestamped? true})
-    :pre-delete pre-delete})
+   {:properties (constantly {:timestamped? true})})
 
   i/IObjectPermissions
   (merge
