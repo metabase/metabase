@@ -21,10 +21,10 @@
   "Fetch all snippets"
   [archived]
   {archived (s/maybe su/BooleanString)}
-  (filter mi/can-read?
-          (db/select NativeQuerySnippet
-                     :archived (Boolean/parseBoolean archived)
-                     {:order-by [[:%lower.name :asc]]})))
+  (let [snippets (db/select NativeQuerySnippet
+                            :archived (Boolean/parseBoolean archived)
+                            {:order-by [[:%lower.name :asc]]})]
+    (hydrate (filter mi/can-read? snippets) :creator)))
 
 (api/defendpoint GET "/:id"
   "Fetch native query snippet with ID."
