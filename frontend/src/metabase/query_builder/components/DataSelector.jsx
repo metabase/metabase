@@ -438,9 +438,23 @@ export class UnconnectedDataSelector extends Component {
   previousStep = () => {
     const previousStep = this.getPreviousStep();
     if (previousStep) {
-      this.switchToStep(previousStep, {}, false);
+      const clearedState = this.getClearedStateForStep(previousStep);
+      this.switchToStep(previousStep, clearedState, false);
     }
   };
+
+  getClearedStateForStep(step) {
+    // TODO: do we need to clear state for other steps?
+    if (step === DATABASE_STEP) {
+      return {
+        selectedDatabaseId: null,
+        selectedSchemaId: null,
+        selectedTableId: null,
+        selectedFieldId: null,
+      };
+    }
+    return {};
+  }
 
   async loadStepData(stepName) {
     const loadersForSteps = {
@@ -732,7 +746,7 @@ const DatabaseSchemaPicker = ({
   }));
 
   let openSection = selectedSchema
-    ? databases.findIndex(db => db.schemas.some(s => s === selectedSchema))
+    ? databases.findIndex(db => db.id === selectedSchema.database.id)
     : selectedDatabase
     ? databases.findIndex(db => db === selectedDatabase)
     : -1;
@@ -752,9 +766,18 @@ const DatabaseSchemaPicker = ({
       className="text-brand"
       sections={sections}
       onChange={onChangeSchema}
-      onChangeSection={(section, sectionIndex) =>
-        onChangeDatabase(databases[sectionIndex], true)
-      }
+      onChangeSection={(section, sectionIndex) => {
+        if (
+          selectedDatabase &&
+          selectedDatabase.id === databases[sectionIndex].id
+        ) {
+          // You can't change to the current database. If you click on that,
+          // still return "true" to let the AccordionList collapse that section.
+          return true;
+        }
+        onChangeDatabase(databases[sectionIndex], true);
+        return true;
+      }}
       itemIsSelected={schema => schema === selectedSchema}
       renderSectionIcon={item => (
         <Icon className="Icon text-default" name={item.icon} size={18} />

@@ -210,6 +210,69 @@ describe("DataSelector", () => {
     fireEvent.click(getByText("first_schema"));
     getByText("Table in First Schema");
   });
+
+  it("should expand schemas after viewing tables on a single-schema db", () => {
+    // This is the same and the previous test except that it first opens/closes
+    // the multi-schema db. This left some lingering traces in component state
+    // which caused a bug tha that the previous test didn't catch.
+    const { getByText, queryByText } = render(
+      <DataSelector
+        steps={["DATABASE", "SCHEMA", "TABLE"]}
+        combineDatabaseSchemaSteps
+        triggerElement={<div />}
+        databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATASET]}
+        metadata={metadata}
+        isOpen={true}
+      />,
+    );
+
+    // expand a multi-schema db to make sure it's schemas are loaded
+    fireEvent.click(getByText("Multi-schema Database"));
+    getByText("first_schema");
+    getByText("second_schema");
+
+    // click into a single schema db, check for a table, and then return to db list
+    fireEvent.click(getByText("Sample Dataset"));
+    getByText("Orders");
+    fireEvent.click(getByText("Sample Dataset"));
+
+    // expand multi-schema db
+    fireEvent.click(getByText("Multi-schema Database"));
+    // see schema appear and click to view tables for good measure
+    fireEvent.click(getByText("first_schema"));
+    getByText("Table in First Schema");
+  });
+
+  it("should collapse expanded list of db's schemas", () => {
+    const { getByText, queryByText, container } = render(
+      <DataSelector
+        steps={["DATABASE", "SCHEMA", "TABLE"]}
+        combineDatabaseSchemaSteps
+        triggerElement={<div />}
+        databases={[MULTI_SCHEMA_DATABASE, SAMPLE_DATASET]}
+        metadata={metadata}
+        isOpen={true}
+      />,
+    );
+
+    getByText("Sample Dataset");
+    fireEvent.click(getByText("Multi-schema Database"));
+    // check that schemas are listed
+    getByText("first_schema");
+    getByText("second_schema");
+    // check for chevron icon
+    expect(document.body.querySelector(".Icon-chevronup")).not.toBe(null);
+
+    // collapse db
+    fireEvent.click(getByText("Multi-schema Database"));
+    // schemas are hidden, but databases are still shown
+    expect(queryByText("first_schema")).toBe(null);
+    expect(queryByText("second_schema")).toBe(null);
+    getByText("Sample Dataset");
+    getByText("Multi-schema Database");
+    // check for chevron icon
+    expect(document.body.querySelector(".Icon-chevrondown")).not.toBe(null);
+  });
 });
 
 // removes associated ids from entities so we can load only some of them
