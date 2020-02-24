@@ -137,7 +137,7 @@ describe("DataSelector", () => {
   });
 
   it("should skip db and schema steps if there's only one option", async () => {
-    const { getByText, queryByText } = render(
+    const { getByText } = render(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
@@ -169,7 +169,7 @@ describe("DataSelector", () => {
   });
 
   it("should click into a single-schema db after expanding a multi-schema db", () => {
-    const { getByText, queryByText } = render(
+    const { getByText } = render(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
@@ -187,7 +187,7 @@ describe("DataSelector", () => {
   });
 
   it("should expand multi-schema after clicking into single-schema", async () => {
-    const { getByText, queryByText } = render(
+    const { getByText } = render(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
@@ -215,7 +215,7 @@ describe("DataSelector", () => {
     // This is the same and the previous test except that it first opens/closes
     // the multi-schema db. This left some lingering traces in component state
     // which caused a bug tha that the previous test didn't catch.
-    const { getByText, queryByText } = render(
+    const { getByText } = render(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
@@ -244,7 +244,7 @@ describe("DataSelector", () => {
   });
 
   it("should collapse expanded list of db's schemas", () => {
-    const { getByText, queryByText, container } = render(
+    const { getByText, queryByText } = render(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
         combineDatabaseSchemaSteps
@@ -275,7 +275,7 @@ describe("DataSelector", () => {
   });
 
   it("should auto-advance past db and schema in field picker", async () => {
-    const { getByText, queryByText } = render(
+    const { getByText } = render(
       <DataSelector
         steps={["SCHEMA", "TABLE", "FIELD"]}
         selectedDatabaseId={SAMPLE_DATASET.id}
@@ -290,7 +290,7 @@ describe("DataSelector", () => {
   });
 
   it("should select schema in field picker", () => {
-    const { getByText, queryByText } = render(
+    const { getByText } = render(
       <DataSelector
         steps={["SCHEMA", "TABLE", "FIELD"]}
         selectedDatabaseId={MULTI_SCHEMA_DATABASE.id}
@@ -302,6 +302,21 @@ describe("DataSelector", () => {
 
     fireEvent.click(getByText("First Schema"));
     getByText("Table in First Schema");
+  });
+
+  it("should database picker with correct database selected", () => {
+    const { getByText } = render(
+      <DataSelector
+        steps={["DATABASE"]}
+        databases={[SAMPLE_DATASET, MULTI_SCHEMA_DATABASE]}
+        selectedDatabaseId={SAMPLE_DATASET.id}
+        triggerElement={<div />}
+        metadata={metadata}
+        isOpen={true}
+      />,
+    );
+
+    getByText("Sample Dataset", { selector: ".List-item--selected h4" });
   });
 });
 
