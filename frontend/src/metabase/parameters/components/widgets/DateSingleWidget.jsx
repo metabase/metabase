@@ -11,6 +11,7 @@ const DateSingleWidget = ({ value, setValue, onClose }) => {
         initial={value}
         selected={value}
         selectedEnd={value}
+        isRangePicker={false}
         onChange={value => {
           setValue(value);
           onClose();

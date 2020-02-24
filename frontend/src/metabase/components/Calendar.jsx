@@ -158,7 +158,10 @@ export default class Calendar extends Component {
     return (
       <div
         className={cx("Calendar Grid-cell", {
-          "Calendar--range": this.props.selected && this.props.selectedEnd,
+          "Calendar--range":
+            this.props.isRangePicker &&
+            this.props.selected &&
+            this.props.selectedEnd,
         })}
       >
         {this.renderMonthHeader(current, side)}
