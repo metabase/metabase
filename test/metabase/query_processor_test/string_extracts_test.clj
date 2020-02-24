@@ -16,6 +16,10 @@
        rows
        ffirst))
 
+(deftest test-length
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (is (= 3 (test-string-extract [:length "foo"])))))
+
 (deftest test-trim
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= "foo" (test-string-extract [:trim " foo "])))))

@@ -377,7 +377,7 @@
                                           {:name ag-name}
                                           {:display-name ag-name}))])
 
-    [(ag-type :guard #{:+ :- :* :/ :replace :substring :regex-match-first :ltrim :rtrim :trim :concat :coalesce}) & args]
+    [(ag-type :guard #{:+ :- :* :/ :replace :substring :regex-match-first :ltrim :rtrim :trim :concat :coalesce :length}) & args]
     (apply
      vector
      ag-type

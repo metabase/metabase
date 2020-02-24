@@ -399,6 +399,9 @@
   (is (= {:base_type    :type/Text
           :special_type nil}
          (infered-col-type  [:rtrim "foo"])))
+  (is (= {:base_type    :type/BigInteger
+          :special_type :type/Number}
+         (infered-col-type  [:length "foo"])))
   (is (= {:base_type    :type/Text
           :special_type nil}
          (infered-col-type  [:upper "foo"])))

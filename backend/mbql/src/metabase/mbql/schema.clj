@@ -275,7 +275,7 @@
 
 (def string-expressions
   "String functions"
-  #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce})
+  #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :length})
 
 (declare StringExpression)
 
@@ -295,6 +295,9 @@
 
 (defclause ^{:requires-features #{:expressions}} substring
   s StringExpressionArg, start s/Int, length (optional s/Int))
+
+(defclause ^{:requires-features #{:expressions}} length
+  s StringExpressionArg)
 
 (defclause ^{:requires-features #{:expressions}} trim
   s StringExpressionArg)
@@ -388,7 +391,7 @@
   (s/recursive #'ArithmeticExpression*))
 
 (def ^:private StringExpression*
-  (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce))
+  (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce length))
 
 (def ^:private StringExpression
   "Schema for the definition of an string expression."

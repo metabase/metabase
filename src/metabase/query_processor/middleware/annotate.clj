@@ -356,7 +356,7 @@
 
     ;; Always treat count or distinct count as an integer even if the DB in question returns it as something
     ;; wacky like a BigDecimal or Float
-    [(_ :guard #{:count :distinct}) & args]
+    [(_ :guard #{:count :distinct :length}) & args]
     (merge
      (col-info-for-aggregation-clause inner-query args)
      {:base_type    :type/BigInteger
