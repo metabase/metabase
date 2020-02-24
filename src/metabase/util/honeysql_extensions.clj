@@ -37,7 +37,6 @@
   (str "count(distinct " (hformat/to-sql field) ")"))
 
 
-
 ;; HoneySQL 0.7.0+ parameterizes numbers to fix issues with NaN and infinity -- see
 ;; https://github.com/jkk/honeysql/pull/122. However, this broke some of Metabase's behavior, specifically queries
 ;; with calculated columns with numeric literals -- some SQL databases can't recognize that a calculated field in a

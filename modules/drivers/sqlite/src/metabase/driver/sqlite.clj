@@ -220,7 +220,7 @@
     (hsql/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start))))
 
 (defmethod sql.qp/->honeysql [:sqlite :concat]
-  (driver [_ & args])
+  [driver [_ & args]]
   (hsql/raw (str/join " || " (map (comp hformat/to-sql (partial sql.qp/->honeysql driver)) args))))
 
 
