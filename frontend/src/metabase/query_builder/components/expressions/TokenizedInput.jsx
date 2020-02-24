@@ -24,6 +24,7 @@ export default class TokenizedInput extends Component {
 
   static defaultProps = {
     style: {},
+    tokenizedEditing: false,
   };
 
   _getValue() {
@@ -67,7 +68,11 @@ export default class TokenizedInput extends Component {
   onInput = e => {
     this._setValue(e.target.textContent);
   };
-  onKeyDown = e => {
+
+  onKeyDownNormal = e => {
+    this.props.onKeyDown(e);
+  };
+  onKeyDownTokenized = e => {
     // isTyping signals whether the user is typing characters (keyCode >= 65) vs. deleting / navigating with arrows / clicking to select
     const isTyping = this._isTyping;
     // also keep isTyping same when deleting
@@ -164,7 +169,11 @@ export default class TokenizedInput extends Component {
         className={className}
         style={{ whiteSpace: "pre-wrap", ...style }}
         contentEditable
-        onKeyDown={this.onKeyDown}
+        onKeyDown={
+          this.props.tokenizedEditing
+            ? this.onKeyDownTokenized
+            : this.onKeyDownNormal
+        }
         onInput={this.onInput}
         onFocus={onFocus}
         onBlur={onBlur}
