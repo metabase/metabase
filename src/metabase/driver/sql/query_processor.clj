@@ -371,6 +371,10 @@
   [driver [_ arg pattern replacement]]
   (hsql/call :replace (->honeysql driver arg) (->honeysql driver pattern) (->honeysql driver replacement)))
 
+(defmethod ->honeysql [:sql :concat]
+  [driver [_ & args]]
+  (apply hsql/call :concat (map (partial ->honeysql driver) args)))
+
 (defmethod ->honeysql [:sql :substring]
   [driver [_ arg start length]]
   (if length

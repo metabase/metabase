@@ -1,5 +1,7 @@
 (ns metabase.query-processor-test.string-extracts-test
-  (:require [metabase.query-processor-test :refer :all]
+  (:require [clojure.test :refer :all]
+            [metabase.query-processor-test :refer :all]
+            [metabase.test :as mt]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]))
 
@@ -10,51 +12,52 @@
         ;; To ensure stable ordering
         :order-by    [[:asc [:field-id (data/id :venues :id)]]]
         :limit       1}
-       (data/run-mbql-query venues)
+       (mt/run-mbql-query venues)
        rows
        ffirst))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
-  "foo"
-  (test-string-extract [:trim " foo "]))
+(deftest test-trim
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (is (= "foo" (test-string-extract [:trim " foo "])))))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
-  "foo "
-  (test-string-extract [:ltrim " foo "]))
+(deftest test-ltrim
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (is (= "foo " (test-string-extract [:ltrim " foo "])))))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
-  " foo"
-  (test-string-extract [:rtrim " foo "]))
+(deftest test-rtrim
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (is (= " foo" (test-string-extract [:rtrim " foo "])))))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
-  "RED MEDICINE"
-  (test-string-extract [:upper [:field-id (data/id :venues :name)]]))
+(deftest test-upper
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (is (= "RED MEDICINE" (test-string-extract [:upper [:field-id (data/id :venues :name)]])))))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
-  "red medicine"
-  (test-string-extract [:lower [:field-id (data/id :venues :name)]]))
+(deftest test-lower
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (is (= "red medicine" (test-string-extract [:lower [:field-id (data/id :venues :name)]])))))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
-  "Red"
-  (test-string-extract [:substring [:field-id (data/id :venues :name)] 1 3]))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
-  "ed Medicine"
-  (test-string-extract [:substring [:field-id (data/id :venues :name)] 2]))
+(deftest test-substring
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (is (= "Red" (test-string-extract [:substring [:field-id (data/id :venues :name)] 1 3])))
+    (is (= "ed Medicine" (test-string-extract [:substring [:field-id (data/id :venues :name)] 2])))))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
-  "Red Baloon"
-  (test-string-extract [:replace [:field-id (data/id :venues :name)] "Medicine" "Baloon"]))
+(deftest test-replacea
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (is (= "Red Baloon" (test-string-extract  [:replace [:field-id (data/id :venues :name)] "Medicine" "Baloon"])))))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
-  1
-  (int (test-string-extract [:coalesce 1 2])))
+(deftest test-coalesce
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (is (= 1 (test-string-extract [:coalesce 1 2])))))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions :regex)
-  "Red"
-  (test-string-extract [:regex-match-first [:field-id (data/id :venues :name)] "(.ed+)"]))
+(deftest test-concat
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (is (= "foobar" (test-string-extract [:concat "foo" "bar"])))))
 
-;; test nesting
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :expressions)
-  "MED"
-  (test-string-extract [:upper [:substring [:trim [:substring [:field-id (data/id :venues :name)] 4]] 1 3]]))
+(deftest test-regex-match-first
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :regex)
+    (is (= "Red" (test-string-extract [:regex-match-first [:field-id (data/id :venues :name)] "(.ed+)"])))))
+
+(deftest test-nesting
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (is (= "MED" (test-string-extract [:upper [:substring [:trim [:substring [:field-id (data/id :venues :name)] 4]] 1 3]])))))

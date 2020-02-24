@@ -524,6 +524,110 @@
   (-> (qp.test-util/with-everything-store
         ((annotate/add-column-info (constantly {}))
          (data/mbql-query venues
+           {:expressions {"string_extract" [:rtrim "foo"]}
+            :fields      [[:expression "string_extract"]]
+            :limit       10})))
+      :cols
+      first
+      (select-keys [:base_type :special_type])))
+
+(expect
+  {:base_type    :type/Text
+   :special_type nil}
+  (-> (qp.test-util/with-everything-store
+        ((annotate/add-column-info (constantly {}))
+         (data/mbql-query venues
+           {:expressions {"string_extract" [:ltrim "foo"]}
+            :fields      [[:expression "string_extract"]]
+            :limit       10})))
+      :cols
+      first
+      (select-keys [:base_type :special_type])))
+
+(expect
+  {:base_type    :type/Text
+   :special_type nil}
+  (-> (qp.test-util/with-everything-store
+        ((annotate/add-column-info (constantly {}))
+         (data/mbql-query venues
+           {:expressions {"string_extract" [:lower "foo"]}
+            :fields      [[:expression "string_extract"]]
+            :limit       10})))
+      :cols
+      first
+      (select-keys [:base_type :special_type])))
+
+(expect
+  {:base_type    :type/Text
+   :special_type nil}
+  (-> (qp.test-util/with-everything-store
+        ((annotate/add-column-info (constantly {}))
+         (data/mbql-query venues
+           {:expressions {"string_extract" [:upper "foo"]}
+            :fields      [[:expression "string_extract"]]
+            :limit       10})))
+      :cols
+      first
+      (select-keys [:base_type :special_type])))
+
+(expect
+  {:base_type    :type/Text
+   :special_type nil}
+  (-> (qp.test-util/with-everything-store
+        ((annotate/add-column-info (constantly {}))
+         (data/mbql-query venues
+           {:expressions {"string_extract" [:replace "foo" "f" "b"]}
+            :fields      [[:expression "string_extract"]]
+            :limit       10})))
+      :cols
+      first
+      (select-keys [:base_type :special_type])))
+
+(expect
+  {:base_type    :type/Text
+   :special_type nil}
+  (-> (qp.test-util/with-everything-store
+        ((annotate/add-column-info (constantly {}))
+         (data/mbql-query venues
+           {:expressions {"string_extract" [:concat "foo" "f" "b"]}
+            :fields      [[:expression "string_extract"]]
+            :limit       10})))
+      :cols
+      first
+      (select-keys [:base_type :special_type])))
+
+(expect
+  {:base_type    :type/Text
+   :special_type nil}
+  (-> (qp.test-util/with-everything-store
+        ((annotate/add-column-info (constantly {}))
+         (data/mbql-query venues
+           {:expressions {"string_extract" [:regex-match-first "foo" "f"]}
+            :fields      [[:expression "string_extract"]]
+            :limit       10})))
+      :cols
+      first
+      (select-keys [:base_type :special_type])))
+
+(expect
+  {:base_type    :type/Text
+   :special_type nil}
+  (-> (qp.test-util/with-everything-store
+        ((annotate/add-column-info (constantly {}))
+         (data/mbql-query venues
+           {:expressions {"string_extract" [:substring "foo" 1 2]}
+            :fields      [[:expression "string_extract"]]
+            :limit       10})))
+      :cols
+      first
+      (select-keys [:base_type :special_type])))
+
+(expect
+  {:base_type    :type/Text
+   :special_type nil}
+  (-> (qp.test-util/with-everything-store
+        ((annotate/add-column-info (constantly {}))
+         (data/mbql-query venues
            {:expressions {"coalesce_extract" [:coalesce "foo" "bar"]}
             :fields      [[:expression "coalesce_extract"]]
             :limit       10})))
