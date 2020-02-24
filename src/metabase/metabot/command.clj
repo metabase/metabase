@@ -107,27 +107,19 @@
 
 (defn- list-cards []
   (filter-metabot-readable
-   (let [collection-ids                  (metabot-visible-collection-ids)
-         root-collection-perms?          (contains? collection-ids nil)
-         other-visible-collection-ids    (filter some? collection-ids)
-
-         root-collection-filter-clause   (when root-collection-perms?
-                                           [:= :collection_id nil])
-         other-collections-filter-clause (when (seq other-visible-collection-ids)
-                                           [:in :collection_id other-visible-collection-ids])]
-     (db/select [Card :id :name :dataset_query :collection_id]
-       {:order-by [[:id :desc]]
-        :limit    20
-        :where    [:and
-                   [:= :archived false]
-                   (collection/visible-collection-ids->honeysql-filter-clause
-                    (metabot-visible-collection-ids))]}))))
+   (db/select [Card :id :name :dataset_query :collection_id]
+     {:order-by [[:id :desc]]
+      :limit    20
+      :where    [:and
+                 [:= :archived false]
+                 (collection/visible-collection-ids->honeysql-filter-clause
+                  (metabot-visible-collection-ids))]})))
 
 (defmethod command :list [& _]
   (let [cards (list-cards)]
     (str (deferred-tru "Here''s your {0} most recent cards:" (count cards))
          "\n"
-          (format-cards-list cards))))
+         (format-cards-list cards))))
 
 
 ;;; ------------------------------------------------------ show ------------------------------------------------------
@@ -204,9 +196,9 @@
 
 (def ^:private kanye-quotes
   (delay
-    (log/debug (trs "Loading Kanye quotes..."))
-    (when-let [url (io/resource "kanye-quotes.edn")]
-      (edn/read-string (slurp url)))))
+   (log/debug (trs "Loading Kanye quotes..."))
+   (when-let [url (io/resource "kanye-quotes.edn")]
+     (edn/read-string (slurp url)))))
 
 (defmethod command :kanye [& _]
   (str ":kanye:\n> " (rand-nth @kanye-quotes)))
