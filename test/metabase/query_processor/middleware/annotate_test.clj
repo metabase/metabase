@@ -425,7 +425,7 @@
          (infered-col-type  [:coalesce "foo" "bar"])))
   (is (= {:base_type    :type/Text
           :special_type :type/Name}
-         (infered-col-type  [:coalesce (data/id :venues :name) "bar"]))))
+         (infered-col-type  [:coalesce [:field-id (data/id :venues :name)] "bar"]))))
 
 (deftest unique-name-key-test
   (testing "Make sure `:cols` always come back with a unique `:name` key (#8759)"

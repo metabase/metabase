@@ -144,6 +144,10 @@
     (mbql.u/is-clause? :coalesce expression)
     (infer-expression-type (second expression))
 
+    (mbql.u/is-clause? :length expression)
+    {:base_type    :type/BigInteger
+     :special_type :type/Number}
+
     (mbql.u/datetime-arithmetics? expression)
     {:base_type    :type/DateTime
      :special_type nil}
@@ -356,7 +360,7 @@
 
     ;; Always treat count or distinct count as an integer even if the DB in question returns it as something
     ;; wacky like a BigDecimal or Float
-    [(_ :guard #{:count :distinct :length}) & args]
+    [(_ :guard #{:count :distinct}) & args]
     (merge
      (col-info-for-aggregation-clause inner-query args)
      {:base_type    :type/BigInteger
