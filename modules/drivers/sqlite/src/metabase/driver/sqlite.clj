@@ -223,9 +223,10 @@
   [driver [_ & args]]
   (hsql/raw (str/join " || " (for [arg args]
                                (let [arg (sql.qp/->honeysql driver arg)]
-                                 (if (string? arg)
-                                   (hx/literal arg)
-                                   (hformat/to-sql arg)))))))
+                                 (hformat/to-sql
+                                  (if (string? arg)
+                                    (hx/literal arg)
+                                    arg)))))))
 
 
 ;; See https://sqlite.org/lang_datefunc.html
