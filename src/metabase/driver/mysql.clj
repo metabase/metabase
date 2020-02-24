@@ -167,9 +167,9 @@
   [driver [_ arg pattern]]
   (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
 
-(defmethod ->honeysql [:sql :length]
+(defmethod sql.qp/->honeysql [:sql :length]
   [driver [_ arg]]
-  (hsql/call :char_length (->honeysql driver arg)))
+  (hsql/call :char_length (sql.qp/->honeysql driver arg)))
 
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting
