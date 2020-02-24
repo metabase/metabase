@@ -272,9 +272,9 @@ export default class LineAreaBarChart extends Component {
 
     const settings = this.getSettings();
 
-    let multiseriesHeaderSeries;
+    let hasMultiSeriesHeaderSeries = false;
     if (series.length > 1 || onAddSeries || onEditSeries || onRemoveSeries) {
-      multiseriesHeaderSeries = series;
+      hasMultiSeriesHeaderSeries = true;
     }
 
     const hasTitle = showTitle && settings["card.title"];
@@ -283,8 +283,6 @@ export default class LineAreaBarChart extends Component {
       {
         card: {
           name: " ",
-          id: series[0].card.id,
-          dataset_query: series[0].card.dataset_query,
         },
       },
     ];
@@ -305,10 +303,10 @@ export default class LineAreaBarChart extends Component {
             actionButtons={actionButtons}
           />
         )}
-        {multiseriesHeaderSeries || (!hasTitle && actionButtons) ? ( // always show action buttons if we have them
+        {hasMultiSeriesHeaderSeries || (!hasTitle && actionButtons) ? ( // always show action buttons if we have them
           <LegendHeader
             className="flex-no-shrink"
-            series={multiseriesHeaderSeries || defaultSeries}
+            series={hasMultiSeriesHeaderSeries ? series : defaultSeries}
             settings={settings}
             hovered={hovered}
             onHoverChange={this.props.onHoverChange}
