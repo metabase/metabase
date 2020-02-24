@@ -273,6 +273,23 @@ describe("DataSelector", () => {
     // check for chevron icon
     expect(document.body.querySelector(".Icon-chevrondown")).not.toBe(null);
   });
+
+  it("should auto-advance past db and schema in field picker", async () => {
+    const { getByText, queryByText } = render(
+      <DataSelector
+        steps={["SCHEMA", "TABLE", "FIELD"]}
+        selectedDatabaseId={SAMPLE_DATASET.id}
+        triggerElement={<div />}
+        metadata={metadata}
+        renderAsSelect={true}
+        isInitiallyOpen={true}
+        isOpen={true}
+      />,
+    );
+    await delay(1);
+
+    getByText("Orders");
+  });
 });
 
 // removes associated ids from entities so we can load only some of them

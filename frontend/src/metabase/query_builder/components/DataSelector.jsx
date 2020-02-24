@@ -360,14 +360,12 @@ export class UnconnectedDataSelector extends Component {
   }
 
   async hydrateActiveStep() {
-    if (this.state.selectedFieldId) {
+    if (this.state.selectedTableId) {
       await this.switchToStep(FIELD_STEP);
-    } else if (this.state.selectedTableId) {
-      await this.switchToStep(TABLE_STEP);
     } else if (this.state.selectedSchemaId) {
-      await this.switchToStep(SCHEMA_STEP);
+      await this.switchToStep(TABLE_STEP);
     } else if (this.state.selectedDatabaseId) {
-      await this.switchToStep(DATABASE_STEP);
+      await this.switchToStep(SCHEMA_STEP);
     } else {
       await this.switchToStep(this.state.steps[0]);
     }
