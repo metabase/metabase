@@ -237,6 +237,10 @@
     (hsql/call :substring (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
     (hsql/call :substring (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (hsql/call :len (sql.qp/->honeysql driver arg)))))
 
+(defmethod sql.qp/->honeysql [:sqlserver :length]
+  [driver [_ arg]]
+  (hsql/call :len (sql.qp/->honeysql driver arg)))
+
 (defmethod driver.common/current-db-time-date-formatters :sqlserver
   [_]
   (driver.common/create-db-time-formatters "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSZ"))

@@ -221,7 +221,11 @@
 
 (defmethod sql.qp/->honeysql [:sqlite :concat]
   [driver [_ & args]]
-  (hsql/raw (str/join " || " (map (comp hformat/to-sql (partial sql.qp/->honeysql driver)) args))))
+  (hsql/raw (str/join " || " (for [arg args]
+                               (let [arg (sql.qp/->honeysql driver arg)]
+                                 (if (string? arg)
+                                   arg
+                                   (hformat/to-sql arg)))))))
 
 
 ;; See https://sqlite.org/lang_datefunc.html
