@@ -167,7 +167,7 @@
   [driver [_ arg pattern]]
   (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
 
-(defmethod sql.qp/->honeysql [:sql :length]
+(defmethod sql.qp/->honeysql [:mysql :length]
   [driver [_ arg]]
   (hsql/call :char_length (sql.qp/->honeysql driver arg)))
 
