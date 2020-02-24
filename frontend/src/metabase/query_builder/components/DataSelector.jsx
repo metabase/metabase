@@ -704,12 +704,12 @@ const SchemaPicker = ({
   return (
     <div style={{ width: 300 }}>
       <AccordionList
-        id="DatabaseSchemaPicker"
-        key="databaseSchemaPicker"
+        id="SchemaPicker"
+        key="schemaPicker"
         className="text-brand"
         sections={sections}
         searchable
-        onChange={onChangeSchema}
+        onChange={item => onChangeSchema(item.schema)}
         itemIsSelected={schema => schema === selectedSchema}
         renderItemIcon={() => <Icon name="folder" size={16} />}
         showItemArrows={hasNextStep}
@@ -733,7 +733,13 @@ const DatabaseSchemaPicker = ({
 
   const sections = databases.map(database => ({
     name: database.name,
-    items: database.schemas.length > 1 ? database.schemas : [],
+    items:
+      database.schemas.length > 1
+        ? database.schemas.map(schema => ({
+            schema,
+            name: schema.displayName(),
+          }))
+        : [],
     className: database.is_saved_questions ? "bg-light" : null,
     icon: database.is_saved_questions ? "all" : "database",
     loading:
@@ -763,7 +769,7 @@ const DatabaseSchemaPicker = ({
       key="databaseSchemaPicker"
       className="text-brand"
       sections={sections}
-      onChange={onChangeSchema}
+      onChange={item => onChangeSchema(item.schema)}
       onChangeSection={(section, sectionIndex) => {
         if (
           selectedDatabase &&
@@ -821,7 +827,7 @@ const TablePicker = ({
       </span>
       {selectedSchema && selectedSchema.name && schemas.length > 1 && (
         <span className="ml1 text-wrap text-slate">
-          - {selectedSchema.name}
+          - {selectedSchema.displayName()}
         </span>
       )}
     </div>

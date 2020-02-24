@@ -49,8 +49,8 @@ describe("DataSelector", () => {
 
     // clicking reveals schemas
     fireEvent.click(getByText("Multi-schema Database"));
-    getByText("first_schema");
-    getByText("second_schema");
+    getByText("First Schema");
+    getByText("Second Schema");
 
     // but the databases are still displayed
     getByText("Multi-schema Database");
@@ -58,15 +58,15 @@ describe("DataSelector", () => {
     getByText("Sample Empty Dataset");
 
     // clicking shows the table
-    fireEvent.click(getByText("first_schema"));
+    fireEvent.click(getByText("First Schema"));
     getByText("Table in First Schema");
 
     // db and schema are still visible
     getByText("Multi-schema Database");
-    getByText(/first_schema/); // regex because there's a hyphen in the text too
+    getByText("- First Schema");
 
     // but other schema is hidden
-    expect(queryByText("second_schema")).toBe(null);
+    expect(queryByText("Second Schema")).toBe(null);
 
     // clicking on the table
     fireEvent.click(getByText("Table in First Schema"));
@@ -123,9 +123,9 @@ describe("DataSelector", () => {
 
     // select a schema
     rerenderWith({ databases, schemas });
-    getByText("first_schema");
-    getByText("second_schema");
-    fireEvent.click(getByText("second_schema"));
+    getByText("First Schema");
+    getByText("Second Schema");
+    fireEvent.click(getByText("Second Schema"));
 
     // that triggers fetching tables
     await delay(1);
@@ -181,7 +181,7 @@ describe("DataSelector", () => {
     );
 
     fireEvent.click(getByText("Multi-schema Database"));
-    getByText("first_schema");
+    getByText("First Schema");
     fireEvent.click(getByText("Sample Dataset"));
     getByText("Orders");
   });
@@ -207,7 +207,7 @@ describe("DataSelector", () => {
     // click on a multi-schema db
     fireEvent.click(getByText("Multi-schema Database"));
     // see schema appear and click to view tables for good measure
-    fireEvent.click(getByText("first_schema"));
+    fireEvent.click(getByText("First Schema"));
     getByText("Table in First Schema");
   });
 
@@ -228,8 +228,8 @@ describe("DataSelector", () => {
 
     // expand a multi-schema db to make sure it's schemas are loaded
     fireEvent.click(getByText("Multi-schema Database"));
-    getByText("first_schema");
-    getByText("second_schema");
+    getByText("First Schema");
+    getByText("Second Schema");
 
     // click into a single schema db, check for a table, and then return to db list
     fireEvent.click(getByText("Sample Dataset"));
@@ -239,7 +239,7 @@ describe("DataSelector", () => {
     // expand multi-schema db
     fireEvent.click(getByText("Multi-schema Database"));
     // see schema appear and click to view tables for good measure
-    fireEvent.click(getByText("first_schema"));
+    fireEvent.click(getByText("First Schema"));
     getByText("Table in First Schema");
   });
 
@@ -258,16 +258,16 @@ describe("DataSelector", () => {
     getByText("Sample Dataset");
     fireEvent.click(getByText("Multi-schema Database"));
     // check that schemas are listed
-    getByText("first_schema");
-    getByText("second_schema");
+    getByText("First Schema");
+    getByText("Second Schema");
     // check for chevron icon
     expect(document.body.querySelector(".Icon-chevronup")).not.toBe(null);
 
     // collapse db
     fireEvent.click(getByText("Multi-schema Database"));
     // schemas are hidden, but databases are still shown
-    expect(queryByText("first_schema")).toBe(null);
-    expect(queryByText("second_schema")).toBe(null);
+    expect(queryByText("First Schema")).toBe(null);
+    expect(queryByText("Second Schema")).toBe(null);
     getByText("Sample Dataset");
     getByText("Multi-schema Database");
     // check for chevron icon
@@ -281,14 +281,27 @@ describe("DataSelector", () => {
         selectedDatabaseId={SAMPLE_DATASET.id}
         triggerElement={<div />}
         metadata={metadata}
-        renderAsSelect={true}
-        isInitiallyOpen={true}
         isOpen={true}
       />,
     );
     await delay(1);
 
     getByText("Orders");
+  });
+
+  it("should select schema in field picker", () => {
+    const { getByText, queryByText } = render(
+      <DataSelector
+        steps={["SCHEMA", "TABLE", "FIELD"]}
+        selectedDatabaseId={MULTI_SCHEMA_DATABASE.id}
+        triggerElement={<div />}
+        metadata={metadata}
+        isOpen={true}
+      />,
+    );
+
+    fireEvent.click(getByText("First Schema"));
+    getByText("Table in First Schema");
   });
 });
 
