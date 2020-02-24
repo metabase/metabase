@@ -121,7 +121,7 @@ const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
       Databases.actions.fetchDatabaseMetadata({ id: databaseId }),
     // FIXME: this doesn't work for "Saved Questions" database
     fetchSchemaTables: schemaId => Schemas.actions.fetch({ id: schemaId }),
-    fetchFields: tableId => Tables.actions.fetchTableMetadata({ id: tableId }),
+    fetchFields: tableId => Tables.actions.fetchMetadata({ id: tableId }),
   },
 )
 class DataSelector extends Component {
