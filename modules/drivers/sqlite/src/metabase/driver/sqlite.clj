@@ -224,7 +224,7 @@
   (hsql/raw (str/join " || " (for [arg args]
                                (let [arg (sql.qp/->honeysql driver arg)]
                                  (if (string? arg)
-                                   arg
+                                   (hx/literal arg)
                                    (hformat/to-sql arg)))))))
 
 
