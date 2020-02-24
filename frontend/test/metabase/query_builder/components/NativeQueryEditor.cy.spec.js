@@ -122,7 +122,7 @@ describe("NativeQueryEditor", () => {
       .parent()
       .parent()
       .contains("Pick a saved question")
-      .click();
+      .click({ force: true });
 
     // selecting a question should update the query
     popover()
