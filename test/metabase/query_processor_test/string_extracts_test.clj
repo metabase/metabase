@@ -1,9 +1,9 @@
 (ns metabase.query-processor-test.string-extracts-test
   (:require [clojure.test :refer :all]
-            [metabase.query-processor-test :refer :all]
-            [metabase.test :as mt]
-            [metabase.test.data :as data]
-            [metabase.test.data.datasets :as datasets]))
+            [metabase
+             [query-processor-test :refer :all]
+             [test :as mt]]
+            [metabase.test.data :as data]))
 
 (defn- test-string-extract
   [expr]
@@ -48,7 +48,7 @@
 
 (deftest test-coalesce
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= 1 (test-string-extract [:coalesce 1 2])))))
+    (is (= "a" (test-string-extract [:coalesce "a" "b"])))))
 
 (deftest test-concat
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)

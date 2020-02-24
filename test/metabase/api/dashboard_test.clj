@@ -584,13 +584,13 @@
 ;;; |                                           DELETE /api/dashboard/:id                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(expect
-  [nil nil]
+(deftest delete-test
   (tt/with-temp Dashboard [{dashboard-id :id}]
     (with-dashboards-in-writeable-collection [dashboard-id]
-      [((user->client :rasta) :delete 204 (format "dashboard/%d" dashboard-id))
-       (Dashboard dashboard-id)])))
-
+      (is (= nil
+             ((user->client :rasta) :delete 204 (format "dashboard/%d" dashboard-id))))
+      (is (= nil
+             (Dashboard dashboard-id))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         COPY /api/dashboard/:id/copy                                           |

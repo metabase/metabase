@@ -145,12 +145,13 @@
 
 (defsetting query-caching-max-ttl
   (deferred-tru "The absolute maximum time to keep any cached query results, in seconds.")
-  :type    :integer
+  :type    :double
   :default (* 60 60 24 100)) ; 100 days
 
+;; TODO -- this isn't really a TTL at all. Consider renaming to something like `-min-duration`
 (defsetting query-caching-min-ttl
   (deferred-tru "Metabase will cache all saved questions with an average query execution time longer than this many seconds:")
-  :type    :integer
+  :type    :double
   :default 60)
 
 (defsetting query-caching-ttl-ratio

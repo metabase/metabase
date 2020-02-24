@@ -4,7 +4,7 @@
 
     (deftest my-test
       ;; run tests against all drivers except Druid
-      (datasets/test-drivers qp.test/non-timeseries-drivers
+      (mt/test-drivers (mt/normal-drivers)
         ...))
 
   When the test suite is ran, those tests will be ran against the subset of those drivers that are present in the

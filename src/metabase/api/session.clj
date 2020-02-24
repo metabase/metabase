@@ -183,7 +183,8 @@
       (let [reset-token        (user/set-password-reset-token! user-id)
             password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
         (email/send-password-reset-email! email google-auth? server-name password-reset-url)
-        (log/info password-reset-url)))))
+        (log/info password-reset-url))))
+  api/generic-204-no-content)
 
 
 (def ^:private ^:const reset-token-ttl-ms

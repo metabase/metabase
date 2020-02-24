@@ -3,45 +3,79 @@
   to queries ran internally e.g. as part of the sync process). These include things like saving QueryExecutions and
   formatting the results."
   (:require [clojure.tools.logging :as log]
-            [medley.core :as m]
+            [java-time :as t]
             [metabase.models
              [query :as query]
              [query-execution :as query-execution :refer [QueryExecution]]]
-            [metabase.query-processor
-             [interface :as qp.i]
-             [util :as qputil]]
-            [metabase.util :as u]
-            [metabase.util.i18n :refer [deferred-tru trs tru]]
-            [toucan.db :as db]))
+            [metabase.query-processor.util :as qputil]
+            [metabase.util.i18n :refer [trs]]
+            [toucan.db :as db])
+  (:import [java.util.concurrent Executors Future]
+           org.apache.commons.lang3.concurrent.BasicThreadFactory$Builder))
 
 (defn- add-running-time [{start-time-ms :start_time_millis, :as query-execution}]
   (-> query-execution
-      (assoc :running_time (- (System/currentTimeMillis) start-time-ms))
+      (assoc :running_time (when start-time-ms
+                             (- (System/currentTimeMillis) start-time-ms)))
       (dissoc :start_time_millis)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Save Query Execution                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; TODO - I'm not sure whether this should happen async as is currently the case, or should happen synchronously e.g.
+;; in the completing arity of the rf
+;;
+;; Async seems like it makes sense from a performance standpoint, but should we have some sort of shared threadpool
+;; for other places where we would want to do async saves (such as results-metadata for Cards?)
 (defn- save-query-execution!
   "Save a `QueryExecution` and update the average execution time for the corresponding `Query`."
-  [{query :json_query, :as query-execution}]
-  (let [query-execution (add-running-time query-execution)]
-    (query/save-query-and-update-average-execution-time! query (:hash query-execution) (:running_time query-execution))
+  [{query :json_query, query-hash :hash, running-time :running_time, context :context :as query-execution}]
+  (query/save-query-and-update-average-execution-time! query query-hash running-time)
+  (if-not context
+    (log/warn (trs "Cannot save QueryExecution, missing :context"))
     (db/insert! QueryExecution (dissoc query-execution :json_query))))
 
-(defn- save-successful-query-execution! [query-execution {cached? :cached, result-rows :row_count}]
-  ;; only insert a new record into QueryExecution if the results *were not* cached (i.e., only if a Query was
-  ;; actually ran)
-  (when-not cached?
-    (save-query-execution! (assoc query-execution :result_rows (or result-rows 0)))))
+(def ^:private ^Long thread-pool-size 4)
 
-(defn- save-failed-query-execution! [query-execution message]
-  (save-query-execution! (assoc query-execution :error (str message))))
+(def ^:private ^{:arglists '(^java.util.concurrent.ExecutorService [])} thread-pool
+  "Thread pool for asynchronously saving query executions."
+  (let [pool (delay
+               (Executors/newFixedThreadPool
+                thread-pool-size
+                (.build
+                 (doto (BasicThreadFactory$Builder.)
+                   (.namingPattern "save-query-execution-thread-pool-%d")
+                   ;; Daemon threads do not block shutdown of the JVM
+                   (.daemon true)
+                   ;; Save query executions should be lower priority than other stuff e.g. API responses
+                   (.priority Thread/MIN_PRIORITY)))))]
+    (fn [] @pool)))
+
+(defn- save-query-execution-async!
+  "Asynchronously save a `QueryExecution` row containing `execution-info`. This is done when a query is finished, so
+  regardless of whether results streaming is canceled, we want to continue the save; for this reason, we don't call
+  `future-cancel` if we get a message to `canceled-chan` the way we normally do."
+  ^Future [execution-info]
+  (log/trace "Saving QueryExecution info asynchronously")
+  (let [execution-info (add-running-time execution-info)
+        ^Runnable task (bound-fn []
+                         (try
+                           (save-query-execution! execution-info)
+                           (catch Throwable e
+                             (log/error e (trs "Error saving query execution info"))))
+                         nil)]
+    (.submit (thread-pool) task)))
+
+(defn- save-successful-query-execution-async! [query-execution result-rows]
+  (save-query-execution-async! (assoc query-execution :result_rows result-rows)))
+
+(defn- save-failed-query-execution-async! [query-execution message]
+  (save-query-execution-async! (assoc query-execution :error (str message))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                Format Response                                                 |
+;;; |                                                   Middleware                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- success-response [{query-hash :hash, :as query-execution} {cached? :cached, :as result}]
@@ -54,74 +88,26 @@
     :average_execution_time (when cached?
                               (query/average-execution-time-ms query-hash))}))
 
-(defn- failure-response [query-execution message result]
-  (merge
-   (-> query-execution
-       add-running-time
-       (dissoc :result_rows :hash :executor_id :card_id :dashboard_id :pulse_id :native))
-   {:status    :failed
-    :error     message
-    :row_count 0
-    :data      {:rows []
-                :cols []}}
-   ;; include stacktrace and preprocessed/native stages of the query if available in the response which should
-   ;; make debugging queries a bit easier
-   (-> (select-keys result [:stacktrace :preprocessed :native :error_type])
-       (m/dissoc-in [:preprocessed :info]))))
+(defn- add-and-save-execution-info-xform! [{:keys [cached?]} execution-info rf]
+  {:pre [(fn? rf)]}
+  ;; don't do anything for cached results
+  ;; TODO - we should test for this
+  (if cached?
+    rf
+    (let [row-count (volatile! 0)]
+      (fn execution-info-rf*
+        ([]
+         (rf))
 
+        ([acc]
+         (save-successful-query-execution-async! execution-info @row-count)
+         (rf (if (map? acc)
+               (success-response execution-info acc)
+               acc)))
 
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                Handle Response                                                 |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- succeed [query-execution result]
-  (save-successful-query-execution! query-execution result)
-  (success-response query-execution result))
-
-(defn- fail [query-execution result]
-  (let [message (get result :error (tru "Unknown error"))]
-    (save-failed-query-execution! query-execution message)
-    (failure-response query-execution message result)))
-
-(defn- format-userland-query-result
-  "Format QP response in the format expected by the frontend client, and save a QueryExecution entry."
-  [respond raise query-execution {:keys [status], :as result}]
-  (cond
-    ;; if the result itself is invalid there's something wrong in the QP -- not just with the query. Pass an
-    ;; Exception up to the top-level handler; this is basically a 500 situation
-    (nil? result)
-    (raise (Exception. (trs "Unexpected nil response from query processor.")))
-
-    (not status)
-    (raise (Exception. (str (deferred-tru "Invalid response from database driver. No :status provided.")
-                            " "
-                            result)))
-
-    ;; if query has been cancelled no need to save QueryExecution (or should we?) and no point formatting anything to
-    ;; be returned since it won't be returned
-    (and (= status :failed)
-         (instance? InterruptedException (:class result)))
-    (do
-      (when-not qp.i/*disable-qp-logging*
-        (log/info (trs "Query canceled")))
-      (respond {:status :interrupted}))
-
-    ;; 'Normal' query failures are usually caused by invalid queries -- equivalent of a HTTP 400. Save QueryExecution
-    ;; & return a "status = failed" response
-    (= status :failed)
-    (do
-      (when-not qp.i/*disable-qp-logging*
-        (log/warn (trs "Query failure") (u/pprint-to-str 'red result)))
-      (respond (fail query-execution result)))
-
-    ;; Successful query (~= HTTP 200): save QueryExecution & return "status = completed" response
-    (= status :completed)
-    (respond (succeed query-execution result))))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                   Middleware                                                   |
-;;; +----------------------------------------------------------------------------------------------------------------+
+        ([result row]
+         (vswap! row-count inc)
+         (rf result row))))))
 
 (defn- query-execution-info
   "Return the info for the QueryExecution entry for this `query`."
@@ -139,8 +125,9 @@
    :context           context
    :hash              query-hash
    :native            (= (keyword query-type) :native)
-   :json_query        (dissoc query :info)
-   :started_at        :%now
+   :json_query        (cond-> (dissoc query :info)
+                        (empty? (:parameters query)) (dissoc :parameters))
+   :started_at        (t/zoned-date-time)
    :running_time      0
    :result_rows       0
    :start_time_millis (System/currentTimeMillis)})
@@ -149,10 +136,18 @@
   "Do extra handling 'userland' queries (i.e. ones ran as a result of a user action, e.g. an API call, scheduled Pulse,
   etc.). This includes recording QueryExecution entries and returning the results in an FE-client-friendly format."
   [qp]
-  (fn [{{:keys [userland-query?]} :middleware, :as query} respond raise canceled-chan]
-    (if-not userland-query?
-      (qp query respond raise canceled-chan)
-      ;; add calculated hash to query
-      (let [query   (assoc-in query [:info :query-hash] (qputil/query-hash query))
-            respond (partial format-userland-query-result respond raise (query-execution-info query))]
-        (qp query respond raise canceled-chan)))))
+  (fn [query rff {:keys [raisef], :as context}]
+    (let [query          (assoc-in query [:info :query-hash] (qputil/query-hash query))
+          execution-info (query-execution-info query)]
+      (letfn [(rff* [metadata]
+                (add-and-save-execution-info-xform! metadata execution-info (rff metadata)))
+              (raisef* [^Throwable e context]
+                (save-failed-query-execution-async! execution-info (.getMessage e))
+                (raisef (ex-info (.getMessage e)
+                          {:query-execution execution-info}
+                          e)
+                        context))]
+        (try
+          (qp query rff* (assoc context :raisef raisef*))
+          (catch Throwable e
+            (raisef* e context)))))))

@@ -381,13 +381,13 @@
   (Logger/getLogger "metabase"))
 
 (defn do-with-log-messages-for-level [level thunk]
-  (let [original-mb-log-level (.getLevel (metabase-logger))
-        new-level             (get level-kwd->level (keyword level))]
+  (let [original-level (.getLevel (metabase-logger))
+        new-level      (get level-kwd->level (keyword level))]
     (try
       (.setLevel (metabase-logger) new-level)
       (thunk)
       (finally
-        (.setLevel (metabase-logger) original-mb-log-level)))))
+        (.setLevel (metabase-logger) original-level)))))
 
 (defmacro with-log-level
   "Sets the log level (e.g. `:debug` or `:trace`) while executing `body`. Not thread safe! But good for debugging from

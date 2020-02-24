@@ -1,92 +1,83 @@
 (ns metabase.query-processor-test.share-test
-  (:require [metabase
+  "Tests for the `:share` aggregation."
+  (:require [clojure.test :refer :all]
+            [metabase
+             [driver :as driver]
              [query-processor-test :refer :all]
-             [util :as u]]
+             [test :as mt]]
             [metabase.models
              [metric :refer [Metric]]
-             [segment :refer [Segment]]]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
-            [metabase.test.data.datasets :as datasets]
-            [toucan.util.test :as tt]))
+             [segment :refer [Segment]]]))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
-  0.94
-  (->> {:aggregation [[:share [:< [:field-id (data/id :venues :price)] 4]]]}
-       (data/run-mbql-query venues)
-       rows
-       ffirst
-       double))
+(deftest basic-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
+    (is (= [[0.94]]
+           (mt/formatted-rows [2.0]
+             (mt/run-mbql-query venues
+               {:aggregation [[:share [:< $price 4]]]}))))
 
-;; Test normalization
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
-  0.94
-  (->> {:aggregation [["share" ["<" ["field-id" (data/id :venues :price)] 4]]]}
-       (data/run-mbql-query venues)
-       rows
-       ffirst
-       double))
+    (testing "Normalization"
+      (= [[0.94]]
+         (mt/formatted-rows [2.0]
+           (mt/run-mbql-query venues
+             {:aggregation [["share" ["<" ["field-id" (mt/id :venues :price)] 4]]]}))))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
-  0.17
-  (->> {:aggregation [[:share [:and [:< [:field-id (data/id :venues :price)] 4]
-                               [:or [:starts-with [:field-id (data/id :venues :name)] "M"]
-                                [:ends-with [:field-id (data/id :venues :name)] "t"]]]]]}
-       (data/run-mbql-query venues)
-       rows
-       ffirst
-       double))
+    (testing "Complex filter clauses"
+      (is (= [[0.17]]
+             (mt/formatted-rows [2.0]
+               (mt/run-mbql-query venues
+                 {:aggregation [[:share
+                                 [:and
+                                  [:< [:field-id $price] 4]
+                                  [:or
+                                   [:starts-with $name "M"]
+                                   [:ends-with $name "t"]]]]]})))))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
-  nil
-  (->> {:aggregation [[:share [:< [:field-id (data/id :venues :price)] 4]]]
-        :filter      [:> [:field-id (data/id :venues :price)] Long/MAX_VALUE]}
-       (data/run-mbql-query venues)
-       rows
-       ffirst))
+    (testing "empty results"
+      ;; due to a bug in the Mongo counts are returned as empty when there are no results (#5419)
+      (is (= (if (= driver/*driver* :mongo)
+               []
+               [[nil]])
+             (mt/rows
+               (mt/run-mbql-query venues
+                 {:aggregation [[:share [:< $price 4]]]
+                  :filter      [:> $price Long/MAX_VALUE]})))))))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
-  [[2 0.0]
-   [3 0.0]
-   [4 0.5]
-   [5 0.14]]
-  (->> {:aggregation [[:share [:< [:field-id (data/id :venues :price)] 2]]]
-        :breakout    [[:field-id (data/id :venues :category_id)]]
-        :limit       4}
-       (data/run-mbql-query venues)
-       (tu/round-all-decimals 2)
-       rows
-       (map (fn [[k v]]
-              [(int k) v]))))
+(deftest segments-metrics-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
+    (testing "Share containing a Segment"
+      (mt/with-temp Segment [{segment-id :id} {:table_id   (mt/id :venues)
+                                               :definition {:source-table (mt/id :venues)
+                                                            :filter       [:< [:field-id (mt/id :venues :price)] 4]}}]
+        (is (= [[0.94]]
+               (mt/formatted-rows [2.0]
+                 (mt/run-mbql-query venues
+                   {:aggregation [[:share [:segment segment-id]]]}))))))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations :expressions)
-  1.47
-  (->> {:aggregation [[:+ [:/ [:share [:< [:field-id (data/id :venues :price)] 4]] 2] 1]]}
-       (data/run-mbql-query venues)
-       rows
-       ffirst
-       double
-       (u/round-to-decimals 2)))
+    (testing "Share inside a Metric"
+      (mt/with-temp Metric [{metric-id :id} {:table_id   (mt/id :venues)
+                                             :definition {:source-table (mt/id :venues)
+                                                          :aggregation  [:share [:< [:field-id (mt/id :venues :price)] 4]]}}]
+        (is (= [[0.94]]
+               (mt/formatted-rows [2.0]
+                 (mt/run-mbql-query venues
+                   {:aggregation [[:metric metric-id]]}))))))))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
-  0.94
-  (tt/with-temp* [Segment [{segment-id :id} {:table_id   (data/id :venues)
-                                             :definition {:source-table (data/id :venues)
-                                                          :filter       [:< [:field-id (data/id :venues :price)] 4]}}]]
-    (->> {:aggregation [[:share [:segment segment-id]]]}
-         (data/run-mbql-query venues)
-         rows
-         ffirst
-         double)))
+(deftest expressions-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions)
+    (testing "Share containing an expression"
+      (is (= [[2 0.0]
+              [3 0.0]
+              [4 0.5]
+              [5 0.14]]
+             (mt/formatted-rows [int 2.0]
+               (mt/run-mbql-query venues
+                 {:aggregation [[:share [:< [:field-id (mt/id :venues :price)] 2]]]
+                  :breakout    [[:field-id (mt/id :venues :category_id)]]
+                  :limit       4})))))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
-  0.94
-  (tt/with-temp* [Metric [{metric-id :id} {:table_id   (data/id :venues)
-                                           :definition {:source-table (data/id :venues)
-                                                        :aggregation  [:share [:< [:field-id (data/id :venues :price)] 4]]}}]]
-    (->> {:aggregation [[:metric metric-id]]}
-         (data/run-mbql-query venues)
-         rows
-         ffirst
-         double)))
+    (testing "Share inside an expression"
+      (is (= [[1.47]]
+             (mt/formatted-rows [2.0]
+               (mt/run-mbql-query venues
+                 {:aggregation [[:+ [:/ [:share [:< [:field-id (mt/id :venues :price)] 4]] 2] 1]]})))))))

@@ -1,7 +1,10 @@
 (ns metabase.timeseries-query-processor-test
   "Query processor tests for DBs that are event-based, like Druid.
   There architecture is different enough that we can't test them along with our 'normal' DBs in `query-procesor-test`."
-  (:require [metabase.query-processor-test :as qp.test]
+  (:require [clojure.test :refer :all]
+            [metabase
+             [query-processor-test :as qp.test]
+             [test :as mt]]
             [metabase.test.data :as data]
             [metabase.timeseries-query-processor-test.util :as tqp.test]))
 
@@ -62,8 +65,6 @@
    (data/run-mbql-query checkins
      {:order-by [[:asc $timestamp]]
       :limit    2})))
-
-
 
 ;;; fields clause
 (tqp.test/expect-with-timeseries-dbs
@@ -525,209 +526,92 @@
       :breakout    [[:datetime-field $timestamp :minute]]
       :limit       5})))
 
-;;; date bucketing - minute-of-hour
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["timestamp" "count"]
-   :rows    [[0 1000]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:aggregation [[:count]]
-      :breakout    [[:datetime-field $timestamp :minute-of-hour]]
-      :limit       5})))
-
-;;; date bucketing - hour
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["timestamp" "count"]
-   :rows    [["2013-01-03T08:00:00+00:00" 1]
-             ["2013-01-10T08:00:00+00:00" 1]
-             ["2013-01-19T08:00:00+00:00" 1]
-             ["2013-01-22T08:00:00+00:00" 1]
-             ["2013-01-23T08:00:00+00:00" 1]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:aggregation [[:count]]
-      :breakout    [[:datetime-field $timestamp :hour]]
-      :limit       5})))
-
-;;; date bucketing - hour-of-day
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["timestamp" "count"]
-   :rows    [[7 719]
-             [8 281]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:aggregation [[:count]]
-      :breakout    [[:datetime-field $timestamp :hour-of-day]]
-      :limit       5})))
-
-;;; date bucketing - week
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["timestamp" "count"]
-   :rows    [["2012-12-30" 1]
-             ["2013-01-06" 1]
-             ["2013-01-13" 1]
-             ["2013-01-20" 4]
-             ["2013-01-27" 1]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:aggregation [[:count]]
-      :breakout    [[:datetime-field $timestamp :week]]
-      :limit       5})))
-
-;;; date bucketing - day
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["timestamp" "count"]
-   :rows    [["2013-01-03T00:00:00+00:00" 1]
-             ["2013-01-10T00:00:00+00:00" 1]
-             ["2013-01-19T00:00:00+00:00" 1]
-             ["2013-01-22T00:00:00+00:00" 1]
-             ["2013-01-23T00:00:00+00:00" 1]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:aggregation [[:count]]
-      :breakout    [[:datetime-field $timestamp :day]]
-      :limit       5})))
-
-;;; date bucketing - day-of-week
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["timestamp" "count"]
-   :rows    [[1 135]
-             [2 143]
-             [3 153]
-             [4 136]
-             [5 139]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:aggregation [[:count]]
-      :breakout    [[:datetime-field $timestamp :day-of-week]]
-      :limit       5})))
-
-;;; date bucketing - day-of-month
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["timestamp" "count"]
-   :rows    [[1 36]
-             [2 36]
-             [3 42]
-             [4 35]
-             [5 43]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:aggregation [[:count]]
-      :breakout    [[:datetime-field $timestamp :day-of-month]]
-      :limit       5})))
-
-;;; date bucketing - day-of-year
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["timestamp" "count"]
-   :rows    [[3 2]
-             [4 6]
-             [5 1]
-             [6 1]
-             [7 2]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:aggregation [[:count]]
-      :breakout    [[:datetime-field $timestamp :day-of-year]]
-      :limit       5})))
-
-;;; date bucketing - week-of-year
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["timestamp" "count"]
-   :rows    [[1 10]
-             [2  7]
-             [3  8]
-             [4 10]
-             [5  4]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:aggregation [[:count]]
-      :breakout    [[:datetime-field $timestamp :week-of-year]]
-      :limit       5})))
-
-;;; date bucketing - month
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["timestamp" "count"]
-   :rows    [["2013-01-01"  8]
-             ["2013-02-01" 11]
-             ["2013-03-01" 21]
-             ["2013-04-01" 26]
-             ["2013-05-01" 23]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:aggregation [[:count]]
-      :breakout    [[:datetime-field $timestamp :month]]
-      :limit       5})))
-
-;; This test is similar to the above query but doesn't use a limit clause which causes the query to be a grouped
-;; timeseries query rather than a topN query. The dates below are formatted incorrectly due to
-;; https://github.com/metabase/metabase/issues/5969.
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["timestamp" "count"]
-   :rows    [["2013-01-01" 8]
-             ["2013-02-01" 11]
-             ["2013-03-01" 21]
-             ["2013-04-01" 26]
-             ["2013-05-01" 23]]}
-  (-> (data/run-mbql-query checkins
-        {:aggregation [[:count]]
-         :breakout    [[:datetime-field $timestamp :month]]})
-      qp.test/rows+column-names
-      (update :rows #(take 5 %))))
-
-;;; date bucketing - month-of-year
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["timestamp" "count"]
-   :rows    [[1  38]
-             [2  70]
-             [3  92]
-             [4  89]
-             [5 111]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:aggregation [[:count]]
-      :breakout    [[:datetime-field $timestamp :month-of-year]]
-      :limit       5})))
-
-;;; date bucketing - quarter
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["timestamp" "count"]
-   :rows    [["2013-01-01" 40]
-             ["2013-04-01" 75]
-             ["2013-07-01" 55]
-             ["2013-10-01" 65]
-             ["2014-01-01" 107]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:aggregation [[:count]]
-      :breakout    [[:datetime-field $timestamp :quarter]]
-      :limit       5})))
-
-;;; date bucketing - quarter-of-year
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["timestamp" "count"]
-   :rows    [[1 200]
-             [2 284]
-             [3 278]
-             [4 238]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:aggregation [[:count]]
-      :breakout    [[:datetime-field $timestamp :quarter-of-year]]
-      :limit       5})))
-
-;;; date bucketing - year
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["timestamp" "count"]
-   :rows    [["2013-01-01" 235]
-             ["2014-01-01" 498]
-             ["2015-01-01" 267]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:aggregation [[:count]]
-      :breakout    [[:datetime-field $timestamp :year]]
-      :limit       5})))
-
-
+(deftest date-bucketing-test
+  (mt/test-drivers (tqp.test/timeseries-drivers)
+    (tqp.test/with-flattened-dbdef
+      (doseq [[unit expected-rows]
+              {:minute-of-hour  [[0 1000]]
+               :hour            [["2013-01-03T08:00:00+00:00" 1]
+                                 ["2013-01-10T08:00:00+00:00" 1]
+                                 ["2013-01-19T08:00:00+00:00" 1]
+                                 ["2013-01-22T08:00:00+00:00" 1]
+                                 ["2013-01-23T08:00:00+00:00" 1]]
+               :hour-of-day     [[7 719]
+                                 [8 281]]
+               :week            [["2012-12-30" 1]
+                                 ["2013-01-06" 1]
+                                 ["2013-01-13" 1]
+                                 ["2013-01-20" 4]
+                                 ["2013-01-27" 1]]
+               :day             [["2013-01-03T00:00:00+00:00" 1]
+                                 ["2013-01-10T00:00:00+00:00" 1]
+                                 ["2013-01-19T00:00:00+00:00" 1]
+                                 ["2013-01-22T00:00:00+00:00" 1]
+                                 ["2013-01-23T00:00:00+00:00" 1]]
+               :day-of-week     [[1 135]
+                                 [2 143]
+                                 [3 153]
+                                 [4 136]
+                                 [5 139]]
+               :day-of-month    [[1 36]
+                                 [2 36]
+                                 [3 42]
+                                 [4 35]
+                                 [5 43]]
+               :day-of-year     [[3 2]
+                                 [4 6]
+                                 [5 1]
+                                 [6 1]
+                                 [7 2]]
+               :week-of-year    [[1 10]
+                                 [2  7]
+                                 [3  8]
+                                 [4 10]
+                                 [5  4]]
+               :month           [["2013-01-01"  8]
+                                 ["2013-02-01" 11]
+                                 ["2013-03-01" 21]
+                                 ["2013-04-01" 26]
+                                 ["2013-05-01" 23]]
+               :month-of-year   [[1  38]
+                                 [2  70]
+                                 [3  92]
+                                 [4  89]
+                                 [5 111]]
+               :quarter         [["2013-01-01" 40]
+                                 ["2013-04-01" 75]
+                                 ["2013-07-01" 55]
+                                 ["2013-10-01" 65]
+                                 ["2014-01-01" 107]]
+               :quarter-of-year [[1 200]
+                                 [2 284]
+                                 [3 278]
+                                 [4 238]]
+               :year            [["2013-01-01" 235]
+                                 ["2014-01-01" 498]
+                                 ["2015-01-01" 267]]}]
+        (testing unit
+          (testing "topN query"
+            (let [{:keys [columns rows]} (qp.test/rows+column-names
+                                           (data/run-mbql-query checkins
+                                             {:aggregation [[:count]]
+                                              :breakout    [[:datetime-field $timestamp unit]]
+                                              :limit       5}))]
+              (is (= ["timestamp" "count"]
+                     columns))
+              (is (= expected-rows
+                     rows))))
+          ;; This test is similar to the above query but doesn't use a limit clause which causes the query to be a
+          ;; grouped timeseries query rather than a topN query. The dates below are formatted incorrectly due to
+          (testing "group timeseries query"
+            (let [{:keys [columns rows]} (qp.test/rows+column-names
+                                           (data/run-mbql-query checkins
+                                             {:aggregation [[:count]]
+                                              :breakout    [[:datetime-field $timestamp unit]]}))]
+              (is (= ["timestamp" "count"]
+                     columns))
+              (is (= expected-rows
+                     (take 5 rows))))))))))
 
 ;;; `not` filter -- Test that we can negate the various other filter clauses
 

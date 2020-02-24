@@ -1,12 +1,15 @@
 (ns metabase.api.table-test
   "Tests for /api/table endpoints."
-  (:require [clojure.walk :as walk]
+  (:require [clojure
+             [test :refer :all]
+             [walk :as walk]]
             [expectations :refer [expect]]
             [medley.core :as m]
             [metabase
              [http-client :as http]
              [query-processor-test :as qpt]
              [sync :as sync]
+             [test :as mt]
              [util :as u]]
             [metabase.api.table :as table-api]
             [metabase.driver.util :as driver.u]
@@ -34,15 +37,15 @@
 ;; We assume that all endpoints for a given context are enforced by the same middleware, so we don't run the same
 ;; authentication test on every single individual endpoint
 
-(expect (get middleware.u/response-unauthentic :body) (http/client :get 401 "table"))
-(expect (get middleware.u/response-unauthentic :body) (http/client :get 401 (format "table/%d" (data/id :users))))
-
-
-;; Helper Fns
+(deftest unauthenticated-test
+  (is (= (get middleware.u/response-unauthentic :body)
+         (http/client :get 401 "table")))
+  (is (= (get middleware.u/response-unauthentic :body)
+         (http/client :get 401 (format "table/%d" (mt/id :users))))))
 
 (defn- db-details []
   (merge
-   (select-keys (data/db) [:id :created_at :updated_at :timezone])
+   (select-keys (mt/db) [:id :created_at :updated_at :timezone])
    {:engine                      "h2"
     :name                        "test-data"
     :is_sample                   false
@@ -67,7 +70,7 @@
    :db                      (db-details)
    :entity_name             nil
    :active                  true
-   :db_id                   (data/id)
+   :db_id                   (mt/id)
    :segments                []
    :metrics                 []})
 
@@ -103,28 +106,28 @@
 ;; ## GET /api/table
 ;; These should come back in alphabetical order and include relevant metadata
 (expect
-  #{{:name         (data/format-name "categories")
+  #{{:name         (mt/format-name "categories")
      :display_name "Categories"
      :rows         0
-     :id           (data/id :categories)
+     :id           (mt/id :categories)
      :entity_type  "entity/GenericTable"}
-    {:name         (data/format-name "checkins")
+    {:name         (mt/format-name "checkins")
      :display_name "Checkins"
      :rows         0
-     :id           (data/id :checkins)
+     :id           (mt/id :checkins)
      :entity_type  "entity/EventTable"}
-    {:name         (data/format-name "users")
+    {:name         (mt/format-name "users")
      :display_name "Users"
      :rows         0
-     :id           (data/id :users)
+     :id           (mt/id :users)
      :entity_type  "entity/UserTable"}
-    {:name         (data/format-name "venues")
+    {:name         (mt/format-name "venues")
      :display_name "Venues"
      :rows         0
-     :id           (data/id :venues)
+     :id           (mt/id :venues)
      :entity_type  "entity/GenericTable"}}
   (->> ((test-users/user->client :rasta) :get 200 "table")
-       (filter #(= (:db_id %) (data/id))) ; prevent stray tables from affecting unit test results
+       (filter #(= (:db_id %) (mt/id))) ; prevent stray tables from affecting unit test results
        (map #(select-keys % [:name :display_name :rows :id :entity_type]))
        set))
 
@@ -133,15 +136,15 @@
 (expect
   (merge
    (dissoc (table-defaults) :segments :field_values :metrics)
-   (db/select-one [Table :created_at :updated_at :fields_hash] :id (data/id :venues))
+   (db/select-one [Table :created_at :updated_at :fields_hash] :id (mt/id :venues))
    {:schema       "PUBLIC"
     :name         "VENUES"
     :display_name "Venues"
     :rows         nil
-    :pk_field     (table/pk-field-id (Table (data/id :venues)))
-    :id           (data/id :venues)
-    :db_id        (data/id)})
-  ((test-users/user->client :rasta) :get 200 (format "table/%d" (data/id :venues))))
+    :pk_field     (table/pk-field-id (Table (mt/id :venues)))
+    :id           (mt/id :venues)
+    :db_id        (mt/id)})
+  ((test-users/user->client :rasta) :get 200 (format "table/%d" (mt/id :venues))))
 
 ;; GET /api/table/:id should return a 403 for a user that doesn't have read permissions for the table
 (tt/expect-with-temp [Database [{database-id :id}]
@@ -165,13 +168,13 @@
 (expect
   (merge
    (query-metadata-defaults)
-   (db/select-one [Table :created_at :updated_at :fields_hash] :id (data/id :categories))
+   (db/select-one [Table :created_at :updated_at :fields_hash] :id (mt/id :categories))
    {:schema       "PUBLIC"
     :name         "CATEGORIES"
     :display_name "Categories"
     :fields       [(merge
-                    (field-details (Field (data/id :categories :id)))
-                    {:table_id         (data/id :categories)
+                    (field-details (Field (mt/id :categories :id)))
+                    {:table_id         (mt/id :categories)
                      :special_type     "type/PK"
                      :name             "ID"
                      :display_name     "ID"
@@ -179,8 +182,8 @@
                      :base_type        "type/BigInteger"
                      :has_field_values "none"})
                    (merge
-                    (field-details (Field (data/id :categories :name)))
-                    {:table_id                 (data/id :categories)
+                    (field-details (Field (mt/id :categories :name)))
+                    {:table_id                 (mt/id :categories)
                      :special_type             "type/Name"
                      :name                     "NAME"
                      :display_name             "Name"
@@ -190,8 +193,8 @@
                      :default_dimension_option nil
                      :has_field_values         "list"})]
     :rows         nil
-    :id           (data/id :categories)})
-  ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :categories))))
+    :id           (mt/id :categories)})
+  ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :categories))))
 
 ;;; GET api/table/:id/query_metadata?include_sensitive_fields
 ;; Make sure that getting the User table *does* include info about the password field, but not actual values
@@ -199,22 +202,22 @@
 (expect
   (merge
    (query-metadata-defaults)
-   (db/select-one [Table :created_at :updated_at :fields_hash] :id (data/id :users))
+   (db/select-one [Table :created_at :updated_at :fields_hash] :id (mt/id :users))
    {:schema       "PUBLIC"
     :name         "USERS"
     :display_name "Users"
     :entity_type  "entity/UserTable"
-    :fields       [(assoc (field-details (Field (data/id :users :id)))
+    :fields       [(assoc (field-details (Field (mt/id :users :id)))
                      :special_type     "type/PK"
-                     :table_id         (data/id :users)
+                     :table_id         (mt/id :users)
                      :name             "ID"
                      :display_name     "ID"
                      :database_type    "BIGINT"
                      :base_type        "type/BigInteger"
                      :visibility_type  "normal"
                      :has_field_values "none")
-                   (assoc (field-details (Field (data/id :users :last_login)))
-                     :table_id                 (data/id :users)
+                   (assoc (field-details (Field (mt/id :users :last_login)))
+                     :table_id                 (mt/id :users)
                      :name                     "LAST_LOGIN"
                      :display_name             "Last Login"
                      :database_type            "TIMESTAMP"
@@ -223,9 +226,9 @@
                      :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
                      :default_dimension_option (var-get #'table-api/date-default-index)
                      :has_field_values         "none")
-                   (assoc (field-details (Field (data/id :users :name)))
+                   (assoc (field-details (Field (mt/id :users :name)))
                      :special_type             "type/Name"
-                     :table_id                 (data/id :users)
+                     :table_id                 (mt/id :users)
                      :name                     "NAME"
                      :display_name             "Name"
                      :database_type            "VARCHAR"
@@ -234,9 +237,9 @@
                      :dimension_options        []
                      :default_dimension_option nil
                      :has_field_values         "list")
-                   (assoc (field-details (Field :table_id (data/id :users), :name "PASSWORD"))
+                   (assoc (field-details (Field :table_id (mt/id :users), :name "PASSWORD"))
                      :special_type     "type/Category"
-                     :table_id         (data/id :users)
+                     :table_id         (mt/id :users)
                      :name             "PASSWORD"
                      :display_name     "Password"
                      :database_type    "VARCHAR"
@@ -244,29 +247,29 @@
                      :visibility_type  "sensitive"
                      :has_field_values "list")]
     :rows         nil
-    :id           (data/id :users)})
-  ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (data/id :users))))
+    :id           (mt/id :users)})
+  ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (mt/id :users))))
 
 ;;; GET api/table/:id/query_metadata
 ;;; Make sure that getting the User table does *not* include password info
 (expect
   (merge
    (query-metadata-defaults)
-   (db/select-one [Table :created_at :updated_at :fields_hash] :id (data/id :users))
+   (db/select-one [Table :created_at :updated_at :fields_hash] :id (mt/id :users))
    {:schema       "PUBLIC"
     :name         "USERS"
     :display_name "Users"
     :entity_type  "entity/UserTable"
-    :fields       [(assoc (field-details (Field (data/id :users :id)))
-                     :table_id         (data/id :users)
+    :fields       [(assoc (field-details (Field (mt/id :users :id)))
+                     :table_id         (mt/id :users)
                      :special_type     "type/PK"
                      :name             "ID"
                      :display_name     "ID"
                      :database_type    "BIGINT"
                      :base_type        "type/BigInteger"
                      :has_field_values "none")
-                   (assoc (field-details (Field (data/id :users :last_login)))
-                     :table_id                 (data/id :users)
+                   (assoc (field-details (Field (mt/id :users :last_login)))
+                     :table_id                 (mt/id :users)
                      :name                     "LAST_LOGIN"
                      :display_name             "Last Login"
                      :database_type            "TIMESTAMP"
@@ -274,8 +277,8 @@
                      :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
                      :default_dimension_option (var-get #'table-api/date-default-index)
                      :has_field_values         "none")
-                   (assoc (field-details (Field (data/id :users :name)))
-                     :table_id         (data/id :users)
+                   (assoc (field-details (Field (mt/id :users :name)))
+                     :table_id         (mt/id :users)
                      :special_type     "type/Name"
                      :name             "NAME"
                      :display_name     "Name"
@@ -283,8 +286,8 @@
                      :base_type        "type/Text"
                      :has_field_values "list")]
     :rows         nil
-    :id           (data/id :users)})
-  ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :users))))
+    :id           (mt/id :users)})
+  ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :users))))
 
 ;; Check that FK fields belonging to Tables we don't have permissions for don't come back as hydrated `:target`(#3867)
 (expect
@@ -311,7 +314,7 @@
   (merge
    (-> (table-defaults)
        (dissoc :segments :field_values :metrics)
-       (assoc-in [:db :details] (:details (data/db))))
+       (assoc-in [:db :details] (:details (mt/db))))
    (db/select-one [Table :id :schema :name :created_at :fields_hash] :id (u/get-id table))
    {:description     "What a nice table!"
     :entity_type     nil
@@ -351,15 +354,15 @@
 ;; ## GET /api/table/:id/fks
 ;; We expect a single FK from CHECKINS.USER_ID -> USERS.ID
 (expect
-  (let [checkins-user-field (Field (data/id :checkins :user_id))
-        users-id-field      (Field (data/id :users :id))
+  (let [checkins-user-field (Field (mt/id :checkins :user_id))
+        users-id-field      (Field (mt/id :users :id))
         fk-field-defaults   (dissoc field-defaults :target :dimension_options :default_dimension_option)]
     [{:origin_id      (:id checkins-user-field)
       :destination_id (:id users-id-field)
       :relationship   "Mt1"
       :origin         (-> (fk-field-details checkins-user-field)
                           (dissoc :target :dimensions :values)
-                          (assoc :table_id      (data/id :checkins)
+                          (assoc :table_id      (mt/id :checkins)
                                  :name          "USER_ID"
                                  :display_name  "User ID"
                                  :database_type "INTEGER"
@@ -368,7 +371,7 @@
                                  :table         (merge
                                                  (dissoc (table-defaults) :segments :field_values :metrics)
                                                  (db/select-one [Table :id :created_at :updated_at :fields_hash]
-                                                   :id (data/id :checkins))
+                                                   :id (mt/id :checkins))
                                                  {:schema       "PUBLIC"
                                                   :name         "CHECKINS"
                                                   :display_name "Checkins"
@@ -376,7 +379,7 @@
                                                   :rows         nil})))
       :destination    (-> (fk-field-details users-id-field)
                           (dissoc :target :dimensions :values)
-                          (assoc :table_id      (data/id :users)
+                          (assoc :table_id      (mt/id :users)
                                  :name          "ID"
                                  :display_name  "ID"
                                  :base_type     "type/BigInteger"
@@ -385,13 +388,13 @@
                                  :table         (merge
                                                  (dissoc (table-defaults) :db :segments :field_values :metrics)
                                                  (db/select-one [Table :id :created_at :updated_at :fields_hash]
-                                                   :id (data/id :users))
+                                                   :id (mt/id :users))
                                                  {:schema       "PUBLIC"
                                                   :name         "USERS"
                                                   :display_name "Users"
                                                   :entity_type  "entity/UserTable"
                                                   :rows         nil})))}])
-  ((test-users/user->client :rasta) :get 200 (format "table/%d/fks" (data/id :users))))
+  ((test-users/user->client :rasta) :get 200 (format "table/%d/fks" (mt/id :users))))
 
 (defn- with-field-literal-id [{field-name :name, base-type :base_type :as field}]
   (assoc field :id ["field-literal" field-name base-type]))
@@ -414,8 +417,8 @@
 
 ;; Make sure metadata for 'virtual' tables comes back as expected from GET /api/table/:id/query_metadata
 (tt/expect-with-temp [Card [card {:name          "Go Dubs!"
-                                  :database_id   (data/id)
-                                  :dataset_query {:database (data/id)
+                                  :database_id   (mt/id)
+                                  :dataset_query {:database (mt/id)
                                                   :type     :native
                                                   :native   {:query (format "SELECT NAME, ID, PRICE, LATITUDE FROM VENUES")}}}]]
   (let [card-virtual-table-id (str "card__" (u/get-id card))]
@@ -434,7 +437,7 @@
                                :fingerprint  (:name mutil/venue-fingerprints)}
                               {:name         "ID"
                                :display_name "ID"
-                               :base_type    "type/Integer"
+                               :base_type    "type/BigInteger"
                                :special_type nil
                                :fingerprint  (:id mutil/venue-fingerprints)}
                               (with-numeric-dimension-options
@@ -460,53 +463,44 @@
          (tu/round-fingerprint-cols [:fields])
          (tu/round-all-decimals 2))))
 
-;; Test date dimensions being included with a nested query
-(tt/expect-with-temp [Card [card {:name          "Users"
-                                  :database_id   (data/id)
-                                  :dataset_query {:database (data/id)
-                                                  :type     :native
-                                                  :native   {:query (format "SELECT NAME, LAST_LOGIN FROM USERS")}}}]]
-  (let [card-virtual-table-id (str "card__" (u/get-id card))]
-    {:display_name      "Users"
-     :schema            "Everything else"
-     :db_id             (:database_id card)
-     :id                card-virtual-table-id
-     :description       nil
-     :dimension_options (default-dimension-options)
-     :fields            [{:name                     "NAME"
-                          :display_name             "NAME"
-                          :base_type                "type/Text"
-                          :table_id                 card-virtual-table-id
-                          :id                       ["field-literal" "NAME" "type/Text"]
-                          :special_type             "type/Name"
-                          :default_dimension_option nil
-                          :dimension_options        []
-                          :fingerprint              {:global {:distinct-count 15
-                                                              :nil%           0.0},
-                                                     :type   {:type/Text {:percent-json  0.0, :percent-url    0.0,
-                                                                          :percent-email 0.0, :average-length 13.27}}}}
-                         {:name                     "LAST_LOGIN"
-                          :display_name             "LAST_LOGIN"
-                          :base_type                "type/DateTime"
-                          :table_id                 card-virtual-table-id
-                          :id                       ["field-literal" "LAST_LOGIN" "type/DateTime"]
-                          :special_type             nil
-                          :default_dimension_option (var-get #'table-api/date-default-index)
-                          :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
-                          :fingerprint              {:global {:distinct-count 15
-                                                              :nil%           0.0},
-                                                     :type   {:type/DateTime {:earliest "2014-01-01T08:30:00"
-                                                                              :latest   "2014-12-05T15:15:00"}}}}]})
-  (do
-    ;; run the Card which will populate its result_metadata column
-    ((test-users/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
-    ;; Now fetch the metadata for this "table"
-    (->> card
-         u/get-id
-         (format "table/card__%d/query_metadata")
-         ((test-users/user->client :crowberto) :get 200)
-         (tu/round-fingerprint-cols [:fields])
-         (tu/round-all-decimals 2))))
+(deftest include-date-dimensions-in-nested-query-test
+  (testing "Test date dimensions being included with a nested query"
+    (mt/with-temp Card [card {:name          "Users"
+                              :database_id   (mt/id)
+                              :dataset_query {:database (mt/id)
+                                              :type     :native
+                                              :native   {:query (format "SELECT NAME, LAST_LOGIN FROM USERS")}}}]
+      (let [card-virtual-table-id (str "card__" (u/get-id card))]
+        ;; run the Card which will populate its result_metadata column
+        ((test-users/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
+        ;; Now fetch the metadata for this "table" via the API
+        (let [[name-metadata last-login-metadata] (db/select-one-field :result_metadata Card :id (u/get-id card))]
+          (is (= {:display_name      "Users"
+                  :schema            "Everything else"
+                  :db_id             (:database_id card)
+                  :id                card-virtual-table-id
+                  :description       nil
+                  :dimension_options (default-dimension-options)
+                  :fields            [{:name                     "NAME"
+                                       :display_name             "NAME"
+                                       :base_type                "type/Text"
+                                       :table_id                 card-virtual-table-id
+                                       :id                       ["field-literal" "NAME" "type/Text"]
+                                       :special_type             "type/Name"
+                                       :default_dimension_option nil
+                                       :dimension_options        []
+                                       :fingerprint              (:fingerprint name-metadata)}
+                                      {:name                     "LAST_LOGIN"
+                                       :display_name             "LAST_LOGIN"
+                                       :base_type                "type/DateTime"
+                                       :table_id                 card-virtual-table-id
+                                       :id                       ["field-literal" "LAST_LOGIN" "type/DateTime"]
+                                       :special_type             nil
+                                       :default_dimension_option (var-get #'table-api/date-default-index)
+                                       :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
+                                       :fingerprint              (:fingerprint last-login-metadata)}]}
+                 ((test-users/user->client :crowberto) :get 200
+                  (format "table/card__%d/query_metadata" (u/get-id card))))))))))
 
 
 ;; make sure GET /api/table/:id/fks just returns nothing for 'virtual' tables
@@ -528,65 +522,65 @@
   "Field values will only be returned when the field's special type is set to type/Category. This function will change
   that for `category_id`, then invoke `f` and roll it back afterwards"
   [special-type f]
-  (tu/with-temp-vals-in-db Field (data/id :venues :category_id) {:special_type special-type}
+  (tu/with-temp-vals-in-db Field (mt/id :venues :category_id) {:special_type special-type}
     (f)))
 
 ;; ## GET /api/table/:id/query_metadata
 ;; Ensure internal remapped dimensions and human_readable_values are returned
 (expect
-  [{:table_id   (data/id :venues)
-    :id         (data/id :venues :category_id)
+  [{:table_id   (mt/id :venues)
+    :id         (mt/id :venues :category_id)
     :name       "CATEGORY_ID"
-    :dimensions {:name "Foo", :field_id (data/id :venues :category_id), :human_readable_field_id nil, :type "internal"}}
-   {:id         (data/id :venues :price)
-    :table_id   (data/id :venues)
+    :dimensions {:name "Foo", :field_id (mt/id :venues :category_id), :human_readable_field_id nil, :type "internal"}}
+   {:id         (mt/id :venues :price)
+    :table_id   (mt/id :venues)
     :name       "PRICE"
     :dimensions []}]
-  (data/with-temp-objects
+  (mt/with-temp-objects
     (data/create-venue-category-remapping "Foo")
     (category-id-special-type
      :type/Category
      (fn []
        (narrow-fields ["PRICE" "CATEGORY_ID"]
-                      ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :venues))))))))
+                      ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :venues))))))))
 
 ;; ## GET /api/table/:id/query_metadata
 ;; Ensure internal remapped dimensions and human_readable_values are returned when type is enum
 (expect
-  [{:table_id   (data/id :venues)
-    :id         (data/id :venues :category_id)
+  [{:table_id   (mt/id :venues)
+    :id         (mt/id :venues :category_id)
     :name       "CATEGORY_ID"
-    :dimensions {:name "Foo", :field_id (data/id :venues :category_id), :human_readable_field_id nil, :type "internal"}}
-   {:id         (data/id :venues :price)
-    :table_id   (data/id :venues)
+    :dimensions {:name "Foo", :field_id (mt/id :venues :category_id), :human_readable_field_id nil, :type "internal"}}
+   {:id         (mt/id :venues :price)
+    :table_id   (mt/id :venues)
     :name       "PRICE"
     :dimensions []}]
-  (data/with-temp-objects
+  (mt/with-temp-objects
     (data/create-venue-category-remapping "Foo")
     (category-id-special-type
      :type/Enum
      (fn []
        (narrow-fields ["PRICE" "CATEGORY_ID"]
-                      ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :venues))))))))
+                      ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :venues))))))))
 
 ;; ## GET /api/table/:id/query_metadata
 ;; Ensure FK remappings are returned
 (expect
-  [{:table_id   (data/id :venues)
-    :id         (data/id :venues :category_id)
+  [{:table_id   (mt/id :venues)
+    :id         (mt/id :venues :category_id)
     :name       "CATEGORY_ID"
-    :dimensions {:name "Foo", :field_id (data/id :venues :category_id), :human_readable_field_id (data/id :categories :name), :type "external"}}
-   {:id         (data/id :venues :price)
-    :table_id   (data/id :venues)
+    :dimensions {:name "Foo", :field_id (mt/id :venues :category_id), :human_readable_field_id (mt/id :categories :name), :type "external"}}
+   {:id         (mt/id :venues :price)
+    :table_id   (mt/id :venues)
     :name       "PRICE"
     :dimensions []}]
-  (data/with-temp-objects
+  (mt/with-temp-objects
     (data/create-venue-category-fk-remapping "Foo")
     (category-id-special-type
      :type/Category
      (fn []
        (narrow-fields ["PRICE" "CATEGORY_ID"]
-                      ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :venues))))))))
+                      ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :venues))))))))
 
 ;; Ensure dimensions options are sorted numerically, but returned as strings
 (expect
@@ -600,12 +594,12 @@
 ;; Numeric fields without min/max values should not have binning strategies
 (expect
   []
-  (let [fingerprint      (db/select-one-field :fingerprint Field {:id (data/id :venues :latitude)})
+  (let [fingerprint      (db/select-one-field :fingerprint Field {:id (mt/id :venues :latitude)})
         temp-fingerprint (-> fingerprint
                              (assoc-in [:type :type/Number :max] nil)
                              (assoc-in [:type :type/Number :min] nil))]
-    (tu/with-temp-vals-in-db Field (data/id :venues :latitude) {:fingerprint temp-fingerprint}
-      (-> ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :categories)))
+    (tu/with-temp-vals-in-db Field (mt/id :venues :latitude) {:fingerprint temp-fingerprint}
+      (-> ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :categories)))
           (get-in [:fields])
           first
           :dimension_options))))
@@ -629,7 +623,7 @@
   (if (data/binning-supported?)
     #{nil "bin-width" "default"}
     #{})
-  (let [response ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :venues)))]
+  (let [response ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :venues)))]
     (extract-dimension-options response "latitude")))
 
 ;; Number columns without a special type should use "num-bins"
@@ -637,47 +631,46 @@
   (if (data/binning-supported?)
     #{nil "num-bins" "default"}
     #{})
-  (tu/with-temp-vals-in-db Field (data/id :venues :price) {:special_type nil}
-    (let [response ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :venues)))]
+  (tu/with-temp-vals-in-db Field (mt/id :venues :price) {:special_type nil}
+    (let [response ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :venues)))]
       (extract-dimension-options response "price"))))
 
 ;; Ensure unix timestamps show date binning options, not numeric binning options
 (expect
   (var-get #'table-api/datetime-dimension-indexes)
-  (data/dataset sad-toucan-incidents
-    (let [response ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :incidents)))]
+  (mt/dataset sad-toucan-incidents
+    (let [response ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :incidents)))]
       (dimension-options-for-field response "timestamp"))))
 
 ;; Datetime binning options should showup whether the backend supports binning of numeric values or not
 (datasets/expect-with-drivers #{:druid}
   (var-get #'table-api/datetime-dimension-indexes)
   (tqpt/with-flattened-dbdef
-    (let [response ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :checkins)))]
+    (let [response ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :checkins)))]
       (dimension-options-for-field response "timestamp"))))
 
 (qpt/expect-with-non-timeseries-dbs
   (var-get #'table-api/datetime-dimension-indexes)
-  (let [response ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :checkins)))]
+  (let [response ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :checkins)))]
     (dimension-options-for-field response "date")))
 
-(qpt/expect-with-non-timeseries-dbs-except #{:oracle :mongo :redshift :sparksql}
+(datasets/expect-with-drivers (qpt/normal-drivers-except #{:sparksql :mongo :oracle :redshift})
   []
-  (data/dataset test-data-with-time
-    (let [response ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (data/id :users)))]
-      (dimension-options-for-field response "last_login_time"))))
+  (mt/dataset test-data-with-time
+    (let [response ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :users)))] (dimension-options-for-field response "last_login_time"))))
 
 ;; Test related/recommended entities
 (expect
   #{:metrics :segments :linked-from :linking-to :tables}
-  (-> ((test-users/user->client :crowberto) :get 200 (format "table/%s/related" (data/id :venues))) keys set))
+  (-> ((test-users/user->client :crowberto) :get 200 (format "table/%s/related" (mt/id :venues))) keys set))
 
 ;; Nested queries with a fingerprint should have dimension options for binning
-(datasets/expect-with-drivers (qpt/non-timeseries-drivers-with-feature :binning :nested-queries)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :binning :nested-queries)
   (repeat 2 (var-get #'table-api/coordinate-dimension-indexes))
-  (tt/with-temp Card [card {:database_id   (data/id)
-                            :dataset_query {:database (data/id)
+  (tt/with-temp Card [card {:database_id   (mt/id)
+                            :dataset_query {:database (mt/id)
                                             :type    :query
-                                            :query    {:source-query {:source-table (data/id :venues)}}}}]
+                                            :query    {:source-query {:source-table (mt/id :venues)}}}}]
     ;; run the Card which will populate its result_metadata column
     ((test-users/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
     (let [response ((test-users/user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card)))]
@@ -685,12 +678,12 @@
            ["latitude" "longitude"]))))
 
 ;; Nested queries missing a fingerprint should not show binning-options
-(datasets/expect-with-drivers (qpt/non-timeseries-drivers-with-feature :binning :nested-queries)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :binning :nested-queries)
   [nil nil]
-  (tt/with-temp Card [card {:database_id   (data/id)
-                            :dataset_query {:database (data/id)
+  (tt/with-temp Card [card {:database_id   (mt/id)
+                            :dataset_query {:database (mt/id)
                                             :type    :query
-                                            :query    {:source-query {:source-table (data/id :venues)}}}}]
+                                            :query    {:source-query {:source-table (mt/id :venues)}}}}]
     ;; By default result_metadata will be nil (and no fingerprint). Just asking for query_metadata after the card was
     ;; created but before it was ran should not allow binning
     (let [response ((test-users/user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card)))]

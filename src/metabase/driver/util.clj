@@ -1,13 +1,11 @@
 (ns metabase.driver.util
   "Utility functions for common operations on drivers."
   (:require [clojure.core.memoize :as memoize]
-            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
              [config :as config]
              [driver :as driver]
              [util :as u]]
-            [metabase.driver.impl :as impl]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db]))
 
@@ -66,31 +64,6 @@
   (This is cached for a second, so as to avoid repeated application DB calls if this function is called several times
   over the duration of a single API request or sync operation.)"
   (memoize/ttl database->driver* :ttl/threshold 1000))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              Loading all Drivers                                               |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn find-and-load-all-drivers!
-  "Search classpath for namespaces that start with `metabase.driver.`, then `require` them, which should register them
-  as a side-effect. Note that this will not load drivers added by 3rd-party plugins; they must register themselves
-  appropriately when initialized by `load-plugins!`.
-
-  This really only needs to be done by the public settings API endpoint to populate the list of available drivers.
-  Please avoid using this function elsewhere, as loading all of these namespaces can be quite expensive!"
-  []
-  (doseq [ns-symb u/metabase-namespace-symbols
-          :when   (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb))
-          :let    [driver (keyword (-> (last (str/split (name ns-symb) #"\."))
-                                       (str/replace #"_" "-")))]
-          ;; let's go ahead and ignore namespaces we know for a fact do not contain drivers
-          :when   (not (#{:common :util :query-processor :google :impl}
-                        driver))]
-    (try
-      (impl/load-driver-namespace-if-needed! driver)
-      (catch Throwable e
-        (log/error e (trs "Error loading namespace"))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
