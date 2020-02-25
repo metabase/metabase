@@ -1,7 +1,8 @@
 (ns metabase.api.native-query-snippet-test
   "Tests for /api/native-query-snippet endpoints."
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
+  (:require [clojure
+             [string :as str]
+             [test :refer :all]]
             [metabase.models
              [database :refer [Database]]
              [native-query-snippet :refer [NativeQuerySnippet]]
