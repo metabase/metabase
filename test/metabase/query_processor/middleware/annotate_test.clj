@@ -429,7 +429,7 @@
 (deftest test-case
   (is (= {:base_type    :type/Text
           :special_type nil}
-         (infered-col-type [:case [[[:> $price 2] "big"]]])))
+         (infered-col-type [:case [[[:> (data/id :venues :price) 2] "big"]]])))
   (is (= {:base_type    :type/Float
           :special_type :type/Number}
          (infered-col-type [:case [[[:> (data/id :venues :price) 2] [:+ (data/id :venues :price) 1]]]])))

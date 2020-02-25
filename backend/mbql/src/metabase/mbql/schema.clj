@@ -397,12 +397,23 @@
   "Schema for the definition of an string expression."
   (s/recursive #'StringExpression*))
 
+(def ^:private CaseClause [(s/one Filter "pred") (s/one ExpressionArg "expr")])
+
+(def ^:private CaseClauses [CaseClause])
+
+(def ^:private CaseOptions
+  {(s/optional-key :default) ExpressionArg})
+
+(defclause ^{:requires-features #{:basic-aggregations}} case
+  clauses CaseClauses, options (optional CaseOptions))
+
 (def FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
   `:+` clause or a Field clause such as `:field-id`."
   (s/conditional
    (partial is-clause? arithmetic-expressions) ArithmeticExpression
    (partial is-clause? string-expressions)     StringExpression
+   (partial is-clause? :case)                  case
    :else                                       Field))
 
 
@@ -575,30 +586,7 @@
   "Schema for the definition of an arithmetic expression."
   (s/recursive #'ArithmeticExpression*))
 
-(def ^:private ExpressionOrValue
-  (s/conditional
-   number?                             s/Num
-   string?                             s/Str
-   (partial is-clause? #{:+ :- :* :/}) ArithmeticExpression
-   :else                               Field))
 
-(def ^:private CaseClause [(s/one Filter "pred") (s/one ExpressionOrValue "expr")])
-
-(def ^:private CaseClauses [CaseClause])
-
-(def ^:private CaseOptions
-  {(s/optional-key :default) ExpressionOrValue})
-
-(defclause ^{:requires-features #{:basic-aggregations}} case
-  clauses CaseClauses, options (optional CaseOptions))
-
-(def FieldOrExpressionDef
-  "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
-  `:+` clause or a Field clause such as `:field-id`."
-  (s/conditional
-   (partial is-clause? #{:+ :- :* :/}) ArithmeticExpression
-   (partial is-clause? :case)          case
-   :else                               Field))
 
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------
