@@ -272,10 +272,12 @@ export default class LineAreaBarChart extends Component {
 
     const settings = this.getSettings();
 
-    let hasMultiSeriesHeaderSeries = false;
-    if (series.length > 1 || onAddSeries || onEditSeries || onRemoveSeries) {
-      hasMultiSeriesHeaderSeries = true;
-    }
+    const hasMultiSeriesHeaderSeries = !!(
+      series.length > 1 ||
+      onAddSeries ||
+      onEditSeries ||
+      onRemoveSeries
+    );
 
     const hasTitle = showTitle && settings["card.title"];
 
