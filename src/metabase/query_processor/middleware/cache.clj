@@ -105,7 +105,6 @@
       ([] (rf))
 
       ([result]
-       ;; TODO - what about the final result? Are we ignoring it completely?
        (a/close! in-chan)
        (let [duration-ms (- (System/currentTimeMillis) start-time)]
          (log/info (trs "Query took {0} to run; miminum for cache eligibility is {1}"
