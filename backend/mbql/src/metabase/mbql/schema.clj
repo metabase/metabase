@@ -324,99 +324,6 @@
   s StringExpressionArg, pattern s/Str)
 
 
-;;; -------------------------------------------------- Expressions ---------------------------------------------------
-
-;; Expressions are "calculated column" definitions, defined once and then used elsewhere in the MBQL query.
-
-(def ^:private arithmetic-expressions #{:+ :- :/ :* :coalesce})
-
-(declare ArithmeticExpression)
-
-(def ^:private NumericExpressionArg
-  (s/conditional
-   number?
-   s/Num
-
-   (partial is-clause? arithmetic-expressions)
-   (s/recursive #'ArithmeticExpression)
-
-   (partial is-clause? :value)
-   value
-
-   :else
-   Field))
-
-(def ^:private ExpressionArg
-  (s/conditional
-   number?
-   s/Num
-
-   (partial is-clause? arithmetic-expressions)
-   (s/recursive #'ArithmeticExpression)
-
-   string?
-   s/Str
-
-   (partial is-clause? string-expressions)
-   (s/recursive #'StringExpression)
-
-   (partial is-clause? :value)
-   value
-
-   :else
-   Field))
-
-(def ^:private NumericExpressionArgOrInterval
-  (s/if (partial is-clause? :interval)
-    interval
-    NumericExpressionArg))
-
-(defclause ^{:requires-features #{:expressions}} coalesce
-  a ExpressionArg, b ExpressionArg, more (rest ExpressionArg))
-
-(defclause ^{:requires-features #{:expressions}} +
-  x NumericExpressionArg, y NumericExpressionArgOrInterval, more (rest NumericExpressionArgOrInterval))
-
-(defclause ^{:requires-features #{:expressions}} -
-  x NumericExpressionArg, y NumericExpressionArgOrInterval, more (rest NumericExpressionArgOrInterval))
-
-(defclause ^{:requires-features #{:expressions}} /, x NumericExpressionArg, y NumericExpressionArg, more (rest NumericExpressionArg))
-(defclause ^{:requires-features #{:expressions}} *, x NumericExpressionArg, y NumericExpressionArg, more (rest NumericExpressionArg))
-
-(def ^:private ArithmeticExpression*
-  (one-of + - / * coalesce))
-
-(def ^:private ArithmeticExpression
-  "Schema for the definition of an arithmetic expression."
-  (s/recursive #'ArithmeticExpression*))
-
-(def ^:private StringExpression*
-  (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce length))
-
-(def ^:private StringExpression
-  "Schema for the definition of an string expression."
-  (s/recursive #'StringExpression*))
-
-(def ^:private CaseClause [(s/one Filter "pred") (s/one ExpressionArg "expr")])
-
-(def ^:private CaseClauses [CaseClause])
-
-(def ^:private CaseOptions
-  {(s/optional-key :default) ExpressionArg})
-
-(defclause ^{:requires-features #{:basic-aggregations}} case
-  clauses CaseClauses, options (optional CaseOptions))
-
-(def FieldOrExpressionDef
-  "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
-  `:+` clause or a Field clause such as `:field-id`."
-  (s/conditional
-   (partial is-clause? arithmetic-expressions) ArithmeticExpression
-   (partial is-clause? string-expressions)     StringExpression
-   (partial is-clause? :case)                  case
-   :else                                       Field))
-
-
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
 
 (declare Filter)
@@ -552,41 +459,93 @@
 
 ;; Expressions are "calculated column" definitions, defined once and then used elsewhere in the MBQL query.
 
+(def ^:private arithmetic-expressions #{:+ :- :/ :* :coalesce})
+
 (declare ArithmeticExpression)
+
+(def ^:private NumericExpressionArg
+  (s/conditional
+   number?
+   s/Num
+
+   (partial is-clause? arithmetic-expressions)
+   (s/recursive #'ArithmeticExpression)
+
+   (partial is-clause? :value)
+   value
+
+   :else
+   Field))
 
 (def ^:private ExpressionArg
   (s/conditional
    number?
    s/Num
 
-   (partial is-clause? #{:+ :- :/ :*})
+   (partial is-clause? arithmetic-expressions)
    (s/recursive #'ArithmeticExpression)
+
+   string?
+   s/Str
+
+   (partial is-clause? string-expressions)
+   (s/recursive #'StringExpression)
+
+   (partial is-clause? :value)
+   value
 
    :else
    Field))
 
-(def ^:private ExpressionArgOrInterval
+(def ^:private NumericExpressionArgOrInterval
   (s/if (partial is-clause? :interval)
     interval
-    ExpressionArg))
+    NumericExpressionArg))
+
+(defclause ^{:requires-features #{:expressions}} coalesce
+  a ExpressionArg, b ExpressionArg, more (rest ExpressionArg))
 
 (defclause ^{:requires-features #{:expressions}} +
-  x ExpressionArg, y ExpressionArgOrInterval, more (rest ExpressionArgOrInterval))
+  x NumericExpressionArg, y NumericExpressionArgOrInterval, more (rest NumericExpressionArgOrInterval))
 
 (defclause ^{:requires-features #{:expressions}} -
-  x ExpressionArg, y ExpressionArgOrInterval, more (rest ExpressionArgOrInterval))
+  x NumericExpressionArg, y NumericExpressionArgOrInterval, more (rest NumericExpressionArgOrInterval))
 
-(defclause ^{:requires-features #{:expressions}} /, x ExpressionArg, y ExpressionArg, more (rest ExpressionArg))
-(defclause ^{:requires-features #{:expressions}} *, x ExpressionArg, y ExpressionArg, more (rest ExpressionArg))
+(defclause ^{:requires-features #{:expressions}} /, x NumericExpressionArg, y NumericExpressionArg, more (rest NumericExpressionArg))
+(defclause ^{:requires-features #{:expressions}} *, x NumericExpressionArg, y NumericExpressionArg, more (rest NumericExpressionArg))
 
 (def ^:private ArithmeticExpression*
-  (one-of + - / *))
+  (one-of + - / * coalesce))
 
 (def ^:private ArithmeticExpression
   "Schema for the definition of an arithmetic expression."
   (s/recursive #'ArithmeticExpression*))
 
+(def ^:private StringExpression*
+  (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce length))
 
+(def ^:private StringExpression
+  "Schema for the definition of an string expression."
+  (s/recursive #'StringExpression*))
+
+(def ^:private CaseClause [(s/one Filter "pred") (s/one ExpressionArg "expr")])
+
+(def ^:private CaseClauses [CaseClause])
+
+(def ^:private CaseOptions
+  {(s/optional-key :default) ExpressionArg})
+
+(defclause ^{:requires-features #{:basic-aggregations}} case
+  clauses CaseClauses, options (optional CaseOptions))
+
+(def FieldOrExpressionDef
+  "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
+  `:+` clause or a Field clause such as `:field-id`."
+  (s/conditional
+   (partial is-clause? arithmetic-expressions) ArithmeticExpression
+   (partial is-clause? string-expressions)     StringExpression
+   (partial is-clause? :case)                  case
+   :else                                       Field))
 
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------
