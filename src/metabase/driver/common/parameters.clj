@@ -42,12 +42,12 @@
   [x]
   (instance? ReferencedCardQuery x))
 
-;; An "NativeQuerySnippet" parameter expands to the partial query snippet stored in the snippet with the specified name.
+;; An "NativeQuerySnippet" parameter expands to the partial query snippet stored in the referenced `NativeQuerySnippet`.
 ;;
-;; `snippet-name` is the unique name of the native query snippet that is referenced.
+;; `native-query-snippet-id` is the ID of the `NativeQuerySnippet` instance from where the snippet content is loaded.
 ;;
-;; `query-snippet` is the raw query snippet which will be replaced, verbatim, for this template tag.
-(p.types/defrecord+ NativeQuerySnippet [snippet-name query-snippet]
+;; `content` is the raw query snippet which will be replaced, verbatim, for this template tag.
+(p.types/defrecord+ NativeQuerySnippet [native-query-snippet-id content]
   PrettyPrintable
   (pretty [this]
     (list 'map->NativeQuerySnippet (into {} this))))

@@ -275,6 +275,6 @@
 ;;; ---------------------------------- Native Query Snippet replacement snippet info ---------------------------------
 
 (defmethod ->replacement-snippet-info [:sql NativeQuerySnippet]
-  [_driver {:keys [query-snippet]}]
+  [_driver {:keys [content]}]
   {:prepared-statement-args nil
-   :replacement-snippet     query-snippet})
+   :replacement-snippet     content})
