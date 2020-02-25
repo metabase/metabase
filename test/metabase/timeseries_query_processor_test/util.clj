@@ -1,10 +1,8 @@
 (ns metabase.timeseries-query-processor-test.util
   "Utility functions and macros for testing timeseries database drivers, such as Druid."
-  (:require [metabase.test.data :as data]
-            [metabase.test :as mt]
+  (:require [metabase.test :as mt]
             [metabase.test.data
              [dataset-definitions :as defs]
-             [datasets :as datasets]
              [interface :as tx]]))
 
 (defn timeseries-drivers []
@@ -31,16 +29,3 @@
 
 (defmacro test-timeseries-drivers {:style/indent 0} [& body]
   `(do-test-timeseries-drivers (fn [] ~@body)))
-
-(defmacro ^:deprecated expect-with-timeseries-dbs
-  "DEPRECATED: Prefer
-
-    (deftest my-test
-      (mt/with-drivers (timeseries-drivers)
-        (with-flattened-dbdef
-          ...)))"
-  {:style/indent 0}
-  [expected actual]
-  `(datasets/expect-with-drivers (timeseries-drivers)
-     (with-flattened-dbdef ~expected)
-     (with-flattened-dbdef ~actual)))
