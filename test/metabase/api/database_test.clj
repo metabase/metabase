@@ -27,9 +27,7 @@
              [data :as data]
              [fixtures :as fixtures]
              [util :as tu]]
-            [metabase.test.data
-             [env :as tx.env]
-             [users :as test-users]]
+            [metabase.test.data.users :as test-users]
             [metabase.test.util.log :as tu.log]
             [metabase.util.schema :as su]
             [schema.core :as s]
@@ -206,45 +204,25 @@
     :native_permissions "write"
     :features           (map u/qualified-name (driver.u/features ::test-driver))}))
 
-(defn- all-test-data-databases []
-  (for [driver (conj @tx.env/test-drivers :h2)
-        ;; GA has no test extensions impl and thus data/db doesn't work with it
-        ;; Also it doesn't work for Druid either because DB must be flattened
-        :when  (not (#{:googleanalytics :druid} driver))]
-    (merge
-     default-db-details
-     (select-keys (driver/with-driver driver (data/db)) [:created_at :id :updated_at :timezone])
-     {:engine             (u/qualified-name driver)
-      :name               "test-data"
-      :native_permissions "write"
-      :features           (map u/qualified-name (driver.u/features driver))})))
+(deftest only-superusers-should-see-db-details-test
+  (testing "Database details *should not* come back for Rasta since she's not a superuser"
+    (let [expected-keys (-> (into #{:features :native_permissions} (keys (Database (data/id))))
+                            (disj :details))]
+      (doseq [db ((test-users/user->client :rasta) :get 200 "database")]
+        (testing (format "Database %s %d %s" (:engine db) (u/get-id db) (pr-str (:name db)))
+          (is (= expected-keys
+                 (set (keys db)))))))))
 
-(defn- api-database-list [db-name user-kw & options]
-  (filter
-   #(contains? #{"test-data" db-name} (:name %))
-   (apply (test-users/user->client user-kw) :get 200 "database" options)))
-
-;; Database details *should not* come back for Rasta since she's not a superuser
-(deftest no-dbs-for-rasta
-  (tt/with-temp* [Database [{db-id :id, db-name :name} {:engine (u/qualified-name ::test-driver)}]]
-    (is (= (sorted-databases
-            (cons
-             (test-driver-database db-id)
-             (all-test-data-databases)))
-           (api-database-list db-name :rasta)))))
-
-;; GET /api/databases (include tables)
-(deftest db-endpoint-includes-tables
-  (tt/with-temp* [Database [{db-id :id, db-name :name} {:engine (u/qualified-name ::test-driver)}]]
-    (is (= (sorted-databases
-            (cons
-             (assoc (test-driver-database db-id) :tables [])
-             (for [db (all-test-data-databases)]
-               (assoc db :tables (->> (db/select Table, :db_id (u/get-id db), :active true)
-                                      (map table-details)
-                                      (sort-by (comp str/lower-case :name)))))))
-           (api-database-list db-name :rasta, :include_tables true)))))
-
+(deftest db-endpoint-includes-tables-test
+  (testing "GET /api/databases?include_tables=true"
+    (tt/with-temp Database [{db-id :id, db-name :name} {:engine (u/qualified-name ::test-driver)}]
+      (doseq [db ((test-users/user->client :rasta) :get 200 "database" :include_tables true)]
+        (testing (format "Database %s %d %s" (:engine db) (u/get-id db) (pr-str (:name db)))
+          (let [expected-tables (->> (db/select Table, :db_id (u/get-id db), :active true)
+                                     (map table-details)
+                                     (sort-by (comp str/lower-case :name)))]
+            (is (= expected-tables
+                   (:tables db)))))))))
 
 ;; ## GET /api/database/:id/metadata
 (def ^:private default-field-details
@@ -265,7 +243,7 @@
     field
     [:updated_at :id :created_at :last_analyzed :fingerprint :fingerprint_version :fk_target_field_id])))
 
-(deftest TODO-give-this-a-name
+(deftest fetch-database-metadata-test
   (is (= (merge default-db-details
                 (select-keys (data/db) [:created_at :id :updated_at :timezone])
                 {:engine   "h2"
@@ -421,7 +399,7 @@
 
 (defmethod driver/supports? [::no-nested-query-support :nested-queries] [_ _] false)
 
-(deftest TODO-name-test-1
+(deftest fetch-saved-questions-db-test
   (tt/with-temp* [Database [bad-db   {:engine ::no-nested-query-support, :details {}}]
                   Card     [bad-card {:name            "Bad Card"
                                       :dataset_query   {:database (u/get-id bad-db)
@@ -498,42 +476,44 @@
    :schedule_hour  nil
    :schedule_type  "hourly"})
 
-;; Can we create a NEW database and give it custom schedules?
-(deftest create-new-db-with-custom-schedules
-  (is (= {:cache_field_values_schedule "0 0 23 ? * 6L *"
-          :metadata_sync_schedule      "0 0 * * * ? *"}
-         (let [db-name (tu/random-name)]
-           (try (let [db (with-redefs [driver/available? (constantly true)]
-                           ((test-users/user->client :crowberto) :post 200 "database"
-                            {:name      db-name
-                             :engine    (u/qualified-name ::test-driver)
-                             :details   {:db "my_db"}
-                             :schedules {:cache_field_values schedule-map-for-last-friday-at-11pm
-                                         :metadata_sync      schedule-map-for-hourly}}))]
-                  (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/get-id db))))
-                (finally (db/delete! Database :name db-name)))))))
+(deftest create-new-db-with-custom-schedules-test
+  (testing "Can we create a NEW database and give it custom schedules?"
+    (let [db-name (tu/random-name)]
+      (try (let [db (with-redefs [driver/available? (constantly true)]
+                      ((test-users/user->client :crowberto) :post 200 "database"
+                       {:name      db-name
+                        :engine    (u/qualified-name ::test-driver)
+                        :details   {:db "my_db"}
+                        :schedules {:cache_field_values schedule-map-for-last-friday-at-11pm
+                                    :metadata_sync      schedule-map-for-hourly}}))]
+             (is (= {:cache_field_values_schedule "0 0 23 ? * 6L *"
+                     :metadata_sync_schedule      "0 0 * * * ? *"}
+                    (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/get-id db))))))
+           (finally (db/delete! Database :name db-name))))))
 
-;; Can we UPDATE the schedules for an existing database?
+;;
 (deftest update-schedules-for-existing-db
-  (is (= {:cache_field_values_schedule "0 0 23 ? * 6L *"
-          :metadata_sync_schedule      "0 0 * * * ? *"}
-         (tt/with-temp Database [db {:engine "h2", :details (:details (data/db))}]
-           ((test-users/user->client :crowberto) :put 200 (format "database/%d" (u/get-id db))
-            (assoc db
-                   :schedules {:cache_field_values schedule-map-for-last-friday-at-11pm
-                               :metadata_sync      schedule-map-for-hourly}))
-           (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/get-id db)))))))
+  (testing "Can we UPDATE the schedules for an existing database?"
+    (tt/with-temp Database [db {:engine "h2", :details (:details (data/db))}]
+      ((test-users/user->client :crowberto) :put 200 (format "database/%d" (u/get-id db))
+       (assoc db
+              :schedules {:cache_field_values schedule-map-for-last-friday-at-11pm
+                          :metadata_sync      schedule-map-for-hourly}))
+      (is (= {:cache_field_values_schedule "0 0 23 ? * 6L *"
+              :metadata_sync_schedule      "0 0 * * * ? *"}
+             (into {} (db/select-one [Database :cache_field_values_schedule :metadata_sync_schedule] :id (u/get-id db))))))))
 
-;; If we FETCH a database will it have the correct 'expanded' schedules?
+;;
 (deftest fetch-db-with-expanded-schedules
-  (is (= {:cache_field_values_schedule "0 0 23 ? * 6L *"
-          :metadata_sync_schedule      "0 0 * * * ? *"
-          :schedules                   {:cache_field_values schedule-map-for-last-friday-at-11pm
-                                        :metadata_sync      schedule-map-for-hourly}}
-         (tt/with-temp Database [db {:metadata_sync_schedule      "0 0 * * * ? *"
-                                     :cache_field_values_schedule "0 0 23 ? * 6L *"}]
-           (-> ((test-users/user->client :crowberto) :get 200 (format "database/%d" (u/get-id db)))
-               (select-keys [:cache_field_values_schedule :metadata_sync_schedule :schedules]))))))
+  (testing "If we FETCH a database will it have the correct 'expanded' schedules?"
+    (tt/with-temp Database [db {:metadata_sync_schedule      "0 0 * * * ? *"
+                                :cache_field_values_schedule "0 0 23 ? * 6L *"}]
+      (is (= {:cache_field_values_schedule "0 0 23 ? * 6L *"
+              :metadata_sync_schedule      "0 0 * * * ? *"
+              :schedules                   {:cache_field_values schedule-map-for-last-friday-at-11pm
+                                            :metadata_sync      schedule-map-for-hourly}}
+             (-> ((test-users/user->client :crowberto) :get 200 (format "database/%d" (u/get-id db)))
+                 (select-keys [:cache_field_values_schedule :metadata_sync_schedule :schedules])))))))
 
 ;; Five minutes
 (def ^:private long-timeout (* 5 60 1000))
@@ -543,19 +523,22 @@
     (when (= (u/get-id db) (u/get-id expected-db))
       (deliver promise-to-deliver true))))
 
-;; Can we trigger a metadata sync for a DB?
-(deftest trigger-metadata-sync-for-db
-  (is (= [true true]
-         (let [sync-called?    (promise)
-               analyze-called? (promise)]
-           (tt/with-temp Database [db {:engine "h2", :details (:details (data/db))}]
-             (with-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db)
-                           analyze/analyze-db!             (deliver-when-db analyze-called? db)]
-               ((test-users/user->client :crowberto) :post 200 (format "database/%d/sync_schema" (u/get-id db)))
-               ;; Block waiting for the promises from sync and analyze to be delivered. Should be delivered instantly,
-               ;; however if something went wrong, don't hang forever, eventually timeout and fail
-               [(deref sync-called? long-timeout :sync-never-called)
-                (deref analyze-called? long-timeout :analyze-never-called)]))))))
+(deftest trigger-metadata-sync-for-db-test
+  (testing "Can we trigger a metadata sync for a DB?"
+    (let [sync-called?    (promise)
+          analyze-called? (promise)]
+      (tt/with-temp Database [db {:engine "h2", :details (:details (data/db))}]
+        (with-redefs [sync-metadata/sync-db-metadata! (deliver-when-db sync-called? db)
+                      analyze/analyze-db!             (deliver-when-db analyze-called? db)]
+          ((test-users/user->client :crowberto) :post 200 (format "database/%d/sync_schema" (u/get-id db)))
+          ;; Block waiting for the promises from sync and analyze to be delivered. Should be delivered instantly,
+          ;; however if something went wrong, don't hang forever, eventually timeout and fail
+          (testing "sync called?"
+            (is (= true
+                   (deref sync-called? long-timeout :sync-never-called))))
+          (testing "analyze called?"
+            (is (= true
+                   (deref analyze-called? long-timeout :analyze-never-called)))))))))
 
 ;; (Non-admins should not be allowed to trigger sync)
 (deftest non-admins-cant-trigger-sync
@@ -621,24 +604,23 @@
          (with-redefs [database-api/test-database-connection test-database-connection]
            (#'database-api/test-connection-details "h2" (:details (data/db)))))))
 
-(deftest TODO-is-valid
-  (is (= {:valid true}
-         (with-redefs [database-api/test-database-connection test-database-connection]
-           ((test-users/user->client :crowberto) :post 200 "database/validate"
-            {:details {:engine :h2, :details (:details (data/db))}})))))
+(deftest validate-database-details-test
+  (with-redefs [database-api/test-database-connection test-database-connection]
+    (testing "Valid database connection details"
+      (is (= {:valid true}
+             ((test-users/user->client :crowberto) :post 200 "database/validate"
+              {:details {:engine :h2, :details (:details (data/db))}}))))
 
-(deftest TODO-rename-is-not-valid
-  (is (= {:valid false, :message "Error!"}
-         (with-redefs [database-api/test-database-connection test-database-connection]
-           (tu.log/suppress-output
-            (#'database-api/test-connection-details "h2" {:db "ABC"}))))))
+    (testing "invalid database connection details"
+      (tu.log/suppress-output
+        (testing "calling test-connection-details directly"
+          (is (= {:valid false, :message "Error!"}
+                 (#'database-api/test-connection-details "h2" {:db "ABC"}))))
 
-(deftest TODO-rename-is-also-nt-valid
-  (is (= {:valid false}
-         (with-redefs [database-api/test-database-connection test-database-connection]
-           (tu.log/suppress-output
-            ((test-users/user->client :crowberto) :post 200 "database/validate"
-             {:details {:engine :h2, :details {:db "ABC"}}}))))))
+        (testing "via the API endpoint"
+          (is (= {:valid false}
+                 ((test-users/user->client :crowberto) :post 200 "database/validate"
+                  {:details {:engine :h2, :details {:db "ABC"}}}))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
