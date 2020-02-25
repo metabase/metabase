@@ -180,7 +180,7 @@
      [ring/ring-mock "0.3.2"]]
 
     :plugins
-    [[lein-environ "1.1.0"]]                                          ; easy access to environment variables
+    [[lein-environ "1.1.0"]] ; easy access to environment variables
 
     :injections
     [(require 'pjstadig.humane-test-output)
@@ -198,12 +198,12 @@
     ["-Dlogfile.path=target/log"]
 
     :repl-options
-    {:init-ns user}}        ; starting in the user namespace is a lot faster than metabase.core since it has less deps
+    {:init-ns user}} ; starting in the user namespace is a lot faster than metabase.core since it has less deps
 
    :ci
    {:jvm-opts ["-Xmx2500m"]
-    :eftest {:report         eftest.report.junit/report
-             :report-to-file "target/junit.xml"}}
+    :eftest   {:report         eftest.report.junit/report
+               :report-to-file "target/test/junit.xml"}}
 
    :install
    {}
@@ -268,9 +268,7 @@
      {:mb-run-mode "test"}
 
      :eftest
-     {:multithread?   false
-      :report         eftest.report.junit/report
-      :report-to-file "target/junit.xml"}
+     {:multithread? false}
 
      :jvm-opts
      ["-Duser.timezone=UTC"
@@ -363,7 +361,7 @@
    ;; Profile Metabase start time with `lein profile`
    :profile
    {:jvm-opts ["-XX:+CITime"                                     ; print time spent in JIT compiler
-               "-XX:+PrintGC"]}                                  ; print a message when garbage collection takes place
+               "-XX:+PrintGC"]} ; print a message when garbage collection takes place
 
    ;; get the H2 shell with 'lein h2'
    :h2-shell

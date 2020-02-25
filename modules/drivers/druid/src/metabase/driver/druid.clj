@@ -12,7 +12,8 @@
 
 (driver/register! :druid)
 
-(defmethod driver/can-connect? :druid [_ details]
+(defmethod driver/can-connect? :druid
+  [_ details]
   {:pre [(map? details)]}
   (ssh/with-ssh-tunnel [details-with-tunnel details]
     (= 200 (:status (http/get (client/details->url details-with-tunnel "/status"))))))

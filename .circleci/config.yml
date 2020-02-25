@@ -332,7 +332,7 @@ jobs:
           condition: << parameters.store-results >>
           steps:
             - store_test_results:
-                path: /home/circleci/metabase/metabase/target/junit.xml
+                path: /home/circleci/metabase/metabase/target/test
 
   be-linter-reflection-warnings:
     executor: clojure
@@ -407,7 +407,7 @@ jobs:
                   lein with-profile +ci test
                 no_output_timeout: << parameters.timeout >>
             - store_test_results:
-                path: /home/circleci/metabase/metabase/target/junit.xml
+                path: /home/circleci/metabase/metabase/target/test
       # This is exactly the same as without auto-retry but will try running the tests a second time if they fail
       - when:
           condition: << parameters.auto-retry >>
@@ -421,7 +421,10 @@ jobs:
                   lein with-profile +ci test || lein with-profile +ci test
                 no_output_timeout: << parameters.timeout >>
             - store_test_results:
-                path: /home/circleci/metabase/metabase/target/junit.xml
+                path: /home/circleci/metabase/metabase/target/test
+      # NOCOMMIT
+      - store_artifacts:
+          path: /tmp
 
   test-migrate-from-h2:
     parameters:
@@ -628,6 +631,7 @@ workflows:
             - be-deps
           e: java-11
           lein-command: test
+          store-results: true
 
       - lein:
           name: be-linter-eastwood
