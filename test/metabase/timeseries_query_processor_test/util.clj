@@ -1,7 +1,6 @@
 (ns metabase.timeseries-query-processor-test.util
   "Utility functions and macros for testing timeseries database drivers, such as Druid."
-  (:require [metabase.test.data :as data]
-            [metabase.test :as mt]
+  (:require [metabase.test :as mt]
             [metabase.test.data
              [dataset-definitions :as defs]
              [datasets :as datasets]
