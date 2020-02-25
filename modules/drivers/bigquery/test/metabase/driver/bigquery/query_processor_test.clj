@@ -170,15 +170,16 @@
 ;; if I run a BigQuery query, does it get a remark added to it?
 (defn- query->native [query]
   (let [native-query (atom nil)]
-    (with-redefs [bigquery/process-native* (fn [_ sql]
+    (with-redefs [bigquery/process-native* (fn [_ _ sql]
                                              (reset! native-query sql)
                                              (throw (Exception. "Done.")))]
-      (qp/process-query {:database (mt/id)
-                         :type     :query
-                         :query    {:source-table (mt/id :venues)
-                                    :limit        1}
-                         :info     {:executed-by 1000
-                                    :query-hash  (byte-array [1 2 3 4])}})
+      (u/ignore-exceptions
+        (qp/process-query {:database (mt/id)
+                           :type     :query
+                           :query    {:source-table (mt/id :venues)
+                                      :limit        1}
+                           :info     {:executed-by 1000
+                                      :query-hash  (byte-array [1 2 3 4])}}))
       @native-query)))
 
 (deftest remark-test
@@ -525,10 +526,13 @@
               "Should convert to the correct SQL"))))))
 
 (defn- can-we-filter-against-relative-datetime? [field unit]
-  (let [{:keys [error]} (mt/run-mbql-query attempts
-                          {:aggregation [[:count]]
-                           :filter      [:time-interval (mt/id :attempts field) :last unit]})]
-    (not error)))
+  (try
+    (mt/run-mbql-query attempts
+      {:aggregation [[:count]]
+       :filter      [:time-interval (mt/id :attempts field) :last unit]})
+    true
+    (catch Throwable _
+      false)))
 
 (deftest filter-by-relative-date-ranges-test
   (testing "Make sure the SQL we generate for filters against relative-datetimes is typed correctly"
@@ -568,8 +572,6 @@
                   [(into [nil] units)]
                   (pmap
                    (fn [field]
-                     (into [field] (pmap
-                                    (fn [unit]
-                                      (boolean (can-we-filter-against-relative-datetime? field unit)))
-                                    units)))
+                     (into [field] (pmap (partial can-we-filter-against-relative-datetime? field)
+                                         units)))
                    fields)))))))))

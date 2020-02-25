@@ -3,14 +3,17 @@
   results. The current focus of this namespace is around column metadata from the results of a query. Going forward
   this is likely to extend beyond just metadata about columns but also about the query results as a whole and over
   time."
-  (:require [metabase.mbql.predicates :as mbql.preds]
+  (:require [clojure.tools.logging :as log]
+            [metabase.mbql.predicates :as mbql.preds]
             [metabase.sync.analyze.classifiers.name :as classify-name]
             [metabase.sync.analyze.fingerprint
              [fingerprinters :as f]
              [insights :as insights]]
             [metabase.sync.interface :as i]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [i18n :refer [trs]]
+             [schema :as su]]
             [redux.core :as redux]
             [schema.core :as s]))
 
@@ -55,34 +58,36 @@
   column. It is cheapest and easiest to just use that. This function takes what it can from the column metadata to
   populate the ResultColumnMetadata"
   [column]
-  (u/select-non-nil-keys column [:name :display_name :description :base_type :special_type :unit :fingerprint]))
+  ;; HACK - not sure why we don't have display_name yet in some cases
+  (merge
+   {:display_name (:name column)}
+   (u/select-non-nil-keys column [:name :display_name :description :base_type :special_type :unit :fingerprint])))
 
-(defn- add-insights [rows result-metadata]
-  (transduce
-   identity
-   (redux/post-complete
-    (redux/juxt
-     (apply f/col-wise (for [{:keys [fingerprint], :as metadata} result-metadata]
-                         (if-not fingerprint
-                           (f/fingerprinter metadata)
-                           (f/constant-fingerprinter fingerprint))))
-     (insights/insights result-metadata))
-    (fn [[fingerprints insights]]
-      {:metadata (map (fn [fingerprint metadata]
-                        (if (instance? Throwable fingerprint)
-                          metadata
-                          (assoc metadata :fingerprint fingerprint)))
-                      fingerprints
-                      result-metadata)
-       :insights insights}))
-   rows))
-
-;; TODO schema
-(defn results->column-metadata
-  "Return the desired storage format for the column metadata coming back from `results` and fingerprint the `results`."
-  [{:keys [rows], :as results}]
-  (let [result-metadata (for [col (:cols results)]
-                          (-> col
-                              stored-column-metadata->result-column-metadata
-                              (maybe-infer-special-type col)))]
-    (add-insights rows result-metadata)))
+(defn insights-rf
+  "A reducing function that calculates what is ultimately returned as `[:data :results_metadata]` in userland QP
+  results. `metadata` is the usual QP results metadata e.g. as recieved by an `rff`."
+  {:arglists '([metadata])}
+  [{:keys [cols]}]
+  (let [cols (for [col cols]
+               (try
+                 (-> col
+                     stored-column-metadata->result-column-metadata
+                     (maybe-infer-special-type col))
+                 (catch Throwable e
+                   (log/error e (trs "Error generating insights for column:") col)
+                   col)))]
+    (redux/post-complete
+     (redux/juxt
+      (apply f/col-wise (for [{:keys [fingerprint], :as metadata} cols]
+                          (if-not fingerprint
+                            (f/fingerprinter metadata)
+                            (f/constant-fingerprinter fingerprint))))
+      (insights/insights cols))
+     (fn [[fingerprints insights]]
+       {:metadata (map (fn [fingerprint metadata]
+                         (if (instance? Throwable fingerprint)
+                           metadata
+                           (assoc metadata :fingerprint fingerprint)))
+                       fingerprints
+                       cols)
+        :insights insights}))))

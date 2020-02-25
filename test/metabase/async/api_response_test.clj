@@ -247,7 +247,7 @@
 (defn- output-chan-with-delayed-result
   "Returns an output channel that receives a 'DONE' value after 400ms. "
   []
-  (u/prog1 (a/chan 1)
+  (u/prog1 (a/promise-chan)
     (a/go
       (a/<! (a/timeout 400))
       (a/>! <> "DONE"))))

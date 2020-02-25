@@ -1,143 +1,88 @@
 (ns metabase.query-processor-test.case-test
-  (:require [metabase.models
+  (:require [clojure.test :refer :all]
+            [metabase
+             [query-processor-test :refer :all]
+             [test :as mt]]
+            [metabase.models
              [metric :refer [Metric]]
              [segment :refer [Segment]]]
-            [metabase.query-processor-test :refer :all]
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.datasets :as datasets]
             [toucan.util.test :as tt]))
 
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
-  116.0
-  (->> {:aggregation [[:sum [:case [[[:< [:field-id (data/id :venues :price)] 2] 2]
-                                    [[:< [:field-id (data/id :venues :price)] 4] 1]] ]]]}
-       (data/run-mbql-query venues)
-       rows
-       ffirst
-       double))
+(defn- test-case
+  [expr]
+  (some->> (mt/run-mbql-query venues {:aggregation [expr]})
+           rows
+           ffirst
+           double))
 
-;; Can use fields as values
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
-  179.0
-  (->> {:aggregation [[:sum [:case [[[:< [:field-id (data/id :venues :price)] 2] [:field-id (data/id :venues :price)]]
-                                    [[:< [:field-id (data/id :venues :price)] 4] [:field-id (data/id :venues :price)]]] ]]]}
-       (data/run-mbql-query venues)
-       rows
-       ffirst
-       double))
+(deftest test-case-aggregations
+  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
+    (is (= 116.0 (test-case [:sum [:case [[[:< [:field-id (data/id :venues :price)] 2] 2]
+                                          [[:< [:field-id (data/id :venues :price)] 4] 1]]]])))
+    (testing "Can we use fields as values"
+      (is (= 179.0 (test-case [:sum [:case [[[:< [:field-id (data/id :venues :price)] 2] [:field-id (data/id :venues :price)]]
+                                            [[:< [:field-id (data/id :venues :price)] 4] [:field-id (data/id :venues :price)]]] ]]))))
+    (testing "Can use expressions as values"
+      (is (= 194.5 (test-case [:sum [:case [[[:< [:field-id (data/id :venues :price)] 2] [:+ [:field-id (data/id :venues :price)] 1]]
+                                            [[:< [:field-id (data/id :venues :price)] 4] [:+ [:/ [:field-id (data/id :venues :price)] 2] 1]]] ]]))))
+    (testing "Test else clause"
+      (is (= 122.0 (test-case [:sum [:case [[[:< [:field-id (data/id :venues :price)] 2] 2]]
+                                     {:default 1}]]))))
+    (testing "Test implicit else (= nil) clause"
+      (is (= nil (test-case [:sum [:case [[[:> [:field-id (data/id :venues :price)] 200] 2]]]]))))
 
-;; Can use expressions as values
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
-  194.5
-  (->> {:aggregation [[:sum [:case [[[:< [:field-id (data/id :venues :price)] 2] [:+ [:field-id (data/id :venues :price)] 1]]
-                                    [[:< [:field-id (data/id :venues :price)] 4] [:+ [:/ [:field-id (data/id :venues :price)] 2] 1]]] ]]]}
-       (data/run-mbql-query venues)
-       rows
-       ffirst
-       double))
-
-;; Test else clause
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
-  122.0
-  (->> {:aggregation [[:sum [:case [[[:< [:field-id (data/id :venues :price)] 2] 2]]
-                             {:default 1}]]]}
-       (data/run-mbql-query venues)
-       rows
-       ffirst
-       double))
-
-;; Test implicit else clause
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
-  nil
-  (->> {:aggregation [[:sum [:case [[[:> [:field-id (data/id :venues :price)] 200] 2]]]]]}
-       (data/run-mbql-query venues)
-       rows
-       ffirst))
-
-;; Test normalization
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
-  116.0
-  (->> {:aggregation [["sum" ["case" [[["<" ["field-id" (data/id :venues :price)] 2] 2]
-                                      [["<" ["field-id" (data/id :venues :price)] 4] 1]] ]]]}
-       (data/run-mbql-query venues)
-       rows
-       ffirst
-       double))
-
-;; Test complex filters
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
-  34.0
-  (->> {:aggregation [[:sum
-                       [:case [[[:and [:< [:field-id (data/id :venues :price)] 4]
-                                 [:or [:starts-with [:field-id (data/id :venues :name)] "M"]
-                                  [:ends-with [:field-id (data/id :venues :name)] "t"]]]
-                                [:field-id (data/id :venues :price)]]]]]]}
-       (data/run-mbql-query venues)
-       rows
-       ffirst
-       double))
-
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
-  [[2 0.0]
-   [3 0.0]
-   [4 1.0]
-   [5 1.0]]
-  (->> {:aggregation [[:sum [:case [[[:< [:field-id (data/id :venues :price)] 2] [:field-id (data/id :venues :price)]]]
-                             {:default 0}]]]
-        :breakout    [[:field-id (data/id :venues :category_id)]]
-        :limit       4}
-       (data/run-mbql-query venues)
-       (tu/round-all-decimals 2)
-       rows
-       (map (fn [[k v]]
-              [(long k) (double v)]))))
-
-;; Can we use case in metric expressions
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations :expressions)
-  90.5
-  (->> {:aggregation [[:+ [:/ [:sum [:case [[[:< [:field-id (data/id :venues :price)] 4] [:field-id (data/id :venues :price)]]]
-                             {:default 0}]] 2] 1]]}
-       (data/run-mbql-query venues)
-       rows
-       ffirst
-       double))
-
-;; Can we use segments in case
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
-  179.0
-  (tt/with-temp* [Segment [{segment-id :id} {:table_id   (data/id :venues)
+    (testing "Test complex filters"
+      (is (= 34.0 (test-case [:sum
+                              [:case [[[:and [:< [:field-id (data/id :venues :price)] 4]
+                                        [:or [:starts-with [:field-id (data/id :venues :name)] "M"]
+                                         [:ends-with [:field-id (data/id :venues :name)] "t"]]]
+                                       [:field-id (data/id :venues :price)]]]]]))))
+    (testing "Can we use case in metric expressions"
+      (is (= 90.5  (test-case [:+ [:/ [:sum [:case [[[:< [:field-id (data/id :venues :price)] 4] [:field-id (data/id :venues :price)]]]
+                                             {:default 0}]] 2] 1]))))
+    (testing "Can we use segments in case"
+      (tt/with-temp* [Segment [{segment-id :id} {:table_id   (data/id :venues)
                                              :definition {:source-table (data/id :venues)
                                                           :filter       [:< [:field-id (data/id :venues :price)] 4]}}]]
-    (->> {:aggregation [[:sum [:case [[[:segment segment-id] [:field-id (data/id :venues :price)]]]]]]}
-         (data/run-mbql-query venues)
-         rows
-         ffirst
-         double)))
-
-;; Can we use case in metrics
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
-  179.0
-  (tt/with-temp* [Metric [{metric-id :id} {:table_id   (data/id :venues)
+        (is (=  179.0  (test-case [:sum [:case [[[:segment segment-id] [:field-id (data/id :venues :price)]]]]])))))
+    (testing "Can we use case in metricw"
+      (tt/with-temp* [Metric [{metric-id :id} {:table_id   (data/id :venues)
                                            :definition {:source-table (data/id :venues)
                                                         :aggregation  [:sum
                                                                        [:case [[[:< [:field-id (data/id :venues :price)] 4]
                                                                                 [:field-id (data/id :venues :price)]]]]]}}]]
-    (->> {:aggregation [[:metric metric-id]]}
-         (data/run-mbql-query venues)
-         rows
-         ffirst
-         double)))
+        (is (= 179.0 (test-case [:metric metric-id])))))
+    (testing "Can we use case with breakout"
+      (is (= [[2 0.0]
+              [3 0.0]
+              [4 1.0]
+              [5 1.0]]
+             (->> {:aggregation [[:sum [:case [[[:< [:field-id (data/id :venues :price)] 2] [:field-id (data/id :venues :price)]]]
+                                        {:default 0}]]]
+                   :breakout    [[:field-id (data/id :venues :category_id)]]
+                   :limit       4}
+                  (mt/run-mbql-query venues)
+                  (tu/round-all-decimals 2)
+                  rows
+                  (map (fn [[k v]]
+                         [(long k) (double v)]))))))))
 
-;; Can we use case in expressions
-(datasets/expect-with-drivers (non-timeseries-drivers-with-feature :basic-aggregations)
-  [nil -2.0 -1.0]
-  (->> {:expressions {"case_test" [:case [[[:< [:field-id (data/id :venues :price)] 2] -1.0]
-                                          [[:< [:field-id (data/id :venues :price)] 3] -2.0]] ]}
-        :fields [[:expression "case_test"]]}
-       (data/run-mbql-query venues)
-       rows
-       (map (comp #(some-> % double) first))
-       distinct
-       sort))
+(deftest test-case-normalization
+  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
+    (is (= 116.0 (test-case ["sum" ["case" [[["<" ["field-id" (data/id :venues :price)] 2] 2]
+                                            [["<" ["field-id" (data/id :venues :price)] 4] 1]] ]])))))
+
+(deftest test-case-expressions
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (is (= [nil -2.0 -1.0]
+           (->> {:expressions {"case_test" [:case [[[:< [:field-id (data/id :venues :price)] 2] -1.0]
+                                                   [[:< [:field-id (data/id :venues :price)] 3] -2.0]] ]}
+                 :fields [[:expression "case_test"]]}
+                (mt/run-mbql-query venues)
+                rows
+                (map (comp #(some-> % double) first))
+                distinct
+                sort)))))

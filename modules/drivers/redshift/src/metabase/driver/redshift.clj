@@ -99,6 +99,20 @@
   [_]
   "SET TIMEZONE TO %s;")
 
+
+(defn- splice-raw-string-value
+  [driver s]
+  (hsql/raw (str "'" (sql.qp/->honeysql driver s) "'")))
+
+(defmethod sql.qp/->honeysql [:redshift :regex-match-first]
+  [driver [_ arg pattern]]
+  (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (splice-raw-string-value driver pattern)))
+
+(defmethod sql.qp/->honeysql [:redshift :replace]
+  [driver [_ arg pattern replacement]]
+  (hsql/call :replace (sql.qp/->honeysql driver arg) (splice-raw-string-value driver pattern)
+              (splice-raw-string-value driver replacement)))
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -114,7 +128,7 @@
    (dissoc opts :host :port :db)))
 
 (prefer-method
- sql-jdbc.execute/read-column
+ sql-jdbc.execute/read-column-thunk
  [::legacy/use-legacy-classes-for-read-and-set Types/TIMESTAMP]
  [:postgres Types/TIMESTAMP])
 

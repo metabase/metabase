@@ -4,13 +4,18 @@
             [java-time :as t]
             [medley.core :as m]
             [metabase
+             [driver :as driver]
              [models :refer [Card Database Field Table]]
              [query-processor :as qp]
              [test :as mt]
              [util :as u]]
-            [metabase.driver.googleanalytics :as ga]
-            [metabase.driver.googleanalytics.query-processor :as ga.qp]
-            [metabase.query-processor.store :as qp.store]
+            metabase.driver.googleanalytics
+            [metabase.driver.googleanalytics
+             [execute :as ga.execute]
+             [query-processor :as ga.qp]]
+            [metabase.query-processor
+             [context :as qp.context]
+             [store :as qp.store]]
             [metabase.test
              [data :as data]
              [fixtures :as fixtures]
@@ -18,6 +23,8 @@
             [metabase.test.data.users :as users]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
+
+(comment metabase.driver.googleanalytics/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -39,7 +46,7 @@
   (binding [qp.store/*store* (atom {:tables {1 #metabase.models.table.TableInstance{:name   "0123456"
                                                                                     :schema nil
                                                                                     :id     1}}})]
-    (ga.qp/mbql->native (update query :query (partial merge {:source-table 1})))))
+    (driver/mbql->native :googleanalytics (update query :query (partial merge {:source-table 1})))))
 
 (deftest basic-compilation-test
   (testing "just check that a basic almost-empty MBQL query can be compiled"
@@ -258,52 +265,57 @@
 
 ;; ok, now do the same query again, but run the entire QP pipeline, swapping out a few things so nothing is actually
 ;; run externally.
-;; TODO - Saw random test failure
 (deftest almost-e2e-test-3
-  ;; system timezone ID shouldn't affect generated query
-  (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-    (mt/with-system-timezone-id system-timezone-id
-      (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
-                                              (t/local-date "2019-11-18")
-                                              (t/local-time 0)
-                                              (t/zone-id system-timezone-id)))
-                                  (t/zone-id system-timezone-id))
-        (with-redefs [ga/memoized-column-metadata (fn [_ column-name]
-                                                    {:display_name column-name
-                                                     :description  (str "This is " column-name)
-                                                     :base_type    :type/Text})]
-          (is (= {:row_count 1
-                  :status    :completed
-                  :data      {:rows             [["Toucan Sighting" 1000]]
-                              :native_form      expected-ga-query
-                              :cols             [{:description     "This is ga:eventLabel"
-                                                  :special_type    nil
-                                                  :name            "ga:eventLabel"
-                                                  :settings        nil
-                                                  :source          :breakout
-                                                  :parent_id       nil
-                                                  :visibility_type :normal
-                                                  :display_name    "ga:eventLabel"
-                                                  :fingerprint     nil
-                                                  :base_type       :type/Text}
-                                                 {:name         "metric"
-                                                  :display_name "metric"
-                                                  :source       :aggregation
-                                                  :description  "This is metric"
-                                                  :base_type    :type/Text}]
-                              :results_timezone system-timezone-id}}
-                 (do-with-some-fields
-                  (fn [objects]
-                    (let [results {:columns [:ga:eventLabel :ga:totalEvents]
-                                   :cols    [{}, {:base_type :type/Text}]
-                                   :rows    [["Toucan Sighting" 1000]]}
-                          qp      (#'metabase.query-processor/build-pipeline (constantly results))
-                          query   (query-with-some-fields objects)]
-                      (-> (tu/doall-recursive (qp query))
-                          (update-in [:data :cols] #(for [col %]
-                                                      (dissoc col :table_id :id :field_ref)))
-                          (m/dissoc-in [:data :results_metadata])
-                          (m/dissoc-in [:data :insights]))))))))))))
+  (testing "system timezone ID shouldn't affect generated query"
+    (doseq [system-timezone-id ["UTC" "US/Pacific"]]
+      (mt/with-system-timezone-id system-timezone-id
+        (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
+                                                 (t/local-date "2019-11-18")
+                                                 (t/local-time 0)
+                                                 (t/zone-id system-timezone-id)))
+                                     (t/zone-id system-timezone-id))
+          (with-redefs [ga.execute/memoized-column-metadata (fn [_ column-name]
+                                                              {:display_name column-name
+                                                               :description  (str "This is " column-name)
+                                                               :base_type    :type/Text})]
+            (do-with-some-fields
+             (fn [objects]
+               (let [query   (query-with-some-fields objects)
+                     cols    (for [col [{:name "ga:eventLabel"}
+                                        {:name "ga:totalEvents", :base_type :type/Text}]]
+                               (#'ga.execute/add-col-metadata query col))
+                     rows    [["Toucan Sighting" 1000]]
+                     context {:timeout 500
+                              :runf    (fn [query rff context]
+                                         (let [metadata (qp.context/metadataf {:cols cols} context)]
+                                           (qp.context/reducef rff context metadata rows)))}
+                     qp      (fn [query]
+                               (qp/process-query query context))]
+                 (is (= {:row_count 1
+                         :status    :completed
+                         :data      {:rows             [["Toucan Sighting" 1000]]
+                                     :native_form      expected-ga-query
+                                     :cols             [{:description     "This is ga:eventLabel"
+                                                         :special_type    nil
+                                                         :name            "ga:eventLabel"
+                                                         :settings        nil
+                                                         :source          :breakout
+                                                         :parent_id       nil
+                                                         :visibility_type :normal
+                                                         :display_name    "ga:eventLabel"
+                                                         :fingerprint     nil
+                                                         :base_type       :type/Text}
+                                                        {:name         "metric"
+                                                         :display_name "ga:totalEvents"
+                                                         :source       :aggregation
+                                                         :description  "This is ga:totalEvents"
+                                                         :base_type    :type/Text}]
+                                     :results_timezone system-timezone-id}}
+                        (-> (tu/doall-recursive (qp query))
+                            (update-in [:data :cols] #(for [col %]
+                                                        (dissoc col :table_id :id :field_ref)))
+                            (m/dissoc-in [:data :results_metadata])
+                            (m/dissoc-in [:data :insights])))))))))))))
 
 (deftest almost-e2e-time-interval-test
   (testing "Make sure filtering by the previous 4 months actually filters against the right months (#10701)"

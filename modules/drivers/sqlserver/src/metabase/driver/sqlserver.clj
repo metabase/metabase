@@ -17,11 +17,13 @@
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor.interface :as qp.i]
             [metabase.util.honeysql-extensions :as hx])
-  (:import [java.sql ResultSet Time]
+  (:import [java.sql Connection ResultSet Time Types]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            java.util.Date))
 
 (driver/register! :sqlserver, :parent :sql-jdbc)
+
+(defmethod driver/supports? [:sqlserver :regex] [_ _] false)
 
 ;; See the list here: https://docs.microsoft.com/en-us/sql/connect/jdbc/using-basic-data-types
 (defmethod sql-jdbc.sync/database-type->base-type :sqlserver
@@ -229,6 +231,16 @@
   [driver [_ field]]
   (hsql/call :stdev (sql.qp/->honeysql driver field)))
 
+(defmethod sql.qp/->honeysql [:sqlserver :substring]
+  [driver [_ arg start length]]
+  (if length
+    (hsql/call :substring (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
+    (hsql/call :substring (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (hsql/call :len (sql.qp/->honeysql driver arg)))))
+
+(defmethod sql.qp/->honeysql [:sqlserver :length]
+  [driver [_ arg]]
+  (hsql/call :len (sql.qp/->honeysql driver arg)))
+
 (defmethod driver.common/current-db-time-date-formatters :sqlserver
   [_]
   (driver.common/create-db-time-formatters "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSZ"))
@@ -251,6 +263,21 @@
 (defmethod sql-jdbc.sync/excluded-schemas :sqlserver
   [_]
   #{"sys" "INFORMATION_SCHEMA"})
+
+;; SQL Server doesn't support setting the holdability of an individual result set, otherwise this impl is basically
+;; the same as the default
+(defmethod sql-jdbc.execute/prepared-statement :sqlserver
+  [driver ^Connection conn ^String sql params]
+  (let [stmt (.prepareStatement conn sql
+                                ResultSet/TYPE_FORWARD_ONLY
+                                ResultSet/CONCUR_READ_ONLY)]
+    (try
+      (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
+      (sql-jdbc.execute/set-parameters! driver stmt params)
+      stmt
+      (catch Throwable e
+        (.close stmt)
+        (throw e)))))
 
 (defmethod unprepare/unprepare-value [:sqlserver LocalDate]
   [_ ^LocalDate t]
@@ -301,9 +328,10 @@
   (sql-jdbc.execute/set-parameter driver ps i (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
 
 ;; instead of default `microsoft.sql.DateTimeOffset`
-(defmethod sql-jdbc.execute/read-column [:sqlserver microsoft.sql.Types/DATETIMEOFFSET]
-  [_ _^ResultSet rs _ ^Integer i]
-  (.getObject rs i OffsetDateTime))
+(defmethod sql-jdbc.execute/read-column-thunk [:sqlserver microsoft.sql.Types/DATETIMEOFFSET]
+  [_^ResultSet rs _ ^Integer i]
+  (fn []
+    (.getObject rs i OffsetDateTime)))
 
 ;; SQL Server doesn't really support boolean types so use bits instead (#11592)
 (defmethod sql/->prepared-substitution [:sqlserver Boolean]

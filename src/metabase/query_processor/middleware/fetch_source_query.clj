@@ -239,4 +239,5 @@
   "Middleware that assocs the `:source-query` for this query if it was specified using the shorthand `:source-table`
   `card__n` format."
   [qp]
-  (comp qp resolve-card-id-source-tables*))
+  (fn [query rff context]
+    (qp (resolve-card-id-source-tables* query) rff context)))

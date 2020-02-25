@@ -118,14 +118,14 @@
 
 ;; We should add implicit Fields for source queries that have source-metadata as appropriate
 (tu/expect-schema
-  {:fields   (s/eq [[:field-literal "DATE" :type/Date]
-                    [:field-literal "count" :type/Integer]])
+  {:fields   (s/eq [[:field-literal "DATE" :type/DateTime]
+                    [:field-literal "count" :type/BigInteger]])
    s/Keyword s/Any}
   (let [{{source-query :query} :dataset_query
          source-metadata       :result_metadata} (qp.test-util/card-with-source-metadata-for-query
-                                                  (data/mbql-query checkins
-                                                    {:aggregation [[:count]]
-                                                     :breakout    [[:datetime-field $date :month]]}))]
+         (data/mbql-query checkins
+           {:aggregation [[:count]]
+            :breakout    [[:datetime-field $date :month]]}))]
     (#'add-implicit-clauses/add-implicit-fields
      (:query (data/mbql-query checkins
                {:source-query    source-query

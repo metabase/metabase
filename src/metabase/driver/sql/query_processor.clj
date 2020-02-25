@@ -97,7 +97,9 @@
 (defmulti add-interval-honeysql-form
   "Return a HoneySQL form that performs represents addition of some temporal interval to the original `hsql-form`.
 
-    (add-interval-honeysql-form :my-driver hsql-form 1 :day) -> (hsql/call :date_add hsql-form 1 (hx/literal 'day'))"
+    (add-interval-honeysql-form :my-driver hsql-form 1 :day) -> (hsql/call :date_add hsql-form 1 (hx/literal 'day'))
+
+  `amount` is usually an integer, but can be floating-point for units like seconds."
   {:arglists '([driver hsql-form amount unit])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -342,6 +344,48 @@
 (defmethod ->honeysql [:sql :share]
   [driver [_ pred]]
   (hsql/call :/ (->honeysql driver [:count-where pred]) :%count.*))
+
+(defmethod ->honeysql [:sql :trim]
+  [driver [_ arg]]
+  (hsql/call :trim (->honeysql driver arg)))
+
+(defmethod ->honeysql [:sql :ltrim]
+  [driver [_ arg]]
+  (hsql/call :ltrim (->honeysql driver arg)))
+
+(defmethod ->honeysql [:sql :rtrim]
+  [driver [_ arg]]
+  (hsql/call :rtrim (->honeysql driver arg)))
+
+(defmethod ->honeysql [:sql :upper]
+  [driver [_ arg]]
+  (hsql/call :upper (->honeysql driver arg)))
+
+(defmethod ->honeysql [:sql :lower]
+  [driver [_ arg]]
+  (hsql/call :lower (->honeysql driver arg)))
+
+(defmethod ->honeysql [:sql :coalesce]
+  [driver [_ & args]]
+  (apply hsql/call :coalesce (map (partial ->honeysql driver) args)))
+
+(defmethod ->honeysql [:sql :replace]
+  [driver [_ arg pattern replacement]]
+  (hsql/call :replace (->honeysql driver arg) (->honeysql driver pattern) (->honeysql driver replacement)))
+
+(defmethod ->honeysql [:sql :concat]
+  [driver [_ & args]]
+  (apply hsql/call :concat (map (partial ->honeysql driver) args)))
+
+(defmethod ->honeysql [:sql :substring]
+  [driver [_ arg start length]]
+  (if length
+    (hsql/call :substring (->honeysql driver arg) (->honeysql driver start) (->honeysql driver length))
+    (hsql/call :substring (->honeysql driver arg) (->honeysql driver start))))
+
+(defmethod ->honeysql [:sql :length]
+  [driver [_ arg]]
+  (hsql/call :length (->honeysql driver arg)))
 
 (defmethod ->honeysql [:sql :case]
   [driver [_ cases options]]

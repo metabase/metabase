@@ -21,11 +21,13 @@
              [date-2 :as u.date]
              [honeysql-extensions :as hx]]
             [schema.core :as s])
-  (:import [java.sql ResultSet Types]
+  (:import [java.sql Connection ResultSet Types]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            java.time.temporal.Temporal))
 
 (driver/register! :sqlite, :parent :sql-jdbc)
+
+(defmethod driver/supports? [:sqlite :regex] [_ _] false)
 
 (defmethod sql-jdbc.conn/connection-details->spec :sqlite
   [_ {:keys [db]
@@ -211,6 +213,22 @@
   [_ bool]
   (if bool 1 0))
 
+(defmethod sql.qp/->honeysql [:sqlite :substring]
+  [driver [_ arg start length]]
+  (if length
+    (hsql/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
+    (hsql/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start))))
+
+(defmethod sql.qp/->honeysql [:sqlite :concat]
+  [driver [_ & args]]
+  (hsql/raw (str/join " || " (for [arg args]
+                               (let [arg (sql.qp/->honeysql driver arg)]
+                                 (hformat/to-sql
+                                  (if (string? arg)
+                                    (hx/literal arg)
+                                    arg)))))))
+
+
 ;; See https://sqlite.org/lang_datefunc.html
 
 ;; MEGA HACK
@@ -280,16 +298,43 @@
   [& args]
   (apply sql-jdbc.sync/post-filtered-active-tables args))
 
-(defmethod sql.qp/current-datetime-fn :sqlite [_]
+(defmethod sql.qp/current-datetime-fn :sqlite
+  [_]
   (hsql/call :datetime (hx/literal :now)))
+
+;; SQLite's JDBC driver is fussy and won't let you change connections to read-only after you create them
+(defmethod sql-jdbc.execute/connection-with-timezone :sqlite
+  [driver database ^String timezone-id]
+  (let [conn (.getConnection (sql-jdbc.execute/datasource database))]
+    (try
+      (sql-jdbc.execute/set-best-transaction-level! driver conn)
+      conn
+      (catch Throwable e
+        (.close conn)
+        (throw e)))))
+
+;; SQLite's JDBC driver is dumb and complains if you try to call `.setFetchDirection` on the Connection
+(defmethod sql-jdbc.execute/prepared-statement :sqlite
+  [driver ^Connection conn ^String sql params]
+  (let [stmt (.prepareStatement conn sql
+                                ResultSet/TYPE_FORWARD_ONLY
+                                ResultSet/CONCUR_READ_ONLY
+                                ResultSet/CLOSE_CURSORS_AT_COMMIT)]
+    (try
+      (sql-jdbc.execute/set-parameters! driver stmt params)
+      stmt
+      (catch Throwable e
+        (.close stmt)
+        (throw e)))))
 
 ;; (.getObject rs i LocalDate) doesn't seem to work, nor does `(.getDate)`; and it seems to be the case that
 ;; timestamps come back as `Types/DATE` as well? Fetch them as a String and then parse them
-(defmethod sql-jdbc.execute/read-column [:sqlite Types/DATE]
-  [_ _ ^ResultSet rs _ ^Integer i]
-  (try
-    (when-let [t (.getDate rs i)]
-      (t/local-date t))
-    (catch Throwable _
-      (when-let [s (.getString rs i)]
-        (u.date/parse s (qp.timezone/results-timezone-id))))))
+(defmethod sql-jdbc.execute/read-column-thunk [:sqlite Types/DATE]
+  [_ ^ResultSet rs _ ^Integer i]
+  (fn []
+    (try
+      (when-let [t (.getDate rs i)]
+        (t/local-date t))
+      (catch Throwable _
+        (when-let [s (.getString rs i)]
+          (u.date/parse s (qp.timezone/results-timezone-id)))))))

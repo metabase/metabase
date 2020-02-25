@@ -274,7 +274,7 @@
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
 (defn permissions-set
-  "Return a set of all permissions object paths that USER-OR-ID has been granted access to. (2 DB Calls)"
+  "Return a set of all permissions object paths that `user-or-id` has been granted access to. (2 DB Calls)"
   [user-or-id]
   (set (when-let [user-id (u/get-id user-or-id)]
          (concat

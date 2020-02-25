@@ -3,15 +3,19 @@
    These are primarily used as the internal implementation of `defendpoint`."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [medley.core :as m]
             [metabase
              [config :as config]
              [util :as u]]
+            metabase.async.streaming-response
             [metabase.util
              [i18n :as ui18n :refer [tru]]
              [schema :as su]]
+            [potemkin.types :as p.types]
             [schema.core :as s])
-  (:import clojure.core.async.impl.channels.ManyToManyChannel))
+  (:import clojure.core.async.impl.channels.ManyToManyChannel
+           metabase.async.streaming_response.StreamingResponse))
+
+(comment metabase.async.streaming-response/keep-me)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              DOCSTRING GENERATION                                              |
@@ -250,17 +254,36 @@
         (^String .replace "/" "_")
         symbol)))
 
-(defn wrap-response-if-needed
-  "If RESPONSE isn't already a map with keys `:status` and `:body`, wrap it in one (using status 200)."
-  [response]
+(p.types/defprotocol+ EndpointResponse
+  "Protocol for transformations that should be done to the value returned by a `defendpoint` form before it
+  Compojure/Ring see it."
+  (wrap-response-if-needed [this]
+    "Transform the value returned by a `defendpoint` form as needed, e.g. by adding `:status` and `:body`."))
+
+(extend-protocol EndpointResponse
+  Object
+  (wrap-response-if-needed [this]
+    {:status 200, :body this})
+
+  nil
+  (wrap-response-if-needed [_]
+    {:status 204, :body nil})
+
+  StreamingResponse
+  (wrap-response-if-needed [this]
+    this)
+
+  ManyToManyChannel
+  (wrap-response-if-needed [chan]
+    {:status 202, :body chan})
+
+  clojure.lang.IPersistentMap
+  (wrap-response-if-needed [m]
+    (if (and (:status m) (contains? m :body))
+      m
+      {:status 200, :body m}))
+
   ;; Not sure why this is but the JSON serialization middleware barfs if response is just a plain boolean
-  (when (m/boolean? response)
-    (throw (Exception. (tru "Attempted to return a boolean as an API response. This is not allowed!"))))
-  (if (and (map? response)
-           (contains? response :status)
-           (contains? response :body))
-    response
-    {:status (if (instance? ManyToManyChannel response)
-               202
-               200)
-     :body   response}))
+  Boolean
+  (wrap-response-if-needed [_]
+    (throw (Exception. (tru "Attempted to return a boolean as an API response. This is not allowed!")))))
