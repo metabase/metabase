@@ -104,15 +104,14 @@ export default class CardTagEditor extends Component {
           </p>
         )}
         {question && !this.errorMessage() && (
-          <div className="bg-light text-medium p1 mt2">
+          <div className="bg-light text-medium py1 px2 mt2">
             {question.collection && (
-              <div>
-                <Icon name="all" size={12} className="mr1" />{" "}
-                {question.collection.name}
+              <div className="flex align-center">
+                <Icon name="all" size={12} mr={1} /> {question.collection.name}
               </div>
             )}
-            <div>
-              <Icon name="calendar" size={12} className="mr1" />{" "}
+            <div className="flex align-center">
+              <Icon name="calendar" size={12} mr={1} />{" "}
               {t`Last edited ${formatDate(question.updated_at)}`}
             </div>
           </div>
