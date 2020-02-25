@@ -397,6 +397,8 @@ jobs:
                   /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
                   lein with-profile +ci test
                 no_output_timeout: << parameters.timeout >>
+            - store_test_results:
+                path: /home/circleci/metabase/metabase/target/junit.xml
       # This is exactly the same as without auto-retry but will try running the tests a second time if they fail
       - when:
           condition: << parameters.auto-retry >>
