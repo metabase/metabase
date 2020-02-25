@@ -387,6 +387,15 @@
   [driver [_ arg]]
   (hsql/call :length (->honeysql driver arg)))
 
+(defmethod ->honeysql [:sql :case]
+  [driver [_ cases options]]
+  (->> (concat cases
+               (when (:default options)
+                 [[:else (:default options)]]))
+       (apply concat)
+       (map (partial ->honeysql driver))
+       (apply hsql/call :case)))
+
 ;; actual handling of the name is done in the top-level clause handler for aggregations
 (defmethod ->honeysql [:sql :aggregation-options] [driver [_ ag]]
   (->honeysql driver ag))

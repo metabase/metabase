@@ -396,6 +396,13 @@
     [:sum-where field pred]
     [:sum-where (wrap-implicit-field-id field) (canonicalize-filter pred)]
 
+    [:case clauses options]
+    (if options
+      (conj (canonicalize-aggregation-subclause [:case clauses])
+            (normalize-tokens options :ignore-path))
+      [:case (for [[pred expr] clauses]
+               [[(canonicalize-filter pred) (canonicalize-aggregation-subclause expr)]])])
+
     ;; something with an arg like [:sum [:field-id 41]]
     [ag-type field]
     [ag-type (wrap-implicit-field-id field)]))
@@ -430,8 +437,8 @@
   clause."
   [aggregations]
   (->> (wrap-single-aggregations aggregations)
-       (map canonicalize-aggregation-subclause)
-       (filterv identity)))
+       (keep canonicalize-aggregation-subclause)
+       vec))
 
 (defn- canonicalize-order-by
   "Make sure order by clauses like `[:asc 10]` get `:field-id` added where appropriate, e.g. `[:asc [:field-id 10]]`"
