@@ -5,7 +5,8 @@
             [metabase.driver.common.parameters.values :as values]
             [metabase.models
              [card :refer [Card]]
-             [field :refer [map->FieldInstance]]]
+             [field :refer [map->FieldInstance]]
+             [native-query-snippet :refer [NativeQuerySnippet]]]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test.data :as data]
             [toucan.util.test :as tt])
@@ -189,3 +190,17 @@
             (is (true?     (:card-query-error? exc-data)))
             (is (= card-id (:card-id exc-data)))
             (is (= tag     (:tag exc-data)))))))))
+
+(deftest native-query-snippet-test
+  (testing "Native query snippet template tag gets snippet's content"
+    (let [test-snippet-content "-- Just a comment"]
+      (tt/with-temp NativeQuerySnippet [snippet {:database_id (data/id)
+                                                 :name        "test_comment"
+                                                 :description "Just an SQL comment"
+                                                 :content     test-snippet-content
+                                                 :creator_id  1}]
+        (is (= (i/->NativeQuerySnippet (:id snippet) test-snippet-content)
+               (#'values/value-for-tag
+                {:name "snippet-template-tag-test", :display-name "Snippet template tag test",
+                 :type :native-query-snippet, :native-query-snippet-id (:id snippet)}
+                [])))))))
