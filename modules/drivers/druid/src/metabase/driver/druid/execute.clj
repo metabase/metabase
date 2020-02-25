@@ -134,30 +134,13 @@
         annotate-col-names (map (comp keyword :name) (annotate/column-info* outer-query metadata))]
     (respond metadata (result-rows result col-names annotate-col-names))))
 
-(defn- post-process-and-reduce
-  [{{:keys [query-type mbql? projections]} :native, middleware :middleware, :as mbql-query} respond results]
-  (let [result (try (post-process query-type projections
-                                  {:timezone   (resolve-timezone mbql-query)
-                                   :middleware middleware}
-                                  results)
-                    (catch Throwable e
-                      (throw (ex-info (tru "Error post-processing Druid query results")
-                                      {:type    qp.error-type/driver
-                                       :results results}
-                                      e))))]
-    (try
-      (reduce-results mbql-query result respond)
-      (catch Throwable e
-        (throw (ex-info (tru "Error reducing Druid query results")
-                        {:type           qp.error-type/driver
-                         :results        results
-                         :post-processed result}
-                        e))))))
-
 (defn execute-reducible-query
   "Execute a query for a Druid DB."
   [execute*
-   {database-id :database, {:keys [query query-type]} :native, :as mbql-query}
+   {database-id                                  :database
+    {:keys [query query-type mbql? projections]} :native
+    middleware                                   :middleware
+    :as                                          mbql-query}
    respond]
   {:pre [query]}
   (let [details    (:details (qp.store/database))
@@ -166,5 +149,21 @@
                      query)
         query-type (or query-type
                        (keyword (namespace ::druid.qp/query) (name (:queryType query))))
-        results    (execute* details query)]
-    (post-process-and-reduce mbql-query respond results)))
+        results    (execute* details query)
+        result     (try (post-process query-type projections
+                                      {:timezone   (resolve-timezone mbql-query)
+                                       :middleware middleware}
+                                      results)
+                        (catch Throwable e
+                          (throw (ex-info (tru "Error post-processing Druid query results")
+                                          {:type    qp.error-type/driver
+                                           :results results}
+                                          e))))]
+    (try
+      (reduce-results mbql-query result respond)
+      (catch Throwable e
+        (throw (ex-info (tru "Error reducing Druid query results")
+                        {:type           qp.error-type/driver
+                         :results        results
+                         :post-processed result}
+                        e))))))
