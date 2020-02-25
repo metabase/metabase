@@ -384,6 +384,13 @@
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
+(defmethod ->rvalue ::case [[_ cases options]]
+  {$switch (merge {:branches (for [[pred expr] cases]
+                               {:case (parse-cond pred)
+                                :then (->rvalue expr)})}
+                  (when (:default options)
+                    {:default (:default options)}))(->rvalue value)})
+
 (defn- aggregation->rvalue [ag]
   (mbql.u/match-one ag
     [:aggregation-options ag _]
