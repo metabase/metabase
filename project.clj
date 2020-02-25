@@ -16,7 +16,7 @@
    "run"                               ["with-profile" "+run" "run"]
    "run-with-repl"                     ["with-profile" "+run-with-repl" "repl"]
    "ring"                              ["with-profile" "+ring" "ring"]
-   "test"                              ["with-profile" "+test" "test"]
+   "test"                              ["with-profile" "+test" "eftest"]
    "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed"
                                         "--max-line-length" "205"
                                         ;; see https://github.com/dakrone/lein-bikeshed/issues/41
@@ -30,7 +30,6 @@
    "repl"                              ["with-profile" "+repl" "repl"]
    "strip-and-compress"                ["with-profile" "+strip-and-compress" "run"]
    "compare-h2-dbs"                    ["with-profile" "+compare-h2-dbs" "run"]}
-
 
   ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ;; !!                                   PLEASE KEEP THESE ORGANIZED ALPHABETICALLY                                  !!
@@ -174,6 +173,7 @@
 
     :dependencies
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
+     [eftest "0.5.9"]
      [jonase/eastwood "0.3.6" :exclusions [org.clojure/clojure]]      ; to run Eastwood
      [methodical "0.9.4-alpha"]
      [pjstadig/humane-test-output "0.9.0"]
@@ -201,7 +201,9 @@
     {:init-ns user}} ; starting in the user namespace is a lot faster than metabase.core since it has less deps
 
    :ci
-   {:jvm-opts ["-Xmx2500m"]}
+   {:jvm-opts ["-Xmx2500m"]
+    :eftest   {:report         eftest.report.junit/report
+               :report-to-file "target/test/junit.xml"}}
 
    :install
    {}
@@ -256,11 +258,17 @@
 
    :test
    [:with-include-drivers-middleware
-    {:resource-paths
+    {:plugins
+     [[lein-eftest "0.5.9"]]
+
+     :resource-paths
      ["test_resources"]
 
      :env
      {:mb-run-mode "test"}
+
+     :eftest
+     {:multithread? false}
 
      :jvm-opts
      ["-Duser.timezone=UTC"

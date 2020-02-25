@@ -9,7 +9,7 @@
 
 set -eu
 
-COMMIT_MESSAGE=`git log -1 --oneline`
+COMMIT_MESSAGE=`cat commit.txt`
 
 ! [[ "$CIRCLE_BRANCH" =~ ^master|release-.+$ ]] &&
     ! [[ "$COMMIT_MESSAGE" == *"[ci all]"* ]] &&
