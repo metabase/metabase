@@ -15,35 +15,24 @@
   "http://localhost"
   #_(tx/db-test-env-var-or-throw :druid :host "http://localhost"))
 
-(defn- test-env-var-port [k not-found]
-  (let [port (tx/db-test-env-var-or-throw :druid k not-found)]
-    (cond-> port
-      (string? port) Integer/parseUnsignedInt)))
+(defn- broker-port []
+  (Integer/parseUnsignedInt (tx/db-test-env-var-or-throw :druid :port (tx/db-test-env-var-or-throw :druid :broker-port "8082"))))
 
-(defn- ports [port-name]
-  (case port-name
-    :coordinator (test-env-var-port :coordinator-port 8081)
-    :broker      (test-env-var-port :broker-port 8082)
-    ;; with the normal nano config we use in CI the overlord runs as part of the same process as the coordinator, so
-    ;; it will be 8081 insteal of 8090.
-    :overlord    (test-env-var-port :overlord-port (ports :coordinator))
-    :router      (test-env-var-port :router-port 8888)))
-
-(defn- port-up? [port-name]
-  (u/host-port-up? (str/replace (host) #"^https?://" "") (ports port-name)))
+(defn- broker-port-up? []
+  (u/host-port-up? (str/replace (host) #"^https?://" "") (broker-port)))
 
 (defmethod tx/dbdef->connection-details :druid [])
 
 (defmethod tx/dbdef->connection-details :druid
   [& _]
   {:host (host)
-   :port (test-env-var-port :port (ports :broker))})
+   :port (broker-port)})
 
 (defn- datasources-endpoint []
-  (format "%s:%d/druid/v2/datasources" (host) (ports :broker)))
+  (format "%s:%d/druid/v2/datasources" (host) (broker-port)))
 
 (defn- datasources []
-  {:pre [(port-up? :broker)]}
+  {:pre [(broker-port-up?)]}
   (druid.client/GET (datasources-endpoint)))
 
 (defn- already-loaded []

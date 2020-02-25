@@ -142,6 +142,8 @@ executors:
     docker:
       - image: circleci/clojure:lein-2.8.1
       - image: metabase/druid:0.17.0
+        environment:
+          CLUSTER_SIZE: nano-quickstart
 
   presto:
     working_directory: /home/circleci/metabase/metabase/
@@ -653,6 +655,7 @@ workflows:
           requires:
             - be-tests
           e: druid
+          wait-for-port: "8082"
           driver: druid
 
       - test-driver:
