@@ -11,41 +11,51 @@
             [metabase.test.data.users :refer [fetch-user user->client]]
             [toucan.util.test :as tt]))
 
+(def ^:private test-snippet-fields [:content :creator_id :database_id :description :name])
+(def ^:private rasta (fetch-user :rasta))
+
 ;; GET /api/native-query-snippet
 (deftest list-snippets-api-test
-  (let [rasta (fetch-user :rasta)]
-    (tt/with-temp* [Database           [db]
-                    NativeQuerySnippet [snippet-1 {:content     "1"
-                                                   :creator_id  (:id rasta)
-                                                   :database_id (:id db)
-                                                   :description "Test snippet 1"
-                                                   :name        "snippet_1"}]
-                    NativeQuerySnippet [snippet-2 {:content     "2"
-                                                   :creator_id  (:id rasta)
-                                                   :database_id (:id db)
-                                                   :description "Test snippet 2"
-                                                   :name        "snippet_2"}]]
-      (testing "list returns all snippets"
-        (let [test-fields       [:content :creator_id :database_id :description :name]
-              snippets-from-api (->> ((user->client :crowberto) :get 200 "native-query-snippet")
-                                     (map #(select-keys % test-fields))
-                                     set)]
-          (is (contains? snippets-from-api (select-keys snippet-1 test-fields)))
-          (is (contains? snippets-from-api (select-keys snippet-2 test-fields)))))
+  (tt/with-temp* [Database           [db]
+                  NativeQuerySnippet [snippet-1 {:content     "1"
+                                                 :creator_id  (:id rasta)
+                                                 :database_id (:id db)
+                                                 :description "Test snippet 1"
+                                                 :name        "snippet_1"}]
+                  NativeQuerySnippet [snippet-2 {:content     "2"
+                                                 :creator_id  (:id rasta)
+                                                 :database_id (:id db)
+                                                 :description "Test snippet 2"
+                                                 :name        "snippet_2"}]]
+    (testing "list returns all snippets"
+      (let [snippets-from-api (->> ((user->client :crowberto) :get 200 "native-query-snippet")
+                                   (map #(select-keys % test-snippet-fields))
+                                   set)]
+        (is (contains? snippets-from-api (select-keys snippet-1 test-snippet-fields)))
+        (is (contains? snippets-from-api (select-keys snippet-2 test-snippet-fields)))))
 
-      (testing "list fails for user without read permission"
-        (perms/revoke-permissions! (group/all-users) db)
-        (is (empty? ((user->client :rasta) :get 200 "native-query-snippet")))))))
+    (testing "list fails for user without read permission"
+      (perms/revoke-permissions! (group/all-users) db)
+      (is (empty? ((user->client :rasta) :get 200 "native-query-snippet"))))))
 
 ;; GET /api/native-query-snippet/:id
 (deftest read-snippet-api-test
-  (testing "read returns all snippet fields"
-    ;; TODO implement this
-    (is false))
+  (tt/with-temp* [Database           [db]
+                  NativeQuerySnippet [snippet {:content     "-- SQL comment here"
+                                               :creator_id  (:id rasta)
+                                               :database_id (:id db)
+                                               :description "SQL comment snippet"
+                                               :name        "comment"}]]
+    (testing "read returns all snippet fields"
+      (let [snippet-from-api ((user->client :crowberto) :get 200 (str "native-query-snippet/" (:id snippet)))]
+        (is (= (select-keys snippet test-snippet-fields)
+               (select-keys snippet-from-api test-snippet-fields)))))
 
-  (testing "read fails for user without read permissions"
-    ;; TODO implement this
-    (is false)))
+    (testing "read fails with 403 for user without read permissions"
+      ;; TODO implement this
+      (perms/revoke-permissions! (group/all-users) db)
+      (is (= "You don't have permissions to do that."
+             ((user->client :rasta) :get 403 (str "native-query-snippet/" (:id snippet))))))))
 
 ;; POST /api/native-query-snippet
 (deftest create-snippet-api-test

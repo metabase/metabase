@@ -12,7 +12,7 @@
              [db :as db]
              [hydrate :refer [hydrate]]]))
 
-(s/defn ^:private hydrated-native-query-snippet :- (s/maybe NativeQuerySnippet)
+(s/defn ^:private hydrated-native-query-snippet :- (s/maybe (class NativeQuerySnippet))
   [id :- su/IntGreaterThanZero]
   (-> (api/read-check (NativeQuerySnippet id))
       (hydrate :creator)))
