@@ -384,7 +384,7 @@
 
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
-(defmethod ->rvalue ::case [[_ cases options]]
+(defmethod ->rvalue :case [[_ cases options]]
   {"$switch" (merge {:branches (for [[pred expr] cases]
                                  {:case (parse-cond pred)
                                   :then (->rvalue expr)})}
