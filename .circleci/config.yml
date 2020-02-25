@@ -318,6 +318,9 @@ jobs:
         default: clojure
       lein-command:
         type: string
+      store-results:
+        type: boolean
+        default: false
     executor: << parameters.e >>
     steps:
       - attach-workspace
@@ -325,6 +328,11 @@ jobs:
       - run:
           command: lein with-profile +ci << parameters.lein-command >>
           no_output_timeout: 5m
+      - when:
+          condition: << parameters.store-results >>
+          steps:
+            - store_test_results:
+                path: /home/circleci/metabase/metabase/target/junit.xml
 
   be-linter-reflection-warnings:
     executor: clojure
@@ -386,6 +394,7 @@ jobs:
                   /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
                   wget --output-document=plugins/<< parameters.jdbc-driver-dest >> ${<< parameters.jdbc-driver-source >>}
                 no_output_timeout: 5m
+      - run: lein clean
       - unless:
           condition: << parameters.auto-retry >>
           steps:
@@ -411,7 +420,8 @@ jobs:
                   /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
                   lein with-profile +ci test || lein with-profile +ci test
                 no_output_timeout: << parameters.timeout >>
-
+            - store_test_results:
+                path: /home/circleci/metabase/metabase/target/junit.xml
 
   test-migrate-from-h2:
     parameters:
@@ -610,6 +620,7 @@ workflows:
           requires:
             - be-deps
           lein-command: test
+          store-results: true
 
       - lein:
           name: be-tests-java-11
