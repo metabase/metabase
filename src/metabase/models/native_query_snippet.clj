@@ -1,7 +1,5 @@
 (ns metabase.models.native-query-snippet
-  (:require [metabase.models
-             [interface :as i]
-             [permissions :as perms]]
+  (:require [metabase.models.interface :as i]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [schema.core :as s]

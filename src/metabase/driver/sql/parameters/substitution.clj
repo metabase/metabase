@@ -25,7 +25,7 @@
            java.time.temporal.Temporal
            java.util.UUID
            [metabase.driver.common.parameters CommaSeparatedNumbers Date DateRange FieldFilter MultipleValues
-            ReferencedCardQuery NativeQuerySnippet]))
+            NativeQuerySnippet ReferencedCardQuery]))
 
 ;;; ------------------------------------ ->prepared-substitution & default impls -------------------------------------
 
