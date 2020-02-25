@@ -83,7 +83,7 @@
   (str
    (tru "I don''t know how to `{0}`." command-name)
    " "
-   (command :help)))
+   (command "help")))
 
 
 (defmulti ^:private unlisted?
@@ -174,7 +174,7 @@
   ;; If the card name comes without spaces, e.g. (show 'my 'wacky 'card) turn it into a string an recur: (show "my
   ;; wacky card")
   ([_ word & more]
-   (command :show (str/join " " (cons word more)))))
+   (command "show" (str/join " " (cons word more)))))
 
 
 ;;; ------------------------------------------------------ help ------------------------------------------------------

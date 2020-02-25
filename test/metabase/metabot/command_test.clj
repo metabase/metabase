@@ -119,3 +119,9 @@
                   Card       [{card-id :id} {:collection_id (u/get-id collection), :dataset_query (venues-count-query)}]]
     (perms/revoke-collection-permissions! (group/metabot) collection)
     (command "show" card-id)))
+
+;; If you try to use a command that doesn't exist, it should notify user and show results of `help` command.
+(expect
+  {:response (tru "I don''t know how to `overflow stack`. Here''s what I can do: `help`, `list`, `show`")
+   :messages []}
+  (command "overflow stack"))
