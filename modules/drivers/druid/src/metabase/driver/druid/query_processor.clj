@@ -10,7 +10,6 @@
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.query-processor
-             [error-type :as error-type]
              [interface :as i]
              [store :as qp.store]
              [timezone :as qp.timezone]]
@@ -27,14 +26,14 @@
    http://druid.io/docs/latest/querying/topnquery.html"
   1000)
 
-;;             +-----> ::select      +----> :groupBy
+;;             +-----> ::scan        +----> :groupBy
 ;; ::query ----|                     |
 ;;             +----> ::ag-query ----+----> ::topN
 ;;                                   |                       +----> total
 ;;                                   +----> ::timeseries ----|
 ;;                                                           +----> grouped-timeseries
 
-(derive ::select             ::query)
+(derive ::scan               ::query)
 (derive ::ag-query           ::query)
 (derive ::topN               ::ag-query)
 (derive ::groupBy            ::ag-query)
@@ -146,8 +145,8 @@
     :context     {:timeout 60000
                   :queryId (random-query-id)}}
    (case query-type
-     ::select             {:queryType  :select
-                           :pagingSpec {:threshold i/absolute-max-results}}
+     ::scan               {:queryType  :scan
+                           :limit i/absolute-max-results}
      ::total              {:queryType :timeseries}
      ::grouped-timeseries {:queryType :timeseries}
      ::topN               {:queryType :topN
@@ -1020,7 +1019,7 @@
   [_ {[[direction field]] :order-by} updated-query]
   (handle-order-by-timestamp field direction updated-query))
 
-(defmethod handle-order-by ::select
+(defmethod handle-order-by ::scan
   [_ {[[direction field]] :order-by} updated-query]
   (handle-order-by-timestamp field direction updated-query))
 
@@ -1040,40 +1039,25 @@
          (tru "WARNING: It only makes sense to specify :fields for a query with no aggregation. Ignoring the clause."))))
   updated-query)
 
-(defmethod handle-fields ::select
+(defmethod handle-fields ::scan
   [_ {fields :fields} updated-query]
   (transduce
    identity
    (fn
      ([updated-query]
-      (-> updated-query
-          #_(update :projections conj :timestamp)
-          ;; If you specify nil or empty `:dimensions` or `:metrics` Druid will just return all of the ones available.
-          ;; In cases where we don't want anything to be returned in one or the other, we'll ask for a `:___dummy`
-          ;; column tead. Druid happily returns `nil` for the column in every row, and it will get auto-filtered out
-          ;; of the results so the User will never see it.
-          (update-in [:query :dimensions] #(or (seq %) [:___dummy]))
-          (update-in [:query :metrics]    #(or (seq %) [:___dummy]))))
+      ;; If you specify nil or empty `:columns` Druid will just return all of the ones available. In cases where
+      ;; we don't want anything to be returned in one or the other, we'll ask for a `:___dummy` column intead.
+      ;; Druid happily returns `nil` for the column in every row, and it will get auto-filtered out of the results
+      ;; so the User will never see it.
+      (update-in updated-query [:query :columns] #(or (seq %) [:___dummy])))
 
      ([updated-query field]
-      (cond
-        (and (datetime-field? field)
-             (= (keyword (field-clause->name field)) :timestamp))
+      (if (and (datetime-field? field)
+               (= (keyword (field-clause->name field)) :timestamp))
         (update updated-query :projections conj :timestamp)
-
-        (= (dimension-or-metric? field) :dimension)
         (-> updated-query
             (update :projections conj (keyword (field-clause->name field)))
-            (update-in [:query :dimensions] conj (->rvalue field)))
-
-        (= (dimension-or-metric? field) :metric)
-        (-> updated-query
-            (update :projections conj (keyword (field-clause->name field)))
-            (update-in [:query :metrics] conj (->rvalue field)))
-
-        :else
-        (throw (ex-info (tru "Invalid Druid field!")
-                 {:type error-type/invalid-query})))))
+            (update-in [:query :columns] conj (->rvalue field))))))
    updated-query
    fields))
 
@@ -1084,11 +1068,11 @@
   {:arglists '([query-type original-query updated-query])}
   query-type-dispatch-fn)
 
-(defmethod handle-limit ::select
+(defmethod handle-limit ::scan
   [_ {limit :limit} updated-query]
   (if-not limit
     updated-query
-    (assoc-in updated-query [:query :pagingSpec :threshold] limit)))
+    (assoc-in updated-query [:query :limit] limit)))
 
 (defmethod handle-limit ::timeseries
   [_ {limit :limit} updated-query]
@@ -1147,7 +1131,7 @@
                        (contains? timeseries-units (:unit (first breakout-fields))) ; (excludes x-of-y type breakouts)
                        (nil? limit))]                                               ; (excludes queries with LIMIT)
     (match [breakouts agg? ts?]
-      [:none  false    _] ::select
+      [:none  false    _] ::scan
       [:none  true     _] ::total
       [:one   _     true] ::grouped-timeseries
       [:one   _    false] ::topN

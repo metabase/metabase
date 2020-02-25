@@ -4,11 +4,14 @@
             [java-time :as t]
             [metabase.driver.druid.query-processor :as druid.qp]
             [metabase.query-processor
+             [error-type :as qp.error-type]
              [store :as qp.store]
              [timezone :as qp.timezone]]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.util :as u]
-            [metabase.util.date-2 :as u.date]
+            [metabase.util
+             [date-2 :as u.date]
+             [i18n :refer [tru]]]
             [schema.core :as s]))
 
 (defn- resolve-timezone
@@ -24,11 +27,15 @@
   (fn [query-type _ _ _]
     query-type))
 
-(defmethod post-process ::druid.qp/select
-  [_ projections {:keys [middleware]} [{{:keys [events]} :result} first-result]]
+(defmethod post-process ::druid.qp/scan
+  [_ projections {:keys [middleware]} results]
   {:projections projections
-   :results     (for [event (map :event events)]
-                  (update event :timestamp u.date/parse))})
+   :results     (for [{:keys [events]} results
+                      {timestamp :__time, :as event} events]
+                  (if-not timestamp
+                    event
+                    (-> (assoc event :timestamp (t/instant timestamp))
+                        (dissoc :__time))))})
 
 (defmethod post-process ::druid.qp/total
   [_ projections _ results]
@@ -93,8 +100,12 @@
     {:cols (vec (for [col-name fixed-col-names]
                   {:name (u/qualified-name col-name)}))}))
 
-(defn- result-rows [{rows :results} actual-col-names annotate-col-names]
+(defn- result-rows [{rows :results, :as results} actual-col-names annotate-col-names]
   (let [getters (vec (col-names->getter-fns actual-col-names annotate-col-names))]
+    (when-not (seq getters)
+      (throw (ex-info (tru "Don''t know how to retrieve results for columns {0}" (pr-str actual-col-names))
+               {:type    qp.error-type/driver
+                :results results})))
     (map (apply juxt getters) rows)))
 
 (defn- remove-bonus-keys
@@ -128,9 +139,21 @@
                      query)
         query-type (or query-type
                        (keyword (namespace ::druid.qp/query) (name (:queryType query))))
-        result     (->> query
-                        (execute* details)
-                        (post-process query-type projections
+        results    (execute* details query)
+        result     (try (post-process query-type projections
                                       {:timezone   (resolve-timezone mbql-query)
-                                       :middleware middleware}))]
-    (reduce-results mbql-query result respond)))
+                                       :middleware middleware}
+                                      results)
+                        (catch Throwable e
+                          (throw (ex-info (tru "Error post-processing Druid query results")
+                                   {:type    qp.error-type/driver
+                                    :results results}
+                                   e))))]
+    (try
+      (reduce-results mbql-query result respond)
+      (catch Throwable e
+        (throw (ex-info (tru "Error reducing Druid query results")
+                 {:type           qp.error-type/driver
+                  :results        results
+                  :post-processed result}
+                 e))))))

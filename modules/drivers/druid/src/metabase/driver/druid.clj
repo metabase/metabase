@@ -10,7 +10,9 @@
             [metabase.driver.druid
              [execute :as execute]
              [query-processor :as qp]]
-            [metabase.query-processor.context :as context]
+            [metabase.query-processor
+             [context :as context]
+             [error-type :as qp.error-type]]
             [metabase.util
              [i18n :refer [trs tru]]
              [ssh :as ssh]]))
@@ -39,11 +41,13 @@
                                 (:body options) (update :body json/generate-string))
         {:keys [status body]} (request-fn url options)]
     (when (not= status 200)
-      (throw (Exception. (tru "Error [{0}]: {1}" status body))))
+      (throw (ex-info (tru "Druid request error [{0}]: {1}" status (pr-str body))
+                      {:type qp.error-type/db})))
     (try
       (json/parse-string body keyword)
       (catch Throwable _
-        (throw (Exception. (tru "Failed to parse body: {0}" body)))))))
+        (throw (ex-info (tru "Failed to parse Druid response body: {0}" (pr-str body))
+                        {:type qp.error-type/db}))))))
 
 (def ^:private ^{:arglists '([url & {:as options}])} GET    (partial do-request http/get))
 (def ^:private ^{:arglists '([url & {:as options}])} POST   (partial do-request http/post))
@@ -79,7 +83,7 @@
           (log/error (u/format-color 'red (trs "Error running query:")
                        "\n" message))
           ;; Re-throw a new exception with `message` set to the extracted message
-          (throw (Exception. message e)))))))
+          (throw (ex-info message {:type qp.error-type/driver} e)))))))
 
 (defn- cancel-query-with-id! [details query-id]
   (if-not query-id
@@ -144,6 +148,7 @@
 
 (defmethod driver/describe-table :druid
   [_ database table]
+  {:pre [(map? database) (map? table)]}
   (ssh/with-ssh-tunnel [details-with-tunnel (:details database)]
     (let [{:keys [columns]} (first (do-segment-metadata-query details-with-tunnel (:name table)))]
       {:schema nil

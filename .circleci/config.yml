@@ -137,6 +137,12 @@ executors:
        - image: circleci/clojure:lein-2.8.1
        - image: circleci/mongo:4.0
 
+  druid:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1
+      - image: metabase/druid:0.17.0
+
   presto:
     working_directory: /home/circleci/metabase/metabase/
     docker:
@@ -646,6 +652,7 @@ workflows:
           name: be-tests-druid
           requires:
             - be-tests
+          e: druid
           driver: druid
 
       - test-driver:
