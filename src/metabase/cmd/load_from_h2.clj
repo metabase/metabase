@@ -66,7 +66,7 @@
 
 ;;; ------------------------------------------ Models to Migrate (in order) ------------------------------------------
 
-(def ^:private entities
+(def entities
   "Entities in the order they should be serialized/deserialized. This is done so we make sure that we load load
   instances of entities before others that might depend on them, e.g. `Databases` before `Tables` before `Fields`."
   [Database
