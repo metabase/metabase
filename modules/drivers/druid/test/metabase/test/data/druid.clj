@@ -1,7 +1,9 @@
 (ns metabase.test.data.druid
-  (:require [metabase.driver.druid :as druid]
+  (:require [clojure.string :as str]
+            [metabase.driver.druid.client :as druid.client]
             [metabase.middleware.json :as middleware.json]
-            [metabase.test.data.interface :as tx]))
+            [metabase.test.data.interface :as tx]
+            [metabase.util :as u]))
 
 ;; this is needed so the Cheshire protocols to convert Temporal values to JSON are loaded
 (comment middleware.json/keep-me)
@@ -27,6 +29,9 @@
     :overlord    (test-env-var-port :overlord-port (ports :coordinator))
     :router      (test-env-var-port :router-port 8888)))
 
+(defn- port-up? [port-name]
+  (u/host-port-up? (str/replace (host) #"^https?://" "") (ports port-name)))
+
 (defmethod tx/dbdef->connection-details :druid [])
 
 (defmethod tx/dbdef->connection-details :druid
@@ -39,7 +44,7 @@
 
 (defn- datasources []
   {:pre [(port-up? :broker)]}
-  (#'druid/GET (datasources-endpoint)))
+  (druid.client/GET (datasources-endpoint)))
 
 (defn- already-loaded []
   (set (datasources)))

@@ -10,6 +10,7 @@
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.query-processor
+             [error-type :as qp.error-type]
              [interface :as i]
              [store :as qp.store]
              [timezone :as qp.timezone]]
@@ -123,17 +124,17 @@
 
 (defmethod dimension-or-metric? :field-id
   [[_ field-id]]
-  (let [{base-type :base_type} (qp.store/field field-id)]
+  (println "field::" (pr-str (select-keys (qp.store/field field-id)
+                                          [:name :base_type :database_type]))) ; NOCOMMIT
+  (let [{base-type :base_type, database-type :database_type} (qp.store/field field-id)]
     (cond
-      (isa? base-type :type/Text)             :dimension
-      (isa? base-type :type/Float)            :metric
-      (isa? base-type :type/Integer)          :metric
-      (isa? base-type :type/DruidHyperUnique) :metric)))
+      (str/includes? database-type "[metric]") :metric
+      (isa? base-type :type/DruidHyperUnique)  :metric
+      :else                                    :dimension)))
 
 (defmethod dimension-or-metric? :datetime-field
   [[_ field]]
   (dimension-or-metric? field))
-
 
 (defn- random-query-id []
   (str (java.util.UUID/randomUUID)))
@@ -145,15 +146,13 @@
     :context     {:timeout 60000
                   :queryId (random-query-id)}}
    (case query-type
-     ::scan               {:queryType  :scan
-                           :limit i/absolute-max-results}
+     ::scan               {:queryType :scan
+                           :limit     i/absolute-max-results}
      ::total              {:queryType :timeseries}
      ::grouped-timeseries {:queryType :timeseries}
      ::topN               {:queryType :topN
                            :threshold topN-max-results}
      ::groupBy            {:queryType :groupBy})))
-
-
 
 
 ;;; ---------------------------------------------- handle-source-table -----------------------------------------------
@@ -233,13 +232,16 @@
 
 (defn- filter-fields-are-dimensions?
   [fields]
-  (every? true? (for [field fields]
-                  (or
-                   (not= (dimension-or-metric? field) :metric)
-                   (log/warn
-                    (u/format-color 'red
-                        (tru "WARNING: Filtering only works on dimensions! ''{0}'' is a metric. Ignoring filter."
-                             (->rvalue field))))))))
+  (every? (fn [field]
+            (or
+             (not= (dimension-or-metric? field) :metric)
+             (log/warn
+              (u/format-color 'red
+                  (tru "WARNING: Filtering only works on dimensions! ''{0}'' is a metric. Ignoring filter."
+                       (->rvalue field))))))
+          fields))
+
+(def parse-filter nil) ; NOCOMMIT
 
 (defmulti ^:private parse-filter
   {:arglists '([filter-clause])}
@@ -247,6 +249,7 @@
   ;; if it is.
   (fn [[clause-name & args, :as filter-clause]]
     (let [fields (filter (partial mbql.u/is-clause? #{:field-id :datetime-field}) args)]
+      (println "(filter-fields-are-dimensions? fields):" (filter-fields-are-dimensions? fields)) ; NOCOMMIT
       (when (and
              ;; make sure all Field args are dimensions
              (filter-fields-are-dimensions? fields)
@@ -572,6 +575,7 @@
 
 (defn- ag:filtered
   [filtr aggregator]
+  {:pre [(map? filtr)]}
   {:type :filtered, :filter filtr, :aggregator aggregator})
 
 (defn- hyper-unique?
@@ -611,6 +615,7 @@
 
 (defn- ag:countWhere
   [pred output-name]
+  (println (pr-str (list 'parse-filter pred)) '-> (parse-filter pred)) ; NOCOMMIT
   (ag:filtered (parse-filter pred) (ag:count output-name)))
 
 (defn- ag:sumWhere
@@ -678,10 +683,19 @@
                                     _                             &match)]
     (if-not (isa? query-type ::ag-query)
       updated-query
-      (let [[projections ag-clauses] (create-aggregation-clause output-name ag-type ag-field args)]
+      (let [[projections ag-clauses] (try
+                                       (create-aggregation-clause output-name ag-type ag-field args)
+                                       (catch Throwable e
+                                         (throw (ex-info (tru "Error creating aggregation clause")
+                                                         {:type        qp.error-type/driver
+                                                          :clause-name output-name
+                                                          :ag-type     ag-type
+                                                          :ag-field    ag-field
+                                                          :args        args}
+                                                         e))))]
         (-> updated-query
-            (update :projections #(vec (concat % projections)))
-            (update :query #(merge-with concat % ag-clauses)))))))
+            (update :projections into projections)
+            (update :query (partial merge-with concat) ag-clauses))))))
 
 (defn- deduplicate-aggregation-options [expression]
   (mbql.u/replace expression
@@ -1054,7 +1068,9 @@
      ([updated-query field]
       (if (and (datetime-field? field)
                (= (keyword (field-clause->name field)) :timestamp))
-        (update updated-query :projections conj :timestamp)
+        (-> updated-query
+            (update :projections conj :timestamp)
+            (update-in [:query :columns] conj :__time))
         (-> updated-query
             (update :projections conj (keyword (field-clause->name field)))
             (update-in [:query :columns] conj (->rvalue field))))))
@@ -1158,8 +1174,13 @@
   "Transpile an MBQL (inner) query into a native form suitable for a Druid DB."
   [query]
   ;; Merge `:settings` into the inner query dict so the QP has access to it
-  (let [query (assoc (:query query)
-                :settings (:settings query))]
-    (binding [*query*                   query
+  (let [query (assoc (:query query) :settings (:settings query))]
+    (binding [*query*                           query
               *query-unique-identifier-counter* (atom 0)]
-      (build-druid-query query))))
+      (try
+        (build-druid-query query)
+        (catch Throwable e
+          (throw (ex-info (tru "Error generating Druid query")
+                          {:type         qp.error-type/driver
+                           :source-query query}
+                          e)))))))
