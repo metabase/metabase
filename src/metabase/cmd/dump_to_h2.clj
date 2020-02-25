@@ -34,6 +34,7 @@
              [field-values :refer [FieldValues]]
              [metric :refer [Metric]]
              [metric-important-field :refer [MetricImportantField]]
+             [native-query-snippet :refer [NativeQuerySnippet]]
              [permissions :refer [Permissions]]
              [permissions-group :refer [PermissionsGroup]]
              [permissions-group-membership :refer [PermissionsGroupMembership]]
@@ -92,6 +93,7 @@
    CollectionRevision
    DashboardFavorite
    Dimension
+   NativeQuerySnippet
    ;; migrate the list of finished DataMigrations as the very last thing (all models to copy over should be listed
    ;; above this line)
    DataMigrations])
