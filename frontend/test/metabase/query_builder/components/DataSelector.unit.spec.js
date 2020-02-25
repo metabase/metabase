@@ -304,7 +304,7 @@ describe("DataSelector", () => {
     getByText("Table in First Schema");
   });
 
-  it("should database picker with correct database selected", () => {
+  it("should open database picker with correct database selected", () => {
     const { getByText } = render(
       <DataSelector
         steps={["DATABASE"]}

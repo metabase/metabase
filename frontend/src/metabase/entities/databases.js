@@ -10,6 +10,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import { MetabaseApi } from "metabase/services";
 import { DatabaseSchema } from "metabase/schema";
 import Fields from "metabase/entities/fields";
+import Schemas from "metabase/entities/schemas";
 
 import { getMetadata, getFields } from "metabase/selectors/metadata";
 import { createSelector } from "reselect";
@@ -56,6 +57,8 @@ const Databases = createEntity({
       ({ id }) => async () =>
         normalize(await MetabaseApi.db_idfields({ dbId: id }), [Fields.schema]),
     ),
+
+    fetchSchemas: ({ id }) => Schemas.actions.fetchList({ dbId: id }),
   },
 
   selectors: {
