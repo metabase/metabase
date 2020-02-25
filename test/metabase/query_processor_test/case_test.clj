@@ -1,11 +1,11 @@
 (ns metabase.query-processor-test.case-test
   (:require [clojure.test :refer :all]
-            [metabase.models
-             [metric :refer [Metric]]
-             [segment :refer [Segment]]]
             [metabase
              [query-processor-test :refer :all]
              [test :as mt]]
+            [metabase.models
+             [metric :refer [Metric]]
+             [segment :refer [Segment]]]
             [metabase.test
              [data :as data]
              [util :as tu]]
@@ -19,7 +19,7 @@
            double))
 
 (deftest test-case-aggregations
-  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions)
+  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= 116.0 (test-case [:sum [:case [[[:< [:field-id (data/id :venues :price)] 2] 2]
                                           [[:< [:field-id (data/id :venues :price)] 4] 1]]]])))
     (testing "Can we use fields as values"
@@ -71,7 +71,7 @@
                          [(long k) (double v)]))))))))
 
 (deftest test-case-normalization
-  (mt/test-drivers (mt/normal-drivers-with-feature :expressions :basic-aggregations)
+  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= 116.0 (test-case ["sum" ["case" [[["<" ["field-id" (data/id :venues :price)] 2] 2]
                                             [["<" ["field-id" (data/id :venues :price)] 4] 1]] ]])))))
 
