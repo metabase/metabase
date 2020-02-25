@@ -88,6 +88,7 @@ export default class CardTagEditor extends Component {
             ref={ref => (this._popover = ref)}
             triggerElement={this.triggerElement()}
             verticalAttachments={["top", "bottom"]}
+            horizontalAttachments={["right", "left"]}
             pinInitialAttachment
           >
             <QuestionPicker
