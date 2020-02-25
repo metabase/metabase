@@ -24,7 +24,8 @@
      (do-request http/get \"http://my-json-api.net\")"
   [request-fn url & {:as options}]
   {:pre [(fn? request-fn) (string? url)]}
-  (let [options               (cond-> (merge {:content-type "application/json"} options)
+  ;; this is the way the `Content-Type` header is formatted in requests made by the Druid web interface
+  (let [options               (cond-> (merge {:content-type "application/json;charset=UTF-8"} options)
                                 (:body options) (update :body json/generate-string))
         {:keys [status body]} (request-fn url options)]
     (when (not= status 200)
@@ -39,7 +40,6 @@
 (def ^{:arglists '([url & {:as options}])} GET    "Execute a GET request."    (partial do-request http/get))
 (def ^{:arglists '([url & {:as options}])} POST   "Execute a POST request."   (partial do-request http/post))
 (def ^{:arglists '([url & {:as options}])} DELETE "Execute a DELETE request." (partial do-request http/delete))
-
 
 (defn do-query
   "Run a Druid `query` against database connection `details`."

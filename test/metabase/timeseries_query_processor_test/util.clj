@@ -4,7 +4,6 @@
             [metabase.test.data :as data]
             [metabase.test.data
              [dataset-definitions :as defs]
-             [datasets :as datasets]
              [interface :as tx]]))
 
 (defn timeseries-drivers []
@@ -31,22 +30,3 @@
 
 (defmacro test-timeseries-drivers {:style/indent 0} [& body]
   `(do-test-timeseries-drivers (fn [] ~@body)))
-
-(defmacro ^:deprecated expect-with-timeseries-dbs
-  "DEPRECATED: Prefer
-
-    (deftest my-test
-      (test-timeseries-drivers
-        ...))
-
-  or
-
-    (deftest my-test
-      (mt/with-drivers (timeseries-drivers)
-        (with-flattened-dbdef
-          ...)))"
-  {:style/indent 0}
-  [expected actual]
-  `(datasets/expect-with-drivers (timeseries-drivers)
-     (with-flattened-dbdef ~expected)
-     (with-flattened-dbdef ~actual)))
