@@ -1,12 +1,8 @@
 (ns metabase.test.data.druid
   (:require [clojure.string :as str]
             [metabase.driver.druid.client :as druid.client]
-            [metabase.middleware.json :as middleware.json]
             [metabase.test.data.interface :as tx]
             [metabase.util :as u]))
-
-;; this is needed so the Cheshire protocols to convert Temporal values to JSON are loaded
-(comment middleware.json/keep-me)
 
 (tx/add-test-extensions! :druid)
 
@@ -16,7 +12,8 @@
   #_(tx/db-test-env-var-or-throw :druid :host "http://localhost"))
 
 (defn- broker-port []
-  (Integer/parseUnsignedInt (tx/db-test-env-var-or-throw :druid :port (tx/db-test-env-var-or-throw :druid :broker-port "8082"))))
+  8082
+  #_(Integer/parseUnsignedInt (tx/db-test-env-var-or-throw :druid :port (tx/db-test-env-var-or-throw :druid :broker-port "8082"))))
 
 (defn- broker-port-up? []
   (u/host-port-up? (str/replace (host) #"^https?://" "") (broker-port)))

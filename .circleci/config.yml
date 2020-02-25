@@ -262,6 +262,9 @@ jobs:
             echo `md5sum yarn.lock` >> frontend-checksums.txt
             echo `md5sum webpack.config.js` >> frontend-checksums.txt
       - run:
+          name: Save last git commit message
+          command: git log -1 --oneline > commit.txt
+      - run:
           name: Remove .git directory (not needed for tests)
           command: rm -rf /home/circleci/metabase/metabase/.git
       - run:
@@ -431,9 +434,6 @@ jobs:
                 no_output_timeout: << parameters.timeout >>
             - store_test_results:
                 path: /home/circleci/metabase/metabase/target/test
-      # NOCOMMIT
-      - store_artifacts:
-          path: /tmp
 
   test-migrate-from-h2:
     parameters:
