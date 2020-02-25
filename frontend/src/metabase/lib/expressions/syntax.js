@@ -1,7 +1,17 @@
 import _ from "underscore";
 
 import { ExpressionCstVisitor, parse as parserParse } from "./parser";
-import { lexer } from "./lexer";
+import {
+  lexer,
+  lexerWithAny,
+  Identifier,
+  WhiteSpace,
+  LParen,
+  RParen,
+  IdentifierString,
+  Any,
+  isTokenType,
+} from "./lexer";
 
 import { MBQL_CLAUSES, getMBQLName } from ".";
 
@@ -13,14 +23,17 @@ const syntax = (type, ...children) => ({
   children: children.filter(child => child),
 });
 
-const token = token =>
-  (token && token.recoveredNode ? console.log("RECOVERED", token) : null) ||
-  (token && {
-    type: "token",
-    text: token.image,
-    start: token.startOffset,
-    end: token.endOffset,
-  });
+const token = (...args) => {
+  const [type, token] = args.length === 1 ? ["token", args[0]] : args;
+  return (
+    token && {
+      type: type,
+      text: token.image,
+      start: token.startOffset,
+      end: token.endOffset,
+    }
+  );
+};
 
 export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
   constructor(options) {
@@ -65,20 +78,26 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
 
   functionExpression(ctx) {
     const parts = [];
-    parts.push(token(ctx.functionName[0]));
+    parts.push(token("function-name", ctx.functionName[0]));
     if (ctx.LParen) {
-      parts.push(token(ctx.LParen[0]));
-    }
-    if (ctx.arguments) {
-      for (let i = 0; i < ctx.arguments.length; i++) {
-        parts.push(this.visit(ctx.arguments[i]));
-        if (ctx.Comma && ctx.Comma[i]) {
-          parts.push(token(ctx.Comma[i]));
+      const args = [];
+      if (ctx.arguments) {
+        for (let i = 0; i < ctx.arguments.length; i++) {
+          args.push(this.visit(ctx.arguments[i]));
+          if (ctx.Comma && ctx.Comma[i]) {
+            args.push(token(ctx.Comma[i]));
+          }
         }
       }
-    }
-    if (ctx.RParen) {
-      parts.push(token(ctx.RParen[0]));
+      // NOTE: inserting a "group" node to match parseSimplified behavior
+      parts.push(
+        syntax(
+          "group",
+          token("open-paren", ctx.LParen[0]),
+          ...args,
+          token("close-paren", ctx.RParen[0]),
+        ),
+      );
     }
 
     const fn = getMBQLName(ctx.functionName[0].image);
@@ -177,13 +196,17 @@ export function parse(
   const visitor = new ExpressionSyntaxVisitor(options);
   const strategies = recover
     ? [
-        recoveryStrategy,
+        defaultStrategy,
+        // recoveryStrategy,
+        parseFallback,
         // this is required because string literals are a single token, can't be handled by parser recovery
-        insertTrailingStringStrategy('"'),
+        // insertTrailingStringStrategy("]"),
+        // insertTrailingStringStrategy('"'),
+        // insertTrailingStringStrategy("'"),
         // FIXME: this should be handled by single token insertion recovery?
-        insertTrailingStringStrategy(")"),
+        // insertTrailingStringStrategy(")"),
         // FIXME: this should be handled by single token deletion recovery?
-        skipLastTokenStrategy,
+        // skipLastTokenStrategy,
       ]
     : [defaultStrategy];
 
@@ -308,4 +331,102 @@ export function serialize(node) {
   } else {
     return node.text || "";
   }
+}
+
+// hand-rolled parser that parses enough for syntax highlighting
+
+export function parseFallback(expressionString, { startRule }) {
+  const { tokens } = mergeTokenGroups(lexerWithAny.tokenize(expressionString));
+
+  const root = { type: "group", children: [] };
+  let current = root;
+  let outsideAggregation = startRule === "aggregation";
+  const stack = [];
+  const push = element => {
+    current.children.push(element);
+    stack.push(current);
+    current = element;
+  };
+  const pop = () => {
+    if (stack.length === 0) {
+      return;
+    }
+    current = stack.pop();
+  };
+  for (let i = 0; i < tokens.length; i++) {
+    const isLast = i === tokens.length - 1;
+    const t = tokens[i];
+    if (
+      isTokenType(t.tokenType, Identifier) ||
+      t.tokenType.LONGER_ALT === Identifier
+    ) {
+      const next = nextNonWhitespace(tokens, i);
+      if (next && next.tokenType === LParen) {
+        outsideAggregation = false;
+        push(syntax("aggregation", token("function-name", t)));
+      } else {
+        current.children.push(
+          syntax(
+            outsideAggregation ? "metric" : "dimension",
+            syntax("identifier", token(t)),
+          ),
+        );
+      }
+    } else if (
+      isTokenType(t.tokenType, IdentifierString) ||
+      // special case for unclosed string literals
+      (isLast && t.tokenType === Any && t.image.charAt(0) === '"')
+    ) {
+      current.children.push(
+        syntax(
+          outsideAggregation ? "metric" : "dimension",
+          token("identifier-string", t),
+        ),
+      );
+    } else if (t.tokenType === LParen) {
+      push(syntax("group"));
+      current.children.push(token("open-paren", t));
+    } else if (t.tokenType === RParen) {
+      current.children.push(token("close-paren", t));
+      pop();
+      if (current.type === "aggregation") {
+        outsideAggregation = true;
+        pop();
+      }
+    } else {
+      current.children.push(token(t));
+    }
+  }
+  return root;
+}
+
+function nextNonWhitespace(tokens, index) {
+  while (++index < tokens.length && tokens[index].tokenType === WhiteSpace) {
+    // this block intentionally left blank
+  }
+  return tokens[index];
+}
+
+// merges all token groups (e.x. whitespace, comments) into a single array of tokens
+function mergeTokenGroups(results) {
+  const tokens = [];
+  const groups = [results.tokens, ...Object.values(results.groups)];
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    let firstGroupIndex = -1;
+    let firstStartOffset = Infinity;
+    for (let i = 0; i < groups.length; i++) {
+      const token = groups[i][0];
+      if (token && token.startOffset < firstStartOffset) {
+        firstStartOffset = token.startOffset;
+        firstGroupIndex = i;
+      }
+    }
+    if (firstGroupIndex >= 0) {
+      tokens.push(groups[firstGroupIndex].shift());
+    } else {
+      break;
+    }
+  }
+  return { ...results, tokens, groups: {} };
 }

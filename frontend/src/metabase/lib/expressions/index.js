@@ -2,19 +2,27 @@ export * from "./config";
 
 import _ from "underscore";
 import Dimension from "metabase-lib/lib/Dimension";
-import { OPERATORS, FUNCTIONS, getMBQLName } from "./config";
+import {
+  OPERATORS,
+  FUNCTIONS,
+  getMBQLName,
+  LITERAL_QUOTE_DEFAULT,
+  IDENTIFIER_QUOTE_DEFAULT,
+  IDENTIFIER_ALWAYS_QUOTE,
+} from "./config";
 
 // IDENTIFIERS
 
 // can be double-quoted, but are not by default unless they have non-word characters or are reserved
 export function formatIdentifier(name) {
-  return /^\w+$/.test(name) && !isReservedWord(name)
-    ? name
-    : JSON.stringify(name);
+  if (!IDENTIFIER_ALWAYS_QUOTE && /^\w+$/.test(name) && !isReservedWord(name)) {
+    return name;
+  }
+  return quoteString(name, IDENTIFIER_QUOTE_DEFAULT);
 }
 
 export function parseIdentifierString(identifierString) {
-  return JSON.parse(identifierString);
+  return unquoteString(identifierString);
 }
 
 export function isReservedWord(word) {
@@ -70,13 +78,42 @@ export function getDimensionName(dimension) {
 // STRING LITERALS
 
 export function formatStringLiteral(mbqlString) {
-  // HACK: use JSON.stringify to escape single quotes by swapping single and doulble quotes before/after
-  return swapQuotes(JSON.stringify(swapQuotes(mbqlString)));
+  return quoteString(mbqlString, LITERAL_QUOTE_DEFAULT);
 }
 export function parseStringLiteral(expressionString) {
-  // HACK: use JSON.parse to unescape single quotes by swapping single and doulble quotes before/after
-  return swapQuotes(JSON.parse(swapQuotes(expressionString)));
+  return unquoteString(expressionString);
 }
+
+function quoteString(string, quote) {
+  if (quote === '"') {
+    return JSON.stringify(string);
+  } else if (quote === "'") {
+    return swapQuotes(JSON.stringify(swapQuotes(string)));
+  } else if (quote === "[") {
+    // TODO: escape brackets
+    if (string.match(/\[|\]/)) {
+      throw new Error("String currently can't contain brackets: " + string);
+    }
+    return `[${string}]`;
+  } else {
+    throw new Error("Unknown quoting: " + quote);
+  }
+}
+function unquoteString(string) {
+  const quote = string.charAt(0);
+  if (quote === '"') {
+    return JSON.parse(string);
+  } else if (quote === "'") {
+    return swapQuotes(JSON.parse(swapQuotes(string)));
+  } else if (quote === "[") {
+    // TODO: unescape brackets
+    return string.slice(1, -1);
+  } else {
+    throw new Error("Unknown quoting: " + string);
+  }
+}
+
+// HACK: use JSON.stringify to escape single quotes by swapping single and doulble quotes before/after
 function swapQuotes(str) {
   return str.replace(/['"]/g, q => (q === "'" ? '"' : "'"));
 }

@@ -2,6 +2,7 @@ import _ from "underscore";
 
 import {
   MBQL_CLAUSES,
+  OPERATOR_PRECEDENCE,
   isNumberLiteral,
   isStringLiteral,
   isOperator,
@@ -17,17 +18,6 @@ import {
   formatStringLiteral,
   hasOptions,
 } from "../expressions";
-
-// copied relevant parts from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Operator_Precedence
-const OPERATOR_PRECEDENCE = {
-  not: 17,
-  "*": 15,
-  "/": 15,
-  "+": 14,
-  "-": 14,
-  and: 6,
-  or: 5,
-};
 
 // convert a MBQL expression back into an expression string
 export function format(mbql, info, parens = false) {
@@ -115,10 +105,11 @@ function formatOperator([op, ...args], info, parens) {
 }
 
 function formatCase([_, clauses, options = {}], info) {
+  const formattedName = getExpressionName("case");
   const formattedClauses = clauses
     .map(([filter, mbql]) => format(filter, info) + ", " + format(mbql, info))
     .join(", ");
   const defaultExpression =
     options.default !== undefined ? ", " + format(options.default, info) : "";
-  return `Case(${formattedClauses}${defaultExpression})`;
+  return `${formattedName}(${formattedClauses}${defaultExpression})`;
 }

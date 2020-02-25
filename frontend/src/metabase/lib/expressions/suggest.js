@@ -28,31 +28,12 @@ import {
   Minus,
   Identifier,
   IdentifierString,
+  getImage,
+  isTokenType,
+  getSubTokenTypes,
 } from "./lexer";
 
-import memoize from "lodash.memoize";
-
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
-
-function getImage(token) {
-  return token.image;
-}
-
-const tokensByIdx = new Map(allTokens.map(t => [t.tokenTypeIdx, t]));
-
-const isTokenType = memoize(
-  (child, ancestor) => {
-    return (
-      child === ancestor ||
-      child.CATEGORIES.some(token => isTokenType(token, ancestor))
-    );
-  },
-  (child, ancestor) => `${child.tokenTypeIdx},${ancestor.tokenTypeIdx}`,
-);
-
-function getSubTokenTypes(TokenClass) {
-  return TokenClass.categoryMatches.map(idx => tokensByIdx.get(idx));
-}
 
 function getTokenSource(TokenClass) {
   // strip regex escaping, e.x. "\+" -> "+"
@@ -147,12 +128,12 @@ export function suggest(
             getImage(currentAggregationToken),
           );
           dimensions = query.aggregationFieldOptions(aggregationShort).all();
-        } else if (startRule === "expression") {
+        } else if (startRule === "expression" || startRule === "filter") {
           dimensions = query
             .dimensionOptions(
               d =>
                 // numeric
-                d.field().isNumeric() &&
+                // d.field().isNumeric() &&
                 // not itself
                 !(
                   d instanceof ExpressionDimension &&

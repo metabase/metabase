@@ -44,19 +44,19 @@ const expression = [
   ['"User ID"', userId, "field name with spaces"],
   ["foo", ["expression", "foo"], "named expression"],
   ['"User → Name"', userName, "foriegn key"],
-  ['Trim("User → Name")', ["trim", userName], "function with one argument"],
+  ['trim("User → Name")', ["trim", userName], "function with one argument"],
   [
-    "Trim(\"User → Name\", ',')",
+    "trim(\"User → Name\", ',')",
     ["trim", userName, ","],
     "function with two arguments",
   ],
   [
-    "Concat('http://mysite.com/user/', \"User ID\", '/')",
+    "concat('http://mysite.com/user/', \"User ID\", '/')",
     ["concat", "http://mysite.com/user/", userId, "/"],
     "function with 3 arguments",
   ],
   [
-    "Case(Total > 10, 'GOOD', Total < 5, 'BAD', 'OK')",
+    "case(Total > 10, 'GOOD', Total < 5, 'BAD', 'OK')",
     [
       "case",
       [[[">", total, 10], "GOOD"], [["<", total, 5], "BAD"]],
@@ -93,6 +93,7 @@ const aggregation = [
   ["Sum(Count)", undefined, "aggregation nested inside another aggregation"],
   ["Count(Total)", undefined, "invalid count arguments"],
   ["SumWhere(Total > 50, Total)", undefined, "invalid sum-where arguments"],
+  ["Count + Share((", undefined, "invalid share"],
 ];
 
 const filter = [
@@ -104,7 +105,7 @@ const filter = [
     "filter with AND",
   ],
   [
-    "Interval(\"Created At\", -1, 'month')",
+    "interval(\"Created At\", -1, 'month')",
     ["time-interval", created, -1, "month"],
     "time interval filter",
   ],

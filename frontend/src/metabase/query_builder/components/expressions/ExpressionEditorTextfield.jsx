@@ -300,6 +300,22 @@ export default class ExpressionEditorTextfield extends Component {
           autoFocus
           parserInfo={this._getParserInfo()}
         />
+        <TokenizedInput
+          ref="input"
+          style={style}
+          className={cx(
+            S.input,
+            "my1 input block full",
+            {
+              "border-error": errorMessage,
+            },
+            className,
+          )}
+          type="text"
+          value={this.state.expressionString}
+          parserInfo={this._getParserInfo()}
+          legacySyntax
+        />
         <div
           className={cx(S.equalSign, "spread flex align-center h4 text-dark", {
             [S.placeholder]: !this.state.expressionString,

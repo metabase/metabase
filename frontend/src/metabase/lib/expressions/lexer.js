@@ -1,20 +1,15 @@
 import { Lexer, createToken } from "chevrotain";
 
+import memoize from "lodash.memoize";
+
 import {
-  getExpressionName as getExpressionName_,
+  getExpressionName,
   AGGREGATION_FUNCTIONS,
   EXPRESSION_FUNCTIONS,
   FILTER_FUNCTIONS,
   MBQL_CLAUSES,
+  QUOTES,
 } from "./config";
-
-function getExpressionName(mbqlName) {
-  const expressionName = getExpressionName_(mbqlName);
-  if (!expressionName) {
-    throw new Error("Missing expression name for " + mbqlName);
-  }
-  return expressionName;
-}
 
 export const Identifier = createToken({
   name: "Identifier",
@@ -22,7 +17,7 @@ export const Identifier = createToken({
 });
 export const IdentifierString = createToken({
   name: "IdentifierString",
-  pattern: /"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*"/,
+  pattern: Lexer.NA,
 });
 export const NumberLiteral = createToken({
   name: "NumberLiteral",
@@ -30,12 +25,18 @@ export const NumberLiteral = createToken({
 });
 export const StringLiteral = createToken({
   name: "StringLiteral",
-  pattern: /'(?:[^\\']+|\\(?:[bfnrtv'\\/]|u[0-9a-fA-F]{4}))*'/,
+  pattern: Lexer.NA,
+});
+
+export const Operator = createToken({
+  name: "Operator",
+  pattern: Lexer.NA,
 });
 
 export const AdditiveOperator = createToken({
   name: "AdditiveOperator",
   pattern: Lexer.NA,
+  categories: [Operator],
 });
 export const Plus = createToken({
   name: "Plus",
@@ -51,6 +52,7 @@ export const Minus = createToken({
 export const MultiplicativeOperator = createToken({
   name: "MultiplicativeOperator",
   pattern: Lexer.NA,
+  categories: [Operator],
 });
 export const Multi = createToken({
   name: "Multi",
@@ -73,9 +75,13 @@ function createFunctionToken(parentToken, clause, args, type) {
   if (!args) {
     throw new Error("Missing args for " + clause);
   }
+  const name = getExpressionName(clause);
+  if (!name) {
+    throw new Error("Missing expression name for " + clause);
+  }
   const token = createToken({
-    name: getExpressionName(clause),
-    pattern: new RegExp(getExpressionName(clause), "i"),
+    name: name,
+    pattern: new RegExp(name, "i"),
     categories: [parentToken],
     longer_alt: Identifier,
   });
@@ -192,10 +198,39 @@ export const RParen = createToken({
   label: "closing parenthesis",
 });
 
+// quoted strings
+
+const getQuoteCategories = quote => {
+  const x =
+    QUOTES[quote] === "literal"
+      ? [StringLiteral]
+      : QUOTES[quote] === "identifier"
+      ? [IdentifierString]
+      : [];
+  return x;
+};
+
+export const BracketQuotedString = createToken({
+  name: "BracketQuotedString",
+  pattern: /\[[^\]]*\]/,
+  categories: getQuoteCategories("["),
+});
+export const SingleQuotedString = createToken({
+  name: "SingleQuotedString",
+  pattern: /'(?:[^\\']+|\\(?:[bfnrtv'\\/]|u[0-9a-fA-F]{4}))*'/,
+  categories: getQuoteCategories("'"),
+});
+export const DoubleQuotedString = createToken({
+  name: "DoubleQuotedString",
+  pattern: /"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*"/,
+  categories: getQuoteCategories('"'),
+});
+
 export const WhiteSpace = createToken({
   name: "WhiteSpace",
   pattern: /\s+/,
-  group: Lexer.SKIPPED,
+  // group: Lexer.SKIPPED,
+  group: "whitespace",
 });
 
 export const allTokens = [
@@ -208,6 +243,7 @@ export const allTokens = [
   Minus,
   Multi,
   Div,
+  Operator,
   AdditiveOperator,
   MultiplicativeOperator,
   // aggregation, expression, and filter functions:
@@ -227,8 +263,40 @@ export const allTokens = [
   StringLiteral,
   NumberLiteral,
   IdentifierString,
+  // quoted strings
+  BracketQuotedString,
+  SingleQuotedString,
+  DoubleQuotedString,
   // must come after keywords (which should have "longer_alt: Identifier" set)
   Identifier,
 ];
 
-export const lexer = new Lexer(allTokens);
+export const lexer = new Lexer(allTokens, {
+  ensureOptimizations: true,
+});
+
+export const Any = createToken({
+  name: "Any",
+  pattern: /(.|\n)+/,
+});
+export const lexerWithAny = new Lexer([...allTokens, Any]);
+
+export function getImage(token) {
+  return token.image;
+}
+
+const tokensByIdx = new Map(allTokens.map(t => [t.tokenTypeIdx, t]));
+
+export const isTokenType = memoize(
+  (child, ancestor) => {
+    return (
+      child === ancestor ||
+      child.CATEGORIES.some(token => isTokenType(token, ancestor))
+    );
+  },
+  (child, ancestor) => `${child.tokenTypeIdx},${ancestor.tokenTypeIdx}`,
+);
+
+export function getSubTokenTypes(TokenClass) {
+  return TokenClass.categoryMatches.map(idx => tokensByIdx.get(idx));
+}

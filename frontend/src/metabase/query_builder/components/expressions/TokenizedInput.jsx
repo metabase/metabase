@@ -153,6 +153,7 @@ export default class TokenizedInput extends Component {
       <TokenizedExpression
         source={this._getValue()}
         parserInfo={this.props.parserInfo}
+        legacySyntax={this.props.legacySyntax}
       />,
       inputNode,
     );

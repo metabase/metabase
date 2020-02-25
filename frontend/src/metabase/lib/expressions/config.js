@@ -1,5 +1,36 @@
 import { t } from "ttag";
 
+// // specifies where different quoting is used:
+// export const QUOTES = {
+//   "[": "identifier",
+//   "'": "literal",
+//   '"': "literal",
+// };
+// // specifies the default quoting style:
+// export const LITERAL_QUOTE_DEFAULT = '"';
+// export const IDENTIFIER_QUOTE_DEFAULT = "[";
+// // always quote identifiers even if they have non-word characters or conflict with reserved words
+// export const IDENTIFIER_ALWAYS_QUOTE = true;
+
+export const QUOTES = {
+  "'": "literal",
+  '"': "identifier",
+};
+export const LITERAL_QUOTE_DEFAULT = "'";
+export const IDENTIFIER_QUOTE_DEFAULT = '"';
+export const IDENTIFIER_ALWAYS_QUOTE = false;
+
+// copied relevant parts from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Operator_Precedence
+export const OPERATOR_PRECEDENCE = {
+  not: 17,
+  "*": 15,
+  "/": 15,
+  "+": 14,
+  "-": 14,
+  and: 6,
+  or: 5,
+};
+
 export const MBQL_CLAUSES = {
   // aggregation functions
   count: {
@@ -64,82 +95,82 @@ export const MBQL_CLAUSES = {
   },
   // expression functions
   lower: {
-    name: t`Lower`,
+    name: t`lower`,
     type: "expression",
     args: ["expression"],
   },
   upper: {
-    name: t`Upper`,
+    name: t`upper`,
     type: "expression",
     args: ["expression"],
   },
   substring: {
-    name: t`Substring`,
+    name: t`substring`,
     type: "expression",
     args: ["expression", "expression", "expression"],
   },
   extract: {
-    name: t`Extract`,
+    name: t`extract`,
     type: "expression",
     args: ["expression", "expression"],
   },
   concat: {
-    name: t`Concat`,
+    name: t`concat`,
     type: "expression",
     args: ["expression"],
   },
   coalesce: {
-    name: t`Coalesce`,
+    name: t`coalesce`,
     type: "expression",
     args: ["expression"],
   },
   replace: {
-    name: t`Replace`,
+    name: t`replace`,
     type: "expression",
     args: ["expression", "expression"],
   },
   trim: {
-    name: t`Trim`,
+    name: t`trim`,
     type: "expression",
     args: ["expression"],
   },
   rtrim: {
-    name: t`RightTrim`,
+    name: t`rtrim`,
     type: "expression",
     args: ["expression"],
   },
   ltrim: {
-    name: t`LeftTrim`,
+    name: t`ltrim`,
     type: "expression",
     args: ["expression"],
   },
   case: {
-    name: t`Case`,
+    name: t`case`,
     type: "expression",
   },
   // filters functions
   contains: {
-    name: t`Contains`,
+    name: t`contains`,
     type: "boolean",
     args: ["expression", "expression"],
   },
   "starts-with": {
-    name: t`StartsWith`,
+    name: t`startsWith`,
     type: "boolean",
     args: ["expression", "expression"],
   },
   "ends-with": {
-    name: t`EndsWith`,
+    name: t`endsWith`,
     type: "boolean",
     args: ["expression", "expression"],
   },
   between: {
-    name: t`Between`,
+    name: t`between`,
     type: "boolean",
     args: ["expression", "expression", "expression"],
   },
   "time-interval": {
-    name: t`Interval`,
+    name: t`interval`,
     type: "boolean",
     args: ["expression", "expression", "expression"],
   },
