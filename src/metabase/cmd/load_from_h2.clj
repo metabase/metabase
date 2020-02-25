@@ -82,6 +82,8 @@
    Revision
    ViewLog
    Session
+   Collection
+   CollectionRevision
    Dashboard
    Card
    CardFavorite
@@ -96,8 +98,6 @@
    PermissionsGroupMembership
    Permissions
    PermissionsRevision
-   Collection
-   CollectionRevision
    DashboardFavorite
    Dimension
    NativeQuerySnippet
