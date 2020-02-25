@@ -262,8 +262,14 @@ jobs:
             echo `md5sum yarn.lock` >> frontend-checksums.txt
             echo `md5sum webpack.config.js` >> frontend-checksums.txt
       - run:
-          name: Remove .git directory
+          name: Remove .git directory (not needed for tests)
           command: rm -rf /home/circleci/metabase/metabase/.git
+      - run:
+          name: Remove ./OSX directory (not needed for tests)
+          command: rm -rf /home/circleci/metabase/metabase/OSX
+      - run:
+          name: Remove ./docs (not needed for tests)
+          command: rm -rf /home/circleci/metabase/metabase/docs
       - persist_to_workspace:
           root: /home/circleci/
           paths:
