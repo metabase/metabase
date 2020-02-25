@@ -211,40 +211,10 @@ export default class DashboardHeader extends Component {
       buttons.push(parametersWidget);
     }
 
-    if (!isFullscreen && canEdit) {
-      buttons.push(
-        <ModalWithTrigger
-          key="add-a-question"
-          ref="addQuestionModal"
-          triggerElement={
-            <Tooltip tooltip={t`Add a question`}>
-              <span
-                data-metabase-event="Dashboard;Add Card Modal"
-                title={t`Add a question to this dashboard`}
-              >
-                <Icon
-                  className={cx("text-brand-hover cursor-pointer", {
-                    "Icon--pulse": isEmpty,
-                  })}
-                  name="add"
-                  size={16}
-                />
-              </span>
-            </Tooltip>
-          }
-        >
-          <AddToDashSelectQuestionModal
-            dashboard={dashboard}
-            addCardToDashboard={this.props.addCardToDashboard}
-            onEditingChange={this.props.onEditingChange}
-            onClose={() => this.refs.addQuestionModal.toggle()}
-          />
-        </ModalWithTrigger>,
-      );
-    }
+    /* START editing */
 
     if (isEditing) {
-      // Parameters
+      /* Parameters */
       buttons.push(
         <span key="add-a-filter">
           <Tooltip tooltip={t`Add a filter`}>
@@ -271,7 +241,7 @@ export default class DashboardHeader extends Component {
         </span>,
       );
 
-      // Add text card button
+      /* ADD TEXT CARD */
       buttons.push(
         <Tooltip key="add-a-text-box" tooltip={t`Add a text box`}>
           <a
@@ -286,6 +256,7 @@ export default class DashboardHeader extends Component {
         </Tooltip>,
       );
 
+      /* REVISION HISTORY */
       buttons.push(
         <Tooltip key="revision-history" tooltip={t`Revision history`}>
           <Link
@@ -297,58 +268,92 @@ export default class DashboardHeader extends Component {
         </Tooltip>,
       );
     }
+    /* END editing*/
 
-    if (!isFullscreen && !isEditing && canEdit) {
+    /* IF WE ARE NOT IN FULLSCREEN */
+    if (!isFullscreen) {
+      /* MOVE */
       buttons.push(
-        <Tooltip key="edit-dashboard" tooltip={t`Edit dashboard`}>
-          <a
-            data-metabase-event="Dashboard;Edit"
-            key="edit"
-            title={t`Edit Dashboard Layout`}
-            className="text-brand-hover cursor-pointer"
-            onClick={() => this.handleEdit(dashboard)}
+        <Tooltip key="new-dashboard" tooltip={t`Move dashboard`}>
+          <Link
+            to={location.pathname + "/move"}
+            data-metabase-event={"Dashboard;Move"}
           >
-            <Icon name="pencil" size={16} />
-          </a>
+            <Icon className="text-brand-hover" name="move" size={18} />
+          </Link>
         </Tooltip>,
       );
-    }
-
-    if (!isFullscreen && !isEditing) {
-      if (canEdit) {
+      if (!isEditing) {
+        /* COPY */
         buttons.push(
-          <Tooltip key="new-dashboard" tooltip={t`Move dashboard`}>
+          <Tooltip key="copy-dashboard" tooltip={t`Duplicate dashboard`}>
             <Link
-              to={location.pathname + "/move"}
-              data-metabase-event={"Dashboard;Move"}
+              to={location.pathname + "/copy"}
+              data-metabase-event={"Dashboard;Copy"}
             >
-              <Icon className="text-brand-hover" name="move" size={18} />
+              <Icon className="text-brand-hover" name="clone" size={18} />
             </Link>
           </Tooltip>,
         );
       }
-      buttons.push(
-        <Tooltip key="copy-dashboard" tooltip={t`Duplicate dashboard`}>
-          <Link
-            to={location.pathname + "/copy"}
-            data-metabase-event={"Dashboard;Copy"}
+      if (canEdit) {
+        /* ADD QUESTION */
+        buttons.push(
+          <ModalWithTrigger
+            key="add-a-question"
+            ref="addQuestionModal"
+            triggerElement={
+              <Tooltip tooltip={t`Add a question`}>
+                <span
+                  data-metabase-event="Dashboard;Add Card Modal"
+                  title={t`Add a question to this dashboard`}
+                >
+                  <Icon
+                    className={cx("text-brand-hover cursor-pointer", {
+                      "Icon--pulse": isEmpty,
+                    })}
+                    name="add"
+                    size={16}
+                  />
+                </span>
+              </Tooltip>
+            }
           >
-            <Icon className="text-brand-hover" name="clone" size={18} />
-          </Link>
-        </Tooltip>,
-      );
+            <AddToDashSelectQuestionModal
+              dashboard={dashboard}
+              addCardToDashboard={this.props.addCardToDashboard}
+              onEditingChange={this.props.onEditingChange}
+              onClose={() => this.refs.addQuestionModal.toggle()}
+            />
+          </ModalWithTrigger>,
+        );
+        /* EDIT DASHBOARD */
+        buttons.push(
+          <Tooltip key="edit-dashboard" tooltip={t`Edit dashboard`}>
+            <a
+              data-metabase-event="Dashboard;Edit"
+              key="edit"
+              title={t`Edit Dashboard Layout`}
+              className="text-brand-hover cursor-pointer"
+              onClick={() => this.handleEdit(dashboard)}
+            >
+              <Icon name="pencil" size={16} />
+            </a>
+          </Tooltip>,
+        );
+      }
+      if (
+        (isPublicLinksEnabled && (isAdmin || dashboard.public_uuid)) ||
+        (isEmbeddingEnabled && isAdmin)
+      ) {
+        buttons.push(
+          <DashboardEmbedWidget key="dashboard-embed" dashboard={dashboard} />,
+        );
+      }
     }
 
-    if (
-      !isFullscreen &&
-      ((isPublicLinksEnabled && (isAdmin || dashboard.public_uuid)) ||
-        (isEmbeddingEnabled && isAdmin))
-    ) {
-      buttons.push(
-        <DashboardEmbedWidget key="dashboard-embed" dashboard={dashboard} />,
-      );
-    }
-
+    // EVERYTHING ELSE
+    // TODO make these easier to understand
     buttons.push(...getDashboardActions(this.props));
 
     return [buttons];
