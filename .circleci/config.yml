@@ -287,6 +287,15 @@ jobs:
             done;
             echo `md5sum yarn.lock` >> frontend-checksums.txt
             echo `md5sum webpack.config.js` >> frontend-checksums.txt
+      - run:
+          name: Save last git commit message
+          command: git log -1 --oneline > commit.txt
+      - run:
+          name: Remove .git directory (not needed for tests)
+          command: rm -rf /home/circleci/metabase/metabase/.git
+      - run:
+          name: Remove ./OSX directory (not needed for tests)
+          command: rm -rf /home/circleci/metabase/metabase/OSX
       - persist_to_workspace:
           root: /home/circleci/
           paths:
@@ -344,6 +353,9 @@ jobs:
         default: clojure
       lein-command:
         type: string
+      store-results:
+        type: boolean
+        default: false
     executor: << parameters.e >>
     steps:
       - attach-workspace
@@ -351,6 +363,11 @@ jobs:
       - run:
           command: lein with-profile +ci << parameters.lein-command >>
           no_output_timeout: 5m
+      - when:
+          condition: << parameters.store-results >>
+          steps:
+            - store_test_results:
+                path: /home/circleci/metabase/metabase/target/test
 
   be-linter-reflection-warnings:
     executor: clojure
@@ -397,6 +414,8 @@ jobs:
                   /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
                   lein with-profile +ci test
                 no_output_timeout: << parameters.timeout >>
+            - store_test_results:
+                path: /home/circleci/metabase/metabase/target/test
       # This is exactly the same as without auto-retry but will try running the tests a second time if they fail
       - when:
           condition: << parameters.auto-retry >>
@@ -409,7 +428,8 @@ jobs:
                   /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
                   lein with-profile +ci test || lein with-profile +ci test
                 no_output_timeout: << parameters.timeout >>
-
+            - store_test_results:
+                path: /home/circleci/metabase/metabase/target/test
 
   test-migrate-from-h2:
     parameters:
@@ -608,6 +628,7 @@ workflows:
           requires:
             - be-deps
           lein-command: test
+          store-results: true
 
       - lein:
           name: be-tests-java-11
@@ -615,6 +636,7 @@ workflows:
             - be-deps
           e: java-11
           lein-command: test
+          store-results: true
 
       - lein:
           name: be-linter-eastwood
