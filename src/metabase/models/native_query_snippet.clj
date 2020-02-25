@@ -47,6 +47,6 @@
 
 (def NativeQuerySnippetName
   "Schema checking that snippet names do not include \"}}\""
-  (s/pred (comp
+  (s/pred (every-pred
            (complement #(boolean (re-find #"}}" %)))
            string?)))
