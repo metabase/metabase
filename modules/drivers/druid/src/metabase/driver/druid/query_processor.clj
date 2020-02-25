@@ -124,8 +124,6 @@
 
 (defmethod dimension-or-metric? :field-id
   [[_ field-id]]
-  (println "field::" (pr-str (select-keys (qp.store/field field-id)
-                                          [:name :base_type :database_type]))) ; NOCOMMIT
   (let [{base-type :base_type, database-type :database_type} (qp.store/field field-id)]
     (cond
       (str/includes? database-type "[metric]") :metric
@@ -241,15 +239,12 @@
                        (->rvalue field))))))
           fields))
 
-(def parse-filter nil) ; NOCOMMIT
-
 (defmulti ^:private parse-filter
   {:arglists '([filter-clause])}
   ;; dispatch function first checks to make sure this is a valid filter clause, then dispatches off of the clause name
   ;; if it is.
   (fn [[clause-name & args, :as filter-clause]]
     (let [fields (filter (partial mbql.u/is-clause? #{:field-id :datetime-field}) args)]
-      (println "(filter-fields-are-dimensions? fields):" (filter-fields-are-dimensions? fields)) ; NOCOMMIT
       (when (and
              ;; make sure all Field args are dimensions
              (filter-fields-are-dimensions? fields)
@@ -615,7 +610,6 @@
 
 (defn- ag:countWhere
   [pred output-name]
-  (println (pr-str (list 'parse-filter pred)) '-> (parse-filter pred)) ; NOCOMMIT
   (ag:filtered (parse-filter pred) (ag:count output-name)))
 
 (defn- ag:sumWhere
@@ -1152,7 +1146,6 @@
       [:one   _     true] ::grouped-timeseries
       [:one   _    false] ::topN
       [:many  _        _] ::groupBy)))
-
 
 (defn- build-druid-query
   [original-query]
