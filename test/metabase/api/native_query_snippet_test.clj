@@ -9,7 +9,8 @@
              [permissions :as perms]
              [permissions-group :as group]]
             [metabase.test.data.users :refer [fetch-user user->client]]
-            [toucan.util.test :as tt]))
+            [toucan.util.test :as tt])
+  (:import java.time.LocalDateTime))
 
 (def ^:private test-snippet-fields [:content :creator_id :database_id :description :name])
 (def ^:private rasta (fetch-user :rasta))
@@ -59,20 +60,50 @@
 
 ;; POST /api/native-query-snippet
 (deftest create-snippet-api-test
-  (testing "new snippet field validation"
-    (is (= {:errors {:content "value must be a string."}}
-           ((user->client :rasta) :post 400 "native-query-snippet" {})))
-    (is (= {:errors {:database_id "value must be an integer greater than zero."}}
-           ((user->client :rasta) :post 400 "native-query-snippet" {:content "NULL"})))
-    (let [response ((user->client :rasta)
-                    :post 400 "native-query-snippet"
-                    {:content "NULL", :database_id 1})]
-      (is (str/starts-with? (get-in response [:errors :name])
-                            "Value does not match schema: "))))
+  (tt/with-temp* [Database [db]]
+    (testing "new snippet field validation"
+      (is (= {:errors {:content "value must be a string."}}
+             ((user->client :rasta) :post 400 "native-query-snippet" {})))
+      (is (= {:errors {:database_id "value must be an integer greater than zero."}}
+             ((user->client :rasta) :post 400 "native-query-snippet" {:content "NULL"})))
+      (let [response ((user->client :rasta)
+                      :post 400 "native-query-snippet"
+                      {:content "NULL", :database_id (:id db)})]
+        (is (str/starts-with? (get-in response [:errors :name])
+                              "Value does not match schema: "))))
 
-  (testing "create fails for non-admin user"
-    ;; TODO implement this
-    (is false)))
+    (testing "successful create returns new snippet's data"
+      (let [snippet-input    {:name "test-snippet", :description "Just null", :content "NULL", :database_id (:id db)}
+            snippet-from-api ((user->client :crowberto) :post 200 "native-query-snippet" snippet-input)]
+        (is (pos? (:id snippet-from-api)))
+
+        (is (= (:database_id snippet-input)
+               (:database_id snippet-from-api)))
+
+        (is (= (:name snippet-input)
+               (:name snippet-from-api)))
+
+        (is (= (:description snippet-input)
+               (:description snippet-from-api)))
+
+        (is (= (:content snippet-input)
+               (:content snippet-from-api)))
+
+        (is (= (:id (fetch-user :crowberto))
+               (:creator_id snippet-from-api)))
+
+        (is (false? (:archived snippet-from-api)))
+
+        (is (instance? LocalDateTime (:created_at snippet-from-api)))
+
+        (is (instance? LocalDateTime (:updated_at snippet-from-api)))))
+
+    (testing "create fails for non-admin user"
+      (perms/revoke-permissions! (group/all-users) db)
+      (is (= "You don't have permissions to do that."
+             ((user->client :rasta)
+              :post 403 "native-query-snippet"
+              {:name "test-snippet", :content "NULL", :database_id (:id db)}))))))
 
 ;; PUT /api/native-query-snippet/:id
 (deftest update-snippet-api-test
