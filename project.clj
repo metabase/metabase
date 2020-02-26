@@ -16,7 +16,8 @@
    "run"                               ["with-profile" "+run" "run"]
    "run-with-repl"                     ["with-profile" "+run-with-repl" "repl"]
    "ring"                              ["with-profile" "+ring" "ring"]
-   "test"                              ["with-profile" "+test" "eftest"]
+   "test"                              ["with-profile" "+test" "test"]
+   "eftest"                            ["with-profile" "+test" "with-profile" "+eftest" "eftest"]
    "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed"
                                         "--max-line-length" "205"
                                         ;; see https://github.com/dakrone/lein-bikeshed/issues/41
@@ -173,7 +174,6 @@
 
     :dependencies
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
-     [eftest "0.5.9"]
      [jonase/eastwood "0.3.6" :exclusions [org.clojure/clojure]]      ; to run Eastwood
      [methodical "0.9.4-alpha"]
      [pjstadig/humane-test-output "0.9.0"]
@@ -226,8 +226,8 @@
      {:mb-jetty-join "false"}
 
      :repl-options
-     {:init (do (require 'metabase.core)
-                (metabase.core/-main))
+     {:init    (do (require 'metabase.core)
+                   (metabase.core/-main))
       :timeout 60000}}]
 
    ;; start the dev HTTP server with 'lein ring server'
@@ -258,17 +258,11 @@
 
    :test
    [:with-include-drivers-middleware
-    {:plugins
-     [[lein-eftest "0.5.9"]]
-
-     :resource-paths
+    {:resource-paths
      ["test_resources"]
 
      :env
      {:mb-run-mode "test"}
-
-     :eftest
-     {:multithread? false}
 
      :jvm-opts
      ["-Duser.timezone=UTC"
@@ -279,6 +273,10 @@
       #=(eval (format "-Dmb.jetty.port=%d" (+ 3001 (rand-int 500))))
       "-Dmb.api.key=test-api-key"
       "-Duser.language=en"]}]
+
+   :eftest
+   {:plugins [[lein-eftest "0.5.9"]]
+    :eftest  {:multithread? false}}
 
    :include-all-drivers
    [:with-include-drivers-middleware

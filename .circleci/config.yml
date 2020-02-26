@@ -406,8 +406,6 @@ jobs:
                   /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
                   lein with-profile +ci test
                 no_output_timeout: << parameters.timeout >>
-            - store_test_results:
-                path: /home/circleci/metabase/metabase/target/test
       # This is exactly the same as without auto-retry but will try running the tests a second time if they fail
       - when:
           condition: << parameters.auto-retry >>
@@ -420,8 +418,6 @@ jobs:
                   /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
                   lein with-profile +ci test || lein with-profile +ci test
                 no_output_timeout: << parameters.timeout >>
-            - store_test_results:
-                path: /home/circleci/metabase/metabase/target/test
 
   test-migrate-from-h2:
     parameters:
@@ -620,7 +616,6 @@ workflows:
           requires:
             - be-deps
           lein-command: test
-          store-results: true
 
       - lein:
           name: be-tests-java-11
@@ -628,7 +623,6 @@ workflows:
             - be-deps
           e: java-11
           lein-command: test
-          store-results: true
 
       - lein:
           name: be-linter-eastwood
