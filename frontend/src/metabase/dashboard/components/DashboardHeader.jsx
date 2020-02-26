@@ -1,5 +1,3 @@
-/* disable  flow TODO - re-enable after refactoring header */
-
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import { Link } from "react-router";
@@ -437,36 +435,6 @@ export class Header extends Component {
     this.props.setItemAttributeFn(attribute, event.target.value);
   }
 
-  renderEditHeader() {
-    if (this.props.isEditing) {
-      return (
-        <EditBar
-          title={this.props.editingTitle}
-          subtitle={this.props.editingSubtitle}
-          buttons={this.props.editingButtons}
-        />
-      );
-    }
-  }
-
-  renderEditWarning() {
-    if (this.props.editWarning) {
-      return <EditWarning title={this.props.editWarning} />;
-    }
-  }
-
-  renderHeaderModal() {
-    return (
-      <HeaderModal
-        isOpen={!!this.props.headerModalMessage}
-        height={this.state.headerHeight}
-        title={this.props.headerModalMessage}
-        onDone={this.props.onHeaderModalDone}
-        onCancel={this.props.onHeaderModalCancel}
-      />
-    );
-  }
-
   render() {
     const { item } = this.props;
     let titleAndDescription;
@@ -528,9 +496,23 @@ export class Header extends Component {
 
     return (
       <div>
-        {this.renderEditHeader()}
-        {this.renderEditWarning()}
-        {this.renderHeaderModal()}
+        {this.props.isEditing && (
+          <EditBar
+            title={this.props.editingTitle}
+            subtitle={this.props.editingSubtitle}
+            buttons={this.props.editingButtons}
+          />
+        )}
+        {this.props.editWarning && (
+          <EditWarning title={this.props.editWarning} />
+        )}
+        <HeaderModal
+          isOpen={!!this.props.headerModalMessage}
+          height={this.state.headerHeight}
+          title={this.props.headerModalMessage}
+          onDone={this.props.onHeaderModalDone}
+          onCancel={this.props.onHeaderModalCancel}
+        />
         <div
           className={
             "QueryBuilder-section flex align-center " +
