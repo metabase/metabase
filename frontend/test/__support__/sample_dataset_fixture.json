@@ -164,7 +164,7 @@
         ],
         "name": "Multi-schema Database",
         "caveats": null,
-        "tables": [],
+        "tables": [5,6],
         "is_full_sync": true,
         "updated_at": "2017-06-14T23:22:55.349Z",
         "native_permissions": "write",

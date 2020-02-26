@@ -30,8 +30,12 @@ describe("getMetadata", () => {
 
   describe("connected database", () => {
     it("should have the proper number of tables", () => {
-      const database = metadata.databases[SAMPLE_DATASET.id];
-      expect(database.tables.length).toEqual(NUM_TABLES);
+      // console.log("metadata.databases", metadata.databases);
+      const tableCount = Object.values(metadata.databases).reduce(
+        (sum, db) => sum + db.tables.length,
+        0,
+      );
+      expect(tableCount).toEqual(NUM_TABLES);
     });
   });
 
