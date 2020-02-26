@@ -20,16 +20,13 @@
             [{:type :category, :target [:variable [:template-tag "id"]], :value "2"}]))))
 
   (testing "Unspecified value"
-    (is (=
-         i/no-value
-         (#'values/value-for-tag
-          {:name "id", :display-name "ID", :type :text} nil))))
+    (is (= i/no-value
+           (#'values/value-for-tag {:name "id", :display-name "ID", :type :text} nil))))
 
   (testing "Default used"
-    (is (=
-         "100"
-         (#'values/value-for-tag
-          {:name "id", :display-name "ID", :type :text, :required true, :default "100"} nil)))))
+    (is (= "100"
+           (#'values/value-for-tag
+            {:name "id", :display-name "ID", :type :text, :required true, :default "100"} nil)))))
 
 (deftest field-filter-tests
   (testing "specified"
@@ -193,14 +190,13 @@
 
 (deftest native-query-snippet-test
   (testing "Native query snippet template tag gets snippet's content"
-    (let [test-snippet-content "-- Just a comment"]
-      (tt/with-temp NativeQuerySnippet [snippet {:database_id (data/id)
-                                                 :name        "test_comment"
-                                                 :description "Just an SQL comment"
-                                                 :content     test-snippet-content
-                                                 :creator_id  1}]
-        (is (= (i/->NativeQuerySnippet (:id snippet) test-snippet-content)
-               (#'values/value-for-tag
-                {:name "snippet-template-tag-test", :display-name "Snippet template tag test",
-                 :type :native-query-snippet, :native-query-snippet-id (:id snippet)}
-                [])))))))
+    (tt/with-temp NativeQuerySnippet [snippet {:database_id (data/id)
+                                               :name        "test_comment"
+                                               :description "Just an SQL comment"
+                                               :content     "-- Just a comment"
+                                               :creator_id  1}]
+      (is (= (i/->NativeQuerySnippet (:id snippet) (:content snippet))
+             (#'values/value-for-tag
+              {:name "snippet-template-tag-test", :display-name "Snippet template tag test",
+               :type :snippet, :snippet-name (:name snippet)}
+              []))))))

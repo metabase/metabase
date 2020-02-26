@@ -30,7 +30,7 @@
   (s/enum :number
           :dimension                    ; Field Filter
           :card
-          :native-query-snippet
+          :snippet
           :text
           :date))
 
@@ -45,16 +45,16 @@
 (def ^:private TagParam
   "Schema for a tag parameter declaration, passed in as part of the `:template-tags` list."
   (s/named
-   {(s/optional-key :id)                      su/NonBlankString ; this is used internally by the frontend
-    :name                                     su/NonBlankString
-    :display-name                             su/NonBlankString
-    :type                                     ParamType
-    (s/optional-key :dimension)               [s/Any]
-    (s/optional-key :card-id)                 su/IntGreaterThanZero
-    (s/optional-key :native-query-snippet-id) su/IntGreaterThanZero
-    (s/optional-key :widget-type)             s/Keyword ; type of the [default] value if `:type` itself is `dimension`
-    (s/optional-key :required)                s/Bool
-    (s/optional-key :default)                 s/Any}
+   {(s/optional-key :id)           su/NonBlankString ; this is used internally by the frontend
+    :name                          su/NonBlankString
+    :display-name                  su/NonBlankString
+    :type                          ParamType
+    (s/optional-key :dimension)    [s/Any]
+    (s/optional-key :card-id)      su/IntGreaterThanZero
+    (s/optional-key :snippet-name) su/NonBlankString
+    (s/optional-key :widget-type)  s/Keyword ; type of the [default] value if `:type` itself is `dimension`
+    (s/optional-key :required)     s/Bool
+    (s/optional-key :default)      s/Any}
    "valid template-tags tag"))
 
 (def ^:private ParsedParamValue
@@ -145,16 +145,16 @@
                          :card-id           card-id
                          :tag               tag}))))))))
 
-(s/defn ^:private native-query-snippet-for-tag :- (s/maybe (s/cond-pre su/Map (s/eq i/no-value)))
-  "Returns the query snippet for the NativeQuerySnippet referenced by `(:native-query-snippet-id tag)`."
+(s/defn ^:private snippet-for-tag :- (s/maybe (s/cond-pre su/Map (s/eq i/no-value)))
+  "Returns the query snippet for the NativeQuerySnippet referenced by `(:snippet-name tag)`"
   [tag :- TagParam]
-  (when-let [snippet-id (:native-query-snippet-id tag)]
-    (if-let [snippet-content (db/select-one-field :content NativeQuerySnippet :id snippet-id)]
+  (when-let [snippet-name (:snippet-name tag)]
+    (if-let [snippet (db/select-one NativeQuerySnippet :name snippet-name)]
       (i/map->NativeQuerySnippet
-       {:native-query-snippet-id snippet-id
-        :content                 snippet-content})
-      (throw (ex-info "Native query snippet not found." {:native-query-snippet-id snippet-id
-                                                         :tag tag})))))
+       {:snippet-id (:id snippet)
+        :content    (:content snippet)})
+      (throw (ex-info "Native query snippet not found." {:snippet-name snippet-name
+                                                         :tag          tag})))))
 
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
@@ -255,7 +255,7 @@
   (parse-value-for-type (:type tag) (or (param-value-for-tag tag params)
                                         (field-filter-value-for-tag tag params)
                                         (card-query-for-tag tag)
-                                        (native-query-snippet-for-tag tag)
+                                        (snippet-for-tag tag)
                                         (default-value-for-tag tag)
                                         i/no-value)))
 

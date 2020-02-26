@@ -44,10 +44,10 @@
 
 ;; An "NativeQuerySnippet" parameter expands to the partial query snippet stored in the referenced `NativeQuerySnippet`.
 ;;
-;; `native-query-snippet-id` is the ID of the `NativeQuerySnippet` instance from where the snippet content is loaded.
+;; `snippet-id` is the ID of the `NativeQuerySnippet` instance from where the snippet content is loaded.
 ;;
 ;; `content` is the raw query snippet which will be replaced, verbatim, for this template tag.
-(p.types/defrecord+ NativeQuerySnippet [native-query-snippet-id content]
+(p.types/defrecord+ NativeQuerySnippet [snippet-id content]
   PrettyPrintable
   (pretty [this]
     (list 'map->NativeQuerySnippet (into {} this))))
