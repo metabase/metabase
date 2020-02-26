@@ -23,8 +23,6 @@ import {
   FunctionName,
 } from "./lexer";
 
-const RETURN_TYPES = ["expression", "aggregation", "boolean", "undefined"];
-
 export class ExpressionParser extends CstParser {
   constructor(config = {}) {
     super(allTokens, {
@@ -129,12 +127,12 @@ export class ExpressionParser extends CstParser {
       $.OR1([
         {
           GATE: () => {
-            const { args } = this._getClauseFromToken(this.LA(0));
+            const { args } = this._getFnFromToken(this.LA(0));
             return args.length > 0;
           },
           ALT: () => {
             // TODO: this validates the argument types but not the number of arguments?
-            const { args } = this._getClauseFromToken(this.LA(0));
+            const { args } = this._getFnFromToken(this.LA(0));
             $.CONSUME(LParen);
             let i = 0;
             $.AT_LEAST_ONE_SEP({
@@ -151,7 +149,7 @@ export class ExpressionParser extends CstParser {
         },
         {
           GATE: () => {
-            const { args } = this._getClauseFromToken(this.LA(0));
+            const { args } = this._getFnFromToken(this.LA(0));
             return args.length === 0;
           },
           ALT: () => {
@@ -223,103 +221,94 @@ export class ExpressionParser extends CstParser {
       $.CONSUME(NumberLiteral);
     });
 
-    // to avoid V8 hidden class changes by dynamic definition of properties on "this"
-    for (const returnType of RETURN_TYPES) {
-      $[`atomicExpression-${returnType}`] = undefined;
-    }
-
     $.RULE("atomicExpression", returnType => {
-      $.OR(
-        // optimization: https://sap.github.io/chevrotain/docs/guide/performance.html#caching-arrays-of-alternatives
-        $[`atomicExpression-${returnType}`] ||
-          ($[`atomicExpression-${returnType}`] = {
-            DEF: [
-              // functions: used by aggregations, expressions, and filters
-              {
-                GATE: () => {
-                  const fn = this._getClauseFromToken(this.LA(1));
-                  return fn && fn.type === returnType;
-                },
-                ALT: () =>
-                  $.SUBRULE($.functionExpression, {
-                    LABEL: "expression",
-                    ARGS: [returnType],
-                  }),
-              },
-              // aggregations
-              {
-                GATE: () => returnType === "aggregation",
-                ALT: () =>
-                  $.SUBRULE($.metricExpression, {
-                    LABEL: "expression",
-                  }),
-              },
-              // filters
-              {
-                GATE: () => returnType === "boolean",
-                ALT: () =>
-                  $.SUBRULE($.comparisonExpression, {
-                    LABEL: "expression",
-                  }),
-              },
-              {
-                GATE: () => returnType === "boolean",
-                ALT: () =>
-                  $.SUBRULE($.booleanUnaryExpression, {
-                    LABEL: "expression",
-                  }),
-              },
-              {
-                GATE: () => returnType === "boolean",
-                ALT: () =>
-                  $.SUBRULE($.segmentExpression, {
-                    LABEL: "expression",
-                  }),
-              },
-              // expressions
-              {
-                GATE: () => returnType === "expression",
-                ALT: () =>
-                  $.SUBRULE($.caseExpression, {
-                    LABEL: "expression",
-                    ARGS: [returnType],
-                  }),
-              },
-              {
-                GATE: () => returnType === "expression",
-                ALT: () =>
-                  $.SUBRULE($.dimensionExpression, {
-                    LABEL: "expression",
-                  }),
-              },
-              // number and string literals
-              {
-                GATE: () => returnType === "expression",
-                ALT: () =>
-                  $.SUBRULE($.stringLiteral, {
-                    LABEL: "expression",
-                  }),
-              },
-              {
-                GATE: () =>
-                  returnType === "expression" || returnType === "aggregation",
-                ALT: () =>
-                  $.SUBRULE($.numberLiteral, {
-                    LABEL: "expression",
-                  }),
-              },
-              // grouping
-              {
-                ALT: () =>
-                  $.SUBRULE($.parenthesisExpression, {
-                    ARGS: [returnType],
-                    LABEL: "expression",
-                  }),
-              },
-            ],
-            ERR_MSG: returnType,
-          }),
-      );
+      $.OR({
+        DEF: [
+          // functions: used by aggregations, expressions, and filters
+          {
+            GATE: () => {
+              const fn = this._getFnFromToken(this.LA(1));
+              return fn && fn.type === returnType;
+            },
+            ALT: () =>
+              $.SUBRULE($.functionExpression, {
+                LABEL: "expression",
+                ARGS: [returnType],
+              }),
+          },
+          // aggregations
+          {
+            GATE: () => returnType === "aggregation",
+            ALT: () =>
+              $.SUBRULE($.metricExpression, {
+                LABEL: "expression",
+              }),
+          },
+          // filters
+          {
+            GATE: () => returnType === "boolean",
+            ALT: () =>
+              $.SUBRULE($.comparisonExpression, {
+                LABEL: "expression",
+              }),
+          },
+          {
+            GATE: () => returnType === "boolean",
+            ALT: () =>
+              $.SUBRULE($.booleanUnaryExpression, {
+                LABEL: "expression",
+              }),
+          },
+          {
+            GATE: () => returnType === "boolean",
+            ALT: () =>
+              $.SUBRULE($.segmentExpression, {
+                LABEL: "expression",
+              }),
+          },
+          // expressions
+          {
+            GATE: () => returnType === "expression",
+            ALT: () =>
+              $.SUBRULE($.caseExpression, {
+                LABEL: "expression",
+                ARGS: [returnType],
+              }),
+          },
+          {
+            GATE: () => returnType === "expression",
+            ALT: () =>
+              $.SUBRULE($.dimensionExpression, {
+                LABEL: "expression",
+              }),
+          },
+          // number and string literals
+          {
+            GATE: () => returnType === "expression",
+            ALT: () =>
+              $.SUBRULE($.stringLiteral, {
+                LABEL: "expression",
+              }),
+          },
+          {
+            GATE: () =>
+              returnType === "expression" || returnType === "aggregation",
+            ALT: () =>
+              $.SUBRULE($.numberLiteral, {
+                LABEL: "expression",
+              }),
+          },
+          // grouping
+          {
+            ALT: () =>
+              $.SUBRULE($.parenthesisExpression, {
+                ARGS: [returnType],
+                LABEL: "expression",
+              }),
+          },
+        ],
+        ERR_MSG: returnType,
+      });
     });
 
     $.RULE("parenthesisExpression", returnType => {
@@ -333,7 +322,7 @@ export class ExpressionParser extends CstParser {
     this.performSelfAnalysis();
   }
 
-  _getClauseFromToken(token) {
+  _getFnFromToken(token) {
     if (this.RECORDING_PHASE) {
       // return a fake clause during recording phase
       return { args: [], type: null };

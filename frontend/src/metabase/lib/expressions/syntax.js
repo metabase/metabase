@@ -200,7 +200,7 @@ export function defaultParser(source, options) {
 
 // RECOVERY PARSER
 export function recoveryParser(source, options) {
-  return recoveryParser(source, { ...options, recover: true });
+  return defaultParser(source, { ...options, recover: true });
 }
 
 // INSERT TRAILING STRING PARSER
