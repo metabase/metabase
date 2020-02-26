@@ -9,8 +9,11 @@ import {
   LParen,
   RParen,
   IdentifierString,
+  FunctionName,
+  AggregationFunctionName,
   Any,
   isTokenType,
+  CLAUSE_TOKENS,
 } from "./lexer";
 
 import { MBQL_CLAUSES, getMBQLName } from ".";
@@ -43,7 +46,7 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
   }
 
   any(ctx) {
-    return this.visit(ctx.expression[0]);
+    return this.visit(ctx.expression);
   }
 
   expression(ctx) {
@@ -54,25 +57,20 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
   }
 
   additionExpression(ctx) {
-    return this._arithmeticExpression(ctx);
+    return this._arithmeticExpression(ctx.operands, ctx.AdditiveOperator);
   }
   multiplicationExpression(ctx) {
-    return this._arithmeticExpression(ctx);
+    return this._arithmeticExpression(ctx.operands, ctx.MultiplicativeOperator);
   }
 
-  _arithmeticExpression(ctx) {
-    const initial = [this.visit(ctx.lhs)];
-
-    if (ctx.rhs) {
-      for (const index of ctx.rhs.keys()) {
-        const operator = token(ctx.operator[index]);
-        const operand = this.visit(ctx.rhs[index]);
-        // collapse multiple consecutive operators into a single MBQL statement
-        initial.push(operator);
-        initial.push(operand);
-      }
+  _arithmeticExpression(operands, operators) {
+    const initial = [this.visit(operands[0])];
+    for (let i = 1; i < operands.length; i++) {
+      const operator = token(operators[i - 1]);
+      const operand = this.visit(operands[i]);
+      initial.push(operator);
+      initial.push(operand);
     }
-
     return initial.length === 1 ? initial[0] : syntax("math", ...initial);
   }
 
@@ -89,7 +87,7 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
           }
         }
       }
-      // NOTE: inserting a "group" node to match parseSimplified behavior
+      // NOTE: inserting a "group" node to match fallbackParser behavior
       parts.push(
         syntax(
           "group",
@@ -108,7 +106,7 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
 
   caseExpression(ctx) {
     const parts = [];
-    parts.push(token(ctx.Case[0]));
+    parts.push(token(ctx.case[0]));
     parts.push(token(ctx.LParen[0]));
     const commas = [...ctx.Comma];
     for (let i = 0; i < ctx.filter.length; i++) {
@@ -174,81 +172,55 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
     return this.visit(ctx.booleanExpression);
   }
   booleanExpression(ctx) {
-    return this._arithmeticExpression(ctx);
+    return this._arithmeticExpression(ctx.operands, ctx.BooleanOperatorBinary);
   }
-  binaryOperatorExpression(ctx) {
+  comparisonExpression(ctx) {
     return syntax(
       "filter",
-      this.visit(ctx.lhs),
-      token(ctx.operator[0]),
-      this.visit(ctx.rhs),
+      this.visit(ctx.operands[0]),
+      token(ctx.operators[0]),
+      this.visit(ctx.operands[1]),
     );
   }
-  unaryOperatorExpression(ctx) {
-    return syntax("filter", token(ctx.operator[0]), this.visit(ctx.operand));
+  booleanUnaryExpression(ctx) {
+    return syntax(
+      "filter",
+      token(ctx.operators[0]),
+      this.visit(ctx.operands[0]),
+    );
   }
 }
 
-export function parse(
-  source,
-  { whitespace = true, recover = true, ...options } = {},
-) {
+// DEFAULT PARSER
+export function defaultParser(source, options) {
   const visitor = new ExpressionSyntaxVisitor(options);
-  const strategies = recover
-    ? [
-        defaultStrategy,
-        // recoveryStrategy,
-        parseFallback,
-        // this is required because string literals are a single token, can't be handled by parser recovery
-        // insertTrailingStringStrategy("]"),
-        // insertTrailingStringStrategy('"'),
-        // insertTrailingStringStrategy("'"),
-        // FIXME: this should be handled by single token insertion recovery?
-        // insertTrailingStringStrategy(")"),
-        // FIXME: this should be handled by single token deletion recovery?
-        // skipLastTokenStrategy,
-      ]
-    : [defaultStrategy];
+  const cst = parserParse(source, options);
+  return recoverWhitespace(visitor.visit(cst), source);
+}
 
-  let tree;
-  while (!tree) {
-    try {
-      const strategy = strategies.shift();
-      tree = strategy(source, options, visitor);
-    } catch (e) {
-      if (strategies.length === 0) {
-        throw e;
-      }
-    }
+// RECOVERY PARSER
+export function recoveryParser(source, options) {
+  return recoveryParser(source, { ...options, recover: true });
+}
+
+// INSERT TRAILING STRING PARSER
+export function insertTrailingStringParser(token) {
+  return (source, options) =>
+    trimTrailingString(defaultParser(source + token, options), token);
+}
+
+function trimTrailingString(tree, string = '"') {
+  let node = tree;
+  while (node.children && node.children.length > 0) {
+    node = node.children[node.children.length - 1];
   }
-  if (whitespace) {
-    return recoverWhitespace(tree, source);
-  } else {
-    return tree;
-  }
+  node.text = node.text.slice(0, -string.length);
+  node.end--;
+  return tree;
 }
 
-function defaultStrategy(source, options, visitor) {
-  const cst = parserParse(source, { ...options, recover: false });
-  return visitor.visit(cst);
-}
-
-function recoveryStrategy(source, options, visitor) {
-  const cst = parserParse(source, { ...options, recover: true });
-  return visitor.visit(cst);
-}
-
-function insertTrailingStringStrategy(token) {
-  return function(source, options, visitor) {
-    // special case, try inserting closing quote at the end, then remove it from the syntax tree
-    const cst = parserParse(source + token, { ...options, recover: false });
-    const tree = visitor.visit(cst);
-    trimTrailingString(tree, token);
-    return tree;
-  };
-}
-
-function skipLastTokenStrategy(source, options, visitor) {
+// SKIP LAST TOKEN PARSER:
+export function skipLastTokenParser(source, options) {
   // special case, try skipping the last token
   // FIXME: shouldn't this be handled by single token deletion in recovery mode?
   const { tokens, errors } = lexer.tokenize(source);
@@ -259,21 +231,111 @@ function skipLastTokenStrategy(source, options, visitor) {
   if (lastToken) {
     source = source.substring(0, lastToken.startOffset);
   }
-  const cst = parserParse(source, {
-    ...options,
-    recover: true,
-  });
-  return visitor.visit(cst);
+  return defaultParser(source, options);
 }
 
-function trimTrailingString(tree, string = '"') {
-  let node = tree;
-  while (node.children && node.children.length > 0) {
-    node = node.children[node.children.length - 1];
+// FALLBACK PARSER:
+// hand-rolled parser that parses enough for syntax highlighting
+export function fallbackParser(expressionString, { startRule }) {
+  const { tokens } = mergeTokenGroups(lexerWithAny.tokenize(expressionString));
+  function nextNonWhitespace(index) {
+    while (++index < tokens.length && tokens[index].tokenType === WhiteSpace) {
+      // this block intentionally left blank
+    }
+    return tokens[index];
   }
-  node.text = node.text.slice(0, -string.length);
-  node.end--;
+
+  const root = { type: "group", children: [] };
+  let current = root;
+  let outsideAggregation = startRule === "aggregation";
+
+  const stack = [];
+  const push = element => {
+    current.children.push(element);
+    stack.push(current);
+    current = element;
+  };
+  const pop = () => {
+    if (stack.length === 0) {
+      return;
+    }
+    current = stack.pop();
+  };
+  for (let i = 0; i < tokens.length; i++) {
+    const isLast = i === tokens.length - 1;
+    const t = tokens[i];
+    const next = nextNonWhitespace(i);
+    if (isTokenType(t.tokenType, FunctionName)) {
+      const { type } = CLAUSE_TOKENS.get(t.tokenType);
+      const clause = syntax(type, token("function-name", t));
+      if (next && next.tokenType === LParen) {
+        if (type === "aggregation") {
+          outsideAggregation = false;
+        }
+        push(clause);
+      } else {
+        current.children.push(clause);
+      }
+    } else if (t.tokenType === Identifier) {
+      current.children.push(
+        syntax(
+          outsideAggregation ? "metric" : "unknown", // "dimension" + "segment"
+          syntax("identifier", token(t)),
+        ),
+      );
+    } else if (
+      t.tokenType === IdentifierString ||
+      // special case for unclosed string literals
+      (isLast && t.tokenType === Any && t.image.charAt(0) === '"')
+    ) {
+      current.children.push(
+        syntax(
+          outsideAggregation ? "metric" : "unknown", // "dimension" + "segment"
+          token("identifier-string", t),
+        ),
+      );
+    } else if (t.tokenType === LParen) {
+      push(syntax("group"));
+      current.children.push(token("open-paren", t));
+    } else if (t.tokenType === RParen) {
+      current.children.push(token("close-paren", t));
+      pop();
+      if (current.type === "aggregation") {
+        outsideAggregation = true;
+        pop();
+      }
+    } else {
+      current.children.push(token(t));
+    }
+  }
+  return root;
 }
+
+// merges all token groups (e.x. whitespace, comments) into a single array of tokens
+function mergeTokenGroups(results) {
+  const tokens = [];
+  const groups = [results.tokens, ...Object.values(results.groups)];
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    let firstGroupIndex = -1;
+    let firstStartOffset = Infinity;
+    for (let i = 0; i < groups.length; i++) {
+      const token = groups[i][0];
+      if (token && token.startOffset < firstStartOffset) {
+        firstStartOffset = token.startOffset;
+        firstGroupIndex = i;
+      }
+    }
+    if (firstGroupIndex >= 0) {
+      tokens.push(groups[firstGroupIndex].shift());
+    } else {
+      break;
+    }
+  }
+  return { ...results, tokens, groups: {} };
+}
+
+// WHITESPACE UTILS
 
 // inserts whitespace tokens back into the syntax tree
 function whitespace(text) {
@@ -325,108 +387,28 @@ function _recoverWhitespace(node, source) {
   }
 }
 
+// MAIN EXPORTED FUNCTIONS:
+
+const DEFAULT_STRATEGIES = [defaultParser, fallbackParser];
+
+export function parse(
+  source,
+  { strategies = DEFAULT_STRATEGIES, ...options } = {},
+) {
+  for (const strategy of strategies) {
+    try {
+      return strategy(source, options);
+    } catch (e) {
+      // console.warn(e)
+    }
+  }
+  throw new Error("Unable to parse: " + source);
+}
+
 export function serialize(node) {
   if (node.children) {
     return node.children.map(serialize).join("");
   } else {
     return node.text || "";
   }
-}
-
-// hand-rolled parser that parses enough for syntax highlighting
-
-export function parseFallback(expressionString, { startRule }) {
-  const { tokens } = mergeTokenGroups(lexerWithAny.tokenize(expressionString));
-
-  const root = { type: "group", children: [] };
-  let current = root;
-  let outsideAggregation = startRule === "aggregation";
-  const stack = [];
-  const push = element => {
-    current.children.push(element);
-    stack.push(current);
-    current = element;
-  };
-  const pop = () => {
-    if (stack.length === 0) {
-      return;
-    }
-    current = stack.pop();
-  };
-  for (let i = 0; i < tokens.length; i++) {
-    const isLast = i === tokens.length - 1;
-    const t = tokens[i];
-    if (
-      isTokenType(t.tokenType, Identifier) ||
-      t.tokenType.LONGER_ALT === Identifier
-    ) {
-      const next = nextNonWhitespace(tokens, i);
-      if (next && next.tokenType === LParen) {
-        outsideAggregation = false;
-        push(syntax("aggregation", token("function-name", t)));
-      } else {
-        current.children.push(
-          syntax(
-            outsideAggregation ? "metric" : "dimension",
-            syntax("identifier", token(t)),
-          ),
-        );
-      }
-    } else if (
-      isTokenType(t.tokenType, IdentifierString) ||
-      // special case for unclosed string literals
-      (isLast && t.tokenType === Any && t.image.charAt(0) === '"')
-    ) {
-      current.children.push(
-        syntax(
-          outsideAggregation ? "metric" : "dimension",
-          token("identifier-string", t),
-        ),
-      );
-    } else if (t.tokenType === LParen) {
-      push(syntax("group"));
-      current.children.push(token("open-paren", t));
-    } else if (t.tokenType === RParen) {
-      current.children.push(token("close-paren", t));
-      pop();
-      if (current.type === "aggregation") {
-        outsideAggregation = true;
-        pop();
-      }
-    } else {
-      current.children.push(token(t));
-    }
-  }
-  return root;
-}
-
-function nextNonWhitespace(tokens, index) {
-  while (++index < tokens.length && tokens[index].tokenType === WhiteSpace) {
-    // this block intentionally left blank
-  }
-  return tokens[index];
-}
-
-// merges all token groups (e.x. whitespace, comments) into a single array of tokens
-function mergeTokenGroups(results) {
-  const tokens = [];
-  const groups = [results.tokens, ...Object.values(results.groups)];
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    let firstGroupIndex = -1;
-    let firstStartOffset = Infinity;
-    for (let i = 0; i < groups.length; i++) {
-      const token = groups[i][0];
-      if (token && token.startOffset < firstStartOffset) {
-        firstStartOffset = token.startOffset;
-        firstGroupIndex = i;
-      }
-    }
-    if (firstGroupIndex >= 0) {
-      tokens.push(groups[firstGroupIndex].shift());
-    } else {
-      break;
-    }
-  }
-  return { ...results, tokens, groups: {} };
 }

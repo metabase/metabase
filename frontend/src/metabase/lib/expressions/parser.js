@@ -7,20 +7,19 @@ import {
   allTokens,
   LParen,
   RParen,
-  Operator,
   AdditiveOperator,
   MultiplicativeOperator,
   Case,
   FilterOperator,
-  BooleanOperator,
-  Not,
+  BooleanOperatorBinary,
+  BooleanOperatorUnary,
   StringLiteral,
   NumberLiteral,
   Minus,
   Identifier,
   IdentifierString,
   Comma,
-  FUNCTION_TOKENS,
+  CLAUSE_TOKENS,
   FunctionName,
 } from "./lexer";
 
@@ -62,8 +61,8 @@ export class ExpressionParser extends CstParser {
     });
 
     // an expression without aggregations in it
-    $.RULE("expression", (returnType = "expression") => {
-      $.SUBRULE($.additionExpression, { ARGS: [returnType] });
+    $.RULE("expression", () => {
+      $.SUBRULE($.additionExpression, { ARGS: ["expression"] });
     });
 
     // an expression with aggregations in it
@@ -86,8 +85,8 @@ export class ExpressionParser extends CstParser {
         SEP: AdditiveOperator,
         DEF: () =>
           $.SUBRULE($.multiplicationExpression, {
-            ARGS: [returnType],
             LABEL: "operands",
+            ARGS: [returnType],
           }),
       });
     });
@@ -97,59 +96,45 @@ export class ExpressionParser extends CstParser {
         SEP: MultiplicativeOperator,
         DEF: () =>
           $.SUBRULE($.atomicExpression, {
-            ARGS: [returnType],
             LABEL: "operands",
+            ARGS: [returnType],
           }),
       });
     });
 
     $.RULE("booleanExpression", () => {
       $.AT_LEAST_ONE_SEP({
-        SEP: BooleanOperator,
+        SEP: BooleanOperatorBinary,
         DEF: () =>
           $.SUBRULE($.atomicExpression, {
-            ARGS: ["boolean"],
             LABEL: "operands",
+            ARGS: ["boolean"],
           }),
       });
     });
 
-    $.RULE("unaryOperatorExpression", () => {
-      $.CONSUME(Not, { LABEL: "operators" });
+    $.RULE("booleanUnaryExpression", () => {
+      $.CONSUME(BooleanOperatorUnary, { LABEL: "operators" });
       $.SUBRULE($.atomicExpression, { LABEL: "operands", ARGS: ["boolean"] });
     });
 
-    $.RULE("binaryOperatorExpression", () => {
-      $.SUBRULE($.dimensionExpression, {
-        LABEL: "operands",
-      });
+    $.RULE("comparisonExpression", () => {
+      $.SUBRULE($.dimensionExpression, { LABEL: "operands" });
       $.CONSUME(FilterOperator, { LABEL: "operators" });
-      $.SUBRULE($.expression, {
-        LABEL: "operands",
-      });
+      $.SUBRULE($.expression, { LABEL: "operands" });
     });
 
     $.RULE("functionExpression", returnType => {
-      $.OR([
-        {
-          GATE: () => {
-            const fn = FUNCTION_TOKENS.get(this.LA(1).tokenType);
-            return !fn || fn.type === returnType;
-          },
-          ALT: () => {
-            $.CONSUME(FunctionName, { LABEL: "functionName" });
-          },
-        },
-      ]);
+      $.CONSUME(FunctionName, { LABEL: "functionName" });
       $.OR1([
         {
           GATE: () => {
-            const fn = FUNCTION_TOKENS.get(this.LA(0).tokenType);
-            return !fn || fn.args.length > 0;
+            const { args } = this._getClauseFromToken(this.LA(0));
+            return args.length > 0;
           },
           ALT: () => {
             // TODO: this validates the argument types but not the number of arguments?
-            const fn = FUNCTION_TOKENS.get(this.LA(0).tokenType);
+            const { args } = this._getClauseFromToken(this.LA(0));
             $.CONSUME(LParen);
             let i = 0;
             $.AT_LEAST_ONE_SEP({
@@ -157,7 +142,7 @@ export class ExpressionParser extends CstParser {
               DEF: () => {
                 $.SUBRULE($.any, {
                   LABEL: "arguments",
-                  ARGS: fn && [fn.args[i++]],
+                  ARGS: [args[i++]],
                 });
               },
             });
@@ -166,8 +151,8 @@ export class ExpressionParser extends CstParser {
         },
         {
           GATE: () => {
-            const fn = FUNCTION_TOKENS.get(this.LA(0).tokenType);
-            return !fn || fn.args.length === 0;
+            const { args } = this._getClauseFromToken(this.LA(0));
+            return args.length === 0;
           },
           ALT: () => {
             $.OPTION(() => {
@@ -184,7 +169,7 @@ export class ExpressionParser extends CstParser {
       $.CONSUME(LParen);
       $.SUBRULE($.filter);
       $.CONSUME(Comma);
-      $.SUBRULE($.expression);
+      $.SUBRULE($.expression, { ARGS: [returnType] });
       $.MANY(() => {
         $.CONSUME2(Comma);
         $.SUBRULE2($.filter);
@@ -251,10 +236,14 @@ export class ExpressionParser extends CstParser {
             DEF: [
               // functions: used by aggregations, expressions, and filters
               {
+                GATE: () => {
+                  const fn = this._getClauseFromToken(this.LA(1));
+                  return fn && fn.type === returnType;
+                },
                 ALT: () =>
                   $.SUBRULE($.functionExpression, {
-                    ARGS: [returnType],
                     LABEL: "expression",
+                    ARGS: [returnType],
                   }),
               },
               // aggregations
@@ -269,14 +258,14 @@ export class ExpressionParser extends CstParser {
               {
                 GATE: () => returnType === "boolean",
                 ALT: () =>
-                  $.SUBRULE($.binaryOperatorExpression, {
+                  $.SUBRULE($.comparisonExpression, {
                     LABEL: "expression",
                   }),
               },
               {
                 GATE: () => returnType === "boolean",
                 ALT: () =>
-                  $.SUBRULE($.unaryOperatorExpression, {
+                  $.SUBRULE($.booleanUnaryExpression, {
                     LABEL: "expression",
                   }),
               },
@@ -342,6 +331,15 @@ export class ExpressionParser extends CstParser {
     // FILTERS
 
     this.performSelfAnalysis();
+  }
+
+  _getClauseFromToken(token) {
+    if (this.RECORDING_PHASE) {
+      // return a fake clause during recording phase
+      return { args: [], type: null };
+    } else {
+      return CLAUSE_TOKENS.get(token.tokenType);
+    }
   }
 
   canTokenTypeBeInsertedInRecovery(tokType) {

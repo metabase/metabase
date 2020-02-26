@@ -106,17 +106,17 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
     return this.visit(ctx.booleanExpression);
   }
   booleanExpression(ctx) {
-    return this._collapseOperators(ctx.operands, ctx.BooleanOperator);
+    return this._collapseOperators(ctx.operands, ctx.BooleanOperatorBinary);
   }
 
-  binaryOperatorExpression(ctx) {
+  comparisonExpression(ctx) {
     return [
       ctx.operators[0].image.toLowerCase(),
       this.visit(ctx.operands[0]),
       this.visit(ctx.operands[1]),
     ];
   }
-  unaryOperatorExpression(ctx) {
+  booleanUnaryExpression(ctx) {
     return [ctx.operators[0].image.toLowerCase(), this.visit(ctx.operands[0])];
   }
 

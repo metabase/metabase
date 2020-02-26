@@ -1,15 +1,33 @@
 import { Lexer, createToken } from "chevrotain";
-
+import escape from "regexp.escape";
 import memoize from "lodash.memoize";
 
 import {
-  getExpressionName,
+  FILTER_OPERATORS,
+  BOOLEAN_BINARY_OPERATORS,
+  BOOLEAN_UNARY_OPERATORS,
   AGGREGATION_FUNCTIONS,
   EXPRESSION_FUNCTIONS,
   FILTER_FUNCTIONS,
   MBQL_CLAUSES,
   QUOTES,
 } from "./config";
+
+export const CLAUSE_TOKENS = new Map();
+function createClauseToken(clause, categories = []) {
+  const { args, type, name, tokenName = name } = MBQL_CLAUSES[clause];
+  if (!name) {
+    throw new Error(`MBQL_CLAUSE: ${clause} is missing a name`);
+  }
+  const token = createToken({
+    name: tokenName,
+    pattern: new RegExp(escape(name), "i"),
+    categories: categories,
+    longer_alt: Identifier.PATTERN.test(name) ? Identifier : null,
+  });
+  CLAUSE_TOKENS.set(token, { clause, args, type });
+  return token;
+}
 
 export const Identifier = createToken({
   name: "Identifier",
@@ -19,74 +37,78 @@ export const IdentifierString = createToken({
   name: "IdentifierString",
   pattern: Lexer.NA,
 });
-export const NumberLiteral = createToken({
-  name: "NumberLiteral",
-  pattern: /-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?/,
-});
 export const StringLiteral = createToken({
   name: "StringLiteral",
   pattern: Lexer.NA,
 });
+export const NumberLiteral = createToken({
+  name: "NumberLiteral",
+  pattern: /-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?/,
+});
+
+// OPERATORS
 
 export const Operator = createToken({
   name: "Operator",
   pattern: Lexer.NA,
 });
 
+// EXPRESSION OEPRATORS
+
 export const AdditiveOperator = createToken({
   name: "AdditiveOperator",
   pattern: Lexer.NA,
   categories: [Operator],
 });
-export const Plus = createToken({
-  name: "Plus",
-  pattern: /\+/,
-  categories: [AdditiveOperator],
-});
-export const Minus = createToken({
-  name: "Minus",
-  pattern: /-/,
-  categories: [AdditiveOperator],
-});
+export const Plus = createClauseToken("+", [AdditiveOperator]);
+export const Minus = createClauseToken("-", [AdditiveOperator]);
 
 export const MultiplicativeOperator = createToken({
   name: "MultiplicativeOperator",
   pattern: Lexer.NA,
   categories: [Operator],
 });
-export const Multi = createToken({
-  name: "Multi",
-  pattern: /\*/,
-  categories: [MultiplicativeOperator],
+export const Multi = createClauseToken("*", [MultiplicativeOperator]);
+export const Div = createClauseToken("/", [MultiplicativeOperator]);
+
+// FILTER OPERATORS:
+
+export const FilterOperator = createToken({
+  name: "FilterOperator",
+  pattern: Lexer.NA,
+  categories: [Operator],
 });
-export const Div = createToken({
-  name: "Div",
-  pattern: /\//,
-  categories: [MultiplicativeOperator],
+
+for (const clause of Array.from(FILTER_OPERATORS)) {
+  createClauseToken(clause, [FilterOperator]);
+}
+
+// BOOLEAN OEPRATORS
+
+export const BooleanOperatorUnary = createToken({
+  name: "BooleanOperatorUnary",
+  pattern: Lexer.NA,
 });
+
+for (const clause of Array.from(BOOLEAN_UNARY_OPERATORS)) {
+  createClauseToken(clause, [BooleanOperatorUnary]);
+}
+
+export const BooleanOperatorBinary = createToken({
+  name: "BooleanOperatorBinary",
+  pattern: Lexer.NA,
+});
+
+for (const clause of Array.from(BOOLEAN_BINARY_OPERATORS)) {
+  createClauseToken(clause, [BooleanOperatorBinary]);
+}
+
+// FUNCTIONS
 
 export const FunctionName = createToken({
   name: "FunctionName",
   pattern: Lexer.NA,
 });
-export const FUNCTION_TOKENS = new Map();
-
-function createFunctionToken(parentToken, clause, args, type) {
-  if (!args) {
-    throw new Error("Missing args for " + clause);
-  }
-  const name = getExpressionName(clause);
-  if (!name) {
-    throw new Error("Missing expression name for " + clause);
-  }
-  const token = createToken({
-    name: name,
-    pattern: new RegExp(name, "i"),
-    categories: [parentToken],
-    longer_alt: Identifier,
-  });
-  FUNCTION_TOKENS.set(token, { args, type });
-}
 
 // AGGREGATION
 
@@ -97,12 +119,7 @@ export const AggregationFunctionName = createToken({
 });
 
 for (const clause of Array.from(AGGREGATION_FUNCTIONS)) {
-  createFunctionToken(
-    AggregationFunctionName,
-    clause,
-    MBQL_CLAUSES[clause].args,
-    MBQL_CLAUSES[clause].type,
-  );
+  createClauseToken(clause, [AggregationFunctionName]);
 }
 
 // EXPRESSIONS
@@ -114,20 +131,11 @@ export const ExpressionFunctionName = createToken({
 });
 
 for (const clause of Array.from(EXPRESSION_FUNCTIONS)) {
-  createFunctionToken(
-    ExpressionFunctionName,
-    clause,
-    MBQL_CLAUSES[clause].args,
-    MBQL_CLAUSES[clause].type,
-  );
+  createClauseToken(clause, [ExpressionFunctionName]);
 }
 
 // special-case Case since it uses different syntax
-export const Case = createToken({
-  name: "Case",
-  pattern: /Case/i,
-  longer_alt: Identifier,
-});
+export const Case = createClauseToken("case");
 
 // FILTERS
 
@@ -138,76 +146,37 @@ export const FilterFunctionName = createToken({
 });
 
 for (const clause of Array.from(FILTER_FUNCTIONS)) {
-  createFunctionToken(
-    FilterFunctionName,
-    clause,
-    MBQL_CLAUSES[clause].args,
-    MBQL_CLAUSES[clause].type,
-  );
+  createClauseToken(clause, [FilterFunctionName]);
 }
 
-export const FilterOperator = createToken({
-  name: "FilterOperator",
-  pattern: Lexer.NA,
-});
-
-export const BooleanOperator = createToken({
-  name: "BooleanOperator",
-  pattern: Lexer.NA,
-});
-
-const filterOperatorTokens = [
-  createToken({ name: "NE", pattern: /\!\=/, categories: [FilterOperator] }),
-  createToken({ name: "LTE", pattern: /\<\=/, categories: [FilterOperator] }),
-  createToken({ name: "GTE", pattern: /\>\=/, categories: [FilterOperator] }),
-  createToken({ name: "LT", pattern: /\</, categories: [FilterOperator] }),
-  createToken({ name: "GT", pattern: /\>/, categories: [FilterOperator] }),
-  createToken({ name: "EQ", pattern: /\=/, categories: [FilterOperator] }),
-  createToken({
-    name: "AND",
-    pattern: /AND/i,
-    categories: [BooleanOperator],
-  }),
-  createToken({
-    name: "OR",
-    pattern: /OR/i,
-    categories: [BooleanOperator],
-  }),
-];
-
-export const Not = createToken({
-  name: "NOT",
-  pattern: /NOT/i,
-});
+// MISC
 
 export const Comma = createToken({
   name: "Comma",
-  pattern: /,/,
+  pattern: ",",
   label: "comma",
 });
 
 export const LParen = createToken({
   name: "LParen",
-  pattern: /\(/,
+  pattern: "(",
   label: "opening parenthesis",
 });
 
 export const RParen = createToken({
   name: "RParen",
-  pattern: /\)/,
+  pattern: ")",
   label: "closing parenthesis",
 });
 
-// quoted strings
+// QUOTED STRINGS
 
 const getQuoteCategories = quote => {
-  const x =
-    QUOTES[quote] === "literal"
-      ? [StringLiteral]
-      : QUOTES[quote] === "identifier"
-      ? [IdentifierString]
-      : [];
-  return x;
+  return QUOTES[quote] === "literal"
+    ? [StringLiteral]
+    : QUOTES[quote] === "identifier"
+    ? [IdentifierString]
+    : [];
 };
 
 export const BracketQuotedString = createToken({
@@ -226,6 +195,8 @@ export const DoubleQuotedString = createToken({
   categories: getQuoteCategories('"'),
 });
 
+// WHITESPACE
+
 export const WhiteSpace = createToken({
   name: "WhiteSpace",
   pattern: /\s+/,
@@ -239,34 +210,29 @@ export const allTokens = [
   LParen,
   RParen,
   Comma,
-  Plus,
-  Minus,
-  Multi,
-  Div,
+  // OPERATORS
   Operator,
   AdditiveOperator,
   MultiplicativeOperator,
-  // aggregation, expression, and filter functions:
+  FilterOperator,
+  BooleanOperatorUnary,
+  BooleanOperatorBinary,
+  // FUNCTIONS
   FunctionName,
   AggregationFunctionName,
   ExpressionFunctionName,
   FilterFunctionName,
-  ...FUNCTION_TOKENS.keys(),
-  // expression
-  Case,
-  // filter
-  FilterOperator,
-  BooleanOperator,
-  Not,
-  ...filterOperatorTokens,
+  // all clauses
+  ...CLAUSE_TOKENS.keys(),
   // literals
   StringLiteral,
   NumberLiteral,
-  IdentifierString,
   // quoted strings
   BracketQuotedString,
   SingleQuotedString,
   DoubleQuotedString,
+  // identifiers
+  IdentifierString,
   // must come after keywords (which should have "longer_alt: Identifier" set)
   Identifier,
 ];

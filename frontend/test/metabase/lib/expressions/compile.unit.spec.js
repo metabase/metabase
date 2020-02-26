@@ -48,7 +48,7 @@ describe("metabase/lib/expressions/compile", () => {
     });
   });
 
-  xdescribe("compile()", () => {
+  describe("compile()", () => {
     for (const [name, cases, opts] of shared) {
       describe(name, () => {
         for (const [source, mbql, description] of cases) {
@@ -57,14 +57,14 @@ describe("metabase/lib/expressions/compile", () => {
               const start = Date.now();
               expect(compile(source, opts)).toEqual(mbql);
               const elapsed = Date.now() - start;
-              expect(elapsed).toBeLessThan(100);
+              expect(elapsed).toBeLessThan(250);
             });
           } else {
             it(`should not compile ${description}`, () => {
               const start = Date.now();
               expect(() => compile(source, opts)).toThrow();
               const elapsed = Date.now() - start;
-              expect(elapsed).toBeLessThan(100);
+              expect(elapsed).toBeLessThan(250);
             });
           }
         }

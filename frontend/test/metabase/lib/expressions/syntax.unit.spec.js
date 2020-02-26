@@ -1,4 +1,9 @@
-import { parse, serialize } from "metabase/lib/expressions/syntax";
+import {
+  parse,
+  defaultParser,
+  fallbackParser,
+  serialize,
+} from "metabase/lib/expressions/syntax";
 
 import {
   shared,
@@ -12,8 +17,12 @@ describe("metabase/lib/expressions/syntax", () => {
       describe(name, () => {
         for (const [source, mbql, description] of cases) {
           if (mbql) {
-            it(`should parse ${description}`, () => {
-              const tree = parse(source, opts);
+            it(`should parse with defaultParser ${description}`, () => {
+              const tree = defaultParser(source, opts);
+              expect(serialize(tree)).toEqual(source);
+            });
+            it(`should parser with fallbackParser ${description}`, () => {
+              const tree = fallbackParser(source, opts);
               expect(serialize(tree)).toEqual(source);
             });
           }
@@ -33,7 +42,7 @@ describe("metabase/lib/expressions/syntax", () => {
       const tree = parse(source, aggregationOpts);
       expect(serialize(tree)).toEqual(source);
     });
-    describe("recovery = true", () => {
+    xdescribe("recovery = true", () => {
       it("should parse missing quote at the end", () => {
         const source = '1 + "Total';
         const tree = parse(source, {
@@ -59,7 +68,7 @@ describe("metabase/lib/expressions/syntax", () => {
         expect(serialize(tree)).toEqual(source);
       });
     });
-    describe("recovery = false", () => {
+    xdescribe("recovery = false", () => {
       it("should not parse missing quote at the end", () => {
         const source = '1 + "Total';
         expect(() => {

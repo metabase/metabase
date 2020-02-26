@@ -1,24 +1,24 @@
 import { t } from "ttag";
 
-// // specifies where different quoting is used:
-// export const QUOTES = {
-//   "[": "identifier",
-//   "'": "literal",
-//   '"': "literal",
-// };
-// // specifies the default quoting style:
-// export const LITERAL_QUOTE_DEFAULT = '"';
-// export const IDENTIFIER_QUOTE_DEFAULT = "[";
-// // always quote identifiers even if they have non-word characters or conflict with reserved words
-// export const IDENTIFIER_ALWAYS_QUOTE = true;
-
+// specifies where different quoting is used:
 export const QUOTES = {
+  "[": "identifier",
   "'": "literal",
-  '"': "identifier",
+  '"': "literal",
 };
-export const LITERAL_QUOTE_DEFAULT = "'";
-export const IDENTIFIER_QUOTE_DEFAULT = '"';
-export const IDENTIFIER_ALWAYS_QUOTE = false;
+// specifies the default quoting style:
+export const LITERAL_QUOTE_DEFAULT = '"';
+export const IDENTIFIER_QUOTE_DEFAULT = "[";
+// always quote identifiers even if they have non-word characters or conflict with reserved words
+export const IDENTIFIER_ALWAYS_QUOTE = true;
+
+// export const QUOTES = {
+//   "'": "literal",
+//   '"': "identifier",
+// };
+// export const LITERAL_QUOTE_DEFAULT = "'";
+// export const IDENTIFIER_QUOTE_DEFAULT = '"';
+// export const IDENTIFIER_ALWAYS_QUOTE = false;
 
 // copied relevant parts from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Operator_Precedence
 export const OPERATOR_PRECEDENCE = {
@@ -174,15 +174,84 @@ export const MBQL_CLAUSES = {
     type: "boolean",
     args: ["expression", "expression", "expression"],
   },
-  // filter operators
-  and: { name: t`AND`, type: "boolean", args: ["boolean", "boolean"] },
-  or: { name: t`OR`, type: "boolean", args: ["boolean", "boolean"] },
-  not: { name: t`NOT`, type: "boolean", args: ["boolean"] },
+  // boolean operators
+  and: {
+    name: t`AND`,
+    type: "boolean",
+    args: ["boolean", "boolean"],
+  },
+  or: {
+    name: t`OR`,
+    type: "boolean",
+    args: ["boolean", "boolean"],
+  },
+  not: {
+    name: t`NOT`,
+    type: "boolean",
+    args: ["boolean"],
+  },
   // expression operators
-  "*": { name: "*", type: "expression", args: ["expression", "expression"] },
-  "/": { name: "/", type: "expression", args: ["expression", "expression"] },
-  "-": { name: "-", type: "expression", args: ["expression", "expression"] },
-  "+": { name: "+", type: "expression", args: ["expression", "expression"] },
+  "*": {
+    name: "*",
+    tokenName: "Multi",
+    type: "expression",
+    args: ["expression", "expression"],
+  },
+  "/": {
+    name: "/",
+    tokenName: "Div",
+    type: "expression",
+    args: ["expression", "expression"],
+  },
+  "-": {
+    name: "-",
+    tokenName: "Minus",
+    type: "expression",
+    args: ["expression", "expression"],
+  },
+  "+": {
+    name: "+",
+    tokenName: "Plus",
+    type: "expression",
+    args: ["expression", "expression"],
+  },
+  // comparison operators
+  "!=": {
+    name: "!=",
+    tokenName: "NotEqual",
+    type: "boolean",
+    args: ["expression", "expression"],
+  },
+  "<=": {
+    name: "<=",
+    tokenName: "LessThanEqual",
+    type: "boolean",
+    args: ["expression", "expression"],
+  },
+  ">=": {
+    name: ">=",
+    tokenName: "GreaterThanEqual",
+    type: "boolean",
+    args: ["expression", "expression"],
+  },
+  "<": {
+    name: "<",
+    tokenName: "LessThan",
+    type: "boolean",
+    args: ["expression", "expression"],
+  },
+  ">": {
+    name: ">",
+    tokenName: "GreaterThan",
+    type: "boolean",
+    args: ["expression", "expression"],
+  },
+  "=": {
+    name: "=",
+    tokenName: "Equal",
+    type: "boolean",
+    args: ["expression", "expression"],
+  },
 };
 
 // Reserved token names

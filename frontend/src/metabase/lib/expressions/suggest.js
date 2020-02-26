@@ -1,43 +1,75 @@
 import _ from "underscore";
 import { t } from "ttag";
+import escape from "regexp.escape";
 
 import { parser } from "./parser";
 
 import {
   getExpressionName,
-  getMBQLName,
   // dimensions:
   getDimensionName,
   formatDimensionName,
   // metrics
   formatMetricName,
+  // segments
+  formatSegmentName,
+  FILTER_FUNCTIONS,
 } from "../expressions";
 
 import {
-  lexer,
-  allTokens,
-  LParen,
-  RParen,
   AdditiveOperator,
-  MultiplicativeOperator,
   AggregationFunctionName,
-  FunctionName,
+  BooleanOperatorBinary,
+  BooleanOperatorUnary,
+  CLAUSE_TOKENS,
   Case,
-  StringLiteral,
-  NumberLiteral,
-  Minus,
+  Comma,
+  FilterOperator,
+  FunctionName,
   Identifier,
   IdentifierString,
+  LParen,
+  Minus,
+  MultiplicativeOperator,
+  NumberLiteral,
+  RParen,
+  StringLiteral,
   getImage,
-  isTokenType,
   getSubTokenTypes,
+  isTokenType,
+  lexer,
 } from "./lexer";
 
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
+import { EXPRESSION_FUNCTIONS } from "./config";
 
-function getTokenSource(TokenClass) {
-  // strip regex escaping, e.x. "\+" -> "+"
-  return TokenClass.PATTERN.source.replace(/^\\/, "");
+function getTokenSource(tokenType) {
+  return typeof tokenType.PATTERN === "string"
+    ? tokenType.PATTERN
+    : tokenType.PATTERN.source.replace(/^\\/, "");
+}
+
+const START_RULE_TYPE = {
+  filter: "boolean",
+  expression: "expression",
+  aggregation: "aggregation",
+};
+
+export function getFunctionTokenAndArgument(tokens) {
+  let parens = 0;
+  let index = 0;
+  for (let i = tokens.length - 1; i >= 0; i--) {
+    const token = tokens[i];
+    if (isTokenType(token.tokenType, FunctionName) && parens === -1) {
+      return { token, index };
+    } else if (token.tokenType === LParen) {
+      parens--;
+    } else if (token.tokenType === RParen) {
+      parens++;
+    } else if (token.tokenType === Comma && parens === 0) {
+      index++;
+    }
+  }
 }
 
 export function suggest(
@@ -64,13 +96,16 @@ export function suggest(
     partialSuggestionMode = true;
   }
 
-  let finalSuggestions = [];
+  const { token: functionToken, index: functionArgumentIndex } =
+    getFunctionTokenAndArgument(assistanceTokenVector) || {};
+  const functionClause =
+    functionToken && CLAUSE_TOKENS.get(functionToken.tokenType);
 
-  // TODO: is there a better way to figure out which aggregation we're inside of?
-  const currentAggregationToken = _.find(
-    assistanceTokenVector.slice().reverse(),
-    t => t && isTokenType(t.tokenType, AggregationFunctionName),
-  );
+  const expectedType = functionClause
+    ? functionClause.args[functionArgumentIndex]
+    : START_RULE_TYPE[startRule];
+
+  let finalSuggestions = [];
 
   const syntacticSuggestions = parser.computeContentAssist(
     startRule,
@@ -79,27 +114,28 @@ export function suggest(
 
   for (const suggestion of syntacticSuggestions) {
     const { nextTokenType, ruleStack } = suggestion;
-    // no nesting of aggregations or field references outside of aggregations
-    // we have a predicate in the grammar to prevent nested aggregations but chevrotain
-    // doesn't support predicates in content-assist mode, so we need this extra check
-    const outsideAggregation =
-      startRule === "aggregation" &&
-      ruleStack.slice(0, -1).indexOf("aggregationExpression") < 0;
 
     if (
-      nextTokenType === MultiplicativeOperator ||
-      nextTokenType === AdditiveOperator
+      nextTokenType === AdditiveOperator ||
+      nextTokenType === MultiplicativeOperator
     ) {
-      const tokens = getSubTokenTypes(nextTokenType);
-      finalSuggestions.push(
-        ...tokens.map(token => ({
-          type: "operators",
-          name: getTokenSource(token),
-          text: " " + getTokenSource(token) + " ",
-          prefixTrim: /\s*$/,
-          postfixTrim: /^\s*[*/+-]?\s*/,
-        })),
-      );
+      if (expectedType === "expression" || expectedType === "aggregation") {
+        const tokens = getSubTokenTypes(nextTokenType);
+        finalSuggestions.push(
+          ...tokens.map(token => operatorSuggestion(token)),
+        );
+      }
+    } else if (
+      nextTokenType === BooleanOperatorUnary ||
+      nextTokenType === BooleanOperatorBinary ||
+      nextTokenType === FilterOperator
+    ) {
+      if (expectedType === "boolean") {
+        const tokens = getSubTokenTypes(nextTokenType);
+        finalSuggestions.push(
+          ...tokens.map(token => operatorSuggestion(token)),
+        );
+      }
     } else if (nextTokenType === LParen) {
       finalSuggestions.push({
         type: "other",
@@ -117,18 +153,44 @@ export function suggest(
         prefixTrim: /\s*$/,
         postfixTrim: /^\s*\)?\s*/,
       });
+    } else if (nextTokenType === Comma) {
+      if (
+        functionClause &&
+        (functionClause.multiple ||
+          functionArgumentIndex < functionClause.args.length - 1)
+      ) {
+        finalSuggestions.push({
+          type: "other",
+          name: ",",
+          text: ", ",
+          postfixText: ",",
+          prefixTrim: /\s*$/,
+          postfixTrim: /^\s*,?\s*/,
+        });
+      }
     } else if (
       nextTokenType === Identifier ||
       nextTokenType === IdentifierString
     ) {
-      if (!outsideAggregation) {
+      // fields, metrics, segments
+      const parentRule = ruleStack.slice(-2, -1)[0];
+      const isDimension =
+        parentRule === "dimensionExpression" && expectedType === "expression";
+      const isSegment =
+        parentRule === "segmentExpression" && expectedType === "boolean";
+      const isMetric =
+        parentRule === "metricExpression" && expectedType === "aggregation";
+
+      if (isDimension) {
         let dimensions = [];
-        if (startRule === "aggregation" && currentAggregationToken) {
-          const aggregationShort = getMBQLName(
-            getImage(currentAggregationToken),
-          );
-          dimensions = query.aggregationFieldOptions(aggregationShort).all();
-        } else if (startRule === "expression" || startRule === "filter") {
+        if (
+          functionToken &&
+          isTokenType(functionToken.tokenType, AggregationFunctionName)
+        ) {
+          dimensions = query
+            .aggregationFieldOptions(functionClause.clause)
+            .all();
+        } else {
           dimensions = query
             .dimensionOptions(
               d =>
@@ -152,26 +214,18 @@ export function suggest(
           })),
         );
       }
-    } else if (isTokenType(nextTokenType, FunctionName)) {
-      if (outsideAggregation) {
+      if (isSegment) {
         finalSuggestions.push(
-          ...query
-            .aggregationOperatorsWithoutRows()
-            .filter(a => getExpressionName(a.short))
-            .map(aggregationOperator => {
-              const arity = aggregationOperator.fields.length;
-              return {
-                type: "aggregations",
-                name: getExpressionName(aggregationOperator.short),
-                text:
-                  getExpressionName(aggregationOperator.short) +
-                  (arity > 0 ? "(" : " "),
-                postfixText: arity > 0 ? ")" : " ",
-                prefixTrim: /\w+$/,
-                postfixTrim: arity > 0 ? /^\w+(\(\)?|$)/ : /^\w+\s*/,
-              };
-            }),
+          ...query.table().segments.map(segment => ({
+            type: "segments",
+            name: segment.name,
+            text: formatSegmentName(segment),
+            prefixTrim: /\w+$/,
+            postfixTrim: /^\w+\s*/,
+          })),
         );
+      }
+      if (isMetric) {
         finalSuggestions.push(
           ...query.table().metrics.map(metric => ({
             type: "metrics",
@@ -182,8 +236,37 @@ export function suggest(
           })),
         );
       }
+    } else if (isTokenType(nextTokenType, FunctionName)) {
+      if (expectedType === "aggregation") {
+        finalSuggestions.push(
+          ...query
+            .aggregationOperatorsWithoutRows()
+            .filter(a => getExpressionName(a.short))
+            .map(aggregationOperator =>
+              functionSuggestion(
+                "aggregations",
+                aggregationOperator.short,
+                aggregationOperator.fields.length > 0,
+              ),
+            ),
+        );
+      } else if (expectedType === "expression") {
+        finalSuggestions.push(
+          ...Array.from(EXPRESSION_FUNCTIONS).map(clause =>
+            functionSuggestion("functions", clause),
+          ),
+        );
+      } else if (expectedType === "boolean") {
+        finalSuggestions.push(
+          ...Array.from(FILTER_FUNCTIONS).map(clause =>
+            functionSuggestion("functions", clause),
+          ),
+        );
+      }
     } else if (nextTokenType === Case) {
-      // TODO
+      if (expectedType === "expression") {
+        functionSuggestion("functions", "case");
+      }
     } else if (
       nextTokenType === StringLiteral ||
       nextTokenType === NumberLiteral ||
@@ -225,4 +308,27 @@ export function suggest(
     .sortBy("name")
     .sortBy("type")
     .value();
+}
+
+function operatorSuggestion(token) {
+  const source = getTokenSource(token);
+  return {
+    type: "operators",
+    name: source,
+    text: " " + source + " ",
+    prefixTrim: /\s*$/,
+    postfixTrim: new RegExp("/^s*" + escape(source) + "?s*/"),
+  };
+}
+
+function functionSuggestion(type, clause, parens = true) {
+  const name = getExpressionName(clause);
+  return {
+    type: type,
+    name: name,
+    text: name + (parens ? "(" : " "),
+    postfixText: parens ? ")" : " ",
+    prefixTrim: /\w+$/,
+    postfixTrim: parens ? /^\w+(\(\)?|$)/ : /^\w+\s*/,
+  };
 }

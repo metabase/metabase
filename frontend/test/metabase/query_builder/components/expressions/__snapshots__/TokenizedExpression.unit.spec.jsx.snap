@@ -1,6 +1,6 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`TokenizedExpression should render 1 + Sum(2 + Total) 1`] = `
+exports[`TokenizedExpression should render: 1 + Sum(2 + Total) 1`] = `
 <span
   className="Expression-node Expression-group"
 >
@@ -28,7 +28,7 @@ exports[`TokenizedExpression should render 1 + Sum(2 + Total) 1`] = `
     className="Expression-node Expression-aggregation Expression-tokenized"
   >
     <span
-      className="Expression-node Expression-aggregation-name"
+      className="Expression-node Expression-function-name"
     >
       Sum
     </span>
@@ -61,69 +61,16 @@ exports[`TokenizedExpression should render 1 + Sum(2 + Total) 1`] = `
          
       </span>
       <span
-        className="Expression-node Expression-field Expression-tokenized"
-      >
-        Total
-      </span>
-      <span
-        className="Expression-node Expression-close-paren"
-      >
-        )
-      </span>
-    </span>
-  </span>
-</span>
-`;
-
-exports[`TokenizedExpression should render Count 1`] = `
-<span
-  className="Expression-node Expression-group"
->
-  <span
-    className="Expression-node Expression-metric Expression-tokenized"
-  >
-    Count
-  </span>
-</span>
-`;
-
-exports[`TokenizedExpression should render Sum("Foo Bar") 1`] = `
-<span
-  className="Expression-node Expression-group"
->
-  <span
-    className="Expression-node Expression-aggregation Expression-tokenized"
-  >
-    <span
-      className="Expression-node Expression-aggregation-name"
-    >
-      Sum
-    </span>
-    <span
-      className="Expression-node Expression-group"
-    >
-      <span
-        className="Expression-node Expression-open-paren"
-      >
-        (
-      </span>
-      <span
-        className="Expression-node Expression-string-literal Expression-tokenized"
+        className="Expression-node Expression-dimension Expression-tokenized"
       >
         <span
-          className="Expression-node Expression-open-quote"
+          className="Expression-node Expression-identifier"
         >
-          "
-        </span>
-        <span
-          className="Expression-node Expression-field"
-        >
-          Foo Bar
-        </span>
-        <span
-          className="Expression-node Expression-close-quote"
-        >
-          "
+          <span
+            className="Expression-node Expression-token"
+          >
+            Total
+          </span>
         </span>
       </span>
       <span
@@ -136,7 +83,27 @@ exports[`TokenizedExpression should render Sum("Foo Bar") 1`] = `
 </span>
 `;
 
-exports[`TokenizedExpression should render Sum(Subtotal) 1`] = `
+exports[`TokenizedExpression should render: Count 1`] = `
+<span
+  className="Expression-node Expression-group"
+>
+  <span
+    className="Expression-node Expression-dimension Expression-tokenized"
+  >
+    <span
+      className="Expression-node Expression-identifier"
+    >
+      <span
+        className="Expression-node Expression-token"
+      >
+        Count
+      </span>
+    </span>
+  </span>
+</span>
+`;
+
+exports[`TokenizedExpression should render: Sum("Foo Bar") 1`] = `
 <span
   className="Expression-node Expression-group"
 >
@@ -144,7 +111,7 @@ exports[`TokenizedExpression should render Sum(Subtotal) 1`] = `
     className="Expression-node Expression-aggregation Expression-tokenized"
   >
     <span
-      className="Expression-node Expression-aggregation-name"
+      className="Expression-node Expression-function-name"
     >
       Sum
     </span>
@@ -157,9 +124,56 @@ exports[`TokenizedExpression should render Sum(Subtotal) 1`] = `
         (
       </span>
       <span
-        className="Expression-node Expression-field Expression-tokenized"
+        className="Expression-node Expression-dimension Expression-tokenized"
       >
-        Subtotal
+        <span
+          className="Expression-node Expression-identifier-string"
+        >
+          "Foo Bar"
+        </span>
+      </span>
+      <span
+        className="Expression-node Expression-close-paren"
+      >
+        )
+      </span>
+    </span>
+  </span>
+</span>
+`;
+
+exports[`TokenizedExpression should render: Sum(Subtotal) 1`] = `
+<span
+  className="Expression-node Expression-group"
+>
+  <span
+    className="Expression-node Expression-aggregation Expression-tokenized"
+  >
+    <span
+      className="Expression-node Expression-function-name"
+    >
+      Sum
+    </span>
+    <span
+      className="Expression-node Expression-group"
+    >
+      <span
+        className="Expression-node Expression-open-paren"
+      >
+        (
+      </span>
+      <span
+        className="Expression-node Expression-dimension Expression-tokenized"
+      >
+        <span
+          className="Expression-node Expression-identifier"
+        >
+          <span
+            className="Expression-node Expression-token"
+          >
+            Subtotal
+          </span>
+        </span>
       </span>
       <span
         className="Expression-node Expression-close-paren"
