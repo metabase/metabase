@@ -1,7 +1,7 @@
 (ns metabase.api.field-test
   "Tests for `/api/field` endpoints."
   (:require [clojure.test :refer :all]
-            [expectations :refer :all]
+            [expectations :refer [expect]]
             [metabase
              [test :as mt]
              [util :as u]]
@@ -13,6 +13,7 @@
              [table :refer [Table]]]
             [metabase.test
              [data :as data]
+             [fixtures :as fixtures]
              [util :as tu]]
             [metabase.test.data.users :as test-users]
             [metabase.test.util.log :as tu.log]
@@ -22,6 +23,8 @@
              [db :as db]
              [hydrate :refer [hydrate]]]
             [toucan.util.test :as tt]))
+
+(use-fixtures :once (fixtures/initialize :plugins))
 
 ;; Helper Fns
 
