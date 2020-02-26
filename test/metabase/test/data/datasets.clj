@@ -17,8 +17,7 @@
             [metabase.driver :as driver]
             [metabase.test.data
              [env :as tx.env]
-             [interface :as tx]]
-            [metabase.test.initialize :as initialize]))
+             [interface :as tx]]))
 
 (defn do-when-testing-driver
   "Call function `f` (always with no arguments) *only* if we are currently testing against `driver` (i.e., if `driver`
@@ -39,7 +38,6 @@
 
 (defn do-with-driver-when-testing [driver thunk]
   (when-testing-driver driver
-    (initialize/initialize-if-needed! :plugins)
     (driver/with-driver (tx/the-driver-with-test-extensions driver)
       (thunk))))
 
