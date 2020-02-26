@@ -17,7 +17,16 @@ import {
 import { UnconnectedDataSelector as DataSelector } from "metabase/query_builder/components/DataSelector";
 
 describe("DataSelector", () => {
-  afterEach(cleanup);
+  let originalTimeout;
+  beforeEach(() => {
+    originalTimeout = jasmine.DEFAULT_TIMEOUT_INTERVAL;
+    jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
+  });
+
+  afterEach(() => {
+    jasmine.DEFAULT_TIMEOUT_INTERVAL = originalTimeout;
+    cleanup();
+  });
 
   const emptyMetadata = {
     databases: {},
