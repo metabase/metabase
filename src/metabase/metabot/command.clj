@@ -196,9 +196,9 @@
 
 (def ^:private kanye-quotes
   (delay
-   (log/debug (trs "Loading Kanye quotes..."))
-   (when-let [url (io/resource "kanye-quotes.edn")]
-     (edn/read-string (slurp url)))))
+    (log/debug (trs "Loading Kanye quotes..."))
+    (when-let [url (io/resource "kanye-quotes.edn")]
+      (edn/read-string (slurp url)))))
 
 (defmethod command :kanye [& _]
   (str ":kanye:\n> " (rand-nth @kanye-quotes)))
