@@ -54,7 +54,8 @@
   (let [db-id->tables (group-by :db_id (filter mi/can-read? (db/select Table
                                                               :active true
                                                               :db_id  [:in (map :id dbs)]
-                                                              {:order-by [[:%lower.display_name :asc]]})))]
+                                                              {:order-by [[:%lower.schema :asc]
+                                                                          [:%lower.display_name :asc]]})))]
     (for [db dbs]
       (assoc db :tables (get db-id->tables (:id db) [])))))
 

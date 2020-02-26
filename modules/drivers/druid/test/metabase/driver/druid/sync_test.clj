@@ -15,16 +15,15 @@
       (testing "describe-table"
         (is (= {:schema nil
                 :name   "checkins"
-                :fields #{{:name "unique_users",        :base-type :type/DruidHyperUnique, :database-type "hyperUnique [metric]"}
-                          {:name "count",               :base-type :type/Integer,          :database-type "LONG [metric]"}
-                          {:name "id",                  :base-type :type/Integer,          :database-type "LONG"}
+                :fields #{{:name "count",               :base-type :type/Integer,          :database-type "LONG [metric]"}
+                          {:name "id",                  :base-type :type/Text,             :database-type "STRING"}
                           {:name "timestamp",           :base-type :type/Instant,          :database-type "timestamp", :pk? true}
                           {:name "user_last_login",     :base-type :type/Text,             :database-type "STRING"}
                           {:name "user_name",           :base-type :type/Text,             :database-type "STRING"}
                           {:name "user_password",       :base-type :type/Text,             :database-type "STRING"}
                           {:name "venue_category_name", :base-type :type/Text,             :database-type "STRING"}
-                          {:name "venue_latitude",      :base-type :type/Float,            :database-type "DOUBLE"}
-                          {:name "venue_longitude",     :base-type :type/Float,            :database-type "DOUBLE"}
+                          {:name "venue_latitude",      :base-type :type/Text,             :database-type "STRING"}
+                          {:name "venue_longitude",     :base-type :type/Text,             :database-type "STRING"}
                           {:name "venue_name",          :base-type :type/Text,             :database-type "STRING"}
-                          {:name "venue_price",         :base-type :type/Integer,          :database-type "LONG"}}}
+                          {:name "venue_price",         :base-type :type/Text,             :database-type "STRING"}}}
                (driver/describe-table :druid (mt/db) {:name "checkins"})))))))

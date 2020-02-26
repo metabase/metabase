@@ -21,7 +21,6 @@
             (is (= ["id"
                     "timestamp"
                     "count"
-                    "unique_users"
                     "user_last_login"
                     "user_name"
                     "venue_category_name"
@@ -31,17 +30,16 @@
                     "venue_price"]
                    (->> results :data :cols (map :name)))))
           (testing "rows"
-            (is (= [[931
-                     "2013-01-03T00:00:00Z"
+            (is (= [["931"
+                     "2013-01-03T08:00:00Z"
                      1
-                     "AQAAAQAAAAEBsA=="
-                     "2014-01-01T08:30:00"
+                     "2014-01-01T08:30:00.000Z"
                      "Simcha Yan"
                      "Thai"
-                     34.094
-                     -118.344
+                     "34.094"
+                     "-118.344"
                      "Kinaree Thai Bistro"
-                     1]]
+                     "1"]]
                    (-> results :data :rows)))))))))
 
 (deftest post-process-select-query-test

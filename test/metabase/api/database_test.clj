@@ -1,8 +1,6 @@
 (ns metabase.api.database-test
   "Tests for /api/database endpoints."
-  (:require [clojure
-             [string :as str]
-             [test :refer :all]]
+  (:require [clojure.test :refer :all]
             [medley.core :as m]
             [metabase
              [driver :as driver]
@@ -188,22 +186,6 @@
 ;; ## `GET /api/database`
 ;; Test that we can get all the DBs (ordered by name, then driver)
 
-(defn- sorted-databases [dbs]
-  (vec
-   (sort-by
-    (fn [{db-name :name, driver :engine}]
-      [(str/lower-case db-name) (str/lower-case (u/qualified-name driver))])
-    dbs)))
-
-(defn- test-driver-database [db-id]
-  (merge
-   default-db-details
-   (db/select-one [Database :created_at :updated_at :name :timezone] :id db-id)
-   {:engine             (u/qualified-name ::test-driver)
-    :id                 db-id
-    :native_permissions "write"
-    :features           (map u/qualified-name (driver.u/features ::test-driver))}))
-
 (deftest only-superusers-should-see-db-details-test
   (testing "Database details *should not* come back for Rasta since she's not a superuser"
     (let [expected-keys (-> (into #{:features :native_permissions} (keys (Database (data/id))))
@@ -218,9 +200,9 @@
     (tt/with-temp Database [{db-id :id, db-name :name} {:engine (u/qualified-name ::test-driver)}]
       (doseq [db ((test-users/user->client :rasta) :get 200 "database" :include_tables true)]
         (testing (format "Database %s %d %s" (:engine db) (u/get-id db) (pr-str (:name db)))
-          (let [expected-tables (->> (db/select Table, :db_id (u/get-id db), :active true)
-                                     (map table-details)
-                                     (sort-by (comp str/lower-case :name)))]
+          (let [expected-tables (map table-details (db/select Table
+                                                     :db_id (u/get-id db), :active true
+                                                     {:order-by [[:%lower.schema :asc] [:%lower.display_name :asc]]}))]
             (is (= expected-tables
                    (:tables db)))))))))
 

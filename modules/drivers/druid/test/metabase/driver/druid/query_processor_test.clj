@@ -242,11 +242,11 @@
   (mt/test-driver :druid
     (tqpt/with-flattened-dbdef
       (testing "Druid driver doesn't need to convert results to the expected timezone for us. QP middleware can handle that."
-        (let [expected [[1 "The Misfit Restaurant + Bar" (t/instant "2014-04-07T00:00:00Z")]
-                        [2 "Bludso's BBQ"                (t/instant "2014-09-18T00:00:00Z")]
-                        [3 "Philippe the Original"       (t/instant "2014-09-15T00:00:00Z")]
-                        [4 "Wurstküche"                  (t/instant "2014-03-11T00:00:00Z")]
-                        [5 "Hotel Biron"                 (t/instant "2013-05-05T00:00:00Z")]]]
+        (let [expected [["1" "The Misfit Restaurant + Bar" (t/instant "2014-04-07T07:00:00Z")]
+                        ["10" "Dal Rae Restaurant" (t/instant "2015-08-22T07:00:00Z")]
+                        ["100" "PizzaHacker" (t/instant "2014-07-26T07:00:00Z")]
+                        ["1000" "Tito's Tacos" (t/instant "2014-06-03T07:00:00Z")]
+                        ["101" "Golden Road Brewing" (t/instant "2015-09-04T07:00:00Z")]]]
           (testing "UTC timezone"
             (is (= expected
                    (table-rows-sample))))
@@ -285,14 +285,14 @@
   (mt/test-driver :druid
     (is (= {:row_count 2
             :status    :completed
-            :data      {:rows             [[931 "Simcha Yan" 1 "Kinaree Thai Bistro"       1]
-                                           [285 "Kfir Caj"   2 "Ruen Pair Thai Restaurant" 1]]
+            :data      {:rows             [["931" "Simcha Yan" "1" "Kinaree Thai Bistro"       1]
+                                           ["285" "Kfir Caj"   "2" "Ruen Pair Thai Restaurant" 1]]
                         :cols             (mapv #(merge col-defaults %)
                                                 [{:name         "id"
                                                   :source       :native
                                                   :display_name "id"
-                                                  :field_ref    [:field-literal "id" :type/Integer]
-                                                  :base_type    :type/Integer}
+                                                  :field_ref    [:field-literal "id" :type/Text]
+                                                  :base_type    :type/Text}
                                                  {:name         "user_name"
                                                   :source       :native
                                                   :display_name "user_name"
@@ -300,8 +300,8 @@
                                                  {:name         "venue_price"
                                                   :source       :native
                                                   :display_name "venue_price"
-                                                  :base_type    :type/Integer
-                                                  :field_ref    [:field-literal "venue_price" :type/Integer]}
+                                                  :base_type    :type/Text
+                                                  :field_ref    [:field-literal "venue_price" :type/Text]}
                                                  {:name         "venue_name"
                                                   :source       :native
                                                   :display_name "venue_name"
@@ -315,7 +315,6 @@
                         :results_timezone "UTC"}}
            (-> (process-native-query native-query-1)
                (m/dissoc-in [:data :insights]))))))
-
 
 (def ^:private native-query-2
   (json/generate-string
@@ -345,14 +344,14 @@
 
 (deftest start-of-week-test
   (mt/test-driver :druid
-    (is (= [["2015-10-04" 9]]
-           (druid-query-returning-rows
-             {:filter      [:between !day.timestamp "2015-10-04" "2015-10-10"]
-              :aggregation [[:count $id]]
-              :breakout    [!week.timestamp]}))
-        (str "Count the number of events in the given week. Metabase uses Sunday as the start of the week, Druid by "
-             "default will use Monday. All of the below events should happen in one week. Using Druid's default "
-             "grouping, 3 of the events would have counted for the previous week."))))
+    (testing (str "Count the number of events in the given week. Metabase uses Sunday as the start of the week, Druid by "
+                  "default will use Monday. All of the below events should happen in one week. Using Druid's default "
+                  "grouping, 3 of the events would have counted for the previous week.")
+      (is (= [["2015-10-04" 9]]
+             (druid-query-returning-rows
+               {:filter      [:between !day.timestamp "2015-10-04" "2015-10-10"]
+                :aggregation [[:count $id]]
+                :breakout    [!week.timestamp]}))))))
 
 (deftest sum-aggregation-test
   (mt/test-driver :druid
