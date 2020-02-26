@@ -2,8 +2,8 @@
   (:require [clojure
              [string :refer [join lower-case split]]
              [test :refer :all]]
-            [metabase.models :refer [Database]]
             [metabase
+             [models :refer [Database]]
              [driver :as driver]
              [util :as u]]
             [toucan.db :as db]))
