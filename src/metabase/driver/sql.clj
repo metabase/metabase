@@ -35,7 +35,7 @@
   [driver query]
   (sql.qp/mbql->native driver query))
 
-(defmethod driver/substitue-native-parameters :sql
+(defmethod driver/substitute-native-parameters :sql
   [_ {:keys [query] :as inner-query}]
   (let [[query params] (-> query
                            params.parse/parse

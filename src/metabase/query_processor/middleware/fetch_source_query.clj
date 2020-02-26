@@ -216,7 +216,7 @@
     (recur (dissoc &match :database))))
 
 (s/defn ^:private resolve-all :- su/Map
-  "Recursively replace all Card ID source tables in `m` with resolved `:source-query` and `:source-metadata`. Since
+  "Recursively replace all Card ID source tables in `query` with resolved `:source-query` and `:source-metadata`. Since
   the `:database` is only useful for top-level source queries, we'll remove it from all other levels."
   [query :- su/Map]
   (-> query

@@ -144,7 +144,7 @@
         (log/debug (tru "Substituted {0} -> {1}" (pr-str x) (pr-str <>)))))))
 
 (defn substitute-native-parameters
-  "Implementation of `driver/substitue-native-parameters` for MongoDB."
+  "Implementation of `driver/substitute-native-parameters` for MongoDB."
   [driver inner-query]
   (let [param->value (values/query->params-map inner-query)]
     (update inner-query :query (partial walk/postwalk (partial parse-and-substitute param->value)))))

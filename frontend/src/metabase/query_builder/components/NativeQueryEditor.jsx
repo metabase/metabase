@@ -186,11 +186,22 @@ export default class NativeQueryEditor extends Component {
       editorElement.classList.add("read-only");
     }
     const aceMode = query.aceMode();
-    if (this._editor.getSession().$modeId !== aceMode) {
-      this._editor.getSession().setMode(aceMode);
-      // monkey patch the mode to add our bracket/paren/braces-matching behavior
+    const session = this._editor.getSession();
+    if (session.$modeId !== aceMode) {
+      session.setMode(aceMode);
       if (aceMode.indexOf("sql") >= 0) {
-        this._editor.getSession().$mode.$behaviour = new SQLBehaviour();
+        // monkey patch the mode to add our bracket/paren/braces-matching behavior
+        session.$mode.$behaviour = new SQLBehaviour();
+
+        // add highlighting rule for template tags
+        session.$mode.$highlightRules.$rules.start.unshift({
+          token: "templateTag",
+          regex: "{{[^}]*}}",
+          onMatch: null,
+        });
+        session.$mode.$tokenizer = null;
+        session.bgTokenizer.setTokenizer(session.$mode.getTokenizer());
+        session.bgTokenizer.start(0);
       }
     }
 
