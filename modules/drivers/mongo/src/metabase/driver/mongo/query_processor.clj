@@ -389,10 +389,10 @@
 ;;; -------------------------------------------------- aggregation ---------------------------------------------------
 
 (defmethod ->rvalue :case [[_ cases options]]
-  {"$switch" (merge {:branches (for [[pred expr] cases]
-                                 {:case (parse-cond pred)
-                                  :then (->rvalue expr)})
-                     :default  (->rvalue (:default options))})})
+  {"$switch" {:branches (for [[pred expr] cases]
+                          {:case (parse-cond pred)
+                           :then (->rvalue expr)})
+              :default  (->rvalue (:default options))}})
 
 (defn- aggregation->rvalue [ag]
   (mbql.u/match-one ag
