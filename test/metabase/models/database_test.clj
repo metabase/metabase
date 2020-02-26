@@ -3,8 +3,8 @@
              [string :refer [join lower-case split]]
              [test :refer :all]]
             [metabase
-             [models :refer [Database]]
              [driver :as driver]
+             [models :refer [Database]]
              [util :as u]]
             [toucan.db :as db]))
 
