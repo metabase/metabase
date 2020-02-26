@@ -241,11 +241,40 @@ export const lexer = new Lexer(allTokens, {
   ensureOptimizations: true,
 });
 
+// recovery version of the lexer
+export const RecoveryToken = createToken({
+  name: "RecoveryToken",
+  pattern: Lexer.NA,
+});
+export const UnclosedBracketQuotedString = createToken({
+  name: "UnclosedBracketQuotedString",
+  pattern: /\[[^\]]*/,
+  categories: [RecoveryToken, ...getQuoteCategories("[")],
+});
+export const UnclosedSingleQuotedString = createToken({
+  name: "UnclosedSingleQuotedString",
+  pattern: /'(?:[^\\']+|\\(?:[bfnrtv'\\/]|u[0-9a-fA-F]{4}))*/,
+  categories: [RecoveryToken, ...getQuoteCategories("'")],
+});
+export const UnclosedDoubleQuotedString = createToken({
+  name: "DoubleQuoUnclosedDoubleQuotedStringtedString",
+  pattern: /"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*/,
+  categories: [RecoveryToken, ...getQuoteCategories('"')],
+});
 export const Any = createToken({
   name: "Any",
   pattern: /(.|\n)+/,
+  categories: [RecoveryToken],
 });
-export const lexerWithAny = new Lexer([...allTokens, Any]);
+
+export const lexerWithRecovery = new Lexer([
+  ...allTokens,
+  RecoveryToken,
+  UnclosedBracketQuotedString,
+  UnclosedSingleQuotedString,
+  UnclosedDoubleQuotedString,
+  Any,
+]);
 
 export function getImage(token) {
   return token.image;

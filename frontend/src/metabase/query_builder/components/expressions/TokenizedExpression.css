@@ -16,54 +16,47 @@
 } */
 
 /* DIMENSION */
-.Expression-dimension .Expression-identifier,
-.Expression-dimension .Expression-identifier-string {
+.Expression-dimension .Expression-identifier {
   /* margin: 1px 1px;
   padding: 1px 3px;
   border: 1px solid var(--color-brand);
   background-color: color(var(--color-brand) alpha(30%)); */
   color: var(--color-brand);
 }
-.Expression-selected.Expression-dimension .Expression-identifier,
-.Expression-selected.Expression-dimension .Expression-identifier-string {
+.Expression-selected.Expression-dimension .Expression-identifier {
   color: white;
   background-color: var(--color-brand);
 }
 
 /* METRIC */
-.Expression-metric .Expression-identifier,
-.Expression-metric .Expression-identifier-string {
+.Expression-metric .Expression-identifier {
   /* margin: 1px 1px;
   padding: 1px 3px;
   border: 1px solid var(--color-accent1);
   background-color: color(var(--color-accent1) alpha(30%)); */
   color: var(--color-accent1);
 }
-.Expression-metric.Expression-selected .Expression-identifier,
-.Expression-metric.Expression-selected .Expression-identifier-string {
+.Expression-metric.Expression-selected .Expression-identifier {
   color: white;
   background-color: var(--color-accent1);
 }
 
 /* SEGMENT */
-.Expression-segment .Expression-identifier,
-.Expression-segment .Expression-identifier-string {
+.Expression-segment .Expression-identifier {
   /* margin: 1px 1px;
   padding: 1px 3px;
   border: 1px solid var(--color-accent2);
   background-color: color(var(--color-accent2) alpha(30%)); */
   color: var(--color-accent2);
 }
-.Expression-segment.Expression-selected .Expression-identifier,
-.Expression-segment.Expression-selected .Expression-identifier-string {
+.Expression-segment.Expression-selected .Expression-identifier {
   color: white;
   background-color: var(--color-accent2);
 }
 
 /* UNKNOWN IDENTIFIER */
 /* used in fallbackParser */
-.Expression-unknown .Expression-identifier,
-.Expression-unknown .Expression-identifier-string {
+.Expression-unknown .Expression-identifier {
   color: var(--color-text-medium);
 }
 

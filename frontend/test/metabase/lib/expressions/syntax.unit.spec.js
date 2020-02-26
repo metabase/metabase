@@ -6,16 +6,28 @@ import {
   serialize,
 } from "metabase/lib/expressions/syntax";
 
-import {
-  shared,
-  aggregationOpts,
-  expressionOpts,
-} from "./__support__/expressions";
+import { shared, aggregationOpts } from "./__support__/expressions";
+
+const partialInputCases = {
+  expression: [
+    ['1 + "Total', "missing quote at the end"],
+    ["1 +", "ending in +"],
+    ["1 + (", "ending in open paren"],
+    ["1 + (2", "ending in number"],
+    ["1 + (2 + 3", "missing paren at the end"],
+    ["1 (2 + 3)", "missing operator in the middle"],
+  ],
+  aggregation: [
+    ["Sum", "aggregation without arguments"],
+    ["Sum(", "aggregation with open paren"],
+  ],
+  filter: [],
+};
 
 describe("metabase/lib/expressions/syntax", () => {
-  for (const parser of [defaultParser, fallbackParser]) {
+  for (const parser of [defaultParser, recoveryParser, fallbackParser]) {
     describe(`${parser.name}()`, () => {
-      for (const [name, cases, opts] of shared) {
+      for (let [name, cases, opts] of shared) {
         describe(name, () => {
           for (const [source, mbql, description] of cases) {
             if (mbql) {
@@ -24,6 +36,17 @@ describe("metabase/lib/expressions/syntax", () => {
                 expect(serialize(tree)).toEqual(source);
               });
             }
+          }
+          // defaultParser doesn't support partial input
+          if (parser !== defaultParser) {
+            describe("with partial inputs", () => {
+              for (const [source, description] of partialInputCases[name]) {
+                it(`should parse ${description}`, () => {
+                  const tree = parser(source, opts);
+                  expect(serialize(tree)).toEqual(source);
+                });
+              }
+            });
           }
         });
       }
@@ -43,31 +66,4 @@ describe("metabase/lib/expressions/syntax", () => {
       });
     });
   }
-
-  describe("recoveryParser()", () => {
-    xit("should parse missing quote at the end", () => {
-      const source = '1 + "Total';
-      const tree = recoveryParser(source, expressionOpts);
-      expect(serialize(tree)).toEqual(source);
-    });
-    it("should parse missing paren at the end", () => {
-      const source = "1 + (2 + 3";
-      const tree = recoveryParser(source, expressionOpts);
-      expect(serialize(tree)).toEqual(source);
-    });
-    it("should parse missing operator in the middle", () => {
-      const source = "1 2";
-      const tree = recoveryParser(source, expressionOpts);
-      expect(serialize(tree)).toEqual(source);
-    });
-    it("should with extra + in the middle", () => {
-      const source = 'Sum("Total" +)';
-      const tree = recoveryParser(source, aggregationOpts);
-      expect(serialize(tree)).toEqual(source);
-    });
-  });
-
-  fit("partial", () => {
-    defaultParser("1 + (2 + (3 +", expressionOpts);
-  });
 });

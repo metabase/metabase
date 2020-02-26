@@ -3,15 +3,14 @@ import _ from "underscore";
 import { ExpressionCstVisitor, parse as parserParse } from "./parser";
 import {
   lexer,
-  lexerWithAny,
+  lexerWithRecovery,
   Identifier,
   WhiteSpace,
   LParen,
   RParen,
   IdentifierString,
   FunctionName,
-  AggregationFunctionName,
-  Any,
+  RecoveryToken,
   isTokenType,
   CLAUSE_TOKENS,
 } from "./lexer";
@@ -27,7 +26,17 @@ const syntax = (type, ...children) => ({
 });
 
 const token = (...args) => {
-  const [type, token] = args.length === 1 ? ["token", args[0]] : args;
+  let [type, token] = args.length === 1 ? ["token", args[0]] : args;
+  // allow passing the array token
+  if (Array.isArray(token)) {
+    if (token.length !== 1) {
+      console.warn(
+        `Passed token array of length ${token.length} to token()`,
+        token,
+      );
+    }
+    token = token[0];
+  }
   return (
     token && {
       type: type,
@@ -37,6 +46,18 @@ const token = (...args) => {
     }
   );
 };
+
+// inserts whitespace tokens back into the syntax tree
+function whitespace(text) {
+  if (!/^\s+$/.test(text)) {
+    throw new Error("Recovered non-whitespace: " + text);
+  }
+  return { text };
+}
+
+function text(text) {
+  return { text };
+}
 
 export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
   constructor(options) {
@@ -63,20 +84,24 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
     return this._arithmeticExpression(ctx.operands, ctx.MultiplicativeOperator);
   }
 
-  _arithmeticExpression(operands, operators) {
-    const initial = [this.visit(operands[0])];
-    for (let i = 1; i < operands.length; i++) {
-      const operator = token(operators[i - 1]);
-      const operand = this.visit(operands[i]);
-      initial.push(operator);
-      initial.push(operand);
+  _arithmeticExpression(operands = [], operators = []) {
+    const initial = [];
+    for (let i = 0; i < operands.length; i++) {
+      initial.push(this.visit(operands[i]));
+      if (i < operators.length) {
+        initial.push(token(operators[i]));
+      }
     }
-    return initial.length === 1 ? initial[0] : syntax("math", ...initial);
+    return initial.length === 0
+      ? null
+      : initial.length === 1
+      ? initial[0]
+      : syntax("math", ...initial);
   }
 
   functionExpression(ctx) {
     const parts = [];
-    parts.push(token("function-name", ctx.functionName[0]));
+    parts.push(token("function-name", ctx.functionName));
     if (ctx.LParen) {
       const args = [];
       if (ctx.arguments) {
@@ -91,9 +116,9 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
       parts.push(
         syntax(
           "group",
-          token("open-paren", ctx.LParen[0]),
+          token("open-paren", ctx.LParen),
           ...args,
-          token("close-paren", ctx.RParen[0]),
+          token("close-paren", ctx.RParen),
         ),
       );
     }
@@ -106,8 +131,8 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
 
   caseExpression(ctx) {
     const parts = [];
-    parts.push(token(ctx.case[0]));
-    parts.push(token(ctx.LParen[0]));
+    parts.push(token(ctx.case));
+    parts.push(token(ctx.LParen));
     const commas = [...ctx.Comma];
     for (let i = 0; i < ctx.filter.length; i++) {
       if (i > 0) {
@@ -119,9 +144,9 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
     }
     if (commas.length > 0) {
       parts.push(token(commas.shift()));
-      parts.push(this.visit(ctx.default[0]));
+      parts.push(this.visit(ctx.default));
     }
-    parts.push(token(ctx.RParen[0]));
+    parts.push(token(ctx.RParen));
     return syntax("case", ...parts);
   }
 
@@ -139,20 +164,16 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
   }
 
   identifier(ctx) {
-    return syntax("identifier", token(ctx.Identifier[0]));
+    return syntax("identifier", token(ctx.Identifier));
   }
   identifierString(ctx) {
-    return syntax("identifier-string", token(ctx.IdentifierString[0]));
+    return syntax("identifier", token(ctx.IdentifierString));
   }
   stringLiteral(ctx) {
-    return syntax("string", token(ctx.StringLiteral[0]));
+    return syntax("string", token(ctx.StringLiteral));
   }
   numberLiteral(ctx) {
-    return syntax(
-      "number",
-      ctx.Minus && token(ctx.Minus[0]),
-      token(ctx.NumberLiteral[0]),
-    );
+    return syntax("number", token(ctx.Minus), token(ctx.NumberLiteral));
   }
   atomicExpression(ctx) {
     return this.visit(ctx.expression);
@@ -160,9 +181,9 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
   parenthesisExpression(ctx) {
     return syntax(
       "group",
-      token(ctx.LParen[0]),
+      token(ctx.LParen),
       this.visit(ctx.expression),
-      token(ctx.RParen[0]),
+      token(ctx.RParen),
     );
   }
 
@@ -178,16 +199,12 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
     return syntax(
       "filter",
       this.visit(ctx.operands[0]),
-      token(ctx.operators[0]),
+      token(ctx.operators),
       this.visit(ctx.operands[1]),
     );
   }
   booleanUnaryExpression(ctx) {
-    return syntax(
-      "filter",
-      token(ctx.operators[0]),
-      this.visit(ctx.operands[0]),
-    );
+    return syntax("filter", token(ctx.operators), this.visit(ctx.operands));
   }
 }
 
@@ -195,7 +212,8 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
 export function defaultParser(source, options) {
   const visitor = new ExpressionSyntaxVisitor(options);
   const cst = parserParse(source, options);
-  return recoverWhitespace(visitor.visit(cst), source);
+  const visited = cst && visitor.visit(cst);
+  return visited && recoverWhitespace(visited, source, options.recover);
 }
 
 // RECOVERY PARSER
@@ -237,7 +255,9 @@ export function skipLastTokenParser(source, options) {
 // FALLBACK PARSER:
 // hand-rolled parser that parses enough for syntax highlighting
 export function fallbackParser(expressionString, { startRule }) {
-  const { tokens } = mergeTokenGroups(lexerWithAny.tokenize(expressionString));
+  const { tokens } = mergeTokenGroups(
+    lexerWithRecovery.tokenize(expressionString),
+  );
   function nextNonWhitespace(index) {
     while (++index < tokens.length && tokens[index].tokenType === WhiteSpace) {
       // this block intentionally left blank
@@ -276,22 +296,14 @@ export function fallbackParser(expressionString, { startRule }) {
       } else {
         current.children.push(clause);
       }
-    } else if (t.tokenType === Identifier) {
-      current.children.push(
-        syntax(
-          outsideAggregation ? "metric" : "unknown", // "dimension" + "segment"
-          syntax("identifier", token(t)),
-        ),
-      );
     } else if (
-      t.tokenType === IdentifierString ||
-      // special case for unclosed string literals
-      (isLast && t.tokenType === Any && t.image.charAt(0) === '"')
+      isTokenType(t.tokenType, Identifier) ||
+      isTokenType(t.tokenType, IdentifierString)
     ) {
       current.children.push(
         syntax(
           outsideAggregation ? "metric" : "unknown", // "dimension" + "segment"
-          token("identifier-string", t),
+          syntax("identifier", token(t)),
         ),
       );
     } else if (t.tokenType === LParen) {
@@ -335,41 +347,33 @@ function mergeTokenGroups(results) {
   return { ...results, tokens, groups: {} };
 }
 
-// WHITESPACE UTILS
-
-// inserts whitespace tokens back into the syntax tree
-function whitespace(text) {
-  if (!/^\s+$/.test(text)) {
-    throw new Error("Recovered non-whitespace: " + text);
-  }
-  return { text };
-}
-
 // NOTE: could we use token groups instead to collect whitespace tokens?
 // https://sap.github.io/chevrotain/docs/features/token_grouping.html
-function recoverWhitespace(root, source) {
-  const node = _recoverWhitespace(root, source);
+function recoverWhitespace(root, source, allowRecoveringNonWhitespace) {
+  const recoverToken = allowRecoveringNonWhitespace ? text : whitespace;
+
+  const node = _recoverWhitespace(root, source, recoverToken);
   if (node.start > 0) {
-    node.children.unshift(whitespace(source.substring(0, node.start)));
+    node.children.unshift(recoverToken(source.substring(0, node.start)));
     node.start = 0;
   }
   if (node.end < source.length - 1) {
-    node.children.push(whitespace(source.substring(node.end + 1)));
+    node.children.push(recoverToken(source.substring(node.end + 1)));
     node.end = source.length - 1;
   }
   return node;
 }
-function _recoverWhitespace(node, source) {
+function _recoverWhitespace(node, source, recoverToken) {
   if (node.children) {
     const children = [];
     let previous = null;
     for (const child of node.children) {
       // call recoverWhitespace on the child first to get start/end on non-terminals
-      const current = _recoverWhitespace(child, source);
+      const current = _recoverWhitespace(child, source, recoverToken);
       // if the current node doesn't start where the previous node ended then add whitespace token back in
       if (previous && current.start > previous.end + 1) {
         children.push(
-          whitespace(source.substring(previous.end + 1, current.start)),
+          recoverToken(source.substring(previous.end + 1, current.start)),
         );
       }
       children.push(current);
@@ -389,7 +393,7 @@ function _recoverWhitespace(node, source) {
 
 // MAIN EXPORTED FUNCTIONS:
 
-const DEFAULT_STRATEGIES = [defaultParser, fallbackParser];
+const DEFAULT_STRATEGIES = [recoveryParser, fallbackParser];
 
 export function parse(
   source,

@@ -21,6 +21,7 @@ import {
   Comma,
   CLAUSE_TOKENS,
   FunctionName,
+  lexerWithRecovery,
 } from "./lexer";
 
 export class ExpressionParser extends CstParser {
@@ -331,26 +332,26 @@ export class ExpressionParser extends CstParser {
     }
   }
 
-  canTokenTypeBeInsertedInRecovery(tokType) {
-    // console.log("canTokenTypeBeInsertedInRecovery", tokType);
-    switch (tokType) {
-      case RParen:
-      case LParen:
-        return true;
-      default:
-        return false;
-    }
-  }
+  // canTokenTypeBeInsertedInRecovery(tokType) {
+  //   // console.log("canTokenTypeBeInsertedInRecovery", tokType);
+  //   switch (tokType) {
+  //     case RParen:
+  //     case LParen:
+  //       return true;
+  //     default:
+  //       return false;
+  //   }
+  // }
 
-  getTokenToInsert(tokType) {
-    // console.log("getTokenToInsert", tokType);
-    switch (tokType) {
-      case RParen:
-        return { image: ")" };
-      case LParen:
-        return { image: "(" };
-    }
-  }
+  // getTokenToInsert(tokType) {
+  //   // console.log("getTokenToInsert", tokType);
+  //   switch (tokType) {
+  //     case RParen:
+  //       return { image: ")" };
+  //     case LParen:
+  //       return { image: "(" };
+  //   }
+  // }
 }
 
 export const parser = new ExpressionParser();
@@ -364,28 +365,30 @@ export function parse(
   source,
   { startRule = "expression", recover = false } = {},
 ) {
+  const l = recover ? lexerWithRecovery : lexer;
+  const p = recover ? parserWithRecovery : parser;
+
   // Lex
-  const { tokens, errors } = lexer.tokenize(source);
+  const { tokens, errors } = l.tokenize(source);
   if (errors.length > 0) {
     throw errors;
   }
 
   // Parse
-  const p = recover ? parserWithRecovery : parser;
   p.input = tokens;
   const cst = p[startRule]();
 
-  if (p.errors.length > 0) {
-    for (const error of p.errors) {
-      // clean up error messages
-      error.message =
-        error.message &&
-        error.message
-          .replace(/^Expecting:?\s+/, "Expected ")
-          .replace(/--> (.*?) <--/g, "$1")
-          .replace(/(\n|\s)*but found:?/, " but found ")
-          .replace(/\s*but found\s+''$/, "");
-    }
+  for (const error of p.errors) {
+    // clean up error messages
+    error.message =
+      error.message &&
+      error.message
+        .replace(/^Expecting:?\s+/, "Expected ")
+        .replace(/--> (.*?) <--/g, "$1")
+        .replace(/(\n|\s)*but found:?/, " but found ")
+        .replace(/\s*but found\s+''$/, "");
+  }
+  if (p.errors.length > 0 && !recover) {
     throw p.errors;
   }
 
