@@ -86,6 +86,7 @@ export default class DashboardHeader extends Component {
   props: Props;
   state: State = {
     modal: null,
+    headerHeight: 0,
   };
 
   static propTypes = {
@@ -146,6 +147,29 @@ export default class DashboardHeader extends Component {
     // TODO - this should use entity action
     await this.props.archiveDashboard(dashboard.id);
     this.props.onChangeLocation(Urls.collection(dashboard.collection_id));
+  }
+
+  componentDidMount() {
+    this.updateHeaderHeight();
+  }
+
+  componentDidUpdate() {
+    const modalIsOpen = this.props.isEditingParameter;
+    if (modalIsOpen) {
+      this.updateHeaderHeight();
+    }
+  }
+
+  updateHeaderHeight() {
+    if (!this.refs.header) {
+      return;
+    }
+
+    const rect = ReactDOM.findDOMNode(this.refs.header).getBoundingClientRect();
+    const headerHeight = rect.top + getScrollY();
+    if (this.state.headerHeight !== headerHeight) {
+      this.setState({ headerHeight });
+    }
   }
 
   getEditWarning(dashboard: DashboardWithCards) {
@@ -368,173 +392,95 @@ export default class DashboardHeader extends Component {
   }
 
   render() {
-    const { dashboard } = this.props;
+    const { dashboard, isEditing } = this.props;
 
-    return (
-      <Header
-        headerClassName="wrapper"
-        objectType="dashboard"
-        analyticsContext="Dashboard"
-        item={dashboard}
-        isEditing={this.props.isEditing}
-        showBadge={!this.props.isEditing && !this.props.isFullscreen}
-        isEditingInfo={this.props.isEditing}
-        headerButtons={this.getHeaderButtons()}
-        editWarning={this.getEditWarning(dashboard)}
-        editingTitle={t`You are editing a dashboard`}
-        editingButtons={this.getEditingButtons()}
-        setItemAttributeFn={this.props.setDashboardAttribute}
-        headerModalMessage={
-          this.props.isEditingParameter
-            ? t`Select the field that should be filtered for each card`
-            : null
-        }
-        onHeaderModalDone={() => this.props.setEditingParameter(null)}
-      />
-    );
-  }
-}
-
-export class Header extends Component {
-  static defaultProps = {
-    headerButtons: [],
-    editingTitle: "",
-    editingSubtitle: "",
-    editingButtons: [],
-    headerClassName: "py1 lg-py2 xl-py3 wrapper",
-  };
-
-  state = {
-    headerHeight: 0,
-  };
-
-  componentDidMount() {
-    this.updateHeaderHeight();
-  }
-
-  componentDidUpdate() {
-    const modalIsOpen = !!this.props.headerModalMessage;
-    if (modalIsOpen) {
-      this.updateHeaderHeight();
-    }
-  }
-
-  updateHeaderHeight() {
-    if (!this.refs.header) {
-      return;
-    }
-
-    const rect = ReactDOM.findDOMNode(this.refs.header).getBoundingClientRect();
-    const headerHeight = rect.top + getScrollY();
-    if (this.state.headerHeight !== headerHeight) {
-      this.setState({ headerHeight });
-    }
-  }
-
-  setItemAttribute(attribute: string, event) {
-    this.props.setItemAttributeFn(attribute, event.target.value);
-  }
-
-  render() {
-    const { item } = this.props;
     let titleAndDescription;
-    if (this.props.isEditingInfo) {
+    if (isEditing) {
       titleAndDescription = (
         <div className="Header-title flex flex-column flex-full bordered rounded my1">
           <InputBlurChange
             className="AdminInput text-bold border-bottom rounded-top h3"
             type="text"
-            value={this.props.item.name || ""}
-            onChange={this.setItemAttribute.bind(this, "name")}
+            value={dashboard.name || ""}
+            onChange={ev =>
+              this.props.setDashboardAttribute("name", ev.target.value)
+            }
           />
           <InputBlurChange
             className="AdminInput rounded-bottom h4"
             type="text"
-            value={this.props.item.description || ""}
-            onChange={this.setItemAttribute.bind(this, "description")}
+            value={dashboard.description || ""}
+            onChange={ev =>
+              this.props.setDashboardAttribute("description", ev.target.value)
+            }
             placeholder={t`No description yet`}
           />
         </div>
       );
     } else {
-      if (this.props.item && this.props.item.id != null) {
+      if (dashboard) {
         titleAndDescription = (
           <TitleAndDescription
-            title={this.props.item.name}
-            description={this.props.item.description}
-          />
-        );
-      } else {
-        titleAndDescription = (
-          <TitleAndDescription
-            title={t`New ${this.props.objectType}`}
-            description={this.props.item.description}
+            title={dashboard.id !== null ? dashboard.name : t`New dashboard`}
+            description={dashboard.description}
           />
         );
       }
     }
 
-    const headerButtons = this.props.headerButtons.map(
-      (section, sectionIndex) => {
-        return (
-          section &&
-          section.length > 0 && (
-            <span
-              key={sectionIndex}
-              className="Header-buttonSection flex align-center"
-            >
-              {section.map((button, buttonIndex) => (
-                <span key={buttonIndex} className="Header-button">
-                  {button}
-                </span>
-              ))}
-            </span>
-          )
-        );
-      },
-    );
-
+    const warning = this.getEditWarning(dashboard);
     return (
       <div>
-        {this.props.isEditing && (
+        {isEditing && (
           <EditBar
-            title={this.props.editingTitle}
+            title={t`You are editing a dashboard`}
             subtitle={this.props.editingSubtitle}
-            buttons={this.props.editingButtons}
+            buttons={this.getEditingButtons()}
           />
         )}
-        {this.props.editWarning && (
-          <EditWarning title={this.props.editWarning} />
-        )}
+        {warning && <EditWarning title={warning} />}
         <HeaderModal
-          isOpen={!!this.props.headerModalMessage}
+          isOpen={this.props.isEditingParameter}
           height={this.state.headerHeight}
-          title={this.props.headerModalMessage}
-          onDone={this.props.onHeaderModalDone}
+          title={
+            this.props.isEditingParameter
+              ? t`Select the field that should be filtered for each card`
+              : null
+          }
+          onDone={() => this.props.setEditingParameter(null)}
           onCancel={this.props.onHeaderModalCancel}
         />
-        <div
-          className={
-            "QueryBuilder-section flex align-center " +
-            this.props.headerClassName
-          }
-          ref="header"
-        >
-          <div className="Entity py3">
+        <div className="flex align-center wrapper" ref="header">
+          <div className="py3">
             <span className="inline-block mb1">{titleAndDescription}</span>
-            {this.props.showBadge && (
+            {!isEditing && !this.props.isFullscreen && (
               <CollectionBadge
-                collectionId={item.collection_id}
-                analyticsContext={this.props.analyticsContext}
+                collectionId={dashboard.collection_id}
+                analyticsContext="Dashboard"
               />
             )}
           </div>
 
           <div className="flex align-center flex-align-right">
-            {headerButtons}
+            {this.getHeaderButtons().map((section, sectionIndex) => {
+              return (
+                section &&
+                section.length > 0 && (
+                  <span
+                    key={sectionIndex}
+                    className="Header-buttonSection flex align-center"
+                  >
+                    {section.map((button, buttonIndex) => (
+                      <span key={buttonIndex} className="Header-button">
+                        {button}
+                      </span>
+                    ))}
+                  </span>
+                )
+              );
+            })}
           </div>
         </div>
-        {this.props.children}
       </div>
     );
   }
