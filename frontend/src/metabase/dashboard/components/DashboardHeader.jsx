@@ -506,15 +506,6 @@ export class Header extends Component {
       }
     }
 
-    let attribution;
-    if (this.props.item && this.props.item.creator) {
-      attribution = (
-        <div className="Header-attribution">
-          {t`Asked by ${this.props.item.creator.common_name}`}
-        </div>
-      );
-    }
-
     const headerButtons = this.props.headerButtons.map(
       (section, sectionIndex) => {
         return (
@@ -549,7 +540,6 @@ export class Header extends Component {
         >
           <div className="Entity py3">
             <span className="inline-block mb1">{titleAndDescription}</span>
-            {attribution}
             {this.props.showBadge && (
               <CollectionBadge
                 collectionId={item.collection_id}
