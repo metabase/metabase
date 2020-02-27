@@ -122,8 +122,8 @@ class EntityMenu extends Component {
                                 externalLink={item.externalLink}
                                 action={
                                   item.action &&
-                                  (() => {
-                                    item.action();
+                                  (e => {
+                                    item.action(e);
                                     this.toggleMenu();
                                   })
                                 }

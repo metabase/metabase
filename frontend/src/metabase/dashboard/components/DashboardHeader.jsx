@@ -14,6 +14,8 @@ import HeaderModal from "metabase/components/HeaderModal";
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 import EditBar from "metabase/components/EditBar";
 import EditWarning from "metabase/components/EditWarning";
+import EntityMenu from "metabase/components/EntityMenu";
+import RefreshWidget from "metabase/dashboard/components/RefreshWidget";
 
 import DashboardEmbedWidget from "../containers/DashboardEmbedWidget";
 
@@ -304,30 +306,6 @@ export default class DashboardHeader extends Component {
 
     /* IF WE ARE NOT IN FULLSCREEN */
     if (!isFullscreen) {
-      /* MOVE */
-      buttons.push(
-        <Tooltip key="new-dashboard" tooltip={t`Move dashboard`}>
-          <Link
-            to={location.pathname + "/move"}
-            data-metabase-event={"Dashboard;Move"}
-          >
-            <Icon className="text-brand-hover" name="move" size={18} />
-          </Link>
-        </Tooltip>,
-      );
-      if (!isEditing) {
-        /* COPY */
-        buttons.push(
-          <Tooltip key="copy-dashboard" tooltip={t`Duplicate dashboard`}>
-            <Link
-              to={location.pathname + "/copy"}
-              data-metabase-event={"Dashboard;Copy"}
-            >
-              <Icon className="text-brand-hover" name="clone" size={18} />
-            </Link>
-          </Tooltip>,
-        );
-      }
       if (canEdit) {
         /* ADD QUESTION */
         buttons.push(
@@ -479,6 +457,46 @@ export default class DashboardHeader extends Component {
                 )
               );
             })}
+            {!isEditing && !this.props.isFullscreen && !this.props.isEmpty && (
+              <EntityMenu
+                triggerIcon="ellipsis"
+                items={[
+                  {
+                    title: t`Move`,
+                    link: `${location.pathname}/move`,
+                    icon: "move",
+                  },
+                  {
+                    title: t`Duplicate`,
+                    link: `${location.pathname}/copy`,
+                    icon: "copy",
+                  },
+                  {
+                    title: t`Auto refresh`,
+                    icon: "recents",
+                    content: () => (
+                      <RefreshWidget
+                        key="refresh"
+                        data-metabase-event="Dashboard;Refresh Menu Open"
+                        className="text-brand-hover"
+                        period={this.props.refreshPeriod}
+                        setRefreshElapsedHook={this.props.setRefreshElapsedHook}
+                        onChangePeriod={this.props.onRefreshPeriodChange}
+                      />
+                    ),
+                  },
+                  {
+                    title: t`Enter fullscreen`,
+                    action: e =>
+                      this.props.onFullscreenChange(
+                        !this.props.isFullscreen,
+                        !e.altKey,
+                      ),
+                    icon: "expand",
+                  },
+                ]}
+              />
+            )}
           </div>
         </div>
       </div>

@@ -40,57 +40,23 @@ export default class RefreshWidget extends Component {
   }
 
   render() {
-    const { period, onChangePeriod, className } = this.props;
+    const { period, onChangePeriod } = this.props;
     const { elapsed } = this.state;
-    const remaining = period - elapsed;
+    //const remaining = period - elapsed;
     return (
-      <PopoverWithTrigger
-        ref="popover"
-        triggerElement={
-          elapsed == null ? (
-            <Tooltip tooltip={t`Auto-refresh`}>
-              <ClockIcon width={18} height={18} className={className} />
-            </Tooltip>
-          ) : (
-            <Tooltip
-              tooltip={
-                t`Refreshing in` +
-                " " +
-                Math.floor(remaining / 60) +
-                ":" +
-                (remaining % 60 < 10 ? "0" : "") +
-                Math.round(remaining % 60)
-              }
-            >
-              <CountdownIcon
-                width={18}
-                height={18}
-                className="text-green"
-                percent={Math.min(0.95, (period - elapsed) / period)}
-              />
-            </Tooltip>
-          )
-        }
-        targetOffsetY={10}
-      >
-        <div className={styles.popover}>
-          <div className={styles.title}>Auto Refresh</div>
-          <RefreshOptionList>
-            {OPTIONS.map(option => (
-              <RefreshOption
-                key={option.period}
-                name={option.name}
-                period={option.period}
-                selected={option.period === period}
-                onClick={() => {
-                  this.refs.popover.close();
-                  onChangePeriod(option.period);
-                }}
-              />
-            ))}
-          </RefreshOptionList>
-        </div>
-      </PopoverWithTrigger>
+      <RefreshOptionList>
+        {OPTIONS.map(option => (
+          <RefreshOption
+            key={option.period}
+            name={option.name}
+            period={option.period}
+            selected={option.period === period}
+            onClick={() => {
+              onChangePeriod(option.period);
+            }}
+          />
+        ))}
+      </RefreshOptionList>
     );
   }
 }
