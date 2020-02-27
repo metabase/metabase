@@ -98,8 +98,9 @@
   "Assocs the `:database` ID from `query` in all snippet template tags."
   [query]
   (cond-> query
-    (:native query) (update-in [:native :template-tags]
-                               (partial assoc-db-in-snippet-tag (:database query)))))
+    (get-in query [:native :template-tags])
+    (update-in [:native :template-tags]
+               (partial assoc-db-in-snippet-tag (:database query)))))
 
 (defn substitute-parameters
   "Substitute Dashboard or Card-supplied parameters in a query, replacing the param placeholers with appropriate values
