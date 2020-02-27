@@ -14,9 +14,9 @@
 (defn- plist-buddy
   "Run a `PlistBuddy` command."
   [plist-file command]
-  (let [[out] (c/non-zero-sh (c/assert-file-exists "/usr/libexec/PlistBuddy")
-                             "-c" (str command)
-                             (c/assert-file-exists plist-file))]
+  (let [[out] (c/sh (c/assert-file-exists "/usr/libexec/PlistBuddy")
+                    "-c" (str command)
+                    (c/assert-file-exists plist-file))]
     (some-> out str/trim)))
 
 (defn- plist-value
@@ -34,44 +34,45 @@
   v)
 
 (defn- xcode-build [& args]
-  (apply c/non-zero-sh "xcodebuild" "-UseNewBuildSystem=NO" args))
+  (apply c/sh "xcodebuild" "-UseNewBuildSystem=NO" args))
 
 (defn- set-version! []
-  (c/announce "Bumping version from %s -> %s" (plist-value info-plist-file "CFBundleVersion") (c/version))
-  (set-plist-value! info-plist-file "CFBundleVersion" (c/version))
-  (set-plist-value! info-plist-file "CFBundleShortVersionString" (c/version)))
+  (c/step (format "Bump version from %s -> %s" (plist-value info-plist-file "CFBundleVersion") (c/version))
+    (set-plist-value! info-plist-file "CFBundleVersion" (c/version))
+    (set-plist-value! info-plist-file "CFBundleShortVersionString" (c/version))))
 
 (defn- clean! []
-  (c/announce "Cleaning XCode build artifacts...")
-  (xcode-build "-project" xcode-project-file "clean")
-  (c/delete-file! c/artifacts-directory))
+  (c/step "Clean XCode build artifacts"
+    (xcode-build "-project" xcode-project-file "clean")
+    (c/delete-file! c/artifacts-directory)))
 
 (defn- build-xcarchive! []
   (let [filename (c/artifact "Metabase.xcarchive")]
     (c/delete-file! filename)
-    (c/announce "Building %s..." filename)
-    (xcode-build "-project"       xcode-project-file
-                 "-scheme"        "Metabase"
-                 "-configuration" "Release"
-                 "-archivePath"   filename
-                 "archive")
-    (c/assert-file-exists filename)))
+    (c/step (format "Build %s" filename)
+      (xcode-build "-project"       xcode-project-file
+                   "-scheme"        "Metabase"
+                   "-configuration" "Release"
+                   "-archivePath"   filename
+                   "archive")
+      (c/assert-file-exists filename))))
 
 (defn- build-app! []
   (let [filename (c/artifact "Metabase.app")]
     (c/delete-file! filename)
-    (c/announce "Building %s..." filename)
-    (xcode-build "-exportArchive"
-                 "-exportOptionsPlist" export-options-plist-file
-                 "-archivePath"        (c/assert-file-exists (c/artifact "Metabase.xcarchive"))
-                 "-exportPath"         c/artifacts-directory)
-    (c/assert-file-exists filename)))
+    (c/step (format "Create %s" filename)
+      (xcode-build "-exportArchive"
+                   "-exportOptionsPlist" export-options-plist-file
+                   "-archivePath"        (c/assert-file-exists (c/artifact "Metabase.xcarchive"))
+                   "-exportPath"         c/artifacts-directory)
+      (c/assert-file-exists filename))))
 
 (defn build! []
-  (c/assert-file-exists (str c/macos-source-dir "/Metabase/jre/bin/java")
-                        "Make sure you copy the JRE it before building Mac App (see build instructions)")
-  (set-version!)
-  (clean!)
-  (build-xcarchive!)
-  (build-app!)
-  (c/announce "Metabase.app built sucessfully."))
+  (c/step "Build artifacts"
+    (c/assert-file-exists (str c/macos-source-dir "/Metabase/jre/bin/java")
+                          "Make sure you copy the JRE it before building Mac App (see build instructions)")
+    (set-version!)
+    (clean!)
+    (build-xcarchive!)
+    (build-app!)
+    (c/announce "Metabase.app built sucessfully.")))

@@ -22,11 +22,37 @@
 
 ;;; ---------------------------------------------------- Util Fns ----------------------------------------------------
 
+(def ^:dynamic *steps* [])
+
+(def ^:private step-indent (str/join (repeat 2 \space)))
+
+(defn- steps-indent []
+  (str/join (repeat (count *steps*) step-indent)))
+
+(defn safe-println [& args]
+  (locking println
+    (print (steps-indent))
+    (apply println args)))
+
 (defn announce
   "Like `println` + `format`, but outputs text in green. Use this for printing messages such as when starting build
   steps."
-  [format-string & args]
-  (locking println (println (colorize/green (apply format format-string args)))))
+  ([s]
+   (safe-println (colorize/magenta s)))
+
+  ([format-string & args]
+   (announce (apply format (str format-string) args))))
+
+(defn do-step [step thunk]
+  (safe-println (colorize/green (str step)))
+  (binding [*steps* (conj *steps* step)]
+    (try
+      (thunk)
+      (catch Throwable e
+        (throw (ex-info (str step) {} e))))))
+
+(defmacro step {:style/indent 1} [step & body]
+  `(do-step ~step (fn [] ~@body)))
 
 (defn exists? [^String filename]
   (when filename
@@ -39,10 +65,10 @@
     (throw (ex-info (format "File %s does not exist. %s" (pr-str filename) (or message "")) {:filename filename})))
   (str filename))
 
-(defn create-directory-unless-exists! [dir]
+(defn create-directory-unless-exists! [^String dir]
   (when-not (exists? dir)
-    (locking println (printf "Creating directory %s...\n" dir))
-    (.mkdirs (File. dir)))
+    (step (format "Creating directory %s..." dir)
+      (.mkdirs (File. dir))))
   dir)
 
 (defn artifact
@@ -54,34 +80,39 @@
 (defn delete-file!
   "Delete a file or directory if it exists."
   ([^String filename]
-   (announce "Deleting %s..." filename)
-   (if (exists? filename)
-     (let [file (File. filename)]
-       (if (.isDirectory file)
-         (FileUtils/deleteDirectory file)
-         (.delete file))
-       (locking println (printf "Deleted %s.\n" filename)))
-     (locking println (printf "Don't need to delete %s, file does not exist.\n" filename)))
-   (assert (not (exists? filename))))
+   (step (format "Deleting %s..." filename)
+     (if (exists? filename)
+       (let [file (File. filename)]
+         (if (.isDirectory file)
+           (FileUtils/deleteDirectory file)
+           (.delete file))
+         (safe-println (format "Deleted %s." filename)))
+       (safe-println (format "Don't need to delete %s, file does not exist." filename)))
+     (assert (not (exists? filename)))))
 
   ([file & more]
    (dorun (map delete-file! (cons file more)))))
 
-(defn copy-file! [source dest]
-  (announce "Copying %s -> %s" (assert-file-exists source) dest)
-  (let [source (File. source)
-        dest   (File. dest)]
-    (if (.isDirectory source)
-      (FileUtils/copyDirectory source dest)
-      (FileUtils/copyFile source dest)))
+(declare sh)
+
+(defn copy-file! [^String source ^String dest]
+  (let [source-file (File. (assert-file-exists source))
+        dest-file   (File. dest)]
+    ;; Use native `cp` rather than FileUtils or the like because codesigning is broken when you use those because they
+    ;; don't preserve symlinks or something like that.
+    (if (.isDirectory source-file)
+      (step (format "Copying directory %s -> %s" source dest)
+        (sh "cp" "-R" source dest))
+      (step (format "Copying file %s -> %s" source dest)
+        (sh "cp" source dest))))
   (assert-file-exists dest))
 
-(defn- read-lines [^java.io.BufferedReader reader quiet?]
+(defn- read-lines [^java.io.BufferedReader reader {:keys [quiet? err?]}]
   (loop [lines []]
     (if-let [line (.readLine reader)]
       (do
         (when-not quiet?
-          (locking println (println line)))
+          (safe-println (if err? (colorize/red line) line)))
         (recur (conj lines line)))
       lines)))
 
@@ -93,38 +124,38 @@
 
 (def ^:private command-timeout-ms (* 5 60 1000)) ; 5 minutes
 
-(defn sh
+(defn sh*
   "Run a shell command. Like `clojure.java.shell/sh`, but prints output to stdout/stderr and returns results as a vector
   of lines."
   {:arglists '([cmd & args] [{:keys [dir quiet?]} cmd & args])}
   [& args]
-  (println (colorize/blue (str "Running " (str/join " " (map (comp pr-str str) args)))))
-  (let [[opts & args]        (if (map? (first args))
-                               args
-                               (cons nil args))
-        {:keys [dir quiet?]} opts
-        cmd-array            (into-array (map str args))
-        proc                 (.exec (Runtime/getRuntime) ^"[Ljava.lang.String;" cmd-array nil ^File (when dir (File. dir)))]
-    (with-open [out-reader (BufferedReader. (InputStreamReader. (.getInputStream proc)))
-                err-reader (BufferedReader. (InputStreamReader. (.getErrorStream proc)))]
-      (let [exit-code (future (.waitFor proc))
-            out       (future (read-lines out-reader quiet?))
-            err       (future (read-lines err-reader quiet?))]
-        {:exit (deref-with-timeout exit-code command-timeout-ms)
-         :out  (deref-with-timeout out command-timeout-ms)
-         :err  (deref-with-timeout err command-timeout-ms)}))))
+  (step (colorize/blue (str "$ " (str/join " " (map (comp pr-str str) args))))
+    (let [[opts & args] (if (map? (first args))
+                          args
+                          (cons nil args))
+          {:keys [dir]} opts
+          cmd-array     (into-array (map str args))
+          proc          (.exec (Runtime/getRuntime) ^"[Ljava.lang.String;" cmd-array nil ^File (when dir (File. ^String dir)))]
+      (with-open [out-reader (BufferedReader. (InputStreamReader. (.getInputStream proc)))
+                  err-reader (BufferedReader. (InputStreamReader. (.getErrorStream proc)))]
+        (let [exit-code (future (.waitFor proc))
+              out       (future (read-lines out-reader opts))
+              err       (future (read-lines err-reader (assoc opts :err? true)))]
+          {:exit (deref-with-timeout exit-code command-timeout-ms)
+           :out  (deref-with-timeout out command-timeout-ms)
+           :err  (deref-with-timeout err command-timeout-ms)})))))
 
-(defn non-zero-sh
+(defn sh
   "Run a shell command, returning its output if it returns zero or throwning an Exception if it returns non-zero."
   {:arglists '([cmd & args] [{:keys [dir quiet?]} cmd & args])}
   [& args]
-  (let [{:keys [exit out], :as response} (apply sh args)]
+  (let [{:keys [exit out err], :as response} (apply sh* args)]
     (if (zero? exit)
-      out
-      (throw (ex-info (str/join "\n" out) response)))))
+      (concat out err)
+      (throw (ex-info (str/join "\n" (concat out err)) response)))))
 
 (defn- version* []
-  (let [[out]       (non-zero-sh (assert-file-exists (str root-directory "/bin/version")))
+  (let [[out]       (sh (assert-file-exists (str root-directory "/bin/version")))
         [_ version] (re-find #"^v([\d.]+)" out)]
     (when-not (seq version)
       (throw (ex-info "Error parsing version." {:out out})))
