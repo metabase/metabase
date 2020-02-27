@@ -2,9 +2,8 @@
   (:require [clojure
              [string :refer [join lower-case split]]
              [test :refer :all]]
-            [metabase
-             [models :refer [Database]]
-             [test.data.interface :as tx]]
+            [metabase.models :refer [Database]]
+            [metabase.test.data.interface :as tx]
             [toucan.db :as db]))
 
 (defn- create-database!
