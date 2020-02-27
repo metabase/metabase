@@ -2,8 +2,6 @@ import _ from "underscore";
 import { t } from "ttag";
 import escape from "regexp.escape";
 
-import { parser } from "./parser";
-
 import {
   getExpressionName,
   // dimensions:
@@ -15,6 +13,8 @@ import {
   formatSegmentName,
   FILTER_FUNCTIONS,
 } from "../expressions";
+
+import { parserWithRecovery } from "./parser";
 
 import {
   AdditiveOperator,
@@ -34,10 +34,10 @@ import {
   NumberLiteral,
   RParen,
   StringLiteral,
-  getImage,
+  UnclosedQuotedString,
   getSubTokenTypes,
   isTokenType,
-  lexer,
+  lexerWithRecovery,
 } from "./lexer";
 
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
@@ -54,43 +54,30 @@ const START_RULE_TYPE = {
   expression: "expression",
   aggregation: "aggregation",
 };
-
-export function getFunctionTokenAndArgument(tokens) {
-  let parens = 0;
-  let index = 0;
-  for (let i = tokens.length - 1; i >= 0; i--) {
-    const token = tokens[i];
-    if (isTokenType(token.tokenType, FunctionName) && parens === -1) {
-      return { token, index };
-    } else if (token.tokenType === LParen) {
-      parens--;
-    } else if (token.tokenType === RParen) {
-      parens++;
-    } else if (token.tokenType === Comma && parens === 0) {
-      index++;
-    }
-  }
-}
-
 export function suggest(
   source,
   { query, startRule, index = source.length, expressionName } = {},
 ) {
   const partialSource = source.slice(0, index);
-  const lexResult = lexer.tokenize(partialSource);
+  const lexResult = lexerWithRecovery.tokenize(partialSource);
   if (lexResult.errors.length > 0) {
     throw new Error(t`sad sad panda, lexing errors detected`);
   }
 
-  const lastInputToken = _.last(lexResult.tokens);
   let partialSuggestionMode = false;
   let assistanceTokenVector = lexResult.tokens;
 
-  // we have requested assistance while inside an Identifier
+  const lastInputToken = _.last(lexResult.tokens);
+  const lastInputTokenIsUnclosedIdentifierString =
+    lastInputToken &&
+    isTokenType(lastInputToken.tokenType, UnclosedQuotedString) &&
+    isTokenType(lastInputToken.tokenType, IdentifierString);
+  // we have requested assistance while inside an Identifier or Unclosed IdentifierString
   if (
     lastInputToken &&
-    isTokenType(lastInputToken.tokenType, Identifier) &&
-    /\w/.test(partialSource[partialSource.length - 1])
+    ((isTokenType(lastInputToken.tokenType, Identifier) &&
+      /\w/.test(partialSource[partialSource.length - 1])) ||
+      lastInputTokenIsUnclosedIdentifierString)
   ) {
     assistanceTokenVector = assistanceTokenVector.slice(0, -1);
     partialSuggestionMode = true;
@@ -107,7 +94,7 @@ export function suggest(
 
   let finalSuggestions = [];
 
-  const syntacticSuggestions = parser.computeContentAssist(
+  const syntacticSuggestions = parserWithRecovery.computeContentAssist(
     startRule,
     assistanceTokenVector,
   );
@@ -115,7 +102,81 @@ export function suggest(
   for (const suggestion of syntacticSuggestions) {
     const { nextTokenType, ruleStack } = suggestion;
 
-    if (
+    // first to avoid skipping if lastInputTokenIsUnclosedIdentifierString
+    if (nextTokenType === Identifier || nextTokenType === IdentifierString) {
+      // fields, metrics, segments
+      const parentRule = ruleStack.slice(-2, -1)[0];
+      const isDimension =
+        parentRule === "dimensionExpression" && expectedType === "expression";
+      const isSegment =
+        parentRule === "segmentExpression" && expectedType === "boolean";
+      const isMetric =
+        parentRule === "metricExpression" && expectedType === "aggregation";
+
+      const trimOptions = lastInputTokenIsUnclosedIdentifierString
+        ? {
+            // use the last token's pattern anchored to the end of the text
+            prefixTrim: new RegExp(
+              lastInputToken.tokenType.PATTERN.source + "$",
+            ),
+          }
+        : { prefixTrim: /\w+$/, postfixTrim: /^\w+\s*/ };
+
+      if (isDimension) {
+        let dimensions = [];
+        if (
+          functionToken &&
+          isTokenType(functionToken.tokenType, AggregationFunctionName)
+        ) {
+          dimensions = query
+            .aggregationFieldOptions(functionClause.clause)
+            .all();
+        } else {
+          dimensions = query
+            .dimensionOptions(
+              d =>
+                // numeric
+                // d.field().isNumeric() &&
+                // not itself
+                !(
+                  d instanceof ExpressionDimension &&
+                  d.name() === expressionName
+                ),
+            )
+            .all();
+        }
+        finalSuggestions.push(
+          ...dimensions.map(dimension => ({
+            type: "fields",
+            name: getDimensionName(dimension),
+            text: formatDimensionName(dimension) + " ",
+            ...trimOptions,
+          })),
+        );
+      }
+      if (isSegment) {
+        finalSuggestions.push(
+          ...query.table().segments.map(segment => ({
+            type: "segments",
+            name: segment.name,
+            text: formatSegmentName(segment),
+            ...trimOptions,
+          })),
+        );
+      }
+      if (isMetric) {
+        finalSuggestions.push(
+          ...query.table().metrics.map(metric => ({
+            type: "metrics",
+            name: metric.name,
+            text: formatMetricName(metric),
+            ...trimOptions,
+          })),
+        );
+      }
+    } else if (lastInputTokenIsUnclosedIdentifierString) {
+      // skip the rest
+    } else if (
       nextTokenType === AdditiveOperator ||
       nextTokenType === MultiplicativeOperator
     ) {
@@ -168,74 +229,6 @@ export function suggest(
           postfixTrim: /^\s*,?\s*/,
         });
       }
-    } else if (
-      nextTokenType === Identifier ||
-      nextTokenType === IdentifierString
-    ) {
-      // fields, metrics, segments
-      const parentRule = ruleStack.slice(-2, -1)[0];
-      const isDimension =
-        parentRule === "dimensionExpression" && expectedType === "expression";
-      const isSegment =
-        parentRule === "segmentExpression" && expectedType === "boolean";
-      const isMetric =
-        parentRule === "metricExpression" && expectedType === "aggregation";
-
-      if (isDimension) {
-        let dimensions = [];
-        if (
-          functionToken &&
-          isTokenType(functionToken.tokenType, AggregationFunctionName)
-        ) {
-          dimensions = query
-            .aggregationFieldOptions(functionClause.clause)
-            .all();
-        } else {
-          dimensions = query
-            .dimensionOptions(
-              d =>
-                // numeric
-                // d.field().isNumeric() &&
-                // not itself
-                !(
-                  d instanceof ExpressionDimension &&
-                  d.name() === expressionName
-                ),
-            )
-            .all();
-        }
-        finalSuggestions.push(
-          ...dimensions.map(dimension => ({
-            type: "fields",
-            name: getDimensionName(dimension),
-            text: formatDimensionName(dimension) + " ",
-            prefixTrim: /\w+$/,
-            postfixTrim: /^\w+\s*/,
-          })),
-        );
-      }
-      if (isSegment) {
-        finalSuggestions.push(
-          ...query.table().segments.map(segment => ({
-            type: "segments",
-            name: segment.name,
-            text: formatSegmentName(segment),
-            prefixTrim: /\w+$/,
-            postfixTrim: /^\w+\s*/,
-          })),
-        );
-      }
-      if (isMetric) {
-        finalSuggestions.push(
-          ...query.table().metrics.map(metric => ({
-            type: "metrics",
-            name: metric.name,
-            text: formatMetricName(metric),
-            prefixTrim: /\w+$/,
-            postfixTrim: /^\w+\s*/,
-          })),
-        );
-      }
     } else if (isTokenType(nextTokenType, FunctionName)) {
       if (expectedType === "aggregation") {
         finalSuggestions.push(
@@ -265,7 +258,7 @@ export function suggest(
       }
     } else if (nextTokenType === Case) {
       if (expectedType === "expression") {
-        functionSuggestion("functions", "case");
+        finalSuggestions.push(functionSuggestion("functions", "case"));
       }
     } else if (
       nextTokenType === StringLiteral ||
@@ -280,7 +273,9 @@ export function suggest(
 
   // throw away any suggestion that is not a suffix of the last partialToken.
   if (partialSuggestionMode) {
-    const partial = getImage(lastInputToken).toLowerCase();
+    const partial = lastInputTokenIsUnclosedIdentifierString
+      ? lastInputToken.image.slice(1).toLowerCase()
+      : lastInputToken.image.toLowerCase();
     for (const suggestion of finalSuggestions) {
       suggestion: for (const text of [suggestion.name, suggestion.text]) {
         let index = 0;
@@ -308,6 +303,24 @@ export function suggest(
     .sortBy("name")
     .sortBy("type")
     .value();
+}
+
+export function getFunctionTokenAndArgument(tokens) {
+  let parens = 0;
+  let index = 0;
+  // iterates over tokens backwards, keeping track of parens and argument positions
+  for (let i = tokens.length - 1; i >= 0; i--) {
+    const token = tokens[i];
+    if (isTokenType(token.tokenType, FunctionName) && parens === -1) {
+      return { token, index };
+    } else if (token.tokenType === LParen) {
+      parens--;
+    } else if (token.tokenType === RParen) {
+      parens++;
+    } else if (token.tokenType === Comma && parens === 0) {
+      index++;
+    }
+  }
 }
 
 function operatorSuggestion(token) {

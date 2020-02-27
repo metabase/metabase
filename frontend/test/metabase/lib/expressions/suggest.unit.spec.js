@@ -17,6 +17,7 @@ const AGGREGATION_FUNCTIONS = [
   { type: "aggregations", text: "Sum(" },
 ];
 const EXPRESSION_FUNCTIONS = [
+  { text: "case(", type: "functions" },
   { text: "coalesce(", type: "functions" },
   { text: "concat(", type: "functions" },
   { text: "extract(", type: "functions" },
@@ -76,14 +77,30 @@ const FIELDS_CUSTOM = [
 const METRICS_ORDERS = [{ type: "metrics", text: '"Total Order Value"' }];
 const SEGMENTS_ORDERS = [{ text: '"Expensive Things"', type: "segments" }];
 const FIELDS_ORDERS = [
+  { text: '"Created At" ', type: "fields" },
   { text: '"Product ID" ', type: "fields" },
+  { text: '"Product → Category" ', type: "fields" },
+  { text: '"Product → Created At" ', type: "fields" },
+  { text: '"Product → Ean" ', type: "fields" },
   { text: '"Product → ID" ', type: "fields" },
   { text: '"Product → Price" ', type: "fields" },
   { text: '"Product → Rating" ', type: "fields" },
+  { text: '"Product → Title" ', type: "fields" },
+  { text: '"Product → Vendor" ', type: "fields" },
   { text: '"User ID" ', type: "fields" },
+  { text: '"User → Address" ', type: "fields" },
+  { text: '"User → Birth Date" ', type: "fields" },
+  { text: '"User → City" ', type: "fields" },
+  { text: '"User → Created At" ', type: "fields" },
+  { text: '"User → Email" ', type: "fields" },
   { text: '"User → ID" ', type: "fields" },
   { text: '"User → Latitude" ', type: "fields" },
   { text: '"User → Longitude" ', type: "fields" },
+  { text: '"User → Name" ', type: "fields" },
+  { text: '"User → Password" ', type: "fields" },
+  { text: '"User → Source" ', type: "fields" },
+  { text: '"User → State" ', type: "fields" },
+  { text: '"User → Zip" ', type: "fields" },
   { text: "ID ", type: "fields" },
   { text: "Subtotal ", type: "fields" },
   { text: "Tax ", type: "fields" },
@@ -117,14 +134,22 @@ describe("metabase/lib/expression/suggest", () => {
       expect(cleanSuggestions(suggest("1 + C", expressionOpts))).toEqual([
         { type: "fields", text: '"count" ' },
         { type: "fields", text: "C " },
+        { text: "case(", type: "functions" },
         { text: "coalesce(", type: "functions" },
         { text: "concat(", type: "functions" },
+      ]);
+    });
+    it("should suggest partial matches in unterminated quoted string", () => {
+      expect(cleanSuggestions(suggest('1 + "C', expressionOpts))).toEqual([
+        { type: "fields", text: '"count" ' },
+        { type: "fields", text: "C " },
       ]);
     });
     it("should suggest partial matches after an aggregation", () => {
       expect(cleanSuggestions(suggest("average(c", expressionOpts))).toEqual([
         { type: "fields", text: '"count" ' },
         { type: "fields", text: "C " },
+        { text: "case(", type: "functions" },
         { text: "coalesce(", type: "functions" },
         { text: "concat(", type: "functions" },
       ]);
@@ -136,9 +161,19 @@ describe("metabase/lib/expression/suggest", () => {
         ),
       ).toEqual([
         { text: '"User ID" ', type: "fields" },
+        { text: '"User → Address" ', type: "fields" },
+        { text: '"User → Birth Date" ', type: "fields" },
+        { text: '"User → City" ', type: "fields" },
+        { text: '"User → Created At" ', type: "fields" },
+        { text: '"User → Email" ', type: "fields" },
         { text: '"User → ID" ', type: "fields" },
         { text: '"User → Latitude" ', type: "fields" },
         { text: '"User → Longitude" ', type: "fields" },
+        { text: '"User → Name" ', type: "fields" },
+        { text: '"User → Password" ', type: "fields" },
+        { text: '"User → Source" ', type: "fields" },
+        { text: '"User → State" ', type: "fields" },
+        { text: '"User → Zip" ', type: "fields" },
       ]);
     });
     it("should suggest joined fields", () => {
@@ -153,9 +188,12 @@ describe("metabase/lib/expression/suggest", () => {
           }),
         ),
       ).toEqual([
+        { text: '"Foo → Body" ', type: "fields" },
+        { text: '"Foo → Created At" ', type: "fields" },
         { text: '"Foo → ID" ', type: "fields" },
         { text: '"Foo → Product ID" ', type: "fields" },
         { text: '"Foo → Rating" ', type: "fields" },
+        { text: '"Foo → Reviewer" ', type: "fields" },
       ]);
     });
     it("should suggest nested query fields", () => {

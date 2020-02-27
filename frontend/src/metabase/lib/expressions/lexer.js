@@ -246,20 +246,24 @@ export const RecoveryToken = createToken({
   name: "RecoveryToken",
   pattern: Lexer.NA,
 });
+export const UnclosedQuotedString = createToken({
+  name: "UnclosedQuotedString",
+  pattern: Lexer.NA,
+});
 export const UnclosedBracketQuotedString = createToken({
   name: "UnclosedBracketQuotedString",
   pattern: /\[[^\]]*/,
-  categories: [RecoveryToken, ...getQuoteCategories("[")],
+  categories: [RecoveryToken, UnclosedQuotedString, ...getQuoteCategories("[")],
 });
 export const UnclosedSingleQuotedString = createToken({
   name: "UnclosedSingleQuotedString",
   pattern: /'(?:[^\\']+|\\(?:[bfnrtv'\\/]|u[0-9a-fA-F]{4}))*/,
-  categories: [RecoveryToken, ...getQuoteCategories("'")],
+  categories: [RecoveryToken, UnclosedQuotedString, ...getQuoteCategories("'")],
 });
 export const UnclosedDoubleQuotedString = createToken({
   name: "DoubleQuoUnclosedDoubleQuotedStringtedString",
   pattern: /"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*/,
-  categories: [RecoveryToken, ...getQuoteCategories('"')],
+  categories: [RecoveryToken, UnclosedQuotedString, ...getQuoteCategories('"')],
 });
 export const Any = createToken({
   name: "Any",
@@ -270,15 +274,12 @@ export const Any = createToken({
 export const lexerWithRecovery = new Lexer([
   ...allTokens,
   RecoveryToken,
+  UnclosedQuotedString,
   UnclosedBracketQuotedString,
   UnclosedSingleQuotedString,
   UnclosedDoubleQuotedString,
   Any,
 ]);
-
-export function getImage(token) {
-  return token.image;
-}
 
 const tokensByIdx = new Map(allTokens.map(t => [t.tokenTypeIdx, t]));
 

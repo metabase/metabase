@@ -2,7 +2,6 @@ import _ from "underscore";
 
 import { ExpressionCstVisitor, parse as parserParse } from "./parser";
 import {
-  lexer,
   lexerWithRecovery,
   Identifier,
   WhiteSpace,
@@ -10,7 +9,6 @@ import {
   RParen,
   IdentifierString,
   FunctionName,
-  RecoveryToken,
   isTokenType,
   CLAUSE_TOKENS,
 } from "./lexer";
@@ -46,18 +44,6 @@ const token = (...args) => {
     }
   );
 };
-
-// inserts whitespace tokens back into the syntax tree
-function whitespace(text) {
-  if (!/^\s+$/.test(text)) {
-    throw new Error("Recovered non-whitespace: " + text);
-  }
-  return { text };
-}
-
-function text(text) {
-  return { text };
-}
 
 export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
   constructor(options) {
@@ -213,43 +199,19 @@ export function defaultParser(source, options) {
   const visitor = new ExpressionSyntaxVisitor(options);
   const cst = parserParse(source, options);
   const visited = cst && visitor.visit(cst);
-  return visited && recoverWhitespace(visited, source, options.recover);
+  return (
+    visited &&
+    recoverTokens(
+      visited,
+      source,
+      options.recover ? recoveredToken : recoveredWhitespaceToken,
+    )
+  );
 }
 
 // RECOVERY PARSER
 export function recoveryParser(source, options) {
   return defaultParser(source, { ...options, recover: true });
-}
-
-// INSERT TRAILING STRING PARSER
-export function insertTrailingStringParser(token) {
-  return (source, options) =>
-    trimTrailingString(defaultParser(source + token, options), token);
-}
-
-function trimTrailingString(tree, string = '"') {
-  let node = tree;
-  while (node.children && node.children.length > 0) {
-    node = node.children[node.children.length - 1];
-  }
-  node.text = node.text.slice(0, -string.length);
-  node.end--;
-  return tree;
-}
-
-// SKIP LAST TOKEN PARSER:
-export function skipLastTokenParser(source, options) {
-  // special case, try skipping the last token
-  // FIXME: shouldn't this be handled by single token deletion in recovery mode?
-  const { tokens, errors } = lexer.tokenize(source);
-  if (errors.length > 0) {
-    throw errors;
-  }
-  const lastToken = tokens[tokens.length - 1];
-  if (lastToken) {
-    source = source.substring(0, lastToken.startOffset);
-  }
-  return defaultParser(source, options);
 }
 
 // FALLBACK PARSER:
@@ -282,7 +244,6 @@ export function fallbackParser(expressionString, { startRule }) {
     current = stack.pop();
   };
   for (let i = 0; i < tokens.length; i++) {
-    const isLast = i === tokens.length - 1;
     const t = tokens[i];
     const next = nextNonWhitespace(i);
     if (isTokenType(t.tokenType, FunctionName)) {
@@ -347,48 +308,60 @@ function mergeTokenGroups(results) {
   return { ...results, tokens, groups: {} };
 }
 
+// inserts whitespace tokens back into the syntax tree
+function recoveredWhitespaceToken(text, extra = {}) {
+  if (!/^\s+$/.test(text)) {
+    throw new Error("Recovered non-whitespace: " + text);
+  }
+  return { type: "whitespace", ...extra, text };
+}
+
+function recoveredToken(text, extra = {}) {
+  return { type: "recovered", ...extra, text };
+}
+
 // NOTE: could we use token groups instead to collect whitespace tokens?
 // https://sap.github.io/chevrotain/docs/features/token_grouping.html
-function recoverWhitespace(root, source, allowRecoveringNonWhitespace) {
-  const recoverToken = allowRecoveringNonWhitespace ? text : whitespace;
+function recoverTokens(root, source, recovered = recoveredToken) {
+  const getRecoveredToken = (start, end) =>
+    recovered(source.substring(start, end), { start, end: end - 1 });
 
-  const node = _recoverWhitespace(root, source, recoverToken);
+  function recover(node) {
+    if (node.children) {
+      const children = [];
+      let previous = null;
+      for (const child of node.children) {
+        // call recover on the child first to get start/end on non-terminals
+        const current = recover(child);
+        // if the current node doesn't start where the previous node ended then add whitespace token back in
+        if (previous && current.start > previous.end + 1) {
+          children.push(getRecoveredToken(previous.end + 1, current.start));
+        }
+        children.push(current);
+        previous = current;
+      }
+      return {
+        ...node,
+        children,
+        // add start/end to non-terminals
+        start: children[0].start,
+        end: children[children.length - 1].end,
+      };
+    } else {
+      return node;
+    }
+  }
+
+  const node = recover(root);
   if (node.start > 0) {
-    node.children.unshift(recoverToken(source.substring(0, node.start)));
+    node.children.unshift(getRecoveredToken(0, node.start));
     node.start = 0;
   }
   if (node.end < source.length - 1) {
-    node.children.push(recoverToken(source.substring(node.end + 1)));
+    node.children.push(getRecoveredToken(node.end + 1, source.length));
     node.end = source.length - 1;
   }
   return node;
-}
-function _recoverWhitespace(node, source, recoverToken) {
-  if (node.children) {
-    const children = [];
-    let previous = null;
-    for (const child of node.children) {
-      // call recoverWhitespace on the child first to get start/end on non-terminals
-      const current = _recoverWhitespace(child, source, recoverToken);
-      // if the current node doesn't start where the previous node ended then add whitespace token back in
-      if (previous && current.start > previous.end + 1) {
-        children.push(
-          recoverToken(source.substring(previous.end + 1, current.start)),
-        );
-      }
-      children.push(current);
-      previous = current;
-    }
-    return {
-      ...node,
-      children,
-      // add start/end to non-terminals
-      start: children[0].start,
-      end: children[children.length - 1].end,
-    };
-  } else {
-    return node;
-  }
 }
 
 // MAIN EXPORTED FUNCTIONS:
