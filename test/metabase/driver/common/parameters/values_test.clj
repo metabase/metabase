@@ -198,5 +198,5 @@
       (is (= (i/->NativeQuerySnippet (:id snippet) (:content snippet))
              (#'values/value-for-tag
               {:name "snippet-template-tag-test", :display-name "Snippet template tag test",
-               :type :snippet, :snippet-name (:name snippet)}
+               :type :snippet, :snippet-name (:name snippet), :database (data/id)}
               []))))))

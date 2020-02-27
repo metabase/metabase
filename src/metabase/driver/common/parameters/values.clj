@@ -52,6 +52,7 @@
     (s/optional-key :dimension)    [s/Any]
     (s/optional-key :card-id)      su/IntGreaterThanZero
     (s/optional-key :snippet-name) su/NonBlankString
+    (s/optional-key :database)     su/IntGreaterThanZero ; used by tags of `:type :snippet`
     (s/optional-key :widget-type)  s/Keyword ; type of the [default] value if `:type` itself is `dimension`
     (s/optional-key :required)     s/Bool
     (s/optional-key :default)      s/Any}
@@ -149,11 +150,20 @@
   [tag :- TagParam]
   (when-let [snippet-name (:snippet-name tag)]
     (if-let [snippet (db/select-one NativeQuerySnippet :name snippet-name)]
-      (i/map->NativeQuerySnippet
-       {:snippet-id (:id snippet)
-        :content    (:content snippet)})
-      (throw (ex-info "Native query snippet not found." {:snippet-name snippet-name
-                                                         :tag          tag})))))
+      (do
+       (when-not (= (:database tag) (:database_id snippet))
+         (throw (ex-info
+                 (tru "Snippet \"{0}\" is associated with a different database and may not be used here."
+                      snippet-name)
+                 {:snippet-db-id (:database_id snippet)
+                  :tag-db-id     (:database tag)
+                  :snippet       snippet
+                  :tag           tag})))
+       (i/map->NativeQuerySnippet
+        {:snippet-id (:id snippet)
+         :content    (:content snippet)}))
+      (throw (ex-info (tru "Snippet \"{0}\" not found." snippet-name)
+                      {:snippet-name snippet-name, :tag tag})))))
 
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
