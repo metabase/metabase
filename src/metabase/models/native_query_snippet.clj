@@ -44,7 +44,8 @@
 ;;; ---------------------------------------------------- Schemas -----------------------------------------------------
 
 (def NativeQuerySnippetName
-  "Schema checking that snippet names do not include \"}}\""
+  "Schema checking that snippet names do not include \"}\" or start with spaces."
   (s/pred (every-pred
-           (complement #(boolean (re-find #"}}" %)))
-           string?)))
+           string?
+           (complement #(boolean (re-find #"^\s+" %)))
+           (complement #(boolean (re-find #"}" %))))))

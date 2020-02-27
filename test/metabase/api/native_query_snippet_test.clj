@@ -20,6 +20,11 @@
   (str "native-query-snippet"
        (when arg (str "/" arg))))
 
+(defn- name-schema-error?
+  [response]
+  (str/starts-with? (or (get-in response [:errors :name]) "")
+                    "Value does not match schema: "))
+
 ;; GET /api/native-query-snippet
 (deftest list-snippets-api-test
   (tt/with-temp* [Database           [db]
@@ -69,13 +74,23 @@
     (testing "new snippet field validation"
       (is (= {:errors {:content "value must be a string."}}
              ((user->client :rasta) :post 400 (snippet-url) {})))
+
       (is (= {:errors {:database_id "value must be an integer greater than zero."}}
              ((user->client :rasta) :post 400 (snippet-url) {:content "NULL"})))
-      (let [response ((user->client :rasta)
-                      :post 400 (snippet-url)
-                      {:content "NULL", :database_id (:id db)})]
-        (is (str/starts-with? (get-in response [:errors :name])
-                              "Value does not match schema: "))))
+
+      (is (name-schema-error? ((user->client :rasta)
+                               :post 400 (snippet-url)
+                               {:content "NULL", :database_id (:id db)})))
+
+      (is (name-schema-error? ((user->client :rasta) :post 400 (snippet-url)
+                               {:content     "NULL"
+                                :database_id (:id db)
+                                :name        " starts with a space"})))
+
+      (is (name-schema-error? ((user->client :rasta) :post 400 (snippet-url)
+                               {:content     "NULL"
+                                :database_id (:id db)
+                                :name        "contains a } character"}))))
 
     (testing "successful create returns new snippet's data"
       (let [snippet-input    {:name "test-snippet", :description "Just null", :content "NULL", :database_id (:id db)}
