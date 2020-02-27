@@ -5,6 +5,7 @@
             [metabase.driver.common.parameters.values :as values]
             [metabase.models
              [card :refer [Card]]
+             [database :refer [Database]]
              [field :refer [map->FieldInstance]]
              [native-query-snippet :refer [NativeQuerySnippet]]]
             [metabase.query-processor.test-util :as qp.test-util]
@@ -188,15 +189,28 @@
             (is (= card-id (:card-id exc-data)))
             (is (= tag     (:tag exc-data)))))))))
 
-(deftest native-query-snippet-test
-  (testing "Native query snippet template tag gets snippet's content"
+(deftest snippet-test
+  (testing "Snippet template tag gets snippet's content"
     (tt/with-temp NativeQuerySnippet [snippet {:database_id (data/id)
                                                :name        "test_comment"
-                                               :description "Just an SQL comment"
                                                :content     "-- Just a comment"
                                                :creator_id  1}]
       (is (= (i/->NativeQuerySnippet (:id snippet) (:content snippet))
              (#'values/value-for-tag
               {:name "snippet-template-tag-test", :display-name "Snippet template tag test",
                :type :snippet, :snippet-name (:name snippet), :database (data/id)}
-              []))))))
+              [])))))
+
+  (testing "fails for snippet with mismatched database ID"
+    (tt/with-temp* [Database           [db]
+                    NativeQuerySnippet [snippet {:database_id (:id db)
+                                                 :name        "test_comment"
+                                                 :content     "SELECT NULL;"
+                                                 :creator_id  1}]]
+      (is (thrown-with-msg? ExceptionInfo (re-pattern (str "^Snippet \"test_comment\" is associated with a different "
+                                                           "database and may not be used here\\.$"))
+            (#'values/value-for-tag
+             {:name "snippet-template-tag-test", :display-name "Snippet template tag test",
+              :database (data/id), ; Not the same as `(:id db)` used for `snippet`
+              :type :snippet, :snippet-name (:name snippet)}
+             []))))))
