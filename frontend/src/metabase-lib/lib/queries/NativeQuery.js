@@ -60,7 +60,7 @@ function isCardQueryName(name) {
 }
 
 function snippetNameFromTagName(name) {
-  return name.slice("snippet:".length);
+  return name.slice("snippet:".length).trim();
 }
 
 function isSnippetName(name) {
@@ -331,7 +331,7 @@ export default class NativeQuery extends AtomicQuery {
       // anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
       // variables referencing other questions, by their card ID, are also supported: {{#123}} references question with ID 123
       let match;
-      const re = /\{\{\s*((snippet:)?[A-Za-z0-9_]+?|#[0-9]*)\s*\}\}/g;
+      const re = /\{\{\s*((snippet:\s*[^}]+)|[A-Za-z0-9_]+?|#[0-9]*)\s*\}\}/g;
       while ((match = re.exec(queryText)) != null) {
         tags.push(match[1]);
       }
