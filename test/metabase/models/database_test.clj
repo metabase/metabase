@@ -3,20 +3,15 @@
              [string :refer [join lower-case split]]
              [test :refer :all]]
             [metabase
-             [driver :as driver]
              [models :refer [Database]]
-             [util :as u]]
+             [test.data.interface :as tx]]
             [toucan.db :as db]))
-
-(driver/register! ::test-driver
-                  :parent :sql-jdbc
-                  :abstract? true)
 
 (defn- create-database!
   [db-name]
   (db/insert! Database
               :name db-name
-              :engine (u/qualified-name ::test-driver)
+              :engine (name (tx/driver))
               :details {:db (join "-" (mapv lower-case (split db-name #"(?=[A-Z])")))}))
 
 (defn- delete-database!
