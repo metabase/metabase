@@ -147,7 +147,8 @@
 
 (defn- validate-tag-snippet-db
   [{database-id :database, :as tag} snippet]
-  (when-not (= database-id (:database_id snippet))
+  (when (and (some? snippet)
+             (not= database-id (:database_id snippet)))
     (throw (ex-info
             (tru "Snippet \"{0}\" is associated with a different database and may not be used here."
                  (:name snippet))
