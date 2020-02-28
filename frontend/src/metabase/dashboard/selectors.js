@@ -196,9 +196,9 @@ export const getParameters = createSelector(
   [getMetadata, getDashboard, getMappingsByParameter],
   (metadata, dashboard, mappingsByParameter) =>
     ((dashboard && dashboard.parameters) || []).map(parameter => {
-      const mappings = Object.values(
-        mappingsByParameter[parameter.id] || {},
-      ).flatMap(Object.values);
+      const mappings = _.flatten(
+        _.map(mappingsByParameter[parameter.id] || {}, _.values),
+      );
 
       // we change out widgets if a parameter is connected to non-field targets
       const hasOnlyFieldTargets = mappings.every(x => x.field_id != null);
