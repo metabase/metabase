@@ -213,4 +213,34 @@
              {:name "snippet-template-tag-test", :display-name "Snippet template tag test",
               :database (data/id), ; Not the same as `(:id db)` used for `snippet`
               :type :snippet, :snippet-name (:name snippet)}
-             []))))))
+             [])))))
+
+  (testing "expansion of nested snippets"
+    (tt/with-temp* [NativeQuerySnippet [inner-snippet {:database_id (data/id)
+                                                       :name        "Inner snippet"
+                                                       :description "Just a string value."
+                                                       :content     "'inner'"
+                                                       :creator_id  1}]
+                    NativeQuerySnippet [outer-snippet {:database_id (data/id)
+                                                       :name        "Outer snippet"
+                                                       :description "Snippet containing another snippet."
+                                                       :content     "SELECT {{snippet: Inner snippet}};"
+                                                       :creator_id  1}]]
+      (is (= (i/->NativeQuerySnippet (:id outer-snippet) "SELECT 'inner';")
+             (#'values/value-for-tag
+              {:name "snippet-template-tag-test", :display-name "Snippet template tag test",
+               :type :snippet, :snippet-name (:name outer-snippet), :database (data/id)}
+              [])))))
+
+  (testing "expansion of snippet with a nested sub-query reference"
+    (tt/with-temp* [Card               [card    {:dataset_query (data/native-query {:query "SELECT 1, 2, 3"})}]
+                    NativeQuerySnippet [snippet {:database_id (data/id)
+                                                 :name        "Snippet"
+                                                 :description "Contains a reference to a sub-query."
+                                                 :content     (str "{{#" (:id card) "}} AS x")
+                                                 :creator_id  1}]]
+      (is (= (i/->NativeQuerySnippet (:id snippet) "(SELECT 1, 2, 3) AS x")
+             (#'values/value-for-tag
+              {:name "snippet-template-tag-test", :display-name "Snippet template tag test",
+               :type :snippet, :snippet-name (:name snippet), :database (data/id)}
+              []))))))
