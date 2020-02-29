@@ -241,3 +241,28 @@
              (data/native-query
               {:query         (str "SELECT * FROM {{#" (:id param-card) "}} AS x")
                :template-tags (card-template-tags [(:id param-card)])})))))))
+
+(deftest nested-template-tags-with-params-test
+  (testing "parameters are passed from parent query to expanded sub-queries"
+    (tt/with-temp Card [inner-card {:dataset_query
+                                    (merge
+                                     (data/native-query
+                                      {:query "SELECT * FROM venues WHERE price < {{price_limit}}"
+                                       :template-tags {:price_limit
+                                                       {:id           "4daed100-a07a-4be8-d0e5-e8022159d290"
+                                                        :name         "price_limit"
+                                                        :display_name "price_limit"
+                                                        :type         "number"
+                                                        :required     false
+                                                        :display-name "Price class limit"}}}))}]
+      (is (= (data/native-query
+              {:query "SELECT * FROM (SELECT * FROM venues WHERE price < 2) AS x", :params nil})
+             (substitute-params
+              (merge
+               (data/native-query
+                {:query (str "SELECT * FROM {{#" (:id inner-card) "}} AS x")
+                 :template-tags (card-template-tags [(:id inner-card)])})
+               {:parameters
+                [{:type   "data/single"
+                  :target ["variable" ["template-tag" "price_limit"]]
+                  :value  "2"}]})))))))

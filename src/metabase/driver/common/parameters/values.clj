@@ -129,13 +129,13 @@
 
 (s/defn ^:private card-query-for-tag :- (s/maybe (s/cond-pre su/Map (s/eq i/no-value)))
   "Returns the native query for the Card referenced by `(:card-id tag)`."
-  [tag :- TagParam]
+  [tag :- TagParam, params :- (s/maybe [i/ParamValue])]
   (when-let [card-id (:card-id tag)]
     (when-let [query (db/select-one-field :dataset_query Card :id card-id)]
       (try
        (i/map->ReferencedCardQuery
         {:card-id card-id
-         :query   (:query (qp/query->native query))})
+         :query   (:query (qp/query->native (assoc query :parameters params)))})
        (catch ExceptionInfo e
          (throw (ex-info
                  (tru "The sub-query from referenced question #{0} failed with the following error: {1}"
@@ -296,7 +296,7 @@
   [tag :- TagParam, params :- (s/maybe [i/ParamValue])]
   (parse-value-for-type (:type tag) (or (param-value-for-tag tag params)
                                         (field-filter-value-for-tag tag params)
-                                        (card-query-for-tag tag)
+                                        (card-query-for-tag tag params)
                                         (snippet-for-tag tag)
                                         (default-value-for-tag tag)
                                         i/no-value)))
