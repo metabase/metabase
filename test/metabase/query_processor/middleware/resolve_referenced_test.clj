@@ -117,8 +117,7 @@
                                                   {:query         (str "SELECT * FROM {{#" (:id card-1) "}} AS c1")
                                                    :template-tags (card-template-tags [(:id card-1)])})}]]
       ;; Setup circular reference from card-1 to card-2 (card-2 already references card-1)
-      (let [card-1-id  (:id card-1)
-            card-1-tag (str "#" card-1-id)]
+      (let [card-1-id  (:id card-1)]
         (db/update! Card (:id card-1) :dataset_query (data/native-query
                                                       {:query         (str "SELECT * FROM {{#" (:id card-2) "}} AS c2")
                                                        :template-tags (card-template-tags [(:id card-2)])}))
