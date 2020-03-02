@@ -22,7 +22,9 @@
             [metabase.test.fixtures :as fixtures]
             [metabase.util.schema :as su]
             [schema.core :as s]
-            [toucan.db :as db]))
+            [toucan
+             [db :as db]
+             [hydrate :as hydrate]]))
 
 (use-fixtures :once (fixtures/initialize :plugins))
 
@@ -63,11 +65,70 @@
   ([{driver :engine, :as db}]
    (merge
     default-db-details
-    (select-keys db [:created_at :id :details :updated_at :timezone])
-    {:features (map u/qualified-name (driver.u/features driver))})))
+    (select-keys db [:created_at :id :details :updated_at :timezone :name])
+    {:engine   (u/qualified-name (:engine db))
+     :features (map u/qualified-name (driver.u/features driver))})))
 
+(def ^:private default-table-details
+  {:description             nil
+   :entity_name             nil
+   :entity_type             "entity/GenericTable"
+   :caveats                 nil
+   :points_of_interest      nil
+   :visibility_type         nil
+   :active                  true
+   :show_in_getting_started false})
 
-;; # DB LIFECYCLE ENDPOINTS
+(defn- table-details [table]
+  (-> default-table-details
+      (merge
+       (select-keys table [:active :created_at :db_id :description :display_name :entity_name :entity_type :fields_hash
+                           :id :name :rows :schema :updated_at :visibility_type]))
+      (update :entity_type (fn [entity-type]
+                             (when entity-type
+                               (str "entity/" (name entity-type)))))
+      (update :visibility_type #(when % (name %)))))
+
+(defn- expected-tables [db-or-id]
+  (map table-details (db/select Table
+                       :db_id (u/get-id db-or-id), :active true
+                       {:order-by [[:%lower.schema :asc] [:%lower.display_name :asc]]})))
+
+(def ^:private default-field-details
+  {:description        nil
+   :caveats            nil
+   :points_of_interest nil
+   :active             true
+   :position           0
+   :target             nil
+   :preview_display    true
+   :parent_id          nil
+   :settings           nil})
+
+(defn- field-details [field]
+  (merge
+   default-field-details
+   (select-keys
+    field
+    [:updated_at :id :created_at :last_analyzed :fingerprint :fingerprint_version :fk_target_field_id :position])))
+
+(deftest databases-list-test
+  (testing "GET /api/database"
+    (testing "Test that we can get all the DBs (ordered by name, then driver)"
+      (testing "Database details *should not* come back for Rasta since she's not a superuser"
+        (let [expected-keys (-> (into #{:features :native_permissions} (keys (Database (mt/id))))
+                                (disj :details))]
+          (doseq [db ((mt/user->client :rasta) :get 200 "database")]
+            (testing (format "Database %s %d %s" (:engine db) (u/get-id db) (pr-str (:name db)))
+              (is (= expected-keys
+                     (set (keys db)))))))))
+
+    (testing "?include_tables=true"
+      (mt/with-temp Database [{db-id :id, db-name :name} {:engine (u/qualified-name ::test-driver)}]
+        (doseq [db ((mt/user->client :rasta) :get 200 "database" :include_tables true)]
+          (testing (format "Database %s %d %s" (:engine db) (u/get-id db) (pr-str (:name db)))
+            (is (= (expected-tables db)
+                   (:tables db)))))))))
 
 (defn- add-schedules [db]
   (assoc db :schedules {:cache_field_values {:schedule_day   nil
@@ -79,18 +140,45 @@
                                              :schedule_hour  nil
                                              :schedule_type  "hourly"}}))
 
-;; ## GET /api/database/:id
+(deftest get-database-test
+  (testing "GET /api/database/:id"
+    (testing "DB details visibility"
+      (testing "Regular users should not see DB details"
+        (is (= (add-schedules (dissoc (db-details) :details))
+               ((mt/user->client :rasta) :get 200 (format "database/%d" (mt/id))))))
 
-(deftest regular-users--should-not--see-db-details
-  (is (= (add-schedules (dissoc (db-details) :details))
-         ((mt/user->client :rasta) :get 200 (format "database/%d" (mt/id))))))
+      (testing "Superusers should see DB details"
+        (is (= (add-schedules (db-details))
+               ((mt/user->client :crowberto) :get 200 (format "database/%d" (mt/id)))))))
 
-(deftest superusers--should--see-db-details
-  (is (= (add-schedules (db-details))
-         ((mt/user->client :crowberto) :get 200 (format "database/%d" (mt/id))))))
+    (mt/with-temp* [Database [db {:name "My DB", :engine ::test-driver}]
+                    Table    [t1 {:name "Table 1", :db_id (:id db)}]
+                    Table    [t2 {:name "Table 2", :db_id (:id db)}]
+                    Field    [f1 {:name "Field 1.1", :table_id (:id t1)}]
+                    Field    [f2 {:name "Field 2.1", :table_id (:id t2)}]
+                    Field    [f3 {:name "Field 2.2", :table_id (:id t2)}]]
+      (testing "`?include=tables` -- should be able to include Tables"
+        (is (= {:tables [(table-details t1)
+                         (table-details t2)]}
+               (select-keys ((mt/user->client :lucky) :get 200 (format "database/%d?include=tables" (:id db)))
+                            [:tables]))))
 
+      (testing "`?include=tables.fields` -- should be able to include Tables and Fields"
+        (letfn [(field-details* [field]
+                  (assoc (into {} (hydrate/hydrate field [:target :has_field_values] :has_field_values))
+                         :base_type        "type/Text"
+                         :visibility_type  "normal"
+                         :has_field_values "search"))]
+          (is (= (-> {:tables [(assoc (table-details t1) :fields [(field-details* f1)])
+                               (assoc (table-details t2) :fields [(field-details* f2)
+                                                                  (field-details* f3)])]})
+                 (select-keys ((mt/user->client :lucky) :get 200 (format "database/%d?include=tables.fields" (:id db)))
+                              [:tables]))))))
 
-;; ## POST /api/database
+    (testing "Invalid `?include` should return an error"
+      (is (= {:errors {:include "value may be nil, or if non-nil, value must be one of: `tables`, `tables.fields`."}}
+             ((mt/user->client :lucky) :get 400 (format "database/%d?include=schemas" (mt/id))))))))
+
 (defn- create-db-via-api! [& [m]]
   (let [db-name (mt/random-name)]
     (try
@@ -110,31 +198,31 @@
       (finally (db/delete! Database :name db-name)))))
 
 (deftest create-db-test
-  (testing "Check that we can create a Database"
-    (is (schema= (merge
-                  (m/map-vals s/eq default-db-details)
-                  {:created_at java.time.temporal.Temporal
-                   :engine     (s/eq ::test-driver)
-                   :id         su/IntGreaterThanZero
-                   :details    (s/eq {:db "my_db"})
-                   :updated_at java.time.temporal.Temporal
-                   :name       su/NonBlankString
-                   :features   (s/eq (driver.u/features ::test-driver))})
-                 (create-db-via-api!)))))
+  (testing "POST /api/database"
+    (testing "Check that we can create a Database"
+      (is (schema= (merge
+                    (m/map-vals s/eq default-db-details)
+                    {:created_at java.time.temporal.Temporal
+                     :engine     (s/eq ::test-driver)
+                     :id         su/IntGreaterThanZero
+                     :details    (s/eq {:db "my_db"})
+                     :updated_at java.time.temporal.Temporal
+                     :name       su/NonBlankString
+                     :features   (s/eq (driver.u/features ::test-driver))})
+                   (create-db-via-api!))))
 
-(deftest set-is-full-sync
-  (testing "can we set `is_full_sync` to `false` when we create the Database?"
-    (is (= {:is_full_sync false}
-           (select-keys (create-db-via-api! {:is_full_sync false}) [:is_full_sync])))))
+    (testing "can we set `is_full_sync` to `false` when we create the Database?"
+      (is (= {:is_full_sync false}
+             (select-keys (create-db-via-api! {:is_full_sync false}) [:is_full_sync]))))))
 
-(deftest delete-test
+(deftest delete-database-test
   (testing "DELETE /api/database/:id"
     (testing "Check that we can delete a Database"
       (mt/with-temp Database [db]
         ((mt/user->client :crowberto) :delete 204 (format "database/%d" (:id db)))
         (is (false? (db/exists? Database :id (u/get-id db))))))))
 
-(deftest can-update-db-fields-test
+(deftest update-database-test
   (testing "PUT /api/database/:id"
     (testing "Check that we can update fields in a Database"
       (mt/with-temp Database [{db-id :id}]
@@ -157,146 +245,73 @@
                       :name         "Cam's Awesome Toucan Database"
                       :is_full_sync false
                       :features     (driver.u/features :h2)}
-                     (into {} (db/select-one [Database :name :engine :details :is_full_sync], :id db-id)))))))))))
+                     (into {} (db/select-one [Database :name :engine :details :is_full_sync], :id db-id)))))))))
 
-(deftest set-auto-run-queries-test
-  (testing "should be able to set `auto_run_queries`"
-    (testing "when creating a Database"
-      (is (= {:auto_run_queries false}
-             (select-keys (create-db-via-api! {:auto_run_queries false}) [:auto_run_queries]))))
-    (testing "when updating a Database"
-      (mt/with-temp Database [{db-id :id} {:engine ::test-driver}]
-        (let [updates {:auto_run_queries false}]
-          ((mt/user->client :crowberto) :put 200 (format "database/%d" db-id) updates))
-        (is (= false
-               (db/select-one-field :auto_run_queries Database, :id db-id)))))))
-
-(def ^:private default-table-details
-  {:description             nil
-   :entity_name             nil
-   :entity_type             "entity/GenericTable"
-   :caveats                 nil
-   :points_of_interest      nil
-   :visibility_type         nil
-   :active                  true
-   :show_in_getting_started false})
-
-(deftest only-superusers-should-see-db-details-test
-  (testing "GET /api/database"
-    (testing "Test that we can get all the DBs (ordered by name, then driver)"
-      (testing "Database details *should not* come back for Rasta since she's not a superuser"
-        (let [expected-keys (-> (into #{:features :native_permissions} (keys (Database (mt/id))))
-                                (disj :details))]
-          (doseq [db ((mt/user->client :rasta) :get 200 "database")]
-            (testing (format "Database %s %d %s" (:engine db) (u/get-id db) (pr-str (:name db)))
-              (is (= expected-keys
-                     (set (keys db)))))))))))
-
-(defn- table-details [table]
-  (-> default-table-details
-      (merge
-       (select-keys table [:active :created_at :db_id :description :display_name :entity_name :entity_type :fields_hash
-                           :id :name :rows :schema :updated_at :visibility_type]))
-      (update :entity_type (fn [entity-type]
-                             (when entity-type
-                               (str "entity/" (name entity-type)))))
-      (update :visibility_type #(when % (name %)))))
-
-(defn- expected-tables [db-or-id]
-  (map table-details (db/select Table
-                       :db_id (u/get-id db-or-id), :active true
-                       {:order-by [[:%lower.schema :asc] [:%lower.display_name :asc]]})))
-
-(deftest db-endpoint-includes-tables-test
-  (testing "GET /api/databases?include_tables=true"
-    (mt/with-temp Database [{db-id :id, db-name :name} {:engine (u/qualified-name ::test-driver)}]
-      (doseq [db ((mt/user->client :rasta) :get 200 "database" :include_tables true)]
-        (testing (format "Database %s %d %s" (:engine db) (u/get-id db) (pr-str (:name db)))
-          (is (= (expected-tables db)
-                 (:tables db))))))))
-
-;; ## GET /api/database/:id/metadata
-(def ^:private default-field-details
-  {:description        nil
-   :caveats            nil
-   :points_of_interest nil
-   :active             true
-   :position           0
-   :target             nil
-   :preview_display    true
-   :parent_id          nil
-   :settings           nil})
-
-(defn- field-details [field]
-  (merge
-   default-field-details
-   (select-keys
-    field
-    [:updated_at :id :created_at :last_analyzed :fingerprint :fingerprint_version :fk_target_field_id])))
+    (testing "should be able to set `auto_run_queries`"
+      (testing "when creating a Database"
+        (is (= {:auto_run_queries false}
+               (select-keys (create-db-via-api! {:auto_run_queries false}) [:auto_run_queries]))))
+      (testing "when updating a Database"
+        (mt/with-temp Database [{db-id :id} {:engine ::test-driver}]
+          (let [updates {:auto_run_queries false}]
+            ((mt/user->client :crowberto) :put 200 (format "database/%d" db-id) updates))
+          (is (= false
+                 (db/select-one-field :auto_run_queries Database, :id db-id))))))))
 
 (deftest fetch-database-metadata-test
-  (is (= (merge default-db-details
-                (select-keys (mt/db) [:created_at :id :updated_at :timezone])
-                {:engine   "h2"
-                 :name     "test-data"
-                 :features (map u/qualified-name (driver.u/features :h2))
-                 :tables   [(merge
-                             default-table-details
-                             (db/select-one [Table :created_at :updated_at :fields_hash] :id (mt/id :categories))
-                             {:schema       "PUBLIC"
-                              :name         "CATEGORIES"
-                              :display_name "Categories"
-                              :fields       [(merge
-                                              (field-details (Field (mt/id :categories :id)))
-                                              {:table_id         (mt/id :categories)
-                                               :special_type     "type/PK"
-                                               :name             "ID"
-                                               :display_name     "ID"
-                                               :database_type    "BIGINT"
-                                               :base_type        "type/BigInteger"
-                                               :visibility_type  "normal"
-                                               :has_field_values "none"})
-                                             (merge
-                                              (field-details (Field (mt/id :categories :name)))
-                                              {:table_id         (mt/id :categories)
-                                               :special_type     "type/Name"
-                                               :name             "NAME"
-                                               :display_name     "Name"
-                                               :database_type    "VARCHAR"
-                                               :base_type        "type/Text"
-                                               :visibility_type  "normal"
-                                               :has_field_values "list"})]
-                              :segments     []
-                              :metrics      []
-                              :rows         nil
-                              :id           (mt/id :categories)
-                              :db_id        (mt/id)})]})
-         (let [resp ((mt/user->client :rasta) :get 200 (format "database/%d/metadata" (mt/id)))]
-           (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp)))))))
+  (testing "GET /api/database/:id/metadata"
+    (is (= (merge default-db-details
+                  (select-keys (mt/db) [:created_at :id :updated_at :timezone])
+                  {:engine   "h2"
+                   :name     "test-data"
+                   :features (map u/qualified-name (driver.u/features :h2))
+                   :tables   [(merge
+                               default-table-details
+                               (db/select-one [Table :created_at :updated_at :fields_hash] :id (mt/id :categories))
+                               {:schema       "PUBLIC"
+                                :name         "CATEGORIES"
+                                :display_name "Categories"
+                                :fields       [(merge
+                                                (field-details (Field (mt/id :categories :id)))
+                                                {:table_id         (mt/id :categories)
+                                                 :special_type     "type/PK"
+                                                 :name             "ID"
+                                                 :display_name     "ID"
+                                                 :database_type    "BIGINT"
+                                                 :base_type        "type/BigInteger"
+                                                 :visibility_type  "normal"
+                                                 :has_field_values "none"})
+                                               (merge
+                                                (field-details (Field (mt/id :categories :name)))
+                                                {:table_id         (mt/id :categories)
+                                                 :special_type     "type/Name"
+                                                 :name             "NAME"
+                                                 :display_name     "Name"
+                                                 :database_type    "VARCHAR"
+                                                 :base_type        "type/Text"
+                                                 :visibility_type  "normal"
+                                                 :has_field_values "list"})]
+                                :segments     []
+                                :metrics      []
+                                :rows         nil
+                                :id           (mt/id :categories)
+                                :db_id        (mt/id)})]})
+           (let [resp ((mt/user->client :rasta) :get 200 (format "database/%d/metadata" (mt/id)))]
+             (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp))))))))
+
+(deftest autocomplete-suggestions-test
+  (testing "GET /api/database/:id/autocomplete_suggestions"
+    (doseq [[prefix expected] {"u"   [["USERS" "Table"]
+                                      ["USER_ID" "CHECKINS :type/Integer :type/FK"]]
+                               "c"   [["CATEGORIES" "Table"]
+                                      ["CHECKINS" "Table"]
+                                      ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]
+                               "cat" [["CATEGORIES" "Table"]
+                                      ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]}]
+      (is (= expected
+             ((mt/user->client :rasta) :get 200 (format "database/%d/autocomplete_suggestions" (mt/id)) :prefix prefix))))))
 
 
-;;; GET /api/database/:id/autocomplete_suggestions
-
-(defn- suggestions-with-prefix [prefix]
-  ((mt/user->client :rasta) :get 200 (format "database/%d/autocomplete_suggestions" (mt/id)) :prefix prefix))
-
-(deftest succestions-with-prefix
-  (is (= [["USERS" "Table"]
-          ["USER_ID" "CHECKINS :type/Integer :type/FK"]]
-         (suggestions-with-prefix "u")))
-
-  (is (= [["CATEGORIES" "Table"]
-          ["CHECKINS" "Table"]
-          ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]
-         (suggestions-with-prefix "c")))
-
-  (is (= [["CATEGORIES" "Table"]
-          ["CATEGORY_ID" "VENUES :type/Integer :type/FK"]]
-         (suggestions-with-prefix "cat"))))
-
-
-;;; GET /api/database?include_cards=true
-;; Check that we get back 'virtual' tables for Saved Questions
 (defn- card-with-native-query {:style/indent 1} [card-name & {:as kvs}]
   (merge
    {:name          card-name
@@ -329,126 +344,119 @@
     :description  nil}
    kvs))
 
-(deftest saved-questions-db-is-last-on-list
-  (mt/with-temp* [Card [card (card-with-native-query "Kanye West Quote Views Per Month")]]
-    ;; run the Card which will populate its result_metadata column
-    ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
-    ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list
-    (is (= (-> card
-               virtual-table-for-card
-               saved-questions-virtual-db)
-           (last ((mt/user->client :crowberto) :get 200 "database" :include_cards true))))))
-
-(deftest saved-questions-not-inluded-if-setting-disabled
-  (testing "Make sure saved questions are NOT included if the setting is disabled"
-    (mt/with-temp Card [card (card-with-native-query "Kanye West Quote Views Per Month")]
-      (mt/with-temporary-setting-values [enable-nested-queries false]
-        ;; run the Card which will populate its result_metadata column
-        ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
-        ;; Now fetch the database list. The 'Saved Questions' DB should NOT be in the list
-        (is (= nil
-               (some (fn [database]
-                       (when (= (u/get-id database) mbql.s/saved-questions-virtual-database-id)
-                         database))
-                     ((mt/user->client :crowberto) :get 200 "database" :include_cards true))))))))
-
-(deftest pretend-collections-are-schemas
-  (testing "make sure that GET /api/database?include_cards=true groups pretends COLLECTIONS are SCHEMAS"
-    (mt/with-temp* [Collection [stamp-collection {:name "Stamps"}]
-                    Collection [coin-collection  {:name "Coins"}]
-                    Card       [stamp-card (card-with-native-query "Total Stamp Count", :collection_id (u/get-id stamp-collection))]
-                    Card       [coin-card  (card-with-native-query "Total Coin Count",  :collection_id (u/get-id coin-collection))]]
-      ;; run the Cards which will populate their result_metadata columns
-      (doseq [card [stamp-card coin-card]]
-        ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card))))
-      ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list. Cards should have their
-      ;; Collection name as their Schema
-      (is (= (saved-questions-virtual-db
-               (virtual-table-for-card coin-card  :schema "Coins")
-               (virtual-table-for-card stamp-card :schema "Stamps"))
-             (last ((mt/user->client :crowberto) :get 200 "database" :include_cards true)))))))
-
 (defn- fetch-virtual-database []
   (some #(when (= (:name %) "Saved Questions")
            %)
         ((mt/user->client :crowberto) :get 200 "database" :include_cards true)))
 
-(deftest remove-cards-with-ambiguous-columns
-  (testing "make sure that GET /api/database?include_cards=true removes Cards that have ambiguous columns"
-    (mt/with-temp* [Card [ok-card         (assoc (card-with-native-query "OK Card")         :result_metadata [{:name "cam"}])]
-                    Card [cambiguous-card (assoc (card-with-native-query "Cambiguous Card") :result_metadata [{:name "cam"} {:name "cam_2"}])]]
-      (is (= (-> ok-card
-                 virtual-table-for-card
-                 saved-questions-virtual-db)
-             (fetch-virtual-database))))))
-
-;; make sure that GET /api/database/include_cards=true removes Cards that belong to a driver that doesn't support
-;; nested queries
 (driver/register! ::no-nested-query-support
                   :parent :sql-jdbc
                   :abstract? true)
 
 (defmethod driver/supports? [::no-nested-query-support :nested-queries] [_ _] false)
 
-(deftest fetch-saved-questions-db-test
-  (mt/with-temp* [Database [bad-db   {:engine ::no-nested-query-support, :details {}}]
-                  Card     [bad-card {:name            "Bad Card"
-                                      :dataset_query   {:database (u/get-id bad-db)
-                                                        :type     :native
-                                                        :native   {:query "[QUERY GOES HERE]"}}
-                                      :result_metadata [{:name "sparrows"}]
-                                      :database_id     (u/get-id bad-db)}]
-                  Card     [ok-card  (assoc (card-with-native-query "OK Card")
-                                            :result_metadata [{:name "finches"}])]]
-    (is (= (-> ok-card
-               virtual-table-for-card
-               saved-questions-virtual-db)
-           (fetch-virtual-database)))))
-
-
-;; make sure that GET /api/database?include_cards=true removes Cards that use cumulative-sum and cumulative-count
-;; aggregations
 (defn- ok-mbql-card []
   (assoc (card-with-mbql-query "OK Card"
                                :source-table (mt/id :checkins))
          :result_metadata [{:name "num_toucans"}]))
 
-;; cumulative count
-(deftest cumulative-count
-  (mt/with-temp* [Card [ok-card (ok-mbql-card)]
-                  Card [_ (merge
-                           (mt/$ids checkins
-                                      (card-with-mbql-query "Cum Count Card"
-                                                            :source-table $$checkins
-                                                            :aggregation  [[:cum-count]]
-                                                            :breakout     [!month.date]))
-                           {:result_metadata [{:name "num_toucans"}]})]]
-    (is (= (-> ok-card
-               virtual-table-for-card
-               saved-questions-virtual-db)
-           (fetch-virtual-database)))))
+(deftest databases-list-include-saved-questions-test
+  (testing "GET /api/database?include_cards=true"
+    (testing "Check that we get back 'virtual' tables for Saved Questions"
+      (testing "The saved questions virtual DB should be the last DB in the list"
+        (mt/with-temp* [Card [card (card-with-native-query "Kanye West Quote Views Per Month")]]
+          ;; run the Card which will populate its result_metadata column
+          ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
+          ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list
+          (is (= (-> card
+                     virtual-table-for-card
+                     saved-questions-virtual-db)
+                 (last ((mt/user->client :crowberto) :get 200 "database" :include_cards true))))))
 
-;; make sure that GET /api/database/:id/metadata works for the Saved Questions 'virtual' database
-(deftest works-with-saved-questions-virtual-db
-  (mt/with-temp* [Card [card (assoc (card-with-native-query "Birthday Card")
-                                    :result_metadata [{:name "age_in_bird_years"}])]]
-    (is (= (saved-questions-virtual-db
-            (assoc (virtual-table-for-card card)
-                   :fields [{:name                     "age_in_bird_years"
-                             :table_id                 (str "card__" (u/get-id card))
-                             :id                       ["field-literal" "age_in_bird_years" "type/*"]
-                             :special_type             nil
-                             :base_type                nil
-                             :default_dimension_option nil
-                             :dimension_options        []}]))
-           ((mt/user->client :crowberto) :get 200
-            (format "database/%d/metadata" mbql.s/saved-questions-virtual-database-id))))))
+      (testing "Make sure saved questions are NOT included if the setting is disabled"
+        (mt/with-temp Card [card (card-with-native-query "Kanye West Quote Views Per Month")]
+          (mt/with-temporary-setting-values [enable-nested-queries false]
+            ;; run the Card which will populate its result_metadata column
+            ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
+            ;; Now fetch the database list. The 'Saved Questions' DB should NOT be in the list
+            (is (= nil
+                   (some (fn [database]
+                           (when (= (u/get-id database) mbql.s/saved-questions-virtual-database-id)
+                             database))
+                         ((mt/user->client :crowberto) :get 200 "database" :include_cards true))))))))
 
-(deftest return-nil-when-no-eligible-saved-questions
-  (testing "if no eligible Saved Questions exist the virtual DB metadata endpoint should just return `nil`"
-    (is (= nil
-           ((mt/user->client :crowberto) :get 204
-            (format "database/%d/metadata" mbql.s/saved-questions-virtual-database-id))))))
+    (testing "should pretend Collections are schemas"
+      (mt/with-temp* [Collection [stamp-collection {:name "Stamps"}]
+                      Collection [coin-collection  {:name "Coins"}]
+                      Card       [stamp-card (card-with-native-query "Total Stamp Count", :collection_id (u/get-id stamp-collection))]
+                      Card       [coin-card  (card-with-native-query "Total Coin Count",  :collection_id (u/get-id coin-collection))]]
+        ;; run the Cards which will populate their result_metadata columns
+        (doseq [card [stamp-card coin-card]]
+          ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card))))
+        ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list. Cards should have their
+        ;; Collection name as their Schema
+        (is (= (saved-questions-virtual-db
+                 (virtual-table-for-card coin-card  :schema "Coins")
+                 (virtual-table-for-card stamp-card :schema "Stamps"))
+               (last ((mt/user->client :crowberto) :get 200 "database" :include_cards true))))))
+
+    (testing "should remove Cards that have ambiguous columns"
+      (mt/with-temp* [Card [ok-card         (assoc (card-with-native-query "OK Card")         :result_metadata [{:name "cam"}])]
+                      Card [cambiguous-card (assoc (card-with-native-query "Cambiguous Card") :result_metadata [{:name "cam"} {:name "cam_2"}])]]
+        (is (= (-> ok-card
+                   virtual-table-for-card
+                   saved-questions-virtual-db)
+               (fetch-virtual-database)))))
+
+    (testing "should remove Cards that belong to a driver that doesn't support nested queries"
+      (mt/with-temp* [Database [bad-db   {:engine ::no-nested-query-support, :details {}}]
+                      Card     [bad-card {:name            "Bad Card"
+                                          :dataset_query   {:database (u/get-id bad-db)
+                                                            :type     :native
+                                                            :native   {:query "[QUERY GOES HERE]"}}
+                                          :result_metadata [{:name "sparrows"}]
+                                          :database_id     (u/get-id bad-db)}]
+                      Card     [ok-card  (assoc (card-with-native-query "OK Card")
+                                                :result_metadata [{:name "finches"}])]]
+        (is (= (-> ok-card
+                   virtual-table-for-card
+                   saved-questions-virtual-db)
+               (fetch-virtual-database)))))
+
+    (testing "should remove Cards that use cumulative-sum and cumulative-count aggregations"
+      (mt/with-temp* [Card [ok-card (ok-mbql-card)]
+                      Card [_ (merge
+                               (mt/$ids checkins
+                                 (card-with-mbql-query "Cum Count Card"
+                                   :source-table $$checkins
+                                   :aggregation  [[:cum-count]]
+                                   :breakout     [!month.date]))
+                               {:result_metadata [{:name "num_toucans"}]})]]
+        (is (= (-> ok-card
+                   virtual-table-for-card
+                   saved-questions-virtual-db)
+               (fetch-virtual-database)))))))
+
+(deftest db-metadata-saved-questions-db-test
+  (testing "GET /api/database/:id/metadata works for the Saved Questions 'virtual' database"
+    (mt/with-temp* [Card [card (assoc (card-with-native-query "Birthday Card")
+                                      :result_metadata [{:name "age_in_bird_years"}])]]
+      (is (= (saved-questions-virtual-db
+               (assoc (virtual-table-for-card card)
+                      :fields [{:name                     "age_in_bird_years"
+                                :table_id                 (str "card__" (u/get-id card))
+                                :id                       ["field-literal" "age_in_bird_years" "type/*"]
+                                :special_type             nil
+                                :base_type                nil
+                                :default_dimension_option nil
+                                :dimension_options        []}]))
+             ((mt/user->client :crowberto) :get 200
+              (format "database/%d/metadata" mbql.s/saved-questions-virtual-database-id)))))
+
+    (testing "if no eligible Saved Questions exist the virtual DB metadata endpoint should just return `nil`"
+      (is (= nil
+             ((mt/user->client :crowberto) :get 204
+              (format "database/%d/metadata" mbql.s/saved-questions-virtual-database-id)))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -571,8 +579,6 @@
          ((mt/user->client :rasta) :post 403 (format "database/%d/discard_values" (mt/id))))))
 
 
-;;; Tests for /POST /api/database/validate
-
 ;; For some stupid reason the *real* version of `test-database-connection` is set up to do nothing for tests. I'm
 ;; guessing it's done that way so we can save invalid DBs for some silly tests. Instead of doing it the right way
 ;; and using `with-redefs` to disable it in the few tests where it makes sense, we actually have to use `with-redefs`
@@ -582,34 +588,33 @@
     nil
     {:valid false, :message "Error!"}))
 
-(deftest nonadmins-cant-do-something
-  (is (= "You don't have permissions to do that."
-         (with-redefs [database-api/test-database-connection test-database-connection]
-           ((mt/user->client :rasta) :post 403 "database/validate"
-            {:details {:engine :h2, :details (:details (mt/db))}})))))
+(deftest validate-database-test
+  (testing "POST /api/database/validate"
+    (with-redefs [database-api/test-database-connection test-database-connection]
+      (testing "Should require superuser permissions"
+        (is (= "You don't have permissions to do that."
+               ((mt/user->client :rasta) :post 403 "database/validate"
+                {:details {:engine :h2, :details (:details (mt/db))}}))))
 
-(deftest gets-details
-  (is (= (:details (mt/db))
-         (with-redefs [database-api/test-database-connection test-database-connection]
-           (#'database-api/test-connection-details "h2" (:details (mt/db)))))))
+      (testing "Underlying `test-connection-details` function should work"
+        (is (= (:details (mt/db))
+               (#'database-api/test-connection-details "h2" (:details (mt/db))))))
 
-(deftest validate-database-details-test
-  (with-redefs [database-api/test-database-connection test-database-connection]
-    (testing "Valid database connection details"
-      (is (= {:valid true}
-             ((mt/user->client :crowberto) :post 200 "database/validate"
-              {:details {:engine :h2, :details (:details (mt/db))}}))))
+      (testing "Valid database connection details"
+        (is (= {:valid true}
+               ((mt/user->client :crowberto) :post 200 "database/validate"
+                {:details {:engine :h2, :details (:details (mt/db))}}))))
 
-    (testing "invalid database connection details"
-      (mt/suppress-output
-        (testing "calling test-connection-details directly"
-          (is (= {:valid false, :message "Error!"}
-                 (#'database-api/test-connection-details "h2" {:db "ABC"}))))
+      (testing "invalid database connection details"
+        (mt/suppress-output
+          (testing "calling test-connection-details directly"
+            (is (= {:valid false, :message "Error!"}
+                   (#'database-api/test-connection-details "h2" {:db "ABC"}))))
 
-        (testing "via the API endpoint"
-          (is (= {:valid false}
-                 ((mt/user->client :crowberto) :post 200 "database/validate"
-                  {:details {:engine :h2, :details {:db "ABC"}}}))))))))
+          (testing "via the API endpoint"
+            (is (= {:valid false}
+                   ((mt/user->client :crowberto) :post 200 "database/validate"
+                    {:details {:engine :h2, :details {:db "ABC"}}})))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

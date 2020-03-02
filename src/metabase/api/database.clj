@@ -189,10 +189,25 @@
   [db]
   (assoc db :schedules (expanded-schedules db)))
 
+(defn- get-database-hydrate-include
+  "If URL param `?include=` was passed to `GET /api/database/:id`, hydrate the Database appropriately."
+  [db include]
+  (if-not include
+    db
+    (-> (hydrate db (case include
+                      "tables"        :tables
+                      "tables.fields" [:tables [:fields [:target :has_field_values] :has_field_values]]))
+        (update :tables (partial filter mi/can-read?)))))
+
 (api/defendpoint GET "/:id"
-  "Get `Database` with ID."
-  [id]
-  (add-expanded-schedules (api/read-check Database id)))
+  "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
+  belonging to this database, or the Tables and Fields, respectively."
+  [id include]
+  {include (s/maybe (s/enum "tables" "tables.fields"))}
+  (println "include:" include) ; NOCOMMIT
+  (-> (api/read-check Database id)
+      add-expanded-schedules
+      (get-database-hydrate-include include)))
 
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
