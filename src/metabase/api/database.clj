@@ -207,7 +207,6 @@
   []
   (saved-cards-virtual-db-metadata :include-fields? true))
 
-
 (defn- db-metadata [id]
   (-> (api/read-check Database id)
       (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics])
@@ -584,12 +583,12 @@
   "Returns a list of all the schemas found for the database `id`"
   [id]
   (api/read-check Database id)
-  (->> (db/select-field :schema Table :db_id id {:order-by [[:%lower.schema :asc]]})
+  (->> (db/select-field :schema Table :db_id id, :active true, {:order-by [[:%lower.schema :asc]]})
        (filter (partial can-read-schema? id))
        sort))
 
-(api/defendpoint GET ["/:saved-questions/schemas"
-                      :saved-questions (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+(api/defendpoint GET ["/:virtual-db/schemas"
+                      :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
   "Returns a list of all the schemas found for the saved questions virtual database."
   []
   (when (public-settings/enable-nested-queries)
@@ -611,8 +610,8 @@
        seq
        api/check-404))
 
-(api/defendpoint GET ["/:saved-questions/schema/:schema"
-                      :saved-questions (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+(api/defendpoint GET ["/:virtual-db/schema/:schema"
+                      :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
   "Returns a list of Tables for the saved questions virtual database."
   [schema]
   (when (public-settings/enable-nested-queries)
