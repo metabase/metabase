@@ -453,7 +453,7 @@ export default class Visualization extends React.PureComponent {
     );
 
     let { gridSize, gridUnit, classNameWidgets } = this.props;
-    if (!gridSize && gridUnit) {
+    if (!gridSize && gridUnit && width != null && height != null) {
       gridSize = {
         width: Math.round(width / (gridUnit * 4)),
         height: Math.round(height / (gridUnit * 3)),
