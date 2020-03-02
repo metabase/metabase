@@ -1,4 +1,4 @@
-import { signInAsAdmin, restore, popover } from "__support__/cypress";
+import { signInAsAdmin, restore } from "__support__/cypress";
 
 describe("chart drill", () => {
   before(restore);
