@@ -23,7 +23,10 @@
 
      (can-connect-with-details? :postgres {:host \"localhost\", :port 5432, ...})"
   ^Boolean [driver details-map & [throw-exceptions]]
-  {:pre [(keyword? driver) (map? details-map)]}
+  {:pre [(or (keyword? driver)
+             (println "driver:" driver) ; NOCOMMIT
+             )
+         (map? details-map)]}
   (if throw-exceptions
     (try
       (u/with-timeout can-connect-timeout-ms

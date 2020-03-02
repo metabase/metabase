@@ -31,7 +31,7 @@
              [sync-metadata :as sync-metadata]]
             [metabase.util
              [cron :as cron-util]
-             [i18n :refer [deferred-tru]]
+             [i18n :refer [deferred-tru trs tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -254,12 +254,13 @@
     (autocomplete-results tables fields)))
 
 (api/defendpoint GET "/:id/autocomplete_suggestions"
-  "Return a list of autocomplete suggestions for a given PREFIX.
-   This is intened for use with the ACE Editor when the User is typing raw SQL.
-   Suggestions include matching `Tables` and `Fields` in this `Database`.
+  "Return a list of autocomplete suggestions for a given `prefix`.
 
-   Tables are returned in the format `[table_name \"Table\"]`;
-   Fields are returned in the format `[field_name \"table_name base_type special_type\"]`"
+  This is intened for use with the ACE Editor when the User is typing raw SQL. Suggestions include matching `Tables`
+  and `Fields` in this `Database`.
+
+  Tables are returned in the format `[table_name \"Table\"]`;
+  Fields are returned in the format `[field_name \"table_name base_type special_type\"]`"
   [id prefix]
   {prefix su/NonBlankString}
   (api/read-check Database id)
@@ -311,6 +312,7 @@
    connection succeeds."
   [engine {:keys [host port] :as details}, & {:keys [invalid-response-handler]
                                               :or   {invalid-response-handler invalid-connection-response}}]
+  {:pre [(some? engine)]}
   ;; This test is disabled for testing so we can save invalid databases, I guess (?) Not sure why this is this way :/
   (when-not config/is-test?
     (let [engine  (keyword engine)
@@ -321,18 +323,20 @@
           nil
 
           (and host port (u/host-port-up? host port))
-          (invalid-response-handler :dbname (format "Connection to '%s:%d' successful, but could not connect to DB."
-                                                    host port))
+          (invalid-response-handler :dbname (tru "Connection to ''{0}:{1}'' successful, but could not connect to DB."
+                                                 host port))
 
           (and host (u/host-up? host))
-          (invalid-response-handler :port (format "Connection to '%s' successful, but port %d is invalid." port))
+          (invalid-response-handler :port (tru "Connection to host ''{0}'' successful, but port {1} is invalid."
+                                               host port))
 
           host
-          (invalid-response-handler :host (format "'%s' is not reachable" host))
+          (invalid-response-handler :host (tru "Host ''{0}'' is not reachable" host))
 
           :else
-          (invalid-response-handler :db "Unable to connect to database."))
+          (invalid-response-handler :db (tru "Unable to connect to database.")))
         (catch Throwable e
+          (log/error e (trs "Cannot connect to Database"))
           (invalid-response-handler :dbname (.getMessage e)))))))
 
 ;; TODO - Just make `:ssl` a `feature`
@@ -345,10 +349,11 @@
     (contains? driver-props "ssl")))
 
 (s/defn ^:private test-connection-details :- su/Map
-  "Try a making a connection to database ENGINE with DETAILS.
-   Tries twice: once with SSL, and a second time without if the first fails. If either attempt is successful, returns
-   the details used to successfully connect.  Otherwise returns a map with the connection error message. (This map
-   will also contain the key `:valid` = `false`, which you can use to distinguish an error from valid details.)"
+  "Try a making a connection to database `engine` with `details`.
+
+  Tries twice: once with SSL, and a second time without if the first fails. If either attempt is successful, returns
+  the details used to successfully connect. Otherwise returns a map with the connection error message. (This map will
+  also contain the key `:valid` = `false`, which you can use to distinguish an error from valid details.)"
   [engine :- DBEngineString, details :- su/Map]
   (let [details (if (supports-ssl? (keyword engine))
                   (assoc details :ssl true)
@@ -361,7 +366,6 @@
                  (true? (:ssl details)))
           (recur (assoc details :ssl false))
           (or error details))))))
-
 
 (def ^:private CronSchedulesMap
   "Schema with values for a DB's schedules that can be put directly into the DB."
@@ -452,7 +456,9 @@
     (let [details    (if-not (= protected-password (:password details))
                        details
                        (assoc details :password (get-in database [:details :password])))
-          conn-error (test-database-connection engine details)
+          conn-error (when (some? details)
+                       (assert (some? engine))
+                       (test-database-connection engine details))
           full-sync? (when-not (nil? is_full_sync)
                        (boolean is_full_sync))]
       (if conn-error
