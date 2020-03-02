@@ -10,6 +10,9 @@
             [metabase.api.database :as database-api]
             [metabase.driver.util :as driver.u]
             [metabase.mbql.schema :as mbql.s]
+            [metabase.models
+             [permissions :as perms]
+             [permissions-group :as perms-group]]
             [metabase.sync
              [analyze :as analyze]
              [field-values :as field-values]
