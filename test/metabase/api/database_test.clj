@@ -7,7 +7,9 @@
              [models :refer [Card Collection Database Field FieldValues Table]]
              [test :as mt]
              [util :as u]]
-            [metabase.api.database :as database-api]
+            [metabase.api
+             [database :as database-api]
+             [table :as table-api]]
             [metabase.driver.util :as driver.u]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models
@@ -21,8 +23,6 @@
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan.db :as db]))
-
-(require 'metabase.driver.h2) ; NOCOMMIT
 
 (use-fixtures :once (fixtures/initialize :plugins))
 
@@ -658,11 +658,22 @@
 
     (testing "Looking for a database that doesn't exist should return a 404"
       (is (= "Not found."
-             ((mt/user->client :crowberto) :get 404 (format "database/%s/schemas" Integer/MAX_VALUE)))))))
+             ((mt/user->client :crowberto) :get 404 (format "database/%s/schemas" Integer/MAX_VALUE)))))
+
+    (testing "should work for the saved questions 'virtual' database"
+      (mt/with-temp* [Collection [coll   {:name "My Collection"}]
+                      Card       [card-1 (assoc (card-with-native-query "Card 1") :collection_id (:id coll))]
+                      Card       [card-2 (card-with-native-query "Card 2")]]
+        ;; run the cards to populate their result_metadata columns
+        (doseq [card [card-1 card-2]]
+          ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card))))
+        (is (= ["Everything else"
+                "My Collection"]
+               ((mt/user->client :lucky) :get 200 (format "database/%d/schemas" mbql.s/saved-questions-virtual-database-id))))))))
 
 (deftest get-schema-tables-test
   (testing "GET /api/database/:id/schema/:schema"
-    (testing "Can we fetch the Tables in a Schema?"
+    (testing "Permissions: Can we fetch the Tables in a schema?"
       (mt/with-temp* [Database [{db-id :id}]
                       Table    [t1 {:db_id db-id, :schema "schema1", :name "t1"}]
                       Table    [t2 {:db_id db-id, :schema "schema2"}]
@@ -699,19 +710,19 @@
 
     (testing "should return a 403 for a user that doesn't have read permissions"
       (testing "for the DB"
-        (is (= "You don't have permissions to do that."
-               (mt/with-temp* [Database [{database-id :id}]
-                               Table    [{table-id :id} {:db_id database-id, :schema "test"}]]
-                 (perms/revoke-permissions! (perms-group/all-users) database-id)
+        (mt/with-temp* [Database [{database-id :id}]
+                        Table    [{table-id :id} {:db_id database-id, :schema "test"}]]
+          (perms/revoke-permissions! (perms-group/all-users) database-id)
+          (is (= "You don't have permissions to do that."
                  ((mt/user->client :rasta) :get 403 (format "database/%s/schema/%s" database-id "test"))))))
 
       (testing "for the schema"
-        (is (= "You don't have permissions to do that."
-               (mt/with-temp* [Database [{database-id :id}]
-                               Table    [_ {:db_id database-id, :schema "schema-with-perms"}]
-                               Table    [_ {:db_id database-id, :schema "schema-without-perms"}]]
-                 (perms/revoke-permissions! (perms-group/all-users) database-id)
-                 (perms/grant-permissions!  (perms-group/all-users) database-id "schema-with-perms")
+        (mt/with-temp* [Database [{database-id :id}]
+                        Table    [_ {:db_id database-id, :schema "schema-with-perms"}]
+                        Table    [_ {:db_id database-id, :schema "schema-without-perms"}]]
+          (perms/revoke-permissions! (perms-group/all-users) database-id)
+          (perms/grant-permissions!  (perms-group/all-users) database-id "schema-with-perms")
+          (is (= "You don't have permissions to do that."
                  ((mt/user->client :rasta) :get 403 (format "database/%s/schema/%s" database-id "schema-without-perms")))))))
 
     (testing "Should return a 404 if the schema isn't found"
@@ -734,4 +745,34 @@
                       Table    [_ {:db_id database-id, :schema "public", :name "table"}]
                       Table    [_ {:db_id database-id, :schema "public", :name "inactive-table", :active false}]]
         (is (= ["table"]
-               (map :name ((mt/user->client :rasta) :get 200 (format "database/%s/schema/%s" database-id "public")))))))))
+               (map :name ((mt/user->client :rasta) :get 200 (format "database/%s/schema/%s" database-id "public")))))))
+
+    (testing "should work for the saved questions 'virtual' database"
+      (mt/with-temp* [Collection [coll   {:name "My Collection"}]
+                      Card       [card-1 (assoc (card-with-native-query "Card 1") :collection_id (:id coll))]
+                      Card       [card-2 (card-with-native-query "Card 2")]]
+        ;; run the cards to populate their result_metadata columns
+        (doseq [card [card-1 card-2]]
+          ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card))))
+        (testing "Should be able to get saved questions in a specific collection"
+          (is (= [{:id           (format "card__%d" (:id card-1))
+                   :db_id        (mt/id)
+                   :display_name "Card 1"
+                   :schema       "My Collection"
+                   :description  nil}]
+                 ((mt/user->client :lucky) :get 200
+                  (format "database/%d/schema/My Collection" mbql.s/saved-questions-virtual-database-id)))))
+
+        (testing "Should be able to get saved questions in the root collection"
+          (is (= [{:id           (format "card__%d" (:id card-2))
+                   :db_id        (mt/id)
+                   :display_name "Card 2"
+                   :schema       (table-api/root-collection-schema-name)
+                   :description  nil}]
+                 ((mt/user->client :lucky) :get 200
+                  (format "database/%d/schema/%s" mbql.s/saved-questions-virtual-database-id (table-api/root-collection-schema-name))))))
+
+        (testing "Should throw 404 if the schema/Collection doesn't exist"
+          (is (= "Not found."
+                 ((mt/user->client :lucky) :get 404
+                  (format "database/%d/schema/Coin Collection" mbql.s/saved-questions-virtual-database-id)))))))))
