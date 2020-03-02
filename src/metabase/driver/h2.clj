@@ -43,7 +43,7 @@
     (connection-string->file+options \"file:my-crazy-db;OPTION=100;OPTION_X=TRUE\")
       -> [\"file:my-crazy-db\" {\"OPTION\" \"100\", \"OPTION_X\" \"TRUE\"}]"
   [^String connection-string]
-  {:pre [connection-string]}
+  {:pre [(string? connection-string)]}
   (let [[file & options] (str/split connection-string #";+")
         options          (into {} (for [option options]
                                     (str/split option #"=")))]
@@ -261,12 +261,14 @@
 (defn- connection-string-set-safe-options
   "Add Metabase Security Settings™ to this `connection-string` (i.e. try to keep shady users from writing nasty SQL)."
   [connection-string]
+  {:pre [(string? connection-string)]}
   (let [[file options] (connection-string->file+options connection-string)]
     (file+options->connection-string file (merge options {"IFEXISTS"         "TRUE"
                                                           "ACCESS_MODE_DATA" "r"}))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :h2
   [_ details]
+  {:pre [(map? details)]}
   (dbspec/h2 (if mdb/*allow-potentailly-unsafe-connections*
                details
                (update details :db connection-string-set-safe-options))))
