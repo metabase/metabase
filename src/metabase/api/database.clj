@@ -18,6 +18,7 @@
              [util :as mbql.u]]
             [metabase.models
              [card :refer [Card]]
+             [collection :as collection :refer [Collection]]
              [database :as database :refer [Database protected-password]]
              [field :refer [Field readable-fields-only]]
              [field-values :refer [FieldValues]]
@@ -100,20 +101,27 @@
              (map (comp name :name) result-metadata))))
 
 (defn- card-uses-unnestable-aggregation?
-  "Since cumulative count and cumulative sum aggregations are done in Clojure-land we can't use Cards that
-   use queries with those aggregations as source queries. This function determines whether CARD is using one
-   of those queries so we can filter it out in Clojure-land."
+  "Since cumulative count and cumulative sum aggregations are done in Clojure-land we can't use Cards that use queries
+  with those aggregations as source queries. This function determines whether `card` is using one of those queries so
+  we can filter it out in Clojure-land."
   [{{{aggregations :aggregation} :query} :dataset_query}]
   (mbql.u/match aggregations #{:cum-count :cum-sum}))
 
 (defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
-  []
+  [& additional-constraints]
   (as-> (db/select [Card :name :description :database_id :dataset_query :id :collection_id :result_metadata]
           :result_metadata [:not= nil] :archived false
-          {:order-by [[:%lower.name :asc]]}) <>
+          {:where    (into [:and
+                            [:not= :result_metadata nil]
+                            [:= :archived false]
+                            (collection/visible-collection-ids->honeysql-filter-clause
+                             (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+                           additional-constraints)
+           :order-by [[:%lower.name :asc]]}) <>
     (filter card-database-supports-nested-queries? <>)
-    (filter mi/can-read? <>)
+    ;; TODO - it would make sense IMO to add a column to Card and store this information so we don't need to calculate
+    ;; it every time. Something like `can_be_nested`
     (remove card-uses-unnestable-aggregation? <>)
     (remove card-has-ambiguous-columns? <>)
     (hydrate <> :collection)))
@@ -576,15 +584,25 @@
   "Returns a list of all the schemas found for the database `id`"
   [id]
   (api/read-check Database id)
-  (->> (db/select-field :schema Table :db_id id)
+  (->> (db/select-field :schema Table :db_id id {:order-by [[:%lower.schema :asc]]})
        (filter (partial can-read-schema? id))
        sort))
+
+(api/defendpoint GET ["/:saved-questions/schemas"
+                      :saved-questions (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+  "Returns a list of all the schemas found for the saved questions virtual database."
+  []
+  (when (public-settings/enable-nested-queries)
+    (->> (cards-virtual-tables)
+         (map :schema)
+         distinct
+         (sort-by str/lower-case))))
 
 
 ;;; ------------------------------------- GET /api/database/:id/schema/:schema ---------------------------------------
 
 (api/defendpoint GET "/:id/schema/:schema"
-  "Returns a list of tables for the given database `id` and `schema`"
+  "Returns a list of Tables for the given Database `id` and `schema`"
   [id schema]
   (api/read-check Database id)
   (api/check-403 (can-read-schema? id schema))
@@ -592,6 +610,16 @@
        (filter mi/can-read?)
        seq
        api/check-404))
+
+(api/defendpoint GET ["/:saved-questions/schema/:schema"
+                      :saved-questions (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+  "Returns a list of Tables for the saved questions virtual database."
+  [schema]
+  (when (public-settings/enable-nested-queries)
+    (->> (source-query-cards (if (= schema (table-api/root-collection-schema-name))
+                               [:= :collection_id nil]
+                               [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))]))
+         (map table-api/card->virtual-table))))
 
 
 (api/define-routes)
