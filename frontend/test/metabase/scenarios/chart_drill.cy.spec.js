@@ -40,7 +40,7 @@ describe("chart drill", () => {
         .trigger("mouseup", 200, 200);
 
       // new filter applied
-      cy.contains("Created At between June, 2016 October, 2016");
+      cy.contains("Created At between May, 2016 July, 2016");
       // more granular axis labels
       cy.contains("June, 2016");
       // confirm that product category is still broken out
