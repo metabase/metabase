@@ -22,6 +22,8 @@
             [schema.core :as s]
             [toucan.db :as db]))
 
+(require 'metabase.driver.h2) ; NOCOMMIT
+
 (use-fixtures :once (fixtures/initialize :plugins))
 
 ;; HELPER FNS
@@ -143,8 +145,9 @@
               update! (fn [expected-status-code]
                         ((mt/user->client :crowberto) :put expected-status-code (format "database/%d" db-id) updates))]
           (testing "Should check that connection details are valid on save"
-            (is (= false
-                   (:valid (update! 400)))))
+            (mt/suppress-output
+              (is (= false
+                     (:valid (update! 400))))))
           (testing "If connection details are valid, we should be able to update the Database"
             (with-redefs [driver/can-connect? (constantly true)]
               (is (= nil

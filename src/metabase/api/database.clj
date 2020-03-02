@@ -4,7 +4,6 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [metabase
-             [config :as config]
              [driver :as driver]
              [events :as events]
              [public-settings :as public-settings]
@@ -313,31 +312,29 @@
   [engine {:keys [host port] :as details}, & {:keys [invalid-response-handler]
                                               :or   {invalid-response-handler invalid-connection-response}}]
   {:pre [(some? engine)]}
-  ;; This test is disabled for testing so we can save invalid databases, I guess (?) Not sure why this is this way :/
-  (when-not config/is-test?
-    (let [engine  (keyword engine)
-          details (assoc details :engine engine)]
-      (try
-        (cond
-          (driver.u/can-connect-with-details? engine details :throw-exceptions)
-          nil
+  (let [engine  (keyword engine)
+        details (assoc details :engine engine)]
+    (try
+      (cond
+        (driver.u/can-connect-with-details? engine details :throw-exceptions)
+        nil
 
-          (and host port (u/host-port-up? host port))
-          (invalid-response-handler :dbname (tru "Connection to ''{0}:{1}'' successful, but could not connect to DB."
-                                                 host port))
-
-          (and host (u/host-up? host))
-          (invalid-response-handler :port (tru "Connection to host ''{0}'' successful, but port {1} is invalid."
+        (and host port (u/host-port-up? host port))
+        (invalid-response-handler :dbname (tru "Connection to ''{0}:{1}'' successful, but could not connect to DB."
                                                host port))
 
-          host
-          (invalid-response-handler :host (tru "Host ''{0}'' is not reachable" host))
+        (and host (u/host-up? host))
+        (invalid-response-handler :port (tru "Connection to host ''{0}'' successful, but port {1} is invalid."
+                                             host port))
 
-          :else
-          (invalid-response-handler :db (tru "Unable to connect to database.")))
-        (catch Throwable e
-          (log/error e (trs "Cannot connect to Database"))
-          (invalid-response-handler :dbname (.getMessage e)))))))
+        host
+        (invalid-response-handler :host (tru "Host ''{0}'' is not reachable" host))
+
+        :else
+        (invalid-response-handler :db (tru "Unable to connect to database.")))
+      (catch Throwable e
+        (log/error e (trs "Cannot connect to Database"))
+        (invalid-response-handler :dbname (.getMessage e))))))
 
 ;; TODO - Just make `:ssl` a `feature`
 (defn- supports-ssl?
