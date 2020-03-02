@@ -268,7 +268,7 @@
 
 (defmethod sql-jdbc.conn/connection-details->spec :h2
   [_ details]
-  {:pre [(map? details) (string? (:db details))]}
+  {:pre [(map? details)]}
   (dbspec/h2 (if mdb/*allow-potentailly-unsafe-connections*
                details
                (update details :db connection-string-set-safe-options))))
