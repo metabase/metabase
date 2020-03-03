@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-
+import { connect } from "react-redux";
 import _ from "underscore";
 
 import Collapse from "react-collapse";
@@ -10,6 +10,8 @@ import Button from "metabase/components/Button";
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";
 import MetabaseUtils from "metabase/lib/utils";
 import SettingsSetting from "./SettingsSetting";
+
+import { updateSettings } from "../settings";
 
 const VALIDATIONS = {
   email: {
@@ -28,6 +30,10 @@ const SAVE_SETTINGS_BUTTONS_STATES = {
   success: t`Changes saved!`,
 };
 
+@connect(
+  null,
+  { updateSettings },
+)
 export default class SettingsBatchForm extends Component {
   constructor(props, context) {
     super(props, context);
@@ -138,15 +144,30 @@ export default class SettingsBatchForm extends Component {
     }
   }
 
-  handleChangeEvent(key, value) {
-    this.setState(previousState => ({
-      dirty: true,
-      formData: {
+  handleChangeEvent = (key, value) => {
+    this.setState(previousState => {
+      const settingsValues = {
         ...previousState.formData,
-        [key]: MetabaseUtils.isEmpty(value) ? null : value,
-      },
-    }));
-  }
+        [key]: value,
+      };
+
+      // support "onChanged"
+      const setting = _.findWhere(this.props.elements, { key });
+      if (setting && setting.onChanged) {
+        setting.onChanged(
+          previousState.formData[key],
+          settingsValues[key],
+          settingsValues,
+          this.handleChangeEvent,
+        );
+      }
+
+      return {
+        dirty: true,
+        formData: settingsValues,
+      };
+    });
+  };
 
   handleFormErrors(error) {
     // parse and format
@@ -255,6 +276,10 @@ export default class SettingsBatchForm extends Component {
           ),
         )}
 
+        {formErrors && formErrors.message && (
+          <div className="m2 text-error text-bold">{formErrors.message}</div>
+        )}
+
         <div className="m2 mb4">
           <Button
             mr={1}
@@ -273,12 +298,6 @@ export default class SettingsBatchForm extends Component {
               disabled,
               dirty,
             })}
-
-          {formErrors && formErrors.message ? (
-            <span className="pl3 text-error text-bold">
-              {formErrors.message}
-            </span>
-          ) : null}
         </div>
       </div>
     );
@@ -312,7 +331,7 @@ class CollapsibleSection extends React.Component {
           onClick={this.handleToggle.bind(this)}
         >
           <div className="flex align-center">
-            <DisclosureTriangle open={show} />
+            <DisclosureTriangle className="mx1" open={show} />
             <h3>{title}</h3>
           </div>
         </div>

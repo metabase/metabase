@@ -48,6 +48,7 @@
     "react-addons-shallow-compare": "^15.2.1",
     "react-ansi-style": "^1.0.0",
     "react-collapse": "^4.0.3",
+    "react-color": "^2.14.1",
     "react-copy-to-clipboard": "^5.0.1",
     "react-dnd": "3",
     "react-dnd-html5-backend": "3",
@@ -92,6 +93,7 @@
     "@babel/standalone": "^7.4.5",
     "@cypress/webpack-preprocessor": "^4.1.0",
     "@slack/client": "^3.5.4",
+    "@testing-library/cypress": "^5.0.2",
     "@testing-library/jest-dom": "^4.0.0",
     "@testing-library/react": "^8.0.6",
     "babel-cli": "^6.11.4",
@@ -113,7 +115,7 @@
     "color-diff": "^1.1.0",
     "concurrently": "^3.1.0",
     "css-loader": "^0.28.7",
-    "cypress": "^3.7.0",
+    "cypress": "3.8.2",
     "documentation": "^4.0.0-rc.1",
     "enzyme": "^3.8.0",
     "enzyme-2": "npm:enzyme@2",
@@ -154,7 +156,6 @@
     "karma-webpack": "^2.0.5",
     "lint-staged": "^3.3.1",
     "mockdate": "^2.0.2",
-    "npm": "^5.8.0",
     "postcss-cssnext": "^2.4.0",
     "postcss-import": "^9.0.0",
     "postcss-loader": "^2.0.8",
@@ -178,11 +179,12 @@
   },
   "scripts": {
     "dev": "concurrently --kill-others -p name -n 'backend,frontend,docs' -c 'blue,green,yellow' 'lein run' 'yarn build-hot' 'yarn docs'",
-    "lint": "yarn lint-eslint && yarn lint-prettier",
+    "lint": "yarn lint-eslint && yarn lint-prettier && yarn lint-flow && yarn lint-docs-links",
     "lint-eslint": "yarn && eslint --ext .js --ext .jsx --rulesdir frontend/lint/eslint-rules --max-warnings 0 frontend/src frontend/test",
     "lint-prettier": "yarn && prettier -l 'frontend/**/*.{js,jsx,css}' || (echo '\nThese files are not formatted correctly. Did you forget to \"yarn prettier\"?' && false)",
-    "flow": "yarn && flow check",
-    "test": "yarn test-unit && yarn test-timezones && yarn test-integration && yarn test-e2e && yarn test-karma",
+    "lint-flow": "yarn && flow check",
+    "lint-docs-links": "yarn && ./bin/verify-doc-links",
+    "test": "yarn test-unit && yarn test-timezones && yarn test-integration && yarn test-cypress && yarn test-e2e && yarn test-karma",
     "test-unit": "yarn && jest --maxWorkers=8 --config jest.unit.conf.json",
     "test-unit-watch": "yarn test-unit --watch",
     "test-unit-update-snapshot": "yarn test-unit --updateSnapshot",
@@ -208,16 +210,20 @@
     "eslint-fix": "yarn && eslint --fix --ext .js --ext .jsx --rulesdir frontend/lint/eslint-rules frontend/src frontend/test",
     "docs": "documentation serve --watch frontend/src/metabase-lib/lib/**",
     "ci": "yarn ci-frontend && yarn ci-backend",
-    "ci-frontend": "yarn lint && yarn flow && yarn test",
+    "ci-frontend": "yarn lint && yarn test",
     "ci-backend": "lein docstring-checker && lein bikeshed && lein eastwood && lein test",
-    "test-cypress-headless": "yarn build && ./bin/build-for-test && yarn test-cypress-no-build",
+    "test-cypress": "yarn build && ./bin/build-for-test && yarn test-cypress-no-build",
     "test-cypress-open": "./bin/build-for-test && yarn test-cypress-no-build --open",
-    "test-cypress-no-build": "yarn && babel-node ./frontend/test/__runner__/run_cypress_tests.js"
+    "test-cypress-no-build": "yarn && CONFIG_FILE=frontend/test/cypress.json babel-node ./frontend/test/__runner__/run_cypress_tests.js",
+    "create-cypress-snapshots": "yarn && CONFIG_FILE=frontend/test/cypress-snapshots.json babel-node ./frontend/test/__runner__/run_cypress_tests.js"
   },
   "lint-staged": {
     "frontend/**/*.{js,jsx,css}": [
       "prettier --write",
       "git add"
     ]
+  },
+  "resolutions": {
+    "cypress": "3.8.2"
   }
 }

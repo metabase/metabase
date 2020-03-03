@@ -51,10 +51,10 @@
 (defmethod tx/dbdef->connection-details :sparksql
   [driver context {:keys [database-name]}]
   (merge
-   {:host     "localhost"
-    :port     10000
-    :user     "admin"
-    :password "admin"}
+   {:host     (tx/db-test-env-var-or-throw :sparksql :host "localhost")
+    :port     (Integer/parseUnsignedInt (tx/db-test-env-var-or-throw :sparksql :port "10000"))
+    :user     (tx/db-test-env-var-or-throw :sparksql :user "admin")
+    :password (tx/db-test-env-var-or-throw :sparksql :password "admin")}
    (when (= context :db)
      {:db (tx/format-name driver database-name)})))
 
@@ -119,3 +119,13 @@
   (apply execute/sequentially-execute-sql! args))
 
 (defmethod sql.tx/pk-sql-type :sparksql [_] "INT")
+
+(defmethod tx/aggregate-column-info :sparksql
+  ([driver ag-type]
+   ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type))
+
+  ([driver ag-type field]
+   (merge
+    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
+    (when (= ag-type :sum)
+      {:base_type :type/BigInteger}))))

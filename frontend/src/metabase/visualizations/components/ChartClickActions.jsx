@@ -2,7 +2,6 @@
 
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import cx from "classnames";
 
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
@@ -176,15 +175,12 @@ export default class ChartClickActions extends Component {
         {popover ? (
           popover
         ) : (
-          <div className="text-bold text-medium">
+          <div className="text-bold">
             {sections.map(([key, actions]) => (
-              <div
-                key={key}
-                className="border-row-divider p2 flex align-center text-default-hover"
-              >
+              <div key={key} className="border-row-divider flex align-center">
                 <Icon
                   name={(SECTIONS[key] && SECTIONS[key].icon) || "unknown"}
-                  className="mr3"
+                  className="mr1 pl2 text-medium"
                   size={16}
                 />
                 {actions.map((action, index) => (
@@ -213,10 +209,8 @@ export const ChartClickAction = ({
   isLastItem: any,
   handleClickAction: any,
 }) => {
-  const className = cx(
-    "text-brand-hover cursor-pointer no-decoration",
-    isLastItem ? "pr2" : "pr3",
-  );
+  const className =
+    "text-brand-hover cursor-pointer no-decoration p2 flex-auto";
   // NOTE: Tom Robinson 4/16/2018: disabling <Link> for `question` click actions
   // for now since on dashboards currently they need to go through
   // navigateToNewCardFromDashboard to merge in parameters.,

@@ -81,7 +81,7 @@ export default class Setup extends Component {
       return (
         <div className="relative full-height flex flex-full layout-centered">
           <div className="wrapper wrapper--trim text-centered">
-            <LogoIcon className="text-brand mb4" width={89} height={118} />
+            <LogoIcon className="text-brand mb4" height={118} />
             <div
               className="relative z2 text-centered ml-auto mr-auto"
               style={{ maxWidth: 550 }}
@@ -106,7 +106,7 @@ export default class Setup extends Component {
       return (
         <div>
           <nav className="SetupNav text-brand py2 flex layout-centered">
-            <LogoIcon width={41} height={51} />
+            <LogoIcon height={51} />
           </nav>
 
           <div className="wrapper wrapper--small">

@@ -3,11 +3,13 @@
              [string :as str]
              [test :refer :all]
              [walk :as walk]]
+            [clojure.java.io :as io]
             [expectations :refer [expect]]
             [medley.core :as m]
             [metabase
              [email-test :as et]
-             [pulse :as pulse]]
+             [pulse :as pulse]
+             [test :as mt]]
             [metabase.integrations.slack :as slack]
             [metabase.models
              [card :refer [Card]]
@@ -98,183 +100,188 @@
    :description  "More results for 'Test card'"
    :content-id   false})
 
-;; Basic test, 1 card, 1 recipient
-(expect
-  (rasta-pulse-email)
-  (tt/with-temp* [Card                 [{card-id :id}  (checkins-query {:breakout [["datetime-field" (data/id :checkins :date) "hour"]]})]
-                  Pulse                [{pulse-id :id} {:name "Pulse Name"
-                                                        :skip_if_empty false}]
-                  PulseCard             [_             {:pulse_id pulse-id
-                                                        :card_id  card-id
-                                                        :position 0}]
-                  PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
-                  PulseChannelRecipient [_             {:user_id (rasta-id)
-                                                        :pulse_channel_id pc-id}]]
-    (email-test-setup
-     (pulse/send-pulse! (models.pulse/retrieve-pulse pulse-id))
-     (et/summarize-multipart-email #"Pulse Name"))))
-
-;; Basic test, 1 card, 1 recipient, 21 results results in a CSV being attached and a table being sent
-(expect
-  (rasta-pulse-email {:body [{"Pulse Name"                      true
-                              "More results have been included" true
-                              "ID</th>"                         true},
-                             csv-attachment]})
-  (tt/with-temp* [Card                 [{card-id :id}  (checkins-query {:aggregation nil
-                                                                        :limit       21})]
-                  Pulse                [{pulse-id :id} {:name          "Pulse Name"
-                                                        :skip_if_empty false}]
-                  PulseCard             [_             {:pulse_id pulse-id
-                                                        :card_id  card-id
-                                                        :position 0}]
-                  PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
-                  PulseChannelRecipient [_             {:user_id          (rasta-id)
-                                                        :pulse_channel_id pc-id}]]
-    (email-test-setup
-     (pulse/send-pulse! (models.pulse/retrieve-pulse pulse-id))
-     (et/summarize-multipart-email #"Pulse Name"  #"More results have been included" #"ID</th>"))))
-
-;; Validate pulse queries are limited by `default-query-constraints`
-(expect
-  31 ;; Should return 30 results (the redef'd limit) plus the header row
-  (tt/with-temp* [Card                 [{card-id :id}  (checkins-query {:aggregation nil})]
-                  Pulse                [{pulse-id :id} {:name          "Pulse Name"
-                                                        :skip_if_empty false}]
-                  PulseCard             [_             {:pulse_id pulse-id
-                                                        :card_id  card-id
-                                                        :position 0}]
-                  PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
-                  PulseChannelRecipient [_             {:user_id          (rasta-id)
-                                                        :pulse_channel_id pc-id}]]
-    (email-test-setup
-     (with-redefs [constraints/default-query-constraints {:max-results           10000
-                                                          :max-results-bare-rows 30}]
+(deftest basic-test
+  (testing "Basic test, 1 card, 1 recipient"
+    (tt/with-temp* [Card                 [{card-id :id}  (checkins-query {:breakout [["datetime-field" (data/id :checkins :date) "hour"]]})]
+                    Pulse                [{pulse-id :id} {:name "Pulse Name"
+                                                          :skip_if_empty false}]
+                    PulseCard             [_             {:pulse_id pulse-id
+                                                          :card_id  card-id
+                                                          :position 0}]
+                    PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
+                    PulseChannelRecipient [_             {:user_id (rasta-id)
+                                                          :pulse_channel_id pc-id}]]
+      (email-test-setup
        (pulse/send-pulse! (models.pulse/retrieve-pulse pulse-id))
-       ;; Slurp in the generated CSV and count the lines found in the file
-       (-> @et/inbox
-           vals
-           ffirst
-           :body
-           last
-           :content
-           slurp
-           str/split-lines
-           count)))))
+       (is (= (rasta-pulse-email)
+              (et/summarize-multipart-email #"Pulse Name"))))))
 
-;; Basic test, 1 card, 1 recipient, 19 results, so no attachment
-(expect
-  (rasta-pulse-email {:body [{"Pulse Name"                      true
-                              "More results have been included" false
-                              "ID</th>"                         true}]})
-  (tt/with-temp* [Card                 [{card-id :id}  (checkins-query {:aggregation nil
-                                                                        :limit       19})]
-                  Pulse                [{pulse-id :id} {:name          "Pulse Name"
-                                                        :skip_if_empty false}]
-                  PulseCard             [_             {:pulse_id pulse-id
-                                                        :card_id  card-id
-                                                        :position 0}]
-                  PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
-                  PulseChannelRecipient [_             {:user_id          (rasta-id)
-                                                        :pulse_channel_id pc-id}]]
-    (email-test-setup
-     (pulse/send-pulse! (models.pulse/retrieve-pulse pulse-id))
-     (et/summarize-multipart-email #"Pulse Name"  #"More results have been included" #"ID</th>"))))
+  (testing "Basic test, 1 card, 1 recipient, 19 results, so no attachment"
+    (tt/with-temp* [Card                 [{card-id :id}  (checkins-query {:aggregation nil
+                                                                          :limit       19})]
+                    Pulse                [{pulse-id :id} {:name          "Pulse Name"
+                                                          :skip_if_empty false}]
+                    PulseCard             [_             {:pulse_id pulse-id
+                                                          :card_id  card-id
+                                                          :position 0}]
+                    PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
+                    PulseChannelRecipient [_             {:user_id          (rasta-id)
+                                                          :pulse_channel_id pc-id}]]
+      (email-test-setup
+       (pulse/send-pulse! (models.pulse/retrieve-pulse pulse-id))
+       (is (= (rasta-pulse-email {:body [{"Pulse Name"                      true
+                                          "More results have been included" false
+                                          "ID</th>"                         true}]})
+              (et/summarize-multipart-email #"Pulse Name"  #"More results have been included" #"ID</th>"))))))
 
-;; Pulse should be sent to two recipients
-(expect
-  (into {} (map (fn [user-kwd]
-                  (et/email-to user-kwd {:subject "Pulse: Pulse Name",
-                                         :to #{"rasta@metabase.com" "crowberto@metabase.com"}
-                                         :body [{"Pulse Name" true}
-                                                png-attachment]}))
-                [:rasta :crowberto]))
-  (tt/with-temp* [Card                 [{card-id :id}  (checkins-query {:breakout [["datetime-field" (data/id :checkins :date) "hour"]]})]
-                  Pulse                [{pulse-id :id} {:name "Pulse Name"
-                                                        :skip_if_empty false}]
-                  PulseCard             [_             {:pulse_id pulse-id
-                                                        :card_id  card-id
-                                                        :position 0}]
-                  PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
-                  PulseChannelRecipient [_             {:user_id (rasta-id)
-                                                        :pulse_channel_id pc-id}]
-                  PulseChannelRecipient [_             {:user_id (users/user->id :crowberto)
-                                                        :pulse_channel_id pc-id}]]
-    (email-test-setup
-     (pulse/send-pulse! (models.pulse/retrieve-pulse pulse-id))
-     (et/summarize-multipart-email #"Pulse Name"))))
+  (testing "Basic test, 1 card, 1 recipient, 21 results results in a CSV being attached and a table being sent"
+    (tt/with-temp* [Card                 [{card-id :id}  (checkins-query {:aggregation nil
+                                                                          :limit       21})]
+                    Pulse                [{pulse-id :id} {:name          "Pulse Name"
+                                                          :skip_if_empty false}]
+                    PulseCard             [_             {:pulse_id pulse-id
+                                                          :card_id  card-id
+                                                          :position 0}]
+                    PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
+                    PulseChannelRecipient [_             {:user_id          (rasta-id)
+                                                          :pulse_channel_id pc-id}]]
+      (email-test-setup
+       (pulse/send-pulse! (models.pulse/retrieve-pulse pulse-id))
+       (is (= (rasta-pulse-email {:body [{"Pulse Name"                      true
+                                          "More results have been included" true
+                                          "ID</th>"                         true}
+                                         csv-attachment]})
+              (et/summarize-multipart-email #"Pulse Name"  #"More results have been included" #"ID</th>")))))))
 
-;; 1 pulse that has 2 cards, should contain two attachments
-(expect
-  (rasta-pulse-email {:body [{"Pulse Name" true}
-                             png-attachment
-                             png-attachment]})
-  (tt/with-temp* [Card                 [{card-id-1 :id}  (checkins-query {:breakout [["datetime-field" (data/id :checkins :date) "hour"]]})]
-                  Card                 [{card-id-2 :id}  (checkins-query {:breakout [["datetime-field" (data/id :checkins :date) "day-of-week"]]})]
-                  Pulse                [{pulse-id :id} {:name "Pulse Name"
-                                                        :skip_if_empty false}]
-                  PulseCard             [_             {:pulse_id pulse-id
-                                                        :card_id  card-id-1
-                                                        :position 0}]
-                  PulseCard             [_             {:pulse_id pulse-id
-                                                        :card_id  card-id-2
-                                                        :position 1}]
-                  PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
-                  PulseChannelRecipient [_             {:user_id (rasta-id)
-                                                        :pulse_channel_id pc-id}]]
-    (email-test-setup
-     (pulse/send-pulse! (models.pulse/retrieve-pulse pulse-id))
-     (et/summarize-multipart-email #"Pulse Name"))))
+(deftest ensure-constraints-test
+  (testing "Validate pulse queries are limited by `default-query-constraints`"
+    (tt/with-temp* [Card                 [{card-id :id}  (checkins-query {:aggregation nil})]
+                    Pulse                [{pulse-id :id} {:name          "Pulse Name"
+                                                          :skip_if_empty false}]
+                    PulseCard             [_             {:pulse_id pulse-id
+                                                          :card_id  card-id
+                                                          :position 0}]
+                    PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
+                    PulseChannelRecipient [_             {:user_id          (rasta-id)
+                                                          :pulse_channel_id pc-id}]]
+      (email-test-setup
+       (with-redefs [constraints/default-query-constraints {:max-results           10000
+                                                            :max-results-bare-rows 30}]
+         (pulse/send-pulse! (models.pulse/retrieve-pulse pulse-id))
+         (let [first-message (-> @et/inbox vals ffirst)]
+           (is (= true
+                  (some? first-message))
+               "Should have a message in the inbox")
+           (when first-message
+             (let [filename (-> first-message :body last :content)
+                   exists?  (some-> filename io/file .exists)]
+               (is (= true
+                      exists?)
+                   "File should exist")
+               (testing (str "tmp file = %s" filename)
+                 (testing "Slurp in the generated CSV and count the lines found in the file"
+                   (when exists?
+                     (is (= 31
+                            (-> (slurp filename) str/split-lines count))
+                         "Should return 30 results (the redef'd limit) plus the header row"))))))))))))
 
-;; Pulse where the card has no results, but skip_if_empty is false, so should still send
-(expect
-  (rasta-pulse-email)
-  (tt/with-temp* [Card                  [{card-id :id}  (checkins-query {:filter   [">",["field-id" (data/id :checkins :date)],"2017-10-24"]
-                                                                         :breakout [["datetime-field" ["field-id" (data/id :checkins :date)] "hour"]]})]
-                  Pulse                 [{pulse-id :id} {:name          "Pulse Name"
-                                                         :skip_if_empty false}]
-                  PulseCard             [pulse-card     {:pulse_id pulse-id
-                                                         :card_id  card-id
-                                                         :position 0}]
-                  PulseChannel          [{pc-id :id}    {:pulse_id pulse-id}]
-                  PulseChannelRecipient [_              {:user_id          (rasta-id)
-                                                         :pulse_channel_id pc-id}]]
-    (email-test-setup
-     (pulse/send-pulse! (models.pulse/retrieve-pulse pulse-id))
-     (et/summarize-multipart-email #"Pulse Name"))))
+(deftest multiple-recipients-test
+  (testing "Pulse should be sent to two recipients"
+    (tt/with-temp* [Card                 [{card-id :id}  (checkins-query {:breakout [["datetime-field" (data/id :checkins :date) "hour"]]})]
+                    Pulse                [{pulse-id :id} {:name          "Pulse Name"
+                                                          :skip_if_empty false}]
+                    PulseCard             [_             {:pulse_id pulse-id
+                                                          :card_id  card-id
+                                                          :position 0}]
+                    PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
+                    PulseChannelRecipient [_             {:user_id          (rasta-id)
+                                                          :pulse_channel_id pc-id}]
+                    PulseChannelRecipient [_             {:user_id          (users/user->id :crowberto)
+                                                          :pulse_channel_id pc-id}]]
+      (email-test-setup
+       (pulse/send-pulse! (models.pulse/retrieve-pulse pulse-id))
+       (is (= (into {} (map (fn [user-kwd]
+                              (et/email-to user-kwd {:subject "Pulse: Pulse Name",
+                                                     :to      #{"rasta@metabase.com" "crowberto@metabase.com"}
+                                                     :body    [{"Pulse Name" true}
+                                                               png-attachment]}))
+                            [:rasta :crowberto]))
+              (et/summarize-multipart-email #"Pulse Name")))))))
 
-;; Pulse where the card has no results, skip_if_empty is true, so no pulse should be sent
-(expect
-  {}
-  (tt/with-temp* [Card                  [{card-id :id}  (checkins-query {:filter   [">",["field-id" (data/id :checkins :date)],"2017-10-24"]
-                                                                         :breakout [["datetime-field" ["field-id" (data/id :checkins :date)] "hour"]]})]
-                  Pulse                 [{pulse-id :id} {:name          "Pulse Name"
-                                                         :skip_if_empty true}]
-                  PulseCard             [pulse-card     {:pulse_id pulse-id
-                                                         :card_id  card-id
-                                                         :position 0}]
-                  PulseChannel          [{pc-id :id}    {:pulse_id pulse-id}]
-                  PulseChannelRecipient [_              {:user_id          (rasta-id)
-                                                         :pulse_channel_id pc-id}]]
-    (email-test-setup
-     (pulse/send-pulse! (models.pulse/retrieve-pulse pulse-id))
-     @et/inbox)))
+(deftest two-cards-in-one-pulse-test
+  (testing "1 pulse that has 2 cards, should contain two attachments"
+    (tt/with-temp* [Card                 [{card-id-1 :id}  (assoc (checkins-query (mt/$ids checkins {:breakout [!hour.date]}))
+                                                                  :name "card 1")]
+                    Card                 [{card-id-2 :id}  (assoc (checkins-query (mt/$ids checkins {:breakout [!month.date]}))
+                                                                  :name "card 2")]
+                    Pulse                [{pulse-id :id} {:name          "Pulse Name"
+                                                          :skip_if_empty false}]
+                    PulseCard             [_             {:pulse_id pulse-id
+                                                          :card_id  card-id-1
+                                                          :position 0}]
+                    PulseCard             [_             {:pulse_id pulse-id
+                                                          :card_id  card-id-2
+                                                          :position 1}]
+                    PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
+                    PulseChannelRecipient [_             {:user_id          (rasta-id)
+                                                          :pulse_channel_id pc-id}]]
+      (email-test-setup
+       (pulse/send-pulse! (models.pulse/retrieve-pulse pulse-id))
+       (is (= (rasta-pulse-email {:body [{"Pulse Name" true}
+                                         png-attachment
+                                         png-attachment]})
+              (et/summarize-multipart-email #"Pulse Name")))))))
 
-;; Rows alert with no data
-(expect
-  {}
-  (tt/with-temp* [Card                  [{card-id :id}  (checkins-query {:filter   [">",["field-id" (data/id :checkins :date)],"2017-10-24"]
-                                                                         :breakout [["datetime-field" ["field-id" (data/id :checkins :date)] "hour"]]})]
-                  Pulse                 [{pulse-id :id} {:alert_condition  "rows"
-                                                         :alert_first_only false}]
-                  PulseCard             [pulse-card     {:pulse_id pulse-id
-                                                         :card_id  card-id
-                                                         :position 0}]
-                  PulseChannel          [{pc-id :id}    {:pulse_id pulse-id}]
-                  PulseChannelRecipient [_              {:user_id          (rasta-id)
-                                                         :pulse_channel_id pc-id}]]
-    (email-test-setup
-     (pulse/send-pulse! (models.pulse/retrieve-notification pulse-id))
-     @et/inbox)))
+(deftest empty-results-test
+  (testing "Pulse where the card has no results, but skip_if_empty is false, so should still send"
+    (tt/with-temp* [Card                  [{card-id :id}  (checkins-query {:filter   [">",["field-id" (data/id :checkins :date)],"2017-10-24"]
+                                                                           :breakout [["datetime-field" ["field-id" (data/id :checkins :date)] "hour"]]})]
+                    Pulse                 [{pulse-id :id} {:name          "Pulse Name"
+                                                           :skip_if_empty false}]
+                    PulseCard             [pulse-card     {:pulse_id pulse-id
+                                                           :card_id  card-id
+                                                           :position 0}]
+                    PulseChannel          [{pc-id :id}    {:pulse_id pulse-id}]
+                    PulseChannelRecipient [_              {:user_id          (rasta-id)
+                                                           :pulse_channel_id pc-id}]]
+      (email-test-setup
+       (pulse/send-pulse! (models.pulse/retrieve-pulse pulse-id))
+       (is (= (rasta-pulse-email)
+              (et/summarize-multipart-email #"Pulse Name")))))))
+
+(deftest empty-results-skip-if-empty-test
+  (testing "Pulse where the card has no results, skip_if_empty is true, so no pulse should be sent"
+    (tt/with-temp* [Card                  [{card-id :id}  (checkins-query {:filter   [">",["field-id" (data/id :checkins :date)],"2017-10-24"]
+                                                                           :breakout [["datetime-field" ["field-id" (data/id :checkins :date)] "hour"]]})]
+                    Pulse                 [{pulse-id :id} {:name          "Pulse Name"
+                                                           :skip_if_empty true}]
+                    PulseCard             [pulse-card     {:pulse_id pulse-id
+                                                           :card_id  card-id
+                                                           :position 0}]
+                    PulseChannel          [{pc-id :id}    {:pulse_id pulse-id}]
+                    PulseChannelRecipient [_              {:user_id          (rasta-id)
+                                                           :pulse_channel_id pc-id}]]
+      (email-test-setup
+       (pulse/send-pulse! (models.pulse/retrieve-pulse pulse-id))
+       (is (= {}
+              @et/inbox))))))
+
+(deftest rows-alert-no-data-test
+  (testing "Rows alert with no data"
+    (tt/with-temp* [Card                  [{card-id :id}  (checkins-query {:filter   [">",["field-id" (data/id :checkins :date)],"2017-10-24"]
+                                                                           :breakout [["datetime-field" ["field-id" (data/id :checkins :date)] "hour"]]})]
+                    Pulse                 [{pulse-id :id} {:alert_condition  "rows"
+                                                           :alert_first_only false}]
+                    PulseCard             [pulse-card     {:pulse_id pulse-id
+                                                           :card_id  card-id
+                                                           :position 0}]
+                    PulseChannel          [{pc-id :id}    {:pulse_id pulse-id}]
+                    PulseChannelRecipient [_              {:user_id          (rasta-id)
+                                                           :pulse_channel_id pc-id}]]
+      (email-test-setup
+       (pulse/send-pulse! (models.pulse/retrieve-notification pulse-id))
+       (is (= {}
+              @et/inbox))))))
 
 (defn- rasta-alert-email
   [subject email-body]
@@ -284,92 +291,92 @@
 (def ^:private test-card-result {card-name true})
 (def ^:private test-card-regex  (re-pattern card-name))
 
-;; Rows alert with data
 (deftest alert-with-data-test
-  (is (= (rasta-alert-email "Metabase alert: Test card has results"
-                            [(assoc test-card-result "More results have been included" false), png-attachment])
-         (tt/with-temp* [Card                  [{card-id :id}  (checkins-query {:breakout [["datetime-field" (data/id :checkins :date) "hour"]]})]
-                         Pulse                 [{pulse-id :id} {:alert_condition  "rows"
-                                                                :alert_first_only false}]
-                         PulseCard             [_             {:pulse_id pulse-id
-                                                               :card_id  card-id
-                                                               :position 0}]
-                         PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
-                         PulseChannelRecipient [_             {:user_id          (rasta-id)
-                                                               :pulse_channel_id pc-id}]]
-           (email-test-setup
-            (pulse/send-pulse! (models.pulse/retrieve-notification pulse-id))
-            (et/summarize-multipart-email test-card-regex #"More results have been included"))))))
+  (testing "Rows alert with data"
+    (tt/with-temp* [Card                  [{card-id :id}  (checkins-query {:breakout [["datetime-field" (data/id :checkins :date) "hour"]]})]
+                    Pulse                 [{pulse-id :id} {:alert_condition  "rows"
+                                                           :alert_first_only false}]
+                    PulseCard             [_             {:pulse_id pulse-id
+                                                          :card_id  card-id
+                                                          :position 0}]
+                    PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
+                    PulseChannelRecipient [_             {:user_id          (rasta-id)
+                                                          :pulse_channel_id pc-id}]]
+      (email-test-setup
+       (pulse/send-pulse! (models.pulse/retrieve-notification pulse-id))
+       (is (= (rasta-alert-email "Metabase alert: Test card has results"
+                                 [(assoc test-card-result "More results have been included" false), png-attachment])
+              (et/summarize-multipart-email test-card-regex #"More results have been included")))))))
 
-;; Rows alert with too much data will attach as CSV and include a table
-(expect
-  (rasta-alert-email "Metabase alert: Test card has results"
-                     [(merge test-card-result
-                             {"More results have been included" true
-                              "ID</th>"                         true}),
-                      csv-attachment])
-  (tt/with-temp* [Card                  [{card-id :id}  (checkins-query {:limit       21
-                                                                         :aggregation nil})]
-                  Pulse                 [{pulse-id :id} {:alert_condition  "rows"
-                                                         :alert_first_only false}]
-                  PulseCard             [_             {:pulse_id pulse-id
-                                                        :card_id  card-id
-                                                        :position 0}]
-                  PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
-                  PulseChannelRecipient [_             {:user_id          (rasta-id)
-                                                        :pulse_channel_id pc-id}]]
-    (email-test-setup
-     (pulse/send-pulse! (models.pulse/retrieve-notification pulse-id))
-     (et/summarize-multipart-email test-card-regex #"More results have been included" #"ID</th>"))))
+(deftest rows-alert-with-too-much-data-test
+  (testing "Rows alert with too much data will attach as CSV and include a table"
+    (tt/with-temp* [Card                  [{card-id :id}  (checkins-query {:limit       21
+                                                                           :aggregation nil})]
+                    Pulse                 [{pulse-id :id} {:alert_condition  "rows"
+                                                           :alert_first_only false}]
+                    PulseCard             [_             {:pulse_id pulse-id
+                                                          :card_id  card-id
+                                                          :position 0}]
+                    PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
+                    PulseChannelRecipient [_             {:user_id          (rasta-id)
+                                                          :pulse_channel_id pc-id}]]
+      (email-test-setup
+       (pulse/send-pulse! (models.pulse/retrieve-notification pulse-id))
+       (is (= (rasta-alert-email "Metabase alert: Test card has results"
+                                 [(merge test-card-result
+                                         {"More results have been included" true
+                                          "ID</th>"                         true}),
+                                  csv-attachment])
+              (et/summarize-multipart-email test-card-regex #"More results have been included" #"ID</th>")))))))
 
-;; Above goal alert with data
-(expect
-  (rasta-alert-email "Metabase alert: Test card has reached its goal"
-                     [test-card-result, png-attachment])
-  (tt/with-temp* [Card                  [{card-id :id}  (merge (checkins-query {:filter   ["between",["field-id" (data/id :checkins :date)],"2014-04-01" "2014-06-01"]
-                                                                                :breakout [["datetime-field" (data/id :checkins :date) "day"]]})
-                                                               {:display :line
-                                                                :visualization_settings {:graph.show_goal true :graph.goal_value 5.9}})]
-                  Pulse                 [{pulse-id :id} {:alert_condition   "goal"
-                                                         :alert_first_only  false
-                                                         :alert_above_goal  true}]
-                  PulseCard             [_             {:pulse_id pulse-id
-                                                        :card_id  card-id
-                                                        :position 0}]
-                  PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
-                  PulseChannelRecipient [_             {:user_id          (rasta-id)
-                                                        :pulse_channel_id pc-id}]]
-    (email-test-setup
-     (pulse/send-pulse! (models.pulse/retrieve-notification pulse-id))
-     (et/summarize-multipart-email test-card-regex))))
+(deftest above-goal-alert-with-data-test
+  (testing "Above goal alert with data"
+    (tt/with-temp* [Card                  [{card-id :id}  (merge (checkins-query {:filter   ["between",["field-id" (data/id :checkins :date)],"2014-04-01" "2014-06-01"]
+                                                                                  :breakout [["datetime-field" (data/id :checkins :date) "day"]]})
+                                                                 {:display                :line
+                                                                  :visualization_settings {:graph.show_goal true :graph.goal_value 5.9}})]
+                    Pulse                 [{pulse-id :id} {:alert_condition  "goal"
+                                                           :alert_first_only false
+                                                           :alert_above_goal true}]
+                    PulseCard             [_             {:pulse_id pulse-id
+                                                          :card_id  card-id
+                                                          :position 0}]
+                    PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
+                    PulseChannelRecipient [_             {:user_id          (rasta-id)
+                                                          :pulse_channel_id pc-id}]]
+      (email-test-setup
+       (pulse/send-pulse! (models.pulse/retrieve-notification pulse-id))
+       (is (= (rasta-alert-email "Metabase alert: Test card has reached its goal"
+                                 [test-card-result, png-attachment])
+              (et/summarize-multipart-email test-card-regex)))))))
 
-;; Native query with user-specified x and y axis
-(expect
-  (rasta-alert-email "Metabase alert: Test card has reached its goal"
-                     [test-card-result, png-attachment])
-  (tt/with-temp* [Card                  [{card-id :id}  {:name          "Test card"
-                                                         :dataset_query {:database (data/id)
-                                                                         :type     :native
-                                                                         :native   {:query (str "select count(*) as total_per_day, date as the_day "
-                                                                                                "from checkins "
-                                                                                                "group by date")}}
-                                                         :display :line
-                                                         :visualization_settings {:graph.show_goal true
-                                                                                  :graph.goal_value 5.9
-                                                                                  :graph.dimensions ["the_day"]
-                                                                                  :graph.metrics ["total_per_day"]}}]
-                  Pulse                 [{pulse-id :id} {:alert_condition  "goal"
-                                                         :alert_first_only false
-                                                         :alert_above_goal true}]
-                  PulseCard             [_             {:pulse_id pulse-id
-                                                        :card_id  card-id
-                                                        :position 0}]
-                  PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
-                  PulseChannelRecipient [_             {:user_id          (rasta-id)
-                                                        :pulse_channel_id pc-id}]]
-    (email-test-setup
-     (pulse/send-pulse! (models.pulse/retrieve-notification pulse-id))
-     (et/summarize-multipart-email test-card-regex))))
+(deftest native-query-with-user-specified-axes-test
+  (testing "Native query with user-specified x and y axis"
+    (tt/with-temp* [Card                  [{card-id :id}  {:name                   "Test card"
+                                                           :dataset_query          {:database (data/id)
+                                                                                    :type     :native
+                                                                                    :native   {:query (str "select count(*) as total_per_day, date as the_day "
+                                                                                                           "from checkins "
+                                                                                                           "group by date")}}
+                                                           :display                :line
+                                                           :visualization_settings {:graph.show_goal  true
+                                                                                    :graph.goal_value 5.9
+                                                                                    :graph.dimensions ["the_day"]
+                                                                                    :graph.metrics    ["total_per_day"]}}]
+                    Pulse                 [{pulse-id :id} {:alert_condition  "goal"
+                                                           :alert_first_only false
+                                                           :alert_above_goal true}]
+                    PulseCard             [_             {:pulse_id pulse-id
+                                                          :card_id  card-id
+                                                          :position 0}]
+                    PulseChannel          [{pc-id :id}   {:pulse_id pulse-id}]
+                    PulseChannelRecipient [_             {:user_id          (rasta-id)
+                                                          :pulse_channel_id pc-id}]]
+      (email-test-setup
+       (pulse/send-pulse! (models.pulse/retrieve-notification pulse-id))
+       (is (= (rasta-alert-email "Metabase alert: Test card has reached its goal"
+                                 [test-card-result png-attachment])
+              (et/summarize-multipart-email test-card-regex)))))))
 
 ;; Above goal alert, with no data above goal
 (expect
@@ -901,6 +908,8 @@
       (is (= [[1 "2014-04-07T00:00:00Z" 5 12]]
              (send-pulse-created-by-user! :crowberto)))
       (is (thrown-with-msg?
-           clojure.lang.ExceptionInfo #"^You do not have permissions to view Card \d+\."
-           (send-pulse-created-by-user! :rasta))
+           clojure.lang.ExceptionInfo
+           #"^You do not have permissions to view Card [\d,]+."
+           (mt/suppress-output
+             (send-pulse-created-by-user! :rasta)))
           "If the current user doesn't have permissions to execute the Card for a Pulse, an Exception should be thrown."))))

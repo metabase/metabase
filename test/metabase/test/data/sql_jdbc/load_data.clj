@@ -186,7 +186,8 @@
       (try
         ;; TODO - why don't we use `execute/execute-sql!` here like we do below?
         (doseq [sql+args statements]
-          (jdbc/execute! spec sql+args {:set-parameters (partial sql-jdbc.execute/set-parameters driver)}))
+          (jdbc/execute! spec sql+args {:set-parameters (fn [stmt params]
+                                                          (sql-jdbc.execute/set-parameters! driver stmt params))}))
         (catch SQLException e
           (println (u/format-color 'red "INSERT FAILED: \n%s\n" statements))
           (jdbc/print-sql-exception-chain e)

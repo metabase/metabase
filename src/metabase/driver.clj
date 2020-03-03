@@ -315,23 +315,26 @@
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti execute-reducible-query
+  "Execute a native query against that database and return rows that can be reduced using `transduce`/`reduce`.
 
-(defmulti execute-query
-  "Execute a *native* query against the database and return the results.
+  Pass metadata about the columns and the reducible object to `respond`, which has the signature
 
-  The query passed in will conform to the schema in `metabase.mbql.schema/Query`. MBQL queries are transformed to
-  native queries via the `mbql->native` QP middleware, which in turn calls this driver's implementation of
-  `mbql->native` before reaching this method.
+    (respond results-metadata rows)
 
-  Results should look like:
+  You can use `qp.reducible/reducible-rows` to create reducible, streaming results.
 
-    {:columns [\"id\", \"name\"]
-     :rows    [[1 \"Lucky Bird\"]
-               [2 \"Rasta Can\"]]}"
-  {:arglists '([driver query]), :style/indent 1}
+  Example impl:
+
+    (defmethod reducible-query :my-driver
+      [_ query {:keys [canceled-chan], :as context} respond]
+      (with-open [results (run-query! query)]
+        (respond
+         {:cols [{:name \"my_col\"}]}
+         (qp.reducible/reducible-rows (get-row results) canceled-chan))))"
+  {:added "0.35.0", :arglists '([driver query context respond])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
-
 
 (def driver-features
   "Set of all features a driver can support."
@@ -456,7 +459,7 @@
   appropriate message and include that in an appropriate place; alternatively a driver might directly include the
   query's `:info` dictionary if the underlying language is JSON-based.
 
-  The result of this function will be passed directly into calls to `execute-query`.
+  The result of this function will be passed directly into calls to `execute-reducible-query`.
 
   For example, a driver like Postgres would build a valid SQL expression and return a map such as:
 
@@ -524,25 +527,8 @@
 (defmethod sync-in-context ::driver [_ _ f] (f))
 
 
-(defmulti process-query-in-context
-  "Similar to `sync-in-context`, but for running queries rather than syncing. This should be used to do things like
-  open DB connections that need to remain open for the duration of post-processing. This function follows a middleware
-  pattern and is injected into the QP middleware stack immediately after the Query Expander; in other words, it will
-  receive the expanded query. See the Mongo and H2 drivers for examples of how this is intended to be used.
-
-       (defmethod process-query-in-context :my-driver
-         [driver qp]
-         (fn [query]
-           (qp query)))"
-  {:arglists '([driver qp])}
-  dispatch-on-initialized-driver
-  :hierarchy #'hierarchy)
-
-(defmethod process-query-in-context ::driver [_ qp] qp)
-
-
 (defmulti table-rows-seq
-  "Return a sequence of *all* the rows in a given TABLE, which is guaranteed to have at least `:name` and `:schema`
+  "Return a sequence of *all* the rows in a given `table`, which is guaranteed to have at least `:name` and `:schema`
   keys. (It is guaranteed to satisfy the `DatabaseMetadataTable` schema in `metabase.sync.interface`.) Currently, this
   is only used for iterating over the values in a `_metabase_metadata` table. As such, the results are not expected to
   be returned lazily. There is no expectation that the results be returned in any given order.
@@ -557,26 +543,27 @@
   "Return the *system* timezone ID name of this database, i.e. the timezone that local dates/times/datetimes are
   considered to be in by default. Ideally, this method should return a timezone ID like `America/Los_Angeles`, but an
   offset formatted like `-08:00` is acceptable in cases where the actual ID cannot be provided."
-  {:arglists '(^java.lang.String [driver database])}
+  {:added "0.34.0", :arglists '(^java.lang.String [driver database])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
 (defmethod db-default-timezone ::driver [_ _] nil)
 
 ;; TIMEZONE FIXME — remove this method entirely
-(defmulti ^:deprecated current-db-time
+(defmulti current-db-time
   "Return the current time and timezone from the perspective of `database`. You can use
   `metabase.driver.common/current-db-time` to implement this. This should return a Joda-Time `DateTime`.
 
   DEPRECATED — the only thing this method is ultimately used for is to determine the DB's system timezone.
   `db-default-timezone` has been introduced as an intended replacement for this method; implement it instead. This
   method will be removed in a future release."
-  {:arglists '(^org.joda.time.DateTime [driver database])} dispatch-on-initialized-driver
+  {:deprecated "0.34.0", :arglists '(^org.joda.time.DateTime [driver database])}
+  dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
 (defmethod current-db-time ::driver [_ _] nil)
 
-(defmulti substitue-native-parameters
+(defmulti substitute-native-parameters
   "For drivers that support `:native-parameters`. Substitute parameters in a normalized 'inner' native query.
 
     {:query \"SELECT count(*) FROM table WHERE id = {{param}}\"

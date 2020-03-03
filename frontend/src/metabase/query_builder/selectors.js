@@ -50,6 +50,8 @@ export const getSettings = state => state.settings.values;
 
 export const getIsNew = state => state.qb.card && !state.qb.card.id;
 
+export const getQueryStartTime = state => state.qb.queryStartTime;
+
 export const getDatabaseId = createSelector(
   [getCard],
   card => card && card.dataset_query && card.dataset_query.database,

@@ -113,7 +113,8 @@
   :setter  (fn [new-value]
              (when new-value
                (validate-custom-geo-json new-value))
-             (setting/set-json! :custom-geojson new-value)))
+             (setting/set-json! :custom-geojson new-value))
+  :visibility :public)
 
 
 (api/defendpoint-async GET "/:key"

@@ -97,7 +97,9 @@
 (defmulti add-interval-honeysql-form
   "Return a HoneySQL form that performs represents addition of some temporal interval to the original `hsql-form`.
 
-    (add-interval-honeysql-form :my-driver hsql-form 1 :day) -> (hsql/call :date_add hsql-form 1 (hx/literal 'day'))"
+    (add-interval-honeysql-form :my-driver hsql-form 1 :day) -> (hsql/call :date_add hsql-form 1 (hx/literal 'day'))
+
+  `amount` is usually an integer, but can be floating-point for units like seconds."
   {:arglists '([driver hsql-form amount unit])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -305,16 +307,29 @@
 ;;
 ;; also, we want to gracefully handle situations where the column is ZERO and just swap it out with NULL instead, so
 ;; we don't get divide by zero errors. SQL DBs always return NULL when dividing by NULL (AFAIK)
+
+(defmulti ->float
+  "Cast to float"
+  {:arglists '([driver value])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod ->float :sql
+  [_ value]
+  (hx/cast :float value))
+
 (defmethod ->honeysql [:sql :/]
   [driver [_ & args]]
-  (let [args (for [arg args]
-               (->honeysql driver (if (integer? arg)
-                                    (double arg)
-                                    arg)))]
-    (apply hsql/call :/ (first args) (for [arg (rest args)]
-                                       (hsql/call :case
-                                         (hsql/call := arg 0) nil
-                                         :else                arg)))))
+  (let [[numerator & denominators] (for [arg args]
+                                     (->honeysql driver (if (integer? arg)
+                                                          (double arg)
+                                                          arg)))]
+    (apply hsql/call :/
+           (->float driver numerator)
+           (for [denominator denominators]
+             (hsql/call :case
+               (hsql/call := denominator 0) nil
+               :else                        denominator)))))
 
 (defmethod ->honeysql [:sql :sum-where]
   [driver [_ arg pred]]

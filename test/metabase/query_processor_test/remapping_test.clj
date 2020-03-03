@@ -1,9 +1,11 @@
 (ns metabase.query-processor-test.remapping-test
   "Tests for the remapping results"
-  (:require [metabase.models
+  (:require [metabase
+             [query-processor-test :as qp.test]
+             [test :as mt]]
+            [metabase.models
              [dimension :refer [Dimension]]
              [field :refer [Field]]]
-            [metabase.query-processor-test :as qp.test]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dimension-projections]
             [metabase.test.data :as data]
             [metabase.test.data.datasets :as datasets]
@@ -43,7 +45,7 @@
                  :when (columns-pred (:name col))]
              col)}))
 
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :foreign-keys)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :foreign-keys)
   {:rows [["20th Century Cafe"               2 "Café"]
           ["25°"                             2 "Burger"]
           ["33 Taps"                         2 "Bar"]
@@ -66,7 +68,7 @@
            :limit    4})))))
 
 ;; Check that we can have remappings when we include a `:fields` clause that restricts the query fields returned
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :foreign-keys)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :foreign-keys)
   {:rows        [["20th Century Cafe"               2 "Café"]
                  ["25°"                             2 "Burger"]
                  ["33 Taps"                         2 "Bar"]
@@ -90,7 +92,7 @@
            :limit    4})))))
 
 ;; Test that we can remap inside an MBQL nested query
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :foreign-keys :nested-queries)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
   ["Kinaree Thai Bistro" "Ruen Pair Thai Restaurant" "Yamashiro Hollywood" "Spitz Eagle Rock" "The Gumbo Pot"]
   (data/with-temp-objects
     (fn []
@@ -106,7 +108,7 @@
 
 ;; Test a remapping with conflicting names, in the case below there are two name fields, one from Venues and the other
 ;; from Categories
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :foreign-keys :nested-queries)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
   ["20th Century Cafe" "25°" "33 Taps" "800 Degrees Neapolitan Pizzeria"]
   (data/with-temp-objects
     (data/create-venue-category-fk-remapping "Foo")
@@ -121,7 +123,7 @@
 ;;
 ;; Having a self-referencing FK is currently broken with the Redshift and Oracle backends. The issue related to fix
 ;; this is https://github.com/metabase/metabase/issues/8510
-(datasets/expect-with-drivers (disj (qp.test/non-timeseries-drivers-with-feature :foreign-keys) :redshift :oracle :vertica)
+(datasets/expect-with-drivers (disj (mt/normal-drivers-with-feature :foreign-keys) :redshift :oracle :vertica)
   ["Dwight Gresham" "Shad Ferdynand" "Kfir Caj" "Plato Yeshua"]
   (data/dataset test-data-self-referencing-user
     (data/with-temp-objects

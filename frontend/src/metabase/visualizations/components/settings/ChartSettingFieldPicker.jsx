@@ -30,6 +30,7 @@ const ChartSettingFieldPicker = ({
   return (
     <div className={cx(className, "flex align-center")}>
       <ChartSettingSelect
+        className="flex-full"
         value={value}
         options={options}
         onChange={onChange}

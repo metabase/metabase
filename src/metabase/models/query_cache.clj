@@ -8,5 +8,4 @@
 (u/strict-extend (class QueryCache)
   models/IModel
   (merge models/IModelDefaults
-         {:types      (constantly {:results :compressed})
-          :properties (constantly {:updated-at-timestamped? true})}))
+         {:properties (constantly {:updated-at-timestamped? true})}))

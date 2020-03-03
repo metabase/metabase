@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { connect } from "react-redux";
 import { t } from "ttag";
 
 import Button from "metabase/components/Button";
@@ -8,13 +9,23 @@ import SettingsBatchForm from "./SettingsBatchForm";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
+import {
+  sendTestEmail,
+  updateEmailSettings,
+  clearEmailSettings,
+} from "../settings";
+
 const SEND_TEST_BUTTON_STATES = {
   default: t`Send test email`,
   working: t`Sending...`,
   success: t`Sent!`,
 };
 
-export default class SettingsLdapForm extends Component {
+@connect(
+  null,
+  { sendTestEmail, updateEmailSettings, clearEmailSettings },
+)
+export default class SettingsEmailForm extends Component {
   state = {
     sendingEmail: "default",
   };

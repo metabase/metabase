@@ -162,7 +162,7 @@
   (let [card      (api/read-check Card id)
         result    (pulse-card-query-results card)
         data      (:data result)
-        card-type (render/detect-pulse-card-type card data)
+        card-type (render/detect-pulse-chart-type card data)
         card-html (html (binding [render/*include-title* true]
                           (render/render-pulse-card-for-display (p/defaulted-timezone card) card result)))]
     {:id              id

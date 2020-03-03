@@ -27,6 +27,21 @@
   [x]
   (instance? FieldFilter x))
 
+;; A "ReferencedCardQuery" parameter expands to the native query of the referenced card.
+;;
+;; `card-id` is the ID of the Card instance whose query is the value for this parameter.
+;;
+;; `query` is the native query as stored in the Card
+(p.types/defrecord+ ReferencedCardQuery [card-id query]
+  PrettyPrintable
+  (pretty [this]
+    (list 'map->ReferencedCardQuery (into {} this))))
+
+(defn ReferencedCardQuery?
+  "Is `x` an instance of the `ReferencedCardQuery` record type?"
+  [x]
+  (instance? ReferencedCardQuery x))
+
 ;; as in a literal date, defined by date-string S
 ;;
 ;; TODO - why don't we just parse this into a Temporal type and let drivers handle it.

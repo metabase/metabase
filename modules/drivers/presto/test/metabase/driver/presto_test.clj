@@ -1,5 +1,6 @@
 (ns metabase.driver.presto-test
   (:require [clj-http.client :as http]
+            [clojure.core.async :as a]
             [clojure.test :refer :all]
             [expectations :refer [expect]]
             [java-time :as t]
@@ -56,19 +57,22 @@
 (deftest parse-results-test
   (driver/with-driver :presto
     (mt/with-everything-store
-      (is (= [["2017-04-03"
-               (t/zoned-date-time "2017-04-03T10:19:17.417-04:00[America/Toronto]")
-               (t/zoned-date-time "2017-04-03T10:19:17.417Z[UTC]")
-               3.1416M
-               "test"]]
-             (#'presto/parse-presto-results
-              [{:type "date"} {:type "timestamp with time zone"} {:type "timestamp"} {:type "decimal(10,4)"} {:type "varchar(255)"}]
-              [["2017-04-03", "2017-04-03 10:19:17.417 America/Toronto", "2017-04-03 10:19:17.417", "3.1416", "test"]])))
-      (is (=
-           [[0, false, "", nil]]
-           (#'presto/parse-presto-results
-            [{:type "integer"} {:type "boolean"} {:type "varchar(255)"} {:type "date"}]
-            [[0, false, "", nil]]))))))
+      (is (= ["2017-04-03"
+              (t/zoned-date-time "2017-04-03T10:19:17.417-04:00[America/Toronto]")
+              (t/zoned-date-time "2017-04-03T10:19:17.417Z[UTC]")
+              3.1416M
+              "test"]
+             ((#'presto/parse-row-fn
+               [{:type "date"}
+                {:type "timestamp with time zone"}
+                {:type "timestamp"}
+                {:type "decimal(10,4)"}
+                {:type "varchar(255)"}])
+              ["2017-04-03" "2017-04-03 10:19:17.417 America/Toronto" "2017-04-03 10:19:17.417" "3.1416" "test"])))
+      (is (= [0 false "" nil]
+             ((#'presto/parse-row-fn
+               [{:type "integer"} {:type "boolean"} {:type "varchar(255)"} {:type "date"}])
+              [0 false "" nil]))))))
 
 (deftest describe-database-test
   (mt/test-driver :presto
@@ -158,20 +162,24 @@
     (is (= "UTC"
            (tu/db-timezone-id)))))
 
-;; Query cancellation test, needs careful coordination between the query thread, cancellation thread to ensure
-;; everything works correctly together
 (deftest query-cancelation-test
   (mt/test-driver :presto
-    (let [called-cancel-promise (atom nil)]
-      (with-redefs [http/delete (fn [& _]
-                                  (deliver @called-cancel-promise true))]
-        (is (= :metabase.test.util/success
-               (mt/call-with-paused-query
-                (fn [query-thunk called-query? called-cancel? pause-query]
-                  (reset! called-cancel-promise called-cancel?)
-                  (future
-                    (with-redefs [presto/fetch-presto-results! (fn [_ _ _] (deliver called-query? true) @pause-query)]
-                      (query-thunk)))))))))))
+    (let [query (mt/mbql-query venues)]
+      (mt/with-open-channels [running-chan (a/promise-chan)
+                              cancel-chan  (a/promise-chan)]
+        (with-redefs [http/delete            (fn [& _]
+                                               (a/>!! cancel-chan ::cancel))
+                      presto/fetch-next-page (fn [& _]
+                                               (a/>!! running-chan ::running)
+                                               (Thread/sleep 5000)
+                                               (throw (Exception. "Don't actually run!")))]
+          (let [out-chan (qp/process-query-async query)]
+            ;; wait for query to start running, then close `out-chan`
+            (a/go
+              (a/<! running-chan)
+              (a/close! out-chan)))
+          (is (= ::cancel
+                 (mt/wait-for-result cancel-chan 2000))))))))
 
 (deftest template-tag-timezone-test
   (mt/test-driver :presto

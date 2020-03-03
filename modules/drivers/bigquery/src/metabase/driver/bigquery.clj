@@ -21,7 +21,8 @@
   (:import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
            com.google.api.client.http.HttpRequestInitializer
            [com.google.api.services.bigquery Bigquery Bigquery$Builder BigqueryScopes]
-           [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema TableList TableList$Tables TableReference TableRow TableSchema]
+           [com.google.api.services.bigquery.model QueryRequest QueryResponse Table TableCell TableFieldSchema TableList
+            TableList$Tables TableReference TableRow TableSchema]
            java.util.Collections))
 
 (driver/register! :bigquery, :parent #{:google :sql})
@@ -160,7 +161,7 @@
 
 (defn- post-process-native
   "Parse results of a BigQuery query."
-  [^QueryResponse resp]
+  [respond ^QueryResponse resp]
   (with-finished-response [response resp]
     (let [^TableSchema schema
           (.getSchema response)
@@ -177,16 +178,16 @@
             (-> column
                 (set/rename-keys {:base-type :base_type})
                 (dissoc :database-type)))]
-      {:columns (map (comp u/qualified-name :name) columns)
-       :cols    columns
-       :rows    (for [^TableRow row (.getRows response)]
-                  (for [[^TableCell cell, parser] (partition 2 (interleave (.getF row) parsers))]
-                    (when-let [v (.getV cell)]
-                      ;; There is a weird error where everything that *should* be NULL comes back as an Object.
-                      ;; See https://jira.talendforge.org/browse/TBD-1592
-                      ;; Everything else comes back as a String luckily so we can proceed normally.
-                      (when-not (= (class v) Object)
-                        (parser v)))))})))
+      (respond
+       {:cols columns}
+       (for [^TableRow row (.getRows response)]
+         (for [[^TableCell cell, parser] (partition 2 (interleave (.getF row) parsers))]
+           (when-let [v (.getV cell)]
+             ;; There is a weird error where everything that *should* be NULL comes back as an Object.
+             ;; See https://jira.talendforge.org/browse/TBD-1592
+             ;; Everything else comes back as a String luckily so we can proceed normally.
+             (when-not (= (class v) Object)
+               (parser v)))))))))
 
 (defn- ^QueryResponse execute-bigquery
   ([{{:keys [project-id]} :details, :as database} query-string]
@@ -201,12 +202,12 @@
                    (.setQuery query-string))]
      (google/execute (.query (.jobs client) project-id request)))))
 
-(defn- process-native* [database query-string]
+(defn- process-native* [respond database query-string]
   {:pre [(map? database) (map? (:details database))]}
   ;; automatically retry the query if it times out or otherwise fails. This is on top of the auto-retry added by
   ;; `execute`
   (letfn [(thunk []
-            (post-process-native (execute-bigquery database query-string)))]
+            (post-process-native respond (execute-bigquery database query-string)))]
     (try
       (thunk)
       (catch Throwable e
@@ -218,15 +219,16 @@
     (qp.timezone/system-timezone-id)
     "UTC"))
 
-(defmethod driver/execute-query :bigquery
-  [driver {{sql :query, params :params, :keys [table-name mbql?]} :native, :as outer-query}]
+(defmethod driver/execute-reducible-query :bigquery
+  ;; TODO - it doesn't actually cancel queries the way we'd expect
+  [driver {{sql :query, params :params, :keys [table-name mbql?]} :native, :as outer-query} _ respond]
   (let [database (qp.store/database)]
     (binding [bigquery.common/*bigquery-timezone-id* (effective-query-timezone-id database)]
       (log/tracef "Running BigQuery query in %s timezone" bigquery.common/*bigquery-timezone-id*)
       (let [sql (str "-- " (qputil/query->remark outer-query) "\n" (if (seq params)
                                                                      (unprepare/unprepare driver (cons sql params))
                                                                      sql))]
-        (process-native* database sql)))))
+        (process-native* respond database sql)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

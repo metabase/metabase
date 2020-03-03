@@ -1,6 +1,7 @@
-import { signInAsAdmin } from "__support__/cypress";
+import { signInAsAdmin, restore } from "__support__/cypress";
 
 describe("query builder", () => {
+  before(restore);
   beforeEach(signInAsAdmin);
 
   describe("browse data", () => {
@@ -143,7 +144,7 @@ describe("query builder", () => {
         .contains("button", "Save")
         .click();
       cy.contains("Yes please!").click();
-      cy.contains("Orders over time").click();
+      cy.contains("Orders in a dashboard").click();
 
       // create a new question to see if the "add to a dashboard" modal is still there
       cy.contains("Browse Data").click();

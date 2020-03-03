@@ -8,7 +8,9 @@
             [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
-            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor
+             [error-type :as error-type]
+             [store :as qp.store]]
             [metabase.util
              [i18n :refer [tru]]
              [schema :as su]]
@@ -49,7 +51,9 @@
                                                global-max)]
     (when-not (and min-value max-value)
       (throw (ex-info (tru "Unable to bin Field without a min/max value")
-               {:field-id field-id, :fingerprint fingerprint})))
+               {:type        error-type/invalid-query
+                :field-id    field-id
+                :fingerprint fingerprint})))
     {:min-value min-value, :max-value max-value}))
 
 
@@ -221,4 +225,5 @@
   the binned field. This middleware looks for that criteria, then updates the related min/max values and calculates
   the bin-width based on the criteria values (or global min/max information)."
   [qp]
-  (comp qp update-binning-strategy*))
+  (fn [query rff context]
+    (qp (update-binning-strategy* query) rff context)))

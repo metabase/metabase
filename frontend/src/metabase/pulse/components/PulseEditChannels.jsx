@@ -188,7 +188,7 @@ export default class PulseEditChannels extends Component {
         {channelSpec.recipients && (
           <div>
             <div className="h4 text-bold mb1">
-              {this.props.emailRecipientText || "To:"}
+              {this.props.emailRecipientText || t`To:`}
             </div>
             <RecipientPicker
               isNewPulse={this.props.pulseId === undefined}

@@ -8,7 +8,7 @@ import Link from "metabase/components/Link";
 import Text from "metabase/components/Text";
 
 type EmptyStateProps = {
-  message: React$Element<any>,
+  message?: React$Element<any>,
   title?: string,
   action?: string,
   link?: string,

@@ -1,13 +1,14 @@
-import { signInAsAdmin } from "__support__/cypress";
+import { signInAsAdmin, restore } from "__support__/cypress";
 
 describe("admin/settings", () => {
+  before(restore);
   beforeEach(signInAsAdmin);
 
   it("should save a setting", () => {
     cy.server();
     cy.route("PUT", "**/admin-email").as("saveSettings");
 
-    cy.visit("admin/settings/general");
+    cy.visit("/admin/settings/general");
 
     // aliases don't last past refreshes, so create a function to grab the input
     // rather than aliasing it with .as()
@@ -24,7 +25,7 @@ describe("admin/settings", () => {
       .blur();
     cy.wait("@saveSettings");
 
-    cy.visit("admin/settings/general");
+    cy.visit("/admin/settings/general");
     // after we refreshed, the field should still be "other.email"
     emailInput().should("have.value", "other.email@metabase.com");
 
@@ -41,7 +42,7 @@ describe("admin/settings", () => {
     cy.route("PUT", "**/custom-formatting").as("saveFormatting");
 
     // update the formatting
-    cy.visit("admin/settings/formatting");
+    cy.visit("/admin/settings/formatting");
     cy.contains("17:24 (24-hour clock)").click();
     cy.wait("@saveFormatting");
 
@@ -53,7 +54,7 @@ describe("admin/settings", () => {
     cy.contains(/^February 11, 2019, 21:40$/).debug();
 
     // reset the formatting
-    cy.visit("admin/settings/formatting");
+    cy.visit("/admin/settings/formatting");
     cy.contains("5:24 PM (12-hour clock)").click();
     cy.wait("@saveFormatting");
 

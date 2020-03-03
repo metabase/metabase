@@ -6176,3 +6176,39 @@ databaseChangeLog:
         changes:
           - sql:
                 sql: ALTER TABLE `dashboardcard_series` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+# Change query_cache.updated_at from datetime to timestamp [with time zone] to get > second resolution on MySQL.
+
+  - property:
+      name: cache_timestamp_type
+      value: timestamp with time zone
+      dbms: postgresql,h2
+  - property:
+      name: cache_timestamp_type
+      value: timestamp
+      dbms: mysql,mariadb
+  - changeSet:
+      id: 161
+      author: camsaul
+      comment: Added 0.35.0
+      changes:
+        - modifyDataType:
+            tableName: query_cache
+            columnName: updated_at
+            newDataType: ${cache_timestamp_type}
+
+# Drop the old query_queryexecution table if present. This was replaced by query_execution in 0.23.0. This was
+# formerly a data migration but was converted to a Liquibase migration so people running migrations manually will
+# still have the Table dropped.
+
+  - changeSet:
+      id: 162
+      author: camsaul
+      comment: 'Added 0.23.0 as a data migration; converted to Liquibase migration in 0.35.0'
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: query_queryexecution
+      changes:
+        - dropTable:
+            tableName: query_queryexecution

@@ -1,7 +1,7 @@
 (ns metabase.query-processor.middleware.add-dimension-projections-test
   (:require [clojure.test :refer :all]
-            [expectations :refer [expect]]
             [metabase.query-processor.middleware.add-dimension-projections :as add-dim-projections]
+            [metabase.test :as mt]
             [metabase.test.fixtures :as fixtures]
             [toucan.hydrate :as hydrate]))
 
@@ -23,34 +23,31 @@
                  {3 {:name "Product", :field_id 3, :human_readable_field_id 4}})]
     (f)))
 
-;; make sure we create the remap column tuples correctly
-(expect
-  [[[:field-id 3]
-    [:fk-> [:field-id 3] [:field-id 4]]
-    {:name "Product", :field_id 3, :human_readable_field_id 4}]]
-  (do-with-fake-remappings-for-field-3
-   (fn []
-     (#'add-dim-projections/create-remap-col-tuples [[:field-id 1] [:field-id 2] [:field-id 3]]))))
+(deftest create-remap-col-tuples
+  (testing "make sure we create the remap column tuples correctly"
+    (do-with-fake-remappings-for-field-3
+     (fn []
+       (is (= [[[:field-id 3]
+                [:fk-> [:field-id 3] [:field-id 4]]
+                {:name "Product", :field_id 3, :human_readable_field_id 4}]]
+              (#'add-dim-projections/create-remap-col-tuples [[:field-id 1] [:field-id 2] [:field-id 3]])))))))
 
-;; make sure FK remaps add an entry for the FK field to `:fields`, and returns a pair of [dimension-info updated-query]
-(expect
-  [[{:name "Product", :field_id 3, :human_readable_field_id 4}]
-   (update-in example-query [:query :fields]
-              conj [:fk-> [:field-id 3] [:field-id 4]])]
+(deftest add-fk-remaps-test
   (do-with-fake-remappings-for-field-3
    (fn []
-     (#'add-dim-projections/add-fk-remaps example-query))))
+     (testing "make sure FK remaps add an entry for the FK field to `:fields`, and returns a pair of [dimension-info updated-query]"
+       (is (= [[{:name "Product", :field_id 3, :human_readable_field_id 4}]
+               (update-in example-query [:query :fields]
+                          conj [:fk-> [:field-id 3] [:field-id 4]])]
+              (#'add-dim-projections/add-fk-remaps example-query))))
 
-;; adding FK remaps should replace any existing order-bys for a field with order bys for the FK remapping Field
-(expect
-  [[{:name "Product", :field_id 3, :human_readable_field_id 4}]
-   (-> example-query
-       (assoc-in [:query :order-by] [[:asc [:fk-> [:field-id 3] [:field-id 4]]]])
-       (update-in [:query :fields]
-                  conj [:fk-> [:field-id 3] [:field-id 4]]))]
-  (do-with-fake-remappings-for-field-3
-   (fn []
-     (#'add-dim-projections/add-fk-remaps (assoc-in example-query [:query :order-by] [[:asc [:field-id 3]]])))))
+     (testing "adding FK remaps should replace any existing order-bys for a field with order bys for the FK remapping Field"
+       (is (= [[{:name "Product", :field_id 3, :human_readable_field_id 4}]
+               (-> example-query
+                   (assoc-in [:query :order-by] [[:asc [:fk-> [:field-id 3] [:field-id 4]]]])
+                   (update-in [:query :fields]
+                              conj [:fk-> [:field-id 3] [:field-id 4]]))]
+              (#'add-dim-projections/add-fk-remaps (assoc-in example-query [:query :order-by] [[:asc [:field-id 3]]]))))))))
 
 
 ;;; ---------------------------------------- remap-results (post-processing) -----------------------------------------
@@ -119,39 +116,9 @@
    :target          nil
    :display_name    "Foo"})
 
-(expect
-  {:rows    [[1 "Red Medicine"                  4 3 "Foo"]
-             [2 "Stout Burgers & Beers"        11 2 "Bar"]
-             [3 "The Apple Pan"                11 2 "Bar"]
-             [4 "Wurstküche"                   29 2 "Baz"]
-             [5 "Brite Spot Family Restaurant" 20 2 "Qux"]]
-   :cols    [example-result-cols-id
-             example-result-cols-name
-             (assoc example-result-cols-category-id
-               :remapped_to "Foo")
-             example-result-cols-price
-             example-result-cols-foo]}
-  ;; swap out `hydrate` with one that will add some fake dimensions and values for CATEGORY_ID.
-  (with-redefs [hydrate/hydrate (fn [fields & _]
-                                  (for [{field-name :name, :as field} fields]
-                                    (cond-> field
-                                      (= field-name "CATEGORY_ID")
-                                      (assoc :dimensions {:type :internal, :name "Foo", :field_id 10}
-                                             :values     {:human_readable_values ["Foo" "Bar" "Baz" "Qux"]
-                                                          :values                [4 11 29 20]}))))]
-    (#'add-dim-projections/remap-results
-     nil
-     {:rows    [[1 "Red Medicine"                  4 3]
-                [2 "Stout Burgers & Beers"        11 2]
-                [3 "The Apple Pan"                11 2]
-                [4 "Wurstküche"                   29 2]
-                [5 "Brite Spot Family Restaurant" 20 2]]
-      :cols    [example-result-cols-id
-                example-result-cols-name
-                example-result-cols-category-id
-                example-result-cols-price]})))
+(defn- add-remapping [query metadata rows]
+  (:result (mt/test-qp-middleware add-dim-projections/add-remapping query metadata rows)))
 
-;; test that external remappings get the appropriate `:remapped_from`/`:remapped_to` info
 (def ^:private example-result-cols-category
   (merge
    col-defaults
@@ -166,21 +133,63 @@
     :display_name    "Category"
     :base_type       :type/Text}))
 
-(expect
-  {:rows    []
-   :cols    [example-result-cols-id
-             example-result-cols-name
-             (assoc example-result-cols-category-id
-               :remapped_to "CATEGORY")
-             example-result-cols-price
-             (assoc example-result-cols-category
-               :remapped_from "CATEGORY_ID"
-               :display_name  "My Venue Category")]}
-  (#'add-dim-projections/remap-results
-   [{:name "My Venue Category", :field_id 11, :human_readable_field_id 27}]
-   {:rows    []
-    :cols    [example-result-cols-id
-              example-result-cols-name
-              example-result-cols-category-id
-              example-result-cols-price
-              example-result-cols-category]}))
+(deftest add-remapping-test
+  (testing "remapping columns with `human_readable_values`"
+    ;; swap out `hydrate` with one that will add some fake dimensions and values for CATEGORY_ID.
+    (with-redefs [hydrate/hydrate (fn [fields & _]
+                                    (for [{field-name :name, :as field} fields]
+                                      (cond-> field
+                                        (= field-name "CATEGORY_ID")
+                                        (assoc :dimensions {:type :internal, :name "Foo", :field_id 10}
+                                               :values     {:human_readable_values ["Foo" "Bar" "Baz" "Qux"]
+                                                            :values                [4 11 29 20]}))))]
+      (is (= {:status    :completed
+              :row_count 5
+              :data      {:rows [[1 "Red Medicine"                  4 3 "Foo"]
+                                 [2 "Stout Burgers & Beers"        11 2 "Bar"]
+                                 [3 "The Apple Pan"                11 2 "Bar"]
+                                 [4 "Wurstküche"                   29 2 "Baz"]
+                                 [5 "Brite Spot Family Restaurant" 20 2 "Qux"]]
+                          :cols [example-result-cols-id
+                                 example-result-cols-name
+                                 (assoc example-result-cols-category-id
+                                        :remapped_to "Foo")
+                                 example-result-cols-price
+                                 example-result-cols-foo]}}
+             (with-redefs [add-dim-projections/add-fk-remaps (fn [query]
+                                                               [nil query])]
+               (add-remapping
+                {}
+                {:cols [example-result-cols-id
+                        example-result-cols-name
+                        example-result-cols-category-id
+                        example-result-cols-price]}
+                [[1 "Red Medicine"                  4 3]
+                 [2 "Stout Burgers & Beers"        11 2]
+                 [3 "The Apple Pan"                11 2]
+                 [4 "Wurstküche"                   29 2]
+                 [5 "Brite Spot Family Restaurant" 20 2]]))))))
+
+  (testing "test that external remappings get the appropriate `:remapped_from`/`:remapped_to` info"
+    (is (= {:status    :completed
+            :row_count 0
+            :data      {:rows []
+                        :cols [example-result-cols-id
+                               example-result-cols-name
+                               (assoc example-result-cols-category-id
+                                      :remapped_to "CATEGORY")
+                               example-result-cols-price
+                               (assoc example-result-cols-category
+                                      :remapped_from "CATEGORY_ID"
+                                      :display_name  "My Venue Category")]}}
+           (with-redefs [add-dim-projections/add-fk-remaps (fn [query]
+                                                             [[{:name "My Venue Category", :field_id 11, :human_readable_field_id 27}]
+                                                              query])]
+             (add-remapping
+              {}
+              {:cols [example-result-cols-id
+                      example-result-cols-name
+                      example-result-cols-category-id
+                      example-result-cols-price
+                      example-result-cols-category]}
+              []))))))

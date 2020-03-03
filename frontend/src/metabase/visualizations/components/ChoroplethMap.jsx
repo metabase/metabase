@@ -131,7 +131,7 @@ export default class ChoroplethMap extends Component {
   }
 
   _getDetails(props) {
-    return MetabaseSettings.get("custom_geojson", {})[
+    return MetabaseSettings.get("custom-geojson", {})[
       props.settings["map.region"]
     ];
   }
@@ -239,6 +239,8 @@ export default class ChoroplethMap extends Component {
           column: cols[dimensionIndex],
         },
       ],
+      origin: { row, cols },
+      settings,
     });
 
     const isClickable =

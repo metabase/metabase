@@ -1,23 +1,8 @@
-import { signInAsAdmin, signInAsNormalUser } from "__support__/cypress";
+import { signIn, restore } from "__support__/cypress";
 
 describe("permissions", () => {
-  before(() => {
-    signInAsAdmin();
-    cy.request("PUT", "/api/permissions/graph", {
-      revision: 0,
-      groups: {
-        "1": { "1": { native: "none", schemas: "none" } },
-        "2": { "1": { native: "write", schemas: "all" } },
-      },
-    });
-    cy.request("PUT", "/api/collection/graph", {
-      revision: 0,
-      groups: {
-        "1": { root: "none" },
-        "2": { root: "write" },
-      },
-    });
-  });
+  before(restore);
+
   const PATHS = [
     "/dashboard/1",
     "/question/1",
@@ -29,7 +14,7 @@ describe("permissions", () => {
 
   for (const path of PATHS) {
     it(`should display the permissions screen on ${path}`, () => {
-      signInAsNormalUser();
+      signIn("none");
       cy.visit(path);
       cy.get(".Icon-key");
       cy.contains("Sorry, you don’t have permission to see that.");
@@ -39,7 +24,7 @@ describe("permissions", () => {
   // There's no pulse in the fixture data, so we stub out the api call to
   // replace the 404 with a 403.
   it("should display the permissions screen for pulses", () => {
-    signInAsNormalUser();
+    signIn("none");
     cy.server();
     cy.route({ url: /\/api\/pulse\/1/, status: 403, response: {} });
     cy.visit("/pulse/1");

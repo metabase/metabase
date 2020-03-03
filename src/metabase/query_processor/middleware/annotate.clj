@@ -11,7 +11,10 @@
              [schema :as mbql.s]
              [util :as mbql.u]]
             [metabase.models.humanization :as humanization]
-            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor
+             [error-type :as error-type]
+             [reducible :as qp.reducible]
+             [store :as qp.store]]
             [metabase.util
              [i18n :refer [deferred-tru tru]]
              [schema :as su]]
@@ -35,12 +38,20 @@
    ;; various other stuff from the original Field can and should be included such as `:settings`
    s/Any                          s/Any})
 
+;; TODO - I think we should change the signature of this to `(column-info query cols rows)`
 (defmulti column-info
   "Determine the `:cols` info that should be returned in the query results, which is a sequence of maps containing
-  information about the columns in the results. Dispatches on query type."
+  information about the columns in the results. Dispatches on query type. `results` is a map with keys `:cols` and,
+  optionally, `:rows`, if available."
   {:arglists '([query results])}
   (fn [query _]
     (:type query)))
+
+(defmethod column-info :default
+  [{query-type :type, :as query} _]
+  (throw (ex-info (tru "Unknown query type {0}" (pr-str query-type))
+           {:type  error-type/invalid-query
+            :query query})))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Adding :cols info for native queries                                      |
@@ -48,40 +59,44 @@
 
 (defn- check-driver-native-columns
   "Double-check that the *driver* returned the correct number of `columns` for native query results."
-  [columns rows]
+  [cols rows]
+  {:pre [(sequential? cols) (every? map? cols)]}
   (when (seq rows)
-    (let [expected-count (count columns)
+    (let [expected-count (count cols)
           actual-count   (count (first rows))]
       (when-not (= expected-count actual-count)
         (throw (ex-info (str (deferred-tru "Query processor error: number of columns returned by driver does not match results.")
                              "\n"
                              (deferred-tru "Expected {0} columns, but first row of resuls has {1} columns."
-                                  expected-count actual-count))
-                 {:expected-columns columns
-                  :first-row        (first rows)}))))))
+                               expected-count actual-count))
+                 {:expected-columns (map :name cols)
+                  :first-row        (first rows)
+                  :type             error-type/qp}))))))
 
 (defmethod column-info :native
-  [_ {:keys [columns rows]}]
-  (check-driver-native-columns columns rows)
+  [_ {:keys [cols rows]}]
+  (check-driver-native-columns cols rows)
   ;; Infer the types of columns by looking at the first value for each in the results. Native queries don't have the
   ;; type information from the original `Field` objects used in the query.
   (vec
-   (for [i    (range (count columns))
-         :let [col       (nth columns i)
-               base-type (or (driver.common/values->base-type (for [row rows]
-                                                                (nth row i)))
-                             :type/*)]]
+   (for [i    (range (count cols))
+         :let [{col-name :name, :as col} (nth cols i)
+               col-name                  (name col-name)
+               base-type                 (or (:base_type col)
+                                             (driver.common/values->base-type (for [row rows]
+                                                                                (nth row i)))
+                                             :type/*)]]
      (merge
-      {:name         (name col)
-       :display_name (u/qualified-name col)
+      {:display_name (u/qualified-name col-name)
        :base_type    base-type
        :source       :native}
       ;; It is perfectly legal for a driver to return a column with a blank name; for example, SQL Server does this
       ;; for aggregations like `count(*)` if no alias is used. However, it is *not* legal to use blank names in MBQL
       ;; `:field-literal` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a valid
       ;; `:field-literal`, omit the `:field_ref`.
-      (when (seq (name col))
-        {:field_ref [:field-literal (name col) base-type]})))))
+      (when (seq col-name)
+        {:field_ref [:field-literal col-name base-type]})
+      col))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -321,7 +336,7 @@
     [(_ :guard #{:count :distinct}) & args]
     (merge
      (col-info-for-aggregation-clause inner-query args)
-     {:base_type    :type/Integer
+     {:base_type    :type/BigInteger
       :special_type :type/Number}
      (ag->name-info inner-query &match))
 
@@ -363,7 +378,7 @@
 
 (defn- check-correct-number-of-columns-returned [returned-mbql-columns results]
   (let [expected-count (count returned-mbql-columns)
-        actual-count   (count (:columns results))]
+        actual-count   (count (:cols results))]
     (when (seq (:rows results))
       (when-not (= expected-count actual-count)
         (throw
@@ -380,18 +395,18 @@
   [{:keys [fields], :as inner-query} :- su/Map]
   (for [field fields]
     (assoc (col-info-for-field-clause inner-query field)
-      :source :fields)))
+           :source :fields)))
 
 (s/defn ^:private cols-for-ags-and-breakouts
   [{aggregations :aggregation, breakouts :breakout, :as inner-query} :- su/Map]
   (concat
    (for [breakout breakouts]
      (assoc (col-info-for-field-clause inner-query breakout)
-       :source :breakout))
+            :source :breakout))
    (for [[i aggregation] (m/indexed aggregations)]
      (assoc (col-info-for-aggregation-clause inner-query aggregation)
-       :source    :aggregation
-       :field_ref [:aggregation i]))))
+            :source    :aggregation
+            :field_ref [:aggregation i]))))
 
 (s/defn cols-for-mbql-query
   "Return results metadata about the expected columns in an 'inner' MBQL query."
@@ -417,8 +432,9 @@
     (maybe-merge-source-metadata source-metadata (column-info {:type :native} results))
     (mbql-cols source-query results)))
 
-(s/defn ^:private mbql-cols
-  "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the query."
+(s/defn mbql-cols
+  "Return the `:cols` result metadata for an 'inner' MBQL query based on the fields/breakouts/aggregations in the
+  query."
   [{:keys [source-metadata source-query fields], :as inner-query} :- su/Map, results]
   (let [cols (cols-for-mbql-query inner-query)]
     (cond
@@ -464,81 +480,48 @@
   It's the responsibility of the driver to make sure the `:cols` are returned in the correct number and order."
   [cols cols-returned-by-driver]
   (if (seq cols-returned-by-driver)
-    (map merge cols cols-returned-by-driver)
+    (map (fn [col driver-col]
+           ;; 1. Prefer our `:name` if it's something different that what's returned by the driver
+           ;;    (e.g. for named aggregations)
+           ;; 2. Then, prefer any non-nil keys returned by the driver
+           ;; 3. Finally, merge in any of our other keys
+           (merge col (m/filter-vals some? driver-col) (u/select-non-nil-keys col [:name])))
+         cols
+         cols-returned-by-driver)
     cols))
 
-(s/defn ^:private add-column-info* :- {:cols ColsWithUniqueNames, s/Keyword s/Any}
-  [query {cols-returned-by-driver :cols, :as results}]
+(s/defn column-info* :- ColsWithUniqueNames
+  "Returns deduplicated `:cols` metadata given a query and the initial results metadata returned by the driver's impl
+  of `execute-reducible-query`."
+  [query {cols-returned-by-driver :cols, :as result}]
   ;; merge in `:cols` if returned by the driver, then make sure the `:name` of each map in `:cols` is unique, since
   ;; the FE uses it as a key for stuff like column settings
-  (let [cols (deduplicate-cols-names
-              (merge-cols-returned-by-driver (column-info query results) cols-returned-by-driver))]
-    (-> results
-        (assoc :cols cols)
-        ;; remove `:columns` which we no longer need
-        (dissoc :columns))))
+  (deduplicate-cols-names
+   (merge-cols-returned-by-driver (column-info query result) cols-returned-by-driver)))
+
+(def ^:private column-info-sample-size
+  "Number of result rows to sample when adding column info to results."
+  100)
+
+(defn- add-column-info-xform [{query-type :type, :as query} metadata rf]
+  (qp.reducible/combine-additional-reducing-fns
+   rf
+   [((take column-info-sample-size) conj)]
+   (fn combine [result sampled-rows]
+     (rf (cond-> result
+           (map? result)
+           (assoc-in [:data :cols] (column-info* query (assoc metadata :rows sampled-rows))))))))
 
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
   [qp]
-  (fn [query]
-    (add-column-info* query (qp query))))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                     result-rows-maps-to-vectors middleware                                     |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(s/defn ^:private expected-column-sort-order :- [s/Keyword]
-  "Determine query result row column names (as keywords) sorted in the appropriate order based on a `query`."
-  [{query-type :type, inner-query :query, :as query} :- su/Map, {[first-row] :rows, :as results}]
-  (if (= query-type :query)
-    (map (comp keyword :name) (mbql-cols inner-query results))
-    (map keyword (keys first-row))))
-
-(defn- result-rows-maps->vectors* [query {[first-row :as rows] :rows, columns :columns, :as results}]
-  (when (or (map? first-row)
-            ;; if no rows were returned and the driver didn't return `:columns`, go ahead and calculate them so we can
-            ;; add them -- drivers that rely on this behavior still need us to do that for them for queries that
-            ;; return no results
-            (and (empty? rows)
-                 (nil? columns)))
-    (let [sorted-columns (expected-column-sort-order query results)]
-      (assoc results
-        :columns (map u/qualified-name sorted-columns)
-        :rows    (for [row rows]
-                   (for [col sorted-columns]
-                     (get row col)))))))
-
-(defn result-rows-maps->vectors
-  "For drivers that return query result rows as a sequence of maps rather than a sequence of vectors, determine
-  appropriate column sort order and convert rows to sequences (the expected MBQL result format).
-
-  Certain databases like MongoDB and Druid always return result rows as maps, rather than something sequential (e.g.
-  vectors). Rather than require those drivers to duplicate the logic in this and other QP middleware namespaces for
-  determining expected column sort order, drivers have the option of leaving the `:rows` as a sequence of maps, and
-  this middleware will handle things for them.
-
-  Because the order of `:columns` is determined by this middleware, it adds `:columns` to the results as well as the
-  updated `:rows`; drivers relying on this middleware should return a map containing only `:rows`.
-
-  IMPORTANT NOTES:
-
-  *  Determining correct sort order only works for MBQL queries. For native queries, the sort order is the result of
-     calling `keys` on the first row. It is reccomended that you utilize Flatland `ordered-map` when possible to
-     preserve key ordering in maps.
-
-  *  For obvious reasons, drivers that returns rows as maps cannot support duplicate column names. Thus it is expected
-     that drivers that use functionality provided by this middleware return deduplicated column names, e.g. `:sum` and
-     `:sum_2` for queries with multiple `:sum` aggregations.
-
-  *  For *nested* Fields, this namespace assumes result row maps will come back flattened, and Field name keys will
-     come back qualified by names of their ancestors, e.g. `parent.child`, `grandparent.parent.child`, etc. This is done
-     to remove any ambiguity between nested columns with the same name (e.g. a document with both `user.id` and
-     `venue.id`). Be sure to follow this convention if your driver supports nested Fields (e.g., MongoDB)."
-  [qp]
-  (fn [query]
-    (let [results (qp query)]
-      (or
-       (result-rows-maps->vectors* query results)
-       results))))
+  (fn [{query-type :type, :as query} rff context]
+    (qp
+     query
+     (fn [metadata]
+       (if (= query-type :query)
+         (rff (assoc metadata :cols (column-info* query metadata)))
+         ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
+         ;; queries...
+         (add-column-info-xform query metadata (rff metadata))))
+     context)))
