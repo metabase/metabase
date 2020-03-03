@@ -9,6 +9,7 @@ import { t } from "ttag";
   arg1: t`column`,
   arg1Desc: t`The column whose values to average.`,
 },
+// between
 {
   name: between,
   structure: "between(" + t`column` + "," + t`start`+ "," + t`end` + ")",
