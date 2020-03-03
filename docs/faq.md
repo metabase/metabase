@@ -111,7 +111,7 @@ Metabase is built by a small core team, and we have very limited engineering ban
 
 That said, we will build out additional database connectors as we are able to. We generally select additional drivers based on demand from the community and our ability to set up a test database server easily in our e2e testing environment.
 
-We welcome community contributions of database connectors. If you're able to help, we have [open issues](https://github.com/metabase/metabase/labels/Database%20Support) for a number of databases. We'd greatly appreciate your help!
+We welcome community contributions of database connectors. If you're able to help, we have [open issues](https://github.com/metabase/metabase/labels/Database%2F) for a number of databases. We'd greatly appreciate your help!
 
 ### Can Metabase connect to Google Analytics, Salesforce, etc.?
 

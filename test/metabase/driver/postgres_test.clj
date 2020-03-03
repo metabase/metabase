@@ -476,3 +476,18 @@
             {:database (mt/id)
              :type     :native
              :native   {:query "SELECT adsasdasd;"}}))))))
+
+(deftest pgobject-test
+  (mt/test-driver :postgres
+    (testing "Make sure PGobjects are decoded correctly"
+      (let [results (qp/process-query (mt/native-query {:query "SELECT pg_sleep(0.1) AS sleep;"}))]
+        (testing "rows"
+          (is (= [[""]]
+                 (mt/rows results))))
+        (testing "cols"
+          (is (= [{:display_name "sleep"
+                   :base_type    :type/*
+                   :source       :native
+                   :field_ref    [:field-literal "sleep" :type/*]
+                   :name         "sleep"}]
+                 (mt/cols results))))))))

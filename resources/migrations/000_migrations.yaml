@@ -6197,9 +6197,25 @@ databaseChangeLog:
             columnName: updated_at
             newDataType: ${cache_timestamp_type}
 
-# Create the native query snippets table, intended to store snippets and their metadata
+# Drop the old query_queryexecution table if present. This was replaced by query_execution in 0.23.0. This was
+# formerly a data migration but was converted to a Liquibase migration so people running migrations manually will
+# still have the Table dropped.
+
   - changeSet:
       id: 162
+      author: camsaul
+      comment: 'Added 0.23.0 as a data migration; converted to Liquibase migration in 0.35.0'
+      preConditions:
+        - onFail: MARK_RAN
+        - tableExists:
+            tableName: query_queryexecution
+      changes:
+        - dropTable:
+            tableName: query_queryexecution
+
+# Create the native query snippets table, intended to store snippets and their metadata
+  - changeSet:
+      id: 163
       author: walterl
       comment: 'Added 0.35.0'
       changes:
