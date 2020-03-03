@@ -49,4 +49,36 @@ describe("schema entity", () => {
       "1:foo": { database: "1", id: "1:foo", name: "foo" },
     });
   });
+
+  it("should handle schema-less databases", async () => {
+    mock.get("/api/database/1/schemas", { body: JSON.stringify([""]) });
+
+    await store.dispatch(Schemas.actions.fetchList({ dbId: "1" }));
+    const { schemas } = store.getState().entities;
+    expect(schemas).toEqual({ "1:": { database: "1", id: "1:", name: "" } });
+  });
+
+  it("should fetch schema tables for a schema-less database", async () => {
+    mock.get("/api/database/1/schema/", {
+      body: JSON.stringify([
+        { id: 123, name: "foo" },
+        { id: 234, name: "bar" },
+      ]),
+    });
+
+    await store.dispatch(Schemas.actions.fetch({ id: "1:" }));
+    const { schemas, tables } = store.getState().entities;
+    expect(schemas).toEqual({
+      "1:": {
+        database: "1",
+        id: "1:",
+        name: "",
+        tables: [123, 234],
+      },
+    });
+    expect(tables).toEqual({
+      "123": { id: 123, name: "foo" },
+      "234": { id: 234, name: "bar" },
+    });
+  });
 });
