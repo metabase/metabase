@@ -5,31 +5,32 @@
              [db :as mdb]
              [public-settings :as public-settings]]
             [metabase.api.common :as api]
+            metabase.async.streaming-response
             [metabase.middleware.util :as middleware.u]
             [metabase.util.i18n :refer [trs]]
             [puppetlabs.i18n.core :as puppet-i18n])
-  (:import clojure.core.async.impl.channels.ManyToManyChannel))
+  (:import clojure.core.async.impl.channels.ManyToManyChannel
+           metabase.async.streaming_response.StreamingResponse))
 
-(defn- add-content-type* [request response]
-  (update-in
-   response
-   [:headers "Content-Type"]
-   (fn [content-type]
-     (or content-type
-         (when (middleware.u/api-call? request)
-           (if (string? (:body response))
-             "text/plain"
-             "application/json; charset=utf-8"))))))
+(comment metabase.async.streaming-response/keep-me)
+
+(defn- add-content-type* [request {:keys [body], {:strs [Content-Type]} :headers, :as response}]
+  (cond-> response
+    (not Content-Type)
+    (assoc-in [:headers "Content-Type"] (if (string? body)
+                                          "text/plain"
+                                          "application/json; charset=utf-8"))))
 
 (defn add-content-type
   "Add an appropriate Content-Type header to response if it doesn't already have one. Most responses should already
   have one, so this is a fallback for ones that for one reason or another do not."
   [handler]
   (fn [request respond raise]
-    (handler
-     request
-     (comp respond (partial add-content-type* request))
-     raise)))
+    (handler request
+             (if-not (middleware.u/api-call? request)
+               respond
+               (comp respond (partial add-content-type* request)))
+             raise)))
 
 
 ;;; ------------------------------------------------ SETTING SITE-URL ------------------------------------------------
@@ -78,7 +79,8 @@
 
 (defn- maybe-add-disable-buffering-header [{:keys [body], :as response}]
   (cond-> response
-    (instance? ManyToManyChannel body)
+    (or (instance? StreamingResponse body)
+        (instance? ManyToManyChannel body))
     (assoc-in [:headers "X-Accel-Buffering"] "no")))
 
 (defn disable-streaming-buffering

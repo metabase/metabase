@@ -11,28 +11,15 @@
             [java-time :as t]
             [metabase
              [driver :as driver]
+             [models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field Metric Permissions
+                             PermissionsGroup Pulse PulseCard PulseChannel Revision Segment Table TaskHistory User]]
              [task :as task]
              [util :as u]]
             [metabase.models
-             [card :refer [Card]]
-             [collection :as collection :refer [Collection]]
-             [dashboard :refer [Dashboard]]
-             [dashboard-card-series :refer [DashboardCardSeries]]
-             [database :refer [Database]]
-             [dimension :refer [Dimension]]
-             [field :refer [Field]]
-             [metric :refer [Metric]]
-             [permissions :as perms :refer [Permissions]]
-             [permissions-group :as group :refer [PermissionsGroup]]
-             [pulse :refer [Pulse]]
-             [pulse-card :refer [PulseCard]]
-             [pulse-channel :refer [PulseChannel]]
-             [revision :refer [Revision]]
-             [segment :refer [Segment]]
-             [setting :as setting]
-             [table :refer [Table]]
-             [task-history :refer [TaskHistory]]
-             [user :refer [User]]]
+             [collection :as collection]
+             [permissions :as perms]
+             [permissions-group :as group]
+             [setting :as setting]]
             [metabase.plugins.classloader :as classloader]
             [metabase.test
              [data :as data]
@@ -59,7 +46,12 @@
                      [[actual# [(s/check schema# actual#) nil]]])}))))
 
 (defmacro ^:deprecated expect-schema
-  "Like `expect`, but checks that results match a schema."
+  "Like `expect`, but checks that results match a schema. DEPRECATED -- you can use `deftest` combined with `schema=`
+  instead.
+
+    (deftest my-test
+      (is (schema= expected-schema
+                   actual-value)))"
   {:style/indent 0}
   [expected actual]
   (let [symb (symbol (format "expect-schema-%d" (hash &form)))]
@@ -381,13 +373,13 @@
   (Logger/getLogger "metabase"))
 
 (defn do-with-log-messages-for-level [level thunk]
-  (let [original-mb-log-level (.getLevel (metabase-logger))
-        new-level             (get level-kwd->level (keyword level))]
+  (let [original-level (.getLevel (metabase-logger))
+        new-level      (get level-kwd->level (keyword level))]
     (try
       (.setLevel (metabase-logger) new-level)
       (thunk)
       (finally
-        (.setLevel (metabase-logger) original-mb-log-level)))))
+        (.setLevel (metabase-logger) original-level)))))
 
 (defmacro with-log-level
   "Sets the log level (e.g. `:debug` or `:trace`) while executing `body`. Not thread safe! But good for debugging from

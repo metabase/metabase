@@ -1,6 +1,8 @@
 (ns metabase.query-processor.middleware.add-implicit-joins-test
   (:require [expectations :refer [expect]]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [test :as mt]]
             [metabase.models
              [database :refer [Database]]
              [field :refer [Field]]
@@ -15,7 +17,7 @@
   (driver/with-driver (tx/driver)
     (qp.store/with-store
       (qp.store/fetch-and-store-database! (data/id))
-      ((add-implicit-joins/add-implicit-joins identity) query))))
+      (:pre (mt/test-qp-middleware add-implicit-joins/add-implicit-joins query)))))
 
 ;; make sure `:joins` get added automatically for `:fk->` clauses
 (expect

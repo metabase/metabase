@@ -8,6 +8,8 @@ import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
 
+import { PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE } from "metabase/plugins";
+
 import type {
   Group,
   GroupId,
@@ -297,7 +299,7 @@ export function updateFieldsPermission(
     permissions,
     groupId,
     [databaseId, "schemas", schemaName, tableId],
-    value /* TODO: field ids, when enabled "controlled" fields */,
+    PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE[value] || value,
   );
 
   return permissions;

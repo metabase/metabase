@@ -9,6 +9,7 @@
              [driver :as driver]
              [util :as u]]
             [metabase.driver.util :as driver.u]
+            [metabase.query-processor.context.default :as context.default]
             [metabase.query-processor.store :as qp.store]
             [metabase.util.i18n :refer [deferred-tru trs tru]])
   (:import java.text.SimpleDateFormat
@@ -191,7 +192,7 @@
 
   DEPRECATED — `metabase.driver/current-db-time`, the method this function provides an implementation for, is itself
   deprecated. Implement `metabase.driver/db-default-timezone` instead directly."
-  ^DateTime [driver database]
+  ^org.joda.time.DateTime [driver database]
   {:pre [(map? database)]}
   (driver/with-driver driver
     (let [native-query    (current-db-time-native-query driver)
@@ -199,15 +200,20 @@
           settings        (when-let [report-tz (driver.u/report-timezone-if-supported driver)]
                             {:settings {:report-timezone report-tz}})
           time-str        (try
-                            ;; need to initialize the store sicne we're calling `execute-query` directly instead of
-                            ;; going thru normal QP pipeline
+                            ;; need to initialize the store since we're calling `execute-reducible-query` directly
+                            ;; instead of going thru normal QP pipeline
                             (qp.store/with-store
                               (qp.store/fetch-and-store-database! (u/get-id database))
-                              (->
-                               (driver/execute-query driver
-                                 (merge settings {:database (u/get-id database), :native {:query native-query}}))
-                               :rows
-                               ffirst))
+                              (let [query {:database (u/get-id database), :native {:query native-query}}
+                                    reduce (fn [metadata reducible-rows]
+                                             (transduce
+                                              identity
+                                              (fn
+                                                ([] nil)
+                                                ([row] (first row))
+                                                ([_ row] (reduced row)))
+                                              reducible-rows))]
+                                (driver/execute-reducible-query driver query (context.default/default-context) reduce)))
                             (catch Exception e
                               (throw
                                (Exception.

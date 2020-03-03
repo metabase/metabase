@@ -12,14 +12,13 @@
             [metabase
              [db :as mdb]
              [driver :as driver]
+             [query-processor :as qp]
              [util :as u]]
             [metabase.models
              [database :refer [Database]]
              [field :as field :refer [Field]]
              [table :refer [Table]]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.query-processor.store :as qp.store]
             [metabase.test.initialize :as initialize]
             [metabase.util
              [date-2 :as u.date]
@@ -344,27 +343,21 @@
 
 (defmethod aggregate-column-info ::test-extensions
   ([_ aggregation-type]
-   ;; TODO - cumulative count doesn't require a FIELD !!!!!!!!!
-   (assert (= aggregation-type) :count)
-   {:base_type    :type/Integer
+   ;; TODO - Can `:cum-count` be used without args as well ??
+   (assert (= aggregation-type :count))
+   {:base_type    :type/BigInteger
     :special_type :type/Number
     :name         "count"
     :display_name "Count"
     :source       :aggregation
     :field_ref    [:aggregation 0]})
 
-  ([driver aggregation-type {field-id :id, :keys [table_id]}]
-   {:pre [table_id]}
-   (driver/with-driver driver
-     (qp.store/with-store
-       (qp.store/fetch-and-store-database! (db/select-one-field :db_id Table :id table_id))
-       (qp.store/fetch-and-store-fields! [field-id])
-       (merge
-        (annotate/col-info-for-aggregation-clause {} [aggregation-type [:field-id field-id]])
-        {:source    :aggregation
-         :field_ref [:aggregation 0]}
-        (when (#{:count :cum-count} aggregation-type)
-          {:base_type :type/Integer, :special_type :type/Number}))))))
+  ([driver aggregation-type {field-id :id, table-id :table_id}]
+   {:pre [(some? table-id)]}
+   (first (qp/query->expected-cols {:database (db/select-one-field :db_id Table :id table-id)
+                                    :type     :query
+                                    :query    {:source-table table-id
+                                               :aggregation  [[aggregation-type [:field-id field-id]]]}}))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

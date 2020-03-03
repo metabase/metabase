@@ -12,6 +12,7 @@
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver.common :as driver.common]
             [metabase.driver.mongo
+             [execute :as execute]
              [parameters :as parameters]
              [query-processor :as qp]
              [util :refer [with-mongo-connection]]]
@@ -78,12 +79,6 @@
 
     #".*"                               ; default
     message))
-
-(defmethod driver/process-query-in-context :mongo
-  [_ qp]
-  (fn [{database-id :database, :as query}]
-    (with-mongo-connection [_ (qp.store/database)]
-      (qp query))))
 
 
 ;;; ### Syncing
@@ -210,11 +205,16 @@
   [_ query]
   (qp/mbql->native query))
 
-(defmethod driver/execute-query :mongo
-  [_ query]
-  (qp/execute-query query))
+(defmethod driver/execute-reducible-query :mongo
+  [_ query context respond]
+  ;; TODO - there's a bug in normalization where the columns in `:projection` are getting converted to keywords
+  ;; (#11897). Until we fix that, work around it here
+  (let [query (cond-> query
+                (-> query :native :projections seq) (update-in [:native :projections] (partial mapv u/qualified-name)))]
+    (with-mongo-connection [_ (qp.store/database)]
+      (execute/execute-reducible-query query context respond))))
 
-(defmethod driver/substitue-native-parameters :mongo
+(defmethod driver/substitute-native-parameters :mongo
   [driver inner-query]
   (parameters/substitute-native-parameters driver inner-query))
 

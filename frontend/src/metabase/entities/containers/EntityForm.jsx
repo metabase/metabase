@@ -10,16 +10,10 @@ import entityType from "./EntityType";
 
 import type { Entity } from "metabase/lib/entities";
 
-export function getForm(entityDef: Entity, formName?: any = null) {
-  // 1. named form
-  // 2. default `form`
-  // 3. first of the named `forms`
-  return formName
-    ? // $FlowFixMe
-      entityDef.forms[formName]
-    : entityDef.form
-    ? entityDef.form
-    : Object.values(entityDef.forms)[0];
+export function getForm(entityDef: Entity) {
+  // 1. default `form`
+  // 2. first of the named `forms`
+  return entityDef.form || Object.values(entityDef.forms)[0];
 }
 
 @entityType()
@@ -28,8 +22,7 @@ export default class EntityForm extends React.Component {
     const {
       entityDef,
       entityObject,
-      formName,
-      form = getForm(entityDef, formName),
+      form = getForm(entityDef),
       update,
       create,
       // defaults to `create` or `update` (if an id is present)

@@ -3,13 +3,13 @@ import MetabaseSettings from "metabase/lib/settings";
 
 describe("utils", () => {
   describe("generatePassword", () => {
-    it("defaults to at least 14 characters even if password_complexity requirements are lower", () => {
-      MetabaseSettings.set("password_complexity", { total: 10 });
+    it("defaults to at least 14 characters even if password-complexity requirements are lower", () => {
+      MetabaseSettings.set("password-complexity", { total: 10 });
       expect(MetabaseUtils.generatePassword().length).toBe(14);
     });
 
     it("defaults to complexity requirements if greater than 14", () => {
-      MetabaseSettings.set("password_complexity", { total: 20 });
+      MetabaseSettings.set("password-complexity", { total: 20 });
       expect(MetabaseUtils.generatePassword().length).toBe(20);
     });
 

@@ -36,6 +36,7 @@
 }
 .LineAreaBarChart .dc-chart g.row text.inside {
   fill: white;
+  font-weight: bold;
 }
 
 /* turn off ticks and domain lines */
@@ -53,8 +54,14 @@
   font-weight: 900;
 }
 
+/* disable grid lines */
 .LineAreaBarChart .dc-chart .tick line {
   display: none;
+}
+
+/* enabled grid lines for row charts */
+.LineAreaBarChart .dc-chart .rowChart .tick .grid-line {
+  display: inherit;
 }
 
 /* gridline at 0 overlaps with X axis */

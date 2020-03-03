@@ -10,11 +10,11 @@
   (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
             [metabase.models.setting :refer [defsetting]]
+            [metabase.query-processor.context :as context]
             [metabase.util :as u]
             [metabase.util.i18n :refer [deferred-trs trs]]
             [schema.core :as s])
-  (:import clojure.lang.Var
-           [java.util.concurrent Executors ExecutorService]
+  (:import [java.util.concurrent Executors ExecutorService]
            org.apache.commons.lang3.concurrent.BasicThreadFactory$Builder))
 
 (defsetting max-simultaneous-queries-per-db
@@ -36,10 +36,8 @@
       (.namingPattern (format "qp-database-%d-threadpool-%%d" database-id))
       ;; Daemon threads do not block shutdown of the JVM
       (.daemon true)
-      ;; TODO - what should the priority of QP threads be? It seems like servicing general API requests should be
-      ;; higher (?)
-      ;; Stuff like Pulse sending and sync should definitely by MIN_PRIORITY (!)
-      #_(.priority Thread/MIN_PRIORITY)))))
+      ;; Running queries should be lower priority than other stuff e.g. API responses
+      (.priority Thread/MIN_PRIORITY)))))
 
 (s/defn ^:private db-thread-pool :- ExecutorService
   [database-or-id]
@@ -78,35 +76,34 @@
   InterruptedExceptions."
   false)
 
-(defn- runnable ^Runnable [qp query respond raise canceled-chan]
-  ;; stash & restore bound dynamic vars. This is how Clojure does it for futures and the like in `binding-conveyor-fn`
-  ;; (see source for `future` or `future-call`) which is unfortunately private
-  (let [frame (Var/cloneThreadBindingFrame)]
-    (^:once fn* []
-     (Var/resetThreadBindingFrame frame)
-     (binding [*already-in-thread-pool?* true]
-       (try
-         (qp query respond raise canceled-chan)
-         (catch Throwable e
-           (raise e)))))))
+(defn- runnable ^Runnable [qp query rff context]
+  (bound-fn []
+    (binding [*already-in-thread-pool?* true]
+      (try
+        (qp query rff context)
+        (catch Throwable e
+          (context/raisef e context))))))
 
-(defn- run-in-thread-pool [qp {database-id :database, :as query} respond raise canceled-chan]
+(defn- run-in-thread-pool [qp {database-id :database, :as query} rff context]
+  {:pre [(integer? database-id)]}
   (try
-    (let [pool  (db-thread-pool database-id)
-          futur (.submit pool (runnable qp query respond raise canceled-chan))]
+    (let [pool          (db-thread-pool database-id)
+          futur         (.submit pool (runnable qp query rff context))
+          canceled-chan (context/canceled-chan context)]
       (a/go
         (when (a/<! canceled-chan)
           (log/debug (trs "Request canceled, canceling pending query"))
           (future-cancel futur))))
     (catch Throwable e
-      (raise e)))
+      (context/raisef e context)))
   nil)
 
 (defn wait-for-turn
   "Middleware that throttles the number of concurrent queries for each connected database, parking the thread until it
   is allowed to run."
   [qp]
-  (fn [{database-id :database, :as query} respond raise canceled-chan]
+  (fn [query rff context]
+    {:pre [(map? query)]}
     (if (or *already-in-thread-pool?* *disable-async-wait*)
-      (qp query respond raise canceled-chan)
-      (run-in-thread-pool qp query respond raise canceled-chan))))
+      (qp query rff context)
+      (run-in-thread-pool qp query rff context))))

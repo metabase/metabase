@@ -129,4 +129,5 @@
   This namespace expects to run *after* the `wrap-value-literals` middleware, meaning datetime literal strings like
   `\"2019-09-24\"` should already have been converted to `:absolute-datetime` clauses."
   [qp]
-  (comp qp optimize-datetime-filters*))
+  (fn [query rff context]
+    (qp (optimize-datetime-filters* query) rff context)))

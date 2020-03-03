@@ -31,7 +31,8 @@
                               :type/Time           "TIME"}]
   (defmethod sql.tx/field-base-type->sql-type [:snowflake base-type] [_ _] sql-type))
 
-(defmethod tx/dbdef->connection-details :snowflake [_ context {:keys [database-name]}]
+(defmethod tx/dbdef->connection-details :snowflake
+  [_ context {:keys [database-name]}]
   (merge
    {:account   (tx/db-test-env-var-or-throw :snowflake :account)
     :user      (tx/db-test-env-var-or-throw :snowflake :user)
@@ -43,7 +44,6 @@
    ;; `metabase.driver.snowflake`
    (when (= context :db)
      {:db database-name})))
-
 
 ;; Snowflake requires you identify an object with db-name.schema-name.table-name
 (defmethod sql.tx/qualified-name-components :snowflake
@@ -78,7 +78,8 @@
   (defn- add-existing-dataset! [database-name]
     (swap! datasets conj database-name)))
 
-(defmethod tx/create-db! :snowflake [driver {:keys [database-name] :as db-def} & options]
+(defmethod tx/create-db! :snowflake
+  [driver {:keys [database-name] :as db-def} & options]
   ;; ok, now check if already created. If already created, no-op
   (when-not (contains? (existing-datasets) database-name)
     ;; if not created, create the DB...
@@ -104,7 +105,8 @@
   (for [sql+args ((get-method ddl/insert-rows-ddl-statements :sql-jdbc/test-extensions) driver table-identifier row-or-rows)]
     (unprepare/unprepare driver sql+args)))
 
-(defmethod execute/execute-sql! :snowflake [& args]
+(defmethod execute/execute-sql! :snowflake
+  [& args]
   (apply execute/sequentially-execute-sql! args))
 
 (defmethod sql.tx/pk-sql-type :snowflake [_] "INTEGER AUTOINCREMENT")
@@ -114,3 +116,16 @@
 (defmethod load-data/load-data! :snowflake
   [& args]
   (apply load-data/load-data-add-ids! args))
+
+(defmethod tx/aggregate-column-info :snowflake
+  ([driver ag-type]
+   (merge
+    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type)
+    (when (#{:count :cum-count} ag-type)
+      {:base_type :type/Number})))
+
+  ([driver ag-type field]
+   (merge
+    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
+    (when (#{:count :cum-count} ag-type)
+      {:base_type :type/Number}))))

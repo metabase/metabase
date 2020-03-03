@@ -15,15 +15,13 @@
                             ;; Define custom indentation for functions inside metabase.
                             ;; This list isn't complete; add more forms as we come across them.
                             (define-clojure-indent
-                              (assert 1)
-                              (ex-info 1)
-                              (expect 0)
                               (let-404 1)
                               (match 1)
                               (merge-with 1)
                               (p.types/defprotocol+ '(1 (:defn)))
                               (p.types/def-abstract-type '(1 (:defn)))
                               (p.types/deftype+ '(2 nil nil (:defn)))
+                              (p/def-map-type '(2 nil nil (:defn)))
                               (p.types/defrecord+ '(2 nil nil (:defn))))))
                   ;; if you're using clj-refactor (highly recommended!), prefer prefix notation when cleaning the ns form
                   (cljr-favor-prefix-notation . t)

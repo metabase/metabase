@@ -26,6 +26,8 @@ Now you’ll see a list of your databases. To connect another database to Metaba
 - SparkSQL
 - Snowflake
 
+Don't see the database you need here? Take a look at our [Community Drivers](../developers-guide-drivers.md) page to see if somebody else has built one or how to get started building your own.
+
 To add a database, you'll need its connection information.
 
 #### <a name="heroku-databases"></a>Getting connection information for databases on Heroku:

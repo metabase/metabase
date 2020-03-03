@@ -19,8 +19,8 @@
   "The default \"Test Data\" dataset. Used in ~95% of tests. See `test-data.edn` for a overview of the tables and
   fields in this dataset.")
 
- (tx/defdataset-edn sad-toucan-incidents
-   "Times when the Toucan cried")
+(tx/defdataset-edn sad-toucan-incidents
+  "Times when the Toucan cried")
 
 (tx/defdataset-edn tupac-sightings
   "Places, times, and circumstances where Tupac was sighted. Sighting timestamps are UNIX Timestamps in seconds")

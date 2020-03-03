@@ -1,99 +1,91 @@
 (ns metabase.query-processor.middleware.cache-backend.db
   (:require [clojure.tools.logging :as log]
+            [honeysql.core :as hsql]
             [java-time :as t]
-            [metabase
-             [public-settings :as public-settings]
-             [util :as u]]
             [metabase.models.query-cache :refer [QueryCache]]
             [metabase.query-processor.middleware.cache-backend.interface :as i]
-            [taoensso.nippy :as nippy]
+            [metabase.util
+             [date-2 :as u.date]
+             [i18n :refer [trs]]]
             [toucan.db :as db])
-  (:import [java.io BufferedOutputStream ByteArrayOutputStream DataOutputStream]
-           java.util.zip.GZIPOutputStream))
+  (:import java.sql.ResultSet
+           javax.sql.DataSource))
 
-(defn- cached-results
-  "Return cached results for `query-hash` if they exist and are newer than `max-age-seconds`."
-  [query-hash max-age-seconds]
-  (when-let [{:keys [results updated_at]} (db/select-one [QueryCache :results :updated_at]
-                                            :query_hash query-hash
-                                            :updated_at [:>= (t/minus (t/instant) (t/seconds max-age-seconds))])]
-    (assoc results :updated_at updated_at)))
+(defn- ^DataSource datasource []
+  (:datasource (toucan.db/connection)))
+
+(defn- seconds-ago [n]
+  (let [[unit n] (if-not (integer? n)
+                   [:millisecond (long (* 1000 n))]
+                   [:second n])]
+    (u.date/add (t/offset-date-time) unit (- n))))
+
+(defn- cached-results-query [query-hash max-age-seconds]
+  (hsql/format {:select   [:results]
+                :from     [QueryCache]
+                :where    [:and
+                           [:= :query_hash query-hash]
+                           [:>= :updated_at (seconds-ago max-age-seconds)]]
+                :order-by [[:updated_at :desc]]
+                :limit    1}
+    :quoting (db/quoting-style)))
+
+(defn- cached-results [query-hash max-age-seconds respond]
+  (let [[sql _ t] (cached-results-query query-hash max-age-seconds)]
+    (with-open [conn (.getConnection (datasource))
+                stmt (doto (.prepareStatement conn sql
+                                              ResultSet/TYPE_FORWARD_ONLY
+                                              ResultSet/CONCUR_READ_ONLY
+                                              ResultSet/CLOSE_CURSORS_AT_COMMIT)
+                       (.setFetchDirection ResultSet/FETCH_FORWARD)
+                       (.setBytes 1 query-hash)
+                       (.setObject 2 t java.sql.Types/TIMESTAMP_WITH_TIMEZONE)
+                       (.setMaxRows 1))]
+      (with-open [rs (.executeQuery stmt)]
+        (if-not (.next rs)
+          (respond nil)
+          (with-open [is (.getBinaryStream rs 1)]
+            (respond is)))))))
 
 (defn- purge-old-cache-entries!
   "Delete any cache entries that are older than the global max age `max-cache-entry-age-seconds` (currently 3 months)."
-  []
-  (db/simple-delete! QueryCache
-    :updated_at [:<= (t/minus (t/instant) (t/seconds (public-settings/query-caching-max-ttl)))]))
-
-(defn- throw-if-max-exceeded [max-num-bytes bytes-in-flight]
-  (when (< max-num-bytes bytes-in-flight)
-    (throw (ex-info "Exceeded the max number of bytes" {:type ::max-bytes}))))
-
-(defn- limited-byte-output-stream
-  "Returns a `FilterOutputStream` that will throw an exception if more than `max-num-bytes` are written to
-  `output-stream`"
-  [max-num-bytes output-stream]
-  (let [bytes-so-far (atom 0)]
-    (proxy [java.io.FilterOutputStream] [output-stream]
-      (write
-        ([byte-or-byte-array]
-         (let [^java.io.OutputStream this this]
-           (if-let [^bytes byte-arr (and (bytes? byte-or-byte-array)
-                                         byte-or-byte-array)]
-             (do
-               (swap! bytes-so-far + (alength byte-arr))
-               (throw-if-max-exceeded max-num-bytes @bytes-so-far)
-               (proxy-super write byte-arr))
-
-             (let [^byte b byte-or-byte-array]
-               (swap! bytes-so-far inc)
-               (throw-if-max-exceeded max-num-bytes @bytes-so-far)
-               (proxy-super write b)))))
-        ([byte-arr offset length]
-         (let [^java.io.OutputStream this this]
-           (swap! bytes-so-far + length)
-           (throw-if-max-exceeded max-num-bytes @bytes-so-far)
-           (proxy-super write byte-arr offset length)))))))
-
-(defn- compress-until-max
-  "Compresses `results` and returns a byte array. If more than `max-bytes` is written, `::exceeded-max-bytes` is
-  returned."
-  [max-bytes results]
-  (try
-    (let [bos  (ByteArrayOutputStream.)
-          lbos (limited-byte-output-stream max-bytes bos)]
-      (with-open [buff-out (BufferedOutputStream. lbos)
-                  gz-out   (GZIPOutputStream. buff-out)
-                  data-out (DataOutputStream. gz-out)]
-        (nippy/freeze-to-out! data-out results))
-      (.toByteArray bos))
-    (catch clojure.lang.ExceptionInfo e
-      (if (= ::max-bytes (:type (ex-data e)))
-        ::exceeded-max-bytes
-        (throw e)))))
+  [max-age-seconds]
+  {:pre [(number? max-age-seconds)]}
+  (do
+    (log/tracef "Purging old cache entries.")
+    (try
+      (db/simple-delete! QueryCache
+        :updated_at [:<= (seconds-ago max-age-seconds)])
+      (catch Throwable e
+        (log/error e (trs "Error purging old cache entries")))))
+  nil)
 
 (defn- save-results!
-  "Save the `results` of query with `query-hash`, updating an existing QueryCache entry
-  if one already exists, otherwise creating a new entry."
-  [query-hash results]
-  ;; Explicitly compressing the results here rather than having Toucan compress it automatically. This allows us to
-  ;; get the size of the compressed output to decide whether or not to store it.
-  (let [max-bytes          (* (public-settings/query-caching-max-kb) 1024)
-        compressed-results (compress-until-max max-bytes results)]
-    (if-not (= ::exceeded-max-bytes compressed-results)
-      (do
-        (purge-old-cache-entries!)
-        (or (db/update-where! QueryCache {:query_hash query-hash}
-              :updated_at :%now
-              :results    compressed-results)
-            (db/insert! QueryCache
-              :query_hash query-hash
-              :results    compressed-results)))
-      (log/info "Results are too large to cache." (u/emoji "😫"))))
-  :ok)
+  "Save the `results` of query with `query-hash`, updating an existing QueryCache entry if one already exists, otherwise
+  creating a new entry."
+  [^bytes query-hash ^bytes results]
+  (log/debug (trs "Caching results for query with hash {0}." (pr-str (i/short-hex-hash query-hash))))
+  (try
+    (or (db/update-where! QueryCache {:query_hash query-hash}
+          :updated_at (t/offset-date-time)
+          :results    results)
+        (db/insert! QueryCache
+          :updated_at (t/offset-date-time)
+          :query_hash query-hash
+          :results    results))
+    (catch Throwable e
+      (log/error e (trs "Error saving query results to cache."))))
+  nil)
 
-(def instance
-  "Implementation of `IQueryProcessorCacheBackend` that uses the database for caching results."
-  (reify i/IQueryProcessorCacheBackend
-    (cached-results [_ query-hash max-age-seconds] (cached-results query-hash max-age-seconds))
-    (save-results!  [_ query-hash results]         (save-results! query-hash results))))
+(defmethod i/cache-backend :db
+  [_]
+  (reify i/CacheBackend
+    (cached-results [_ query-hash max-age-seconds respond]
+      (cached-results query-hash max-age-seconds respond))
+
+    (save-results! [_ query-hash is]
+      (save-results! query-hash is)
+      nil)
+
+    (purge-old-entries! [_ max-age-seconds]
+      (purge-old-cache-entries! max-age-seconds))))

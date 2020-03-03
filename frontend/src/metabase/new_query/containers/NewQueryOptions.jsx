@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 
 import { connect } from "react-redux";
+import { push } from "react-router-redux";
 
 import { t } from "ttag";
 
@@ -28,16 +29,32 @@ const mapStateToProps = state => ({
 
 const mapDispatchToProps = {
   prefetchMetadata: () => Database.actions.fetchList({ include_tables: true }),
+  push,
 };
 
 const PAGE_PADDING = [1, 4];
 
 @fitViewport
-export class NewQueryOptions extends Component {
+@connect(
+  mapStateToProps,
+  { mapDispatchToProps },
+)
+export default class NewQueryOptions extends Component {
   props: Props;
 
-  componentWillMount() {
+  componentWillMount(props) {
     this.props.prefetchMetadata();
+    const { location, push } = this.props;
+    if (Object.keys(location.query).length > 0) {
+      const { database, table, ...options } = location.query;
+      push(
+        Urls.newQuestion({
+          ...options,
+          databaseId: database ? parseInt(database) : undefined,
+          tableId: table ? parseInt(table) : undefined,
+        }),
+      );
+    }
   }
 
   render() {
@@ -101,8 +118,3 @@ export class NewQueryOptions extends Component {
     );
   }
 }
-
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)(NewQueryOptions);

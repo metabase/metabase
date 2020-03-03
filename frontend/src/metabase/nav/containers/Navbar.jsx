@@ -2,12 +2,14 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 
+import { PLUGIN_ADMIN_NAV_ITEMS } from "metabase/plugins";
+
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
 import cx from "classnames";
 import { t } from "ttag";
-import { Flex } from "grid-styled";
+import { Flex, Box } from "grid-styled";
 import styled from "styled-components";
 import { space } from "styled-system";
 
@@ -60,11 +62,11 @@ const AdminNavItem = ({ name, path, currentPath }) => (
   </li>
 );
 
-const DefaultSearchColor = lighten("brand", 0.07);
-const ActiveSearchColor = lighten("brand", 0.1);
+const DefaultSearchColor = lighten(color("nav"), 0.07);
+const ActiveSearchColor = lighten(color("nav"), 0.1);
 
 const NavHover = {
-  backgroundColor: darken(color("brand")),
+  backgroundColor: darken(color("nav")),
   color: "white",
 };
 
@@ -253,6 +255,14 @@ export default class Navbar extends Component {
               currentPath={this.props.path}
               key="admin-nav-permissions"
             />
+            {PLUGIN_ADMIN_NAV_ITEMS.map(({ name, path }) => (
+              <AdminNavItem
+                name={name}
+                path={path}
+                currentPath={this.props.path}
+                key={`admin-nav-${name}`}
+              />
+            ))}
             <AdminNavItem
               name={t`Troubleshooting`}
               path="/admin/troubleshooting"
@@ -298,23 +308,36 @@ export default class Navbar extends Component {
         // TODO: hide nav using state in redux instead?
         className="Nav relative bg-brand text-white z3 flex-no-shrink"
         align="center"
+        style={{ backgroundColor: color("nav") }}
         py={1}
         pr={2}
       >
-        <Link
-          to="/"
-          data-metabase-event={"Navbar;Logo"}
-          className="relative cursor-pointer z2 rounded flex justify-center transition-background"
-          p={1}
-          mx={1}
-          hover={{ backgroundColor: DefaultSearchColor }}
-        >
-          <LogoIcon dark />
-        </Link>
-        <SearchBar
-          location={this.props.location}
-          onChangeLocation={this.props.onChangeLocation}
-        />
+        <Flex style={{ minWidth: 64 }} align="center" justify="center">
+          <Link
+            to="/"
+            data-metabase-event={"Navbar;Logo"}
+            className="relative cursor-pointer z2 rounded flex justify-center transition-background"
+            p={1}
+            mx={1}
+            hover={{ backgroundColor: DefaultSearchColor }}
+          >
+            <Flex
+              style={{ minWidth: 32, height: 32 }}
+              align="center"
+              justify="center"
+            >
+              <LogoIcon dark height={32} />
+            </Flex>
+          </Link>
+        </Flex>
+        <Flex className="flex-full z1" pr={2} align="center">
+          <Box w={1} style={{ maxWidth: 500 }}>
+            <SearchBar
+              location={this.props.location}
+              onChangeLocation={this.props.onChangeLocation}
+            />
+          </Box>
+        </Flex>
         <Flex ml="auto" align="center" pl={[1, 2]} className="relative z2">
           {hasDataAccess && (
             <Link

@@ -67,7 +67,9 @@
 
 (defn start-web-server!
   "Start the embedded Jetty web server. Returns `:started` if a new server was started; `nil` if there was already a
-  running server."
+  running server.
+
+    (start-web-server! #'metabase.handler/app)"
   [handler]
   (when-not (instance)
     ;; NOTE: we always start jetty w/ join=false so we can start the server first then do init in the background

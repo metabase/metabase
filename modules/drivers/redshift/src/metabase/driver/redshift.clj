@@ -114,7 +114,7 @@
    (dissoc opts :host :port :db)))
 
 (prefer-method
- sql-jdbc.execute/read-column
+ sql-jdbc.execute/read-column-thunk
  [::legacy/use-legacy-classes-for-read-and-set Types/TIMESTAMP]
  [:postgres Types/TIMESTAMP])
 

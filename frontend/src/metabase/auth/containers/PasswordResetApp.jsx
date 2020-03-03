@@ -2,61 +2,32 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { Link } from "react-router";
 
-import cx from "classnames";
 import { t, jt } from "ttag";
 import AuthScene from "../components/AuthScene";
-import FormField from "metabase/components/form/FormField";
-import FormLabel from "metabase/components/form/FormLabel";
-import FormMessage from "metabase/components/form/FormMessage";
+import Form from "metabase/containers/Form";
 import LogoIcon from "metabase/components/LogoIcon";
 import Icon from "metabase/components/Icon";
 
 import MetabaseSettings from "metabase/lib/settings";
-
-import * as authActions from "../auth";
+import MetabaseAnalytics from "metabase/lib/analytics";
 
 import { SessionApi } from "metabase/services";
+
+import Users from "metabase/entities/users";
 
 const mapStateToProps = (state, props) => {
   return {
     token: props.params.token,
-    resetError: state.auth && state.auth.resetError,
-    resetSuccess: state.auth && state.auth.resetSuccess,
     newUserJoining: props.location.hash === "#new",
   };
 };
 
-const mapDispatchToProps = {
-  ...authActions,
-};
-
-@connect(
-  mapStateToProps,
-  mapDispatchToProps,
-)
+@connect(mapStateToProps)
 export default class PasswordResetApp extends Component {
-  constructor(props, context) {
-    super(props, context);
-    this.state = {
-      credentials: {},
-      valid: false,
-      tokenValid: false,
-    };
-  }
-
-  validateForm() {
-    const { credentials } = this.state;
-
-    let valid = true;
-
-    if (!credentials.password || !credentials.password2) {
-      valid = false;
-    }
-
-    if (this.state.valid !== valid) {
-      this.setState({ valid });
-    }
-  }
+  state = {
+    tokenValid: false,
+    resetSuccess: false,
+  };
 
   async componentWillMount() {
     try {
@@ -71,34 +42,24 @@ export default class PasswordResetApp extends Component {
     }
   }
 
-  componentDidMount() {
-    this.validateForm();
-  }
+  handleSubmit = async ({ password }) => {
+    const { token } = this.props;
 
-  componentDidUpdate() {
-    this.validateForm();
-  }
-
-  onChange(fieldName, fieldValue) {
-    this.setState({
-      credentials: { ...this.state.credentials, [fieldName]: fieldValue },
+    // NOTE: this request will return a Set-Cookie header for the session
+    await SessionApi.reset_password({
+      token: token,
+      password: password,
     });
-  }
 
-  formSubmitted(e) {
-    e.preventDefault();
-
-    const { token, passwordReset } = this.props;
-    const { credentials } = this.state;
-
-    passwordReset(token, credentials);
-  }
+    MetabaseAnalytics.trackEvent("Auth", "Password Reset");
+    this.setState({ resetSuccess: true });
+  };
 
   render() {
-    const { resetError, resetSuccess, newUserJoining } = this.props;
-    const passwordComplexity = MetabaseSettings.passwordComplexityDescription(
-      false,
-    );
+    const { newUserJoining } = this.props;
+    const { resetSuccess } = this.state;
+
+    const passwordComplexity = MetabaseSettings.passwordComplexityDescription();
 
     const requestLink = (
       <Link to="/auth/forgot_password" className="link">
@@ -109,21 +70,16 @@ export default class PasswordResetApp extends Component {
     if (!this.state.tokenValid) {
       return (
         <div className="full-height">
-          <div className="full-height bg-white flex flex-column flex-full md-layout-centered">
+          <div className="full-height flex flex-column flex-full md-layout-centered">
             <div className="wrapper">
               <div className="Login-wrapper Grid  Grid--full md-Grid--1of2">
                 <div className="Grid-cell flex layout-centered text-brand">
-                  <LogoIcon
-                    className="Logo my4 sm-my0"
-                    width={66}
-                    height={85}
-                  />
+                  <LogoIcon className="Logo my4 sm-my0" height={65} />
                 </div>
-                <div className="Grid-cell bordered rounded shadowed">
-                  <h3 className="Login-header mt4">{t`Whoops, that's an expired link`}</h3>
-                  <p className="mb4 mr4">
-                    {jt`For security reasons, password reset links expire after a little while. If you still need
-                                        to reset your password, you can ${requestLink}.`}
+                <div className="Grid-cell bordered rounded shadowed p4">
+                  <h3 className="Login-header">{t`Whoops, that's an expired link`}</h3>
+                  <p>
+                    {jt`For security reasons, password reset links expire after a little while. If you still need to reset your password, you can ${requestLink}.`}
                   </p>
                 </div>
               </div>
@@ -137,76 +93,18 @@ export default class PasswordResetApp extends Component {
         <div className="full-height bg-white flex flex-column flex-full md-layout-centered">
           <div className="Login-wrapper wrapper Grid  Grid--full md-Grid--1of2">
             <div className="Grid-cell flex layout-centered text-brand">
-              <LogoIcon className="Logo my4 sm-my0" width={66} height={85} />
+              <LogoIcon className="Logo my4 sm-my0" height={65} />
             </div>
             {!resetSuccess ? (
-              <div className="Grid-cell">
-                <form
-                  className="ForgotForm p4 Login-wrapper bg-white Form-new bordered rounded shadowed"
-                  name="form"
-                  onSubmit={e => this.formSubmitted(e)}
-                  noValidate
-                >
-                  <h3 className="Login-header-offset">{t`New password`}</h3>
+              <div className="Grid-cell bg-white bordered rounded shadowed p4">
+                <h3 className="Login-header-offset">{t`New password`}</h3>
 
-                  <p className="text-medium mb4">{t`To keep your data secure, passwords ${passwordComplexity}`}</p>
-
-                  <FormMessage
-                    formError={
-                      resetError && resetError.data.message ? resetError : null
-                    }
-                  />
-
-                  <FormField
-                    key="password"
-                    fieldName="password"
-                    formError={resetError}
-                  >
-                    <FormLabel
-                      title={t`Create a new password`}
-                      fieldName={"password"}
-                      formError={resetError}
-                    />
-                    <input
-                      className="Form-input full"
-                      name="password"
-                      placeholder={t`Make sure its secure like the instructions above`}
-                      type="password"
-                      onChange={e => this.onChange("password", e.target.value)}
-                      autoFocus
-                    />
-                  </FormField>
-
-                  <FormField
-                    key="password2"
-                    fieldName="password2"
-                    formError={resetError}
-                  >
-                    <FormLabel
-                      title={t`Confirm new password`}
-                      fieldName={"password2"}
-                      formError={resetError}
-                    />
-                    <input
-                      className="Form-input full"
-                      name="password2"
-                      placeholder={t`Make sure it matches the one you just entered`}
-                      type="password"
-                      onChange={e => this.onChange("password2", e.target.value)}
-                    />
-                  </FormField>
-
-                  <div className="Form-actions">
-                    <button
-                      className={cx("Button", {
-                        "Button--primary": this.state.valid,
-                      })}
-                      disabled={!this.state.valid}
-                    >
-                      Save new password
-                    </button>
-                  </div>
-                </form>
+                <p className="text-medium mb4">{t`To keep your data secure, passwords ${passwordComplexity}`}</p>
+                <Form
+                  onSubmit={this.handleSubmit}
+                  form={Users.forms.password_reset}
+                  submitTitle={t`Save new password`}
+                />
               </div>
             ) : (
               <div className="Grid-cell">

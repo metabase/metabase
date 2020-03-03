@@ -45,7 +45,6 @@
       (log/debug (deferred-trs "Using NEWLY CREATED classloader as shared context classloader: {0}" new-classloader))
       new-classloader))))
 
-
 (defn- has-classloader-as-ancestor?
   "True if `classloader` and `ancestor` are the same object, or if `classloader` has `ancestor` as an ancestor in its
   parent chain, e.g. as a parent, its parent's parent, etc."
@@ -64,7 +63,6 @@
   "True if the `shared-context-classloader` has been set and it is an ancestor of `classloader`."
   [^ClassLoader classloader]
   (has-classloader-as-ancestor? classloader @shared-context-classloader))
-
 
 (defn ^ClassLoader the-classloader
   "Fetch the context classloader for the current thread; ensure it has a our shared context classloader as an ancestor
@@ -85,20 +83,6 @@
       (deferred-trs "Setting current thread context classloader to shared classloader {0}..." shared-classloader))
      (.setContextClassLoader (Thread/currentThread) shared-classloader)
      shared-classloader)))
-
-(defn require
-  "Just like vanilla `require`, but ensures we're using our shared classloader to do it. Always use this over vanilla
-  `require` -- otherwise namespaces might get loaded by the wrong ClassLoader, resulting in weird, hard-to-debug
-  errors."
-  [& args]
-  ;; done for side-effects to ensure context classloader is the right one
-  (the-classloader)
-  ;; as elsewhere make sure Clojure is using our context classloader (which should normally be true anyway) because
-  ;; that's the one that will have access to the JARs we've added to the classpath at runtime
-  (binding [*use-context-classloader* true]
-    ;; serialize requires
-    (locking clojure.lang.RT/REQUIRE_LOCK
-      (apply clojure.core/require args))))
 
 (defn- classloader-hierarchy
   "Return a sequence of classloaders representing the hierarchy for `classloader` by iterating over calls to
@@ -125,6 +109,26 @@
   (^DynamicClassLoader [^DynamicClassLoader classloader]
    (some #(when (instance? DynamicClassLoader %) %)
          (classloader-hierarchy classloader))))
+
+(defn require
+  "Just like vanilla `require`, but ensures we're using our shared classloader to do it. Always use this over vanilla
+  `require` -- otherwise namespaces might get loaded by the wrong ClassLoader, resulting in weird, hard-to-debug
+  errors."
+  [& args]
+  ;; done for side-effects to ensure context classloader is the right one
+  (the-classloader)
+  ;; as elsewhere make sure Clojure is using our context classloader (which should normally be true anyway) because
+  ;; that's the one that will have access to the JARs we've added to the classpath at runtime
+  (try
+    (binding [*use-context-classloader* true]
+      ;; serialize requires
+      (locking clojure.lang.RT/REQUIRE_LOCK
+        (apply clojure.core/require args)))
+    (catch Throwable e
+      (throw (ex-info (.getMessage e)
+                      {:classloader    (the-classloader)
+                       :classpath-urls (map str (dynapath/all-classpath-urls (the-classloader)))}
+                      e)))))
 
 (defonce ^:private already-added (atom #{}))
 

@@ -109,12 +109,14 @@ export function getTableMetadata(
 }
 
 export function getTemplateTags(card: ?Card): Array<TemplateTag> {
-  return card &&
+  const templateTags =
+    card &&
     card.dataset_query &&
     card.dataset_query.type === "native" &&
     card.dataset_query.native["template-tags"]
-    ? Object.values(card.dataset_query.native["template-tags"])
-    : [];
+      ? Object.values(card.dataset_query.native["template-tags"])
+      : [];
+  return templateTags.filter(tag => tag.type !== "card");
 }
 
 export function getParameters(card: ?Card): Parameter[] {

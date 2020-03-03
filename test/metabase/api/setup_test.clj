@@ -154,7 +154,7 @@
     ;; make sure we have a valid setup token
     (setup/create-token!)
     (is (= {:errors {:engine "value must be a valid database engine."}}
-           (http/client :post 400 "setup/validate" {:token (setup/token-value)})))))
+           (http/client :post 400 "setup/validate" {:token (setup/setup-token)})))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
