@@ -438,12 +438,26 @@ export class UnconnectedDataSelector extends Component {
   };
 
   getClearedStateForStep(step) {
-    // TODO: do we need to clear state for other steps?
     if (step === DATABASE_STEP) {
       return {
         selectedDatabaseId: null,
         selectedSchemaId: null,
         selectedTableId: null,
+        selectedFieldId: null,
+      };
+    } else if (step === SCHEMA_STEP) {
+      return {
+        selectedSchemaId: null,
+        selectedTableId: null,
+        selectedFieldId: null,
+      };
+    } else if (step === TABLE_STEP) {
+      return {
+        selectedTableId: null,
+        selectedFieldId: null,
+      };
+    } else if (step === FIELD_STEP) {
+      return {
         selectedFieldId: null,
       };
     }
