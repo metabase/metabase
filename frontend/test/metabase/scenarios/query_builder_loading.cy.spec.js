@@ -10,7 +10,7 @@ describe("query builder loading behavior", () => {
 
     cy.route({ url: "/api/database/1/schemas" }).as("fetch1");
     cy.route({ url: "/api/database/1/schema/PUBLIC" }).as("fetch2");
-    cy.route({ url: "/api/database?include=tables&saved=true" }).as("preload");
+    cy.route({ url: "/api/database?include=tables" }).as("preload");
 
     // preload call should have already happened
     cy.wait("@preload");
@@ -34,7 +34,7 @@ describe("query builder loading behavior", () => {
 
     cy.route({ url: "/api/database/1/schemas" }).as("fetch1");
     cy.route({ url: "/api/database/1/schema/PUBLIC" }).as("fetch2");
-    cy.route({ url: "/api/database?include=tables&saved=true" }).as("preload");
+    cy.route({ url: "/api/database?include=tables" }).as("preload");
 
     cy.contains("Sample Dataset").click();
     cy.contains("Orders");
