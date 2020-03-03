@@ -8,12 +8,14 @@ describe("query builder loading behavior", () => {
     cy.server();
     cy.visit("/question/new");
 
+    cy.route({ url: "/api/database?include=tables" }).as("preload1");
+    cy.route({ url: "/api/database?saved=true" }).as("preload2");
     cy.route({ url: "/api/database/1/schemas" }).as("fetch1");
     cy.route({ url: "/api/database/1/schema/PUBLIC" }).as("fetch2");
-    cy.route({ url: "/api/database?include=tables" }).as("preload");
 
-    // preload call should have already happened
-    cy.wait("@preload");
+    // preload calls should have already happened before picking question type
+    cy.wait("@preload1");
+    cy.wait("@preload2");
 
     cy.contains("Simple question").click();
     cy.contains("Sample Dataset").click();
@@ -32,9 +34,10 @@ describe("query builder loading behavior", () => {
     cy.server();
     cy.reload();
 
-    cy.route({ url: "/api/database/1/schemas" }).as("fetch1");
-    cy.route({ url: "/api/database/1/schema/PUBLIC" }).as("fetch2");
     cy.route({ url: "/api/database?include=tables" }).as("preload");
+    cy.route({ url: "/api/database?saved=true" }).as("fetch1");
+    cy.route({ url: "/api/database/1/schemas" }).as("fetch2");
+    cy.route({ url: "/api/database/1/schema/PUBLIC" }).as("fetch3");
 
     cy.contains("Sample Dataset").click();
     cy.contains("Orders");
@@ -43,6 +46,7 @@ describe("query builder loading behavior", () => {
     // but the bulk load never happened.
     cy.get("@fetch1").should("exist");
     cy.get("@fetch2").should("exist");
+    cy.get("@fetch3").should("exist");
     cy.get("@preload").should("not.exist");
   });
 });
