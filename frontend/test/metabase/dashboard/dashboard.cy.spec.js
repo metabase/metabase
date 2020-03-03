@@ -1,4 +1,4 @@
-import { signInAsAdmin, restore } from "__support__/cypress";
+import { signInAsAdmin, popover, modal, restore } from "__support__/cypress";
 
 describe("dashboard", () => {
   before(restore);
@@ -80,6 +80,42 @@ var iframeUrl = METABASE_SITE_URL + "/embed/dashboard/" + token + "#bordered=tru
     cy.get(".Header-title input")
       .last()
       .clear();
+    cy.contains("Save").click();
+  });
+
+  it("should let you add a parameter to a dashboard with a text box", () => {
+    cy.visit("/dashboard/1");
+    // click pencil icon to edit
+    cy.get(".Icon-pencil").click();
+    // add text box with text
+    cy.get(".Icon-string").click();
+    cy.get(".DashCard")
+      .last()
+      .find("textarea")
+      .type("text text text");
+    cy.get(".Icon-funnel_add").click();
+    popover()
+      .contains("Other Categories")
+      .click();
+    cy.contains("Done").click();
+    cy.contains("Save").click();
+
+    // confirm text box and filter are still there
+    cy.contains("text text text");
+    cy.get("input[placeholder=Category]");
+
+    // reset
+    // remove text box
+    cy.get(".Icon-pencil").click();
+    cy.get(".DashCard")
+      .last()
+      .find(".Icon-close")
+      .click({ force: true });
+    modal()
+      .contains("button", "Remove")
+      .click({ force: true });
+    // remove filter
+    cy.contains("Remove").click();
     cy.contains("Save").click();
   });
 });
