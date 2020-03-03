@@ -1,5 +1,7 @@
 (ns metabase.models.native-query-snippet
-  (:require [metabase.models.interface :as i]
+  (:require [metabase.models
+             [interface :as i]
+             [permissions :as perms]]
             [metabase.util :as u]
             [metabase.util.i18n :refer [tru]]
             [schema.core :as s]
@@ -19,11 +21,9 @@
         (throw (UnsupportedOperationException. (tru "You cannot update the creator_id of a NativeQuerySnippet.")))))))
 
 (defn- perms-objects-set
-  "Permissions to read or write a NativeQuerySnippet are the same as those of its parent Database."
-  [snippet read-or-write]
-  (let [db (or (:database snippet)
-               (db/select-one ['Database :id] :id (u/get-id (:database_id snippet))))]
-    (i/perms-objects-set db read-or-write)))
+  "Permissions to read or write a NativeQuerySnippet are the same as native query access."
+  [snippet _]
+  #{(perms/adhoc-native-query-path (:database_id snippet))})
 
 (u/strict-extend (class NativeQuerySnippet)
   models/IModel
@@ -36,7 +36,7 @@
   (merge
    i/IObjectPermissionsDefaults
    {:perms-objects-set perms-objects-set
-    :can-read?         (partial i/current-user-has-full-permissions? :read)
+    :can-read?         (partial i/current-user-has-full-permissions? :write)
     :can-write?        (partial i/current-user-has-full-permissions? :write)
     :can-create?       (partial i/current-user-has-full-permissions? :write)}))
 
