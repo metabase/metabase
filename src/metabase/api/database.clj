@@ -4,6 +4,7 @@
             [clojure.tools.logging :as log]
             [compojure.core :refer [DELETE GET POST PUT]]
             [metabase
+             [config :as config]
              [driver :as driver]
              [events :as events]
              [public-settings :as public-settings]
@@ -134,37 +135,64 @@
   (for [card (source-query-cards)]
     (table-api/card->virtual-table card :include-fields? include-fields?)))
 
-(defn- saved-cards-virtual-db-metadata [& {:keys [include-fields?]}]
+(defn- saved-cards-virtual-db-metadata [& {:keys [include-tables? include-fields?]}]
   (when (public-settings/enable-nested-queries)
-    (when-let [virtual-tables (seq (cards-virtual-tables :include-fields? include-fields?))]
-      {:name               "Saved Questions"
-       :id                 mbql.s/saved-questions-virtual-database-id
-       :features           #{:basic-aggregations}
-       :tables             virtual-tables
-       :is_saved_questions true})))
+    (cond-> {:name               "Saved Questions"
+             :id                 mbql.s/saved-questions-virtual-database-id
+             :features           #{:basic-aggregations}
+             :is_saved_questions true}
+      include-tables? (assoc :tables (cards-virtual-tables :include-fields? include-fields?)))))
 
 ;; "Virtual" tables for saved cards simulate the db->schema->table hierarchy by doing fake-db->collection->card
-(defn- add-virtual-tables-for-saved-cards [dbs]
-  (if-let [virtual-db-metadata (saved-cards-virtual-db-metadata)]
+(defn- add-saved-questions-virtual-database [dbs & options]
+  (if-let [virtual-db-metadata (apply saved-cards-virtual-db-metadata options)]
     ;; only add the 'Saved Questions' DB if there are Cards that can be used
     (conj (vec dbs) virtual-db-metadata)
     dbs))
 
-(defn- dbs-list [include-tables? include-cards?]
+(defn- dbs-list [& {:keys [include-tables? include-saved-questions-db? include-saved-questions-tables?]}]
   (when-let [dbs (seq (filter mi/can-read? (db/select Database {:order-by [:%lower.name :%lower.engine]})))]
     (cond-> (add-native-perms-info dbs)
-      include-tables? add-tables
-      include-cards?  add-virtual-tables-for-saved-cards)))
+      include-tables?             add-tables
+      include-saved-questions-db? (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?))))
 
 (api/defendpoint GET "/"
-  "Fetch all `Databases`. `include_tables` means we should hydrate the Tables belonging to each DB. `include_cards` here
-  means we should also include virtual Table entries for saved Questions, e.g. so we can easily use them as source
-  Tables in queries. Default for both is `false`."
-  [include_tables include_cards]
+  "Fetch all `Databases`.
+
+  * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.
+
+  * `saved` means we should include the saved questions virtual database. Default: `false`.
+
+  * `include_tables` is a legacy alias for `include=tables`, but should be considered deprecated as of 0.35.0, and will
+    be removed in a future release.
+
+  * `include_cards` here means we should also include virtual Table entries for saved Questions, e.g. so we can easily
+    use them as source Tables in queries. This is a deprecated alias for `saved=true` + `include=tables` (for the saved
+    questions virtual DB). Prefer using `include` and `saved` instead. "
+  [include_tables include_cards include saved]
   {include_tables (s/maybe su/BooleanString)
-   include_cards  (s/maybe su/BooleanString)}
-  (or (dbs-list (Boolean/parseBoolean include_tables) (Boolean/parseBoolean include_cards))
-      []))
+   include_cards  (s/maybe su/BooleanString)
+   include        (s/maybe (s/eq "tables"))
+   saved          (s/maybe su/BooleanString)}
+  (when (and config/is-dev?
+             (or include_tables include_cards))
+    ;; don't need to i18n since this is dev-facing only
+    (log/warn "GET /api/database?include_tables and ?include_cards are deprecated."
+              "Prefer using ?include=tables and ?saved=true instead."))
+  (let [include-tables?                 (cond
+                                          (seq include)        (= include "tables")
+                                          (seq include_tables) (Boolean/parseBoolean include_tables))
+        include-saved-questions-db?     (cond
+                                          (seq saved)         (Boolean/parseBoolean saved)
+                                          (seq include_cards) (Boolean/parseBoolean include_cards))
+        include-saved-questions-tables? (when include-saved-questions-db?
+                                          (if (seq include_cards)
+                                            true
+                                            include-tables?))]
+    (or (dbs-list :include-tables?                  include-tables?
+                  :include-saved-questions-db?      include-saved-questions-db?
+                  :include-saved-questions-tables?  include-saved-questions-tables?)
+        [])))
 
 
 ;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------
@@ -220,7 +248,7 @@
   "Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
    and allowing it to treat the Saved Questions virtual DB just like any other database."
   []
-  (saved-cards-virtual-db-metadata :include-fields? true))
+  (saved-cards-virtual-db-metadata :include-tables? true, :include-fields? true))
 
 (defn- db-metadata [id]
   (-> (api/read-check Database id)
