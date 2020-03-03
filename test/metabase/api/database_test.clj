@@ -112,24 +112,6 @@
     field
     [:updated_at :id :created_at :last_analyzed :fingerprint :fingerprint_version :fk_target_field_id :position])))
 
-(deftest databases-list-test
-  (testing "GET /api/database"
-    (testing "Test that we can get all the DBs (ordered by name, then driver)"
-      (testing "Database details *should not* come back for Rasta since she's not a superuser"
-        (let [expected-keys (-> (into #{:features :native_permissions} (keys (Database (mt/id))))
-                                (disj :details))]
-          (doseq [db ((mt/user->client :rasta) :get 200 "database")]
-            (testing (format "Database %s %d %s" (:engine db) (u/get-id db) (pr-str (:name db)))
-              (is (= expected-keys
-                     (set (keys db)))))))))
-
-    (testing "?include_tables=true"
-      (mt/with-temp Database [{db-id :id, db-name :name} {:engine (u/qualified-name ::test-driver)}]
-        (doseq [db ((mt/user->client :rasta) :get 200 "database" :include_tables true)]
-          (testing (format "Database %s %d %s" (:engine db) (u/get-id db) (pr-str (:name db)))
-            (is (= (expected-tables db)
-                   (:tables db)))))))))
-
 (defn- add-schedules [db]
   (assoc db :schedules {:cache_field_values {:schedule_day   nil
                                              :schedule_frame nil
@@ -344,11 +326,6 @@
     :description  nil}
    kvs))
 
-(defn- fetch-virtual-database []
-  (some #(when (= (:name %) "Saved Questions")
-           %)
-        ((mt/user->client :crowberto) :get 200 "database" :include_cards true)))
-
 (driver/register! ::no-nested-query-support
                   :parent :sql-jdbc
                   :abstract? true)
@@ -360,82 +337,116 @@
                                :source-table (mt/id :checkins))
          :result_metadata [{:name "num_toucans"}]))
 
+(deftest databases-list-test
+  (testing "GET /api/database"
+    (testing "Test that we can get all the DBs (ordered by name, then driver)"
+      (testing "Database details *should not* come back for Rasta since she's not a superuser"
+        (let [expected-keys (-> (into #{:features :native_permissions} (keys (Database (mt/id))))
+                                (disj :details))]
+          (doseq [db ((mt/user->client :rasta) :get 200 "database")]
+            (testing (format "Database %s %d %s" (:engine db) (u/get-id db) (pr-str (:name db)))
+              (is (= expected-keys
+                     (set (keys db)))))))))
+
+    ;; ?include=tables and ?include_tables=true mean the same thing so test them both the same way
+    (doseq [query-param ["?include_tables=true"
+                         "?include=tables"]]
+      (testing query-param
+        (mt/with-temp Database [{db-id :id, db-name :name} {:engine (u/qualified-name ::test-driver)}]
+          (doseq [db ((mt/user->client :rasta) :get 200 (str "database" query-param))]
+            (testing (format "Database %s %d %s" (:engine db) (u/get-id db) (pr-str (:name db)))
+              (is (= (expected-tables db)
+                     (:tables db))))))))))
+
 (deftest databases-list-include-saved-questions-test
-  (testing "GET /api/database?include_cards=true"
-    (testing "Check that we get back 'virtual' tables for Saved Questions"
-      (testing "The saved questions virtual DB should be the last DB in the list"
-        (mt/with-temp* [Card [card (card-with-native-query "Kanye West Quote Views Per Month")]]
-          ;; run the Card which will populate its result_metadata column
-          ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
-          ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list
-          (is (= (-> card
-                     virtual-table-for-card
-                     saved-questions-virtual-db)
-                 (last ((mt/user->client :crowberto) :get 200 "database" :include_cards true))))))
+  (testing "GET /api/database?saved=true"
+    (testing "We should be able to include the saved questions virtual DB (without Tables) with the param ?saved=true"
+      (is (= {:name               "Saved Questions"
+              :id                 mbql.s/saved-questions-virtual-database-id
+              :features           ["basic-aggregations"]
+              :is_saved_questions true}
+             (last ((mt/user->client :lucky) :get 200 "database?saved=true")))))))
 
-      (testing "Make sure saved questions are NOT included if the setting is disabled"
-        (mt/with-temp Card [card (card-with-native-query "Kanye West Quote Views Per Month")]
-          (mt/with-temporary-setting-values [enable-nested-queries false]
-            ;; run the Card which will populate its result_metadata column
-            ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
-            ;; Now fetch the database list. The 'Saved Questions' DB should NOT be in the list
-            (is (= nil
-                   (some (fn [database]
-                           (when (= (u/get-id database) mbql.s/saved-questions-virtual-database-id)
-                             database))
-                         ((mt/user->client :crowberto) :get 200 "database" :include_cards true))))))))
+(deftest databases-list-include-saved-questions-tables-test
+  ;; `?saved=true&include=tables` and `?include_cards=true` mean the same thing, so test them both
+  (doseq [params ["?saved=true&include=tables"
+                  "?include_cards=true"]]
+    (testing (str "GET /api/database" params)
+      (letfn [(fetch-virtual-database []
+                (some #(when (= (:name %) "Saved Questions")
+                         %)
+                      ((mt/user->client :crowberto) :get 200 (str "database" params))))]
+        (testing "Check that we get back 'virtual' tables for Saved Questions"
+          (testing "The saved questions virtual DB should be the last DB in the list"
+            (mt/with-temp* [Card [card (card-with-native-query "Kanye West Quote Views Per Month")]]
+              ;; run the Card which will populate its result_metadata column
+              ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
+              ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list
+              (is (= (-> card
+                         virtual-table-for-card
+                         saved-questions-virtual-db)
+                     (last ((mt/user->client :crowberto) :get 200 (str "database" params)))))))
 
-    (testing "should pretend Collections are schemas"
-      (mt/with-temp* [Collection [stamp-collection {:name "Stamps"}]
-                      Collection [coin-collection  {:name "Coins"}]
-                      Card       [stamp-card (card-with-native-query "Total Stamp Count", :collection_id (u/get-id stamp-collection))]
-                      Card       [coin-card  (card-with-native-query "Total Coin Count",  :collection_id (u/get-id coin-collection))]]
-        ;; run the Cards which will populate their result_metadata columns
-        (doseq [card [stamp-card coin-card]]
-          ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card))))
-        ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list. Cards should have their
-        ;; Collection name as their Schema
-        (is (= (saved-questions-virtual-db
-                 (virtual-table-for-card coin-card  :schema "Coins")
-                 (virtual-table-for-card stamp-card :schema "Stamps"))
-               (last ((mt/user->client :crowberto) :get 200 "database" :include_cards true))))))
+          (testing "Make sure saved questions are NOT included if the setting is disabled"
+            (mt/with-temp Card [card (card-with-native-query "Kanye West Quote Views Per Month")]
+              (mt/with-temporary-setting-values [enable-nested-queries false]
+                ;; run the Card which will populate its result_metadata column
+                ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
+                ;; Now fetch the database list. The 'Saved Questions' DB should NOT be in the list
+                (is (= nil
+                       (fetch-virtual-database)))))))
 
-    (testing "should remove Cards that have ambiguous columns"
-      (mt/with-temp* [Card [ok-card         (assoc (card-with-native-query "OK Card")         :result_metadata [{:name "cam"}])]
-                      Card [cambiguous-card (assoc (card-with-native-query "Cambiguous Card") :result_metadata [{:name "cam"} {:name "cam_2"}])]]
-        (is (= (-> ok-card
-                   virtual-table-for-card
-                   saved-questions-virtual-db)
-               (fetch-virtual-database)))))
+        (testing "should pretend Collections are schemas"
+          (mt/with-temp* [Collection [stamp-collection {:name "Stamps"}]
+                          Collection [coin-collection  {:name "Coins"}]
+                          Card       [stamp-card (card-with-native-query "Total Stamp Count", :collection_id (u/get-id stamp-collection))]
+                          Card       [coin-card  (card-with-native-query "Total Coin Count",  :collection_id (u/get-id coin-collection))]]
+            ;; run the Cards which will populate their result_metadata columns
+            (doseq [card [stamp-card coin-card]]
+              ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card))))
+            ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list. Cards should have their
+            ;; Collection name as their Schema
+            (is (= (saved-questions-virtual-db
+                     (virtual-table-for-card coin-card  :schema "Coins")
+                     (virtual-table-for-card stamp-card :schema "Stamps"))
+                   (last ((mt/user->client :crowberto) :get 200 (str "database" params)))))))
 
-    (testing "should remove Cards that belong to a driver that doesn't support nested queries"
-      (mt/with-temp* [Database [bad-db   {:engine ::no-nested-query-support, :details {}}]
-                      Card     [bad-card {:name            "Bad Card"
-                                          :dataset_query   {:database (u/get-id bad-db)
-                                                            :type     :native
-                                                            :native   {:query "[QUERY GOES HERE]"}}
-                                          :result_metadata [{:name "sparrows"}]
-                                          :database_id     (u/get-id bad-db)}]
-                      Card     [ok-card  (assoc (card-with-native-query "OK Card")
-                                                :result_metadata [{:name "finches"}])]]
-        (is (= (-> ok-card
-                   virtual-table-for-card
-                   saved-questions-virtual-db)
-               (fetch-virtual-database)))))
+        (testing "should remove Cards that have ambiguous columns"
+          (mt/with-temp* [Card [ok-card         (assoc (card-with-native-query "OK Card")         :result_metadata [{:name "cam"}])]
+                          Card [cambiguous-card (assoc (card-with-native-query "Cambiguous Card") :result_metadata [{:name "cam"} {:name "cam_2"}])]]
+            (is (= (-> ok-card
+                       virtual-table-for-card
+                       saved-questions-virtual-db)
+                   (fetch-virtual-database)))))
 
-    (testing "should remove Cards that use cumulative-sum and cumulative-count aggregations"
-      (mt/with-temp* [Card [ok-card (ok-mbql-card)]
-                      Card [_ (merge
-                               (mt/$ids checkins
-                                 (card-with-mbql-query "Cum Count Card"
-                                   :source-table $$checkins
-                                   :aggregation  [[:cum-count]]
-                                   :breakout     [!month.date]))
-                               {:result_metadata [{:name "num_toucans"}]})]]
-        (is (= (-> ok-card
-                   virtual-table-for-card
-                   saved-questions-virtual-db)
-               (fetch-virtual-database)))))))
+        (testing "should remove Cards that belong to a driver that doesn't support nested queries"
+          (mt/with-temp* [Database [bad-db   {:engine ::no-nested-query-support, :details {}}]
+                          Card     [bad-card {:name            "Bad Card"
+                                              :dataset_query   {:database (u/get-id bad-db)
+                                                                :type     :native
+                                                                :native   {:query "[QUERY GOES HERE]"}}
+                                              :result_metadata [{:name "sparrows"}]
+                                              :database_id     (u/get-id bad-db)}]
+                          Card     [ok-card  (assoc (card-with-native-query "OK Card")
+                                                    :result_metadata [{:name "finches"}])]]
+            (is (= (-> ok-card
+                       virtual-table-for-card
+                       saved-questions-virtual-db)
+                   (fetch-virtual-database)))))
+
+        (testing "should remove Cards that use cumulative-sum and cumulative-count aggregations"
+          (mt/with-temp* [Card [ok-card (ok-mbql-card)]
+                          Card [_ (merge
+                                   (mt/$ids checkins
+                                     (card-with-mbql-query "Cum Count Card"
+                                       :source-table $$checkins
+                                       :aggregation  [[:cum-count]]
+                                       :breakout     [!month.date]))
+                                   {:result_metadata [{:name "num_toucans"}]})]]
+            (is (= (-> ok-card
+                       virtual-table-for-card
+                       saved-questions-virtual-db)
+                   (fetch-virtual-database)))))))))
 
 (deftest db-metadata-saved-questions-db-test
   (testing "GET /api/database/:id/metadata works for the Saved Questions 'virtual' database"
@@ -453,9 +464,13 @@
              ((mt/user->client :crowberto) :get 200
               (format "database/%d/metadata" mbql.s/saved-questions-virtual-database-id)))))
 
-    (testing "if no eligible Saved Questions exist the virtual DB metadata endpoint should just return `nil`"
-      (is (= nil
-             ((mt/user->client :crowberto) :get 204
+    (testing "if no eligible Saved Questions exist the endpoint should return empty tables"
+      (is (= {:name               "Saved Questions"
+              :id                 mbql.s/saved-questions-virtual-database-id
+              :features           ["basic-aggregations"]
+              :is_saved_questions true
+              :tables             []}
+             ((mt/user->client :crowberto) :get 200
               (format "database/%d/metadata" mbql.s/saved-questions-virtual-database-id)))))))
 
 
@@ -537,46 +552,48 @@
             (is (= true
                    (deref analyze-called? long-timeout :analyze-never-called)))))))))
 
-;; (Non-admins should not be allowed to trigger sync)
 (deftest non-admins-cant-trigger-sync
-  (is (= "You don't have permissions to do that."
-         ((mt/user->client :rasta) :post 403 (format "database/%d/sync_schema" (mt/id))))))
+  (testing "Non-admins should not be allowed to trigger sync"
+    (is (= "You don't have permissions to do that."
+           ((mt/user->client :rasta) :post 403 (format "database/%d/sync_schema" (mt/id)))))))
 
-;; Can we RESCAN all the FieldValues for a DB?
 (deftest can-rescan-fieldvalues-for-a-db
-  (is (= :sync-called
-         (let [update-field-values-called? (promise)]
-           (mt/with-temp Database [db {:engine "h2", :details (:details (mt/db))}]
-             (with-redefs [field-values/update-field-values! (fn [synced-db]
-                                                               (when (= (u/get-id synced-db) (u/get-id db))
-                                                                 (deliver update-field-values-called? :sync-called)))]
-               ((mt/user->client :crowberto) :post 200 (format "database/%d/rescan_values" (u/get-id db)))
-               (deref update-field-values-called? long-timeout :sync-never-called)))))))
+  (testing "Can we RESCAN all the FieldValues for a DB?"
+    (let [update-field-values-called? (promise)]
+      (mt/with-temp Database [db {:engine "h2", :details (:details (mt/db))}]
+        (with-redefs [field-values/update-field-values! (fn [synced-db]
+                                                          (when (= (u/get-id synced-db) (u/get-id db))
+                                                            (deliver update-field-values-called? :sync-called)))]
+          ((mt/user->client :crowberto) :post 200 (format "database/%d/rescan_values" (u/get-id db)))
+          (is (= :sync-called
+                 (deref update-field-values-called? long-timeout :sync-never-called))))))))
 
-;; (Non-admins should not be allowed to trigger re-scan)
 (deftest nonadmins-cant-trigger-rescan
-  (is (= "You don't have permissions to do that."
-         ((mt/user->client :rasta) :post 403 (format "database/%d/rescan_values" (mt/id))))))
+  (testing "Non-admins should not be allowed to trigger re-scan"
+    (is (= "You don't have permissions to do that."
+           ((mt/user->client :rasta) :post 403 (format "database/%d/rescan_values" (mt/id)))))))
 
-;; Can we DISCARD all the FieldValues for a DB?
 (deftest discard-db-fieldvalues
-  (is (= {:values-1-still-exists? false
-          :values-2-still-exists? false}
-         (mt/with-temp* [Database    [db       {:engine "h2", :details (:details (mt/db))}]
-                         Table       [table-1  {:db_id (u/get-id db)}]
-                         Table       [table-2  {:db_id (u/get-id db)}]
-                         Field       [field-1  {:table_id (u/get-id table-1)}]
-                         Field       [field-2  {:table_id (u/get-id table-2)}]
-                         FieldValues [values-1 {:field_id (u/get-id field-1), :values [1 2 3 4]}]
-                         FieldValues [values-2 {:field_id (u/get-id field-2), :values [1 2 3 4]}]]
-           ((mt/user->client :crowberto) :post 200 (format "database/%d/discard_values" (u/get-id db)))
-           {:values-1-still-exists? (db/exists? FieldValues :id (u/get-id values-1))
-            :values-2-still-exists? (db/exists? FieldValues :id (u/get-id values-2))}))))
+  (testing "Can we DISCARD all the FieldValues for a DB?"
+    (mt/with-temp* [Database    [db       {:engine "h2", :details (:details (mt/db))}]
+                    Table       [table-1  {:db_id (u/get-id db)}]
+                    Table       [table-2  {:db_id (u/get-id db)}]
+                    Field       [field-1  {:table_id (u/get-id table-1)}]
+                    Field       [field-2  {:table_id (u/get-id table-2)}]
+                    FieldValues [values-1 {:field_id (u/get-id field-1), :values [1 2 3 4]}]
+                    FieldValues [values-2 {:field_id (u/get-id field-2), :values [1 2 3 4]}]]
+      ((mt/user->client :crowberto) :post 200 (format "database/%d/discard_values" (u/get-id db)))
+      (testing "values-1 still exists?"
+        (is (= false
+               (db/exists? FieldValues :id (u/get-id values-1)))))
+      (testing "values-2 still exists?"
+        (is (= false
+               (db/exists? FieldValues :id (u/get-id values-2))))))))
 
-;; (Non-admins should not be allowed to discard all FieldValues)
 (deftest nonadmins-cant-discard-all-fieldvalues
-  (is (= "You don't have permissions to do that."
-         ((mt/user->client :rasta) :post 403 (format "database/%d/discard_values" (mt/id))))))
+  (testing "Non-admins should not be allowed to discard all FieldValues"
+    (is (= "You don't have permissions to do that."
+           ((mt/user->client :rasta) :post 403 (format "database/%d/discard_values" (mt/id)))))))
 
 
 ;; For some stupid reason the *real* version of `test-database-connection` is set up to do nothing for tests. I'm
