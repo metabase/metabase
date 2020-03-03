@@ -63,8 +63,7 @@
                                   (context/raisef (ex-info (tru "Error reducing result rows")
                                                            {:type error-type/qp}
                                                            e)
-                                                  context)
-                                  nil))]
+                                                  context)))]
         (context/reducedf metadata reduced-rows context)))))
 
 (defn- default-runf [query rf context]

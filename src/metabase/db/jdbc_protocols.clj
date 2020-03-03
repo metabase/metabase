@@ -66,6 +66,21 @@
   (set-parameter [t stmt i]
     (jdbc/set-parameter (t/offset-date-time t) stmt i)))
 
+(defn clob->str
+  "Convert an H2 clob to a String."
+  ^String [^org.h2.jdbc.JdbcClob clob]
+  (when clob
+    (letfn [(->str [^BufferedReader buffered-reader]
+              (loop [acc []]
+                (if-let [line (.readLine buffered-reader)]
+                  (recur (conj acc line))
+                  (str/join "\n" acc))))]
+      (with-open [reader (.getCharacterStream clob)]
+        (if (instance? BufferedReader reader)
+          (->str reader)
+          (with-open [buffered-reader (BufferedReader. reader)]
+            (->str buffered-reader)))))))
+
 (extend-protocol jdbc/IResultSetReadColumn
   org.postgresql.util.PGobject
   (result-set-read-column [clob _ _]
@@ -73,16 +88,7 @@
 
   org.h2.jdbc.JdbcClob
   (result-set-read-column [clob _ _]
-    (letfn [(clob->str [^BufferedReader buffered-reader]
-              (loop [acc []]
-                (if-let [line (.readLine buffered-reader)]
-                  (recur (conj acc line))
-                  (str/join "\n" acc))))]
-      (with-open [reader (.getCharacterStream clob)]
-        (if (instance? BufferedReader reader)
-          (clob->str reader)
-          (with-open [buffered-reader (BufferedReader. reader)]
-            (clob->str buffered-reader)))))))
+    (clob->str clob)))
 
 (defmulti ^:private read-column
   {:arglists '([rs rsmeta i])}
