@@ -1,5 +1,5 @@
 /* eslint "react/prop-types": "warn" */
-import React, { Component } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 import DatabaseSchemasPane from "./DatabaseSchemasPane";
 import DatabaseTablesPane from "./DatabaseTablesPane";
@@ -10,7 +10,7 @@ import Databases from "metabase/entities/databases";
   id: (state, { database }) => database && database.id,
   wrapped: true,
 })
-class DatabasePane extends Component {
+class DatabasePane extends React.Component {
   componentDidMount() {
     const { database } = this.props;
     if (database.schemas.length === 0) {

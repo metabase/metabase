@@ -28,7 +28,8 @@ const mapStateToProps = state => ({
 });
 
 const mapDispatchToProps = {
-  prefetchMetadata: () => Database.actions.fetchList({ include_tables: true }),
+  prefetchMetadata: () =>
+    Database.actions.fetchList({ include_tables: true, saved: true }),
   push,
 };
 

@@ -114,12 +114,7 @@ const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
   }),
   {
     fetchDatabases: databaseQuery => Databases.actions.fetchList(databaseQuery),
-    // FIXME: this doesn't work for "Saved Questions" database
     fetchSchemas: databaseId => Schemas.actions.fetchList({ dbId: databaseId }),
-    fetchDatabaseTables: databaseId =>
-      // FIXME: this also fetches fields
-      Databases.actions.fetchDatabaseMetadata({ id: databaseId }),
-    // FIXME: this doesn't work for "Saved Questions" database
     fetchSchemaTables: schemaId => Schemas.actions.fetch({ id: schemaId }),
     fetchFields: tableId => Tables.actions.fetchMetadata({ id: tableId }),
   },
@@ -465,14 +460,8 @@ export class UnconnectedDataSelector extends Component {
         return this.props.fetchSchemas(this.state.selectedDatabaseId);
       },
       [TABLE_STEP]: () => {
-        if (this.state.selectedDatabaseId != null) {
-          if (this.state.selectedSchemaId != null) {
-            return this.props.fetchSchemaTables(this.state.selectedSchemaId);
-          } else {
-            return this.props.fetchDatabaseTables(
-              this.state.selectedDatabaseId,
-            );
-          }
+        if (this.state.selectedSchemaId != null) {
+          return this.props.fetchSchemaTables(this.state.selectedSchemaId);
         }
       },
       [FIELD_STEP]: () => {
@@ -696,7 +685,7 @@ const DatabasePicker = ({
 
 const SchemaPicker = ({
   schemas,
-  selectedSchema,
+  selectedSchemaId,
   onChangeSchema,
   hasNextStep,
 }) => {
@@ -717,7 +706,7 @@ const SchemaPicker = ({
         sections={sections}
         searchable
         onChange={item => onChangeSchema(item.schema)}
-        itemIsSelected={schema => schema === selectedSchema}
+        itemIsSelected={item => item && item.schema.id === selectedSchemaId}
         renderItemIcon={() => <Icon name="folder" size={16} />}
         showItemArrows={hasNextStep}
       />

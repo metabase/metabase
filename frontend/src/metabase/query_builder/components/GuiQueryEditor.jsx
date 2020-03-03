@@ -309,7 +309,7 @@ export default class GuiQueryEditor extends React.Component {
   }
 
   renderDataSection() {
-    const tableMetadata = this.props.query.tableMetadata();
+    const table = this.props.query.table();
 
     return (
       <div
@@ -319,7 +319,7 @@ export default class GuiQueryEditor extends React.Component {
       >
         <span className="GuiBuilder-section-label Query-label">{t`Data`}</span>
         <span className="flex align-center px2 py2 text-bold text-grey">
-          {tableMetadata && tableMetadata.display_name}
+          {table && table.displayName()}
         </span>
       </div>
     );
