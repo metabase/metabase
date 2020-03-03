@@ -13,13 +13,16 @@
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.plugins.classloader :as classloader]
             [metabase.query-processor
              [error-type :as error-type]
              [store :as qp.store]]
             [metabase.util
              [honeysql-extensions :as hx]
              [i18n :refer [deferred-tru tru]]])
-  (:import java.time.OffsetTime))
+  (:import java.io.BufferedReader
+           [java.sql Clob ResultSet ResultSetMetaData]
+           java.time.OffsetTime))
 
 (driver/register! :h2, :parent :sql-jdbc)
 
@@ -288,6 +291,31 @@
       (catch Throwable e
         (.close conn)
         (throw e)))))
+
+;; de-CLOB any CLOB values that come back
+(defn clob->str
+  "Convert an H2 clob to a String."
+  ^String [^org.h2.jdbc.JdbcClob clob]
+  (when clob
+    (letfn [(->str [^BufferedReader buffered-reader]
+              (loop [acc []]
+                (if-let [line (.readLine buffered-reader)]
+                  (recur (conj acc line))
+                  (str/join "\n" acc))))]
+      (with-open [reader (.getCharacterStream clob)]
+        (if (instance? BufferedReader reader)
+          (->str reader)
+          (with-open [buffered-reader (BufferedReader. reader)]
+            (->str buffered-reader)))))))
+
+(defmethod sql-jdbc.execute/read-column-thunk :h2
+  [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (let [classname (Class/forName (.getColumnClassName rsmeta i) true (classloader/the-classloader))]
+    (if (isa? classname Clob)
+      (fn []
+        (clob->str (.getObject rs i)))
+      (fn []
+        (.getObject rs i)))))
 
 (defmethod sql-jdbc.execute/set-parameter [:h2 OffsetTime]
   [driver prepared-statement i t]

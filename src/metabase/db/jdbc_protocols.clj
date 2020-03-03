@@ -6,10 +6,10 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
+            [metabase.driver.h2 :as h2]
             [metabase.plugins.classloader :as classloader]
             [metabase.util.date-2 :as u.date])
-  (:import java.io.BufferedReader
-           [java.sql PreparedStatement ResultSet ResultSetMetaData Types]
+  (:import [java.sql PreparedStatement ResultSet ResultSetMetaData Types]
            [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]))
 
 (def ^:private db-type
@@ -73,16 +73,7 @@
 
   org.h2.jdbc.JdbcClob
   (result-set-read-column [clob _ _]
-    (letfn [(clob->str [^BufferedReader buffered-reader]
-              (loop [acc []]
-                (if-let [line (.readLine buffered-reader)]
-                  (recur (conj acc line))
-                  (str/join "\n" acc))))]
-      (with-open [reader (.getCharacterStream clob)]
-        (if (instance? BufferedReader reader)
-          (clob->str reader)
-          (with-open [buffered-reader (BufferedReader. reader)]
-            (clob->str buffered-reader)))))))
+    (h2/clob->str clob)))
 
 (defmulti ^:private read-column
   {:arglists '([rs rsmeta i])}
