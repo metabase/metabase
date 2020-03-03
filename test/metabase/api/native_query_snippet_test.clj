@@ -63,7 +63,6 @@
                (select-keys snippet-from-api test-snippet-fields)))))
 
     (testing "read fails with 403 for user without read permissions"
-      ;; TODO implement this
       (perms/revoke-permissions! (group/all-users) db)
       (is (= "You don't have permissions to do that."
              ((user->client :rasta) :get 403 (str "native-query-snippet/" (:id snippet))))))))

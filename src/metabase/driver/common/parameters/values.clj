@@ -158,35 +158,6 @@
              :tag           tag})))
   snippet)
 
-(defn- snippet-name->template-tag-item
-  [snippet-name]
-  [(str "snippet: " snippet-name)
-   {:id           snippet-name
-    :name         snippet-name
-    :display-name snippet-name
-    :type         :snippet
-    :snippet-name snippet-name}])
-
-(defn- snippet->query
-  [{:keys [content database_id]}]
-  {:database database_id
-   :type     :native
-   :native
-   {:query content
-    :template-tags (->> (re-seq #"\{\{\s*(snippet:\s*[^}]+)\s*\}\}" content)
-                        (map last) ; Match group
-                        (map str/trim)
-                        (map #(str/replace % #"^snippet:\s*" "")) ; Strip off "snippet:" prefix
-                        (map snippet-name->template-tag-item)
-                        (into {}))}})
-
-(defn- expand-snippet
-  [snippet]
-  (-> snippet
-      snippet->query
-      qp/query->native
-      :query))
-
 (s/defn ^:private snippet-for-tag :- (s/maybe (s/cond-pre su/Map (s/eq i/no-value)))
   "Returns the query snippet for the NativeQuerySnippet referenced by `(:snippet-name tag)`"
   [tag :- TagParam]
@@ -194,7 +165,7 @@
     (if-let [snippet (validate-tag-snippet-db tag (db/select-one NativeQuerySnippet :name snippet-name))]
       (i/map->NativeQuerySnippet
        {:snippet-id (:id snippet)
-        :content    (expand-snippet snippet)})
+        :content    (:content snippet)})
       (throw (ex-info (tru "Snippet \"{0}\" not found." snippet-name)
                       {:snippet-name snippet-name, :tag tag})))))
 
