@@ -1,53 +1,37 @@
 (ns metabase.query-processor.middleware.catch-exceptions
   "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
-  (:require [metabase.query-processor
-             [error-type :as qp.error-type]
-             [interface :as qp.i]]
+  (:require [clojure.tools.logging :as log]
+            [metabase.query-processor
+             [context :as context]
+             [error-type :as error-type]
+             [reducible :as qp.reducible]]
+            [metabase.query-processor.middleware.permissions :as perms]
             [metabase.util :as u]
             schema.utils)
   (:import clojure.lang.ExceptionInfo
+           java.sql.SQLException
            [schema.utils NamedError ValidationError]))
 
-(def ^:dynamic ^:private *add-preprocessed-queries?* true)
-
 (defmulti ^:private format-exception
-  "Format an Exception thrown by the Query Processor."
-  {:arglists '([query e])}
-  (fn [_ e]
-    (class e)))
+  "Format an Exception thrown by the Query Processor into a userland error response map."
+  {:arglists '([^Throwable e])}
+  class)
 
 (defmethod format-exception Throwable
-  [{query-type :type, :as query}, ^Throwable e]
-  (merge
-   {:status     :failed
-    :class      (class e)
-    :error      (or (.getMessage e) (str e))
-    :stacktrace (u/filtered-stacktrace e)
-    ;; TODO - removing this stuff is not really needed anymore since `:database` is just the ID and not the
-    ;; entire map including `:details`
-    :query      (dissoc query :database :driver)}
-   ;; add the fully-preprocessed and native forms to the error message for MBQL queries, since they're extremely
-   ;; useful for debugging purposes. Since generating them requires us to recursively run the query processor,
-   ;; make sure we can skip adding them if we end up back here so we don't recurse forever
-   (when (and (= (keyword query-type) :query)
-              *add-preprocessed-queries?*)
-     ;; obviously we do not want to get core.async channels back for preprocessed & native, so run the preprocessing
-     ;; steps synchronously
-     (let [query (dissoc query :async?)]
-       (binding [*add-preprocessed-queries?* false
-                 qp.i/*disable-qp-logging*   true]
-         {:preprocessed (u/ignore-exceptions
-                          ((resolve 'metabase.query-processor/query->preprocessed) query))
-          :native       (u/ignore-exceptions
-                          ((resolve 'metabase.query-processor/query->native) query))})))
-   ;; if the Exception has a cause, add that in as well, because a lot of times we add relevant context to Exceptions
-   ;; and rethrow
-   (when-let [cause (.getCause e)]
-     {:cause (dissoc (format-exception nil cause) :status :query :stacktrace)})))
+  [^Throwable e]
+  {:status     :failed
+   :class      (class e)
+   :error      (.getMessage e)
+   :stacktrace (u/filtered-stacktrace e)})
 
+(defmethod format-exception InterruptedException
+  [^InterruptedException e]
+  {:status :interrupted})
 
+;; TODO - consider moving this into separate middleware as part of a try-catch setup so queries running in a
+;; non-userland context can still have sane Exceptions
 (defn- explain-schema-validation-error
-  "Return a nice error message to explain the schema validation error."
+  "Return a nice error message to explain the Schema validation error."
   [error]
   (cond
     (instance? NamedError error)
@@ -80,32 +64,108 @@
           explanation))))
 
 (defmethod format-exception ExceptionInfo
-  [query e]
-  (let [{error :error, :as data} (ex-data e)
-        {error-type :type}       (u/all-ex-data e)]
+  [e]
+  (let [{error :error, error-type :type, :as data} (ex-data e)]
     (merge
-     ((get-method format-exception Throwable) query e)
-     (when-let [error-msg (and (= error-type :schema.core/error)
-                               (explain-schema-validation-error error))]
-       {:error error-msg})
-     (when (qp.error-type/known-error-type? error-type)
+     ((get-method format-exception Throwable) e)
+     (when (= error-type :schema.core/error)
+       (merge
+        {:error_type error-type/invalid-query}
+        (when-let [error-msg (explain-schema-validation-error error)]
+          {:error error-msg})))
+     (when (error-type/known-error-type? error-type)
        {:error_type error-type})
+     ;; TODO - we should probably change this key to `:data` so we're not mixing lisp-case and snake_case keys
      {:ex-data (dissoc data :schema)})))
 
+(defmethod format-exception SQLException
+  [^SQLException e]
+  (assoc ((get-method format-exception Throwable) e)
+         :state (.getSQLState e)))
+
+(defn- cause [^Throwable e]
+  (let [cause (.getCause e)]
+    (when-not (= cause e)
+      cause)))
+
+(defn- exception-chain [^Throwable e]
+  (->> (iterate cause e)
+       (take-while some?)
+       reverse))
+
+(defn- best-top-level-error
+  "In cases where the top-level Exception doesn't have the best error message, return a better one to use instead. We
+  usually want to show SQLExceptions at the top level since they contain more useful information."
+  [maps]
+  (some (fn [m]
+          (when (isa? (:class m) SQLException)
+            (select-keys m [:error])))
+        maps))
+
+(defn exception-response
+  "Convert an Exception to a nicely-formatted Clojure map suitable for returning in userland QP responses."
+  [^Throwable e]
+  (let [[m & more :as maps] (for [e (exception-chain e)]
+                              (format-exception e))]
+    (merge
+     m
+     (best-top-level-error maps)
+     ;; merge in the first error_type we see
+     (when-let [error-type (some :error_type maps)]
+       {:error_type error-type})
+     (when (seq more)
+       {:via (vec more)}))))
+
+(defn- query-info
+  "Map of about `query` to add to the exception response."
+  [{query-type :type, :as query} {:keys [preprocessed native]}]
+  (merge
+   {:json_query (dissoc query :info :driver)}
+   ;; add the fully-preprocessed and native forms to the error message for MBQL queries, since they're extremely
+   ;; useful for debugging purposes.
+   (when (= (keyword query-type) :query)
+     {:preprocessed preprocessed
+      :native       (when (perms/current-user-has-adhoc-native-query-perms? query)
+                      native)})))
+
+(defn- query-execution-info [query-execution]
+  (dissoc query-execution :result_rows :hash :executor_id :card_id :dashboard_id :pulse_id :native :start_time_millis))
+
+(defn- format-exception* [query ^Throwable e extra-info]
+  (try
+    (if-let [query-execution (:query-execution (ex-data e))]
+      (merge (query-execution-info query-execution)
+             (format-exception* query (.getCause e) extra-info))
+      (merge
+       {:data {:rows [], :cols []}, :row_count 0}
+       (exception-response e)
+       (query-info query extra-info)))
+    (catch Throwable e
+      e)))
 
 (defn catch-exceptions
-  "Middleware for catching exceptions thrown by the query processor and returning them in a normal format."
+  "Middleware for catching exceptions thrown by the query processor and returning them in a 'normal' format. Forwards
+  exceptions to the `result-chan`."
   [qp]
-  ;; we're swapping out the top-level exception handler (`raise` fn) created by the `async-setup` middleware with one
-  ;; that will format the Exceptions and pipe them thru as normal QP 'failure' responses. For InterruptedExceptions
-  ;; however (caused when the query is canceled) pipe all the way thru to the top-level handler so it can close out
-  ;; the output channel instead of writing a response to it, which will cause the cancelation message we're looking for
-  (fn [query respond top-level-raise canceled-chan]
-    (let [raise (fn [e]
-                  (if (instance? InterruptedException e)
-                    (top-level-raise e)
-                    (respond (format-exception query e))))]
-      (try
-        (qp query respond raise canceled-chan)
-        (catch Throwable e
-          (raise e))))))
+
+  (fn [query rff {:keys [preprocessedf nativef raisef], :as context}]
+    (let [extra-info (atom nil)]
+      (letfn [(preprocessedf* [query context]
+                (swap! extra-info assoc :preprocessed query)
+                (preprocessedf query context))
+              (nativef* [query context]
+                (swap! extra-info assoc :native query)
+                (nativef query context))
+              (raisef* [e context]
+                (if (qp.reducible/quit-result e)
+                  (raisef e context)
+                  (do
+                    (log/tracef "raisef* got %s, returning formatted exception" (class e))
+                    (context/resultf (format-exception* query e @extra-info) context))))]
+        (try
+          (qp query rff (assoc context
+                                  :preprocessedf preprocessedf*
+                                  :nativef nativef*
+                                  :raisef raisef*))
+          (catch Throwable e
+            (raisef* e context)))))))

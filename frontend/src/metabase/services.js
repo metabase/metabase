@@ -212,6 +212,12 @@ export const MetabaseApi = {
   dataset: POST("/api/dataset"),
   dataset_duration: POST("/api/dataset/duration"),
   native: POST("/api/dataset/native"),
+
+  // to support audit app  allow the endpoint to be provided in the query
+  datasetEndpoint: POST("/api/:endpoint", {
+    // this prevents the `endpoint` parameter from being URL encoded
+    raw: { endpoint: true },
+  }),
 };
 
 export const PulseApi = {

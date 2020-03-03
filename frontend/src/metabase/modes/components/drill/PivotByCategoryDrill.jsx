@@ -1,12 +1,13 @@
 /* @flow */
 
-import PivotByCategoryAction from "../actions/PivotByCategoryAction";
+import { t } from "ttag";
 
-import type {
-  ClickAction,
-  ClickActionProps,
-} from "metabase/meta/types/Visualization";
+import { isCategory, isAddress } from "metabase/lib/schema_metadata";
 
-export default (props: ClickActionProps): ClickAction[] => {
-  return PivotByCategoryAction(props);
-};
+import PivotByDrill from "./PivotByDrill";
+
+export default PivotByDrill(
+  t`Category`,
+  "label",
+  field => isCategory(field) && !isAddress(field),
+);

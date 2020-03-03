@@ -39,6 +39,7 @@ export const ERROR_MESSAGE_GENERIC = t`There was a problem displaying this chart
 export const ERROR_MESSAGE_PERMISSION = t`Sorry, you don't have permission to see this card.`;
 
 import Question from "metabase-lib/lib/Question";
+import Mode from "metabase-lib/lib/Mode";
 import type {
   Card as CardObject,
   VisualizationSettings,
@@ -83,8 +84,11 @@ type Props = {
 
   // for click actions
   metadata: Metadata,
-  onChangeCardAndRun: OnChangeCardAndRun,
   dispatch: Function,
+  onChangeCardAndRun: OnChangeCardAndRun,
+  onChangeLocation: (url: string) => void,
+
+  mode?: Mode,
 
   // used for showing content in place of visualization, e.x. dashcard filter mapping
   replacementContent: React.Element<any>,
@@ -147,6 +151,10 @@ export default class Visualization extends React.PureComponent {
     isEditing: false,
     isSettings: false,
     onUpdateVisualizationSettings: () => {},
+    // prefer passing in a function that doesn't cause the application to reload
+    onChangeLocation: location => {
+      window.location = location;
+    },
   };
 
   componentWillMount() {
@@ -265,12 +273,14 @@ export default class Visualization extends React.PureComponent {
     if (!clicked) {
       return [];
     }
-    // TODO: push this logic into Question?
     const { rawSeries, metadata } = this.props;
+    // TODO: push this logic into Question?
     const seriesIndex = clicked.seriesIndex || 0;
     const card = rawSeries[seriesIndex].card;
     const question = this._getQuestionForCardCached(metadata, card);
-    const mode = question && question.mode();
+    const mode = this.props.mode
+      ? question && new Mode(question, this.props.mode)
+      : question && question.mode();
     return mode ? mode.actionsForClick(clicked, {}) : [];
   }
 

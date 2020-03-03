@@ -8,6 +8,7 @@
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :as qp.test]
+             [test :as mt]
              [util :as u]]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models
@@ -37,7 +38,7 @@
           [:id :name :category_id :latitude :longitude :price])}
   (qp.test/rows-and-cols
     (qp.test/format-rows-by :venues
-      (data/run-mbql-query nil
+      (mt/run-mbql-query nil
         {:source-query {:source-table $$venues
                         :order-by     [[:asc $venues.id]]
                         :limit        10}
@@ -56,7 +57,7 @@
                                   (data/mbql-query venues
                                     {:fields [$id $longitude $category_id $price $name $latitude]}))]
       (qp.test/rows-and-cols
-        (data/run-mbql-query venues
+        (mt/run-mbql-query venues
           {:source-query {:native source-query}
            :order-by     [[:asc *venues.id]]
            :limit        5})))))
@@ -77,7 +78,7 @@
   (breakout-results)
   (qp.test/rows-and-cols
     (qp.test/format-rows-by [int int]
-      (data/run-mbql-query venues
+      (mt/run-mbql-query venues
         {:source-query {:source-table $$venues}
          :aggregation  [:count]
          :breakout     [*price]}))))
@@ -89,7 +90,7 @@
           (qp.test/aggregate-col :count)]}
   (qp.test/rows-and-cols
     (qp.test/format-rows-by [int int]
-      (data/run-mbql-query checkins
+      (mt/run-mbql-query checkins
         {:source-query {:source-table $$checkins
                         :filter       [:> $date "2014-01-01"]}
          :aggregation  [:count]
@@ -109,7 +110,7 @@
           (qp.test/aggregate-col :count)]}
   (qp.test/rows-and-cols
     (qp.test/format-rows-by [int 4.0 int]
-      (data/run-mbql-query checkins
+      (mt/run-mbql-query checkins
         {:source-query {:source-table $$checkins
                         :filter       [:> $date "2014-01-01"]}
          :filter       [:< $venue_id->venues.latitude 34]
@@ -130,7 +131,7 @@
           (qp.test/aggregate-col :count)]}
   (qp.test/rows-and-cols
     (qp.test/format-rows-by [int int int]
-      (data/run-mbql-query checkins
+      (mt/run-mbql-query checkins
         {:source-query {:source-table $$checkins
                         :filter       [:> $date "2014-01-01"]}
          :aggregation  [:count]
@@ -144,7 +145,7 @@
   (breakout-results :has-source-metadata? false)
   (qp.test/rows-and-cols
     (qp.test/format-rows-by [int int]
-      (data/run-mbql-query venues
+      (mt/run-mbql-query venues
         {:source-query {:native (:query (qp/query->native (data/mbql-query venues)))}
          :aggregation  [:count]
          :breakout     [*price]}))))
@@ -223,7 +224,7 @@
    :cols (mapv (partial qp.test/field-literal-col :venues)
                [:id :name :category_id :latitude :longitude :price])}
   (qp.test/rows-and-cols
-    (data/run-mbql-query venues
+    (mt/run-mbql-query venues
       {:source-query {:source-table $$venues}
        :filter       [:= *id 1]})))
 
@@ -407,17 +408,23 @@
            {:aggregation [[:count]]
             :breakout    [!day.*date]}))))))
 
-;; make sure when doing a nested query we give you metadata that would suggest you should be able to break out a *YEAR*
-(expect
-  [(assoc (qp.test/field-literal-col :checkins :date) :unit :year)
-   (qp.test/field-literal-col (qp.test/aggregate-col :count))]
-  (qp.test/cols
-    (tt/with-temp Card [card (mbql-card-def
-                               (data/$ids checkins
-                                 {:source-table $$checkins
-                                  :aggregation  [[:count]]
-                                  :breakout     [!year.date]}))]
-      (qp/process-query (query-with-source-card card)))))
+(deftest breakout-year-test
+  (testing (str "make sure when doing a nested query we give you metadata that would suggest you should be able to "
+                "break out a *YEAR*")
+    (let [source-query (data/$ids checkins
+                         {:source-table $$checkins
+                          :aggregation  [[:count]]
+                          :breakout     [!year.date]})]
+      (tt/with-temp Card [card (mbql-card-def source-query)]
+        (let [[date-col count-col] (for [col (-> (qp/process-query {:database (mt/id), :type :query, :query source-query})
+                                                 :data :cols)]
+                                     (-> (into {} col)
+                                         (dissoc :description :parent_id :visibility_type)
+                                         (assoc :source :fields)))]
+          (is (= [(assoc date-col  :field_ref [:field-literal "DATE" :type/Date])
+                  (assoc count-col :field_ref [:field-literal "count" (:base_type count-col)])]
+                 (mt/cols
+                   (qp/process-query (query-with-source-card card))))))))))
 
 (defn- completed-status [{:keys [status], :as results}]
   (if (= status :completed)
@@ -572,7 +579,7 @@
 (datasets/expect-with-drivers (qp.test/normal-drivers-with-feature :nested-queries)
   [[10]]
   (qp.test/formatted-rows [int]
-    (data/run-mbql-query venues
+    (mt/run-mbql-query venues
       {:source-query {:source-table $$venues
                       :fields       [$id $name $category_id $latitude $longitude $price]}
        :aggregation  [[:count]]
@@ -600,7 +607,7 @@
   [[395]
    [980]]
   (qp.test/formatted-rows [int]
-    (data/run-mbql-query checkins
+    (mt/run-mbql-query checkins
       {:source-query {:source-table $$checkins
                       :order-by     [[:asc $id]]}
        :fields       [$id]
@@ -611,7 +618,7 @@
   [["Fred 62"     1]
    ["Frolic Room" 1]]
   (qp.test/formatted-rows [str int]
-    (data/run-mbql-query checkins
+    (mt/run-mbql-query checkins
       {:source-query {:source-table $$checkins
                       :filter       [:> $date "2015-01-01"]}
        :aggregation  [:count]
@@ -619,38 +626,25 @@
        :breakout     [$venue_id->venues.name]
        :filter       [:starts-with $venue_id->venues.name "F"]})))
 
-;; Do nested queries work with two of the same aggregation? (#9767)
-(datasets/expect-with-drivers (qp.test/normal-drivers-with-feature :nested-queries :foreign-keys)
-  {:rows
-   [["2014-02-01T00:00:00Z" 302 1804]
-    ["2014-03-01T00:00:00Z" 350 2362]]
-   :cols
-   [(assoc (qp.test/field-literal-col :checkins :date)
-      :unit :month)
-    (let [{base-type :base_type, :as literal-col} (qp.test/field-literal-col :checkins :user_id)]
-      (assoc (qp.test/aggregate-col :sum literal-col)
-        :source    :fields
-        :field_ref [:field-literal "sum" base-type]))
-    (let [{base-type :base_type, :as literal-col} (qp.test/field-literal-col :checkins :venue_id)]
-      (assoc (qp.test/aggregate-col :sum literal-col)
-        :name      "sum_2"
-        :source    :fields
-        :field_ref [:field-literal "sum_2" base-type]))]}
-  (qp.test/format-rows-by [identity int int]
-    (qp.test/rows-and-cols
-      (data/run-mbql-query checkins
-        {:source-query
-         {:source-table $$checkins
-          :aggregation  [[:sum $user_id] [:sum $venue_id]]
-          :breakout     [!month.date]}
-         :filter [:> *sum/Float 300]
-         :limit  2}))))
+(deftest two-of-the-same-aggregations-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :foreign-keys)
+    (testing "Do nested queries work with two of the same aggregation? (#9767)"
+      (is (= [["2014-02-01T00:00:00Z" 302 1804]
+              ["2014-03-01T00:00:00Z" 350 2362]]
+             (mt/formatted-rows [identity int int]
+               (mt/run-mbql-query checkins
+                 {:source-query
+                  {:source-table $$checkins
+                   :aggregation  [[:sum $user_id] [:sum $venue_id]]
+                   :breakout     [!month.date]}
+                  :filter [:> *sum/Float 300]
+                  :limit  2})))))))
 
 ;; can you use nested queries that have expressions in them?
 (datasets/expect-with-drivers (qp.test/normal-drivers-with-feature :nested-queries :foreign-keys :expressions)
   [[30] [20]]
   (qp.test/formatted-rows [int int]
-    (data/run-mbql-query venues
+    (mt/run-mbql-query venues
       {:source-query
        {:source-table $$venues
         :fields       [[:expression "price-times-ten"]]
@@ -667,7 +661,7 @@
                                                        :limit        2})}]
 
     (qp.test/formatted-rows [int int]
-      (data/run-mbql-query nil
+      (mt/run-mbql-query nil
         {:source-table (str "card__" card-id)}))))
 
 ;; If a field is bucketed as a year in a source query, bucketing it as a year shouldn't break things (#10446)
@@ -679,7 +673,7 @@
   (datasets/test-drivers (qp.test/normal-drivers-with-feature :nested-queries)
     (is (= [[(if (= :sqlite driver/*driver*) "2013-01-01" "2013-01-01T00:00:00Z")]]
            (qp.test/rows
-             (data/run-mbql-query checkins
+             (mt/run-mbql-query checkins
                {:source-query {:source-table $$checkins
                                :fields       [!year.date]
                                :order-by     [[:asc !year.date]]

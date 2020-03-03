@@ -31,10 +31,12 @@
              [slack :as slack]
              [table :as table]
              [task :as task]
+             [testing :as testing]
              [tiles :as tiles]
              [transform :as transform]
              [user :as user]
              [util :as util]]
+            [metabase.config :as config]
             [metabase.middleware
              [auth :as middleware.auth]
              [exceptions :as middleware.exceptions]]
@@ -87,6 +89,9 @@
   (context "/slack"                [] (+auth slack/routes))
   (context "/table"                [] (+auth table/routes))
   (context "/task"                 [] (+auth task/routes))
+  (context "/testing"              [] (if (config/config-bool :mb-enable-test-endpoints)
+                                        testing/routes
+                                        (fn [_ respond _] (respond nil))))
   (context "/tiles"                [] (+auth tiles/routes))
   (context "/transform"            [] (+auth transform/routes))
   (context "/user"                 [] (+auth user/routes))

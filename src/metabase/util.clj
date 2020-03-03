@@ -207,28 +207,33 @@
     identity
     (constantly "")))
 
-(def ^:private ^{:arglists '([color-symb x])} colorize
-  "Colorize string `x` with the function matching `color` symbol or keyword, but only if `MB_COLORIZE_LOGS` is
-  enabled (the default)."
-  (if (config/config-bool :mb-colorize-logs)
+(def ^:private colorize?
+  ;; As of 0.35.0 we support the NO_COLOR env var. See https://no-color.org/ (But who hates color logs?)
+  (if (config/config-str :no-color)
+    false
+    (config/config-bool :mb-colorize-logs)))
+
+(def ^{:arglists '(^String [color-symb x]), :style/indent 1} colorize
+  "Colorize string `x` using `color`, a symbol or keyword, but only if `MB_COLORIZE_LOGS` is enabled (the default).
+  `color` can be `green`, `red`, `yellow`, `blue`, `cyan`, `magenta`, etc. See the entire list of avaliable
+  colors [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj)"
+  (if colorize?
     (fn [color x]
-      (colorize/color (keyword color) x))
+      (colorize/color (keyword color) (str x)))
     (fn [_ x]
-      x)))
+      (str x))))
 
 (defn format-color
-  "Like `format`, but colorizes the output. `color` should be a symbol or keyword like `green`, `red`, `yellow`, `blue`,
-  `cyan`, `magenta`, etc. See the entire list of avaliable
-  colors [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj).
+  "With one arg, converts something to a string and colorizes it. With two args, behaves like `format`, but colorizes
+  the output.
 
-     (format-color :red \"Fatal error: %s\" error-message)"
-  {:style/indent 2}
+    (format-color :red \"%d cans\" 2)"
+  {:arglists '(^String [color x] ^String [color format-string & args]), :style/indent 2}
   (^String [color x]
-   {:pre [((some-fn symbol? keyword?) color)]}
-   (colorize color (str x)))
+   (colorize color x))
 
-  (^String [color format-string & args]
-   (colorize color (apply format (str format-string) args))))
+  (^String [color format-str & args]
+   (colorize color (apply format format-str args))))
 
 (defn pprint-to-str
   "Returns the output of pretty-printing `x` as a string.
@@ -239,7 +244,10 @@
   {:style/indent 1}
   (^String [x]
    (when x
-     (with-out-str (pprint x))))
+     (with-open [w (java.io.StringWriter.)]
+       (pprint x w)
+       (str w))))
+
   (^String [color-symb x]
    (colorize color-symb (pprint-to-str x))))
 
@@ -272,12 +280,13 @@
            [last-mb-frame & frames-before-last-mb] (for [frame other-frames
                                                          :when (str/includes? frame "metabase")]
                                                      (str/replace frame #"^metabase\." ""))]
-       (concat
-        (map str frames-after-last-mb)
-        ;; add a little arrow to the frame so it stands out more
-        (cons
-         (some->> last-mb-frame (str "--> "))
-         frames-before-last-mb))))})
+       (vec
+        (concat
+         (map str frames-after-last-mb)
+         ;; add a little arrow to the frame so it stands out more
+         (cons
+          (some->> last-mb-frame (str "--> "))
+          frames-before-last-mb)))))})
 
 (declare format-milliseconds)
 
@@ -684,7 +693,7 @@
 
 (defn topological-sort
   "Topologically sorts vertexs in graph g. Graph is a map of vertexs to edges. Optionally takes an
-   additional argument `edge-fn`, a function used to extract edges. Returns data in the same shape
+   additional argument `edges-fn`, a function used to extract edges. Returns data in the same shape
    (a graph), only sorted.
 
    Say you have a graph shaped like:
@@ -780,8 +789,8 @@
    `(profile ~(str form) ~form))
   ([message & body]
    `(let [start-time# (System/nanoTime)]
-      (u/prog1 (do ~@body)
-        (println (u/format-color '~'green "%s took %s"
+      (prog1 (do ~@body)
+        (println (format-color '~'green "%s took %s"
                    ~message
                    (format-nanoseconds (- (System/nanoTime) start-time#))))))))
 
@@ -799,6 +808,11 @@
   "Convert `minutes` to milliseconds. More readable than doing this math inline."
   [minutes]
   (-> minutes minutes->seconds seconds->ms))
+
+(defn hours->ms
+  "Convert `hours` to milliseconds. More readable than doing this math inline."
+  [hours]
+  (-> (* 60 hours) minutes->seconds seconds->ms))
 
 (defn parse-currency
   "Parse a currency String to a BigDecimal. Handles a variety of different formats, such as:

@@ -5,6 +5,11 @@
   display: flex;
 }
 
+.inline-flex,
+:local(.inline-flex) {
+  display: inline-flex;
+}
+
 .flex-auto,
 :local(.flex-auto) {
   flex: auto;

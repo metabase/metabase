@@ -7,6 +7,7 @@ import { t } from "ttag";
 import cx from "classnames";
 
 import TagEditorParam from "./TagEditorParam";
+import CardTagEditor from "./CardTagEditor";
 import TagEditorHelp from "./TagEditorHelp";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
@@ -82,17 +83,17 @@ export default class TagEditorSidebar extends React.Component {
 
     return (
       <SidebarContent title={t`Variables`} onClose={onClose}>
-        <div className="mx4">
-          <div className="Button-group Button-group--brand text-uppercase mb2">
+        <div>
+          <div className="mx3 text-centered Button-group Button-group--brand text-uppercase mb2 flex flex-full">
             <a
-              className={cx("Button Button--small", {
+              className={cx("Button flex-full Button--small", {
                 "Button--active": section === "settings",
                 disabled: tags.length === 0,
               })}
               onClick={() => this.setSection("settings")}
             >{t`Settings`}</a>
             <a
-              className={cx("Button Button--small", {
+              className={cx("Button flex-full Button--small", {
                 "Button--active": section === "help",
               })}
               onClick={() => this.setSection("help")}
@@ -105,6 +106,8 @@ export default class TagEditorSidebar extends React.Component {
               databaseFields={databaseFields}
               database={database}
               databases={databases}
+              query={query}
+              setDatasetQuery={setDatasetQuery}
             />
           ) : (
             <TagEditorHelp
@@ -126,17 +129,27 @@ const SettingsPane = ({
   databaseFields,
   database,
   databases,
+  query,
+  setDatasetQuery,
 }) => (
   <div>
     {tags.map(tag => (
       <div key={tags.name}>
-        <TagEditorParam
-          tag={tag}
-          onUpdate={onUpdate}
-          databaseFields={databaseFields}
-          database={database}
-          databases={databases}
-        />
+        {tag.type === "card" ? (
+          <CardTagEditor
+            query={query}
+            setDatasetQuery={setDatasetQuery}
+            tag={tag}
+          />
+        ) : (
+          <TagEditorParam
+            tag={tag}
+            onUpdate={onUpdate}
+            databaseFields={databaseFields}
+            database={database}
+            databases={databases}
+          />
+        )}
       </div>
     ))}
   </div>
@@ -145,5 +158,7 @@ const SettingsPane = ({
 SettingsPane.propTypes = {
   tags: PropTypes.object.isRequired,
   onUpdate: PropTypes.func.isRequired,
+  setDatasetQuery: PropTypes.func.isRequired,
+  query: NativeQuery,
   databaseFields: PropTypes.array,
 };

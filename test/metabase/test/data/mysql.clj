@@ -39,6 +39,16 @@
    (when (= context :db)
      {:db database-name})))
 
+(defmethod tx/aggregate-column-info :mysql
+  ([driver ag-type]
+   ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type))
+
+  ([driver ag-type field]
+   (merge
+    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
+    (when (= ag-type :sum)
+      {:base_type :type/Decimal}))))
+
 ;; TODO - we might be able to do SQL all at once by setting `allowMultiQueries=true` on the connection string
 (defmethod execute/execute-sql! :mysql
   [& args]

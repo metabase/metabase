@@ -55,7 +55,7 @@
       (for [col cols]
         (select-keys col [:name :id :table_id :display_name :base_type :special_type :unit :fingerprint :settings])))
     (catch Throwable e
-      (log/error #_e (str (trs "Error determining expected columns for query")))
+      (log/error e (str (trs "Error determining expected columns for query")))
       nil)))
 
 (s/defn ^:private add-source-metadata :- {:source-metadata [mbql.s/SourceQueryMetadata], s/Keyword s/Any}
@@ -101,15 +101,5 @@
   source queries that do not specify this information, we can often infer it by looking at the shape of the source
   query."
   [qp]
-  ;; this middleware works as both sync and async style to make our lives easier when we convert the QP to full async
-  (fn
-    ([query]
-     (qp (add-source-metadata-for-source-queries* query)))
-
-    ([query respond raise canceled-chan]
-     (when-let [query (try
-                        (add-source-metadata-for-source-queries* query)
-                        (catch Throwable e
-                          (raise e)
-                          nil))]
-       (qp query respond raise canceled-chan)))))
+  (fn [query rff context]
+    (qp (add-source-metadata-for-source-queries* query) rff context)))

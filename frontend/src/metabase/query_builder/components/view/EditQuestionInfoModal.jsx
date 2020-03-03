@@ -5,12 +5,12 @@ import { t } from "ttag";
 import Form from "metabase/containers/Form";
 import ModalContent from "metabase/components/ModalContent";
 
+import Questions from "metabase/entities/questions";
+
 const EditQuestionInfoModal = ({ question, onClose, onSave }) => (
   <ModalContent title={t`Edit question`} onClose={onClose}>
     <Form
-      form={{
-        fields: [{ name: "name" }, { name: "description", type: "text" }],
-      }}
+      form={Questions.forms.details_without_collection}
       initialValues={question.card()}
       submitTitle={t`Save`}
       onClose={onClose}

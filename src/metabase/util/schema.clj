@@ -239,7 +239,11 @@
 
 (def JSONString
   "Schema for a string that is valid serialized JSON."
-  (with-api-error-message (s/constrained s/Str #(u/ignore-exceptions (json/parse-string %)))
+  (with-api-error-message (s/constrained s/Str #(try
+                                                  (json/parse-string %)
+                                                  true
+                                                  (catch Throwable _
+                                                    false)))
     (deferred-tru "value must be a valid JSON string.")))
 
 (def EmbeddingParams

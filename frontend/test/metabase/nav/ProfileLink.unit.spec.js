@@ -2,14 +2,6 @@ import React from "react";
 import { shallow } from "enzyme";
 import ProfileLink from "metabase/nav/components/ProfileLink";
 
-jest.mock("metabase/lib/settings", () => ({
-  get: () => ({
-    tag: 1,
-    version: 1,
-  }),
-  docsUrl: () => "placeholder",
-}));
-
 describe("ProfileLink", () => {
   describe("options", () => {
     describe("normal user", () => {

@@ -11,6 +11,8 @@
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            [java.util Calendar TimeZone]))
 
+;; TODO - need to do a legacy implementation using the new methods as well...
+
 ;; method impls for JDBC drivers that aren't fully JDBC 4.2 compliant/don't support the new `java.time` methods
 (driver/register! ::use-legacy-classes-for-read-and-set, :abstract? true)
 
@@ -53,23 +55,32 @@
     (log/tracef "(.setTimestamp %d ^%s %s <%s Calendar>)" i (.getName (class t)) (pr-str t) (.. cal getTimeZone getID))
     (.setTimestamp ps i t cal)))
 
-(defmethod sql-jdbc.execute/read-column [:use-legacy-classes-for-read-and-set Types/TIME]
-  [_ _ ^ResultSet rs _ ^Integer i]
-  (when-let [s (.getString rs i)]
-    (let [t (u.date/parse s)]
-      (log/tracef "(.getString rs i) [TIME] -> %s -> %s" (pr-str s) (pr-str t))
-      t)))
+(defmethod sql-jdbc.execute/read-column-thunk [::use-legacy-classes-for-read-and-set Types/TIME]
+  [_ ^ResultSet rs _ ^Integer i]
+  (fn []
+    (when-let [s (.getString rs i)]
+      (let [t (u.date/parse s)]
+        (log/tracef "(.getString rs i) [TIME] -> %s -> %s" (pr-str s) (pr-str t))
+        t))))
 
-(defmethod sql-jdbc.execute/read-column [::use-legacy-classes-for-read-and-set Types/DATE]
-  [_ _ ^ResultSet rs _ ^Integer i]
-  (when-let [s (.getString rs i)]
-    (let [t (u.date/parse s)]
-      (log/tracef "(.getString rs i) [DATE] -> %s -> %s" (pr-str s) (pr-str t))
-      t)))
+(defmethod sql-jdbc.execute/read-column-thunk [::use-legacy-classes-for-read-and-set Types/DATE]
+  [_ ^ResultSet rs _ ^Integer i]
+  (fn []
+    (when-let [s (.getString rs i)]
+      (let [t (u.date/parse s)]
+        (log/tracef "(.getString rs i) [DATE] -> %s -> %s" (pr-str s) (pr-str t))
+        t))))
 
-(defmethod sql-jdbc.execute/read-column [::use-legacy-classes-for-read-and-set Types/TIMESTAMP]
-  [_ _ ^ResultSet rs _ ^Integer i]
-  (when-let [s (.getString rs i)]
-    (let [t (u.date/parse s)]
-      (log/tracef "(.getString rs i) [TIMESTAMP] -> %s -> %s" (pr-str s) (pr-str t))
-      t)))
+(defmethod sql-jdbc.execute/read-column-thunk [::use-legacy-classes-for-read-and-set Types/TIMESTAMP]
+  [_ ^ResultSet rs _ ^Integer i]
+  (fn []
+    (when-let [s (.getString rs i)]
+      (let [t (u.date/parse s)]
+        (log/tracef "(.getString rs i) [TIMESTAMP] -> %s -> %s" (pr-str s) (pr-str t))
+        t))))
+
+(doseq [dispatch-val (keys (methods sql-jdbc.execute/read-column-thunk))
+        :when        (sequential? dispatch-val)
+        :let         [[driver jdbc-type] dispatch-val]
+        :when        (= driver ::use-legacy-classes-for-read-and-set)]
+  (prefer-method sql-jdbc.execute/read-column-thunk dispatch-val [:sql-jdbc jdbc-type]))

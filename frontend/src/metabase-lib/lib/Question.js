@@ -11,6 +11,7 @@ import NativeQuery, {
   NATIVE_QUERY_TEMPLATE,
 } from "metabase-lib/lib/queries/NativeQuery";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
+import InternalQuery from "./queries/InternalQuery";
 
 import Query from "metabase-lib/lib/queries/Query";
 
@@ -217,7 +218,7 @@ export default class Question {
   query(): Query {
     const datasetQuery = this._card.dataset_query;
 
-    for (const QueryClass of [StructuredQuery, NativeQuery]) {
+    for (const QueryClass of [StructuredQuery, NativeQuery, InternalQuery]) {
       if (QueryClass.isDatasetQueryType(datasetQuery)) {
         return new QueryClass(this, datasetQuery);
       }

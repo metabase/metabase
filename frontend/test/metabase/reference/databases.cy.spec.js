@@ -1,21 +1,22 @@
-import { signInAsAdmin } from "__support__/cypress";
+import { signInAsAdmin, restore } from "__support__/cypress";
 
 describe("sample database reference", () => {
+  before(restore);
   beforeEach(signInAsAdmin);
 
   it("should see the listing", () => {
-    cy.visit("reference/databases");
+    cy.visit("/reference/databases");
     cy.contains("Sample Dataset");
   });
 
   xit("should let the user navigate to details", () => {
-    cy.visit("reference/databases");
+    cy.visit("/reference/databases");
     cy.contains("Sample Dataset").click();
     cy.contains("Why this database is interesting");
   });
 
   it("should let an admin edit details about the database", () => {
-    cy.visit("reference/databases/1");
+    cy.visit("/reference/databases/1");
     cy.contains("Edit").click();
     // Q - is there any cleaner way to get a nearby element without having to know the DOM?
     cy.contains("Description")
@@ -28,7 +29,7 @@ describe("sample database reference", () => {
   });
 
   it("should let an admin start to edit and cancel without saving", () => {
-    cy.visit("reference/databases/1");
+    cy.visit("/reference/databases/1");
     cy.contains("Edit").click();
     // Q - is there any cleaner way to get a nearby element without having to know the DOM?
     cy.contains("Why this")
@@ -41,19 +42,12 @@ describe("sample database reference", () => {
   });
 
   it("should let an admin edit the database name", () => {
-    cy.visit("reference/databases/1");
+    cy.visit("/reference/databases/1");
     cy.contains("Edit").click();
     cy.get(".wrapper input")
       .clear()
       .type("My definitely profitable business");
     cy.contains("Save").click();
     cy.contains("My definitely profitable business");
-
-    // reset
-    cy.contains("Edit").click();
-    cy.get(".wrapper input")
-      .clear()
-      .type("Sample Dataset");
-    cy.contains("Save").click();
   });
 });

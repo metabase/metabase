@@ -19,6 +19,7 @@
              [util :as mbql.u]]
             [metabase.models
              [card :refer [Card]]
+             [collection :as collection :refer [Collection]]
              [database :as database :refer [Database protected-password]]
              [field :refer [Field readable-fields-only]]
              [field-values :refer [FieldValues]]
@@ -31,7 +32,7 @@
              [sync-metadata :as sync-metadata]]
             [metabase.util
              [cron :as cron-util]
-             [i18n :refer [deferred-tru]]
+             [i18n :refer [deferred-tru trs tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -54,7 +55,8 @@
   (let [db-id->tables (group-by :db_id (filter mi/can-read? (db/select Table
                                                               :active true
                                                               :db_id  [:in (map :id dbs)]
-                                                              {:order-by [[:%lower.display_name :asc]]})))]
+                                                              {:order-by [[:%lower.schema :asc]
+                                                                          [:%lower.display_name :asc]]})))]
     (for [db dbs]
       (assoc db :tables (get db-id->tables (:id db) [])))))
 
@@ -100,20 +102,27 @@
              (map (comp name :name) result-metadata))))
 
 (defn- card-uses-unnestable-aggregation?
-  "Since cumulative count and cumulative sum aggregations are done in Clojure-land we can't use Cards that
-   use queries with those aggregations as source queries. This function determines whether CARD is using one
-   of those queries so we can filter it out in Clojure-land."
+  "Since cumulative count and cumulative sum aggregations are done in Clojure-land we can't use Cards that use queries
+  with those aggregations as source queries. This function determines whether `card` is using one of those queries so
+  we can filter it out in Clojure-land."
   [{{{aggregations :aggregation} :query} :dataset_query}]
   (mbql.u/match aggregations #{:cum-count :cum-sum}))
 
 (defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
-  []
+  [& additional-constraints]
   (as-> (db/select [Card :name :description :database_id :dataset_query :id :collection_id :result_metadata]
           :result_metadata [:not= nil] :archived false
-          {:order-by [[:%lower.name :asc]]}) <>
+          {:where    (into [:and
+                            [:not= :result_metadata nil]
+                            [:= :archived false]
+                            (collection/visible-collection-ids->honeysql-filter-clause
+                             (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+                           additional-constraints)
+           :order-by [[:%lower.name :asc]]}) <>
     (filter card-database-supports-nested-queries? <>)
-    (filter mi/can-read? <>)
+    ;; TODO - it would make sense IMO to add a column to Card and store this information so we don't need to calculate
+    ;; it every time. Something like `can_be_nested`
     (remove card-uses-unnestable-aggregation? <>)
     (remove card-has-ambiguous-columns? <>)
     (hydrate <> :collection)))
@@ -126,37 +135,64 @@
   (for [card (source-query-cards)]
     (table-api/card->virtual-table card :include-fields? include-fields?)))
 
-(defn- saved-cards-virtual-db-metadata [& {:keys [include-fields?]}]
+(defn- saved-cards-virtual-db-metadata [& {:keys [include-tables? include-fields?]}]
   (when (public-settings/enable-nested-queries)
-    (when-let [virtual-tables (seq (cards-virtual-tables :include-fields? include-fields?))]
-      {:name               "Saved Questions"
-       :id                 mbql.s/saved-questions-virtual-database-id
-       :features           #{:basic-aggregations}
-       :tables             virtual-tables
-       :is_saved_questions true})))
+    (cond-> {:name               "Saved Questions"
+             :id                 mbql.s/saved-questions-virtual-database-id
+             :features           #{:basic-aggregations}
+             :is_saved_questions true}
+      include-tables? (assoc :tables (cards-virtual-tables :include-fields? include-fields?)))))
 
 ;; "Virtual" tables for saved cards simulate the db->schema->table hierarchy by doing fake-db->collection->card
-(defn- add-virtual-tables-for-saved-cards [dbs]
-  (if-let [virtual-db-metadata (saved-cards-virtual-db-metadata)]
+(defn- add-saved-questions-virtual-database [dbs & options]
+  (if-let [virtual-db-metadata (apply saved-cards-virtual-db-metadata options)]
     ;; only add the 'Saved Questions' DB if there are Cards that can be used
     (conj (vec dbs) virtual-db-metadata)
     dbs))
 
-(defn- dbs-list [include-tables? include-cards?]
+(defn- dbs-list [& {:keys [include-tables? include-saved-questions-db? include-saved-questions-tables?]}]
   (when-let [dbs (seq (filter mi/can-read? (db/select Database {:order-by [:%lower.name :%lower.engine]})))]
     (cond-> (add-native-perms-info dbs)
-      include-tables? add-tables
-      include-cards?  add-virtual-tables-for-saved-cards)))
+      include-tables?             add-tables
+      include-saved-questions-db? (add-saved-questions-virtual-database :include-tables? include-saved-questions-tables?))))
 
 (api/defendpoint GET "/"
-  "Fetch all `Databases`. `include_tables` means we should hydrate the Tables belonging to each DB. `include_cards` here
-  means we should also include virtual Table entries for saved Questions, e.g. so we can easily use them as source
-  Tables in queries. Default for both is `false`."
-  [include_tables include_cards]
+  "Fetch all `Databases`.
+
+  * `include=tables` means we should hydrate the Tables belonging to each DB. Default: `false`.
+
+  * `saved` means we should include the saved questions virtual database. Default: `false`.
+
+  * `include_tables` is a legacy alias for `include=tables`, but should be considered deprecated as of 0.35.0, and will
+    be removed in a future release.
+
+  * `include_cards` here means we should also include virtual Table entries for saved Questions, e.g. so we can easily
+    use them as source Tables in queries. This is a deprecated alias for `saved=true` + `include=tables` (for the saved
+    questions virtual DB). Prefer using `include` and `saved` instead. "
+  [include_tables include_cards include saved]
   {include_tables (s/maybe su/BooleanString)
-   include_cards  (s/maybe su/BooleanString)}
-  (or (dbs-list (Boolean/parseBoolean include_tables) (Boolean/parseBoolean include_cards))
-      []))
+   include_cards  (s/maybe su/BooleanString)
+   include        (s/maybe (s/eq "tables"))
+   saved          (s/maybe su/BooleanString)}
+  (when (and config/is-dev?
+             (or include_tables include_cards))
+    ;; don't need to i18n since this is dev-facing only
+    (log/warn "GET /api/database?include_tables and ?include_cards are deprecated."
+              "Prefer using ?include=tables and ?saved=true instead."))
+  (let [include-tables?                 (cond
+                                          (seq include)        (= include "tables")
+                                          (seq include_tables) (Boolean/parseBoolean include_tables))
+        include-saved-questions-db?     (cond
+                                          (seq saved)         (Boolean/parseBoolean saved)
+                                          (seq include_cards) (Boolean/parseBoolean include_cards))
+        include-saved-questions-tables? (when include-saved-questions-db?
+                                          (if (seq include_cards)
+                                            true
+                                            include-tables?))]
+    (or (dbs-list :include-tables?                  include-tables?
+                  :include-saved-questions-db?      include-saved-questions-db?
+                  :include-saved-questions-tables?  include-saved-questions-tables?)
+        [])))
 
 
 ;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------
@@ -181,10 +217,25 @@
   [db]
   (assoc db :schedules (expanded-schedules db)))
 
+(defn- get-database-hydrate-include
+  "If URL param `?include=` was passed to `GET /api/database/:id`, hydrate the Database appropriately."
+  [db include]
+  (if-not include
+    db
+    (-> (hydrate db (case include
+                      "tables"        :tables
+                      "tables.fields" [:tables [:fields [:target :has_field_values] :has_field_values]]))
+        (update :tables (partial filter mi/can-read?)))))
+
 (api/defendpoint GET "/:id"
-  "Get `Database` with ID."
-  [id]
-  (add-expanded-schedules (api/read-check Database id)))
+  "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
+  belonging to this database, or the Tables and Fields, respectively."
+  [id include]
+  {include (s/maybe (s/enum "tables" "tables.fields"))}
+  (println "include:" include) ; NOCOMMIT
+  (-> (api/read-check Database id)
+      add-expanded-schedules
+      (get-database-hydrate-include include)))
 
 
 ;;; ----------------------------------------- GET /api/database/:id/metadata -----------------------------------------
@@ -197,8 +248,7 @@
   "Endpoint that provides metadata for the Saved Questions 'virtual' database. Used for fooling the frontend
    and allowing it to treat the Saved Questions virtual DB just like any other database."
   []
-  (saved-cards-virtual-db-metadata :include-fields? true))
-
+  (saved-cards-virtual-db-metadata :include-tables? true, :include-fields? true))
 
 (defn- db-metadata [id]
   (-> (api/read-check Database id)
@@ -253,12 +303,13 @@
     (autocomplete-results tables fields)))
 
 (api/defendpoint GET "/:id/autocomplete_suggestions"
-  "Return a list of autocomplete suggestions for a given PREFIX.
-   This is intened for use with the ACE Editor when the User is typing raw SQL.
-   Suggestions include matching `Tables` and `Fields` in this `Database`.
+  "Return a list of autocomplete suggestions for a given `prefix`.
 
-   Tables are returned in the format `[table_name \"Table\"]`;
-   Fields are returned in the format `[field_name \"table_name base_type special_type\"]`"
+  This is intened for use with the ACE Editor when the User is typing raw SQL. Suggestions include matching `Tables`
+  and `Fields` in this `Database`.
+
+  Tables are returned in the format `[table_name \"Table\"]`;
+  Fields are returned in the format `[field_name \"table_name base_type special_type\"]`"
   [id prefix]
   {prefix su/NonBlankString}
   (api/read-check Database id)
@@ -310,29 +361,30 @@
    connection succeeds."
   [engine {:keys [host port] :as details}, & {:keys [invalid-response-handler]
                                               :or   {invalid-response-handler invalid-connection-response}}]
-  ;; This test is disabled for testing so we can save invalid databases, I guess (?) Not sure why this is this way :/
-  (when-not config/is-test?
-    (let [engine  (keyword engine)
-          details (assoc details :engine engine)]
-      (try
-        (cond
-          (driver.u/can-connect-with-details? engine details :throw-exceptions)
-          nil
+  {:pre [(some? engine)]}
+  (let [engine  (keyword engine)
+        details (assoc details :engine engine)]
+    (try
+      (cond
+        (driver.u/can-connect-with-details? engine details :throw-exceptions)
+        nil
 
-          (and host port (u/host-port-up? host port))
-          (invalid-response-handler :dbname (format "Connection to '%s:%d' successful, but could not connect to DB."
-                                                    host port))
+        (and host port (u/host-port-up? host port))
+        (invalid-response-handler :dbname (tru "Connection to ''{0}:{1}'' successful, but could not connect to DB."
+                                               host port))
 
-          (and host (u/host-up? host))
-          (invalid-response-handler :port (format "Connection to '%s' successful, but port %d is invalid." port))
+        (and host (u/host-up? host))
+        (invalid-response-handler :port (tru "Connection to host ''{0}'' successful, but port {1} is invalid."
+                                             host port))
 
-          host
-          (invalid-response-handler :host (format "'%s' is not reachable" host))
+        host
+        (invalid-response-handler :host (tru "Host ''{0}'' is not reachable" host))
 
-          :else
-          (invalid-response-handler :db "Unable to connect to database."))
-        (catch Throwable e
-          (invalid-response-handler :dbname (.getMessage e)))))))
+        :else
+        (invalid-response-handler :db (tru "Unable to connect to database.")))
+      (catch Throwable e
+        (log/error e (trs "Cannot connect to Database"))
+        (invalid-response-handler :dbname (.getMessage e))))))
 
 ;; TODO - Just make `:ssl` a `feature`
 (defn- supports-ssl?
@@ -344,10 +396,11 @@
     (contains? driver-props "ssl")))
 
 (s/defn ^:private test-connection-details :- su/Map
-  "Try a making a connection to database ENGINE with DETAILS.
-   Tries twice: once with SSL, and a second time without if the first fails. If either attempt is successful, returns
-   the details used to successfully connect.  Otherwise returns a map with the connection error message. (This map
-   will also contain the key `:valid` = `false`, which you can use to distinguish an error from valid details.)"
+  "Try a making a connection to database `engine` with `details`.
+
+  Tries twice: once with SSL, and a second time without if the first fails. If either attempt is successful, returns
+  the details used to successfully connect. Otherwise returns a map with the connection error message. (This map will
+  also contain the key `:valid` = `false`, which you can use to distinguish an error from valid details.)"
   [engine :- DBEngineString, details :- su/Map]
   (let [details (if (supports-ssl? (keyword engine))
                   (assoc details :ssl true)
@@ -360,7 +413,6 @@
                  (true? (:ssl details)))
           (recur (assoc details :ssl false))
           (or error details))))))
-
 
 (def ^:private CronSchedulesMap
   "Schema with values for a DB's schedules that can be put directly into the DB."
@@ -451,7 +503,9 @@
     (let [details    (if-not (= protected-password (:password details))
                        details
                        (assoc details :password (get-in database [:details :password])))
-          conn-error (test-database-connection engine details)
+          conn-error (when (some? details)
+                       (assert (some? engine))
+                       (test-database-connection engine details))
           full-sync? (when-not (nil? is_full_sync)
                        (boolean is_full_sync))]
       (if conn-error
@@ -572,15 +626,25 @@
   "Returns a list of all the schemas found for the database `id`"
   [id]
   (api/read-check Database id)
-  (->> (db/select-field :schema Table :db_id id)
+  (->> (db/select-field :schema Table :db_id id, :active true, {:order-by [[:%lower.schema :asc]]})
        (filter (partial can-read-schema? id))
        sort))
+
+(api/defendpoint GET ["/:virtual-db/schemas"
+                      :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+  "Returns a list of all the schemas found for the saved questions virtual database."
+  []
+  (when (public-settings/enable-nested-queries)
+    (->> (cards-virtual-tables)
+         (map :schema)
+         distinct
+         (sort-by str/lower-case))))
 
 
 ;;; ------------------------------------- GET /api/database/:id/schema/:schema ---------------------------------------
 
 (api/defendpoint GET "/:id/schema/:schema"
-  "Returns a list of tables for the given database `id` and `schema`"
+  "Returns a list of Tables for the given Database `id` and `schema`"
   [id schema]
   (api/read-check Database id)
   (api/check-403 (can-read-schema? id schema))
@@ -588,6 +652,16 @@
        (filter mi/can-read?)
        seq
        api/check-404))
+
+(api/defendpoint GET ["/:virtual-db/schema/:schema"
+                      :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]
+  "Returns a list of Tables for the saved questions virtual database."
+  [schema]
+  (when (public-settings/enable-nested-queries)
+    (->> (source-query-cards (if (= schema (table-api/root-collection-schema-name))
+                               [:= :collection_id nil]
+                               [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))]))
+         (map table-api/card->virtual-table))))
 
 
 (api/define-routes)

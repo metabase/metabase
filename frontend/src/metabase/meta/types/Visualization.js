@@ -1,6 +1,6 @@
 /* @flow */
 
-import type { DatasetData, Column } from "metabase/meta/types/Dataset";
+import type { DatasetData, Column, Row } from "metabase/meta/types/Dataset";
 import type { Card, VisualizationSettings } from "metabase/meta/types/Card";
 import type { ReduxAction } from "metabase/meta/types/redux";
 import Question from "metabase-lib/lib/Question";
@@ -9,8 +9,7 @@ export type ActionCreator = (props: ClickActionProps) => ClickAction[];
 
 export type QueryMode = {
   name: string,
-  actions: ActionCreator[],
-  drills: ActionCreator[],
+  drills: () => ActionCreator[],
 };
 
 export type HoverData = Array<{ key: string, value: any, col?: Column }>;
@@ -35,6 +34,11 @@ export type ClickObject = {
   event?: MouseEvent,
   element?: HTMLElement,
   seriesIndex?: number,
+  settings?: { [key: string]: any },
+  origin?: {
+    row: Row,
+    cols: Column[],
+  },
 };
 
 export type ClickAction = {

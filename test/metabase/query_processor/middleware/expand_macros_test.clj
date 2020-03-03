@@ -2,6 +2,7 @@
   (:require [expectations :refer [expect]]
             [metabase
              [query-processor-test :as qp.test]
+             [test :as mt]
              [util :as u]]
             [metabase.models
              [database :refer [Database]]
@@ -148,7 +149,7 @@
        :order-by     [[:asc [:field-id 1]]]}))))
 
 ;; Check that a metric w/ multiple aggregation syntax (nested vector) still works correctly
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :expression-aggregations)
   [[2 118]
    [3  39]
    [4  24]]

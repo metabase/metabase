@@ -21,10 +21,7 @@ import _ from "underscore";
 import type { TableId } from "metabase/meta/types/Table";
 import type { DatabaseId } from "metabase/meta/types/Database";
 import type { DatasetQuery } from "metabase/meta/types/Card";
-import type {
-  TableMetadata,
-  DatabaseMetadata,
-} from "metabase/meta/types/Metadata";
+import type { DatabaseMetadata } from "metabase/meta/types/Metadata";
 import type { Children } from "react";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
@@ -46,15 +43,14 @@ type Props = {
   query: StructuredQuery,
 
   databases: DatabaseMetadata[],
-  tables: TableMetadata[],
 
   supportMultipleAggregations?: boolean,
 
-  setDatabaseFn: (id: DatabaseId) => void,
-  setSourceTableFn: (id: TableId) => void,
-  setDatasetQuery: (datasetQuery: DatasetQuery) => void,
+  setDatabaseFn?: (id: DatabaseId) => void,
+  setSourceTableFn?: (id: TableId) => void,
+  setDatasetQuery?: (datasetQuery: DatasetQuery) => void,
 
-  isShowingDataReference: boolean,
+  isShowingDataReference?: boolean,
 };
 
 type State = {

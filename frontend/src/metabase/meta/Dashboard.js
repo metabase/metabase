@@ -202,7 +202,7 @@ function tagFilterForParameter(parameter: Parameter): TemplateTagFilter {
 
 export function getParameterMappingOptions(
   metadata: Metadata,
-  parameter: Parameter,
+  parameter: ?Parameter = null,
   card: Card,
 ): ParameterMappingUIOption[] {
   const options = [];
@@ -216,7 +216,7 @@ export function getParameterMappingOptions(
   // dimensions
   options.push(
     ...query
-      .dimensionOptions(dimensionFilterForParameter(parameter))
+      .dimensionOptions(parameter && dimensionFilterForParameter(parameter))
       .sections()
       .flatMap(section =>
         section.items.map(({ dimension }) => ({
@@ -233,12 +233,14 @@ export function getParameterMappingOptions(
 
   // variables
   options.push(
-    ...query.variables(variableFilterForParameter(parameter)).map(variable => ({
-      sectionName: "Variables",
-      name: variable.displayName(),
-      icon: variable.icon(),
-      target: ["variable", variable.mbql()],
-    })),
+    ...query
+      .variables(parameter && variableFilterForParameter(parameter))
+      .map(variable => ({
+        sectionName: "Variables",
+        name: variable.displayName(),
+        icon: variable.icon(),
+        target: ["variable", variable.mbql()],
+      })),
   );
 
   return options;

@@ -1,6 +1,7 @@
-import { signInAsAdmin } from "__support__/cypress";
+import { signInAsAdmin, popover, restore } from "__support__/cypress";
 
 describe("custom question", () => {
+  before(restore);
   beforeEach(signInAsAdmin);
   it("should allow post-aggregation filters", () => {
     // count orders by user id, filter to the one user with 46 orders
@@ -13,9 +14,13 @@ describe("custom question", () => {
     cy.contains("Pick a column to group by").click();
     cy.contains("User ID").click();
     cy.get(".Icon-filter").click();
-    cy.get(".Icon-int").click();
-    cy.get(".PopoverBody input").type("46");
-    cy.get(".PopoverBody")
+    popover()
+      .find(".Icon-int")
+      .click();
+    popover()
+      .find("input")
+      .type("46");
+    popover()
       .contains("Add filter")
       .click();
     cy.contains("Visualize").click();

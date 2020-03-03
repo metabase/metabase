@@ -109,7 +109,7 @@ export default class Query {
   /**
    * Variables exposed by this query
    */
-  variables(): Variable[] {
+  variables(filter: (variable: Variable) => boolean): Variable[] {
     return [];
   }
 

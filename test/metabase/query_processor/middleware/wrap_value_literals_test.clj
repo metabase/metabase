@@ -19,8 +19,7 @@
   ([query, ^String timezone-id]
    (mt/with-everything-store
      (mt/with-results-timezone-id timezone-id
-       ((wrap-value-literals/wrap-value-literals identity)
-        query)))))
+       (:pre (mt/test-qp-middleware wrap-value-literals/wrap-value-literals query))))))
 
 (deftest wrap-integers-test
   (is (= (mt/mbql-query venues

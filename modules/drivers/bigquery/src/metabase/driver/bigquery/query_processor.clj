@@ -318,6 +318,10 @@
     [_ _ expr]
     (with-temporal-type (hsql/call bigquery-fn expr) :timestamp)))
 
+(defmethod sql.qp/->float :bigquery
+  [_ value]
+  (hx/cast :float64 value))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Query Processor                                                 |

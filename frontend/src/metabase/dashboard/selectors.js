@@ -42,6 +42,8 @@ export const getDashcards = state => state.dashboard.dashcards;
 export const getCardData = state => state.dashboard.dashcardData;
 export const getSlowCards = state => state.dashboard.slowCards;
 export const getParameterValues = state => state.dashboard.parameterValues;
+export const getLoadingStartTime = state =>
+  state.dashboard.loadingDashCards.startTime;
 
 export const getDashboard = createSelector(
   [getDashboardId, getDashboards],

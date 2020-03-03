@@ -69,7 +69,7 @@
 
 (defmacro with-fake-inbox
   "Clear `inbox`, bind `send-email!` to `fake-inbox-email-fn`, set temporary settings for `email-smtp-username`
-   and `email-smtp-password` (which will cause `metabase.email/email-configured?` to return `true`, and execute BODY.
+   and `email-smtp-password` (which will cause `metabase.email/email-configured?` to return `true`, and execute `body`.
 
    Fetch the emails send by dereffing `inbox`.
 
@@ -123,10 +123,11 @@
                     (-> email
                         (update :to set)
                         (update :body (fn [email-body-seq]
-                                        (for [{email-type :type :as email-part}  email-body-seq]
-                                          (if (string? email-type)
-                                            (email-body->regex-boolean email-part)
-                                            (summarize-attachment email-part))))))))
+                                        (doall
+                                         (for [{email-type :type :as email-part} email-body-seq]
+                                           (if (string? email-type)
+                                             (email-body->regex-boolean email-part)
+                                             (summarize-attachment email-part)))))))))
                 @inbox)))
 
 (defn email-to

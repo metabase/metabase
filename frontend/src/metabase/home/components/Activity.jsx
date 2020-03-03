@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
+
 import _ from "underscore";
 import { t } from "ttag";
 
@@ -83,7 +84,7 @@ export default class Activity extends Component {
     } else if (user) {
       return user.first_name;
     } else {
-      return "Metabase";
+      return t`Metabase`;
     }
   }
 
