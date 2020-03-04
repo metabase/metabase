@@ -414,7 +414,7 @@ export default class NativeQueryEditor extends Component {
     } = this.props;
 
     const database = query.database();
-    const databases = query.databases();
+    const databases = query.metadata().databasesList({ savedQuestions: false });
     const parameters = query.question().parameters();
 
     let dataSelectors = [];
@@ -447,8 +447,6 @@ export default class NativeQueryEditor extends Component {
       }
       if (query.requiresTable()) {
         const selectedTable = query.table();
-        const tables = query.tables() || [];
-
         dataSelectors.push(
           <div
             key="table_selector"
@@ -458,7 +456,6 @@ export default class NativeQueryEditor extends Component {
               selectedTableId={selectedTable ? selectedTable.id : null}
               selectedDatabaseId={database && database.id}
               databases={[database]}
-              tables={tables}
               setSourceTableFn={this.setTableId}
               isInitiallyOpen={false}
               readOnly={this.props.readOnly}

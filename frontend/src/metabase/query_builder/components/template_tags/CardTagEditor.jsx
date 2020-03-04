@@ -15,7 +15,7 @@ import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import MetabaseSettings from "metabase/lib/settings";
 
 @Questions.load({
-  id: (state, { tag }) => tag.card_id,
+  id: (state, { tag }) => tag["card-id"],
   loadingAndErrorWrapper: false,
 })
 export default class CardTagEditor extends Component {
@@ -51,7 +51,7 @@ export default class CardTagEditor extends Component {
     const { tag, question } = this.props;
     return (
       <SelectButton>
-        {tag.card_id == null ? (
+        {tag["card-id"] == null ? (
           <span className="text-medium">{t`Pick a saved question`}</span>
         ) : this.errorMessage() ? (
           <span className="text-medium">{t`Pick a different question`}</span>
@@ -67,7 +67,7 @@ export default class CardTagEditor extends Component {
 
   render() {
     const {
-      tag: { card_id },
+      tag: { "card-id": cardId },
       loading,
       question,
     } = this.props;
@@ -75,10 +75,10 @@ export default class CardTagEditor extends Component {
     return (
       <Card className="p2 mb2">
         <h3 className="text-brand mb2">
-          {card_id == null ? (
+          {cardId == null ? (
             t`Question #…`
           ) : (
-            <Link to={questionUrl(card_id)}>{t`Question #${card_id}`}</Link>
+            <Link to={questionUrl(cardId)}>{t`Question #${cardId}`}</Link>
           )}
         </h3>
         {loading ? (

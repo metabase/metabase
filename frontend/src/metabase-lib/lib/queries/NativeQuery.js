@@ -96,12 +96,6 @@ export default class NativeQuery extends AtomicQuery {
     return this.databaseId() == null || this.queryText().length === 0;
   }
 
-  databases(): Database[] {
-    return super
-      .databases()
-      .filter(database => database.native_permissions === "write");
-  }
-
   clean() {
     return this.setDatasetQuery(
       updateIn(
@@ -130,6 +124,14 @@ export default class NativeQuery extends AtomicQuery {
   engine(): ?DatabaseEngine {
     const database = this.database();
     return database && database.engine;
+  }
+
+  /**
+   * Returns true if the database metadata (or lack thererof indicates the user can modify and run this query
+   */
+  readOnly(): boolean {
+    const database = this.database();
+    return !database || database.native_permissions !== "write";
   }
 
   /* Methods unique to this query type */
@@ -343,14 +345,14 @@ export default class NativeQuery extends AtomicQuery {
           // renaming
           const newTag = { ...templateTags[oldTags[0]] };
 
-          if (newTag.display_name === humanize(oldTags[0])) {
-            newTag.display_name = humanize(newTags[0]);
+          if (newTag["display-name"] === humanize(oldTags[0])) {
+            newTag["display-name"] = humanize(newTags[0]);
           }
 
           newTag.name = newTags[0];
           if (isCardQueryName(newTag.name)) {
             newTag.type = "card";
-            newTag.card_id = cardTagCardId(newTag.name);
+            newTag["card-id"] = cardTagCardId(newTag.name);
           }
           templateTags[newTag.name] = newTag;
           delete templateTags[oldTags[0]];
@@ -365,7 +367,7 @@ export default class NativeQuery extends AtomicQuery {
             templateTags[tagName] = {
               id: Utils.uuid(),
               name: tagName,
-              display_name: humanize(tagName),
+              "display-name": humanize(tagName),
               type: "text",
             };
 
@@ -373,7 +375,7 @@ export default class NativeQuery extends AtomicQuery {
             if (isCardQueryName(tagName)) {
               templateTags[tagName] = Object.assign(templateTags[tagName], {
                 type: "card",
-                card_id: cardTagCardId(tagName),
+                "card-id": cardTagCardId(tagName),
               });
             }
           }
