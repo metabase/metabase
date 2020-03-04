@@ -192,9 +192,9 @@ const functions = [
     arg2: t`position`,
     arg2Desc: t`The position where the replacing will start.`,
     arg3: t`length`,
-    arg1Desc: t`The number of characters to replace.`,
+    arg3Desc: t`The number of characters to replace.`,
     arg4: t`new_text`,
-    arg2Desc: t`The text to use in the replacement.`,
+    arg4Desc: t`The text to use in the replacement.`,
   },
   {
     name: "rtrim",
