@@ -342,8 +342,10 @@ function transformSingleSeries(s, series, seriesIndex) {
   const { cols, rows } = data;
   const settings = getComputedSettingsForSeries([s]);
 
-  const dimensions = settings["graph.dimensions"].filter(d => d != null);
-  const metrics = settings["graph.metrics"].filter(d => d != null);
+  const dimensions = (settings["graph.dimensions"] || []).filter(
+    d => d != null,
+  );
+  const metrics = (settings["graph.metrics"] || []).filter(d => d != null);
   const dimensionColumnIndexes = dimensions.map(dimensionName =>
     _.findIndex(cols, col => col.name === dimensionName),
   );
