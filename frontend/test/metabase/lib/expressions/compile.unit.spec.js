@@ -55,14 +55,14 @@ describe("metabase/lib/expressions/compile", () => {
           if (mbql) {
             it(`should compile ${description}`, () => {
               const start = Date.now();
-              expect(compile(source, opts)).toEqual(mbql);
+              expect(compile({ source, ...opts })).toEqual(mbql);
               const elapsed = Date.now() - start;
               expect(elapsed).toBeLessThan(250);
             });
           } else {
             it(`should not compile ${description}`, () => {
               const start = Date.now();
-              expect(() => compile(source, opts)).toThrow();
+              expect(() => compile({ source, ...opts })).toThrow();
               const elapsed = Date.now() - start;
               expect(elapsed).toBeLessThan(250);
             });

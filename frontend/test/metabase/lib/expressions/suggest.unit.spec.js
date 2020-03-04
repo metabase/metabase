@@ -129,7 +129,7 @@ describe("metabase/lib/expression/suggest", () => {
 
     describe("expression", () => {
       it("should suggest expression functions, and fields in an expression", () => {
-        expect(suggest("", expressionOpts)).toEqual([
+        expect(suggest({ source: "", ...expressionOpts })).toEqual([
           ...FIELDS_CUSTOM,
           ...FIELDS_CUSTOM_NON_NUMERIC,
           { type: "functions", text: "coalesce(" },
@@ -139,26 +139,30 @@ describe("metabase/lib/expression/suggest", () => {
       });
 
       it("should suggest numeric fields after an aritmetic", () => {
-        expect(suggest("1 + ", expressionOpts)).toEqual([
+        expect(suggest({ source: "1 + ", ...expressionOpts })).toEqual([
           ...FIELDS_CUSTOM,
           OPEN_PAREN,
         ]);
       });
       it("should suggest partial matches in expression", () => {
-        expect(suggest("1 + C", expressionOpts)).toEqual([
+        expect(suggest({ source: "1 + C", ...expressionOpts })).toEqual([
           { type: "fields", text: '"count" ' },
           { type: "fields", text: "C " },
         ]);
       });
       it("should suggest partial matches in unterminated quoted string", () => {
-        expect(suggest('1 + "C', expressionOpts)).toEqual([
+        expect(suggest({ source: '1 + "C', ...expressionOpts })).toEqual([
           { type: "fields", text: '"count" ' },
           { type: "fields", text: "C " },
         ]);
       });
       it("should suggest foreign fields", () => {
         expect(
-          suggest("User", { query: ORDERS.query(), startRule: "expression" }),
+          suggest({
+            source: "User",
+            query: ORDERS.query(),
+            startRule: "expression",
+          }),
         ).toEqual([
           { text: '"User ID" ', type: "fields" },
           { text: '"User → Address" ', type: "fields" },
@@ -178,7 +182,8 @@ describe("metabase/lib/expression/suggest", () => {
       });
       it("should suggest joined fields", () => {
         expect(
-          suggest("Foo", {
+          suggest({
+            source: "Foo",
             query: ORDERS.query().join({
               alias: "Foo",
               "source-table": REVIEWS.id,
@@ -196,7 +201,8 @@ describe("metabase/lib/expression/suggest", () => {
       });
       it("should suggest nested query fields", () => {
         expect(
-          suggest("", {
+          suggest({
+            source: "",
             query: ORDERS.query()
               .aggregate(["count"])
               .breakout(ORDERS.TOTAL)
@@ -213,7 +219,8 @@ describe("metabase/lib/expression/suggest", () => {
       });
       it("should suggest numeric operators after field in an expression", () => {
         expect(
-          suggest("Total ", {
+          suggest({
+            source: "Total ",
             query: ORDERS.query(),
             startRule: "expression",
           }),
@@ -222,7 +229,8 @@ describe("metabase/lib/expression/suggest", () => {
 
       xit("should suggest boolean options after case(", () => {
         expect(
-          suggest("case(", {
+          suggest({
+            source: "case(",
             query: ORDERS.query(),
             startRule: "expression",
           }),
@@ -232,7 +240,7 @@ describe("metabase/lib/expression/suggest", () => {
 
     describe("aggregation", () => {
       it("should suggest partial matches after an aggregation", () => {
-        expect(suggest("average(c", aggregationOpts)).toEqual([
+        expect(suggest({ source: "average(c", ...aggregationOpts })).toEqual([
           { type: "fields", text: '"count" ' },
           { type: "fields", text: "C " },
           // { text: "case(", type: "functions" },
@@ -240,14 +248,14 @@ describe("metabase/lib/expression/suggest", () => {
         ]);
       });
       it("should suggest aggregations and metrics after an operator", () => {
-        expect(suggest("1 + ", aggregationOpts)).toEqual([
+        expect(suggest({ source: "1 + ", ...aggregationOpts })).toEqual([
           ...AGGREGATION_FUNCTIONS,
           ...METRICS_CUSTOM,
           OPEN_PAREN,
         ]);
       });
       it("should suggest fields after an aggregation without closing paren", () => {
-        expect(suggest("Average(", aggregationOpts)).toEqual([
+        expect(suggest({ source: "Average(", ...aggregationOpts })).toEqual([
           ...FIELDS_CUSTOM,
           OPEN_PAREN,
           CLOSE_PAREN,
@@ -255,11 +263,11 @@ describe("metabase/lib/expression/suggest", () => {
       });
       it("should suggest fields after an aggregation with closing paren", () => {
         expect(
-          suggest("Average()", { ...aggregationOpts, targetOffset: 8 }),
+          suggest({ source: "Average()", ...aggregationOpts, targetOffset: 8 }),
         ).toEqual([...FIELDS_CUSTOM, OPEN_PAREN, CLOSE_PAREN]);
       });
       it("should suggest partial matches in aggregation", () => {
-        expect(suggest("1 + C", aggregationOpts)).toEqual([
+        expect(suggest({ source: "1 + C", ...aggregationOpts })).toEqual([
           { type: "aggregations", text: "Count " },
           { type: "aggregations", text: "CumulativeCount " },
           { type: "aggregations", text: "CumulativeSum(" },
@@ -268,13 +276,18 @@ describe("metabase/lib/expression/suggest", () => {
 
       it("should suggest aggregations and metrics in an aggregation", () => {
         expect(
-          suggest("", { query: ORDERS.query(), startRule: "aggregation" }),
+          suggest({
+            source: "",
+            query: ORDERS.query(),
+            startRule: "aggregation",
+          }),
         ).toEqual([...AGGREGATION_FUNCTIONS, ...METRICS_ORDERS, OPEN_PAREN]);
       });
 
       it("should suggest expression operators after aggregation argument", () => {
         expect(
-          suggest("Sum(Total ", {
+          suggest({
+            source: "Sum(Total ",
             query: ORDERS.query(),
             startRule: "aggregation",
           }),
@@ -285,13 +298,17 @@ describe("metabase/lib/expression/suggest", () => {
     describe("filter", () => {
       it("should suggest comparison operators after field in a filter", () => {
         expect(
-          suggest("Total ", { query: ORDERS.query(), startRule: "boolean" }),
+          suggest({
+            source: "Total ",
+            query: ORDERS.query(),
+            startRule: "boolean",
+          }),
         ).toEqual([...FILTER_OPERATORS, ...BINARY_BOOLEAN_OPERATORS]);
       });
 
       it("should suggest filter functions, fields, and segments in a filter", () => {
         expect(
-          suggest("", { query: ORDERS.query(), startRule: "boolean" }),
+          suggest({ source: "", query: ORDERS.query(), startRule: "boolean" }),
         ).toEqual([
           ...FILTER_FUNCTIONS,
           ...UNARY_BOOLEAN_OPERATORS,
@@ -302,7 +319,8 @@ describe("metabase/lib/expression/suggest", () => {
 
       it("should not suggest comma after first argument if there's only one argument", () => {
         expect(
-          suggest("trim(Total ", {
+          suggest({
+            source: "trim(Total ",
             query: ORDERS.query(),
             startRule: "boolean",
           }).filter(({ text }) => text === ", "),
@@ -310,7 +328,8 @@ describe("metabase/lib/expression/suggest", () => {
       });
       it("should suggest comma after first argument if there's more than one argument", () => {
         expect(
-          suggest("contains(Total ", {
+          suggest({
+            source: "contains(Total ",
             query: ORDERS.query(),
             startRule: "boolean",
           }).filter(({ text }) => text === ", "),
@@ -326,21 +345,21 @@ describe("metabase/lib/expression/suggest", () => {
 
     describe("aggregation", () => {
       it("should get operator context", () => {
-        expect(getContext("1 +", aggregationOpts)).toEqual({
+        expect(getContext({ source: "1 +", ...aggregationOpts })).toEqual({
           clause: "+",
           expectedType: "aggregation",
           index: 0,
         });
       });
       it("should get operator context with trailing whitespace", () => {
-        expect(getContext("1 + ", aggregationOpts)).toEqual({
+        expect(getContext({ source: "1 + ", ...aggregationOpts })).toEqual({
           clause: "+",
           expectedType: "aggregation",
           index: 0,
         });
       });
       it("should get aggregation context", () => {
-        expect(getContext("Average(", aggregationOpts)).toEqual({
+        expect(getContext({ source: "Average(", ...aggregationOpts })).toEqual({
           clause: "avg",
           expectedType: "number",
           index: 0,
@@ -348,7 +367,11 @@ describe("metabase/lib/expression/suggest", () => {
       });
       it("should get aggregation context with closing paren", () => {
         expect(
-          getContext("Average()", { ...aggregationOpts, targetOffset: 8 }),
+          getContext({
+            source: "Average()",
+            ...aggregationOpts,
+            targetOffset: 8,
+          }),
         ).toEqual({
           clause: "avg",
           expectedType: "number",
@@ -356,21 +379,27 @@ describe("metabase/lib/expression/suggest", () => {
         });
       });
       it("should get sum-where first argument", () => {
-        expect(getContext("1 + SumIf(", aggregationOpts)).toEqual({
+        expect(
+          getContext({ source: "1 + SumIf(", ...aggregationOpts }),
+        ).toEqual({
           clause: "sum-where",
           expectedType: "number",
           index: 0,
         });
       });
       it("should get sum-where second argument", () => {
-        expect(getContext("1 + SumIf(Total = 10,", aggregationOpts)).toEqual({
+        expect(
+          getContext({ source: "1 + SumIf(Total = 10,", ...aggregationOpts }),
+        ).toEqual({
           clause: "sum-where",
           expectedType: "boolean",
           index: 1,
         });
       });
       it("should get operator context inside aggregation", () => {
-        expect(getContext("1 + Sum(2 /", aggregationOpts)).toEqual({
+        expect(
+          getContext({ source: "1 + Sum(2 /", ...aggregationOpts }),
+        ).toEqual({
           clause: "/",
           expectedType: "number",
           index: 0,
@@ -379,14 +408,14 @@ describe("metabase/lib/expression/suggest", () => {
     });
     describe("expression", () => {
       it("should get operator context", () => {
-        expect(getContext("1 +", expressionOpts)).toEqual({
+        expect(getContext({ source: "1 +", ...expressionOpts })).toEqual({
           clause: "+",
           expectedType: "number",
           index: 0,
         });
       });
       it("should get function context", () => {
-        expect(getContext("trim(", expressionOpts)).toEqual({
+        expect(getContext({ source: "trim(", ...expressionOpts })).toEqual({
           clause: "trim",
           expectedType: "string",
           index: 0,
@@ -395,14 +424,14 @@ describe("metabase/lib/expression/suggest", () => {
       xit("should get boolean for first argument of case", () => {
         // it's difficult to type "case" correctly using the current system because the form is:
         //    case([PREDICATE, EXPRESSION]+ [, ELSE-EXPRESSION]?)
-        expect(getContext("case(", expressionOpts)).toEqual({
+        expect(getContext({ source: "case(", ...expressionOpts })).toEqual({
           clause: "case",
           expectedType: "boolean",
           index: 0,
         });
       });
       it("should get expression for second argument of case", () => {
-        expect(getContext("case(Foo,", expressionOpts)).toEqual({
+        expect(getContext({ source: "case(Foo,", ...expressionOpts })).toEqual({
           clause: "case",
           expectedType: "expression",
           index: 1,
@@ -411,7 +440,7 @@ describe("metabase/lib/expression/suggest", () => {
     });
     describe("filter", () => {
       it("should get function context", () => {
-        expect(getContext("between(", filterOpts)).toEqual({
+        expect(getContext({ source: "between(", ...filterOpts })).toEqual({
           clause: "between",
           expectedType: "expression",
           index: 0,

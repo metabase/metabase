@@ -77,7 +77,7 @@ export function suggest({
   const partialSource = source.slice(0, targetOffset);
   const lexResult = lexerWithRecovery.tokenize(partialSource);
   if (lexResult.errors.length > 0) {
-    throw new Error(t`sad sad panda, lexing errors detected`);
+    throw lexResult.errors;
   }
 
   let partialSuggestionMode = false;

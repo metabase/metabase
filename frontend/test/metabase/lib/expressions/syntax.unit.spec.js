@@ -1,5 +1,4 @@
 import {
-  parse,
   defaultParser,
   fallbackParser,
   recoveryParser,
@@ -55,13 +54,13 @@ describe("metabase/lib/expressions/syntax", () => {
 
       it(`should parse and serialize source with leading whitespace`, () => {
         const source = " Sum(A)";
-        const tree = recoveryParser({ source, ...aggregationOpts });
+        const tree = parser({ source, ...aggregationOpts });
         expect(serialize(tree)).toEqual(source);
       });
 
       it(`should parse and serialize source with trailing whitespace`, () => {
         const source = "Sum(A) ";
-        const tree = parse({ source, ...aggregationOpts });
+        const tree = parser({ source, ...aggregationOpts });
         expect(serialize(tree)).toEqual(source);
       });
     });
