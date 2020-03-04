@@ -166,7 +166,7 @@ FROM {% raw %}{{#123}}{% endraw %}
 
 This will return the number of records returned by the existing question with ID 123. A question's ID is the number at the end of the URL in your browser's location bar, after `/question/`, when viewing the question.
 
-Alternatively, you can select the target question in the sidebar, in the "Question #..." box that appears after typing `{% raw %}{{#}}{% endraw %}` in the query editor.
+Alternatively, you can select the target question in the sidebar, in the "Question #..." box that appears after typing `{% raw %}{{#}}{% endraw %}` in the query editor. The saved question you select has to be one that's based on the same database as the one you've currently selected in the native query editor.
 
 The same syntax can be used in Common Table Expressions (CTEs), with databases that support them:
 
