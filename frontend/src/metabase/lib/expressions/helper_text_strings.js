@@ -286,3 +286,5 @@ const functions = [
     arg1Desc: t`The column with values to convert to upper case.`,
   },
 ];
+
+return functions;
