@@ -17,7 +17,7 @@ ENV LC_CTYPE en_US.UTF-8
 # make:    backend building
 # gettext: translations
 
-RUN apk add --update bash yarn git wget make gettext
+RUN apk add --update coreutils bash yarn git wget make gettext
 
 # lein:    backend dependencies and building
 ADD https://raw.github.com/technomancy/leiningen/stable/bin/lein /usr/local/bin/lein

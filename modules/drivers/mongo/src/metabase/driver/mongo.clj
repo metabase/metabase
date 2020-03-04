@@ -214,7 +214,7 @@
     (with-mongo-connection [_ (qp.store/database)]
       (execute/execute-reducible-query query context respond))))
 
-(defmethod driver/substitue-native-parameters :mongo
+(defmethod driver/substitute-native-parameters :mongo
   [driver inner-query]
   (parameters/substitute-native-parameters driver inner-query))
 

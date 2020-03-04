@@ -213,7 +213,7 @@
     false
     (config/config-bool :mb-colorize-logs)))
 
-(def ^{:arglists '(^String [color-symb x])} colorize
+(def ^{:arglists '(^String [color-symb x]), :style/indent 1} colorize
   "Colorize string `x` using `color`, a symbol or keyword, but only if `MB_COLORIZE_LOGS` is enabled (the default).
   `color` can be `green`, `red`, `yellow`, `blue`, `cyan`, `magenta`, etc. See the entire list of avaliable
   colors [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj)"
@@ -693,7 +693,7 @@
 
 (defn topological-sort
   "Topologically sorts vertexs in graph g. Graph is a map of vertexs to edges. Optionally takes an
-   additional argument `edge-fn`, a function used to extract edges. Returns data in the same shape
+   additional argument `edges-fn`, a function used to extract edges. Returns data in the same shape
    (a graph), only sorted.
 
    Say you have a graph shaped like:

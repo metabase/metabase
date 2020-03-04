@@ -186,8 +186,8 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - be-deps-{{ checksum "project.clj" }}
-            - be-deps-
+            - be-deps-v2-{{ checksum "project.clj" }}
+            - be-deps-v2-
 
   restore-fe-deps-cache:
     steps:
@@ -214,6 +214,32 @@ commands:
           command: yarn << parameters.command >>
           no_output_timeout: 5m
 
+  wait-for-port:
+    parameters:
+      port:
+        type: integer
+    steps:
+      - run:
+          name: Wait for port << parameters.port >> to be ready
+          command: >
+            while ! nc -z localhost << parameters.port >>; do sleep 0.1; done
+          no_output_timeout: 5m
+
+  fetch-jdbc-driver:
+    parameters:
+      source:
+        type: string
+      dest:
+        type: string
+    steps:
+      - run:
+          name: Make plugins dir
+          command: mkdir /home/circleci/metabase/metabase/plugins
+      - run:
+          name: Download JDBC driver JAR << parameters.dest >>
+          command: >
+            wget --output-document=plugins/<< parameters.dest >> ${<< parameters.source >>}
+          no_output_timeout: 5m
 
 jobs:
 
@@ -253,6 +279,15 @@ jobs:
             done;
             echo `md5sum yarn.lock` >> frontend-checksums.txt
             echo `md5sum webpack.config.js` >> frontend-checksums.txt
+      - run:
+          name: Save last git commit message
+          command: git log -1 --oneline > commit.txt
+      - run:
+          name: Remove .git directory (not needed for tests)
+          command: rm -rf /home/circleci/metabase/metabase/.git
+      - run:
+          name: Remove ./OSX directory (not needed for tests)
+          command: rm -rf /home/circleci/metabase/metabase/OSX
       - persist_to_workspace:
           root: /home/circleci/
           paths:
@@ -299,7 +334,7 @@ jobs:
       - restore-be-deps-cache
       - run: lein with-profile +include-all-drivers deps
       - save_cache:
-          key: be-deps-{{ checksum "project.clj" }}
+          key: be-deps-v2-{{ checksum "project.clj" }}
           paths:
             - /home/circleci/.m2
 
@@ -310,6 +345,9 @@ jobs:
         default: clojure
       lein-command:
         type: string
+      store-results:
+        type: boolean
+        default: false
     executor: << parameters.e >>
     steps:
       - attach-workspace
@@ -317,6 +355,11 @@ jobs:
       - run:
           command: lein with-profile +ci << parameters.lein-command >>
           no_output_timeout: 5m
+      - when:
+          condition: << parameters.store-results >>
+          steps:
+            - store_test_results:
+                path: /home/circleci/metabase/metabase/target/test
 
   be-linter-reflection-warnings:
     executor: clojure
@@ -338,15 +381,9 @@ jobs:
       timeout:
         type: string
         default: 5m
-      jdbc-driver-source:
-        type: string
-        default: ""
-      jdbc-driver-dest:
-        type: string
-        default: ""
-      wait-for-port:
-        type: string
-        default: ""
+      before-steps:
+        type: steps
+        default: []
       auto-retry:
         type: boolean
         default: false
@@ -357,27 +394,7 @@ jobs:
     steps:
       - attach-workspace
       - restore-be-deps-cache
-      - when:
-          condition: << parameters.wait-for-port >>
-          steps:
-            - run:
-                name: Wait for << parameters.driver >> to be ready
-                command: >
-                  /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
-                  while ! nc -z localhost << parameters.wait-for-port >>; do sleep 0.1; done
-                no_output_timeout: 5m
-      - when:
-          condition: << parameters.jdbc-driver-source >>
-          steps:
-            - run:
-                name: Make plugins dir
-                command: mkdir /home/circleci/metabase/metabase/plugins
-            - run:
-                name: Download << parameters.driver >> JDBC driver JAR
-                command: >
-                  /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
-                  wget --output-document=plugins/<< parameters.jdbc-driver-dest >> ${<< parameters.jdbc-driver-source >>}
-                no_output_timeout: 5m
+      - steps: << parameters.before-steps >>
       - unless:
           condition: << parameters.auto-retry >>
           steps:
@@ -401,7 +418,6 @@ jobs:
                   /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
                   lein with-profile +ci test || lein with-profile +ci test
                 no_output_timeout: << parameters.timeout >>
-
 
   test-migrate-from-h2:
     parameters:
@@ -702,8 +718,10 @@ workflows:
           name: be-tests-oracle
           requires:
             - be-tests
-          jdbc-driver-source: ORACLE_JDBC_JAR
-          jdbc-driver-dest: ojdbc8.jar
+          before-steps:
+            - fetch-jdbc-driver:
+                source: ORACLE_JDBC_JAR
+                dest: ojdbc8.jar
           driver: oracle
 
       - test-driver:
@@ -727,7 +745,9 @@ workflows:
           requires:
             - be-tests
           e: presto
-          wait-for-port: "8080"
+          before-steps:
+            - wait-for-port:
+                port: 8080
           driver: presto
 
       - test-driver:
@@ -749,7 +769,9 @@ workflows:
           requires:
             - be-tests
           e: sparksql
-          wait-for-port: "10000"
+          before-steps:
+            - wait-for-port:
+                port: 10000
           driver: sparksql
 
       - test-driver:
@@ -770,8 +792,10 @@ workflows:
           requires:
             - be-tests
           e: vertica
-          jdbc-driver-source: VERTICA_JDBC_JAR
-          jdbc-driver-dest: vertica-jdbc-7.1.2-0.jar
+          before-steps:
+            - fetch-jdbc-driver:
+                source: VERTICA_JDBC_JAR
+                dest: vertica-jdbc-7.1.2-0.jar
           driver: vertica
           auto-retry: true
 

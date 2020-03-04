@@ -179,7 +179,7 @@ export function downgradeNativePermissionsIfNeeded(
 
 const metadataTableToTableEntityId = (table: Table): TableEntityId => ({
   databaseId: table.db_id,
-  schemaName: table.schema || "",
+  schemaName: table.schema_name || "",
   tableId: table.id,
 });
 
@@ -188,7 +188,7 @@ const entityIdToMetadataTableFields = (entityId: EntityId) => ({
   ...(entityId.databaseId ? { db_id: entityId.databaseId } : {}),
   // $FlowFixMe Because schema name can be an empty string, which means an empty schema, this check becomes a little nasty
   ...(entityId.schemaName !== undefined
-    ? { schema: entityId.schemaName !== "" ? entityId.schemaName : null }
+    ? { schema_name: entityId.schemaName !== "" ? entityId.schemaName : null }
     : {}),
   ...(entityId.tableId ? { id: entityId.tableId } : {}),
 });
@@ -312,10 +312,8 @@ export function updateTablesPermission(
   value: string,
   metadata: Metadata,
 ): GroupsPermissions {
-  const database = metadata && metadata.databases[databaseId];
-  const tableIds: ?(number[]) =
-    database &&
-    database.tables.filter(t => (t.schema || "") === schemaName).map(t => t.id);
+  const schema = metadata && metadata.database(databaseId).schema(schemaName);
+  const tableIds = schema && schema.tables.map(t => t.id);
 
   permissions = updateSchemasPermission(
     permissions,
@@ -441,12 +439,12 @@ function diffDatabasePermissions(
   for (const table of database.tables) {
     const oldFieldsPerm = getFieldsPermission(oldPerms, groupId, {
       databaseId: database.id,
-      schemaName: table.schema || "",
+      schemaName: table.schema_name || "",
       tableId: table.id,
     });
     const newFieldsPerm = getFieldsPermission(newPerms, groupId, {
       databaseId: database.id,
-      schemaName: table.schema || "",
+      schemaName: table.schema_name || "",
       tableId: table.id,
     });
     if (oldFieldsPerm !== newFieldsPerm) {

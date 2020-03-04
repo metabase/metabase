@@ -45,6 +45,7 @@
              [resolve-database-and-driver :as resolve-database-and-driver]
              [resolve-fields :as resolve-fields]
              [resolve-joins :as resolve-joins]
+             [resolve-referenced :as resolve-referenced]
              [resolve-source-table :as resolve-source-table]
              [results-metadata :as results-metadata]
              [splice-params-in-response :as splice-params-in-response]
@@ -83,6 +84,7 @@
    #'bucket-datetime/auto-bucket-datetimes
    #'resolve-source-table/resolve-source-tables
    #'parameters/substitute-parameters
+   #'resolve-referenced/resolve-referenced-card-resources
    #'expand-macros/expand-macros
    #'add-timezone-info/add-timezone-info
    #'splice-params-in-response/splice-params-in-response

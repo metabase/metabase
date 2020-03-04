@@ -185,7 +185,7 @@ describe("NativeQuery", () => {
         );
         const tagMaps = newQuery.templateTagsMap();
         expect(tagMaps["max_price"].name).toEqual("max_price");
-        expect(tagMaps["max_price"].display_name).toEqual("Max price");
+        expect(tagMaps["max_price"]["display-name"]).toEqual("Max price");
       });
     });
     describe("Invalid template tags prevent the query from running", () => {
@@ -212,6 +212,43 @@ describe("NativeQuery", () => {
       );
       expect(q.canRun()).toBe(true);
     });
+    describe("card template tags", () => {
+      it("should parse card tags", () => {
+        const q = makeQuery().setQueryText("{{#1}} {{ #2 }} {{ #1 }}");
+        expect(q.templateTags().map(v => v["card-id"])).toEqual([1, 2]);
+      });
+    });
+    describe("replaceCardId", () => {
+      it("should update the query text", () => {
+        const query = makeQuery()
+          .setQueryText("SELECT * from {{ #123 }}")
+          .replaceCardId(123, 321);
+
+        expect(query.queryText()).toBe("SELECT * from {{#321}}");
+        const tags = query.templateTags();
+        expect(tags.length).toBe(1);
+        const [{ "card-id": cardId, type, name }] = tags;
+        expect(cardId).toEqual(321);
+        expect(type).toEqual("card");
+        expect(name).toEqual("#321");
+      });
+
+      it("should perform multiple updates", () => {
+        const query = makeQuery()
+          .setQueryText("{{#123}} {{foo}} {{#1234}} {{ #123 }}")
+          .replaceCardId(123, 321);
+
+        expect(query.queryText()).toBe("{{#321}} {{foo}} {{#1234}} {{#321}}");
+      });
+
+      it("should replace a blank id", () => {
+        const query = makeQuery()
+          .setQueryText("{{#}} {{#123}}")
+          .replaceCardId("", 321);
+
+        expect(query.queryText()).toBe("{{#321}} {{#123}}");
+      });
+    });
   });
   describe("variables", () => {
     it("should return empty array if there are no tags", () => {
@@ -225,7 +262,7 @@ describe("NativeQuery", () => {
       );
       const variables = q.variables();
       expect(variables).toHaveLength(1);
-      expect(variables.map(v => v.displayName())).toEqual(["category"]);
+      expect(variables.map(v => v.displayName())).toEqual(["Category"]);
     });
     it("should not return variable for dimension template tag", () => {
       const q = makeQuery()
