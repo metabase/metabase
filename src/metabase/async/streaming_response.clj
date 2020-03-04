@@ -139,19 +139,16 @@
         (catch Throwable e
           (log/error e (trs "Error writing error to output stream") obj))))))
 
-(defn- respond* [f ^OutputStream os finished-chan canceled-chan]
+(defn- do-f* [f ^OutputStream os finished-chan canceled-chan]
   (try
     (f os canceled-chan)
     (catch EofException _
-      (println "eof:") ; NOCOMMIT
       (a/>!! canceled-chan ::cancel)
       nil)
     (catch InterruptedException _
-      (println "interrupted") ; NOCOMMIT
       (a/>!! canceled-chan ::cancel)
       nil)
     (catch Throwable e
-      (println "e:" e) ; NOCOMMIT
       (log/error e (trs "Caught unexpected Exception in streaming response body"))
       (write-error! os e)
       nil)
@@ -162,23 +159,23 @@
       (a/close! finished-chan)
       (a/close! canceled-chan))))
 
-(defn- respond [f {:keys [gzip? write-keepalive-newlines?], :or {write-keepalive-newlines? true}, :as options}
-                ^OutputStream os finished-chan canceled-chan]
+(defn- do-f [f {:keys [gzip? write-keepalive-newlines?], :or {write-keepalive-newlines? true}, :as options}
+             ^OutputStream os finished-chan canceled-chan]
   (if gzip?
     (with-open [gzos (GZIPOutputStream. os true)]
-      (respond f (assoc options :gzip? false) gzos finished-chan canceled-chan)
+      (do-f f (assoc options :gzip? false) gzos finished-chan canceled-chan)
       (.finish gzos))
     (with-open [os (jetty-eof-canceling-output-stream os canceled-chan)
                 os (keepalive-output-stream os write-keepalive-newlines?)
                 os (stop-writing-after-close-stream os)]
-      (respond* f os finished-chan canceled-chan)
+      (do-f* f os finished-chan canceled-chan)
       (.flush os))))
 
-(defn- respond-async [f options ^OutputStream os finished-chan]
+(defn- do-f-async [f options ^OutputStream os finished-chan]
   (let [canceled-chan (a/promise-chan identity identity)
         task          (bound-fn []
                         (try
-                          (respond f options os finished-chan canceled-chan)
+                          (do-f f options os finished-chan canceled-chan)
                           (finally
                             (u/ignore-exceptions (.close os)))))
         futur         (.submit (thread-pool/thread-pool) ^Runnable task)]
@@ -208,7 +205,7 @@
   ;; both sync and async responses
   ring.protocols/StreamableResponseBody
   (write-body-to-stream [_ _ os]
-    (respond-async f options os donechan))
+    (do-f-async f options os donechan))
 
   ;; sync responses only
   compojure.response/Renderable

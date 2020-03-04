@@ -298,8 +298,7 @@
   "Return the result `data` from a successful query run, or throw an Exception if processing failed."
   {:style/indent 0}
   [results]
-  (when (= (:status results) :failed)
-    (println "Error running query:" (u/pprint-to-str 'red results))
+  (when (#{:failed "failed"} (:status results))
     (throw (ex-info (str (or (:error results) "Error running query"))
              (if (map? results) results {:results results}))))
   (:data results))
@@ -308,8 +307,6 @@
   "Return the result rows from query `results`, or throw an Exception if they're missing."
   {:style/indent 0}
   [results]
-  (when (#{:failed "failed"} (:status results))
-    (throw (ex-info "Query failed" results)))
   (or (some-> (data results) :rows vec)
       (throw (ex-info "Query does not have any :rows in results." results))))
 
