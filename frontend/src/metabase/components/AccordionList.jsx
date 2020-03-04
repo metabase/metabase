@@ -8,6 +8,7 @@ import _ from "underscore";
 import { color } from "metabase/lib/colors";
 
 import Icon from "metabase/components/Icon";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 import ListSearchField from "metabase/components/ListSearchField";
 import { List, CellMeasurer, CellMeasurerCache } from "react-virtualized";
 
@@ -286,7 +287,8 @@ export default class AccordionList extends Component {
         sectionIsSearchable(sectionIndex) &&
         sectionIsExpanded(sectionIndex) &&
         section.items &&
-        section.items.length > 0
+        section.items.length > 0 &&
+        !section.loading
       ) {
         if (alwaysExpanded) {
           globalSearch = true;
@@ -297,7 +299,8 @@ export default class AccordionList extends Component {
       if (
         sectionIsExpanded(sectionIndex) &&
         section.items &&
-        section.items.length > 0
+        section.items.length > 0 &&
+        !section.loading
       ) {
         for (const [itemIndex, item] of section.items.entries()) {
           if (searchFilter(item)) {
@@ -316,6 +319,14 @@ export default class AccordionList extends Component {
             });
           }
         }
+      }
+      if (sectionIsExpanded(sectionIndex) && section.loading) {
+        rows.push({
+          type: "loading",
+          section,
+          sectionIndex,
+          isLastSection,
+        });
       }
     }
 
@@ -499,6 +510,12 @@ const AccordionListCell = ({
     }
   } else if (type === "header-hidden") {
     content = <div className="my1" />;
+  } else if (type === "loading") {
+    content = (
+      <div className="m1 flex layout-centered">
+        <LoadingSpinner />
+      </div>
+    );
   } else if (type === "search") {
     content = (
       <ListSearchField

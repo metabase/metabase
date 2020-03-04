@@ -1,6 +1,5 @@
 import React, { Component } from "react";
 
-import { compose } from "redux";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
@@ -29,6 +28,8 @@ const mapStateToProps = state => ({
 });
 
 const mapDispatchToProps = {
+  prefetchTables: () => Database.actions.fetchList({ include: "tables" }),
+  prefetchDatabases: () => Database.actions.fetchList({ saved: true }),
   push,
 };
 
@@ -36,13 +37,15 @@ const PAGE_PADDING = [1, 4];
 
 @fitViewport
 @connect(
-  null,
-  { push },
+  mapStateToProps,
+  mapDispatchToProps,
 )
-export class NewQueryOptions extends Component {
+export default class NewQueryOptions extends Component {
   props: Props;
 
   componentWillMount(props) {
+    this.props.prefetchTables();
+    this.props.prefetchDatabases();
     const { location, push } = this.props;
     if (Object.keys(location.query).length > 0) {
       const { database, table, ...options } = location.query;
@@ -117,11 +120,3 @@ export class NewQueryOptions extends Component {
     );
   }
 }
-
-export default compose(
-  Database.loadList({ query: { include_tables: true, include_cards: true } }),
-  connect(
-    mapStateToProps,
-    mapDispatchToProps,
-  ),
-)(NewQueryOptions);

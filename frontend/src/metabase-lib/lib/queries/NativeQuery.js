@@ -96,12 +96,6 @@ export default class NativeQuery extends AtomicQuery {
     return this.databaseId() == null || this.queryText().length === 0;
   }
 
-  databases(): Database[] {
-    return super
-      .databases()
-      .filter(database => database.native_permissions === "write");
-  }
-
   clean() {
     return this.setDatasetQuery(
       updateIn(
@@ -130,6 +124,14 @@ export default class NativeQuery extends AtomicQuery {
   engine(): ?DatabaseEngine {
     const database = this.database();
     return database && database.engine;
+  }
+
+  /**
+   * Returns true if the database metadata (or lack thererof indicates the user can modify and run this query
+   */
+  readOnly(): boolean {
+    const database = this.database();
+    return !database || database.native_permissions !== "write";
   }
 
   /* Methods unique to this query type */

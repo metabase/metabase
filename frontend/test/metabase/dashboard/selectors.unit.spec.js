@@ -25,6 +25,7 @@ const STATE = {
   },
   entities: {
     databases: {},
+    schemas: {},
     tables: {},
     fields: {
       1: { id: 1 },

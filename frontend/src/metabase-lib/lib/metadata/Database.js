@@ -6,7 +6,7 @@ import Base from "./Base";
 import Table from "./Table";
 import Schema from "./Schema";
 
-import _ from "underscore";
+import { generateSchemaId } from "metabase/schema";
 
 import type { SchemaName } from "metabase/meta/types/Table";
 import type { DatabaseFeature } from "metabase/meta/types/Database";
@@ -33,16 +33,12 @@ export default class Database extends Base {
     return this.name;
   }
 
-  tablesInSchema(schemaName: ?SchemaName) {
-    return this.tables.filter(table => table.schema === schemaName);
+  schema(schemaName: ?SchemaName) {
+    return this.metadata.schema(generateSchemaId(this.id, schemaName));
   }
 
-  schemaNames(): Array<SchemaName> {
-    return _.uniq(
-      this.tables
-        .map(table => table.schema)
-        .filter(schemaName => schemaName != null),
-    );
+  schemaNames(): SchemaName[] {
+    return this.schemas.map(s => s.name).sort((a, b) => a.localeCompare(b));
   }
 
   hasFeature(feature: DatabaseFeature | VirtualDatabaseFeature): boolean {
