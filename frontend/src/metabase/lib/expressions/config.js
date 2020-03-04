@@ -1,24 +1,28 @@
 import { t } from "ttag";
 
-// specifies where different quoting is used:
 export const QUOTES = {
-  "[": "identifier",
-  "'": "literal",
-  '"': "literal",
+  // specifies where different quoting is used:
+  characters: {
+    "[": "identifier",
+    "'": "literal",
+    '"': "literal",
+  },
+  // specifies the default quoting style:
+  literalQuoteDefault: '"',
+  identifierQuoteDefault: "[",
+  // always quote identifiers even if they have non-word characters or conflict with reserved words
+  identifierAlwaysQuoted: false,
 };
-// specifies the default quoting style:
-export const LITERAL_QUOTE_DEFAULT = '"';
-export const IDENTIFIER_QUOTE_DEFAULT = "[";
-// always quote identifiers even if they have non-word characters or conflict with reserved words
-export const IDENTIFIER_ALWAYS_QUOTE = true;
 
 // export const QUOTES = {
-//   "'": "literal",
-//   '"': "identifier",
+//   characters: {
+//     "'": "literal",
+//     '"': "identifier",
+//   },
+//   literalQuoteDefault: "'",
+//   identifierQuoteDefault: '"',
+//   identifierAlwaysQuoted: false,
 // };
-// export const LITERAL_QUOTE_DEFAULT = "'";
-// export const IDENTIFIER_QUOTE_DEFAULT = '"';
-// export const IDENTIFIER_ALWAYS_QUOTE = false;
 
 // copied relevant parts from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Operator_Precedence
 export const OPERATOR_PRECEDENCE = {
@@ -31,237 +35,273 @@ export const OPERATOR_PRECEDENCE = {
   or: 5,
 };
 
+export const EXPRESSION_TYPES = [
+  "expression",
+  "aggregation",
+  "boolean",
+  "string",
+  "number",
+];
+
+export const EXPRESSION_SUBTYPES = {
+  // can't currently add "boolean" as a subtype of expression due to conflict between segments and fields
+  expression: new Set(["string", "number"]),
+};
+
+export const isExpressionType = (typeA, typeB) =>
+  typeA === typeB ||
+  (EXPRESSION_SUBTYPES[typeB] && EXPRESSION_SUBTYPES[typeB].has(typeA)) ||
+  false;
+
+export function getFunctionArgType(clause, index) {
+  return clause.multiple ? clause.args[0] : clause.args[index];
+}
+
 export const MBQL_CLAUSES = {
   // aggregation functions
   count: {
-    name: t`Count`,
+    displayName: t`Count`,
     type: "aggregation",
     args: [],
   },
   "cum-count": {
-    name: t`CumulativeCount`,
+    displayName: t`CumulativeCount`,
     type: "aggregation",
     args: [],
   },
   sum: {
-    name: t`Sum`,
+    displayName: t`Sum`,
     type: "aggregation",
-    args: ["expression"],
+    args: ["number"],
   },
   "cum-sum": {
-    name: t`CumulativeSum`,
+    displayName: t`CumulativeSum`,
     type: "aggregation",
-    args: ["expression"],
+    args: ["number"],
   },
   distinct: {
-    name: t`Distinct`,
+    displayName: t`Distinct`,
     type: "aggregation",
-    args: ["expression"],
+    args: ["number"],
   },
   stddev: {
-    name: t`StandardDeviation`,
+    displayName: t`StandardDeviation`,
     type: "aggregation",
-    args: ["expression"],
+    args: ["number"],
   },
   avg: {
-    name: t`Average`,
+    displayName: t`Average`,
     type: "aggregation",
-    args: ["expression"],
+    args: ["number"],
   },
   min: {
-    name: t`Min`,
+    displayName: t`Min`,
     type: "aggregation",
-    args: ["expression"],
+    args: ["number"],
   },
   max: {
-    name: t`Max`,
+    displayName: t`Max`,
     type: "aggregation",
-    args: ["expression"],
+    args: ["number"],
   },
   share: {
-    name: t`Share`,
+    displayName: t`Share`,
     type: "aggregation",
     args: ["boolean"],
   },
   "count-where": {
-    name: t`CountWhere`,
+    displayName: t`CountIf`,
     type: "aggregation",
     args: ["boolean"],
   },
   "sum-where": {
-    name: t`SumWhere`,
+    displayName: t`SumIf`,
     type: "aggregation",
-    args: ["expression", "boolean"],
+    args: ["number", "boolean"],
   },
   // expression functions
   lower: {
-    name: t`lower`,
-    type: "expression",
-    args: ["expression"],
+    displayName: t`lower`,
+    type: "string",
+    args: ["string"],
   },
   upper: {
-    name: t`upper`,
-    type: "expression",
-    args: ["expression"],
+    displayName: t`upper`,
+    type: "string",
+    args: ["string"],
   },
   substring: {
-    name: t`substring`,
-    type: "expression",
-    args: ["expression", "expression", "expression"],
+    displayName: t`substring`,
+    type: "string",
+    args: ["string", "number", "number"],
   },
-  extract: {
-    name: t`extract`,
-    type: "expression",
-    args: ["expression", "expression"],
+  "regex-match-first": {
+    displayName: t`extract`,
+    type: "string",
+    args: ["string", "string"],
   },
   concat: {
-    name: t`concat`,
-    type: "expression",
+    displayName: t`concat`,
+    type: "string",
     args: ["expression"],
+    multiple: true,
   },
   coalesce: {
-    name: t`coalesce`,
-    type: "expression",
-    args: ["expression"],
-  },
-  replace: {
-    name: t`replace`,
+    displayName: t`coalesce`,
     type: "expression",
     args: ["expression", "expression"],
+    multiple: true,
+  },
+  replace: {
+    displayName: t`replace`,
+    type: "string",
+    args: ["string", "string"],
   },
   trim: {
-    name: t`trim`,
-    type: "expression",
-    args: ["expression"],
+    displayName: t`trim`,
+    type: "string",
+    args: ["string", "string"],
   },
   rtrim: {
-    name: t`rtrim`,
-    type: "expression",
-    args: ["expression"],
+    displayName: t`rtrim`,
+    type: "string",
+    args: ["string"],
   },
   ltrim: {
-    name: t`ltrim`,
-    type: "expression",
-    args: ["expression"],
+    displayName: t`ltrim`,
+    type: "string",
+    args: ["string"],
   },
   case: {
-    name: t`case`,
+    displayName: t`case`,
     type: "expression",
+    args: ["expression", "expression"], // ideally we'd alternate boolean/expression
+    multiple: true,
   },
   // filters functions
   contains: {
-    name: t`contains`,
+    displayName: t`contains`,
     type: "boolean",
-    args: ["expression", "expression"],
+    args: ["string", "string"],
   },
   "starts-with": {
-    name: t`startsWith`,
+    displayName: t`startsWith`,
     type: "boolean",
-    args: ["expression", "expression"],
+    args: ["string", "string"],
   },
   "ends-with": {
-    name: t`endsWith`,
+    displayName: t`endsWith`,
     type: "boolean",
-    args: ["expression", "expression"],
+    args: ["string", "string"],
   },
   between: {
-    name: t`between`,
+    displayName: t`between`,
     type: "boolean",
     args: ["expression", "expression", "expression"],
   },
   "time-interval": {
-    name: t`interval`,
+    displayName: t`interval`,
     type: "boolean",
-    args: ["expression", "expression", "expression"],
+    args: ["expression", "number", "string"],
   },
   // boolean operators
   and: {
-    name: t`AND`,
+    displayName: t`AND`,
     type: "boolean",
     args: ["boolean", "boolean"],
   },
   or: {
-    name: t`OR`,
+    displayName: t`OR`,
     type: "boolean",
     args: ["boolean", "boolean"],
   },
   not: {
-    name: t`NOT`,
+    displayName: t`NOT`,
     type: "boolean",
     args: ["boolean"],
   },
   // expression operators
   "*": {
-    name: "*",
+    displayName: "*",
     tokenName: "Multi",
-    type: "expression",
-    args: ["expression", "expression"],
+    type: "number",
+    args: ["number", "number"],
   },
   "/": {
-    name: "/",
+    displayName: "/",
     tokenName: "Div",
-    type: "expression",
-    args: ["expression", "expression"],
+    type: "number",
+    args: ["number", "number"],
   },
   "-": {
-    name: "-",
+    displayName: "-",
     tokenName: "Minus",
-    type: "expression",
-    args: ["expression", "expression"],
+    type: "number",
+    args: ["number", "number"],
   },
   "+": {
-    name: "+",
+    displayName: "+",
     tokenName: "Plus",
-    type: "expression",
-    args: ["expression", "expression"],
+    type: "number",
+    args: ["number", "number"],
   },
   // comparison operators
   "!=": {
-    name: "!=",
+    displayName: "!=",
     tokenName: "NotEqual",
     type: "boolean",
     args: ["expression", "expression"],
   },
   "<=": {
-    name: "<=",
+    displayName: "<=",
     tokenName: "LessThanEqual",
     type: "boolean",
     args: ["expression", "expression"],
   },
   ">=": {
-    name: ">=",
+    displayName: ">=",
     tokenName: "GreaterThanEqual",
     type: "boolean",
     args: ["expression", "expression"],
   },
   "<": {
-    name: "<",
+    displayName: "<",
     tokenName: "LessThan",
     type: "boolean",
     args: ["expression", "expression"],
   },
   ">": {
-    name: ">",
+    displayName: ">",
     tokenName: "GreaterThan",
     type: "boolean",
     args: ["expression", "expression"],
   },
   "=": {
-    name: "=",
+    displayName: "=",
     tokenName: "Equal",
     type: "boolean",
     args: ["expression", "expression"],
   },
 };
 
+for (const [name, clause] of Object.entries(MBQL_CLAUSES)) {
+  if (clause.name !== undefined && clause.name !== name) {
+    console.warn("Mismatched name for MBQL_CLAUSES " + name);
+  }
+  clause.name = name;
+}
+
 // Reserved token names
 const MBQL_TO_EXPRESSION_NAME = new Map(
-  Object.entries(MBQL_CLAUSES).map(([mbql, { name }]) => [mbql, name]),
+  Object.entries(MBQL_CLAUSES).map(([mbql, { displayName }]) => [
+    mbql,
+    displayName,
+  ]),
 );
 const EXPRESSION_TO_MBQL_NAME = new Map(
-  Object.entries(MBQL_CLAUSES).map(([mbql, { name }]) => [
+  Object.entries(MBQL_CLAUSES).map(([mbql, { displayName }]) => [
     // case-insensitive
-    name.toLowerCase(),
+    displayName.toLowerCase(),
     mbql,
   ]),
 );
@@ -277,7 +317,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "lower", // concrete-field
   "upper", // concrete-field
   "substring", // concrete-field start length
-  "extract", // concrete-field regex
+  "regex-match-first", // concrete-field regex
   "concat", // & expression
   "coalesce", // & expression
   "replace", // concrete-field from to

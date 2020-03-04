@@ -21,19 +21,27 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
   any(ctx) {
     return this.visit(ctx.expression);
   }
-
   expression(ctx) {
-    return this.visit(ctx.additionExpression);
+    return this.visit(ctx.expression);
   }
   aggregation(ctx) {
-    return this.visit(ctx.additionExpression);
+    return this.visit(ctx.expression);
+  }
+  number(ctx) {
+    return this.visit(ctx.expression);
+  }
+  string(ctx) {
+    return this.visit(ctx.expression);
+  }
+  boolean(ctx) {
+    return this.visit(ctx.expression);
   }
 
   additionExpression(ctx) {
-    return this._collapseOperators(ctx.operands, ctx.AdditiveOperator);
+    return this._collapseOperators(ctx.operands, ctx.operators);
   }
   multiplicationExpression(ctx) {
-    return this._collapseOperators(ctx.operands, ctx.MultiplicativeOperator);
+    return this._collapseOperators(ctx.operands, ctx.operators);
   }
 
   functionExpression(ctx) {
@@ -47,19 +55,23 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
   }
 
   caseExpression(ctx) {
-    const mbql = [
-      "case",
-      ctx.filter.map((f, i) => [this.visit(f), this.visit(ctx.expression[i])]),
-    ];
-    if (ctx.default) {
-      mbql.push({ default: this.visit(ctx.default) });
+    const mbql = ["case", []];
+    const args = ctx.arguments.map(arg => this.visit(arg));
+    for (let i = 0; i < args.length; i++) {
+      if (i == args.length - 1) {
+        // if there's a single remaining argument it's the default
+        mbql.push({ default: args[i] });
+      } else {
+        // otherwise push a case clause pair (and increment i)
+        mbql[1].push([args[i], args[++i]]);
+      }
     }
     return mbql;
   }
 
   metricExpression(ctx) {
     const metricName = this.visit(ctx.metricName);
-    const metric = parseMetric(metricName, this._options.query);
+    const metric = parseMetric(metricName, this._options);
     if (!metric) {
       throw new Error(`Unknown Metric: ${metricName}`);
     }
@@ -67,7 +79,7 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
   }
   segmentExpression(ctx) {
     const segmentName = this.visit(ctx.segmentName);
-    const segment = parseSegment(segmentName, this._options.query);
+    const segment = parseSegment(segmentName, this._options);
     if (!segment) {
       throw new Error(`Unknown Segment: ${segmentName}`);
     }
@@ -75,7 +87,7 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
   }
   dimensionExpression(ctx) {
     const dimensionName = this.visit(ctx.dimensionName);
-    const dimension = parseDimension(dimensionName, this._options.query);
+    const dimension = parseDimension(dimensionName, this._options);
     if (!dimension) {
       throw new Error(`Unknown Field: ${dimensionName}`);
     }
@@ -102,11 +114,8 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
   }
 
   // FILTERS
-  filter(ctx) {
-    return this.visit(ctx.booleanExpression);
-  }
   booleanExpression(ctx) {
-    return this._collapseOperators(ctx.operands, ctx.BooleanOperatorBinary);
+    return this._collapseOperators(ctx.operands, ctx.operators);
   }
 
   comparisonExpression(ctx) {

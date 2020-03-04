@@ -8,7 +8,7 @@ import {
 
 describe("metabase/lib/expressions/compile", () => {
   let compile, parseOperators;
-  it("should load compile within 3 seconds", () => {
+  fit("should load compile within 3 seconds", () => {
     const start = Date.now();
     ({ compile, parseOperators } = require("metabase/lib/expressions/compile"));
     const end = Date.now();
@@ -50,7 +50,7 @@ describe("metabase/lib/expressions/compile", () => {
 
   describe("compile()", () => {
     for (const [name, cases, opts] of shared) {
-      describe(name, () => {
+      fdescribe(name, () => {
         for (const [source, mbql, description] of cases) {
           if (mbql) {
             it(`should compile ${description}`, () => {

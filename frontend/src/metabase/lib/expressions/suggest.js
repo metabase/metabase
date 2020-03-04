@@ -14,7 +14,11 @@ import {
   FILTER_FUNCTIONS,
 } from "../expressions";
 
-import { parserWithRecovery } from "./parser";
+import {
+  parserWithRecovery,
+  ExpressionCstVisitor,
+  ExpressionParser,
+} from "./parser";
 
 import {
   AdditiveOperator,
@@ -24,6 +28,7 @@ import {
   CLAUSE_TOKENS,
   Case,
   Comma,
+  Operator,
   FilterOperator,
   FunctionName,
   Identifier,
@@ -41,31 +46,38 @@ import {
 } from "./lexer";
 
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
-import { EXPRESSION_FUNCTIONS } from "./config";
+import {
+  FUNCTIONS,
+  OPERATORS,
+  MBQL_CLAUSES,
+  isExpressionType,
+  getFunctionArgType,
+  EXPRESSION_TYPES,
+} from "./config";
 
-function getTokenSource(tokenType) {
-  return typeof tokenType.PATTERN === "string"
-    ? tokenType.PATTERN
-    : tokenType.PATTERN.source.replace(/^\\/, "");
+const FUNCTION_SUGGESTIONS_BY_TYPE = {};
+const OPERATOR_SUGGESTIONS_BY_TYPE = {};
+for (const type of EXPRESSION_TYPES) {
+  FUNCTION_SUGGESTIONS_BY_TYPE[type] = Array.from(FUNCTIONS)
+    .filter(name => isExpressionType(MBQL_CLAUSES[name].type, type))
+    .map(name => functionSuggestion("functions", name));
+  OPERATOR_SUGGESTIONS_BY_TYPE[type] = Array.from(OPERATORS)
+    .filter(name => isExpressionType(MBQL_CLAUSES[name].type, type))
+    .map(name => operatorSuggestion(name));
 }
 
-const START_RULE_TYPE = {
-  filter: "boolean",
-  expression: "expression",
-  aggregation: "aggregation",
-};
 export function suggest(
   source,
-  { query, startRule, index = source.length, expressionName } = {},
+  { query, startRule, targetOffset = source.length, expressionName } = {},
 ) {
-  const partialSource = source.slice(0, index);
+  const partialSource = source.slice(0, targetOffset);
   const lexResult = lexerWithRecovery.tokenize(partialSource);
   if (lexResult.errors.length > 0) {
     throw new Error(t`sad sad panda, lexing errors detected`);
   }
 
   let partialSuggestionMode = false;
-  let assistanceTokenVector = lexResult.tokens;
+  let tokenVector = lexResult.tokens;
 
   const lastInputToken = _.last(lexResult.tokens);
   const lastInputTokenIsUnclosedIdentifierString =
@@ -79,25 +91,23 @@ export function suggest(
       /\w/.test(partialSource[partialSource.length - 1])) ||
       lastInputTokenIsUnclosedIdentifierString)
   ) {
-    assistanceTokenVector = assistanceTokenVector.slice(0, -1);
+    tokenVector = tokenVector.slice(0, -1);
     partialSuggestionMode = true;
   }
-
-  const { token: functionToken, index: functionArgumentIndex } =
-    getFunctionTokenAndArgument(assistanceTokenVector) || {};
-  const functionClause =
-    functionToken && CLAUSE_TOKENS.get(functionToken.tokenType);
-
-  const expectedType = functionClause
-    ? functionClause.args[functionArgumentIndex]
-    : START_RULE_TYPE[startRule];
 
   let finalSuggestions = [];
 
   const syntacticSuggestions = parserWithRecovery.computeContentAssist(
     startRule,
-    assistanceTokenVector,
+    tokenVector,
   );
+
+  const context = getContext(null, {
+    tokenVector,
+    targetOffset,
+    startRule,
+  }) || { expectedType: startRule };
+  const { expectedType } = context;
 
   for (const suggestion of syntacticSuggestions) {
     const { nextTokenType, ruleStack } = suggestion;
@@ -107,11 +117,14 @@ export function suggest(
       // fields, metrics, segments
       const parentRule = ruleStack.slice(-2, -1)[0];
       const isDimension =
-        parentRule === "dimensionExpression" && expectedType === "expression";
+        parentRule === "dimensionExpression" &&
+        isExpressionType(expectedType, "expression");
       const isSegment =
-        parentRule === "segmentExpression" && expectedType === "boolean";
+        parentRule === "segmentExpression" &&
+        isExpressionType(expectedType, "boolean");
       const isMetric =
-        parentRule === "metricExpression" && expectedType === "aggregation";
+        parentRule === "metricExpression" &&
+        isExpressionType(expectedType, "aggregation");
 
       const trimOptions = lastInputTokenIsUnclosedIdentifierString
         ? {
@@ -125,25 +138,32 @@ export function suggest(
       if (isDimension) {
         let dimensions = [];
         if (
-          functionToken &&
-          isTokenType(functionToken.tokenType, AggregationFunctionName)
+          context.token &&
+          context.clause &&
+          isTokenType(context.token.tokenType, AggregationFunctionName)
         ) {
           dimensions = query
-            .aggregationFieldOptions(functionClause.clause)
+            .aggregationFieldOptions(context.clause.clause)
             .all();
         } else {
-          dimensions = query
-            .dimensionOptions(
-              d =>
-                // numeric
-                // d.field().isNumeric() &&
-                // not itself
-                !(
-                  d instanceof ExpressionDimension &&
-                  d.name() === expressionName
-                ),
-            )
-            .all();
+          const dimensionFilter = dimension => {
+            // not itself
+            if (
+              dimension instanceof ExpressionDimension &&
+              dimension.name() === expressionName
+            ) {
+              return false;
+            }
+            if (expectedType === "expression" || expectedType === "boolean") {
+              return true;
+            }
+            const field = dimension.field();
+            return (
+              (isExpressionType("number", expectedType) && field.isNumeric()) ||
+              (isExpressionType("string", expectedType) && field.isString())
+            );
+          };
+          dimensions = query.dimensionOptions(dimensionFilter).all();
         }
         finalSuggestions.push(
           ...dimensions.map(dimension => ({
@@ -180,10 +200,15 @@ export function suggest(
       nextTokenType === AdditiveOperator ||
       nextTokenType === MultiplicativeOperator
     ) {
-      if (expectedType === "expression" || expectedType === "aggregation") {
-        const tokens = getSubTokenTypes(nextTokenType);
+      if (
+        isExpressionType("number", expectedType) ||
+        isExpressionType("aggregation", expectedType)
+      ) {
+        const tokenTypes = getSubTokenTypes(nextTokenType);
         finalSuggestions.push(
-          ...tokens.map(token => operatorSuggestion(token)),
+          ...tokenTypes.map(tokenType =>
+            operatorSuggestion(CLAUSE_TOKENS.get(tokenType).name),
+          ),
         );
       }
     } else if (
@@ -191,11 +216,35 @@ export function suggest(
       nextTokenType === BooleanOperatorBinary ||
       nextTokenType === FilterOperator
     ) {
-      if (expectedType === "boolean") {
-        const tokens = getSubTokenTypes(nextTokenType);
+      if (isExpressionType(expectedType, "boolean")) {
+        const tokenTypes = getSubTokenTypes(nextTokenType);
         finalSuggestions.push(
-          ...tokens.map(token => operatorSuggestion(token)),
+          ...tokenTypes.map(tokenType =>
+            operatorSuggestion(CLAUSE_TOKENS.get(tokenType).name),
+          ),
         );
+      }
+    } else if (
+      isTokenType(nextTokenType, FunctionName) ||
+      nextTokenType === Case
+    ) {
+      if (isExpressionType(expectedType, "aggregation")) {
+        // special case for aggregation
+        finalSuggestions.push(
+          ...query
+            .aggregationOperatorsWithoutRows()
+            .filter(a => getExpressionName(a.short))
+            .map(aggregationOperator =>
+              functionSuggestion(
+                "aggregations",
+                aggregationOperator.short,
+                aggregationOperator.fields.length > 0,
+              ),
+            ),
+        );
+        finalSuggestions.push(...FUNCTION_SUGGESTIONS_BY_TYPE["number"]);
+      } else {
+        finalSuggestions.push(...FUNCTION_SUGGESTIONS_BY_TYPE[expectedType]);
       }
     } else if (nextTokenType === LParen) {
       finalSuggestions.push({
@@ -216,9 +265,9 @@ export function suggest(
       });
     } else if (nextTokenType === Comma) {
       if (
-        functionClause &&
-        (functionClause.multiple ||
-          functionArgumentIndex < functionClause.args.length - 1)
+        context.clause &&
+        (context.clause.multiple ||
+          context.index < context.clause.args.length - 1)
       ) {
         finalSuggestions.push({
           type: "other",
@@ -228,37 +277,6 @@ export function suggest(
           prefixTrim: /\s*$/,
           postfixTrim: /^\s*,?\s*/,
         });
-      }
-    } else if (isTokenType(nextTokenType, FunctionName)) {
-      if (expectedType === "aggregation") {
-        finalSuggestions.push(
-          ...query
-            .aggregationOperatorsWithoutRows()
-            .filter(a => getExpressionName(a.short))
-            .map(aggregationOperator =>
-              functionSuggestion(
-                "aggregations",
-                aggregationOperator.short,
-                aggregationOperator.fields.length > 0,
-              ),
-            ),
-        );
-      } else if (expectedType === "expression") {
-        finalSuggestions.push(
-          ...Array.from(EXPRESSION_FUNCTIONS).map(clause =>
-            functionSuggestion("functions", clause),
-          ),
-        );
-      } else if (expectedType === "boolean") {
-        finalSuggestions.push(
-          ...Array.from(FILTER_FUNCTIONS).map(clause =>
-            functionSuggestion("functions", clause),
-          ),
-        );
-      }
-    } else if (nextTokenType === Case) {
-      if (expectedType === "expression") {
-        finalSuggestions.push(functionSuggestion("functions", "case"));
       }
     } else if (
       nextTokenType === StringLiteral ||
@@ -291,7 +309,7 @@ export function suggest(
     finalSuggestions = finalSuggestions.filter(suggestion => suggestion.range);
   }
   for (const suggestion of finalSuggestions) {
-    suggestion.index = index;
+    suggestion.index = targetOffset;
     if (!suggestion.name) {
       suggestion.name = suggestion.text;
     }
@@ -305,32 +323,14 @@ export function suggest(
     .value();
 }
 
-export function getFunctionTokenAndArgument(tokens) {
-  let parens = 0;
-  let index = 0;
-  // iterates over tokens backwards, keeping track of parens and argument positions
-  for (let i = tokens.length - 1; i >= 0; i--) {
-    const token = tokens[i];
-    if (isTokenType(token.tokenType, FunctionName) && parens === -1) {
-      return { token, index };
-    } else if (token.tokenType === LParen) {
-      parens--;
-    } else if (token.tokenType === RParen) {
-      parens++;
-    } else if (token.tokenType === Comma && parens === 0) {
-      index++;
-    }
-  }
-}
-
-function operatorSuggestion(token) {
-  const source = getTokenSource(token);
+function operatorSuggestion(clause) {
+  const name = getExpressionName(clause);
   return {
     type: "operators",
-    name: source,
-    text: " " + source + " ",
+    name: name,
+    text: " " + name + " ",
     prefixTrim: /\s*$/,
-    postfixTrim: new RegExp("/^s*" + escape(source) + "?s*/"),
+    postfixTrim: new RegExp("/^s*" + escape(name) + "?s*/"),
   };
 }
 
@@ -343,5 +343,195 @@ function functionSuggestion(type, clause, parens = true) {
     postfixText: parens ? ")" : " ",
     prefixTrim: /\w+$/,
     postfixTrim: parens ? /^\w+(\(\)?|$)/ : /^\w+\s*/,
+  };
+}
+
+const contextParser = new ExpressionParser({
+  recoveryEnabled: true,
+  tokenRecoveryEnabled: false,
+});
+
+export function getContext(
+  source,
+  {
+    tokenVector = lexerWithRecovery.tokenize(source).tokens,
+    targetOffset = source.length,
+    startRule,
+    ...options
+  },
+) {
+  contextParser.input = tokenVector;
+  const cst = contextParser[startRule]();
+  const visitor = new ExpressionContextVisitor({
+    targetOffset: targetOffset,
+    tokenVector: tokenVector,
+    ...options,
+  });
+  return visitor.visit(cst);
+}
+
+function findNextTextualToken(tokenVector, prevTokenEndOffset) {
+  // The TokenVector is sorted, so we could use a BinarySearch to optimize performance
+  const prevTokenIdx = tokenVector.findIndex(
+    tok => tok.endOffset === prevTokenEndOffset,
+  );
+  for (let i = prevTokenIdx + 1; i >= 0 && i < tokenVector.length; i++) {
+    if (!/^\s+$/.test(tokenVector[i].image)) {
+      return tokenVector[i];
+    }
+  }
+  return null;
+}
+
+export class ExpressionContextVisitor extends ExpressionCstVisitor {
+  constructor({ targetOffset, tokenVector }) {
+    super();
+    this.targetOffset = targetOffset;
+    this.tokenVector = tokenVector;
+    this.stack = [];
+    this.validateVisitor();
+  }
+
+  _context(clauseToken, index, currentContext) {
+    const clause = CLAUSE_TOKENS.get(clauseToken.tokenType);
+    let expectedType = getFunctionArgType(clause, index);
+
+    if (
+      (expectedType === "expression" || expectedType === "number") &&
+      currentContext &&
+      currentContext.expectedType === "aggregation" &&
+      clause.type !== "aggregation"
+    ) {
+      expectedType = "aggregation";
+    }
+
+    return { clause, index, expectedType, clauseToken };
+  }
+
+  _isTarget(token) {
+    const { targetOffset, tokenVector } = this;
+    const next = findNextTextualToken(tokenVector, token.endOffset);
+    if (
+      targetOffset > token.endOffset &&
+      (next === null || targetOffset <= next.startOffset)
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  _function(ctx, currentContext) {
+    const { tokenVector } = this;
+    const clauseToken = ctx.functionName[0];
+    // special case: function clauses without parens sometimes causes the paren to be missing
+    const parenToken = ctx.LParen
+      ? ctx.LParen[0]
+      : findNextTextualToken(tokenVector, clauseToken.endOffset);
+    if (!parenToken || parenToken.tokenType !== LParen) {
+      return;
+    }
+    const tokens = [parenToken, ...(ctx.Comma || [])];
+    for (let index = 0; index < tokens.length; index++) {
+      const token = tokens[index];
+      if (this._isTarget(token)) {
+        return this._context(clauseToken, index, currentContext);
+      } else if (ctx.arguments && index < ctx.arguments.length) {
+        const match = this.visit(
+          ctx.arguments[index],
+          this._context(clauseToken, index, currentContext),
+        );
+        if (match) {
+          return match;
+        }
+      }
+    }
+  }
+
+  _operator(ctx, currentContext) {
+    // note: this should probably account for operator precedence / associativity but for now all of our operator clauses contain operators of the same precedence/associativity
+    for (let index = 0; index < ctx.operators.length; index++) {
+      const clauseToken = ctx.operators[index];
+      if (this._isTarget(clauseToken)) {
+        // NOTE: operators always (?) have the same type for every operand
+        return this._context(clauseToken, 0, currentContext);
+      } else {
+        const match = this.visit(
+          ctx.operands[index],
+          this._context(clauseToken, 0, currentContext),
+        );
+        if (match) {
+          return match;
+        }
+      }
+    }
+  }
+}
+
+const ALL_RULES = [
+  "any",
+  "expression",
+  "aggregation",
+  "boolean",
+  "string",
+  "number",
+  "additionExpression",
+  "multiplicationExpression",
+  "functionExpression",
+  "caseExpression",
+  "metricExpression",
+  "segmentExpression",
+  "dimensionExpression",
+  "identifier",
+  "identifierString",
+  "stringLiteral",
+  "numberLiteral",
+  "atomicExpression",
+  "parenthesisExpression",
+  "booleanExpression",
+  "comparisonExpression",
+  "booleanUnaryExpression",
+];
+
+const TYPE_RULES = new Set([
+  "expression",
+  "aggregation",
+  "boolean",
+  "string",
+  "number",
+]);
+
+for (const rule of ALL_RULES) {
+  ExpressionContextVisitor.prototype[rule] = function(ctx, currentContext) {
+    if (!currentContext && TYPE_RULES.has(rule)) {
+      currentContext = { expectedType: rule };
+    }
+
+    // if we have operators or a functionName then handle that specially
+    if (ctx.operators) {
+      const match = this._operator(ctx, currentContext);
+      if (match) {
+        return match;
+      }
+    }
+    if (ctx.functionName) {
+      const match = this._function(ctx, currentContext);
+      if (match) {
+        return match;
+      }
+    }
+
+    // this just visits every child
+    for (const type in ctx) {
+      for (const child of ctx[type]) {
+        if (!child.tokenType) {
+          const match = this.visit(child, currentContext);
+          if (match) {
+            return match;
+          }
+        } else if (this._isTarget(child)) {
+          return currentContext;
+        }
+      }
+    }
   };
 }

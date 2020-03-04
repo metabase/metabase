@@ -167,7 +167,7 @@ export default class TokenizedInput extends Component {
     return (
       <div
         className={className}
-        style={{ whiteSpace: "pre-wrap", ...style }}
+        style={{ ...style }}
         contentEditable
         onKeyDown={
           this.props.tokenizedEditing

@@ -24,11 +24,16 @@ import {
   lexerWithRecovery,
 } from "./lexer";
 
+import { isExpressionType, getFunctionArgType } from ".";
+
 export class ExpressionParser extends CstParser {
   constructor(config = {}) {
     super(allTokens, {
       // reduced for performance reasons
       maxLookahead: 3,
+      recoveryEnabled: false,
+      // non-standard option we implement ourselves:
+      tokenRecoveryEnabled: false,
       ...config,
     });
 
@@ -39,21 +44,33 @@ export class ExpressionParser extends CstParser {
     $.RULE("any", returnType => {
       $.OR([
         {
-          GATE: () => !returnType || returnType === "expression",
+          GATE: () =>
+            !returnType || isExpressionType("aggregation", returnType),
           ALT: () => {
-            $.SUBRULE($.expression, { LABEL: "expression" });
+            $.SUBRULE2($.aggregation, { LABEL: "expression" });
           },
         },
         {
-          GATE: () => !returnType || returnType === "aggregation",
+          GATE: () => !returnType || isExpressionType("number", returnType),
           ALT: () => {
-            $.SUBRULE($.aggregation, { LABEL: "expression" });
+            // NOTE: can't use $.number due to limited lookhead?
+            // $.SUBRULE($.number, { LABEL: "expression" });
+            $.SUBRULE($.additionExpression, {
+              LABEL: "expression",
+              ARGS: [returnType],
+            });
           },
         },
         {
-          GATE: () => !returnType || returnType === "boolean",
+          GATE: () => !returnType || isExpressionType("string", returnType),
           ALT: () => {
-            $.SUBRULE($.filter, { LABEL: "expression" });
+            $.SUBRULE1($.string, { LABEL: "expression" });
+          },
+        },
+        {
+          GATE: () => !returnType || isExpressionType("boolean", returnType),
+          ALT: () => {
+            $.SUBRULE($.boolean, { LABEL: "expression" });
           },
         },
       ]);
@@ -61,17 +78,35 @@ export class ExpressionParser extends CstParser {
 
     // an expression without aggregations in it
     $.RULE("expression", () => {
-      $.SUBRULE($.additionExpression, { ARGS: ["expression"] });
+      $.SUBRULE($.additionExpression, {
+        LABEL: "expression",
+        ARGS: ["expression"],
+      });
+    });
+    $.RULE("number", () => {
+      $.SUBRULE($.additionExpression, {
+        LABEL: "expression",
+        ARGS: ["number"],
+      });
+    });
+    $.RULE("string", () => {
+      $.SUBRULE($.atomicExpression, {
+        LABEL: "expression",
+        ARGS: ["string"],
+      });
     });
 
     // an expression with aggregations in it
     $.RULE("aggregation", () => {
-      $.SUBRULE($.additionExpression, { ARGS: ["aggregation"] });
+      $.SUBRULE($.additionExpression, {
+        LABEL: "expression",
+        ARGS: ["aggregation"],
+      });
     });
 
     // a filter expression
-    $.RULE("filter", () => {
-      $.SUBRULE($.booleanExpression);
+    $.RULE("boolean", () => {
+      $.SUBRULE($.booleanExpression, { LABEL: "expression" });
     });
 
     // EXPRESSIONS:
@@ -80,35 +115,44 @@ export class ExpressionParser extends CstParser {
     // The precedence of binary expressions is determined by
     // how far down the Parse Tree the binary expression appears.
     $.RULE("additionExpression", returnType => {
-      $.AT_LEAST_ONE_SEP({
-        SEP: AdditiveOperator,
-        DEF: () =>
-          $.SUBRULE($.multiplicationExpression, {
-            LABEL: "operands",
-            ARGS: [returnType],
-          }),
+      $.SUBRULE($.multiplicationExpression, {
+        ARGS: [returnType],
+        LABEL: "operands",
+      });
+      $.MANY(() => {
+        $.CONSUME(AdditiveOperator, { LABEL: "operators" });
+        $.SUBRULE2($.multiplicationExpression, {
+          ARGS: [returnType],
+          LABEL: "operands",
+        });
       });
     });
 
     $.RULE("multiplicationExpression", returnType => {
-      $.AT_LEAST_ONE_SEP({
-        SEP: MultiplicativeOperator,
-        DEF: () =>
-          $.SUBRULE($.atomicExpression, {
-            LABEL: "operands",
-            ARGS: [returnType],
-          }),
+      $.SUBRULE($.atomicExpression, {
+        ARGS: [returnType],
+        LABEL: "operands",
+      });
+      $.MANY(() => {
+        $.CONSUME(MultiplicativeOperator, { LABEL: "operators" });
+        $.SUBRULE2($.atomicExpression, {
+          ARGS: [returnType],
+          LABEL: "operands",
+        });
       });
     });
 
     $.RULE("booleanExpression", () => {
-      $.AT_LEAST_ONE_SEP({
-        SEP: BooleanOperatorBinary,
-        DEF: () =>
-          $.SUBRULE($.atomicExpression, {
-            LABEL: "operands",
-            ARGS: ["boolean"],
-          }),
+      $.SUBRULE($.atomicExpression, {
+        ARGS: ["boolean"],
+        LABEL: "operands",
+      });
+      $.MANY(() => {
+        $.CONSUME(BooleanOperatorBinary, { LABEL: "operators" });
+        $.SUBRULE2($.atomicExpression, {
+          ARGS: ["boolean"],
+          LABEL: "operands",
+        });
       });
     });
 
@@ -133,18 +177,31 @@ export class ExpressionParser extends CstParser {
           },
           ALT: () => {
             // TODO: this validates the argument types but not the number of arguments?
-            const { args } = this._getFnFromToken(this.LA(0));
+            const fn = this._getFnFromToken(this.LA(0));
             $.CONSUME(LParen);
             let i = 0;
-            $.AT_LEAST_ONE_SEP({
-              SEP: Comma,
-              DEF: () => {
-                $.SUBRULE($.any, {
+            $.OPTION(() => {
+              $.SUBRULE($.any, {
+                LABEL: "arguments",
+                ARGS: [getFunctionArgType(fn, i++)],
+              });
+              $.MANY(() => {
+                $.CONSUME(Comma);
+                $.SUBRULE1($.any, {
                   LABEL: "arguments",
-                  ARGS: [args[i++]],
+                  ARGS: [getFunctionArgType(fn, i++)],
                 });
-              },
+              });
             });
+            // $.AT_LEAST_ONE_SEP({
+            //   SEP: Comma,
+            //   DEF: () => {
+            //     $.SUBRULE($.any, {
+            //       LABEL: "arguments",
+            //       ARGS: [getFunctionArgType(fn, i++)],
+            //     });
+            //   },
+            // });
             $.CONSUME(RParen);
           },
         },
@@ -154,7 +211,7 @@ export class ExpressionParser extends CstParser {
             return args.length === 0;
           },
           ALT: () => {
-            $.OPTION(() => {
+            $.OPTION1(() => {
               $.CONSUME1(LParen);
               $.CONSUME1(RParen);
             });
@@ -164,20 +221,20 @@ export class ExpressionParser extends CstParser {
     });
 
     $.RULE("caseExpression", returnType => {
-      $.CONSUME(Case);
+      $.CONSUME(Case, { LABEL: "functionName" });
       $.CONSUME(LParen);
-      $.SUBRULE($.filter);
+      $.SUBRULE($.boolean, { LABEL: "arguments" });
       $.CONSUME(Comma);
-      $.SUBRULE($.expression, { ARGS: [returnType] });
+      $.SUBRULE($.expression, { LABEL: "arguments", ARGS: [returnType] });
       $.MANY(() => {
         $.CONSUME2(Comma);
-        $.SUBRULE2($.filter);
+        $.SUBRULE2($.boolean, { LABEL: "arguments" });
         $.CONSUME3(Comma);
-        $.SUBRULE3($.expression, { ARGS: [returnType] });
+        $.SUBRULE3($.expression, { LABEL: "arguments", ARGS: [returnType] });
       });
       $.OPTION(() => {
         $.CONSUME4(Comma);
-        $.SUBRULE4($.expression, { LABEL: "default", ARGS: [returnType] });
+        $.SUBRULE4($.expression, { LABEL: "arguments", ARGS: [returnType] });
       });
       $.CONSUME(RParen);
     });
@@ -229,7 +286,12 @@ export class ExpressionParser extends CstParser {
           {
             GATE: () => {
               const fn = this._getFnFromToken(this.LA(1));
-              return fn && fn.type === returnType;
+              return (
+                fn &&
+                // hmmm
+                (isExpressionType(fn.type, returnType) ||
+                  isExpressionType(returnType, fn.type))
+              );
             },
             ALT: () =>
               $.SUBRULE($.functionExpression, {
@@ -239,7 +301,7 @@ export class ExpressionParser extends CstParser {
           },
           // aggregations
           {
-            GATE: () => returnType === "aggregation",
+            GATE: () => isExpressionType("aggregation", returnType),
             ALT: () =>
               $.SUBRULE($.metricExpression, {
                 LABEL: "expression",
@@ -247,21 +309,21 @@ export class ExpressionParser extends CstParser {
           },
           // filters
           {
-            GATE: () => returnType === "boolean",
+            GATE: () => isExpressionType("boolean", returnType),
             ALT: () =>
               $.SUBRULE($.comparisonExpression, {
                 LABEL: "expression",
               }),
           },
           {
-            GATE: () => returnType === "boolean",
+            GATE: () => isExpressionType("boolean", returnType),
             ALT: () =>
               $.SUBRULE($.booleanUnaryExpression, {
                 LABEL: "expression",
               }),
           },
           {
-            GATE: () => returnType === "boolean",
+            GATE: () => isExpressionType("boolean", returnType),
             ALT: () =>
               $.SUBRULE($.segmentExpression, {
                 LABEL: "expression",
@@ -269,7 +331,9 @@ export class ExpressionParser extends CstParser {
           },
           // expressions
           {
-            GATE: () => returnType === "expression",
+            GATE: () =>
+              isExpressionType("string", returnType) ||
+              isExpressionType("number", returnType),
             ALT: () =>
               $.SUBRULE($.caseExpression, {
                 LABEL: "expression",
@@ -277,7 +341,9 @@ export class ExpressionParser extends CstParser {
               }),
           },
           {
-            GATE: () => returnType === "expression",
+            GATE: () =>
+              isExpressionType("string", returnType) ||
+              isExpressionType("number", returnType),
             ALT: () =>
               $.SUBRULE($.dimensionExpression, {
                 LABEL: "expression",
@@ -285,7 +351,7 @@ export class ExpressionParser extends CstParser {
           },
           // number and string literals
           {
-            GATE: () => returnType === "expression",
+            GATE: () => isExpressionType("string", returnType),
             ALT: () =>
               $.SUBRULE($.stringLiteral, {
                 LABEL: "expression",
@@ -293,7 +359,8 @@ export class ExpressionParser extends CstParser {
           },
           {
             GATE: () =>
-              returnType === "expression" || returnType === "aggregation",
+              isExpressionType("number", returnType) ||
+              isExpressionType("aggregation", returnType),
             ALT: () =>
               $.SUBRULE($.numberLiteral, {
                 LABEL: "expression",
@@ -326,32 +393,21 @@ export class ExpressionParser extends CstParser {
   _getFnFromToken(token) {
     if (this.RECORDING_PHASE) {
       // return a fake clause during recording phase
-      return { args: [], type: null };
+      return { name: null, type: null, args: [] };
     } else {
       return CLAUSE_TOKENS.get(token.tokenType);
     }
   }
 
-  // canTokenTypeBeInsertedInRecovery(tokType) {
-  //   // console.log("canTokenTypeBeInsertedInRecovery", tokType);
-  //   switch (tokType) {
-  //     case RParen:
-  //     case LParen:
-  //       return true;
-  //     default:
-  //       return false;
-  //   }
-  // }
+  canTokenTypeBeInsertedInRecovery() {
+    // console.log("insert", this.tokenRecoveryEnabled);
+    return this.tokenRecoveryEnabled;
+  }
 
-  // getTokenToInsert(tokType) {
-  //   // console.log("getTokenToInsert", tokType);
-  //   switch (tokType) {
-  //     case RParen:
-  //       return { image: ")" };
-  //     case LParen:
-  //       return { image: "(" };
-  //   }
-  // }
+  canRecoverWithSingleTokenDeletion() {
+    // console.log("delete", this.tokenRecoveryEnabled);
+    return this.tokenRecoveryEnabled;
+  }
 }
 
 export const parser = new ExpressionParser();
@@ -359,23 +415,27 @@ export const parserWithRecovery = new ExpressionParser({
   recoveryEnabled: true,
 });
 
-export const ExpressionCstVisitor = parser.getBaseCstVisitorConstructor();
+export class ExpressionCstVisitor extends parser.getBaseCstVisitorConstructor() {}
 
 export function parse(
   source,
-  { startRule = "expression", recover = false } = {},
+  { startRule = "expression", recover = false, tokenVector } = {},
 ) {
   const l = recover ? lexerWithRecovery : lexer;
   const p = recover ? parserWithRecovery : parser;
 
   // Lex
-  const { tokens, errors } = l.tokenize(source);
-  if (errors.length > 0) {
-    throw errors;
+  if (!tokenVector) {
+    const { tokens, errors } = l.tokenize(source);
+    if (errors.length > 0) {
+      throw errors;
+    } else {
+      tokenVector = tokens;
+    }
   }
 
   // Parse
-  p.input = tokens;
+  p.input = tokenVector;
   const cst = p[startRule]();
 
   for (const error of p.errors) {
@@ -390,6 +450,11 @@ export function parse(
   }
   if (p.errors.length > 0 && !recover) {
     throw p.errors;
+  }
+
+  if (cst) {
+    // return token vector along with CST
+    cst.tokenVector = tokenVector;
   }
 
   return cst;

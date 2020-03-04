@@ -1,10 +1,11 @@
-import React, { Component } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-import S from "./ExpressionEditorTextfield.css";
 import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
+
+import { isObscured } from "metabase/lib/dom";
 
 import { compile } from "metabase/lib/expressions/compile";
 import { suggest } from "metabase/lib/expressions/suggest";
@@ -25,8 +26,6 @@ import TokenizedInput from "./TokenizedInput";
 
 import { isExpression } from "metabase/lib/expressions";
 
-const MAX_SUGGESTIONS = 30;
-
 const SUGGESTION_SECTION_NAMES = {
   fields: t`Fields`,
   aggregations: t`Aggregations`,
@@ -35,7 +34,7 @@ const SUGGESTION_SECTION_NAMES = {
   other: t`Other`,
 };
 
-export default class ExpressionEditorTextfield extends Component {
+export default class ExpressionEditorTextfield extends React.Component {
   constructor(props, context) {
     super(props, context);
     _.bindAll(
@@ -75,7 +74,7 @@ export default class ExpressionEditorTextfield extends Component {
 
   componentWillReceiveProps(newProps) {
     // we only refresh our state if we had no previous state OR if our expression changed
-    if (!this.state || this.props.expression !== newProps.expression) {
+    if (!this.state || !_.isEqual(this.props.expression, newProps.expression)) {
       const parserInfo = this._getParserInfo(newProps);
       const parsedExpression = newProps.expression;
       const expressionString = format(newProps.expression, parserInfo);
@@ -104,6 +103,14 @@ export default class ExpressionEditorTextfield extends Component {
       this.state.expressionString.length,
       this.state.expressionString.length === 0,
     );
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    if (prevState.highlightedSuggestion !== this.state.highlightedSuggestion) {
+      if (this._selectedRow && isObscured(this._selectedRow)) {
+        this._selectedRow.scrollIntoView({ block: "nearest" });
+      }
+    }
   }
 
   onSuggestionAccepted() {
@@ -246,7 +253,7 @@ export default class ExpressionEditorTextfield extends Component {
       try {
         suggestions = suggest(expressionString, {
           ...parserInfo,
-          index: selectionEnd,
+          targetOffset: selectionEnd,
         });
       } catch (e) {
         console.error("suggest error:", e);
@@ -258,13 +265,7 @@ export default class ExpressionEditorTextfield extends Component {
       expressionString,
       parsedExpression,
       suggestions,
-      showAll: false,
     });
-  }
-
-  onShowMoreMouseDown(e) {
-    e.preventDefault();
-    this.setState({ showAll: true });
   }
 
   render() {
@@ -274,24 +275,35 @@ export default class ExpressionEditorTextfield extends Component {
     }
 
     const { placeholder, className, style } = this.props;
-    const { suggestions, showAll } = this.state;
+    const { expressionString, suggestions } = this.state;
+
+    const inputClassName = cx("input text-bold text-monospace", {
+      "text-dark": expressionString,
+      "text-light": !expressionString,
+    });
+    const inputStyle = { fontSize: 12 };
 
     return (
-      <div className={cx(S.editor, "relative")}>
+      <div className={cx("relative my1")}>
+        <div
+          className={cx(inputClassName, "absolute top left")}
+          style={{
+            ...inputStyle,
+            pointerEvents: "none",
+            borderColor: "transparent",
+          }}
+        >
+          {"= "}
+        </div>
         <TokenizedInput
           ref="input"
-          style={style}
-          className={cx(
-            S.input,
-            "my1 input block full",
-            {
-              "border-error": errorMessage,
-            },
-            className,
-          )}
           type="text"
+          className={cx(inputClassName, {
+            "border-error": errorMessage,
+          })}
+          style={{ ...inputStyle, paddingLeft: 26 }}
           placeholder={placeholder}
-          value={this.state.expressionString}
+          value={expressionString}
           onChange={e => this.onExpressionChange(e.target.value)}
           onKeyDown={this.onInputKeyDown}
           onBlur={this.onInputBlur}
@@ -300,13 +312,6 @@ export default class ExpressionEditorTextfield extends Component {
           autoFocus
           parserInfo={this._getParserInfo()}
         />
-        <div
-          className={cx(S.equalSign, "spread flex align-center h4 text-dark", {
-            [S.placeholder]: !this.state.expressionString,
-          })}
-        >
-          =
-        </div>
         {suggestions.length ? (
           <Popover
             className="pb1 not-rounded border-dark"
@@ -315,25 +320,24 @@ export default class ExpressionEditorTextfield extends Component {
               attachment: "top left",
               targetAttachment: "bottom left",
             }}
+            sizeToFit
           >
-            <ul style={{ minWidth: 150, overflow: "hidden" }}>
-              {(showAll
-                ? suggestions
-                : suggestions.slice(0, MAX_SUGGESTIONS)
-              ).map((suggestion, i) =>
+            <ul style={{ minWidth: 150, overflowY: "scroll" }}>
+              {suggestions.map((suggestion, i) =>
                 // insert section title. assumes they're sorted by type
                 [
                   (i === 0 || suggestion.type !== suggestions[i - 1].type) && (
-                    <li
-                      ref={"header-" + i}
-                      className="mx2 h6 text-uppercase text-bold text-medium py1 pt2"
-                    >
+                    <li className="mx2 h6 text-uppercase text-bold text-medium py1 pt2">
                       {SUGGESTION_SECTION_NAMES[suggestion.type] ||
                         suggestion.type}
                     </li>
                   ),
                   <li
-                    ref={i}
+                    ref={r => {
+                      if (i === this.state.highlightedSuggestion) {
+                        this._selectedRow = r;
+                      }
+                    }}
                     style={{ paddingTop: 5, paddingBottom: 5 }}
                     className={cx(
                       "px2 cursor-pointer text-white-hover bg-brand-hover",
@@ -365,15 +369,6 @@ export default class ExpressionEditorTextfield extends Component {
                     )}
                   </li>,
                 ],
-              )}
-              {!showAll && suggestions.length >= MAX_SUGGESTIONS && (
-                <li
-                  style={{ paddingTop: 5, paddingBottom: 5 }}
-                  onMouseDownCapture={e => this.onShowMoreMouseDown(e)}
-                  className="px2 text-italic text-medium cursor-pointer text-brand-hover"
-                >
-                  and {suggestions.length - MAX_SUGGESTIONS} more
-                </li>
               )}
             </ul>
           </Popover>

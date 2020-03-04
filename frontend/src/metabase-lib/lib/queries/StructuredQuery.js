@@ -683,8 +683,8 @@ export default class StructuredQuery extends AtomicQuery {
     return aggregation && aggregation.displayName();
   }
 
-  formatExpression(expression) {
-    return formatExpression(expression, { query: this });
+  formatExpression(expression, options = {}) {
+    return formatExpression(expression, { ...options, query: this });
   }
 
   /**

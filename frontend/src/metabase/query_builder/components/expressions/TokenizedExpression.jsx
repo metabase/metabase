@@ -17,7 +17,6 @@ export default class TokenizedExpression extends React.Component {
       const parsed = parse(source, parserInfo);
       return renderSyntaxTree(parsed);
     } catch (e) {
-      console.warn("parse error", e);
       return <span className="Expression-node">{source}</span>;
     }
   }
@@ -26,8 +25,7 @@ export default class TokenizedExpression extends React.Component {
 const renderSyntaxTree = (node, index) => (
   <span
     key={index}
-    style={{ fontSize: "12px" }}
-    className={cx("Expression-node text-monospace", "Expression-" + node.type, {
+    className={cx("Expression-node", "Expression-" + node.type, {
       "Expression-tokenized": node.tokenized,
     })}
   >

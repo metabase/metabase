@@ -41,6 +41,7 @@ const token = (...args) => {
       text: token.image,
       start: token.startOffset,
       end: token.endOffset,
+      _token: token,
     }
   );
 };
@@ -55,19 +56,27 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
   any(ctx) {
     return this.visit(ctx.expression);
   }
-
   expression(ctx) {
-    return this.visit(ctx.additionExpression);
+    return this.visit(ctx.expression);
   }
   aggregation(ctx) {
-    return this.visit(ctx.additionExpression);
+    return this.visit(ctx.expression);
+  }
+  number(ctx) {
+    return this.visit(ctx.expression);
+  }
+  string(ctx) {
+    return this.visit(ctx.expression);
+  }
+  boolean(ctx) {
+    return this.visit(ctx.expression);
   }
 
   additionExpression(ctx) {
-    return this._arithmeticExpression(ctx.operands, ctx.AdditiveOperator);
+    return this._arithmeticExpression(ctx.operands, ctx.operators);
   }
   multiplicationExpression(ctx) {
-    return this._arithmeticExpression(ctx.operands, ctx.MultiplicativeOperator);
+    return this._arithmeticExpression(ctx.operands, ctx.operators);
   }
 
   _arithmeticExpression(operands = [], operators = []) {
@@ -116,24 +125,7 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
   }
 
   caseExpression(ctx) {
-    const parts = [];
-    parts.push(token(ctx.case));
-    parts.push(token(ctx.LParen));
-    const commas = [...ctx.Comma];
-    for (let i = 0; i < ctx.filter.length; i++) {
-      if (i > 0) {
-        parts.push(token(commas.shift()));
-      }
-      parts.push(this.visit(ctx.filter[i]));
-      parts.push(token(commas.shift()));
-      parts.push(this.visit(ctx.expression[i]));
-    }
-    if (commas.length > 0) {
-      parts.push(token(commas.shift()));
-      parts.push(this.visit(ctx.default));
-    }
-    parts.push(token(ctx.RParen));
-    return syntax("case", ...parts);
+    return this.functionExpression(ctx);
   }
 
   metricExpression(ctx) {
@@ -156,10 +148,10 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
     return syntax("identifier", token(ctx.IdentifierString));
   }
   stringLiteral(ctx) {
-    return syntax("string", token(ctx.StringLiteral));
+    return syntax("string-literal", token(ctx.StringLiteral));
   }
   numberLiteral(ctx) {
-    return syntax("number", token(ctx.Minus), token(ctx.NumberLiteral));
+    return syntax("number-literal", token(ctx.Minus), token(ctx.NumberLiteral));
   }
   atomicExpression(ctx) {
     return this.visit(ctx.expression);
@@ -174,12 +166,8 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
   }
 
   // FILTERS
-
-  filter(ctx) {
-    return this.visit(ctx.booleanExpression);
-  }
   booleanExpression(ctx) {
-    return this._arithmeticExpression(ctx.operands, ctx.BooleanOperatorBinary);
+    return this._arithmeticExpression(ctx.operands, ctx.operators);
   }
   comparisonExpression(ctx) {
     return syntax(
@@ -196,8 +184,11 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
 
 // DEFAULT PARSER
 export function defaultParser(source, options) {
-  const visitor = new ExpressionSyntaxVisitor(options);
   const cst = parserParse(source, options);
+  const visitor = new ExpressionSyntaxVisitor({
+    tokenVector: cst.tokenVector,
+    ...options,
+  });
   const visited = cst && visitor.visit(cst);
   return (
     visited &&
@@ -317,7 +308,11 @@ function recoveredWhitespaceToken(text, extra = {}) {
 }
 
 function recoveredToken(text, extra = {}) {
-  return { type: "recovered", ...extra, text };
+  return {
+    type: /^\s+$/.test(text) ? "whitespace" : "recovered",
+    ...extra,
+    text,
+  };
 }
 
 // NOTE: could we use token groups instead to collect whitespace tokens?

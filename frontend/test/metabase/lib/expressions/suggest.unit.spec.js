@@ -1,8 +1,15 @@
-import { suggest } from "metabase/lib/expressions/suggest";
+import {
+  suggest as suggest_,
+  getContext as getContext_,
+} from "metabase/lib/expressions/suggest";
 
 import _ from "underscore";
 
-import { aggregationOpts, expressionOpts } from "./__support__/expressions";
+import {
+  aggregationOpts,
+  expressionOpts,
+  filterOpts,
+} from "./__support__/expressions";
 import { ORDERS, REVIEWS } from "__support__/sample_dataset_fixture";
 
 const AGGREGATION_FUNCTIONS = [
@@ -16,9 +23,7 @@ const AGGREGATION_FUNCTIONS = [
   { type: "aggregations", text: "StandardDeviation(" },
   { type: "aggregations", text: "Sum(" },
 ];
-const EXPRESSION_FUNCTIONS = [
-  { text: "case(", type: "functions" },
-  { text: "coalesce(", type: "functions" },
+const STRING_FUNCTIONS = [
   { text: "concat(", type: "functions" },
   { text: "extract(", type: "functions" },
   { text: "lower(", type: "functions" },
@@ -28,6 +33,10 @@ const EXPRESSION_FUNCTIONS = [
   { text: "substring(", type: "functions" },
   { text: "trim(", type: "functions" },
   { text: "upper(", type: "functions" },
+];
+const EXPRESSION_FUNCTIONS = [
+  { text: "case(", type: "functions" },
+  { text: "coalesce(", type: "functions" },
 ];
 const FILTER_FUNCTIONS = [
   { text: "between(", type: "functions" },
@@ -73,6 +82,11 @@ const FIELDS_CUSTOM = [
   { type: "fields", text: "C " },
 ];
 
+const FIELDS_CUSTOM_NON_NUMERIC = [
+  { type: "fields", text: "date " },
+  { type: "fields", text: "text " },
+];
+
 // custom metadata defined in __support__/sample_dataset_fixture
 const METRICS_ORDERS = [{ type: "metrics", text: '"Total Order Value"' }];
 const SEGMENTS_ORDERS = [{ text: '"Expensive Things"', type: "segments" }];
@@ -109,76 +123,61 @@ const FIELDS_ORDERS = [
 
 describe("metabase/lib/expression/suggest", () => {
   describe("suggest()", () => {
-    it("should suggest aggregations and metrics after an operator", () => {
-      expect(cleanSuggestions(suggest("1 + ", aggregationOpts))).toEqual([
-        ...AGGREGATION_FUNCTIONS,
-        ...METRICS_CUSTOM,
-        OPEN_PAREN,
-      ]);
-    });
-    it("should suggest fields after an operator", () => {
-      expect(cleanSuggestions(suggest("1 + ", expressionOpts))).toEqual([
-        ...FIELDS_CUSTOM,
-        ...EXPRESSION_FUNCTIONS,
-        OPEN_PAREN,
-      ]);
-    });
-    it("should suggest partial matches in aggregation", () => {
-      expect(cleanSuggestions(suggest("1 + C", aggregationOpts))).toEqual([
-        { type: "aggregations", text: "Count " },
-        { type: "aggregations", text: "CumulativeCount " },
-        { type: "aggregations", text: "CumulativeSum(" },
-      ]);
-    });
-    it("should suggest partial matches in expression", () => {
-      expect(cleanSuggestions(suggest("1 + C", expressionOpts))).toEqual([
-        { type: "fields", text: '"count" ' },
-        { type: "fields", text: "C " },
-        { text: "case(", type: "functions" },
-        { text: "coalesce(", type: "functions" },
-        { text: "concat(", type: "functions" },
-      ]);
-    });
-    it("should suggest partial matches in unterminated quoted string", () => {
-      expect(cleanSuggestions(suggest('1 + "C', expressionOpts))).toEqual([
-        { type: "fields", text: '"count" ' },
-        { type: "fields", text: "C " },
-      ]);
-    });
-    it("should suggest partial matches after an aggregation", () => {
-      expect(cleanSuggestions(suggest("average(c", expressionOpts))).toEqual([
-        { type: "fields", text: '"count" ' },
-        { type: "fields", text: "C " },
-        { text: "case(", type: "functions" },
-        { text: "coalesce(", type: "functions" },
-        { text: "concat(", type: "functions" },
-      ]);
-    });
-    it("should suggest foreign fields", () => {
-      expect(
-        cleanSuggestions(
+    function suggest(...args) {
+      return cleanSuggestions(suggest_(...args));
+    }
+
+    describe("expression", () => {
+      it("should suggest expression functions, and fields in an expression", () => {
+        expect(suggest("", expressionOpts)).toEqual([
+          ...FIELDS_CUSTOM,
+          ...FIELDS_CUSTOM_NON_NUMERIC,
+          { type: "functions", text: "coalesce(" },
+          ...STRING_FUNCTIONS,
+          OPEN_PAREN,
+        ]);
+      });
+
+      it("should suggest numeric fields after an aritmetic", () => {
+        expect(suggest("1 + ", expressionOpts)).toEqual([
+          ...FIELDS_CUSTOM,
+          OPEN_PAREN,
+        ]);
+      });
+      it("should suggest partial matches in expression", () => {
+        expect(suggest("1 + C", expressionOpts)).toEqual([
+          { type: "fields", text: '"count" ' },
+          { type: "fields", text: "C " },
+        ]);
+      });
+      it("should suggest partial matches in unterminated quoted string", () => {
+        expect(suggest('1 + "C', expressionOpts)).toEqual([
+          { type: "fields", text: '"count" ' },
+          { type: "fields", text: "C " },
+        ]);
+      });
+      it("should suggest foreign fields", () => {
+        expect(
           suggest("User", { query: ORDERS.query(), startRule: "expression" }),
-        ),
-      ).toEqual([
-        { text: '"User ID" ', type: "fields" },
-        { text: '"User → Address" ', type: "fields" },
-        { text: '"User → Birth Date" ', type: "fields" },
-        { text: '"User → City" ', type: "fields" },
-        { text: '"User → Created At" ', type: "fields" },
-        { text: '"User → Email" ', type: "fields" },
-        { text: '"User → ID" ', type: "fields" },
-        { text: '"User → Latitude" ', type: "fields" },
-        { text: '"User → Longitude" ', type: "fields" },
-        { text: '"User → Name" ', type: "fields" },
-        { text: '"User → Password" ', type: "fields" },
-        { text: '"User → Source" ', type: "fields" },
-        { text: '"User → State" ', type: "fields" },
-        { text: '"User → Zip" ', type: "fields" },
-      ]);
-    });
-    it("should suggest joined fields", () => {
-      expect(
-        cleanSuggestions(
+        ).toEqual([
+          { text: '"User ID" ', type: "fields" },
+          { text: '"User → Address" ', type: "fields" },
+          { text: '"User → Birth Date" ', type: "fields" },
+          { text: '"User → City" ', type: "fields" },
+          { text: '"User → Created At" ', type: "fields" },
+          { text: '"User → Email" ', type: "fields" },
+          { text: '"User → ID" ', type: "fields" },
+          { text: '"User → Latitude" ', type: "fields" },
+          { text: '"User → Longitude" ', type: "fields" },
+          { text: '"User → Name" ', type: "fields" },
+          { text: '"User → Password" ', type: "fields" },
+          { text: '"User → Source" ', type: "fields" },
+          { text: '"User → State" ', type: "fields" },
+          { text: '"User → Zip" ', type: "fields" },
+        ]);
+      });
+      it("should suggest joined fields", () => {
+        expect(
           suggest("Foo", {
             query: ORDERS.query().join({
               alias: "Foo",
@@ -186,19 +185,17 @@ describe("metabase/lib/expression/suggest", () => {
             }),
             startRule: "expression",
           }),
-        ),
-      ).toEqual([
-        { text: '"Foo → Body" ', type: "fields" },
-        { text: '"Foo → Created At" ', type: "fields" },
-        { text: '"Foo → ID" ', type: "fields" },
-        { text: '"Foo → Product ID" ', type: "fields" },
-        { text: '"Foo → Rating" ', type: "fields" },
-        { text: '"Foo → Reviewer" ', type: "fields" },
-      ]);
-    });
-    it("should suggest nested query fields", () => {
-      expect(
-        cleanSuggestions(
+        ).toEqual([
+          { text: '"Foo → Body" ', type: "fields" },
+          { text: '"Foo → Created At" ', type: "fields" },
+          { text: '"Foo → ID" ', type: "fields" },
+          { text: '"Foo → Product ID" ', type: "fields" },
+          { text: '"Foo → Rating" ', type: "fields" },
+          { text: '"Foo → Reviewer" ', type: "fields" },
+        ]);
+      });
+      it("should suggest nested query fields", () => {
+        expect(
           suggest("", {
             query: ORDERS.query()
               .aggregate(["count"])
@@ -206,83 +203,231 @@ describe("metabase/lib/expression/suggest", () => {
               .nest(),
             startRule: "expression",
           }),
-        ),
-      ).toEqual([
-        { text: '"Count" ', type: "fields" },
-        { text: "Total ", type: "fields" },
-        ...EXPRESSION_FUNCTIONS,
-        OPEN_PAREN,
-      ]);
+        ).toEqual([
+          { text: '"Count" ', type: "fields" },
+          { text: "Total ", type: "fields" },
+          { text: "coalesce(", type: "functions" },
+          ...STRING_FUNCTIONS,
+          OPEN_PAREN,
+        ]);
+      });
+      it("should suggest numeric operators after field in an expression", () => {
+        expect(
+          suggest("Total ", {
+            query: ORDERS.query(),
+            startRule: "expression",
+          }),
+        ).toEqual([...EXPRESSION_OPERATORS]);
+      });
+
+      xit("should suggest boolean options after case(", () => {
+        expect(
+          suggest("case(", {
+            query: ORDERS.query(),
+            startRule: "expression",
+          }),
+        ).toEqual([...SEGMENTS_ORDERS]);
+      });
     });
 
-    it("should suggest numeric operators after field in an expression", () => {
-      expect(
-        cleanSuggestions(
-          suggest("Total ", { query: ORDERS.query(), startRule: "expression" }),
-        ),
-      ).toEqual([...EXPRESSION_OPERATORS]);
-    });
+    describe("aggregation", () => {
+      it("should suggest partial matches after an aggregation", () => {
+        expect(suggest("average(c", aggregationOpts)).toEqual([
+          { type: "fields", text: '"count" ' },
+          { type: "fields", text: "C " },
+          // { text: "case(", type: "functions" },
+          // { text: "coalesce(", type: "functions" },
+        ]);
+      });
+      it("should suggest aggregations and metrics after an operator", () => {
+        expect(suggest("1 + ", aggregationOpts)).toEqual([
+          ...AGGREGATION_FUNCTIONS,
+          ...METRICS_CUSTOM,
+          OPEN_PAREN,
+        ]);
+      });
+      it("should suggest fields after an aggregation without closing paren", () => {
+        expect(suggest("Average(", aggregationOpts)).toEqual([
+          ...FIELDS_CUSTOM,
+          OPEN_PAREN,
+          CLOSE_PAREN,
+        ]);
+      });
+      it("should suggest fields after an aggregation with closing paren", () => {
+        expect(
+          suggest("Average()", { ...aggregationOpts, targetOffset: 8 }),
+        ).toEqual([...FIELDS_CUSTOM, OPEN_PAREN, CLOSE_PAREN]);
+      });
+      it("should suggest partial matches in aggregation", () => {
+        expect(suggest("1 + C", aggregationOpts)).toEqual([
+          { type: "aggregations", text: "Count " },
+          { type: "aggregations", text: "CumulativeCount " },
+          { type: "aggregations", text: "CumulativeSum(" },
+        ]);
+      });
 
-    it("should suggest comparison operators after field in a filter", () => {
-      expect(
-        cleanSuggestions(
-          suggest("Total ", { query: ORDERS.query(), startRule: "filter" }),
-        ),
-      ).toEqual([...FILTER_OPERATORS, ...BINARY_BOOLEAN_OPERATORS]);
-    });
-
-    it("should suggest filter functions, fields, and segments in a filter", () => {
-      expect(
-        cleanSuggestions(
-          suggest("", { query: ORDERS.query(), startRule: "filter" }),
-        ),
-      ).toEqual([
-        ...FILTER_FUNCTIONS,
-        ...UNARY_BOOLEAN_OPERATORS,
-        OPEN_PAREN,
-        ...SEGMENTS_ORDERS,
-      ]);
-    });
-
-    it("should suggest expression functions, and fields in an expression", () => {
-      expect(
-        cleanSuggestions(
-          suggest("", { query: ORDERS.query(), startRule: "expression" }),
-        ),
-      ).toEqual([...FIELDS_ORDERS, ...EXPRESSION_FUNCTIONS, OPEN_PAREN]);
-    });
-
-    it("should suggest aggregations and metrics in an aggregation", () => {
-      expect(
-        cleanSuggestions(
+      it("should suggest aggregations and metrics in an aggregation", () => {
+        expect(
           suggest("", { query: ORDERS.query(), startRule: "aggregation" }),
-        ),
-      ).toEqual([...AGGREGATION_FUNCTIONS, ...METRICS_ORDERS, OPEN_PAREN]);
-    });
+        ).toEqual([...AGGREGATION_FUNCTIONS, ...METRICS_ORDERS, OPEN_PAREN]);
+      });
 
-    it("should suggest expression operators after aggregation argument", () => {
-      expect(
-        cleanSuggestions(
+      it("should suggest expression operators after aggregation argument", () => {
+        expect(
           suggest("Sum(Total ", {
             query: ORDERS.query(),
             startRule: "aggregation",
           }),
-        ),
-      ).toEqual([...EXPRESSION_OPERATORS, CLOSE_PAREN]);
+        ).toEqual([...EXPRESSION_OPERATORS, CLOSE_PAREN]);
+      });
     });
 
-    it("should suggest comma after first argument if there's more than one", () => {
-      expect(
-        cleanSuggestions(
+    describe("filter", () => {
+      it("should suggest comparison operators after field in a filter", () => {
+        expect(
+          suggest("Total ", { query: ORDERS.query(), startRule: "boolean" }),
+        ).toEqual([...FILTER_OPERATORS, ...BINARY_BOOLEAN_OPERATORS]);
+      });
+
+      it("should suggest filter functions, fields, and segments in a filter", () => {
+        expect(
+          suggest("", { query: ORDERS.query(), startRule: "boolean" }),
+        ).toEqual([
+          ...FILTER_FUNCTIONS,
+          ...UNARY_BOOLEAN_OPERATORS,
+          OPEN_PAREN,
+          ...SEGMENTS_ORDERS,
+        ]);
+      });
+
+      it("should not suggest comma after first argument if there's only one argument", () => {
+        expect(
+          suggest("trim(Total ", {
+            query: ORDERS.query(),
+            startRule: "boolean",
+          }).filter(({ text }) => text === ", "),
+        ).toHaveLength(0);
+      });
+      it("should suggest comma after first argument if there's more than one argument", () => {
+        expect(
           suggest("contains(Total ", {
             query: ORDERS.query(),
-            startRule: "filter",
-          }),
-        ),
-      ).toEqual([...EXPRESSION_OPERATORS, CLOSE_PAREN, COMMA]);
+            startRule: "boolean",
+          }).filter(({ text }) => text === ", "),
+        ).toHaveLength(1);
+      });
+    });
+  });
+
+  describe("getContext", () => {
+    function getContext(...args) {
+      return cleanContext(getContext_(...args));
+    }
+
+    describe("aggregation", () => {
+      it("should get operator context", () => {
+        expect(getContext("1 +", aggregationOpts)).toEqual({
+          clause: "+",
+          expectedType: "aggregation",
+          index: 0,
+        });
+      });
+      it("should get operator context with trailing whitespace", () => {
+        expect(getContext("1 + ", aggregationOpts)).toEqual({
+          clause: "+",
+          expectedType: "aggregation",
+          index: 0,
+        });
+      });
+      it("should get aggregation context", () => {
+        expect(getContext("Average(", aggregationOpts)).toEqual({
+          clause: "avg",
+          expectedType: "number",
+          index: 0,
+        });
+      });
+      it("should get aggregation context with closing paren", () => {
+        expect(
+          getContext("Average()", { ...aggregationOpts, targetOffset: 8 }),
+        ).toEqual({
+          clause: "avg",
+          expectedType: "number",
+          index: 0,
+        });
+      });
+      it("should get sum-where first argument", () => {
+        expect(getContext("1 + SumIf(", aggregationOpts)).toEqual({
+          clause: "sum-where",
+          expectedType: "number",
+          index: 0,
+        });
+      });
+      it("should get sum-where second argument", () => {
+        expect(getContext("1 + SumIf(Total = 10,", aggregationOpts)).toEqual({
+          clause: "sum-where",
+          expectedType: "boolean",
+          index: 1,
+        });
+      });
+      it("should get operator context inside aggregation", () => {
+        expect(getContext("1 + Sum(2 /", aggregationOpts)).toEqual({
+          clause: "/",
+          expectedType: "number",
+          index: 0,
+        });
+      });
+    });
+    describe("expression", () => {
+      it("should get operator context", () => {
+        expect(getContext("1 +", expressionOpts)).toEqual({
+          clause: "+",
+          expectedType: "number",
+          index: 0,
+        });
+      });
+      it("should get function context", () => {
+        expect(getContext("trim(", expressionOpts)).toEqual({
+          clause: "trim",
+          expectedType: "string",
+          index: 0,
+        });
+      });
+      xit("should get boolean for first argument of case", () => {
+        // it's difficult to type "case" correctly using the current system because the form is:
+        //    case([PREDICATE, EXPRESSION]+ [, ELSE-EXPRESSION]?)
+        expect(getContext("case(", expressionOpts)).toEqual({
+          clause: "case",
+          expectedType: "boolean",
+          index: 0,
+        });
+      });
+      it("should get expression for second argument of case", () => {
+        expect(getContext("case(Foo,", expressionOpts)).toEqual({
+          clause: "case",
+          expectedType: "expression",
+          index: 1,
+        });
+      });
+    });
+    describe("filter", () => {
+      it("should get function context", () => {
+        expect(getContext("between(", filterOpts)).toEqual({
+          clause: "between",
+          expectedType: "expression",
+          index: 0,
+        });
+      });
     });
   });
 });
+
+function cleanContext(context) {
+  delete context.clauseToken;
+  if (context.clause) {
+    context.clause = context.clause.name;
+  }
+  return context;
+}
 
 function cleanSuggestions(suggestions) {
   return _.chain(suggestions)

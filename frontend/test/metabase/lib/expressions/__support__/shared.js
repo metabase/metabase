@@ -64,6 +64,8 @@ const expression = [
     ],
     "case statement with default",
   ],
+  // should not compile:
+  // ["'Hello' + 1", null, "adding a string to a number"],
 ];
 
 const aggregation = [
@@ -80,19 +82,24 @@ const aggregation = [
   // ['"Total Order Value" * 2', ["*", metric, 2], "metric with math"],
   ["Share(Total > 50)", ["share", [">", total, 50]], "share aggregation"],
   [
-    "CountWhere(Total > 50)",
+    "CountIf(Total > 50)",
     ["count-where", [">", total, 50]],
     "count-where aggregation",
   ],
   [
-    "SumWhere(Total, Total > 50)",
+    "SumIf(Total, Total > 50)",
     ["sum-where", total, [">", total, 50]],
     "sum-where aggregation",
+  ],
+  [
+    "Average(coalesce(Total, Tax))",
+    ["avg", ["coalesce", total, tax]],
+    "coalesce inside an aggregation",
   ],
   // should not compile:
   ["Sum(Count)", undefined, "aggregation nested inside another aggregation"],
   ["Count(Total)", undefined, "invalid count arguments"],
-  ["SumWhere(Total > 50, Total)", undefined, "invalid sum-where arguments"],
+  ["SumIf(Total > 50, Total)", undefined, "invalid sum-where arguments"],
   ["Count + Share((", undefined, "invalid share"],
 ];
 
@@ -114,5 +121,5 @@ const filter = [
 export default [
   ["expression", expression, { startRule: "expression", query }],
   ["aggregation", aggregation, { startRule: "aggregation", query }],
-  ["filter", filter, { startRule: "filter", query }],
+  ["filter", filter, { startRule: "boolean", query }],
 ];

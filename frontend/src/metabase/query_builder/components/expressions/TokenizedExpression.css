@@ -1,89 +1,45 @@
-.Expression-node {
-  /* this is required to get top/bottom padding to work, but breaks some keyboard shortcuts */
-  /*display: inline-block;*/
-  border-radius: 3px;
-  font-size: 14px;
-  font-weight: bold;
-}
-
-.Expression-open-quote,
-.Expression-close-quote {
-  opacity: 0.5;
-}
-
-/* .Expression-aggregation-name {
-  padding: 0 2px;
-} */
-
 /* DIMENSION */
-.Expression-dimension .Expression-identifier {
-  /* margin: 1px 1px;
-  padding: 1px 3px;
-  border: 1px solid var(--color-brand);
-  background-color: color(var(--color-brand) alpha(30%)); */
+.Expression-dimension > .Expression-identifier {
   color: var(--color-brand);
-}
-.Expression-selected.Expression-dimension .Expression-identifier {
-  color: white;
-  background-color: var(--color-brand);
 }
 
 /* METRIC */
-.Expression-metric .Expression-identifier {
-  /* margin: 1px 1px;
-  padding: 1px 3px;
-  border: 1px solid var(--color-accent1);
-  background-color: color(var(--color-accent1) alpha(30%)); */
+.Expression-metric > .Expression-identifier {
   color: var(--color-accent1);
-}
-.Expression-metric.Expression-selected .Expression-identifier {
-  color: white;
-  background-color: var(--color-accent1);
 }
 
 /* SEGMENT */
-.Expression-segment .Expression-identifier {
-  /* margin: 1px 1px;
-  padding: 1px 3px;
-  border: 1px solid var(--color-accent2);
-  background-color: color(var(--color-accent2) alpha(30%)); */
+.Expression-segment > .Expression-identifier {
   color: var(--color-accent2);
-}
-.Expression-segment.Expression-selected .Expression-identifier {
-  color: white;
-  background-color: var(--color-accent2);
 }
 
 /* UNKNOWN IDENTIFIER */
-/* used in fallbackParser */
-.Expression-unknown .Expression-identifier {
+.Expression-unknown > .Expression-identifier {
   color: var(--color-text-medium);
 }
 
 /* STRING LITERAL */
-.Expression-string {
+.Expression-string-literal {
   color: var(--color-accent5);
 }
 
 /* AGGREGATION */
-.Expression-aggregation {
-  /* padding: 3px 3px;
-  border: 1px solid var(--color-accent1);
-  background-color: var(--color-bg-white); */
-}
-.Expression-aggregation.Expression-selected {
-  color: white;
-  background-color: var(--color-accent1);
-}
-
 .Expression-aggregation > .Expression-function-name,
 .Expression-aggregation > .Expression-group > .Expression-open-paren,
 .Expression-aggregation > .Expression-group > .Expression-close-paren {
   color: var(--color-accent1);
 }
 
+/* BOOLEAN (FILTER) FUNCTION */
 .Expression-boolean > .Expression-function-name,
 .Expression-boolean > .Expression-group > .Expression-open-paren,
 .Expression-boolean > .Expression-group > .Expression-close-paren {
   color: var(--color-accent2);
+}
+
+/* SELECTED (currently unused) */
+
+.Expression-selected > .Expression-identifier {
+  color: white;
+  background-color: currentColor;
 }

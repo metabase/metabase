@@ -14,18 +14,24 @@ import {
 } from "./config";
 
 export const CLAUSE_TOKENS = new Map();
-function createClauseToken(clause, categories = []) {
-  const { args, type, name, tokenName = name } = MBQL_CLAUSES[clause];
-  if (!name) {
-    throw new Error(`MBQL_CLAUSE: ${clause} is missing a name`);
+function createClauseToken(name, categories = []) {
+  const clause = MBQL_CLAUSES[name];
+  if (!clause) {
+    throw new Error(`MBQL_CLAUSE: ${clause} is missing`);
+  }
+  const { displayName, tokenName = displayName } = clause;
+  if (!tokenName) {
+    throw new Error(
+      `MBQL_CLAUSE: ${clause} is missing a tokenName or displayName`,
+    );
   }
   const token = createToken({
     name: tokenName,
-    pattern: new RegExp(escape(name), "i"),
+    pattern: new RegExp(escape(displayName), "i"),
     categories: categories,
-    longer_alt: Identifier.PATTERN.test(name) ? Identifier : null,
+    longer_alt: Identifier.PATTERN.test(displayName) ? Identifier : null,
   });
-  CLAUSE_TOKENS.set(token, { clause, args, type });
+  CLAUSE_TOKENS.set(token, clause);
   return token;
 }
 
@@ -171,10 +177,10 @@ export const RParen = createToken({
 
 // QUOTED STRINGS
 
-const getQuoteCategories = quote => {
-  return QUOTES[quote] === "literal"
+const getQuoteCategories = character => {
+  return QUOTES.characters[character] === "literal"
     ? [StringLiteral]
-    : QUOTES[quote] === "identifier"
+    : QUOTES.characters[character] === "identifier"
     ? [IdentifierString]
     : [];
 };

@@ -141,7 +141,7 @@ export default class ViewFilterPopover extends Component {
           title={CUSTOM_SECTION_NAME}
           query={query}
           expression={filter && [...filter]}
-          startRule="filter"
+          startRule="boolean"
           isValid={filter && filter.isValid()}
           onChange={this.handleFilterChange}
           onBack={() => this.setState({ editingFilter: false })}

@@ -2,23 +2,20 @@ export * from "./config";
 
 import _ from "underscore";
 import Dimension from "metabase-lib/lib/Dimension";
-import {
-  OPERATORS,
-  FUNCTIONS,
-  getMBQLName,
-  LITERAL_QUOTE_DEFAULT,
-  IDENTIFIER_QUOTE_DEFAULT,
-  IDENTIFIER_ALWAYS_QUOTE,
-} from "./config";
+import { OPERATORS, FUNCTIONS, QUOTES, getMBQLName } from "./config";
 
 // IDENTIFIERS
 
 // can be double-quoted, but are not by default unless they have non-word characters or are reserved
-export function formatIdentifier(name) {
-  if (!IDENTIFIER_ALWAYS_QUOTE && /^\w+$/.test(name) && !isReservedWord(name)) {
+export function formatIdentifier(name, { quotes = QUOTES } = {}) {
+  if (
+    !quotes.identifierAlwaysQuoted &&
+    /^\w+$/.test(name) &&
+    !isReservedWord(name)
+  ) {
     return name;
   }
-  return quoteString(name, IDENTIFIER_QUOTE_DEFAULT);
+  return quoteString(name, quotes.identifierQuoteDefault);
 }
 
 export function parseIdentifierString(identifierString) {
@@ -31,7 +28,7 @@ export function isReservedWord(word) {
 
 // METRICS
 
-export function parseMetric(metricName, query) {
+export function parseMetric(metricName, { query }) {
   return query
     .table()
     .metrics.find(
@@ -39,13 +36,13 @@ export function parseMetric(metricName, query) {
     );
 }
 
-export function formatMetricName(metric) {
-  return formatIdentifier(metric.name);
+export function formatMetricName(metric, options) {
+  return formatIdentifier(metric.name, options);
 }
 
 // SEGMENTS
 
-export function parseSegment(segmentName, query) {
+export function parseSegment(segmentName, { query }) {
   return query
     .table()
     .segments.find(
@@ -53,13 +50,13 @@ export function parseSegment(segmentName, query) {
     );
 }
 
-export function formatSegmentName(segment) {
-  return formatIdentifier(segment.name);
+export function formatSegmentName(segment, options) {
+  return formatIdentifier(segment.name, options);
 }
 
 // DIMENSIONS
 
-export function parseDimension(name, query) {
+export function parseDimension(name, { query }) {
   // FIXME: this is pretty inefficient, create a lookup table?
   return query
     .dimensionOptions()
@@ -77,35 +74,38 @@ export function getDimensionName(dimension) {
 
 // STRING LITERALS
 
-export function formatStringLiteral(mbqlString) {
-  return quoteString(mbqlString, LITERAL_QUOTE_DEFAULT);
+export function formatStringLiteral(mbqlString, { quotes = QUOTES } = {}) {
+  return quoteString(mbqlString, quotes.literalQuoteDefault);
 }
 export function parseStringLiteral(expressionString) {
   return unquoteString(expressionString);
 }
 
-function quoteString(string, quote) {
-  if (quote === '"') {
+function quoteString(string, character) {
+  if (character === '"') {
     return JSON.stringify(string);
-  } else if (quote === "'") {
+  } else if (character === "'") {
     return swapQuotes(JSON.stringify(swapQuotes(string)));
-  } else if (quote === "[") {
+  } else if (character === "[") {
     // TODO: escape brackets
     if (string.match(/\[|\]/)) {
       throw new Error("String currently can't contain brackets: " + string);
     }
     return `[${string}]`;
+  } else if (character === "") {
+    // unquoted
+    return string;
   } else {
-    throw new Error("Unknown quoting: " + quote);
+    throw new Error("Unknown quoting: " + character);
   }
 }
 function unquoteString(string) {
-  const quote = string.charAt(0);
-  if (quote === '"') {
+  const character = string.charAt(0);
+  if (character === '"') {
     return JSON.parse(string);
-  } else if (quote === "'") {
+  } else if (character === "'") {
     return swapQuotes(JSON.parse(swapQuotes(string)));
-  } else if (quote === "[") {
+  } else if (character === "[") {
     // TODO: unescape brackets
     return string.slice(1, -1);
   } else {
