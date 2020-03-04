@@ -2,6 +2,7 @@
   "Middleware for substituting parameters in queries."
   (:require [clojure.data :as data]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase.mbql
              [normalize :as normalize]
              [schema :as mbql.s]
@@ -88,19 +89,16 @@
 (defn- assoc-db-in-snippet-tag
   [db template-tags]
   (->> template-tags
-       (map
-        (fn [[k v]]
-          [k (cond-> v
-               (= (:type v) :snippet) (assoc :database db))]))
+       (m/map-vals
+        (fn [v]
+          (cond-> v
+            (= (:type v) :snippet) (assoc :database db))))
        (into {})))
 
 (defn- hoist-database-for-snippet-tags
   "Assocs the `:database` ID from `query` in all snippet template tags."
   [query]
-  (cond-> query
-    (get-in query [:native :template-tags])
-    (update-in [:native :template-tags]
-               (partial assoc-db-in-snippet-tag (:database query)))))
+  (u/update-in-when query [:native :template-tags] (partial assoc-db-in-snippet-tag (:database query))))
 
 (defn substitute-parameters
   "Substitute Dashboard or Card-supplied parameters in a query, replacing the param placeholers with appropriate values
