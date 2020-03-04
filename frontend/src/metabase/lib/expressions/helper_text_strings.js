@@ -45,7 +45,7 @@ const functions = [
     arg1: t`condition`,
     arg1Desc: t`Something that should evaluate to true or false.`,
     arg2: t`output`,
-    arg2Desc: t`The value that will be returned if the preceeding condition is true.`,
+    arg2Desc: t`The value that will be returned if the preceding condition is true.`,
   },
   {
     name: "coalesce",
@@ -136,7 +136,7 @@ const functions = [
     description: t`Extracts matching substrings according to a regular expression.`,
     example: "regexextract([" + t`Address` + '] , "[0-9]+")',
     arg1: t`text`,
-    arg1Desc: t`The column or string of text to search though.`,
+    arg1Desc: t`The column or string of text to search through.`,
     arg2: t`regular_expression`,
     arg2Desc: t`The regular expression to match.`,
   },

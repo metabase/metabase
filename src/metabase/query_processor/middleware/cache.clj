@@ -54,10 +54,10 @@
 
 (defn- purge! [backend]
   (try
-    (log/tracef "Purging old cache entires older than %s" (u/format-seconds (public-settings/query-caching-max-ttl)))
+    (log/tracef "Purging old cache entries older than %s" (u/format-seconds (public-settings/query-caching-max-ttl)))
     (i/purge-old-entries! backend (public-settings/query-caching-max-ttl))
     (catch Throwable e
-      (log/error e (trs "Error purging old cache entires")))))
+      (log/error e (trs "Error purging old cache entries")))))
 
 (defonce ^:private purge-chan
   (delay
