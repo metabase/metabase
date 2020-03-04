@@ -168,7 +168,7 @@ This will return the number of records returned by the existing question with ID
 
 Alternatively, you can select the target question in the sidebar, in the "Question #..." box that appears after typing `{% raw %}{{#}}{% endraw %}` in the query editor.
 
-The same syntax can be used in Common Table Expressions (CTEs), with databases that support it:
+The same syntax can be used in Common Table Expressions (CTEs), with databases that support them:
 
 ```
 WITH filtered_products AS {% raw %}{{#123}}{% endraw %}
