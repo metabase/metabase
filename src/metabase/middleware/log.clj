@@ -145,7 +145,7 @@
   (let [finished-chan (streaming-response/finished-chan streaming-response)]
     (a/go
       (let [result (a/<! finished-chan)]
-        (log-info (assoc info :async-status (if (:canceled result) "canceled" "completed")))))))
+        (log-info (assoc info :async-status (if (= result :canceled) "canceled" "completed")))))))
 
 (defn- logged-response
   "Log an API response. Returns resonse, possibly modified (i.e., core.async channels will be wrapped); this value

@@ -82,7 +82,7 @@
     (proxy [FilterOutputStream] [os]
       (close []
         (reset! continue-writing-newlines? false)
-        (.close os))
+        (u/ignore-exceptions (.close os)))
       (write
         ([x]
          (reset! continue-writing-newlines? false)
@@ -102,7 +102,7 @@
       (close []
         (when-not @closed?
           (reset! closed? true)
-          (.close os)))
+          (u/ignore-exceptions (.close os))))
 
       (flush []
         (when-not @closed?
@@ -143,12 +143,15 @@
   (try
     (f os canceled-chan)
     (catch EofException _
+      (println "eof:") ; NOCOMMIT
       (a/>!! canceled-chan ::cancel)
       nil)
     (catch InterruptedException _
+      (println "interrupted") ; NOCOMMIT
       (a/>!! canceled-chan ::cancel)
       nil)
     (catch Throwable e
+      (println "e:" e) ; NOCOMMIT
       (log/error e (trs "Caught unexpected Exception in streaming response body"))
       (write-error! os e)
       nil)
@@ -174,8 +177,10 @@
 (defn- respond-async [f options ^OutputStream os finished-chan]
   (let [canceled-chan (a/promise-chan identity identity)
         task          (bound-fn []
-                        (with-open [os os]
-                          (respond f options os finished-chan canceled-chan)))
+                        (try
+                          (respond f options os finished-chan canceled-chan)
+                          (finally
+                            (u/ignore-exceptions (.close os)))))
         futur         (.submit (thread-pool/thread-pool) ^Runnable task)]
     (a/go
       (when (a/<! canceled-chan)
