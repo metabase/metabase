@@ -6,20 +6,24 @@
              [db :as mdb]
              [driver :as driver]
              [util :as u]]
-            [metabase.db.spec :as dbspec]
+            [metabase.db
+             [jdbc-protocols :as jdbc-protocols]
+             [spec :as dbspec]]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.plugins.classloader :as classloader]
             [metabase.query-processor
              [error-type :as error-type]
              [store :as qp.store]]
             [metabase.util
              [honeysql-extensions :as hx]
              [i18n :refer [deferred-tru tru]]])
-  (:import java.time.OffsetTime))
+  (:import [java.sql Clob ResultSet ResultSetMetaData]
+           java.time.OffsetTime))
 
 (driver/register! :h2, :parent :sql-jdbc)
 
@@ -288,6 +292,16 @@
       (catch Throwable e
         (.close conn)
         (throw e)))))
+
+;; de-CLOB any CLOB values that come back
+(defmethod sql-jdbc.execute/read-column-thunk :h2
+  [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (let [classname (Class/forName (.getColumnClassName rsmeta i) true (classloader/the-classloader))]
+    (if (isa? classname Clob)
+      (fn []
+        (jdbc-protocols/clob->str (.getObject rs i)))
+      (fn []
+        (.getObject rs i)))))
 
 (defmethod sql-jdbc.execute/set-parameter [:h2 OffsetTime]
   [driver prepared-statement i t]
