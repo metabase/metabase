@@ -1,16 +1,23 @@
 import React from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
+
 import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
 
-import { isObscured } from "metabase/lib/dom";
-
+import { parse } from "metabase/lib/expressions/parser";
 import { compile } from "metabase/lib/expressions/compile";
 import { suggest } from "metabase/lib/expressions/suggest";
 import { format } from "metabase/lib/expressions/formatter";
-import { setCaretPosition, getSelectionPosition } from "metabase/lib/dom";
+import { syntax } from "metabase/lib/expressions/syntax";
+
+import {
+  setCaretPosition,
+  getSelectionPosition,
+  isObscured,
+} from "metabase/lib/dom";
+
 import {
   KEYCODE_ENTER,
   KEYCODE_ESCAPE,
@@ -48,7 +55,7 @@ export default class ExpressionEditorTextfield extends React.Component {
   }
 
   static propTypes = {
-    expression: PropTypes.array, // should be an array like [parsedExpressionObj, expressionString]
+    expression: PropTypes.array, // should be an array like [expressionObj, source]
     onChange: PropTypes.func.isRequired,
     onError: PropTypes.func.isRequired,
     startRule: PropTypes.string.isRequired,
@@ -61,7 +68,7 @@ export default class ExpressionEditorTextfield extends React.Component {
     placeholder: "write some math!",
   };
 
-  _getParserInfo(props = this.props) {
+  _getParserOptions(props = this.props) {
     return {
       query: props.query,
       startRule: props.startRule,
@@ -75,24 +82,21 @@ export default class ExpressionEditorTextfield extends React.Component {
   componentWillReceiveProps(newProps) {
     // we only refresh our state if we had no previous state OR if our expression changed
     if (!this.state || !_.isEqual(this.props.expression, newProps.expression)) {
-      const parserInfo = this._getParserInfo(newProps);
-      const parsedExpression = newProps.expression;
-      const expressionString = format(newProps.expression, parserInfo);
-      let expressionErrorMessage = null;
-      const suggestions = [];
-      try {
-        if (expressionString) {
-          compile(expressionString, parserInfo);
-        }
-      } catch (e) {
-        expressionErrorMessage = e;
-      }
+      const parserOptions = this._getParserOptions(newProps);
+      const source = format(newProps.expression, parserOptions);
+
+      const { expression, compileError, syntaxTree } = this._processSource(
+        source,
+        null,
+        newProps,
+      );
 
       this.setState({
-        parsedExpression,
-        expressionString,
-        expressionErrorMessage,
-        suggestions,
+        source,
+        expression,
+        compileError,
+        syntaxTree,
+        suggestions: [],
         highlightedSuggestion: 0,
       });
     }
@@ -100,8 +104,8 @@ export default class ExpressionEditorTextfield extends React.Component {
 
   componentDidMount() {
     this._setCaretPosition(
-      this.state.expressionString.length,
-      this.state.expressionString.length === 0,
+      this.state.source.length,
+      this.state.source.length === 0,
     );
   }
 
@@ -114,15 +118,15 @@ export default class ExpressionEditorTextfield extends React.Component {
   }
 
   onSuggestionAccepted() {
-    const { expressionString } = this.state;
+    const { source } = this.state;
     const suggestion = this.state.suggestions[this.state.highlightedSuggestion];
 
     if (suggestion) {
-      let prefix = expressionString.slice(0, suggestion.index);
+      let prefix = source.slice(0, suggestion.index);
       if (suggestion.prefixTrim) {
         prefix = prefix.replace(suggestion.prefixTrim, "");
       }
-      let postfix = expressionString.slice(suggestion.index);
+      let postfix = source.slice(suggestion.index);
       if (suggestion.postfixTrim) {
         postfix = postfix.replace(suggestion.postfixTrim, "");
       }
@@ -194,13 +198,13 @@ export default class ExpressionEditorTextfield extends React.Component {
     this.clearSuggestions();
 
     // whenever our input blurs we push the updated expression to our parent if valid
-    if (this.state.parsedExpression) {
-      if (!isExpression(this.state.parsedExpression)) {
-        console.warn("isExpression=false", this.state.parsedExpression);
+    if (this.state.expression) {
+      if (!isExpression(this.state.expression)) {
+        console.warn("isExpression=false", this.state.expression);
       }
-      this.props.onChange(this.state.parsedExpression);
-    } else if (this.state.expressionErrorMessage) {
-      this.props.onError(this.state.expressionErrorMessage);
+      this.props.onChange(this.state.expression);
+    } else if (this.state.compileError) {
+      this.props.onError(this.state.compileError);
     } else {
       this.props.onError({ message: t`Invalid expression` });
     }
@@ -211,7 +215,7 @@ export default class ExpressionEditorTextfield extends React.Component {
   };
 
   _triggerAutosuggest = () => {
-    this.onExpressionChange(this.state.expressionString);
+    this.onExpressionChange(this.state.source);
   };
 
   _setCaretPosition = (position, autosuggest) => {
@@ -221,65 +225,111 @@ export default class ExpressionEditorTextfield extends React.Component {
     }
   };
 
-  onExpressionChange(expressionString) {
+  _processSource(source, targetOffset, props = this.props) {
+    let expression;
+    let suggestions = [];
+    let compileError;
+    let syntaxTree;
+
+    const options = this._getParserOptions(props);
+
+    // PARSE
+    const { cst, tokenVector, parserErrors } = parse({
+      source,
+      ...options,
+      recover: true,
+    });
+
+    // COMPILE
+    if (parserErrors.length > 0) {
+      console.log("parse errors", parserErrors);
+      compileError = parserErrors;
+    } else {
+      try {
+        expression = compile({ cst, tokenVector, ...options });
+      } catch (e) {
+        console.log("compile error", e);
+        compileError = e;
+      }
+    }
+
+    // SUGGEST
+    if (targetOffset != null) {
+      try {
+        suggestions = suggest({
+          source,
+          cst,
+          tokenVector,
+          targetOffset,
+          ...options,
+        });
+      } catch (e) {
+        console.log("suggest error", e);
+      }
+    }
+
+    // SYNTAX
+    try {
+      syntaxTree = syntax({ cst, tokenVector, source, ...options });
+    } catch (e) {
+      console.log("syntax error", e);
+    }
+
+    return {
+      source,
+      expression,
+      suggestions,
+      syntaxTree,
+      compileError,
+    };
+  }
+
+  onExpressionChange(source) {
     const inputElement = ReactDOM.findDOMNode(this.refs.input);
     if (!inputElement) {
       return;
     }
 
-    const parserInfo = this._getParserInfo();
-
-    let expressionErrorMessage = null;
-    let suggestions = [];
-    let parsedExpression;
-
-    try {
-      parsedExpression = compile(expressionString, parserInfo);
-    } catch (e) {
-      expressionErrorMessage = e;
-      console.error("expression error:", expressionErrorMessage);
-    }
-
-    const isValid = parsedExpression && parsedExpression.length > 0;
     const [selectionStart, selectionEnd] = getSelectionPosition(inputElement);
     const hasSelection = selectionStart !== selectionEnd;
-    const isAtEnd = selectionEnd === expressionString.length;
-    const endsWithWhitespace = /\s$/.test(expressionString);
+    const isAtEnd = selectionEnd === source.length;
+    const endsWithWhitespace = /\s$/.test(source);
+    const targetOffset = !hasSelection ? selectionEnd : null;
 
+    const {
+      expression,
+      compileError,
+      suggestions,
+      syntaxTree,
+    } = this._processSource(source, targetOffset);
+
+    const isValid = expression !== undefined;
     // don't show suggestions if
-    // * there's a section
+    // * there's a selection
     // * we're at the end of a valid expression, unless the user has typed another space
-    if (!hasSelection && !(isValid && isAtEnd && !endsWithWhitespace)) {
-      try {
-        suggestions = suggest(expressionString, {
-          ...parserInfo,
-          targetOffset: selectionEnd,
-        });
-      } catch (e) {
-        console.error("suggest error:", e);
-      }
-    }
+    const showSuggestions =
+      !hasSelection && !(isValid && isAtEnd && !endsWithWhitespace);
 
     this.setState({
-      expressionErrorMessage,
-      expressionString,
-      parsedExpression,
-      suggestions,
+      source,
+      expression,
+      syntaxTree,
+      compileError,
+      suggestions: showSuggestions ? suggestions : [],
     });
   }
 
   render() {
-    let errorMessage = this.state.expressionErrorMessage;
-    if (errorMessage && !errorMessage.length) {
-      errorMessage = t`unknown error`;
+    const { placeholder, className, style } = this.props;
+    let { compileError, source, suggestions, syntaxTree } = this.state;
+
+    if (compileError && !compileError.length) {
+      compileError = t`unknown error`;
     }
 
-    const { placeholder, className, style } = this.props;
-    const { expressionString, suggestions } = this.state;
-
     const inputClassName = cx("input text-bold text-monospace", {
-      "text-dark": expressionString,
-      "text-light": !expressionString,
+      "text-dark": source,
+      "text-light": !source,
     });
     const inputStyle = { fontSize: 12 };
 
@@ -299,18 +349,19 @@ export default class ExpressionEditorTextfield extends React.Component {
           ref="input"
           type="text"
           className={cx(inputClassName, {
-            "border-error": errorMessage,
+            "border-error": compileError,
           })}
           style={{ ...inputStyle, paddingLeft: 26 }}
           placeholder={placeholder}
-          value={expressionString}
+          value={source}
+          syntaxTree={syntaxTree}
+          parserOptions={this._getParserOptions()}
           onChange={e => this.onExpressionChange(e.target.value)}
           onKeyDown={this.onInputKeyDown}
           onBlur={this.onInputBlur}
           onFocus={e => this._triggerAutosuggest()}
           onClick={this.onInputClick}
           autoFocus
-          parserInfo={this._getParserInfo()}
         />
         {suggestions.length ? (
           <Popover

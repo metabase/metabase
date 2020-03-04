@@ -152,7 +152,8 @@ export default class TokenizedInput extends Component {
     ReactDOM.render(
       <TokenizedExpression
         source={this._getValue()}
-        parserInfo={this.props.parserInfo}
+        syntaxTree={this.props.syntaxTree}
+        parserOptions={this.props.parserOptions}
       />,
       inputNode,
     );

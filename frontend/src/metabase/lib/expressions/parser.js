@@ -22,6 +22,8 @@ import {
   CLAUSE_TOKENS,
   FunctionName,
   lexerWithRecovery,
+  isTokenType,
+  RecoveryToken,
 } from "./lexer";
 
 import { isExpressionType, getFunctionArgType } from ".";
@@ -417,45 +419,62 @@ export const parserWithRecovery = new ExpressionParser({
 
 export class ExpressionCstVisitor extends parser.getBaseCstVisitorConstructor() {}
 
-export function parse(
+export function parse({
   source,
-  { startRule = "expression", recover = false, tokenVector } = {},
-) {
+  tokenVector,
+  startRule = "expression",
+  recover = false,
+} = {}) {
   const l = recover ? lexerWithRecovery : lexer;
   const p = recover ? parserWithRecovery : parser;
+
+  let lexerErrors, parserErrors;
 
   // Lex
   if (!tokenVector) {
     const { tokens, errors } = l.tokenize(source);
-    if (errors.length > 0) {
-      throw errors;
+    lexerErrors = errors;
+    for (const error of lexerErrors) {
+      cleanErrorMessage(error);
+    }
+    if (lexerErrors.length > 0) {
+      throw lexerErrors;
     } else {
       tokenVector = tokens;
     }
   }
+  const lexerRecovered =
+    tokenVector.length > 0 &&
+    isTokenType(tokenVector[tokenVector.length - 1].tokenType, RecoveryToken);
 
   // Parse
   p.input = tokenVector;
   const cst = p[startRule]();
-
-  for (const error of p.errors) {
-    // clean up error messages
-    error.message =
-      error.message &&
-      error.message
-        .replace(/^Expecting:?\s+/, "Expected ")
-        .replace(/--> (.*?) <--/g, "$1")
-        .replace(/(\n|\s)*but found:?/, " but found ")
-        .replace(/\s*but found\s+''$/, "");
+  parserErrors = p.errors;
+  for (const error of parserErrors) {
+    cleanErrorMessage(error);
   }
-  if (p.errors.length > 0 && !recover) {
-    throw p.errors;
+  if (parserErrors.length > 0 && !recover) {
+    throw parserErrors;
   }
+  const parserRecovered = !!(cst && parserErrors.length > 0);
 
-  if (cst) {
-    // return token vector along with CST
-    cst.tokenVector = tokenVector;
-  }
+  return {
+    cst,
+    tokenVector,
+    lexerRecovered,
+    parserRecovered,
+    parserErrors,
+    lexerErrors,
+  };
+}
 
-  return cst;
+function cleanErrorMessage(error) {
+  error.message =
+    error.message &&
+    error.message
+      .replace(/^Expecting:?\s+/, "Expected ")
+      .replace(/--> (.*?) <--/g, "$1")
+      .replace(/(\n|\s)*but found:?/, " but found ")
+      .replace(/\s*but found\s+''$/, "");
 }

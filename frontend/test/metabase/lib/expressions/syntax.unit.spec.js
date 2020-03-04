@@ -32,7 +32,7 @@ describe("metabase/lib/expressions/syntax", () => {
           for (const [source, mbql, description] of cases) {
             if (mbql) {
               it(`should parse ${description}`, () => {
-                const tree = parser(source, opts);
+                const tree = parser({ source, ...opts });
                 expect(serialize(tree)).toEqual(source);
               });
             }
@@ -42,7 +42,7 @@ describe("metabase/lib/expressions/syntax", () => {
             describe("with partial inputs", () => {
               for (const [source, description] of partialInputCases[name]) {
                 it(`should parse ${description}`, () => {
-                  const tree = parser(source, opts);
+                  const tree = parser({ source, ...opts });
                   expect(serialize(tree)).toEqual(source);
                 });
               }
@@ -55,13 +55,13 @@ describe("metabase/lib/expressions/syntax", () => {
 
       it(`should parse and serialize source with leading whitespace`, () => {
         const source = " Sum(A)";
-        const tree = recoveryParser(source, aggregationOpts);
+        const tree = recoveryParser({ source, ...aggregationOpts });
         expect(serialize(tree)).toEqual(source);
       });
 
       it(`should parse and serialize source with trailing whitespace`, () => {
         const source = "Sum(A) ";
-        const tree = parse(source, aggregationOpts);
+        const tree = parse({ source, ...aggregationOpts });
         expect(serialize(tree)).toEqual(source);
       });
     });

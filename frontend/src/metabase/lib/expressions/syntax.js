@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import { ExpressionCstVisitor, parse as parserParse } from "./parser";
+import { ExpressionCstVisitor, parse } from "./parser";
 import {
   lexerWithRecovery,
   Identifier,
@@ -17,19 +17,21 @@ import { MBQL_CLAUSES, getMBQLName } from ".";
 
 const TOKENIZED_NODES = new Set(["dimension", "metric", "aggregation"]);
 
-const syntax = (type, ...children) => ({
-  type: type,
-  tokenized: TOKENIZED_NODES.has(type),
-  children: children.filter(child => child),
-});
+function syntaxNode(type, ...children) {
+  return {
+    type: type,
+    tokenized: TOKENIZED_NODES.has(type),
+    children: children.filter(child => child),
+  };
+}
 
-const token = (...args) => {
+function tokenNode(...args) {
   let [type, token] = args.length === 1 ? ["token", args[0]] : args;
   // allow passing the array token
   if (Array.isArray(token)) {
     if (token.length !== 1) {
       console.warn(
-        `Passed token array of length ${token.length} to token()`,
+        `Passed token array of length ${token.length} to tokenNode()`,
         token,
       );
     }
@@ -44,7 +46,7 @@ const token = (...args) => {
       _token: token,
     }
   );
-};
+}
 
 export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
   constructor(options) {
@@ -84,36 +86,36 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
     for (let i = 0; i < operands.length; i++) {
       initial.push(this.visit(operands[i]));
       if (i < operators.length) {
-        initial.push(token(operators[i]));
+        initial.push(tokenNode(operators[i]));
       }
     }
     return initial.length === 0
       ? null
       : initial.length === 1
       ? initial[0]
-      : syntax("math", ...initial);
+      : syntaxNode("math", ...initial);
   }
 
   functionExpression(ctx) {
     const parts = [];
-    parts.push(token("function-name", ctx.functionName));
+    parts.push(tokenNode("function-name", ctx.functionName));
     if (ctx.LParen) {
       const args = [];
       if (ctx.arguments) {
         for (let i = 0; i < ctx.arguments.length; i++) {
           args.push(this.visit(ctx.arguments[i]));
           if (ctx.Comma && ctx.Comma[i]) {
-            args.push(token(ctx.Comma[i]));
+            args.push(tokenNode(ctx.Comma[i]));
           }
         }
       }
       // NOTE: inserting a "group" node to match fallbackParser behavior
       parts.push(
-        syntax(
+        syntaxNode(
           "group",
-          token("open-paren", ctx.LParen),
+          tokenNode("open-paren", ctx.LParen),
           ...args,
-          token("close-paren", ctx.RParen),
+          tokenNode("close-paren", ctx.RParen),
         ),
       );
     }
@@ -121,7 +123,7 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
     const fn = getMBQLName(ctx.functionName[0].image);
     const clause = MBQL_CLAUSES[fn];
 
-    return syntax(clause.type, ...parts);
+    return syntaxNode(clause.type, ...parts);
   }
 
   caseExpression(ctx) {
@@ -130,38 +132,42 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
 
   metricExpression(ctx) {
     const metricName = this.visit(ctx.metricName);
-    return syntax("metric", metricName);
+    return syntaxNode("metric", metricName);
   }
   segmentExpression(ctx) {
     const segmentName = this.visit(ctx.segmentName);
-    return syntax("segment", segmentName);
+    return syntaxNode("segment", segmentName);
   }
   dimensionExpression(ctx) {
     const dimensionName = this.visit(ctx.dimensionName);
-    return syntax("dimension", dimensionName);
+    return syntaxNode("dimension", dimensionName);
   }
 
   identifier(ctx) {
-    return syntax("identifier", token(ctx.Identifier));
+    return syntaxNode("identifier", tokenNode(ctx.Identifier));
   }
   identifierString(ctx) {
-    return syntax("identifier", token(ctx.IdentifierString));
+    return syntaxNode("identifier", tokenNode(ctx.IdentifierString));
   }
   stringLiteral(ctx) {
-    return syntax("string-literal", token(ctx.StringLiteral));
+    return syntaxNode("string-literal", tokenNode(ctx.StringLiteral));
   }
   numberLiteral(ctx) {
-    return syntax("number-literal", token(ctx.Minus), token(ctx.NumberLiteral));
+    return syntaxNode(
+      "number-literal",
+      tokenNode(ctx.Minus),
+      tokenNode(ctx.NumberLiteral),
+    );
   }
   atomicExpression(ctx) {
     return this.visit(ctx.expression);
   }
   parenthesisExpression(ctx) {
-    return syntax(
+    return syntaxNode(
       "group",
-      token(ctx.LParen),
+      tokenNode(ctx.LParen),
       this.visit(ctx.expression),
-      token(ctx.RParen),
+      tokenNode(ctx.RParen),
     );
   }
 
@@ -170,47 +176,46 @@ export class ExpressionSyntaxVisitor extends ExpressionCstVisitor {
     return this._arithmeticExpression(ctx.operands, ctx.operators);
   }
   comparisonExpression(ctx) {
-    return syntax(
+    return syntaxNode(
       "filter",
       this.visit(ctx.operands[0]),
-      token(ctx.operators),
+      tokenNode(ctx.operators),
       this.visit(ctx.operands[1]),
     );
   }
   booleanUnaryExpression(ctx) {
-    return syntax("filter", token(ctx.operators), this.visit(ctx.operands));
+    return syntaxNode(
+      "filter",
+      tokenNode(ctx.operators),
+      this.visit(ctx.operands),
+    );
   }
 }
 
 // DEFAULT PARSER
-export function defaultParser(source, options) {
-  const cst = parserParse(source, options);
-  const visitor = new ExpressionSyntaxVisitor({
-    tokenVector: cst.tokenVector,
-    ...options,
-  });
+export function defaultParser(options) {
+  const { cst, tokenVector } = parse(options);
+  const visitor = new ExpressionSyntaxVisitor({ tokenVector, ...options });
   const visited = cst && visitor.visit(cst);
   return (
     visited &&
     recoverTokens(
       visited,
-      source,
-      options.recover ? recoveredToken : recoveredWhitespaceToken,
+      options.source,
+      options.recover ? recoveredNode : recoveredWhitespaceNode,
     )
   );
 }
 
 // RECOVERY PARSER
-export function recoveryParser(source, options) {
-  return defaultParser(source, { ...options, recover: true });
+export function recoveryParser(options) {
+  return defaultParser({ ...options, recover: true });
 }
 
 // FALLBACK PARSER:
 // hand-rolled parser that parses enough for syntax highlighting
-export function fallbackParser(expressionString, { startRule }) {
-  const { tokens } = mergeTokenGroups(
-    lexerWithRecovery.tokenize(expressionString),
-  );
+export function fallbackParser({ source, startRule }) {
+  const { tokens } = mergeTokenGroups(lexerWithRecovery.tokenize(source));
   function nextNonWhitespace(index) {
     while (++index < tokens.length && tokens[index].tokenType === WhiteSpace) {
       // this block intentionally left blank
@@ -239,7 +244,7 @@ export function fallbackParser(expressionString, { startRule }) {
     const next = nextNonWhitespace(i);
     if (isTokenType(t.tokenType, FunctionName)) {
       const { type } = CLAUSE_TOKENS.get(t.tokenType);
-      const clause = syntax(type, token("function-name", t));
+      const clause = syntaxNode(type, tokenNode("function-name", t));
       if (next && next.tokenType === LParen) {
         if (type === "aggregation") {
           outsideAggregation = false;
@@ -253,23 +258,23 @@ export function fallbackParser(expressionString, { startRule }) {
       isTokenType(t.tokenType, IdentifierString)
     ) {
       current.children.push(
-        syntax(
+        syntaxNode(
           outsideAggregation ? "metric" : "unknown", // "dimension" + "segment"
-          syntax("identifier", token(t)),
+          syntaxNode("identifier", tokenNode(t)),
         ),
       );
     } else if (t.tokenType === LParen) {
-      push(syntax("group"));
-      current.children.push(token("open-paren", t));
+      push(syntaxNode("group"));
+      current.children.push(tokenNode("open-paren", t));
     } else if (t.tokenType === RParen) {
-      current.children.push(token("close-paren", t));
+      current.children.push(tokenNode("close-paren", t));
       pop();
       if (current.type === "aggregation") {
         outsideAggregation = true;
         pop();
       }
     } else {
-      current.children.push(token(t));
+      current.children.push(tokenNode(t));
     }
   }
   return root;
@@ -300,14 +305,18 @@ function mergeTokenGroups(results) {
 }
 
 // inserts whitespace tokens back into the syntax tree
-function recoveredWhitespaceToken(text, extra = {}) {
+function recoveredWhitespaceNode(text, extra = {}) {
   if (!/^\s+$/.test(text)) {
     throw new Error("Recovered non-whitespace: " + text);
   }
-  return { type: "whitespace", ...extra, text };
+  return {
+    type: "whitespace",
+    ...extra,
+    text,
+  };
 }
 
-function recoveredToken(text, extra = {}) {
+function recoveredNode(text, extra = {}) {
   return {
     type: /^\s+$/.test(text) ? "whitespace" : "recovered",
     ...extra,
@@ -317,7 +326,7 @@ function recoveredToken(text, extra = {}) {
 
 // NOTE: could we use token groups instead to collect whitespace tokens?
 // https://sap.github.io/chevrotain/docs/features/token_grouping.html
-function recoverTokens(root, source, recovered = recoveredToken) {
+function recoverTokens(root, source, recovered = recoveredNode) {
   const getRecoveredToken = (start, end) =>
     recovered(source.substring(start, end), { start, end: end - 1 });
 
@@ -363,18 +372,15 @@ function recoverTokens(root, source, recovered = recoveredToken) {
 
 const DEFAULT_STRATEGIES = [recoveryParser, fallbackParser];
 
-export function parse(
-  source,
-  { strategies = DEFAULT_STRATEGIES, ...options } = {},
-) {
+export function syntax({ strategies = DEFAULT_STRATEGIES, ...options } = {}) {
   for (const strategy of strategies) {
     try {
-      return strategy(source, options);
+      return strategy(options);
     } catch (e) {
       // console.warn(e)
     }
   }
-  throw new Error("Unable to parse: " + source);
+  throw new Error("Unable to parse: " + options.source);
 }
 
 export function serialize(node) {

@@ -154,11 +154,10 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
   }
 }
 
-export function compile(source, options = {}) {
-  if (!source) {
-    return [];
+export function compile({ cst, ...options }) {
+  if (!cst) {
+    ({ cst } = parse(options));
   }
-  const cst = parse(source, options);
   const vistor = new ExpressionMBQLCompilerVisitor(options);
   return vistor.visit(cst);
 }

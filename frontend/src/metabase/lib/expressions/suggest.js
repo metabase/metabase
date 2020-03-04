@@ -66,10 +66,14 @@ for (const type of EXPRESSION_TYPES) {
     .map(name => operatorSuggestion(name));
 }
 
-export function suggest(
+export function suggest({
   source,
-  { query, startRule, targetOffset = source.length, expressionName } = {},
-) {
+  cst,
+  query,
+  startRule,
+  targetOffset = source.length,
+  expressionName,
+} = {}) {
   const partialSource = source.slice(0, targetOffset);
   const lexResult = lexerWithRecovery.tokenize(partialSource);
   if (lexResult.errors.length > 0) {
@@ -102,7 +106,8 @@ export function suggest(
     tokenVector,
   );
 
-  const context = getContext(null, {
+  const context = getContext({
+    cst,
     tokenVector,
     targetOffset,
     startRule,
@@ -351,17 +356,18 @@ const contextParser = new ExpressionParser({
   tokenRecoveryEnabled: false,
 });
 
-export function getContext(
+export function getContext({
   source,
-  {
-    tokenVector = lexerWithRecovery.tokenize(source).tokens,
-    targetOffset = source.length,
-    startRule,
-    ...options
-  },
-) {
-  contextParser.input = tokenVector;
-  const cst = contextParser[startRule]();
+  cst,
+  tokenVector = lexerWithRecovery.tokenize(source).tokens,
+  targetOffset = source.length,
+  startRule,
+  ...options
+}) {
+  if (!cst) {
+    contextParser.input = tokenVector;
+    cst = contextParser[startRule]();
+  }
   const visitor = new ExpressionContextVisitor({
     targetOffset: targetOffset,
     tokenVector: tokenVector,

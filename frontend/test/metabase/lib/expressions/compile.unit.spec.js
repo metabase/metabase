@@ -73,34 +73,21 @@ describe("metabase/lib/expressions/compile", () => {
 
     // NOTE: only add tests below for things that don't fit the shared test cases above
 
-    it("should return empty array for null or empty string", () => {
-      expect(compile()).toEqual([]);
-      expect(compile(null)).toEqual([]);
-      expect(compile("")).toEqual([]);
-    });
-
     it("should throw exception on invalid input", () => {
-      expect(() => compile("1 + ", expressionOpts)).toThrow();
+      expect(() => compile({ source: "1 + ", ...expressionOpts })).toThrow();
     });
 
     it("should treat aggregations as case-insensitive", () => {
-      expect(compile("count", aggregationOpts)).toEqual(["count"]);
-      expect(compile("cOuNt", aggregationOpts)).toEqual(["count"]);
-      expect(compile("average(A)", aggregationOpts)).toEqual([
+      expect(compile({ source: "count", ...aggregationOpts })).toEqual([
+        "count",
+      ]);
+      expect(compile({ source: "cOuNt", ...aggregationOpts })).toEqual([
+        "count",
+      ]);
+      expect(compile({ source: "average(A)", ...aggregationOpts })).toEqual([
         "avg",
         ["field-id", 1],
       ]);
-    });
-
-    it("should fail to compile within 250ms", () => {
-      const start = Date.now();
-      try {
-        compile("Share((");
-        expect(true).toBe(false);
-      } catch (e) {
-        const end = Date.now();
-        expect(end - start).toBeLessThan(250);
-      }
     });
   });
 });

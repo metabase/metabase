@@ -4,19 +4,12 @@ import "./TokenizedExpression.css";
 
 import cx from "classnames";
 
-import { parse } from "metabase/lib/expressions/syntax";
-
 export default class TokenizedExpression extends React.Component {
-  static defaultProps = {
-    parse: parse,
-  };
-
   render() {
-    const { parse, source, parserInfo } = this.props;
-    try {
-      const parsed = parse(source, parserInfo);
-      return renderSyntaxTree(parsed);
-    } catch (e) {
+    const { syntaxTree, source } = this.props;
+    if (syntaxTree) {
+      return renderSyntaxTree(syntaxTree);
+    } else {
       return <span className="Expression-node">{source}</span>;
     }
   }
