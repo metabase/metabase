@@ -414,7 +414,7 @@ export default class NativeQueryEditor extends Component {
     } = this.props;
 
     const database = query.database();
-    const databases = query.metadata().databasesList();
+    const databases = query.metadata().databasesList({ savedQuestions: false });
     const parameters = query.question().parameters();
 
     let dataSelectors = [];

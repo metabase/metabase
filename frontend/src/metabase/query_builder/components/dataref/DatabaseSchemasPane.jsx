@@ -18,13 +18,13 @@ const DatabaseSchemasPane = ({ database, show, ...props }) => {
       </div>
 
       <ul>
-        {database.schemaNames().map(schemaName => (
-          <li key={schemaName}>
+        {database.schemas.map(schema => (
+          <li key={schema.id}>
             <a
               className="flex-full flex p1 text-bold text-brand text-wrap no-decoration bg-medium-hover"
-              onClick={() => show("schema", database.schema(schemaName))}
+              onClick={() => show("schema", schema)}
             >
-              {schemaName}
+              {schema.displayName()}
             </a>
           </li>
         ))}

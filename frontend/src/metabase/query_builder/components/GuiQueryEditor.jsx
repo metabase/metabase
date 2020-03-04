@@ -13,7 +13,6 @@ import FilterPopover from "./filters/FilterPopover";
 import Icon from "metabase/components/Icon";
 import IconBorder from "metabase/components/IconBorder";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 
 import cx from "classnames";
 
@@ -26,7 +25,6 @@ import type { Children } from "react";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 export type GuiQueryEditorFeatures = {
-  data?: boolean,
   filter?: boolean,
   aggregation?: boolean,
   breakout?: boolean,
@@ -74,7 +72,6 @@ export default class GuiQueryEditor extends React.Component {
 
   static defaultProps = {
     features: {
-      data: true,
       filter: true,
       aggregation: true,
       breakout: true,
@@ -312,13 +309,7 @@ export default class GuiQueryEditor extends React.Component {
   }
 
   renderDataSection() {
-    const { query } = this.props;
-    const tableMetadata = query.tableMetadata();
-    const datasetQuery = query.datasetQuery();
-    const databaseId = datasetQuery && datasetQuery.database;
-    const sourceTableId =
-      datasetQuery && datasetQuery.query && datasetQuery.query["source-table"];
-    const isInitiallyOpen = !datasetQuery.database || !sourceTableId;
+    const table = this.props.query.table();
 
     return (
       <div
@@ -327,19 +318,9 @@ export default class GuiQueryEditor extends React.Component {
         }
       >
         <span className="GuiBuilder-section-label Query-label">{t`Data`}</span>
-        {this.props.features.data ? (
-          <DatabaseSchemaAndTableDataSelector
-            selectedDatabaseId={databaseId}
-            selectedTableId={sourceTableId}
-            setDatabaseFn={this.props.setDatabaseFn}
-            setSourceTableFn={this.props.setSourceTableFn}
-            isInitiallyOpen={isInitiallyOpen}
-          />
-        ) : (
-          <span className="flex align-center px2 py2 text-bold text-grey">
-            {tableMetadata && tableMetadata.display_name}
-          </span>
-        )}
+        <span className="flex align-center px2 py2 text-bold text-grey">
+          {table && table.displayName()}
+        </span>
       </div>
     );
   }

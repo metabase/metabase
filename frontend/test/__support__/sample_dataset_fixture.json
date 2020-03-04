@@ -5,6 +5,16 @@
         "id": "1:PUBLIC",
         "name": "PUBLIC",
         "database": 1
+      },
+      "4:first_schema": {
+        "id": "4:first_schema",
+        "name": "first_schema",
+        "database": 4
+      },
+      "4:second_schema": {
+        "id": "4:second_schema",
+        "name": "second_schema",
+        "database": 4
       }
     },
     "metrics": {
@@ -140,6 +150,31 @@
         "id": 3,
         "engine": "mongo",
         "created_at": "2017-06-22T00:33:36.681Z",
+        "points_of_interest": null
+      },
+      "4": {
+        "description": null,
+        "features": [
+          "basic-aggregations",
+          "standard-deviation-aggregations",
+          "expression-aggregations",
+          "foreign-keys",
+          "native-parameters",
+          "expressions"
+        ],
+        "name": "Multi-schema Database",
+        "caveats": null,
+        "tables": [5,6],
+        "is_full_sync": true,
+        "updated_at": "2017-06-14T23:22:55.349Z",
+        "native_permissions": "write",
+        "details": {
+          "db": "zip:/private/tmp/metabase.jar!/sample-dataset.db;USER=GUEST;PASSWORD=guest"
+        },
+        "is_sample": true,
+        "id": 4,
+        "engine": "h2",
+        "created_at": "2017-06-14T23:22:55.349Z",
         "points_of_interest": null
       }
     },
@@ -330,6 +365,50 @@
         "created_at": "2017-06-14T23:22:55.825Z",
         "points_of_interest": null,
         "fields": [29, 30, 31, 32, 33, 34],
+        "segments": [],
+        "metrics": []
+      },
+      "5": {
+        "description": "",
+        "entity_type": null,
+        "schema": "4:first_schema",
+        "schema_name": "first_schema",
+        "show_in_getting_started": false,
+        "name": "table_in_first_schema",
+        "caveats": null,
+        "rows": 1,
+        "updated_at": "2017-06-14T23:22:58.024Z",
+        "entity_name": null,
+        "active": true,
+        "id": 5,
+        "db_id": 4,
+        "visibility_type": null,
+        "display_name": "Table in First Schema",
+        "created_at": "2017-06-14T23:22:55.825Z",
+        "points_of_interest": null,
+        "fields": [],
+        "segments": [],
+        "metrics": []
+      },
+      "6": {
+        "description": "",
+        "entity_type": null,
+        "schema": "4:second_schema",
+        "schema_name": "second_schema",
+        "show_in_getting_started": false,
+        "name": "table_in_second_schema",
+        "caveats": null,
+        "rows": 1,
+        "updated_at": "2017-06-14T23:22:58.024Z",
+        "entity_name": null,
+        "active": true,
+        "id": 6,
+        "db_id": 4,
+        "visibility_type": null,
+        "display_name": "Table in Second Schema",
+        "created_at": "2017-06-14T23:22:55.825Z",
+        "points_of_interest": null,
+        "fields": [],
         "segments": [],
         "metrics": []
       }

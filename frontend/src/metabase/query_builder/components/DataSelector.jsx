@@ -114,17 +114,18 @@ const FieldTriggerContent = ({ selectedDatabase, selectedField }) => {
   }),
   {
     fetchDatabases: databaseQuery => Databases.actions.fetchList(databaseQuery),
-    // FIXME: this doesn't work for "Saved Questions" database
     fetchSchemas: databaseId => Schemas.actions.fetchList({ dbId: databaseId }),
-    fetchDatabaseTables: databaseId =>
-      // FIXME: this also fetches fields
-      Databases.actions.fetchDatabaseMetadata({ id: databaseId }),
-    // FIXME: this doesn't work for "Saved Questions" database
     fetchSchemaTables: schemaId => Schemas.actions.fetch({ id: schemaId }),
-    fetchFields: tableId => Tables.actions.fetchTableMetadata({ id: tableId }),
+    fetchFields: tableId => Tables.actions.fetchMetadata({ id: tableId }),
   },
 )
-export default class DataSelector extends Component {
+class DataSelector extends Component {
+  render() {
+    return <UnconnectedDataSelector {...this.props} />;
+  }
+}
+
+export class UnconnectedDataSelector extends Component {
   constructor(props) {
     super();
 
@@ -207,6 +208,9 @@ export default class DataSelector extends Component {
       selectedDatabase = database;
       if (!schemas && database) {
         schemas = database.schemas;
+      }
+      if (!tables && schemas.length === 1) {
+        tables = schemas[0].tables;
       }
     }
     function setSelectedSchema(schema) {
@@ -351,16 +355,15 @@ export default class DataSelector extends Component {
   }
 
   async hydrateActiveStep() {
-    if (this.state.selectedFieldId) {
+    const { steps } = this.state;
+    if (this.state.selectedTableId && steps.includes(FIELD_STEP)) {
       await this.switchToStep(FIELD_STEP);
-    } else if (this.state.selectedTableId) {
+    } else if (this.state.selectedSchemaId && steps.includes(TABLE_STEP)) {
       await this.switchToStep(TABLE_STEP);
-    } else if (this.state.selectedSchemaId) {
+    } else if (this.state.selectedDatabaseId && steps.includes(SCHEMA_STEP)) {
       await this.switchToStep(SCHEMA_STEP);
-    } else if (this.state.selectedDatabaseId) {
-      await this.switchToStep(DATABASE_STEP);
     } else {
-      await this.switchToStep(this.state.steps[0]);
+      await this.switchToStep(steps[0]);
     }
   }
 
@@ -429,9 +432,37 @@ export default class DataSelector extends Component {
   previousStep = () => {
     const previousStep = this.getPreviousStep();
     if (previousStep) {
-      this.switchToStep(previousStep, {}, false);
+      const clearedState = this.getClearedStateForStep(previousStep);
+      this.switchToStep(previousStep, clearedState, false);
     }
   };
+
+  getClearedStateForStep(step) {
+    if (step === DATABASE_STEP) {
+      return {
+        selectedDatabaseId: null,
+        selectedSchemaId: null,
+        selectedTableId: null,
+        selectedFieldId: null,
+      };
+    } else if (step === SCHEMA_STEP) {
+      return {
+        selectedSchemaId: null,
+        selectedTableId: null,
+        selectedFieldId: null,
+      };
+    } else if (step === TABLE_STEP) {
+      return {
+        selectedTableId: null,
+        selectedFieldId: null,
+      };
+    } else if (step === FIELD_STEP) {
+      return {
+        selectedFieldId: null,
+      };
+    }
+    return {};
+  }
 
   async loadStepData(stepName) {
     const loadersForSteps = {
@@ -443,14 +474,8 @@ export default class DataSelector extends Component {
         return this.props.fetchSchemas(this.state.selectedDatabaseId);
       },
       [TABLE_STEP]: () => {
-        if (this.state.selectedDatabaseId != null) {
-          if (this.state.selectedSchemaId != null) {
-            return this.props.fetchSchemaTables(this.state.selectedSchemaId);
-          } else {
-            return this.props.fetchDatabaseTables(
-              this.state.selectedDatabaseId,
-            );
-          }
+        if (this.state.selectedSchemaId != null) {
+          return this.props.fetchSchemaTables(this.state.selectedSchemaId);
         }
       },
       [FIELD_STEP]: () => {
@@ -674,7 +699,7 @@ const DatabasePicker = ({
 
 const SchemaPicker = ({
   schemas,
-  selectedSchema,
+  selectedSchemaId,
   onChangeSchema,
   hasNextStep,
 }) => {
@@ -689,13 +714,13 @@ const SchemaPicker = ({
   return (
     <div style={{ width: 300 }}>
       <AccordionList
-        id="DatabaseSchemaPicker"
-        key="databaseSchemaPicker"
+        id="SchemaPicker"
+        key="schemaPicker"
         className="text-brand"
         sections={sections}
         searchable
-        onChange={onChangeSchema}
-        itemIsSelected={schema => schema === selectedSchema}
+        onChange={item => onChangeSchema(item.schema)}
+        itemIsSelected={item => item && item.schema.id === selectedSchemaId}
         renderItemIcon={() => <Icon name="folder" size={16} />}
         showItemArrows={hasNextStep}
       />
@@ -718,7 +743,13 @@ const DatabaseSchemaPicker = ({
 
   const sections = databases.map(database => ({
     name: database.name,
-    items: database.schemas.length > 1 ? database.schemas : [],
+    items:
+      database.schemas.length > 1
+        ? database.schemas.map(schema => ({
+            schema,
+            name: schema.displayName(),
+          }))
+        : [],
     className: database.is_saved_questions ? "bg-light" : null,
     icon: database.is_saved_questions ? "all" : "database",
     loading:
@@ -728,9 +759,12 @@ const DatabaseSchemaPicker = ({
       isLoading,
   }));
 
-  let openSection =
-    selectedSchema &&
-    _.findIndex(databases, db => _.find(db.schemas, selectedSchema));
+  let openSection = selectedSchema
+    ? databases.findIndex(db => db.id === selectedSchema.database.id)
+    : selectedDatabase
+    ? databases.findIndex(db => db.id === selectedDatabase.id)
+    : -1;
+
   if (
     openSection >= 0 &&
     databases[openSection] &&
@@ -745,10 +779,19 @@ const DatabaseSchemaPicker = ({
       key="databaseSchemaPicker"
       className="text-brand"
       sections={sections}
-      onChange={onChangeSchema}
-      onChangeSection={(section, sectionIndex) =>
-        onChangeDatabase(databases[sectionIndex], true)
-      }
+      onChange={item => onChangeSchema(item.schema)}
+      onChangeSection={(section, sectionIndex) => {
+        if (
+          selectedDatabase &&
+          selectedDatabase.id === databases[sectionIndex].id
+        ) {
+          // You can't change to the current database. If you click on that,
+          // still return "true" to let the AccordionList collapse that section.
+          return true;
+        }
+        onChangeDatabase(databases[sectionIndex], true);
+        return true;
+      }}
       itemIsSelected={schema => schema === selectedSchema}
       renderSectionIcon={item => (
         <Icon className="Icon text-default" name={item.icon} size={18} />
@@ -794,7 +837,7 @@ const TablePicker = ({
       </span>
       {selectedSchema && selectedSchema.name && schemas.length > 1 && (
         <span className="ml1 text-wrap text-slate">
-          - {selectedSchema.name}
+          - {selectedSchema.displayName()}
         </span>
       )}
     </div>

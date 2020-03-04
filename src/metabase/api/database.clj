@@ -145,10 +145,11 @@
 
 ;; "Virtual" tables for saved cards simulate the db->schema->table hierarchy by doing fake-db->collection->card
 (defn- add-saved-questions-virtual-database [dbs & options]
-  (if-let [virtual-db-metadata (apply saved-cards-virtual-db-metadata options)]
-    ;; only add the 'Saved Questions' DB if there are Cards that can be used
-    (conj (vec dbs) virtual-db-metadata)
-    dbs))
+  (let [virtual-db-metadata (apply saved-cards-virtual-db-metadata options)]
+    (if (seq (cards-virtual-tables :include-fields? false))
+      ;; only add the 'Saved Questions' DB if there are Cards that can be used
+      (conj (vec dbs) virtual-db-metadata)
+      dbs)))
 
 (defn- dbs-list [& {:keys [include-tables? include-saved-questions-db? include-saved-questions-tables?]}]
   (when-let [dbs (seq (filter mi/can-read? (db/select Database {:order-by [:%lower.name :%lower.engine]})))]

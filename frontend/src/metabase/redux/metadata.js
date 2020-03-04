@@ -72,28 +72,10 @@ export const updateSegment = segment => {
   return Segments.actions.update(segment);
 };
 
-export const FETCH_DATABASES = Databases.actions.fetchList.toString();
-export const fetchDatabases = (reload = false) => {
-  deprecated("metabase/redux/metadata fetchDatabases");
-  return Databases.actions.fetchList(
-    {
-      include_tables: true,
-      include_cards: true,
-    },
-    { reload },
-  );
-};
-
 export const FETCH_REAL_DATABASES = Databases.actions.fetchList.toString();
 export const fetchRealDatabases = (reload = false) => {
   deprecated("metabase/redux/metadata fetchRealDatabases");
-  return Databases.actions.fetchList(
-    {
-      include_tables: true,
-      include_cards: false,
-    },
-    { reload },
-  );
+  return Databases.actions.fetchList({ include: "tables" }, { reload });
 };
 
 export const FETCH_DATABASE_METADATA = Databases.actions.fetchDatabaseMetadata.toString();
@@ -280,23 +262,6 @@ export const fetchSegmentRevisions = createThunkAction(
       const segment = getIn(getState(), ["entities", "segments", segmentId]);
       const tableId = segment.table_id;
       await dispatch(fetchTableMetadata(tableId));
-    };
-  },
-);
-
-const FETCH_DATABASES_WITH_METADATA =
-  "metabase/metadata/FETCH_DATABASES_WITH_METADATA";
-export const fetchDatabasesWithMetadata = createThunkAction(
-  FETCH_DATABASES_WITH_METADATA,
-  (reload = false) => {
-    return async (dispatch, getState) => {
-      await dispatch(fetchDatabases());
-      const databases = getIn(getState(), ["entities", "databases"]);
-      await Promise.all(
-        Object.values(databases).map(database =>
-          dispatch(fetchDatabaseMetadata(database.id)),
-        ),
-      );
     };
   },
 );
