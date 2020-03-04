@@ -109,6 +109,7 @@
  [test-users
   user->id
   user->client
+  user->credentials
   with-test-user]
 
  [tt

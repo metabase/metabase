@@ -122,5 +122,5 @@
    :cancelf       default-cancelf
    :timeoutf      default-timeoutf
    :resultf       default-resultf
-   :canceled-chan (a/promise-chan)
-   :out-chan      (a/promise-chan)})
+   :canceled-chan (a/promise-chan identity identity)
+   :out-chan      (a/promise-chan identity identity)})

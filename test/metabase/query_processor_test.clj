@@ -298,8 +298,7 @@
   "Return the result `data` from a successful query run, or throw an Exception if processing failed."
   {:style/indent 0}
   [results]
-  (when (= (:status results) :failed)
-    (println "Error running query:" (u/pprint-to-str 'red results))
+  (when (#{:failed "failed"} (:status results))
     (throw (ex-info (str (or (:error results) "Error running query"))
              (if (map? results) results {:results results}))))
   (:data results))

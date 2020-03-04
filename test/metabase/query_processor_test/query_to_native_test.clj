@@ -6,8 +6,6 @@
              [test :as mt]]
             [metabase.api.common :as api]
             [metabase.models.permissions :as perms]
-            [metabase.query-processor.middleware.async-wait :as async-wait]
-            [metabase.test.util :as tu]
             [schema.core :as s]))
 
 (deftest query->native-test
@@ -33,14 +31,6 @@
               :native     {:query         "SELECT * FROM VENUES [[WHERE price = {{price}}]];"
                            :template-tags {"price" {:name "price", :display-name "Price", :type :number, :required false}}}
               :parameters [{:type "category", :target [:variable [:template-tag "price"]], :value "3"}]})))))
-
-(deftest no-async-wait-test
-  (testing "`query->native` should not be subject to async waiting")
-  (is (= :ok
-         (tu/throw-if-called async-wait/run-in-thread-pool
-           (qp/query->native (mt/mbql-query venues))
-           :ok))))
-
 
 ;; If user permissions are bound, we should do permissions checking when you call `query->native`; you should need
 ;; native query execution permissions for the DB in question plus the perms needed for the original query in order to

@@ -22,7 +22,7 @@
         (cond
           (not= port out-chan) (context/timeoutf context)
           (nil? val)           (context/cancelf context))
-        (log/tracef "Closing out-chan and canceled-chan.")
+        (log/tracef "Closing out-chan.")
         (a/close! out-chan)
         (a/close! canceled-chan)))
     nil))
