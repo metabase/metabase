@@ -47,18 +47,21 @@
   the normal `streaming-response` macro, which is geared toward Ring responses.
 
     (with-open [os ...]
-      (qp/process-query query (qp.streaming/streaming-context :csv os)))"
-  [export-format ^OutputStream os]
-  (let [results-writer (i/streaming-results-writer export-format os)]
-    {:rff      (streaming-rff results-writer)
-     :reducedf (streaming-reducedf results-writer os)}))
+      (qp/process-query query (qp.streaming/streaming-context :csv os canceled-chan)))"
+  ([export-format ^OutputStream os]
+   (let [results-writer (i/streaming-results-writer export-format os)]
+     {:rff      (streaming-rff results-writer)
+      :reducedf (streaming-reducedf results-writer os)}))
+
+  ([export-format os canceled-chan]
+   (assoc (streaming-context export-format os) :canceled-chan canceled-chan)))
 
 (defn streaming-response*
   "Impl for `streaming-response`."
   [export-format f]
   (streaming-response/streaming-response (i/stream-options export-format) [os canceled-chan]
     (let [result (try
-                   (f (streaming-context export-format os))
+                   (f (streaming-context export-format os canceled-chan))
                    (catch Throwable e
                      e))
           result (if (instance? ManyToManyChannel result)
