@@ -1,16 +1,15 @@
 (ns metabase.driver.common.parameters.values-test
   (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [test :as mt]]
             [metabase.driver.common.parameters :as i]
             [metabase.driver.common.parameters.values :as values]
             [metabase.models
              [card :refer [Card]]
              [database :refer [Database]]
              [field :refer [map->FieldInstance]]
-             [native-query-snippet :refer [NativeQuerySnippet]]]
-            [metabase.query-processor.test-util :as qp.test-util]
-            [metabase.test.data :as data]
-            [toucan.util.test :as tt])
+             [native-query-snippet :refer [NativeQuerySnippet]]])
   (:import clojure.lang.ExceptionInfo))
 
 (deftest variable-value-test
@@ -34,7 +33,7 @@
     (is (= {:field (map->FieldInstance
                     {:name      "DATE"
                      :parent_id nil
-                     :table_id  (data/id :checkins)
+                     :table_id  (mt/id :checkins)
                      :base_type :type/Date})
             :value {:type  :date/range
                     :value "2015-04-01~2015-05-01"}}
@@ -42,7 +41,7 @@
                      {:name         "checkin_date"
                       :display-name "Checkin Date"
                       :type         :dimension
-                      :dimension    [:field-id (data/id :checkins :date)]}
+                      :dimension    [:field-id (mt/id :checkins :date)]}
                      [{:type :date/range, :target [:dimension [:template-tag "checkin_date"]], :value
                        "2015-04-01~2015-05-01"}])))))
 
@@ -50,40 +49,40 @@
     (is (= {:field (map->FieldInstance
                     {:name      "DATE"
                      :parent_id nil
-                     :table_id  (data/id :checkins)
+                     :table_id  (mt/id :checkins)
                      :base_type :type/Date})
             :value i/no-value}
            (into {} (#'values/value-for-tag
                      {:name         "checkin_date"
                       :display-name "Checkin Date"
                       :type         :dimension
-                      :dimension    [:field-id (data/id :checkins :date)]}
+                      :dimension    [:field-id (mt/id :checkins :date)]}
                      nil)))))
 
   (testing "id requiring casting"
     (is (= {:field (map->FieldInstance
                     {:name      "ID"
                      :parent_id nil
-                     :table_id  (data/id :checkins)
+                     :table_id  (mt/id :checkins)
                      :base_type :type/BigInteger})
             :value {:type  :id
                     :value 5}}
            (into {} (#'values/value-for-tag
-                     {:name "id", :display-name "ID", :type :dimension, :dimension [:field-id (data/id :checkins :id)]}
+                     {:name "id", :display-name "ID", :type :dimension, :dimension [:field-id (mt/id :checkins :id)]}
                      [{:type :id, :target [:dimension [:template-tag "id"]], :value "5"}])))))
 
   (testing "required but unspecified"
     (is (thrown? Exception
                  (into {} (#'values/value-for-tag
                            {:name "checkin_date", :display-name "Checkin Date", :type "dimension", :required true,
-                            :dimension ["field-id" (data/id :checkins :date)]}
+                            :dimension ["field-id" (mt/id :checkins :date)]}
                            nil)))))
 
   (testing "required and default specified"
     (is (= {:field (map->FieldInstance
                     {:name      "DATE"
                      :parent_id nil
-                     :table_id  (data/id :checkins)
+                     :table_id  (mt/id :checkins)
                      :base_type :type/Date})
             :value {:type  :dimension
                     :value "2015-04-01~2015-05-01"}}
@@ -93,7 +92,7 @@
                       :type         :dimension
                       :required     true
                       :default      "2015-04-01~2015-05-01",
-                      :dimension    [:field-id (data/id :checkins :date)]}
+                      :dimension    [:field-id (mt/id :checkins :date)]}
                      nil)))))
 
 
@@ -101,27 +100,27 @@
     (is (= {:field (map->FieldInstance
                     {:name      "DATE"
                      :parent_id nil
-                     :table_id  (data/id :checkins)
+                     :table_id  (mt/id :checkins)
                      :base_type :type/Date})
             :value [{:type  :date/range
                      :value "2015-01-01~2016-09-01"}
                     {:type  :date/single
                      :value "2015-07-01"}]}
            (into {} (#'values/value-for-tag
-                     {:name "checkin_date", :display-name "Checkin Date", :type :dimension, :dimension [:field-id (data/id :checkins :date)]}
+                     {:name "checkin_date", :display-name "Checkin Date", :type :dimension, :dimension [:field-id (mt/id :checkins :date)]}
                      [{:type :date/range, :target [:dimension [:template-tag "checkin_date"]], :value "2015-01-01~2016-09-01"}
                       {:type :date/single, :target [:dimension [:template-tag "checkin_date"]], :value "2015-07-01"}])))))
 
   (testing "Make sure defaults values get picked up for field filter clauses"
     (is (= {:field (map->FieldInstance
-                    {:name "DATE", :parent_id nil, :table_id (data/id :checkins), :base_type :type/Date})
+                    {:name "DATE", :parent_id nil, :table_id (mt/id :checkins), :base_type :type/Date})
             :value {:type  :date/all-options
                     :value "past5days"}}
            (into {} (#'values/field-filter-value-for-tag
                      {:name         "checkin_date"
                       :display-name "Checkin Date"
                       :type         :dimension
-                      :dimension    [:field-id (data/id :checkins :date)]
+                      :dimension    [:field-id (mt/id :checkins :date)]
                       :default      "past5days"
                       :widget-type  :date/all-options}
                      nil))))))
@@ -129,7 +128,7 @@
 (deftest card-query-test
   (testing "Card query template tag gets card's native query"
     (let [test-query "SELECT 1"]
-      (tt/with-temp Card [card {:dataset_query {:database (data/id)
+      (mt/with-temp Card [card {:dataset_query {:database (mt/id)
                                                 :type     "native"
                                                 :native   {:query test-query}}}]
         (is (= (i/->ReferencedCardQuery (:id card) test-query)
@@ -139,10 +138,10 @@
                 []))))))
 
   (testing "Card query template tag generates native query for MBQL query"
-    (qp.test-util/with-everything-store
+    (mt/with-everything-store
       (driver/with-driver :h2
-        (let [mbql-query   (data/mbql-query venues
-                             {:database (data/id)
+        (let [mbql-query   (mt/mbql-query venues
+                             {:database (mt/id)
                               :filter [:< [:field-id $price] 3]})
               expected-sql (str "SELECT "
                                   "\"PUBLIC\".\"VENUES\".\"ID\" AS \"ID\", "
@@ -154,7 +153,7 @@
                                 "FROM \"PUBLIC\".\"VENUES\" "
                                 "WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" < 3 "
                                 "LIMIT 1048576")]
-          (tt/with-temp Card [card {:dataset_query mbql-query}]
+          (mt/with-temp Card [card {:dataset_query mbql-query}]
             (is (= (i/->ReferencedCardQuery (:id card) expected-sql)
                    (#'values/value-for-tag
                     {:name "card-template-tag-test", :display-name "Card template tag test",
@@ -162,8 +161,8 @@
                     []))))))))
 
   (testing "Card query template tag wraps error in tag details"
-    (tt/with-temp Card [param-card {:dataset_query
-                                    (data/native-query
+    (mt/with-temp Card [param-card {:dataset_query
+                                    (mt/native-query
                                      {:query "SELECT {{x}}"
                                       :template-tags
                                       {"x"
@@ -171,8 +170,8 @@
                                         :type :number, :required false}}})}]
       (let [param-card-id  (:id param-card)
             param-card-tag (str "#" param-card-id)]
-        (tt/with-temp Card [card {:dataset_query
-                                  (data/native-query
+        (mt/with-temp Card [card {:dataset_query
+                                  (mt/native-query
                                    {:query         (str "SELECT * FROM {{#" param-card-id "}} AS y")
                                     :template-tags
                                     {param-card-tag
@@ -191,18 +190,18 @@
 
 (deftest snippet-test
   (testing "Snippet template tag gets snippet's content"
-    (tt/with-temp NativeQuerySnippet [snippet {:database_id (data/id)
+    (mt/with-temp NativeQuerySnippet [snippet {:database_id (mt/id)
                                                :name        "test_comment"
                                                :content     "-- Just a comment"
                                                :creator_id  1}]
       (is (= (i/->NativeQuerySnippet (:id snippet) (:content snippet))
              (#'values/value-for-tag
               {:name "snippet-template-tag-test", :display-name "Snippet template tag test",
-               :type :snippet, :snippet-name (:name snippet), :database (data/id)}
+               :type :snippet, :snippet-name (:name snippet), :database (mt/id)}
               [])))))
 
   (testing "fails for snippet with mismatched database ID"
-    (tt/with-temp* [Database           [db]
+    (mt/with-temp* [Database           [db]
                     NativeQuerySnippet [snippet {:database_id (:id db)
                                                  :name        "test_comment"
                                                  :content     "SELECT NULL;"
@@ -211,6 +210,6 @@
                                                            "database and may not be used here\\.$"))
             (#'values/value-for-tag
              {:name "snippet-template-tag-test", :display-name "Snippet template tag test",
-              :database (data/id), ; Not the same as `(:id db)` used for `snippet`
+              :database (mt/id), ; Not the same as `(:id db)` used for `snippet`
               :type :snippet, :snippet-name (:name snippet)}
              []))))))
