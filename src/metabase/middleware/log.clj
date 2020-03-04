@@ -9,6 +9,7 @@
             [metabase.async
              [streaming-response :as streaming-response]
              [util :as async.u]]
+            [metabase.async.streaming-response.thread-pool :as streaming-response.thread-pool]
             [metabase.middleware.util :as middleware.u]
             [metabase.query-processor.middleware.async :as qp.middleware.async]
             [metabase.util.i18n :refer [trs]]
@@ -60,7 +61,7 @@
      " "
      (trs "Queries in flight: {0}" (qp.middleware.async/in-flight))
      " "
-     (trs "({0} queued)" (streaming-response/queued-thread-count)))))
+     (trs "({0} queued)" (streaming-response.thread-pool/queued-thread-count)))))
 
 (defn- format-error-info [{{:keys [body]} :response} {:keys [error?]}]
   (when (and error?

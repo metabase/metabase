@@ -96,15 +96,14 @@
       (mt/with-temp Database [db {:engine ::test-driver}]
         (mt/with-db db
           (reset! canceled? false)
-          (let [futur     (http/post (test-client/build-url "dataset" nil)
-                                     (assoc (test-client/build-request-map (mt/user->credentials :lucky)
-                                                                           {:database (mt/id)
-                                                                            :type     "native"
-                                                                            :native   {:query {:sleep 5000}}})
-                                            :async true
-                                            :oncancel #(println "CANCELED!"))
-                                     identity
-                                     (fn [e] (throw e)))]
+          (let [futur (http/post (test-client/build-url "dataset" nil)
+                                 (assoc (test-client/build-request-map (mt/user->credentials :lucky)
+                                                                       {:database (mt/id)
+                                                                        :type     "native"
+                                                                        :native   {:query {:sleep 5000}}})
+                                        :async true)
+                                 identity
+                                 (fn [e] (throw e)))]
             (Thread/sleep 100)
             (future-cancel futur)
             (Thread/sleep 100)

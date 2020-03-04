@@ -3,24 +3,21 @@
             [clojure.core.async :as a]
             [clojure.tools.logging :as log]
             compojure.response
-            [metabase
-             [config :as config]
-             [util :as u]]
+            [metabase.async.streaming-response.thread-pool :as thread-pool]
+            [metabase.util :as u]
             [potemkin.types :as p.types]
             [pretty.core :as pretty]
             [ring.core.protocols :as ring.protocols]
             [ring.util.response :as ring.response])
   (:import [java.io BufferedWriter FilterOutputStream OutputStream OutputStreamWriter]
            java.nio.charset.StandardCharsets
-           [java.util.concurrent Executors ThreadPoolExecutor]
            java.util.zip.GZIPOutputStream
-           org.apache.commons.lang3.concurrent.BasicThreadFactory$Builder
            org.eclipse.jetty.io.EofException))
 
 (def ^:private keepalive-interval-ms
   "Interval between sending newline characters to keep Heroku from terminating requests like queries that take a long
   time to complete."
-  (u/seconds->ms 1)) ; one second
+  (u/seconds->ms 1))
 
 (defn- jetty-eof-canceling-output-stream
   "Wraps an `OutputStream` and sends a message to `canceled-chan` if a jetty `EofException` is thrown when writing to
@@ -77,8 +74,8 @@
     (proxy [FilterOutputStream] [os]
       (close []
         (reset! continue-writing-newlines? false)
-        (let [^FilterOutputStream this this]
-          (proxy-super close)))
+        (.flush os)
+        (.close os))
       (write
         ([x]
          (reset! continue-writing-newlines? false)
@@ -91,14 +88,15 @@
          (.write os ba off len))))))
 
 (defn- ex-status-code [e]
-  (some #((some-fn :status-code :status) (ex-data %))
-        (take-while some? (iterate ex-cause e))))
+  (or (some #((some-fn :status-code :status) (ex-data %))
+            (take-while some? (iterate ex-cause e)))
+      500))
 
 (defn- format-exception [e]
   (assoc (Throwable->map e) :_status (ex-status-code e)))
 
 (defn write-error!
-  "Write an error to the output stream, formatting it nicely."
+  "Write an error to the output stream, formatting it nicely. Closes output stream afterwards."
   [^OutputStream os obj]
   (if (instance? Throwable obj)
     (recur os (format-exception obj))
@@ -106,7 +104,9 @@
       (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
         (json/generate-stream obj writer)
         (.flush writer))
-      (catch Throwable _))))
+      (catch Throwable _)
+      (finally
+        (.close os)))))
 
 (defn- respond [f finished-chan ^OutputStream os canceled-chan]
   (try
@@ -128,28 +128,6 @@
       (a/close! finished-chan)
       (a/close! canceled-chan))))
 
-(def ^:private ^Long thread-pool-max-size
-  (or (config/config-int :mb-jetty-maxthreads) 50))
-
-(defonce ^:private thread-pool*
-  (delay
-    (Executors/newFixedThreadPool thread-pool-max-size
-                                  (.build
-                                   (doto (BasicThreadFactory$Builder.)
-                                     (.namingPattern "streaming-response-thread-pool-%d")
-                                     ;; Daemon threads do not block shutdown of the JVM
-                                     (.daemon true))))))
-
-(defn- thread-pool
-  "Thread pool for asynchronously running streaming responses."
-  ^ThreadPoolExecutor []
-  @thread-pool*)
-
-(defn queued-thread-count
-  "The number of queued streaming response threads."
-  []
-  (count (.getQueue (thread-pool))))
-
 (defn- response-output-stream ^OutputStream [{:keys [gzip? write-keepalive-newlines?],
                                               :or   {write-keepalive-newlines? true}}
                                              ^OutputStream os
@@ -168,8 +146,9 @@
                           (catch Throwable e
                             (write-error! os e))
                           (finally
+                            (.flush os)
                             (.close os))))
-        futur         (.submit (thread-pool) ^Runnable task)]
+        futur         (.submit (thread-pool/thread-pool) ^Runnable task)]
     (a/go
       (when (a/<! canceled-chan)
         (log/trace "Canceling async thread")
@@ -177,7 +156,7 @@
 
 ;; `ring.middleware.gzip` doesn't work on our StreamingResponse class.
 (defn- should-gzip-response?
-  "Does the client accept GZIP encoding?"
+  "GZIP a response if the client accepts GZIP encoding, and, if quality is specified, quality > 0."
   [{{:strs [accept-encoding]} :headers}]
   (re-find #"gzip|\*" accept-encoding))
 
@@ -205,6 +184,7 @@
 
 (defn- render [^StreamingResponse streaming-response gzip?]
   (let [{:keys [headers content-type], :as options} (.options streaming-response)]
+    (println "status code -> 200")
     (assoc (ring.response/response (if gzip?
                                      (StreamingResponse. (.f streaming-response)
                                                          (assoc options :gzip? true)
