@@ -178,7 +178,7 @@ FROM filtered_products
 
 The `{{#123}}` tag is substituted for the SQL query of the referenced question, surrounded by parentheses.
 
-Sub-queries are only supported in SQL databases.
+**Note:** Sub-queries are only supported in SQL databases.
 
 ---
 
