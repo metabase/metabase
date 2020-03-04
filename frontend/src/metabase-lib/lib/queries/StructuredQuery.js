@@ -7,7 +7,7 @@
 import * as Q from "metabase/lib/query/query";
 import * as Q_DEPRECATED from "metabase/lib/query";
 import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
-import { format as formatExpression } from "metabase/lib/expressions/formatter";
+import { format as formatExpression } from "metabase/lib/expressions/format";
 
 import _ from "underscore";
 import { chain, updateIn } from "icepick";

@@ -1,7 +1,5 @@
 import { CstParser } from "chevrotain";
 
-import _ from "underscore";
-
 import {
   lexer,
   allTokens,
@@ -35,7 +33,7 @@ export class ExpressionParser extends CstParser {
       maxLookahead: 3,
       recoveryEnabled: false,
       // non-standard option we implement ourselves:
-      tokenRecoveryEnabled: false,
+      tokenRecoveryEnabled: true,
       ...config,
     });
 
@@ -44,38 +42,41 @@ export class ExpressionParser extends CstParser {
     // START RULES:
 
     $.RULE("any", returnType => {
-      $.OR([
-        {
-          GATE: () =>
-            !returnType || isExpressionType("aggregation", returnType),
-          ALT: () => {
-            $.SUBRULE2($.aggregation, { LABEL: "expression" });
+      $.OR({
+        DEF: [
+          {
+            GATE: () =>
+              !returnType || isExpressionType("aggregation", returnType),
+            ALT: () => {
+              $.SUBRULE2($.aggregation, { LABEL: "expression" });
+            },
           },
-        },
-        {
-          GATE: () => !returnType || isExpressionType("number", returnType),
-          ALT: () => {
-            // NOTE: can't use $.number due to limited lookhead?
-            // $.SUBRULE($.number, { LABEL: "expression" });
-            $.SUBRULE($.additionExpression, {
-              LABEL: "expression",
-              ARGS: [returnType],
-            });
+          {
+            GATE: () => !returnType || isExpressionType("number", returnType),
+            ALT: () => {
+              // NOTE: can't use $.number due to limited lookhead?
+              // $.SUBRULE($.number, { LABEL: "expression" });
+              $.SUBRULE($.additionExpression, {
+                LABEL: "expression",
+                ARGS: [returnType],
+              });
+            },
           },
-        },
-        {
-          GATE: () => !returnType || isExpressionType("string", returnType),
-          ALT: () => {
-            $.SUBRULE1($.string, { LABEL: "expression" });
+          {
+            GATE: () => !returnType || isExpressionType("string", returnType),
+            ALT: () => {
+              $.SUBRULE1($.string, { LABEL: "expression" });
+            },
           },
-        },
-        {
-          GATE: () => !returnType || isExpressionType("boolean", returnType),
-          ALT: () => {
-            $.SUBRULE($.boolean, { LABEL: "expression" });
+          {
+            GATE: () => !returnType || isExpressionType("boolean", returnType),
+            ALT: () => {
+              $.SUBRULE($.boolean, { LABEL: "expression" });
+            },
           },
-        },
-      ]);
+        ],
+        ERR_MSG: returnType,
+      });
     });
 
     // an expression without aggregations in it
@@ -428,8 +429,7 @@ export function parse({
   const l = recover ? lexerWithRecovery : lexer;
   const p = recover ? parserWithRecovery : parser;
 
-  let lexerErrors, parserErrors;
-
+  let lexerErrors;
   // Lex
   if (!tokenVector) {
     const { tokens, errors } = l.tokenize(source);
@@ -450,7 +450,7 @@ export function parse({
   // Parse
   p.input = tokenVector;
   const cst = p[startRule]();
-  parserErrors = p.errors;
+  const parserErrors = p.errors;
   for (const error of parserErrors) {
     cleanErrorMessage(error);
   }

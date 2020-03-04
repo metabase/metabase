@@ -7,7 +7,8 @@ const tax = ORDERS.TAX.dimension().mbql();
 const userId = ORDERS.USER_ID.dimension().mbql();
 const userName = ORDERS.USER_ID.foreign(PEOPLE.NAME).mbql();
 
-const metric = ORDERS.metrics[0];
+const metric = ORDERS.metrics[0].aggregationClause();
+const segment = ORDERS.segments[0].filterClause();
 
 const query = ORDERS.query().addExpression("foo", 42);
 
@@ -78,8 +79,8 @@ const aggregation = [
     ["-", 1, ["/", ["sum", ["*", total, 2]], ["count"]]],
     "aggregation with math inside and outside",
   ],
-  // ['"Total Order Value"', metric, "metric"],
-  // ['"Total Order Value" * 2', ["*", metric, 2], "metric with math"],
+  ['"Total Order Value"', metric, "metric"],
+  ['"Total Order Value" * 2', ["*", metric, 2], "metric with math"],
   ["Share(Total > 50)", ["share", [">", total, 50]], "share aggregation"],
   [
     "CountIf(Total > 50)",
@@ -116,6 +117,8 @@ const filter = [
     ["time-interval", created, -1, "month"],
     "time interval filter",
   ],
+  ['"Expensive Things"', segment, "segment"],
+  ['NOT "Expensive Things"', ["not", segment], "not segment"],
 ];
 
 export default [

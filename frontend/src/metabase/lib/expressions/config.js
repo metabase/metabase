@@ -1,28 +1,28 @@
 import { t } from "ttag";
 
-export const QUOTES = {
-  // specifies where different quoting is used:
-  characters: {
-    "[": "identifier",
-    "'": "literal",
-    '"': "literal",
-  },
-  // specifies the default quoting style:
-  literalQuoteDefault: '"',
-  identifierQuoteDefault: "[",
-  // always quote identifiers even if they have non-word characters or conflict with reserved words
-  identifierAlwaysQuoted: false,
-};
-
 // export const QUOTES = {
+//   // specifies where different quoting is used:
 //   characters: {
+//     "[": "identifier",
 //     "'": "literal",
-//     '"': "identifier",
+//     '"': "literal",
 //   },
-//   literalQuoteDefault: "'",
-//   identifierQuoteDefault: '"',
+//   // specifies the default quoting style:
+//   literalQuoteDefault: '"',
+//   identifierQuoteDefault: "[",
+//   // always quote identifiers even if they have non-word characters or conflict with reserved words
 //   identifierAlwaysQuoted: false,
 // };
+
+export const QUOTES = {
+  characters: {
+    "'": "literal",
+    '"': "identifier",
+  },
+  literalQuoteDefault: "'",
+  identifierQuoteDefault: '"',
+  identifierAlwaysQuoted: false,
+};
 
 // copied relevant parts from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Operator_Precedence
 export const OPERATOR_PRECEDENCE = {

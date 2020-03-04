@@ -49,8 +49,6 @@ export default class ExpressionWidget extends Component {
             <ExpressionEditorTextfield
               expression={expression}
               query={query}
-              tableMetadata={query.tableMetadata()} // DEPRECATED
-              customFields={query.customFields()} // DEPRECATED
               onChange={parsedExpression =>
                 this.setState({ expression: parsedExpression, error: null })
               }

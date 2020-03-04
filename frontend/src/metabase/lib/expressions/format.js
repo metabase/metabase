@@ -17,7 +17,7 @@ import {
   getExpressionName,
   formatStringLiteral,
   hasOptions,
-} from "../expressions";
+} from ".";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
 type QuotesConfig = {};

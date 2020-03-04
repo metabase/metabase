@@ -1,8 +1,8 @@
-import { format } from "metabase/lib/expressions/formatter";
+import { format } from "metabase/lib/expressions/format";
 
-import { shared, aggregationOpts } from "./__support__/expressions";
+import { shared } from "./__support__/expressions";
 
-describe("metabase/lib/expressions/formatter", () => {
+describe("metabase/lib/expressions/format", () => {
   describe("format()", () => {
     for (const [name, cases, opts] of shared) {
       describe(name, () => {

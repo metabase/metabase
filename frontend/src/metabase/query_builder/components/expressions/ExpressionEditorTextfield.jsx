@@ -6,11 +6,10 @@ import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
 
-import { parse } from "metabase/lib/expressions/parser";
-import { compile } from "metabase/lib/expressions/compile";
-import { suggest } from "metabase/lib/expressions/suggest";
-import { format } from "metabase/lib/expressions/formatter";
-import { syntax } from "metabase/lib/expressions/syntax";
+import { format } from "metabase/lib/expressions/format";
+import { processSource } from "metabase/lib/expressions/process";
+
+import memoize from "lodash.memoize";
 
 import {
   setCaretPosition,
@@ -42,15 +41,13 @@ const SUGGESTION_SECTION_NAMES = {
 };
 
 export default class ExpressionEditorTextfield extends React.Component {
-  constructor(props, context) {
-    super(props, context);
-    _.bindAll(
-      this,
-      "_triggerAutosuggest",
-      "onInputKeyDown",
-      "onInputBlur",
-      "onSuggestionAccepted",
-      "onSuggestionMouseDown",
+  constructor() {
+    super();
+    // memoize processSource for performance when editing previously seen source/targetOffset
+    this._processSource = memoize(processSource, ({ source, targetOffset }) =>
+      // resovle should include anything that affect the results of processSource
+      // except currently we exclude `startRule` and `query` since they shouldn't change
+      [source, targetOffset].join(","),
     );
   }
 
@@ -59,7 +56,6 @@ export default class ExpressionEditorTextfield extends React.Component {
     onChange: PropTypes.func.isRequired,
     onError: PropTypes.func.isRequired,
     startRule: PropTypes.string.isRequired,
-    className: PropTypes.string,
   };
 
   static defaultProps = {
@@ -85,11 +81,10 @@ export default class ExpressionEditorTextfield extends React.Component {
       const parserOptions = this._getParserOptions(newProps);
       const source = format(newProps.expression, parserOptions);
 
-      const { expression, compileError, syntaxTree } = this._processSource(
+      const { expression, compileError, syntaxTree } = this._processSource({
         source,
-        null,
-        newProps,
-      );
+        ...this._getParserOptions(newProps),
+      });
 
       this.setState({
         source,
@@ -117,7 +112,7 @@ export default class ExpressionEditorTextfield extends React.Component {
     }
   }
 
-  onSuggestionAccepted() {
+  onSuggestionAccepted = () => {
     const { source } = this.state;
     const suggestion = this.state.suggestions[this.state.highlightedSuggestion];
 
@@ -143,16 +138,16 @@ export default class ExpressionEditorTextfield extends React.Component {
     this.setState({
       highlightedSuggestion: 0,
     });
-  }
+  };
 
-  onSuggestionMouseDown(event, index) {
+  onSuggestionMouseDown = (event, index) => {
     // when a suggestion is clicked, we'll highlight the clicked suggestion and then hand off to the same code that deals with ENTER / TAB keydowns
     event.preventDefault();
     event.stopPropagation();
     this.setState({ highlightedSuggestion: index }, this.onSuggestionAccepted);
-  }
+  };
 
-  onInputKeyDown(e) {
+  onInputKeyDown = e => {
     const { suggestions, highlightedSuggestion } = this.state;
 
     if (e.keyCode === KEYCODE_LEFT || e.keyCode === KEYCODE_RIGHT) {
@@ -185,7 +180,7 @@ export default class ExpressionEditorTextfield extends React.Component {
       });
       e.preventDefault();
     }
-  }
+  };
 
   clearSuggestions() {
     this.setState({
@@ -194,7 +189,7 @@ export default class ExpressionEditorTextfield extends React.Component {
     });
   }
 
-  onInputBlur() {
+  onInputBlur = () => {
     this.clearSuggestions();
 
     // whenever our input blurs we push the updated expression to our parent if valid
@@ -208,7 +203,7 @@ export default class ExpressionEditorTextfield extends React.Component {
     } else {
       this.props.onError({ message: t`Invalid expression` });
     }
-  }
+  };
 
   onInputClick = () => {
     this._triggerAutosuggest();
@@ -224,65 +219,6 @@ export default class ExpressionEditorTextfield extends React.Component {
       setTimeout(() => this._triggerAutosuggest());
     }
   };
-
-  _processSource(source, targetOffset, props = this.props) {
-    let expression;
-    let suggestions = [];
-    let compileError;
-    let syntaxTree;
-
-    const options = this._getParserOptions(props);
-
-    // PARSE
-    const { cst, tokenVector, parserErrors } = parse({
-      source,
-      ...options,
-      recover: true,
-    });
-
-    // COMPILE
-    if (parserErrors.length > 0) {
-      console.log("parse errors", parserErrors);
-      compileError = parserErrors;
-    } else {
-      try {
-        expression = compile({ cst, tokenVector, ...options });
-      } catch (e) {
-        console.log("compile error", e);
-        compileError = e;
-      }
-    }
-
-    // SUGGEST
-    if (targetOffset != null) {
-      try {
-        suggestions = suggest({
-          source,
-          cst,
-          tokenVector,
-          targetOffset,
-          ...options,
-        });
-      } catch (e) {
-        console.log("suggest error", e);
-      }
-    }
-
-    // SYNTAX
-    try {
-      syntaxTree = syntax({ cst, tokenVector, source, ...options });
-    } catch (e) {
-      console.log("syntax error", e);
-    }
-
-    return {
-      source,
-      expression,
-      suggestions,
-      syntaxTree,
-      compileError,
-    };
-  }
 
   onExpressionChange(source) {
     const inputElement = ReactDOM.findDOMNode(this.refs.input);
@@ -301,7 +237,11 @@ export default class ExpressionEditorTextfield extends React.Component {
       compileError,
       suggestions,
       syntaxTree,
-    } = this._processSource(source, targetOffset);
+    } = this._processSource({
+      source,
+      targetOffset,
+      ...this._getParserOptions(),
+    });
 
     const isValid = expression !== undefined;
     // don't show suggestions if
@@ -320,7 +260,7 @@ export default class ExpressionEditorTextfield extends React.Component {
   }
 
   render() {
-    const { placeholder, className, style } = this.props;
+    const { placeholder } = this.props;
     let { compileError, source, suggestions, syntaxTree } = this.state;
 
     if (compileError && !compileError.length) {

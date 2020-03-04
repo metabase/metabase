@@ -1,4 +1,3 @@
-import _ from "underscore";
 import {
   getMBQLName,
   parseDimension,
@@ -58,7 +57,7 @@ class ExpressionMBQLCompilerVisitor extends ExpressionCstVisitor {
     const mbql = ["case", []];
     const args = ctx.arguments.map(arg => this.visit(arg));
     for (let i = 0; i < args.length; i++) {
-      if (i == args.length - 1) {
+      if (i === args.length - 1) {
         // if there's a single remaining argument it's the default
         mbql.push({ default: args[i] });
       } else {
@@ -164,7 +163,7 @@ export function compile({ cst, ...options }) {
 
 export function parseOperators(operands, operators) {
   let initial = operands[0];
-  let stack = [];
+  const stack = [];
   for (let i = 1; i < operands.length; i++) {
     const operator = operators[i - 1];
     const operand = operands[i];
@@ -174,7 +173,7 @@ export function parseOperators(operands, operators) {
         top.push(operand);
       } else {
         const a = OPERATOR_PRECEDENCE[operator];
-        let b = OPERATOR_PRECEDENCE[top[0]];
+        const b = OPERATOR_PRECEDENCE[top[0]];
         if (b < a) {
           top[top.length - 1] = [operator, top[top.length - 1], operand];
           stack.push(top[top.length - 1]);

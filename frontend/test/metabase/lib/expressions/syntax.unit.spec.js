@@ -26,7 +26,7 @@ const partialInputCases = {
 describe("metabase/lib/expressions/syntax", () => {
   for (const parser of [defaultParser, recoveryParser, fallbackParser]) {
     describe(`${parser.name}()`, () => {
-      for (let [name, cases, opts] of shared) {
+      for (const [name, cases, opts] of shared) {
         describe(name, () => {
           for (const [source, mbql, description] of cases) {
             if (mbql) {

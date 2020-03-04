@@ -34,10 +34,10 @@ const STRING_FUNCTIONS = [
   { text: "trim(", type: "functions" },
   { text: "upper(", type: "functions" },
 ];
-const EXPRESSION_FUNCTIONS = [
-  { text: "case(", type: "functions" },
-  { text: "coalesce(", type: "functions" },
-];
+// const EXPRESSION_FUNCTIONS = [
+//   { text: "case(", type: "functions" },
+//   { text: "coalesce(", type: "functions" },
+// ];
 const FILTER_FUNCTIONS = [
   { text: "between(", type: "functions" },
   { text: "contains(", type: "functions" },
@@ -66,7 +66,6 @@ const BINARY_BOOLEAN_OPERATORS = [
 ];
 const OPEN_PAREN = { type: "other", text: " (" };
 const CLOSE_PAREN = { type: "other", text: ") " };
-const COMMA = { type: "other", text: ", " };
 
 // custom metadata defined in __support__/expressions
 const METRICS_CUSTOM = [{ type: "metrics", text: "metric" }];
@@ -90,36 +89,36 @@ const FIELDS_CUSTOM_NON_NUMERIC = [
 // custom metadata defined in __support__/sample_dataset_fixture
 const METRICS_ORDERS = [{ type: "metrics", text: '"Total Order Value"' }];
 const SEGMENTS_ORDERS = [{ text: '"Expensive Things"', type: "segments" }];
-const FIELDS_ORDERS = [
-  { text: '"Created At" ', type: "fields" },
-  { text: '"Product ID" ', type: "fields" },
-  { text: '"Product → Category" ', type: "fields" },
-  { text: '"Product → Created At" ', type: "fields" },
-  { text: '"Product → Ean" ', type: "fields" },
-  { text: '"Product → ID" ', type: "fields" },
-  { text: '"Product → Price" ', type: "fields" },
-  { text: '"Product → Rating" ', type: "fields" },
-  { text: '"Product → Title" ', type: "fields" },
-  { text: '"Product → Vendor" ', type: "fields" },
-  { text: '"User ID" ', type: "fields" },
-  { text: '"User → Address" ', type: "fields" },
-  { text: '"User → Birth Date" ', type: "fields" },
-  { text: '"User → City" ', type: "fields" },
-  { text: '"User → Created At" ', type: "fields" },
-  { text: '"User → Email" ', type: "fields" },
-  { text: '"User → ID" ', type: "fields" },
-  { text: '"User → Latitude" ', type: "fields" },
-  { text: '"User → Longitude" ', type: "fields" },
-  { text: '"User → Name" ', type: "fields" },
-  { text: '"User → Password" ', type: "fields" },
-  { text: '"User → Source" ', type: "fields" },
-  { text: '"User → State" ', type: "fields" },
-  { text: '"User → Zip" ', type: "fields" },
-  { text: "ID ", type: "fields" },
-  { text: "Subtotal ", type: "fields" },
-  { text: "Tax ", type: "fields" },
-  { text: "Total ", type: "fields" },
-];
+// const FIELDS_ORDERS = [
+//   { text: '"Created At" ', type: "fields" },
+//   { text: '"Product ID" ', type: "fields" },
+//   { text: '"Product → Category" ', type: "fields" },
+//   { text: '"Product → Created At" ', type: "fields" },
+//   { text: '"Product → Ean" ', type: "fields" },
+//   { text: '"Product → ID" ', type: "fields" },
+//   { text: '"Product → Price" ', type: "fields" },
+//   { text: '"Product → Rating" ', type: "fields" },
+//   { text: '"Product → Title" ', type: "fields" },
+//   { text: '"Product → Vendor" ', type: "fields" },
+//   { text: '"User ID" ', type: "fields" },
+//   { text: '"User → Address" ', type: "fields" },
+//   { text: '"User → Birth Date" ', type: "fields" },
+//   { text: '"User → City" ', type: "fields" },
+//   { text: '"User → Created At" ', type: "fields" },
+//   { text: '"User → Email" ', type: "fields" },
+//   { text: '"User → ID" ', type: "fields" },
+//   { text: '"User → Latitude" ', type: "fields" },
+//   { text: '"User → Longitude" ', type: "fields" },
+//   { text: '"User → Name" ', type: "fields" },
+//   { text: '"User → Password" ', type: "fields" },
+//   { text: '"User → Source" ', type: "fields" },
+//   { text: '"User → State" ', type: "fields" },
+//   { text: '"User → Zip" ', type: "fields" },
+//   { text: "ID ", type: "fields" },
+//   { text: "Subtotal ", type: "fields" },
+//   { text: "Tax ", type: "fields" },
+//   { text: "Total ", type: "fields" },
+// ];
 
 describe("metabase/lib/expression/suggest", () => {
   describe("suggest()", () => {

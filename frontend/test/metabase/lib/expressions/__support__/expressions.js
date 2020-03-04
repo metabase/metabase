@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { TYPE } from "metabase/lib/types";
 import { makeMetadata } from "__support__/sample_dataset_fixture";
 

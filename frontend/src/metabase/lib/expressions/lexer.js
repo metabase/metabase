@@ -14,7 +14,7 @@ import {
 } from "./config";
 
 export const CLAUSE_TOKENS = new Map();
-function createClauseToken(name, categories = []) {
+function createClauseToken(name, options = {}) {
   const clause = MBQL_CLAUSES[name];
   if (!clause) {
     throw new Error(`MBQL_CLAUSE: ${clause} is missing`);
@@ -28,8 +28,8 @@ function createClauseToken(name, categories = []) {
   const token = createToken({
     name: tokenName,
     pattern: new RegExp(escape(displayName), "i"),
-    categories: categories,
     longer_alt: Identifier.PATTERN.test(displayName) ? Identifier : null,
+    ...options,
   });
   CLAUSE_TOKENS.set(token, clause);
   return token;
@@ -38,18 +38,22 @@ function createClauseToken(name, categories = []) {
 export const Identifier = createToken({
   name: "Identifier",
   pattern: /\w+/,
+  label: "identfier",
 });
 export const IdentifierString = createToken({
   name: "IdentifierString",
   pattern: Lexer.NA,
+  label: "identfier",
 });
 export const StringLiteral = createToken({
   name: "StringLiteral",
   pattern: Lexer.NA,
+  label: "string",
 });
 export const NumberLiteral = createToken({
   name: "NumberLiteral",
   pattern: /-?(0|[1-9]\d*)(\.\d+)?([eE][+-]?\d+)?/,
+  label: "number",
 });
 
 // OPERATORS
@@ -66,16 +70,20 @@ export const AdditiveOperator = createToken({
   pattern: Lexer.NA,
   categories: [Operator],
 });
-export const Plus = createClauseToken("+", [AdditiveOperator]);
-export const Minus = createClauseToken("-", [AdditiveOperator]);
+export const Plus = createClauseToken("+", { categories: [AdditiveOperator] });
+export const Minus = createClauseToken("-", { categories: [AdditiveOperator] });
 
 export const MultiplicativeOperator = createToken({
   name: "MultiplicativeOperator",
   pattern: Lexer.NA,
   categories: [Operator],
 });
-export const Multi = createClauseToken("*", [MultiplicativeOperator]);
-export const Div = createClauseToken("/", [MultiplicativeOperator]);
+export const Multi = createClauseToken("*", {
+  categories: [MultiplicativeOperator],
+});
+export const Div = createClauseToken("/", {
+  categories: [MultiplicativeOperator],
+});
 
 // FILTER OPERATORS:
 
@@ -86,7 +94,7 @@ export const FilterOperator = createToken({
 });
 
 for (const clause of Array.from(FILTER_OPERATORS)) {
-  createClauseToken(clause, [FilterOperator]);
+  createClauseToken(clause, { categories: [FilterOperator] });
 }
 
 // BOOLEAN OEPRATORS
@@ -94,19 +102,21 @@ for (const clause of Array.from(FILTER_OPERATORS)) {
 export const BooleanOperatorUnary = createToken({
   name: "BooleanOperatorUnary",
   pattern: Lexer.NA,
+  label: "boolean operator",
 });
 
 for (const clause of Array.from(BOOLEAN_UNARY_OPERATORS)) {
-  createClauseToken(clause, [BooleanOperatorUnary]);
+  createClauseToken(clause, { categories: [BooleanOperatorUnary] });
 }
 
 export const BooleanOperatorBinary = createToken({
   name: "BooleanOperatorBinary",
   pattern: Lexer.NA,
+  label: "boolean operator",
 });
 
 for (const clause of Array.from(BOOLEAN_BINARY_OPERATORS)) {
-  createClauseToken(clause, [BooleanOperatorBinary]);
+  createClauseToken(clause, { categories: [BooleanOperatorBinary] });
 }
 
 // FUNCTIONS
@@ -114,6 +124,7 @@ for (const clause of Array.from(BOOLEAN_BINARY_OPERATORS)) {
 export const FunctionName = createToken({
   name: "FunctionName",
   pattern: Lexer.NA,
+  label: "function name",
 });
 
 // AGGREGATION
@@ -125,7 +136,7 @@ export const AggregationFunctionName = createToken({
 });
 
 for (const clause of Array.from(AGGREGATION_FUNCTIONS)) {
-  createClauseToken(clause, [AggregationFunctionName]);
+  createClauseToken(clause, { categories: [AggregationFunctionName] });
 }
 
 // EXPRESSIONS
@@ -137,7 +148,7 @@ export const ExpressionFunctionName = createToken({
 });
 
 for (const clause of Array.from(EXPRESSION_FUNCTIONS)) {
-  createClauseToken(clause, [ExpressionFunctionName]);
+  createClauseToken(clause, { categories: [ExpressionFunctionName] });
 }
 
 // special-case Case since it uses different syntax
@@ -152,7 +163,7 @@ export const FilterFunctionName = createToken({
 });
 
 for (const clause of Array.from(FILTER_FUNCTIONS)) {
-  createClauseToken(clause, [FilterFunctionName]);
+  createClauseToken(clause, { categories: [FilterFunctionName] });
 }
 
 // MISC

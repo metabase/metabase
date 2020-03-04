@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { ExpressionCstVisitor, parse } from "./parser";
 import {
   lexerWithRecovery,

@@ -9,7 +9,7 @@ import * as Q_DEPRECATED from "metabase/lib/query";
 import * as A_DEPRECATED from "metabase/lib/query_aggregation";
 
 import { getAggregationOperator } from "metabase/lib/schema_metadata";
-import { format } from "metabase/lib/expressions/formatter";
+import { format } from "metabase/lib/expressions/format";
 
 import FieldName from "./FieldName";
 

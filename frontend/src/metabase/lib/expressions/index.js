@@ -1,6 +1,5 @@
 export * from "./config";
 
-import _ from "underscore";
 import Dimension from "metabase-lib/lib/Dimension";
 import { OPERATORS, FUNCTIONS, QUOTES, getMBQLName } from "./config";
 

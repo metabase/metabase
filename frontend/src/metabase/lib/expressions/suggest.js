@@ -1,5 +1,4 @@
 import _ from "underscore";
-import { t } from "ttag";
 import escape from "regexp.escape";
 
 import {
@@ -11,7 +10,6 @@ import {
   formatMetricName,
   // segments
   formatSegmentName,
-  FILTER_FUNCTIONS,
 } from "../expressions";
 
 import {
@@ -28,7 +26,6 @@ import {
   CLAUSE_TOKENS,
   Case,
   Comma,
-  Operator,
   FilterOperator,
   FunctionName,
   Identifier,
@@ -147,9 +144,7 @@ export function suggest({
           context.clause &&
           isTokenType(context.token.tokenType, AggregationFunctionName)
         ) {
-          dimensions = query
-            .aggregationFieldOptions(context.clause.clause)
-            .all();
+          dimensions = query.aggregationFieldOptions(context.clause.name).all();
         } else {
           const dimensionFilter = dimension => {
             // not itself
@@ -301,8 +296,13 @@ export function suggest({
       : lastInputToken.image.toLowerCase();
     for (const suggestion of finalSuggestions) {
       suggestion: for (const text of [suggestion.name, suggestion.text]) {
+        const lower = (text || "").toLowerCase();
+        if (lower.startsWith(partial)) {
+          suggestion.range = [0, partial.length];
+          break suggestion;
+        }
         let index = 0;
-        for (const part of (text || "").toLowerCase().split(/\b/g)) {
+        for (const part of lower.split(/\b/g)) {
           if (part.startsWith(partial)) {
             suggestion.range = [index, index + partial.length];
             break suggestion;

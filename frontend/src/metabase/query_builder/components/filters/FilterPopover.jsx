@@ -19,7 +19,7 @@ import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 
-import type { FieldFilter, ConcreteField } from "metabase/meta/types/Query";
+import type Dimension from "metabase-lib/lib/Dimension";
 
 type Props = {
   query: StructuredQuery,
@@ -69,7 +69,7 @@ export default class ViewFilterPopover extends Component {
     this.state = {
       filter: filter,
       choosingField: !filter,
-      editingFilter: filter && filter.isCustom(),
+      editingFilter: filter ? filter.isCustom() : false,
     };
   }
 
@@ -119,7 +119,8 @@ export default class ViewFilterPopover extends Component {
 
   handleFilterChange = (newFilter: ?Filter) => {
     const filter = this.state.filter || new Filter([], null, this.props.query);
-    this.setFilter(filter.set(newFilter));
+    // $FlowFixMe
+    this.setFilter(filter.set(newFilter.raw()));
   };
 
   render() {
@@ -140,7 +141,7 @@ export default class ViewFilterPopover extends Component {
         <ExpressionPopover
           title={CUSTOM_SECTION_NAME}
           query={query}
-          expression={filter && [...filter]}
+          expression={filter ? filter.raw() : null}
           startRule="boolean"
           isValid={filter && filter.isValid()}
           onChange={this.handleFilterChange}
