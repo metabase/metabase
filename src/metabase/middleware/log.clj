@@ -58,7 +58,9 @@
                (.getQueueSize pool)))
      (trs "({0} total active threads)" (Thread/activeCount))
      " "
-     (trs "Queries in flight: {0}" (qp.middleware.async/in-flight)))))
+     (trs "Queries in flight: {0}" (qp.middleware.async/in-flight))
+     " "
+     (trs "({0} queued)" (streaming-response/queued-thread-count)))))
 
 (defn- format-error-info [{{:keys [body]} :response} {:keys [error?]}]
   (when (and error?

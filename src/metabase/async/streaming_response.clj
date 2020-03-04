@@ -1,15 +1,20 @@
 (ns metabase.async.streaming-response
   (:require [cheshire.core :as json]
             [clojure.core.async :as a]
+            [clojure.tools.logging :as log]
             compojure.response
-            [metabase.util :as u]
+            [metabase
+             [config :as config]
+             [util :as u]]
             [potemkin.types :as p.types]
             [pretty.core :as pretty]
             [ring.core.protocols :as ring.protocols]
             [ring.util.response :as ring.response])
   (:import [java.io BufferedWriter FilterOutputStream OutputStream OutputStreamWriter]
            java.nio.charset.StandardCharsets
+           [java.util.concurrent Executors ThreadPoolExecutor]
            java.util.zip.GZIPOutputStream
+           org.apache.commons.lang3.concurrent.BasicThreadFactory$Builder
            org.eclipse.jetty.io.EofException))
 
 (def ^:private keepalive-interval-ms
@@ -22,6 +27,13 @@
   the stream."
   ^OutputStream [^OutputStream os canceled-chan]
   (proxy [FilterOutputStream] [os]
+    (flush []
+      (try
+        (.flush os)
+        (catch EofException e
+          (log/trace "Caught EofException")
+          (a/>!! canceled-chan ::cancel)
+          (throw e))))
     (write
       ([x]
        (try
@@ -29,6 +41,7 @@
            (.write os ^int x)
            (.write os ^bytes x))
          (catch EofException e
+           (log/trace "Caught EofException")
            (a/>!! canceled-chan ::cancel)
            (throw e))))
 
@@ -36,66 +49,53 @@
        (try
          (.write os ba off len)
          (catch EofException e
+           (log/trace "Caught EofException")
            (a/>!! canceled-chan ::cancel)
            (throw e)))))))
+
+(defn- start-keepalive-loop! [^OutputStream os write-keepalive-newlines? continue-writing-newlines?]
+  (a/go-loop []
+    (a/<! (a/timeout keepalive-interval-ms))
+    ;; by still attempting to flush even when not writing newlines we can hopefully trigger an EofException if the
+    ;; request is canceled
+    (when @continue-writing-newlines?
+      (when (try
+              (when write-keepalive-newlines?
+                (.write os (byte \newline)))
+              (.flush os)
+              ::recur
+              (catch Throwable _
+                nil))
+        (recur)))))
 
 (defn- keepalive-output-stream
   "Wraps an `OutputStream` and writes keepalive newline bytes every interval until someone else starts writing to the
   stream."
   ^OutputStream [^OutputStream os write-keepalive-newlines?]
-  (let [write-newlines? (atom true)]
-    (a/go-loop []
-      (a/<! (a/timeout keepalive-interval-ms))
-      (when @write-newlines?
-        (when write-keepalive-newlines?
-          (.write os (byte \newline)))
-        (.flush os)
-        (recur)))
+  (let [continue-writing-newlines? (atom true)]
+    (start-keepalive-loop! os write-keepalive-newlines? continue-writing-newlines?)
     (proxy [FilterOutputStream] [os]
       (close []
-        (reset! write-newlines? false)
+        (reset! continue-writing-newlines? false)
         (let [^FilterOutputStream this this]
           (proxy-super close)))
       (write
         ([x]
-         (reset! write-newlines? false)
+         (reset! continue-writing-newlines? false)
          (if (int? x)
            (.write os ^int x)
            (.write os ^bytes x)))
 
         ([^bytes ba ^Integer off ^Integer len]
-         (reset! write-newlines? false)
+         (reset! continue-writing-newlines? false)
          (.write os ba off len))))))
 
-(defmacro ^:private with-open-chan [[chan-binding chan] & body]
-  `(let [chan#         ~chan
-         ~chan-binding chan#]
-     (try
-       ~@body
-       (finally
-         (a/close! chan#)))))
-
-;; TODO - this code is basically duplicated with the code in the QP catch-exceptions middleware; we should refactor to
-;; remove the duplication
-(defn- exception-chain [^Throwable e]
-  (->> (iterate #(.getCause ^Throwable %) e)
-       (take-while some?)
-       reverse))
+(defn- ex-status-code [e]
+  (some #((some-fn :status-code :status) (ex-data %))
+        (take-while some? (iterate ex-cause e))))
 
 (defn- format-exception [e]
-  (let [format-ex*           (fn [^Throwable e]
-                               {:message    (.getMessage e)
-                                :class      (.getCanonicalName (class e))
-                                :stacktrace (mapv str (.getStackTrace e))
-                                :data       (ex-data e)})
-        [e & more :as chain] (exception-chain e)]
-    (merge
-     (format-ex* e)
-     {:_status (or (some #((some-fn :status-code :status) (ex-data %))
-                         chain)
-                   500)}
-     (when (seq more)
-       {:via (map format-ex* more)}))))
+  (assoc (Throwable->map e) :_status (ex-status-code e)))
 
 (defn write-error!
   "Write an error to the output stream, formatting it nicely."
@@ -108,29 +108,76 @@
         (.flush writer))
       (catch Throwable _))))
 
-(defn- write-to-stream! [f {:keys [write-keepalive-newlines? gzip?], :as options} ^OutputStream os finished-chan]
-  (if gzip?
-    (with-open [gzos (GZIPOutputStream. os true)]
-      (write-to-stream! f (dissoc options :gzip?) gzos finished-chan))
-    (with-open-chan [canceled-chan (a/promise-chan)]
-      (with-open [os os
-                  os (jetty-eof-canceling-output-stream os canceled-chan)
-                  os (keepalive-output-stream os write-keepalive-newlines?)]
+(defn- respond [f finished-chan ^OutputStream os canceled-chan]
+  (try
+    (f os canceled-chan)
+    (catch EofException _
+      (a/>!! canceled-chan ::cancel)
+      nil)
+    (catch InterruptedException _
+      (a/>!! canceled-chan ::cancel)
+      nil)
+    (catch Throwable e
+      (write-error! os {:message (.getMessage e)})
+      nil)
+    (finally
+      (.flush os)
+      (a/>!! finished-chan (if (a/poll! canceled-chan)
+                             :canceled
+                             :done))
+      (a/close! finished-chan)
+      (a/close! canceled-chan))))
 
-        (try
-          (f os canceled-chan)
-          (catch Throwable e
-            (write-error! os {:message (.getMessage e)}))
-          (finally
-            (.flush os)
-            (a/>!! finished-chan (if (a/poll! canceled-chan)
-                                   :canceled
-                                   :done))
-            (a/close! finished-chan)))))))
+(def ^:private ^Long thread-pool-max-size
+  (or (config/config-int :mb-jetty-maxthreads) 50))
+
+(defonce ^:private thread-pool*
+  (delay
+    (Executors/newFixedThreadPool thread-pool-max-size
+                                  (.build
+                                   (doto (BasicThreadFactory$Builder.)
+                                     (.namingPattern "streaming-response-thread-pool-%d")
+                                     ;; Daemon threads do not block shutdown of the JVM
+                                     (.daemon true))))))
+
+(defn- thread-pool
+  "Thread pool for asynchronously running streaming responses."
+  ^ThreadPoolExecutor []
+  @thread-pool*)
+
+(defn queued-thread-count
+  "The number of queued streaming response threads."
+  []
+  (count (.getQueue (thread-pool))))
+
+(defn- response-output-stream ^OutputStream [{:keys [gzip? write-keepalive-newlines?],
+                                              :or   {write-keepalive-newlines? true}}
+                                             ^OutputStream os
+                                             canceled-chan]
+  (-> (cond-> os
+        gzip? (GZIPOutputStream. true))
+      (jetty-eof-canceling-output-stream canceled-chan)
+      (keepalive-output-stream write-keepalive-newlines?)))
+
+(defn- respond-async [f options ^OutputStream os finished-chan]
+  (let [canceled-chan (a/promise-chan)
+        os            (response-output-stream options os canceled-chan)
+        task          (bound-fn []
+                        (try
+                          (respond f finished-chan os canceled-chan)
+                          (catch Throwable e
+                            (write-error! os e))
+                          (finally
+                            (.close os))))
+        futur         (.submit (thread-pool) ^Runnable task)]
+    (a/go
+      (when (a/<! canceled-chan)
+        (log/trace "Canceling async thread")
+        (future-cancel futur)))))
 
 ;; `ring.middleware.gzip` doesn't work on our StreamingResponse class.
 (defn- should-gzip-response?
-  "GZIP a response if the client accepts GZIP encoding, and, if quality is specified, quality > 0."
+  "Does the client accept GZIP encoding?"
   [{{:strs [accept-encoding]} :headers}]
   (re-find #"gzip|\*" accept-encoding))
 
@@ -144,7 +191,7 @@
   ;; both sync and async responses
   ring.protocols/StreamableResponseBody
   (write-body-to-stream [_ _ os]
-    (write-to-stream! f options os donechan))
+    (respond-async f options os donechan))
 
   ;; sync responses only
   compojure.response/Renderable
