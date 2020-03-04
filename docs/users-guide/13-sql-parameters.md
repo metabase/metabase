@@ -10,7 +10,7 @@ Options and settings for your variables will appear in the `Variables` side pane
 
 ### Defining Variables
 
-Typing `{% raw %}{{variable_name}}{% endraw %}` in your native query creates a variable called `variable_name`. Variables can be given types in the side panel, which changes their behavior. All variable types other than `field filter` will cause a filter widget to be placed on this question corresponding to the chosen variable type. When a value is selected via a filter widget, that value replaces the corresponding variable in the SQL template, wherever it appears. If you have multiple filter widgets, you can click and drag on any of them to move and reorder them.
+Typing `{% raw %}{{variable_name}}{% endraw %}` in your native query creates a variable called `variable_name`. Variables can be given types in the side panel, which changes their behavior. All variable types other than "Field Filter" will cause a filter widget to be placed on this question corresponding to the chosen variable type. When a value is selected via a filter widget, that value replaces the corresponding variable in the SQL template, wherever it appears. If you have multiple filter widgets, you can click and drag on any of them to move and reorder them.
 
 This example defines a variable called `cat`, allowing you to dynamically change the `WHERE` clause in this query:
 
@@ -51,7 +51,7 @@ A MongoDB native query example might look like this:
 
 #### Creating SQL question filters using field filter variables
 
-First, insert a variable tag in your SQL, like `{% raw %}{{my_var}}{% endraw %}`. Then, in the side panel, select the Field Filter variable type, and choose which field to map your variable to. In order to display a filter widget, you'll have to choose a field whose Type in the Data Model section of the Admin Panel is one of the following:
+First, insert a variable tag in your SQL, like `{% raw %}{{my_var}}{% endraw %}`. Then, in the side panel, select the "Field Filter" variable type, and choose which field to map your variable to. In order to display a filter widget, you'll have to choose a field whose "Type" in the "Data Model" section of the Admin Panel is one of the following:
 
 - Category
 - City
@@ -63,11 +63,11 @@ First, insert a variable tag in your SQL, like `{% raw %}{{my_var}}{% endraw %}`
 - UNIX Timestamp (Milliseconds)
 - ZIP or Postal Code
 
-The field can also be a datetime, which can be left as "No special type" in the Data Model.
+The field can also be a datetime, which can be left as "No special type" in the data model.
 
-You'll then see a dropdown labeled "Widget," which will let you choose the kind of filter widget you want on your question, which is especially useful for datetime fields. You can select "None" if you don't want a widget on the question at all, which you might do e.g. if you're just wanting to allow this question to be mapped to a dashboard filter (see more on that below).
+You'll then see a dropdown labeled "Widget," which will let you choose the kind of filter widget you want on your question, which is especially useful for datetime fields. You can select "None" if you don't want a widget on the question at all, which you might do, for example, if you just want to allow this question to be mapped to a dashboard filter (see more on that below).
 
-**Note:** If you're not seeing the option to display a filter widget, make sure the mapped field is set to one of the above types, and then try manually syncing your database from the Databases section of the Admin Panel to force Metabase to scan and cache the field's values.
+**Note:** If you're not seeing the option to display a filter widget, make sure the mapped field is set to one of the above types, and then try manually syncing your database from the "Databases" section of the Admin Panel to force Metabase to scan and cache the field's values.
 
 Filter widgets **can't** be displayed if the variable is mapped to a field marked as:
 
@@ -86,7 +86,7 @@ Filter widgets **can't** be displayed if the variable is mapped to a field marke
 
 If you input a default value for your field filter, this value will be selected in the filter whenever you come back to this question. If you clear out the filter, though, no value will be passed (i.e., not even the default value). **The default value has no effect on the behavior of your SQL question when viewed in a dashboard.**
 
-###### Default value in the query
+##### Default value in the query
 
 You can also define default values directly in your query, which are useful when defining complex default values. Note that the hash (`#`) might need to be replaced by the comment syntax of the database you're using. Some databases use double-dashes (`--`) as comment syntax.
 
@@ -100,7 +100,7 @@ WHERE p.createdAt = [[ {% raw %}{{dateOfCreation}}{% endraw %} #]]CURRENT_DATE()
 
 #### Connecting a SQL question to a dashboard filter
 
-In order for a saved SQL/native question to be usable with a dashboard filter, it must contain at least one field filter. The kind of dashboard filter that can be used with the SQL question depends on the field that you map to the question's field filter(s). For example, if you have a field filter called `{% raw %}{{var}}{% endraw %}` and you map it to a State field, you can map a Location dashboard filter to your SQL question. In this example, you'd create a new dashboard or go to an existing one, click the Edit button, add the SQL question that contains your State field filter, add a new dashboard filter or edit an existing Location filter, then click the dropdown on the SQL question card to see the State field filter. [Learn more about dashboard filters here](08-dashboard-filters.md).
+In order for a saved SQL/native question to be usable with a dashboard filter, it must contain at least one field filter. The kind of dashboard filter that can be used with the SQL question depends on the field that you map to the question's field filter(s). For example, if you have a field filter called `{% raw %}{{var}}{% endraw %}` and you map it to a State field, you can map a Location dashboard filter to your SQL question. In this example, you'd create a new dashboard or go to an existing one, click the "Edit" button, add the SQL question that contains your State field filter, add a new dashboard filter or edit an existing Location filter, then click the dropdown on the SQL question card to see the State field filter. [Learn more about dashboard filters here](08-dashboard-filters.md).
 
 ![Field filter](images/sql-parameters/state-field-filter.png)
 
@@ -154,6 +154,31 @@ WHERE True
   [[AND {% raw %}{{id}}{% endraw %}]]
   [[AND {% raw %}{{category}}{% endraw %}]]
 ```
+
+### Using an existing question as a sub-query
+
+You can use an existing question in a new query with the following variable syntax:
+
+```
+SELECT count(*)
+FROM {% raw %}{{#123}}{% endraw %}
+```
+
+This will return the number of records returned by the existing question with ID 123. A question's ID is the number at the end of the URL in your browser's location bar, after `/question/`, when viewing the question.
+
+Alternatively, you can select the target question in the sidebar, in the "Question #..." box that appears after typing `{% raw %}{{#}}{% endraw %}` in the query editor. The saved question you select has to be one that's based on the same database as the one you've currently selected in the native query editor.
+
+The same syntax can be used in Common Table Expressions (CTEs), with databases that support them:
+
+```
+WITH filtered_products AS {% raw %}{{#123}}{% endraw %}
+SELECT count(*)
+FROM filtered_products
+```
+
+The `{% raw %}{{#123}}{% endraw %}` tag is substituted for the SQL query of the referenced question, surrounded by parentheses.
+
+**Note:** Sub-queries are only supported in SQL databases.
 
 ---
 
