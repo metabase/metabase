@@ -11,7 +11,6 @@
              [util :as async.u]]
             [metabase.async.streaming-response.thread-pool :as streaming-response.thread-pool]
             [metabase.middleware.util :as middleware.u]
-            [metabase.query-processor.middleware.async :as qp.middleware.async]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
   (:import clojure.core.async.impl.channels.ManyToManyChannel
@@ -59,7 +58,7 @@
                (.getQueueSize pool)))
      (trs "({0} total active threads)" (Thread/activeCount))
      " "
-     (trs "Queries in flight: {0}" (qp.middleware.async/in-flight))
+     (trs "Queries in flight: {0}" (streaming-response.thread-pool/active-thread-count))
      " "
      (trs "({0} queued)" (streaming-response.thread-pool/queued-thread-count)))))
 

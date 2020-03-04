@@ -20,7 +20,6 @@
              [add-source-metadata :as add-source-metadata]
              [add-timezone-info :as add-timezone-info]
              [annotate :as annotate]
-             [async :as async]
              [auto-bucket-datetimes :as bucket-datetime]
              [binning :as binning]
              [cache :as cache]
@@ -94,8 +93,7 @@
    #'validate/validate-query
    #'normalize/normalize
    #'add-rows-truncated/add-rows-truncated
-   #'results-metadata/record-and-return-metadata!
-   #'async/count-in-flight-queries])
+   #'results-metadata/record-and-return-metadata!])
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are passed to
 ;; `substitute-parameters`
 

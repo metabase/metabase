@@ -51,30 +51,30 @@
   ([export-format ^OutputStream os]
    (let [results-writer (i/streaming-results-writer export-format os)]
      {:rff      (streaming-rff results-writer)
-      :reducedf (streaming-reducedf results-writer os)
-      :raisef   (streaming-raisef os)}))
+      :reducedf (streaming-reducedf results-writer os)}))
 
   ([export-format os canceled-chan]
    (assoc (streaming-context export-format os) :canceled-chan canceled-chan)))
 
+(defn- await-async-result [out-chan canceled-chan]
+  ;; if we get a cancel message, close `out-chan` so the query will be canceled
+  (a/go
+    (when (a/<! canceled-chan)
+      (a/close! out-chan)))
+  ;; block until `out-chan` closes or gets a result
+  (a/<!! out-chan))
+
 (defn streaming-response*
   "Impl for `streaming-response`."
   [export-format f]
-  (println "f:" f) ; NOCOMMIT
   (streaming-response/streaming-response (i/stream-options export-format) [os canceled-chan]
     (let [result (try
                    (f (streaming-context export-format os canceled-chan))
                    (catch Throwable e
                      e))
-          _ (println "result [1]" result) ; NOCOMMIT
           result (if (instance? ManyToManyChannel result)
-                   (let [[val port] (a/alts!! [result canceled-chan])]
-                     (println "(= port canceled-chan):" (= port canceled-chan)) ; NOCOMMIT
-                     (when (= port canceled-chan)
-                       (a/close! result))
-                     val)
+                   (await-async-result result canceled-chan)
                    result)]
-      (println "result [2]" result)     ; NOCOMMIT
       (when (or (instance? Throwable result)
                 (= (:status result) :failed))
         (streaming-response/write-error! os result)))))

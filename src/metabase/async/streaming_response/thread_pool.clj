@@ -20,6 +20,11 @@
   ^ThreadPoolExecutor []
   @thread-pool*)
 
+(defn active-thread-count
+  "The number of active streaming response threads."
+  []
+  (.getActiveCount (thread-pool)))
+
 (defn queued-thread-count
   "The number of queued streaming response threads."
   []

@@ -308,6 +308,8 @@
   "Return the result rows from query `results`, or throw an Exception if they're missing."
   {:style/indent 0}
   [results]
+  (when (#{:failed "failed"} (:status results))
+    (throw (ex-info "Query failed" results)))
   (or (some-> (data results) :rows vec)
       (throw (ex-info "Query does not have any :rows in results." results))))
 
