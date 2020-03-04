@@ -21,7 +21,6 @@
              [add-timezone-info :as add-timezone-info]
              [annotate :as annotate]
              [async :as async]
-             [async-wait :as async-wait]
              [auto-bucket-datetimes :as bucket-datetime]
              [binning :as binning]
              [cache :as cache]
@@ -91,7 +90,6 @@
    #'resolve-database-and-driver/resolve-database-and-driver
    #'fetch-source-query/resolve-card-id-source-tables
    #'store/initialize-store
-   #'async-wait/wait-for-turn
    #'cache/maybe-return-cached-results
    #'validate/validate-query
    #'normalize/normalize
@@ -136,8 +134,7 @@
 (def ^:private ^:const preprocessing-timeout-ms 10000)
 
 (defn- preprocess-query [query context]
-  (binding [*preprocessing-level*           (inc *preprocessing-level*)
-            async-wait/*disable-async-wait* true]
+  (binding [*preprocessing-level* (inc *preprocessing-level*)]
     ;; record the number of recursive preprocesses taking place to prevent infinite preprocessing loops.
     (log/tracef "*preprocessing-level*: %d" *preprocessing-level*)
     (when (>= *preprocessing-level* max-preprocessing-level)
