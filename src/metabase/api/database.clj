@@ -232,7 +232,6 @@
   belonging to this database, or the Tables and Fields, respectively."
   [id include]
   {include (s/maybe (s/enum "tables" "tables.fields"))}
-  (println "include:" include) ; NOCOMMIT
   (-> (api/read-check Database id)
       add-expanded-schedules
       (get-database-hydrate-include include)))
@@ -628,6 +627,9 @@
   (api/read-check Database id)
   (->> (db/select-field :schema Table :db_id id, :active true, {:order-by [[:%lower.schema :asc]]})
        (filter (partial can-read-schema? id))
+       ;; for `nil` schemas return the empty string
+       (map #(if (nil? %) "" %))
+       distinct
        sort))
 
 (api/defendpoint GET ["/:virtual-db/schemas"
@@ -643,15 +645,21 @@
 
 ;;; ------------------------------------- GET /api/database/:id/schema/:schema ---------------------------------------
 
+(defn- schema-tables-list [db-id schema]
+  (api/read-check Database db-id)
+  (api/check-403 (can-read-schema? db-id schema))
+  (filter mi/can-read? (db/select Table :db_id db-id, :schema schema, :active true, {:order-by [[:name :asc]]})))
+
 (api/defendpoint GET "/:id/schema/:schema"
   "Returns a list of Tables for the given Database `id` and `schema`"
   [id schema]
-  (api/read-check Database id)
-  (api/check-403 (can-read-schema? id schema))
-  (->> (db/select Table :db_id id, :schema schema, :active true, {:order-by [[:name :asc]]})
-       (filter mi/can-read?)
-       seq
-       api/check-404))
+  (api/check-404 (seq (schema-tables-list id schema))))
+
+(api/defendpoint GET "/:id/schema/"
+  "Return a list of Tables for a Database whose `schema` is `nil` or an empty string."
+  [id]
+  (api/check-404 (seq (concat (schema-tables-list id nil)
+                              (schema-tables-list id "")))))
 
 (api/defendpoint GET ["/:virtual-db/schema/:schema"
                       :virtual-db (re-pattern (str mbql.s/saved-questions-virtual-database-id))]

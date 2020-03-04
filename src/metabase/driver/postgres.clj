@@ -341,6 +341,15 @@
     (fn []
       (.getObject rs i))))
 
+;; de-CLOB any CLOB values that come back
+(defmethod sql-jdbc.execute/read-column-thunk :postgres
+  [_ ^ResultSet rs _ ^Integer i]
+  (fn []
+    (let [obj (.getObject rs i)]
+      (if (instance? org.postgresql.util.PGobject obj)
+        (.getValue ^org.postgresql.util.PGobject obj)
+        obj))))
+
 ;; Postgres doesn't support OffsetTime
 (defmethod sql-jdbc.execute/set-parameter [:postgres OffsetTime]
   [driver prepared-statement i t]
