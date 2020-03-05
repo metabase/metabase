@@ -72,7 +72,12 @@ export class SchemaBrowser extends React.Component {
                 </Grid>
               </Box>
             ) : (
-              <TableBrowser {...this.props} />
+              <TableBrowser
+                {...this.props}
+                params={{ ...this.props.params, schemaName: schemas[0].name }}
+                // hide the schema since there's only one
+                showSchemaInHeader={false}
+              />
             )
           }
         </Schema.ListLoader>
@@ -90,6 +95,7 @@ export class TableBrowser extends React.Component {
     const {
       metadata,
       params: { dbId, schemaName },
+      showSchemaInHeader = true,
     } = this.props;
     return (
       <Box>
@@ -104,7 +110,7 @@ export class TableBrowser extends React.Component {
                       title: <Database.Name id={dbId} />,
                       to: `browse/${dbId}`,
                     },
-                    schemaName != null && { title: schemaName },
+                    showSchemaInHeader && { title: schemaName },
                   ]}
                 />
                 <Grid>
