@@ -27,15 +27,14 @@ describe("query builder loading behavior", () => {
   });
 
   it("should incrementally load data if not preloaded", () => {
-    // we visit the new question page but refresh after starting a simple
-    // question to wipe out the preloaded data.
+    cy.server();
+    // stub out the preload call to fetch all tables
+    cy.route({ url: "/api/database?include=tables", response: [] });
+    // let the other preload happen since it matches the actual call from the component
+    cy.route({ url: "/api/database?saved=true" }).as("fetch1");
     cy.visit("/question/new");
     cy.contains("Simple question").click();
-    cy.server();
-    cy.reload();
 
-    cy.route({ url: "/api/database?include=tables" }).as("preload");
-    cy.route({ url: "/api/database?saved=true" }).as("fetch1");
     cy.route({ url: "/api/database/1/schemas" }).as("fetch2");
     cy.route({ url: "/api/database/1/schema/PUBLIC" }).as("fetch3");
 
@@ -47,6 +46,5 @@ describe("query builder loading behavior", () => {
     cy.get("@fetch1").should("exist");
     cy.get("@fetch2").should("exist");
     cy.get("@fetch3").should("exist");
-    cy.get("@preload").should("not.exist");
   });
 });
