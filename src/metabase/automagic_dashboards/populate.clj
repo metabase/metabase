@@ -2,6 +2,7 @@
   "Create and save models that make up automagic dashboards."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase.api.common :as api]
             [metabase.automagic-dashboards.filters :as filters]
             [metabase.models
@@ -323,8 +324,8 @@
                                                      (update :row + offset (if skip-titles?
                                                                              0
                                                                              group-heading-height))
-                                                     (u/update-in-when [:visualization_settings :text]
-                                                                       downsize-titles)
+                                                     (m/update-existing-in [:visualization_settings :text]
+                                                                           downsize-titles)
                                                      (assoc :parameter_mappings
                                                        (when-let [card-id (:card_id %)]
                                                          (for [mapping parameter-mappings]
