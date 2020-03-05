@@ -19,9 +19,8 @@
 
 (defn remap-card
   "Updates table_id, database_id, and field_ids in card"
-  [mapping card-id]
-  (let [original-card (tdb/select-one card/Card :id card-id)
-        db-id         (:new (:database mapping))
+  [mapping original-card]
+  (let [db-id         (:new (:database mapping))
         table-id      (:new (:table mapping))]
     (-> original-card
         (assoc :table_id    table-id
@@ -38,3 +37,8 @@
                                         x))
                                     query))))))
 
+(defn remap-cards
+  "Finds all relevant cards, remaps them"
+  [mapping]
+  (let [original-cards (tdb/select card/Card :table_id (:old (:table mapping)))]
+    (map #(remap-card mapping %) original-cards)))
