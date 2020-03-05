@@ -94,26 +94,19 @@
             snippet-from-api ((mt/user->client :crowberto) :post 200 (snippet-url) snippet-input)]
         (is (pos? (:id snippet-from-api)))
 
-        (is (= (:database_id snippet-input)
-               (:database_id snippet-from-api)))
-
-        (is (= (:name snippet-input)
-               (:name snippet-from-api)))
-
-        (is (= (:description snippet-input)
-               (:description snippet-from-api)))
-
-        (is (= (:content snippet-input)
-               (:content snippet-from-api)))
+        (doseq [k [:database_id :name :description :content]]
+          (testing k
+            (is (= (get snippet-input k)
+                   (get snippet-from-api k)))))
 
         (is (= (mt/user->id :crowberto)
                (:creator_id snippet-from-api)))
 
         (is (false? (:archived snippet-from-api)))
 
-        (is (instance? LocalDateTime (:created_at snippet-from-api)))
-
-        (is (instance? LocalDateTime (:updated_at snippet-from-api)))))
+        (doseq [k [:created_at :updated_at]]
+          (testing k
+            (is (instance? LocalDateTime (get snippet-from-api k)))))))
 
     (testing "create fails for non-admin user"
       (perms/revoke-permissions! (group/all-users) db)
