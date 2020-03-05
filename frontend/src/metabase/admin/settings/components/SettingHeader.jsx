@@ -2,9 +2,7 @@ import React from "react";
 
 const SettingHeader = ({ setting }) => (
   <div>
-    <div className="text-medium text-bold text-uppercase">
-      {setting.display_name}
-    </div>
+    <h3>{setting.display_name}</h3>
     <div className="text-medium text-measure my1">
       {setting.description}
       {setting.note && <div>{setting.note}</div>}
