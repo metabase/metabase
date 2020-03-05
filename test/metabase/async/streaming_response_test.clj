@@ -96,25 +96,28 @@
   (testing "Keepalive newlines should be written while waiting for a response."
     (with-redefs [streaming-response/keepalive-interval-ms 50]
       (with-test-driver-db
-        (is (re= #"(?s)^\n{3,}\{\"data\":.*$"
-                 (:body (http/post (test-client/build-url "dataset" nil)
-                                   (test-client/build-request-map (mt/user->credentials :lucky)
-                                                                  {:database (mt/id)
-                                                                   :type     "native"
-                                                                   :native   {:query {:sleep 300}}})))))))))
+        (let [url           (test-client/build-url "dataset" nil)
+              session-token (test-client/authenticate (mt/user->credentials :lucky))
+              request       (test-client/build-request-map session-token
+                                                           {:database (mt/id)
+                                                            :type     "native"
+                                                            :native   {:query {:sleep 300}}})]
+          (is (re= #"(?s)^\n{3,}\{\"data\":.*$"
+                   (:body (http/post url request)))))))))
 
 (deftest cancelation-test
   (testing "Make sure canceling a HTTP request ultimately causes the query to be canceled"
     (with-redefs [streaming-response/keepalive-interval-ms 50]
       (with-test-driver-db
         (reset! canceled? false)
-        (let [url     (test-client/build-url "dataset" nil)
-              request (test-client/build-request-map (mt/user->credentials :lucky)
-                                                     {:database (mt/id)
-                                                      :type     "native"
-                                                      :native   {:query {:sleep 5000}}})
-              futur   (http/post url (assoc request :async true) identity (fn [e] (throw e)))]
-          (println "futur:" futur) ; NOCOMMIT
+        (let [url           (test-client/build-url "dataset" nil)
+              session-token (test-client/authenticate (mt/user->credentials :lucky))
+              request       (test-client/build-request-map session-token
+                                                           {:database (mt/id)
+                                                            :type     "native"
+                                                            :native   {:query {:sleep 5000}}})
+              futur         (http/post url (assoc request :async? true) identity (fn [e] (throw e)))]
+          (is (future? futur))
           (Thread/sleep 100)
           (future-cancel futur)
           (Thread/sleep 100)
