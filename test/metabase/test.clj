@@ -219,8 +219,7 @@
                     :runf    (fn [query rff context]
                                (try
                                  (when run (run))
-                                 (let [metadata (qp.context/metadataf metadata context)]
-                                   (qp.context/reducef rff context (assoc metadata :pre query) rows))
+                                 (qp.context/reducef rff context (assoc metadata :pre query) rows)
                                  (catch Throwable e
                                    (println "Error in test-qp-middleware runf:" e)
                                    (throw e))))}

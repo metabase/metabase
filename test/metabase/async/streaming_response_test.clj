@@ -108,14 +108,13 @@
     (with-redefs [streaming-response/keepalive-interval-ms 50]
       (with-test-driver-db
         (reset! canceled? false)
-        (let [futur (http/post (test-client/build-url "dataset" nil)
-                               (assoc (test-client/build-request-map (mt/user->credentials :lucky)
-                                                                     {:database (mt/id)
-                                                                      :type     "native"
-                                                                      :native   {:query {:sleep 5000}}})
-                                      :async true)
-                               identity
-                               (fn [e] (throw e)))]
+        (let [url     (test-client/build-url "dataset" nil)
+              request (test-client/build-request-map (mt/user->credentials :lucky)
+                                                     {:database (mt/id)
+                                                      :type     "native"
+                                                      :native   {:query {:sleep 5000}}})
+              futur   (http/post url (assoc request :async true) identity (fn [e] (throw e)))]
+          (println "futur:" futur) ; NOCOMMIT
           (Thread/sleep 100)
           (future-cancel futur)
           (Thread/sleep 100)
