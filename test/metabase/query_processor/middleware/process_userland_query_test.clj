@@ -115,7 +115,7 @@
             (is (= 'canceled-chan
                    (if (= port canceled-chan) 'canceled-chan 'timeout))
                 "port")
-            (is (= :cancel
+            (is (= :metabase.query-processor.reducible/cancel
                    val)
                 "val")))
         (testing "No QueryExecution should get saved when a query is canceled"
