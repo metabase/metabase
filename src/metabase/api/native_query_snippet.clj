@@ -52,11 +52,10 @@
   updated/hydrated NativeQuerySnippet"
   [id body]
   (let [snippet     (api/write-check NativeQuerySnippet id)
-        existing    (select-keys snippet [:archived :content :description :name])
         body-fields (u/select-keys-when body
                       :present #{:description}
                       :non-nil #{:archived :content :name})
-        changes     (when-not (= body-fields existing)
+        changes     (when-not (= body-fields (select-keys snippet (keys body-fields)))
                       body-fields)]
     (when changes
       (db/update! NativeQuerySnippet id changes))
