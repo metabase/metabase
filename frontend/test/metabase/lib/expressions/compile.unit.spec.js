@@ -6,13 +6,17 @@ import {
   expressionOpts,
 } from "./__support__/expressions";
 
+const ENABLE_PERF_TESTS = false;
+
 describe("metabase/lib/expressions/compile", () => {
   let compile, parseOperators;
   it("should load compile within 3 seconds", () => {
     const start = Date.now();
     ({ compile, parseOperators } = require("metabase/lib/expressions/compile"));
     const end = Date.now();
-    expect(end - start).toBeLessThan(3000);
+    if (ENABLE_PERF_TESTS) {
+      expect(end - start).toBeLessThan(3000);
+    }
   });
 
   describe("parseOperators", () => {
@@ -57,14 +61,18 @@ describe("metabase/lib/expressions/compile", () => {
               const start = Date.now();
               expect(compile({ source, ...opts })).toEqual(mbql);
               const elapsed = Date.now() - start;
-              expect(elapsed).toBeLessThan(250);
+              if (ENABLE_PERF_TESTS) {
+                expect(elapsed).toBeLessThan(250);
+              }
             });
           } else {
             it(`should not compile ${description}`, () => {
               const start = Date.now();
               expect(() => compile({ source, ...opts })).toThrow();
               const elapsed = Date.now() - start;
-              expect(elapsed).toBeLessThan(250);
+              if (ENABLE_PERF_TESTS) {
+                expect(elapsed).toBeLessThan(250);
+              }
             });
           }
         }

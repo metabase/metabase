@@ -1,6 +1,10 @@
-import _ from "underscore";
+import { isValidField } from "./query/field_ref";
 
-import { isOperator } from "metabase/lib/expressions";
+export const SPECIAL_AGGREGATIONS = new Set([
+  "share",
+  "sum-where",
+  "count-where",
+]);
 
 export function hasOptions(clause) {
   return Array.isArray(clause) && clause[0] === "aggregation-options";
@@ -28,40 +32,49 @@ export function setContent(clause, content) {
   return ["aggregation-options", content, getOptions(clause)];
 }
 
-// predicate function to test if a given aggregation clause is fully formed
-export function isValid(aggregation) {
-  return Array.isArray(aggregation) && aggregation.every(a => a != null);
+function isValidClause(aggregation) {
+  return (
+    Array.isArray(aggregation) &&
+    aggregation.length > 0 &&
+    aggregation.every(a => a != null)
+  );
 }
 
-// DEPRECATED: predicate function to test if the given aggregation clause represents a Bare Rows aggregation
-export function isBareRows(aggregation) {
-  return isValid(aggregation) && aggregation[0] === "rows";
-}
-
-// predicate function to test if a given aggregation clause represents a standard aggregation
+// predicate functions
 export function isStandard(aggregation) {
   return (
-    isValid(aggregation) && !isSpecial(aggregation) && !isMetric(aggregation)
+    isValidClause(aggregation) &&
+    !isMetric(aggregation) &&
+    !isSpecial(aggregation) &&
+    (aggregation.length === 1 ||
+      (aggregation.length === 2 && isValidField(aggregation[1])))
+  );
+}
+export function isCustom(aggregation) {
+  // for now treat all named clauses as custom
+  return (
+    isValidClause(aggregation) &&
+    ((aggregation && hasOptions(aggregation)) ||
+      (!isMetric(aggregation) && !isStandard(aggregation)))
+  );
+}
+
+export function isMetric(aggregation) {
+  return isValidClause(aggregation) && aggregation[0] === "metric";
+}
+
+export function isSpecial(aggregation) {
+  return isValidClause(aggregation) && SPECIAL_AGGREGATIONS.has(aggregation[0]);
+}
+
+export function isValid(aggregation) {
+  return (
+    isStandard(aggregation) || isMetric(aggregation) || isCustom(aggregation)
   );
 }
 
 export function getAggregation(aggregation) {
   return aggregation && aggregation[0];
-}
-
-export const SPECIAL_AGGREGATIONS = new Set([
-  "share",
-  "sum-where",
-  "count-where",
-]);
-
-export function isSpecial(aggregation) {
-  return isValid(aggregation) && SPECIAL_AGGREGATIONS.has(aggregation[0]);
-}
-
-// predicate function to test if a given aggregation clause represents a metric
-export function isMetric(aggregation) {
-  return isValid(aggregation) && aggregation[0] === "metric";
 }
 
 // get the metricId from a metric aggregation clause
@@ -71,17 +84,6 @@ export function getMetric(aggregation) {
   } else {
     return null;
   }
-}
-
-export function isCustom(aggregation) {
-  // for now treat all named clauses as custom
-  return (
-    (aggregation && hasOptions(aggregation)) ||
-    isOperator(aggregation) ||
-    isSpecial(aggregation) ||
-    (isStandard(aggregation) &&
-      _.any(aggregation.slice(1), arg => isOperator(arg)))
-  );
 }
 
 // get the operator from a standard aggregation clause

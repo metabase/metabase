@@ -120,7 +120,7 @@ export default class ViewFilterPopover extends Component {
   handleFilterChange = (newFilter: ?Filter) => {
     const filter = this.state.filter || new Filter([], null, this.props.query);
     // $FlowFixMe
-    this.setFilter(filter.set(newFilter.raw()));
+    this.setFilter(filter.set(newFilter));
   };
 
   render() {
