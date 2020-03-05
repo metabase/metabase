@@ -12,6 +12,7 @@ export const SAMPLE_DATASET_ID = 1;
 export const ANOTHER_DATABASE_ID = 2;
 export const MONGO_DATABASE_ID = 3;
 export const MULTI_SCHEMA_DATABASE_ID = 4;
+export const OTHER_MULTI_SCHEMA_DATABASE_ID = 5;
 
 export const MAIN_METRIC_ID = 1;
 
@@ -46,6 +47,9 @@ export const ANOTHER_DATABASE = metadata.database(ANOTHER_DATABASE_ID);
 export const MONGO_DATABASE = metadata.database(MONGO_DATABASE_ID);
 export const MULTI_SCHEMA_DATABASE = metadata.database(
   MULTI_SCHEMA_DATABASE_ID,
+);
+export const OTHER_MULTI_SCHEMA_DATABASE = metadata.database(
+  OTHER_MULTI_SCHEMA_DATABASE_ID,
 );
 
 export const ORDERS = SAMPLE_DATASET.ORDERS;

@@ -9,6 +9,7 @@ import {
   SAMPLE_DATASET,
   ANOTHER_DATABASE,
   MULTI_SCHEMA_DATABASE,
+  OTHER_MULTI_SCHEMA_DATABASE,
   metadata,
   makeMetadata,
   state as fixtureData,
@@ -177,7 +178,7 @@ describe("DataSelector", () => {
     expect(fetchDatabases).toHaveBeenCalled();
   });
 
-  it("should click into a single-schema db after expanding a multi-schema db", () => {
+  it("should click into a single-schema db after expanding a multi-schema db", async () => {
     const { getByText } = render(
       <DataSelector
         steps={["DATABASE", "SCHEMA", "TABLE"]}
@@ -192,6 +193,7 @@ describe("DataSelector", () => {
     fireEvent.click(getByText("Multi-schema Database"));
     getByText("First Schema");
     fireEvent.click(getByText("Sample Dataset"));
+    await delay(1);
     getByText("Orders");
   });
 
@@ -220,7 +222,7 @@ describe("DataSelector", () => {
     getByText("Table in First Schema");
   });
 
-  it("should expand schemas after viewing tables on a single-schema db", () => {
+  it("should expand schemas after viewing tables on a single-schema db", async () => {
     // This is the same and the previous test except that it first opens/closes
     // the multi-schema db. This left some lingering traces in component state
     // which caused a bug tha that the previous test didn't catch.
@@ -242,6 +244,7 @@ describe("DataSelector", () => {
 
     // click into a single schema db, check for a table, and then return to db list
     fireEvent.click(getByText("Sample Dataset"));
+    await delay(1);
     getByText("Orders");
     fireEvent.click(getByText("Sample Dataset"));
 
@@ -326,6 +329,27 @@ describe("DataSelector", () => {
     );
 
     getByText("Sample Dataset", { selector: ".List-item--selected h4" });
+  });
+
+  it("should move between selected multi-schema dbs", () => {
+    const { getByText } = render(
+      <DataSelector
+        steps={["DATABASE", "SCHEMA", "TABLE"]}
+        databases={[MULTI_SCHEMA_DATABASE, OTHER_MULTI_SCHEMA_DATABASE]}
+        combineDatabaseSchemaSteps
+        triggerElement={<div />}
+        metadata={metadata}
+        isOpen={true}
+      />,
+    );
+
+    fireEvent.click(getByText("Multi-schema Database"));
+    getByText("First Schema");
+    getByText("Second Schema");
+
+    fireEvent.click(getByText("Other Multi-schema Database"));
+    getByText("Other First Schema");
+    getByText("Other Second Schema");
   });
 });
 
