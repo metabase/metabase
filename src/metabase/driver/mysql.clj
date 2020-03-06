@@ -34,6 +34,8 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
+(defmethod driver/supports? [:mysql :regex] [_ _] false)
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -160,6 +162,14 @@
   [_ value]
   ;; no-op as MySQL doesn't support cast to float
   value)
+
+(defmethod sql.qp/->honeysql [:mysql :regex-match-first]
+  [driver [_ arg pattern]]
+  (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+
+(defmethod sql.qp/->honeysql [:mysql :length]
+  [driver [_ arg]]
+  (hsql/call :char_length (sql.qp/->honeysql driver arg)))
 
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting

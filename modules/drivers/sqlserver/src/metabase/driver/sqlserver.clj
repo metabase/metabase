@@ -23,6 +23,8 @@
 
 (driver/register! :sqlserver, :parent :sql-jdbc)
 
+(defmethod driver/supports? [:sqlserver :regex] [_ _] false)
+
 ;; See the list here: https://docs.microsoft.com/en-us/sql/connect/jdbc/using-basic-data-types
 (defmethod sql-jdbc.sync/database-type->base-type :sqlserver
   [_ column-type]
@@ -228,6 +230,16 @@
 (defmethod sql.qp/->honeysql [:sqlserver :stddev]
   [driver [_ field]]
   (hsql/call :stdev (sql.qp/->honeysql driver field)))
+
+(defmethod sql.qp/->honeysql [:sqlserver :substring]
+  [driver [_ arg start length]]
+  (if length
+    (hsql/call :substring (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
+    (hsql/call :substring (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (hsql/call :len (sql.qp/->honeysql driver arg)))))
+
+(defmethod sql.qp/->honeysql [:sqlserver :length]
+  [driver [_ arg]]
+  (hsql/call :len (sql.qp/->honeysql driver arg)))
 
 (defmethod driver.common/current-db-time-date-formatters :sqlserver
   [_]

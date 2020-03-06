@@ -7,7 +7,10 @@
 import * as Q from "metabase/lib/query/query";
 import * as Q_DEPRECATED from "metabase/lib/query";
 import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
-import { format as formatExpression } from "metabase/lib/expressions/formatter";
+import {
+  format as formatExpression,
+  DISPLAY_QUOTES,
+} from "metabase/lib/expressions/format";
 
 import _ from "underscore";
 import { chain, updateIn } from "icepick";
@@ -459,7 +462,7 @@ export default class StructuredQuery extends AtomicQuery {
     for (let index = 0; index < query[listName]().length; index++) {
       // $FlowFixMe
       const clause = query[listName]()[index];
-      if (!clause.isValid()) {
+      if (!this._validateClause(clause)) {
         query = clause.remove();
         // since we're removing them in order we need to decrement index when we remove one
         index -= 1;
@@ -471,11 +474,20 @@ export default class StructuredQuery extends AtomicQuery {
   _isValidClauseList(listName) {
     // $FlowFixMe
     for (const clause of this[listName]()) {
-      if (!clause.isValid()) {
+      if (!this._validateClause(clause)) {
         return false;
       }
     }
     return true;
+  }
+
+  _validateClause(clause) {
+    try {
+      return clause.isValid();
+    } catch (e) {
+      console.warn("Error thrown while validating clause:", clause);
+      return false;
+    }
   }
 
   hasData() {
@@ -690,8 +702,8 @@ export default class StructuredQuery extends AtomicQuery {
     return aggregation && aggregation.displayName();
   }
 
-  formatExpression(expression) {
-    return formatExpression(expression, { query: this });
+  formatExpression(expression, { quotes = DISPLAY_QUOTES, ...options } = {}) {
+    return formatExpression(expression, { quotes, ...options, query: this });
   }
 
   /**

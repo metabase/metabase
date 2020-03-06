@@ -140,7 +140,7 @@
 (defn- aggregation-subclause?
   [x]
   (or (when ((some-fn keyword? string?) x)
-        (#{:avg :count :cum-count :distinct :stddev :sum :min :max :+ :- :/ :*} (mbql.u/normalize-token x)))
+        (#{:avg :count :cum-count :distinct :stddev :sum :min :max :+ :- :/ :* :sum-where :count-where :share} (mbql.u/normalize-token x)))
       (when (mbql-clause? x)
         (aggregation-subclause? (first x)))))
 
@@ -303,6 +303,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (declare canonicalize-mbql-clauses)
+(declare canonicalize-expression-subclause)
 
 (defn- wrap-implicit-field-id
   "Wrap raw integer Field IDs (i.e., those in an implicit 'field' position) in a `:field-id` clause if they're not
@@ -320,22 +321,16 @@
 
     ;; for `and`/`or`/`not` compound filters, recurse on the arg(s), then simplify the whole thing
     [(filter-name :guard #{:and :or :not}) & args]
-    (mbql.u/simplify-compound-filter (vec (cons
-                                           filter-name
-                                           ;; we need to canonicalize any other mbql clauses that might show up in
-                                           ;; args like datetime-field here because simplify-compund-filter validates
-                                           ;; its output :(
-                                           (map (comp canonicalize-mbql-clauses canonicalize-filter)
-                                                args))))
-
-    [(filter-name :guard #{:starts-with :ends-with :contains :does-not-contain}) field & more]
-    (into [filter-name (wrap-implicit-field-id field)] more)
+    (mbql.u/simplify-compound-filter
+     (apply vector
+            filter-name
+            ;; we need to canonicalize any other mbql clauses that might show up in
+            ;; args like datetime-field here because simplify-compund-filter validates
+            ;; its output :(
+            (map (comp canonicalize-mbql-clauses canonicalize-filter) args)))
 
     [:inside field-1 field-2 & coordinates]
-    (vec
-     (concat
-      [:inside (wrap-implicit-field-id field-1) (wrap-implicit-field-id field-2)]
-      coordinates))
+    (apply vector :inside (wrap-implicit-field-id field-1) (wrap-implicit-field-id field-2)  coordinates)
 
     ;; if you put a `:datetime-field` inside a `:time-interval` we should fix it for you
     [:time-interval [:datetime-field field _] & args]
@@ -343,8 +338,13 @@
 
     ;; all the other filter types have an implict field ID for the first arg
     ;; (e.g. [:= 10 20] gets canonicalized to [:= [:field-id 10] 20]
-    [(filter-name :guard #{:= :!= :< :<= :> :>= :is-null :not-null :between :inside :time-interval}) field & more]
-    (apply vector filter-name (wrap-implicit-field-id field) more)
+    [(filter-name :guard #{:starts-with :ends-with :contains :does-not-contain
+                           := :!= :< :<= :> :>= :is-null :not-null :between :inside :time-interval}) arg & args]
+    (apply vector filter-name (if (mbql-clause? arg)
+                                (canonicalize-expression-subclause arg)
+                                ;; Support legacy expressions like [:> 1 25] where 1 is a field id.
+                                (wrap-implicit-field-id arg))
+           (map canonicalize-expression-subclause args))
 
     ;; don't wrap segment IDs in `:field-id`
     [:segment _]
@@ -352,11 +352,11 @@
     _
     (throw (IllegalArgumentException. (str (tru "Illegal filter clause: {0}" filter-clause))))))
 
-(defn- canonicalize-aggregation-subclause
+(defn- canonicalize-expression-subclause
   "Remove `:rows` type aggregation (long-since deprecated; simpliy means no aggregation) if present, and wrap
   `:field-ids` where appropriate."
-  [ag-subclause]
-  (mbql.u/replace ag-subclause
+  [expr-subclause]
+  (mbql.u/replace expr-subclause
     seq? (recur (vec &match))
 
     [:rows & _]
@@ -364,41 +364,47 @@
 
     ;; for aggregations wrapped in aggregation-options we can leave it as-is and just canonicalize the subclause
     [:aggregation-options wrapped-ag options]
-    [:aggregation-options (canonicalize-aggregation-subclause wrapped-ag) options]
+    [:aggregation-options (canonicalize-expression-subclause wrapped-ag) options]
 
     ;; for legacy `:named` aggregations convert them to a new-style `:aggregation-options` clause.
     ;;
     ;; 99.99% of clauses should have no options, however if they do and `:use-as-display-name?` is false (default is
     ;; true) then generate options to change `:name` rather than `:display-name`
-    [:named wrapped-ag ag-name & more]
-    (canonicalize-aggregation-subclause
+    [:named wrapped-ag expr-name & more]
+    (canonicalize-expression-subclause
      [:aggregation-options wrapped-ag (let [[{:keys [use-as-display-name?]}] more]
                                         (if (false? use-as-display-name?)
-                                          {:name ag-name}
-                                          {:display-name ag-name}))])
-
-    [(ag-type :guard #{:+ :- :* :/}) & args]
-    (apply
-     vector
-     ag-type
-     ;; if args are also ag subclauses normalize those, but things like numbers are allowed too so leave them as-is
-     (for [arg args]
-       (cond-> arg
-         (mbql-clause? arg) canonicalize-aggregation-subclause)))
+                                          {:name expr-name}
+                                          {:display-name expr-name}))])
 
     ;; for metric macros (e.g. [:metric <metric-id>]) do not wrap the metric in a :field-id clause
     [:metric _]
     &match
 
-    [(ag-type :guard #{:share :count-where}) pred]
-    [ag-type (canonicalize-filter pred)]
+    [(expr-type :guard #{:share :count-where}) pred]
+    [expr-type (canonicalize-filter pred)]
 
     [:sum-where field pred]
-    [:sum-where (wrap-implicit-field-id field) (canonicalize-filter pred)]
+    [:sum-where (canonicalize-expression-subclause field) (canonicalize-filter pred)]
 
-    ;; something with an arg like [:sum [:field-id 41]]
-    [ag-type field]
-    [ag-type (wrap-implicit-field-id field)]))
+    [:case clauses options]
+    (if options
+      (conj (canonicalize-expression-subclause [:case clauses])
+            (normalize-tokens options :ignore-path))
+      [:case (for [[pred expr] clauses]
+               [[(canonicalize-filter pred) (canonicalize-expression-subclause expr)]])])
+
+    [(expr-type :guard (complement #{:field-id})) (implicit-field-id :guard integer?)]
+    [expr-type (wrap-implicit-field-id implicit-field-id)]
+
+    [expr-type & args]
+    (apply
+     vector
+     expr-type
+     ;; if args are also ag subclauses normalize those, but things like numbers are allowed too so leave them as-is
+     (for [arg args]
+       (cond-> arg
+         (mbql-clause? arg) canonicalize-expression-subclause)))))
 
 (defn- wrap-single-aggregations
   "Convert old MBQL 95 single-aggregations like `{:aggregation :count}` or `{:aggregation [:count]}` to MBQL 98+
@@ -430,8 +436,8 @@
   clause."
   [aggregations]
   (->> (wrap-single-aggregations aggregations)
-       (map canonicalize-aggregation-subclause)
-       (filterv identity)))
+       (keep canonicalize-expression-subclause)
+       vec))
 
 (defn- canonicalize-order-by
   "Make sure order by clauses like `[:asc 10]` get `:field-id` added where appropriate, e.g. `[:asc [:field-id 10]]`"

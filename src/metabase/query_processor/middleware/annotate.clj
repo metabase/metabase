@@ -125,11 +125,46 @@
                     join-alias)]
     (format "%s → %s" qualifier field-display-name)))
 
+(declare col-info-for-field-clause)
+
 (defn- infer-expression-type
   [expression]
-  (if (mbql.u/datetime-arithmetics? expression)
+  (cond
+    (string? expression)
+    {:base_type    :type/Text
+     :special_type nil}
+
+    (number? expression)
+    {:base_type    :type/Number
+     :special_type nil}
+
+    (mbql.u/is-clause? #{:field-id :field-literal :joined-field :fk-> :datetime-field :binning-strategy} expression)
+    (col-info-for-field-clause {} expression)
+
+    (mbql.u/is-clause? :coalesce expression)
+    (infer-expression-type (second expression))
+
+    (mbql.u/is-clause? :length expression)
+    {:base_type    :type/BigInteger
+     :special_type :type/Number}
+
+    (mbql.u/is-clause? :case expression)
+    (->> expression
+         second
+         ;; get the first non-nil val
+         (keep second)
+         first
+         infer-expression-type)
+
+    (mbql.u/datetime-arithmetics? expression)
     {:base_type    :type/DateTime
      :special_type nil}
+
+    (mbql.u/is-clause? mbql.s/string-expressions expression)
+    {:base_type    :type/Text
+     :special_type nil}
+
+    :else
     {:base_type    :type/Float
      :special_type :type/Number}))
 
@@ -260,7 +295,7 @@
     [(_ :guard #{:distinct :cum-count}) _]
     "count"
 
-    [:sum-sum _]
+    [:cum-sum _]
     "sum"
 
     ;; for any other aggregation just use the name of the clause e.g. `sum`.
@@ -293,6 +328,7 @@
                 (expression-arg-display-name (partial aggregation-arg-display-name inner-query) arg)))
 
     [:count]             (tru "Count")
+    [:case]              (tru "Case")
     [:distinct    arg]   (tru "Distinct values of {0}"  (aggregation-arg-display-name inner-query arg))
     [:count       arg]   (tru "Count of {0}"            (aggregation-arg-display-name inner-query arg))
     [:avg         arg]   (tru "Average of {0}"          (aggregation-arg-display-name inner-query arg))
@@ -356,16 +392,17 @@
     ;; `col-info-for-ag-clause`, and this info is added into the results)
     (_ :guard mbql.preds/Field?)
     (select-keys (col-info-for-field-clause inner-query &match) [:base_type :special_type :settings])
-
-    ;; For the time being every Expression is an arithmetic operator and returns a floating-point number, so
-    ;; hardcoding these types is fine; In the future when we extend Expressions to handle more functionality
-    ;; we'll want to introduce logic that associates a return type with a given expression. But this will work
-    ;; for the purposes of a patch release.
     #{:expression :+ :- :/ :*}
     (merge
      (infer-expression-type &match)
      (when (mbql.preds/Aggregation? &match)
        (ag->name-info inner-query &match)))
+
+    [:case _ & _]
+    (merge
+     {:base_type    :type/Float
+      :special_type :type/Number}
+     (ag->name-info inner-query &match))
 
     ;; get name/display-name of this ag
     [(_ :guard keyword?) arg & _]
