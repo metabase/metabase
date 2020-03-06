@@ -11,28 +11,15 @@
             [java-time :as t]
             [metabase
              [driver :as driver]
+             [models :refer [Card Collection Dashboard DashboardCardSeries Database Dimension Field Metric Permissions
+                             PermissionsGroup Pulse PulseCard PulseChannel Revision Segment Table TaskHistory User]]
              [task :as task]
              [util :as u]]
             [metabase.models
-             [card :refer [Card]]
-             [collection :as collection :refer [Collection]]
-             [dashboard :refer [Dashboard]]
-             [dashboard-card-series :refer [DashboardCardSeries]]
-             [database :refer [Database]]
-             [dimension :refer [Dimension]]
-             [field :refer [Field]]
-             [metric :refer [Metric]]
-             [permissions :as perms :refer [Permissions]]
-             [permissions-group :as group :refer [PermissionsGroup]]
-             [pulse :refer [Pulse]]
-             [pulse-card :refer [PulseCard]]
-             [pulse-channel :refer [PulseChannel]]
-             [revision :refer [Revision]]
-             [segment :refer [Segment]]
-             [setting :as setting]
-             [table :refer [Table]]
-             [task-history :refer [TaskHistory]]
-             [user :refer [User]]]
+             [collection :as collection]
+             [permissions :as perms]
+             [permissions-group :as group]
+             [setting :as setting]]
             [metabase.plugins.classloader :as classloader]
             [metabase.test
              [data :as data]
@@ -44,22 +31,39 @@
            org.apache.log4j.Logger
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
+(defmethod assert-expr 're= [msg [_ pattern actual]]
+  `(let [pattern#  ~pattern
+         actual#   ~actual
+         matches?# (some->> actual# (re-matches pattern#))]
+     (assert (instance? java.util.regex.Pattern pattern#))
+     (do-report
+      {:type     (if matches?# :pass :fail)
+       :message  ~msg
+       :expected pattern#
+       :actual   actual#
+       :diffs    (when-not matches?#
+                   [[actual# [pattern# nil]]])})))
+
 (defmethod assert-expr 'schema=
-  [message form]
-  (let [[_ schema actual] form]
-    `(let [schema# ~schema
-           actual# ~actual
-           pass?#  (nil? (s/check schema# actual#))]
-       (do-report
-        {:type     (if pass?# :pass :fail)
-         :message  ~message
-         :expected (s/explain schema#)
-         :actual   actual#
-         :diffs    (when-not pass?#
-                     [[actual# [(s/check schema# actual#) nil]]])}))))
+  [message [_ schema actual]]
+  `(let [schema# ~schema
+         actual# ~actual
+         pass?#  (nil? (s/check schema# actual#))]
+     (do-report
+      {:type     (if pass?# :pass :fail)
+       :message  ~message
+       :expected (s/explain schema#)
+       :actual   actual#
+       :diffs    (when-not pass?#
+                   [[actual# [(s/check schema# actual#) nil]]])})))
 
 (defmacro ^:deprecated expect-schema
-  "Like `expect`, but checks that results match a schema."
+  "Like `expect`, but checks that results match a schema. DEPRECATED -- you can use `deftest` combined with `schema=`
+  instead.
+
+    (deftest my-test
+      (is (schema= expected-schema
+                   actual-value)))"
   {:style/indent 0}
   [expected actual]
   (let [symb (symbol (format "expect-schema-%d" (hash &form)))]

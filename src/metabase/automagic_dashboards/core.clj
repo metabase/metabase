@@ -562,10 +562,10 @@
   (let [dimension->name (comp vector :name dimensions)
         metric->name    (comp vector first :metric metrics)]
     [k (-> v
-           (u/update-when :map.latitude_column dimension->name)
-           (u/update-when :map.longitude_column dimension->name)
-           (u/update-when :graph.metrics metric->name)
-           (u/update-when :graph.dimensions dimension->name))]))
+           (m/update-existing :map.latitude_column dimension->name)
+           (m/update-existing :map.longitude_column dimension->name)
+           (m/update-existing :graph.metrics metric->name)
+           (m/update-existing :graph.dimensions dimension->name))]))
 
 (defn capitalize-first
   "Capitalize only the first letter in a given string."
@@ -585,7 +585,7 @@
                s))
            form))
        x)
-      (u/update-when :visualization #(instantate-visualization % bindings (:metrics context)))))
+      (m/update-existing :visualization #(instantate-visualization % bindings (:metrics context)))))
 
 (defn- valid-breakout-dimension?
   [{:keys [base_type engine fingerprint aggregation]}]

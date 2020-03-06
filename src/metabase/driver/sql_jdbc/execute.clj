@@ -89,7 +89,12 @@
   :hierarchy #'driver/hierarchy)
 
 (defmulti read-column-thunk
-  "Return a zero-arg function that, when called, will fetch the value of the column from the current row."
+  "Return a zero-arg function that, when called, will fetch the value of the column from the current row. This also
+  supports defaults for the entire driver:
+
+    ;; default method for Postgres not covered by any [driver jdbc-type] methods
+    (defmethod read-column-thunk :postgres
+      ...)"
   {:added "0.35.0", :arglists '([driver rs rsmeta i])}
   (fn [driver _ ^ResultSetMetaData rsmeta ^long col-idx]
     [(driver/dispatch-on-initialized-driver driver) (.getColumnType rsmeta col-idx)])
@@ -262,10 +267,12 @@
   (.executeQuery stmt))
 
 (defmethod read-column-thunk :default
-  [_ ^ResultSet rs _ ^long i]
-  ^{:name (format "(.getObject rs %d)" i)}
-  (fn []
-    (.getObject rs i)))
+  [driver ^ResultSet rs rsmeta ^long i]
+  (let [driver-default-method (get-method read-column-thunk driver)]
+    (if-not (= driver-default-method (get-method read-column-thunk :default))
+      ^{:name (format "(read-column-thunk %s)" driver)} (driver-default-method driver rs rsmeta i)
+      ^{:name (format "(.getObject rs %d)" i)} (fn []
+                                                 (.getObject rs i)))))
 
 (defn- get-object-of-class-thunk [^ResultSet rs, ^long i, ^Class klass]
   ^{:name (format "(.getObject rs %d %s)" i (.getCanonicalName klass))}
@@ -356,7 +363,7 @@
         #_:jdbc_type #_ (u/ignore-exceptions
                           (.getName (JDBCType/valueOf (.getColumnType rsmeta i))))
         #_:db_type   #_db-type-name
-        :base_type   base-type}))
+        :base_type   (or base-type :type/*)}))
    (column-range rsmeta)))
 
 (defn reducible-rows

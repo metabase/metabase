@@ -19,7 +19,7 @@
              [table :as table :refer [Table]]]
             [metabase.sync.field-values :as sync-field-values]
             [metabase.util
-             [i18n :refer [deferred-tru trs]]
+             [i18n :refer [deferred-tru trs tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -257,16 +257,22 @@
               :special_type (keyword (:special_type col)))
           add-field-dimension-options))))
 
+(defn root-collection-schema-name
+  "Schema name to use for the saved questions virtual database for Cards that are in the root collection (i.e., not in
+  any collection)."
+  []
+  (tru "Everything else"))
+
 (defn card->virtual-table
-  "Return metadata for a 'virtual' table for a CARD in the Saved Questions 'virtual' database. Optionally include
-   'virtual' fields as well."
+  "Return metadata for a 'virtual' table for a `card` in the Saved Questions 'virtual' database. Optionally include
+  'virtual' fields as well."
   [{:keys [database_id] :as card} & {:keys [include-fields?]}]
   ;; if collection isn't already hydrated then do so
   (let [card (hydrate card :collection)]
     (cond-> {:id           (str "card__" (u/get-id card))
              :db_id        (:database_id card)
              :display_name (:name card)
-             :schema       (get-in card [:collection :name] "Everything else")
+             :schema       (get-in card [:collection :name] (root-collection-schema-name))
              :description  (:description card)}
       include-fields? (assoc :fields (card-result-metadata->virtual-fields (u/get-id card)
                                                                            database_id

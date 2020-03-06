@@ -10,7 +10,8 @@
   (when-let [parent-ids (seq (filter some? (map (comp :parent_id qp.store/field) field-ids)))]
     (recur parent-ids)))
 
-(defn- resolve-fields*
+(defn resolve-fields*
+  "Resolve all field referenced in the `query`, and store them in the QP Store."
   [query]
   (u/prog1 query
     (resolve-fields-with-ids! (mbql.u/match (:query query) [:field-id id] id))))

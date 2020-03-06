@@ -35,10 +35,10 @@ export const databaseToForeignKeys = database =>
         .map(({ table, field }) => ({
           id: field.id,
           name:
-            table.schema && table.schema !== "public"
-              ? `${titleize(humanize(table.schema))}.${table.display_name} → ${
-                  field.display_name
-                }`
+            table.schema_name && table.schema_name !== "public"
+              ? `${titleize(humanize(table.schema_name))}.${
+                  table.display_name
+                } → ${field.display_name}`
               : `${table.display_name} → ${field.display_name}`,
           description: field.description,
         }))

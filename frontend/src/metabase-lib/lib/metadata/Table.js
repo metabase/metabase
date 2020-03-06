@@ -5,12 +5,13 @@ import Question from "../Question";
 
 import Base from "./Base";
 import Database from "./Database";
+import Schema from "./Schema";
 import Field from "./Field";
 
 import type { SchemaName } from "metabase/meta/types/Table";
 import type { FieldMetadata } from "metabase/meta/types/Metadata";
 
-import { titleize, singularize, humanize } from "metabase/lib/formatting";
+import { singularize } from "metabase/lib/formatting";
 
 import Dimension from "../Dimension";
 
@@ -24,15 +25,18 @@ import _ from "underscore";
 export default class Table extends Base {
   description: string;
 
-  schema: ?SchemaName;
   db: Database;
+
+  schema: ?Schema;
+  // @deprecated: use schema.name (all tables should have a schema object, in theory)
+  schema_name: ?SchemaName;
 
   fields: FieldMetadata[];
 
   entity_type: ?EntityType;
 
   hasSchema(): boolean {
-    return (this.schema && this.db.schemaNames().length > 1) || false;
+    return (this.schema_name && this.db.schemas.length > 1) || false;
   }
 
   // $FlowFixMe Could be replaced with hydrated database property in selectors/metadata.js (instead / in addition to `table.db`)
@@ -69,10 +73,13 @@ export default class Table extends Base {
 
   displayName({ includeSchema } = {}) {
     return (
-      (includeSchema && this.schema
-        ? titleize(humanize(this.schema)) + "."
-        : "") + this.display_name
+      (includeSchema && this.schema ? this.schema.displayName() + "." : "") +
+      this.display_name
     );
+  }
+
+  isQueryable() {
+    return this.visibility_type == null;
   }
 
   /**

@@ -9,7 +9,7 @@
   "Wire up the core.async channels in a QP `context`."
   [context]
   ;; 1) If query doesn't complete by `timeoutf`, call `timeoutf`, which should raise an Exception
-  ;; 2) when `out-chan` is closed prematurely, call `cancelf` to send a message to `canceled-chan`
+  ;; 2) when `out-chan` is closed prematurely, send a message to `canceled-chan`
   ;; 3) when `out-chan` is closed or gets a result, close both out-chan and canceled-chan
   (let [out-chan      (context/out-chan context)
         canceled-chan (context/canceled-chan context)
@@ -21,8 +21,8 @@
                     val)
         (cond
           (not= port out-chan) (context/timeoutf context)
-          (nil? val)           (context/cancelf context))
-        (log/tracef "Closing out-chan and canceled-chan.")
+          (nil? val)           (a/>!! canceled-chan ::cancel))
+        (log/tracef "Closing out-chan.")
         (a/close! out-chan)
         (a/close! canceled-chan)))
     nil))

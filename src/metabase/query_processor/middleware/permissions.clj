@@ -8,6 +8,7 @@
              [permissions :as perms]]
             [metabase.models.query.permissions :as query-perms]
             [metabase.query-processor.error-type :as error-type]
+            [metabase.query-processor.middleware.resolve-referenced :as qp.resolve-referenced]
             [metabase.util
              [i18n :refer [tru]]
              [schema :as su]]
@@ -32,12 +33,16 @@
      :actual-permissions   @*current-user-permissions-set*
      :permissions-error?   true}))
 
+(declare check-query-permissions*)
+
 (s/defn ^:private check-ad-hoc-query-perms
   [outer-query]
   (let [required-perms (query-perms/perms-set outer-query, :throw-exceptions? true, :already-preprocessed? true)]
     (log/tracef "Required ad-hoc perms: %s" (pr-str required-perms))
     (when-not (perms/set-has-full-permissions-for-set? @*current-user-permissions-set* required-perms)
-      (throw (perms-exception required-perms)))))
+      (throw (perms-exception required-perms)))
+    (doseq [{:keys [dataset_query]} (qp.resolve-referenced/tags-referenced-cards outer-query)]
+      (check-query-permissions* dataset_query))))
 
 (s/defn ^:private check-query-permissions*
   "Check that User with `user-id` has permissions to run `query`, or throw an exception."

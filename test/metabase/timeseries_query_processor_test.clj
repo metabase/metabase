@@ -5,526 +5,497 @@
             [metabase
              [query-processor-test :as qp.test]
              [test :as mt]]
-            [metabase.test.data :as data]
             [metabase.timeseries-query-processor-test.util :as tqp.test]))
 
-;;; # Tests
+(deftest limit-test
+  (tqp.test/test-timeseries-drivers
+    (is (= {:columns ["id"
+                      "timestamp"
+                      "count"
+                      "user_last_login"
+                      "user_name"
+                      "venue_category_name"
+                      "venue_latitude"
+                      "venue_longitude"
+                      "venue_name"
+                      "venue_price"]
+            :rows    [["931" "2013-01-03T08:00:00Z" 1 "2014-01-01T08:30:00.000Z" "Simcha Yan" "Thai" "34.094"  "-118.344" "Kinaree Thai Bistro"       "1"]
+                      ["285" "2013-01-10T08:00:00Z" 1 "2014-07-03T01:30:00.000Z" "Kfir Caj"   "Thai" "34.1021" "-118.306" "Ruen Pair Thai Restaurant" "2"]]}
+           (mt/rows+column-names
+             (mt/run-mbql-query checkins
+               {:limit 2}))))))
 
-;;; "bare rows" query, limit
-(tqp.test/expect-with-timeseries-dbs
- {:columns ["id"
-            "timestamp"
-             "count"
-             "user_last_login"
-             "user_name"
-             "venue_category_name"
-             "venue_latitude"
-             "venue_longitude"
-             "venue_name"
-             "venue_price"]
-   :rows [["931", "2013-01-03T08:00:00Z", 1, "2014-01-01T08:30:00.000Z", "Simcha Yan", "Thai", "34.094",  "-118.344", "Kinaree Thai Bistro",       "1"]
-          ["285", "2013-01-10T08:00:00Z", 1, "2014-07-03T01:30:00.000Z", "Kfir Caj",   "Thai", "34.1021", "-118.306", "Ruen Pair Thai Restaurant", "2"]]}
- (qp.test/rows+column-names
-  (data/run-mbql-query checkins
-    {:limit 2})))
+(deftest fields-test
+  (tqp.test/test-timeseries-drivers
+    (is (= {:columns ["venue_name" "venue_category_name" "timestamp"],
+            :rows    [["Kinaree Thai Bistro"        "Thai" "2013-01-03T08:00:00Z"]
+                      ["Ruen Pair Thai Restaurant" "Thai"  "2013-01-10T08:00:00Z"]]}
+           (mt/rows+column-names
+             (mt/run-mbql-query checkins
+               {:fields [$venue_name $venue_category_name $timestamp]
+                :limit  2}))))))
 
-;;; "bare rows" query, limit, order-by timestamp desc
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["id"
-             "timestamp"
-             "count"
-             "user_last_login"
-             "user_name"
-             "venue_category_name"
-             "venue_latitude"
-             "venue_longitude"
-             "venue_name"
-             "venue_price"]
-   :rows    [["693", "2015-12-29T08:00:00Z", 1, "2014-07-03T19:30:00.000Z", "Frans Hevel", "Mexican", "34.0489", "-118.238", "Señor Fish",       "2"]
-             ["570", "2015-12-26T08:00:00Z", 1, "2014-07-03T01:30:00.000Z", "Kfir Caj",    "Chinese", "37.7949", "-122.406", "Empress of China", "3"]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:order-by [[:desc $timestamp]]
-      :limit    2})))
+;; TODO -- `:desc` tests are disabled for now, they don't seem to be working on Druid 0.11.0. Enable once we merge PR to use Druid 0.17.0
+(deftest order-by-timestamp-test
+  (tqp.test/test-timeseries-drivers
+    (testing "query w/o :fields"
+      (doseq [[direction expected-rows]
+              {#_:desc #_[["693" "2015-12-29T08:00:00Z" 1 "2014-07-03T19:30:00.000Z" "Frans Hevel" "Mexican" "34.0489" "-118.238" "Señor Fish"                "2"]
+                          ["570" "2015-12-26T08:00:00Z" 1 "2014-07-03T01:30:00.000Z" "Kfir Caj"    "Chinese" "37.7949" "-122.406" "Empress of China"          "3"]]
+               :asc  [["931" "2013-01-03T08:00:00Z" 1 "2014-01-01T08:30:00.000Z" "Simcha Yan"  "Thai"    "34.094"  "-118.344" "Kinaree Thai Bistro"       "1"]
+                      ["285" "2013-01-10T08:00:00Z" 1 "2014-07-03T01:30:00.000Z" "Kfir Caj"    "Thai"    "34.1021" "-118.306" "Ruen Pair Thai Restaurant" "2"]]}]
+        (testing direction
+          (is (= {:columns ["id"
+                            "timestamp"
+                            "count"
+                            "user_last_login"
+                            "user_name"
+                            "venue_category_name"
+                            "venue_latitude"
+                            "venue_longitude"
+                            "venue_name"
+                            "venue_price"]
+                  :rows    expected-rows}
+                 (mt/rows+column-names
+                   (mt/run-mbql-query checkins
+                     {:order-by [[direction $timestamp]]
+                      :limit    2})))))))
 
-;;; "bare rows" query, limit, order-by timestamp asc
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["id"
-             "timestamp"
-             "count"
-             "user_last_login"
-             "user_name"
-             "venue_category_name"
-             "venue_latitude"
-             "venue_longitude"
-             "venue_name"
-             "venue_price"]
-   :rows    [["931", "2013-01-03T08:00:00Z", 1, "2014-01-01T08:30:00.000Z", "Simcha Yan", "Thai", "34.094",  "-118.344", "Kinaree Thai Bistro",       "1"]
-             ["285", "2013-01-10T08:00:00Z", 1, "2014-07-03T01:30:00.000Z", "Kfir Caj",   "Thai", "34.1021", "-118.306", "Ruen Pair Thai Restaurant", "2"]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:order-by [[:asc $timestamp]]
-      :limit    2})))
+    (testing "for a query with :fields"
+      (doseq [[direction expected-rows] {#_:desc #_[["Señor Fish" "Mexican"]
+                                                    ["Empress of China" "Chinese"]]
+                                         :asc  [["Kinaree Thai Bistro"       "Thai" "2013-01-03T08:00:00Z"]
+                                                ["Ruen Pair Thai Restaurant" "Thai" "2013-01-10T08:00:00Z"]]}]
+        (testing direction
+          (is (= {:columns ["venue_name" "venue_category_name" "timestamp"],
+                  :rows    expected-rows}
+                 (mt/rows+column-names
+                   (mt/run-mbql-query checkins
+                     {:fields   [$venue_name $venue_category_name $timestamp]
+                      :order-by [[direction $timestamp]]
+                      :limit    2})))))))))
 
-;;; fields clause
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["venue_name" "venue_category_name" "timestamp"],
-   :rows    [["Kinaree Thai Bistro"       "Thai" "2013-01-03T08:00:00Z"]
-             ["Ruen Pair Thai Restaurant" "Thai" "2013-01-10T08:00:00Z"]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:fields [$venue_name $venue_category_name $timestamp]
-      :limit  2})))
+(deftest count-test
+  (tqp.test/test-timeseries-drivers
+    (is (= [1000]
+           (mt/first-row
+             (mt/run-mbql-query checkins
+               {:aggregation [[:count]]}))))
 
-;;; fields clause, order by timestamp asc
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["venue_name" "venue_category_name" "timestamp"],
-   :rows    [["Kinaree Thai Bistro"       "Thai" "2013-01-03T08:00:00Z"]
-             ["Ruen Pair Thai Restaurant" "Thai" "2013-01-10T08:00:00Z"]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:fields   [$venue_name $venue_category_name $timestamp]
-      :order-by [[:asc $timestamp]]
-      :limit    2})))
+    (testing "count of field"
+      (is (= [1000]
+             (mt/first-row
+               (mt/run-mbql-query checkins
+                 {:aggregation [[:count $user_name]]})))))))
 
-;;; fields clause, order by timestamp desc
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["venue_name" "venue_category_name" "timestamp"],
-   :rows    [["Señor Fish"       "Mexican" "2015-12-29T08:00:00Z"]
-             ["Empress of China" "Chinese" "2015-12-26T08:00:00Z"]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:fields   [$venue_name $venue_category_name $timestamp]
-      :order-by [[:desc $timestamp]]
-      :limit    2})))
+(deftest avg-test
+  (tqp.test/test-timeseries-drivers
+    (is (= {:columns ["avg"]
+            :rows    [[1.992]]}
+           (mt/rows+column-names
+             (mt/run-mbql-query checkins
+               {:aggregation [[:avg $venue_price]]}))))))
 
+(deftest sum-test
+  (tqp.test/test-timeseries-drivers
+    (= {:columns ["sum"]
+        :rows    [[1992.0]]}
+       (mt/rows+column-names
+         (mt/run-mbql-query checkins
+           {:aggregation [[:sum $venue_price]]})))))
 
+(deftest avg-test
+  (tqp.test/test-timeseries-drivers
+    (is (= {:columns ["avg"]
+            :rows    [[1.992]]}
+           (->> (mt/run-mbql-query checkins
+                  {:aggregation [[:avg $venue_price]]})
+                (mt/format-rows-by [3.0])
+                qp.test/rows+column-names)))))
 
-;;; count
-(tqp.test/expect-with-timeseries-dbs
-  [1000]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]})))
+(deftest distinct-count-test
+  (tqp.test/test-timeseries-drivers
+    (is (= [[4]]
+           (->> (mt/run-mbql-query checkins
+                  {:aggregation [[:distinct $venue_price]]})
+                qp.test/rows
+                (mt/format-rows-by [int]))))))
 
-;;; count(field)
-(tqp.test/expect-with-timeseries-dbs
-  [1000]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count $user_name]]})))
+(deftest breakout-test
+  (tqp.test/test-timeseries-drivers
+    (testing "1 breakout (distinct values)"
+      (is (= {:columns ["user_name"]
+              :rows    [["Broen Olujimi"]
+                        ["Conchúr Tihomir"]
+                        ["Dwight Gresham"]
+                        ["Felipinho Asklepios"]
+                        ["Frans Hevel"]
+                        ["Kaneonuskatew Eiran"]
+                        ["Kfir Caj"]
+                        ["Nils Gotam"]
+                        ["Plato Yeshua"]
+                        ["Quentin Sören"]
+                        ["Rüstem Hebel"]
+                        ["Shad Ferdynand"]
+                        ["Simcha Yan"]
+                        ["Spiros Teofil"]
+                        ["Szymon Theutrich"]]}
+             (mt/rows+column-names
+               (mt/run-mbql-query checkins
+                 {:breakout [$user_name]})))))
 
-;;; avg
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["avg"]
-   :rows    [[1.992]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:aggregation [[:avg $venue_price]]})))
+    (testing "2 breakouts"
+      (is (= {:columns ["user_name" "venue_category_name"]
+              :rows    [["Broen Olujimi" "American"]
+                        ["Broen Olujimi" "Artisan"]
+                        ["Broen Olujimi" "BBQ"]
+                        ["Broen Olujimi" "Bakery"]
+                        ["Broen Olujimi" "Bar"]
+                        ["Broen Olujimi" "Burger"]
+                        ["Broen Olujimi" "Café"]
+                        ["Broen Olujimi" "Caribbean"]
+                        ["Broen Olujimi" "Deli"]
+                        ["Broen Olujimi" "Dim Sum"]]}
+             (mt/rows+column-names
+               (mt/run-mbql-query checkins
+                 {:breakout [$user_name $venue_category_name]
+                  :limit    10})))))))
 
-;;; sum
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["sum"]
-   :rows    [[1992.0]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:aggregation [[:sum $venue_price]]})))
+(deftest breakout-order-by-test
+  (tqp.test/test-timeseries-drivers
+    (testing "1 breakout w/ explicit order by"
+      (is (= {:columns ["user_name"]
+              :rows    [["Szymon Theutrich"]
+                        ["Spiros Teofil"]
+                        ["Simcha Yan"]
+                        ["Shad Ferdynand"]
+                        ["Rüstem Hebel"]
+                        ["Quentin Sören"]
+                        ["Plato Yeshua"]
+                        ["Nils Gotam"]
+                        ["Kfir Caj"]
+                        ["Kaneonuskatew Eiran"]]}
+             (mt/rows+column-names
+               (mt/run-mbql-query checkins
+                 {:breakout [$user_name]
+                  :order-by [[:desc $user_name]]
+                  :limit    10})))))
 
-;;; avg
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["avg"]
-   :rows    [[1.992]]}
-  (->> (data/run-mbql-query checkins
-         {:aggregation [[:avg $venue_price]]})
-       (qp.test/format-rows-by [3.0])
-       qp.test/rows+column-names))
+    (testing "2 breakouts w/ explicit order by"
+      (is (= {:columns ["user_name" "venue_category_name"]
+              :rows    [["Broen Olujimi"       "American"]
+                        ["Conchúr Tihomir"     "American"]
+                        ["Dwight Gresham"      "American"]
+                        ["Felipinho Asklepios" "American"]
+                        ["Frans Hevel"         "American"]
+                        ["Kaneonuskatew Eiran" "American"]
+                        ["Kfir Caj"            "American"]
+                        ["Nils Gotam"          "American"]
+                        ["Plato Yeshua"        "American"]
+                        ["Quentin Sören"       "American"]]}
+             (mt/rows+column-names
+               (mt/run-mbql-query checkins
+                 {:breakout [$user_name $venue_category_name]
+                  :order-by [[:asc $venue_category_name]]
+                  :limit    10})))))))
 
-;;; distinct count
-(tqp.test/expect-with-timeseries-dbs
-  [[4]]
-  (->> (data/run-mbql-query checkins
-         {:aggregation [[:distinct $venue_price]]})
-       qp.test/rows
-       (qp.test/format-rows-by [int])))
+(deftest count-with-breakout-test
+  (tqp.test/test-timeseries-drivers
+    (testing "count w/ 1 breakout"
+      (is (= {:columns ["user_name" "count"]
+              :rows    [["Broen Olujimi"       62]
+                        ["Conchúr Tihomir"     76]
+                        ["Dwight Gresham"      76]
+                        ["Felipinho Asklepios" 70]
+                        ["Frans Hevel"         78]
+                        ["Kaneonuskatew Eiran" 75]
+                        ["Kfir Caj"            59]
+                        ["Nils Gotam"          68]
+                        ["Plato Yeshua"        31]
+                        ["Quentin Sören"       69]
+                        ["Rüstem Hebel"        34]
+                        ["Shad Ferdynand"      70]
+                        ["Simcha Yan"          77]
+                        ["Spiros Teofil"       74]
+                        ["Szymon Theutrich"    81]]}
+             (mt/rows+column-names
+               (mt/run-mbql-query checkins
+                 {:aggregation [[:count]]
+                  :breakout    [$user_name]})))))
 
-;;; 1 breakout (distinct values)
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["user_name"]
-   :rows    [["Broen Olujimi"]
-             ["Conchúr Tihomir"]
-             ["Dwight Gresham"]
-             ["Felipinho Asklepios"]
-             ["Frans Hevel"]
-             ["Kaneonuskatew Eiran"]
-             ["Kfir Caj"]
-             ["Nils Gotam"]
-             ["Plato Yeshua"]
-             ["Quentin Sören"]
-             ["Rüstem Hebel"]
-             ["Shad Ferdynand"]
-             ["Simcha Yan"]
-             ["Spiros Teofil"]
-             ["Szymon Theutrich"]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:breakout [$user_name]})))
+    (testing "count w/ 2 breakouts"
+      (is (= {:columns ["user_name" "venue_category_name" "count"]
+              :rows    [["Broen Olujimi" "American"  8]
+                        ["Broen Olujimi" "Artisan"   1]
+                        ["Broen Olujimi" "BBQ"       7]
+                        ["Broen Olujimi" "Bakery"    2]
+                        ["Broen Olujimi" "Bar"       5]
+                        ["Broen Olujimi" "Burger"    2]
+                        ["Broen Olujimi" "Café"      1]
+                        ["Broen Olujimi" "Caribbean" 1]
+                        ["Broen Olujimi" "Deli"      2]
+                        ["Broen Olujimi" "Dim Sum"   2]]}
+             (mt/rows+column-names
+               (mt/run-mbql-query checkins
+                 {:aggregation [[:count]]
+                  :breakout    [$user_name $venue_category_name]
+                  :limit       10})))))))
 
-;;; 2 breakouts
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["user_name" "venue_category_name"]
-   :rows    [["Broen Olujimi" "American"]
-             ["Broen Olujimi" "Artisan"]
-             ["Broen Olujimi" "BBQ"]
-             ["Broen Olujimi" "Bakery"]
-             ["Broen Olujimi" "Bar"]
-             ["Broen Olujimi" "Burger"]
-             ["Broen Olujimi" "Café"]
-             ["Broen Olujimi" "Caribbean"]
-             ["Broen Olujimi" "Deli"]
-             ["Broen Olujimi" "Dim Sum"]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:breakout [$user_name $venue_category_name]
-      :limit    10})))
+(deftest comparison-filter-test
+  (tqp.test/test-timeseries-drivers
+    (testing "filter >"
+      (is (= [49]
+             (mt/first-row
+               (mt/run-mbql-query checkins
+                 {:aggregation [[:count]]
+                  :filter      [:> $venue_price 3]})))))
 
-;;; 1 breakout w/ explicit order by
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["user_name"]
-   :rows    [["Szymon Theutrich"]
-             ["Spiros Teofil"]
-             ["Simcha Yan"]
-             ["Shad Ferdynand"]
-             ["Rüstem Hebel"]
-             ["Quentin Sören"]
-             ["Plato Yeshua"]
-             ["Nils Gotam"]
-             ["Kfir Caj"]
-             ["Kaneonuskatew Eiran"]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:breakout [$user_name]
-      :order-by [[:desc $user_name]]
-      :limit    10})))
+    (testing "filter <"
+      (is (= [836]
+             (mt/first-row
+               (mt/run-mbql-query checkins
+                 {:aggregation [[:count]]
+                  :filter      [:< $venue_price 3]})))))
 
-;;; 2 breakouts w/ explicit order by
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["user_name" "venue_category_name"]
-   :rows    [["Broen Olujimi"       "American"]
-             ["Conchúr Tihomir"     "American"]
-             ["Dwight Gresham"      "American"]
-             ["Felipinho Asklepios" "American"]
-             ["Frans Hevel"         "American"]
-             ["Kaneonuskatew Eiran" "American"]
-             ["Kfir Caj"            "American"]
-             ["Nils Gotam"          "American"]
-             ["Plato Yeshua"        "American"]
-             ["Quentin Sören"       "American"]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:breakout [$user_name $venue_category_name]
-      :order-by [[:asc $venue_category_name]]
-      :limit    10})))
+    (testing "filter >="
+      (is (= [164]
+             (mt/first-row
+               (mt/run-mbql-query checkins
+                 {:aggregation [[:count]]
+                  :filter      [:>= $venue_price 3]})))))
 
-;;; count w/ 1 breakout
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["user_name" "count"]
-   :rows    [["Broen Olujimi"       62]
-             ["Conchúr Tihomir"     76]
-             ["Dwight Gresham"      76]
-             ["Felipinho Asklepios" 70]
-             ["Frans Hevel"         78]
-             ["Kaneonuskatew Eiran" 75]
-             ["Kfir Caj"            59]
-             ["Nils Gotam"          68]
-             ["Plato Yeshua"        31]
-             ["Quentin Sören"       69]
-             ["Rüstem Hebel"        34]
-             ["Shad Ferdynand"      70]
-             ["Simcha Yan"          77]
-             ["Spiros Teofil"       74]
-             ["Szymon Theutrich"    81]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:aggregation [[:count]]
-      :breakout    [$user_name]})))
+    (testing "filter <="
+      (is (= [951]
+             (mt/first-row
+               (mt/run-mbql-query checkins
+                 {:aggregation [[:count]]
+                  :filter      [:<= $venue_price 3]})))))))
 
-;;; count w/ 2 breakouts
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["user_name" "venue_category_name" "count"]
-   :rows    [["Broen Olujimi" "American"  8]
-             ["Broen Olujimi" "Artisan"   1]
-             ["Broen Olujimi" "BBQ"       7]
-             ["Broen Olujimi" "Bakery"    2]
-             ["Broen Olujimi" "Bar"       5]
-             ["Broen Olujimi" "Burger"    2]
-             ["Broen Olujimi" "Café"      1]
-             ["Broen Olujimi" "Caribbean" 1]
-             ["Broen Olujimi" "Deli"      2]
-             ["Broen Olujimi" "Dim Sum"   2]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:aggregation [[:count]]
-      :breakout    [$user_name $venue_category_name]
-      :limit       10})))
+(deftest equality-filter-test
+  (tqp.test/test-timeseries-drivers
+    (testing "filter ="
+      (is (= {:columns ["user_name" "venue_name" "venue_category_name" "timestamp"]
+              :rows    [["Plato Yeshua" "Fred 62"        "Diner"    "2013-03-12T07:00:00Z"]
+                        ["Plato Yeshua" "Dimples"        "Karaoke"  "2013-04-11T07:00:00Z"]
+                        ["Plato Yeshua" "Baby Blues BBQ" "BBQ"      "2013-06-03T07:00:00Z"]
+                        ["Plato Yeshua" "The Daily Pint" "Bar"      "2013-07-25T07:00:00Z"]
+                        ["Plato Yeshua" "Marlowe"        "American" "2013-09-10T07:00:00Z"]]}
+             (mt/rows+column-names
+               (mt/run-mbql-query checkins
+                 {:fields [$user_name $venue_name $venue_category_name $timestamp]
+                  :filter [:= $user_name "Plato Yeshua"]
+                  :limit  5})))))
 
-;;; filter >
-(tqp.test/expect-with-timeseries-dbs
-  [49]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:> $venue_price 3]})))
+    (testing "filter !="
+      (is (= [969]
+             (mt/first-row
+               (mt/run-mbql-query checkins
+                 {:aggregation [[:count]]
+                  :filter      [:!= $user_name "Plato Yeshua"]})))))))
 
-;;; filter <
-(tqp.test/expect-with-timeseries-dbs
-  [836]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:< $venue_price 3]})))
+(deftest compound-filter-test
+  (tqp.test/test-timeseries-drivers
+    (testing "filter AND"
+      (is (= {:columns ["user_name" "venue_name" "timestamp"]
+              :rows    [["Plato Yeshua" "The Daily Pint" "2013-07-25T07:00:00Z"]]}
+             (mt/rows+column-names
+               (mt/run-mbql-query checkins
+                 {:fields [$user_name $venue_name $timestamp]
+                  :filter [:and
+                           [:= $venue_category_name "Bar"]
+                           [:= $user_name "Plato Yeshua"]]})))))
 
-;;; filter >=
-(tqp.test/expect-with-timeseries-dbs
-  [164]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:>= $venue_price 3]})))
+    (testing "filter OR"
+      (is (= [199]
+             (mt/first-row
+               (mt/run-mbql-query checkins
+                 {:aggregation [[:count]]
+                  :filter      [:or
+                                [:= $venue_category_name "Bar"]
+                                [:= $venue_category_name "American"]]})))))))
 
-;;; filter <=
-(tqp.test/expect-with-timeseries-dbs
-  [951]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:<= $venue_price 3]})))
+(deftest between-filter-test
+  (tqp.test/test-timeseries-drivers
+    (testing "filter BETWEEN (inclusive)"
+      (is (= [951]
+             (mt/first-row
+               (mt/run-mbql-query checkins
+                 {:aggregation [[:count]]
+                  :filter      [:between $venue_price 1 3]})))))))
 
-;;; filter =
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["user_name" "venue_name" "venue_category_name" "timestamp"]
-   :rows    [["Plato Yeshua" "Fred 62"        "Diner"    "2013-03-12T07:00:00Z"]
-             ["Plato Yeshua" "Dimples"        "Karaoke"  "2013-04-11T07:00:00Z"]
-             ["Plato Yeshua" "Baby Blues BBQ" "BBQ"      "2013-06-03T07:00:00Z"]
-             ["Plato Yeshua" "The Daily Pint" "Bar"      "2013-07-25T07:00:00Z"]
-             ["Plato Yeshua" "Marlowe"        "American" "2013-09-10T07:00:00Z"]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:fields [$user_name $venue_name $venue_category_name $timestamp]
-      :filter [:= $user_name "Plato Yeshua"]
-      :limit  5})))
+(deftest inside-filter-test
+  (tqp.test/test-timeseries-drivers
+    (is (= {:columns ["venue_name"]
+            :rows    [["Red Medicine"]]}
+           (mt/rows+column-names
+             (mt/run-mbql-query checkins
+               {:breakout [$venue_name]
+                :filter   [:inside $venue_latitude $venue_longitude 10.0649 -165.379 10.0641 -165.371]}))))))
 
-;;; filter !=
-(tqp.test/expect-with-timeseries-dbs
-  [969]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:!= $user_name "Plato Yeshua"]})))
+(deftest is-null-filter-test
+  (tqp.test/test-timeseries-drivers
+    (is (= [0]
+           (mt/first-row
+             (mt/run-mbql-query checkins
+               {:aggregation [[:count]]
+                :filter      [:is-null $venue_category_name]}))))))
 
-;;; filter AND
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["user_name" "venue_name" "timestamp"]
-   :rows    [["Plato Yeshua" "The Daily Pint" "2013-07-25T07:00:00Z"]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:fields [$user_name $venue_name $timestamp]
-      :filter [:and
-               [:= $venue_category_name "Bar"]
-               [:= $user_name "Plato Yeshua"]]})))
+(deftest not-null-filter-test
+  (tqp.test/test-timeseries-drivers
+    (is (= [1000]
+           (mt/first-row
+             (mt/run-mbql-query checkins
+               {:aggregation [[:count]]
+                :filter      [:not-null $venue_category_name]}))))))
 
-;;; filter OR
-(tqp.test/expect-with-timeseries-dbs
-  [199]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:or
-                     [:= $venue_category_name "Bar"]
-                     [:= $venue_category_name "American"]]})))
+(deftest starts-with-filter-test
+  (tqp.test/test-timeseries-drivers
+    (is (= {:columns ["venue_category_name"]
+            :rows    [["Mediterannian"] ["Mexican"]]}
+           (mt/rows+column-names
+             (mt/run-mbql-query checkins
+               {:breakout [$venue_category_name]
+                :filter   [:starts-with $venue_category_name "Me"]}))))
 
-;;; filter BETWEEN (inclusive)
-(tqp.test/expect-with-timeseries-dbs
-  [951]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:between $venue_price 1 3]})))
+    (is (= {:columns ["venue_category_name"]
+            :rows    []}
+           (mt/rows+column-names
+             (mt/run-mbql-query checkins
+               {:breakout [$venue_category_name]
+                :filter   [:starts-with $venue_category_name "ME"]}))))
 
-;;; filter INSIDE
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["venue_name"]
-   :rows    [["Red Medicine"]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:breakout [$venue_name]
-      :filter   [:inside $venue_latitude $venue_longitude 10.0649 -165.379 10.0641 -165.371]})))
+    (testing "case insensitive"
+      (is (= {:columns ["venue_category_name"]
+              :rows    [["Mediterannian"] ["Mexican"]]}
+             (mt/rows+column-names
+               (mt/run-mbql-query checkins
+                 {:breakout [$venue_category_name]
+                  :filter   [:starts-with $venue_category_name "ME" {:case-sensitive false}]})))))))
 
-;;; filter IS_NULL
-(tqp.test/expect-with-timeseries-dbs
-  [0]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:is-null $venue_category_name]})))
+(deftest ends-with-filter-test
+  (tqp.test/test-timeseries-drivers
+    (is (= {:columns ["venue_category_name"]
+            :rows    [["American"]
+                      ["Artisan"]
+                      ["Asian"]
+                      ["Caribbean"]
+                      ["German"]
+                      ["Korean"]
+                      ["Mediterannian"]
+                      ["Mexican"]]}
+           (mt/rows+column-names
+             (mt/run-mbql-query checkins
+               {:breakout [$venue_category_name]
+                :filter   [:ends-with $venue_category_name "an"]}))))
 
-;;; filter NOT_NULL
-(tqp.test/expect-with-timeseries-dbs
-  [1000]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:not-null $venue_category_name]})))
+    (is (= {:columns ["venue_category_name"]
+            :rows    []}
+           (mt/rows+column-names
+             (mt/run-mbql-query checkins
+               {:breakout [$venue_category_name]
+                :filter   [:ends-with $venue_category_name "AN"]}))))
 
-;;; filter STARTS_WITH
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["venue_category_name"]
-   :rows    [["Mediterannian"] ["Mexican"]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:breakout [$venue_category_name]
-      :filter   [:starts-with $venue_category_name "Me"]})))
+    (testing "case insensitive"
+      (is (= {:columns ["venue_category_name"]
+              :rows    [["American"]
+                        ["Artisan"]
+                        ["Asian"]
+                        ["Caribbean"]
+                        ["German"]
+                        ["Korean"]
+                        ["Mediterannian"]
+                        ["Mexican"]]}
+             (mt/rows+column-names
+               (mt/run-mbql-query checkins
+                 {:breakout [$venue_category_name]
+                  :filter   [:ends-with $venue_category_name "AN" {:case-sensitive false}]})))))))
 
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["venue_category_name"]
-   :rows    []}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:breakout [$venue_category_name]
-      :filter   [:starts-with $venue_category_name "ME"]})))
+(deftest contains-filter-test
+  (tqp.test/test-timeseries-drivers
+    (is (= {:columns ["venue_category_name"]
+            :rows    [["American"]
+                      ["Bakery"]
+                      ["Brewery"]
+                      ["Burger"]
+                      ["Diner"]
+                      ["German"]
+                      ["Mediterannian"]
+                      ["Southern"]]}
+           (mt/rows+column-names
+             (mt/run-mbql-query checkins
+               {:breakout [$venue_category_name]
+                :filter   [:contains $venue_category_name "er"]}))))
 
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["venue_category_name"]
-   :rows    [["Mediterannian"] ["Mexican"]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:breakout [$venue_category_name]
-      :filter   [:starts-with $venue_category_name "ME" {:case-sensitive false}]})))
+    (is (= {:columns ["venue_category_name"]
+            :rows    []}
+           (mt/rows+column-names
+             (mt/run-mbql-query checkins
+               {:breakout [$venue_category_name]
+                :filter   [:contains $venue_category_name "eR"]}))))
 
-;;; filter ENDS_WITH
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["venue_category_name"]
-   :rows    [["American"]
-             ["Artisan"]
-             ["Asian"]
-             ["Caribbean"]
-             ["German"]
-             ["Korean"]
-             ["Mediterannian"]
-             ["Mexican"]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:breakout [$venue_category_name]
-      :filter   [:ends-with $venue_category_name "an"]})))
+    (testing "case insensitive"
+      (is (= {:columns ["venue_category_name"]
+              :rows    [["American"]
+                        ["Bakery"]
+                        ["Brewery"]
+                        ["Burger"]
+                        ["Diner"]
+                        ["German"]
+                        ["Mediterannian"]
+                        ["Southern"]]}
+             (mt/rows+column-names
+               (mt/run-mbql-query checkins
+                 {:breakout [$venue_category_name]
+                  :filter   [:contains $venue_category_name "eR" {:case-sensitive false}]})))))))
 
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["venue_category_name"]
-   :rows    []}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:breakout [$venue_category_name]
-      :filter   [:ends-with $venue_category_name "AN"]})))
+(deftest order-by-aggregate-field-test
+  (tqp.test/test-timeseries-drivers
+    (is (= {:columns ["user_name" "venue_category_name" "count"]
+            :rows    [["Szymon Theutrich"    "Bar"      13]
+                      ["Dwight Gresham"      "Mexican"  12]
+                      ["Felipinho Asklepios" "Bar"      10]
+                      ["Felipinho Asklepios" "Japanese" 10]
+                      ["Kaneonuskatew Eiran" "Bar"      10]
+                      ["Shad Ferdynand"      "Mexican"  10]
+                      ["Spiros Teofil"       "American" 10]
+                      ["Spiros Teofil"       "Bar"      10]
+                      ["Dwight Gresham"      "Bar"       9]
+                      ["Frans Hevel"         "Japanese"  9]]}
+           (mt/rows+column-names
+             (mt/run-mbql-query checkins
+               {:aggregation [[:count]]
+                :breakout    [$user_name $venue_category_name]
+                :order-by    [[:desc [:aggregation 0]]]
+                :limit       10}))))))
 
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["venue_category_name"]
-   :rows    [["American"]
-             ["Artisan"]
-             ["Asian"]
-             ["Caribbean"]
-             ["German"]
-             ["Korean"]
-             ["Mediterannian"]
-             ["Mexican"]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:breakout [$venue_category_name]
-      :filter   [:ends-with $venue_category_name "AN" {:case-sensitive false}]})))
+(deftest default-date-bucketing-test
+  (tqp.test/test-timeseries-drivers
+    (testing "default date bucketing (day)"
+      (is (= {:columns ["timestamp" "count"]
+              :rows    [["2013-01-03T00:00:00+00:00" 1]
+                        ["2013-01-10T00:00:00+00:00" 1]
+                        ["2013-01-19T00:00:00+00:00" 1]
+                        ["2013-01-22T00:00:00+00:00" 1]
+                        ["2013-01-23T00:00:00+00:00" 1]]}
+             (mt/rows+column-names
+               (mt/run-mbql-query checkins
+                 {:aggregation [[:count]]
+                  :breakout    [$timestamp]
+                  :limit       5})))))))
 
-;;; filter CONTAINS
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["venue_category_name"]
-   :rows    [["American"]
-             ["Bakery"]
-             ["Brewery"]
-             ["Burger"]
-             ["Diner"]
-             ["German"]
-             ["Mediterannian"]
-             ["Southern"]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:breakout [$venue_category_name]
-      :filter   [:contains $venue_category_name "er"]})))
-
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["venue_category_name"]
-   :rows    []}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:breakout [$venue_category_name]
-      :filter   [:contains $venue_category_name "eR"]})))
-
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["venue_category_name"]
-   :rows    [["American"]
-             ["Bakery"]
-             ["Brewery"]
-             ["Burger"]
-             ["Diner"]
-             ["German"]
-             ["Mediterannian"]
-             ["Southern"]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:breakout [$venue_category_name]
-      :filter   [:contains $venue_category_name "eR" {:case-sensitive false}]})))
-
-;;; order by aggregate field (?)
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["user_name" "venue_category_name" "count"]
-   :rows    [["Szymon Theutrich"    "Bar"      13]
-             ["Dwight Gresham"      "Mexican"  12]
-             ["Felipinho Asklepios" "Bar"      10]
-             ["Felipinho Asklepios" "Japanese" 10]
-             ["Kaneonuskatew Eiran" "Bar"      10]
-             ["Shad Ferdynand"      "Mexican"  10]
-             ["Spiros Teofil"       "American" 10]
-             ["Spiros Teofil"       "Bar"      10]
-             ["Dwight Gresham"      "Bar"       9]
-             ["Frans Hevel"         "Japanese"  9]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:aggregation [[:count]]
-      :breakout    [$user_name $venue_category_name]
-      :order-by    [[:desc [:aggregation 0]]]
-      :limit       10})))
-
-;;; date bucketing - default (day)
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["timestamp" "count"]
-   :rows    [["2013-01-03T00:00:00+00:00" 1]
-             ["2013-01-10T00:00:00+00:00" 1]
-             ["2013-01-19T00:00:00+00:00" 1]
-             ["2013-01-22T00:00:00+00:00" 1]
-             ["2013-01-23T00:00:00+00:00" 1]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:aggregation [[:count]]
-      :breakout    [$timestamp]
-      :limit       5})))
-
-;;; date bucketing - minute
-(tqp.test/expect-with-timeseries-dbs
-  {:columns ["timestamp" "count"]
-   :rows    [["2013-01-03T08:00:00+00:00" 1]
-             ["2013-01-10T08:00:00+00:00" 1]
-             ["2013-01-19T08:00:00+00:00" 1]
-             ["2013-01-22T08:00:00+00:00" 1]
-             ["2013-01-23T08:00:00+00:00" 1]]}
-  (qp.test/rows+column-names
-   (data/run-mbql-query checkins
-     {:aggregation [[:count]]
-      :breakout    [[:datetime-field $timestamp :minute]]
-      :limit       5})))
+(deftest minute-date-bucketing-test
+  (tqp.test/test-timeseries-drivers
+    (is (= {:columns ["timestamp" "count"]
+            :rows    [["2013-01-03T08:00:00+00:00" 1]
+                      ["2013-01-10T08:00:00+00:00" 1]
+                      ["2013-01-19T08:00:00+00:00" 1]
+                      ["2013-01-22T08:00:00+00:00" 1]
+                      ["2013-01-23T08:00:00+00:00" 1]]}
+           (mt/rows+column-names
+             (mt/run-mbql-query checkins
+               {:aggregation [[:count]]
+                :breakout    [[:datetime-field $timestamp :minute]]
+                :limit       5}))))))
 
 (deftest date-bucketing-test
   (mt/test-drivers (tqp.test/timeseries-drivers)
@@ -592,8 +563,8 @@
                                  ["2015-01-01" 267]]}]
         (testing unit
           (testing "topN query"
-            (let [{:keys [columns rows]} (qp.test/rows+column-names
-                                           (data/run-mbql-query checkins
+            (let [{:keys [columns rows]} (mt/rows+column-names
+                                           (mt/run-mbql-query checkins
                                              {:aggregation [[:count]]
                                               :breakout    [[:datetime-field $timestamp unit]]
                                               :limit       5}))]
@@ -604,8 +575,8 @@
           ;; This test is similar to the above query but doesn't use a limit clause which causes the query to be a
           ;; grouped timeseries query rather than a topN query. The dates below are formatted incorrectly due to
           (testing "group timeseries query"
-            (let [{:keys [columns rows]} (qp.test/rows+column-names
-                                           (data/run-mbql-query checkins
+            (let [{:keys [columns rows]} (mt/rows+column-names
+                                           (mt/run-mbql-query checkins
                                              {:aggregation [[:count]]
                                               :breakout    [[:datetime-field $timestamp unit]]}))]
               (is (= ["timestamp" "count"]
@@ -613,222 +584,204 @@
               (is (= expected-rows
                      (take 5 rows))))))))))
 
-;;; `not` filter -- Test that we can negate the various other filter clauses
+(deftest not-filter-test
+  (tqp.test/test-timeseries-drivers
+    (testing "`not` filter -- Test that we can negate the various other filter clauses"
+      (testing :=
+        (is (= [999]
+               (mt/first-row
+                 (mt/run-mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:not [:= $id 1]]})))))
 
-;;; =
-(tqp.test/expect-with-timeseries-dbs
-  [999]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:not [:= $id 1]]})))
+      (testing :!=
+        (is (= [1]
+               (mt/first-row
+                 (mt/run-mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:not [:!= $id 1]]})))))
+      (testing :<
+        (is (= [961]
+               (mt/first-row
+                 (mt/run-mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:not [:< $id 40]]})))))
 
-;;; !=
-(tqp.test/expect-with-timeseries-dbs
-  [1]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:not [:!= $id 1]]})))
-;;; <
-(tqp.test/expect-with-timeseries-dbs
-  [961]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:not [:< $id 40]]})))
+      (testing :>
+        (is (= [40]
+               (mt/first-row
+                 (mt/run-mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:not [:> $id 40]]})))))
 
-;;; >
-(tqp.test/expect-with-timeseries-dbs
-  [40]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:not [:> $id 40]]})))
+      (testing :<=
+        (is (= [960]
+               (mt/first-row
+                 (mt/run-mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:not [:<= $id 40]]})))))
 
-;;; <=
-(tqp.test/expect-with-timeseries-dbs
-  [960]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:not [:<= $id 40]]})))
+      (testing :>=
+        (is (= [39]
+               (mt/first-row
+                 (mt/run-mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:not [:>= $id 40]]})))))
 
-;;; >=
-(tqp.test/expect-with-timeseries-dbs
-  [39]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:not [:>= $id 40]]})))
+      (testing :is-null
+        (is (= [1000]
+               (mt/first-row
+                 (mt/run-mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:not [:is-null $id]]})))))
 
-;;; is-null
-(tqp.test/expect-with-timeseries-dbs
-  [1000]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:not [:is-null $id]]})))
+      (testing :between
+        (is (= [989]
+               (mt/first-row
+                 (mt/run-mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:not [:between $id 30 40]]})))))
 
-;;; between
-(tqp.test/expect-with-timeseries-dbs
-  [989]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:not [:between $id 30 40]]})))
+      (testing :inside
+        (is (= [377]
+               (mt/first-row
+                 (mt/run-mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:not [:inside $venue_latitude $venue_longitude 40 -120 30 -110]]})))))
 
-;;; inside
-(tqp.test/expect-with-timeseries-dbs
-  [377]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:not [:inside $venue_latitude $venue_longitude 40 -120 30 -110]]})))
+      (testing :starts-with
+        (is (= [795]
+               (mt/first-row
+                 (mt/run-mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:not [:starts-with $venue_name "T"]]})))))
 
-;;; starts-with
-(tqp.test/expect-with-timeseries-dbs
-  [795]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:not [:starts-with $venue_name "T"]]})))
+      (testing :contains
+        (is (= [971]
+               (mt/first-row
+                 (mt/run-mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:not [:contains $venue_name "BBQ"]]})))))
 
-;;; contains
-(tqp.test/expect-with-timeseries-dbs
-  [971]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:not [:contains $venue_name "BBQ"]]})))
+      (testing :ends-with
+        (is (= [884]
+               (mt/first-row
+                 (mt/run-mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:not [:ends-with $venue_name "a"]]})))))
 
-;;; ends-with
-(tqp.test/expect-with-timeseries-dbs
-  [884]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:not [:ends-with $venue_name "a"]]})))
+      (testing :and
+        (is (= [975]
+               (mt/first-row
+                 (mt/run-mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:not [:and
+                                        [:> $id 32]
+                                        [:contains $venue_name "BBQ"]]]})))))
 
-;;; and
-(tqp.test/expect-with-timeseries-dbs
-  [975]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:not [:and
-                           [:> $id 32]
-                           [:contains $venue_name "BBQ"]]]})))
-;;; or
-(tqp.test/expect-with-timeseries-dbs
-  [28]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:not [:or [:> $id 32]
-                           [:contains $venue_name "BBQ"]]]})))
+      (testing :or
+        (is (= [28]
+               (mt/first-row
+                 (mt/run-mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:not [:or [:> $id 32]
+                                        [:contains $venue_name "BBQ"]]]})))))
 
-;;; nested and/or
-(tqp.test/expect-with-timeseries-dbs
-  [969]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:not [:or [:and
-                                [:> $id 32]
-                                [:< $id 35]]
-                           [:contains $venue_name "BBQ"]]]})))
+      (testing "nested and/or"
+        (is (= [969]
+               (mt/first-row
+                 (mt/run-mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:not [:or [:and
+                                             [:> $id 32]
+                                             [:< $id 35]]
+                                        [:contains $venue_name "BBQ"]]]})))))
 
-;;; nested not
-(tqp.test/expect-with-timeseries-dbs
-  [29]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:not [:not [:contains $venue_name "BBQ"]]]})))
+      (testing "nested :not"
+        (is (= [29]
+               (mt/first-row
+                 (mt/run-mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:not [:not [:contains $venue_name "BBQ"]]]})))))
 
-;;; not nested inside and/or
-(tqp.test/expect-with-timeseries-dbs
-  [4]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       :filter      [:and
-                     [:not [:> $id 32]]
-                     [:contains $venue_name "BBQ"]]})))
+      (testing ":not nested inside and/or"
+        (is (= [4]
+               (mt/first-row
+                 (mt/run-mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:and
+                                  [:not [:> $id 32]]
+                                  [:contains $venue_name "BBQ"]]})))))
 
-;;; time-interval
-(tqp.test/expect-with-timeseries-dbs
-  [1000]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:count]]
-       ;; test data is all in the past so nothing happened today <3
-       :filter      [:not [:time-interval $timestamp :current :day]]})))
+      (testing :time-interval
+        (is (= [1000]
+               (mt/first-row
+                 (mt/run-mbql-query checkins
+                   {:aggregation [[:count]]
+                    ;; test data is all in the past so nothing happened today <3
+                    :filter      [:not [:time-interval $timestamp :current :day]]}))))))))
 
+(deftest min-test
+  (tqp.test/test-timeseries-drivers
+    (testing "dimension columns"
+      (is (= [1.0]
+             (mt/first-row
+               (mt/run-mbql-query checkins
+                 {:aggregation [[:min $venue_price]]})))))
 
+    (testing "metric columns"
+      (is (= [1.0]
+             (mt/first-row
+               (mt/run-mbql-query checkins
+                 {:aggregation [[:min $count]]})))))
 
-;;; MIN & MAX
+    (testing "with breakout"
+      ;; some sort of weird quirk w/ druid where all columns in breakout get converted to strings
+      (is (= [["1" 34.0071] ["2" 33.7701] ["3" 10.0646] ["4" 33.983]]
+             (mt/rows
+               (mt/run-mbql-query checkins
+                 {:aggregation [[:min $venue_latitude]]
+                  :breakout    [$venue_price]})))))))
 
-;; tests for dimension columns
-(tqp.test/expect-with-timeseries-dbs
-  [4.0]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:max $venue_price]]})))
+(deftest max-test
+  (tqp.test/test-timeseries-drivers
+    (testing "dimension columns"
+      (is (= [4.0]
+             (mt/first-row
+               (mt/run-mbql-query checkins
+                 {:aggregation [[:max $venue_price]]})))))
 
-(tqp.test/expect-with-timeseries-dbs
-  [1.0]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:min $venue_price]]})))
+    (testing "metric columns"
+      (is (= [1.0]
+             (mt/first-row
+               (mt/run-mbql-query checkins
+                 {:aggregation [[:max $count]]})))))
 
-;; tests for metric columns
-(tqp.test/expect-with-timeseries-dbs
-  [1.0]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:max $count]]})))
+    (testing "with breakout"
+      (is (= [["1" 37.8078] ["2" 40.7794] ["3" 40.7262] ["4" 40.7677]]
+             (mt/rows
+               (mt/run-mbql-query checkins
+                 {:aggregation [[:max $venue_latitude]]
+                  :breakout    [$venue_price]})))))))
 
-(tqp.test/expect-with-timeseries-dbs
-  [1.0]
-  (qp.test/first-row
-    (data/run-mbql-query checkins
-      {:aggregation [[:min $count]]})))
+(deftest multiple-aggregations-test
+  (tqp.test/test-timeseries-drivers
+    (testing "Do we properly handle queries that have more than one of the same aggregation? (#4166)"
+      (is (= [[35643 1992]]
+             (mt/formatted-rows [int int]
+               (mt/run-mbql-query checkins
+                 {:aggregation [[:sum $venue_latitude] [:sum $venue_price]]})))))))
 
-(tqp.test/expect-with-timeseries-dbs
-  ;; some sort of weird quirk w/ druid where all columns in breakout get converted to strings
-  [["1" 34.0071] ["2" 33.7701] ["3" 10.0646] ["4" 33.983]]
-  (qp.test/rows
-    (data/run-mbql-query checkins
-      {:aggregation [[:min $venue_latitude]]
-       :breakout    [$venue_price]})))
-
-(tqp.test/expect-with-timeseries-dbs
-  [["1" 37.8078] ["2" 40.7794] ["3" 40.7262] ["4" 40.7677]]
-  (qp.test/rows
-    (data/run-mbql-query checkins
-      {:aggregation [[:max $venue_latitude]]
-       :breakout    [$venue_price]})))
-
-;; Do we properly handle queries that have more than one of the same aggregation? (#4166)
-(tqp.test/expect-with-timeseries-dbs
-  [[35643 1992]]
-  (qp.test/format-rows-by [int int]
-    (qp.test/rows
-      (data/run-mbql-query checkins
-        {:aggregation [[:sum $venue_latitude] [:sum $venue_price]]}))))
-
-;; Make sure sorting by aggregations works correctly for Timeseries queries (#9185)
-(tqp.test/expect-with-timeseries-dbs
-  [["Steakhouse" 3.6]
-   ["Chinese"    3.0]
-   ["Wine Bar"   3.0]
-   ["Japanese"   2.7]]
-  (qp.test/format-rows-by [str 1.0]
-    (qp.test/rows
-      (data/run-mbql-query checkins
-        {:aggregation  [[:avg $venue_price]]
-         :breakout     [[:field-id $venue_category_name]]
-         :order-by     [[:desc [:aggregation 0]]]
-         :limit        4}))))
+(deftest sort-aggregations-in-timeseries-queries-test
+  (tqp.test/test-timeseries-drivers
+    (testing "Make sure sorting by aggregations works correctly for Timeseries queries (#9185)"
+      (is (= [["Steakhouse" 3.6]
+              ["Chinese"    3.0]
+              ["Wine Bar"   3.0]
+              ["Japanese"   2.7]]
+             (mt/formatted-rows [str 1.0]
+               (mt/run-mbql-query checkins
+                 {:aggregation [[:avg $venue_price]]
+                  :breakout    [[:field-id $venue_category_name]]
+                  :order-by    [[:desc [:aggregation 0]]]
+                  :limit       4})))))))

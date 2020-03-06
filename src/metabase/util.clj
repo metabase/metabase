@@ -213,7 +213,7 @@
     false
     (config/config-bool :mb-colorize-logs)))
 
-(def ^{:arglists '(^String [color-symb x])} colorize
+(def ^{:arglists '(^String [color-symb x]), :style/indent 1} colorize
   "Colorize string `x` using `color`, a symbol or keyword, but only if `MB_COLORIZE_LOGS` is enabled (the default).
   `color` can be `green`, `red`, `yellow`, `blue`, `cyan`, `magenta`, etc. See the entire list of avaliable
   colors [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj)"
@@ -596,22 +596,6 @@
     (long (math/floor (/ (Math/log (math/abs x))
                          (Math/log 10))))))
 
-(defn update-when
-  "Like `clojure.core/update` but does not create a new key if it does not exist. Useful when you don't want to create
-  cruft."
-  [m k f & args]
-  (if (contains? m k)
-    (apply update m k f args)
-    m))
-
-(defn update-in-when
-  "Like `clojure.core/update-in` but does not create new keys if they do not exist. Useful when you don't want to create
-  cruft."
-  [m k f & args]
-  (if (not= ::not-found (get-in m k ::not-found))
-    (apply update-in m k f args)
-    m))
-
 (defn index-of
   "Return index of the first element in `coll` for which `pred` reutrns true."
   [pred coll]
@@ -693,7 +677,7 @@
 
 (defn topological-sort
   "Topologically sorts vertexs in graph g. Graph is a map of vertexs to edges. Optionally takes an
-   additional argument `edge-fn`, a function used to extract edges. Returns data in the same shape
+   additional argument `edges-fn`, a function used to extract edges. Returns data in the same shape
    (a graph), only sorted.
 
    Say you have a graph shaped like:

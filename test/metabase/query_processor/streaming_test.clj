@@ -54,11 +54,10 @@
   (with-redefs [streaming-response/keepalive-interval-ms 2]
     (with-open [bos (ByteArrayOutputStream.)
                 os  (BufferedOutputStream. bos)]
-      (ring.protocols/write-body-to-stream
-       (qp.streaming/streaming-response [context export-format]
-         (qp/process-query-async query (assoc context :timeout 5000)))
-       nil
-       os)
+      (let [streaming-response (qp.streaming/streaming-response [context export-format]
+                                 (qp/process-query-async query (assoc context :timeout 5000)))]
+        (ring.protocols/write-body-to-stream streaming-response nil os)
+        (mt/wait-for-result (streaming-response/finished-chan streaming-response) 1000))
       (.flush os)
       (.flush bos)
       (let [bytea (.toByteArray bos)]
