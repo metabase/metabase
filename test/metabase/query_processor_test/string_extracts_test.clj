@@ -7,7 +7,7 @@
 
 (defn- test-string-extract
   [expr]
-  (->> {:expression {"test" expr}
+  (->> {:expressions {"test" expr}
         :fields      [[:expression "test"]]
         ;; To ensure stable ordering
         :order-by    [[:asc [:field-id (data/id :venues :id)]]]

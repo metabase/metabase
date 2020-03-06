@@ -190,6 +190,11 @@
 ;;; |                                           Low-Level ->honeysql impls                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:dynamic *table-alias*
+  "The alias, if any, that should be used to qualify Fields when building the HoneySQL form, instead of defaulting to
+  schema + Table name. Used to implement things like `:joined-field`s."
+  nil)
+
 (defmethod ->honeysql [:sql nil]    [_ _]    nil)
 (defmethod ->honeysql [:sql Object] [_ this] this)
 
@@ -215,11 +220,6 @@
 (defmethod ->honeysql [:sql Identifier]
   [_ identifier]
   identifier)
-
-(def ^:dynamic *table-alias*
-  "The alias, if any, that should be used to qualify Fields when building the HoneySQL form, instead of defaulting to
-  schema + Table name. Used to implement things like `:joined-field`s."
-  nil)
 
 (defmethod ->honeysql [:sql (class Field)]
   [driver {field-name :name, table-id :table_id, :as field}]
@@ -509,9 +509,7 @@
   (as-> honeysql-form new-hsql
     (apply h/merge-select new-hsql (for [field-clause breakout-fields
                                          :when (not (contains? (set fields-fields) field-clause))]
-                                     (if (and false (mbql.u/is-clause? :expression field-clause))
-                                       (->honeysql driver field-clause)
-                                       (as driver field-clause))))
+                                     (as driver field-clause)))
     (apply h/group new-hsql (map (partial ->honeysql driver) breakout-fields))))
 
 (defmethod apply-top-level-clause [:sql :fields]
@@ -796,31 +794,31 @@
 
 ;;; -------------------------------------------- putting it all togetrher --------------------------------------------
 
-(defn- expressions->subquery
+(defn- expressions->subselect
   [{:keys [expressions] :as query}]
-  (-> query
-      (assoc :source-query (-> query
-                               (select-keys [:joins :source-table :expressions])
-                               (assoc :fields (concat
-                                               (for [[expression-name expression-definition] expressions]
-                                                 [:expression-definition (name expression-name) expression-definition])
-                                               (mbql.u/match query [:field-id _])))))
-      (dissoc :source-table :joins :expressions)))
+  (let [subselect (-> query
+                      (select-keys [:joins :source-table :source-query])
+                      (assoc :fields (concat
+                                      (for [[expression-name expression-definition] expressions]
+                                        [:expression-definition (name expression-name) expression-definition])
+                                      (mbql.u/match query [:field-id _]))))]
+    (-> query
+        (dissoc :source-table :source-query :joins :expressions)
+         (assoc :source-query subselect))))
 
 (defn- apply-clauses
   "Like `apply-top-level-clauses`, but handles `source-query` as well, which needs to be handled in a special way
   because it is aliased."
-  [driver honeysql-form {:keys [source-query], :as inner-query}]
-  (println inner-query)
+  [driver honeysql-form {:keys [source-query expressions], :as inner-query}]
   (cond
+    (not-empty expressions)
+    (apply-clauses driver honeysql-form (expressions->subselect inner-query))
+
     source-query
     (apply-clauses-with-aliased-source-query-table
      driver
      (apply-source-query driver honeysql-form inner-query)
      inner-query)
-
-    (expression-in-breakout? (:breakout inner-query))
-    (apply-clauses driver honeysql-form (expressions->subquery inner-query))
 
     :else
     (apply-top-level-clauses driver honeysql-form inner-query)))
