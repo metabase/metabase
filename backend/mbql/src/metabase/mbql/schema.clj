@@ -271,7 +271,9 @@
     Field))
 
 
-;;; -------------------------------------------------- String expressions ---------------------------------------------------
+;;; -------------------------------------------------- Expressions ---------------------------------------------------
+
+;; Expressions are "calculated column" definitions, defined once and then used elsewhere in the MBQL query.
 
 (def string-expressions
   "String functions"
@@ -292,6 +294,52 @@
 
    :else
    Field))
+
+(def ^:private arithmetic-expressions #{:+ :- :/ :* :coalesce})
+
+(declare ArithmeticExpression)
+
+(def ^:private NumericExpressionArg
+  (s/conditional
+   number?
+   s/Num
+
+   (partial is-clause? arithmetic-expressions)
+   (s/recursive #'ArithmeticExpression)
+
+   (partial is-clause? :value)
+   value
+
+   :else
+   Field))
+
+(def ^:private ExpressionArg
+  (s/conditional
+   number?
+   s/Num
+
+   (partial is-clause? arithmetic-expressions)
+   (s/recursive #'ArithmeticExpression)
+
+   string?
+   s/Str
+
+   (partial is-clause? string-expressions)
+   (s/recursive #'StringExpression)
+
+   (partial is-clause? :value)
+   value
+
+   :else
+   Field))
+
+(def ^:private NumericExpressionArgOrInterval
+  (s/if (partial is-clause? :interval)
+    interval
+    NumericExpressionArg))
+
+(defclause ^{:requires-features #{:expressions}} coalesce
+  a ExpressionArg, b ExpressionArg, more (rest ExpressionArg))
 
 (defclause ^{:requires-features #{:expressions}} substring
   s StringExpressionArg, start s/Int, length (optional s/Int))
@@ -322,6 +370,29 @@
 
 (defclause ^{:requires-features #{:expressions :regex}} regex-match-first
   s StringExpressionArg, pattern s/Str)
+
+(def ^:private StringExpression*
+  (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce length))
+
+(def ^:private StringExpression
+  "Schema for the definition of an string expression."
+  (s/recursive #'StringExpression*))
+
+(defclause ^{:requires-features #{:expressions}} +
+  x NumericExpressionArg, y NumericExpressionArgOrInterval, more (rest NumericExpressionArgOrInterval))
+
+(defclause ^{:requires-features #{:expressions}} -
+  x NumericExpressionArg, y NumericExpressionArgOrInterval, more (rest NumericExpressionArgOrInterval))
+
+(defclause ^{:requires-features #{:expressions}} /, x NumericExpressionArg, y NumericExpressionArg, more (rest NumericExpressionArg))
+(defclause ^{:requires-features #{:expressions}} *, x NumericExpressionArg, y NumericExpressionArg, more (rest NumericExpressionArg))
+
+(def ^:private ArithmeticExpression*
+  (one-of + - / * coalesce))
+
+(def ^:private ArithmeticExpression
+  "Schema for the definition of an arithmetic expression."
+  (s/recursive #'ArithmeticExpression*))
 
 
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
@@ -444,89 +515,19 @@
 (defclause ^:sugar segment, segment-id (s/cond-pre su/IntGreaterThanZero su/NonBlankString))
 
 (def ^:private Filter*
-  (one-of
-   ;; filters drivers must implement
-   and or not = != < > <= >= between starts-with ends-with contains
-   ;; SUGAR filters drivers do not need to implement
-   does-not-contain inside is-null not-null time-interval segment))
+  (s/conditional
+   (partial is-clause? arithmetic-expressions) ArithmeticExpression
+   (partial is-clause? string-expressions)     StringExpression
+   :else
+   (one-of
+    ;; filters drivers must implement
+    and or not = != < > <= >= between starts-with ends-with contains
+    ;; SUGAR filters drivers do not need to implement
+    does-not-contain inside is-null not-null time-interval segment)))
 
 (def Filter
   "Schema for a valid MBQL `:filter` clause."
   (s/recursive #'Filter*))
-
-
-;;; -------------------------------------------------- Expressions ---------------------------------------------------
-
-;; Expressions are "calculated column" definitions, defined once and then used elsewhere in the MBQL query.
-
-(def ^:private arithmetic-expressions #{:+ :- :/ :* :coalesce})
-
-(declare ArithmeticExpression)
-
-(def ^:private NumericExpressionArg
-  (s/conditional
-   number?
-   s/Num
-
-   (partial is-clause? arithmetic-expressions)
-   (s/recursive #'ArithmeticExpression)
-
-   (partial is-clause? :value)
-   value
-
-   :else
-   Field))
-
-(def ^:private ExpressionArg
-  (s/conditional
-   number?
-   s/Num
-
-   (partial is-clause? arithmetic-expressions)
-   (s/recursive #'ArithmeticExpression)
-
-   string?
-   s/Str
-
-   (partial is-clause? string-expressions)
-   (s/recursive #'StringExpression)
-
-   (partial is-clause? :value)
-   value
-
-   :else
-   Field))
-
-(def ^:private NumericExpressionArgOrInterval
-  (s/if (partial is-clause? :interval)
-    interval
-    NumericExpressionArg))
-
-(defclause ^{:requires-features #{:expressions}} coalesce
-  a ExpressionArg, b ExpressionArg, more (rest ExpressionArg))
-
-(defclause ^{:requires-features #{:expressions}} +
-  x NumericExpressionArg, y NumericExpressionArgOrInterval, more (rest NumericExpressionArgOrInterval))
-
-(defclause ^{:requires-features #{:expressions}} -
-  x NumericExpressionArg, y NumericExpressionArgOrInterval, more (rest NumericExpressionArgOrInterval))
-
-(defclause ^{:requires-features #{:expressions}} /, x NumericExpressionArg, y NumericExpressionArg, more (rest NumericExpressionArg))
-(defclause ^{:requires-features #{:expressions}} *, x NumericExpressionArg, y NumericExpressionArg, more (rest NumericExpressionArg))
-
-(def ^:private ArithmeticExpression*
-  (one-of + - / * coalesce))
-
-(def ^:private ArithmeticExpression
-  "Schema for the definition of an arithmetic expression."
-  (s/recursive #'ArithmeticExpression*))
-
-(def ^:private StringExpression*
-  (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce length))
-
-(def ^:private StringExpression
-  "Schema for the definition of an string expression."
-  (s/recursive #'StringExpression*))
 
 (def ^:private CaseClause [(s/one Filter "pred") (s/one ExpressionArg "expr")])
 

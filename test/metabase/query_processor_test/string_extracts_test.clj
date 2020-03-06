@@ -40,7 +40,6 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= "red medicine" (test-string-extract [:lower [:field-id (data/id :venues :name)]])))))
 
-
 (deftest test-substring
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= "Red" (test-string-extract [:substring [:field-id (data/id :venues :name)] 1 3])))
@@ -48,7 +47,7 @@
 
 (deftest test-replacea
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (is (= "Red Baloon" (test-string-extract  [:replace [:field-id (data/id :venues :name)] "Medicine" "Baloon"])))))
+    (is (= "Red Baloon" (test-string-extract [:replace [:field-id (data/id :venues :name)] "Medicine" "Baloon"])))))
 
 (deftest test-coalesce
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -65,3 +64,14 @@
 (deftest test-nesting
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= "MED" (test-string-extract [:upper [:substring [:trim [:substring [:field-id (data/id :venues :name)] 4]] 1 3]])))))
+
+(deftest test-breakout
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (is (= ["20th Century Cafefoo" 1]
+           (->> {:expressions  {"test" [:concat [:field-id (data/id :venues :name)] "foo"]}
+                 :breakout     [[:expression "test"]]
+                 :aggregation  [[:count]]
+                 :limit        1}
+                (mt/run-mbql-query venues)
+                rows
+                first)))))

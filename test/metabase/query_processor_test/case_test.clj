@@ -24,15 +24,13 @@
                                           [[:< [:field-id (data/id :venues :price)] 4] 1]]]])))
     (testing "Can we use fields as values"
       (is (= 179.0 (test-case [:sum [:case [[[:< [:field-id (data/id :venues :price)] 2] [:field-id (data/id :venues :price)]]
-                                            [[:< [:field-id (data/id :venues :price)] 4] [:field-id (data/id :venues :price)]]] ]]))))
-    (testing "Can use expressions as values"
-      (is (= 194.5 (test-case [:sum [:case [[[:< [:field-id (data/id :venues :price)] 2] [:+ [:field-id (data/id :venues :price)] 1]]
-                                            [[:< [:field-id (data/id :venues :price)] 4] [:+ [:/ [:field-id (data/id :venues :price)] 2] 1]]] ]]))))
+                                            [[:< [:field-id (data/id :venues :price)] 4] [:field-id (data/id :venues :price)]]]]]))))
     (testing "Test else clause"
       (is (= 122.0 (test-case [:sum [:case [[[:< [:field-id (data/id :venues :price)] 2] 2]]
                                      {:default 1}]]))))
     (testing "Test implicit else (= nil) clause"
-      (is (= nil (test-case [:sum [:case [[[:> [:field-id (data/id :venues :price)] 200] 2]]]]))))
+      ;; Some DBs return 0 for sum of nulls.
+      (is ((some-fn nil? zero?) (test-case [:sum [:case [[[:> [:field-id (data/id :venues :price)] 200] 2]]]]))))
 
     (testing "Test complex filters"
       (is (= 34.0 (test-case [:sum
@@ -40,9 +38,6 @@
                                         [:or [:starts-with [:field-id (data/id :venues :name)] "M"]
                                          [:ends-with [:field-id (data/id :venues :name)] "t"]]]
                                        [:field-id (data/id :venues :price)]]]]]))))
-    (testing "Can we use case in metric expressions"
-      (is (= 90.5  (test-case [:+ [:/ [:sum [:case [[[:< [:field-id (data/id :venues :price)] 4] [:field-id (data/id :venues :price)]]]
-                                             {:default 0}]] 2] 1]))))
     (testing "Can we use segments in case"
       (tt/with-temp* [Segment [{segment-id :id} {:table_id   (data/id :venues)
                                              :definition {:source-table (data/id :venues)
@@ -69,6 +64,15 @@
                   rows
                   (map (fn [[k v]]
                          [(long k) (double v)]))))))))
+
+(deftest test-case-aggregations+expressions
+  (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions)
+    (testing "Can we use case in metric expressions"
+      (is (= 90.5  (test-case [:+ [:/ [:sum [:case [[[:< [:field-id (data/id :venues :price)] 4] [:field-id (data/id :venues :price)]]]
+                                             {:default 0}]] 2] 1]))))
+    (testing "Can use expressions as values"
+      (is (= 194.5 (test-case [:sum [:case [[[:< [:field-id (data/id :venues :price)] 2] [:+ [:field-id (data/id :venues :price)] 1]]
+                                            [[:< [:field-id (data/id :venues :price)] 4] [:+ [:/ [:field-id (data/id :venues :price)] 2] 1]]]]]))))))
 
 (deftest test-case-normalization
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
