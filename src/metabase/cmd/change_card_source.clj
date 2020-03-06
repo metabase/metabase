@@ -1,8 +1,9 @@
 (ns metabase.cmd.change-card-source
   (:require [clojure.walk :as walk]
-            [toucan.db :as tdb]
-            [metabase.models.card :as card]
-            [metabase.models.field :as field]))
+            [metabase.models
+             [card :as card]
+             [field :as field]]
+            [toucan.db :as tdb]))
 
 (defn add-field-mapping
   "Given a user mapping of old/new table and database, plus field names,

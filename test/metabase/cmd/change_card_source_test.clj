@@ -1,7 +1,7 @@
 (ns metabase.cmd.change-card-source-test
-  (:require [metabase.cmd.change-card-source :as sut]
+  (:require [clojure.test :refer :all]
+            [metabase.cmd.change-card-source :as sut]
             [metabase.models :refer [Card Database Field Table]]
-            [clojure.test :refer :all]
             [toucan.util.test :as tt]))
 
 (deftest add-field-mapping
