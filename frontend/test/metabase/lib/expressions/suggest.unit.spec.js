@@ -25,11 +25,11 @@ const AGGREGATION_FUNCTIONS = [
 ];
 const STRING_FUNCTIONS = [
   { text: "concat(", type: "functions" },
-  { text: "extract(", type: "functions" },
   { text: "lower(", type: "functions" },
   { text: "ltrim(", type: "functions" },
-  { text: "replace(", type: "functions" },
+  { text: "regexextract(", type: "functions" },
   { text: "rtrim(", type: "functions" },
+  { text: "substitute(", type: "functions" },
   { text: "substring(", type: "functions" },
   { text: "trim(", type: "functions" },
   { text: "upper(", type: "functions" },
