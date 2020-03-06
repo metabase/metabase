@@ -163,7 +163,7 @@
 
 (defmethod sql.qp/->honeysql [:postgres :regex-match-first]
   [driver [_ arg pattern]]
-  (hsql/call :substring (hsql/raw (str (hformat/to-sql (sql.qp/->honeysql driver arg)) " from '" pattern "'"))))
+  (hsql/call :substring (hsql/raw (str (hformat/to-sql (sql.qp/->honeysql driver arg)) " FROM '" pattern "'"))))
 
 (defmethod sql.qp/->honeysql [:postgres Time]
   [_ time-value]

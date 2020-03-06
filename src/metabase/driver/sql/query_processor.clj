@@ -197,9 +197,11 @@
 
 (defmethod ->honeysql [:sql :expression]
   [driver [_ expression-name]]
-  ;; Unfortunately you can't just refer to the expression by name in other clauses like filter, but have to use the
-  ;; original formula.
-  (->honeysql driver (mbql.u/expression-with-name *query* expression-name)))
+  (hx/identifier :field-alias *table-alias* expression-name))
+
+(defmethod ->honeysql [:sql :expression-definition]
+  [driver [_ _ expression-definition]]
+  (->honeysql driver expression-definition))
 
 (defn cast-unix-timestamp-field-if-needed
   "Wrap a `field-identifier` in appropriate HoneySQL expressions if it refers to a UNIX timestamp Field."
@@ -442,8 +444,8 @@
 ;;; |                                            Field Aliases (AS Forms)                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn field-clause->alias
-  "Generate HoneySQL for an approriate alias (e.g., for use with SQL `AN`) for a Field clause of any type, or `nil` if
+(defn field-clause->alias
+  "Generate HoneySQL for an approriate alias (e.g., for use with SQL `AS`) for a Field clause of any type, or `nil` if
   the Field should not be aliased (e.g. if `field->alias` returns `nil`).
 
   Optionally pass a state-maintaining `unique-name-fn`, such as `mbql.u/unique-name-generator`, to guarantee that each
@@ -451,11 +453,12 @@
   ([driver field-clause]
    (field-clause->alias driver field-clause identity))
 
-  ([driver, field-clause :- mbql.s/Field, unique-name-fn :- (s/pred fn?)]
+  ([driver field-clause unique-name-fn]
    (when-let [alias (mbql.u/match-one field-clause
-                      [:expression expression-name] expression-name
-                      [:field-literal field-name _] field-name
-                      [:field-id id]                (field->alias driver (qp.store/field id)))]
+                      [:expression expression-name]              expression-name
+                      [:expression-definition expression-name _] expression-name
+                      [:field-literal field-name _]              field-name
+                      [:field-id id]                             (field->alias driver (qp.store/field id)))]
      (->honeysql driver (hx/identifier :field-alias (unique-name-fn alias))))))
 
 (defn as
@@ -505,8 +508,10 @@
   [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as query}]
   (as-> honeysql-form new-hsql
     (apply h/merge-select new-hsql (for [field-clause breakout-fields
-                                         :when        (not (contains? (set fields-fields) field-clause))]
-                                     (as driver field-clause)))
+                                         :when (not (contains? (set fields-fields) field-clause))]
+                                     (if (and false (mbql.u/is-clause? :expression field-clause))
+                                       (->honeysql driver field-clause)
+                                       (as driver field-clause))))
     (apply h/group new-hsql (map (partial ->honeysql driver) breakout-fields))))
 
 (defmethod apply-top-level-clause [:sql :fields]
@@ -662,8 +667,7 @@
 
 (defmethod apply-top-level-clause [:sql :order-by]
   [driver _ honeysql-form {subclauses :order-by}]
-  (reduce h/merge-order-by honeysql-form (map (partial ->honeysql driver)
-                                              subclauses)))
+  (reduce h/merge-order-by honeysql-form (map (partial ->honeysql driver) subclauses)))
 
 ;;; -------------------------------------------------- limit & page --------------------------------------------------
 
@@ -792,15 +796,33 @@
 
 ;;; -------------------------------------------- putting it all togetrher --------------------------------------------
 
+(defn- expressions->subquery
+  [{:keys [expressions] :as query}]
+  (-> query
+      (assoc :source-query (-> query
+                               (select-keys [:joins :source-table :expressions])
+                               (assoc :fields (concat
+                                               (for [[expression-name expression-definition] expressions]
+                                                 [:expression-definition (name expression-name) expression-definition])
+                                               (mbql.u/match query [:field-id _])))))
+      (dissoc :source-table :joins :expressions)))
+
 (defn- apply-clauses
   "Like `apply-top-level-clauses`, but handles `source-query` as well, which needs to be handled in a special way
   because it is aliased."
   [driver honeysql-form {:keys [source-query], :as inner-query}]
-  (if source-query
+  (println inner-query)
+  (cond
+    source-query
     (apply-clauses-with-aliased-source-query-table
      driver
      (apply-source-query driver honeysql-form inner-query)
      inner-query)
+
+    (expression-in-breakout? (:breakout inner-query))
+    (apply-clauses driver honeysql-form (expressions->subquery inner-query))
+
+    :else
     (apply-top-level-clauses driver honeysql-form inner-query)))
 
 (s/defn build-honeysql-form
