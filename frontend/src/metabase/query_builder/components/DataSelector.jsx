@@ -252,7 +252,7 @@ export class UnconnectedDataSelector extends Component {
       setSelectedDatabase(selectedSchema.database);
     }
 
-    const computedState = {
+    return {
       databases: databases || [],
       selectedDatabase: selectedDatabase,
       schemas: schemas || [],
@@ -262,20 +262,6 @@ export class UnconnectedDataSelector extends Component {
       fields: fields || [],
       selectedField: selectedField,
     };
-
-    // filter out steps if `hideSingle*` is provided and there's a single option
-    computedState.steps = props.steps.filter(step => {
-      if (step === DATABASE_STEP && props.hideSingleDatabase) {
-        const { databases } = computedState;
-        return databases && databases.length !== 1;
-      }
-      if (step === SCHEMA_STEP && props.hideSingleSchema) {
-        const { schemas } = computedState;
-        return schemas && schemas.length !== 1;
-      }
-      return true;
-    });
-    return computedState;
   }
 
   // Like setState, but automatically adds computed state so we don't have to recalculate
@@ -355,7 +341,7 @@ export class UnconnectedDataSelector extends Component {
   }
 
   async hydrateActiveStep() {
-    const { steps } = this.state;
+    const { steps } = this.props;
     if (this.state.selectedTableId && steps.includes(FIELD_STEP)) {
       await this.switchToStep(FIELD_STEP);
     } else if (this.state.selectedSchemaId && steps.includes(TABLE_STEP)) {
@@ -394,29 +380,15 @@ export class UnconnectedDataSelector extends Component {
   }
 
   getNextStep() {
-    // skips over disabled steps
-    const allSteps = this.props.steps;
-    const enabledSteps = this.state.steps;
-    let index = allSteps.indexOf(this.state.activeStep);
-    while (index >= 0 && ++index < allSteps.length) {
-      if (enabledSteps.indexOf(allSteps[index]) >= 0) {
-        return allSteps[index];
-      }
-    }
-    return null;
+    const { steps } = this.props;
+    const index = steps.indexOf(this.state.activeStep);
+    return index < steps.length - 1 ? steps[index + 1] : null;
   }
 
   getPreviousStep() {
-    // skips over disabled steps
-    const allSteps = this.props.steps;
-    const enabledSteps = this.state.steps;
-    let index = allSteps.indexOf(this.state.activeStep);
-    while (--index >= 0) {
-      if (enabledSteps.indexOf(allSteps[index]) >= 0) {
-        return allSteps[index];
-      }
-    }
-    return null;
+    const { steps } = this.props;
+    const index = steps.indexOf(this.state.activeStep);
+    return index > 0 ? steps[index - 1] : null;
   }
 
   nextStep = async (stateChange = {}, skipSteps = true) => {

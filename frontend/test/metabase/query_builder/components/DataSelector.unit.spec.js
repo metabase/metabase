@@ -219,6 +219,7 @@ describe("DataSelector", () => {
     fireEvent.click(getByText("Multi-schema Database"));
     // see schema appear and click to view tables for good measure
     fireEvent.click(getByText("First Schema"));
+    await delay(1);
     getByText("Table in First Schema");
   });
 
@@ -252,6 +253,7 @@ describe("DataSelector", () => {
     fireEvent.click(getByText("Multi-schema Database"));
     // see schema appear and click to view tables for good measure
     fireEvent.click(getByText("First Schema"));
+    await delay(1);
     getByText("Table in First Schema");
   });
 
@@ -329,6 +331,22 @@ describe("DataSelector", () => {
     );
 
     getByText("Sample Dataset", { selector: ".List-item--selected h4" });
+  });
+
+  it("should work", async () => {
+    const { getByText } = render(
+      <DataSelector
+        steps={["DATABASE", "SCHEMA", "TABLE"]}
+        databases={[SAMPLE_DATASET]}
+        combineDatabaseSchemaSteps
+        selectedDatabaseId={SAMPLE_DATASET.id}
+        triggerElement={<div />}
+        metadata={metadata}
+        isOpen={true}
+      />,
+    );
+    await delay(1);
+    getByText("Orders");
   });
 
   it("should move between selected multi-schema dbs", () => {
