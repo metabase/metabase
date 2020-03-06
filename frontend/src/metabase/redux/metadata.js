@@ -336,4 +336,4 @@ export const loadMetadataForQuery = query => dispatch =>
         console.warn(`loadQueryMetadata: type ${type} not implemented`);
       }
     }),
-  );
+  ).catch(e => console.error("Failed loading metadata for query", e));
