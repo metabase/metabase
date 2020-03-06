@@ -369,6 +369,33 @@ describe("DataSelector", () => {
     getByText("Other First Schema");
     getByText("Other Second Schema");
   });
+
+  it("should skip schema when going to previous step", async () => {
+    const { getByText } = render(
+      <DataSelector
+        steps={["DATABASE", "SCHEMA", "TABLE"]}
+        databases={[SAMPLE_DATASET, ANOTHER_DATABASE]}
+        combineDatabaseSchemaSteps
+        triggerElement={<div />}
+        metadata={metadata}
+        isOpen={true}
+      />,
+    );
+
+    // click into the first db
+    fireEvent.click(getByText("Sample Dataset"));
+    await delay(1);
+    getByText("Orders");
+
+    // click to go back
+    fireEvent.click(getByText("Sample Dataset"));
+    getByText("Sample Empty Dataset");
+
+    // click back in
+    fireEvent.click(getByText("Sample Dataset"));
+    await delay(1);
+    getByText("Orders");
+  });
 });
 
 // removes associated ids from entities so we can load only some of them

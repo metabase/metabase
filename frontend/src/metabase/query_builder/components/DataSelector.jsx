@@ -387,8 +387,29 @@ export class UnconnectedDataSelector extends Component {
 
   getPreviousStep() {
     const { steps } = this.props;
-    const index = steps.indexOf(this.state.activeStep);
-    return index > 0 ? steps[index - 1] : null;
+    let index = steps.indexOf(this.state.activeStep);
+    if (index === -1) {
+      console.error(`Step ${this.state.activeStep} not found in ${steps}.`);
+      return null;
+    }
+
+    // move to previous step
+    index -= 1;
+
+    // possibly skip another step backwards
+    if (
+      steps[index] === SCHEMA_STEP &&
+      this.props.useOnlyAvailableSchema &&
+      this.state.schemas.length === 1
+    ) {
+      index -= 1;
+    }
+
+    // can't go back to a previous step
+    if (index < 0) {
+      return null;
+    }
+    return steps[index];
   }
 
   nextStep = async (stateChange = {}, skipSteps = true) => {
