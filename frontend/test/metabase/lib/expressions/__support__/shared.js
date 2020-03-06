@@ -38,26 +38,26 @@ const expression = [
     ["*", ["+", 1, 2], 3],
     "parenthesis overriding operator precedence",
   ],
-  ["'hello world'", "hello world", "string literal"],
-  ["Subtotal", subtotal, "field name"],
-  ["Tax + Total", ["+", tax, total], "adding two fields"],
-  ["1 + Subtotal", ["+", 1, subtotal], "adding literal and field"],
-  ['"User ID"', userId, "field name with spaces"],
-  ["foo", ["expression", "foo"], "named expression"],
-  ['"User → Name"', userName, "foriegn key"],
-  ['trim("User → Name")', ["trim", userName], "function with one argument"],
+  ['"hello world"', "hello world", "string literal"],
+  ["[Subtotal]", subtotal, "field name"],
+  ["[Tax] + [Total]", ["+", tax, total], "adding two fields"],
+  ["1 + [Subtotal]", ["+", 1, subtotal], "adding literal and field"],
+  ["[User ID]", userId, "field name with spaces"],
+  ["[foo]", ["expression", "foo"], "named expression"],
+  ["[User → Name]", userName, "foriegn key"],
+  ["trim([User → Name])", ["trim", userName], "function with one argument"],
   [
-    "trim(\"User → Name\", ',')",
+    'trim([User → Name], ",")',
     ["trim", userName, ","],
     "function with two arguments",
   ],
   [
-    "concat('http://mysite.com/user/', \"User ID\", '/')",
+    'concat("http://mysite.com/user/", [User ID], "/")',
     ["concat", "http://mysite.com/user/", userId, "/"],
     "function with 3 arguments",
   ],
   [
-    "case(Total > 10, 'GOOD', Total < 5, 'BAD', 'OK')",
+    'case([Total] > 10, "GOOD", [Total] < 5, "BAD", "OK")',
     [
       "case",
       [[[">", total, 10], "GOOD"], [["<", total, 5], "BAD"]],
@@ -66,59 +66,63 @@ const expression = [
     "case statement with default",
   ],
   // should not compile:
-  // ["'Hello' + 1", null, "adding a string to a number"],
+  // ["\"Hell\" + 1", null, "adding a string to a number"],
 ];
 
 const aggregation = [
   ["Count", ["count"], "aggregation with no arguments"],
-  ["Sum(Total)", ["sum", total], "aggregation with one argument"],
+  ["Sum([Total])", ["sum", total], "aggregation with one argument"],
   ["1 - Count", ["-", 1, ["count"]], "aggregation with math outside"],
-  ["Sum(Total * 2)", ["sum", ["*", total, 2]], "aggregation with math inside"],
   [
-    "1 - Sum(Total * 2) / Count",
+    "Sum([Total] * 2)",
+    ["sum", ["*", total, 2]],
+    "aggregation with math inside",
+  ],
+  [
+    "1 - Sum([Total] * 2) / Count",
     ["-", 1, ["/", ["sum", ["*", total, 2]], ["count"]]],
     "aggregation with math inside and outside",
   ],
-  ['"Total Order Value"', metric, "metric"],
-  ['"Total Order Value" * 2', ["*", metric, 2], "metric with math"],
-  ["Share(Total > 50)", ["share", [">", total, 50]], "share aggregation"],
+  ["[Total Order Value]", metric, "metric"],
+  ["[Total Order Value] * 2", ["*", metric, 2], "metric with math"],
+  ["Share([Total] > 50)", ["share", [">", total, 50]], "share aggregation"],
   [
-    "CountIf(Total > 50)",
+    "CountIf([Total] > 50)",
     ["count-where", [">", total, 50]],
     "count-where aggregation",
   ],
   [
-    "SumIf(Total, Total > 50)",
+    "SumIf([Total], [Total] > 50)",
     ["sum-where", total, [">", total, 50]],
     "sum-where aggregation",
   ],
   [
-    "Average(coalesce(Total, Tax))",
+    "Average(coalesce([Total], [Tax]))",
     ["avg", ["coalesce", total, tax]],
     "coalesce inside an aggregation",
   ],
   // should not compile:
   ["Sum(Count)", undefined, "aggregation nested inside another aggregation"],
-  ["Count(Total)", undefined, "invalid count arguments"],
-  ["SumIf(Total > 50, Total)", undefined, "invalid sum-where arguments"],
+  ["Count([Total])", undefined, "invalid count arguments"],
+  ["SumIf([Total] > 50, [Total])", undefined, "invalid sum-where arguments"],
   ["Count + Share((", undefined, "invalid share"],
 ];
 
 const filter = [
-  ["Total < 10", ["<", total, 10], "filter operator"],
-  ["NOT Total < 10", ["not", ["<", total, 10]], "filter with not"],
+  ["[Total] < 10", ["<", total, 10], "filter operator"],
+  ["NOT [Total] < 10", ["not", ["<", total, 10]], "filter with not"],
   [
-    "Total < 10 AND Tax >= 1",
+    "[Total] < 10 AND [Tax] >= 1",
     ["and", ["<", total, 10], [">=", tax, 1]],
     "filter with AND",
   ],
   [
-    "interval(\"Created At\", -1, 'month')",
+    'interval([Created At], -1, "month")',
     ["time-interval", created, -1, "month"],
     "time interval filter",
   ],
-  ['"Expensive Things"', segment, "segment"],
-  ['NOT "Expensive Things"', ["not", segment], "not segment"],
+  ["[Expensive Things]", segment, "segment"],
+  ["NOT [Expensive Things]", ["not", segment], "not segment"],
 ];
 
 export default [

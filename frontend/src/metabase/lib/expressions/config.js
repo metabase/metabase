@@ -1,28 +1,33 @@
 import { t } from "ttag";
 
-// export const QUOTES = {
-//   // specifies where different quoting is used:
+export const DISPLAY_QUOTES = {
+  identifierQuoteDefault: "",
+  literalQuoteDefault: "",
+};
+
+export const EDITOR_QUOTES = {
+  // specifies where different quoting is used:
+  characters: {
+    "[": "identifier",
+    "'": "literal",
+    '"': "literal",
+  },
+  // specifies the default quoting style:
+  literalQuoteDefault: '"',
+  identifierQuoteDefault: "[",
+  // always quote identifiers even if they have non-word characters or conflict with reserved words
+  identifierAlwaysQuoted: true,
+};
+
+// export const EDITOR_QUOTES = {
 //   characters: {
-//     "[": "identifier",
 //     "'": "literal",
-//     '"': "literal",
+//     '"': "identifier",
 //   },
-//   // specifies the default quoting style:
-//   literalQuoteDefault: '"',
-//   identifierQuoteDefault: "[",
-//   // always quote identifiers even if they have non-word characters or conflict with reserved words
+//   literalQuoteDefault: "'",
+//   identifierQuoteDefault: '"',
 //   identifierAlwaysQuoted: false,
 // };
-
-export const QUOTES = {
-  characters: {
-    "'": "literal",
-    '"': "identifier",
-  },
-  literalQuoteDefault: "'",
-  identifierQuoteDefault: '"',
-  identifierAlwaysQuoted: false,
-};
 
 // copied relevant parts from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Operator_Precedence
 export const OPERATOR_PRECEDENCE = {
@@ -155,7 +160,7 @@ export const MBQL_CLAUSES = {
   replace: {
     displayName: t`replace`,
     type: "string",
-    args: ["string", "string"],
+    args: ["string", "string", "string"],
   },
   trim: {
     displayName: t`trim`,

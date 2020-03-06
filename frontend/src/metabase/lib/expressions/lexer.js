@@ -10,7 +10,7 @@ import {
   EXPRESSION_FUNCTIONS,
   FILTER_FUNCTIONS,
   MBQL_CLAUSES,
-  QUOTES,
+  EDITOR_QUOTES,
 } from "./config";
 
 export const CLAUSE_TOKENS = new Map();
@@ -189,9 +189,9 @@ export const RParen = createToken({
 // QUOTED STRINGS
 
 const getQuoteCategories = character => {
-  return QUOTES.characters[character] === "literal"
+  return EDITOR_QUOTES.characters[character] === "literal"
     ? [StringLiteral]
-    : QUOTES.characters[character] === "identifier"
+    : EDITOR_QUOTES.characters[character] === "identifier"
     ? [IdentifierString]
     : [];
 };

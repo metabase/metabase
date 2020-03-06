@@ -1,12 +1,12 @@
 export * from "./config";
 
 import Dimension from "metabase-lib/lib/Dimension";
-import { OPERATORS, FUNCTIONS, QUOTES, getMBQLName } from "./config";
+import { OPERATORS, FUNCTIONS, EDITOR_QUOTES, getMBQLName } from "./config";
 
 // IDENTIFIERS
 
 // can be double-quoted, but are not by default unless they have non-word characters or are reserved
-export function formatIdentifier(name, { quotes = QUOTES } = {}) {
+export function formatIdentifier(name, { quotes = EDITOR_QUOTES } = {}) {
   if (
     !quotes.identifierAlwaysQuoted &&
     /^\w+$/.test(name) &&
@@ -63,8 +63,8 @@ export function parseDimension(name, { query }) {
     .find(d => getDimensionName(d) === name);
 }
 
-export function formatDimensionName(dimension) {
-  return formatIdentifier(getDimensionName(dimension));
+export function formatDimensionName(dimension, options) {
+  return formatIdentifier(getDimensionName(dimension), options);
 }
 
 export function getDimensionName(dimension) {
@@ -73,7 +73,10 @@ export function getDimensionName(dimension) {
 
 // STRING LITERALS
 
-export function formatStringLiteral(mbqlString, { quotes = QUOTES } = {}) {
+export function formatStringLiteral(
+  mbqlString,
+  { quotes = EDITOR_QUOTES } = {},
+) {
   return quoteString(mbqlString, quotes.literalQuoteDefault);
 }
 export function parseStringLiteral(expressionString) {

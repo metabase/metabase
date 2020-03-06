@@ -20,6 +20,8 @@ import {
 } from ".";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 
+export { DISPLAY_QUOTES, EDITOR_QUOTES } from "./config";
+
 type QuotesConfig = {};
 
 type FormatterOptions = {
@@ -29,7 +31,7 @@ type FormatterOptions = {
 };
 
 // convert a MBQL expression back into an expression string
-export function format(mbql: any, options: FormatterOptions) {
+export function format(mbql: any, options: FormatterOptions = {}) {
   if (mbql == null || _.isEqual(mbql, [])) {
     return "";
   } else if (isNumberLiteral(mbql)) {

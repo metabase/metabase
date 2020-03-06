@@ -23,11 +23,6 @@ import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 import { t, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
-const DISPLAY_QUOTES = {
-  identifierQuoteDefault: "",
-  literalQuoteDefault: "",
-};
-
 export default class Filter extends MBQLClause {
   /**
    * Replaces the filter in the parent query and returns the new StructuredQuery
@@ -70,7 +65,7 @@ export default class Filter extends MBQLClause {
       const argumentNames = this.formattedArguments().join(" ");
       return `${dimensionName || ""} ${operatorName || ""} ${argumentNames}`;
     } else if (this.isCustom()) {
-      return this._query.formatExpression(this, { quotes: DISPLAY_QUOTES });
+      return this._query.formatExpression(this);
     } else {
       return t`Unknown Filter`;
     }

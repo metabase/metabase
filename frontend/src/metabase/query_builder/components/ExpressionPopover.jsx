@@ -6,6 +6,7 @@ import Button from "metabase/components/Button";
 import { t } from "ttag";
 import Icon from "metabase/components/Icon";
 
+// TODO: combine with ExpressionWidget
 export default class ExpressionPopover extends React.Component {
   state = {
     error: null,
@@ -48,6 +49,12 @@ export default class ExpressionPopover extends React.Component {
             onError={errorMessage => {
               this.setState({ error: errorMessage });
             }}
+            onCommit={expression => {
+              if (!onChangeName) {
+                onChange(expression);
+                onDone();
+              }
+            }}
           />
           {error &&
             (Array.isArray(error) ? (
@@ -67,6 +74,11 @@ export default class ExpressionPopover extends React.Component {
               className="input block full my1"
               value={name}
               onChange={e => onChangeName(e.target.value)}
+              onKeyPress={e => {
+                if (e.key === "Enter" && isValid) {
+                  onDone();
+                }
+              }}
               placeholder={t`Name (required)`}
             />
           )}

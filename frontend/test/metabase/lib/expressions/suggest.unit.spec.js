@@ -68,56 +68,56 @@ const OPEN_PAREN = { type: "other", text: " (" };
 const CLOSE_PAREN = { type: "other", text: ") " };
 
 // custom metadata defined in __support__/expressions
-const METRICS_CUSTOM = [{ type: "metrics", text: "metric" }];
+const METRICS_CUSTOM = [{ type: "metrics", text: "[metric]" }];
 const FIELDS_CUSTOM = [
+  { type: "fields", text: "[A] " },
+  { type: "fields", text: "[B] " },
+  { type: "fields", text: "[C] " },
   // quoted because conflicts with aggregation
-  { type: "fields", text: '"Sum" ' },
+  { type: "fields", text: "[Sum] " },
   // quoted because has a space
-  { type: "fields", text: '"Toucan Sam" ' },
+  { type: "fields", text: "[Toucan Sam] " },
   // quoted because conflicts with aggregation
-  { type: "fields", text: '"count" ' },
-  { type: "fields", text: "A " },
-  { type: "fields", text: "B " },
-  { type: "fields", text: "C " },
+  { type: "fields", text: "[count] " },
 ];
 
 const FIELDS_CUSTOM_NON_NUMERIC = [
-  { type: "fields", text: "date " },
-  { type: "fields", text: "text " },
+  { type: "fields", text: "[date] " },
+  { type: "fields", text: "[text] " },
 ];
 
 // custom metadata defined in __support__/sample_dataset_fixture
-const METRICS_ORDERS = [{ type: "metrics", text: '"Total Order Value"' }];
-const SEGMENTS_ORDERS = [{ text: '"Expensive Things"', type: "segments" }];
+const METRICS_ORDERS = [{ type: "metrics", text: "[Total Order Value]" }];
+const SEGMENTS_ORDERS = [{ text: "[Expensive Things]", type: "segments" }];
 // const FIELDS_ORDERS = [
-//   { text: '"Created At" ', type: "fields" },
-//   { text: '"Product ID" ', type: "fields" },
-//   { text: '"Product → Category" ', type: "fields" },
-//   { text: '"Product → Created At" ', type: "fields" },
-//   { text: '"Product → Ean" ', type: "fields" },
-//   { text: '"Product → ID" ', type: "fields" },
-//   { text: '"Product → Price" ', type: "fields" },
-//   { text: '"Product → Rating" ', type: "fields" },
-//   { text: '"Product → Title" ', type: "fields" },
-//   { text: '"Product → Vendor" ', type: "fields" },
-//   { text: '"User ID" ', type: "fields" },
-//   { text: '"User → Address" ', type: "fields" },
-//   { text: '"User → Birth Date" ', type: "fields" },
-//   { text: '"User → City" ', type: "fields" },
-//   { text: '"User → Created At" ', type: "fields" },
-//   { text: '"User → Email" ', type: "fields" },
-//   { text: '"User → ID" ', type: "fields" },
-//   { text: '"User → Latitude" ', type: "fields" },
-//   { text: '"User → Longitude" ', type: "fields" },
-//   { text: '"User → Name" ', type: "fields" },
-//   { text: '"User → Password" ', type: "fields" },
-//   { text: '"User → Source" ', type: "fields" },
-//   { text: '"User → State" ', type: "fields" },
-//   { text: '"User → Zip" ', type: "fields" },
-//   { text: "ID ", type: "fields" },
-//   { text: "Subtotal ", type: "fields" },
-//   { text: "Tax ", type: "fields" },
-//   { text: "Total ", type: "fields" },
+//   { text: '[Created At] ', type: "fields" },
+//   { text: '[Product ID] ', type: "fields" },
+//   { text: '[Product → Category] ', type: "fields" },
+//   { text: '[Product → Created At] ', type: "fields" },
+//   { text: '[Product → Ean] ', type: "fields" },
+//   { text: '[Product → ID] ', type: "fields" },
+//   { text: '[Product → Price] ', type: "fields" },
+//   { text: '[Product → Rating] ', type: "fields" },
+//   { text: '[Product → Title] ', type: "fields" },
+//   { text: '[Product → Vendor] ', type: "fields" },
+//   { text: '[User ID] ', type: "fields" },
+//   { text: '[User → Address] ', type: "fields" },
+//   { text: '[User → Birth Date] ', type: "fields" },
+//   { text: '[User → City] ', type: "fields" },
+//   { text: '[User → Created At] ', type: "fields" },
+//   { text: '[User → Email] ', type: "fields" },
+//   { text: '[User → ID] ', type: "fields" },
+//   { text: '[User → Latitude] ', type: "fields" },
+//   { text: '[User → Longitude] ', type: "fields" },
+//   { text: '[User → Name] ', type: "fields" },
+//   { text: '[User → Password] ', type: "fields" },
+//   { text: '[User → Source] ', type: "fields" },
+//   { text: '[User → State] ', type: "fields" },
+//   { text: '[User → Zip] ', type: "fields" },
+//   { text: "[ID] ", type: "fields" },
+//   { text: "[Subtotal] ", type: "fields" },
+//   { text: "[Tax] ", type: "fields" },
+//   { text: "[Total] ", type: "fields" },
 // ];
 
 describe("metabase/lib/expression/suggest", () => {
@@ -145,14 +145,14 @@ describe("metabase/lib/expression/suggest", () => {
       });
       it("should suggest partial matches in expression", () => {
         expect(suggest({ source: "1 + C", ...expressionOpts })).toEqual([
-          { type: "fields", text: '"count" ' },
-          { type: "fields", text: "C " },
+          { type: "fields", text: "[C] " },
+          { type: "fields", text: "[count] " },
         ]);
       });
       it("should suggest partial matches in unterminated quoted string", () => {
-        expect(suggest({ source: '1 + "C', ...expressionOpts })).toEqual([
-          { type: "fields", text: '"count" ' },
-          { type: "fields", text: "C " },
+        expect(suggest({ source: "1 + [C", ...expressionOpts })).toEqual([
+          { type: "fields", text: "[C] " },
+          { type: "fields", text: "[count] " },
         ]);
       });
       it("should suggest foreign fields", () => {
@@ -163,20 +163,20 @@ describe("metabase/lib/expression/suggest", () => {
             startRule: "expression",
           }),
         ).toEqual([
-          { text: '"User ID" ', type: "fields" },
-          { text: '"User → Address" ', type: "fields" },
-          { text: '"User → Birth Date" ', type: "fields" },
-          { text: '"User → City" ', type: "fields" },
-          { text: '"User → Created At" ', type: "fields" },
-          { text: '"User → Email" ', type: "fields" },
-          { text: '"User → ID" ', type: "fields" },
-          { text: '"User → Latitude" ', type: "fields" },
-          { text: '"User → Longitude" ', type: "fields" },
-          { text: '"User → Name" ', type: "fields" },
-          { text: '"User → Password" ', type: "fields" },
-          { text: '"User → Source" ', type: "fields" },
-          { text: '"User → State" ', type: "fields" },
-          { text: '"User → Zip" ', type: "fields" },
+          { text: "[User ID] ", type: "fields" },
+          { text: "[User → Address] ", type: "fields" },
+          { text: "[User → Birth Date] ", type: "fields" },
+          { text: "[User → City] ", type: "fields" },
+          { text: "[User → Created At] ", type: "fields" },
+          { text: "[User → Email] ", type: "fields" },
+          { text: "[User → ID] ", type: "fields" },
+          { text: "[User → Latitude] ", type: "fields" },
+          { text: "[User → Longitude] ", type: "fields" },
+          { text: "[User → Name] ", type: "fields" },
+          { text: "[User → Password] ", type: "fields" },
+          { text: "[User → Source] ", type: "fields" },
+          { text: "[User → State] ", type: "fields" },
+          { text: "[User → Zip] ", type: "fields" },
         ]);
       });
       it("should suggest joined fields", () => {
@@ -190,12 +190,12 @@ describe("metabase/lib/expression/suggest", () => {
             startRule: "expression",
           }),
         ).toEqual([
-          { text: '"Foo → Body" ', type: "fields" },
-          { text: '"Foo → Created At" ', type: "fields" },
-          { text: '"Foo → ID" ', type: "fields" },
-          { text: '"Foo → Product ID" ', type: "fields" },
-          { text: '"Foo → Rating" ', type: "fields" },
-          { text: '"Foo → Reviewer" ', type: "fields" },
+          { text: "[Foo → Body] ", type: "fields" },
+          { text: "[Foo → Created At] ", type: "fields" },
+          { text: "[Foo → ID] ", type: "fields" },
+          { text: "[Foo → Product ID] ", type: "fields" },
+          { text: "[Foo → Rating] ", type: "fields" },
+          { text: "[Foo → Reviewer] ", type: "fields" },
         ]);
       });
       it("should suggest nested query fields", () => {
@@ -209,8 +209,8 @@ describe("metabase/lib/expression/suggest", () => {
             startRule: "expression",
           }),
         ).toEqual([
-          { text: '"Count" ', type: "fields" },
-          { text: "Total ", type: "fields" },
+          { text: "[Count] ", type: "fields" },
+          { text: "[Total] ", type: "fields" },
           { text: "coalesce(", type: "functions" },
           ...STRING_FUNCTIONS,
           OPEN_PAREN,
@@ -240,8 +240,8 @@ describe("metabase/lib/expression/suggest", () => {
     describe("aggregation", () => {
       it("should suggest partial matches after an aggregation", () => {
         expect(suggest({ source: "average(c", ...aggregationOpts })).toEqual([
-          { type: "fields", text: '"count" ' },
-          { type: "fields", text: "C " },
+          { type: "fields", text: "[C] " },
+          { type: "fields", text: "[count] " },
           // { text: "case(", type: "functions" },
           // { text: "coalesce(", type: "functions" },
         ]);

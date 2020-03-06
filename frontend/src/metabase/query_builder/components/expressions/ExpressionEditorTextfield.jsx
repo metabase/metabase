@@ -162,6 +162,13 @@ export default class ExpressionEditorTextfield extends React.Component {
     }
 
     if (!suggestions.length) {
+      if (
+        e.keyCode === KEYCODE_ENTER &&
+        this.props.onCommit &&
+        this.state.expression != null
+      ) {
+        this.props.onCommit(this.state.expression);
+      }
       return;
     }
     if (e.keyCode === KEYCODE_ENTER) {

@@ -7,7 +7,10 @@
 import * as Q from "metabase/lib/query/query";
 import * as Q_DEPRECATED from "metabase/lib/query";
 import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
-import { format as formatExpression } from "metabase/lib/expressions/format";
+import {
+  format as formatExpression,
+  DISPLAY_QUOTES,
+} from "metabase/lib/expressions/format";
 
 import _ from "underscore";
 import { chain, updateIn } from "icepick";
@@ -699,8 +702,8 @@ export default class StructuredQuery extends AtomicQuery {
     return aggregation && aggregation.displayName();
   }
 
-  formatExpression(expression, options = {}) {
-    return formatExpression(expression, { ...options, query: this });
+  formatExpression(expression, { quotes = DISPLAY_QUOTES, ...options } = {}) {
+    return formatExpression(expression, { quotes, ...options, query: this });
   }
 
   /**
