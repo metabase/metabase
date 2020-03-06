@@ -4,7 +4,7 @@
             [metabase.models.card :as card]
             [metabase.models.field :as field]))
 
-(defn build-mapping
+(defn add-field-mapping
   "Given a user mapping of old/new table and database, plus field names,
   finds field ids to be remapped"
   [{:keys [table] :as user-mapping}]
@@ -38,7 +38,18 @@
                                     query))))))
 
 (defn remap-cards
-  "Finds all relevant cards, remaps them"
+  "Finds all relevant cards, remaps them
+
+  Example mapping:
+
+  {:table    {:old 1572
+            :new 1586}
+  :database {:old 1429
+            :new 1430}
+  :fields   {\"ts\"               \"created_at\"
+             \"dislikes_comment\" \"dislikes_comments\"}}
+  "
   [mapping]
-  (let [original-cards (tdb/select card/Card :table_id (:old (:table mapping)))]
-    (map #(remap-card mapping %) original-cards)))
+  (let [original-cards (tdb/select card/Card :table_id (:old (:table mapping)))
+        full-mapping   (add-field-mapping mapping)]
+    (map #(remap-card full-mapping %) original-cards)))
