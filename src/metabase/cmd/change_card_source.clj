@@ -10,10 +10,12 @@
   [{:keys [table] :as user-mapping}]
   (let [old-fields (tdb/select field/Field :table_id (:old table))
         new-fields (group-by :name (tdb/select field/Field :table_id (:new table)))]
-
     (reduce (fn [field-map old-field]
-              (let [new-field-name (get-in user-mapping [:fields (:name old-field)] (:name old-field))]
-                (assoc-in field-map [:fields (:id old-field)] (:id (first (get new-fields new-field-name))))))
+              (let [new-field-name (get-in user-mapping [:fields (:name old-field)])]
+                (assoc-in field-map
+                          [:fields (:id old-field)]
+                          (or (:id (first (get new-fields new-field-name)))
+                              (:id old-field)))))
             user-mapping
             old-fields)))
 
