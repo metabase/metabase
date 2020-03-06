@@ -32,7 +32,14 @@ export class SchemaBrowser extends React.Component {
       <Box>
         <Schema.ListLoader query={{ dbId }}>
           {({ schemas }) =>
-            schemas.length > 1 ? (
+            schemas.length === 1 ? (
+              <TableBrowser
+                {...this.props}
+                params={{ ...this.props.params, schemaName: schemas[0].name }}
+                // hide the schema since there's only one
+                showSchemaInHeader={false}
+              />
+            ) : (
               <Box>
                 <BrowseHeader
                   crumbs={[
@@ -71,13 +78,6 @@ export class SchemaBrowser extends React.Component {
                   ))}
                 </Grid>
               </Box>
-            ) : (
-              <TableBrowser
-                {...this.props}
-                params={{ ...this.props.params, schemaName: schemas[0].name }}
-                // hide the schema since there's only one
-                showSchemaInHeader={false}
-              />
             )
           }
         </Schema.ListLoader>
