@@ -800,11 +800,14 @@
                       (select-keys [:joins :source-table :source-query])
                       (assoc :fields (concat
                                       (for [[expression-name expression-definition] expressions]
-                                        [:expression-definition (name expression-name) expression-definition])
-                                      (mbql.u/match query [:field-id _]))))]
+                                        [:expression-definition
+                                         (name expression-name)
+                                         (mbql.u/replace expression-definition
+                                           [:expression expr] (expressions (keyword expr)))])
+                                      (distinct (mbql.u/match query [:field-id _])))))]
     (-> query
         (dissoc :source-table :source-query :joins :expressions)
-         (assoc :source-query subselect))))
+        (assoc :source-query subselect))))
 
 (defn- apply-clauses
   "Like `apply-top-level-clauses`, but handles `source-query` as well, which needs to be handled in a special way

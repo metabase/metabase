@@ -329,6 +329,9 @@
             ;; its output :(
             (map (comp canonicalize-mbql-clauses canonicalize-filter) args)))
 
+    [:inside field-1 field-2 & coordinates]
+    (apply vector :inside (wrap-implicit-field-id field-1) (wrap-implicit-field-id field-2)  coordinates)
+
     ;; if you put a `:datetime-field` inside a `:time-interval` we should fix it for you
     [:time-interval [:datetime-field field _] & args]
     (recur (apply vector :time-interval field args))
@@ -336,10 +339,12 @@
     ;; all the other filter types have an implict field ID for the first arg
     ;; (e.g. [:= 10 20] gets canonicalized to [:= [:field-id 10] 20]
     [(filter-name :guard #{:starts-with :ends-with :contains :does-not-contain
-                           := :!= :< :<= :> :>= :is-null :not-null :between :inside :time-interval}) & args]
-    (apply vector filter-name (for [arg args]
-                                (cond-> arg
-                                  (mbql-clause? arg) canonicalize-expression-subclause)))
+                           := :!= :< :<= :> :>= :is-null :not-null :between :inside :time-interval}) arg & args]
+    (apply vector filter-name (if (mbql-clause? arg)
+                                (canonicalize-expression-subclause arg)
+                                ;; Support legacy expressions like [:> 1 25] where 1 is a field id.
+                                (wrap-implicit-field-id arg))
+           (map canonicalize-expression-subclause args))
 
     ;; don't wrap segment IDs in `:field-id`
     [:segment _]
