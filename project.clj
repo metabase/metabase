@@ -107,7 +107,7 @@
                  com.sun.jdmk/jmxtools
                  com.sun.jmx/jmxri]]
    [me.raynes/fs "1.4.6"]                                             ; Filesystem tools
-   [medley "1.2.0"]                                                   ; lightweight lib of useful functions
+   [medley "1.3.0"]                                                   ; lightweight lib of useful functions
    [metabase/connection-pool "1.1.1"]                                 ; simple wrapper around C3P0. JDBC connection pools
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
