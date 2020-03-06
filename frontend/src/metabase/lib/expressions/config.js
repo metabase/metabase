@@ -141,7 +141,7 @@ export const MBQL_CLAUSES = {
     args: ["string", "number", "number"],
   },
   "regex-match-first": {
-    displayName: t`extract`,
+    displayName: t`regexextract`,
     type: "string",
     args: ["string", "string"],
   },
