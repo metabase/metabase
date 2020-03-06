@@ -795,19 +795,25 @@
 ;;; -------------------------------------------- putting it all togetrher --------------------------------------------
 
 (defn- expressions->subselect
-  [{:keys [expressions] :as query}]
+  [{:keys [expressions fields] :as query}]
   (let [subselect (-> query
-                      (select-keys [:joins :source-table :source-query])
-                      (assoc :fields (concat
-                                      (for [[expression-name expression-definition] expressions]
-                                        [:expression-definition
-                                         (name expression-name)
-                                         (mbql.u/replace expression-definition
-                                           [:expression expr] (expressions (keyword expr)))])
-                                      (distinct (mbql.u/match query [:field-id _])))))]
+                      (select-keys [:joins :source-table :source-query :source-metadata])
+                      (assoc :fields
+                             (concat
+                              (for [[expression-name expression-definition] expressions]
+                                [:expression-definition
+                                 (name expression-name)
+                                 (mbql.u/replace expression-definition
+                                   [:expression expr] (expressions (keyword expr)))])
+                              (distinct
+                               (mbql.u/match query [(_ :guard #{:field-literal :field-id :joined-field}) & _])))))
+        ;; TODO -- correctly handle fields in multiple tables with the same name
+        fields    (mbql.u/replace fields
+                    [:joined-field alias field] [:joined-field "source" field])]
     (-> query
-        (dissoc :source-table :source-query :joins :expressions)
-        (assoc :source-query subselect))))
+        (dissoc :source-table :source-query :joins :expressions :source-metadata)
+        (assoc :source-query subselect
+               :fields       fields))))
 
 (defn- apply-clauses
   "Like `apply-top-level-clauses`, but handles `source-query` as well, which needs to be handled in a special way
