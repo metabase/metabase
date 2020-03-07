@@ -530,9 +530,14 @@ export class UnconnectedDataSelector extends Component {
     }
   };
 
-  onChangeDatabase = async (database, schemaInSameStep = false) => {
+  onChangeDatabase = async database => {
     if (this.props.setDatabaseFn) {
       this.props.setDatabaseFn(database && database.id);
+    }
+    if (this.state.selectedDatabaseId != null) {
+      // If we already had a database selected, we need to go back and clear
+      // data before advancing to the next step.
+      await this.previousStep();
     }
     await this.nextStep({ selectedDatabaseId: database && database.id });
   };
@@ -789,7 +794,7 @@ const DatabaseSchemaPicker = ({
           // still return "true" to let the AccordionList collapse that section.
           return true;
         }
-        onChangeDatabase(databases[sectionIndex], true);
+        onChangeDatabase(databases[sectionIndex]);
         return true;
       }}
       itemIsSelected={schema => schema === selectedSchema}

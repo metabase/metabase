@@ -15,6 +15,16 @@
         "id": "4:second_schema",
         "name": "second_schema",
         "database": 4
+      },
+      "5:other_first_schema": {
+        "id": "5:other_first_schema",
+        "name": "other_first_schema",
+        "database": 5
+      },
+      "5:other_second_schema": {
+        "id": "5:other_second_schema",
+        "name": "other_second_schema",
+        "database": 5
       }
     },
     "metrics": {
@@ -173,6 +183,31 @@
         },
         "is_sample": true,
         "id": 4,
+        "engine": "h2",
+        "created_at": "2017-06-14T23:22:55.349Z",
+        "points_of_interest": null
+      },
+      "5": {
+        "description": null,
+        "features": [
+          "basic-aggregations",
+          "standard-deviation-aggregations",
+          "expression-aggregations",
+          "foreign-keys",
+          "native-parameters",
+          "expressions"
+        ],
+        "name": "Other Multi-schema Database",
+        "caveats": null,
+        "tables": [],
+        "is_full_sync": true,
+        "updated_at": "2017-06-14T23:22:55.349Z",
+        "native_permissions": "write",
+        "details": {
+          "db": "zip:/private/tmp/metabase.jar!/sample-dataset.db;USER=GUEST;PASSWORD=guest"
+        },
+        "is_sample": true,
+        "id": 5,
         "engine": "h2",
         "created_at": "2017-06-14T23:22:55.349Z",
         "points_of_interest": null
