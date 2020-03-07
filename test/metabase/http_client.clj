@@ -100,7 +100,7 @@
 
 ;;; client
 
-(defn- build-request-map [credentials http-body]
+(defn build-request-map [credentials http-body]
   (merge
    {:accept       :json
     :headers      {@#'mw.session/metabase-session-header

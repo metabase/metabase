@@ -10,7 +10,7 @@
 
 (defn- do-with-query-execution [query run]
   (mt/with-open-channels [save-chan (a/promise-chan)]
-    (with-redefs [process-userland-query/save-query-execution! (partial a/>!! save-chan)]
+    (with-redefs [process-userland-query/save-query-execution!* (partial a/>!! save-chan)]
       (run
         (fn qe-result* []
           (let [qe (mt/wait-for-result save-chan)]
@@ -86,7 +86,7 @@
               :running_time true
               :dashboard_id nil}
              (qe))
-          "Result should have query execution info. empty `:data` should get added to failures"))))
+          "QueryExecution saved in the DB should have query execution info. empty `:data` should get added to failures"))))
 
 (defn- async-middleware [qp]
   (fn async-middleware-qp [query rff context]
@@ -99,7 +99,7 @@
 
 (deftest cancel-test
   (let [saved-query-execution? (atom false)]
-    (with-redefs [process-userland-query/save-query-execution-async! (fn [_] (reset! saved-query-execution? true))]
+    (with-redefs [process-userland-query/save-query-execution! (fn [_] (reset! saved-query-execution? true))]
       (mt/with-open-channels [canceled-chan (a/promise-chan)]
         (future
           (let [out-chan (mt/test-qp-middleware [process-userland-query/process-userland-query async-middleware]
@@ -115,7 +115,7 @@
             (is (= 'canceled-chan
                    (if (= port canceled-chan) 'canceled-chan 'timeout))
                 "port")
-            (is (= :cancel
+            (is (= :metabase.query-processor.reducible/cancel
                    val)
                 "val")))
         (testing "No QueryExecution should get saved when a query is canceled"

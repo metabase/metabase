@@ -60,6 +60,7 @@ import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/util
 import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
 import Questions from "metabase/entities/questions";
+import Databases from "metabase/entities/databases";
 
 import { getMetadata } from "metabase/selectors/metadata";
 import { setRequestUnloaded } from "metabase/redux/requests";
@@ -297,6 +298,10 @@ export const initializeQB = (location, params) => {
     // do this immediately to ensure old state is cleared before the user sees it
     dispatch(resetQB());
     dispatch(cancelQuery());
+
+    // preload metadata that's used in DataSelector
+    dispatch(Databases.actions.fetchList({ include: "tables" }));
+    dispatch(Databases.actions.fetchList({ saved: true }));
 
     const { currentUser } = getState();
 

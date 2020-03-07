@@ -135,6 +135,17 @@
 (defn- num-to-ds-interval [unit v] (hsql/call :numtodsinterval v (hx/literal unit)))
 (defn- num-to-ym-interval [unit v] (hsql/call :numtoyminterval v (hx/literal unit)))
 
+
+(defmethod sql.qp/->honeysql [:oracle :substring]
+  [driver [_ arg start length]]
+  (if length
+    (hsql/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
+    (hsql/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start))))
+
+(defmethod sql.qp/->honeysql [:oracle :regex-match-first]
+  [driver [_ arg pattern]]
+  (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+
 (defmethod sql.qp/add-interval-honeysql-form :oracle
   [_ hsql-form amount unit]
   (hx/+
