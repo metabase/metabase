@@ -201,9 +201,18 @@
                                       (parse-value-for-type param-type v))})
 
     (and (= param-type :dimension)
-         (get-in value [:field :base_type])
-         (string? (get-in value [:value :value])))
-    (update-in value [:value :value] (partial parse-value-for-field-base-type (get-in value [:field :base_type])))
+         (get-in value [:field :base_type]))
+    (cond
+      (string? (get-in value [:value :value]))
+      (update-in value [:value :value] (partial parse-value-for-field-base-type (get-in value [:field :base_type])))
+
+      (and (sequential? (get-in value [:value :value]))
+           (every? string? (get-in value [:value :value])))
+      (let [x (mapv (partial parse-value-for-field-base-type (get-in value [:field :base_type])) (get-in value [:value :value]))]
+        (assoc-in value [:value :value] x))
+
+      :else
+      value)
 
     :else
     value))
