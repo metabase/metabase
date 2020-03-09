@@ -139,7 +139,7 @@
          {:display_name  dimension-name
           :remapped_from (:name (get column-id->column remapped-from-id))})))))
 
-(defn- create-remapped-col [col-name remapped-from]
+(defn- create-remapped-col [col-name remapped-from base-type]
   {:description   nil
    :id            nil
    :table_id      nil
@@ -147,7 +147,9 @@
    :display_name  col-name
    :target        nil
    :remapped_from remapped-from
-   :remapped_to   nil})
+   :remapped_to   nil
+   :base_type     base-type
+   :special_type  nil})
 
 (defn- transform-values-for-col
   "Converts `values` to a type compatible with the base_type found for `col`. These values should be directly comparable
@@ -173,6 +175,18 @@
    ;; Info about the new column we will tack on to end of `:cols`
    :new-column      su/Map})
 
+(defn- infer-human-readable-values-type
+  [values]
+  (let [types (keys (group-by (fn [v]
+                                (cond
+                                  (string? v) :type/Text
+                                  (number? v) :type/Number
+                                  :else       :type/*))
+                              values))]
+    (if (= (count types) 1)
+      (first types)
+      :type/*)))
+
 (s/defn ^:private col->dim-map :- (s/maybe InternalDimensionInfo)
   "Given a `:col` map from the results, return a map of information about the `internal` dimension used for remapping
   it."
@@ -187,7 +201,8 @@
        :to              remap-to
        :value->readable (zipmap (transform-values-for-col col values)
                                 human-readable-values)
-       :new-column      (create-remapped-col remap-to remap-from)})))
+       :new-column      (create-remapped-col remap-to remap-from
+                                             (infer-human-readable-values-type human-readable-values))})))
 
 (s/defn ^:private make-row-map-fn :- (s/maybe (s/pred fn? "function"))
   "Return a function that will add internally-remapped values to each row in the results. (If there is no remapping to
