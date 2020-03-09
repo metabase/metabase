@@ -3,7 +3,6 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
-import Card from "metabase/components/Card";
 import QuestionPicker from "metabase/containers/QuestionPicker";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton from "metabase/components/SelectButton";
@@ -73,8 +72,8 @@ export default class CardTagEditor extends Component {
     } = this.props;
 
     return (
-      <Card className="p2 mb2">
-        <h3 className="text-brand mb2">
+      <div className="px3 py4 border-top">
+        <h3 className="text-heavy text-brand mb1">
           {cardId == null ? (
             t`Question #…`
           ) : (
@@ -104,19 +103,19 @@ export default class CardTagEditor extends Component {
           </p>
         )}
         {question && !this.errorMessage() && (
-          <div className="bg-light text-medium py1 px2 mt2">
+          <div className="bg-light text-medium text-small py1 px2 mt1">
             {question.collection && (
               <div className="flex align-center">
                 <Icon name="all" size={12} mr={1} /> {question.collection.name}
               </div>
             )}
-            <div className="flex align-center">
+            <div className="flex align-center mt1">
               <Icon name="calendar" size={12} mr={1} />{" "}
               {t`Last edited ${formatDate(question.updated_at)}`}
             </div>
           </div>
         )}
-      </Card>
+      </div>
     );
   }
 }
