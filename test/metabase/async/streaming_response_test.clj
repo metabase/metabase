@@ -46,8 +46,12 @@
   [_ {{{:keys [sleep]} :query} :native, database-id :database} context respond]
   {:pre [(integer? sleep) (integer? database-id)]}
   (let [futur (future
-                (Thread/sleep sleep)
-                (respond {:cols [{:name "Sleep", :base_type :type/Integer}]} [[sleep]]))]
+                (try
+                  (Thread/sleep sleep)
+                  (respond {:cols [{:name "Sleep", :base_type :type/Integer}]} [[sleep]])
+                  (catch InterruptedException e
+                    (reset! canceled? true)
+                    (throw e))))]
     (a/go
       (when (a/<! (context/canceled-chan context))
         (reset! canceled? true)

@@ -226,9 +226,10 @@
                    context)]
      (if async?
        (async-qp query context)
-       (let [qp     (qp.reducible/sync-qp async-qp)
-             result (qp query context)]
-         {:result   (m/dissoc-in result [:data :pre])
-          :pre      (-> result :data :pre)
-          :post     (-> result :data :rows)
-          :metadata (update result :data #(dissoc % :pre :rows))})))))
+       (binding [qp.reducible/*run-on-separate-thread?* true]
+         (let [qp     (qp.reducible/sync-qp async-qp)
+               result (qp query context)]
+           {:result   (m/dissoc-in result [:data :pre])
+            :pre      (-> result :data :pre)
+            :post     (-> result :data :rows)
+            :metadata (update result :data #(dissoc % :pre :rows))}))))))
