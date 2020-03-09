@@ -11,8 +11,7 @@
             [metabase.models
              [card :refer [Card]]
              [dimension :refer [Dimension]]
-             [field :refer [Field]]
-             [field-values :refer [FieldValues]]]
+             [field :refer [Field]]]
             [metabase.query-processor.middleware
              [add-dimension-projections :as add-dim-projections]
              [add-source-metadata :as add-source-metadata]]
@@ -90,7 +89,7 @@
                                        :limit       5})))]
         (is (= [(assoc (qp.test/breakout-col :venues :category_id) :remapped_to "Foo")
                 (qp.test/aggregate-col :count)
-                (#'add-dim-projections/create-remapped-col "Foo" (data/format-name "category_id"))]
+                (#'add-dim-projections/create-remapped-col "Foo" (data/format-name "category_id") :type/Text)]
                cols))
         (is (= [[2 8 "American"]
                 [3 2 "Artisan"]
