@@ -73,5 +73,5 @@
                  :aggregation  [[:count]]
                  :limit        1}
                 (mt/run-mbql-query venues)
-                rows
+                (mt/formatted-rows [identity int])
                 first)))))

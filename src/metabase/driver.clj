@@ -326,12 +326,13 @@
 
   Example impl:
 
+
     (defmethod reducible-query :my-driver
-      [_ query {:keys [canceled-chan], :as context} respond]
+      [_ query context respond]
       (with-open [results (run-query! query)]
         (respond
          {:cols [{:name \"my_col\"}]}
-         (qp.reducible/reducible-rows (get-row results) canceled-chan))))"
+         (qp.reducible/reducible-rows (get-row results) (context/canceled-chan context)))))"
   {:added "0.35.0", :arglists '([driver query context respond])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)

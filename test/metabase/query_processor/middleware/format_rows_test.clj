@@ -19,48 +19,49 @@
 
 (deftest format-rows-test
   (mt/test-drivers (mt/normal-drivers-except dbs-exempt-from-format-rows-tests)
-    (testing "without report timezone"
-      (is (= (if (= driver/*driver* :sqlite)
-               ;; TIMEZONE FIXME
-               [[1 "Plato Yeshua"        "2014-04-01T00:00:00Z" "08:30:00"]
-                [2 "Felipinho Asklepios" "2014-12-05T00:00:00Z" "15:15:00"]
-                [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00Z" "16:15:00"]
-                [4 "Simcha Yan"          "2014-01-01T00:00:00Z" "08:30:00"]
-                [5 "Quentin Sören"       "2014-10-03T00:00:00Z" "17:30:00"]]
-               [[1 "Plato Yeshua"        "2014-04-01T00:00:00Z" "08:30:00Z"]
-                [2 "Felipinho Asklepios" "2014-12-05T00:00:00Z" "15:15:00Z"]
-                [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00Z" "16:15:00Z"]
-                [4 "Simcha Yan"          "2014-01-01T00:00:00Z" "08:30:00Z"]
-                [5 "Quentin Sören"       "2014-10-03T00:00:00Z" "17:30:00Z"]])
-             (mt/rows
-               (mt/dataset test-data-with-time
-                 (mt/run-mbql-query users
-                   {:order-by [[:asc $id]]
-                    :limit    5}))))))
-    (testing "with report timezone"
-      (mt/with-report-timezone-id "America/Los_Angeles"
-        (is (= (cond
-                 (= driver/*driver* :sqlite)
+    (mt/dataset test-data-with-time
+      (testing "without report timezone"
+        (is (= (if (= driver/*driver* :sqlite)
+                 ;; TIMEZONE FIXME
                  [[1 "Plato Yeshua"        "2014-04-01T00:00:00Z" "08:30:00"]
                   [2 "Felipinho Asklepios" "2014-12-05T00:00:00Z" "15:15:00"]
                   [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00Z" "16:15:00"]
                   [4 "Simcha Yan"          "2014-01-01T00:00:00Z" "08:30:00"]
                   [5 "Quentin Sören"       "2014-10-03T00:00:00Z" "17:30:00"]]
-
-                 (qp.test/supports-report-timezone? driver/*driver*)
-                 [[1 "Plato Yeshua"        "2014-04-01T00:00:00-07:00" "08:30:00-08:00"]
-                  [2 "Felipinho Asklepios" "2014-12-05T00:00:00-08:00" "15:15:00-08:00"]
-                  [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00-08:00" "16:15:00-08:00"]
-                  [4 "Simcha Yan"          "2014-01-01T00:00:00-08:00" "08:30:00-08:00"]
-                  [5 "Quentin Sören"       "2014-10-03T00:00:00-07:00" "17:30:00-08:00"]]
-
-                 :else
                  [[1 "Plato Yeshua"        "2014-04-01T00:00:00Z" "08:30:00Z"]
                   [2 "Felipinho Asklepios" "2014-12-05T00:00:00Z" "15:15:00Z"]
                   [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00Z" "16:15:00Z"]
                   [4 "Simcha Yan"          "2014-01-01T00:00:00Z" "08:30:00Z"]
                   [5 "Quentin Sören"       "2014-10-03T00:00:00Z" "17:30:00Z"]])
-               (mt/dataset test-data-with-time
+               (mt/rows
+                 (mt/run-mbql-query users
+                   {:order-by [[:asc $id]]
+                    :limit    5})))))
+      (testing "with report timezone"
+        (mt/with-report-timezone-id "America/Los_Angeles"
+          (is (= (cond
+                   (= driver/*driver* :sqlite)
+                   [[1 "Plato Yeshua"        "2014-04-01T00:00:00Z" "08:30:00"]
+                    [2 "Felipinho Asklepios" "2014-12-05T00:00:00Z" "15:15:00"]
+                    [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00Z" "16:15:00"]
+                    [4 "Simcha Yan"          "2014-01-01T00:00:00Z" "08:30:00"]
+                    [5 "Quentin Sören"       "2014-10-03T00:00:00Z" "17:30:00"]]
+
+                   ;; TIMEZONE FIXME -- the value of this changes based on whether we are in DST. This is B R O K E N
+                   (qp.test/supports-report-timezone? driver/*driver*)
+                   (let [offset (t/zone-offset (t/zoned-date-time (t/local-date) (t/local-time) (t/zone-id "America/Los_Angeles")))]
+                     [[1 "Plato Yeshua"        "2014-04-01T00:00:00-07:00" (str "08:30:00" offset)]
+                      [2 "Felipinho Asklepios" "2014-12-05T00:00:00-08:00" (str "15:15:00" offset)]
+                      [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00-08:00" (str "16:15:00" offset)]
+                      [4 "Simcha Yan"          "2014-01-01T00:00:00-08:00" (str "08:30:00" offset)]
+                      [5 "Quentin Sören"       "2014-10-03T00:00:00-07:00" (str "17:30:00" offset)]])
+
+                   :else
+                   [[1 "Plato Yeshua"        "2014-04-01T00:00:00Z" "08:30:00Z"]
+                    [2 "Felipinho Asklepios" "2014-12-05T00:00:00Z" "15:15:00Z"]
+                    [3 "Kaneonuskatew Eiran" "2014-11-06T00:00:00Z" "16:15:00Z"]
+                    [4 "Simcha Yan"          "2014-01-01T00:00:00Z" "08:30:00Z"]
+                    [5 "Quentin Sören"       "2014-10-03T00:00:00Z" "17:30:00Z"]])
                  (mt/rows
                    (mt/run-mbql-query users
                      {:order-by [[:asc $id]]
@@ -159,10 +160,11 @@
         (mt/with-clock (t/mock-clock (t/instant clock-instant) clock-zone)
           (is (= expected
                  (format-rows/format-value t (t/zone-id zone)))
-              (format "format %s '%s' with results timezone ID '%s'" (.getName (class t)) t zone))))))
+              (format "format %s '%s' with results timezone ID '%s'" (.getName (class t)) t zone)))))))
 
-  (deftest results-timezone-test
-    (testing "Make sure ISO-8601 timestamps are written correctly based on the report-timezone"
+(deftest results-timezone-test
+  (testing "Make sure ISO-8601 timestamps are written correctly based on the report-timezone"
+    (driver/with-driver ::timezone-driver
       (doseq [[timezone-id expected-rows] {"UTC"        [["2011-04-18T10:12:47.232Z"
                                                           "2011-04-18T00:00:00Z"
                                                           "2011-04-18T10:12:47.232Z"]]
@@ -171,12 +173,10 @@
                                                           "2011-04-18T19:12:47.232+09:00"]]}]
         (mt/with-results-timezone-id timezone-id
           (testing (format "timezone ID '%s'" timezone-id)
-            (let [results (driver/with-driver ::timezone-driver
-                            ((format-rows/format-rows
-                              (constantly
-                               {:rows [[(t/instant "2011-04-18T10:12:47.232Z")
-                                        (t/local-date 2011 4 18)
-                                        (t/offset-date-time "2011-04-18T10:12:47.232Z")]]}))
-                             {}))]
-              (is (= {:rows expected-rows}
-                     results)))))))))
+            (let [query   {}
+                  rows    [[(t/instant "2011-04-18T10:12:47.232Z")
+                            (t/local-date 2011 4 18)
+                            (t/offset-date-time "2011-04-18T10:12:47.232Z")]]
+                  results (mt/test-qp-middleware format-rows/format-rows query rows)]
+              (is (= expected-rows
+                     (:post results))))))))))

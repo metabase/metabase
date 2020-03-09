@@ -99,7 +99,6 @@
   [_]
   "SET TIMEZONE TO %s;")
 
-
 (defn- splice-raw-string-value
   [driver s]
   (hsql/raw (str "'" (sql.qp/->honeysql driver s) "'")))
