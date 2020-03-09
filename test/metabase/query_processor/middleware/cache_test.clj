@@ -66,6 +66,7 @@
                  (boolean (#'cache/is-cacheable? {:cache-ttl cache-ttl})))))))))
 
 (defn- cached? [result]
+  (assert (some? result))
   (if (:cached result)
     :cached
     :not-cached))

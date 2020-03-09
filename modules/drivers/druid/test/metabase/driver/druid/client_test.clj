@@ -32,25 +32,25 @@
 
 (deftest ssh-tunnel-test
   (mt/test-driver :druid
-    (is (thrown?
-         com.jcraft.jsch.JSchException
-         (try
-           (let [engine  :druid
-                 details {:ssl            false
-                          :password       "changeme"
-                          :tunnel-host    "localhost"
-                          :tunnel-pass    "BOGUS-BOGUS"
-                          :port           5432
-                          :dbname         "test"
-                          :host           "http://localhost"
-                          :tunnel-enabled true
-                          :tunnel-port    22
-                          :tunnel-user    "bogus"}]
+    (let [engine  :druid
+          details {:ssl            false
+                   :password       "changeme"
+                   :tunnel-host    "localhost"
+                   :tunnel-pass    "BOGUS-BOGUS"
+                   :port           5432
+                   :dbname         "test"
+                   :host           "http://localhost"
+                   :tunnel-enabled true
+                   :tunnel-port    22
+                   :tunnel-user    "bogus"}]
+      (is (thrown?
+           com.jcraft.jsch.JSchException
+           (try
              (tu.log/suppress-output
-               (driver.u/can-connect-with-details? engine details :throw-exceptions)))
-           (catch Throwable e
-             (loop [^Throwable e e]
-               (or (when (instance? com.jcraft.jsch.JSchException e)
-                     (throw e)
-                     e)
-                   (some-> (.getCause e) recur)))))))))
+               (driver.u/can-connect-with-details? engine details :throw-exceptions))
+             (catch Throwable e
+               (loop [^Throwable e e]
+                 (or (when (instance? com.jcraft.jsch.JSchException e)
+                       (throw e)
+                       e)
+                     (some-> (ex-cause e) recur))))))))))

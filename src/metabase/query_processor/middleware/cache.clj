@@ -192,6 +192,8 @@
      *  The result *rows* of the query must be less than `query-caching-max-kb` when serialized (before compression)."
   [qp]
   (fn [query rff context]
-    (if (is-cacheable? query)
-      (run-query-with-cache qp query rff context)
-      (qp query rff context))))
+    (let [cacheable? (is-cacheable? query)]
+      (log/tracef "Query is cacheable? %s" (boolean cacheable?))
+      (if cacheable?
+        (run-query-with-cache qp query rff context)
+        (qp query rff context)))))

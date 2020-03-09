@@ -46,8 +46,12 @@
   [_ {{{:keys [sleep]} :query} :native, database-id :database} context respond]
   {:pre [(integer? sleep) (integer? database-id)]}
   (let [futur (future
-                (Thread/sleep sleep)
-                (respond {:cols [{:name "Sleep", :base_type :type/Integer}]} [[sleep]]))]
+                (try
+                  (Thread/sleep sleep)
+                  (respond {:cols [{:name "Sleep", :base_type :type/Integer}]} [[sleep]])
+                  (catch InterruptedException e
+                    (reset! canceled? true)
+                    (throw e))))]
     (a/go
       (when (a/<! (context/canceled-chan context))
         (reset! canceled? true)
@@ -88,9 +92,10 @@
             (is (= {:status "ok"} (test-client/client :get 200 "health")))
             (testing "Health endpoint should complete before the first round of queries completes"
               (is (> @remaining (inc (- num-requests thread-pool-size)))))
-            (testing "Health endpoint should complete in under 100ms regardless of how many queries are running"
-              (let [elapsed-ms (- (System/currentTimeMillis) start-time-ms)]
-                (is (< elapsed-ms 100))))))))))
+            (testing "Health endpoint should complete in under 500ms regardless of how many queries are running"
+              (testing "(Usually this is under 100ms but might be a little over if CircleCI is being slow)"
+                (let [elapsed-ms (- (System/currentTimeMillis) start-time-ms)]
+                  (is (< elapsed-ms 500)))))))))))
 
 (deftest newlines-test
   (testing "Keepalive newlines should be written while waiting for a response."
