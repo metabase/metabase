@@ -1,7 +1,6 @@
 (ns metabase.query-processor-test.breakout-test
   "Tests for the `:breakout` clause."
-  (:require [cheshire.core :as json]
-            [clojure.test :refer :all]
+  (:require [clojure.test :refer :all]
             [metabase
              [query-processor :as qp]
              [query-processor-test :as qp.test]
