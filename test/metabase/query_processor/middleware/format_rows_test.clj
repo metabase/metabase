@@ -173,11 +173,10 @@
                                                           "2011-04-18T19:12:47.232+09:00"]]}]
         (mt/with-results-timezone-id timezone-id
           (testing (format "timezone ID '%s'" timezone-id)
-            (let [results ((format-rows/format-rows
-                            (constantly
-                             {:rows [[(t/instant "2011-04-18T10:12:47.232Z")
-                                      (t/local-date 2011 4 18)
-                                      (t/offset-date-time "2011-04-18T10:12:47.232Z")]]}))
-                           {})]
-              (is (= {:rows expected-rows}
-                     results)))))))))
+            (let [query   {}
+                  rows    [[(t/instant "2011-04-18T10:12:47.232Z")
+                            (t/local-date 2011 4 18)
+                            (t/offset-date-time "2011-04-18T10:12:47.232Z")]]
+                  results (mt/test-qp-middleware format-rows/format-rows query rows)]
+              (is (= expected-rows
+                     (:post results))))))))))
