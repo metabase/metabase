@@ -35,8 +35,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn with-api-error-message
-  "Return SCHEMA with an additional API-ERROR-MESSAGE that will be used to explain the error if a parameter fails
-   validation."
+  "Return `schema` with an additional `api-error-message` that will be used to explain the error if a parameter fails
+  validation."
   {:style/indent 1}
   [schema api-error-message]
   (if-not (record? schema)
@@ -45,9 +45,9 @@
     (assoc schema :api-error-message api-error-message)))
 
 (defn api-param
-  "Return SCHEMA with an additional API-PARAM-NAME key that will be used in the auto-generate documentation and in
-   error messages. This is important for situations where you want to bind a parameter coming in to the API to
-   something other than the `snake_case` key it normally comes in as:
+  "Return `schema` with an additional `api-param-name` key that will be used in the auto-generate documentation and in
+  error messages. This is important for situations where you want to bind a parameter coming in to the API to
+  something other than the `snake_case` key it normally comes in as:
 
      ;; BAD -- Documentation/errors will tell you `dimension-type` is wrong
      [:is {{dimension-type :type} :body}]
@@ -62,8 +62,8 @@
   (assoc schema :api-param-name (name api-param-name)))
 
 (defn- existing-schema->api-error-message
-  "Error messages for various schemas already defined in `schema.core`.
-   These are used as a fallback by API param validation if no value for `:api-error-message` is present."
+  "Error messages for various schemas already defined in `schema.core`. These are used as a fallback by API param
+  validation if no value for `:api-error-message` is present."
   [existing-schema]
   (cond
     (= existing-schema s/Int)                           (deferred-tru "value must be an integer.")
@@ -81,8 +81,7 @@
                        (format "%d) %s" (inc i) (api-error-message child-schema))))))
 
 (defn api-error-message
-  "Extract the API error messages attached to a schema, if any.
-   This functionality is fairly sophisticated:
+  "Extract the API error messages attached to a schema, if any. This functionality is fairly sophisticated:
 
     (api-error-message (s/maybe (non-empty [NonBlankString])))
     ;; -> \"value may be nil, or if non-nil, value must be an array. Each value must be a non-blank string.
@@ -139,7 +138,7 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                                 USEFUL SCHEMAS                                                 |
+;;; |                                                 USEFUL `schema`S                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (def NonBlankString
