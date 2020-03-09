@@ -114,7 +114,9 @@
    :remapped_to     nil
    :id              nil
    :target          nil
-   :display_name    "Foo"})
+   :display_name    "Foo"
+   :base_type       :type/Text
+   :special_type    nil})
 
 (defn- add-remapping [query metadata rows]
   (:result (mt/test-qp-middleware add-dim-projections/add-remapping query metadata rows)))

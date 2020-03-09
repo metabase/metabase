@@ -97,8 +97,7 @@
                 [4 2 "Asian"]
                 [5 7 "BBQ"]
                 [6 2 "Bakery"]]
-               rows))
-        cols))))
+               rows))))))
 
 (deftest order-by-test
   (datasets/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
