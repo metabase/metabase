@@ -104,17 +104,18 @@
     (let [orig @save-chan*]
       (try
         (reset! save-chan* save-chan)
-        (let [orig impl/serialize-async]
-          (with-redefs [impl/serialize-async (fn [& args]
-                                               (u/prog1 (apply orig args)
-                                                 (a/go
-                                                   (let [result (a/<! (:out-chan <>))]
-                                                     (when (instance? Throwable result)
-                                                       (a/>!! save-chan (or (:type (ex-data result))
-                                                                            ::exception)))))))]
+        (let [orig (var-get #'cache/cache-results-async!)]
+          (with-redefs [cache/cache-results-async! (fn [query-hash out-chan]
+                                                     (a/go
+                                                       (when-let [result (a/<! out-chan)]
+                                                         (when (instance? Throwable result)
+                                                           (a/>!! save-chan (or (:type (ex-data result))
+                                                                                ::exception)))))
+                                                     (orig query-hash out-chan))]
             (u/prog1 (thunk)
-              (is (= expected-result
-                     (mt/wait-for-result save-chan 500))))))
+              (testing "waiting for save"
+                (is (= expected-result
+                       (mt/wait-for-result save-chan 1000)))))))
         (finally
           (reset! save-chan* orig))))))
 
@@ -130,8 +131,9 @@
       (try
         (reset! purge-chan* purge-chan)
         (u/prog1 (thunk)
-          (is (= expected-result
-                 (mt/wait-for-result purge-chan 500))))
+          (testing "waiting for purge"
+            (is (= expected-result
+                   (mt/wait-for-result purge-chan 500)))))
         (finally (reset! purge-chan* orig))))))
 
 (defmacro ^:private wait-for-purge-result {:style/indent 1} [expected-result & body]
