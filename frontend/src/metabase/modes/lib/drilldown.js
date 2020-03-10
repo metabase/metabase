@@ -166,7 +166,8 @@ function breakoutForBreakoutTemplate(breakoutTemplate, dimensions, table) {
     : breakoutTemplate;
   const dimensionColumns = dimensions.map(d => d.column);
   const field =
-    _.find(dimensionColumns, fieldFilter) || _.find(table.fields, fieldFilter);
+    dimensionColumns.find(fieldFilter) ||
+    (table && table.fields.find(fieldFilter));
   if (!field) {
     return null;
   }
