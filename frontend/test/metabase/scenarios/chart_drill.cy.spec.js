@@ -29,9 +29,10 @@ describe("chart drill", () => {
       cy.visit(`/question/${response.body.id}`);
 
       // wait for chart to expand and display legend/labels
+      cy.contains("Loading..."); // this gives more time to load
       cy.contains("Gadget");
       cy.contains("January, 2017");
-      cy.wait(500); // wait longer to avoid grabbing the svg before a chart redraw
+      cy.wait(100); // wait longer to avoid grabbing the svg before a chart redraw
 
       // drag across to filter
       cy.get(".dc-chart svg")

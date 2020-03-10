@@ -128,10 +128,17 @@
 (defn write-error!
   "Write an error to the output stream, formatting it nicely. Closes output stream afterwards."
   [^OutputStream os obj]
-  (if (instance? Throwable obj)
+  (cond
+    (some #(instance? % obj)
+          [InterruptedException EofException])
+    (log/trace "Error is an InterruptedException or EofException, not writing to output stream")
+
+    (instance? Throwable obj)
     (recur os (format-exception obj))
+
+    :else
     (with-open [os os]
-      (log/trace (pr-str (list 'write-error! obj)))
+      (log/trace (u/pprint-to-str (list 'write-error! obj)))
       (try
         (with-open [writer (BufferedWriter. (OutputStreamWriter. os StandardCharsets/UTF_8))]
           (json/generate-stream obj writer))
