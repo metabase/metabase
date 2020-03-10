@@ -174,6 +174,20 @@
     (isa? base-type :type/Number) (value->number value)
     :else                         value))
 
+(s/defn ^:private parse-value-for-dimension :- s/Any
+  "Parse a (possibly sequence of) textual FieldFilter param(s) using the base-type of the Field associated with it."
+  [base-type :- su/FieldType, value]
+  (cond
+    (string? value)
+    (parse-value-for-field-base-type base-type value)
+
+    (and (sequential? value)
+         (every? string? value))
+    (mapv (partial parse-value-for-field-base-type base-type) value)
+
+    :else
+    value))
+
 (s/defn ^:private parse-value-for-type :- ParsedParamValue
   "Parse a `value` based on the type chosen for the param, such as `text` or `number`. (Depending on the type of param
   created, `value` here might be a raw value or a map including information about the Field it references as well as a
@@ -202,17 +216,7 @@
 
     (and (= param-type :dimension)
          (get-in value [:field :base_type]))
-    (cond
-      (string? (get-in value [:value :value]))
-      (update-in value [:value :value] (partial parse-value-for-field-base-type (get-in value [:field :base_type])))
-
-      (and (sequential? (get-in value [:value :value]))
-           (every? string? (get-in value [:value :value])))
-      (let [x (mapv (partial parse-value-for-field-base-type (get-in value [:field :base_type])) (get-in value [:value :value]))]
-        (assoc-in value [:value :value] x))
-
-      :else
-      value)
+    (assoc-in value [:value :value] (parse-value-for-dimension (get-in value [:field :base_type]) (get-in value [:value :value])))
 
     :else
     value))
