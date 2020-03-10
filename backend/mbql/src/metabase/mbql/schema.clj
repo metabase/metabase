@@ -277,7 +277,7 @@
 
 (def string-expressions
   "String functions"
-  #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :length})
+  #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce})
 
 (declare StringExpression)
 
@@ -295,7 +295,7 @@
    :else
    Field))
 
-(def ^:private arithmetic-expressions #{:+ :- :/ :* :coalesce})
+(def ^:private arithmetic-expressions #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :expt})
 
 (declare ArithmeticExpression)
 
@@ -342,7 +342,7 @@
   a ExpressionArg, b ExpressionArg, more (rest ExpressionArg))
 
 (defclause ^{:requires-features #{:expressions}} substring
-  s StringExpressionArg, start s/Int, length (optional s/Int))
+  s StringExpressionArg, start NumericExpressionArg, length (optional NumericExpressionArg))
 
 (defclause ^{:requires-features #{:expressions}} length
   s StringExpressionArg)
@@ -372,7 +372,7 @@
   s StringExpressionArg, pattern s/Str)
 
 (def ^:private StringExpression*
-  (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce length))
+  (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce))
 
 (def ^:private StringExpression
   "Schema for the definition of an string expression."
@@ -385,10 +385,35 @@
   x NumericExpressionArg, y NumericExpressionArgOrInterval, more (rest NumericExpressionArgOrInterval))
 
 (defclause ^{:requires-features #{:expressions}} /, x NumericExpressionArg, y NumericExpressionArg, more (rest NumericExpressionArg))
+
 (defclause ^{:requires-features #{:expressions}} *, x NumericExpressionArg, y NumericExpressionArg, more (rest NumericExpressionArg))
 
+(defclause ^{:requires-features #{:expressions}} floor
+  x NumericExpressionArg)
+
+(defclause ^{:requires-features #{:expressions}} ceil
+  x NumericExpressionArg)
+
+(defclause ^{:requires-features #{:expressions}} round
+  x NumericExpressionArg)
+
+(defclause ^{:requires-features #{:expressions}} abs
+  x NumericExpressionArg)
+
+(defclause ^{:requires-features #{:advanced-math-expressions}} power
+  x NumericExpressionArg,  y NumericExpressionArg)
+
+(defclause ^{:requires-features #{:advanced-math-expressions}} sqrt
+  x NumericExpressionArg)
+
+(defclause ^{:requires-features #{:advanced-math-expressions}} expt
+  x NumericExpressionArg)
+
+(defclause ^{:requires-features #{:advanced-math-expressions}} log
+  x NumericExpressionArg)
+
 (def ^:private ArithmeticExpression*
-  (one-of + - / * coalesce))
+  (one-of + - / * coalesce length floor ceil round abs power sqrt expt log))
 
 (def ^:private ArithmeticExpression
   "Schema for the definition of an arithmetic expression."
@@ -585,6 +610,16 @@
 (defclause ^{:requires-features #{:standard-deviation-aggregations}} stddev
   field-or-expression FieldOrExpressionDef)
 
+(defclause ^{:requires-features #{:standard-deviation-aggregations}} var
+  field-or-expression FieldOrExpressionDef)
+
+(defclause ^{:requires-features #{:percentile-aggregations}} median
+  field-or-expression FieldOrExpressionDef)
+
+(defclause ^{:requires-features #{:percentile-aggregations}} percentile
+  field-or-expression FieldOrExpressionDef, percentile NumericExpressionArg)
+
+
 ;; Metrics are just 'macros' (placeholders for other aggregations with optional filter and breakout clauses) that get
 ;; expanded to other aggregations/etc. in the expand-macros middleware
 ;;
@@ -594,30 +629,11 @@
 
 ;; the following are definitions for expression aggregations, e.g. [:+ [:sum [:field-id 10]] [:sum [:field-id 20]]]
 
-(declare Aggregation)
-
-(def ^:private ExpressionAggregationArg
-  (s/if number?
-    s/Num
-    (s/recursive #'Aggregation)))
-
-(defclause [^{:requires-features #{:expression-aggregations}} ag:+   +]
-  x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
-
-(defclause [^{:requires-features #{:expression-aggregations}} ag:-   -]
-  x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
-
-(defclause [^{:requires-features #{:expression-aggregations}} ag:*   *]
-  x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
-
-(defclause [^{:requires-features #{:expression-aggregations}} ag:div /]
-  x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
-;; ag:/ isn't a valid token
-
-
 (def ^:private UnnamedAggregation*
-  (one-of count avg cum-count cum-sum distinct stddev sum min max ag:+ ag:- ag:* ag:div metric share count-where
-          sum-where case))
+  (s/if (partial is-clause? arithmetic-expressions)
+    ArithmeticExpression
+    (one-of count avg cum-count cum-sum distinct stddev sum min max metric share count-where
+            sum-where case median percentile var)))
 
 (def ^:private UnnamedAggregation
   (s/recursive #'UnnamedAggregation*))
@@ -690,7 +706,7 @@
     ;; `:query` for reasons I do not fully remember (perhaps to make it easier to differentiate them from MBQL source
     ;; queries).
     (set/rename-keys NativeQuery {:query :native})
-    (s/recursive #'MBQLQuery)))
+    (s/recursive #'MBQLQuery))
 
 (def SourceQueryMetadata
   "Schema for the expected keys for a single column in `:source-metadata` (`:source-metadata` is a sequence of these
