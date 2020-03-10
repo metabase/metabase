@@ -563,7 +563,7 @@ describe("StructuredQuery", () => {
 
   describe("FIELD REFERENCE METHODS", () => {
     describe("fieldReferenceForColumn", () => {
-      it('should return `["field-id", 1]` for a normal column', () => {
+      xit('should return `["field-id", 1]` for a normal column', () => {
         expect(query.fieldReferenceForColumn({ id: ORDERS.TOTAL.id })).toEqual([
           "field-id",
           ORDERS.TOTAL.id,
