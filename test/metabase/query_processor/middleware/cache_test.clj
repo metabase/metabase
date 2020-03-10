@@ -34,12 +34,13 @@
         (i/cached-results db-backend query-hash max-age-seconds f))
 
       (save-results! [_ query-hash results]
-        (i/save-results! db-backend query-hash results)
-        (some-> @save-chan* (a/>!! ::save)))
+        (println "@save-chan*:" @save-chan*) ; NOCOMMIT
+        (some-> @save-chan* (a/>!! ::save))
+        (i/save-results! db-backend query-hash results))
 
       (purge-old-entries! [_ max-age-seconds]
-        (i/purge-old-entries! db-backend max-age-seconds)
-        (some-> @purge-chan* (a/>!! ::purge))))))
+        (some-> @purge-chan* (a/>!! ::purge))
+        (i/purge-old-entries! db-backend max-age-seconds)))))
 
 (defn- do-with-test-backend [thunk]
   (binding [cache/*backend* (test-backend)]
@@ -113,7 +114,7 @@
                                                                                 ::exception)))))
                                                      (orig query-hash out-chan))]
             (u/prog1 (thunk)
-              (testing "waiting for save"
+              (testing "\nwaiting for save"
                 (is (= expected-result
                        (mt/wait-for-result save-chan 1000)))))))
         (finally
@@ -131,7 +132,7 @@
       (try
         (reset! purge-chan* purge-chan)
         (u/prog1 (thunk)
-          (testing "waiting for purge"
+          (testing "\nwaiting for purge"
             (is (= expected-result
                    (mt/wait-for-result purge-chan 500)))))
         (finally (reset! purge-chan* orig))))))
