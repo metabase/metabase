@@ -122,7 +122,7 @@ export default class DashCardCardParameterMapper extends Component {
       // date parameters only accept a single value anyways, so hide the warning
       !parameter.type.startsWith("date/")
     ) {
-      selectedFieldWarning = t`This field only accepts a single value.`;
+      selectedFieldWarning = t`This field only accepts a single value because it's used in a SQL query.`;
     }
 
     return (
@@ -197,7 +197,9 @@ export default class DashCardCardParameterMapper extends Component {
           )}
         </ParameterTargetWidget>
         {selectedFieldWarning && (
-          <span style={{ height: 0 }}>{selectedFieldWarning}</span>
+          <span style={{ height: 0 }} className="pt1 px4 text-centered">
+            {selectedFieldWarning}
+          </span>
         )}
       </div>
     );
