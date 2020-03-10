@@ -24,7 +24,7 @@
   (testing "with cleared cache\n"
     (thunk)))
 
-(def ^:private save-chan* (atom nil))
+(def ^:private save-chan*  (atom nil))
 (def ^:private purge-chan* (atom nil))
 
 (defn- test-backend []
@@ -34,13 +34,12 @@
         (i/cached-results db-backend query-hash max-age-seconds f))
 
       (save-results! [_ query-hash results]
-        (println "@save-chan*:" @save-chan*) ; NOCOMMIT
-        (some-> @save-chan* (a/>!! ::save))
-        (i/save-results! db-backend query-hash results))
+        (i/save-results! db-backend query-hash results)
+        (some-> @save-chan* (a/>!! ::save)))
 
       (purge-old-entries! [_ max-age-seconds]
-        (some-> @purge-chan* (a/>!! ::purge))
-        (i/purge-old-entries! db-backend max-age-seconds)))))
+        (i/purge-old-entries! db-backend max-age-seconds)
+        (some-> @purge-chan* (a/>!! ::purge))))))
 
 (defn- do-with-test-backend [thunk]
   (binding [cache/*backend* (test-backend)]
@@ -239,17 +238,16 @@
     (wait-for-save
       (run-query))
     (let [query-hash (qputil/query-hash (test-query nil))]
-      (is (= true
-             (i/cached-results cache/*backend* query-hash 100
-               (fn respond [is]
-                 (when is
-                   true))))
-          "Cached results should exist")
+      (testing "Cached results should exist"
+        (is (= true
+               (i/cached-results cache/*backend* query-hash 100
+                 (fn respond [input-stream]
+                   (some? input-stream))))))
       (i/save-results! cache/*backend* query-hash (byte-array [0 0 0]))
-      (is (= :not-cached
-             (mt/suppress-output
-               (run-query)))
-          "Invalid cache entry should be handled gracefully"))))
+      (testing "Invalid cache entry should be handled gracefully"
+        (mt/suppress-output
+          (is (= :not-cached
+                 (run-query))))))))
 
 (deftest metadata-test
   (testing "Verify that correct metadata about caching such as `:updated_at` and `:cached` come back with cached results."
