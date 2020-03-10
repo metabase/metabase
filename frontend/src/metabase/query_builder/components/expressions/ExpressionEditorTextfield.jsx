@@ -8,6 +8,8 @@ import cx from "classnames";
 
 import { format } from "metabase/lib/expressions/format";
 import { processSource } from "metabase/lib/expressions/process";
+import MetabaseSettings from "metabase/lib/settings";
+import colors from "metabase/lib/colors";
 
 import memoize from "lodash.memoize";
 
@@ -26,6 +28,7 @@ import {
   KEYCODE_DOWN,
 } from "metabase/lib/keyboard";
 
+import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
 
 import TokenizedInput from "./TokenizedInput";
@@ -243,6 +246,7 @@ export default class ExpressionEditorTextfield extends React.Component {
       expression,
       compileError,
       suggestions,
+      helpText,
       syntaxTree,
     } = this._processSource({
       source,
@@ -263,12 +267,14 @@ export default class ExpressionEditorTextfield extends React.Component {
       syntaxTree,
       compileError,
       suggestions: showSuggestions ? suggestions : [],
+      helpText,
     });
   }
 
   render() {
     const { placeholder } = this.props;
-    let { compileError, source, suggestions, syntaxTree } = this.state;
+    let { compileError } = this.state;
+    const { source, suggestions, helpText, syntaxTree } = this.state;
 
     if (compileError && !compileError.length) {
       compileError = t`unknown error`;
@@ -310,6 +316,47 @@ export default class ExpressionEditorTextfield extends React.Component {
           onClick={this.onInputClick}
           autoFocus
         />
+        {helpText && (
+          <Popover
+            tetherOptions={{
+              attachment: "top left",
+              targetAttachment: "bottom left",
+            }}
+            isOpen
+          >
+            <p
+              className="p2 m0 text-monospace text-bold"
+              style={{ background: colors["bg-yellow"] }}
+            >
+              {helpText.structure}
+            </p>
+            <div className="p2 border-top">
+              <h4 className="text-medium">{t`What this does`}</h4>
+              <p className="mt0 text-bold">{helpText.description}</p>
+              <h4 className="text-medium">{t`Example`}</h4>
+              <p className="text-code m0">{helpText.example}</p>
+            </div>
+            <div className="p2 border-top">
+              {helpText.args.map(({ name, description }) => (
+                <div>
+                  <h4 className="text-medium">{name}</h4>
+                  <p className="mt0 text-bold">{description}</p>
+                </div>
+              ))}
+              <a
+                className="link text-bold"
+                target="_blank"
+                href={MetabaseSettings.docsUrl(
+                  "users-guide/04-asking-questions",
+                  "creating-a-custom-field",
+                )}
+              >
+                <Icon name="reference" size={12} className="mr1" />
+                {t`Learn more`}
+              </a>
+            </div>
+          </Popover>
+        )}
         {suggestions.length ? (
           <Popover
             className="pb1 not-rounded border-dark"
