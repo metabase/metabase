@@ -174,19 +174,21 @@
     (isa? base-type :type/Number) (value->number value)
     :else                         value))
 
-(s/defn ^:private parse-value-for-dimension :- s/Any
-  "Parse a (possibly sequence of) textual FieldFilter param(s) using the base-type of the Field associated with it."
-  [base-type :- su/FieldType, value]
-  (cond
-    (string? value)
-    (parse-value-for-field-base-type base-type value)
+(s/defn ^:private update-filter-for-base-type :- ParsedParamValue
+  "Update a Field Filter with a textual, or sequence of textual, values. The base type of the field is used
+  to determine what 'special' type interpretation is required (e.g. for UUID fields)."
+  [filter :- FieldFilter]
+  (let [base-type (get-in filter [:field :base_type]) value (get-in filter [:value :value])]
+    (cond
+      (string? value)
+      (update-in filter [:value :value] (partial parse-value-for-field-base-type base-type))
 
-    (and (sequential? value)
-         (every? string? value))
-    (mapv (partial parse-value-for-field-base-type base-type) value)
+      (and (sequential? value)
+           (every? string? value))
+      (assoc-in filter [:value :value] (mapv (partial parse-value-for-field-base-type base-type) value))
 
-    :else
-    value))
+      :else
+      filter)))
 
 (s/defn ^:private parse-value-for-type :- ParsedParamValue
   "Parse a `value` based on the type chosen for the param, such as `text` or `number`. (Depending on the type of param
@@ -214,9 +216,10 @@
     (i/map->MultipleValues {:values (for [v value]
                                       (parse-value-for-type param-type v))})
 
+    ;; Field Filters with "special" base types
     (and (= param-type :dimension)
          (get-in value [:field :base_type]))
-    (assoc-in value [:value :value] (parse-value-for-dimension (get-in value [:field :base_type]) (get-in value [:value :value])))
+    (update-filter-for-base-type value)
 
     :else
     value))
