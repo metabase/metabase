@@ -1,6 +1,7 @@
-import { signInAsAdmin } from "__support__/cypress";
+import { signInAsAdmin, restore } from "__support__/cypress";
 
 describe("chart drill", () => {
+  before(restore);
   beforeEach(signInAsAdmin);
 
   it("should allow brush date filter", () => {
@@ -31,7 +32,7 @@ describe("chart drill", () => {
     // wait for chart to expand and display legend/labels
     cy.contains("Gadget");
     cy.contains("January, 2017");
-    cy.wait(500); // wait longer to avoid grabbing the svg before a chart redraw
+    cy.wait(1000); // wait longer to avoid grabbing the svg before a chart redraw
 
     // drag across to filter
     cy.get(".dc-chart svg")
@@ -40,7 +41,7 @@ describe("chart drill", () => {
       .trigger("mouseup", 200, 200);
 
     // new filter applied
-    cy.contains("Created At between June, 2016 October, 2016");
+    cy.contains("Created At between May, 2016 August, 2016");
     // more granular axis labels
     cy.contains("June, 2016");
     // confirm that product category is still broken out
