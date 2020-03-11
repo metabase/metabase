@@ -197,7 +197,7 @@ export default class DashCardCardParameterMapper extends Component {
           )}
         </ParameterTargetWidget>
         {selectedFieldWarning && (
-          <span style={{ height: 0 }} className="pt1 px4 text-centered">
+          <span style={{ height: 0 }} className="mt1 mbn1 px4 text-centered">
             {selectedFieldWarning}
           </span>
         )}
