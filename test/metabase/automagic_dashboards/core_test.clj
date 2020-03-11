@@ -3,6 +3,7 @@
             [clojure.test :refer :all]
             [expectations :refer :all]
             [java-time :as t]
+            [metabase.api.common :as api]
             [metabase.automagic-dashboards
              [core :as magic :refer :all]
              [rules :as rules]]
@@ -343,18 +344,20 @@
       (with-dashboard-cleanup
         (count (candidate-tables (Database db-id)))))))
 
-(expect
-  4
+(deftest call-count-test
   (tt/with-temp* [Database [{db-id :id}]
                   Table    [{table-id :id} {:db_id db-id}]
                   Field    [_ {:table_id table-id}]
                   Field    [_ {:table_id table-id}]]
     (mt/with-test-user :rasta
+      ;; make sure the current user permissions set is already fetched so it's not included in the DB call count below
+      @api/*current-user-permissions-set*
       (with-dashboard-cleanup
         (let [database (Database db-id)]
           (db/with-call-counting [call-count]
             (candidate-tables database)
-            (call-count)))))))
+            (is (= 4
+                   (call-count)))))))))
 
 (deftest empty-table-test
   (testing "candidate-tables should work with an empty Table (no Fields)"

@@ -1239,7 +1239,6 @@
                                         :having   [:= :%count.* 1]}))
                            (into #{} (map :table_id)))
           ;; Table comprised entierly of join keys
-          _ (println "field-count:" field-count) ; NOCOMMIT
           link-table? (when (seq field-count)
                         (->> (db/query {:select   [:table_id [:%count.* "count"]]
                                         :from     [Field]
