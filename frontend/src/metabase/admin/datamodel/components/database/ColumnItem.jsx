@@ -203,7 +203,7 @@ export class SpecialTypeAndTargetPicker extends Component {
     // If all FK target fields are in the same schema (like `PUBLIC` for sample dataset)
     // or if there are no schemas at all, omit the schema name
     const includeSchema =
-      _.uniq(idfields.map(idField => idField.table.schema)).length > 1;
+      _.uniq(idfields.map(idField => idField.table.schema_name)).length > 1;
 
     idfields = _.sortBy(idfields, field =>
       field.displayName({ includeTable: true, includeSchema }),
@@ -219,6 +219,7 @@ export class SpecialTypeAndTargetPicker extends Component {
           optionValueFn={o => o.id}
           optionSectionFn={o => o.section}
           placeholder={t`Select a special type`}
+          searchProp="name"
         />
         {showCurrencyTypeSelect && selectSeparator}
         {// TODO - now that we have multiple "nested" options like choosing a
@@ -252,6 +253,7 @@ export class SpecialTypeAndTargetPicker extends Component {
           <Select
             className={cx("TableEditor-field-target text-wrap", className)}
             placeholder={t`Select a target`}
+            searchProp="name"
             value={field.fk_target_field_id}
             onChange={this.handleChangeTarget}
             options={idfields}

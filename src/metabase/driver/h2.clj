@@ -6,18 +6,24 @@
              [db :as mdb]
              [driver :as driver]
              [util :as u]]
-            [metabase.db.spec :as dbspec]
+            [metabase.db
+             [jdbc-protocols :as jdbc-protocols]
+             [spec :as dbspec]]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.query-processor.store :as qp.store]
+            [metabase.plugins.classloader :as classloader]
+            [metabase.query-processor
+             [error-type :as error-type]
+             [store :as qp.store]]
             [metabase.util
              [honeysql-extensions :as hx]
              [i18n :refer [deferred-tru tru]]])
-  (:import java.time.OffsetTime))
+  (:import [java.sql Clob ResultSet ResultSetMetaData]
+           java.time.OffsetTime))
 
 (driver/register! :h2, :parent :sql-jdbc)
 
@@ -26,6 +32,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod driver/supports? [:h2 :full-join] [_ _] false)
+(defmethod driver/supports? [:h2 :regex] [_ _] false)
 
 (defmethod driver/connection-properties :h2
   [_]
@@ -41,7 +48,7 @@
     (connection-string->file+options \"file:my-crazy-db;OPTION=100;OPTION_X=TRUE\")
       -> [\"file:my-crazy-db\" {\"OPTION\" \"100\", \"OPTION_X\" \"TRUE\"}]"
   [^String connection-string]
-  {:pre [connection-string]}
+  {:pre [(string? connection-string)]}
   (let [[file & options] (str/split connection-string #";+")
         options          (into {} (for [option options]
                                     (str/split option #"=")))]
@@ -64,18 +71,31 @@
         (when (or (str/blank? user)
                   (= user "sa"))        ; "sa" is the default USER
           (throw
-           (Exception.
-            (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden."))))))))
+           (ex-info (tru "Running SQL queries against H2 databases using the default (admin) database user is forbidden.")
+             {:type error-type/db})))))))
 
-(defmethod driver/process-query-in-context :h2 [_ qp]
-  (comp qp check-native-query-not-using-default-user))
+(defmethod driver/execute-reducible-query :h2
+  [driver query chans respond]
+  (check-native-query-not-using-default-user query)
+  ((get-method driver/execute-reducible-query :sql-jdbc) driver query chans respond))
 
-(defmethod driver/date-add :h2 [driver dt amount unit]
-  (if (= unit :quarter)
-    (recur driver dt (hx/* amount 3) :month)
-    (hsql/call :dateadd (hx/literal unit) amount dt)))
+(defmethod sql.qp/add-interval-honeysql-form :h2
+  [driver hsql-form amount unit]
+  (cond
+    (= unit :quarter)
+    (recur driver hsql-form (hx/* amount 3) :month)
 
-(defmethod driver/humanize-connection-error-message :h2 [_ message]
+    ;; H2 only supports long ints in the `dateadd` amount field; since we want to support fractional seconds (at least
+    ;; for application DB purposes) convert to `:millisecond`
+    (and (= unit :second)
+         (not (zero? (rem amount 1))))
+    (recur driver hsql-form (* amount 1000.0) :millisecond)
+
+    :else
+    (hsql/call :dateadd (hx/literal unit) (long amount) hsql-form)))
+
+(defmethod driver/humanize-connection-error-message :h2
+  [_ message]
   (condp re-matches message
     #"^A file path that is implicitly relative to the current working directory is not allowed in the database URL .*$"
     (driver.common/connection-error-messages :cannot-connect-check-host-and-port)
@@ -91,13 +111,16 @@
 
 (def ^:private date-format-str "yyyy-MM-dd HH:mm:ss.SSS zzz")
 
-(defmethod driver.common/current-db-time-date-formatters :h2 [_]
+(defmethod driver.common/current-db-time-date-formatters :h2
+  [_]
   (driver.common/create-db-time-formatters date-format-str))
 
-(defmethod driver.common/current-db-time-native-query :h2 [_]
+(defmethod driver.common/current-db-time-native-query :h2
+  [_]
   (format "select formatdatetime(current_timestamp(),'%s') AS VARCHAR" date-format-str))
 
-(defmethod driver/current-db-time :h2 [& args]
+(defmethod driver/current-db-time :h2
+  [& args]
   (apply driver.common/current-db-time args))
 
 
@@ -243,12 +266,14 @@
 (defn- connection-string-set-safe-options
   "Add Metabase Security Settings™ to this `connection-string` (i.e. try to keep shady users from writing nasty SQL)."
   [connection-string]
+  {:pre [(string? connection-string)]}
   (let [[file options] (connection-string->file+options connection-string)]
     (file+options->connection-string file (merge options {"IFEXISTS"         "TRUE"
                                                           "ACCESS_MODE_DATA" "r"}))))
 
 (defmethod sql-jdbc.conn/connection-details->spec :h2
   [_ details]
+  {:pre [(map? details)]}
   (dbspec/h2 (if mdb/*allow-potentailly-unsafe-connections*
                details
                (update details :db connection-string-set-safe-options))))
@@ -256,6 +281,28 @@
 (defmethod sql-jdbc.sync/active-tables :h2
   [& args]
   (apply sql-jdbc.sync/post-filtered-active-tables args))
+
+(defmethod sql-jdbc.execute/connection-with-timezone :h2
+  [driver database ^String timezone-id]
+  ;; h2 doesn't support setting timezones, or changing the transaction level without admin perms, so we can skip those
+  ;; steps that are in the default impl
+  (let [conn (.getConnection (sql-jdbc.execute/datasource database))]
+    (try
+      (doto conn
+        (.setReadOnly true))
+      (catch Throwable e
+        (.close conn)
+        (throw e)))))
+
+;; de-CLOB any CLOB values that come back
+(defmethod sql-jdbc.execute/read-column-thunk :h2
+  [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+  (let [classname (Class/forName (.getColumnClassName rsmeta i) true (classloader/the-classloader))]
+    (if (isa? classname Clob)
+      (fn []
+        (jdbc-protocols/clob->str (.getObject rs i)))
+      (fn []
+        (.getObject rs i)))))
 
 (defmethod sql-jdbc.execute/set-parameter [:h2 OffsetTime]
   [driver prepared-statement i t]

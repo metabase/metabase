@@ -20,7 +20,8 @@
                  :expression-aggregations
                  :native-parameters
                  :nested-queries
-                 :binning]]
+                 :binning
+                 :regex]]
   (defmethod driver/supports? [:sql feature] [_ _] true))
 
 (doseq [join-feature [:left-join
@@ -35,7 +36,7 @@
   [driver query]
   (sql.qp/mbql->native driver query))
 
-(defmethod driver/substitue-native-parameters :sql
+(defmethod driver/substitute-native-parameters :sql
   [_ {:keys [query] :as inner-query}]
   (let [[query params] (-> query
                            params.parse/parse

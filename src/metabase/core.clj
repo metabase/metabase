@@ -1,4 +1,3 @@
-;; -*- comment-column: 35; -*-
 (ns metabase.core
   (:gen-class)
   (:require [clojure.string :as str]
@@ -19,7 +18,6 @@
              [troubleshooting :as troubleshooting]
              [util :as u]]
             [metabase.core.initialization-status :as init-status]
-            [metabase.driver.util :as driver.u]
             [metabase.models
              [setting :as setting]
              [user :refer [User]]]
@@ -70,8 +68,8 @@
   (plugins/load-plugins!)
   (init-status/set-progress! 0.3)
 
-  ;; Load up all of our Database drivers, which are used for app db work
-  (driver.u/find-and-load-all-drivers!)
+  ;; Load up the drivers shipped as part of the main codebase, so they will show up in the list of available DB types
+  (classloader/require 'metabase.driver.h2 'metabase.driver.postgres 'metabase.driver.mysql)
   (init-status/set-progress! 0.4)
 
   ;; startup database.  validates connection & runs any necessary migrations

@@ -6,6 +6,7 @@
             [metabase.automagic-dashboards
              [core :as magic :refer :all]
              [rules :as rules]]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.models
              [card :refer [Card]]
              [collection :refer [Collection]]
@@ -168,7 +169,7 @@
                                            :dataset_query {:query    {:filter       [:> [:field-literal "PRICE" "type/Number"] 10]
                                                                       :source-table (str "card__" source-id)}
                                                            :type     :query
-                                                           :database -1337}}]]
+                                                           :database mbql.s/saved-questions-virtual-database-id}}]]
         (with-rasta
           (with-dashboard-cleanup
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
@@ -203,7 +204,7 @@
                                            :dataset_query {:query    {:filter       [:> [:field-literal "PRICE" "type/Number"] 10]
                                                                       :source-table (str "card__" source-id)}
                                                            :type     :query
-                                                           :database -1337}}]]
+                                                           :database mbql.s/saved-questions-virtual-database-id}}]]
         (with-rasta
           (with-dashboard-cleanup
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)

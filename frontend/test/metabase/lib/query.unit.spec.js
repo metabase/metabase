@@ -347,77 +347,53 @@ describe("generateQueryDescription", () => {
 });
 
 describe("AggregationClause", () => {
-  describe("isValid", () => {
-    it("should fail on bad clauses", () => {
-      expect(A_DEPRECATED.isValid(undefined)).toEqual(false);
-      expect(A_DEPRECATED.isValid(null)).toEqual(false);
-      expect(A_DEPRECATED.isValid([])).toEqual(false);
-      expect(A_DEPRECATED.isValid([null])).toEqual(false);
-      expect(A_DEPRECATED.isValid("ab")).toEqual(false);
-      expect(A_DEPRECATED.isValid(["foo", null])).toEqual(false);
-      expect(A_DEPRECATED.isValid(["a", "b", "c"])).toEqual(false);
-    });
-
-    it("should succeed on good clauses", () => {
-      expect(A_DEPRECATED.isValid(["metric", 123])).toEqual(true);
-      // TODO - actually this should be FALSE because rows is not a valid aggregation type!
-      expect(A_DEPRECATED.isValid(["rows"])).toEqual(true); // deprecated
-      expect(A_DEPRECATED.isValid(["sum", 456])).toEqual(true);
-    });
-  });
-
-  describe("isBareRows", () => {
-    it("should fail on bad clauses", () => {
-      expect(A_DEPRECATED.isBareRows(undefined)).toEqual(false);
-      expect(A_DEPRECATED.isBareRows(null)).toEqual(false);
-      expect(A_DEPRECATED.isBareRows([])).toEqual(false);
-      expect(A_DEPRECATED.isBareRows([null])).toEqual(false);
-      expect(A_DEPRECATED.isBareRows("ab")).toEqual(false);
-      expect(A_DEPRECATED.isBareRows(["foo", null])).toEqual(false);
-      expect(A_DEPRECATED.isBareRows(["a", "b", "c"])).toEqual(false);
-      expect(A_DEPRECATED.isBareRows(["metric", 123])).toEqual(false);
-      expect(A_DEPRECATED.isBareRows(["sum", 456])).toEqual(false);
-    });
-
-    it("should succeed on good clauses", () => {
-      expect(A_DEPRECATED.isBareRows(["rows"])).toEqual(true); // deprecated
-    });
-  });
-
+  const cases = [
+    [null, undefined],
+    [null, null],
+    [null, []],
+    [null, [null]],
+    [null, "ab"],
+    [null, ["foo", null]],
+    ["metric", ["metric", 123]],
+    ["standard", ["sum", ["field-id", 1]]],
+    ["standard", ["count"]],
+    ["custom", ["sum-where", ["field-id"]]],
+    ["custom", ["aggregation-options", ["count"], { "display-name": "foo" }]],
+  ];
   describe("isStandard", () => {
-    it("should fail on bad clauses", () => {
-      expect(A_DEPRECATED.isStandard(undefined)).toEqual(false);
-      expect(A_DEPRECATED.isStandard(null)).toEqual(false);
-      expect(A_DEPRECATED.isStandard([])).toEqual(false);
-      expect(A_DEPRECATED.isStandard([null])).toEqual(false);
-      expect(A_DEPRECATED.isStandard("ab")).toEqual(false);
-      expect(A_DEPRECATED.isStandard(["foo", null])).toEqual(false);
-      expect(A_DEPRECATED.isStandard(["a", "b", "c"])).toEqual(false);
-      expect(A_DEPRECATED.isStandard(["metric", 123])).toEqual(false);
-    });
+    for (const [type, clause] of cases) {
+      const expected = type === "standard";
+      it(`should return ${expected} for ${JSON.stringify(clause)}`, () => {
+        expect(A_DEPRECATED.isStandard(clause)).toBe(expected);
+      });
+    }
+  });
 
-    it("should succeed on good clauses", () => {
-      expect(A_DEPRECATED.isStandard(["rows"])).toEqual(true); // deprecated
-      expect(A_DEPRECATED.isStandard(["sum", 456])).toEqual(true);
-    });
+  describe("isCustom", () => {
+    for (const [type, clause] of cases) {
+      const expected = type === "custom";
+      it(`should return ${expected} for ${JSON.stringify(clause)}`, () => {
+        expect(A_DEPRECATED.isCustom(clause)).toBe(expected);
+      });
+    }
   });
 
   describe("isMetric", () => {
-    it("should fail on bad clauses", () => {
-      expect(A_DEPRECATED.isMetric(undefined)).toEqual(false);
-      expect(A_DEPRECATED.isMetric(null)).toEqual(false);
-      expect(A_DEPRECATED.isMetric([])).toEqual(false);
-      expect(A_DEPRECATED.isMetric([null])).toEqual(false);
-      expect(A_DEPRECATED.isMetric("ab")).toEqual(false);
-      expect(A_DEPRECATED.isMetric(["foo", null])).toEqual(false);
-      expect(A_DEPRECATED.isMetric(["a", "b", "c"])).toEqual(false);
-      expect(A_DEPRECATED.isMetric(["rows"])).toEqual(false); // deprecated
-      expect(A_DEPRECATED.isMetric(["sum", 456])).toEqual(false);
-    });
+    for (const [type, clause] of cases) {
+      const expected = type === "metric";
+      it(`should return ${expected} for ${JSON.stringify(clause)}`, () => {
+        expect(A_DEPRECATED.isMetric(clause)).toBe(expected);
+      });
+    }
+  });
 
-    it("should succeed on good clauses", () => {
-      expect(A_DEPRECATED.isMetric(["metric", 123])).toEqual(true);
-    });
+  describe("isValid", () => {
+    for (const [type, clause] of cases) {
+      const expected = !(type === null);
+      it(`should return ${expected} for ${JSON.stringify(clause)}`, () => {
+        expect(A_DEPRECATED.isValid(clause)).toBe(expected);
+      });
+    }
   });
 
   describe("getMetric", () => {

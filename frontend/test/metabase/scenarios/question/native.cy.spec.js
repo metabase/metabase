@@ -1,4 +1,4 @@
-import { signInAsNormalUser } from "__support__/cypress";
+import { signInAsNormalUser, restore, popover } from "__support__/cypress";
 
 describe("scenarios > question > native", () => {
   before(restore);
@@ -107,5 +107,47 @@ describe("scenarios > question > native", () => {
     cy.get("@variableLabels")
       .last()
       .should("have.text", "bar");
+  });
+
+  it("should show referenced cards in the template tag sidebar", () => {
+    cy.visit("/question/new");
+    cy.contains("Native query").click();
+
+    // start typing a question referenced
+    cy.get(".ace_content").type("select * from {{#}}", {
+      parseSpecialCharSequences: false,
+      delay: 0,
+    });
+
+    cy.contains("Question #…")
+      .parent()
+      .parent()
+      .contains("Pick a saved question")
+      .click({ force: true });
+
+    // selecting a question should update the query
+    popover()
+      .contains("Orders")
+      .click();
+
+    cy.contains("select * from {{#1}}");
+
+    // run query and see that a value from the results appears
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.contains("37.65");
+
+    // update the text of the query to reference question 2
+    // :visible is needed because there is an unused .ace_content present in the DOM
+    cy.get(".ace_content:visible").type("{leftarrow}{leftarrow}{backspace}2");
+
+    // sidebar should show updated question title and name
+    cy.contains("Question #2")
+      .parent()
+      .parent()
+      .contains("Orders, Count");
+
+    // run query again and see new result
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.contains("18,760");
   });
 });

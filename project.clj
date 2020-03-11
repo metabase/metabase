@@ -17,6 +17,7 @@
    "run-with-repl"                     ["with-profile" "+run-with-repl" "repl"]
    "ring"                              ["with-profile" "+ring" "ring"]
    "test"                              ["with-profile" "+test" "test"]
+   "eftest"                            ["with-profile" "+test" "with-profile" "+eftest" "eftest"]
    "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed"
                                         "--max-line-length" "205"
                                         ;; see https://github.com/dakrone/lein-bikeshed/issues/41
@@ -30,7 +31,6 @@
    "repl"                              ["with-profile" "+repl" "repl"]
    "strip-and-compress"                ["with-profile" "+strip-and-compress" "run"]
    "compare-h2-dbs"                    ["with-profile" "+compare-h2-dbs" "run"]}
-
 
   ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ;; !!                                   PLEASE KEEP THESE ORGANIZED ALPHABETICALLY                                  !!
@@ -107,14 +107,13 @@
                  com.sun.jdmk/jmxtools
                  com.sun.jmx/jmxri]]
    [me.raynes/fs "1.4.6"]                                             ; Filesystem tools
-   [medley "1.2.0"]                                                   ; lightweight lib of useful functions
+   [medley "1.3.0"]                                                   ; lightweight lib of useful functions
    [metabase/connection-pool "1.1.1"]                                 ; simple wrapper around C3P0. JDBC connection pools
-   [metabase/mbql "1.4.3"]                                            ; MBQL language schema & util fns
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
    [org.apache.commons/commons-lang3 "3.9"]                           ; helper methods for working with java.lang stuff
    [org.clojars.pntblnk/clj-ldap "0.0.16"]                            ; LDAP client
-   [org.eclipse.jetty/jetty-server "9.4.15.v20190215"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
+   [org.eclipse.jetty/jetty-server "9.4.27.v20200227"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
    [org.flatland/ordered "1.5.7"]                                     ; ordered maps & sets
    [org.liquibase/liquibase-core "3.6.3"                              ; migration management (Java lib)
     :exclusions [ch.qos.logback/logback-classic]]
@@ -129,7 +128,7 @@
    [prismatic/schema "1.1.11"]                                        ; Data schema declaration and validation library
    [puppetlabs/i18n "0.8.0"]                                          ; Internationalization library
    [redux "0.1.4"]                                                    ; Utility functions for building and composing transducers
-   [ring/ring-core "1.7.1"]
+   [ring/ring-core "1.8.0"]
    [ring/ring-jetty-adapter "1.7.1"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
    [ring/ring-json "0.4.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
@@ -158,6 +157,9 @@
   :javac-options
   ["-target" "1.8", "-source" "1.8"]
 
+  :source-paths
+  ["src" "backend/mbql/src"]
+
   :java-source-paths
   ["java"]
 
@@ -167,6 +169,8 @@
   :profiles
   {:dev
    {:source-paths ["dev/src" "local/src"]
+
+    :test-paths ["test" "backend/mbql/test"]
 
     :dependencies
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
@@ -197,7 +201,9 @@
     {:init-ns user}} ; starting in the user namespace is a lot faster than metabase.core since it has less deps
 
    :ci
-   {:jvm-opts ["-Xmx2500m"]}
+   {:jvm-opts ["-Xmx2500m"]
+    :eftest   {:report         eftest.report.junit/report
+               :report-to-file "target/test/junit.xml"}}
 
    :install
    {}
@@ -220,8 +226,8 @@
      {:mb-jetty-join "false"}
 
      :repl-options
-     {:init (do (require 'metabase.core)
-                (metabase.core/-main))
+     {:init    (do (require 'metabase.core)
+                   (metabase.core/-main))
       :timeout 60000}}]
 
    ;; start the dev HTTP server with 'lein ring server'
@@ -267,6 +273,10 @@
       #=(eval (format "-Dmb.jetty.port=%d" (+ 3001 (rand-int 500))))
       "-Dmb.api.key=test-api-key"
       "-Duser.language=en"]}]
+
+   :eftest
+   {:plugins [[lein-eftest "0.5.9"]]
+    :eftest  {:multithread? false}}
 
    :include-all-drivers
    [:with-include-drivers-middleware
@@ -330,7 +340,7 @@
    :check-namespace-decls
    [:include-all-drivers
     {:plugins               [[lein-check-namespace-decls "1.0.2"]]
-     :source-paths          ^:replace ["src" "test"]
+     :source-paths          ^:replace ["src" "backend/mbql/src" "test" "backend/mbql/test"]
      :check-namespace-decls {:prefix-rewriting true}}]
 
    ;; build the uberjar with `lein uberjar`

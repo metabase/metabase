@@ -6,6 +6,7 @@ import ExpressionEditorTextfield from "./ExpressionEditorTextfield";
 import { isExpression } from "metabase/lib/expressions";
 import MetabaseSettings from "metabase/lib/settings";
 
+// TODO: combine with ExpressionPopover
 export default class ExpressionWidget extends Component {
   static propTypes = {
     expression: PropTypes.array,
@@ -37,6 +38,11 @@ export default class ExpressionWidget extends Component {
     return !!name && !error && isExpression(expression);
   }
 
+  handleCommit = () => {
+    this.props.onChangeExpression(this.state.name, this.state.expression);
+    this.props.onClose();
+  };
+
   render() {
     const { query } = this.props;
     const { expression } = this.state;
@@ -49,8 +55,6 @@ export default class ExpressionWidget extends Component {
             <ExpressionEditorTextfield
               expression={expression}
               query={query}
-              tableMetadata={query.tableMetadata()} // DEPRECATED
-              customFields={query.customFields()} // DEPRECATED
               onChange={parsedExpression =>
                 this.setState({ expression: parsedExpression, error: null })
               }
@@ -78,6 +82,11 @@ export default class ExpressionWidget extends Component {
               value={this.state.name}
               placeholder={t`Something nice and descriptive`}
               onChange={event => this.setState({ name: event.target.value })}
+              onKeyPress={e => {
+                if (e.key === "Enter" && this.isValid()) {
+                  this.handleCommit();
+                }
+              }}
             />
           </div>
         </div>

@@ -106,11 +106,11 @@
   :%current_timestamp)
 
 (defmethod driver/date-add :snowflake
-  [_ dt amount unit]
+  [_ hsql-form amount unit]
   (hsql/call :dateadd
     (hsql/raw (name unit))
     (hsql/raw (int amount))
-    (hx/->timestamp dt)))
+    (hx/->timestamp hsql-form)))
 
 (defn- extract    [unit expr] (hsql/call :date_part unit (hx/->timestamp expr)))
 (defn- date-trunc [unit expr] (hsql/call :date_trunc unit (hx/->timestamp expr)))
@@ -131,6 +131,11 @@
 (defmethod sql.qp/date [:snowflake :quarter]         [_ _ expr] (date-trunc :quarter expr))
 (defmethod sql.qp/date [:snowflake :quarter-of-year] [_ _ expr] (extract :quarter expr))
 (defmethod sql.qp/date [:snowflake :year]            [_ _ expr] (date-trunc :year expr))
+
+
+(defmethod sql.qp/->honeysql [:snowflake :regex-match-first]
+  [driver [_ arg pattern]]
+  (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
 
 (defn- db-name
   "As mentioned above, old versions of the Snowflake driver used `details.dbname` to specify the physical database, but

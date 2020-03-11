@@ -201,20 +201,24 @@ export class Api extends EventEmitter {
               body = JSON.parse(body);
             } catch (e) {}
           }
-          if (xhr.status >= 200 && xhr.status <= 299) {
+          let status = xhr.status;
+          if (status === 202 && body && body._status > 0) {
+            status = body._status;
+          }
+          if (status >= 200 && status <= 299) {
             if (options.transformResponse) {
               body = options.transformResponse(body, { data });
             }
             resolve(body);
           } else {
             reject({
-              status: xhr.status,
+              status: status,
               data: body,
               isCancelled: isCancelled,
             });
           }
           if (!options.noEvent) {
-            this.emit(xhr.status, url);
+            this.emit(status, url);
           }
         }
       };

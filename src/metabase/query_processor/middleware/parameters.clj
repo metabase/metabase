@@ -93,4 +93,5 @@
   A SQL query with a param like `{{param}}` will have that part of the query replaced with an appropriate snippet as
   well as any prepared statement args needed. MBQL queries will have additional filter clauses added."
   [qp]
-  (comp qp substitute-parameters*))
+  (fn [query rff context]
+    (qp (substitute-parameters* query) rff context)))

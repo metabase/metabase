@@ -4,6 +4,6 @@
 (defn initialize
   {:arglists (:arglists (meta #'initialize/initialize-if-needed!))}
   [& what]
-  (fn [f]
+  (fn [thunk]
     (apply initialize/initialize-if-needed! what)
-    (f)))
+    (thunk)))

@@ -68,7 +68,10 @@ export function isSegmentFilter(filter: FilterClause): boolean {
 }
 
 export function isCompoundFilter(filter: FilterClause): boolean {
-  return Array.isArray(filter) && (filter[0] === "and" || filter[0] === "or");
+  return (
+    Array.isArray(filter) &&
+    (filter[0] === "and" || filter[0] === "or" || filter[0] === "not")
+  );
 }
 
 export function isFieldFilter(filter: FilterClause): boolean {

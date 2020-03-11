@@ -23,7 +23,7 @@ import MetabaseSettings from "metabase/lib/settings";
 import cx from "classnames";
 
 import type { LocationDescriptor, QueryParams } from "metabase/meta/types";
-import type { Card, CardId } from "metabase/meta/types/Card";
+import type { CardId } from "metabase/meta/types/Card";
 import type {
   Parameter,
   ParameterId,
@@ -40,7 +40,6 @@ type Props = {
   location: LocationDescriptor,
 
   dashboard: DashboardWithCards,
-  cards: Card[],
 
   isAdmin: boolean,
   isEditable: boolean,
@@ -56,7 +55,6 @@ type Props = {
   addCardToDashboard: ({ dashId: DashCardId, cardId: CardId }) => void,
   addTextDashCardToDashboard: ({ dashId: DashCardId }) => void,
   archiveDashboard: (dashboardId: DashboardId) => void,
-  fetchCards: (filterMode?: string) => void,
   fetchDashboard: (dashboardId: DashboardId, queryParams: ?QueryParams) => void,
   saveDashboardAndCards: () => Promise<void>,
   setDashboardAttribute: (attribute: string, value: any) => void,
@@ -96,7 +94,6 @@ export default class DashboardHeader extends Component {
     addCardToDashboard: PropTypes.func.isRequired,
     addTextDashCardToDashboard: PropTypes.func.isRequired,
     archiveDashboard: PropTypes.func.isRequired,
-    fetchCards: PropTypes.func.isRequired,
     fetchDashboard: PropTypes.func.isRequired,
     saveDashboardAndCards: PropTypes.func.isRequired,
     setDashboardAttribute: PropTypes.func.isRequired,
@@ -238,8 +235,6 @@ export default class DashboardHeader extends Component {
         >
           <AddToDashSelectQuestionModal
             dashboard={dashboard}
-            cards={this.props.cards}
-            fetchCards={this.props.fetchCards}
             addCardToDashboard={this.props.addCardToDashboard}
             onEditingChange={this.props.onEditingChange}
             onClose={() => this.refs.addQuestionModal.toggle()}

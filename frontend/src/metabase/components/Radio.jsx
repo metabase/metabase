@@ -156,6 +156,10 @@ const BubbleItem = styled(BaseItem)`
   color: ${props => (props.selected ? color("white") : color("brand"))};
   background-color: ${props =>
     props.selected ? color("brand") : lighten("brand")};
+  :hover {
+    background-color: ${props => !props.selected && lighten("brand", 0.38)};
+    transition: background 300ms linear;
+  }
 `;
 BubbleItem.defaultProps = {
   xspace: 1,

@@ -1,6 +1,7 @@
 /* @flow */
 
 import type { CardId } from "./Card";
+import type { FieldId } from "./Field";
 import type { LocalFieldReference, ForeignFieldReference } from "./Query";
 
 export type ParameterId = string;
@@ -18,6 +19,7 @@ export type Parameter = {
   type: ParameterType,
   slug: string,
   default?: string,
+  field_ids?: FieldId[],
 
   target?: ParameterTarget,
 };
@@ -58,8 +60,7 @@ export type ParameterInstance = {
 export type ParameterMappingUIOption = ParameterMappingOption & {
   icon: ?string,
   sectionName: string,
-  isFk?: boolean,
-  isVariable?: boolean,
+  isForeign?: boolean,
 };
 
 export type ParameterValues = {
