@@ -1,6 +1,6 @@
 import { signInAsAdmin, restore } from "__support__/cypress";
 
-describe("data reference sidebar", () => {
+describe("scenarios > question > data reference sidebar", () => {
   before(restore);
   beforeEach(signInAsAdmin);
 

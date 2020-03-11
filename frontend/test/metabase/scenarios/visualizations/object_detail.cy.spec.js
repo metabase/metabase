@@ -1,6 +1,6 @@
 import { signInAsNormalUser } from "__support__/cypress";
 
-describe("ObjectDetail", () => {
+describe("scenarios > visualizations > object detail", () => {
   beforeEach(signInAsNormalUser);
 
   it("should show orders/reviews connected to a product", () => {

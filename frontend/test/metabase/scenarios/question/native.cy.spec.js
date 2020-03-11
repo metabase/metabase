@@ -1,5 +1,6 @@
 import { signInAsNormalUser, restore, popover } from "__support__/cypress";
-describe("NativeQueryEditor", () => {
+
+describe("scenarios > question > native", () => {
   before(restore);
   beforeEach(signInAsNormalUser);
 

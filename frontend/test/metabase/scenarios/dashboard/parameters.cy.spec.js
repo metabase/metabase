@@ -1,6 +1,8 @@
 import { signInAsAdmin, modal, popover, restore } from "__support__/cypress";
 
-describe("dashboard filters", () => {
+// NOTE: some overlap with parameters-embedded.cy.spec.js
+
+describe("scenarios > dashboard > parameters", () => {
   before(restore);
   beforeEach(signInAsAdmin);
   it("should search across multiple fields", () => {

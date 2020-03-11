@@ -1,7 +1,7 @@
 import path from "path";
 import { restore } from "__support__/cypress";
 
-describe("setup", () => {
+describe("scenarios > setup", () => {
   before(() => restore("blank"));
 
   it("should allow you to sign up", () => {

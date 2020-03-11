@@ -4,7 +4,7 @@ const ORDERS_CREATED_AT_URL = "/admin/datamodel/database/1/table/2/15/general";
 const ORDERS_PRODUCT_URL = "/admin/datamodel/database/1/table/2/11/general";
 const ORDERS_QUANTITY_URL = "/admin/datamodel/database/1/table/2/14/general";
 
-describe("admin > datamodel > field", () => {
+describe("scenarios > admin > datamodel > field", () => {
   beforeEach(() => {
     signInAsAdmin();
     cy.server();
