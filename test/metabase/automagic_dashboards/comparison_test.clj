@@ -1,17 +1,15 @@
 (ns metabase.automagic-dashboards.comparison-test
   (:require [expectations :refer :all]
+            [metabase
+             [models :refer [Card Segment Table]]
+             [test :as mt]]
             [metabase.automagic-dashboards
              [comparison :as c :refer :all]
              [core :refer [automagic-analysis]]]
-            [metabase.models
-             [card :refer [Card]]
-             [query :as query]
-             [segment :refer [Segment]]
-             [table :as table :refer [Table]]]
+            [metabase.models.query :as query]
             [metabase.test
              [automagic-dashboards :refer :all]
              [data :as data]]
-            [metabase.test :as mt]
             [toucan.util.test :as tt]))
 
 (def ^:private segment
