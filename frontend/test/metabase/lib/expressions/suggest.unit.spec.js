@@ -317,14 +317,14 @@ describe("metabase/lib/expression/suggest", () => {
         ).toEqual([...AGGREGATION_FUNCTIONS, ...METRICS_ORDERS, OPEN_PAREN]);
       });
 
-      xit("should suggest expression operators after aggregation argument", () => {
-        expect(
-          suggest({
-            source: "Sum(Total ",
-            query: ORDERS.query(),
-            startRule: "aggregation",
-          }),
-        ).toEqual([...EXPRESSION_OPERATORS, CLOSE_PAREN]);
+      it("should show help text in an aggregation functiom", () => {
+        const { name, example } = helpText({
+          source: "Sum(",
+          query: ORDERS.query(),
+          startRule: "aggregation",
+        });
+        expect(name).toEqual("sum");
+        expect(example).toEqual("sum( [Subtotal] )");
       });
     });
 
@@ -348,6 +348,16 @@ describe("metabase/lib/expression/suggest", () => {
           OPEN_PAREN,
           ...SEGMENTS_ORDERS,
         ]);
+      });
+
+      it("should show help text in a filter function", () => {
+        const { name, example } = helpText({
+          source: "Contains(Total ",
+          query: ORDERS.query(),
+          startRule: "boolean",
+        });
+        expect(name).toEqual("contains");
+        expect(example).toEqual('contains([Status] , "Pass")');
       });
     });
   });
