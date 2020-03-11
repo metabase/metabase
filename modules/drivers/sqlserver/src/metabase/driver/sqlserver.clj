@@ -229,7 +229,11 @@
 
 (defmethod sql.qp/->honeysql [:sqlserver :stddev]
   [driver [_ field]]
-  (hsql/call :stdev (sql.qp/->honeysql driver field)))
+  (hsql/call :stdevp (sql.qp/->honeysql driver field)))
+
+(defmethod sql.qp/->honeysql [:sqlserver :var]
+  [driver [_ field]]
+  (hsql/call :varp (sql.qp/->honeysql driver field)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :substring]
   [driver [_ arg start length]]
@@ -240,6 +244,10 @@
 (defmethod sql.qp/->honeysql [:sqlserver :length]
   [driver [_ arg]]
   (hsql/call :len (sql.qp/->honeysql driver arg)))
+
+(defmethod sql.qp/->honeysql [:sqlserver :median]
+  [driver [_ arg]]
+  (sql.qp/->honeysql [:percentile arg 0.5]))
 
 (defmethod driver.common/current-db-time-date-formatters :sqlserver
   [_]

@@ -99,6 +99,16 @@
   [driver [_ arg pattern]]
   (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
 
+(defmethod sql.qp/->honeysql [:vertica :percentile]
+  [driver [_ arg p]]
+  (hsql/raw (format "APPROXIMATE_PERCENTILE(%s USING PARAMETERS percentile=%s)"
+                    (hformat/to-sql (sql.qp/->honeysql driver arg))
+                    (hformat/to-sql (sql.qp/->honeysql driver p)))))
+
+(defmethod sql.qp/->honeysql [:vertica :median]
+  [driver [_ arg]]
+  (hsql/call :approximate_median (sql.qp/->honeysql driver arg)))
+
 (defmethod driver/date-add :vertica
   [_ hsql-form amount unit]
   (hx/+ (hx/->timestamp hsql-form) (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit)))))

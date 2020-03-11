@@ -35,6 +35,8 @@
 (defmethod driver/display-name :mysql [_] "MySQL")
 
 (defmethod driver/supports? [:mysql :regex] [_ _] false)
+(defmethod driver/supports? [:mysql :percentile-aggregations] [_ _] false)
+
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

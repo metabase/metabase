@@ -276,6 +276,13 @@
   [driver [_ arg pattern]]
   (hsql/call :regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
 
+(defmethod sql.qp/->honeysql [:presto :median]
+  [driver [_ arg]]
+  (hsql/call :approx_percentile (sql.qp/->honeysql driver arg) 0.5))
+
+(defmethod sql.qp/->honeysql [:presto :percentile]
+  [driver [_ arg p]]
+  (hsql/call :approx_percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)))
 
 ;; See https://prestodb.io/docs/current/functions/datetime.html
 
