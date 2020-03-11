@@ -187,6 +187,12 @@ function sharedParametersTests(visitUrl) {
       .type("Aly");
     popover().contains("Alycia Collins - 541");
   });
+
+  it("should accept url parameters", () => {
+    visitUrl();
+    cy.url().then(url => cy.visit(url + "?id=1&id=3"));
+    cy.contains(".ScalarValue", "2");
+  });
 }
 
 const createQuestion = () =>

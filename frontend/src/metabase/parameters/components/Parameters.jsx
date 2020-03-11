@@ -70,7 +70,13 @@ export default class Parameters extends Component {
       for (const parameter of parameters) {
         const queryParam = query && query[parameter.slug];
         if (queryParam != null || parameter.default != null) {
-          const value = queryParam != null ? queryParam : parameter.default;
+          let value = queryParam != null ? queryParam : parameter.default;
+          if (parameter.hasOnlyFieldTargets && !Array.isArray(value)) {
+            // FieldValuesWidget always produces an array. If this param has
+            // only field targets we'll use that widget, so we should start with
+            // an array to match.
+            value = [value];
+          }
           const fieldIds = parameter.field_ids || [];
           // $FlowFixMe
           const fields = fieldIds.map(id => metadata.field(id));
