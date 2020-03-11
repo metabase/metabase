@@ -178,7 +178,8 @@
   "Update a Field Filter with a textual, or sequence of textual, values. The base type of the field is used
   to determine what 'special' type interpretation is required (e.g. for UUID fields)."
   [field-filter :- FieldFilter]
-  (let [base-type (get-in field-filter [:field :base_type]) value (get-in field-filter [:value :value])]
+  (let [base-type (get-in field-filter [:field :base_type])
+        value (get-in field-filter [:value :value])]
     (cond
       (string? value)
       (update-in field-filter [:value :value] (partial parse-value-for-field-base-type base-type))
