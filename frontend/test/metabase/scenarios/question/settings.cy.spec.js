@@ -1,4 +1,4 @@
-import { signInAsAdmin, restore } from "__support__/cypress";
+import { signInAsAdmin, restore, openOrdersTable } from "__support__/cypress";
 
 describe("scenarios > question > settings", () => {
   before(restore);
@@ -11,7 +11,7 @@ describe("scenarios > question > settings", () => {
       // get a really wide window, so we don't need to mess with scrolling the table horizontally
       cy.viewport(1600, 800);
 
-      loadOrdersTable();
+      openOrdersTable();
       cy.contains("Settings").click();
 
       // wait for settings sidebar to open
@@ -64,7 +64,8 @@ describe("scenarios > question > settings", () => {
   describe("resetting state", () => {
     it("should reset modal state when navigating away", () => {
       // create a question and add it to a modal
-      loadOrdersTable();
+      openOrdersTable();
+
       cy.contains("Save").click();
       cy.get(".ModalContent")
         .contains("button", "Save")
@@ -84,10 +85,3 @@ describe("scenarios > question > settings", () => {
     });
   });
 });
-
-function loadOrdersTable() {
-  cy.visit("/");
-  cy.contains("Browse Data").click();
-  cy.contains("Sample Dataset").click();
-  cy.contains("Orders").click();
-}

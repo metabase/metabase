@@ -1,4 +1,4 @@
-import { signInAsAdmin, restore } from "__support__/cypress";
+import { signInAsAdmin, restore, openOrdersTable } from "__support__/cypress";
 
 describe("scenarios > admin > settings", () => {
   before(restore);
@@ -47,10 +47,7 @@ describe("scenarios > admin > settings", () => {
     cy.wait("@saveFormatting");
 
     // check the new formatting in a question
-    cy.visit("/question/new");
-    cy.contains("Simple question").click();
-    cy.contains("Sample Dataset").click();
-    cy.contains("Orders").click();
+    openOrdersTable();
     cy.contains(/^February 11, 2019, 21:40$/).debug();
 
     // reset the formatting
@@ -59,10 +56,7 @@ describe("scenarios > admin > settings", () => {
     cy.wait("@saveFormatting");
 
     // check the reset formatting in a question
-    cy.visit("/question/new");
-    cy.contains("Simple question").click();
-    cy.contains("Sample Dataset").click();
-    cy.contains("Orders").click();
+    openOrdersTable();
     cy.contains(/^February 11, 2019, 9:40 PM$/);
   });
 });

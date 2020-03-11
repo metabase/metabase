@@ -1,27 +1,14 @@
-import { signInAsAdmin, restore } from "__support__/cypress";
+import { signInAsAdmin, restore, openOrdersTable } from "__support__/cypress";
 
 describe("scenarios > question > view", () => {
   before(restore);
   beforeEach(signInAsAdmin);
 
   describe("summarize sidebar", () => {
-    it("should summarize and break out and show a map", () => {
-      loadOrdersTable();
-
-      cy.contains("Orders").click();
-      cy.contains("Pick the metric you want to see").click();
-      cy.contains("Count of rows").click();
-      cy.contains("Pick a column to group by").click();
-      cy.contains(/^User$/).click();
-      cy.contains("State").click();
-      cy.contains("Visualize").click();
-      cy.contains("1,342 +");
-    });
-
     it("should summarize by category and show a bar chart", () => {
       cy.server();
       cy.route("POST", "/api/dataset").as("dataset");
-      loadOrdersTable();
+      openOrdersTable();
       cy.wait("@dataset");
       cy.contains("Summarize").click();
       cy.contains("Category").click();
@@ -30,10 +17,7 @@ describe("scenarios > question > view", () => {
     });
 
     it("should show orders by year and product category", () => {
-      cy.visit("/question/new");
-      cy.contains("Simple question").click();
-      cy.contains("Sample Dataset").click();
-      cy.contains("Orders").click();
+      openOrdersTable();
       cy.contains("Showing first 2,000 rows");
       cy.contains("Summarize").click();
 
@@ -77,7 +61,7 @@ describe("scenarios > question > view", () => {
 
   describe("filter sidebar", () => {
     it("should filter a table", () => {
-      loadOrdersTable();
+      openOrdersTable();
       cy.contains("Filter").click();
       cy.contains("Vendor").click();
       cy.get("input[placeholder='Search by Vendor']")

@@ -6,22 +6,26 @@ describe("scenarios > question > notebook", () => {
 
   it("should allow post-aggregation filters", () => {
     // start a custom question with orders
-    cy.visit("/question/new?database=1&table=1&mode=notebook");
+    cy.visit("/question/new");
+    cy.contains("Custom question").click();
+    cy.contains("Sample Dataset").click();
+    cy.contains("Orders").click();
+
     // count orders by user id, filter to the one user with 46 orders
     cy.contains("Pick the metric").click();
-    cy.contains("Count of rows").click();
+    popover().within(() => {
+      cy.findByText("Count of rows").click();
+    });
     cy.contains("Pick a column to group by").click();
-    cy.contains("User ID").click();
+    popover().within(() => {
+      cy.contains("User ID").click();
+    });
     cy.get(".Icon-filter").click();
-    popover()
-      .find(".Icon-int")
-      .click();
-    popover()
-      .find("input")
-      .type("46");
-    popover()
-      .contains("Add filter")
-      .click();
+    popover().within(() => {
+      cy.get(".Icon-int").click();
+      cy.get("input").type("46");
+      cy.contains("Add filter").click();
+    });
     cy.contains("Visualize").click();
     cy.contains("2372"); // user's id in the table
     cy.contains("Showing 1 row"); // ensure only one user was returned
@@ -29,7 +33,10 @@ describe("scenarios > question > notebook", () => {
 
   it("should allow joins", () => {
     // start a custom question with orders
-    cy.visit("/question/new?database=1&table=1&mode=notebook");
+    cy.visit("/question/new");
+    cy.contains("Custom question").click();
+    cy.contains("Sample Dataset").click();
+    cy.contains("Orders").click();
 
     // join to Reviews on orders.product_id = reviews.product_id
     cy.get(".Icon-join_left_outer").click();

@@ -21,6 +21,7 @@ describe("scenarios > question > new", () => {
       cy.visit("/");
       cy.contains("Ask a question").click();
       cy.contains("Simple question").click();
+      cy.contains("Sample Dataset").click();
       cy.contains("Orders").click();
       cy.contains("37.65");
     });
@@ -31,6 +32,7 @@ describe("scenarios > question > new", () => {
       cy.visit("/");
       cy.contains("Ask a question").click();
       cy.contains("Custom question").click();
+      cy.contains("Sample Dataset").click();
       cy.contains("Orders").click();
       cy.contains("Visualize").click();
       cy.contains("37.65");
