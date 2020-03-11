@@ -1239,20 +1239,21 @@
                                         :having   [:= :%count.* 1]}))
                            (into #{} (map :table_id)))
           ;; Table comprised entierly of join keys
-          link-table? (->> (db/query {:select   [:table_id [:%count.* "count"]]
-                                      :from     [Field]
-                                      :where    [:and [:in :table_id (keys field-count)]
-                                                 [:= :active true]
-                                                 [:in :special_type ["type/PK" "type/FK"]]]
-                                      :group-by [:table_id]})
-                           (filter (fn [{:keys [table_id count]}]
-                                     (= count (field-count table_id))))
-                           (into #{} (map :table_id)))]
+          link-table? (when (seq field-count)
+                        (->> (db/query {:select   [:table_id [:%count.* "count"]]
+                                        :from     [Field]
+                                        :where    [:and [:in :table_id (keys field-count)]
+                                                   [:= :active true]
+                                                   [:in :special_type ["type/PK" "type/FK"]]]
+                                        :group-by [:table_id]})
+                             (filter (fn [{:keys [table_id count]}]
+                                       (= count (field-count table_id))))
+                             (into #{} (map :table_id))))]
       (for [table tables]
         (let [table-id (u/get-id table)]
           (assoc table :stats {:num-fields  (field-count table-id 0)
-                               :list-like?  (boolean (list-like? table-id))
-                               :link-table? (boolean (link-table? table-id))}))))))
+                               :list-like?  (boolean (contains? list-like? table-id))
+                               :link-table? (boolean (contains? link-table? table-id))}))))))
 
 (def ^:private ^:const ^Long max-candidate-tables
   "Maximal number of tables per schema shown in `candidate-tables`."

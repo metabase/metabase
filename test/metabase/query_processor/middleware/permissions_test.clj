@@ -26,7 +26,7 @@
 (defn- do-with-rasta
   "Call `f` with Rasta as the current user."
   [f]
-  (users/with-test-user :rasta
+  (mt/with-test-user :rasta
     (f)))
 
 (defn- check-perms-for-rasta
@@ -35,7 +35,7 @@
   [query]
   (do-with-rasta (fn [] (check-perms query))))
 
-(def perms-error-msg #"^You do not have permissions to run this query\.")
+(def ^:private perms-error-msg #"^You do not have permissions to run this query\.")
 
 (deftest native-query-perms-test
   (testing "Make sure the NATIVE query fails to run if current user doesn't have perms"
