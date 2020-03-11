@@ -52,15 +52,15 @@ import {
   EXPRESSION_TYPES,
 } from "./config";
 
-const FUNCTION_SUGGESTIONS_BY_TYPE = {};
-const OPERATOR_SUGGESTIONS_BY_TYPE = {};
+const FUNCTIONS_BY_TYPE = {};
+const OPERATORS_BY_TYPE = {};
 for (const type of EXPRESSION_TYPES) {
-  FUNCTION_SUGGESTIONS_BY_TYPE[type] = Array.from(FUNCTIONS)
+  FUNCTIONS_BY_TYPE[type] = Array.from(FUNCTIONS)
     .filter(name => isExpressionType(MBQL_CLAUSES[name].type, type))
-    .map(name => functionSuggestion("functions", name));
-  OPERATOR_SUGGESTIONS_BY_TYPE[type] = Array.from(OPERATORS)
+    .map(name => MBQL_CLAUSES[name]);
+  OPERATORS_BY_TYPE[type] = Array.from(OPERATORS)
     .filter(name => isExpressionType(MBQL_CLAUSES[name].type, type))
-    .map(name => operatorSuggestion(name));
+    .map(name => MBQL_CLAUSES[name]);
 }
 
 export function suggest({
@@ -96,13 +96,6 @@ export function suggest({
     partialSuggestionMode = true;
   }
 
-  let finalSuggestions = [];
-
-  const syntacticSuggestions = parserWithRecovery.computeContentAssist(
-    startRule,
-    tokenVector,
-  );
-
   const context = getContext({
     cst,
     tokenVector,
@@ -110,6 +103,13 @@ export function suggest({
     startRule,
   }) || { expectedType: startRule };
   const { expectedType } = context;
+
+  let finalSuggestions = [];
+
+  const syntacticSuggestions = parserWithRecovery.computeContentAssist(
+    startRule,
+    tokenVector,
+  );
 
   for (const suggestion of syntacticSuggestions) {
     const { nextTokenType, ruleStack } = suggestion;
@@ -228,6 +228,7 @@ export function suggest({
       isTokenType(nextTokenType, FunctionName) ||
       nextTokenType === Case
     ) {
+      let functions = [];
       if (isExpressionType(expectedType, "aggregation")) {
         // special case for aggregation
         finalSuggestions.push(
@@ -242,10 +243,20 @@ export function suggest({
               ),
             ),
         );
-        finalSuggestions.push(...FUNCTION_SUGGESTIONS_BY_TYPE["number"]);
+        functions = FUNCTIONS_BY_TYPE["number"];
       } else {
-        finalSuggestions.push(...FUNCTION_SUGGESTIONS_BY_TYPE[expectedType]);
+        functions = FUNCTIONS_BY_TYPE[expectedType];
       }
+      const database = query.database();
+      finalSuggestions.push(
+        ...functions
+          .filter(
+            clause =>
+              !clause.requiredFeatures ||
+              clause.requiredFeatures.every(f => database.hasFeature(f)),
+          )
+          .map(clause => functionSuggestion("functions", clause.name)),
+      );
     } else if (nextTokenType === LParen) {
       finalSuggestions.push({
         type: "other",
