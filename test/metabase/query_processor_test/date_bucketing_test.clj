@@ -994,43 +994,41 @@
 (deftest default-bucketing-test
   (mt/test-drivers (mt/normal-drivers-except #{:snowflake :bigquery})
     (is (= [[1]]
-           (mt/format-rows-by [int]
-             (mt/rows
-               (mt/dataset checkins:1-per-day
-                 (mt/run-mbql-query checkins
-                   {:aggregation [[:count]]
-                    :filter      [:= [:field-id $timestamp] (t/format "yyyy-MM-dd" (u.date/truncate :day))]})))))))
+           (mt/formatted-rows [int]
+             (mt/dataset checkins:1-per-day
+               (mt/run-mbql-query checkins
+                 {:aggregation [[:count]]
+                  :filter      [:= [:field-id $timestamp] (t/format "yyyy-MM-dd" (u.date/truncate :day))]}))))))
   ;; this is basically the same test as above, but using the office-checkins dataset instead of the dynamically
   ;; created checkins DBs so we can run it against Snowflake and BigQuery as well.
   (mt/test-drivers (mt/normal-drivers)
     (mt/dataset office-checkins
       (is (= [[1]]
-             (mt/format-rows-by [int]
-               (mt/rows
-                 (mt/run-mbql-query checkins
-                   {:aggregation [[:count]]
-                    :filter      [:= [:field-id $timestamp] "2019-01-16"]})))))
+             (mt/formatted-rows [int]
+               (mt/run-mbql-query checkins
+                 {:aggregation [[:count]]
+                  :filter      [:= [:field-id $timestamp] "2019-01-16"]}))))
+
       (testing "Check that automatic bucketing still happens when using compound filter clauses (#9127)"
         (is (= [[1]]
-               (mt/format-rows-by [int]
-                 (mt/rows
-                   (mt/run-mbql-query checkins
-                     {:aggregation [[:count]]
-                      :filter      [:and
-                                    [:= [:field-id $timestamp] "2019-01-16"]
-                                    [:= [:field-id $id] 6]]})))))))
+               (mt/formatted-rows [int]
+                 (mt/run-mbql-query checkins
+                   {:aggregation [[:count]]
+                    :filter      [:and
+                                  [:= [:field-id $timestamp] "2019-01-16"]
+                                  [:= [:field-id $id] 6]]}))))))
+
     (testing "if datetime string is not yyyy-MM-dd no date bucketing should take place, and thus we should get no (exact) matches"
       (mt/dataset checkins:1-per-day
         (is (= ;; Mongo returns empty row for count = 0. We should fix that
              (case driver/*driver*
                :mongo []
                [[0]])
-             (mt/format-rows-by [int]
-               (mt/rows
-                 (mt/run-mbql-query checkins
-                   {:aggregation [[:count]]
-                    :filter      [:= [:field-id $timestamp] (str (t/format "yyyy-MM-dd" (u.date/truncate :day))
-                                                                 "T14:16:00Z")]})))))))))
+             (mt/formatted-rows [int]
+               (mt/run-mbql-query checkins
+                 {:aggregation [[:count]]
+                  :filter      [:= [:field-id $timestamp] (str (t/format "yyyy-MM-dd" (u.date/truncate :day))
+                                                               "T14:16:00Z")]}))))))))
 
 (def ^:private addition-unit-filtering-vals
   [[3        :day             "2014-03-03"]
@@ -1047,11 +1045,10 @@
 
 (defn- count-of-checkins [unit filter-value]
   (ffirst
-   (mt/format-rows-by [int]
-     (mt/rows
-       (mt/run-mbql-query checkins
-         {:aggregation [[:count]]
-          :filter      [:= [:datetime-field $date unit] filter-value]})))))
+   (mt/formatted-rows [int]
+     (mt/run-mbql-query checkins
+       {:aggregation [[:count]]
+        :filter      [:= [:datetime-field $date unit] filter-value]}))))
 
 (deftest additional-unit-filtering-tests
   (testing "Additional tests for filtering against various datetime bucketing units that aren't tested above"

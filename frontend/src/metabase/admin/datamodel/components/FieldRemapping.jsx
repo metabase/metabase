@@ -98,7 +98,7 @@ export default class FieldRemapping extends React.Component {
     });
   };
 
-  onSetMappingType = async mappingType => {
+  handleChangeMappingType = async ({ target: { value: mappingType } }) => {
     const {
       table,
       field,
@@ -256,8 +256,9 @@ export default class FieldRemapping extends React.Component {
       <div>
         <Select
           value={mappingType}
-          onChange={this.onSetMappingType}
+          onChange={this.handleChangeMappingType}
           options={this.getAvailableMappingTypes()}
+          optionValueFn={o => o}
         />
         {mappingType === MAP_OPTIONS.foreign && [
           <SelectSeparator key="foreignKeySeparator" />,

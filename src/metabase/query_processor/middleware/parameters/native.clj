@@ -36,6 +36,7 @@
     ;; Totally ridiculous, but top-level native queries use the key `:query` for SQL or equivalent, while native
     ;; source queries use `:native`. So we need to handle either case.
     (let [source-query?           (:native inner-query)
-          substituted-inner-query (driver/substitue-native-parameters driver/*driver* (set/rename-keys inner-query {:native :query}))]
+          substituted-inner-query (driver/substitute-native-parameters driver/*driver*
+                                                                       (set/rename-keys inner-query {:native :query}))]
       (cond-> (dissoc substituted-inner-query :parameters :template-tags)
         source-query? (set/rename-keys {:query :native})))))

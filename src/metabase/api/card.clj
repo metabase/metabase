@@ -8,12 +8,15 @@
             [metabase
              [events :as events]
              [public-settings :as public-settings]
+             [query-processor :as qp]
              [related :as related]
              [util :as u]]
             [metabase.api
              [common :as api]
              [dataset :as dataset-api]]
-            [metabase.async.util :as async.u]
+            [metabase.async
+             [streaming-response :as async.streaming-response]
+             [util :as async.u]]
             [metabase.email.messages :as messages]
             [metabase.models
              [card :as card :refer [Card]]
@@ -28,6 +31,7 @@
             [metabase.models.query.permissions :as query-perms]
             [metabase.query-processor
              [async :as qp.async]
+             [streaming :as qp.streaming]
              [util :as qputil]]
             [metabase.query-processor.middleware
              [cache :as cache]
@@ -43,7 +47,10 @@
              [hydrate :refer [hydrate]]])
   (:import clojure.core.async.impl.channels.ManyToManyChannel
            java.util.UUID
+           metabase.async.streaming_response.StreamingResponse
            metabase.models.card.CardInstance))
+
+(comment async.streaming-response/keep-me)
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -76,14 +83,15 @@
   [_]
   (db/select Card, :creator_id api/*current-user-id*, :archived false, {:order-by [[:%lower.name :asc]]}))
 
-;;return all Cards favorited by the current user.
+;; return all Cards favorited by the current user.
 (defmethod cards-for-filter-option* :fav
   [_]
-  (->> (hydrate (db/select [CardFavorite :card_id], :owner_id api/*current-user-id*)
-                :card)
-       (map :card)
-       (filter (complement :archived))
-       (sort-by :name)))
+  (let [cards (for [{{:keys [archived], :as card} :card} (hydrate (db/select [CardFavorite :card_id]
+                                                                    :owner_id api/*current-user-id*)
+                                                                  :card)
+                    :when                                 (not archived)]
+                card)]
+    (sort-by :name cards)))
 
 ;; Return all Cards belonging to Database with `database-id`.
 (defmethod cards-for-filter-option* :database
@@ -222,14 +230,14 @@
         card-data            (assoc (zipmap data-keys (map card-data data-keys))
                                     :creator_id api/*current-user-id*)
         result-metadata-chan (result-metadata-async dataset_query result_metadata metadata_checksum)
-        out-chan             (a/chan 1)]
+        out-chan             (a/promise-chan)]
     (a/go
       (try
         (let [card-data (assoc card-data :result_metadata (a/<! result-metadata-chan))]
           (a/close! result-metadata-chan)
           ;; now do the actual saving on a separate thread so we don't tie up our precious core.async thread. Pipe the
           ;; result into `out-chan`.
-          (async.u/single-value-pipe (save-new-card-async! card-data) out-chan))
+          (async.u/promise-pipe (save-new-card-async! card-data) out-chan))
         (catch Throwable e
           (a/put! out-chan e)
           (a/close! out-chan))))
@@ -443,15 +451,13 @@
                                 dataset_query
                                 result_metadata
                                 metadata_checksum)
-          out-chan             (a/chan 1)]
+          out-chan             (a/promise-chan)]
       ;; asynchronously wait for our updated result metadata, then after that call `update-card-async!`, which is done
       ;; on a non-core.async thread. Pipe the results of that into `out-chan`.
       (a/go
         (try
           (let [card-updates (assoc card-updates :result_metadata (a/<! result-metadata-chan))]
-            (async.u/single-value-pipe
-             (update-card-async! card-before-update card-updates)
-             out-chan))
+            (async.u/promise-pipe (update-card-async! card-before-update card-updates) out-chan))
           (finally
             (a/close! result-metadata-chan))))
       out-chan)))
@@ -596,42 +602,49 @@
     (assoc query :cache-ttl ttl)))
 
 (defn run-query-for-card-async
-  "Run the query for Card with `parameters` and `constraints`, and return results in a core.async channel. Will throw an
-  Exception if preconditions (such as read perms) are not met before returning a channel."
-  {:style/indent 1}
-  [card-id & {:keys [parameters constraints context dashboard-id middleware]
-              :or   {constraints constraints/default-query-constraints
-                     context     :question}}]
+  "Run the query for Card with `parameters` and `constraints`, and return results in a `StreamingResponse` that should
+  be returned as the result of an API endpoint fn. Will throw an Exception if preconditions (such as read perms) are
+  not met before returning the `StreamingResponse`."
+  ^StreamingResponse [card-id export-format
+                      & {:keys [parameters constraints context dashboard-id middleware run]
+                         :or   {constraints constraints/default-query-constraints
+                                context     :question
+                                ;; param `run` can be used to control how the query is ran, e.g. if you need to
+                                ;; customize the `context` passed to the QP
+                                run         (^:once fn* [query info]
+                                             (qp.streaming/streaming-response [context export-format]
+                                               (qp/process-query-and-save-execution! query info context)))}}]
   {:pre [(u/maybe? sequential? parameters)]}
-  (let [card    (api/read-check (Card card-id))
-        query   (query-for-card card parameters constraints middleware)
-        options {:executed-by  api/*current-user-id*
-                 :context      context
-                 :card-id      card-id
-                 :dashboard-id dashboard-id}]
+  (let [card  (api/read-check (Card card-id))
+        query (assoc (query-for-card card parameters constraints middleware)
+                     :async? true)
+        info  {:executed-by  api/*current-user-id*
+               :context      context
+               :card-id      card-id
+               :dashboard-id dashboard-id}]
     (api/check-not-archived card)
-    (qp.async/process-query-and-save-execution! query options)))
+    (run query info)))
 
-(api/defendpoint ^:returns-chan POST "/:card-id/query"
+(api/defendpoint ^:streaming POST "/:card-id/query"
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters ignore_cache], :or {ignore_cache false}} :body}]
   {ignore_cache (s/maybe s/Bool)}
   (binding [cache/*ignore-cached-results* ignore_cache]
-    (run-query-for-card-async card-id, :parameters parameters)))
+    (run-query-for-card-async card-id :api, :parameters parameters)))
 
-(api/defendpoint-async ^:returns-chan POST "/:card-id/query/:export-format"
+(api/defendpoint ^:streaming POST "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format. Note that this
   expects the parameters as serialized JSON in the 'parameters' parameter"
-  [{{:keys [card-id export-format parameters]} :params} respond raise]
+  [card-id export-format :as {{:keys [parameters]} :params}]
   {parameters    (s/maybe su/JSONString)
    export-format dataset-api/ExportFormat}
   (binding [cache/*ignore-cached-results* true]
-    (dataset-api/as-format-async export-format respond raise
-      (run-query-for-card-async (Integer/parseUnsignedInt card-id)
-        :parameters  (json/parse-string parameters keyword)
-        :constraints nil
-        :context     (dataset-api/export-format->context export-format)
-        :middleware  {:skip-results-metadata? true}))))
+    (run-query-for-card-async
+     card-id export-format
+     :parameters  (json/parse-string parameters keyword)
+     :constraints nil
+     :context     (dataset-api/export-format->context export-format)
+     :middleware  {:skip-results-metadata? true})))
 
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------

@@ -7,6 +7,7 @@ const FormInputWidget = ({ type = "text", placeholder, field }) => (
     className="Form-input full"
     type={type}
     placeholder={placeholder}
+    aria-labelledby={`${field.name}-label`}
     {...formDomOnlyProps(field)}
   />
 );

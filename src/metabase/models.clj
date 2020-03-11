@@ -31,6 +31,7 @@
              [session :as session]
              [setting :as setting]
              [table :as table]
+             [task-history :as task-history]
              [user :as user]
              [view-log :as view-log]]
             [potemkin :as p]))
@@ -67,6 +68,7 @@
          session/keep-me
          setting/keep-me
          table/keep-me
+         task-history/keep-me
          user/keep-me
          view-log/keep-me)
 
@@ -102,5 +104,6 @@
  [session Session]
  [setting Setting]
  [table Table]
+ [task-history TaskHistory]
  [user User]
  [view-log ViewLog])

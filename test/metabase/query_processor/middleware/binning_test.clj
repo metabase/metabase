@@ -1,10 +1,12 @@
 (ns metabase.query-processor.middleware.binning-test
   (:require [expectations :refer [expect]]
+            [metabase
+             [test :as mt]
+             [util :as u]]
             [metabase.models.field :as field :refer [Field]]
             [metabase.query-processor.middleware.binning :as binning]
             [metabase.query-processor.test-util :as qp.test-util]
             [metabase.test.data :as data]
-            [metabase.util :as u]
             [toucan.util.test :as tt]))
 
 (expect
@@ -126,11 +128,13 @@
    :type     :query
    :database (data/id)}
   (qp.test-util/with-everything-store
-    ((binning/update-binning-strategy identity)
-     {:query    {:source-table (data/id :checkins)
-                 :breakout     [[:binning-strategy [:field-id (u/get-id field)] :default]]}
-      :type     :query
-      :database (data/id)})))
+    (:pre
+     (mt/test-qp-middleware
+      binning/update-binning-strategy
+      {:query    {:source-table (data/id :checkins)
+                  :breakout     [[:binning-strategy [:field-id (u/get-id field)] :default]]}
+       :type     :query
+       :database (data/id)}))))
 
 ;; make sure `update-binning-strategy` works recursively on nested queries
 (tt/expect-with-temp [Field [field (test-field)]]
@@ -144,9 +148,11 @@
    :type     :query
    :database (data/id)}
   (qp.test-util/with-everything-store
-    ((binning/update-binning-strategy identity)
-     {:query    {:source-query
-                 {:source-table (data/id :checkins)
-                  :breakout     [[:binning-strategy [:field-id (u/get-id field)] :default]]}}
-      :type     :query
-      :database (data/id)})))
+    (:pre
+     (mt/test-qp-middleware
+      binning/update-binning-strategy
+      {:query    {:source-query
+                  {:source-table (data/id :checkins)
+                   :breakout     [[:binning-strategy [:field-id (u/get-id field)] :default]]}}
+       :type     :query
+       :database (data/id)}))))

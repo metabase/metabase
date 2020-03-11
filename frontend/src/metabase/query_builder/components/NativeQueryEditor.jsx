@@ -70,6 +70,8 @@ type AutoCompleteResult = [string, string, string];
 type AceEditor = any; // TODO;
 
 type Props = {
+  readOnly?: boolean,
+
   location: LocationDescriptor,
 
   question: Question,
@@ -184,11 +186,22 @@ export default class NativeQueryEditor extends Component {
       editorElement.classList.add("read-only");
     }
     const aceMode = query.aceMode();
-    if (this._editor.getSession().$modeId !== aceMode) {
-      this._editor.getSession().setMode(aceMode);
-      // monkey patch the mode to add our bracket/paren/braces-matching behavior
+    const session = this._editor.getSession();
+    if (session.$modeId !== aceMode) {
+      session.setMode(aceMode);
       if (aceMode.indexOf("sql") >= 0) {
-        this._editor.getSession().$mode.$behaviour = new SQLBehaviour();
+        // monkey patch the mode to add our bracket/paren/braces-matching behavior
+        session.$mode.$behaviour = new SQLBehaviour();
+
+        // add highlighting rule for template tags
+        session.$mode.$highlightRules.$rules.start.unshift({
+          token: "templateTag",
+          regex: "{{[^}]*}}",
+          onMatch: null,
+        });
+        session.$mode.$tokenizer = null;
+        session.bgTokenizer.setTokenizer(session.$mode.getTokenizer());
+        session.bgTokenizer.start(0);
       }
     }
 
@@ -289,7 +302,9 @@ export default class NativeQueryEditor extends Component {
     this._editor.clearSelection();
 
     // hmmm, this could be dangerous
-    this._editor.focus();
+    if (!this.props.readOnly) {
+      this._editor.focus();
+    }
 
     const aceLanguageTools = ace.require("ace/ext/language_tools");
     this._editor.setOptions({
@@ -390,6 +405,7 @@ export default class NativeQueryEditor extends Component {
       cancelQuery,
       setParameterValue,
       location,
+      readOnly,
       isNativeEditorOpen,
       isRunnable,
       isRunning,
@@ -398,7 +414,7 @@ export default class NativeQueryEditor extends Component {
     } = this.props;
 
     const database = query.database();
-    const databases = query.databases();
+    const databases = query.metadata().databasesList({ savedQuestions: false });
     const parameters = query.question().parameters();
 
     let dataSelectors = [];
@@ -418,6 +434,7 @@ export default class NativeQueryEditor extends Component {
               selectedDatabaseId={database && database.id}
               setDatabaseFn={this.setDatabaseId}
               isInitiallyOpen={database == null}
+              readOnly={this.props.readOnly}
             />
           </div>,
         );
@@ -430,8 +447,6 @@ export default class NativeQueryEditor extends Component {
       }
       if (query.requiresTable()) {
         const selectedTable = query.table();
-        const tables = query.tables() || [];
-
         dataSelectors.push(
           <div
             key="table_selector"
@@ -441,9 +456,9 @@ export default class NativeQueryEditor extends Component {
               selectedTableId={selectedTable ? selectedTable.id : null}
               selectedDatabaseId={database && database.id}
               databases={[database]}
-              tables={tables}
               setSourceTableFn={this.setTableId}
               isInitiallyOpen={false}
+              readOnly={this.props.readOnly}
             />
           </div>,
         );
@@ -486,7 +501,10 @@ export default class NativeQueryEditor extends Component {
           />
           <div className="flex-align-right flex align-center text-medium pr1">
             <a
-              className="Query-label no-decoration flex align-center mx3 text-brand-hover transition-all"
+              className={cx(
+                "Query-label no-decoration flex align-center mx3 text-brand-hover transition-all",
+                { hide: readOnly },
+              )}
               onClick={this.toggleEditor}
             >
               <span className="mr1" style={{ minWidth: 70 }}>

@@ -99,8 +99,11 @@ export default class PreferencesStep extends Component {
                   value={allowTracking}
                   onChange={this.toggleTracking.bind(this)}
                   className="inline-block"
+                  aria-labelledby="anonymous-usage-events-label"
                 />
-                <span className="ml1">{t`Allow Metabase to anonymously collect usage events`}</span>
+                <span className="ml1" id="anonymous-usage-events-label">
+                  {t`Allow Metabase to anonymously collect usage events`}
+                </span>
               </div>
             </div>
 

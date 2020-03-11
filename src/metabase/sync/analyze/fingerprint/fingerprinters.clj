@@ -58,7 +58,7 @@
   {:arglists '([field])}
   (fn [{:keys [base_type special_type unit] :as field}]
     [(cond
-       (u.date/extract-units unit)    :type/Integer
+       (u.date/extract-units unit)     :type/Integer
        (field/unix-timestamp? field)   :type/DateTime
        ;; for historical reasons the Temporal fingerprinter is still called `:type/DateTime` so anything that derives
        ;; from `Temporal` (such as DATEs and TIMEs) should still use the `:type/DateTime` fingerprinter

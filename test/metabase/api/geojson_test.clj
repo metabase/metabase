@@ -35,17 +35,19 @@
 
 (deftest invalid-url-test
   (testing "test that you're not allowed to set invalid URLs"
-    (is (thrown? Exception
-                 (geojson-api/custom-geojson {:name        "Middle Earth"
-                                              :url         "ABC"
-                                              :region_key  nil
-                                              :region_name nil})))
+    (is (thrown?
+         Exception
+         (geojson-api/custom-geojson {:name        "Middle Earth"
+                                      :url         "ABC"
+                                      :region_key  nil
+                                      :region_name nil})))
 
-    (is (thrown? Exception
-                 (geojson-api/custom-geojson {:name        "Middle Earth"
-                                              :url         "http://google.com"
-                                              :region_key  nil
-                                              :region_name nil})))))
+    (is (thrown?
+         Exception
+         (geojson-api/custom-geojson {:name        "Middle Earth"
+                                      :url         "http://google.com"
+                                      :region_key  nil
+                                      :region_name nil})))))
 
 (deftest update-endpoint-test
   (testing "PUT /api/setting/custom-geojson"
@@ -56,24 +58,27 @@
                ;; bind a temporary value so it will get set back to its old value here after the API calls are done
                ;; stomping all over it
                (mt/with-temporary-setting-values [custom-geojson nil]
-                 ((mt/user->client :crowberto) :put 200 "setting/custom-geojson" {:value test-custom-geojson})
+                 ((mt/user->client :crowberto) :put 204 "setting/custom-geojson" {:value test-custom-geojson})
                  ((mt/user->client :crowberto) :get 200 "setting/custom-geojson"))))))
+
     (testing "error conditions"
       (letfn [(put-bad-url [url]
                 (mt/suppress-output
-                  ;; try this up to 3 times since Circle's outbound connections likes to randomly stop working
-                  (u/auto-retry 3
-                    ;; bind a temporary value so it will get set back to its old value here after the API calls are done
-                    ;; stomping all over it
-                    (mt/with-temporary-setting-values [custom-geojson nil]
-                      (let [url (assoc-in test-custom-geojson [:middle-earth :url] url)]
-                        (:message ((mt/user->client :crowberto) :put 500 "setting/custom-geojson" {:value url})))))))]
+                 ;; try this up to 3 times since Circle's outbound connections likes to randomly stop working
+                 (u/auto-retry 3
+                               ;; bind a temporary value so it will get set back to its old value here after the API calls are done
+                               ;; stomping all over it
+                               (mt/with-temporary-setting-values [custom-geojson nil]
+                                 (let [url (assoc-in test-custom-geojson [:middle-earth :url] url)]
+                                   (:message ((mt/user->client :crowberto) :put 500 "setting/custom-geojson" {:value url})))))))]
         (testing "Test that a bad url will return a descriptive error message"
           (is (re= #"^Unable to retrieve resource.*"
                    (put-bad-url "https://raw.githubusercontent.com/metabase/metabase/master/test_resources/something-random"))))
+
         (testing "Test that a bad host will return a connection refused error"
           (is (re= #"^Unable to connect.*"
                    (put-bad-url "https://somethingrandom.metabase.com"))))
+
         (testing "Test out the error message for a relative path file we can't find"
           (is (re= #"^Unable to find JSON via relative path.*"
                    (put-bad-url "some/relative/path"))))))))

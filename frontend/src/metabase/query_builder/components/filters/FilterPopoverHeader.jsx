@@ -9,6 +9,7 @@ export default function FilterPopoverHeader({
   showFieldPicker,
   filter,
   onFilterChange,
+  onBack,
   isSidebar,
 }) {
   const dimension = filter.dimension();
@@ -23,7 +24,6 @@ export default function FilterPopoverHeader({
       onFilterChange(filter.setOperator(operatorName));
     }
   };
-  const clearField = () => onFilterChange(null);
 
   return showHeader ? (
     <div
@@ -38,7 +38,7 @@ export default function FilterPopoverHeader({
             (field.table ? field.table.displayName() + " – " : "") +
             field.displayName()
           }
-          onBack={clearField}
+          onBack={onBack}
         />
       )}
       {showOperatorSelector && (

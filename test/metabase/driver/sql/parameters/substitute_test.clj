@@ -110,6 +110,15 @@
                  (substitute query {"date" (assoc (date-field-filter-value) :value i/no-value)}))))))))
 
 
+;;; -------------------------------------------- Referenced Card Queries ---------------------------------------------
+
+(deftest substitute-referenced-card-query-test
+  (testing "Referenced card query substitution"
+    (let [query ["select * from " (param "#123")]]
+      (is (= ["select * from (select 1 `x`)" nil]
+             (substitute query {"#123" (i/->ReferencedCardQuery 123 "select 1 `x`")}))))))
+
+
 ;;; ------------------------------------------ simple substitution — {{x}} ------------------------------------------
 
 (defn- substitute-e2e {:style/indent 1} [sql params]
@@ -256,7 +265,7 @@
          (substitute-e2e "SELECT * FROM toucanneries WHERE TRUE [[AND num_toucans > {{num_toucans}}]] [[AND num_toucans < {{num_toucans}}]]"
                          {"num_toucans" 5})))
 
-  (testing "Make sure that substiutions still work if the subsitution contains brackets inside it (#3657)"
+  (testing "Make sure that substitutions still work if the substitution contains brackets inside it (#3657)"
     (is (= {:query  "select * from foobars  where foobars.id in (string_to_array(100, ',')::integer[])"
             :params []}
            (substitute-e2e "select * from foobars [[ where foobars.id in (string_to_array({{foobar_id}}, ',')::integer[]) ]]"

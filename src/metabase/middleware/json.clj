@@ -10,7 +10,7 @@
              [response :as rr]])
   (:import com.fasterxml.jackson.core.JsonGenerator
            [java.io BufferedWriter OutputStream OutputStreamWriter]
-           [java.nio.charset Charset StandardCharsets]
+           java.nio.charset.StandardCharsets
            java.time.temporal.Temporal))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -75,7 +75,7 @@
   [response-seq opts]
   (rui/piped-input-stream
    (fn [^OutputStream output-stream]
-     (with-open [output-writer   (OutputStreamWriter. ^OutputStream output-stream ^Charset StandardCharsets/UTF_8)
+     (with-open [output-writer   (OutputStreamWriter. output-stream StandardCharsets/UTF_8)
                  buffered-writer (BufferedWriter. output-writer)]
        (json/generate-stream response-seq buffered-writer opts)))))
 

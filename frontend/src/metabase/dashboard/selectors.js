@@ -42,6 +42,8 @@ export const getDashcards = state => state.dashboard.dashcards;
 export const getCardData = state => state.dashboard.dashcardData;
 export const getSlowCards = state => state.dashboard.slowCards;
 export const getParameterValues = state => state.dashboard.parameterValues;
+export const getLoadingStartTime = state =>
+  state.dashboard.loadingDashCards.startTime;
 
 export const getDashboard = createSelector(
   [getDashboardId, getDashboards],
@@ -194,10 +196,15 @@ export const getParameters = createSelector(
   [getMetadata, getDashboard, getMappingsByParameter],
   (metadata, dashboard, mappingsByParameter) =>
     ((dashboard && dashboard.parameters) || []).map(parameter => {
+      const mappings = _.flatten(
+        _.map(mappingsByParameter[parameter.id] || {}, _.values),
+      );
+
+      // we change out widgets if a parameter is connected to non-field targets
+      const hasOnlyFieldTargets = mappings.every(x => x.field_id != null);
+
       // get the unique list of field IDs these mappings reference
-      const fieldIds = _.chain(mappingsByParameter[parameter.id])
-        .map(_.values)
-        .flatten()
+      const fieldIds = _.chain(mappings)
         .map(m => m.field_id)
         .uniq()
         .filter(fieldId => fieldId != null)
@@ -217,6 +224,7 @@ export const getParameters = createSelector(
           fieldIdsWithFKResolved.length === 1
             ? fieldIdsWithFKResolved[0]
             : null,
+        hasOnlyFieldTargets,
       };
     }),
 );

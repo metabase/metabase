@@ -11,7 +11,6 @@ import Question from "metabase-lib/lib/Question";
 describe("Mode", () => {
   const rawDataQuestion = ORDERS.question();
   const rawDataQuery = rawDataQuestion.query();
-  const rawDataQuestionMode = rawDataQuestion.mode();
 
   describe("forQuestion(question)", () => {
     describe("with structured query question", () => {
@@ -138,34 +137,9 @@ describe("Mode", () => {
     it("returns the correct name of current mode", () => {});
   });
 
-  describe("actions()", () => {
-    describe("for a new question with Orders table and Raw data aggregation", () => {
-      pending();
-      it("returns a correct number of mode actions", () => {
-        expect(rawDataQuestionMode.actions().length).toBe(3);
-      });
-      it("returns a defined metric as mode action 1", () => {
-        expect(rawDataQuestionMode.actions()[0].name).toBe("common-metric");
-        // TODO: Sameer 6/16/17
-        // This is wack and not really testable. We shouldn't be passing around react components in this imo
-        // expect(question.actions()[1].title.props.children).toBe("Total Order Value");
-      });
-      it("returns a count timeseries as mode action 2", () => {
-        expect(rawDataQuestionMode.actions()[1].name).toBe("count-by-time");
-        expect(rawDataQuestionMode.actions()[1].icon).toBe("line");
-        // TODO: Sameer 6/16/17
-        // This is wack and not really testable. We shouldn't be passing around react components in this imo
-        // expect(question.actions()[2].title.props.children).toBe("Count of rows by time");
-      });
-      it("returns summarize as mode action 3", () => {
-        expect(rawDataQuestionMode.actions()[2].name).toBe("summarize");
-        expect(rawDataQuestionMode.actions()[2].icon).toBe("sum");
-        expect(rawDataQuestionMode.actions()[2].title).toBe(
-          "Summarize this segment",
-        );
-      });
-    });
-
+  describe("actionsForClick()", () => {
+    // this is action-specific so just rudimentary tests here showing that the actionsForClick logic works
+    // Action-specific tests would optimally be in their respective test files
     describe("for a question with an aggregation and a time breakout", () => {
       const timeBreakoutQuestionMode = Question.create({
         databaseId: SAMPLE_DATASET.id,
@@ -180,24 +154,13 @@ describe("Mode", () => {
         .mode();
 
       it("has pivot as mode actions 1 and 2", () => {
-        expect(timeBreakoutQuestionMode.actions()[0].name).toBe(
+        expect(timeBreakoutQuestionMode.actionsForClick()[0].name).toBe(
           "pivot-by-category",
         );
-        expect(timeBreakoutQuestionMode.actions()[1].name).toBe(
+        expect(timeBreakoutQuestionMode.actionsForClick()[1].name).toBe(
           "pivot-by-location",
         );
       });
-
-      describe("with xrays enabled", () => {
-        it("has the correct number of items", () => {
-          expect(timeBreakoutQuestionMode.actions().length).toBe(4);
-        });
-      });
     });
-  });
-
-  describe("actionsForClick()", () => {
-    // this is action-specific so just rudimentary tests here showing that the actionsForClick logic works
-    // Action-specific tests would optimally be in their respective test files
   });
 });

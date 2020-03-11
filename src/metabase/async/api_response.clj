@@ -1,12 +1,12 @@
-(ns metabase.async.api-response
+(ns ^{:deprecated "0.35.0"} metabase.async.api-response
   "Handle ring response maps that contain a core.async chan in the :body key:
 
-    {:status 200
-     :body (a/chan)}
+    {:body (a/chan)}
 
-  and send strings (presumibly
-) as heartbeats to the client until the real results (a seq) is received, then stream
-  that to the client."
+  and send strings (presumibly newlines) as heartbeats to the client until the real results (a seq) is received, then stream
+  that to the client.
+
+  This namespace is deprecated in favor of `metabase.async.streaming-response`."
   (:require [cheshire.core :as json]
             [clojure.core.async :as a]
             [clojure.java.io :as io]
@@ -197,3 +197,7 @@
     (respond (assoc (response/response input-chan)
                     :content-type "applicaton/json; charset=utf-8"
                     :status 202))))
+
+;; everthing in this namespace is deprecated!
+(doseq [[symb varr] (ns-interns *ns*)]
+  (alter-meta! varr assoc :deprecated "0.35.0"))

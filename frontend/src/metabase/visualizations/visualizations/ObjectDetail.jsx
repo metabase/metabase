@@ -61,6 +61,7 @@ type Props = VisualizationProps & {
   tableForeignKeys: ?(ForeignKey[]),
   tableForeignKeyReferences: { [id: ForeignKeyId]: ForeignKeyCountInfo },
   loadObjectDetailFKReferences: () => void,
+  fetchTableFks: (id: any) => void,
   followForeignKey: (fk: any) => void,
   viewNextObjectDetail: () => void,
   viewPreviousObjectDetail: () => void,

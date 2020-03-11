@@ -318,6 +318,15 @@
     [_ _ expr]
     (with-temporal-type (hsql/call bigquery-fn expr) :timestamp)))
 
+(defmethod sql.qp/->float :bigquery
+  [_ value]
+  (hx/cast :float64 value))
+
+
+(defmethod sql.qp/->honeysql [:bigquery :regex-match-first]
+  [driver [_ arg pattern]]
+  (hsql/call :regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                Query Processor                                                 |

@@ -82,7 +82,7 @@
   (is (= "HOST"
          (let [zz (i18n/string-as-locale "zz")]
            (i18n/with-user-locale zz
-             (str (:display-name (first (get-in (public-settings/public-settings) [:engines :postgres :details-fields])))))))))
+             (str (:display-name (first (get-in (setting/properties :public) [:engines :postgres :details-fields])))))))))
 
 (deftest tru-translates
   (is (= [true "HOST"]

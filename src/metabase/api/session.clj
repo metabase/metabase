@@ -16,7 +16,7 @@
             [metabase.middleware.session :as mw.session]
             [metabase.models
              [session :refer [Session]]
-             [setting :refer [defsetting]]
+             [setting :as setting :refer [defsetting]]
              [user :as user :refer [User]]]
             [metabase.util
              [i18n :as ui18n :refer [deferred-tru trs tru]]
@@ -183,7 +183,8 @@
       (let [reset-token        (user/set-password-reset-token! user-id)
             password-reset-url (str (public-settings/site-url) "/auth/reset_password/" reset-token)]
         (email/send-password-reset-email! email google-auth? server-name password-reset-url)
-        (log/info password-reset-url)))))
+        (log/info password-reset-url))))
+  api/generic-204-no-content)
 
 
 (def ^:private ^:const reset-token-ttl-ms
@@ -237,7 +238,12 @@
 (api/defendpoint GET "/properties"
   "Get all global properties and their values. These are the specific `Settings` which are meant to be public."
   []
-  (public-settings/public-settings))
+  (merge
+   (setting/properties :public)
+   (when @api/*current-user*
+     (setting/properties :authenticated))
+   (when api/*is-superuser?*
+     (setting/properties :admin))))
 
 
 ;;; -------------------------------------------------- GOOGLE AUTH ---------------------------------------------------
@@ -247,7 +253,8 @@
 ;; add more 3rd-party SSO options
 
 (defsetting google-auth-client-id
-  (deferred-tru "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled."))
+  (deferred-tru "Client ID for Google Auth SSO. If this is set, Google Auth is considered to be enabled.")
+  :visibility :public)
 
 (defsetting google-auth-auto-create-accounts-domain
   (deferred-tru "When set, allow users to sign up on their own if their Google account email address is from this domain."))
@@ -265,7 +272,9 @@
        (let [audience (:aud <>)
              audience (if (string? audience) [audience] audience)]
          (when-not (contains? (set audience) client-id)
-           (throw (ex-info (tru "Google Auth token meant for a different site.") {:status-code 400}))))
+           (throw (ex-info (str (deferred-tru "Google Auth token appears to be incorrect. ")
+                                (deferred-tru "Double check that it matches in Google and Metabase."))
+                           {:status-code 400}))))
        (when-not (= (:email_verified <>) "true")
          (throw (ex-info (tru "Email is not verified.") {:status-code 400})))))))
 

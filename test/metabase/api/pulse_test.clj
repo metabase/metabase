@@ -203,36 +203,36 @@
                       Card [card-2 {:name        "The card"
                                     :description "Info"
                                     :display     :table}]]
-  (merge
-   pulse-defaults
-   {:name          "A Pulse"
-    :creator_id    (user->id :rasta)
-    :creator       (user-details (fetch-user :rasta))
-    :cards         (for [card [card-1 card-2]]
-                     (assoc (pulse-card-details card)
-                       :collection_id true))
-    :channels      [(merge pulse-channel-defaults
-                           {:channel_type  "email"
-                            :schedule_type "daily"
-                            :schedule_hour 12
-                            :recipients    []})]
-    :collection_id true})
-  (card-api-test/with-cards-in-readable-collection [card-1 card-2]
-    (tt/with-temp Collection [collection]
-      (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-      (tu/with-model-cleanup [Pulse]
-        (-> ((user->client :rasta) :post 200 "pulse" {:name          "A Pulse"
-                                                      :collection_id (u/get-id collection)
-                                                      :cards         [{:id          (u/get-id card-1)
-                                                                       :include_csv false
-                                                                       :include_xls false}
-                                                                      (-> card-2
-                                                                          (select-keys [:id :name :description :display :collection_id])
-                                                                          (assoc :include_csv false, :include_xls false))]
-                                                      :channels      [daily-email-channel]
-                                                      :skip_if_empty false})
-            pulse-response
-            (update :channels remove-extra-channels-fields))))))
+                     (merge
+                      pulse-defaults
+                      {:name          "A Pulse"
+                       :creator_id    (user->id :rasta)
+                       :creator       (user-details (fetch-user :rasta))
+                       :cards         (for [card [card-1 card-2]]
+                                        (assoc (pulse-card-details card)
+                                               :collection_id true))
+                       :channels      [(merge pulse-channel-defaults
+                                              {:channel_type  "email"
+                                               :schedule_type "daily"
+                                               :schedule_hour 12
+                                               :recipients    []})]
+                       :collection_id true})
+                     (card-api-test/with-cards-in-readable-collection [card-1 card-2]
+                       (tt/with-temp Collection [collection]
+                         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+                         (tu/with-model-cleanup [Pulse]
+                           (-> ((user->client :rasta) :post 200 "pulse" {:name          "A Pulse"
+                                                                         :collection_id (u/get-id collection)
+                                                                         :cards         [{:id          (u/get-id card-1)
+                                                                                          :include_csv false
+                                                                                          :include_xls false}
+                                                                                         (-> card-2
+                                                                                             (select-keys [:id :name :description :display :collection_id])
+                                                                                             (assoc :include_csv false, :include_xls false))]
+                                                                         :channels      [daily-email-channel]
+                                                                         :skip_if_empty false})
+                               pulse-response
+                               (update :channels remove-extra-channels-fields))))))
 
 ;; Create a pulse with a csv and xls
 (tt/expect-with-temp [Card [card-1]

@@ -83,7 +83,7 @@
   (str
    (tru "I don''t know how to `{0}`." command-name)
    " "
-   (command :help)))
+   (command "help")))
 
 
 (defmulti ^:private unlisted?
@@ -107,27 +107,19 @@
 
 (defn- list-cards []
   (filter-metabot-readable
-   (let [collection-ids                  (metabot-visible-collection-ids)
-         root-collection-perms?          (contains? collection-ids nil)
-         other-visible-collection-ids    (filter some? collection-ids)
-
-         root-collection-filter-clause   (when root-collection-perms?
-                                           [:= :collection_id nil])
-         other-collections-filter-clause (when (seq other-visible-collection-ids)
-                                           [:in :collection_id other-visible-collection-ids])]
-     (db/select [Card :id :name :dataset_query :collection_id]
-       {:order-by [[:id :desc]]
-        :limit    20
-        :where    [:and
-                   [:= :archived false]
-                   (collection/visible-collection-ids->honeysql-filter-clause
-                    (metabot-visible-collection-ids))]}))))
+   (db/select [Card :id :name :dataset_query :collection_id]
+     {:order-by [[:id :desc]]
+      :limit    20
+      :where    [:and
+                 [:= :archived false]
+                 (collection/visible-collection-ids->honeysql-filter-clause
+                  (metabot-visible-collection-ids))]})))
 
 (defmethod command :list [& _]
   (let [cards (list-cards)]
     (str (deferred-tru "Here''s your {0} most recent cards:" (count cards))
          "\n"
-          (format-cards-list cards))))
+         (format-cards-list cards))))
 
 
 ;;; ------------------------------------------------------ show ------------------------------------------------------
@@ -182,7 +174,7 @@
   ;; If the card name comes without spaces, e.g. (show 'my 'wacky 'card) turn it into a string an recur: (show "my
   ;; wacky card")
   ([_ word & more]
-   (command :show (str/join " " (cons word more)))))
+   (command "show" (str/join " " (cons word more)))))
 
 
 ;;; ------------------------------------------------------ help ------------------------------------------------------

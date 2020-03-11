@@ -1,14 +1,15 @@
 (ns metabase.query-processor.middleware.reconcile-breakout-and-order-by-bucketing-test
   (:require [expectations :refer [expect]]
-            [metabase.query-processor.middleware.reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]))
+            [metabase.query-processor.middleware.reconcile-breakout-and-order-by-bucketing :as reconcile-bucketing]
+            [metabase.test :as mt]))
 
 (defn- mbql-query {:style/indent 0} [& clauses]
   {:database 1
    :type     :query
    :query    (apply assoc {:source-table 1} clauses)})
 
-(def ^:private ^{:arglists '([query]), :style/indent 0} reconcile-breakout-and-order-by-bucketing
-  (comp (reconcile-bucketing/reconcile-breakout-and-order-by-bucketing identity) mbql-query))
+(defn- reconcile-breakout-and-order-by-bucketing [& clauses]
+  (:pre (mt/test-qp-middleware reconcile-bucketing/reconcile-breakout-and-order-by-bucketing (apply mbql-query clauses))))
 
 ;; will unbucketed datetime order-bys get bucketed if Field it references is bucketed in a `breakout` clause?
 (expect

@@ -1,6 +1,8 @@
 {
-	"testFiles": "**/*.cy.spec.js",
-	"pluginsFile": "frontend/test/cypress-plugins.js",
-	"integrationFolder": "frontend/test",
-	"supportFile": "frontend/test/__support__/cypress.js"
+  "testFiles": "**/*.cy.spec.js",
+  "pluginsFile": "frontend/test/cypress-plugins.js",
+  "integrationFolder": "frontend/test",
+  "supportFile": "frontend/test/__support__/cypress.js",
+  "viewportHeight": 800,
+  "viewportWidth": 1280
 }
