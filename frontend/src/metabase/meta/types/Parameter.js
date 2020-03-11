@@ -20,7 +20,7 @@ export type Parameter = {
   slug: string,
   default?: string,
   field_ids?: FieldId[],
-
+  hasOnlyFieldTargets?: boolean,
   target?: ParameterTarget,
 };
 
