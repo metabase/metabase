@@ -706,7 +706,7 @@
     ;; `:query` for reasons I do not fully remember (perhaps to make it easier to differentiate them from MBQL source
     ;; queries).
     (set/rename-keys NativeQuery {:query :native})
-    (s/recursive #'MBQLQuery))
+    (s/recursive #'MBQLQuery)))
 
 (def SourceQueryMetadata
   "Schema for the expected keys for a single column in `:source-metadata` (`:source-metadata` is a sequence of these

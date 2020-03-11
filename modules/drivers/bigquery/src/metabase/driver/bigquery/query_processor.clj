@@ -322,10 +322,29 @@
   [_ value]
   (hx/cast :float64 value))
 
-
 (defmethod sql.qp/->honeysql [:bigquery :regex-match-first]
   [driver [_ arg pattern]]
   (hsql/call :regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+
+(defn- percentile->quntile
+  [x]
+  (loop [x     x
+         power 0]
+    (if (zero? (- x (Math/floor x)))
+      [(Math/round x) (Math/round (Math/pow 10 power))]
+      (recur (* 10 x) (inc power)))))
+
+(defmethod sql.qp/->honeysql [:bigquery :percentile]
+  [driver [_ arg p]]
+  (let [[offset quntiles] (percentile->quntile p)]
+    (hsql/raw (format "APPROX_QUANTILES(%s, %s)[OFFSET(%s)]"
+                      (hformat/to-sql (sql.qp/->honeysql driver arg))
+                      quantiles
+                      offset))))
+
+(defmethod sql.qp/->honeysql [:bigquery :median]
+  [driver [_ arg]]
+  (sql.qp/->honeysql [:percentile arg 0.5]))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
