@@ -30,6 +30,7 @@ import {
 
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
+import ExplicitSize from "metabase/components/ExplicitSize";
 
 import TokenizedInput from "./TokenizedInput";
 
@@ -43,6 +44,7 @@ const SUGGESTION_SECTION_NAMES = {
   other: t`Other`,
 };
 
+@ExplicitSize()
 export default class ExpressionEditorTextfield extends React.Component {
   constructor() {
     super();
@@ -322,6 +324,7 @@ export default class ExpressionEditorTextfield extends React.Component {
               attachment: "top left",
               targetAttachment: "bottom left",
             }}
+            style={{ width: this.props.width }}
             isOpen
           >
             <p
@@ -331,20 +334,18 @@ export default class ExpressionEditorTextfield extends React.Component {
               {helpText.structure}
             </p>
             <div className="p2 border-top">
-              <h4 className="text-medium">{t`What this does`}</h4>
               <p className="mt0 text-bold">{helpText.description}</p>
-              <h4 className="text-medium">{t`Example`}</h4>
-              <p className="text-code m0">{helpText.example}</p>
+              <p className="text-code m0 text-body">{helpText.example}</p>
             </div>
             <div className="p2 border-top">
               {helpText.args.map(({ name, description }) => (
                 <div>
                   <h4 className="text-medium">{name}</h4>
-                  <p className="mt0 text-bold">{description}</p>
+                  <p className="mt1 text-bold">{description}</p>
                 </div>
               ))}
               <a
-                className="link text-bold"
+                className="link text-bold block my1"
                 target="_blank"
                 href={MetabaseSettings.docsUrl(
                   "users-guide/04-asking-questions",
