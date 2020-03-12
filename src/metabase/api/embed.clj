@@ -24,7 +24,6 @@
              [common :as api]
              [dataset :as dataset-api]
              [public :as public-api]]
-            [metabase.async.streaming-response :as async.streaming-response]
             [metabase.models
              [card :refer [Card]]
              [dashboard :refer [Dashboard]]

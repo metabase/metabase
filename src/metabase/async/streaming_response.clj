@@ -85,8 +85,7 @@
                           (do-f* f os finished-chan canceled-chan)
                           (catch Throwable e
                             (log/error e (trs "bound-fn caught unexpected Exception"))
-                            (a/close! finished-chan)
-                            )))]
+                            (a/close! finished-chan))))]
     (.submit (thread-pool/thread-pool) ^Runnable task)
     nil))
 
@@ -137,9 +136,9 @@
       (log/error e (trs "Unexpected exception in do-f-async"))
       (u/ignore-exceptions
         (.sendError response 500 (.getMessage e)))
-      (.complete async-context)))
+      (.complete async-context))))
 
-  (declare render))
+(declare render)
 
 (p.types/deftype+ StreamingResponse [f options donechan]
   pretty/PrettyPrintable
@@ -157,8 +156,8 @@
 
   ;; async responses only
   compojure.response/Sendable
-  (send* [this request respond _]
-    (respond (compojure.response/render this request))))
+  (send* [this request respond* _]
+    (respond* (compojure.response/render this request))))
 
 ;; TODO -- don't think any of this is needed any mo
 (defn- render [^StreamingResponse streaming-response gzip?]
@@ -178,7 +177,9 @@
   [^StreamingResponse response]
   (.donechan response))
 
-(defn streaming-response* [f options]
+(defn streaming-response*
+  "Impl for `streaming-response` macro."
+  [f options]
   (->StreamingResponse f options (a/promise-chan)))
 
 (defmacro streaming-response

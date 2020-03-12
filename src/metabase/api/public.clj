@@ -14,9 +14,7 @@
              [dashboard :as dashboard-api]
              [dataset :as dataset-api]
              [field :as field-api]]
-            [metabase.async
-             [streaming-response :as async.streaming-response]
-             [util :as async.u]]
+            [metabase.async.util :as async.u]
             [metabase.mbql
              [normalize :as normalize]
              [util :as mbql.u]]

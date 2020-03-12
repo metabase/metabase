@@ -3,8 +3,13 @@
             [ring.util.servlet :as servlet]))
 
 (p.types/defprotocol+ Respond
+  "Protocol for converting API endpoint responses to something Jetty can handle."
   (respond [body context]
-    "Context keys:
+    "Convert an API endpoint response to something Jetty-friendly. Default impl uses Ring functionality to write the
+  response to a Jetty `OutputStream`. Things that need more advanced functionality than what Ring provides (such as
+  the streaming response logic) provide their own custom implementations of this method.
+
+  `context` has the following keys:
 
   * `:request`       -- `javax.servlet.http.HttpServletRequest`
   * `:request-map`   -- Ring request map
