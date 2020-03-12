@@ -10,7 +10,6 @@
             [metabase.async.streaming-response :as streaming-response]
             [metabase.query-processor.streaming :as qp.streaming]
             [metabase.test.util :as tu]
-            [ring.core.protocols :as ring.protocols]
             [toucan.db :as db])
   (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream InputStream InputStreamReader]))
 
@@ -53,11 +52,9 @@
   (with-open [bos (ByteArrayOutputStream.)
               os  (BufferedOutputStream. bos)]
     (let [streaming-response (qp.streaming/streaming-response [context export-format]
-                                                              (qp/process-query-async query (assoc context :timeout 5000)))]
-      (ring.protocols/write-body-to-stream streaming-response nil os)
+                               (qp/process-query-async query (assoc context :timeout 5000)))]
+      (#'streaming-response/do-f-async (.f streaming-response) os (.donechan streaming-response))
       (mt/wait-for-result (streaming-response/finished-chan streaming-response) 1000))
-    (.flush os)
-    (.flush bos)
     (let [bytea (.toByteArray bos)]
       (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]
         (parse-result export-format is)))))

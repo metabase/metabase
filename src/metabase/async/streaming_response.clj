@@ -77,7 +77,7 @@
       (a/close! finished-chan)
       (a/close! canceled-chan))))
 
-(defn do-f-async [f ^OutputStream os finished-chan]
+(defn- do-f-async [f ^OutputStream os finished-chan]
   {:pre [(some? os)]}
   (let [canceled-chan (a/promise-chan)
         task          (bound-fn []
@@ -94,7 +94,7 @@
 (defn- should-gzip-response?
   "Does the client accept GZIP-encoded responses?"
   [{{:strs [accept-encoding]} :headers}]
-  (re-find #"gzip|\*" accept-encoding))
+  (some->> accept-encoding (re-find #"gzip|\*")))
 
 (defn- output-stream-delay [gzip? ^HttpServletResponse response]
   (if gzip?
@@ -134,12 +134,12 @@
             delay-os            (delay-output-stream output-stream-delay)]
         (do-f-async f delay-os finished-chan)))
     (catch Throwable e
-      (log/error e (trs "Unexpected exception in {0}" "do-f-async"))
+      (log/error e (trs "Unexpected exception in do-f-async"))
       (u/ignore-exceptions
         (.sendError response 500 (.getMessage e)))
-      (.complete async-context))))
+      (.complete async-context)))
 
-(declare render)
+  (declare render))
 
 (p.types/deftype+ StreamingResponse [f options donechan]
   pretty/PrettyPrintable
