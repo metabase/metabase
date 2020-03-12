@@ -47,20 +47,23 @@
         db-calls     (call-count-fn)]
     (trs "{0} ({1} DB calls)" elapsed-time db-calls)))
 
+(defn- stats []
+  (str
+   (when-let [^QueuedThreadPool pool (some-> (server/instance) .getThreadPool)]
+     (trs "Jetty threads: {0}/{1} ({2} idle, {3} queued) "
+          (.getBusyThreads pool)
+          (.getMaxThreads pool)
+          (.getIdleThreads pool)
+          (.getQueueSize pool)))
+   (trs "({0} total active threads)" (Thread/activeCount))
+   " "
+   (trs "Queries in flight: {0}" (streaming-response.thread-pool/active-thread-count))
+   " "
+   (trs "({0} queued)" (streaming-response.thread-pool/queued-thread-count))))
+
 (defn- format-threads-info [{:keys [include-stats?]}]
   (when include-stats?
-    (str
-     (when-let [^QueuedThreadPool pool (some-> (server/instance) .getThreadPool)]
-       (trs "Jetty threads: {0}/{1} ({2} idle, {3} queued) "
-               (.getBusyThreads pool)
-               (.getMaxThreads pool)
-               (.getIdleThreads pool)
-               (.getQueueSize pool)))
-     (trs "({0} total active threads)" (Thread/activeCount))
-     " "
-     (trs "Queries in flight: {0}" (streaming-response.thread-pool/active-thread-count))
-     " "
-     (trs "({0} queued)" (streaming-response.thread-pool/queued-thread-count)))))
+    (stats)))
 
 (defn- format-error-info [{{:keys [body]} :response} {:keys [error?]}]
   (when (and error?
