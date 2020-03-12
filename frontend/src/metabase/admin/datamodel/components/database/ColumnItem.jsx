@@ -203,7 +203,7 @@ export class SpecialTypeAndTargetPicker extends Component {
     // If all FK target fields are in the same schema (like `PUBLIC` for sample dataset)
     // or if there are no schemas at all, omit the schema name
     const includeSchema =
-      _.uniq(idfields.map(idField => idField.table.schema)).length > 1;
+      _.uniq(idfields.map(idField => idField.table.schema_name)).length > 1;
 
     idfields = _.sortBy(idfields, field =>
       field.displayName({ includeTable: true, includeSchema }),

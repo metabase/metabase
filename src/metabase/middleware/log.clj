@@ -9,8 +9,8 @@
             [metabase.async
              [streaming-response :as streaming-response]
              [util :as async.u]]
+            [metabase.async.streaming-response.thread-pool :as streaming-response.thread-pool]
             [metabase.middleware.util :as middleware.u]
-            [metabase.query-processor.middleware.async :as qp.middleware.async]
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
   (:import clojure.core.async.impl.channels.ManyToManyChannel
@@ -37,7 +37,7 @@
   (str
    (format "%s %s %d" (str/upper-case (name request-method)) uri status)
    (when async-status
-     (format " [ASYNC: %s]" async-status))))
+     (format " [%s: %s]" (trs "ASYNC") async-status))))
 
 (defn- format-performance-info
   [{:keys [start-time call-count-fn]
@@ -45,19 +45,22 @@
          call-count-fn (constantly -1)}}]
   (let [elapsed-time (u/format-nanoseconds (- (System/nanoTime) start-time))
         db-calls     (call-count-fn)]
-    (format "%s (%d DB calls)" elapsed-time db-calls)))
+    (trs "{0} ({1} DB calls)" elapsed-time db-calls)))
 
 (defn- format-threads-info [{:keys [include-stats?]}]
   (when include-stats?
     (str
      (when-let [^QueuedThreadPool pool (some-> (server/instance) .getThreadPool)]
-       (format "Jetty threads: %s/%s (%s idle, %s queued) "
+       (trs "Jetty threads: {0}/{1} ({2} idle, {3} queued) "
                (.getBusyThreads pool)
                (.getMaxThreads pool)
                (.getIdleThreads pool)
                (.getQueueSize pool)))
-     (format "(%d total active threads) " (Thread/activeCount))
-     (format "Queries in flight: %d" (qp.middleware.async/in-flight)))))
+     (trs "({0} total active threads)" (Thread/activeCount))
+     " "
+     (trs "Queries in flight: {0}" (streaming-response.thread-pool/active-thread-count))
+     " "
+     (trs "({0} queued)" (streaming-response.thread-pool/queued-thread-count)))))
 
 (defn- format-error-info [{{:keys [body]} :response} {:keys [error?]}]
   (when (and error?
@@ -142,7 +145,7 @@
   (let [finished-chan (streaming-response/finished-chan streaming-response)]
     (a/go
       (let [result (a/<! finished-chan)]
-        (log-info (assoc info :async-status (if (:canceled result) "canceled" "completed")))))))
+        (log-info (assoc info :async-status (if (= result :canceled) "canceled" "completed")))))))
 
 (defn- logged-response
   "Log an API response. Returns resonse, possibly modified (i.e., core.async channels will be wrapped); this value

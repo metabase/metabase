@@ -123,12 +123,6 @@ export const LdapApi = {
 
 export const MetabaseApi = {
   db_list: GET("/api/database"),
-  db_list_with_tables: GET(
-    "/api/database?include_tables=true&include_cards=true",
-  ),
-  db_real_list_with_tables: GET(
-    "/api/database?include_tables=true&include_cards=false",
-  ),
   db_create: POST("/api/database"),
   db_validate: POST("/api/database/validate"),
   db_add_sample_dataset: POST("/api/database/sample_dataset"),
@@ -136,6 +130,8 @@ export const MetabaseApi = {
   db_update: PUT("/api/database/:id"),
   db_delete: DELETE("/api/database/:dbId"),
   db_metadata: GET("/api/database/:dbId/metadata"),
+  db_schemas: GET("/api/database/:dbId/schemas"),
+  db_schema_tables: GET("/api/database/:dbId/schema/:schemaName"),
   //db_tables:   GET("/api/database/:dbId/tables"),
   db_fields: GET("/api/database/:dbId/fields"),
   db_idfields: GET("/api/database/:dbId/idfields"),

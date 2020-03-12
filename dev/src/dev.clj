@@ -90,27 +90,23 @@
                [driver honeysql-form]  [[driver dataset] honeysql-form]
                [driver [sql & params]] [[driver dataset] [sql & params]])}
   [driver-or-driver+dataset sql-args]
-  (if (map? sql-args)
-    (recur driver-or-driver+dataset (hsql/format sql-args))
-    (let [[driver dataset] (u/one-or-many driver-or-driver+dataset)
-          [sql & params]   (u/one-or-many sql-args)
-          canceled-chan    (a/promise-chan)]
-      (try
-        (driver/with-driver driver
-          (letfn [(thunk []
-                    (with-open [conn (sql-jdbc.execute/connection-with-timezone driver (mt/db) (qp.timezone/report-timezone-id-if-supported))
-                                stmt (sql-jdbc.execute/prepared-statement driver conn sql params)
-                                rs   (sql-jdbc.execute/execute-query! driver stmt)]
-                      (let [rsmeta (.getMetaData rs)]
-                        (reduce
-                         (fn [result row]
-                           (update result :rows conj row))
-                         {:rows []
-                          :cols (sql-jdbc.execute/column-metadata driver rsmeta)}
-                         (sql-jdbc.execute/reducible-rows driver rs rsmeta canceled-chan)))))]
-            (if dataset
-              (data.impl/do-with-dataset (data.impl/resolve-dataset-definition *ns* dataset) thunk)
-              (thunk))))
-        (catch InterruptedException e
-          (a/>!! canceled-chan :cancel)
-          (throw e))))))
+  (let [[driver dataset] (u/one-or-many driver-or-driver+dataset)
+        [sql & params]   (if (map? sql-args)
+                           (hsql/format sql-args)
+                           (u/one-or-many sql-args))
+        canceled-chan    (a/promise-chan)]
+    (try
+      (driver/with-driver driver
+        (letfn [(thunk []
+                  (with-open [conn (sql-jdbc.execute/connection-with-timezone driver (mt/db) (qp.timezone/report-timezone-id-if-supported))
+                              stmt (sql-jdbc.execute/prepared-statement driver conn sql params)
+                              rs   (sql-jdbc.execute/execute-query! driver stmt)]
+                    (let [rsmeta (.getMetaData rs)]
+                      {:cols (sql-jdbc.execute/column-metadata driver rsmeta)
+                       :rows (reduce conj [] (sql-jdbc.execute/reducible-rows driver rs rsmeta canceled-chan))})))]
+          (if dataset
+            (data.impl/do-with-dataset (data.impl/resolve-dataset-definition *ns* dataset) thunk)
+            (thunk))))
+      (catch InterruptedException e
+        (a/>!! canceled-chan :cancel)
+        (throw e)))))

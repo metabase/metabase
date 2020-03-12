@@ -28,5 +28,6 @@
                           (driver/the-initialized-driver (driver.u/database->driver (qp.store/database)))
                           (catch Throwable e
                             (throw (ex-info (tru "Unable to resolve driver for query")
-                                     {:type error-type/invalid-query}))))
+                                            {:type error-type/invalid-query}
+                                            e))))
       (qp query rff context))))

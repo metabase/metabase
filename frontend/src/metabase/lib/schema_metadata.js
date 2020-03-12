@@ -282,7 +282,8 @@ const CASE_SENSITIVE_OPTION = {
   },
 };
 
-const FILTER_OPERATORS = {
+// each of these has an implicit field argument, followed by 0 or more additional arguments
+const FIELD_FILTER_OPERATORS = {
   "=": {
     validArgumentsFilters: [equivalentArgument],
     multi: true,
@@ -437,7 +438,7 @@ const MORE_VERBOSE_NAMES = {
 export function getFilterOperators(field, table) {
   const type = getFieldType(field) || UNKNOWN;
   return FILTER_OPERATORS_BY_TYPE_ORDERED[type].map(operatorForType => {
-    const operator = FILTER_OPERATORS[operatorForType.name];
+    const operator = FIELD_FILTER_OPERATORS[operatorForType.name];
     const verboseNameLower = operatorForType.verboseName.toLowerCase();
     return {
       ...operator,

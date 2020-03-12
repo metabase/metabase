@@ -1,14 +1,11 @@
 import React from "react";
-import { connect } from "react-redux";
 
 import { DatabaseSchemaAndTableDataSelector } from "metabase/query_builder/components/DataSelector";
 
-import { getDatabasesList } from "metabase/query_builder/selectors";
-
-function QuestionDataSelector({ query, databases, triggerElement }) {
+export default function QuestionDataSelector({ query, triggerElement }) {
   return (
     <DatabaseSchemaAndTableDataSelector
-      databases={databases}
+      databaseQuery={{ saved: true }}
       selectedDatabaseId={query.databaseId()}
       selectedTableId={query.tableId()}
       setSourceTableFn={tableId =>
@@ -22,7 +19,3 @@ function QuestionDataSelector({ query, databases, triggerElement }) {
     />
   );
 }
-
-export default connect(state => ({ databases: getDatabasesList(state) }))(
-  QuestionDataSelector,
-);

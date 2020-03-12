@@ -71,8 +71,7 @@ export default class TagEditorSidebar extends React.Component {
       onClose,
     } = this.props;
     const tags = query.templateTags();
-    const databaseId = query.datasetQuery().database;
-    const database = databases.find(db => db.id === databaseId);
+    const database = query.database();
 
     let section;
     if (tags.length === 0) {

@@ -109,6 +109,7 @@
  [test-users
   user->id
   user->client
+  user->credentials
   with-test-user]
 
  [tt
@@ -218,17 +219,17 @@
                     :runf    (fn [query rff context]
                                (try
                                  (when run (run))
-                                 (let [metadata (qp.context/metadataf metadata context)]
-                                   (qp.context/reducef rff context (assoc metadata :pre query) rows))
+                                 (qp.context/reducef rff context (assoc metadata :pre query) rows)
                                  (catch Throwable e
                                    (println "Error in test-qp-middleware runf:" e)
                                    (throw e))))}
                    context)]
      (if async?
        (async-qp query context)
-       (let [qp     (qp.reducible/sync-qp async-qp)
-             result (qp query context)]
-         {:result   (m/dissoc-in result [:data :pre])
-          :pre      (-> result :data :pre)
-          :post     (-> result :data :rows)
-          :metadata (update result :data #(dissoc % :pre :rows))})))))
+       (binding [qp.reducible/*run-on-separate-thread?* true]
+         (let [qp     (qp.reducible/sync-qp async-qp)
+               result (qp query context)]
+           {:result   (m/dissoc-in result [:data :pre])
+            :pre      (-> result :data :pre)
+            :post     (-> result :data :rows)
+            :metadata (update result :data #(dissoc % :pre :rows))}))))))

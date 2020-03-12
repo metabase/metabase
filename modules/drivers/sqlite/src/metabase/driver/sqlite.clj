@@ -27,6 +27,8 @@
 
 (driver/register! :sqlite, :parent :sql-jdbc)
 
+(defmethod driver/supports? [:sqlite :regex] [_ _] false)
+
 (defmethod sql-jdbc.conn/connection-details->spec :sqlite
   [_ {:keys [db]
       :or   {db "sqlite.db"}
@@ -210,6 +212,22 @@
 (defmethod sql.qp/->honeysql [:sqlite Boolean]
   [_ bool]
   (if bool 1 0))
+
+(defmethod sql.qp/->honeysql [:sqlite :substring]
+  [driver [_ arg start length]]
+  (if length
+    (hsql/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
+    (hsql/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start))))
+
+(defmethod sql.qp/->honeysql [:sqlite :concat]
+  [driver [_ & args]]
+  (hsql/raw (str/join " || " (for [arg args]
+                               (let [arg (sql.qp/->honeysql driver arg)]
+                                 (hformat/to-sql
+                                  (if (string? arg)
+                                    (hx/literal arg)
+                                    arg)))))))
+
 
 ;; See https://sqlite.org/lang_datefunc.html
 

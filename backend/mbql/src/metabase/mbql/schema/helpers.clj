@@ -8,10 +8,11 @@
   ;; for things like optional schemas
   (if-not (vector? arg-schema)
     (s/one arg-schema arg-name)
-    (let [[option arg-schema] arg-schema]
+    (let [[option arg-schema :as vector-arg-schema] arg-schema]
       (case option
         :optional (s/optional (s/maybe arg-schema) arg-name)
-        :rest     (s/named arg-schema arg-name)))))
+        :rest     (s/named arg-schema arg-name)
+        (s/one vector-arg-schema arg-name)))))
 
 (defn clause
   "Impl of `defclause` macro."

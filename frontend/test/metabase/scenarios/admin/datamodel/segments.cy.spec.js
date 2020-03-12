@@ -1,6 +1,7 @@
-import { signInAsAdmin } from "__support__/cypress";
+import { restore, signInAsAdmin } from "__support__/cypress";
 
-describe("admin > datamodel > segments", () => {
+describe("scenarios > admin > datamodel > segments", () => {
+  before(restore);
   beforeEach(() => {
     signInAsAdmin();
     cy.viewport(1400, 860);

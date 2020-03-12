@@ -37,6 +37,7 @@ const colors = {
   "bg-medium": "#EDF2F5",
   "bg-light": "#F9FBFC",
   "bg-white": "#FFFFFF",
+  "bg-yellow": "#FFFCF2",
   shadow: "rgba(0,0,0,0.08)",
   border: "#F0F0F0",
   /* Saturated colors for the SQL editor. Shouldn't be used elsewhere since they're not white-labelable. */

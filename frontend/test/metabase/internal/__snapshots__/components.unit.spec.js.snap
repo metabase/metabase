@@ -726,7 +726,7 @@ exports[`Radio should render "bubble" correctly 1`] = `
 >
   <li
     aria-selected={true}
-    className="Radio__BubbleItem-cPPKrR izYaHB Radio__BaseItem-gLcmFf bMiqJE"
+    className="Radio__BubbleItem-cPPKrR ebqsKW Radio__BaseItem-gLcmFf bMiqJE"
     mb={null}
     mr={1}
     onClick={[Function]}
@@ -746,7 +746,7 @@ exports[`Radio should render "bubble" correctly 1`] = `
   </li>
   <li
     aria-selected={false}
-    className="Radio__BubbleItem-cPPKrR iOSyOa Radio__BaseItem-gLcmFf etzrCv"
+    className="Radio__BubbleItem-cPPKrR kKeqRf Radio__BaseItem-gLcmFf etzrCv"
     mb={null}
     mr={null}
     onClick={[Function]}
