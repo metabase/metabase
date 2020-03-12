@@ -48,7 +48,7 @@
 
     (with-open [os ...]
       (qp/process-query query (qp.streaming/streaming-context :csv os canceled-chan)))"
-  ([export-format ^OutputStream os]
+  ([export-format os]
    (let [results-writer (i/streaming-results-writer export-format os)]
      {:rff      (streaming-rff results-writer)
       :reducedf (streaming-reducedf results-writer os)}))
