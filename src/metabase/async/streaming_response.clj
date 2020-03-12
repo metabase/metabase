@@ -17,6 +17,15 @@
            javax.servlet.http.HttpServletResponse
            org.eclipse.jetty.io.EofException))
 
+(defn- write-to-output-stream!
+  ([^OutputStream os x]
+   (if (int? x)
+     (.write os ^int x)
+     (.write os ^bytes x)))
+
+  ([^OutputStream os ^bytes ba ^Integer offset ^Integer len]
+   (.write os ba offset len)))
+
 (defn- ex-status-code [e]
   (or (some #((some-fn :status-code :status) (ex-data %))
             (take-while some? (iterate ex-cause e)))
