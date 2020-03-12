@@ -110,37 +110,3 @@
               (testing "(Usually this is under 100ms but might be a little over if CircleCI is being slow)"
                 (let [elapsed-ms (- (System/currentTimeMillis) start-time-ms)]
                   (is (< elapsed-ms 500)))))))))))
-
-#_(deftest newlines-test
-  (testing "Keepalive newlines should be written while waiting for a response."
-    (with-redefs [streaming-response/keepalive-interval-ms 50]
-      (with-test-driver-db
-        (let [url           (test-client/build-url "dataset" nil)
-              session-token (test-client/authenticate (mt/user->credentials :lucky))
-              request       (test-client/build-request-map session-token
-                                                           {:database (mt/id)
-                                                            :type     "native"
-                                                            :native   {:query {:sleep 300}}})]
-          (is (re= #"(?s)^\n{3,}\{\"data\":.*$"
-                   (:body (http/post url request)))))))))
-
-#_(deftest cancelation-test
-  (testing "Make sure canceling a HTTP request ultimately causes the query to be canceled"
-    (with-redefs [streaming-response/keepalive-interval-ms 50]
-      (with-test-driver-db
-        (reset! canceled? false)
-        (with-start-execution-chan [start-chan]
-          (let [url           (test-client/build-url "dataset" nil)
-                session-token (test-client/authenticate (mt/user->credentials :lucky))
-                request       (test-client/build-request-map session-token
-                                                             {:database (mt/id)
-                                                              :type     "native"
-                                                              :native   {:query {:sleep 5000}}})
-                futur         (http/post url (assoc request :async? true) identity (fn [e] (throw e)))]
-            (is (future? futur))
-            ;; wait a little while for the query to start running -- this should usually happen fairly quickly
-            (mt/wait-for-result start-chan (u/seconds->ms 15))
-            (future-cancel futur)
-            (Thread/sleep 200)
-            (is (= true
-                   @canceled?))))))))

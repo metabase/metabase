@@ -40,29 +40,27 @@
        rest))
 
 (defn- process-query-basic-streaming [export-format query]
-  (with-redefs [streaming-response/keepalive-interval-ms 2]
-    (with-open [bos (ByteArrayOutputStream.)
-                os  (BufferedOutputStream. bos)]
-      (qp/process-query query (assoc (qp.streaming/streaming-context export-format os)
-                                     :timeout 15000))
-      (.flush os)
-      (let [bytea (.toByteArray bos)]
-        (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]
-          (parse-result export-format is))))))
+  (with-open [bos (ByteArrayOutputStream.)
+              os  (BufferedOutputStream. bos)]
+    (qp/process-query query (assoc (qp.streaming/streaming-context export-format os)
+                                   :timeout 15000))
+    (.flush os)
+    (let [bytea (.toByteArray bos)]
+      (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]
+        (parse-result export-format is)))))
 
 (defn- process-query-api-response-streaming [export-format query]
-  (with-redefs [streaming-response/keepalive-interval-ms 2]
-    (with-open [bos (ByteArrayOutputStream.)
-                os  (BufferedOutputStream. bos)]
-      (let [streaming-response (qp.streaming/streaming-response [context export-format]
-                                 (qp/process-query-async query (assoc context :timeout 5000)))]
-        (ring.protocols/write-body-to-stream streaming-response nil os)
-        (mt/wait-for-result (streaming-response/finished-chan streaming-response) 1000))
-      (.flush os)
-      (.flush bos)
-      (let [bytea (.toByteArray bos)]
-        (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]
-          (parse-result export-format is))))))
+  (with-open [bos (ByteArrayOutputStream.)
+              os  (BufferedOutputStream. bos)]
+    (let [streaming-response (qp.streaming/streaming-response [context export-format]
+                                                              (qp/process-query-async query (assoc context :timeout 5000)))]
+      (ring.protocols/write-body-to-stream streaming-response nil os)
+      (mt/wait-for-result (streaming-response/finished-chan streaming-response) 1000))
+    (.flush os)
+    (.flush bos)
+    (let [bytea (.toByteArray bos)]
+      (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]
+        (parse-result export-format is)))))
 
 (defmulti ^:private expected-results
   {:arglists '([export-format normal-results])}
