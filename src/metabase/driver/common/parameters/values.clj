@@ -103,7 +103,7 @@
     (i/map->FieldFilter
      ;; TODO - shouldn't this use the QP Store?
      {:field (let [field-id (field-filter->field-id field-filter)]
-               (or (db/select-one [Field :name :parent_id :table_id :base_type] :id field-id)
+               (or (db/select-one [Field :name :parent_id :table_id :base_type :special_type] :id field-id)
                    (throw (ex-info (str (deferred-tru "Can''t find field with ID: {0}" field-id))
                                    {:field-id field-id, :type qp.error-type/invalid-parameter}))))
       :value (if-let [value-info-or-infos (or
@@ -194,25 +194,28 @@
   "Do special parsing for value for a (presumably textual) FieldFilter (`:type` = `:dimension`) param (i.e., attempt
   to parse it as appropriate based on the base-type of the Field associated with it). These are special cases for
   handling types that do not have an associated parameter type (such as `date` or `number`), such as UUID fields."
-  [base-type :- su/FieldType, value]
+  [base-type :- su/FieldType, special-type :- su/FieldType, value]
   (cond
-   (isa? base-type :type/UUID)   (UUID/fromString value)
-   (isa? base-type :type/Number) (value->number value)
-   :else                         value))
+   (isa? base-type :type/UUID)             (UUID/fromString value)
+   (isa? special-type :type/UNIXTimestamp) value ; don't convet potentially complex values just yet
+   (isa? base-type :type/Number)           (value->number value)
+   :else                                   value))
 
 (s/defn ^:private update-filter-for-base-type :- ParsedParamValue
   "Update a Field Filter with a textual, or sequence of textual, values. The base type of the field is used
   to determine what 'special' type interpretation is required (e.g. for UUID fields)."
   [field-filter :- FieldFilter]
-  (let [base-type (get-in field-filter [:field :base_type])
-        value (get-in field-filter [:value :value])]
+  (let [{base-type :base_type, special-type :special_type} (:field field-filter)
+        value                                              (get-in field-filter [:value :value])]
     (cond
       (string? value)
-      (update-in field-filter [:value :value] (partial parse-value-for-field-base-type base-type))
+      (update-in field-filter [:value :value]
+                 (partial parse-value-for-field-base-type base-type special-type))
 
       (and (sequential? value)
            (every? string? value))
-      (assoc-in field-filter [:value :value] (mapv (partial parse-value-for-field-base-type base-type) value))
+      (assoc-in field-filter [:value :value]
+                (mapv (partial parse-value-for-field-base-type base-type special-type) value))
 
       :else
       field-filter)))
