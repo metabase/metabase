@@ -123,7 +123,11 @@ const SEGMENTS_ORDERS = [{ text: "[Expensive Things]", type: "segments" }];
 describe("metabase/lib/expression/suggest", () => {
   describe("suggest()", () => {
     function suggest(...args) {
-      return cleanSuggestions(suggest_(...args));
+      return cleanSuggestions(suggest_(...args).suggestions);
+    }
+
+    function helpText(...args) {
+      return suggest_(...args).helpText;
     }
 
     describe("expression", () => {
@@ -226,6 +230,36 @@ describe("metabase/lib/expression/suggest", () => {
         ).toEqual([...EXPRESSION_OPERATORS]);
       });
 
+      it("should provide help text for the function", () => {
+        const { structure, args } = helpText({
+          source: "substring(",
+          query: ORDERS.query(),
+          startRule: "expression",
+        });
+        expect(structure).toEqual("substring(text, position, length)");
+        expect(args).toHaveLength(3);
+      });
+
+      it("should provide help text after first argument if there's only one argument", () => {
+        expect(
+          helpText({
+            source: "trim(Total ",
+            query: ORDERS.query(),
+            startRule: "expression",
+          }).name,
+        ).toEqual("trim");
+      });
+
+      it("should provide help text after first argument if there's more than one argument", () => {
+        expect(
+          helpText({
+            source: "coalesce(Total ",
+            query: ORDERS.query(),
+            startRule: "expression",
+          }).name,
+        ).toEqual("coalesce");
+      });
+
       xit("should suggest boolean options after case(", () => {
         expect(
           suggest({
@@ -283,14 +317,14 @@ describe("metabase/lib/expression/suggest", () => {
         ).toEqual([...AGGREGATION_FUNCTIONS, ...METRICS_ORDERS, OPEN_PAREN]);
       });
 
-      it("should suggest expression operators after aggregation argument", () => {
-        expect(
-          suggest({
-            source: "Sum(Total ",
-            query: ORDERS.query(),
-            startRule: "aggregation",
-          }),
-        ).toEqual([...EXPRESSION_OPERATORS, CLOSE_PAREN]);
+      it("should show help text in an aggregation functiom", () => {
+        const { name, example } = helpText({
+          source: "Sum(",
+          query: ORDERS.query(),
+          startRule: "aggregation",
+        });
+        expect(name).toEqual("sum");
+        expect(example).toEqual("sum( [Subtotal] )");
       });
     });
 
@@ -316,23 +350,14 @@ describe("metabase/lib/expression/suggest", () => {
         ]);
       });
 
-      it("should not suggest comma after first argument if there's only one argument", () => {
-        expect(
-          suggest({
-            source: "trim(Total ",
-            query: ORDERS.query(),
-            startRule: "boolean",
-          }).filter(({ text }) => text === ", "),
-        ).toHaveLength(0);
-      });
-      it("should suggest comma after first argument if there's more than one argument", () => {
-        expect(
-          suggest({
-            source: "contains(Total ",
-            query: ORDERS.query(),
-            startRule: "boolean",
-          }).filter(({ text }) => text === ", "),
-        ).toHaveLength(1);
+      it("should show help text in a filter function", () => {
+        const { name, example } = helpText({
+          source: "Contains(Total ",
+          query: ORDERS.query(),
+          startRule: "boolean",
+        });
+        expect(name).toEqual("contains");
+        expect(example).toEqual('contains([Status] , "Pass")');
       });
     });
   });

@@ -42,6 +42,8 @@ import {
   lexerWithRecovery,
 } from "./lexer";
 
+import getHelpText from "./helper_text_strings";
+
 import { ExpressionDimension } from "metabase-lib/lib/Dimension";
 import {
   FUNCTIONS,
@@ -109,6 +111,11 @@ export function suggest({
     targetOffset,
     startRule,
   }) || { expectedType: startRule };
+
+  const helpText = context.clause && getHelpText(context.clause.name);
+  if (!partialSuggestionMode && helpText) {
+    return { helpText };
+  }
   const { expectedType } = context;
 
   for (const suggestion of syntacticSuggestions) {
@@ -321,11 +328,13 @@ export function suggest({
   }
 
   // deduplicate suggestions and sort by type then name
-  return _.chain(finalSuggestions)
-    .uniq(suggestion => suggestion.text)
-    .sortBy("name")
-    .sortBy("type")
-    .value();
+  return {
+    suggestions: _.chain(finalSuggestions)
+      .uniq(suggestion => suggestion.text)
+      .sortBy("name")
+      .sortBy("type")
+      .value(),
+  };
 }
 
 function operatorSuggestion(clause) {
