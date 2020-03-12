@@ -300,9 +300,6 @@
 
 (defn- extract [unit expr]
   (condp = (temporal-type expr)
-    :datetime
-    (recur unit (->temporal-type :timestamp expr))
-
     :time
     (do
       (assert (valid-time-extract-units unit)
@@ -322,7 +319,10 @@
       (assert (or (valid-date-extract-units unit)
                   (valid-time-extract-units unit))
               (tru "Cannot extract {0} from a DATETIME or TIMESTAMP" unit))
-      (with-temporal-type (hsql/call :extract unit expr) nil))))
+      (with-temporal-type (hsql/call :extract unit expr) nil))
+
+    ;; for datetimes or anything without a known temporal type, cast to timestamp and go from there
+    (recur unit (->temporal-type :timestamp expr))))
 
 (defmethod sql.qp/date [:bigquery :minute]          [_ _ expr] (trunc   :minute    expr))
 (defmethod sql.qp/date [:bigquery :minute-of-hour]  [_ _ expr] (extract :minute    expr))
