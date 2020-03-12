@@ -9,7 +9,9 @@
             [metabase.util.i18n :refer [trs]]
             [potemkin.types :as p.types]
             [pretty.core :as pretty]
-            [ring.util.servlet :as ring.servlet])
+            [ring.util
+             [response :as ring.response]
+             [servlet :as ring.servlet]])
   (:import [java.io BufferedWriter OutputStream OutputStreamWriter]
            java.nio.charset.StandardCharsets
            java.util.zip.GZIPOutputStream
