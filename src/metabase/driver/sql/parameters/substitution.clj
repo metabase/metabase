@@ -240,7 +240,8 @@
   (:replacement-snippet
    (honeysql->replacement-snippet-info
     driver
-    (let [identifier (sql.qp/->honeysql driver (sql.qp/field->identifier driver field))]
+    (let [identifier (cond->> (sql.qp/->honeysql driver (sql.qp/field->identifier driver field))
+                       (isa? (:special_type field) :type/UNIXTimestamp) (hsql/call :from_unixtime))]
       (if (date-params/date-type? param-type)
         (sql.qp/date driver :day identifier)
         identifier)))))
