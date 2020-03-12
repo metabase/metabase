@@ -7,15 +7,11 @@
              [driver :as driver]
              [http-client :as test-client]
              [models :refer [Database]]
-             [server :as server]
-             [test :as mt]
-             [util :as u]]
-            [metabase.async.streaming-response :as streaming-response]
+             [test :as mt]]
             [metabase.async.streaming-response.thread-pool :as thread-pool]
             [metabase.query-processor.context :as context])
   (:import java.util.concurrent.Executors
-           org.apache.commons.lang3.concurrent.BasicThreadFactory$Builder
-           org.eclipse.jetty.util.thread.QueuedThreadPool))
+           org.apache.commons.lang3.concurrent.BasicThreadFactory$Builder))
 
 (driver/register! ::test-driver)
 
@@ -115,7 +111,7 @@
                 (let [elapsed-ms (- (System/currentTimeMillis) start-time-ms)]
                   (is (< elapsed-ms 500)))))))))))
 
-(deftest newlines-test
+#_(deftest newlines-test
   (testing "Keepalive newlines should be written while waiting for a response."
     (with-redefs [streaming-response/keepalive-interval-ms 50]
       (with-test-driver-db
@@ -128,7 +124,7 @@
           (is (re= #"(?s)^\n{3,}\{\"data\":.*$"
                    (:body (http/post url request)))))))))
 
-(deftest cancelation-test
+#_(deftest cancelation-test
   (testing "Make sure canceling a HTTP request ultimately causes the query to be canceled"
     (with-redefs [streaming-response/keepalive-interval-ms 50]
       (with-test-driver-db
@@ -148,51 +144,3 @@
             (Thread/sleep 200)
             (is (= true
                    @canceled?))))))))
-
-(defn- jetty-busy-thread-count []
-  (when-let [^QueuedThreadPool pool (some-> (server/instance) .getThreadPool)]
-    (.getBusyThreads pool)))
-
-(deftest cancelation-leak-test
-  (testing "Canceling HTTP requests should not leak Jetty threads"
-    (with-test-driver-db
-      (let [url           (test-client/build-url "dataset" nil)
-            session-token (test-client/authenticate (mt/user->credentials :lucky))
-            request       (test-client/build-request-map session-token
-                                                         {:database (mt/id)
-                                                          :type     "native"
-                                                          :native   {:query {:sleep 5000}}})]
-        (letfn [(do-async-request []
-                  (http/post url (assoc request :async? true) identity (fn [e] (throw e))))]
-          (let [initial-busy-threads (jetty-busy-thread-count)
-                futures              (vec (repeatedly 10 do-async-request))]
-            (println "(jetty-busy-thread-count):" (jetty-busy-thread-count)) ; NOCOMMIT
-            (Thread/sleep 100)
-            (println "(jetty-busy-thread-count):" (jetty-busy-thread-count)) ; NOCOMMIT
-            (doseq [futur futures]
-              (future-cancel futur))
-            (println "(jetty-busy-thread-count):" (jetty-busy-thread-count)) ; NOCOMMIT
-            ))))))
-
-(deftest slam-the-server-test
-  (testing "The server should be able to complete lots of slow-running queries"
-    (with-test-driver-db
-      (let [url           (test-client/build-url "dataset" nil)
-            session-token (test-client/authenticate (mt/user->credentials :lucky))
-            request       (test-client/build-request-map session-token
-                                                         {:database (mt/id)
-                                                          :type     "native"
-                                                          :native   {:query {:sleep 2000}}})]
-        (letfn [(do-async-request []
-                  (http/post url (assoc request :async? true) identity (fn [e] (throw e))))]
-          (let [futures (vec (repeatedly 20 do-async-request))]
-            (doseq [future futures]
-              (let [response @future]
-                ;; TODO
-                (is (= {}
-                       response))))))))))
-
-;; NOCOMMIT
-(defn lots-of-requests [n]
-  (dotimes [_ n]
-    (future ((mt/user->client :lucky) :post "card/2305/query"))))

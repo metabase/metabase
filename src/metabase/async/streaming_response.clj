@@ -50,11 +50,9 @@
   (try
     (f os canceled-chan)
     (catch EofException _
-      (locking println (println "<CANCELED>:")) ; NOCOMMIT
       (a/>!! canceled-chan ::jetty-eof)
       nil)
     (catch InterruptedException _
-      (locking println (println "<INTERRUPTED>")) ; NOCOMMIT
       (a/>!! canceled-chan ::thread-interrupted)
       nil)
     (catch Throwable e
@@ -62,32 +60,23 @@
       (write-error! os e)
       nil)
     (finally
-      (when-let [canceled-message (a/poll! canceled-chan)]
-        (locking println (println "canceled-message:" canceled-message)) ; NOCOMMIT
-        )
       (a/>!! finished-chan (if (a/poll! canceled-chan)
                              :canceled
                              :done))
       (a/close! finished-chan)
       (a/close! canceled-chan))))
 
-(defonce ^:private in-flight (atom 0))
-
 (defn do-f-async [f ^OutputStream os finished-chan]
   {:pre [(some? os)]}
-  (locking println (println "IN FLIGHT =" (swap! in-flight inc))) ; NOCOMMIT
   (let [canceled-chan (a/promise-chan)
         task          (bound-fn []
                         (try
                           (do-f* f os finished-chan canceled-chan)
                           (catch Throwable e
-                            (locking println (println "bound-fn caught e" e))
+                            (log/error e (trs "bound-fn caught unexpected Exception"))
                             (a/close! finished-chan)
-                            )))
-        futur         (.submit (thread-pool/thread-pool) ^Runnable task)]
-    (a/go
-      (a/<! finished-chan)
-      (swap! in-flight dec))
+                            )))]
+    (.submit (thread-pool/thread-pool) ^Runnable task)
     nil))
 
 ;; `ring.middleware.gzip` doesn't work on our StreamingResponse class.
@@ -99,10 +88,8 @@
 (defn- output-stream-delay [gzip? ^HttpServletResponse response]
   (if gzip?
     (delay
-      (locking println (println "<GZIP OUTPUT STREAM REALIZED>"))
       (GZIPOutputStream. (.getOutputStream response) true))
     (delay
-      (locking println (println "<NON-GZIP OUTPUT STREAM REALIZED>"))
       (.getOutputStream response))))
 
 (defn- delay-output-stream
@@ -181,9 +168,7 @@
   (.donechan response))
 
 (defn streaming-response* [f options]
-  (->StreamingResponse f options (a/promise-chan identity (fn [e]
-                                                            (println "e [streaming-response*]" e) ; NOCOMMIT
-                                                            e))))
+  (->StreamingResponse f options (a/promise-chan)))
 
 (defmacro streaming-response
   "Return an streaming response that writes keepalive newline bytes.
