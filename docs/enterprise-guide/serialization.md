@@ -10,26 +10,26 @@ If you're looking to do a one-time migration from H2 to MySQL/Postgres, then use
 
 **Currently, dumps consist of the following Metabase artifacts:**
 
-* Collections
-* Dashboards
-* Saved questions
-* Pulses
-* Segments and Metrics defined in the Data Model
-* Archived collections, dashboards, saved questions, or pulses
-* Public sharing settings for questions and dashboards
+- Collections
+- Dashboards
+- Saved questions
+- Pulses
+- Segments and Metrics defined in the Data Model
+- Archived collections, dashboards, saved questions, or pulses
+- Public sharing settings for questions and dashboards
 
 **They also contain a number of system settings:**
 
-* Admin Panel settings, except for permissions
-* Database connection settings
-* Data Model settings
+- Admin Panel settings, except for permissions
+- Database connection settings
+- Data Model settings
 
 **Dumps do _not_ contain:**
 
-* Permission settings
-* User accounts or settings
-* Alerts on saved questions
-* Personal Collections or their contents (except for the user specified with the `--user` flag; see below)
+- Permission settings
+- User accounts or settings
+- Alerts on saved questions
+- Personal Collections or their contents (except for the user specified with the `--user` flag; see below)
 
 ### Before creating or loading a dump
 
