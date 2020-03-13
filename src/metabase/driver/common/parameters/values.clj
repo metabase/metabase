@@ -193,8 +193,9 @@
 
 (s/defn ^:private parse-value-for-field-type :- s/Any
   "Do special parsing for value for a (presumably textual) FieldFilter (`:type` = `:dimension`) param (i.e., attempt
-  to parse it as appropriate based on the base-type of the Field associated with it). These are special cases for
-  handling types that do not have an associated parameter type (such as `date` or `number`), such as UUID fields."
+  to parse it as appropriate based on the base type and special type of the Field associated with it). These are
+  special cases for handling types that do not have an associated parameter type (such as `date` or `number`), such as
+  UUID fields."
   [base-type :- su/FieldType special-type :- (s/maybe su/FieldType) value]
   (cond
     (isa? base-type :type/UUID)
@@ -208,8 +209,8 @@
     value))
 
 (s/defn ^:private update-filter-for-field-type :- ParsedParamValue
-  "Update a Field Filter with a textual, or sequence of textual, values. The base type of the field is used
-  to determine what 'special' type interpretation is required (e.g. for UUID fields)."
+  "Update a Field Filter with a textual, or sequence of textual, values. The base type and special type of the field
+  are used to determine what 'special' type interpretation is required (e.g. for UUID fields)."
   [{{base-type :base_type, special-type :special_type} :field, {value :value} :value, :as field-filter} :- FieldFilter]
   (let [new-value (cond
                     (string? value)
