@@ -34,6 +34,9 @@ const STRING_FUNCTIONS = [
   { text: "trim(", type: "functions" },
   { text: "upper(", type: "functions" },
 ];
+const STRING_FUNCTIONS_EXCLUDING_REGEX = STRING_FUNCTIONS.filter(
+  ({ text }) => text !== "regexextract(",
+);
 // const EXPRESSION_FUNCTIONS = [
 //   { text: "case(", type: "functions" },
 //   { text: "coalesce(", type: "functions" },
@@ -136,7 +139,7 @@ describe("metabase/lib/expression/suggest", () => {
           ...FIELDS_CUSTOM,
           ...FIELDS_CUSTOM_NON_NUMERIC,
           { type: "functions", text: "coalesce(" },
-          ...STRING_FUNCTIONS,
+          ...STRING_FUNCTIONS_EXCLUDING_REGEX,
           OPEN_PAREN,
         ]);
       });

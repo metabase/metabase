@@ -102,7 +102,8 @@
           "right-join",
           "left-join",
           "inner-join",
-          "nested-queries"
+          "nested-queries",
+          "regex"
         ],
         "name": "Sample Dataset",
         "caveats": null,
