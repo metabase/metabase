@@ -73,7 +73,7 @@
     (finally
       (a/>!! finished-chan (if (a/poll! canceled-chan)
                              :canceled
-                             :done))
+                             :completed))
       (a/close! finished-chan)
       (a/close! canceled-chan))))
 
@@ -85,7 +85,9 @@
                           (do-f* f os finished-chan canceled-chan)
                           (catch Throwable e
                             (log/error e (trs "bound-fn caught unexpected Exception"))
-                            (a/close! finished-chan))))]
+                            (a/>!! finished-chan :unexpected-error)
+                            (a/close! finished-chan)
+                            (a/close! canceled-chan))))]
     (.submit (thread-pool/thread-pool) ^Runnable task)
     nil))
 
@@ -134,9 +136,12 @@
         (do-f-async f delay-os finished-chan)))
     (catch Throwable e
       (log/error e (trs "Unexpected exception in do-f-async"))
-      (u/ignore-exceptions
-        (.sendError response 500 (.getMessage e)))
-      (.complete async-context))))
+      (try
+        (.sendError response 500 (.getMessage e))
+        (catch Throwable e
+          (log/error e (trs "Unexpected exception writing error response"))))
+      (a/>!! finished-chan :unexpected-error)
+      (a/close! finished-chan))))
 
 (declare render)
 

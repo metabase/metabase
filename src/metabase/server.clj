@@ -59,8 +59,12 @@
       (let [^AsyncContext context (doto (.startAsync request)
                                     (.setTimeout timeout))
             request-map           (servlet/build-request-map request)
-            raise                 (fn [^Throwable exception]
-                                    (.sendError response 500 (.getMessage exception))
+            raise                 (fn raise [^Throwable e]
+                                    (log/error e (trs "Unexpected exception in endpoint"))
+                                    (try
+                                      (.sendError response 500 (.getMessage e))
+                                      (catch Throwable e
+                                        (log/error e (trs "Unexpected exception writing error response"))))
                                     (.complete context))]
         (try
           (handler
@@ -73,6 +77,7 @@
                                                       :response-map  response-map}))
            raise)
           (catch Throwable e
+            (log/error e (trs "Unexpected Exception in API request handler"))
             (raise e))
           (finally
             (.setHandled base-request true)))))))
