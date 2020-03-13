@@ -4,6 +4,7 @@ Once you really get rolling with Metabase it's often the case that you'll have m
 
 To help you out in situations like this, Metabase has a serialization feature which lets you create a snapshot, called a dump, of the contents of a Metabase instance that can then be loaded into another instance. This lets you do things like create a set of dashboards and charts in one Metabase instance and then easily copy those items to a number of other Metabase instances. You could also use this feature to enable a staging-to-production workflow for important dashboards or reports by dumping from a staging instance of Metabase and then loading that dump into your production instance(s). You can even put the dump files into version control and audit changes to them, as the YAML files contained within the dump are pretty readable.
 
+If you're looking to do a one-time migration from H2 to MySQL/Postgres, then use the [migration guide instead](../operations-guide/migrating-from-h2.md).
 
 ### What gets dumped and loaded
 

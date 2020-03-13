@@ -7,7 +7,7 @@ The following databases are officially supported by Metabase:
 * Google Analytics
 * H2
 * MongoDB
-* MySQL
+* MySQL/MariaDB
 * PostgreSQL
 * Presto
 * Amazon Redshift
@@ -16,4 +16,4 @@ The following databases are officially supported by Metabase:
 * SQLite
 * SQL Server
 
-You may find some community-built database drivers for databases that we do not currently support - and you are always welcome to build your own!
+You may find some [community-built database drivers](../../developers-guide-drivers.md) for databases that we do not currently support - and you are always welcome to build your own!

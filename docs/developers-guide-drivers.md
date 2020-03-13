@@ -12,7 +12,9 @@ In order to install a community driver, you would typically download the latest 
 
 All Metabase plugins live in the plugins directory, which defaults to `./plugins` in the same directory as `metabase.jar`. The plugins directory can be changed by setting the env var `MB_PLUGINS_DIR`. 
 
-Please note that you install these at your own risk. The plugins will run as part of your Metabase instance and, as such, will have access to anything it does. These are the currently known 3rd-party database drivers for Metabase.
+**Note:** You install these at your own risk. The plugins will run as part of your Metabase instance and, as such, will have access to anything it does.
+
+These are the currently known 3rd-party database drivers for Metabase.
 
 | Database | GitHub Stars | Last release (_if available_) |
 | ---- | ---- | ----|
@@ -23,8 +25,13 @@ Please note that you install these at your own risk. The plugins will run as par
 | [Datomic](https://github.com/lambdaisland/metabase-datomic) | ![GitHub stars](https://img.shields.io/github/stars/lambdaisland/metabase-datomic) ||
 | [DB2](https://github.com/dludwig-jrt/metabase-db2-driver) | ![GitHub stars](https://img.shields.io/github/stars/dludwig-jrt/metabase-db2-driver) ||
 | [Firebird](https://github.com/evosec/metabase-firebird-driver) | ![GitHub stars](https://img.shields.io/github/stars/evosec/metabase-firebird-driver) | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/evosec/metabase-firebird-driver) |
+| [Materialize](https://github.com/MaterializeInc/metabase-materialize-driver) | ![GitHub stars](https://img.shields.io/github/stars/MaterializeInc/metabase-materialize-driver) | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/MaterializeInc/metabase-materialize-driver) |
 | [Teradata](https://github.com/swisscom-bigdata/metabase-teradata-driver) | ![GitHub stars](https://img.shields.io/github/stars/swisscom-bigdata/metabase-teradata-driver) | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/swisscom-bigdata/metabase-teradata-driver) |
 | [Spark Databricks](https://github.com/ifood/metabase-sparksql-databricks-driver) | ![GitHub stars](https://img.shields.io/github/stars/ifood/metabase-sparksql-databricks-driver) | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/ifood/metabase-sparksql-databricks-driver) |
+
+If you don't see a driver for your database, then try looking in the comments of the [issue related to the database](https://github.com/metabase/metabase/labels/Database%2F). You might also find more by [searching on GitHub](https://github.com/search?q=metabase+driver).
+
+Are you having problems with installing or using a community driver, then you're likely to get the best help from the author of the driver.
 
 ## Driver development
 
