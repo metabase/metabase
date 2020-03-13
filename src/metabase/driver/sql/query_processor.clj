@@ -147,6 +147,7 @@
 (defmethod quote-style :sql [_] :ansi)
 
 
+;; TODO - we should rename this to `unix-timestamp->honeysql`
 (defmulti unix-timestamp->timestamp
   "Return a HoneySQL form appropriate for converting a Unix timestamp integer field or value to an proper SQL Timestamp.
   `seconds-or-milliseconds` refers to the resolution of the int in question and with be either `:seconds` or
@@ -157,7 +158,8 @@
   (fn [driver seconds-or-milliseconds _] [(driver/dispatch-on-initialized-driver driver) seconds-or-milliseconds])
   :hierarchy #'driver/hierarchy)
 
-(defmethod unix-timestamp->timestamp [:sql :milliseconds] [driver _ expr]
+(defmethod unix-timestamp->timestamp [:sql :milliseconds]
+  [driver _ expr]
   (unix-timestamp->timestamp driver :seconds (hx// expr 1000)))
 
 
@@ -172,7 +174,8 @@
     [(driver/dispatch-on-initialized-driver driver) top-level-clause])
   :hierarchy #'driver/hierarchy)
 
-(defmethod apply-top-level-clause :default [_ _ honeysql-form _]
+(defmethod apply-top-level-clause :default
+  [_ _ honeysql-form _]
   honeysql-form)
 
 ;; this is the primary way to override behavior for a specific clause or object class.
@@ -280,7 +283,8 @@
         (hx/+ min-value))))
 
 
-(defmethod ->honeysql [:sql :count] [driver [_ field]]
+(defmethod ->honeysql [:sql :count]
+  [driver [_ field]]
   (if field
     (hsql/call :count (->honeysql driver field))
     :%count.*))
@@ -292,7 +296,8 @@
 (defmethod ->honeysql [:sql :min]      [driver [_ field]] (hsql/call :min            (->honeysql driver field)))
 (defmethod ->honeysql [:sql :max]      [driver [_ field]] (hsql/call :max            (->honeysql driver field)))
 
-(defmethod ->honeysql [:sql :+] [driver [_ & args]]
+(defmethod ->honeysql [:sql :+]
+  [driver [_ & args]]
   (if (mbql.u/datetime-arithmetics? args)
     (let [[field & intervals] args]
       (reduce (fn [hsql-form [_ amount unit]]
@@ -399,7 +404,8 @@
        (apply hsql/call :case)))
 
 ;; actual handling of the name is done in the top-level clause handler for aggregations
-(defmethod ->honeysql [:sql :aggregation-options] [driver [_ ag]]
+(defmethod ->honeysql [:sql :aggregation-options]
+  [driver [_ ag]]
   (->honeysql driver ag))
 
 ;;  aggregation REFERENCE e.g. the ["aggregation" 0] fields we allow in order-by
