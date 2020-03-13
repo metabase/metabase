@@ -69,15 +69,9 @@
     (catch Throwable e
       (log/error e (trs "Caught unexpected Exception in streaming response body"))
       (write-error! os e)
-      nil)
-    (finally
-      (a/>!! finished-chan (if (a/poll! canceled-chan)
-                             :canceled
-                             :completed))
-      (a/close! finished-chan)
-      (a/close! canceled-chan))))
+      nil)))
 
-(defn- do-f-async [f ^OutputStream os finished-chan]
+(defn- do-f-async [^AsyncContext async-context f ^OutputStream os finished-chan]
   {:pre [(some? os)]}
   (let [canceled-chan (a/promise-chan)
         task          (bound-fn []
@@ -85,9 +79,14 @@
                           (do-f* f os finished-chan canceled-chan)
                           (catch Throwable e
                             (log/error e (trs "bound-fn caught unexpected Exception"))
-                            (a/>!! finished-chan :unexpected-error)
+                            (a/>!! finished-chan :unexpected-error))
+                          (finally
+                            (a/>!! finished-chan (if (a/poll! canceled-chan)
+                                                   :canceled
+                                                   :completed))
                             (a/close! finished-chan)
-                            (a/close! canceled-chan))))]
+                            (a/close! canceled-chan)
+                            (.complete async-context))))]
     (.submit (thread-pool/thread-pool) ^Runnable task)
     nil))
 
@@ -122,9 +121,6 @@
 (defn- respond
   [{:keys [^HttpServletResponse response ^AsyncContext async-context request-map response-map]}
    f {:keys [content-type], :as options} finished-chan]
-  (a/go
-    (a/<! finished-chan)
-    (.complete async-context))
   (try
     (.setStatus response 202)
     (let [gzip?   (should-gzip-response? request-map)
@@ -133,7 +129,7 @@
       (#'ring.servlet/set-headers response headers)
       (let [output-stream-delay (output-stream-delay gzip? response)
             delay-os            (delay-output-stream output-stream-delay)]
-        (do-f-async f delay-os finished-chan)))
+        (do-f-async async-context f delay-os finished-chan)))
     (catch Throwable e
       (log/error e (trs "Unexpected exception in do-f-async"))
       (try
@@ -141,7 +137,8 @@
         (catch Throwable e
           (log/error e (trs "Unexpected exception writing error response"))))
       (a/>!! finished-chan :unexpected-error)
-      (a/close! finished-chan))))
+      (a/close! finished-chan)
+      (.complete async-context))))
 
 (declare render)
 

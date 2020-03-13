@@ -579,8 +579,8 @@
     (let [ttl-seconds (Math/round (float (/ (* average-duration (public-settings/query-caching-ttl-ratio))
                                             1000.0)))]
       (when-not (zero? ttl-seconds)
-        (log/info (format "Question's average execution duration is %d ms; using 'magic' TTL of %d seconds"
-                          average-duration ttl-seconds)
+        (log/info (trs "Question''s average execution duration is {0}; using ''magic'' TTL of {1}"
+                       (u/format-milliseconds average-duration) (u/format-seconds ttl-seconds))
                   (u/emoji "💾"))
         ttl-seconds))))
 
