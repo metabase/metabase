@@ -16,10 +16,10 @@
            ;; seems to be pretty rare, but explicitly specifying UTC will make
            ;; the issue go away
            (mt/with-temporary-setting-values [report-timezone "UTC"]
-             (count (rows (mt/dataset sad-toucan-incidents
-                            (mt/run-mbql-query incidents
-                              {:filter   [:= [:datetime-field $timestamp :day] "2015-06-02"]
-                               :order-by [[:asc $timestamp]]}))))))
+             (count (mt/rows (mt/dataset sad-toucan-incidents
+                               (mt/run-mbql-query incidents
+                                 {:filter   [:= [:datetime-field $timestamp :day] "2015-06-02"]
+                                  :order-by [[:asc $timestamp]]}))))))
         "There were 10 'sad toucan incidents' on 2015-06-02 in UTC")))
 
 (deftest results-test
@@ -78,7 +78,7 @@
                       {:aggregation [[:count]]
                        :breakout    [$timestamp]
                        :limit       10}))
-                  rows (format-rows-by [identity int])))))))
+                  mt/rows (mt/format-rows-by [identity int])))))))
 
 (deftest substitute-native-parameters-test
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
