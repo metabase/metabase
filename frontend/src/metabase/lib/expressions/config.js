@@ -144,6 +144,7 @@ export const MBQL_CLAUSES = {
     displayName: t`regexextract`,
     type: "string",
     args: ["string", "string"],
+    requiredFeatures: ["regex"],
   },
   concat: {
     displayName: t`concat`,

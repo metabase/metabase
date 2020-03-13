@@ -11,7 +11,8 @@
             [metabase.query-processor.streaming :as qp.streaming]
             [metabase.test.util :as tu]
             [toucan.db :as db])
-  (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream InputStream InputStreamReader]))
+  (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream InputStream InputStreamReader]
+           javax.servlet.AsyncContext))
 
 (defmulti ^:private parse-result
   {:arglists '([export-format ^InputStream input-stream])}
@@ -53,7 +54,11 @@
               os  (BufferedOutputStream. bos)]
     (let [streaming-response (qp.streaming/streaming-response [context export-format]
                                (qp/process-query-async query (assoc context :timeout 5000)))]
-      (#'streaming-response/do-f-async (.f streaming-response) os (.donechan streaming-response))
+      (#'streaming-response/do-f-async (proxy [AsyncContext] []
+                                         (complete []))
+                                       (.f streaming-response)
+                                       os
+                                       (.donechan streaming-response))
       (mt/wait-for-result (streaming-response/finished-chan streaming-response) 1000))
     (let [bytea (.toByteArray bos)]
       (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]

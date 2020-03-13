@@ -14,6 +14,7 @@
             [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
   (:import clojure.core.async.impl.channels.ManyToManyChannel
+           com.mchange.v2.c3p0.PoolBackedDataSource
            metabase.async.streaming_response.StreamingResponse
            org.eclipse.jetty.util.thread.QueuedThreadPool))
 
@@ -49,12 +50,17 @@
 
 (defn- stats []
   (str
+   (let [^PoolBackedDataSource pool (:datasource (db/connection))]
+     (trs "App DB connections: {0}/{1}"
+          (.getNumBusyConnectionsAllUsers pool) (.getNumConnectionsAllUsers pool)))
+   " "
    (when-let [^QueuedThreadPool pool (some-> (server/instance) .getThreadPool)]
-     (trs "Jetty threads: {0}/{1} ({2} idle, {3} queued) "
+     (trs "Jetty threads: {0}/{1} ({2} idle, {3} queued)"
           (.getBusyThreads pool)
           (.getMaxThreads pool)
           (.getIdleThreads pool)
           (.getQueueSize pool)))
+   " "
    (trs "({0} total active threads)" (Thread/activeCount))
    " "
    (trs "Queries in flight: {0}" (streaming-response.thread-pool/active-thread-count))

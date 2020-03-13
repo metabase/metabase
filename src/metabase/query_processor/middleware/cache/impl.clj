@@ -6,8 +6,7 @@
              [util :as u]]
             [metabase.util.i18n :refer [trs tru]]
             [taoensso.nippy :as nippy])
-  (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayOutputStream DataInputStream DataOutputStream
-            EOFException FilterOutputStream InputStream OutputStream]
+  (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayOutputStream DataInputStream DataOutputStream EOFException FilterOutputStream InputStream OutputStream]
            [java.util.zip GZIPInputStream GZIPOutputStream]))
 
 (defn- max-bytes-output-stream ^OutputStream [max-bytes ^OutputStream os]
@@ -86,11 +85,11 @@
             (a/>!! out-chan e)))))))
 
 (defn serialize-async
-  "Create output streamings for serializing QP results. Returns a pair of core.async channels, `in-chan` and `out-chan`.
+  "Create output streams for serializing QP results. Returns a map of core.async channels, `in-chan` and `out-chan`.
   Send all objects to be serialized to `in-chan`; then close it when finished; the result of `out-chan` will be the
   serialized byte array (or an Exception, if one was thrown).
 
-  `out-chan` is closed automatically upon recieving a result; all chans and output streams are closed thereafter.
+  `out-chan` is closed automatically upon receiving a result; all chans and output streams are closed thereafter.
 
     (let [{:keys [in-chan out-chan]} (serialize-async)]
       (doseq [obj objects]
@@ -131,25 +130,22 @@
               acc
               (recur (rf acc row)))))))))
 
-(defn reducible-deserialized-results
-  "Take cached result bytes from `is` and call `respond` like
+(defn do-reducible-deserialized-results
+  "Impl for `with-reducible-deserialized-results`."
+  [^InputStream is f]
+  (with-open [is (DataInputStream. (GZIPInputStream. (BufferedInputStream. is)))]
+    (let [metadata (thaw! is)]
+      (if (= metadata ::eof)
+        (f nil)
+        (f [metadata (reducible-rows is)])))))
 
-    (respond metadata reducible-rows)
+(defmacro with-reducible-deserialized-results
+  "Fetches metadata and reducible rows from an InputStream `is` and executes body with them bound
 
-  If cached results cannot be deserialized, calls
+    (with-reducible-deserialized-results [[metadata reducible-rows] is]
+      ...)
 
-    (respond nil)"
-  {:style/indent 1}
-  [^InputStream is respond]
-  (let [result (try
-                 (with-open [is (DataInputStream. (GZIPInputStream. (BufferedInputStream. is)))]
-                   (let [metadata (thaw! is)]
-                     (if (= metadata ::eof)
-                       ::invalid
-                       (respond metadata (reducible-rows is)))))
-                 (catch Throwable e
-                   (log/error e (trs "Error parsing serialized results"))
-                   ::invalid))]
-    (if (= result ::invalid)
-      (respond nil)
-      result)))
+  `metadata` and `reducible-rows` will be `nil` if the data fetched from the input stream is invalid, from an older
+  cache version, or otherwise unusable."
+  [[metadata-rows-binding is] & body]
+  `(do-reducible-deserialized-results ~is (fn [~metadata-rows-binding] ~@body)))
