@@ -1,6 +1,6 @@
 import { signInAsAdmin, restore } from "__support__/cypress";
 
-describe("chart drill", () => {
+describe("scenarios > visualizations > chart drill", () => {
   before(restore);
   beforeEach(signInAsAdmin);
 

@@ -24,7 +24,6 @@
              [common :as api]
              [dataset :as dataset-api]
              [public :as public-api]]
-            [metabase.async.streaming-response :as async.streaming-response]
             [metabase.models
              [card :refer [Card]]
              [dashboard :refer [Dashboard]]
@@ -36,10 +35,7 @@
              [i18n :refer [tru]]
              [schema :as su]]
             [schema.core :as s]
-            [toucan.db :as db])
-  (:import metabase.async.streaming_response.StreamingResponse))
-
-(comment async.streaming-response/keep-me)
+            [toucan.db :as db]))
 
 ;;; ------------------------------------------------- Param Checking -------------------------------------------------
 
@@ -218,7 +214,7 @@
    an `embedding-params` whitelist, and additional query `options`. Returns `StreamingResponse` that should be
   returned as the API endpoint result."
   {:style/indent 0}
-  ^StreamingResponse [& {:keys [export-format card-id embedding-params token-params query-params options]}]
+  [& {:keys [export-format card-id embedding-params token-params query-params options]}]
   {:pre [(integer? card-id) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
   (let [parameter-values (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters       (apply-parameter-values (resolve-card-parameters card-id) parameter-values)]
@@ -244,9 +240,9 @@
 (defn dashcard-results-async
   "Return results for running the query belonging to a DashboardCard. Returns a `StreamingResponse`."
   {:style/indent 0}
-  ^StreamingResponse [& {:keys [dashboard-id dashcard-id card-id export-format embedding-params token-params
-                                query-params constraints]
-                         :or   {constraints constraints/default-query-constraints}}]
+  [& {:keys [dashboard-id dashcard-id card-id export-format embedding-params token-params
+             query-params constraints]
+      :or   {constraints constraints/default-query-constraints}}]
   {:pre [(integer? dashboard-id) (integer? dashcard-id) (integer? card-id) (u/maybe? map? embedding-params)
          (map? token-params) (map? query-params)]}
   (let [parameter-values (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
@@ -292,7 +288,7 @@
     (check-embedding-enabled-for-card (eu/get-in-unsigned-token-or-throw unsigned [:resource :question]))
     (card-for-unsigned-token unsigned, :constraints {:enable_embedding true})))
 
-(s/defn ^:private run-query-for-unsigned-token-async :- StreamingResponse
+(s/defn ^:private run-query-for-unsigned-token-async
   "Run the query belonging to Card identified by `unsigned-token`. Checks that embedding is enabled both globally and
   for this Card. Returns core.async channel to fetch the results."
   [unsigned-token export-format query-params & options]
@@ -346,12 +342,13 @@
      {:resource {:dashboard <dashboard-id>}
       :params   <parameters>}
 
-   Additional dashboard parameters can be provided in the query string, but params in the JWT token take precedence.
+  Additional dashboard parameters can be provided in the query string, but params in the JWT token take precedence.
+
   Returns a `StreamingResponse`."
   {:style/indent 1}
-  ^StreamingResponse [token dashcard-id card-id export-format query-params
-                      & {:keys [constraints]
-                         :or   {constraints constraints/default-query-constraints}}]
+  [token dashcard-id card-id export-format query-params
+   & {:keys [constraints]
+      :or   {constraints constraints/default-query-constraints}}]
   (let [unsigned-token (eu/unsign token)
         dashboard-id   (eu/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])]
     (check-embedding-enabled-for-dashboard dashboard-id)

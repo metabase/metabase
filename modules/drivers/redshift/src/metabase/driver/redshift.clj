@@ -2,6 +2,7 @@
   "Amazon Redshift Driver."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
@@ -10,8 +11,10 @@
              [execute :as sql-jdbc.execute]]
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.util.honeysql-extensions :as hx])
-  (:import java.sql.Types
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [i18n :refer [trs]]])
+  (:import [java.sql ResultSet Types]
            java.time.OffsetTime))
 
 (driver/register! :redshift, :parent #{:postgres ::legacy/use-legacy-classes-for-read-and-set})
@@ -98,6 +101,23 @@
 (defmethod sql-jdbc.execute/set-timezone-sql :redshift
   [_]
   "SET TIMEZONE TO %s;")
+
+;; This impl is basically the same as the default impl in `sql-jdbc.execute`, but doesn't attempt to make the
+;; connection read-only, because that seems to be causing problems for people
+(defmethod sql-jdbc.execute/connection-with-timezone :redshift
+  [driver database ^String timezone-id]
+  (let [conn (.getConnection (sql-jdbc.execute/datasource database))]
+    (try
+      (sql-jdbc.execute/set-best-transaction-level! driver conn)
+      (sql-jdbc.execute/set-time-zone-if-supported! driver conn timezone-id)
+      (try
+        (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
+        (catch Throwable e
+          (log/debug e (trs "Error setting default holdability for connection"))))
+      conn
+      (catch Throwable e
+        (.close conn)
+        (throw e)))))
 
 (defn- splice-raw-string-value
   [driver s]

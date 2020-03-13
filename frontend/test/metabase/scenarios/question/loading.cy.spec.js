@@ -1,6 +1,6 @@
 import { signInAsAdmin, restore } from "__support__/cypress";
 
-describe("query builder loading behavior", () => {
+describe("scenarios > question > loading behavior", () => {
   before(restore);
   beforeEach(signInAsAdmin);
 

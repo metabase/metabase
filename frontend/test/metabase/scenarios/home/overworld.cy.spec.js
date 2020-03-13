@@ -4,7 +4,7 @@ import {
   restore,
 } from "__support__/cypress";
 
-describe("homepage", () => {
+describe("scenarios > home > overworld", () => {
   before(restore);
 
   describe("content management", () => {

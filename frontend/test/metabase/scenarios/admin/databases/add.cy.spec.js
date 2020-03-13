@@ -14,7 +14,7 @@ function toggleFieldWithDisplayName(displayName) {
     .click();
 }
 
-describe("admin > databases > add", () => {
+describe("scenarios > admin > databases > add", () => {
   before(restore);
 
   beforeEach(() => {

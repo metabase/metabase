@@ -1,6 +1,6 @@
 import { signInAsNormalUser, restore, popover } from "__support__/cypress";
 
-describe("maps", () => {
+describe("scenarios > visualizations > maps", () => {
   before(restore);
   beforeEach(signInAsNormalUser);
 

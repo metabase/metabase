@@ -1,6 +1,7 @@
-import { signInAsAdmin } from "__support__/cypress";
+import { restore, signInAsAdmin } from "__support__/cypress";
 
-describe("permissions", () => {
+describe("scenarios > admin > permissions", () => {
+  before(restore);
   beforeEach(signInAsAdmin);
 
   it("should display error on failed save", () => {

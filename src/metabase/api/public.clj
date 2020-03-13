@@ -14,9 +14,7 @@
              [dashboard :as dashboard-api]
              [dataset :as dataset-api]
              [field :as field-api]]
-            [metabase.async
-             [streaming-response :as async.streaming-response]
-             [util :as async.u]]
+            [metabase.async.util :as async.u]
             [metabase.mbql
              [normalize :as normalize]
              [util :as mbql.u]]
@@ -39,10 +37,7 @@
             [schema.core :as s]
             [toucan
              [db :as db]
-             [hydrate :refer [hydrate]]])
-  (:import metabase.async.streaming_response.StreamingResponse))
-
-(comment async.streaming-response/keep-me)
+             [hydrate :refer [hydrate]]]))
 
 (def ^:private ^:const ^Integer default-embed-max-height 800)
 (def ^:private ^:const ^Integer default-embed-max-width 1024)
@@ -104,7 +99,7 @@
   (fn [metadata final-metadata context]
     (orig-reducedf metadata (transform-results final-metadata) context)))
 
-(s/defn run-query-for-card-with-id-async :- StreamingResponse
+(s/defn run-query-for-card-with-id-async
   "Run the query belonging to Card with `card-id` with `parameters` and other query options (e.g. `:constraints`).
   Returns a `StreamingResponse` object that should be returned as the result of an API endpoint."
   [card-id export-format parameters & options]
@@ -128,7 +123,7 @@
                              out-chan)))
            options)))
 
-(s/defn ^:private run-query-for-card-with-public-uuid-async :- StreamingResponse
+(s/defn ^:private run-query-for-card-with-public-uuid-async
   "Run query for a *public* Card with UUID. If public sharing is not enabled, this throws an exception. Returns a
   `StreamingResponse` object that should be returned as the result of an API endpoint."
   [uuid export-format parameters & options]
@@ -272,10 +267,10 @@
 (defn public-dashcard-results-async
   "Return the results of running a query with `parameters` for Card with `card-id` belonging to Dashboard with
   `dashboard-id`. Throws a 404 immediately if the Card isn't part of the Dashboard. Returns a `StreamingResponse`."
-  ^StreamingResponse [dashboard-id card-id export-format parameters
-                      & {:keys [context constraints]
-                         :or   {context     :public-dashboard
-                                constraints constraints/default-query-constraints}}]
+  [dashboard-id card-id export-format parameters
+   & {:keys [context constraints]
+      :or   {context     :public-dashboard
+             constraints constraints/default-query-constraints}}]
   (check-card-is-in-dashboard card-id dashboard-id)
   (let [params (resolve-params dashboard-id (if (string? parameters)
                                               (json/parse-string parameters keyword)

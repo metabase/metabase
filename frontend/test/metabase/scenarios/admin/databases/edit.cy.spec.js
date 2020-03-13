@@ -1,6 +1,6 @@
 import { signInAsAdmin, restore, popover, modal } from "__support__/cypress";
 
-describe("admin > databases > edit", () => {
+describe("scenarios > admin > databases > edit", () => {
   before(restore);
 
   beforeEach(() => {

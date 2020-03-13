@@ -2,7 +2,7 @@ import { signInAsAdmin, restore } from "__support__/cypress";
 
 const ORDERS_URL = "/admin/datamodel/database/1/table/2";
 
-describe("admin > datamodel > table", () => {
+describe("scenarios > admin > datamodel > table", () => {
   beforeEach(() => {
     restore();
     signInAsAdmin();

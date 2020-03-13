@@ -7,9 +7,7 @@
              [driver :as driver]
              [http-client :as test-client]
              [models :refer [Database]]
-             [test :as mt]
-             [util :as u]]
-            [metabase.async.streaming-response :as streaming-response]
+             [test :as mt]]
             [metabase.async.streaming-response.thread-pool :as thread-pool]
             [metabase.query-processor.context :as context])
   (:import java.util.concurrent.Executors
@@ -112,37 +110,3 @@
               (testing "(Usually this is under 100ms but might be a little over if CircleCI is being slow)"
                 (let [elapsed-ms (- (System/currentTimeMillis) start-time-ms)]
                   (is (< elapsed-ms 500)))))))))))
-
-(deftest newlines-test
-  (testing "Keepalive newlines should be written while waiting for a response."
-    (with-redefs [streaming-response/keepalive-interval-ms 50]
-      (with-test-driver-db
-        (let [url           (test-client/build-url "dataset" nil)
-              session-token (test-client/authenticate (mt/user->credentials :lucky))
-              request       (test-client/build-request-map session-token
-                                                           {:database (mt/id)
-                                                            :type     "native"
-                                                            :native   {:query {:sleep 300}}})]
-          (is (re= #"(?s)^\n{3,}\{\"data\":.*$"
-                   (:body (http/post url request)))))))))
-
-(deftest cancelation-test
-  (testing "Make sure canceling a HTTP request ultimately causes the query to be canceled"
-    (with-redefs [streaming-response/keepalive-interval-ms 50]
-      (with-test-driver-db
-        (reset! canceled? false)
-        (with-start-execution-chan [start-chan]
-          (let [url           (test-client/build-url "dataset" nil)
-                session-token (test-client/authenticate (mt/user->credentials :lucky))
-                request       (test-client/build-request-map session-token
-                                                             {:database (mt/id)
-                                                              :type     "native"
-                                                              :native   {:query {:sleep 5000}}})
-                futur         (http/post url (assoc request :async? true) identity (fn [e] (throw e)))]
-            (is (future? futur))
-            ;; wait a little while for the query to start running -- this should usually happen fairly quickly
-            (mt/wait-for-result start-chan (u/seconds->ms 15))
-            (future-cancel futur)
-            (Thread/sleep 200)
-            (is (= true
-                   @canceled?))))))))
