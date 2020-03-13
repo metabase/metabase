@@ -25,7 +25,7 @@
              [interface :as i]]
             [metabase.query-processor.middleware.cache.impl :as impl]
             [metabase.util.i18n :refer [trs]])
-  (:import java.io.InputStream))
+  (:import org.eclipse.jetty.io.EofException))
 
 (comment backend.db/keep-me)
 
@@ -87,7 +87,6 @@
         (let [y (a/<! (a/thread
                         (try
                           (i/save-results! *backend* query-hash x)
-                          :ok
                           (catch Throwable e
                             e))))]
           (if (instance? Throwable y)
@@ -134,27 +133,31 @@
     ([acc row]
      (rf acc row))))
 
-(defn- do-with-cached-results
+(defn- maybe-reduce-cached-results
   "Reduces cached results if there is a hit. Otherwise, returns `::miss` directly."
   [query-hash max-age-seconds rff context]
-  (if *ignore-cached-results*
-    ::miss
-    (do
-      (log/tracef "Looking for cached-results for query with hash %s younger than %s\n"
-                  (pr-str (i/short-hex-hash query-hash)) (u/format-seconds max-age-seconds))
-      (i/cached-results *backend* query-hash max-age-seconds
-        (fn [^InputStream is]
-          (if (nil? is)
-            ::miss
-            (impl/reducible-deserialized-results is
-              (fn
-                ([_]
-                 ::miss)
-
-                ([metadata reducible-rows]
-                 (context/reducef (fn [metadata]
-                                    (add-cached-metadata-xform (rff metadata)))
-                                  context metadata reducible-rows))))))))))
+  (try
+    (or (when-not *ignore-cached-results*
+          (log/tracef "Looking for cached results for query with hash %s younger than %s\n"
+                      (pr-str (i/short-hex-hash query-hash)) (u/format-seconds max-age-seconds))
+          (i/with-cached-results *backend* query-hash max-age-seconds [is]
+            (when is
+              (impl/with-reducible-deserialized-results [[metadata reducible-rows] is]
+                (when reducible-rows
+                  (let [rff* (fn [metadata]
+                               (add-cached-metadata-xform (rff metadata)))]
+                    (log/tracef "Reducing cached rows...")
+                    (context/reducef rff* context metadata reducible-rows)
+                    (log/tracef "All cached rows reduced")
+                    ::ok))))))
+        ::miss)
+    (catch EofException _
+      (log/debug (trs "Request is closed; no one to return cached results to"))
+      ::canceled)
+    (catch Throwable e
+      (log/error e (trs "Error attempting to fetch cached results for query with hash {0}"
+                        (i/short-hex-hash query-hash)))
+      ::miss)))
 
 
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
@@ -164,10 +167,10 @@
   ;; TODO - Query will already have `info.hash` if it's a userland query. I'm not 100% sure it will be the same hash,
   ;; because this is calculated after normalization, instead of before
   (let [query-hash (qputil/query-hash query)
-        result     (do-with-cached-results query-hash cache-ttl rff context)]
-    (if-not (= ::miss result)
-      result
+        result     (maybe-reduce-cached-results query-hash cache-ttl rff context)]
+    (when (= result ::miss)
       (let [start-time-ms (System/currentTimeMillis)]
+        (log/trace "Running query and saving cached results (if eligible)...")
         (qp query
             (fn [metadata]
               (save-results-xform start-time-ms metadata query-hash (rff metadata)))

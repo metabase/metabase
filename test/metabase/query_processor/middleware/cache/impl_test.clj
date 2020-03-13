@@ -21,12 +21,10 @@
 
   ([^bytes bytea rff]
    (with-open [bis (ByteArrayInputStream. bytea)]
-     (impl/reducible-deserialized-results bis (fn respond
-                                                ([_] nil)
-
-                                                ([metadata rows]
-                                                 (let [rf (rff metadata)]
-                                                   (reduce rf (rf) rows))))))))
+     (impl/with-reducible-deserialized-results [[metadata rows] bis]
+       (when rows
+         (let [rf (rff metadata)]
+           (reduce rf (rf) rows)))))))
 
 (deftest e2e-test
   (let [{:keys [in-chan out-chan]} (impl/serialize-async)]
