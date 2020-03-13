@@ -185,7 +185,7 @@
   [_ hsql-form amount unit]
   (date-add unit amount hsql-form))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:sqlserver :seconds]
+(defmethod sql.qp/unix-timestamp->honeysql [:sqlserver :seconds]
   [_ _ expr]
   ;; The second argument to DATEADD() gets casted to a 32-bit integer. BIGINT is 64 bites, so we tend to run into
   ;; integer overflow errors (especially for millisecond timestamps).

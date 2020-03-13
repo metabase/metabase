@@ -242,8 +242,8 @@
     driver
     (let [identifier (sql.qp/->honeysql driver (sql.qp/field->identifier driver field))
           identifier (cond->> identifier
-                       (isa? special-type :type/UNIXTimestampSeconds)      (sql.qp/unix-timestamp->timestamp driver :seconds)
-                       (isa? special-type :type/UNIXTimestampMilliseconds) (sql.qp/unix-timestamp->timestamp driver :milliseconds))]
+                       (isa? special-type :type/UNIXTimestampSeconds)      (sql.qp/unix-timestamp->honeysql driver :seconds)
+                       (isa? special-type :type/UNIXTimestampMilliseconds) (sql.qp/unix-timestamp->honeysql driver :milliseconds))]
       (if (date-params/date-type? param-type)
         (sql.qp/date driver :day identifier)
         identifier)))))

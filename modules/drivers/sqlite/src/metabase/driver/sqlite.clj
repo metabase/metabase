@@ -189,7 +189,7 @@
     (->datetime (sql.qp/date driver unit hsql-form)
                 (hx/literal (format "%+d %s" (* amount multiplier) sqlite-unit)))))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:sqlite :seconds]
+(defmethod sql.qp/unix-timestamp->honeysql [:sqlite :seconds]
   [_ _ expr]
   (->datetime expr (hx/literal "unixepoch")))
 

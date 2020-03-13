@@ -88,7 +88,7 @@
   [_ hsql-form amount unit]
   (hsql/call :dateadd (hx/literal unit) amount (hx/->timestamp hsql-form)))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:redshift :seconds]
+(defmethod sql.qp/unix-timestamp->honeysql [:redshift :seconds]
   [_ _ expr]
   (hx/+ (hsql/raw "TIMESTAMP '1970-01-01T00:00:00Z'")
         (hx/* expr

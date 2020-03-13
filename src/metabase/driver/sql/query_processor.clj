@@ -146,21 +146,32 @@
 
 (defmethod quote-style :sql [_] :ansi)
 
+(defmulti ^{:deprecated "0.35.0"} unix-timestamp->timestamp
+  "DEPRECATED -- use `unix-timestamp->honeysql` instead.
 
-;; TODO - we should rename this to `unix-timestamp->honeysql`
-(defmulti unix-timestamp->timestamp
+  This has been deprecated because the name isn't entirely clear or accurate. `unix-timestamp->honeysql` is a better
+  explanation of the purpose of this method. For the time being, `unix-timestamp->honeysql` will fall back to
+  implementations of `unix-timestamp->timestamp`; this will be removed in a future release."
+  {:arglists '([driver seconds-or-milliseconds expr]), :deprecated "0.35.0"}
+  (fn [driver seconds-or-milliseconds _] [(driver/dispatch-on-initialized-driver driver) seconds-or-milliseconds]))
+
+(defmulti unix-timestamp->honeysql
   "Return a HoneySQL form appropriate for converting a Unix timestamp integer field or value to an proper SQL Timestamp.
   `seconds-or-milliseconds` refers to the resolution of the int in question and with be either `:seconds` or
   `:milliseconds`.
 
   There is a default implementation for `:milliseconds` the recursively calls with `:seconds` and `(expr / 1000)`."
-  {:arglists '([driver seconds-or-milliseconds field-or-value])}
+  {:arglists '([driver seconds-or-milliseconds expr]), :added "0.35.0"}
   (fn [driver seconds-or-milliseconds _] [(driver/dispatch-on-initialized-driver driver) seconds-or-milliseconds])
   :hierarchy #'driver/hierarchy)
 
-(defmethod unix-timestamp->timestamp [:sql :milliseconds]
+(defmethod unix-timestamp->honeysql [:sql :milliseconds]
   [driver _ expr]
-  (unix-timestamp->timestamp driver :seconds (hx// expr 1000)))
+  (unix-timestamp->honeysql driver :seconds (hx// expr 1000)))
+
+(defmethod unix-timestamp->honeysql :default
+  [driver seconds-or-milliseconds expr]
+  (unix-timestamp->timestamp driver seconds-or-milliseconds expr))
 
 
 (defmulti apply-top-level-clause
@@ -215,8 +226,8 @@
   "Wrap a `field-identifier` in appropriate HoneySQL expressions if it refers to a UNIX timestamp Field."
   [driver field field-identifier]
   (condp #(isa? %2 %1) (:special_type field)
-    :type/UNIXTimestampSeconds      (unix-timestamp->timestamp driver :seconds      field-identifier)
-    :type/UNIXTimestampMilliseconds (unix-timestamp->timestamp driver :milliseconds field-identifier)
+    :type/UNIXTimestampSeconds      (unix-timestamp->honeysql driver :seconds      field-identifier)
+    :type/UNIXTimestampMilliseconds (unix-timestamp->honeysql driver :milliseconds field-identifier)
     field-identifier))
 
 ;; default implmentation is a no-op; other drivers can override it as needed

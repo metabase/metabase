@@ -343,7 +343,7 @@
 
 (doseq [[unix-timestamp-type bigquery-fn] {:seconds      :timestamp_seconds
                                            :milliseconds :timestamp_millis}]
-  (defmethod sql.qp/unix-timestamp->timestamp [:bigquery unix-timestamp-type]
+  (defmethod sql.qp/unix-timestamp->honeysql [:bigquery unix-timestamp-type]
     [_ _ expr]
     (with-temporal-type (hsql/call bigquery-fn expr) :timestamp)))
 

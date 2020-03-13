@@ -48,8 +48,9 @@
                         :display-name "Checkin Date"
                         :type         :dimension
                         :dimension    [:field-id (data/id :checkins :date)]}
-                       [{:type :date/range, :target [:dimension [:template-tag "checkin_date"]], :value
-                         "2015-04-01~2015-05-01"}])))))
+                       [{:type   :date/range
+                         :target [:dimension [:template-tag "checkin_date"]]
+                         :value  "2015-04-01~2015-05-01"}])))))
 
     (testing "date range for a UNIX timestamp field should work just like a :type/Temporal field (#11934)"
       (mt/dataset tupac-sightings
