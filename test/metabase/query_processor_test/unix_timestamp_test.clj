@@ -5,7 +5,9 @@
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :as qp.test]
-             [test :as mt]]))
+             [test :as mt]
+             [util :as u]]
+            [metabase.query-processor-test.parameters-test :as parameters-test]))
 
 (deftest filter-test
   (mt/test-drivers (mt/normal-drivers)
@@ -84,18 +86,19 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
     (testing "Make sure `:date/range` SQL field filters work correctly with UNIX timestamps (#11934)"
       (mt/dataset tupac-sightings
-        (let [{native-query :query} (mt/dataset tupac-sightings (qp/query->native (mt/mbql-query sightings {:aggregation [[:count]]})))
-              query                 (mt/query sightings
-                                      {:type   :native
-                                       :native {:query         (str native-query " WHERE {{timestamp}}")
-                                                :template-tags {"timestamp" {:name         "timestamp"
-                                                                             :display-name "Sighting Timestamp"
-                                                                             :type         :dimension
-                                                                             :dimension    $timestamp
-                                                                             :widget-type  :date/range}}
-                                                :parameters    [{:type   :date/range
-                                                                 :target [:dimension [:template-tag "timestamp"]]
-                                                                 :value  "2014-02-01~2015-02-29"}]}})]
-          (is (= [[41]]
-                 (mt/formatted-rows [int]
-                   (qp/process-query query)))))))))
+        (let [query {:database (mt/id)
+                     :type     :native
+                     :native   (merge (parameters-test/count-with-field-filter-query driver/*driver* :sightings :timestamp)
+                                      (mt/$ids sightings
+                                        {:template-tags {"timestamp" {:name         "timestamp"
+                                                                      :display-name "Sighting Timestamp"
+                                                                      :type         :dimension
+                                                                      :dimension    $timestamp
+                                                                      :widget-type  :date/range}}
+                                         :parameters    [{:type   :date/range
+                                                          :target [:dimension [:template-tag "timestamp"]]
+                                                          :value  "2014-02-01~2015-02-29"}]}))}]
+          (testing (format "\nquery = %s" (u/pprint-to-str query))
+            (is (= [[41]]
+                   (mt/formatted-rows [int]
+                     (qp/process-query query))))))))))
