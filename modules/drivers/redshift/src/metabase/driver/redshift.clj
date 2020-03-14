@@ -84,7 +84,7 @@
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod driver/date-add :redshift
+(defmethod sql.qp/add-interval-honeysql-form :redshift
   [_ hsql-form amount unit]
   (hsql/call :dateadd (hx/literal unit) amount (hx/->timestamp hsql-form)))
 
@@ -94,7 +94,7 @@
         (hx/* expr
               (hsql/raw "INTERVAL '1 second'"))))
 
-(defmethod sql.qp/current-datetime-fn :redshift
+(defmethod sql.qp/current-datetime-honeysql-form :redshift
   [_]
   :%getdate)
 

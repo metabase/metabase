@@ -163,7 +163,7 @@
   [driver _ expr]
   (->date (sql.qp/->honeysql driver expr) (hx/literal "start of year")))
 
-(defmethod driver/date-add :sqlite
+(defmethod sql.qp/add-interval-honeysql-form :sqlite
   [driver hsql-form amount unit]
   (let [[multiplier sqlite-unit] (case unit
                                    :second  [1 "seconds"]
@@ -298,7 +298,7 @@
   [& args]
   (apply sql-jdbc.sync/post-filtered-active-tables args))
 
-(defmethod sql.qp/current-datetime-fn :sqlite
+(defmethod sql.qp/current-datetime-honeysql-form :sqlite
   [_]
   (hsql/call :datetime (hx/literal :now)))
 

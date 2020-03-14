@@ -232,7 +232,7 @@
 
 (defmethod sql-jdbc.execute/set-timezone-sql :snowflake [_] "ALTER SESSION SET TIMEZONE = %s;")
 
-(defmethod sql.qp/current-datetime-fn :snowflake [_] :%current_timestamp)
+(defmethod sql.qp/current-datetime-honeysql-form :snowflake [_] :%current_timestamp)
 
 (defmethod driver/format-custom-field-name :snowflake
   [_ s]
