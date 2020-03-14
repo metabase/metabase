@@ -160,14 +160,14 @@
      :quarter (num-to-ym-interval :month  (hx/* amount (hsql/raw 3)))
      :year    (num-to-ym-interval :year   amount))))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:oracle :seconds]
+(defmethod sql.qp/unix-timestamp->honeysql [:oracle :seconds]
   [_ _ field-or-value]
   (hx/+ (hsql/raw "timestamp '1970-01-01 00:00:00 UTC'")
         (num-to-ds-interval :second field-or-value)))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:oracle :milliseconds]
+(defmethod sql.qp/unix-timestamp->honeysql [:oracle :milliseconds]
   [driver _ field-or-value]
-  (sql.qp/unix-timestamp->timestamp driver :seconds (hx// field-or-value (hsql/raw 1000))))
+  (sql.qp/unix-timestamp->honeysql driver :seconds (hx// field-or-value (hsql/raw 1000))))
 
 ;; Oracle doesn't support `LIMIT n` syntax. Instead we have to use `WHERE ROWNUM <= n` (`NEXT n ROWS ONLY` isn't
 ;; supported on Oracle versions older than 12). This has to wrap the actual query, e.g.

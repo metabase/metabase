@@ -234,12 +234,12 @@
     :type  :timestamp
     :as    {:date     (t/local-date "2019-12-10")
             :datetime (t/local-date-time "2019-12-10T14:47:00")}}
-   (let [unix-ts (sql.qp/unix-timestamp->timestamp :bigquery :seconds :some_field)]
+   (let [unix-ts (sql.qp/unix-timestamp->honeysql :bigquery :seconds :some_field)]
      {:value unix-ts
       :type  :timestamp
       :as    {:date     (hx/cast :date unix-ts)
               :datetime (hx/cast :datetime unix-ts)}})
-   (let [unix-ts (sql.qp/unix-timestamp->timestamp :bigquery :milliseconds :some_field)]
+   (let [unix-ts (sql.qp/unix-timestamp->honeysql :bigquery :milliseconds :some_field)]
      {:value unix-ts
       :type  :timestamp
       :as    {:date     (hx/cast :date unix-ts)

@@ -56,7 +56,7 @@
 
 (defmethod sql.qp/current-datetime-honeysql-form :hive-like [_] :%now)
 
-(defmethod sql.qp/unix-timestamp->timestamp [:hive-like :seconds]
+(defmethod sql.qp/unix-timestamp->honeysql [:hive-like :seconds]
   [_ _ expr]
   (hx/->timestamp (hsql/call :from_unixtime expr)))
 

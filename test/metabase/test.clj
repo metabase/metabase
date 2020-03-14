@@ -151,6 +151,8 @@
   with-system-timezone-id]
 
  [tx
+  count-with-template-tag-query
+  count-with-field-filter-query
   dataset-definition
   db-qualified-table-name
   db-test-env-var

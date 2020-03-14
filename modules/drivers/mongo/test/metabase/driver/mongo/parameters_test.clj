@@ -5,12 +5,22 @@
             [clojure
              [string :as str]
              [test :refer :all]]
+            [java-time :as t]
             [metabase
              [query-processor :as qp]
              [test :as mt]]
             [metabase.driver.common.parameters :as common.params]
             [metabase.driver.mongo.parameters :as params])
   (:import com.fasterxml.jackson.core.JsonGenerator))
+
+(deftest ->utc-instant-test
+  (doseq [t [#t "2020-03-14"
+             #t "2020-03-14T00:00:00"
+             #t "2020-03-13T17:00:00-07:00"
+             #t "2020-03-13T17:00:00-07:00[America/Los_Angeles]"]]
+    (testing (format "%s %s" (class t) (pr-str t))
+      (is (= (t/instant "2020-03-14T00:00:00Z")
+             (#'params/->utc-instant t))))))
 
 (defn- substitute [param->value xs]
   (#'params/substitute param->value xs))

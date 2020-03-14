@@ -146,19 +146,32 @@
 
 (defmethod quote-style :sql [_] :ansi)
 
+(defmulti ^{:deprecated "0.35.0"} unix-timestamp->timestamp
+  "DEPRECATED -- use `unix-timestamp->honeysql` instead.
 
-(defmulti unix-timestamp->timestamp
+  This has been deprecated because the name isn't entirely clear or accurate. `unix-timestamp->honeysql` is a better
+  explanation of the purpose of this method. For the time being, `unix-timestamp->honeysql` will fall back to
+  implementations of `unix-timestamp->timestamp`; this will be removed in a future release."
+  {:arglists '([driver seconds-or-milliseconds expr]), :deprecated "0.35.0"}
+  (fn [driver seconds-or-milliseconds _] [(driver/dispatch-on-initialized-driver driver) seconds-or-milliseconds]))
+
+(defmulti unix-timestamp->honeysql
   "Return a HoneySQL form appropriate for converting a Unix timestamp integer field or value to an proper SQL Timestamp.
   `seconds-or-milliseconds` refers to the resolution of the int in question and with be either `:seconds` or
   `:milliseconds`.
 
   There is a default implementation for `:milliseconds` the recursively calls with `:seconds` and `(expr / 1000)`."
-  {:arglists '([driver seconds-or-milliseconds field-or-value])}
+  {:arglists '([driver seconds-or-milliseconds expr]), :added "0.35.0"}
   (fn [driver seconds-or-milliseconds _] [(driver/dispatch-on-initialized-driver driver) seconds-or-milliseconds])
   :hierarchy #'driver/hierarchy)
 
-(defmethod unix-timestamp->timestamp [:sql :milliseconds] [driver _ expr]
-  (unix-timestamp->timestamp driver :seconds (hx// expr 1000)))
+(defmethod unix-timestamp->honeysql [:sql :milliseconds]
+  [driver _ expr]
+  (unix-timestamp->honeysql driver :seconds (hx// expr 1000)))
+
+(defmethod unix-timestamp->honeysql :default
+  [driver seconds-or-milliseconds expr]
+  (unix-timestamp->timestamp driver seconds-or-milliseconds expr))
 
 
 (defmulti apply-top-level-clause
@@ -172,7 +185,8 @@
     [(driver/dispatch-on-initialized-driver driver) top-level-clause])
   :hierarchy #'driver/hierarchy)
 
-(defmethod apply-top-level-clause :default [_ _ honeysql-form _]
+(defmethod apply-top-level-clause :default
+  [_ _ honeysql-form _]
   honeysql-form)
 
 ;; this is the primary way to override behavior for a specific clause or object class.
@@ -212,8 +226,8 @@
   "Wrap a `field-identifier` in appropriate HoneySQL expressions if it refers to a UNIX timestamp Field."
   [driver field field-identifier]
   (condp #(isa? %2 %1) (:special_type field)
-    :type/UNIXTimestampSeconds      (unix-timestamp->timestamp driver :seconds      field-identifier)
-    :type/UNIXTimestampMilliseconds (unix-timestamp->timestamp driver :milliseconds field-identifier)
+    :type/UNIXTimestampSeconds      (unix-timestamp->honeysql driver :seconds      field-identifier)
+    :type/UNIXTimestampMilliseconds (unix-timestamp->honeysql driver :milliseconds field-identifier)
     field-identifier))
 
 ;; default implmentation is a no-op; other drivers can override it as needed
@@ -280,7 +294,8 @@
         (hx/+ min-value))))
 
 
-(defmethod ->honeysql [:sql :count] [driver [_ field]]
+(defmethod ->honeysql [:sql :count]
+  [driver [_ field]]
   (if field
     (hsql/call :count (->honeysql driver field))
     :%count.*))
@@ -292,7 +307,8 @@
 (defmethod ->honeysql [:sql :min]      [driver [_ field]] (hsql/call :min            (->honeysql driver field)))
 (defmethod ->honeysql [:sql :max]      [driver [_ field]] (hsql/call :max            (->honeysql driver field)))
 
-(defmethod ->honeysql [:sql :+] [driver [_ & args]]
+(defmethod ->honeysql [:sql :+]
+  [driver [_ & args]]
   (if (mbql.u/datetime-arithmetics? args)
     (let [[field & intervals] args]
       (reduce (fn [hsql-form [_ amount unit]]
@@ -399,7 +415,8 @@
        (apply hsql/call :case)))
 
 ;; actual handling of the name is done in the top-level clause handler for aggregations
-(defmethod ->honeysql [:sql :aggregation-options] [driver [_ ag]]
+(defmethod ->honeysql [:sql :aggregation-options]
+  [driver [_ ag]]
   (->honeysql driver ag))
 
 ;;  aggregation REFERENCE e.g. the ["aggregation" 0] fields we allow in order-by
