@@ -8,15 +8,10 @@
              [models :refer [Table]]
              [query-processor :as qp]
              [test :as mt]]
-            [metabase.driver.snowflake :as snowflake]
             [metabase.test.data
              [dataset-definitions :as dataset-defs]
-             [snowflake :as snowflake.tx]
              [sql :as sql.tx]]
             [metabase.test.data.sql.ddl :as ddl]))
-
-;; Was seeing some weird test failures if theses namespaces weren't loaded -- not sure why
-(comment snowflake/keep-me snowflake.tx/keep-me)
 
 ;; make sure we didn't break the code that is used to generate DDL statements when we add new test datasets
 (deftest ddl-statements-test
@@ -55,7 +50,7 @@
         (testing "should work with normal details"
           (is (= expected
                  (driver/describe-database :snowflake (mt/db)))))
-        (testing "should accept either `:db` or `:dbname` in the details, working around a bug with the original Snowflake impl"
+        (testing "should accept either `:db` or `:dbname` in the details, working around a bug with the original impl"
           (is (= expected
                  (driver/describe-database :snowflake (update (mt/db) :details set/rename-keys {:db :dbname})))))
         (testing "should throw an Exception if details have neither `:db` nor `:dbname`"
