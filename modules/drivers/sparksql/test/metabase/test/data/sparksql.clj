@@ -129,3 +129,14 @@
     ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
     (when (= ag-type :sum)
       {:base_type :type/BigInteger}))))
+
+;; strip out the default table alias `t1` from the generated native queries
+(defmethod tx/count-with-template-tag-query :sparksql
+  [driver table field param-type]
+  (-> ((get-method tx/count-with-template-tag-query :sql/test-extensions) driver table field param-type)
+      (update :query str/replace #"`t1` " "")))
+
+(defmethod tx/count-with-field-filter-query :sparksql
+  [driver table field]
+  (-> ((get-method tx/count-with-field-filter-query :sql/test-extensions) driver table field)
+      (update :query str/replace #"`t1` " "")))

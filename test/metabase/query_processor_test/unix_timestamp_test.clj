@@ -6,8 +6,7 @@
              [query-processor :as qp]
              [query-processor-test :as qp.test]
              [test :as mt]
-             [util :as u]]
-            [metabase.query-processor-test.parameters-test :as parameters-test]))
+             [util :as u]]))
 
 (deftest filter-test
   (mt/test-drivers (mt/normal-drivers)
@@ -87,7 +86,7 @@
     (testing "Make sure `:date/range` SQL field filters work correctly with UNIX timestamps (#11934)"
       (mt/dataset tupac-sightings
         (let [query (mt/native-query
-                      (merge (parameters-test/count-with-field-filter-query driver/*driver* :sightings :timestamp)
+                      (merge (mt/count-with-field-filter-query driver/*driver* :sightings :timestamp)
                              (mt/$ids sightings
                                {:template-tags {"timestamp" {:name         "timestamp"
                                                              :display-name "Sighting Timestamp"
