@@ -8,10 +8,15 @@
              [models :refer [Table]]
              [query-processor :as qp]
              [test :as mt]]
+            [metabase.driver.snowflake :as snowflake]
             [metabase.test.data
              [dataset-definitions :as dataset-defs]
+             [snowflake :as snowflake.tx]
              [sql :as sql.tx]]
             [metabase.test.data.sql.ddl :as ddl]))
+
+;; Was seeing some weird test failures if theses namespaces weren't loaded -- not sure why
+(comment snowflake/keep-me snowflake.tx/keep-me)
 
 ;; make sure we didn't break the code that is used to generate DDL statements when we add new test datasets
 (deftest ddl-statements-test
