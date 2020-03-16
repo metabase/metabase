@@ -15,13 +15,16 @@ import { ORDERS, REVIEWS } from "__support__/sample_dataset_fixture";
 const AGGREGATION_FUNCTIONS = [
   { type: "aggregations", text: "Average(" },
   { type: "aggregations", text: "Count " },
+  { type: "aggregations", text: "CountIf(" },
   { type: "aggregations", text: "CumulativeCount " },
   { type: "aggregations", text: "CumulativeSum(" },
   { type: "aggregations", text: "Distinct(" },
   { type: "aggregations", text: "Max(" },
   { type: "aggregations", text: "Min(" },
+  { type: "aggregations", text: "Share(" },
   { type: "aggregations", text: "StandardDeviation(" },
   { type: "aggregations", text: "Sum(" },
+  { type: "aggregations", text: "SumIf(" },
 ];
 const STRING_FUNCTIONS = [
   { text: "concat(", type: "functions" },
@@ -305,6 +308,7 @@ describe("metabase/lib/expression/suggest", () => {
       it("should suggest partial matches in aggregation", () => {
         expect(suggest({ source: "1 + C", ...aggregationOpts })).toEqual([
           { type: "aggregations", text: "Count " },
+          { type: "aggregations", text: "CountIf(" },
           { type: "aggregations", text: "CumulativeCount " },
           { type: "aggregations", text: "CumulativeSum(" },
         ]);
