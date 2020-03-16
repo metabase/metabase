@@ -31,7 +31,7 @@ These are the currently known 3rd-party database drivers for Metabase.
 
 If you don't see a driver for your database, then try looking in the comments of the [issue related to the database](https://github.com/metabase/metabase/labels/Database%2F). You might also find more by [searching on GitHub](https://github.com/search?q=metabase+driver).
 
-Are you having problems with installing or using a community driver, then you're likely to get the best help from the author of the driver.
+If you are having problems with installing or using a community driver, your best bet is to contact the author of the driver.
 
 ## Driver development
 
