@@ -13,7 +13,7 @@ Examples of proxies that are known to cause issues with Metabase:
 
 ### Saving questions/dashboards fails
 
-If saving questions/dashboards fails with the button changing to `Save Failed` or perhaps with the error `Sorry you do not have permission to see that`, then it might be caused by either a WAF like Cloudflare or Azure.
+If saving questions/dashboards fails with the save button changing to "Save Failed," or perhaps with the error, "Sorry you do not have permission to see that," this might be caused by either a WAF like Cloudflare or Azure.
 
 - Check the browser developer Console-tab for any errors, when the save fails.
 - Also check the browser developer Network-tab, when the save fails, to see the request. It will usually fail with a code `403`, and the error is coming from the WAF and not Metabase.
