@@ -326,17 +326,17 @@
   [driver [_ arg pattern]]
   (hsql/call :regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
 
-(defn- percentile->quntile
+(defn- percentile->quantile
   [x]
-  (loop [x     x
-         power 0]
+  (loop [x     (double x)
+         power (int 0)]
     (if (zero? (- x (Math/floor x)))
       [(Math/round x) (Math/round (Math/pow 10 power))]
       (recur (* 10 x) (inc power)))))
 
 (defmethod sql.qp/->honeysql [:bigquery :percentile]
   [driver [_ arg p]]
-  (let [[offset quntiles] (percentile->quntile p)]
+  (let [[offset quantiles] (percentile->quantile p)]
     (hsql/raw (format "APPROX_QUANTILES(%s, %s)[OFFSET(%s)]"
                       (hformat/to-sql (sql.qp/->honeysql driver arg))
                       quantiles
