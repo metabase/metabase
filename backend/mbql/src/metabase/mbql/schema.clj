@@ -297,7 +297,7 @@
 
 (def ^:private arithmetic-expressions #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :expt})
 
-(def ^:private aggregations #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct :metric :aggregation-options})
+(def ^:private aggregations #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct :metric :aggregation-options :count})
 
 (declare ArithmeticExpression)
 (declare Aggregation)
