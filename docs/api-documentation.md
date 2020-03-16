@@ -1991,7 +1991,7 @@ Delete a Pulse. (DEPRECATED -- don't delete a Pulse anymore -- archive it instea
 
 ## `DELETE /api/pulse/:id/subscription/email`
 
-For uses to remove themselves from a pulse subscription
+For users to unsubscribe themselves from a pulse subscription.
 
 ##### PARAMS:
 
