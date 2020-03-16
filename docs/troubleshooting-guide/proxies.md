@@ -23,7 +23,7 @@ Some WAFs have dynamic protection, which means that the problem might only occur
 
 The solution is to disable the WAF for Metabase. Some services will show which rules were triggered, so it might be enough to disable those rules.
 
-### Blank page (instead of the Metabase interface)
+### Seeing a blank page instead of the Metabase interface
 
 If Metabase just loads a blank page instead of the interface, then it is usually caused by content optimization like PageSpeed or Cloudflare's Rocket Loader.
 
