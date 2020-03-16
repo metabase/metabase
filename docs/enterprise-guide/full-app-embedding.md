@@ -30,11 +30,9 @@ A note to IE11 users: only the first URL will be valid for IE11 due to limitatio
 
 To give you a picture of what you'll need to do in your app, we've created this [reference app](https://github.com/metabase/sso-examples/tree/master/app-embed-example). If you use React in your application, [this React component](https://github.com/metabase/sso-examples/blob/master/app-embed-example/src/MetabaseAppEmbed.js) may be helpful.
 
-**Note:** When using an SSO authentication endpoint on a different domain than Metabase, to avoid problems with `SameSite` cookies, you might need to set the environment variable `MB_SESSION_COOKIE_SAMESITE=None`. The available options are `Lax` (default), `None` or `Strict`.
-
 The main elements you'll need to embed Metabase in your app are:
 
-- An SSO authentication endpoint in your application, typically JWT or SAML, and Metabase configured to use them.
+- An SSO authentication endpoint in your application, typically JWT or SAML, and Metabase configured to use them. When using an SSO authentication endpoint on a different domain than Metabase, to avoid problems with `SameSite` cookies, you might need to set the environment variable `MB_SESSION_COOKIE_SAMESITE=None`. The available options are `Lax` (default), `None` or `Strict`.
 - An `<iframe>` element in your application, with the `src` attribute set to either a URL in Metabase (e.x. `http://metabase.yourcompany.com/dashboard/1`), or directly to the authentication endpoint in your application, with a parameter specifying where to redirect back to (e.x. `http://yourcompany.com/api/auth?redirect=http%3A%2F%2Fmetabase.yourcompany.com%2Fdashboard%2F1`). The latter will avoid an extra redirect if the user has not been authenticated.
 - Optional: JavaScript using [postMessage](https://developer.mozilla.org/en-US/docs/Web/API/Window/postMessage) in your application for enabling communication to and from the embedded Metabase. Here are the types of `postMessage` messages we currently support:
 
