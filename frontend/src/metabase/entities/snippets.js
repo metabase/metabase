@@ -27,7 +27,7 @@ export default createEntity({
         placeholder: "canceled_at is null\nAND account_type = 'PAID'",
         validate: validate.required().maxLength(10000),
       },
-      { name: "database_id", normalize: parseInt },
+      { name: "database_id", hidden: true },
     ],
   },
 });
