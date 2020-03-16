@@ -139,7 +139,7 @@
 
 (defmethod sql.qp/->honeysql [:snowflake :median]
   [driver [_ arg]]
-  (sql.qp/->honeysql [:percentile arg 0.5]))
+  (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
 (defn- db-name
   "As mentioned above, old versions of the Snowflake driver used `details.dbname` to specify the physical database, but

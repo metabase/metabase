@@ -163,7 +163,7 @@
 
 (defmethod sql.qp/->honeysql [:postgres :median]
   [driver [_ arg]]
-  (sql.qp/->honeysql [:percentile arg 0.5]))
+  (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
 (defmethod sql.qp/->honeysql [:postgres :regex-match-first]
   [driver [_ arg pattern]]

@@ -247,7 +247,7 @@
 
 (defmethod sql.qp/->honeysql [:sqlserver :median]
   [driver [_ arg]]
-  (sql.qp/->honeysql [:percentile arg 0.5]))
+  (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
 (defmethod driver.common/current-db-time-date-formatters :sqlserver
   [_]
