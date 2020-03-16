@@ -260,10 +260,6 @@
   [_ bool]
   (hsql/raw (if bool "TRUE" "FALSE")))
 
-(defmethod sql.qp/->honeysql [:presto :stddev]
-  [driver [_ field]]
-  (hsql/call :stddev_samp (sql.qp/->honeysql driver field)))
-
 (defmethod sql.qp/->honeysql [:presto :time]
   [_ [_ t]]
   (hx/cast :time (u.date/format-sql (t/local-time t))))
