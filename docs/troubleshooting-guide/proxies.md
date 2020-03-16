@@ -17,7 +17,7 @@ If saving questions/dashboards fails with the save button changing to "Save Fail
 
 - When the save fails, check the Console tab of your browser's Developer Tools for any errors.
 - You should also check the Network tab in the Developer Tools to view the network request. It will usually fail with error code 403, indicating the error is coming from the WAF and not Metabase.
-  Clicking on the request will show more information, and looking at the headers will usually indicate where it originated from.
+Clicking on the request will show more information, and looking at the headers will usually indicate where it originated from.
 
 Some WAFs have dynamic protection, which means that it might only become a problem after an upgrade of Metabase, and might go away after a few days.
 
