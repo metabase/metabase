@@ -1,4 +1,4 @@
-If you're experiencing problems where saving questions/dashboard sometimes fails or Metabase only loads a blank page, then it might be caused by a proxy.
+If you're experiencing problems where attempting to save a question or dashboard sometimes fails, or Metabase only loads a blank page, this might be caused by the use of a proxy.
 
 A proxy could include other functions like web application firewall (WAF), content optimization or cache.
 
