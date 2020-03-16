@@ -498,6 +498,18 @@ export const setIsShowingTemplateTagsEditor = isShowingTemplateTagsEditor => ({
   isShowingTemplateTagsEditor,
 });
 
+export const TOGGLE_SNIPPET_SIDEBAR = "metabase/qb/TOGGLE_SNIPPET_SIDEBAR";
+export const toggleSnippetSidebar = createAction(TOGGLE_SNIPPET_SIDEBAR, () => {
+  MetabaseAnalytics.trackEvent("QueryBuilder", "Toggle Snippet Sidebar");
+});
+
+export const SET_IS_SHOWING_SNIPPET_SIDEBAR =
+  "metabase/qb/SET_IS_SHOWING_SNIPPET_SIDEBAR";
+export const setIsShowingSnippetSidebar = isShowingSnippetSidebar => ({
+  type: SET_IS_SHOWING_SNIPPET_SIDEBAR,
+  isShowingSnippetSidebar,
+});
+
 export const setIsPreviewing = isPreviewing => ({
   type: SET_UI_CONTROLS,
   payload: { isPreviewing },

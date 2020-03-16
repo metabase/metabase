@@ -29,6 +29,8 @@ export const getUiControls = state => state.qb.uiControls;
 
 export const getIsShowingTemplateTagsEditor = state =>
   getUiControls(state).isShowingTemplateTagsEditor;
+export const getIsShowingSnippetSidebar = state =>
+  getUiControls(state).isShowingSnippetSidebar;
 export const getIsShowingDataReference = state =>
   getUiControls(state).isShowingDataReference;
 export const getIsShowingRawTable = state =>

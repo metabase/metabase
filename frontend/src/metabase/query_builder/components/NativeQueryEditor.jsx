@@ -65,6 +65,7 @@ import {
 import RunButtonWithTooltip from "./RunButtonWithTooltip";
 import DataReferenceButton from "./view/DataReferenceButton";
 import NativeVariablesButton from "./view/NativeVariablesButton";
+import SnippetSidebarButton from "./view/SnippetSidebarButton";
 
 type AutoCompleteResult = [string, string, string];
 type AceEditor = any; // TODO;
@@ -535,6 +536,11 @@ export default class NativeQueryEditor extends Component {
               className="mt3"
             />
             <NativeVariablesButton
+              {...this.props}
+              size={ICON_SIZE}
+              className="mt3"
+            />
+            <SnippetSidebarButton
               {...this.props}
               size={ICON_SIZE}
               className="mt3"

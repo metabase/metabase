@@ -7,6 +7,7 @@ import {
   INITIALIZE_QB,
   TOGGLE_DATA_REFERENCE,
   TOGGLE_TEMPLATE_TAGS_EDITOR,
+  TOGGLE_SNIPPET_SIDEBAR,
   SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
   CLOSE_QB_NEWB_MODAL,
   RELOAD_CARD,
@@ -65,6 +66,13 @@ const UI_CONTROLS_SIDEBAR_DEFAULTS = {
   isShowingChartTypeSidebar: false,
 };
 
+// this is used to close toher sidebar when one is updated
+const CLOSED_NATIVE_EDITOR_SIDEBARS = {
+  isShowingTemplateTagsEditor: false,
+  isShowingSnippetSidebar: false,
+  isShowingDataReference: false,
+};
+
 // various ui state options
 export const uiControls = handleActions(
   {
@@ -87,22 +95,29 @@ export const uiControls = handleActions(
     [TOGGLE_DATA_REFERENCE]: {
       next: (state, { payload }) => ({
         ...state,
+        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
         isShowingDataReference: !state.isShowingDataReference,
-        isShowingTemplateTagsEditor: false,
       }),
     },
     [TOGGLE_TEMPLATE_TAGS_EDITOR]: {
       next: (state, { payload }) => ({
         ...state,
+        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
         isShowingTemplateTagsEditor: !state.isShowingTemplateTagsEditor,
-        isShowingDataReference: false,
+      }),
+    },
+    [TOGGLE_SNIPPET_SIDEBAR]: {
+      next: (state, { payload }) => ({
+        ...state,
+        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
+        isShowingSnippetSidebar: !state.isShowingSnippetSidebar,
       }),
     },
     [SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR]: {
       next: (state, { isShowingTemplateTagsEditor }) => ({
         ...state,
+        ...CLOSED_NATIVE_EDITOR_SIDEBARS,
         isShowingTemplateTagsEditor,
-        isShowingDataReference: false,
       }),
     },
     [CLOSE_QB_NEWB_MODAL]: {
