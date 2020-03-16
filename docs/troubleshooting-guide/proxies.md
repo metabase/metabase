@@ -6,7 +6,7 @@ Examples of proxies that are known to cause issues with Metabase:
 
 - Cloudflare's Rocket Loader and WAF
 - Azure's WAF
-- PageSpeed module for i.e Apache
+- PageSpeed module for e.g., Apache
 - Some anti-virus browser extensions/add-ons
 
 ## Specific Problems
