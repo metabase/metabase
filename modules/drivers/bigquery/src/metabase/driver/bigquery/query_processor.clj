@@ -170,7 +170,7 @@
       [:field-id id]               (temporal-type (qp.store/field id))
       [:field-literal _ base-type] (base-type->temporal-type base-type))))
 
-(defn- with-temporal-type [x new-type]
+(defn- with-temporal-type {:style/indent 0} [x new-type]
   (if (= (temporal-type x) new-type)
     x
     (vary-meta x assoc :bigquery/temporal-type new-type)))
@@ -292,8 +292,37 @@
   [unit hsql-form]
   (TruncForm. hsql-form unit))
 
+(def ^:private valid-date-extract-units
+  #{:dayofweek :day :dayofyear :week :isoweek :month :quarter :year :isoyear})
+
+(def ^:private valid-time-extract-units
+  #{:microsecond :millisecond :second :minute :hour})
+
 (defn- extract [unit expr]
-  (with-temporal-type (hsql/call :extract unit (->temporal-type :timestamp expr)) nil))
+  (condp = (temporal-type expr)
+    :time
+    (do
+      (assert (valid-time-extract-units unit)
+              (tru "Cannot extract {0} from a TIME field" unit))
+      (recur unit (with-temporal-type (hsql/call :timestamp (hsql/call :datetime "1970-01-01" expr))
+                                      :timestamp)))
+
+    ;; timestamp and date both support extract()
+    :date
+    (do
+      (assert (valid-date-extract-units unit)
+              (tru "Cannot extract {0} from a DATE field" unit))
+      (with-temporal-type (hsql/call :extract unit expr) nil))
+
+    :timestamp
+    (do
+      (assert (or (valid-date-extract-units unit)
+                  (valid-time-extract-units unit))
+              (tru "Cannot extract {0} from a DATETIME or TIMESTAMP" unit))
+      (with-temporal-type (hsql/call :extract unit expr) nil))
+
+    ;; for datetimes or anything without a known temporal type, cast to timestamp and go from there
+    (recur unit (->temporal-type :timestamp expr))))
 
 (defmethod sql.qp/date [:bigquery :minute]          [_ _ expr] (trunc   :minute    expr))
 (defmethod sql.qp/date [:bigquery :minute-of-hour]  [_ _ expr] (extract :minute    expr))
@@ -314,7 +343,7 @@
 
 (doseq [[unix-timestamp-type bigquery-fn] {:seconds      :timestamp_seconds
                                            :milliseconds :timestamp_millis}]
-  (defmethod sql.qp/unix-timestamp->timestamp [:bigquery unix-timestamp-type]
+  (defmethod sql.qp/unix-timestamp->honeysql [:bigquery unix-timestamp-type]
     [_ _ expr]
     (with-temporal-type (hsql/call bigquery-fn expr) :timestamp)))
 

@@ -131,6 +131,7 @@ export const POP_STATE = "metabase/qb/POP_STATE";
 export const popState = createThunkAction(
   POP_STATE,
   location => async (dispatch, getState) => {
+    dispatch(cancelQuery());
     const card = getCard(getState());
     if (location.state && location.state.card) {
       if (!Utils.equals(card, location.state.card)) {

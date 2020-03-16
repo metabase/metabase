@@ -7,9 +7,14 @@
             [metabase
              [config :as config]
              [util :as u]]
+            [metabase.server.protocols :as protocols]
             [metabase.util.i18n :refer [trs]]
-            [ring.adapter.jetty :as ring-jetty])
-  (:import org.eclipse.jetty.server.Server))
+            [ring.adapter.jetty :as ring-jetty]
+            [ring.util.servlet :as servlet])
+  (:import javax.servlet.AsyncContext
+           [javax.servlet.http HttpServletRequest HttpServletResponse]
+           [org.eclipse.jetty.server Request Server]
+           org.eclipse.jetty.server.handler.AbstractHandler))
 
 (defn- jetty-ssl-config []
   (m/filter-vals
@@ -48,22 +53,48 @@
   ^Server []
   @instance*)
 
+(defn- ^AbstractHandler async-proxy-handler [handler timeout]
+  (proxy [AbstractHandler] []
+    (handle [_ ^Request base-request ^HttpServletRequest request ^HttpServletResponse response]
+      (let [^AsyncContext context (doto (.startAsync request)
+                                    (.setTimeout timeout))
+            request-map           (servlet/build-request-map request)
+            raise                 (fn raise [^Throwable e]
+                                    (log/error e (trs "Unexpected exception in endpoint"))
+                                    (try
+                                      (.sendError response 500 (.getMessage e))
+                                      (catch Throwable e
+                                        (log/error e (trs "Unexpected exception writing error response"))))
+                                    (.complete context))]
+        (try
+          (handler
+           request-map
+           (fn [response-map]
+             (protocols/respond (:body response-map) {:request       request
+                                                      :request-map   request-map
+                                                      :async-context context
+                                                      :response      response
+                                                      :response-map  response-map}))
+           raise)
+          (catch Throwable e
+            (log/error e (trs "Unexpected Exception in API request handler"))
+            (raise e))
+          (finally
+            (.setHandled base-request true)))))))
+
 (defn create-server
   "Create a new async Jetty server with `handler` and `options`. Handy for creating the real Metabase web server, and
   creating one-off web servers for tests and REPL usage."
   ^Server [handler options]
-  (doto ^Server (#'ring-jetty/create-server (assoc options :async? true))
-    (.setHandler
-     (#'ring-jetty/async-proxy-handler
-      handler
-      ;; if any API endpoint functions aren't at the very least returning a channel to fetch the results
-      ;; later after 10 minutes we're in serious trouble. (Almost everything 'slow' should be returning a
-      ;; channel before then, but some things like CSV downloads don't currently return channels at this
-      ;; time)
-      ;;
-      ;; TODO - I suppose the default value should be moved to the `metabase.config` namespace?
-      (or (config/config-int :mb-jetty-async-response-timeout)
-          (* 10 60 1000))))))
+  ;; if any API endpoint functions aren't at the very least returning a channel to fetch the results later after 10
+  ;; minutes we're in serious trouble. (Almost everything 'slow' should be returning a channel before then, but
+  ;; some things like CSV downloads don't currently return channels at this time)
+  ;;
+  ;; TODO - I suppose the default value should be moved to the `metabase.config` namespace?
+  (let [timeout (or (config/config-int :mb-jetty-async-response-timeout)
+                    (* 10 60 1000))]
+    (doto ^Server (#'ring-jetty/create-server (assoc options :async? true))
+      (.setHandler (async-proxy-handler handler timeout)))))
 
 (defn start-web-server!
   "Start the embedded Jetty web server. Returns `:started` if a new server was started; `nil` if there was already a

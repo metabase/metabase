@@ -78,7 +78,7 @@
 (defn- default-resultf [result context]
   (if (nil? result)
     (do
-      (log/error (ex-info (trs "Unexpected nil result") {}) (trs "Unexpected nil result"))
+      (log/error (ex-info (trs "Unexpected nil result") {}))
       (recur false context))
     (let [out-chan (context/out-chan context)]
       (a/>!! out-chan result)
@@ -87,7 +87,7 @@
 (defn- default-timeoutf
   [context]
   (let [timeout (context/timeout context)]
-    (log/debug (trs "Query timed out after {0} ms, raising timeout exception." timeout))
+    (log/debug (trs "Query timed out after {0}, raising timeout exception." (u/format-milliseconds timeout)))
     (context/raisef (ex-info (tru "Timed out after {0}." (u/format-milliseconds timeout))
                       {:status :timed-out
                        :type   error-type/timed-out})

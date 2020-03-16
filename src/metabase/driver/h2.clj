@@ -134,10 +134,10 @@
     expr
     (hsql/raw "timestamp '1970-01-01T00:00:00Z'")))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:h2 :seconds] [_ _ expr]
+(defmethod sql.qp/unix-timestamp->honeysql [:h2 :seconds] [_ _ expr]
   (add-to-1970 expr "second"))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:h2 :millisecond] [_ _ expr]
+(defmethod sql.qp/unix-timestamp->honeysql [:h2 :millisecond] [_ _ expr]
   (add-to-1970 expr "millisecond"))
 
 

@@ -4,7 +4,9 @@
            org.apache.commons.lang3.concurrent.BasicThreadFactory$Builder))
 
 (def ^:private ^Long thread-pool-max-size
-  (or (config/config-int :mb-jetty-maxthreads) 50))
+  (or (config/config-int :mb-async-query-thread-pool-size)
+      (config/config-int :mb-jetty-maxthreads)
+      50))
 
 (defonce ^:private thread-pool*
   (delay

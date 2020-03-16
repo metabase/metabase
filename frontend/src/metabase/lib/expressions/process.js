@@ -9,6 +9,7 @@ export function processSource(options) {
 
   let expression;
   let suggestions = [];
+  let helpText;
   let syntaxTree;
   let compileError;
 
@@ -34,7 +35,12 @@ export function processSource(options) {
   // SUGGEST
   if (targetOffset != null) {
     try {
-      suggestions = suggest({ cst, tokenVector, ...options });
+      ({ suggestions = [], helpText } = suggest({
+        cst,
+        tokenVector,
+        ...options,
+      }));
+      console.log("suggestions", suggestions);
     } catch (e) {
       console.log("suggest error", e);
     }
@@ -50,6 +56,7 @@ export function processSource(options) {
   return {
     source,
     expression,
+    helpText,
     suggestions,
     syntaxTree,
     compileError,

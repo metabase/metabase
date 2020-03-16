@@ -98,21 +98,28 @@
                                                       [result-row]
                                                       (apply orig spec sql-args options))))]
                          (driver/db-default-timezone driver/*driver* db))))]
-      (is (= "US/Pacific"
-             (timezone {:global "US/Pacific", :system "UTC"}))
-          "Should use global timezone by default")
-      (is (= "UTC"
-             (timezone {:global "SYSTEM", :system "UTC"}))
-          "If global timezone is 'SYSTEM', should use system timezone")
-      (is (= "+00:00"
-             (timezone {:offset "00:00"}))
-          "Should fall back to returning `offset` if global/system aren't present")
-      (is (= "-08:00"
-             (timezone {:global "PDT", :system "PDT", :offset "-08:00"}))
-          "If global timezone is invalid, should fall back to offset")
-      (is (= "+00:00"
-             (timezone {:global "PDT", :system "UTC", :offset "00:00"}))
-          "Should add a `+` if needed to offset"))))
+      (testing "Should use global timezone by default"
+        (is (= "US/Pacific"
+               (timezone {:global_tz "US/Pacific", :system_tz "UTC"}))))
+      (testing "If global timezone is 'SYSTEM', should use system timezone"
+        (is (= "UTC"
+               (timezone {:global_tz "SYSTEM", :system_tz "UTC"}))))
+      (testing "Should fall back to returning `offset` if global/system aren't present"
+        (is (= "+00:00"
+               (timezone {:offset "00:00"}))))
+      (testing "If global timezone is invalid, should fall back to offset"
+        (is (= "-08:00"
+               (timezone {:global_tz "PDT", :system_tz "PDT", :offset "-08:00"}))))
+      (testing "Should add a `+` if needed to offset"
+        (is (= "+00:00"
+               (timezone {:global_tz "PDT", :system_tz "UTC", :offset "00:00"})))))
+
+    (testing "real timezone query doesn't fail"
+      (is (nil? (try
+                  (driver/db-default-timezone driver/*driver* (data/db))
+                  nil
+                  (catch Throwable e
+                    e)))))))
 
 
 (def ^:private before-daylight-savings #t "2018-03-10T10:00:00Z")

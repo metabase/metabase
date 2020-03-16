@@ -118,7 +118,7 @@
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod sql.qp/unix-timestamp->timestamp [:postgres :seconds]
+(defmethod sql.qp/unix-timestamp->honeysql [:postgres :seconds]
   [_ _ expr]
   (hsql/call :to_timestamp expr))
 

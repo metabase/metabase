@@ -378,7 +378,8 @@
 (defmethod sql.qp/date [:presto :quarter-of-year] [_ _ expr] (hsql/call :quarter expr))
 (defmethod sql.qp/date [:presto :year]            [_ _ expr] (hsql/call :date_trunc (hx/literal :year) expr))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:presto :seconds] [_ _ expr]
+(defmethod sql.qp/unix-timestamp->honeysql [:presto :seconds]
+  [_ _ expr]
   (hsql/call :from_unixtime expr))
 
 (defmethod driver.common/current-db-time-date-formatters :presto
@@ -389,7 +390,8 @@
   [_]
   "select to_iso8601(current_timestamp)")
 
-(defmethod driver/current-db-time :presto [& args]
+(defmethod driver/current-db-time :presto
+  [& args]
   (apply driver.common/current-db-time args))
 
 (defmethod driver/supports? [:presto :set-timezone]                    [_ _] true)
@@ -399,5 +401,4 @@
 (defmethod driver/supports? [:presto :native-parameters]               [_ _] true)
 (defmethod driver/supports? [:presto :expression-aggregations]         [_ _] true)
 (defmethod driver/supports? [:presto :binning]                         [_ _] true)
-
-(defmethod driver/supports? [:presto :foreign-keys] [_ _] true)
+(defmethod driver/supports? [:presto :foreign-keys]                    [_ _] true)

@@ -9,7 +9,8 @@
              [xlsx :as streaming.xlsx]]
             [metabase.util :as u])
   (:import clojure.core.async.impl.channels.ManyToManyChannel
-           java.io.OutputStream))
+           java.io.OutputStream
+           metabase.async.streaming_response.StreamingResponse))
 
 ;; these are loaded for side-effects so their impls of `i/results-writer` will be available
 ;; TODO - consider whether we should lazy-load these!
@@ -48,7 +49,7 @@
 
     (with-open [os ...]
       (qp/process-query query (qp.streaming/streaming-context :csv os canceled-chan)))"
-  ([export-format ^OutputStream os]
+  ([export-format os]
    (let [results-writer (i/streaming-results-writer export-format os)]
      {:rff      (streaming-rff results-writer)
       :reducedf (streaming-reducedf results-writer os)}))
@@ -66,7 +67,7 @@
 
 (defn streaming-response*
   "Impl for `streaming-response`."
-  [export-format f]
+  ^StreamingResponse [export-format f]
   (streaming-response/streaming-response (i/stream-options export-format) [os canceled-chan]
     (let [result (try
                    (f (streaming-context export-format os canceled-chan))

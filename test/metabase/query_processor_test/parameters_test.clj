@@ -1,19 +1,12 @@
 (ns metabase.query-processor-test.parameters-test
   "Tests for support for parameterized queries in drivers that support it. (There are other tests for parameter support
   in various places; these are mainly for high-level verification that parameters are working.)"
-  (:require [cheshire
-             [core :as json]
-             [generate :as json.generate]]
-            [clojure
-             [string :as str]
-             [test :refer :all]]
+  (:require [clojure.test :refer :all]
             [metabase
              [driver :as driver]
-             [models :refer [Field]]
              [query-processor :as qp]
              [test :as mt]
-             [util :as u]])
-  (:import com.fasterxml.jackson.core.JsonGenerator))
+             [util :as u]]))
 
 (defn- run-count-query [query]
   (or (ffirst
@@ -30,51 +23,10 @@
 ;;; |                                              Template Tag Params                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmulti ^:private count-with-template-tag-query
-  "Generate a native query for the count of rows in `table` matching a set of conditions where `field-name` is equal to
-  a param `value`."
-  ^{:arglists '([driver table-name field-name param-type])}
-  mt/dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod count-with-template-tag-query :sql
-  [driver table field param-type]
-  (driver/with-driver driver
-    (let [mbql-query      (mt/mbql-query nil
-                            {:source-table (mt/id table)
-                             :aggregation  [[:count]]
-                             :filter       [:= [:field-id (mt/id table field)] 1]})
-          {:keys [query]} (qp/query->native mbql-query)
-          query           (str/replace query (re-pattern #"= .*") (format "= {{%s}}" (name field)))]
-      {:query query})))
-
-(defn- json-raw
-  "Wrap a string so it will be spliced directly into resulting JSON as-is. Analogous to HoneySQL `raw`."
-  [^String s]
-  (reify json.generate/JSONable
-    (to-json [_ generator]
-      (.writeRawValue ^JsonGenerator generator s))))
-
-(deftest json-raw-test
-  (testing "Make sure the `json-raw` util fn actually works the way we expect it to"
-    (is (= "{\"x\":{{param}}}"
-           (json/generate-string {:x (json-raw "{{param}}")})))))
-
-(defmethod count-with-template-tag-query :mongo
-  [driver table-name field-name param-type]
-  (let [{base-type :base_type} (Field (driver/with-driver driver (mt/id table-name field-name)))]
-    {:projections [:count]
-     :query       (json/generate-string
-                   [{:$match {(name field-name) (json-raw (format "{{%s}}" (name field-name)))}}
-                    {:$group {"_id" nil, "count" {:$sum 1}}}
-                    {:$sort {"_id" 1}}
-                    {:$project {"_id" false, "count" true}}])
-     :collection  (name table-name)}))
-
 (defn- template-tag-count-query [table field param-type param-value {:keys [defaults?]}]
   (let [query {:database (mt/id)
                :type     :native
-               :native   (assoc (count-with-template-tag-query driver/*driver* table field param-type)
+               :native   (assoc (mt/count-with-template-tag-query driver/*driver* table field param-type)
                                 :template-tags {(name field) {:name         (name field)
                                                               :display-name (name field)
                                                               :type         (or (namespace param-type)
@@ -111,37 +63,10 @@
 ;;; |                                              Field Filter Params                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmulti ^:private count-with-field-filter-query
-  ^{:arglists '([driver table-name field-name])}
-  mt/dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod count-with-field-filter-query :sql
-  [driver table field]
-  (driver/with-driver driver
-    (let [mbql-query      (mt/mbql-query nil
-                            {:source-table (mt/id table)
-                             :aggregation  [[:count]]
-                             :filter       [:= [:field-id (mt/id table field)] 1]})
-          {:keys [query]} (qp/query->native mbql-query)
-          query           (str/replace query (re-pattern #"WHERE .* = .*") (format "WHERE {{%s}}" (name field)))]
-      {:query query})))
-
-(defmethod count-with-field-filter-query :mongo
-  [driver table-name field-name]
-  (let [{base-type :base_type} (Field (driver/with-driver driver (mt/id table-name field-name)))]
-    {:projections [:count]
-     :query       (json/generate-string
-                   [{:$match (json-raw (format "{{%s}}" (name field-name)))}
-                    {:$group {"_id" nil, "count" {:$sum 1}}}
-                    {:$sort {"_id" 1}}
-                    {:$project {"_id" false, "count" true}}])
-     :collection  (name table-name)}))
-
 (defn- field-filter-count-query [table field value-type value]
   {:database   (mt/id)
    :type       :native
-   :native     (assoc (count-with-field-filter-query driver/*driver* table field)
+   :native     (assoc (mt/count-with-field-filter-query driver/*driver* table field)
                       :template-tags {(name field) {:name         (name field)
                                                     :display-name (name field)
                                                     :type         :dimension

@@ -2,8 +2,11 @@
   "Common test extension functionality for all SQL drivers."
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [query-processor :as qp]]
             [metabase.driver.sql.util :as sql.u]
+            [metabase.test.data :as data]
             [metabase.test.data.interface :as tx])
   (:import metabase.test.data.interface.FieldDefinition))
 
@@ -253,3 +256,25 @@
             (quot :field field-name)
             (qualify-and-quote driver database-name dest-table-name)
             (quot :field (pk-field-name driver)))))
+
+(defmethod tx/count-with-template-tag-query :sql/test-extensions
+  [driver table field param-type]
+  (driver/with-driver driver
+    (let [mbql-query      (data/mbql-query nil
+                            {:source-table (data/id table)
+                             :aggregation  [[:count]]
+                             :filter       [:= [:field-id (data/id table field)] 1]})
+          {:keys [query]} (qp/query->native mbql-query)
+          query           (str/replace query (re-pattern #"= .*") (format "= {{%s}}" (name field)))]
+      {:query query})))
+
+(defmethod tx/count-with-field-filter-query :sql/test-extensions
+  [driver table field]
+  (driver/with-driver driver
+    (let [mbql-query      (data/mbql-query nil
+                            {:source-table (data/id table)
+                             :aggregation  [[:count]]
+                             :filter       [:= [:field-id (data/id table field)] 1]})
+          {:keys [query]} (qp/query->native mbql-query)
+          query           (str/replace query (re-pattern #"WHERE .* = .*") (format "WHERE {{%s}}" (name field)))]
+      {:query query})))

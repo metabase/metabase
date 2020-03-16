@@ -57,6 +57,7 @@
 /stats.json
 /target
 /test-report-*
+OSX/.cpcache
 OSX/Metabase/jre
 OSX/Resources/metabase.jar
 OSX/build
