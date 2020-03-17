@@ -89,5 +89,5 @@
 
 (deftest test-aggregation-expressions
   (mt/test-drivers (mt/normal-drivers-with-feature :standard-deviation-aggregations :expressions)
-    (is (= 3.4 (test-aggregation [:/ [:avg [:field-id (data/id :venues :price)]]
-                                     [:var [:field-id (data/id :venues :price)]]])))))
+    (is (= 2.61 (test-aggregation [:/ [:avg [:field-id (data/id :venues :price)]]
+                                      [:stddev [:field-id (data/id :venues :price)]]])))))
