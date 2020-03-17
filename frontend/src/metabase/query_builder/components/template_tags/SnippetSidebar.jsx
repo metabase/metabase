@@ -20,6 +20,8 @@ type Props = {
   onClose: () => void,
 };
 
+const ICON_SIZE = 16;
+
 @Snippets.loadList()
 export default class SnippetSidebar extends React.Component {
   props: Props;
@@ -34,6 +36,33 @@ export default class SnippetSidebar extends React.Component {
     super(props);
     this.state = { editingSnippet: null, showCreateModal: false };
   }
+
+  insertSnippet({ name }) {
+    const { query, setDatasetQuery } = this.props;
+    const newText = query.queryText() + `{{ snippet: ${name} }}`;
+    setDatasetQuery(query.setQueryText(newText).datasetQuery());
+  }
+
+  renderSnippet = snippet => (
+    <Tooltip key={snippet.id} tooltip={snippet.description}>
+      <div className="bg-medium-hover hover-parent hover--display flex p2 rounded">
+        <a
+          onClick={() => this.insertSnippet(snippet)}
+          style={{ height: ICON_SIZE }} // without setting this <a> adds more height around the icon
+        >
+          <Icon name={"snippet"} size={ICON_SIZE} className="mr1" />
+        </a>
+        <span className="flex-full">{snippet.name}</span>
+        <a
+          className="hover-child"
+          onClick={() => this.setState({ editingSnippet: snippet })}
+          style={{ height: ICON_SIZE }}
+        >
+          <Icon name={"pencil"} size={ICON_SIZE} />
+        </a>
+      </div>
+    </Tooltip>
+  );
 
   render() {
     const { setDatasetQuery, query, onClose, snippets } = this.props;
@@ -57,23 +86,7 @@ export default class SnippetSidebar extends React.Component {
               </a>
               {snippets
                 .filter(snippet => query.databaseId() === snippet.database_id)
-                .map(snippet => (
-                  <Tooltip key={snippet.id} tooltip={snippet.description}>
-                    <div className="bg-medium-hover hover-parent hover--display flex p2 rounded">
-                      <Icon name={"snippet"} size={16} className="mr1" />
-                      <span className="flex-full">{snippet.name}</span>
-                      <a
-                        className="hover-child"
-                        onClick={() =>
-                          this.setState({ editingSnippet: snippet })
-                        }
-                        style={{ height: 16 }} // without that <a> adds height around the icon
-                      >
-                        <Icon name={"pencil"} size={16} />
-                      </a>
-                    </div>
-                  </Tooltip>
-                ))}
+                .map(this.renderSnippet)}
             </div>
           )}
         </div>
@@ -82,10 +95,7 @@ export default class SnippetSidebar extends React.Component {
             {Snippets.ModalForm({
               snippet: editingSnippet || { database_id: query.databaseId() },
               onClose: () =>
-                this.setState({
-                  editingSnippet: null,
-                  showCreateModal: false,
-                }),
+                this.setState({ editingSnippet: null, showCreateModal: false }),
             })}
           </Modal>
         )}

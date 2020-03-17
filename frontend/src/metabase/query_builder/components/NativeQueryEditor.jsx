@@ -41,7 +41,7 @@ import Parameters from "metabase/parameters/components/Parameters";
 const SCROLL_MARGIN = 8;
 const LINE_HEIGHT = 16;
 
-const MIN_HEIGHT_LINES = 10;
+const MIN_HEIGHT_LINES = 13;
 
 const ICON_SIZE = 18;
 
