@@ -124,7 +124,22 @@ export const MBQL_CLAUSES = {
     type: "aggregation",
     args: ["number", "boolean"],
   },
-  // expression functions
+  var: {
+    displayName: t`Variance`,
+    type: "aggregation",
+    args: ["number"],
+  },
+  median: {
+    displayName: t`Median`,
+    type: "aggregation",
+    args: ["number"],
+  },
+  percentile: {
+    displayName: t`Percentile`,
+    type: "aggregation",
+    args: ["number"],
+  },
+  // string functions
   lower: {
     displayName: t`lower`,
     type: "string",
@@ -152,12 +167,6 @@ export const MBQL_CLAUSES = {
     args: ["expression"],
     multiple: true,
   },
-  coalesce: {
-    displayName: t`coalesce`,
-    type: "expression",
-    args: ["expression", "expression"],
-    multiple: true,
-  },
   replace: {
     displayName: t`substitute`,
     type: "string",
@@ -178,13 +187,48 @@ export const MBQL_CLAUSES = {
     type: "string",
     args: ["string"],
   },
-  case: {
-    displayName: t`case`,
-    type: "expression",
-    args: ["expression", "expression"], // ideally we'd alternate boolean/expression
-    multiple: true,
+  // numeric functions
+  abs: {
+    displayName: t`abs`,
+    type: "number",
+    args: ["number"],
   },
-  // filters functions
+  floor: {
+    displayName: t`floor`,
+    type: "number",
+    args: ["number"],
+  },
+  ceil: {
+    displayName: t`ceil`,
+    type: "number",
+    args: ["number"],
+  },
+  round: {
+    displayName: t`round`,
+    type: "number",
+    args: ["number"],
+  },
+  sqrt: {
+    displayName: t`sqrt`,
+    type: "number",
+    args: ["number"],
+  },
+  power: {
+    displayName: t`power`,
+    type: "number",
+    args: ["number", "number"],
+  },
+  log: {
+    displayName: t`log`,
+    type: "number",
+    args: ["number"],
+  },
+  expt: {
+    displayName: t`expt`,
+    type: "number",
+    args: ["number"],
+  },
+  // boolean functions
   contains: {
     displayName: t`contains`,
     type: "boolean",
@@ -210,6 +254,19 @@ export const MBQL_CLAUSES = {
     type: "boolean",
     args: ["expression", "number", "string"],
   },
+  // other expression functions
+  coalesce: {
+    displayName: t`coalesce`,
+    type: "expression",
+    args: ["expression", "expression"],
+    multiple: true,
+  },
+  case: {
+    displayName: t`case`,
+    type: "expression",
+    args: ["expression", "expression"], // ideally we'd alternate boolean/expression
+    multiple: true,
+  },
   // boolean operators
   and: {
     displayName: t`AND`,
@@ -226,7 +283,7 @@ export const MBQL_CLAUSES = {
     type: "boolean",
     args: ["boolean"],
   },
-  // expression operators
+  // numeric operators
   "*": {
     displayName: "*",
     tokenName: "Multi",
@@ -319,19 +376,6 @@ export function getMBQLName(expressionName) {
   return EXPRESSION_TO_MBQL_NAME.get(expressionName.toLowerCase());
 }
 
-export const EXPRESSION_FUNCTIONS = new Set([
-  "lower", // concrete-field
-  "upper", // concrete-field
-  "substring", // concrete-field start length
-  "regex-match-first", // concrete-field regex
-  "concat", // & expression
-  "coalesce", // & expression
-  "replace", // concrete-field from to
-  "trim", // concrete-field
-  "rtrim", // concrete-field
-  "ltrim", // concrete-field
-]);
-
 export const AGGREGATION_FUNCTIONS = new Set([
   // count-where/sum-where must come before count/sum
   "count-where",
@@ -346,14 +390,39 @@ export const AGGREGATION_FUNCTIONS = new Set([
   "min",
   "max",
   "share",
+  "var",
+  "median",
+  "percentile",
 ]);
 
-export const FILTER_FUNCTIONS = new Set([
+export const EXPRESSION_FUNCTIONS = new Set([
+  // string
+  "lower",
+  "upper",
+  "substring",
+  "regex-match-first",
+  "concat",
+  "replace",
+  "trim",
+  "rtrim",
+  "ltrim",
+  // number
+  "abs",
+  "floor",
+  "ceil",
+  "round",
+  "sqrt",
+  "power",
+  "log",
+  "expt",
+  // boolean
   "contains",
   "ends-with",
   "starts-with",
   "between",
   "time-interval",
+  // other
+  "coalesce",
 ]);
 
 export const EXPRESSION_OPERATORS = new Set(["+", "-", "*", "/"]);
@@ -365,7 +434,6 @@ export const BOOLEAN_BINARY_OPERATORS = new Set(["and", "or"]);
 export const FUNCTIONS = new Set([
   ...EXPRESSION_FUNCTIONS,
   ...AGGREGATION_FUNCTIONS,
-  ...FILTER_FUNCTIONS,
 ]);
 
 export const OPERATORS = new Set([
