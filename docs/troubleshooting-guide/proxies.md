@@ -27,7 +27,7 @@ The solution is to disable the WAF for Metabase. Some services will show which r
 
 If Metabase just loads a blank page instead of the interface, then it is usually caused by content optimization like PageSpeed or Cloudflare's Rocket Loader.
 
-- Check the Developer tab of your browser's Developer Tools for any errors involving Content Security Policy (CSP).
+- Check the Console tab of your browser's Developer Tools for any errors involving Content Security Policy (CSP).
 - See if Metabase has been able to deliver the HTML code by right clicking the blank page and selecting "View page source." It might look like gibberish, but it should say `<title>Metabase</title>` near line 25.
 
 The solution is to disable the content optimization for Metabase.
