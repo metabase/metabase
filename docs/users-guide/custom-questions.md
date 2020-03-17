@@ -32,6 +32,39 @@ When you add a filter step, you can select one or more columns to filter on. Dep
 
 You can add subsequent filter steps after every Summarize step. This lets you do things like summarize by the count of rows per month, and then add a filter on the `count` column to only include rows where the count is greater than 100. (This is basically like a SQL `HAVING` clause.)
 
+**Filter expressions**
+
+If you need to create a filter that uses an "or" condition, or need to express something more complicated, you can choose the "Custom Expression" option in the filter menu.
+
+![Custom filter expression]()
+
+In the expression editor you can use functions, operators, and reference columns, segments, and metrics from the selected table. To reference a column, segment, or metric, enclose its name within square brackets, like `[this]`.
+
+Here are the functions you can use in filter expressions:
+
+**Between**
+Checks a date or number column's values to see if they're within the specified range.
+
+Syntax: `between(column, start, end)`
+`column`: The column to evaluate.
+`start`: The beginning of the range.
+`end`: The end of the range.
+Example: `between( [Rating], 3.75, 5 )`
+
+**Contains**
+Checks to see if a string of text contains another string within it.
+
+Syntax: `contains(string1, string2)`
+`string1`: The contents of this string will be checked.
+`string2`: The string of text to look for.
+Example: `contains([Status], "Pass")`
+
+contains
+endsWith
+interval
+startsWith
+Not
+
 #### Summarizing
 
 ![Summarizing](./images/notebook/summarize-step.png)
