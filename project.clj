@@ -79,7 +79,7 @@
    [com.draines/postal "2.0.3"]                                       ; SMTP library
    [com.jcraft/jsch "0.1.55"]                                         ; SSH client for tunnels
    [com.google.guava/guava "28.2-jre"]                                ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
-   [com.h2database/h2 "1.4.198"]                                      ; embedded SQL database
+   [com.h2database/h2 "1.4.197"]                                      ; embedded SQL database
    [com.mattbertolini/liquibase-slf4j "2.0.0"]                        ; Java Migrations lib logging. We don't actually use this AFAIK (?)
    [com.taoensso/nippy "2.14.0"]                                      ; Fast serialization (i.e., GZIP) library for Clojure
    [commons-codec/commons-codec "1.12"]                               ; Apache Commons -- useful codec util fns
