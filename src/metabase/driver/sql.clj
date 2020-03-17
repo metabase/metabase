@@ -41,8 +41,9 @@
   (let [[query params] (-> query
                            params.parse/parse
                            (params.substitute/substitute (params.values/query->params-map inner-query)))]
-    {:query  query
-     :params params}))
+    (assoc inner-query
+           :query query
+           :params params)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

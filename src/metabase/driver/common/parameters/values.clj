@@ -9,6 +9,7 @@
                                      :target [\"dimension\" [\"template-tag\" \"checkin_date\"]]
                                      :value  \"2015-01-01~2016-09-01\"}}}"
   (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [metabase.driver.common.parameters :as i]
             [metabase.models
              [card :refer [Card]]
@@ -16,7 +17,7 @@
             [metabase.query-processor :as qp]
             [metabase.query-processor.error-type :as qp.error-type]
             [metabase.util
-             [i18n :as ui18n :refer [deferred-tru]]
+             [i18n :refer [deferred-tru tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db])
@@ -103,7 +104,7 @@
     (i/map->FieldFilter
      ;; TODO - shouldn't this use the QP Store?
      {:field (let [field-id (field-filter->field-id field-filter)]
-               (or (db/select-one [Field :name :parent_id :table_id :base_type] :id field-id)
+               (or (db/select-one [Field :name :parent_id :table_id :base_type :special_type] :id field-id)
                    (throw (ex-info (str (deferred-tru "Can''t find field with ID: {0}" field-id))
                                    {:field-id field-id, :type qp.error-type/invalid-parameter}))))
       :value (if-let [value-info-or-infos (or
@@ -190,15 +191,39 @@
        ;; otherwise just return the single number
        (first parts)))))
 
-(s/defn ^:private parse-value-for-field-base-type :- s/Any
+(s/defn ^:private parse-value-for-field-type :- s/Any
   "Do special parsing for value for a (presumably textual) FieldFilter (`:type` = `:dimension`) param (i.e., attempt
-  to parse it as appropriate based on the base-type of the Field associated with it). These are special cases for
-  handling types that do not have an associated parameter type (such as `date` or `number`), such as UUID fields."
-  [base-type :- su/FieldType, value]
+  to parse it as appropriate based on the base type and special type of the Field associated with it). These are
+  special cases for handling types that do not have an associated parameter type (such as `date` or `number`), such as
+  UUID fields."
+  [base-type :- su/FieldType special-type :- (s/maybe su/FieldType) value]
   (cond
-   (isa? base-type :type/UUID)   (UUID/fromString value)
-   (isa? base-type :type/Number) (value->number value)
-   :else                         value))
+    (isa? base-type :type/UUID)
+    (UUID/fromString value)
+
+    (and (isa? base-type :type/Number)
+         (not (isa? special-type :type/Temporal)))
+    (value->number value)
+
+    :else
+    value))
+
+(s/defn ^:private update-filter-for-field-type :- ParsedParamValue
+  "Update a Field Filter with a textual, or sequence of textual, values. The base type and special type of the field
+  are used to determine what 'special' type interpretation is required (e.g. for UUID fields)."
+  [{{base-type :base_type, special-type :special_type} :field, {value :value} :value, :as field-filter} :- FieldFilter]
+  (let [new-value (cond
+                    (string? value)
+                    (parse-value-for-field-type base-type special-type value)
+
+                    (and (sequential? value)
+                         (every? string? value))
+                    (mapv (partial parse-value-for-field-type base-type special-type) value))]
+    (when (not= value new-value)
+      (log/tracef "update filter for base-type: %s special-type: %s value: %s -> %s"
+                  (pr-str base-type) (pr-str special-type) (pr-str value) (pr-str new-value)))
+    (cond-> field-filter
+      new-value (assoc-in [:value :value] new-value))))
 
 (s/defn ^:private parse-value-for-type :- ParsedParamValue
   "Parse a `value` based on the type chosen for the param, such as `text` or `number`. (Depending on the type of param
@@ -206,7 +231,7 @@
   value.) For numbers, dates, and the like, this will parse the string appropriately; for `text` parameters, this will
   additionally attempt handle special cases based on the base type of the Field, for example, parsing params for UUID
   base type Fields as UUIDs."
-  [param-type :- ParamType, value]
+  [param-type :- ParamType value]
   (cond
    (= value i/no-value)
    value
@@ -226,10 +251,10 @@
    (i/map->MultipleValues {:values (for [v value]
                                      (parse-value-for-type param-type v))})
 
+   ;; Field Filters with "special" base types
    (and (= param-type :dimension)
-        (get-in value [:field :base_type])
-        (string? (get-in value [:value :value])))
-   (update-in value [:value :value] (partial parse-value-for-field-base-type (get-in value [:field :base_type])))
+        (get-in value [:field :base_type]))
+   (update-filter-for-field-type value)
 
    :else
    value))
@@ -238,11 +263,16 @@
   "Given a map `tag` (a value in the `:template-tags` dictionary) return the corresponding value from the `params`
    sequence. The `value` is something that can be compiled to SQL via `->replacement-snippet-info`."
   [tag :- TagParam, params :- (s/maybe [i/ParamValue])]
-  (parse-value-for-type (:type tag) (or (param-value-for-tag tag params)
-                                        (field-filter-value-for-tag tag params)
-                                        (card-query-for-tag tag params)
-                                        (default-value-for-tag tag)
-                                        i/no-value)))
+  (try
+    (parse-value-for-type (:type tag) (or (param-value-for-tag tag params)
+                                          (field-filter-value-for-tag tag params)
+                                          (card-query-for-tag tag params)
+                                          (default-value-for-tag tag)
+                                          i/no-value))
+    (catch Throwable e
+      (throw (ex-info (tru "Error determining value for parameter")
+                      {:tag tag}
+                      e)))))
 
 (s/defn query->params-map :- {su/NonBlankString ParsedParamValue}
   "Extract parameters info from `query`. Return a map of parameter name -> value.
@@ -251,16 +281,19 @@
     ->
     {:checkin_date #t \"2019-09-19T23:30:42.233-07:00\"}"
   [{tags :template-tags, params :parameters}]
+  (log/tracef "Building params map out of tags %s and params %s" (pr-str tags) (pr-str params))
   (try
-   (into {} (for [[k tag] tags
-                  :let    [v (value-for-tag tag params)]
-                  :when   v]
-              ;; TODO - if V is `nil` *on purpose* this still won't give us a query like `WHERE field = NULL`. That
-              ;; kind of query shouldn't be possible from the frontend anyway
-              {k v}))
-   (catch Throwable e
-     (throw (ex-info (.getMessage e)
-                     {:type   (or (:type (ex-data e)) qp.error-type/invalid-parameter)
-                      :tags   tags
-                      :params params}
-                     e)))))
+    (into {} (for [[k tag] tags
+                   :let    [v (value-for-tag tag params)]
+                   :when   v]
+               ;; TODO - if V is `nil` *on purpose* this still won't give us a query like `WHERE field = NULL`. That
+               ;; kind of query shouldn't be possible from the frontend anyway
+               (do
+                 (log/tracef "Value for tag %s %s -> %s" (pr-str k) (pr-str tag) (pr-str v))
+                 {k v})))
+    (catch Throwable e
+      (throw (ex-info (tru "Error building query parameter map")
+                      {:type   (or (:type (ex-data e)) qp.error-type/invalid-parameter)
+                       :tags   tags
+                       :params params}
+                      e)))))

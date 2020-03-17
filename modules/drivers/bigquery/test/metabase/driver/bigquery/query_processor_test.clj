@@ -234,12 +234,12 @@
     :type  :timestamp
     :as    {:date     (t/local-date "2019-12-10")
             :datetime (t/local-date-time "2019-12-10T14:47:00")}}
-   (let [unix-ts (sql.qp/unix-timestamp->timestamp :bigquery :seconds :some_field)]
+   (let [unix-ts (sql.qp/unix-timestamp->honeysql :bigquery :seconds :some_field)]
      {:value unix-ts
       :type  :timestamp
       :as    {:date     (hx/cast :date unix-ts)
               :datetime (hx/cast :datetime unix-ts)}})
-   (let [unix-ts (sql.qp/unix-timestamp->timestamp :bigquery :milliseconds :some_field)]
+   (let [unix-ts (sql.qp/unix-timestamp->honeysql :bigquery :milliseconds :some_field)]
      {:value unix-ts
       :type  :timestamp
       :as    {:date     (hx/cast :date unix-ts)
@@ -301,14 +301,17 @@
                                            (#'bigquery.qp/temporal-type filter-value))
                             (is (= expected-clause
                                    (sql.qp/->honeysql :bigquery filter-clause))))))))))))
+
           (testing "\ndate extraction filters"
             (doseq [[temporal-type field] fields
                     :let                  [identifier          (hx/identifier :field "ABC" (name temporal-type))
-                                           expected-identifier (if (= temporal-type :timestamp)
-                                                                 identifier
-                                                                 (hx/cast :timestamp identifier))]]
-              (is (= [:= (hsql/call :extract :dayofweek expected-identifier) 1]
-                     (sql.qp/->honeysql :bigquery [:= [:datetime-field [:field-id (:id field)] :day-of-week] 1]))))))))))
+                                           expected-identifier (case temporal-type
+                                                                 :date      identifier
+                                                                 :datetime  (hx/cast :timestamp identifier)
+                                                                 :timestamp identifier)]]
+              (testing (format "\ntemporal-type = %s" temporal-type)
+                (is (= [:= (hsql/call :extract :dayofweek expected-identifier) 1]
+                       (sql.qp/->honeysql :bigquery [:= [:datetime-field [:field-id (:id field)] :day-of-week] 1])))))))))))
 
 (deftest reconcile-relative-datetimes-test
   (testing "relative-datetime clauses on their own"
@@ -555,23 +558,49 @@
                                                                         [:datetime-field [:field-id (:id f)] unit]
                                                                         [:relative-datetime -1 unit]])}))))))))))
 
+(def ^:private filter-test-table
+  [[nil          :minute :hour :day  :week :month :quarter :year]
+   [:time        true    true  false false false  false    false]
+   [:datetime    true    true  true  true  true   true     true]
+   [:date        false   false true  true  true   true     true]
+   [:datetime_tz true    true  true  true  true   true     true]])
+
+(defn- test-table-with-fn [table f]
+  (let [units (rest (first table))]
+    (dorun (pmap (fn [[field & vs]]
+                   (testing (format "\nfield = %s" field)
+                     (dorun (pmap (fn [[unit expected]]
+                                    (testing (format "\nunit = %s" unit)
+                                      (is (= expected
+                                             (f field unit)))))
+                                  (zipmap units vs)))))
+                 (rest table)))))
+
 (deftest filter-by-relative-date-ranges-e2e-test
   (mt/test-driver :bigquery
     (testing (str "Make sure filtering against relative date ranges works correctly regardless of underlying column "
                   "type (#11725)")
       (mt/dataset attempted-murders
-        (is (= [[nil          :minute :hour :day  :week :month :quarter :year]
-                [:time        true    true  false false false  false    false]
-                [:datetime    true    true  true  true  true   true     true]
-                [:date        false   false true  true  true   true     true]
-                [:datetime_tz true    true  true  true  true   true     true]]
-               (let [units  [:minute :hour :day :week :month :quarter :year]
-                     fields [:time :datetime :date :datetime_tz]]
+        (test-table-with-fn filter-test-table can-we-filter-against-relative-datetime?)))))
 
-                 (into
-                  [(into [nil] units)]
-                  (pmap
-                   (fn [field]
-                     (into [field] (pmap (partial can-we-filter-against-relative-datetime? field)
-                                         units)))
-                   fields)))))))))
+(def ^:private breakout-test-table
+  [[nil          :default :minute :hour :day  :week :month :quarter :year :minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year :month-of-year :quarter-of-year]
+   [:time        true     true    true  false false false  false    false true            true         false        false         false        false         false          false]
+   [:datetime    true     true    true  true  true  true   true     true  true            true         true         true          true         true          true           true]
+   [:date        true     false   false true  true  true   true     true  false           false        true         true          true         true          true           true]
+   [:datetime_tz true     true    true  true  true  true   true     true  true            true         true         true          true         true          true           true]])
+
+(defn- can-breakout? [field unit]
+  (try
+    (mt/run-mbql-query attempts
+      {:aggregation [[:count]]
+       :breakout [[:datetime-field (mt/id :attempts field) unit]]})
+    true
+    (catch Throwable _
+      false)))
+
+(deftest breakout-by-bucketed-datetimes-e2e-test
+  (mt/test-driver :bigquery
+    (testing "Make sure datetime breakouts like :minute-of-hour work correctly for different temporal types"
+      (mt/dataset attempted-murders
+        (test-table-with-fn breakout-test-table can-breakout?)))))

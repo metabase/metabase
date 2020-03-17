@@ -21,7 +21,7 @@ describe("DataSelector", () => {
   let originalTimeout;
   beforeEach(() => {
     originalTimeout = jasmine.DEFAULT_TIMEOUT_INTERVAL;
-    jasmine.DEFAULT_TIMEOUT_INTERVAL = 10000;
+    jasmine.DEFAULT_TIMEOUT_INTERVAL = 15000;
   });
 
   afterEach(() => {
@@ -219,6 +219,7 @@ describe("DataSelector", () => {
     fireEvent.click(getByText("Multi-schema Database"));
     // see schema appear and click to view tables for good measure
     fireEvent.click(getByText("First Schema"));
+    await delay(1);
     getByText("Table in First Schema");
   });
 
@@ -252,6 +253,7 @@ describe("DataSelector", () => {
     fireEvent.click(getByText("Multi-schema Database"));
     // see schema appear and click to view tables for good measure
     fireEvent.click(getByText("First Schema"));
+    await delay(1);
     getByText("Table in First Schema");
   });
 
@@ -350,6 +352,33 @@ describe("DataSelector", () => {
     fireEvent.click(getByText("Other Multi-schema Database"));
     getByText("Other First Schema");
     getByText("Other Second Schema");
+  });
+
+  it("should skip schema when going to previous step", async () => {
+    const { getByText } = render(
+      <DataSelector
+        steps={["DATABASE", "SCHEMA", "TABLE"]}
+        databases={[SAMPLE_DATASET, ANOTHER_DATABASE]}
+        combineDatabaseSchemaSteps
+        triggerElement={<div />}
+        metadata={metadata}
+        isOpen={true}
+      />,
+    );
+
+    // click into the first db
+    fireEvent.click(getByText("Sample Dataset"));
+    await delay(1);
+    getByText("Orders");
+
+    // click to go back
+    fireEvent.click(getByText("Sample Dataset"));
+    getByText("Sample Empty Dataset");
+
+    // click back in
+    fireEvent.click(getByText("Sample Dataset"));
+    await delay(1);
+    getByText("Orders");
   });
 });
 

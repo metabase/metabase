@@ -725,14 +725,14 @@
                            :target [:variable [:template-tag "names_list"]]
                            :value  ["BBQ", "Bakery", "Bar"]}]}))))
   (testing "Make sure arrays of values also work for 'field filter' params"
-    (is (= {:query  "SELECT * FROM CATEGORIES WHERE \"PUBLIC\".\"USERS\".\"ID\" IN (?, ?, ?)",
+    (is (= {:query  "SELECT * FROM CATEGORIES WHERE \"PUBLIC\".\"CATEGORIES\".\"NAME\" IN (?, ?, ?)",
             :params ["BBQ" "Bakery" "Bar"]}
            (expand*
             {:native     {:query         "SELECT * FROM CATEGORIES WHERE {{names_list}}"
                           :template-tags {"names_list" {:name         "names_list"
                                                         :display-name "Names List"
                                                         :type         :dimension
-                                                        :dimension    [:field-id (mt/id :users :id)]}}}
+                                                        :dimension    [:field-id (mt/id :categories :name)]}}}
              :parameters [{:type   :text
                            :target [:dimension [:template-tag "names_list"]]
                            :value  ["BBQ", "Bakery", "Bar"]}]})))))

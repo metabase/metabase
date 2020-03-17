@@ -8,7 +8,7 @@
              [date-2 :as u.date]
              [i18n :refer [trs]]]
             [toucan.db :as db])
-  (:import java.sql.ResultSet
+  (:import [java.sql Connection PreparedStatement ResultSet Types]
            javax.sql.DataSource))
 
 (defn- ^DataSource datasource []
@@ -20,32 +20,47 @@
                    [:second n])]
     (u.date/add (t/offset-date-time) unit (- n))))
 
-(defn- cached-results-query [query-hash max-age-seconds]
-  (hsql/format {:select   [:results]
-                :from     [QueryCache]
-                :where    [:and
-                           [:= :query_hash query-hash]
-                           [:>= :updated_at (seconds-ago max-age-seconds)]]
-                :order-by [[:updated_at :desc]]
-                :limit    1}
-    :quoting (db/quoting-style)))
+(def ^:private cached-results-query-sql
+  (delay (first (hsql/format {:select   [:results]
+                              :from     [QueryCache]
+                              :where    [:and
+                                         [:= :query_hash (hsql/raw "?")]
+                                         [:>= :updated_at (hsql/raw "?")]]
+                              :order-by [[:updated_at :desc]]
+                              :limit    1}
+                  :quoting (db/quoting-style)))))
+
+(defn- prepare-statement
+  ^PreparedStatement [^Connection conn query-hash max-age-seconds]
+  (let [stmt (.prepareStatement conn ^String @cached-results-query-sql
+                                ResultSet/TYPE_FORWARD_ONLY
+                                ResultSet/CONCUR_READ_ONLY
+                                ResultSet/CLOSE_CURSORS_AT_COMMIT)]
+    (try
+      (doto stmt
+        (.setFetchDirection ResultSet/FETCH_FORWARD)
+        (.setBytes 1 query-hash)
+        (.setObject 2 (seconds-ago max-age-seconds) Types/TIMESTAMP_WITH_TIMEZONE)
+        (.setMaxRows 1))
+      (catch Throwable e
+        (log/error e (trs "Error preparing statement to fetch cached query results"))
+        (.close stmt)
+        (throw e)))))
+
+
 
 (defn- cached-results [query-hash max-age-seconds respond]
-  (let [[sql _ t] (cached-results-query query-hash max-age-seconds)]
-    (with-open [conn (.getConnection (datasource))
-                stmt (doto (.prepareStatement conn sql
-                                              ResultSet/TYPE_FORWARD_ONLY
-                                              ResultSet/CONCUR_READ_ONLY
-                                              ResultSet/CLOSE_CURSORS_AT_COMMIT)
-                       (.setFetchDirection ResultSet/FETCH_FORWARD)
-                       (.setBytes 1 query-hash)
-                       (.setObject 2 t java.sql.Types/TIMESTAMP_WITH_TIMEZONE)
-                       (.setMaxRows 1))]
-      (with-open [rs (.executeQuery stmt)]
-        (if-not (.next rs)
-          (respond nil)
-          (with-open [is (.getBinaryStream rs 1)]
-            (respond is)))))))
+  (with-open [conn (.getConnection (datasource))
+              stmt (prepare-statement conn query-hash max-age-seconds)
+              rs   (.executeQuery stmt)]
+    ;; VERY IMPORTANT! Bind `*db-connection*` so it will get reused elsewhere for the duration of results reduction,
+    ;; otherwise we can potentially end up deadlocking if we need to acquire another connection for one reason or
+    ;; another, such as recording QueryExecutions
+    (binding [db/*db-connection* {:connection conn}]
+      (if-not (.next rs)
+        (respond nil)
+        (with-open [is (.getBinaryStream rs 1)]
+          (respond is))))))
 
 (defn- purge-old-cache-entries!
   "Delete any cache entries that are older than the global max age `max-cache-entry-age-seconds` (currently 3 months)."

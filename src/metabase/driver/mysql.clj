@@ -116,25 +116,27 @@
 
 (defmethod driver/db-default-timezone :mysql
   [_ db]
-  (let [spec                             (sql-jdbc.conn/db->pooled-connection-spec db)
-        sql                              (str "SELECT @@GLOBAL.time_zone AS global,"
-                                              " @@system_time_zone AS system,"
-                                              " time_format("
-                                              "   timediff(now(), convert_tz(now(), @@GLOBAL.time_zone, '+00:00')),"
-                                              "  '%H:%i'"
-                                              " ) AS offset;")
-        [{:keys [global system offset]}] (jdbc/query spec sql)
-        the-valid-id                     (fn [zone-id]
-                                           (when zone-id
-                                             (try
-                                               (.getId (t/zone-id zone-id))
-                                               (catch Throwable _))))]
+  (let [spec                                   (sql-jdbc.conn/db->pooled-connection-spec db)
+        sql                                    (str "SELECT @@GLOBAL.time_zone AS global_tz,"
+                                                    " @@system_time_zone AS system_tz,"
+                                                    " time_format("
+                                                    "   timediff("
+                                                    "      now(), convert_tz(now(), @@GLOBAL.time_zone, '+00:00')"
+                                                    "   ),"
+                                                    "   '%H:%i'"
+                                                    " ) AS offset;")
+        [{:keys [global_tz system_tz offset]}] (jdbc/query spec sql)
+        the-valid-id                           (fn [zone-id]
+                                                 (when zone-id
+                                                   (try
+                                                     (.getId (t/zone-id zone-id))
+                                                     (catch Throwable _))))]
     (or
      ;; if global timezone ID is 'SYSTEM', then try to use the system timezone ID
-     (when (= global "SYSTEM")
-       (the-valid-id system))
+     (when (= global_tz "SYSTEM")
+       (the-valid-id system_tz))
      ;; otherwise try to use the global ID
-     (the-valid-id global)
+     (the-valid-id global_tz)
      ;; failing that, calculate the offset between now in the global timezone and now in UTC. Non-negative offsets
      ;; don't come back with `+` so add that if needed
      (if (str/starts-with? offset "-")
@@ -151,7 +153,7 @@
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod sql.qp/unix-timestamp->timestamp [:mysql :seconds] [_ _ expr]
+(defmethod sql.qp/unix-timestamp->honeysql [:mysql :seconds] [_ _ expr]
   (hsql/call :from_unixtime expr))
 
 (defn- date-format [format-str expr] (hsql/call :date_format expr (hx/literal format-str)))

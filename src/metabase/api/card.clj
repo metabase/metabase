@@ -14,9 +14,7 @@
             [metabase.api
              [common :as api]
              [dataset :as dataset-api]]
-            [metabase.async
-             [streaming-response :as async.streaming-response]
-             [util :as async.u]]
+            [metabase.async.util :as async.u]
             [metabase.email.messages :as messages]
             [metabase.models
              [card :as card :refer [Card]]
@@ -47,10 +45,7 @@
              [hydrate :refer [hydrate]]])
   (:import clojure.core.async.impl.channels.ManyToManyChannel
            java.util.UUID
-           metabase.async.streaming_response.StreamingResponse
            metabase.models.card.CardInstance))
-
-(comment async.streaming-response/keep-me)
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -584,8 +579,8 @@
     (let [ttl-seconds (Math/round (float (/ (* average-duration (public-settings/query-caching-ttl-ratio))
                                             1000.0)))]
       (when-not (zero? ttl-seconds)
-        (log/info (format "Question's average execution duration is %d ms; using 'magic' TTL of %d seconds"
-                          average-duration ttl-seconds)
+        (log/info (trs "Question''s average execution duration is {0}; using ''magic'' TTL of {1}"
+                       (u/format-milliseconds average-duration) (u/format-seconds ttl-seconds))
                   (u/emoji "💾"))
         ttl-seconds))))
 
@@ -605,15 +600,15 @@
   "Run the query for Card with `parameters` and `constraints`, and return results in a `StreamingResponse` that should
   be returned as the result of an API endpoint fn. Will throw an Exception if preconditions (such as read perms) are
   not met before returning the `StreamingResponse`."
-  ^StreamingResponse [card-id export-format
-                      & {:keys [parameters constraints context dashboard-id middleware run]
-                         :or   {constraints constraints/default-query-constraints
-                                context     :question
-                                ;; param `run` can be used to control how the query is ran, e.g. if you need to
-                                ;; customize the `context` passed to the QP
-                                run         (^:once fn* [query info]
-                                             (qp.streaming/streaming-response [context export-format]
-                                               (qp/process-query-and-save-execution! query info context)))}}]
+  [card-id export-format
+   & {:keys [parameters constraints context dashboard-id middleware run]
+      :or   {constraints constraints/default-query-constraints
+             context     :question
+             ;; param `run` can be used to control how the query is ran, e.g. if you need to
+             ;; customize the `context` passed to the QP
+             run         (^:once fn* [query info]
+                          (qp.streaming/streaming-response [context export-format]
+                            (qp/process-query-and-save-execution! query info context)))}}]
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card  (api/read-check (Card card-id))
         query (assoc (query-for-card card parameters constraints middleware)

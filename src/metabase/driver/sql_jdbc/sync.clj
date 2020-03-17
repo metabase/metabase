@@ -85,22 +85,24 @@
 ;;; |                                                   Sync Impl                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; TODO - we should reduce the metadata ResultSets instead of realizing the entire thing in memory at once and then
+;; filtering/transforming in Clojure-land
+
 (defn- get-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given schema."
-  [^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
+  [^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
   ;; tablePattern "%" = match all tables
   (with-open [rs (.getTables metadata db-name-or-nil schema-or-nil "%"
-                             (into-array String ["TABLE", "VIEW", "FOREIGN TABLE", "MATERIALIZED VIEW"]))]
+                             (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))]
     (vec (jdbc/metadata-result rs))))
 
 (defn fast-active-tables
-  "Default, fast implementation of `ISQLDriver/active-tables` best suited for DBs with lots of system tables (like
-   Oracle). Fetch list of schemas, then for each one not in `excluded-schemas`, fetch its Tables, and combine the
-   results.
+  "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch
+  list of schemas, then for each one not in `excluded-schemas`, fetch its Tables, and combine the results.
 
-   This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4
-   seconds vs 60)."
-  [driver, ^DatabaseMetaData metadata, & [db-name-or-nil]]
+  This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4 seconds
+  vs 60)."
+  [driver ^DatabaseMetaData metadata & [db-name-or-nil]]
   (with-open [rs (.getSchemas metadata)]
     (let [all-schemas (set (map :table_schem (jdbc/metadata-result rs)))
           schemas     (set/difference all-schemas (excluded-schemas driver))]
@@ -113,8 +115,8 @@
                                remarks)}))))))
 
 (defn post-filtered-active-tables
-  "Alternative implementation of `ISQLDriver/active-tables` best suited for DBs with little or no support for schemas.
-   Fetch *all* Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
+  "Alternative implementation of `active-tables` best suited for DBs with little or no support for schemas. Fetch *all*
+  Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
   [driver, ^DatabaseMetaData metadata, & [db-name-or-nil]]
   (set (for [table   (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
                              (get-tables metadata nil nil))]

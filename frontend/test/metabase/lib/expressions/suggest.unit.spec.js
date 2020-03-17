@@ -15,13 +15,16 @@ import { ORDERS, REVIEWS } from "__support__/sample_dataset_fixture";
 const AGGREGATION_FUNCTIONS = [
   { type: "aggregations", text: "Average(" },
   { type: "aggregations", text: "Count " },
+  { type: "aggregations", text: "CountIf(" },
   { type: "aggregations", text: "CumulativeCount " },
   { type: "aggregations", text: "CumulativeSum(" },
   { type: "aggregations", text: "Distinct(" },
   { type: "aggregations", text: "Max(" },
   { type: "aggregations", text: "Min(" },
+  { type: "aggregations", text: "Share(" },
   { type: "aggregations", text: "StandardDeviation(" },
   { type: "aggregations", text: "Sum(" },
+  { type: "aggregations", text: "SumIf(" },
 ];
 const STRING_FUNCTIONS = [
   { text: "concat(", type: "functions" },
@@ -34,6 +37,9 @@ const STRING_FUNCTIONS = [
   { text: "trim(", type: "functions" },
   { text: "upper(", type: "functions" },
 ];
+const STRING_FUNCTIONS_EXCLUDING_REGEX = STRING_FUNCTIONS.filter(
+  ({ text }) => text !== "regexextract(",
+);
 // const EXPRESSION_FUNCTIONS = [
 //   { text: "case(", type: "functions" },
 //   { text: "coalesce(", type: "functions" },
@@ -89,41 +95,45 @@ const FIELDS_CUSTOM_NON_NUMERIC = [
 // custom metadata defined in __support__/sample_dataset_fixture
 const METRICS_ORDERS = [{ type: "metrics", text: "[Total Order Value]" }];
 const SEGMENTS_ORDERS = [{ text: "[Expensive Things]", type: "segments" }];
-// const FIELDS_ORDERS = [
-//   { text: '[Created At] ', type: "fields" },
-//   { text: '[Product ID] ', type: "fields" },
-//   { text: '[Product → Category] ', type: "fields" },
-//   { text: '[Product → Created At] ', type: "fields" },
-//   { text: '[Product → Ean] ', type: "fields" },
-//   { text: '[Product → ID] ', type: "fields" },
-//   { text: '[Product → Price] ', type: "fields" },
-//   { text: '[Product → Rating] ', type: "fields" },
-//   { text: '[Product → Title] ', type: "fields" },
-//   { text: '[Product → Vendor] ', type: "fields" },
-//   { text: '[User ID] ', type: "fields" },
-//   { text: '[User → Address] ', type: "fields" },
-//   { text: '[User → Birth Date] ', type: "fields" },
-//   { text: '[User → City] ', type: "fields" },
-//   { text: '[User → Created At] ', type: "fields" },
-//   { text: '[User → Email] ', type: "fields" },
-//   { text: '[User → ID] ', type: "fields" },
-//   { text: '[User → Latitude] ', type: "fields" },
-//   { text: '[User → Longitude] ', type: "fields" },
-//   { text: '[User → Name] ', type: "fields" },
-//   { text: '[User → Password] ', type: "fields" },
-//   { text: '[User → Source] ', type: "fields" },
-//   { text: '[User → State] ', type: "fields" },
-//   { text: '[User → Zip] ', type: "fields" },
-//   { text: "[ID] ", type: "fields" },
-//   { text: "[Subtotal] ", type: "fields" },
-//   { text: "[Tax] ", type: "fields" },
-//   { text: "[Total] ", type: "fields" },
-// ];
+const FIELDS_ORDERS = [
+  { text: "[Created At] ", type: "fields" },
+  { text: "[ID] ", type: "fields" },
+  { text: "[Product ID] ", type: "fields" },
+  { text: "[Product → Category] ", type: "fields" },
+  { text: "[Product → Created At] ", type: "fields" },
+  { text: "[Product → Ean] ", type: "fields" },
+  { text: "[Product → ID] ", type: "fields" },
+  { text: "[Product → Price] ", type: "fields" },
+  { text: "[Product → Rating] ", type: "fields" },
+  { text: "[Product → Title] ", type: "fields" },
+  { text: "[Product → Vendor] ", type: "fields" },
+  { text: "[Subtotal] ", type: "fields" },
+  { text: "[Tax] ", type: "fields" },
+  { text: "[Total] ", type: "fields" },
+  { text: "[User ID] ", type: "fields" },
+  { text: "[User → Address] ", type: "fields" },
+  { text: "[User → Birth Date] ", type: "fields" },
+  { text: "[User → City] ", type: "fields" },
+  { text: "[User → Created At] ", type: "fields" },
+  { text: "[User → Email] ", type: "fields" },
+  { text: "[User → ID] ", type: "fields" },
+  { text: "[User → Latitude] ", type: "fields" },
+  { text: "[User → Longitude] ", type: "fields" },
+  { text: "[User → Name] ", type: "fields" },
+  { text: "[User → Password] ", type: "fields" },
+  { text: "[User → Source] ", type: "fields" },
+  { text: "[User → State] ", type: "fields" },
+  { text: "[User → Zip] ", type: "fields" },
+];
 
 describe("metabase/lib/expression/suggest", () => {
   describe("suggest()", () => {
     function suggest(...args) {
-      return cleanSuggestions(suggest_(...args));
+      return cleanSuggestions(suggest_(...args).suggestions);
+    }
+
+    function helpText(...args) {
+      return suggest_(...args).helpText;
     }
 
     describe("expression", () => {
@@ -132,7 +142,7 @@ describe("metabase/lib/expression/suggest", () => {
           ...FIELDS_CUSTOM,
           ...FIELDS_CUSTOM_NON_NUMERIC,
           { type: "functions", text: "coalesce(" },
-          ...STRING_FUNCTIONS,
+          ...STRING_FUNCTIONS_EXCLUDING_REGEX,
           OPEN_PAREN,
         ]);
       });
@@ -226,6 +236,36 @@ describe("metabase/lib/expression/suggest", () => {
         ).toEqual([...EXPRESSION_OPERATORS]);
       });
 
+      it("should provide help text for the function", () => {
+        const { structure, args } = helpText({
+          source: "substring(",
+          query: ORDERS.query(),
+          startRule: "expression",
+        });
+        expect(structure).toEqual("substring(text, position, length)");
+        expect(args).toHaveLength(3);
+      });
+
+      it("should provide help text after first argument if there's only one argument", () => {
+        expect(
+          helpText({
+            source: "trim(Total ",
+            query: ORDERS.query(),
+            startRule: "expression",
+          }).name,
+        ).toEqual("trim");
+      });
+
+      it("should provide help text after first argument if there's more than one argument", () => {
+        expect(
+          helpText({
+            source: "coalesce(Total ",
+            query: ORDERS.query(),
+            startRule: "expression",
+          }).name,
+        ).toEqual("coalesce");
+      });
+
       xit("should suggest boolean options after case(", () => {
         expect(
           suggest({
@@ -268,6 +308,7 @@ describe("metabase/lib/expression/suggest", () => {
       it("should suggest partial matches in aggregation", () => {
         expect(suggest({ source: "1 + C", ...aggregationOpts })).toEqual([
           { type: "aggregations", text: "Count " },
+          { type: "aggregations", text: "CountIf(" },
           { type: "aggregations", text: "CumulativeCount " },
           { type: "aggregations", text: "CumulativeSum(" },
         ]);
@@ -283,14 +324,14 @@ describe("metabase/lib/expression/suggest", () => {
         ).toEqual([...AGGREGATION_FUNCTIONS, ...METRICS_ORDERS, OPEN_PAREN]);
       });
 
-      it("should suggest expression operators after aggregation argument", () => {
-        expect(
-          suggest({
-            source: "Sum(Total ",
-            query: ORDERS.query(),
-            startRule: "aggregation",
-          }),
-        ).toEqual([...EXPRESSION_OPERATORS, CLOSE_PAREN]);
+      it("should show help text in an aggregation functiom", () => {
+        const { name, example } = helpText({
+          source: "Sum(",
+          query: ORDERS.query(),
+          startRule: "aggregation",
+        });
+        expect(name).toEqual("sum");
+        expect(example).toEqual("sum( [Subtotal] )");
       });
     });
 
@@ -309,6 +350,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(
           suggest({ source: "", query: ORDERS.query(), startRule: "boolean" }),
         ).toEqual([
+          ...FIELDS_ORDERS,
           ...FILTER_FUNCTIONS,
           ...UNARY_BOOLEAN_OPERATORS,
           OPEN_PAREN,
@@ -316,23 +358,14 @@ describe("metabase/lib/expression/suggest", () => {
         ]);
       });
 
-      it("should not suggest comma after first argument if there's only one argument", () => {
-        expect(
-          suggest({
-            source: "trim(Total ",
-            query: ORDERS.query(),
-            startRule: "boolean",
-          }).filter(({ text }) => text === ", "),
-        ).toHaveLength(0);
-      });
-      it("should suggest comma after first argument if there's more than one argument", () => {
-        expect(
-          suggest({
-            source: "contains(Total ",
-            query: ORDERS.query(),
-            startRule: "boolean",
-          }).filter(({ text }) => text === ", "),
-        ).toHaveLength(1);
+      it("should show help text in a filter function", () => {
+        const { name, example } = helpText({
+          source: "Contains(Total ",
+          query: ORDERS.query(),
+          startRule: "boolean",
+        });
+        expect(name).toEqual("contains");
+        expect(example).toEqual('contains([Status] , "Pass")');
       });
     });
   });

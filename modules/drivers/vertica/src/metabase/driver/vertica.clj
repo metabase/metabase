@@ -52,7 +52,7 @@
              (dissoc details :host :port :dbname :db :ssl))
       (sql-jdbc.common/handle-additional-options details)))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:vertica :seconds]
+(defmethod sql.qp/unix-timestamp->honeysql [:vertica :seconds]
   [_ _ expr]
   (hsql/call :to_timestamp expr))
 
@@ -99,7 +99,7 @@
   [driver [_ arg pattern]]
   (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
 
-(defmethod driver/date-add :vertica
+(defmethod sql.qp/add-interval-honeysql-form :vertica
   [_ hsql-form amount unit]
   (hx/+ (hx/->timestamp hsql-form) (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit)))))
 

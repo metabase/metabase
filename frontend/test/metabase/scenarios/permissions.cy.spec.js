@@ -1,6 +1,6 @@
 import { signIn, restore } from "__support__/cypress";
 
-describe("permissions", () => {
+describe("scenarios > permissions", () => {
   before(restore);
 
   const PATHS = [
