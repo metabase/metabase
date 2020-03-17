@@ -39,7 +39,7 @@ export default class SnippetSidebar extends React.Component {
 
   insertSnippet({ name }) {
     const { query, setDatasetQuery } = this.props;
-    const newText = query.queryText() + `{{ snippet: ${name} }}`;
+    const newText = query.queryText() + `{{snippet: ${name}}}`;
     setDatasetQuery(query.setQueryText(newText).datasetQuery());
   }
 
@@ -65,7 +65,7 @@ export default class SnippetSidebar extends React.Component {
   );
 
   render() {
-    const { setDatasetQuery, query, onClose, snippets } = this.props;
+    const { query, onClose, snippets } = this.props;
     const { editingSnippet, showCreateModal } = this.state;
 
     return (

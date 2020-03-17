@@ -70,7 +70,7 @@ export default class TagEditorSidebar extends React.Component {
       updateTemplateTag,
       onClose,
     } = this.props;
-    const tags = query.templateTags();
+    const tags = query.templateTagsWithoutSnippets();
     const database = query.database();
 
     let section;

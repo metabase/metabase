@@ -10,22 +10,24 @@ export default createEntity({
   form: {
     fields: [
       {
+        name: "content",
+        title: t`Enter some SQL here so you can reuse it later`,
+        placeholder: "AND canceled_at IS null\nAND account_type = 'PAID'",
+        type: "text",
+        className: "text-code",
+        validate: validate.required().maxLength(10000),
+      },
+      {
         name: "name",
-        title: t`Name`,
+        title: t`Give your snippet a name`,
         placeholder: "current customers",
         validate: validate.required().maxLength(100),
       },
       {
         name: "description",
-        title: t`Description`,
+        title: t`Give it a description (optional)`,
         placeholder: "Filters accounts to current customers",
         validate: validate.maxLength(100),
-      },
-      {
-        name: "content",
-        title: t`Content`,
-        placeholder: "canceled_at is null\nAND account_type = 'PAID'",
-        validate: validate.required().maxLength(10000),
       },
       { name: "database_id", hidden: true },
     ],

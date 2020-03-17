@@ -6,8 +6,6 @@ import cx from "classnames";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
 
-import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
-
 const SnippetSidebarButton = ({
   toggleSnippetSidebar,
   isShowingSnippetSidebar,
@@ -24,7 +22,5 @@ const SnippetSidebarButton = ({
     </a>
   </Tooltip>
 );
-
-SnippetSidebarButton.shouldRender = () => true;
 
 export default SnippetSidebarButton;
