@@ -37,7 +37,7 @@ function createClauseToken(name, options = {}) {
 
 export const Identifier = createToken({
   name: "Identifier",
-  pattern: /\w+/,
+  pattern: /(\w|\.)+/,
   label: "identfier",
 });
 export const IdentifierString = createToken({
