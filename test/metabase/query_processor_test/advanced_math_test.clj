@@ -79,15 +79,15 @@
     (is (= 0.59 (test-aggregation [:var [:field-id (data/id :venues :price)]])))))
 
 (deftest test-median
-  (mt/test-drivers (mt/normal-drivers-with-feature :standard-deviation-aggregations)
+  (mt/test-drivers (mt/normal-drivers-with-feature :percentile-aggregations)
     (is (= 2.0 (test-aggregation [:median [:field-id (data/id :venues :price)]])))))
 
 (deftest test-percentile
-  (mt/test-drivers (mt/normal-drivers-with-feature :standard-deviation-aggregations)
+  (mt/test-drivers (mt/normal-drivers-with-feature :percentile-aggregations)
     (is (= 3.0 (test-aggregation [:percentile [:field-id (data/id :venues :price)] 0.9])))))
 
 
 (deftest test-aggregation-expressions
   (mt/test-drivers (mt/normal-drivers-with-feature :standard-deviation-aggregations :expressions)
-    (is (= 5.0 (test-aggregation [:+ [:median [:field-id (data/id :venues :price)]]
-                                     [:percentile [:field-id (data/id :venues :price)] 0.9]])))))
+    (is (= 3.4 (test-aggregation [:/ [:avg [:field-id (data/id :venues :price)]]
+                                     [:var [:field-id (data/id :venues :price)]]])))))
