@@ -386,7 +386,7 @@ export default class ExpressionEditorTextfield extends React.Component {
                     }}
                     style={{ paddingTop: 5, paddingBottom: 5 }}
                     className={cx(
-                      "px2 cursor-pointer text-white-hover bg-brand-hover",
+                      "px2 cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit",
                       {
                         "text-white bg-brand":
                           i === this.state.highlightedSuggestion,
@@ -398,7 +398,7 @@ export default class ExpressionEditorTextfield extends React.Component {
                       <span>
                         {suggestion.name.slice(0, suggestion.range[0])}
                         <span
-                          className={cx("text-brand text-bold", {
+                          className={cx("text-brand text-bold hover-child", {
                             "text-white bg-brand":
                               i === this.state.highlightedSuggestion,
                           })}

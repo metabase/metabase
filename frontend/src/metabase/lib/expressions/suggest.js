@@ -127,7 +127,8 @@ export function suggest({
       const parentRule = ruleStack.slice(-2, -1)[0];
       const isDimension =
         parentRule === "dimensionExpression" &&
-        isExpressionType(expectedType, "expression");
+        (isExpressionType(expectedType, "expression") ||
+          isExpressionType(expectedType, "boolean"));
       const isSegment =
         parentRule === "segmentExpression" &&
         isExpressionType(expectedType, "boolean");
