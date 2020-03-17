@@ -373,7 +373,7 @@
 
 (defmethod sql.qp/->honeysql [:bigquery :median]
   [driver [_ arg]]
-  (sql.qp/->honeysql [:percentile arg 0.5]))
+  (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
