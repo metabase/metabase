@@ -251,6 +251,11 @@ export function suggest({
               ),
             ),
         );
+        finalSuggestions.push(
+          ...["sum-where", "count-where", "share"].map(short =>
+            functionSuggestion("aggregations", short, true),
+          ),
+        );
         functions = FUNCTIONS_BY_TYPE["number"];
       } else {
         functions = FUNCTIONS_BY_TYPE[expectedType];
