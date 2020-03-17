@@ -251,7 +251,7 @@
 
 (defmethod sql.qp/->honeysql [:sqlserver :round]
   [driver [_ arg]]
-  (hsql/call :round (sql.qp/->honeysql driver arg) 0))
+  (hsql/call :round (hx/cast :float (sql.qp/->honeysql driver arg)) 0))
 
 (defmethod sql.qp/->honeysql [:sqlserver :median]
   [driver [_ arg]]

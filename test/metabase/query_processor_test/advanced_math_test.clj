@@ -58,10 +58,6 @@
 
 (deftest test-nesting
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
-    (is (= 2.3 (test-math-expression [:log 10])))))
-
-(deftest test-nesting
-  (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
     (is (= 2.0 (test-math-expression [:sqrt [:power 2 2]])))))
 
 
@@ -85,9 +81,3 @@
 (deftest test-percentile
   (mt/test-drivers (mt/normal-drivers-with-feature :percentile-aggregations)
     (is (= 3.0 (test-aggregation [:percentile [:field-id (data/id :venues :price)] 0.9])))))
-
-
-(deftest test-aggregation-expressions
-  (mt/test-drivers (mt/normal-drivers-with-feature :standard-deviation-aggregations :expressions)
-    (is (= 2.61 (test-aggregation [:/ [:avg [:field-id (data/id :venues :price)]]
-                                      [:stddev [:field-id (data/id :venues :price)]]])))))
