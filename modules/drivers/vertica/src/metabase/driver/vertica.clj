@@ -109,10 +109,14 @@
   [driver [_ arg]]
   (hsql/call :approximate_median (sql.qp/->honeysql driver arg)))
 
-
-(defmethod sql.qp/add-interval-honeysql-form :vertica
+(defmethod sql.qp/date-add :vertica
   [_ hsql-form amount unit]
   (hx/+ (hx/->timestamp hsql-form) (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit)))))
+
+;; TODO - for some reason this defintion is not getting picked up
+(defmethod sql.qp/add-interval-honeysql-form :vertica
+  [_ hsql-form amount unit]
+  (sql.qp/date-add :vertica hsql-form amont unit))
 
 (defn- materialized-views
   "Fetch the Materialized Views for a Vertica `database`.
