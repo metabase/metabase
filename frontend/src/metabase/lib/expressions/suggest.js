@@ -52,6 +52,7 @@ import {
   isExpressionType,
   getFunctionArgType,
   EXPRESSION_TYPES,
+  EDITOR_FK_SYMBOLS,
 } from "./config";
 
 const FUNCTIONS_BY_TYPE = {};
@@ -83,8 +84,6 @@ export function suggest({
   let tokenVector = lexResult.tokens;
 
   const lastInputToken = _.last(lexResult.tokens);
-  const lastInputTokenIsIdentifier =
-    lastInputToken && isTokenType(lastInputToken.tokenType, Identifier);
   const lastInputTokenIsUnclosedIdentifierString =
     lastInputToken &&
     isTokenType(lastInputToken.tokenType, UnclosedQuotedString) &&
@@ -180,6 +179,9 @@ export function suggest({
             type: "fields",
             name: getDimensionName(dimension),
             text: formatDimensionName(dimension) + " ",
+            alternates: EDITOR_FK_SYMBOLS.symbols.map(symbol =>
+              getDimensionName(dimension, symbol),
+            ),
             ...identifierTrimOptions,
           })),
         );
@@ -312,16 +314,16 @@ export function suggest({
 
   // throw away any suggestion that is not a suffix of the last partialToken.
   if (partialSuggestionMode) {
-    const input =
-      // special case to support "." instead of " → " in identifiers
-      lastInputTokenIsIdentifier || lastInputTokenIsUnclosedIdentifierString
-        ? lastInputToken.image.replace(".", " → ")
-        : lastInputToken.image;
+    const input = lastInputToken.image;
     const partial = lastInputTokenIsUnclosedIdentifierString
       ? input.slice(1).toLowerCase()
       : input.toLowerCase();
     for (const suggestion of finalSuggestions) {
-      suggestion: for (const text of [suggestion.name, suggestion.text]) {
+      suggestion: for (const text of [
+        suggestion.name,
+        suggestion.text,
+        ...(suggestion.alternates || []),
+      ]) {
         const lower = (text || "").toLowerCase();
         if (lower.startsWith(partial)) {
           suggestion.range = [0, partial.length];

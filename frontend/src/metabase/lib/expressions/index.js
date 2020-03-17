@@ -1,7 +1,14 @@
 export * from "./config";
 
 import Dimension from "metabase-lib/lib/Dimension";
-import { OPERATORS, FUNCTIONS, EDITOR_QUOTES, getMBQLName } from "./config";
+import { FK_SYMBOL } from "metabase/lib/formatting";
+import {
+  OPERATORS,
+  FUNCTIONS,
+  EDITOR_QUOTES,
+  EDITOR_FK_SYMBOLS,
+  getMBQLName,
+} from "./config";
 
 // IDENTIFIERS
 
@@ -60,15 +67,22 @@ export function parseDimension(name, { query }) {
   return query
     .dimensionOptions()
     .all()
-    .find(d => getDimensionName(d) === name);
+    .find(d =>
+      EDITOR_FK_SYMBOLS.symbols.some(
+        separator => getDimensionName(d, separator) === name,
+      ),
+    );
 }
 
 export function formatDimensionName(dimension, options) {
   return formatIdentifier(getDimensionName(dimension), options);
 }
 
-export function getDimensionName(dimension) {
-  return dimension.render();
+export function getDimensionName(
+  dimension,
+  separator = EDITOR_FK_SYMBOLS.default,
+) {
+  return dimension.render().replace(` ${FK_SYMBOL} `, separator);
 }
 
 // STRING LITERALS
