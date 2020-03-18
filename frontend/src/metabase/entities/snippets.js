@@ -14,7 +14,10 @@ export default createEntity({
         title: t`Enter some SQL here so you can reuse it later`,
         placeholder: "AND canceled_at IS null\nAND account_type = 'PAID'",
         type: "text",
-        className: "text-code",
+        updateInputProps: ({ className }) => ({
+          className: className + " text-code",
+          rows: 4,
+        }),
         validate: validate.required().maxLength(10000),
       },
       {
