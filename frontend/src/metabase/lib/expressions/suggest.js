@@ -52,6 +52,7 @@ import {
   isExpressionType,
   getFunctionArgType,
   EXPRESSION_TYPES,
+  EDITOR_FK_SYMBOLS,
 } from "./config";
 
 const FUNCTIONS_BY_TYPE = {};
@@ -91,12 +92,22 @@ export function suggest({
   if (
     lastInputToken &&
     ((isTokenType(lastInputToken.tokenType, Identifier) &&
-      /\w/.test(partialSource[partialSource.length - 1])) ||
+      Identifier.PATTERN.test(partialSource[partialSource.length - 1])) ||
       lastInputTokenIsUnclosedIdentifierString)
   ) {
     tokenVector = tokenVector.slice(0, -1);
     partialSuggestionMode = true;
   }
+
+  const identifierTrimOptions = lastInputTokenIsUnclosedIdentifierString
+    ? {
+        // use the last token's pattern anchored to the end of the text
+        prefixTrim: new RegExp(lastInputToken.tokenType.PATTERN.source + "$"),
+      }
+    : {
+        prefixTrim: new RegExp(Identifier.PATTERN.source + "$"),
+        postfixTrim: new RegExp("^" + Identifier.PATTERN.source + "\\s*"),
+      };
 
   const context = getContext({
     cst,
@@ -136,15 +147,6 @@ export function suggest({
         parentRule === "metricExpression" &&
         isExpressionType(expectedType, "aggregation");
 
-      const trimOptions = lastInputTokenIsUnclosedIdentifierString
-        ? {
-            // use the last token's pattern anchored to the end of the text
-            prefixTrim: new RegExp(
-              lastInputToken.tokenType.PATTERN.source + "$",
-            ),
-          }
-        : { prefixTrim: /\w+$/, postfixTrim: /^\w+\s*/ };
-
       if (isDimension) {
         let dimensions = [];
         if (
@@ -178,7 +180,10 @@ export function suggest({
             type: "fields",
             name: getDimensionName(dimension),
             text: formatDimensionName(dimension) + " ",
-            ...trimOptions,
+            alternates: EDITOR_FK_SYMBOLS.symbols.map(symbol =>
+              getDimensionName(dimension, symbol),
+            ),
+            ...identifierTrimOptions,
           })),
         );
       }
@@ -188,7 +193,7 @@ export function suggest({
             type: "segments",
             name: segment.name,
             text: formatSegmentName(segment),
-            ...trimOptions,
+            ...identifierTrimOptions,
           })),
         );
       }
@@ -198,7 +203,7 @@ export function suggest({
             type: "metrics",
             name: metric.name,
             text: formatMetricName(metric),
-            ...trimOptions,
+            ...identifierTrimOptions,
           })),
         );
       }
@@ -315,11 +320,16 @@ export function suggest({
 
   // throw away any suggestion that is not a suffix of the last partialToken.
   if (partialSuggestionMode) {
+    const input = lastInputToken.image;
     const partial = lastInputTokenIsUnclosedIdentifierString
-      ? lastInputToken.image.slice(1).toLowerCase()
-      : lastInputToken.image.toLowerCase();
+      ? input.slice(1).toLowerCase()
+      : input.toLowerCase();
     for (const suggestion of finalSuggestions) {
-      suggestion: for (const text of [suggestion.name, suggestion.text]) {
+      suggestion: for (const text of [
+        suggestion.name,
+        suggestion.text,
+        ...(suggestion.alternates || []),
+      ]) {
         const lower = (text || "").toLowerCase();
         if (lower.startsWith(partial)) {
           suggestion.range = [0, partial.length];

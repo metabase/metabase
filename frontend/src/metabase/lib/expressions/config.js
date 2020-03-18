@@ -29,6 +29,11 @@ export const EDITOR_QUOTES = {
 //   identifierAlwaysQuoted: false,
 // };
 
+export const EDITOR_FK_SYMBOLS = {
+  symbols: [".", " → "],
+  default: " → ",
+};
+
 // copied relevant parts from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Operator_Precedence
 export const OPERATOR_PRECEDENCE = {
   not: 17,
