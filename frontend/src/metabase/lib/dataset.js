@@ -59,6 +59,10 @@ export function fieldRefForColumn(column: Column): ?FieldReference {
 
 export const keyForColumn = (column: Column): string => {
   const ref = fieldRefForColumn(column);
+  // match bug where joined-field returned field-id instead
+  if (Array.isArray(ref) && ref[0] === "joined-field") {
+    return JSON.stringify(["ref", ref[2]]);
+  }
   // match legacy behavior which didn't have "field-literal" or "aggregation" field refs
   if (
     Array.isArray(ref) &&
