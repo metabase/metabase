@@ -77,9 +77,11 @@ type UiControls = {
 
 const PREVIEW_RESULT_LIMIT = 10;
 
-const getTemplateTagCount = (question: Question) => {
+const getTemplateTagWithoutSnippetsCount = (question: Question) => {
   const query = question.query();
-  return query instanceof NativeQuery ? query.templateTags().length : 0;
+  return query instanceof NativeQuery
+    ? query.templateTagsWithoutSnippets().length
+    : 0;
 };
 
 export const SET_UI_CONTROLS = "metabase/qb/SET_UI_CONTROLS";
@@ -744,8 +746,8 @@ export const updateQuestion = (
     await dispatch.action(UPDATE_QUESTION, { card: newQuestion.card() });
 
     // See if the template tags editor should be shown/hidden
-    const oldTagCount = getTemplateTagCount(oldQuestion);
-    const newTagCount = getTemplateTagCount(newQuestion);
+    const oldTagCount = getTemplateTagWithoutSnippetsCount(oldQuestion);
+    const newTagCount = getTemplateTagWithoutSnippetsCount(newQuestion);
     if (newTagCount > oldTagCount) {
       dispatch(setIsShowingTemplateTagsEditor(true));
     } else if (
