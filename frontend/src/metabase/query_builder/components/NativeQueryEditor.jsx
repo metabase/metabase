@@ -91,7 +91,7 @@ type Props = {
   isNativeEditorOpen: boolean,
   setIsNativeEditorOpen: (isOpen: boolean) => void,
   nativeEditorSelectedText: string,
-  setNativeSelectedRange: any => void,
+  setNativeEditorSelectedRange: any => void,
 
   isRunnable: boolean,
   isRunning: boolean,

@@ -14,6 +14,8 @@ import SidebarContent from "metabase/query_builder/components/SidebarContent";
 import Snippets from "metabase/entities/snippets";
 
 import type { DatasetQuery } from "metabase/meta/types/Card";
+import type { Snippet } from "metabase/meta/types/Snippet";
+import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 type Props = {
   query: NativeQuery,
@@ -21,13 +23,17 @@ type Props = {
   onClose: () => void,
   nativeEditorCursorOffset: number,
   nativeEditorSelectedText: string,
+  snippets: Snippet[],
 };
+
+type State = { modalSnippet: ?Snippet };
 
 const ICON_SIZE = 16;
 
 @Snippets.loadList({ wrapped: true })
 export default class SnippetSidebar extends React.Component {
   props: Props;
+  state: State = { modalSnippet: null };
 
   static propTypes = {
     query: PropTypes.object.isRequired,
@@ -36,11 +42,6 @@ export default class SnippetSidebar extends React.Component {
     nativeEditorCursorOffset: PropTypes.number.isRequired,
     nativeEditorSelectedText: PropTypes.string.isRequired,
   };
-
-  constructor(props) {
-    super(props);
-    this.state = { modalSnippet: null };
-  }
 
   render() {
     const { query, onClose, snippets } = this.props;
@@ -125,6 +126,7 @@ export default class SnippetSidebar extends React.Component {
             snippet.id != null ? (
               <Button
                 onClick={async () => {
+                  // $FlowFixMe
                   await snippet.update({ archived: true });
                   closeModal();
                 }}
