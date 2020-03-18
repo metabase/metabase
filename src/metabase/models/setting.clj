@@ -15,8 +15,8 @@
 
        (require '[metabase.models.setting :as setting])
 
-       (setting/get :mandrill-api-key)           ; only returns values set explicitly from SuperAdmin
-       (mandrill-api-key)                        ; returns value set in SuperAdmin, OR value of corresponding env var,
+       (setting/get :mandrill-api-key)           ; only returns values set explicitly from the Admin Panel
+       (mandrill-api-key)                        ; returns value set in the Admin Panel, OR value of corresponding env var,
                                                  ; OR the default value, if any (in that order)
 
        (setting/set! :mandrill-api-key \"NEW_KEY\")
@@ -501,7 +501,7 @@
      (mandrill-api-key new-value) ; update the value
      (mandrill-api-key nil)       ; delete the value
 
-   A setting can be set from the SuperAdmin page or via the corresponding env var, eg. `MB_MANDRILL_API_KEY` for the
+   A setting can be set from the Admin Panel or via the corresponding env var, eg. `MB_MANDRILL_API_KEY` for the
    example above.
 
    You may optionally pass any of the OPTIONS below:
