@@ -594,7 +594,7 @@ export default class TableInteractive extends Component {
     const isRightAligned = isColumnRightAligned(column);
 
     // TODO MBQL: use query lib to get the sort field
-    const fieldRef = fieldRefForColumn(column, cols);
+    const fieldRef = fieldRefForColumn(column);
     const sortIndex = _.findIndex(
       sort,
       sort => sort[1] && Dimension.isEqual(sort[1], fieldRef),
