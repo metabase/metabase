@@ -1,5 +1,3 @@
-import { t } from "ttag";
-
 export const DISPLAY_QUOTES = {
   identifierQuoteDefault: "",
   literalQuoteDefault: "",
@@ -30,7 +28,9 @@ export const EDITOR_QUOTES = {
 // };
 
 export const EDITOR_FK_SYMBOLS = {
+  // specifies which symbols can be used to delimit foreign/joined fields
   symbols: [".", " → "],
+  // specifies the default/canonical symbol
   default: " → ",
 };
 
@@ -70,164 +70,164 @@ export function getFunctionArgType(clause, index) {
 export const MBQL_CLAUSES = {
   // aggregation functions
   count: {
-    displayName: t`Count`,
+    displayName: `Count`,
     type: "aggregation",
     args: [],
   },
   "cum-count": {
-    displayName: t`CumulativeCount`,
+    displayName: `CumulativeCount`,
     type: "aggregation",
     args: [],
   },
   sum: {
-    displayName: t`Sum`,
+    displayName: `Sum`,
     type: "aggregation",
     args: ["number"],
   },
   "cum-sum": {
-    displayName: t`CumulativeSum`,
+    displayName: `CumulativeSum`,
     type: "aggregation",
     args: ["number"],
   },
   distinct: {
-    displayName: t`Distinct`,
+    displayName: `Distinct`,
     type: "aggregation",
     args: ["number"],
   },
   stddev: {
-    displayName: t`StandardDeviation`,
+    displayName: `StandardDeviation`,
     type: "aggregation",
     args: ["number"],
   },
   avg: {
-    displayName: t`Average`,
+    displayName: `Average`,
     type: "aggregation",
     args: ["number"],
   },
   min: {
-    displayName: t`Min`,
+    displayName: `Min`,
     type: "aggregation",
     args: ["number"],
   },
   max: {
-    displayName: t`Max`,
+    displayName: `Max`,
     type: "aggregation",
     args: ["number"],
   },
   share: {
-    displayName: t`Share`,
+    displayName: `Share`,
     type: "aggregation",
     args: ["boolean"],
   },
   "count-where": {
-    displayName: t`CountIf`,
+    displayName: `CountIf`,
     type: "aggregation",
     args: ["boolean"],
   },
   "sum-where": {
-    displayName: t`SumIf`,
+    displayName: `SumIf`,
     type: "aggregation",
     args: ["number", "boolean"],
   },
   // expression functions
   lower: {
-    displayName: t`lower`,
+    displayName: `lower`,
     type: "string",
     args: ["string"],
   },
   upper: {
-    displayName: t`upper`,
+    displayName: `upper`,
     type: "string",
     args: ["string"],
   },
   substring: {
-    displayName: t`substring`,
+    displayName: `substring`,
     type: "string",
     args: ["string", "number", "number"],
   },
   "regex-match-first": {
-    displayName: t`regexextract`,
+    displayName: `regexextract`,
     type: "string",
     args: ["string", "string"],
     requiredFeatures: ["regex"],
   },
   concat: {
-    displayName: t`concat`,
+    displayName: `concat`,
     type: "string",
     args: ["expression"],
     multiple: true,
   },
   coalesce: {
-    displayName: t`coalesce`,
+    displayName: `coalesce`,
     type: "expression",
     args: ["expression", "expression"],
     multiple: true,
   },
   replace: {
-    displayName: t`substitute`,
+    displayName: `substitute`,
     type: "string",
     args: ["string", "string", "string"],
   },
   trim: {
-    displayName: t`trim`,
+    displayName: `trim`,
     type: "string",
     args: ["string", "string"],
   },
   rtrim: {
-    displayName: t`rtrim`,
+    displayName: `rtrim`,
     type: "string",
     args: ["string"],
   },
   ltrim: {
-    displayName: t`ltrim`,
+    displayName: `ltrim`,
     type: "string",
     args: ["string"],
   },
   case: {
-    displayName: t`case`,
+    displayName: `case`,
     type: "expression",
     args: ["expression", "expression"], // ideally we'd alternate boolean/expression
     multiple: true,
   },
   // filters functions
   contains: {
-    displayName: t`contains`,
+    displayName: `contains`,
     type: "boolean",
     args: ["string", "string"],
   },
   "starts-with": {
-    displayName: t`startsWith`,
+    displayName: `startsWith`,
     type: "boolean",
     args: ["string", "string"],
   },
   "ends-with": {
-    displayName: t`endsWith`,
+    displayName: `endsWith`,
     type: "boolean",
     args: ["string", "string"],
   },
   between: {
-    displayName: t`between`,
+    displayName: `between`,
     type: "boolean",
     args: ["expression", "expression", "expression"],
   },
   "time-interval": {
-    displayName: t`interval`,
+    displayName: `interval`,
     type: "boolean",
     args: ["expression", "number", "string"],
   },
   // boolean operators
   and: {
-    displayName: t`AND`,
+    displayName: `AND`,
     type: "boolean",
     args: ["boolean", "boolean"],
   },
   or: {
-    displayName: t`OR`,
+    displayName: `OR`,
     type: "boolean",
     args: ["boolean", "boolean"],
   },
   not: {
-    displayName: t`NOT`,
+    displayName: `NOT`,
     type: "boolean",
     args: ["boolean"],
   },
