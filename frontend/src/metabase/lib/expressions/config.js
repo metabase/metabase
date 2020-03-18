@@ -172,6 +172,11 @@ export const MBQL_CLAUSES = {
     type: "string",
     args: ["string", "string", "string"],
   },
+  length: {
+    displayName: t`length`,
+    type: "string",
+    args: ["string"],
+  },
   trim: {
     displayName: t`trim`,
     type: "string",
@@ -223,8 +228,8 @@ export const MBQL_CLAUSES = {
     type: "number",
     args: ["number"],
   },
-  expt: {
-    displayName: t`expt`,
+  exp: {
+    displayName: t`exp`,
     type: "number",
     args: ["number"],
   },
@@ -406,6 +411,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "trim",
   "rtrim",
   "ltrim",
+  "length",
   // number
   "abs",
   "floor",
@@ -414,7 +420,7 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "sqrt",
   "power",
   "log",
-  "expt",
+  "exp",
   // boolean
   "contains",
   "ends-with",
