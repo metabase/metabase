@@ -61,9 +61,6 @@
 
 ;;; ------------------------------------------------------ i18n ------------------------------------------------------
 
-(def ^:private available-locales
-  (delay (puppet-i18n/available-locales)))
-
 (defn bind-user-locale
   "Middleware that binds locale info for the current User. (This is basically a copy of the
   `puppetlabs.i18n.core/locale-negotiator`, but reworked to handle async-style requests as well.)"
@@ -73,7 +70,7 @@
     (let [headers    (:headers request)
           parsed     (puppet-i18n/parse-http-accept-header (get headers "accept-language"))
           wanted     (mapv first parsed)
-          negotiated ^java.util.Locale (puppet-i18n/negotiate-locale wanted @available-locales)]
+          negotiated ^java.util.Locale (puppet-i18n/negotiate-locale wanted (puppet-i18n/available-locales))]
       (puppet-i18n/with-user-locale negotiated
         (handler request respond raise)))))
 

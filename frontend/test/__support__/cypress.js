@@ -68,12 +68,4 @@ export function main() {
   return cy.get("nav").next();
 }
 
-export function openOrdersTable() {
-  cy.visit("/question/new?database=1&table=2");
-}
-
-export function openProductsTable() {
-  cy.visit("/question/new?database=1&table=1");
-}
-
 Cypress.on("uncaught:exception", (err, runnable) => false);

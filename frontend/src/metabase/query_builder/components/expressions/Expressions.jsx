@@ -6,12 +6,12 @@ import Icon from "metabase/components/Icon";
 import IconBorder from "metabase/components/IconBorder";
 import Tooltip from "metabase/components/Tooltip";
 
-import { format } from "metabase/lib/expressions/format";
+import { format } from "metabase/lib/expressions/formatter";
 
 export default class Expressions extends Component {
   static propTypes = {
     expressions: PropTypes.object,
-    query: PropTypes.object,
+    tableMetadata: PropTypes.object,
     onAddExpression: PropTypes.func.isRequired,
     onEditExpression: PropTypes.func.isRequired,
   };
@@ -21,12 +21,7 @@ export default class Expressions extends Component {
   };
 
   render() {
-    const {
-      expressions,
-      query,
-      onAddExpression,
-      onEditExpression,
-    } = this.props;
+    const { expressions, onAddExpression, onEditExpression } = this.props;
 
     const sortedNames = _.sortBy(_.keys(expressions), _.identity);
     return (
@@ -43,7 +38,12 @@ export default class Expressions extends Component {
               onClick={() => onEditExpression(name)}
             >
               <span>{name}</span>
-              <Tooltip tooltip={format(expressions[name], { query })}>
+              <Tooltip
+                tooltip={format(expressions[name], {
+                  tableMetadata: this.props.tableMetadata,
+                  customFields: expressions,
+                })}
+              >
                 <span className="QuestionTooltipTarget" />
               </Tooltip>
             </div>

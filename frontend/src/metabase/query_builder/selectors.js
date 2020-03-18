@@ -69,7 +69,7 @@ export const getTableForeignKeyReferences = state =>
 
 export const getDatabasesList = state =>
   Databases.selectors.getList(state, {
-    entityQuery: { include: "tables", saved: true },
+    entityQuery: { include_tables: true, include_cards: true },
   }) || [];
 
 export const getTables = createSelector(

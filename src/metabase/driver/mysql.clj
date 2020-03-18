@@ -34,8 +34,6 @@
 
 (defmethod driver/display-name :mysql [_] "MySQL")
 
-(defmethod driver/supports? [:mysql :regex] [_ _] false)
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             metabase.driver impls                                              |
@@ -116,27 +114,25 @@
 
 (defmethod driver/db-default-timezone :mysql
   [_ db]
-  (let [spec                                   (sql-jdbc.conn/db->pooled-connection-spec db)
-        sql                                    (str "SELECT @@GLOBAL.time_zone AS global_tz,"
-                                                    " @@system_time_zone AS system_tz,"
-                                                    " time_format("
-                                                    "   timediff("
-                                                    "      now(), convert_tz(now(), @@GLOBAL.time_zone, '+00:00')"
-                                                    "   ),"
-                                                    "   '%H:%i'"
-                                                    " ) AS offset;")
-        [{:keys [global_tz system_tz offset]}] (jdbc/query spec sql)
-        the-valid-id                           (fn [zone-id]
-                                                 (when zone-id
-                                                   (try
-                                                     (.getId (t/zone-id zone-id))
-                                                     (catch Throwable _))))]
+  (let [spec                             (sql-jdbc.conn/db->pooled-connection-spec db)
+        sql                              (str "SELECT @@GLOBAL.time_zone AS global,"
+                                              " @@system_time_zone AS system,"
+                                              " time_format("
+                                              "   timediff(now(), convert_tz(now(), @@GLOBAL.time_zone, '+00:00')),"
+                                              "  '%H:%i'"
+                                              " ) AS offset;")
+        [{:keys [global system offset]}] (jdbc/query spec sql)
+        the-valid-id                     (fn [zone-id]
+                                           (when zone-id
+                                             (try
+                                               (.getId (t/zone-id zone-id))
+                                               (catch Throwable _))))]
     (or
      ;; if global timezone ID is 'SYSTEM', then try to use the system timezone ID
-     (when (= global_tz "SYSTEM")
-       (the-valid-id system_tz))
+     (when (= global "SYSTEM")
+       (the-valid-id system))
      ;; otherwise try to use the global ID
-     (the-valid-id global_tz)
+     (the-valid-id global)
      ;; failing that, calculate the offset between now in the global timezone and now in UTC. Non-negative offsets
      ;; don't come back with `+` so add that if needed
      (if (str/starts-with? offset "-")
@@ -164,14 +160,6 @@
   [_ value]
   ;; no-op as MySQL doesn't support cast to float
   value)
-
-(defmethod sql.qp/->honeysql [:mysql :regex-match-first]
-  [driver [_ arg pattern]]
-  (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
-
-(defmethod sql.qp/->honeysql [:mysql :length]
-  [driver [_ arg]]
-  (hsql/call :char_length (sql.qp/->honeysql driver arg)))
 
 
 ;; Since MySQL doesn't have date_trunc() we fake it by formatting a date to an appropriate string and then converting

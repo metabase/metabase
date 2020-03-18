@@ -7,10 +7,7 @@
 import * as Q from "metabase/lib/query/query";
 import * as Q_DEPRECATED from "metabase/lib/query";
 import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
-import {
-  format as formatExpression,
-  DISPLAY_QUOTES,
-} from "metabase/lib/expressions/format";
+import { format as formatExpression } from "metabase/lib/expressions/formatter";
 
 import _ from "underscore";
 import { chain, updateIn } from "icepick";
@@ -153,7 +150,7 @@ export default class StructuredQuery extends AtomicQuery {
    */
   database(): ?Database {
     const databaseId = this.databaseId();
-    return databaseId != null ? this._metadata.database(databaseId) : null;
+    return databaseId != null ? this._metadata.databases[databaseId] : null;
   }
 
   /**
@@ -162,13 +159,6 @@ export default class StructuredQuery extends AtomicQuery {
   engine(): ?DatabaseEngine {
     const database = this.database();
     return database && database.engine;
-  }
-
-  /**
-   * Returns true if the database metadata (or lack thererof indicates the user can modify and run this query
-   */
-  readOnly(): boolean {
-    return !this.database();
   }
 
   /* Methods unique to this query type */
@@ -462,7 +452,7 @@ export default class StructuredQuery extends AtomicQuery {
     for (let index = 0; index < query[listName]().length; index++) {
       // $FlowFixMe
       const clause = query[listName]()[index];
-      if (!this._validateClause(clause)) {
+      if (!clause.isValid()) {
         query = clause.remove();
         // since we're removing them in order we need to decrement index when we remove one
         index -= 1;
@@ -474,20 +464,11 @@ export default class StructuredQuery extends AtomicQuery {
   _isValidClauseList(listName) {
     // $FlowFixMe
     for (const clause of this[listName]()) {
-      if (!this._validateClause(clause)) {
+      if (!clause.isValid()) {
         return false;
       }
     }
     return true;
-  }
-
-  _validateClause(clause) {
-    try {
-      return clause.isValid();
-    } catch (e) {
-      console.warn("Error thrown while validating clause:", clause);
-      return false;
-    }
   }
 
   hasData() {
@@ -702,8 +683,8 @@ export default class StructuredQuery extends AtomicQuery {
     return aggregation && aggregation.displayName();
   }
 
-  formatExpression(expression, { quotes = DISPLAY_QUOTES, ...options } = {}) {
-    return formatExpression(expression, { quotes, ...options, query: this });
+  formatExpression(expression) {
+    return formatExpression(expression, { query: this });
   }
 
   /**

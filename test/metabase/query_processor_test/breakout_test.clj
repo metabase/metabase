@@ -1,6 +1,7 @@
 (ns metabase.query-processor-test.breakout-test
   "Tests for the `:breakout` clause."
-  (:require [clojure.test :refer :all]
+  (:require [cheshire.core :as json]
+            [clojure.test :refer :all]
             [metabase
              [query-processor :as qp]
              [query-processor-test :as qp.test]
@@ -10,7 +11,8 @@
             [metabase.models
              [card :refer [Card]]
              [dimension :refer [Dimension]]
-             [field :refer [Field]]]
+             [field :refer [Field]]
+             [field-values :refer [FieldValues]]]
             [metabase.query-processor.middleware
              [add-dimension-projections :as add-dim-projections]
              [add-source-metadata :as add-source-metadata]]
@@ -76,25 +78,34 @@
          :order-by    [[:desc $user_id]]
          :limit       10}))))
 
-(deftest internal-remapping-test
+;; TODO - I have no idea what exactly this test is testing??? Someone please determine and then write a description.
+(deftest mystery-test
   (mt/test-drivers (mt/normal-drivers)
     (data/with-temp-objects
-      (data/create-venue-category-remapping "Foo")
+      (fn []
+        (let [venue-names (data/dataset-field-values "categories" "name")]
+          [(db/insert! Dimension {:field_id (data/id :venues :category_id)
+                                  :name     "Foo"
+                                  :type     :internal})
+           (db/insert! FieldValues {:field_id              (data/id :venues :category_id)
+                                    :values                (json/generate-string (range 0 (count venue-names)))
+                                    :human_readable_values (json/generate-string venue-names)})]))
       (let [{:keys [rows cols]} (qp.test/rows-and-cols
                                   (qp.test/format-rows-by [int int str]
                                     (data/run-mbql-query venues
                                       {:aggregation [[:count]]
                                        :breakout    [$category_id]
                                        :limit       5})))]
-        (is (= [(assoc (qp.test/breakout-col :venues :category_id) :remapped_to "Foo")
+        (is (= [(assoc (qp.test/breakout-col :venues :category_id)
+                       :remapped_to "Foo")
                 (qp.test/aggregate-col :count)
-                (#'add-dim-projections/create-remapped-col "Foo" (data/format-name "category_id") :type/Text)]
+                (#'add-dim-projections/create-remapped-col "Foo" (data/format-name "category_id"))]
                cols))
-        (is (= [[2 8 "American"]
-                [3 2 "Artisan"]
-                [4 2 "Asian"]
-                [5 7 "BBQ"]
-                [6 2 "Bakery"]]
+        (is (= [[2 8 "Artisan"]
+                [3 2 "Asian"]
+                [4 2 "BBQ"]
+                [5 7 "Bakery"]
+                [6 2 "Bar"]]
                rows))))))
 
 (deftest order-by-test

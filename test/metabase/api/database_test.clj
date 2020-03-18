@@ -360,19 +360,12 @@
 
 (deftest databases-list-include-saved-questions-test
   (testing "GET /api/database?saved=true"
-    (mt/with-temp* [Card [card (assoc (card-with-native-query "Some Card")
-                                      :result_metadata [{:name "col_name"}])]]
-      (testing "We should be able to include the saved questions virtual DB (without Tables) with the param ?saved=true"
-        (is (= {:name               "Saved Questions"
-                :id                 mbql.s/saved-questions-virtual-database-id
-                :features           ["basic-aggregations"]
-                :is_saved_questions true}
-               (last ((mt/user->client :lucky) :get 200 "database?saved=true"))))))
-
-    (testing "We should not include the saved questions virtual DB if there aren't any cards"
-      (not-any?
-       :is_saved_questions
-       ((mt/user->client :lucky) :get 200 "database?saved=true")))))
+    (testing "We should be able to include the saved questions virtual DB (without Tables) with the param ?saved=true"
+      (is (= {:name               "Saved Questions"
+              :id                 mbql.s/saved-questions-virtual-database-id
+              :features           ["basic-aggregations"]
+              :is_saved_questions true}
+             (last ((mt/user->client :lucky) :get 200 "database?saved=true")))))))
 
 (deftest databases-list-include-saved-questions-tables-test
   ;; `?saved=true&include=tables` and `?include_cards=true` mean the same thing, so test them both

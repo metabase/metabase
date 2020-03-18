@@ -1,6 +1,6 @@
 import { signInAsAdmin, restore } from "__support__/cypress";
 
-describe("scenarios > admin > databases > list", () => {
+describe("admin > databases > list", () => {
   before(restore);
 
   beforeEach(() => {

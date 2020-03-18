@@ -144,7 +144,8 @@ export class ExtendedOptionsPopover extends Component {
     const { query } = this.props;
     return (
       <Expressions
-        query={query}
+        expressions={query.expressions()}
+        tableMetadata={query.table()}
         onAddExpression={() => this.setState({ editExpression: true })}
         onEditExpression={name => {
           this.setState({ editExpression: name });

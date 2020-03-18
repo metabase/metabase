@@ -6,7 +6,7 @@ import Base from "./Base";
 import Table from "./Table";
 import Schema from "./Schema";
 
-import { generateSchemaId } from "metabase/schema";
+import _ from "underscore";
 
 import type { SchemaName } from "metabase/meta/types/Table";
 import type { DatabaseFeature } from "metabase/meta/types/Database";
@@ -33,12 +33,16 @@ export default class Database extends Base {
     return this.name;
   }
 
-  schema(schemaName: ?SchemaName) {
-    return this.metadata.schema(generateSchemaId(this.id, schemaName));
+  tablesInSchema(schemaName: ?SchemaName) {
+    return this.tables.filter(table => table.schema === schemaName);
   }
 
-  schemaNames(): SchemaName[] {
-    return this.schemas.map(s => s.name).sort((a, b) => a.localeCompare(b));
+  schemaNames(): Array<SchemaName> {
+    return _.uniq(
+      this.tables
+        .map(table => table.schema)
+        .filter(schemaName => schemaName != null),
+    );
   }
 
   hasFeature(feature: DatabaseFeature | VirtualDatabaseFeature): boolean {
@@ -93,6 +97,15 @@ export default class Database extends Base {
 
   /** Returns a database containing only the saved questions from the same database, if any */
   savedQuestionsDatabase(): ?Database {
-    return this.metadata.databasesList().find(db => db.is_saved_questions);
+    const database = this.metadata
+      .databasesList()
+      .find(db => db.is_saved_questions);
+    if (database) {
+      const tables = database.tables.filter(t => t.db_id === this.id);
+      if (tables.length > 0) {
+        return new Database({ ...database, tables });
+      }
+    }
+    return null;
   }
 }

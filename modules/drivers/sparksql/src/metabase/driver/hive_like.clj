@@ -109,14 +109,6 @@
                 1)
           3)))
 
-(defmethod sql.qp/->honeysql [:hive-like :replace]
-  [driver [_ arg pattern replacement]]
-  (hsql/call :regexp_replace (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern) (sql.qp/->honeysql driver replacement)))
-
-(defmethod sql.qp/->honeysql [:hive-like :regex-match-first]
-  [driver [_ arg pattern]]
-  (hsql/call :regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
-
 (defmethod sql.qp/add-interval-honeysql-form :hive-like
   [_ hsql-form amount unit]
   (hx/+ (hx/->timestamp hsql-form) (hsql/raw (format "(INTERVAL '%d' %s)" (int amount) (name unit)))))

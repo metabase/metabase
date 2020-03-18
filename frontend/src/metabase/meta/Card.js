@@ -148,7 +148,6 @@ export function getParametersWithExtras(
     if (fieldId != null) {
       parameter = assoc(parameter, "field_id", fieldId);
     }
-    parameter = assoc(parameter, "hasOnlyFieldTargets", fieldId != null);
     return parameter;
   });
 }

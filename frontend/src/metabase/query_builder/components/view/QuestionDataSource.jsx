@@ -45,7 +45,7 @@ function getDataSourceParts({ question, noLink, subHead }) {
   if (table && table.hasSchema()) {
     parts.push({
       icon: "folder",
-      name: table.schema_name,
+      name: table.schema,
       href: !noLink && database.id >= 0 && browseSchema(table),
     });
   }

@@ -2,24 +2,20 @@
 
 import React, { Component } from "react";
 
-import { t } from "ttag";
-
-import { color } from "metabase/lib/colors";
-
 import DimensionList from "../DimensionList";
-import Icon from "metabase/components/Icon";
 
 import FilterPopoverHeader from "./FilterPopoverHeader";
 import FilterPopoverPicker from "./FilterPopoverPicker";
 import FilterPopoverFooter from "./FilterPopoverFooter";
 
-import ExpressionPopover from "metabase/query_builder/components/ExpressionPopover";
 import SidebarHeader from "metabase/query_builder/components/SidebarHeader";
 
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
+import type { FieldFilter, ConcreteField } from "metabase/meta/types/Query";
+
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 
-import type Dimension from "metabase-lib/lib/Dimension";
+import { color } from "metabase/lib/colors";
 
 type Props = {
   query: StructuredQuery,
@@ -36,20 +32,14 @@ type Props = {
   showFieldPicker?: boolean,
   isTopLevel?: boolean,
   isSidebar?: boolean,
-
-  showCustom?: boolean,
 };
 
 type State = {
   filter: ?Filter,
-  choosingField: boolean,
-  editingFilter: boolean,
 };
 
 const MIN_WIDTH = 300;
 const MAX_WIDTH = 410;
-
-const CUSTOM_SECTION_NAME = t`Custom Expression`;
 
 // NOTE: this is duplicated from FilterPopover but allows you to add filters on
 // the last two "stages" of a nested query, e.x. post aggregation filtering
@@ -60,17 +50,21 @@ export default class ViewFilterPopover extends Component {
   static defaultProps = {
     style: {},
     showFieldPicker: true,
-    showCustom: true,
   };
 
   constructor(props: Props) {
     super(props);
-    const filter = props.filter instanceof Filter ? props.filter : null;
     this.state = {
-      filter: filter,
-      choosingField: !filter,
-      editingFilter: filter ? filter.isCustom() : false,
+      filter: props.filter instanceof Filter ? props.filter : null,
     };
+  }
+
+  componentWillMount() {
+    window.addEventListener("keydown", this.handleCommitOnEnter);
+  }
+
+  componentWillUnmount() {
+    window.removeEventListener("keydown", this.handleCommitOnEnter);
   }
 
   componentWillReceiveProps(nextProps: Props) {
@@ -94,6 +88,12 @@ export default class ViewFilterPopover extends Component {
     this.handleCommitFilter(this.state.filter, this.props.query);
   };
 
+  handleCommitOnEnter = (event: KeyboardEvent) => {
+    if (event.key === "Enter") {
+      this.handleCommitFilter(this.state.filter, this.props.query);
+    }
+  };
+
   handleCommitFilter = (filter: ?Filter, query: StructuredQuery) => {
     if (filter && !(filter instanceof Filter)) {
       filter = new Filter(filter, null, query);
@@ -106,21 +106,15 @@ export default class ViewFilterPopover extends Component {
     }
   };
 
-  handleDimensionChange = (dimension: Dimension) => {
-    let filter = this.state.filter;
-    if (!filter || filter.query() !== dimension.query()) {
-      filter = new Filter([], null, dimension.query());
-    }
-    this.setFilter(
-      filter.setDimension(dimension.mbql(), { useDefaultOperator: true }),
-    );
-    this.setState({ choosingField: false });
+  handleFieldChange = (fieldRef: ConcreteField, query: StructuredQuery) => {
+    const filter = new Filter([], null, query);
+    this.setFilter(filter.setDimension(fieldRef, { useDefaultOperator: true }));
   };
 
-  handleFilterChange = (newFilter: ?Filter) => {
-    const filter = this.state.filter || new Filter([], null, this.props.query);
-    // $FlowFixMe
-    this.setFilter(filter.set(newFilter));
+  handleFilterChange = (newFilter: ?FieldFilter) => {
+    this.setFilter(
+      newFilter && this.state.filter ? this.state.filter.set(newFilter) : null,
+    );
   };
 
   render() {
@@ -132,27 +126,11 @@ export default class ViewFilterPopover extends Component {
       fieldPickerTitle,
       isSidebar,
       isTopLevel,
-      showCustom,
     } = this.props;
-    const { filter, editingFilter, choosingField } = this.state;
-
-    if (editingFilter) {
-      return (
-        <ExpressionPopover
-          title={CUSTOM_SECTION_NAME}
-          query={query}
-          expression={filter ? filter.raw() : null}
-          startRule="boolean"
-          isValid={filter && filter.isValid()}
-          onChange={this.handleFilterChange}
-          onBack={() => this.setState({ editingFilter: false })}
-          onDone={this.handleCommit}
-        />
-      );
-    }
+    const { filter } = this.state;
 
     const dimension = filter && filter.dimension();
-    if (choosingField || !dimension) {
+    if (!dimension) {
       return (
         <div className={className} style={{ minWidth: MIN_WIDTH, ...style }}>
           {fieldPickerTitle && (
@@ -171,31 +149,14 @@ export default class ViewFilterPopover extends Component {
                   ).filterFieldOptionSections(filter)
             }
             onChangeDimension={dimension =>
-              this.handleDimensionChange(dimension)
+              this.handleFieldChange(dimension.mbql(), dimension.query())
             }
-            onChangeOther={item => {
-              // special case for segments
+            onChange={item => {
               this.handleCommitFilter(item.filter, item.query);
             }}
             width={isSidebar ? null : MIN_WIDTH}
             alwaysExpanded={isTopLevel || isSidebar}
           />
-          {showCustom && (
-            <div
-              style={{ color: color("filter") }}
-              className="List-section List-section--togglable"
-              onClick={() => this.setState({ editingFilter: true })}
-            >
-              <div className="List-section-header mx2 py2 flex align-center hover-parent hover--opacity cursor-pointer">
-                <span className="List-section-icon mr1 flex align-center">
-                  <Icon name="filter" />
-                </span>
-                <h3 className="List-section-title text-wrap">
-                  {CUSTOM_SECTION_NAME}
-                </h3>
-              </div>
-            </div>
-          )}
         </div>
       );
     } else {
@@ -206,7 +167,6 @@ export default class ViewFilterPopover extends Component {
             isSidebar={isSidebar}
             filter={filter}
             onFilterChange={this.handleFilterChange}
-            onBack={() => this.setState({ choosingField: true })}
             showFieldPicker={showFieldPicker}
           />
           <FilterPopoverPicker
@@ -214,7 +174,6 @@ export default class ViewFilterPopover extends Component {
             isSidebar={isSidebar}
             filter={filter}
             onFilterChange={this.handleFilterChange}
-            onCommit={this.handleCommit}
             minWidth={isSidebar ? null : MIN_WIDTH}
             maxWidth={isSidebar ? null : MAX_WIDTH}
           />

@@ -20,6 +20,8 @@
              [add-source-metadata :as add-source-metadata]
              [add-timezone-info :as add-timezone-info]
              [annotate :as annotate]
+             [async :as async]
+             [async-wait :as async-wait]
              [auto-bucket-datetimes :as bucket-datetime]
              [binning :as binning]
              [cache :as cache]
@@ -89,11 +91,13 @@
    #'resolve-database-and-driver/resolve-database-and-driver
    #'fetch-source-query/resolve-card-id-source-tables
    #'store/initialize-store
+   #'async-wait/wait-for-turn
    #'cache/maybe-return-cached-results
    #'validate/validate-query
    #'normalize/normalize
    #'add-rows-truncated/add-rows-truncated
-   #'results-metadata/record-and-return-metadata!])
+   #'results-metadata/record-and-return-metadata!
+   #'async/count-in-flight-queries])
 ;; ▲▲▲ PRE-PROCESSING ▲▲▲ happens from BOTTOM-TO-TOP, e.g. the results of `expand-macros` are passed to
 ;; `substitute-parameters`
 
@@ -132,7 +136,8 @@
 (def ^:private ^:const preprocessing-timeout-ms 10000)
 
 (defn- preprocess-query [query context]
-  (binding [*preprocessing-level* (inc *preprocessing-level*)]
+  (binding [*preprocessing-level*           (inc *preprocessing-level*)
+            async-wait/*disable-async-wait* true]
     ;; record the number of recursive preprocesses taking place to prevent infinite preprocessing loops.
     (log/tracef "*preprocessing-level*: %d" *preprocessing-level*)
     (when (>= *preprocessing-level* max-preprocessing-level)

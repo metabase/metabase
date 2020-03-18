@@ -1,5 +1,6 @@
 (ns metabase.test.redefs
-  (:require [metabase.plugins.classloader :as classloader]
+  (:require [clojure.test :as t]
+            [metabase.plugins.classloader :as classloader]
             [toucan.util.test :as tt]))
 
 ;; wrap `do-with-temp` so it initializes the DB before doing the other stuff it usually does
@@ -14,3 +15,15 @@
 
 ;; mark `expect-with-temp` as deprecated -- it's not needed for `deftest`-style tests
 (alter-meta! #'tt/expect-with-temp assoc :deprecated true)
+
+;; TODO - not a good long-term place to put this.
+(defmethod t/assert-expr 're= [msg [_ pattern s]]
+  `(let [pattern#  ~pattern
+         s#        ~s
+         matches?# (when s#
+                     (re-matches pattern# s#))]
+     (t/do-report
+      {:type     (if matches?# :pass :fail)
+       :message  ~msg
+       :expected pattern#
+       :actual   s#})))

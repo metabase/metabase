@@ -105,6 +105,7 @@
       ([] (rf))
 
       ([result]
+       ;; TODO - what about the final result? Are we ignoring it completely?
        (a/close! in-chan)
        (let [duration-ms (- (System/currentTimeMillis) start-time)]
          (log/info (trs "Query took {0} to run; miminum for cache eligibility is {1}"
@@ -191,8 +192,6 @@
      *  The result *rows* of the query must be less than `query-caching-max-kb` when serialized (before compression)."
   [qp]
   (fn [query rff context]
-    (let [cacheable? (is-cacheable? query)]
-      (log/tracef "Query is cacheable? %s" (boolean cacheable?))
-      (if cacheable?
-        (run-query-with-cache qp query rff context)
-        (qp query rff context)))))
+    (if (is-cacheable? query)
+      (run-query-with-cache qp query rff context)
+      (qp query rff context))))

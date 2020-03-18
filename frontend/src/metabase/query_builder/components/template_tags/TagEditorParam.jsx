@@ -107,6 +107,7 @@ export default class TagEditorParam extends Component {
 
   render() {
     const { tag, database, databases, metadata } = this.props;
+
     let widgetOptions = [],
       table,
       fieldMetadataLoaded = false;
@@ -160,7 +161,7 @@ export default class TagEditorParam extends Component {
               (hasSelectedDimensionField && fieldMetadataLoaded)) && (
               <SchemaTableAndFieldDataSelector
                 databases={databases}
-                selectedDatabaseId={database ? database.id : null}
+                selectedDatabaseId={database.id}
                 selectedTableId={table ? table.id : null}
                 selectedFieldId={
                   hasSelectedDimensionField ? tag.dimension[1] : null
@@ -168,8 +169,6 @@ export default class TagEditorParam extends Component {
                 setFieldFn={fieldId => this.setDimension(fieldId)}
                 className="AdminSelect flex align-center"
                 isInitiallyOpen={!tag.dimension}
-                triggerIconSize={12}
-                renderAsSelect={true}
               />
             )}
           </div>

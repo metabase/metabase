@@ -32,7 +32,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod driver/supports? [:h2 :full-join] [_ _] false)
-(defmethod driver/supports? [:h2 :regex] [_ _] false)
 
 (defmethod driver/connection-properties :h2
   [_]

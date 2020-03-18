@@ -98,7 +98,7 @@ describe("StructuredQuery", () => {
           expect(q.clean().query()).toEqual(q.query());
           expect(q.clean() === q).toBe(true);
         });
-        xit("should remove invalid named aggregations", () => {
+        it("should remove invalid named aggregations", () => {
           const q = ORDERS.query().aggregate([
             "aggregation-option",
             ["invalid"],

@@ -1,7 +1,7 @@
 import * as Query from "metabase/lib/query/query";
 
 describe("Query", () => {
-  describe("isBareRows", () => {
+  describe("isBareRowsAggregation", () => {
     it("should return true for no aggregation", () => {
       expect(Query.isBareRows({})).toBe(true);
     });

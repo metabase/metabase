@@ -9,6 +9,7 @@ import LegendItem from "./LegendItem";
 import cx from "classnames";
 
 import { normal } from "metabase/lib/colors";
+
 const DEFAULT_COLORS = Object.values(normal);
 const MIN_WIDTH_PER_SERIES = 100;
 
@@ -75,7 +76,6 @@ export default class LegendHeader extends Component {
         className={cx(
           styles.LegendHeader,
           "Card-title mx1 flex flex-no-shrink flex-row align-center",
-          { "text-brand-hover": !isBreakoutSeries },
         )}
       >
         {series.map((s, index) => [

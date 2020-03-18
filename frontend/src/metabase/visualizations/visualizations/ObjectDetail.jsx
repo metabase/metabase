@@ -19,7 +19,6 @@ import { singularize, inflect } from "inflection";
 import { formatValue, formatColumn } from "metabase/lib/formatting";
 import { isQueryable } from "metabase/lib/table";
 
-import Tables from "metabase/entities/tables";
 import {
   loadObjectDetailFKReferences,
   followForeignKey,
@@ -61,7 +60,6 @@ type Props = VisualizationProps & {
   tableForeignKeys: ?(ForeignKey[]),
   tableForeignKeyReferences: { [id: ForeignKeyId]: ForeignKeyCountInfo },
   loadObjectDetailFKReferences: () => void,
-  fetchTableFks: (id: any) => void,
   followForeignKey: (fk: any) => void,
   viewNextObjectDetail: () => void,
   viewPreviousObjectDetail: () => void,
@@ -75,7 +73,6 @@ const mapStateToProps = state => ({
 
 // ugh, using function form of mapDispatchToProps here due to circlular dependency with actions
 const mapDispatchToProps = dispatch => ({
-  fetchTableFks: id => dispatch(Tables.objectActions.fetchForeignKeys({ id })),
   loadObjectDetailFKReferences: (...args) =>
     dispatch(loadObjectDetailFKReferences(...args)),
   followForeignKey: (...args) => dispatch(followForeignKey(...args)),
@@ -99,10 +96,6 @@ export class ObjectDetail extends Component {
   };
 
   componentDidMount() {
-    const { tableMetadata } = this.props;
-    if (tableMetadata && tableMetadata.fks == null) {
-      this.props.fetchTableFks(tableMetadata.id);
-    }
     // load up FK references
     if (this.props.tableForeignKeys) {
       this.props.loadObjectDetailFKReferences();

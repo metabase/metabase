@@ -27,7 +27,7 @@ type Props = {
   dimension?: ?Dimension,
   dimensions?: Dimension[],
   onChangeDimension: (dimension: Dimension) => void,
-  onChangeOther?: (item: any) => void,
+  onChange?: (item: any) => void,
 
   onAddDimension?: (dimension: Dimension, item: AccordionListItem) => void,
   onRemoveDimension?: (dimension: Dimension, item: AccordionListItem) => void,
@@ -205,14 +205,14 @@ export default class DimensionList extends Component {
   }
 
   handleChange = item => {
-    const { dimension, onChangeDimension, onChangeOther } = this.props;
+    const { dimension, onChangeDimension, onChange } = this.props;
     if (dimension != null && this.itemIsSelected(item)) {
       // ensure if we select the same item we don't reset the subdimension
       onChangeDimension(dimension, item);
     } else if (item.dimension) {
       onChangeDimension(this._getDimensionFromItem(item), item);
-    } else if (onChangeOther) {
-      onChangeOther(item);
+    } else if (onChange) {
+      onChange(item);
     }
   };
 

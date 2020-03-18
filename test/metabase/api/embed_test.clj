@@ -15,7 +15,6 @@
              [http-client :as http]
              [models :refer [Card Dashboard DashboardCard DashboardCardSeries]]
              [query-processor-test :as qp.test]
-             [test :as mt]
              [util :as u]]
             [metabase.api
              [embed :as embed-api]
@@ -24,6 +23,7 @@
             [metabase.test
              [data :as data]
              [util :as tu]]
+            [metabase.test.util.log :as tu.log]
             [toucan.db :as db]
             [toucan.util.test :as tt])
   (:import java.io.ByteArrayInputStream))
@@ -202,7 +202,7 @@
 
         (testing (str "...but if the card has an invalid query we should just get a generic \"query failed\" "
                       "exception (rather than leaking query info)")
-          (mt/suppress-output
+          (tu.log/suppress-output
             (with-temp-card [card {:enable_embedding true, :dataset_query {:database (data/id)
                                                                            :type     :native
                                                                            :native   {:query "SELECT * FROM XYZ"}}}]
@@ -405,13 +405,14 @@
 (deftest generic-query-failed-exception-test
   (testing (str "...but if the card has an invalid query we should just get a generic \"query failed\" exception "
                 "(rather than leaking query info)")
-    (mt/suppress-output
+    (tu.log/suppress-output
       (with-embedding-enabled-and-new-secret-key
         (with-temp-dashcard [dashcard {:dash {:enable_embedding true}
                                        :card {:dataset_query (data/native-query {:query "SELECT * FROM XYZ"})}}]
           (is (= {:status "failed"
                   :error  "An error occurred while running the query." }
                  (http/client :get 202 (dashcard-url dashcard)))))))))
+
 
 (deftest check-that-the-dashcard-endpoint-doesn-t-work-if-embedding-isn-t-enabled
   (tu/with-temporary-setting-values [enable-embedding false]

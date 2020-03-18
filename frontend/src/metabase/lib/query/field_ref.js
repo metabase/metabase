@@ -40,10 +40,6 @@ export function isAggregateField(field: FieldReference): boolean {
   return Array.isArray(field) && field[0] === "aggregation";
 }
 
-export function isJoinedField(field: FieldReference): boolean {
-  return Array.isArray(field) && field[0] === "joined-field";
-}
-
 export function isValidField(field) {
   return (
     isRegularField(field) ||
@@ -60,9 +56,6 @@ export function isValidField(field) {
         : typeof field[2] === "string")) ||
     (isExpressionField(field) && _.isString(field[1])) ||
     (isAggregateField(field) && typeof field[1] === "number") ||
-    (isJoinedField(field) &&
-      typeof field[1] === "string" &&
-      isValidField(field[0])) ||
     isFieldLiteral(field)
   );
 }

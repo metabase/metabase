@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import { t } from "ttag";
 
 import Icon from "metabase/components/Icon";
+import Card from "metabase/components/Card";
 import QuestionPicker from "metabase/containers/QuestionPicker";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton from "metabase/components/SelectButton";
@@ -14,7 +15,7 @@ import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import MetabaseSettings from "metabase/lib/settings";
 
 @Questions.load({
-  id: (state, { tag }) => tag["card-id"],
+  id: (state, { tag }) => tag.card_id,
   loadingAndErrorWrapper: false,
 })
 export default class CardTagEditor extends Component {
@@ -50,7 +51,7 @@ export default class CardTagEditor extends Component {
     const { tag, question } = this.props;
     return (
       <SelectButton>
-        {tag["card-id"] == null ? (
+        {tag.card_id == null ? (
           <span className="text-medium">{t`Pick a saved question`}</span>
         ) : this.errorMessage() ? (
           <span className="text-medium">{t`Pick a different question`}</span>
@@ -66,18 +67,18 @@ export default class CardTagEditor extends Component {
 
   render() {
     const {
-      tag: { "card-id": cardId },
+      tag: { card_id },
       loading,
       question,
     } = this.props;
 
     return (
-      <div className="px3 py4 border-top">
-        <h3 className="text-heavy text-brand mb1">
-          {cardId == null ? (
+      <Card className="p2 mb2">
+        <h3 className="text-brand mb2">
+          {card_id == null ? (
             t`Question #…`
           ) : (
-            <Link to={questionUrl(cardId)}>{t`Question #${cardId}`}</Link>
+            <Link to={questionUrl(card_id)}>{t`Question #${card_id}`}</Link>
           )}
         </h3>
         {loading ? (
@@ -103,19 +104,19 @@ export default class CardTagEditor extends Component {
           </p>
         )}
         {question && !this.errorMessage() && (
-          <div className="bg-light text-medium text-small py1 px2 mt1">
+          <div className="bg-light text-medium py1 px2 mt2">
             {question.collection && (
               <div className="flex align-center">
                 <Icon name="all" size={12} mr={1} /> {question.collection.name}
               </div>
             )}
-            <div className="flex align-center mt1">
+            <div className="flex align-center">
               <Icon name="calendar" size={12} mr={1} />{" "}
               {t`Last edited ${formatDate(question.updated_at)}`}
             </div>
           </div>
         )}
-      </div>
+      </Card>
     );
   }
 }

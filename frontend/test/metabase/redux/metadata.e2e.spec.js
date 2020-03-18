@@ -6,7 +6,11 @@
  */
 import { getMetadata } from "metabase/selectors/metadata";
 import { createTestStore, useSharedAdminLogin } from "__support__/e2e";
-import { fetchMetrics, fetchTables } from "metabase/redux/metadata";
+import {
+  fetchMetrics,
+  fetchDatabases,
+  fetchTables,
+} from "metabase/redux/metadata";
 
 const metadata = store => getMetadata(store.getState());
 
@@ -49,6 +53,20 @@ describe("metadata/redux", () => {
   });
 
   describe("DATABASE ACTIONS", () => {
+    describe("fetchDatabases()", () => {
+      // TODO Atte Keinänen 6/23/17: Figure out why on CI two databases show up but locally only one
+      pending();
+      it("fetches the sample dataset", async () => {
+        const store = createTestStore();
+        expect(metadata(store).tablesList().length).toBe(0);
+        expect(metadata(store).databasesList().length).toBe(0);
+
+        await store.dispatch(fetchDatabases());
+        expect(metadata(store).databasesList().length).toBe(1);
+        expect(metadata(store).tablesList().length).toBe(4);
+        expect(metadata(store).databasesList()[0].tables.length).toBe(4);
+      });
+    });
     describe("fetchDatabaseMetadata(dbId)", () => {
       // await store.dispatch(fetchDatabaseMetadata(1));
     });
@@ -99,6 +117,9 @@ describe("metadata/redux", () => {
     });
     describe("fetchSegmentRevisions(segments)", () => {
       // await store.dispatch(fetchSegmentRevisions(segmentId));
+    });
+    describe("fetchDatabasesWithMetadata()", () => {
+      // await store.dispatch(fetchDatabasesWithMetadata());
     });
   });
 });

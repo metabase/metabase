@@ -240,12 +240,7 @@
   we use separate options for data warehouse DBs. See
   https://www.mchange.com/projects/c3p0/#configuring_connection_testing for an overview of the options used
   below (jump to the 'Simple advice on Connection testing' section.)"
-  (merge
-   {"idleConnectionTestPeriod" 60}
-   ;; only merge in `max-pool-size` if it's actually set, this way it doesn't override any things that may have been
-   ;; set in `c3p0.properties`
-   (when-let [max-pool-size (config/config-int :mb-application-db-max-connection-pool-size)]
-     {"maxPoolSize" max-pool-size})))
+  {"idleConnectionTestPeriod" 60})
 
 (defn- create-connection-pool! [jdbc-spec]
   (db/set-default-quoting-style! (case (db-type)

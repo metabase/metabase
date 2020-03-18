@@ -43,6 +43,7 @@
        (vswap! rows conj row)
        result))))
 
+;; TODO - not 100% this makes sense -- should rows always be merged into metadata?
 (defn- default-reducedf [metadata reduced-result context]
   (context/resultf reduced-result context))
 
@@ -52,17 +53,18 @@
   `metabase.query-processor.reducible-test/write-rows-to-file-test` for an example of a custom implementation."
   [rff context metadata reducible-rows]
   {:pre [(fn? rff)]}
-  ;; TODO -- how to pass updated metadata to reducedf?
-  (let [rf (rff metadata)]
-    (assert (fn? rf))
-    (when-let [reduced-rows (try
-                              (transduce identity rf reducible-rows)
-                              (catch Throwable e
-                                (context/raisef (ex-info (tru "Error reducing result rows")
-                                                         {:type error-type/qp}
-                                                         e)
-                                                context)))]
-      (context/reducedf metadata reduced-rows context))))
+  (let [metadata  (context/metadataf metadata context)]
+    ;; TODO -- how to pass updated metadata to reducedf?
+    (let [rf (rff metadata)]
+      (assert (fn? rf))
+      (when-let [reduced-rows (try
+                                (transduce identity rf reducible-rows)
+                                (catch Throwable e
+                                  (context/raisef (ex-info (tru "Error reducing result rows")
+                                                           {:type error-type/qp}
+                                                           e)
+                                                  context)))]
+        (context/reducedf metadata reduced-rows context)))))
 
 (defn- default-runf [query rf context]
   (try
@@ -93,6 +95,12 @@
                        :type   error-type/timed-out})
                     context)))
 
+(defn- default-cancelf [context]
+  (log/debug (trs "Query canceled before finishing."))
+  (let [canceled-chan (context/canceled-chan context)]
+    (a/>!! canceled-chan :cancel)
+    (a/close! canceled-chan)))
+
 (defn- identity1
   "Util fn. Takes 2 args and returns the first arg as-is."
   [x _]
@@ -108,8 +116,10 @@
    :executef      driver/execute-reducible-query
    :reducef       default-reducef
    :reducedf      default-reducedf
+   :metadataf     identity1
    :preprocessedf identity1
    :nativef       identity1
+   :cancelf       default-cancelf
    :timeoutf      default-timeoutf
    :resultf       default-resultf
    :canceled-chan (a/promise-chan)

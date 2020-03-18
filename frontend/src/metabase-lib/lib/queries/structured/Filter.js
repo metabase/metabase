@@ -64,8 +64,6 @@ export default class Filter extends MBQLClause {
       const operatorName = operator && operator.moreVerboseName;
       const argumentNames = this.formattedArguments().join(" ");
       return `${dimensionName || ""} ${operatorName || ""} ${argumentNames}`;
-    } else if (this.isCustom()) {
-      return this._query.formatExpression(this);
     } else {
       return t`Unknown Filter`;
     }
@@ -303,9 +301,5 @@ export default class Filter extends MBQLClause {
 
   isCompoundFilter() {
     return isCompoundFilter(this);
-  }
-
-  isCustom() {
-    return this.isCompoundFilter();
   }
 }

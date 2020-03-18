@@ -108,39 +108,24 @@
   [{{{aggregations :aggregation} :query} :dataset_query}]
   (mbql.u/match aggregations #{:cum-count :cum-sum}))
 
-(defn card-can-be-used-as-source-query?
-  "Does `card`'s query meet the conditions required for it to be used as a source query for another query?"
-  [card]
-  (and (card-database-supports-nested-queries? card)
-       (not (or (card-uses-unnestable-aggregation? card)
-                (card-has-ambiguous-columns? card)))))
-
-(defn- ids-of-dbs-that-support-source-queries []
-  (set (filter (fn [db-id]
-                 (some-> (driver.u/database->driver db-id) (driver/supports? :nested-queries)))
-               (db/select-ids Database))))
-
 (defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
-  [& {:keys [additional-constraints xform], :or {xform identity}}]
-  (transduce
-   (comp (filter card-can-be-used-as-source-query?) xform)
-   (completing conj #(hydrate % :collection))
-   []
-   (db/select-reducible [Card :name :description :database_id :dataset_query :id :collection_id :result_metadata]
-     {:where    (into [:and
-                       [:not= :result_metadata nil]
-                       [:= :archived false]
-                       [:in :database_id (ids-of-dbs-that-support-source-queries)]
-                       (collection/visible-collection-ids->honeysql-filter-clause
-                        (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
-                      additional-constraints)
-      :order-by [[:%lower.name :asc]]})))
-
-(defn- source-query-cards-exist?
-  "Truthy if a single Card that can be used as a source query exists."
-  []
-  (seq (source-query-cards :xform (take 1))))
+  [& additional-constraints]
+  (as-> (db/select [Card :name :description :database_id :dataset_query :id :collection_id :result_metadata]
+          :result_metadata [:not= nil] :archived false
+          {:where    (into [:and
+                            [:not= :result_metadata nil]
+                            [:= :archived false]
+                            (collection/visible-collection-ids->honeysql-filter-clause
+                             (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+                           additional-constraints)
+           :order-by [[:%lower.name :asc]]}) <>
+    (filter card-database-supports-nested-queries? <>)
+    ;; TODO - it would make sense IMO to add a column to Card and store this information so we don't need to calculate
+    ;; it every time. Something like `can_be_nested`
+    (remove card-uses-unnestable-aggregation? <>)
+    (remove card-has-ambiguous-columns? <>)
+    (hydrate <> :collection)))
 
 (defn- cards-virtual-tables
   "Return a sequence of 'virtual' Table metadata for eligible Cards.
@@ -160,10 +145,10 @@
 
 ;; "Virtual" tables for saved cards simulate the db->schema->table hierarchy by doing fake-db->collection->card
 (defn- add-saved-questions-virtual-database [dbs & options]
-  (let [virtual-db-metadata (apply saved-cards-virtual-db-metadata options)]
+  (if-let [virtual-db-metadata (apply saved-cards-virtual-db-metadata options)]
     ;; only add the 'Saved Questions' DB if there are Cards that can be used
-    (cond-> dbs
-      (source-query-cards-exist?) (concat [virtual-db-metadata]))))
+    (conj (vec dbs) virtual-db-metadata)
+    dbs))
 
 (defn- dbs-list [& {:keys [include-tables? include-saved-questions-db? include-saved-questions-tables?]}]
   (when-let [dbs (seq (filter mi/can-read? (db/select Database {:order-by [:%lower.name :%lower.engine]})))]
@@ -681,10 +666,9 @@
   "Returns a list of Tables for the saved questions virtual database."
   [schema]
   (when (public-settings/enable-nested-queries)
-    (->> (source-query-cards
-          :additional-constraints [(if (= schema (table-api/root-collection-schema-name))
-                                      [:= :collection_id nil]
-                                      [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))])])
+    (->> (source-query-cards (if (= schema (table-api/root-collection-schema-name))
+                               [:= :collection_id nil]
+                               [:in :collection_id (api/check-404 (seq (db/select-ids Collection :name schema)))]))
          (map table-api/card->virtual-table))))
 
 

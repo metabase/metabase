@@ -206,10 +206,6 @@ export function getParameterMappingOptions(
   card: Card,
 ): ParameterMappingUIOption[] {
   const options = [];
-  if (card.display === "text") {
-    // text cards don't have parameters
-    return [];
-  }
 
   const query = new Question(card, metadata).query();
 

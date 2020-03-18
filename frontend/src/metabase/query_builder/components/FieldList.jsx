@@ -80,7 +80,7 @@ export default class FieldList extends Component {
     this.props.onFieldChange(dimension.mbql(), item);
   };
 
-  handleChangeOther = item => {
+  handleChange = item => {
     if (item.filter && this.props.onFilterChange) {
       this.props.onFilterChange(item.filter);
     }
@@ -93,7 +93,7 @@ export default class FieldList extends Component {
         sections={this.state.sections}
         dimension={field && Dimension.parseMBQL(field, metadata, query)}
         onChangeDimension={this.handleChangeDimension}
-        onChangeOther={this.handleChangeOther}
+        onChange={this.handleChange}
         // forward AccordionList props
         className={this.props.className}
         maxHeight={this.props.maxHeight}

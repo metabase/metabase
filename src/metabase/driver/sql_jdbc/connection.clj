@@ -4,7 +4,6 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [metabase
-             [config :as config]
              [connection-pool :as connection-pool]
              [driver :as driver]
              [util :as u]]
@@ -45,15 +44,14 @@
 
 (defmethod data-warehouse-connection-pool-properties :default
   [_]
-  { ;; only fetch one new connection at a time, rather than batching fetches (default = 3 at a time). This is done in
+  {;; only fetch one new connection at a time, rather than batching fetches (default = 3 at a time). This is done in
    ;; interest of minimizing memory consumption
    "acquireIncrement"             1
    ;; [From dox] Seconds a Connection can remain pooled but unused before being discarded.
    "maxIdleTime"                  (* 3 60 60) ; 3 hours
    "minPoolSize"                  1
    "initialPoolSize"              1
-   "maxPoolSize"                  (or (config/config-int :mb-jdbc-data-warehouse-max-connection-pool-size)
-                                      15)
+   "maxPoolSize"                  15
    ;; [From dox] If true, an operation will be performed at every connection checkout to verify that the connection is
    ;; valid. [...] ;; Testing Connections in checkout is the simplest and most reliable form of Connection testing,
    ;; but for better performance, consider verifying connections periodically using `idleConnectionTestPeriod`. [...]

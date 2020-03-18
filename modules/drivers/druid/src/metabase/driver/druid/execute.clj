@@ -2,7 +2,6 @@
   (:require [cheshire.core :as json]
             [clojure.math.numeric-tower :as math]
             [java-time :as t]
-            [medley.core :as m]
             [metabase.driver.druid.query-processor :as druid.qp]
             [metabase.query-processor
              [error-type :as qp.error-type]
@@ -59,14 +58,14 @@
    :results     (let [results (-> results first :result)]
                   (if (:format-rows? middleware true)
                     results
-                    (map #(m/update-existing % :timestamp u.date/parse) results)))})
+                    (map #(u/update-when % :timestamp u.date/parse) results)))})
 
 (defmethod post-process ::druid.qp/groupBy
   [_ projections {:keys [middleware]} results]
   {:projections projections
    :results     (if (:format-rows? middleware true)
                   (map :event results)
-                  (map (comp #(m/update-existing % :timestamp u.date/parse)
+                  (map (comp #(u/update-when % :timestamp u.date/parse)
                              :event)
                        results))})
 

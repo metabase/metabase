@@ -20,8 +20,7 @@
                  :expression-aggregations
                  :native-parameters
                  :nested-queries
-                 :binning
-                 :regex]]
+                 :binning]]
   (defmethod driver/supports? [:sql feature] [_ _] true))
 
 (doseq [join-feature [:left-join

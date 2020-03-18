@@ -17,6 +17,10 @@ const WebpackNotifierPlugin = require("webpack-notifier");
 
 const fs = require("fs");
 
+const chevrotain = require("chevrotain");
+const allTokens = require("./frontend/src/metabase/lib/expressions/tokens")
+  .allTokens;
+
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";
 const FONTS_PATH = __dirname + "/resources/frontend_client/app/fonts";
 const SRC_PATH = __dirname + "/frontend/src/metabase";
@@ -262,7 +266,19 @@ if (NODE_ENV !== "production") {
 
   config.plugins.push(new WebpackNotifierPlugin());
 } else {
-  config.plugins.push(new UglifyJSPlugin({ test: /\.jsx?($|\?)/i }));
+  // this is required to ensure we don't minify Chevrotain token identifiers
+  // https://github.com/SAP/chevrotain/tree/master/examples/parser/minification
+  const tokens = allTokens.map(currTok => chevrotain.tokenName(currTok));
+  config.plugins.push(
+    new UglifyJSPlugin({
+      test: /\.jsx?($|\?)/i,
+      uglifyOptions: {
+        mangle: {
+          reserved: tokens,
+        },
+      },
+    }),
+  );
 
   config.devtool = "source-map";
 }
