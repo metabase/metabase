@@ -242,3 +242,25 @@
                       :limit       3
                       :order-by    [[:asc $name]]})
                    mt/rows)))))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                     JOINS                                                                      |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest expressions+joins-test
+  (datasets/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (testing "Do calculated columns play well with joins"
+      (is (= "Quentin Sören"
+             (-> (mt/run-mbql-query checkins
+                   {:expressions {:prev_month [:+ $date [:interval -31 :day]]}
+                    :fields      [[:joined-field "users__via__user_id" [:field-id (data/id :users :name)]]
+                                  [:expression :prev_month]]
+                    :limit       1
+                    :joins       [{:strategy :left-join
+                                   :source-table (data/id :users)
+                                   :alias        "users__via__user_id"
+                                   :condition    [:= $user_id
+                                                  [:joined-field "users__via__user_id" [:field-id (data/id :users :id)]]]}]})
+                 mt/rows
+                 ffirst))))))
