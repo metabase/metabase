@@ -341,7 +341,7 @@
     [:max         arg]   (tru "Max of {0}"                (aggregation-arg-display-name inner-query arg))
     [:var         arg]   (tru "Variance of {0}"           (aggregation-arg-display-name inner-query arg))
     [:median      arg]   (tru "Median of {0}"             (aggregation-arg-display-name inner-query arg))
-    [:percentile  arg p] (tru "{0}th percentile of {0}" p (aggregation-arg-display-name inner-query arg))
+    [:percentile  arg p] (tru "{0}th percentile of {1}" p (aggregation-arg-display-name inner-query arg))
 
     ;; until we have a way to generate good names for filters we'll just have to say 'matching condition' for now
     [:sum-where   arg _] (tru "Sum of {0} matching condition" (aggregation-arg-display-name inner-query arg))

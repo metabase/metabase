@@ -146,7 +146,6 @@
   [driver [_ arg pattern]]
   (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
 
-
 (defmethod sql.qp/add-interval-honeysql-form :oracle
   [_ hsql-form amount unit]
   (hx/+

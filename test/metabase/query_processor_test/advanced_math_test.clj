@@ -47,9 +47,9 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
     (is (= 2.0 (test-math-expression [:sqrt 4])))))
 
-(deftest test-expt
+(deftest test-exp
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
-    (is (= 7.39 (test-math-expression [:expt 2])))))
+    (is (= 7.39 (test-math-expression [:exp 2])))))
 
 (deftest test-log
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)

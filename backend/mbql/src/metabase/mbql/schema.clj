@@ -295,7 +295,7 @@
    :else
    Field))
 
-(def ^:private arithmetic-expressions #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :expt})
+(def ^:private arithmetic-expressions #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp})
 
 (def ^:private aggregations #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct :metric :aggregation-options :count})
 
@@ -412,14 +412,14 @@
 (defclause ^{:requires-features #{:advanced-math-expressions}} sqrt
   x NumericExpressionArg)
 
-(defclause ^{:requires-features #{:advanced-math-expressions}} expt
+(defclause ^{:requires-features #{:advanced-math-expressions}} exp
   x NumericExpressionArg)
 
 (defclause ^{:requires-features #{:advanced-math-expressions}} log
   x NumericExpressionArg)
 
 (def ^:private ArithmeticExpression*
-  (one-of + - / * coalesce length floor ceil round abs power sqrt expt log))
+  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log))
 
 (def ^:private ArithmeticExpression
   "Schema for the definition of an arithmetic expression."
