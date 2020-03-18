@@ -2,7 +2,9 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
+            [honeysql
+             [core :as hsql]
+             [format :as hformat]]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc
@@ -109,14 +111,9 @@
   [driver [_ arg]]
   (hsql/call :approximate_median (sql.qp/->honeysql driver arg)))
 
-(defmethod sql.qp/date-add :vertica
-  [_ hsql-form amount unit]
-  (hx/+ (hx/->timestamp hsql-form) (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit)))))
-
-;; TODO - for some reason this defintion is not getting picked up
 (defmethod sql.qp/add-interval-honeysql-form :vertica
   [_ hsql-form amount unit]
-  (sql.qp/date-add :vertica hsql-form amont unit))
+  (hx/+ (hx/->timestamp hsql-form) (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit)))))
 
 (defn- materialized-views
   "Fetch the Materialized Views for a Vertica `database`.
