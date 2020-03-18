@@ -37,7 +37,7 @@ const STRING_FUNCTIONS = [
 const NUMERIC_FUNCTIONS = [
   { text: "abs(", type: "functions" },
   { text: "ceil(", type: "functions" },
-  { text: "expt(", type: "functions" },
+  { text: "exp(", type: "functions" },
   { text: "floor(", type: "functions" },
   { text: "log(", type: "functions" },
   { text: "power(", type: "functions" },

@@ -125,17 +125,17 @@ export const MBQL_CLAUSES = {
     args: ["number", "boolean"],
   },
   var: {
-    displayName: t`Variance`,
+    displayName: `Variance`,
     type: "aggregation",
     args: ["number"],
   },
   median: {
-    displayName: t`Median`,
+    displayName: `Median`,
     type: "aggregation",
     args: ["number"],
   },
   percentile: {
-    displayName: t`Percentile`,
+    displayName: `Percentile`,
     type: "aggregation",
     args: ["number"],
   },
@@ -173,7 +173,7 @@ export const MBQL_CLAUSES = {
     args: ["string", "string", "string"],
   },
   length: {
-    displayName: t`length`,
+    displayName: `length`,
     type: "string",
     args: ["string"],
   },
@@ -194,42 +194,42 @@ export const MBQL_CLAUSES = {
   },
   // numeric functions
   abs: {
-    displayName: t`abs`,
+    displayName: `abs`,
     type: "number",
     args: ["number"],
   },
   floor: {
-    displayName: t`floor`,
+    displayName: `floor`,
     type: "number",
     args: ["number"],
   },
   ceil: {
-    displayName: t`ceil`,
+    displayName: `ceil`,
     type: "number",
     args: ["number"],
   },
   round: {
-    displayName: t`round`,
+    displayName: `round`,
     type: "number",
     args: ["number"],
   },
   sqrt: {
-    displayName: t`sqrt`,
+    displayName: `sqrt`,
     type: "number",
     args: ["number"],
   },
   power: {
-    displayName: t`power`,
+    displayName: `power`,
     type: "number",
     args: ["number", "number"],
   },
   log: {
-    displayName: t`log`,
+    displayName: `log`,
     type: "number",
     args: ["number"],
   },
   exp: {
-    displayName: t`exp`,
+    displayName: `exp`,
     type: "number",
     args: ["number"],
   },
