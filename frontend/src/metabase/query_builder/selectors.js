@@ -346,6 +346,48 @@ export const getIsNativeEditorOpen = createSelector(
   (isNative, uiControls) => isNative && uiControls.isNativeEditorOpen,
 );
 
+const getNativeEditorSelectedRange = createSelector(
+  [getUiControls],
+  uiControls => uiControls && uiControls.nativeEditorSelectedRange,
+);
+
+function getOffsetForQueryAndPosition(queryText, { row, column }) {
+  const queryLines = queryText.split("\n");
+  return (
+    // the total length of the previous rows
+    queryLines
+      .slice(0, row)
+      .reduce((sum, rowContent) => sum + rowContent.length, 0) +
+    // the newlines that were removed by split
+    row +
+    // the preceding characters in the row with the cursor
+    column
+  );
+}
+
+export const getNativeEditorCursorOffset = createSelector(
+  [getNativeEditorSelectedRange, getNextRunDatasetQuery],
+  (selectedRange, query) => {
+    if (selectedRange == null || query == null || query.native == null) {
+      return null;
+    }
+    return getOffsetForQueryAndPosition(query.native.query, selectedRange.end);
+  },
+);
+
+export const getNativeEditorSelectedText = createSelector(
+  [getNativeEditorSelectedRange, getNextRunDatasetQuery],
+  (selectedRange, query) => {
+    if (selectedRange == null || query == null || query.native == null) {
+      return null;
+    }
+    const queryText = query.native.query;
+    const start = getOffsetForQueryAndPosition(queryText, selectedRange.start);
+    const end = getOffsetForQueryAndPosition(queryText, selectedRange.end);
+    return queryText.slice(start, end);
+  },
+);
+
 /**
  * Returns whether the query can be "preview", i.e. native query editor is open and visualization is table
  * NOTE: completely disabled for now

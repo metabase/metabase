@@ -52,6 +52,8 @@ import {
   getIsPreviewable,
   getIsVisualized,
   getIsLiveResizable,
+  getNativeEditorCursorOffset,
+  getNativeEditorSelectedText,
 } from "../selectors";
 
 import { getMetadata } from "metabase/selectors/metadata";
@@ -143,6 +145,8 @@ const mapStateToProps = (state, props) => {
       props,
     ),
     queryStartTime: getQueryStartTime(state),
+    nativeEditorCursorOffset: getNativeEditorCursorOffset(state),
+    nativeEditorSelectedText: getNativeEditorSelectedText(state),
   };
 };
 

@@ -9,6 +9,7 @@ import {
   TOGGLE_TEMPLATE_TAGS_EDITOR,
   TOGGLE_SNIPPET_SIDEBAR,
   SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
+  SET_NATIVE_EDITOR_SELECTED_RANGE,
   CLOSE_QB_NEWB_MODAL,
   RELOAD_CARD,
   API_CREATE_QUESTION,
@@ -120,6 +121,10 @@ export const uiControls = handleActions(
         isShowingTemplateTagsEditor,
       }),
     },
+    [SET_NATIVE_EDITOR_SELECTED_RANGE]: (state, { payload }) => ({
+      ...state,
+      nativeEditorSelectedRange: payload,
+    }),
     [CLOSE_QB_NEWB_MODAL]: {
       next: (state, { payload }) => ({ ...state, isShowingNewbModal: false }),
     },

@@ -520,6 +520,12 @@ export const setIsNativeEditorOpen = isNativeEditorOpen => ({
   payload: { isNativeEditorOpen },
 });
 
+export const SET_NATIVE_EDITOR_SELECTED_RANGE =
+  "metabase/qb/SET_NATIVE_EDITOR_SELECTED_RANGE";
+export const setNativeEditorSelectedRange = createAction(
+  SET_NATIVE_EDITOR_SELECTED_RANGE,
+);
+
 export const CLOSE_QB_NEWB_MODAL = "metabase/qb/CLOSE_QB_NEWB_MODAL";
 export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
   return async (dispatch, getState) => {

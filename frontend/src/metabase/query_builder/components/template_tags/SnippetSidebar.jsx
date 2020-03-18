@@ -19,6 +19,8 @@ type Props = {
   query: NativeQuery,
   setDatasetQuery: (datasetQuery: DatasetQuery) => void,
   onClose: () => void,
+  nativeEditorCursorOffset: number,
+  nativeEditorSelectedText: string,
 };
 
 const ICON_SIZE = 16;
@@ -31,6 +33,8 @@ export default class SnippetSidebar extends React.Component {
     query: PropTypes.object.isRequired,
     setDatasetQuery: PropTypes.func.isRequired,
     onClose: PropTypes.func.isRequired,
+    nativeEditorCursorOffset: PropTypes.number.isRequired,
+    nativeEditorSelectedText: PropTypes.string.isRequired,
   };
 
   constructor(props) {
@@ -90,8 +94,11 @@ export default class SnippetSidebar extends React.Component {
   );
 
   insertSnippet({ name }) {
-    const { query, setDatasetQuery } = this.props;
-    const newText = query.queryText() + `{{snippet: ${name}}}`;
+    const { query, setDatasetQuery, nativeEditorCursorOffset } = this.props;
+    const newText =
+      query.queryText().slice(0, nativeEditorCursorOffset) +
+      `{{snippet: ${name}}}` +
+      query.queryText().slice(nativeEditorCursorOffset);
     setDatasetQuery(query.setQueryText(newText).datasetQuery());
   }
 
@@ -128,9 +135,11 @@ export default class SnippetSidebar extends React.Component {
     );
   }
 
-  openCreateModal = () => {
-    // we prefill "database_id". "id" is blank, so it's still a new snippet.
-    const modalSnippet = { database_id: this.props.query.databaseId() };
-    this.setState({ modalSnippet });
-  };
+  openCreateModal = () =>
+    this.setState({
+      modalSnippet: {
+        database_id: this.props.query.databaseId(),
+        content: this.props.nativeEditorSelectedText,
+      },
+    });
 }

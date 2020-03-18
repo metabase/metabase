@@ -90,6 +90,8 @@ type Props = {
 
   isNativeEditorOpen: boolean,
   setIsNativeEditorOpen: (isOpen: boolean) => void,
+  nativeEditorSelectedText: string,
+  setNativeSelectedRange: any => void,
 
   isRunnable: boolean,
   isRunning: boolean,
@@ -102,7 +104,6 @@ type Props = {
 };
 type State = {
   initialHeight: number,
-  hasTextSelected: boolean,
 };
 
 @ExplicitSize()
@@ -126,7 +127,6 @@ export default class NativeQueryEditor extends Component {
 
     this.state = {
       initialHeight: getEditorLineHeight(lines),
-      hasTextSelected: false,
     };
 
     // Ace sometimes fires mutliple "change" events in rapid succession
@@ -215,15 +215,8 @@ export default class NativeQueryEditor extends Component {
     document.removeEventListener("keydown", this.handleKeyDown);
   }
 
-  // Debouncing this avoids race condition between checking the current version
-  // of state and asynchronously setting state. We could pass a function to
-  // setState, but then we'd risk calling setState too much as this event is
-  // triggered multiple times per user-perceived selection.
-  handleSelectionChange = _.debounce(() => {
-    const hasTextSelected = Boolean(this._editor.getSelectedText());
-    if (this.state.hasTextSelected !== hasTextSelected) {
-      this.setState({ hasTextSelected });
-    }
+  handleCursorChange = _.debounce(() => {
+    this.props.setNativeEditorSelectedRange(this._editor.getSelectionRange());
   }, 100);
 
   handleKeyDown = (e: KeyboardEvent) => {
@@ -282,7 +275,7 @@ export default class NativeQueryEditor extends Component {
 
     // listen to onChange events
     this._editor.getSession().on("change", this.onChange);
-    this._editor.on("changeSelection", this.handleSelectionChange);
+    this._editor.getSelection().on("changeCursor", this.handleCursorChange);
 
     const minLineNumberWidth = 20;
     this._editor.getSession().gutterRenderer = {
@@ -555,7 +548,7 @@ export default class NativeQueryEditor extends Component {
               compact
               className="mx2 mb2 mt-auto p2"
               getTooltip={() =>
-                (this.state.hasTextSelected
+                (this.props.nativeEditorSelectedText
                   ? t`Run selected text`
                   : t`Run query`) +
                 " " +
