@@ -1,5 +1,3 @@
-import { t } from "ttag";
-
 export const DISPLAY_QUOTES = {
   identifierQuoteDefault: "",
   literalQuoteDefault: "",
