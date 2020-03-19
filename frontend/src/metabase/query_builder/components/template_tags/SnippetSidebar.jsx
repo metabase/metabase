@@ -5,10 +5,11 @@ import PropTypes from "prop-types";
 
 import { t } from "ttag";
 
+import colors from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
 import Modal from "metabase/components/Modal";
 import Tooltip from "metabase/components/Tooltip";
-import Button from "metabase/components/Button";
+import Link from "metabase/components/Link";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
 import Snippets from "metabase/entities/snippets";
@@ -130,14 +131,16 @@ export default class SnippetSidebar extends React.Component {
           onCancel: closeModal, // the cancel button
           submitTitle: t`Save`,
           footerLeftButtons:
+            // only display archive for saved snippets
             snippet.id != null ? (
-              <Button
+              <Link
+                style={{ color: colors.error }}
                 onClick={async () => {
                   // $FlowFixMe
                   await snippet.update({ archived: true });
                   closeModal();
                 }}
-              >{t`Archive`}</Button>
+              >{t`Archive`}</Link>
             ) : null,
         })}
       </Modal>
