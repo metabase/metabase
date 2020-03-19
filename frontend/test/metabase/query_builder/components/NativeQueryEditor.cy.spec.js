@@ -1,4 +1,10 @@
-import { signInAsNormalUser, restore, popover } from "__support__/cypress";
+import {
+  signInAsNormalUser,
+  signInAsAdmin,
+  restore,
+  popover,
+  modal,
+} from "__support__/cypress";
 describe("NativeQueryEditor", () => {
   before(restore);
   beforeEach(signInAsNormalUser);
@@ -148,5 +154,39 @@ describe("NativeQueryEditor", () => {
     // run query again and see new result
     cy.get(".NativeQueryEditor .Icon-play").click();
     cy.contains("18,760");
+  });
+
+  it("should let you create and use a snippet", () => {
+    signInAsAdmin();
+    cy.visit("/question/new");
+    cy.contains("Native query").click();
+
+    // type a query and highlight some of the text
+    cy.get(".ace_content").as("ace");
+    cy.get("@ace").type(
+      "select 'stuff'" + "{shift}{leftarrow}".repeat("'stuff'".length),
+    );
+
+    // add a snippet of that text
+    cy.get(".Icon-snippet").click();
+    cy.contains("Add a snippet").click();
+    modal()
+      .find("input[name=name]")
+      .type("stuff-snippet");
+    modal()
+      .contains("Save")
+      .click();
+
+    // update the query to use that snippet
+    cy.get("@ace")
+      // delete existing selection before selecting all
+      .type("{backspace}{selectAll}{backspace}")
+      .type("select {{snippet: stuff-snippet}}", {
+        parseSpecialCharSequences: false,
+      });
+
+    // run the query and check the displayed scalar
+    cy.get(".NativeQueryEditor .Icon-play").click();
+    cy.get(".ScalarValue").contains("stuff");
   });
 });
