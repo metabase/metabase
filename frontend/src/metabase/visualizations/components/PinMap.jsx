@@ -159,6 +159,7 @@ export default class PinMap extends Component {
         t`We filtered out ${filteredRows} row(s) containing null values.`,
       );
     }
+    // $FlowFixMe flow thinks warnings can be undefined
     onUpdateWarnings(warnings);
 
     const bounds = L.latLngBounds(points);
