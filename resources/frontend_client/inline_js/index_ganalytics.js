@@ -3,8 +3,8 @@
 })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
 
 // if we are not doing tracking then go ahead and disable GA now so we never even track the initial pageview
-const tracking = window.MetabaseBootstrap.anon_tracking_enabled;
-const ga_code = window.MetabaseBootstrap.ga_code;
+const tracking = window.MetabaseBootstrap["anon-tracking-enabled"];
+const ga_code = window.MetabaseBootstrap["ga-code"];
 if (!tracking) {
   window['ga-disable-'+ga_code] = true;
 }

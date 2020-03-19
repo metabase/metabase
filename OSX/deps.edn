@@ -1,0 +1,12 @@
+{:paths ["./"]
+
+ :deps
+ {org.clojure/data.xml  {:mvn/version "0.0.8"}
+  cheshire              {:mvn/version "5.8.1"}
+  clj-http              {:mvn/version "3.9.1"}
+  clj-tagsoup           {:mvn/version "0.3.0"}
+  commons-io/commons-io {:mvn/version "2.6"}
+  colorize              {:mvn/version "0.1.1"}
+  environ               {:mvn/version "1.1.0"}
+  hiccup                {:mvn/version "1.0.5"}
+  org.flatland/ordered  {:mvn/version "1.5.7"}}}

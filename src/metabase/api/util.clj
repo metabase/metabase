@@ -39,7 +39,7 @@
 (api/defendpoint GET "/bug_report_details"
   []
   (api/check-superuser)
-  {:system-info (troubleshooting/system-info)
+  {:system-info   (troubleshooting/system-info)
    :metabase-info (troubleshooting/metabase-info)})
 
 (api/define-routes)

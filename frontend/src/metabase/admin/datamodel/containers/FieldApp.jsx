@@ -68,7 +68,7 @@ const mapStateToProps = (state, props) => {
 
 const mapDispatchToProps = {
   fetchDatabaseMetadata: Databases.actions.fetchDatabaseMetadata,
-  fetchTableMetadata: Tables.actions.fetchTableMetadata,
+  fetchTableMetadata: Tables.actions.fetchMetadataAndForeignTables,
   fetchFieldValues: Fields.actions.fetchFieldValues,
   updateField: Fields.actions.update,
   updateFieldValues: Fields.actions.updateFieldValues,
@@ -312,12 +312,10 @@ const FieldGeneralPane = ({
         description={t`When this field is used in a filter, what should people use to enter the value they want to filter on?`}
       />
       <Select
-        value={_.findWhere(has_field_values_options, {
-          value: field.has_field_values,
-        })}
-        onChange={option =>
+        value={field.has_field_values}
+        onChange={({ target: { value } }) =>
           onUpdateFieldProperties({
-            has_field_values: option.value,
+            has_field_values: value,
           })
         }
         options={has_field_values_options}
@@ -425,12 +423,14 @@ export class FieldHeader extends React.Component {
     return (
       <div>
         <InputBlurChange
+          name="display_name"
           className="h2 AdminInput bordered rounded border-dark block mb1"
           value={this.props.field.display_name}
           onChange={this.onNameChange}
           placeholder={this.props.field.name}
         />
         <InputBlurChange
+          name="description"
           className="text AdminInput bordered input text-measure block full"
           value={this.props.field.description}
           onChange={this.onDescriptionChange}

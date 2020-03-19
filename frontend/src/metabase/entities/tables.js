@@ -72,7 +72,7 @@ const Tables = createEntity({
       withAction(FETCH_METADATA),
       withCachedDataAndRequestState(
         ({ id }) => [...Tables.getObjectStatePath(id)],
-        ({ id }) => [...Tables.getObjectStatePath(id), "fetch_query_metadata"],
+        ({ id }) => [...Tables.getObjectStatePath(id), "fetchMetadata"],
       ),
       withNormalize(TableSchema),
     )(({ id }) => async (dispatch, getState) => {
@@ -83,7 +83,7 @@ const Tables = createEntity({
     }),
 
     // like fetchMetadata but also loads tables linked by foreign key
-    fetchTableMetadata: createThunkAction(
+    fetchMetadataAndForeignTables: createThunkAction(
       FETCH_TABLE_METADATA,
       ({ id }, options) => async (dispatch, getState) => {
         await dispatch(Tables.actions.fetchMetadata({ id }, options));
@@ -101,7 +101,7 @@ const Tables = createEntity({
       withAction(FETCH_TABLE_FOREIGN_KEYS),
       withCachedDataAndRequestState(
         ({ id }) => [...Tables.getObjectStatePath(id)],
-        ({ id }) => [...Tables.getObjectStatePath(id), "fk"],
+        ({ id }) => [...Tables.getObjectStatePath(id), "fetchForeignKeys"],
       ),
       withNormalize(TableSchema),
     )(entityObject => async (dispatch, getState) => {

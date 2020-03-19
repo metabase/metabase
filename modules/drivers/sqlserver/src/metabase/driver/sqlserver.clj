@@ -1,10 +1,13 @@
 (ns metabase.driver.sqlserver
   "Driver for SQLServer databases. Uses the official Microsoft JDBC driver under the hood (pre-0.25.0, used jTDS)."
   (:require [honeysql.core :as hsql]
+            [java-time :as t]
             [metabase
              [config :as config]
              [driver :as driver]]
-            [metabase.driver.common :as driver.common]
+            [metabase.driver
+             [common :as driver.common]
+             [sql :as sql]]
             [metabase.driver.sql-jdbc
              [common :as sql-jdbc.common]
              [connection :as sql-jdbc.conn]
@@ -13,13 +16,14 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.query-processor.interface :as qp.i]
-            [metabase.util
-             [date :as du]
-             [honeysql-extensions :as hx]])
-  (:import [java.sql ResultSet Time]
+            [metabase.util.honeysql-extensions :as hx])
+  (:import [java.sql Connection ResultSet Time Types]
+           [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            java.util.Date))
 
 (driver/register! :sqlserver, :parent :sql-jdbc)
+
+(defmethod driver/supports? [:sqlserver :regex] [_ _] false)
 
 ;; See the list here: https://docs.microsoft.com/en-us/sql/connect/jdbc/using-basic-data-types
 (defmethod sql-jdbc.sync/database-type->base-type :sqlserver
@@ -32,7 +36,7 @@
     :date             :type/Date
     :datetime         :type/DateTime
     :datetime2        :type/DateTime
-    :datetimeoffset   :type/DateTime
+    :datetimeoffset   :type/DateTimeWithZoneOffset
     :decimal          :type/Decimal
     :float            :type/Float
     :geography        :type/*
@@ -66,31 +70,33 @@
   [_ {:keys [user password db host port instance domain ssl]
       :or   {user "dbuser", password "dbpassword", db "", host "localhost"}
       :as   details}]
-  (-> {:applicationName config/mb-app-id-string
-       :subprotocol     "sqlserver"
+  (-> {:applicationName    config/mb-app-id-string
+       :subprotocol        "sqlserver"
        ;; it looks like the only thing that actually needs to be passed as the `subname` is the host; everything else
        ;; can be passed as part of the Properties
-       :subname         (str "//" host)
+       :subname            (str "//" host)
        ;; everything else gets passed as `java.util.Properties` to the JDBC connection.  (passing these as Properties
        ;; instead of part of the `:subname` is preferable because they support things like passwords with special
        ;; characters)
-       :database        db
-       :password        password
+       :database           db
+       :password           password
        ;; Wait up to 10 seconds for connection success. If we get no response by then, consider the connection failed
-       :loginTimeout    10
+       :loginTimeout       10
        ;; apparently specifying `domain` with the official SQLServer driver is done like `user:domain\user` as opposed
        ;; to specifying them seperately as with jTDS see also:
        ;; https://social.technet.microsoft.com/Forums/sqlserver/en-US/bc1373f5-cb40-479d-9770-da1221a0bc95/connecting-to-sql-server-in-a-different-domain-using-jdbc-driver?forum=sqldataaccess
-       :user            (str (when domain (str domain "\\"))
-                             user)
-       :instanceName    instance
-       :encrypt         (boolean ssl)}
+       :user               (str (when domain (str domain "\\"))
+                                user)
+       :instanceName       instance
+       :encrypt            (boolean ssl)
+       ;; only crazy people would want this. See https://docs.microsoft.com/en-us/sql/connect/jdbc/configuring-how-java-sql-time-values-are-sent-to-the-server?view=sql-server-ver15
+       :sendTimeAsDatetime false}
       ;; only include `port` if it is specified; leave out for dynamic port: see
       ;; https://github.com/metabase/metabase/issues/7597
       (merge (when port {:port port}))
       (sql-jdbc.common/handle-additional-options details, :seperator-style :semicolon)))
 
-
+;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/datepart-transact-sql?view=sql-server-ver15
 (defn- date-part [unit expr]
   (hsql/call :datepart (hsql/raw (name unit)) expr))
 
@@ -120,15 +126,9 @@
   [_ _ expr]
   (date-part :hour expr))
 
-;; jTDS is wack; I sense an ongoing theme here. It returns DATEs as strings instead of as java.sql.Dates like every
-;; other SQL DB we support. Work around that by casting to DATE for truncation then back to DATETIME so we get the
-;; type we want.
-;;
-;; TODO - I'm not sure we still need to do this now that we're using the official Microsoft JDBC driver. Maybe we can
-;; simplify this now?
 (defmethod sql.qp/date [:sqlserver :day]
   [_ _ expr]
-  (hx/->datetime (hx/->date expr)))
+  (hx/->date expr))
 
 (defmethod sql.qp/date [:sqlserver :day-of-week]
   [_ _ expr]
@@ -181,21 +181,23 @@
   [_ _ expr]
   (hsql/call :datefromparts (hx/year expr) 1 1))
 
+(defmethod sql.qp/add-interval-honeysql-form :sqlserver
+  [_ hsql-form amount unit]
+  (date-add unit amount hsql-form))
 
-(defmethod driver/date-add :sqlserver [_ dt amount unit]
-  (date-add unit amount dt))
-
-(defmethod sql.qp/unix-timestamp->timestamp [:sqlserver :seconds]
+(defmethod sql.qp/unix-timestamp->honeysql [:sqlserver :seconds]
   [_ _ expr]
   ;; The second argument to DATEADD() gets casted to a 32-bit integer. BIGINT is 64 bites, so we tend to run into
   ;; integer overflow errors (especially for millisecond timestamps).
   ;; Work around this by converting the timestamps to minutes instead before calling DATEADD().
   (date-add :minute (hx// expr 60) (hx/literal "1970-01-01")))
 
-(defmethod sql.qp/apply-top-level-clause [:sqlserver :limit] [_ _ honeysql-form {value :limit}]
+(defmethod sql.qp/apply-top-level-clause [:sqlserver :limit]
+  [_ _ honeysql-form {value :limit}]
   (assoc honeysql-form :modifiers [(format "TOP %d" value)]))
 
-(defmethod sql.qp/apply-top-level-clause [:sqlserver :page] [_ _ honeysql-form {{:keys [items page]} :page}]
+(defmethod sql.qp/apply-top-level-clause [:sqlserver :page]
+  [_ _ honeysql-form {{:keys [items page]} :page}]
   (assoc honeysql-form :offset (hsql/raw (format "%d ROWS FETCH NEXT %d ROWS ONLY"
                                                  (* items (dec page))
                                                  items))))
@@ -229,6 +231,16 @@
   [driver [_ field]]
   (hsql/call :stdev (sql.qp/->honeysql driver field)))
 
+(defmethod sql.qp/->honeysql [:sqlserver :substring]
+  [driver [_ arg start length]]
+  (if length
+    (hsql/call :substring (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
+    (hsql/call :substring (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (hsql/call :len (sql.qp/->honeysql driver arg)))))
+
+(defmethod sql.qp/->honeysql [:sqlserver :length]
+  [driver [_ arg]]
+  (hsql/call :len (sql.qp/->honeysql driver arg)))
+
 (defmethod driver.common/current-db-time-date-formatters :sqlserver
   [_]
   (driver.common/create-db-time-formatters "yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSZ"))
@@ -241,7 +253,7 @@
   [& args]
   (apply driver.common/current-db-time args))
 
-(defmethod sql.qp/current-datetime-fn :sqlserver [_] :%getdate)
+(defmethod sql.qp/current-datetime-honeysql-form :sqlserver [_] :%getdate)
 
 ;; SQLServer LIKE clauses are case-sensitive or not based on whether the collation of the server and the columns
 ;; themselves. Since this isn't something we can really change in the query itself don't present the option to the
@@ -252,13 +264,76 @@
   [_]
   #{"sys" "INFORMATION_SCHEMA"})
 
-(defmethod unprepare/unprepare-value [:sqlserver Date]
-  [_ value]
-  (format "cast('%s' AS datetime)" (du/date->iso-8601 value)))
+;; SQL Server doesn't support setting the holdability of an individual result set, otherwise this impl is basically
+;; the same as the default
+(defmethod sql-jdbc.execute/prepared-statement :sqlserver
+  [driver ^Connection conn ^String sql params]
+  (let [stmt (.prepareStatement conn sql
+                                ResultSet/TYPE_FORWARD_ONLY
+                                ResultSet/CONCUR_READ_ONLY)]
+    (try
+      (.setFetchDirection stmt ResultSet/FETCH_FORWARD)
+      (sql-jdbc.execute/set-parameters! driver stmt params)
+      stmt
+      (catch Throwable e
+        (.close stmt)
+        (throw e)))))
 
-(prefer-method unprepare/unprepare-value [:sqlserver Date] [:sql Time])
+(defmethod unprepare/unprepare-value [:sqlserver LocalDate]
+  [_ ^LocalDate t]
+  ;; datefromparts(year, month, day)
+  ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/datefromparts-transact-sql?view=sql-server-ver15
+  (format "DateFromParts(%d, %d, %d)" (.getYear t) (.getMonthValue t) (.getDayOfMonth t)))
+
+(defmethod unprepare/unprepare-value [:sqlserver LocalTime]
+  [_ ^LocalTime t]
+  ;; timefromparts(hour, minute, seconds, fraction, precision)
+  ;; See https://docs.microsoft.com/en-us/sql/t-sql/functions/timefromparts-transact-sql?view=sql-server-ver15
+  ;; precision = 7 which means the fraction is 100 nanoseconds, smallest supported by SQL Server
+  (format "TimeFromParts(%d, %d, %d, %d, 7)" (.getHour t) (.getMinute t) (.getSecond t) (long (/ (.getNano t) 100))))
+
+(defmethod unprepare/unprepare-value [:sqlserver OffsetTime]
+  [driver t]
+  (unprepare/unprepare-value driver (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
+
+(defmethod unprepare/unprepare-value [:sqlserver OffsetDateTime]
+  [_ ^OffsetDateTime t]
+  ;; DateTimeOffsetFromParts(year, month, day, hour, minute, seconds, fractions, hour_offset, minute_offset, precision)
+  (let [offset-minutes (long (/ (.getTotalSeconds (.getOffset t)) 60))
+        hour-offset    (long (/ offset-minutes 60))
+        minute-offset  (mod offset-minutes 60)]
+    (format "DateTimeOffsetFromParts(%d, %d, %d, %d, %d, %d, %d, %d, %d, 7)"
+            (.getYear t) (.getMonthValue t) (.getDayOfMonth t)
+            (.getHour t) (.getMinute t) (.getSecond t) (long (/ (.getNano t) 100))
+            hour-offset minute-offset)))
+
+(defmethod unprepare/unprepare-value [:sqlserver ZonedDateTime]
+  [driver t]
+  (unprepare/unprepare-value driver (t/offset-date-time t)))
+
+(defmethod unprepare/unprepare-value [:sqlserver LocalDateTime]
+  [_ ^LocalDateTime t]
+  ;; DateTime2FromParts(year, month, day, hour, minute, seconds, fractions, precision)
+  (format "DateTime2FromParts(%d, %d, %d, %d, %d, %d, %d, 7)"
+          (.getYear t) (.getMonthValue t) (.getDayOfMonth t)
+          (.getHour t) (.getMinute t) (.getSecond t) (long (/ (.getNano t) 100))))
+
+;; SQL Server doesn't support TIME WITH TIME ZONE so convert OffsetTimes to LocalTimes in UTC. Otherwise SQL Server
+;; will try to convert it to a `DATETIMEOFFSET` which of course is not comparable to `TIME` columns
+;;
+;; TIMEZONE FIXME — does it make sense to convert this to UTC? Shouldn't we convert it to the report timezone? Figure
+;; this mystery out
+(defmethod sql-jdbc.execute/set-parameter [:sqlserver OffsetTime]
+  [driver ps i t]
+  (sql-jdbc.execute/set-parameter driver ps i (t/local-time (t/with-offset-same-instant t (t/zone-offset 0)))))
 
 ;; instead of default `microsoft.sql.DateTimeOffset`
-(defmethod sql-jdbc.execute/read-column [:sqlserver microsoft.sql.Types/DATETIMEOFFSET]
-  [_ _, ^ResultSet resultset, _, ^Integer i]
-  (.getTimestamp resultset i))
+(defmethod sql-jdbc.execute/read-column-thunk [:sqlserver microsoft.sql.Types/DATETIMEOFFSET]
+  [_^ResultSet rs _ ^Integer i]
+  (fn []
+    (.getObject rs i OffsetDateTime)))
+
+;; SQL Server doesn't really support boolean types so use bits instead (#11592)
+(defmethod sql/->prepared-substitution [:sqlserver Boolean]
+  [driver bool]
+  (sql/->prepared-substitution driver (if bool 1 0)))

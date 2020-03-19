@@ -11,6 +11,7 @@ import {
   GRAPH_COLORS_SETTINGS,
   GRAPH_AXIS_SETTINGS,
 } from "../lib/settings/graph";
+import { PLUGIN_CHART_SETTINGS } from "metabase/plugins";
 
 export default class ScatterPlot extends LineAreaBarChart {
   static uiName = t`Scatter`;
@@ -26,5 +27,6 @@ export default class ScatterPlot extends LineAreaBarChart {
     ...GRAPH_GOAL_SETTINGS,
     ...GRAPH_COLORS_SETTINGS,
     ...GRAPH_AXIS_SETTINGS,
+    ...PLUGIN_CHART_SETTINGS,
   };
 }

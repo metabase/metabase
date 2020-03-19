@@ -1,14 +1,23 @@
 (ns metabase.test.data.mongo
-  (:require [metabase.driver.mongo.util :refer [with-mongo-connection]]
+  (:require [cheshire
+             [core :as json]
+             [generate :as json.generate]]
+            [clojure.test :refer :all]
+            [metabase
+             [driver :as driver]
+             [models :refer [Field]]]
+            [metabase.driver.mongo.util :refer [with-mongo-connection]]
+            [metabase.test.data :as data]
             [metabase.test.data.interface :as tx]
-            [metabase.util :as u]
             [monger
              [collection :as mc]
-             [core :as mg]]))
+             [core :as mg]])
+  (:import com.fasterxml.jackson.core.JsonGenerator))
 
 (tx/add-test-extensions! :mongo)
 
-(defmethod tx/dbdef->connection-details :mongo [_ _ dbdef]
+(defmethod tx/dbdef->connection-details :mongo
+  [_ _ dbdef]
   {:dbname (tx/escaped-name dbdef)
    :host   "localhost"})
 
@@ -26,22 +35,49 @@
                           (keyword (:field-name field-definition)))]
         ;; Use map-indexed so we can get an ID for each row (index + 1)
         (doseq [[i row] (map-indexed (partial vector) rows)]
-          (let [row (for [v row]
-                      ;; Conver all the java.sql.Timestamps to java.util.Date, because the Mongo driver insists on
-                      ;; being obnoxious and going from using Timestamps in 2.x to Dates in 3.x
-                      (if (instance? java.sql.Timestamp v)
-                        (java.util.Date. (.getTime ^java.sql.Timestamp v))
-                        v))]
-            (try
-              ;; Insert each row
-              (mc/insert mongo-db (name table-name) (assoc (zipmap field-names row)
-                                                      :_id (inc i)))
-              ;; If row already exists then nothing to do
-              (catch com.mongodb.MongoException _))))))))
-
+          (try
+            ;; Insert each row
+            (mc/insert mongo-db (name table-name) (assoc (zipmap field-names row)
+                                                         :_id (inc i)))
+            ;; If row already exists then nothing to do
+            (catch com.mongodb.MongoException _)))))))
 
 (defmethod tx/format-name :mongo
   [_ table-or-field-name]
   (if (= table-or-field-name "id")
     "_id"
     table-or-field-name))
+
+(defn- json-raw
+  "Wrap a string so it will be spliced directly into resulting JSON as-is. Analogous to HoneySQL `raw`."
+  [^String s]
+  (reify json.generate/JSONable
+    (to-json [_ generator]
+      (.writeRawValue ^JsonGenerator generator s))))
+
+(deftest json-raw-test
+  (testing "Make sure the `json-raw` util fn actually works the way we expect it to"
+    (is (= "{\"x\":{{param}}}"
+           (json/generate-string {:x (json-raw "{{param}}")})))))
+
+(defmethod tx/count-with-template-tag-query :mongo
+  [driver table-name field-name param-type]
+  (let [{base-type :base_type} (Field (driver/with-driver driver (data/id table-name field-name)))]
+    {:projections [:count]
+     :query       (json/generate-string
+                   [{:$match {(name field-name) (json-raw (format "{{%s}}" (name field-name)))}}
+                    {:$group {"_id" nil, "count" {:$sum 1}}}
+                    {:$sort {"_id" 1}}
+                    {:$project {"_id" false, "count" true}}])
+     :collection  (name table-name)}))
+
+(defmethod tx/count-with-field-filter-query :mongo
+  [driver table-name field-name]
+  (let [{base-type :base_type} (Field (driver/with-driver driver (data/id table-name field-name)))]
+    {:projections [:count]
+     :query       (json/generate-string
+                   [{:$match (json-raw (format "{{%s}}" (name field-name)))}
+                    {:$group {"_id" nil, "count" {:$sum 1}}}
+                    {:$sort {"_id" 1}}
+                    {:$project {"_id" false, "count" true}}])
+     :collection  (name table-name)}))

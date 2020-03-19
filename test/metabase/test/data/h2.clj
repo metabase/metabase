@@ -87,6 +87,16 @@
 
 (defmethod tx/id-field-type :h2 [_] :type/BigInteger)
 
+(defmethod tx/aggregate-column-info :h2
+  ([driver ag-type]
+   ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type))
+
+  ([driver ag-type field]
+   (merge
+    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
+    (when (= ag-type :sum)
+      {:base_type :type/BigInteger}))))
+
 (defmethod execute/execute-sql! :h2
   [driver _ dbdef sql]
   ;; we always want to use 'server' context when execute-sql! is called (never

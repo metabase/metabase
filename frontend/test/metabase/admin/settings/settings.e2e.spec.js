@@ -1,5 +1,6 @@
 // Converted from an old Selenium E2E test
-import { useSharedAdminLogin, createTestStore } from "__support__/e2e_tests";
+import "metabase/plugins/builtin";
+import { useSharedAdminLogin, createTestStore } from "__support__/e2e";
 import { mount } from "enzyme";
 import SettingInput from "metabase/admin/settings/components/widgets/SettingInput";
 import {
@@ -7,7 +8,7 @@ import {
   UPDATE_SETTING,
 } from "metabase/admin/settings/settings";
 import { LOAD_CURRENT_USER } from "metabase/redux/user";
-import { setInputValue } from "__support__/enzyme_utils";
+import { setInputValue } from "__support__/enzyme";
 
 describe("admin/settings", () => {
   beforeAll(async () => useSharedAdminLogin());
@@ -51,6 +52,23 @@ describe("admin/settings", () => {
         .first()
         .find("input");
       expect(input.prop("value")).toBe(siteName);
+    });
+
+    it("should show display nested settings", async () => {
+      const store = await createTestStore();
+
+      store.pushPath("/admin/settings/authentication/google");
+      const app = mount(store.getAppContainer());
+
+      await store.waitForActions([LOAD_CURRENT_USER, INITIALIZE_SETTINGS]);
+
+      const text = app
+        .find("p.text-medium")
+        .last()
+        .text();
+      expect(text).toEqual(
+        "Allow users to sign up on their own if their Google account email address is from:",
+      );
     });
   });
 });

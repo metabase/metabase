@@ -8,6 +8,8 @@ import SchemasPermissionsApp from "./containers/SchemasPermissionsApp";
 import TablesPermissionsApp from "./containers/TablesPermissionsApp";
 import CollectionPermissions from "./containers/CollectionsPermissionsApp";
 
+import { PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES } from "metabase/plugins";
+
 const getRoutes = store => (
   <Route title={t`Permissions`} path="permissions">
     <IndexRedirect to="databases" />
@@ -24,7 +26,9 @@ const getRoutes = store => (
       <Route
         path=":databaseId/schemas/:schemaName/tables"
         component={TablesPermissionsApp}
-      />
+      >
+        {PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES}
+      </Route>
 
       {/* TABLES NO SCHEMA */}
       {/* NOTE: this route is to support null schemas, inject the empty string as the schemaName */}
@@ -38,7 +42,9 @@ const getRoutes = store => (
             params={{ ...props.params, schemaName: "" }}
           />
         )}
-      />
+      >
+        {PLUGIN_ADMIN_PERMISSIONS_TABLE_ROUTES}
+      </Route>
     </Route>
 
     {/* "COLLECTIONS" section */}

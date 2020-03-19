@@ -199,7 +199,9 @@ export const card = handleActions(
     [QUERY_COMPLETED]: {
       next: (state, { payload }) => ({
         ...state,
-        display: payload.cardDisplay,
+        sensibleDisplays: payload.card.sensibleDisplays,
+        selectedDisplay: payload.card.selectedDisplay,
+        display: payload.card.display,
       }),
     },
 
@@ -294,6 +296,16 @@ export const cancelQueryDeferred = handleActions(
       next: (state, { payload: { cancelQueryDeferred } }) =>
         cancelQueryDeferred,
     },
+    [CANCEL_QUERY]: { next: (state, { payload }) => null },
+    [QUERY_COMPLETED]: { next: (state, { payload }) => null },
+    [QUERY_ERRORED]: { next: (state, { payload }) => null },
+  },
+  null,
+);
+
+export const queryStartTime = handleActions(
+  {
+    [RUN_QUERY]: { next: (state, { payload }) => performance.now() },
     [CANCEL_QUERY]: { next: (state, { payload }) => null },
     [QUERY_COMPLETED]: { next: (state, { payload }) => null },
     [QUERY_ERRORED]: { next: (state, { payload }) => null },

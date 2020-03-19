@@ -6,11 +6,13 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { chain } from "icepick";
 
 import state from "./sample_dataset_fixture.json";
-export state from "./sample_dataset_fixture.json";
+export { default as state } from "./sample_dataset_fixture.json";
 
 export const SAMPLE_DATASET_ID = 1;
 export const ANOTHER_DATABASE_ID = 2;
 export const MONGO_DATABASE_ID = 3;
+export const MULTI_SCHEMA_DATABASE_ID = 4;
+export const OTHER_MULTI_SCHEMA_DATABASE_ID = 5;
 
 export const MAIN_METRIC_ID = 1;
 
@@ -43,6 +45,12 @@ export const metadata = createMetadata();
 export const SAMPLE_DATASET = metadata.database(SAMPLE_DATASET_ID);
 export const ANOTHER_DATABASE = metadata.database(ANOTHER_DATABASE_ID);
 export const MONGO_DATABASE = metadata.database(MONGO_DATABASE_ID);
+export const MULTI_SCHEMA_DATABASE = metadata.database(
+  MULTI_SCHEMA_DATABASE_ID,
+);
+export const OTHER_MULTI_SCHEMA_DATABASE = metadata.database(
+  OTHER_MULTI_SCHEMA_DATABASE_ID,
+);
 
 export const ORDERS = SAMPLE_DATASET.ORDERS;
 export const PRODUCTS = SAMPLE_DATASET.PRODUCTS;
@@ -54,6 +62,7 @@ export function makeMetadata(metadata) {
     databases: {
       1: { name: "database", tables: [] },
     },
+    schemas: {},
     tables: {
       1: { display_name: "table", fields: [], segments: [], metrics: [] },
     },

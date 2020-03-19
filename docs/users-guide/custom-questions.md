@@ -14,7 +14,7 @@ The notebook is made up of a sequence of individual steps. Under each step you'l
 
 This first step is required, and is where you pick the data that you want to base your question on. In most cases you'll pick one of the tables in your database, but you can also choose a previously saved question's result as the starting point for your new question. What this means in practice is that you can do things like use complex SQL queries to create new tables that can be used as starting data in a question just like any other table in your database.
 
-You can use most saved questions as source data, provided you have [permission](../administration-guide/05-setting-permissions.html) to view that question. You can even use questions that were saved as a chart rather than a table.
+You can use most saved questions as source data, provided you have [permission](../administration-guide/05-setting-permissions.md) to view that question. You can even use questions that were saved as a chart rather than a table.
 
 There are some kinds of saved questions that can't be used as source data:
 

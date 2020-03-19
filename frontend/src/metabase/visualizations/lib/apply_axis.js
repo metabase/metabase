@@ -8,8 +8,9 @@ import moment from "moment";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { formatValue } from "metabase/lib/formatting";
 
-import { computeTimeseriesTicksInterval, timeseriesScale } from "./timeseries";
-import { isMultipleOf, getModuloScaleFactor } from "./numeric";
+import { computeTimeseriesTicksInterval } from "./timeseries";
+import timeseriesScale from "./timeseriesScale";
+import { isMultipleOf } from "./numeric";
 import { getFriendlyName } from "./utils";
 import { isHistogram } from "./renderer_utils";
 
@@ -226,14 +227,9 @@ export function applyChartQuantitativeXAxis(
     );
     adjustXAxisTicksIfNeeded(chart.xAxis(), chart.width(), xValues);
 
-    // if xInterval is less than 1 we need to scale the values before doing
-    // modulo comparison. isMultipleOf will compute it for us but we can do it
-    // once here as an optimization
-    const modulorScale = getModuloScaleFactor(xInterval);
-
     chart.xAxis().tickFormat(d => {
       // don't show ticks that aren't multiples of xInterval
-      if (isMultipleOf(d, xInterval, modulorScale)) {
+      if (isMultipleOf(d, xInterval)) {
         return formatValue(d, {
           ...chart.settings.column(dimensionColumn),
           type: "axis",
@@ -363,18 +359,7 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
   }
 
   if (axis.setting("axis_enabled")) {
-    // special case for normalized stacked charts
-    // for normalized stacked charts the y-axis is a percentage number. In Javascript, 0.07 * 100.0 = 7.000000000000001 (try it) so we
-    // round that number to get something nice like "7". Then we append "%" to get a nice tick like "7%"
-    if (chart.settings["stackable.stack_type"] === "normalized") {
-      axis.axis().tickFormat(value => Math.round(value * 100) + "%");
-    } else {
-      const metricColumn = series[0].data.cols[1];
-      axis.axis().tickFormat(value => {
-        value = maybeRoundValueToZero(value, yExtent);
-        return formatValue(value, chart.settings.column(metricColumn));
-      });
-    }
+    axis.axis().tickFormat(getYValueFormatter(chart, series, yExtent));
     chart.renderHorizontalGridLines(true);
     adjustYAxisTicksIfNeeded(axis.axis(), chart.height());
   } else {
@@ -433,4 +418,19 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
     }
     axis.scale(scale.domain([min, max]));
   }
+}
+
+export function getYValueFormatter(chart, series, yExtent) {
+  // special case for normalized stacked charts
+  // for normalized stacked charts the y-axis is a percentage number. In Javascript, 0.07 * 100.0 = 7.000000000000001 (try it) so we
+  // round that number to get something nice like "7". Then we append "%" to get a nice tick like "7%"
+  if (chart.settings["stackable.stack_type"] === "normalized") {
+    return value => Math.round(value * 100) + "%";
+  }
+  const metricColumn = series[0].data.cols[1];
+  const columnSettings = chart.settings.column(metricColumn);
+  return (value, options) => {
+    const roundedValue = maybeRoundValueToZero(value, yExtent);
+    return formatValue(roundedValue, { ...columnSettings, ...options });
+  };
 }

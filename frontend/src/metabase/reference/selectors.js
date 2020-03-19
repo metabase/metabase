@@ -199,7 +199,7 @@ export const getHasSingleSchema = createSelector(
   tables =>
     tables && Object.keys(tables).length > 0
       ? Object.values(tables).every(
-          (table, index, tables) => table.schema === tables[0].schema,
+          (table, index, tables) => table.schema_name === tables[0].schema,
         )
       : true,
 );

@@ -17,6 +17,7 @@ Metabase is the easy, open source way for everyone in your company to ask questi
 - Send data to Slack or email on a schedule with [Pulses](https://metabase.com/docs/latest/users-guide/10-pulses.html)
 - View data in Slack anytime with [MetaBot](https://metabase.com/docs/latest/users-guide/11-metabot.html)
 - [Humanize data](https://metabase.com/docs/latest/administration-guide/03-metadata-editing.html) for your team by renaming, annotating and hiding fields
+- See changes in your data with [alerts](https://www.metabase.com/docs/latest/users-guide/15-alerts.html)
 
 For more information check out [metabase.com](https://metabase.com/)
 
@@ -100,7 +101,7 @@ Then take a look at our [Contribution Guide](docs/contributing.md) for informati
 Talk to other contributors [in our Gitter room](https://gitter.im/metabase/metabase).
 
 # Internationalization
-We want Metabase to be avaliable in as many languages as possible. See what translations are avaliable and help contribute to internationalization using our project [over at POEditor](https://poeditor.com/join/project/ynjQmwSsGh)
+We want Metabase to be available in as many languages as possible. See what translations are available and help contribute to internationalization using our project [over at POEditor](https://poeditor.com/join/project/ynjQmwSsGh)
 
 # Extending and Deep Integrations
 

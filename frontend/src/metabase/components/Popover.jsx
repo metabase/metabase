@@ -72,8 +72,8 @@ export default class Popover extends Component {
     noOnClickOutsideWrapper: false,
   };
 
-  _getPopoverElement() {
-    if (!this._popoverElement) {
+  _getPopoverElement(isOpen) {
+    if (!this._popoverElement && isOpen) {
       this._popoverElement = document.createElement("span");
       this._popoverElement.className = "PopoverContainer";
       document.body.appendChild(this._popoverElement);
@@ -275,9 +275,17 @@ export default class Popover extends Component {
   }
 
   _renderPopover(isOpen) {
+    const popoverElement = this._getPopoverElement(isOpen);
+    if (popoverElement) {
+      if (isOpen) {
+        popoverElement.classList.add("PopoverContainer--open");
+      } else {
+        popoverElement.classList.remove("PopoverContainer--open");
+      }
+    }
+
     // popover is open, lets do this!
     if (isOpen) {
-      const popoverElement = this._getPopoverElement();
       ReactDOM.unstable_renderSubtreeIntoContainer(
         this,
         <span>{isOpen ? this._popoverComponent() : null}</span>,

@@ -16,6 +16,7 @@
 .*/node_modules/@babel/standalone/.*
 .*/node_modules/@testing-library/jest-dom/.*
 .*/node_modules/.*/node_modules/chalk/.*
+.*/node_modules/react-draggable/lib/.*
 
 [include]
 .*/frontend/.*

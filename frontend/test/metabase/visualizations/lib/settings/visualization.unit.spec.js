@@ -61,6 +61,111 @@ describe("visualization_settings", () => {
           }),
         ));
     });
+    describe("graph.y_axis.title_text", () => {
+      const data = {
+        cols: [
+          DateTimeColumn({ unit: "month", name: "col1" }),
+          NumberColumn({ name: "col2" }),
+        ],
+        rows: [[0, 0]],
+      };
+      it("should use the card name if there's one series", () => {
+        const card = {
+          visualization_settings: {},
+          display: "bar",
+          name: "card name",
+        };
+        const settings = getComputedSettingsForSeries([{ card, data }]);
+        expect(settings["graph.y_axis.title_text"]).toBe("card name");
+      });
+
+      it("should use the series title if set", () => {
+        const card = {
+          visualization_settings: {
+            series_settings: { foo: { title: "some title" } },
+          },
+          display: "bar",
+          name: "foo",
+        };
+        const settings = getComputedSettingsForSeries([{ card, data }]);
+        expect(settings["graph.y_axis.title_text"]).toBe("some title");
+      });
+
+      it("should use the metric name if all series match", () => {
+        const card = { visualization_settings: {}, display: "bar" };
+        const settings = getComputedSettingsForSeries([
+          { card, data },
+          { card, data },
+        ]);
+        expect(settings["graph.y_axis.title_text"]).toBe("col2");
+      });
+
+      it("should use the metric name if all series match", () => {
+        const card = { visualization_settings: {}, display: "bar" };
+        const data1 = {
+          cols: [
+            DateTimeColumn({ unit: "month", name: "col1" }),
+            NumberColumn({ name: "col2a" }),
+          ],
+          rows: [[0, 0]],
+        };
+        const data2 = {
+          cols: [
+            DateTimeColumn({ unit: "month", name: "col1" }),
+            NumberColumn({ name: "col2b" }),
+          ],
+          rows: [[0, 0]],
+        };
+        const settings = getComputedSettingsForSeries([
+          { card, data: data1 },
+          { card, data: data2 },
+        ]);
+        expect(settings["graph.y_axis.title_text"]).toBe(null);
+      });
+    });
+    describe("graph.show_values", () => {
+      it("should show values on a bar chart with ten bars", () => {
+        const card = { visualization_settings: {}, display: "bar" };
+        const data = { rows: new Array(10).fill([1]) };
+        const settings = getComputedSettingsForSeries([{ card, data }]);
+        expect(settings["graph.show_values"]).toBe(true);
+      });
+      it("should not show values on a line chart with ten value", () => {
+        const card = { visualization_settings: {}, display: "line" };
+        const data = { rows: new Array(10).fill([1]) };
+        const settings = getComputedSettingsForSeries([{ card, data }]);
+        expect(settings["graph.show_values"]).toBe(false);
+      });
+      it("should not show values on a bar chart with thirty bars", () => {
+        const card = { visualization_settings: {}, display: "bar" };
+        const data = { rows: new Array(30).fill([1]) };
+        const settings = getComputedSettingsForSeries([{ card, data }]);
+        expect(settings["graph.show_values"]).toBe(false);
+      });
+      it("should not show values on a previously saved bar chart", () => {
+        const card = {
+          visualization_settings: {},
+          display: "bar",
+          original_card_id: 1,
+        };
+        const data = { rows: new Array(10).fill([1]) };
+        const settings = getComputedSettingsForSeries([{ card, data }]);
+        expect(settings["graph.show_values"]).toBe(false);
+      });
+    });
+    describe("table.columns", () => {
+      it("should include fieldRef in default table.columns", () => {
+        const card = { visualization_settings: {} };
+        const cols = [
+          NumberColumn({ name: "some number", field_ref: ["field-id", 123] }),
+        ];
+        const {
+          "table.columns": [setting],
+        } = getComputedSettingsForSeries([{ card, data: { cols } }]);
+
+        expect(setting.fieldRef).toEqual(["field-id", 123]);
+      });
+    });
   });
 
   describe("getStoredSettingsForSeries", () => {

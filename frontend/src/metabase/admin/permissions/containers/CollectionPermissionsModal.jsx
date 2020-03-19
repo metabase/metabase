@@ -14,7 +14,6 @@ import Collections from "metabase/entities/collections";
 import {
   getCollectionsPermissionsGrid,
   getIsDirty,
-  getSaveError,
   getDiff,
 } from "../selectors";
 import { initialize, updatePermission, savePermissions } from "../permissions";
@@ -26,7 +25,6 @@ const mapStateToProps = (state, props) => {
       singleCollectionMode: true,
     }),
     isDirty: getIsDirty(state, props),
-    saveError: getSaveError(state, props),
     diff: getDiff(state, props),
   };
 };

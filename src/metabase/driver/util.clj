@@ -1,7 +1,6 @@
 (ns metabase.driver.util
   "Utility functions for common operations on drivers."
   (:require [clojure.core.memoize :as memoize]
-            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
              [config :as config]
@@ -37,9 +36,8 @@
     (try
       (can-connect-with-details? driver details-map :throw-exceptions)
       (catch Throwable e
-        (log/error (trs "Failed to connect to database: {0}" (.getMessage e)))
+        (log/error e (trs "Failed to connect to database"))
         false))))
-
 
 (defn report-timezone-if-supported
   "Returns the report-timezone if `driver` supports setting it's timezone and a report-timezone has been specified by
@@ -69,31 +67,6 @@
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                              Loading all Drivers                                               |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn find-and-load-all-drivers!
-  "Search classpath for namespaces that start with `metabase.driver.`, then `require` them, which should register them
-  as a side-effect. Note that this will not load drivers added by 3rd-party plugins; they must register themselves
-  appropriately when initialized by `load-plugins!`.
-
-  This really only needs to be done by the public settings API endpoint to populate the list of available drivers.
-  Please avoid using this function elsewhere, as loading all of these namespaces can be quite expensive!"
-  []
-  (doseq [ns-symb @u/metabase-namespace-symbols
-          :when   (re-matches #"^metabase\.driver\.[a-z0-9_]+$" (name ns-symb))
-          :let    [driver (keyword (-> (last (str/split (name ns-symb) #"\."))
-                                       (str/replace #"_" "-")))]
-          ;; let's go ahead and ignore namespaces we know for a fact do not contain drivers
-          :when   (not (#{:common :util :query-processor :google}
-                        driver))]
-    (try
-      (#'driver/load-driver-namespace-if-needed! driver)
-      (catch Throwable e
-        (log/error e (trs "Error loading namespace"))))))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Available Drivers Info                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
@@ -115,8 +88,12 @@
   "Return info about all currently available drivers, including their connection properties fields and supported
   features."
   []
-  (into {} (for [driver (available-drivers)]
+  (into {} (for [driver (available-drivers)
+                 :let   [props (try
+                                 (driver/connection-properties driver)
+                                 (catch Throwable e
+                                   (log/error e (trs "Unable to determine connection properties for driver {0}" driver))))]
+                 :when  props]
              ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
-             [driver {:details-fields (driver/connection-properties driver)
-                      :driver-name    (driver/display-name driver)
-                      #_:features       #_(features driver)}])))
+             [driver {:details-fields props
+                      :driver-name    (driver/display-name driver)}])))
