@@ -41,7 +41,9 @@ const BaseButton = ({
   return (
     <button
       {..._.omit(props, ...BUTTON_VARIANTS)}
-      className={cx("Button", className, "flex-no-shrink", variantClasses)}
+      className={cx("Button", className, "flex-no-shrink", variantClasses, {
+        p1: !children,
+      })}
     >
       <div
         className={cx("flex layout-centered", { "flex-column": iconVertical })}

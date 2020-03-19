@@ -2,7 +2,7 @@
 
 import { createSelector } from "reselect";
 import _ from "underscore";
-import { getIn } from "icepick";
+import { getIn, assocIn, updateIn } from "icepick";
 
 // Needed due to wrong dependency resolution order
 // eslint-disable-next-line no-unused-vars
@@ -50,6 +50,8 @@ export const getSettings = state => state.settings.values;
 
 export const getIsNew = state => state.qb.card && !state.qb.card.id;
 
+export const getQueryStartTime = state => state.qb.queryStartTime;
+
 export const getDatabaseId = createSelector(
   [getCard],
   card => card && card.dataset_query && card.dataset_query.database,
@@ -65,7 +67,7 @@ export const getTableForeignKeyReferences = state =>
 
 export const getDatabasesList = state =>
   Databases.selectors.getList(state, {
-    entityQuery: { include_tables: true, include_cards: true },
+    entityQuery: { include: "tables", saved: true },
   }) || [];
 
 export const getTables = createSelector(
@@ -143,16 +145,52 @@ const getNextRunParameterValues = createSelector(
     parameters.map(parameter => parameter.value).filter(p => p !== undefined),
 );
 
+// Certain differences in a query should be ignored. `normalizeQuery`
+// standardizes the query before comparision in `getIsResultDirty`.
+function normalizeQuery(query, tableMetadata) {
+  if (!query) {
+    return query;
+  }
+  if (query.query && tableMetadata) {
+    query = updateIn(query, ["query", "fields"], fields => {
+      fields = fields
+        ? // if the query has fields, copy them before sorting
+          [...fields]
+        : // if the fields aren't set, we get them from the table metadata
+          tableMetadata.fields.map(({ id }) => ["field-id", id]);
+      return fields.sort((a, b) =>
+        JSON.stringify(b).localeCompare(JSON.stringify(a)),
+      );
+    });
+  }
+  if (query.native && query.native["template-tags"] == null) {
+    query = assocIn(query, ["native", "template-tags"], {});
+  }
+  return query;
+}
+
 export const getIsResultDirty = createSelector(
   [
     getLastRunDatasetQuery,
     getNextRunDatasetQuery,
     getLastRunParameterValues,
     getNextRunParameterValues,
+    getTableMetadata,
   ],
-  (lastDatasetQuery, nextDatasetQuery, lastParameters, nextParameters) =>
-    !Utils.equals(lastDatasetQuery, nextDatasetQuery) ||
-    !Utils.equals(lastParameters, nextParameters),
+  (
+    lastDatasetQuery,
+    nextDatasetQuery,
+    lastParameters,
+    nextParameters,
+    tableMetadata,
+  ) => {
+    lastDatasetQuery = normalizeQuery(lastDatasetQuery, tableMetadata);
+    nextDatasetQuery = normalizeQuery(nextDatasetQuery, tableMetadata);
+    return (
+      !Utils.equals(lastDatasetQuery, nextDatasetQuery) ||
+      !Utils.equals(lastParameters, nextParameters)
+    );
+  },
 );
 
 export const getQuestion = createSelector(

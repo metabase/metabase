@@ -2,10 +2,12 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import cx from "classnames";
-import { getIn } from "icepick";
 
 export default class FormField extends Component {
   static propTypes = {
+    field: PropTypes.object,
+    formField: PropTypes.object,
+
     // redux-form compatible:
     name: PropTypes.string,
     error: PropTypes.any,
@@ -13,41 +15,64 @@ export default class FormField extends Component {
     active: PropTypes.bool,
 
     hidden: PropTypes.bool,
-    displayName: PropTypes.string,
+    title: PropTypes.string,
+    description: PropTypes.string,
+
     children: PropTypes.oneOfType([
       PropTypes.arrayOf(PropTypes.node),
       PropTypes.node,
     ]),
-
-    // legacy
-    fieldName: PropTypes.string,
-    formError: PropTypes.object,
   };
 
   render() {
-    const { displayName, formError, children, hidden } = this.props;
-    const name = this.props.name || this.props.fieldName;
+    const {
+      className,
+      formField,
+      title = formField && formField.title,
+      description = formField && formField.description,
+      hidden = formField &&
+        (formField.hidden != null
+          ? formField.hidden
+          : formField.type === "hidden"),
+      horizontal = formField &&
+        (formField.horizontal != null
+          ? formField.horizontal
+          : formField.type === "boolean"),
+      children,
+    } = this.props;
 
-    let error = this.props.error || getIn(formError, ["data", "errors", name]);
-    if (this.props.visited === false || this.props.active === true) {
+    if (hidden) {
+      return null;
+    }
+
+    let { name, error, visited, active } = {
+      ...(this.props.field || {}),
+      ...this.props,
+    };
+
+    if (visited === false || active === true) {
       // if the field hasn't been visited or is currently active then don't show the error
       error = null;
     }
 
     return (
       <div
-        className={cx("Form-field", {
+        className={cx("Form-field", className, {
           "Form--fieldError": !!error,
-          hide: hidden,
+          "flex flex-reverse justify-end": horizontal,
         })}
       >
-        {displayName && (
-          <label className="Form-label" htmlFor={name}>
-            {displayName}{" "}
-            {error && <span className="text-error">: {error}</span>}
-          </label>
+        {(title || description) && (
+          <div className={cx({ ml2: horizontal })}>
+            {title && (
+              <label className="Form-label" htmlFor={name} id={`${name}-label`}>
+                {title} {error && <span className="text-error">: {error}</span>}
+              </label>
+            )}
+            {description && <div className="mb1">{description}</div>}
+          </div>
         )}
-        {children}
+        <div className="flex-no-shrink">{children}</div>
       </div>
     );
   }

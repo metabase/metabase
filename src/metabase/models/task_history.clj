@@ -1,9 +1,9 @@
 (ns metabase.models.task-history
   (:require [clojure.tools.logging :as log]
+            [java-time :as t]
             [metabase.models.interface :as i]
             [metabase.util :as u]
             [metabase.util
-             [date :as du]
              [i18n :refer [trs]]
              [schema :as su]]
             [schema.core :as s]
@@ -63,8 +63,8 @@
     (try
       (db/insert! TaskHistory
         (assoc info
-          :started_at (du/->Timestamp start-time-ms)
-          :ended_at   (du/->Timestamp end-time-ms)
+          :started_at (t/instant start-time-ms)
+          :ended_at   (t/instant end-time-ms)
           :duration   duration-ms))
       (catch Throwable e
         (log/warn e (trs "Error saving task history"))))))

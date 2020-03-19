@@ -44,7 +44,6 @@ import { rescanFieldValues, discardFieldValues } from "../field";
 // LIB
 import Metadata from "metabase-lib/lib/metadata/Metadata";
 import { has_field_values_options } from "metabase/lib/core";
-import { color } from "metabase/lib/colors";
 import { getGlobalSettingsForColumn } from "metabase/visualizations/lib/settings/column";
 import { isCurrency } from "metabase/lib/schema_metadata";
 
@@ -69,7 +68,7 @@ const mapStateToProps = (state, props) => {
 
 const mapDispatchToProps = {
   fetchDatabaseMetadata: Databases.actions.fetchDatabaseMetadata,
-  fetchTableMetadata: Tables.actions.fetchTableMetadata,
+  fetchTableMetadata: Tables.actions.fetchMetadataAndForeignTables,
   fetchFieldValues: Fields.actions.fetchFieldValues,
   updateField: Fields.actions.update,
   updateFieldValues: Fields.actions.updateFieldValues,
@@ -200,9 +199,9 @@ export default class FieldApp extends React.Component {
           <AdminLayout
             sidebar={
               <div>
-                <Header>
+                <div className="flex align-center mb2">
                   <BackButton databaseId={databaseId} tableId={tableId} />
-                </Header>
+                </div>
                 <LeftNavPane>
                   <LeftNavPaneItem
                     name={t`General`}
@@ -218,23 +217,21 @@ export default class FieldApp extends React.Component {
             }
           >
             <div className="wrapper">
-              <Header>
-                <div className="mb4 py1 ml-auto mr-auto">
-                  <Breadcrumbs
-                    crumbs={[
-                      [db.name, `/admin/datamodel/database/${db.id}`],
-                      [
-                        table.display_name,
-                        `/admin/datamodel/database/${db.id}/table/${table.id}`,
-                      ],
-                      t`${field.display_name} – Field Settings`,
-                    ]}
-                  />
-                </div>
-                <div className="absolute top right mt4 mr4">
-                  <SaveStatus ref={ref => (this.saveStatus = ref)} />
-                </div>
-              </Header>
+              <div className="mb4 pt2 ml-auto mr-auto">
+                <Breadcrumbs
+                  crumbs={[
+                    [db.name, `/admin/datamodel/database/${db.id}`],
+                    [
+                      table.display_name,
+                      `/admin/datamodel/database/${db.id}/table/${table.id}`,
+                    ],
+                    t`${field.display_name} – Field Settings`,
+                  ]}
+                />
+              </div>
+              <div className="absolute top right mt4 mr4">
+                <SaveStatus ref={ref => (this.saveStatus = ref)} />
+              </div>
 
               {section == null || section === "general" ? (
                 <FieldGeneralPane
@@ -263,10 +260,6 @@ export default class FieldApp extends React.Component {
     );
   }
 }
-
-const Header = ({ children, height = 50 }) => (
-  <div style={{ height }}>{children}</div>
-);
 
 const FieldGeneralPane = ({
   field,
@@ -319,12 +312,10 @@ const FieldGeneralPane = ({
         description={t`When this field is used in a filter, what should people use to enter the value they want to filter on?`}
       />
       <Select
-        value={_.findWhere(has_field_values_options, {
-          value: field.has_field_values,
-        })}
-        onChange={option =>
+        value={field.has_field_values}
+        onChange={({ target: { value } }) =>
           onUpdateFieldProperties({
-            has_field_values: option.value,
+            has_field_values: value,
           })
         }
         options={has_field_values_options}
@@ -388,10 +379,9 @@ export const BackButton = ({
 }) => (
   <Link
     to={`/admin/datamodel/database/${databaseId}/table/${tableId}`}
-    className="circle text-white p2 flex align-center justify-center inline"
-    style={{ backgroundColor: color("bg-dark") }}
+    className="circle text-white p2 flex align-center justify-center bg-dark bg-brand-hover"
   >
-    <Icon name="arrow_back" />
+    <Icon name="arrow_left" />
   </Link>
 );
 
@@ -433,12 +423,14 @@ export class FieldHeader extends React.Component {
     return (
       <div>
         <InputBlurChange
+          name="display_name"
           className="h2 AdminInput bordered rounded border-dark block mb1"
           value={this.props.field.display_name}
           onChange={this.onNameChange}
           placeholder={this.props.field.name}
         />
         <InputBlurChange
+          name="description"
           className="text AdminInput bordered input text-measure block full"
           value={this.props.field.description}
           onChange={this.onDescriptionChange}

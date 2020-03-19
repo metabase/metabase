@@ -28,7 +28,7 @@ It is rare that your applications database will have all the data you need and b
 # Ingestion
 ## From other databases
 
-If you database is small enough, then it is generally easy enough to dump the whole database and then ingest it into your datawarehouse. 
+If your database is small enough, then it is generally easy enough to dump the whole database and then ingest it into your data warehouse. 
 
 ### Postgres
 ### MySQL

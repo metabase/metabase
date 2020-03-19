@@ -1,12 +1,14 @@
 (ns metabase.query-processor-test.field-visibility-test
   "Tests for behavior of fields with different visibility settings."
-  (:require [metabase
+  (:require [clojure.test :refer :all]
+            [metabase
              [query-processor-test :as qp.test]
              [util :as u]]
             [metabase.models.field :refer [Field]]
             [metabase.test
              [data :as data]
-             [util :as tu]]))
+             [util :as tu]]
+            [metabase.test.data.datasets :as datasets]))
 
 ;;; ---------------------------------------------- :details-only fields ----------------------------------------------
 
@@ -33,26 +35,27 @@
 
 ;;; ----------------------------------------------- :sensitive fields ------------------------------------------------
 
-;;; Make sure :sensitive information fields are never returned by the QP
-(qp.test/expect-with-non-timeseries-dbs
-  {:cols        (qp.test/expected-cols :users [:id :name :last_login])
-   :rows        [[ 1 "Plato Yeshua"]
-                 [ 2 "Felipinho Asklepios"]
-                 [ 3 "Kaneonuskatew Eiran"]
-                 [ 4 "Simcha Yan"]
-                 [ 5 "Quentin Sören"]
-                 [ 6 "Shad Ferdynand"]
-                 [ 7 "Conchúr Tihomir"]
-                 [ 8 "Szymon Theutrich"]
-                 [ 9 "Nils Gotam"]
-                 [10 "Frans Hevel"]
-                 [11 "Spiros Teofil"]
-                 [12 "Kfir Caj"]
-                 [13 "Dwight Gresham"]
-                 [14 "Broen Olujimi"]
-                 [15 "Rüstem Hebel"]]}
-  ;; Filter out the timestamps from the results since they're hard to test :/
-  (qp.test/format-rows-by [int identity]
-    (qp.test/rows-and-cols
-      (data/run-mbql-query users
-        {:order-by [[:asc $id]]}))))
+(deftest sensitive-fields-test
+  (datasets/test-drivers (qp.test/normal-drivers)
+    (testing "Make sure :sensitive information fields are never returned by the QP"
+      (is (= {:cols (qp.test/expected-cols :users [:id :name :last_login])
+              :rows [[ 1 "Plato Yeshua"]
+                     [ 2 "Felipinho Asklepios"]
+                     [ 3 "Kaneonuskatew Eiran"]
+                     [ 4 "Simcha Yan"]
+                     [ 5 "Quentin Sören"]
+                     [ 6 "Shad Ferdynand"]
+                     [ 7 "Conchúr Tihomir"]
+                     [ 8 "Szymon Theutrich"]
+                     [ 9 "Nils Gotam"]
+                     [10 "Frans Hevel"]
+                     [11 "Spiros Teofil"]
+                     [12 "Kfir Caj"]
+                     [13 "Dwight Gresham"]
+                     [14 "Broen Olujimi"]
+                     [15 "Rüstem Hebel"]]}
+             ;; Filter out the timestamps from the results since they're hard to test :/
+             (qp.test/format-rows-by [int identity]
+               (qp.test/rows-and-cols
+                 (data/run-mbql-query users
+                   {:order-by [[:asc $id]]}))))))))

@@ -267,6 +267,25 @@ describe("Question", () => {
         expect(scalarQuestion.display()).toBe("scalar");
       });
     });
+    describe("setDefaultDisplay", () => {
+      it("sets display to 'scalar' for order count", () => {
+        const question = new Question(
+          orders_count_card,
+          metadata,
+        ).setDefaultDisplay();
+
+        expect(question.display()).toBe("scalar");
+      });
+
+      it("should not set the display to scalar table was selected", () => {
+        const question = new Question(orders_count_card, metadata)
+          .setSelectedDisplay("table")
+          .setSensibleDisplays(["table", "scalar"])
+          .setDefaultDisplay();
+
+        expect(question.display()).toBe("table");
+      });
+    });
   });
 
   // TODO: These are mode-dependent and should probably be tied to modes
@@ -606,7 +625,7 @@ describe("Question", () => {
       it("returns a URL with hash for an unsaved question", () => {
         const question = new Question(dissoc(orders_raw_card, "id"), metadata);
         expect(question.getUrl()).toBe(
-          "/question#eyJuYW1lIjoiUmF3IG9yZGVycyBkYXRhIiwiZGF0YXNldF9xdWVyeSI6eyJ0eXBlIjoicXVlcnkiLCJkYXRhYmFzZSI6MSwicXVlcnkiOnsic291cmNlLXRhYmxlIjoxfX0sImRpc3BsYXkiOiJ0YWJsZSIsInZpc3VhbGl6YXRpb25fc2V0dGluZ3MiOnt9fQ==",
+          "/question#eyJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjoxLCJxdWVyeSI6eyJzb3VyY2UtdGFibGUiOjF9LCJ0eXBlIjoicXVlcnkifSwiZGlzcGxheSI6InRhYmxlIiwibmFtZSI6IlJhdyBvcmRlcnMgZGF0YSIsInZpc3VhbGl6YXRpb25fc2V0dGluZ3MiOnt9fQ==",
         );
       });
     });

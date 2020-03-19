@@ -9,6 +9,7 @@ import CopyToClipboard from "react-copy-to-clipboard";
 
 type Props = {
   className?: string,
+  style?: Object,
   value: string,
 };
 type State = {
@@ -30,11 +31,11 @@ export default class CopyWidget extends Component {
     setTimeout(() => this.setState({ copied: false }), 2000);
   };
   render() {
-    const { value, className, ...props } = this.props;
+    const { value, className, style, ...props } = this.props;
     return (
       <Tooltip tooltip={t`Copied!`} isOpen={this.state.copied}>
         <CopyToClipboard text={value} onCopy={this.onCopy}>
-          <div className={className}>
+          <div className={className} style={style}>
             <Icon name="copy" {...props} />
           </div>
         </CopyToClipboard>

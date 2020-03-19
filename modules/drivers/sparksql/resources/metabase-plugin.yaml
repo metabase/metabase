@@ -28,6 +28,8 @@ driver:
     connection-properties-include-tunnel-config: false
 init:
   - step: load-namespace
+    namespace: metabase.driver.hive-like
+  - step: load-namespace
     namespace: metabase.driver.sparksql
   - step: register-jdbc-driver
     class: metabase.driver.FixedHiveDriver

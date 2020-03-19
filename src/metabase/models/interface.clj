@@ -6,7 +6,6 @@
             [metabase.util :as u]
             [metabase.util
              [cron :as cron-util]
-             [date :as du]
              [encryption :as encryption]
              [i18n :refer [trs tru]]]
             [potemkin.types :as p.types]
@@ -33,15 +32,14 @@
     obj
     (json/generate-string obj)))
 
-(defn- json-out [obj keywordize-keys?]
-  (let [s (u/jdbc-clob->str obj)]
-    (if (string? s)
-      (try
-        (json/parse-string s keywordize-keys?)
-        (catch Throwable e
-          (log/error e (str (trs "Error parsing JSON")))
-          s))
-      obj)))
+(defn- json-out [s keywordize-keys?]
+  (if (string? s)
+    (try
+      (json/parse-string s keywordize-keys?)
+      (catch Throwable e
+        (log/error e (str (trs "Error parsing JSON")))
+        s))
+    s))
 
 (defn json-out-with-keywordization
   "Default out function for columns given a Toucan type `:json`. Parses serialized JSON string and keywordizes keys."
@@ -64,8 +62,8 @@
 
 ;; `metabase-query` type is for *outer* queries like Card.dataset_query. Normalizes them on the way in & out
 (defn- maybe-normalize [query]
-  (when query
-    (normalize/normalize query)))
+  (cond-> query
+    (seq query) normalize/normalize))
 
 (defn- catch-normalization-exceptions
   "Wraps normalization fn `f` and returns a version that gracefully handles Exceptions during normalization. When
@@ -110,10 +108,6 @@
   :in  json-in
   :out #(some-> % json-out-with-keywordization set))
 
-(models/add-type! :clob
-  :in  identity
-  :out u/jdbc-clob->str)
-
 (def ^:private encrypted-json-in  (comp encryption/maybe-encrypt json-in))
 (def ^:private encrypted-json-out (comp json-out-with-keywordization encryption/maybe-decrypt))
 
@@ -123,11 +117,11 @@
 
 (models/add-type! :encrypted-json
   :in  encrypted-json-in
-  :out (comp cached-encrypted-json-out u/jdbc-clob->str))
+  :out cached-encrypted-json-out)
 
 (models/add-type! :encrypted-text
   :in  encryption/maybe-encrypt
-  :out (comp encryption/maybe-decrypt u/jdbc-clob->str))
+  :out encryption/maybe-decrypt)
 
 (defn decompress
   "Decompress `compressed-bytes`."
@@ -156,16 +150,15 @@
 ;; handles those cases.
 (models/add-type! :keyword
   :in  u/qualified-name
-  :out (comp keyword u/jdbc-clob->str))
-
+  :out keyword)
 
 ;;; properties
 
 (defn- add-created-at-timestamp [obj & _]
-  (assoc obj :created_at (du/new-sql-timestamp)))
+  (assoc obj :created_at :%now))
 
 (defn- add-updated-at-timestamp [obj & _]
-  (assoc obj :updated_at (du/new-sql-timestamp)))
+  (assoc obj :updated_at :%now))
 
 (models/add-property! :timestamped?
   :insert (comp add-created-at-timestamp add-updated-at-timestamp)

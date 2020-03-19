@@ -14,7 +14,6 @@
              [permissions-group :as group]
              [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]]
             [metabase.util
-             [date :as du]
              [i18n :refer [trs]]
              [schema :as su]]
             [schema.core :as s]
@@ -35,7 +34,7 @@
   (assert (not (:password_salt user))
     "Don't try to pass an encrypted password to (insert! User). Password encryption is handled by pre-insert.")
   (let [salt     (str (UUID/randomUUID))
-        defaults {:date_joined  (du/new-sql-timestamp)
+        defaults {:date_joined  :%now
                   :last_login   nil
                   :is_active    true
                   :is_superuser false}]
@@ -275,7 +274,7 @@
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
 (defn permissions-set
-  "Return a set of all permissions object paths that USER-OR-ID has been granted access to. (2 DB Calls)"
+  "Return a set of all permissions object paths that `user-or-id` has been granted access to. (2 DB Calls)"
   [user-or-id]
   (set (when-let [user-id (u/get-id user-or-id)]
          (concat

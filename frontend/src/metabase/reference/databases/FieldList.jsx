@@ -145,41 +145,41 @@ export default class FieldList extends Component {
         >
           {() =>
             Object.keys(entities).length > 0 ? (
-              <div className="wrapper wrapper--trim">
-                <div className={S.item}>
-                  <div className={R.columnHeader}>
-                    <div className={cx(S.itemTitle, F.fieldNameTitle)}>
-                      {t`Field name`}
-                    </div>
-                    <div className={cx(S.itemTitle, F.fieldType)}>
-                      {t`Field type`}
-                    </div>
-                    <div className={cx(S.itemTitle, F.fieldDataType)}>
-                      {t`Data type`}
+              <div className="wrapper">
+                <div className="pl4 pb2 mb4 bg-white rounded bordered">
+                  <div className={S.item}>
+                    <div className={R.columnHeader}>
+                      <div className={cx(S.itemTitle, F.fieldNameTitle)}>
+                        {t`Field name`}
+                      </div>
+                      <div className={cx(S.itemTitle, F.fieldType)}>
+                        {t`Field type`}
+                      </div>
+                      <div className={cx(S.itemTitle, F.fieldDataType)}>
+                        {t`Data type`}
+                      </div>
                     </div>
                   </div>
+                  <List>
+                    {Object.values(entities).map(
+                      entity =>
+                        entity &&
+                        entity.id &&
+                        entity.name && (
+                          <li key={entity.id}>
+                            <Field
+                              field={entity}
+                              foreignKeys={foreignKeys}
+                              url={`/reference/databases/${table.db_id}/tables/${table.id}/fields/${entity.id}`}
+                              icon={getIconForField(entity)}
+                              isEditing={isEditing}
+                              formField={fields[entity.id]}
+                            />
+                          </li>
+                        ),
+                    )}
+                  </List>
                 </div>
-                <List>
-                  {Object.values(entities).map(
-                    entity =>
-                      entity &&
-                      entity.id &&
-                      entity.name && (
-                        <li className="relative" key={entity.id}>
-                          <Field
-                            field={entity}
-                            foreignKeys={foreignKeys}
-                            url={`/reference/databases/${table.db_id}/tables/${
-                              table.id
-                            }/fields/${entity.id}`}
-                            icon={getIconForField(entity)}
-                            isEditing={isEditing}
-                            formField={fields[entity.id]}
-                          />
-                        </li>
-                      ),
-                  )}
-                </List>
               </div>
             ) : (
               <div className={S.empty}>

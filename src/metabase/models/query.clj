@@ -78,21 +78,20 @@
               ;; rethrow e if updating an existing average execution time failed
               (throw e))))))
 
-;; TODO - somewhat confusing that the Ad-hoc queries here use the keys `:table-id` and `:database-id` instead of the
-;; `:database_id` and `:table_id` that come out of the Database. In the automagic dashboards code, for example, we
-;; have special utility functions to account for both possiblities. Should we fix this?
-
 (defn query->database-and-table-ids
   "Return a map with `:database-id` and source `:table-id` that should be saved for a Card. Handles queries that use
-   other queries as their source (ones that come in with a `:source-table` like `card__100`) recursively, as well as
-   normal queries."
-  [{database-id :database, query-type :type, {:keys [source-table]} :query}]
+   other queries as their source (ones that come in with a `:source-table` like `card__100`, or `:source-query`)
+   recursively, as well as normal queries."
+  [{database-id :database, query-type :type, {:keys [source-table source-query]} :query}]
   (cond
     (= :native query-type)  {:database-id database-id, :table-id nil}
     (integer? source-table) {:database-id database-id, :table-id source-table}
     (string? source-table)  (let [[_ card-id] (re-find #"^card__(\d+)$" source-table)]
                               (db/select-one ['Card [:table_id :table-id] [:database_id :database-id]]
-                                :id (Integer/parseInt card-id)))))
+                                :id (Integer/parseInt card-id)))
+    (map? source-query)     (query->database-and-table-ids {:database database-id
+                                                            :type     query-type
+                                                            :query    source-query})))
 
 (defn adhoc-query
   "Wrap query map into a Query object (mostly to fascilitate type dispatch)."

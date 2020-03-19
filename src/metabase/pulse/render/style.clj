@@ -47,9 +47,21 @@
   "~25% gray."
   "#394340")
 
-(def ^:const color-row-border
+(def ^:const color-text-medium
+  "Color for medium text."
+  "#74838f")
+
+(def ^:const color-text-dark
+  "Color for dark text."
+  "#2E353B")
+
+(def ^:const color-header-row-border
   "Used as color for the bottom border of table headers for charts with `:table` vizualization."
   "#EDF0F1")
+
+(def ^:const color-body-row-border
+  "Used as color for the bottom border of table body rows for charts with `:table` vizualization."
+  "#F0F0F04D")
 
 ;; don't try to improve the code and make this a plain variable, in EE it's customizable which is why it's a function.
 ;; Too much of a hassle to have it be a fn in one version of the code an a constant in another

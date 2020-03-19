@@ -1,38 +1,37 @@
 (ns metabase.models.task-history-test
-  (:require [clj-time.core :as time]
-            [expectations :refer :all]
+  (:require [expectations :refer :all]
+            [java-time :as t]
             [metabase.models.task-history :refer :all]
             [metabase.test.util :as tu]
             [metabase.util :as u]
-            [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
 (defn add-second
   "Adds one second to `t`"
   [t]
-  (time/plus t (time/seconds 1)))
+  (t/plus t (t/seconds 1)))
 
 (defn add-10-millis
   "Adds 10 milliseconds to `t`"
   [t]
-  (time/plus t (time/millis 10)))
+  (t/plus t (t/millis 10)))
 
 (defn make-10-millis-task
   "Creates a map suitable for a `with-temp*` call for `TaskHistory`. Uses the `started_at` param sets the `ended_at`
   to 10 milliseconds later"
   [started-at]
   (let [ended-at (add-10-millis started-at)]
-    {:started_at (du/->Timestamp started-at)
-     :ended_at   (du/->Timestamp ended-at)
-     :duration   (du/calculate-duration started-at ended-at)}))
+    {:started_at started-at
+     :ended_at   ended-at
+     :duration   (.between java.time.temporal.ChronoUnit/MILLIS started-at ended-at)}))
 
 ;; Basic cleanup test where older rows are deleted and newer rows kept
 (let [task-4 (tu/random-name)
       task-5 (tu/random-name)]
   (expect
     #{task-4 task-5}
-    (let [t1-start (time/now)
+    (let [t1-start (t/zoned-date-time)
           t2-start (add-second t1-start)
           t3-start (add-second t2-start)
           t4-start (add-second t3-start)
@@ -57,7 +56,7 @@
   (expect
     [#{task-1 task-2}
      #{task-1 task-2}]
-    (let [t1-start (time/now)
+    (let [t1-start (t/zoned-date-time)
           t2-start (add-second t1-start)]
       (tt/with-temp* [TaskHistory [t1 (assoc (make-10-millis-task t1-start)
                                         :task task-1)]

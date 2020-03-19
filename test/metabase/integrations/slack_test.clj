@@ -58,7 +58,9 @@
        (channels-list)))))
 
 (def ^:private default-users-response
-  (delay (slurp (io/resource "slack_users_response.json"))))
+  (delay (slurp (or (io/resource "slack_users_response.json")
+                    ;; when running from the REPL
+                    (slurp "./test_resources/slack_users_response.json")))))
 
 (def ^:private default-users
   (delay (:members (json/parse-string @default-users-response keyword))))

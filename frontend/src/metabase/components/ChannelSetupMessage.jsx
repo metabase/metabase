@@ -35,7 +35,7 @@ export default class ChannelSetupMessage extends Component {
         </div>
       );
     } else {
-      const adminEmail = Settings.get("admin_email");
+      const adminEmail = Settings.get("admin-email");
       content = (
         <div className="mb1">
           <h4 className="text-medium">{t`Your admin's email address`}:</h4>

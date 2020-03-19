@@ -62,6 +62,12 @@ export default class Radio extends Component {
       ? [UnderlinedList, UnderlinedItem]
       : [NormalList, NormalItem];
 
+    if (underlined && value === undefined) {
+      console.warn(
+        "Radio can't underline selected option when no value is given.",
+      );
+    }
+
     return (
       <List {...props} vertical={vertical} showButtons={showButtons}>
         {options.map((option, index) => {
@@ -150,6 +156,10 @@ const BubbleItem = styled(BaseItem)`
   color: ${props => (props.selected ? color("white") : color("brand"))};
   background-color: ${props =>
     props.selected ? color("brand") : lighten("brand")};
+  :hover {
+    background-color: ${props => !props.selected && lighten("brand", 0.38)};
+    transition: background 300ms linear;
+  }
 `;
 BubbleItem.defaultProps = {
   xspace: 1,

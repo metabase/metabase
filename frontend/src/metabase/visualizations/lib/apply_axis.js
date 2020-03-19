@@ -7,10 +7,10 @@ import moment from "moment";
 
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { formatValue } from "metabase/lib/formatting";
-import { parseTimestamp } from "metabase/lib/time";
 
 import { computeTimeseriesTicksInterval } from "./timeseries";
-import { isMultipleOf, getModuloScaleFactor } from "./numeric";
+import timeseriesScale from "./timeseriesScale";
+import { isMultipleOf } from "./numeric";
 import { getFriendlyName } from "./utils";
 import { isHistogram } from "./renderer_utils";
 
@@ -96,10 +96,6 @@ export function applyChartTimeseriesXAxis(
   // setup an x-axis where the dimension is a timeseries
   let dimensionColumn = firstSeries.data.cols[0];
 
-  // get the data's timezone offset from the first row
-  const dataOffset =
-    parseTimestamp(firstSeries.data.rows[0][0]).utcOffset() / 60;
-
   // compute the data interval
   const dataInterval = xInterval;
   let tickInterval = dataInterval;
@@ -120,6 +116,9 @@ export function applyChartTimeseriesXAxis(
       dimensionColumn = { ...dimensionColumn, unit: dataInterval.interval };
     }
 
+    // extract xInterval timezone for updating tickInterval
+    const { timezone } = tickInterval;
+
     // special handling for weeks
     // TODO: are there any other cases where we should do this?
     let tickFormatUnit = dimensionColumn.unit;
@@ -135,18 +134,15 @@ export function applyChartTimeseriesXAxis(
         newTickInterval.count !== tickInterval.count
       ) {
         tickFormatUnit = "month";
-        tickInterval = { interval: "month", count: 1 };
+        tickInterval = { interval: "month", count: 1, timezone };
       }
     }
 
     chart.xAxis().tickFormat(timestamp => {
-      // timestamp is a plain Date object which discards the timezone,
-      // so add it back in so it's formatted correctly
-      const timestampFixed = moment(timestamp)
-        .utcOffset(dataOffset)
-        .format();
-      const { column, columnSettings } = chart.settings.column(dimensionColumn);
-      return formatValue(timestampFixed, {
+      const { column, ...columnSettings } = chart.settings.column(
+        dimensionColumn,
+      );
+      return formatValue(timestamp, {
         ...columnSettings,
         column: { ...column, unit: tickFormatUnit },
         type: "axis",
@@ -155,21 +151,17 @@ export function applyChartTimeseriesXAxis(
     });
 
     // Compute a sane interval to display based on the data granularity, domain, and chart width
-    tickInterval = computeTimeseriesTicksInterval(
-      xDomain,
-      tickInterval,
-      chart.width(),
-    );
-    chart.xAxis().ticks(tickInterval.rangeFn, tickInterval.count);
-  } else {
-    chart.xAxis().ticks(0);
+    tickInterval = {
+      ...computeTimeseriesTicksInterval(xDomain, tickInterval, chart.width()),
+      timezone,
+    };
   }
 
   // pad the domain slightly to prevent clipping
   xDomain = stretchTimeseriesDomain(xDomain, dataInterval);
 
   // set the x scale
-  chart.x(d3.time.scale.utc().domain(xDomain)); //.nice(d3.time[dataInterval.interval]));
+  chart.x(timeseriesScale(tickInterval).domain(xDomain));
 
   // set the x units (used to compute bar size)
   chart.xUnits((start, stop) =>
@@ -228,14 +220,9 @@ export function applyChartQuantitativeXAxis(
     );
     adjustXAxisTicksIfNeeded(chart.xAxis(), chart.width(), xValues);
 
-    // if xInterval is less than 1 we need to scale the values before doing
-    // modulo comparison. isMultipleOf will compute it for us but we can do it
-    // once here as an optimization
-    const modulorScale = getModuloScaleFactor(xInterval);
-
     chart.xAxis().tickFormat(d => {
       // don't show ticks that aren't multiples of xInterval
-      if (isMultipleOf(d, xInterval, modulorScale)) {
+      if (isMultipleOf(d, xInterval)) {
         return formatValue(d, {
           ...chart.settings.column(dimensionColumn),
           type: "axis",
@@ -365,18 +352,7 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
   }
 
   if (axis.setting("axis_enabled")) {
-    // special case for normalized stacked charts
-    // for normalized stacked charts the y-axis is a percentage number. In Javascript, 0.07 * 100.0 = 7.000000000000001 (try it) so we
-    // round that number to get something nice like "7". Then we append "%" to get a nice tick like "7%"
-    if (chart.settings["stackable.stack_type"] === "normalized") {
-      axis.axis().tickFormat(value => Math.round(value * 100) + "%");
-    } else {
-      const metricColumn = series[0].data.cols[1];
-      axis.axis().tickFormat(value => {
-        value = maybeRoundValueToZero(value, yExtent);
-        return formatValue(value, chart.settings.column(metricColumn));
-      });
-    }
+    axis.axis().tickFormat(getYValueFormatter(chart, series, yExtent));
     chart.renderHorizontalGridLines(true);
     adjustYAxisTicksIfNeeded(axis.axis(), chart.height());
   } else {
@@ -435,4 +411,19 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
     }
     axis.scale(scale.domain([min, max]));
   }
+}
+
+export function getYValueFormatter(chart, series, yExtent) {
+  // special case for normalized stacked charts
+  // for normalized stacked charts the y-axis is a percentage number. In Javascript, 0.07 * 100.0 = 7.000000000000001 (try it) so we
+  // round that number to get something nice like "7". Then we append "%" to get a nice tick like "7%"
+  if (chart.settings["stackable.stack_type"] === "normalized") {
+    return value => Math.round(value * 100) + "%";
+  }
+  const metricColumn = series[0].data.cols[1];
+  const columnSettings = chart.settings.column(metricColumn);
+  return (value, options) => {
+    const roundedValue = maybeRoundValueToZero(value, yExtent);
+    return formatValue(roundedValue, { ...columnSettings, ...options });
+  };
 }

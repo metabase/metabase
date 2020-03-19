@@ -9,6 +9,12 @@ import TogglePropagateAction from "./containers/TogglePropagateAction";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { color, alpha } from "metabase/lib/colors";
 
+import {
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION,
+} from "metabase/plugins";
+
 import { t } from "ttag";
 
 import _ from "underscore";
@@ -119,16 +125,10 @@ function getPermissionWarning(
   const perm = value || getter(permissions, groupId, entityId);
   const defaultPerm = getter(permissions, defaultGroup.id, entityId);
   if (perm === "controlled" && defaultPerm === "controlled") {
-    return t`The "${
-      defaultGroup.name
-    }" group may have access to a different set of ${entityType} than this group, which may give this group additional access to some ${entityType}.`;
+    return t`The "${defaultGroup.name}" group may have access to a different set of ${entityType} than this group, which may give this group additional access to some ${entityType}.`;
   }
   if (hasGreaterPermissions(defaultPerm, perm)) {
-    return t`The "${
-      defaultGroup.name
-    }" group has a higher level of access than this, which will override this setting. You should limit or revoke the "${
-      defaultGroup.name
-    }" group's access to this item.`;
+    return t`The "${defaultGroup.name}" group has a higher level of access than this, which will override this setting. You should limit or revoke the "${defaultGroup.name}" group's access to this item.`;
   }
   return null;
 }
@@ -208,7 +208,7 @@ function getRevokingAccessToAllTablesWarningModal(
     // allTableEntityIds contains tables from all schemas
     const allTableEntityIds = database.tables.map(table => ({
       databaseId: table.db_id,
-      schemaName: table.schema || "",
+      schemaName: table.schema_name || "",
       tableId: table.id,
     }));
 
@@ -311,7 +311,7 @@ export const getTablesPermissionsGrid = createSelector(
       return null;
     }
 
-    const tables = database.tablesInSchema(schemaName || null);
+    const tables = database.schema(schemaName).tables;
     const defaultGroup = _.find(groups, isDefaultGroup);
 
     return {
@@ -333,7 +333,22 @@ export const getTablesPermissionsGrid = createSelector(
         fields: {
           header: t`Data Access`,
           options(groupId, entityId) {
-            return [OPTION_ALL, OPTION_NONE];
+            return [
+              OPTION_ALL,
+              ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
+              OPTION_NONE,
+            ];
+          },
+          actions(groupId, entityId) {
+            const value = getFieldsPermission(permissions, groupId, entityId);
+            const getActions =
+              PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS[value] || [];
+            return getActions.map(getAction => getAction(groupId, entityId));
+          },
+          postAction(groupId, entityId, value) {
+            const getPostAction =
+              PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION[value];
+            return getPostAction && getPostAction(groupId, entityId);
           },
           getter(groupId, entityId) {
             return getFieldsPermission(permissions, groupId, entityId);

@@ -97,7 +97,7 @@ export default class Aggregation extends MBQLClause {
       const metric = aggregation.metric();
       if (metric) {
         // delegate to the metric's definition
-        return metric.aggregation().columnName();
+        return metric.columnName();
       }
     } else if (aggregation.isStandard()) {
       const short = this.short();
@@ -134,10 +134,7 @@ export default class Aggregation extends MBQLClause {
   isValid(): boolean {
     if (this.hasOptions()) {
       return this.aggregation().isValid();
-    } else if (this.isCustom()) {
-      // TODO: custom aggregations
-      return true;
-    } else if (this.isStandard()) {
+    } else if (this.isStandard() && this.dimension()) {
       const dimension = this.dimension();
       const aggregation = this.query()
         .table()
@@ -151,8 +148,10 @@ export default class Aggregation extends MBQLClause {
       );
     } else if (this.isMetric()) {
       return !!this.metric();
+    } else {
+      // FIXME: custom aggregation validation
+      return true;
     }
-    return false;
   }
 
   // STANDARD AGGREGATION

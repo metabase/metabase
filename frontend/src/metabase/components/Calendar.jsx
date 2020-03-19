@@ -87,25 +87,20 @@ export default class Calendar extends Component {
 
   renderMonthHeader(current, side) {
     return (
-      <div className="Calendar-header flex align-center">
+      <div className="Calendar-header flex align-center border-bottom">
         {side !== "right" && (
           <div
-            className="bordered rounded p1 cursor-pointer transition-border border-hover px1"
+            className="cursor-pointer text-brand-hover"
             onClick={this.previous}
           >
             <Icon name="chevronleft" size={10} />
           </div>
         )}
         <span className="flex-full" />
-        <h4 className="cursor-pointer rounded p1">
-          {current.format("MMMM YYYY")}
-        </h4>
+        <h4>{current.format("MMMM YYYY")}</h4>
         <span className="flex-full" />
         {side !== "left" && (
-          <div
-            className="bordered border-hover rounded p1 transition-border cursor-pointer px1"
-            onClick={this.next}
-          >
+          <div className="cursor-pointer text-brand-hover" onClick={this.next}>
             <Icon name="chevronright" size={10} />
           </div>
         )}
@@ -157,8 +152,11 @@ export default class Calendar extends Component {
   renderCalender(current, side) {
     return (
       <div
-        className={cx("Calendar Grid-cell", {
-          "Calendar--range": this.props.selected && this.props.selectedEnd,
+        className={cx("Calendar", {
+          "Calendar--range":
+            this.props.isRangePicker &&
+            this.props.selected &&
+            this.props.selectedEnd,
         })}
       >
         {this.renderMonthHeader(current, side)}
@@ -186,7 +184,7 @@ class Week extends Component {
     let { date, month, selected, selectedEnd } = this.props;
 
     for (let i = 0; i < 7; i++) {
-      const classes = cx("Calendar-day p1 cursor-pointer text-centered", {
+      const classes = cx("Calendar-day cursor-pointer text-centered", {
         "Calendar-day--today": date.isSame(new Date(), "day"),
         "Calendar-day--this-month": date.month() === month.month(),
         "Calendar-day--selected": selected && date.isSame(selected, "day"),

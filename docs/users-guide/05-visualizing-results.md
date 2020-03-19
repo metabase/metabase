@@ -5,7 +5,7 @@ While tables are useful for looking up information or finding specific numbers, 
 In Metabase, an answer to a question can be visualized in a number of ways:
 
 - [Number](#numbers)
-- [Trend](#smart-numbers)
+- [Trend](#trends)
 - [Progress bar](#progress-bars)
 - [Gauge](#gauges)
 - [Table](#tables)
@@ -41,11 +41,11 @@ This option is for displaying a single number, nice and big. The options for num
 
 The Trend visualization is great for displaying how a single number has changed over time. To use this visualization, you'll need to have a single number grouped by a Time field, like the Count of Orders by Created At. The Trend will show you the value of the number during the most recent period, and below that you'll see how much the number has increased or decreased compared to its value in the period before that. The period is determined by your group-by field: if you're grouping by Day, the Trend will show you the most recent day compared to the day before that.
 
-![Smart Number](images/visualizations/smart-number.png)
+![Trend](images/visualizations/trend.png)
 
 By default, Trends will display increases as green (i.e. "good") and decreases as red ("bad"). If your number is something where an increase is bad and a decrease is good (such as Bounce Rate, or Costs), you can reverse this behavior in the visualization settings:
 
-![Smart Number settings](images/visualizations/smart-scalar-settings.png)
+![Trend settings](images/visualizations/trend-settings.png)
 
 #### Progress bars
 
@@ -189,10 +189,32 @@ By default, Metabase will automatically choose a good way to bin your results. B
 
 These three charting types have very similar options, which are broken up into the following:
 
-- **Data** — choose the fields you want to plot on your x and y axes. This is mostly useful if your table or result set contains more than two columns, like if you're trying to graph fields from an unaggregated table. You can also add additional metrics to your chart by clicking the `Add another series` link below the y-axis dropdown, or break your current metric out by an additional dimension by clicking the `Add a series breakout` link below the x-axis dropdown (note that you can't add an additional series breakout if you have more than one metric/series).
-- **Display** — here's where you can make some cosmetic changes, like setting colors, and stacking bar or area charts. With line and area charts, you can also change the line style (line, curve, or step). You can also set a goal line for your chart, display a trend line, or configure how your chart deals with x-axis points that have missing y-axis values.
-- **Axes** — this is where you can hide axis markers or change their ranges, and turn split axes on or off. You can also configure the way your axes are scaled, if you're into that kind of thing.
-- **Labels** — if you want to hide axis labels or customize them, here's where to go.
+**Data**
+
+Here's where you can choose the columns you want to plot on your x and y axes. This is mostly useful if your table or result set contains more than two columns, like if you're trying to graph fields from an unaggregated table. You can also add additional metrics to your chart by clicking the `Add another series` link below the y-axis dropdown, or break your current metric out by an additional dimension by clicking the `Add a series breakout` link below the x-axis dropdown (note that you can't add an additional series breakout if you have more than one metric/series).
+
+**Display**
+
+There's quite a bit you can do in this tab:
+
+- Set the colors and labels for the series on your chart.
+- Change the style of your lines for Line and Area charts, and choose whether or not to display dots on them.
+- Use the "Replace missing values with…" setting to change how your chart deals with missing values. You can use linear interpolation, or display those points as zero or as nothing.
+- Add a goal line. This can be used in conjunction with [alerts](15-alerts.md) to send an email or a Slack message when your metric cross this line.
+- If you're looking at a time series chart, you can turn on a trend line to show where things are heading.
+- Show values on data points. The default setting will try and fit as many values on your chart as will fit nicely, but you can also force Metabase to show the values for each and every data point, which it will do begrudgingly.
+
+**Axes**
+
+There are three main things you can do here:
+
+- Change the scale for your axes. If you're looking at a time series chart, your x-axis can use a time series scale or an ordinal one. Your y-axis can use a linear, power, or logarithmic scale.
+- Hide or show the tick marks on your axes. You can also choose to rotate the tick marks on the x-axis to help them fit better.
+- Edit the range of your y-axis. Metabase sets an automatic range by default, but you can toggle that off and input a custom minimum and maximum value for the y-axis if you'd like.
+
+**Labels**
+
+Here's where you can choose to hide the label for your x- or y-axis. You can also customize the text for your axis labels here.
 
 #### Scatterplots and bubble charts
 

@@ -8,6 +8,7 @@
             [toucan.db :as db])
   (:import org.joda.time.DateTime))
 
+;; TIMEZONE FIXME - no Joda Time
 (defn- extract-time-zone [^DateTime dt]
   (-> dt .getChronology .getZone .getID))
 
@@ -19,12 +20,11 @@
   upon success, `nil` if query failed."
   [database :- i/DatabaseInstance]
   (try
-    (let [tz-id (some-> database
-                        driver.u/database->driver
-                        (driver/current-db-time database)
-                        extract-time-zone)]
-      (when-not (= tz-id (:timezone database))
-        (db/update! Database (:id database) {:timezone tz-id}))
-      {:timezone-id tz-id})
+    (let [driver  (driver.u/database->driver database)
+          zone-id (or (driver/db-default-timezone driver database)
+                      (some-> (driver/current-db-time driver database) extract-time-zone))]
+      (when-not (= zone-id (:timezone database))
+        (db/update! Database (:id database) {:timezone zone-id}))
+      {:timezone-id zone-id})
     (catch Exception e
       (log/warn e "Error syncing database timezone"))))

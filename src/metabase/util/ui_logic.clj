@@ -14,7 +14,7 @@
   (and (or (isa? base_type :type/Number)
            (isa? special_type :type/Number))
        (not (isa? special_type :type/Special))
-       (not (isa? special_type :type/DateTime))))
+       (not (isa? special_type :type/Temporal))))
 
 (defn- metric-column?
   "A metric column is any non-breakout column that is summable (numeric that isn't a special type like an FK/PK/Unix
