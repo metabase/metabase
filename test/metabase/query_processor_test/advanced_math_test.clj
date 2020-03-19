@@ -61,6 +61,16 @@
     (is (= 2.0 (test-math-expression [:sqrt [:power 2 2]])))))
 
 
+(deftest test-filter
+  (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
+    (->> {:aggregation [[:count]]
+          :filter      [:> [:round [:sqrt [:field-id  (data/id :venues :price)]]] 2]}
+         (mt/run-mbql-query venues)
+         rows
+         ffirst
+         int))
+
+
 (defn- test-aggregation
   [agg]
   (->> {:aggregation [agg]}
