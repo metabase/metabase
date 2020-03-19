@@ -95,9 +95,16 @@ export default class SnippetSidebar extends React.Component {
   );
 
   insertSnippet({ name }) {
-    const { query, setDatasetQuery, nativeEditorCursorOffset } = this.props;
+    const {
+      query,
+      setDatasetQuery,
+      nativeEditorCursorOffset,
+      nativeEditorSelectedText,
+    } = this.props;
     const newText =
-      query.queryText().slice(0, nativeEditorCursorOffset) +
+      query
+        .queryText()
+        .slice(0, nativeEditorCursorOffset - nativeEditorSelectedText.length) +
       `{{snippet: ${name}}}` +
       query.queryText().slice(nativeEditorCursorOffset);
     setDatasetQuery(query.setQueryText(newText).datasetQuery());
