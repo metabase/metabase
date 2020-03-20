@@ -369,6 +369,33 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
     scale = d3.scale.linear();
   }
 
+  // This makes non-zero bar values take up at least one pixel.
+  // Ideally, we would just pass a custom interpolate factory to `interpolate`.
+  // However, dc.js passes its own after we give it the scael, so instead we
+  // overwrite the scale's interpolate method. That let's us use theirs but
+  // special case values withing one pixel of the edge.
+  if (series.every(s => s.card.display === "bar")) {
+    const _interpolate = scale.interpolate.bind(scale);
+    scale.interpolate = customInterpolatorFactory =>
+      _interpolate((a, b) => {
+        // dc.js uses a rounding interpolator. We want to use the factory they
+        // pass in, but we also need to create d3's default interpolator. We use
+        // that to see when a value is between 0 and 1. If we just looked at the
+        // rounded value, 0.49 would round to 0 and we wouldn't bump it up to 1.
+        const custom = customInterpolatorFactory(a, b);
+        const unrounded = d3.interpolate(a, b);
+        return t => {
+          const value = unrounded(t);
+          const onePixelUp = custom(0) - 1;
+          // y goes from top to bottom, so "onePixelUp" is actually the largest value
+          if (onePixelUp < value && value < unrounded(0)) {
+            return onePixelUp;
+          }
+          return custom(t);
+        };
+      });
+  }
+
   scale.clamp(true);
 
   if (axis.setting("auto_range")) {
