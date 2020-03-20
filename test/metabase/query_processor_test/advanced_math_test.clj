@@ -63,12 +63,12 @@
 
 (deftest test-filter
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
-    (->> {:aggregation [[:count]]
-          :filter      [:> [:round [:sqrt [:field-id  (data/id :venues :price)]]] 2]}
-         (mt/run-mbql-query venues)
-         rows
-         ffirst
-         int))
+    (is (= 19 (->> {:aggregation [[:count]]
+                    :filter      [:> [:round [:power [:field-id (data/id :venues :price)] 2]] 5]}
+                   (mt/run-mbql-query venues)
+                   rows
+                   ffirst
+                   int)))))
 
 
 (defn- test-aggregation

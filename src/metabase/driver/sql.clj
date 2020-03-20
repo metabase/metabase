@@ -21,6 +21,8 @@
                  :native-parameters
                  :nested-queries
                  :binning
+                 :advanced-math-expressions
+                 :percentile-aggregations
                  :regex]]
   (defmethod driver/supports? [:sql feature] [_ _] true))
 

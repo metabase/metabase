@@ -456,6 +456,7 @@
     s/Str
     DatetimeLiteral
     FieldOrRelativeDatetime
+    ExpressionArg
     value)))
 
 (def ^:private OrderComparible
@@ -466,6 +467,7 @@
      s/Num
      s/Str
      DatetimeLiteral
+     ExpressionArg
      FieldOrRelativeDatetime)))
 
 ;; For all of the non-compound Filter clauses below the first arg is an implicit Field ID
@@ -479,13 +481,13 @@
 ;; `!=` works like SQL `NOT IN` with more than 2 args
 ;; [:!= [:field-id 1] 2 3] --[DESUGAR]--> [:and [:!= [:field-id 1] 2] [:!= [:field-id 1] 3]]
 
-(defclause =,  field Field, value-or-field EqualityComparible, more-values-or-fields (rest EqualityComparible))
-(defclause !=, field Field, value-or-field EqualityComparible, more-values-or-fields (rest EqualityComparible))
+(defclause =,  field EqualityComparible, value-or-field EqualityComparible, more-values-or-fields (rest EqualityComparible))
+(defclause !=, field EqualityComparible, value-or-field EqualityComparible, more-values-or-fields (rest EqualityComparible))
 
-(defclause <,  field Field, value-or-field OrderComparible)
-(defclause >,  field Field, value-or-field OrderComparible)
-(defclause <=, field Field, value-or-field OrderComparible)
-(defclause >=, field Field, value-or-field OrderComparible)
+(defclause <,  field OrderComparible, value-or-field OrderComparible)
+(defclause >,  field OrderComparible, value-or-field OrderComparible)
+(defclause <=, field OrderComparible, value-or-field OrderComparible)
+(defclause >=, field OrderComparible, value-or-field OrderComparible)
 
 (defclause between field Field, min OrderComparible, max OrderComparible)
 
