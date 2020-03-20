@@ -41,7 +41,12 @@ export default class Database extends Base {
     return this.schemas.map(s => s.name).sort((a, b) => a.localeCompare(b));
   }
 
-  hasFeature(feature: DatabaseFeature | VirtualDatabaseFeature): boolean {
+  hasFeature(
+    feature: null | DatabaseFeature | VirtualDatabaseFeature,
+  ): boolean {
+    if (!feature) {
+      return true;
+    }
     const set = new Set(this.features);
     if (feature === "join") {
       return (

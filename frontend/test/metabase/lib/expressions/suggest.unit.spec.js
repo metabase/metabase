@@ -20,11 +20,14 @@ const AGGREGATION_FUNCTIONS = [
   { type: "aggregations", text: "CumulativeSum(" },
   { type: "aggregations", text: "Distinct(" },
   { type: "aggregations", text: "Max(" },
+  { type: "aggregations", text: "Median(" },
   { type: "aggregations", text: "Min(" },
+  { type: "aggregations", text: "Percentile(" },
   { type: "aggregations", text: "Share(" },
   { type: "aggregations", text: "StandardDeviation(" },
   { type: "aggregations", text: "Sum(" },
   { type: "aggregations", text: "SumIf(" },
+  { type: "aggregations", text: "Variance(" },
 ];
 const STRING_FUNCTIONS = [
   { text: "concat(", type: "functions" },
@@ -42,6 +45,7 @@ const NUMERIC_FUNCTIONS = [
   { text: "ceil(", type: "functions" },
   { text: "exp(", type: "functions" },
   { text: "floor(", type: "functions" },
+  { text: "length(", type: "functions" },
   { text: "log(", type: "functions" },
   { text: "power(", type: "functions" },
   { text: "round(", type: "functions" },

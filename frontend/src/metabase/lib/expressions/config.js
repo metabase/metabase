@@ -98,6 +98,7 @@ export const MBQL_CLAUSES = {
     displayName: `StandardDeviation`,
     type: "aggregation",
     args: ["number"],
+    requiresFeature: "standard-deviation-aggregations",
   },
   avg: {
     displayName: `Average`,
@@ -133,16 +134,19 @@ export const MBQL_CLAUSES = {
     displayName: `Variance`,
     type: "aggregation",
     args: ["number"],
+    requiresFeature: "standard-deviation-aggregations",
   },
   median: {
     displayName: `Median`,
     type: "aggregation",
     args: ["number"],
+    requiresFeature: "percentile-aggregations",
   },
   percentile: {
     displayName: `Percentile`,
     type: "aggregation",
     args: ["number"],
+    requiresFeature: "percentile-aggregations",
   },
   // string functions
   lower: {
@@ -164,7 +168,7 @@ export const MBQL_CLAUSES = {
     displayName: `regexextract`,
     type: "string",
     args: ["string", "string"],
-    requiredFeatures: ["regex"],
+    requiresFeature: "regex",
   },
   concat: {
     displayName: `concat`,
@@ -179,7 +183,7 @@ export const MBQL_CLAUSES = {
   },
   length: {
     displayName: `length`,
-    type: "string",
+    type: "number",
     args: ["string"],
   },
   trim: {
@@ -202,41 +206,49 @@ export const MBQL_CLAUSES = {
     displayName: `abs`,
     type: "number",
     args: ["number"],
+    requiresFeature: "expressions",
   },
   floor: {
     displayName: `floor`,
     type: "number",
     args: ["number"],
+    requiresFeature: "expressions",
   },
   ceil: {
     displayName: `ceil`,
     type: "number",
     args: ["number"],
+    requiresFeature: "expressions",
   },
   round: {
     displayName: `round`,
     type: "number",
     args: ["number"],
+    requiresFeature: "expressions",
   },
   sqrt: {
     displayName: `sqrt`,
     type: "number",
     args: ["number"],
+    requiresFeature: "advanced-math-expressions",
   },
   power: {
     displayName: `power`,
     type: "number",
     args: ["number", "number"],
+    requiresFeature: "advanced-math-expressions",
   },
   log: {
     displayName: `log`,
     type: "number",
     args: ["number"],
+    requiresFeature: "advanced-math-expressions",
   },
   exp: {
     displayName: `exp`,
     type: "number",
     args: ["number"],
+    requiresFeature: "advanced-math-expressions",
   },
   // boolean functions
   contains: {
