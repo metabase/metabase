@@ -10,21 +10,28 @@ Want to build your own driver? Take a look at the [driver development](#driver-d
 
 In order to install a community driver, you would typically download the latest jar file from the relevant repository release page and copy it into the plugins directory.
 
-All Metabase plugins live in the plugins directory, which defaults to `./plugins` in the same directory as `metabase.jar`. The plugins directory can be changed by setting the env var `MB_PLUGINS_DIR`. 
+All Metabase plugins live in the plugins directory, which defaults to `./plugins` in the same directory as `metabase.jar`. The plugins directory can be changed by setting the env var `MB_PLUGINS_DIR`.
 
-Please note that you install these at your own risk. The plugins will run as part of your Metabase instance and, as such, will have access to anything it does. These are the currently known 3rd-party database drivers for Metabase.
+**Note:** You install these at your own risk. The plugins will run as part of your Metabase instance and, as such, will have access to anything it does.
 
-| Database | GitHub Stars | Last release (_if available_) |
-| ---- | ---- | ----|
-| [Amazon Athena](https://github.com/dacort/metabase-athena-driver) | ![GitHub stars](https://img.shields.io/github/stars/dacort/metabase-athena-driver) | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/dacort/metabase-athena-driver) |
-| [ClickHouse](https://github.com/enqueue/metabase-clickhouse-driver) | ![GitHub stars](https://img.shields.io/github/stars/enqueue/metabase-clickhouse-driver) | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/enqueue/metabase-clickhouse-driver) |
-| [CSV](https://github.com/Markenson/csv-metabase-driver) | ![GitHub stars](https://img.shields.io/github/stars/Markenson/csv-metabase-driver) ||
-| [Cube.js](https://github.com/lili-data/metabase-cubejs-driver) | ![GitHub stars](https://img.shields.io/github/stars/lili-data/metabase-cubejs-driver) | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/lili-data/metabase-cubejs-driver) |
-| [Datomic](https://github.com/lambdaisland/metabase-datomic) | ![GitHub stars](https://img.shields.io/github/stars/lambdaisland/metabase-datomic) ||
-| [DB2](https://github.com/dludwig-jrt/metabase-db2-driver) | ![GitHub stars](https://img.shields.io/github/stars/dludwig-jrt/metabase-db2-driver) ||
-| [Firebird](https://github.com/evosec/metabase-firebird-driver) | ![GitHub stars](https://img.shields.io/github/stars/evosec/metabase-firebird-driver) | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/evosec/metabase-firebird-driver) |
-| [Teradata](https://github.com/swisscom-bigdata/metabase-teradata-driver) | ![GitHub stars](https://img.shields.io/github/stars/swisscom-bigdata/metabase-teradata-driver) | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/swisscom-bigdata/metabase-teradata-driver) |
-| [Spark Databricks](https://github.com/ifood/metabase-sparksql-databricks-driver) | ![GitHub stars](https://img.shields.io/github/stars/ifood/metabase-sparksql-databricks-driver) | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/ifood/metabase-sparksql-databricks-driver) |
+These are the currently known 3rd-party database drivers for Metabase.
+
+| Database                                                                         | GitHub Stars                                                                                    | Last release (_if available_)                                                                                           |
+| -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| [Amazon Athena](https://github.com/dacort/metabase-athena-driver)                | ![GitHub stars](https://img.shields.io/github/stars/dacort/metabase-athena-driver)              | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/dacort/metabase-athena-driver)              |
+| [ClickHouse](https://github.com/enqueue/metabase-clickhouse-driver)              | ![GitHub stars](https://img.shields.io/github/stars/enqueue/metabase-clickhouse-driver)         | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/enqueue/metabase-clickhouse-driver)         |
+| [CSV](https://github.com/Markenson/csv-metabase-driver)                          | ![GitHub stars](https://img.shields.io/github/stars/Markenson/csv-metabase-driver)              |                                                                                                                         |
+| [Cube.js](https://github.com/lili-data/metabase-cubejs-driver)                   | ![GitHub stars](https://img.shields.io/github/stars/lili-data/metabase-cubejs-driver)           | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/lili-data/metabase-cubejs-driver)           |
+| [Datomic](https://github.com/lambdaisland/metabase-datomic)                      | ![GitHub stars](https://img.shields.io/github/stars/lambdaisland/metabase-datomic)              |                                                                                                                         |
+| [DB2](https://github.com/dludwig-jrt/metabase-db2-driver)                        | ![GitHub stars](https://img.shields.io/github/stars/dludwig-jrt/metabase-db2-driver)            |                                                                                                                         |
+| [Firebird](https://github.com/evosec/metabase-firebird-driver)                   | ![GitHub stars](https://img.shields.io/github/stars/evosec/metabase-firebird-driver)            | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/evosec/metabase-firebird-driver)            |
+| [Materialize](https://github.com/MaterializeInc/metabase-materialize-driver)     | ![GitHub stars](https://img.shields.io/github/stars/MaterializeInc/metabase-materialize-driver) | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/MaterializeInc/metabase-materialize-driver) |
+| [Teradata](https://github.com/swisscom-bigdata/metabase-teradata-driver)         | ![GitHub stars](https://img.shields.io/github/stars/swisscom-bigdata/metabase-teradata-driver)  | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/swisscom-bigdata/metabase-teradata-driver)  |
+| [Spark Databricks](https://github.com/ifood/metabase-sparksql-databricks-driver) | ![GitHub stars](https://img.shields.io/github/stars/ifood/metabase-sparksql-databricks-driver)  | ![GitHub (Pre-)Release Date](https://img.shields.io/github/release-date-pre/ifood/metabase-sparksql-databricks-driver)  |
+
+If you don't see a driver for your database, then try looking in the comments of the [issue related to the database](https://github.com/metabase/metabase/labels/Database%2F). You might also find more by [searching on GitHub](https://github.com/search?q=metabase+driver).
+
+If you are having problems with installing or using a community driver, your best bet is to contact the author of the driver.
 
 ## Driver development
 
@@ -32,7 +39,7 @@ If the driver you're looking for isn't available, take a look at the [Writing a 
 
 - If your database has a JDBC driver, you'll be able to make use of some common classes that already exist in Metabase.
 - We're still working on providing an independent test framework for drivers, but you can copy or symlink your driver into a local copy of the Metabase source code in order to utilize pre-existing tests. Take a look at [Test Extension Basics](https://github.com/metabase/metabase/wiki/Writing-a-Driver:-Adding-Test-Extensions,-Tests,-and-Setting-up-CI#test-extensions-basics) on the wiki.
-- If you have questions related to driver development, feel free to post on our [driver development forum](https://discourse.metabase.com/c/driver-development). 
+- If you have questions related to driver development, feel free to post on our [driver development forum](https://discourse.metabase.com/c/driver-development).
 
 ## Driver development announcements
 

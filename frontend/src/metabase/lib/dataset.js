@@ -41,95 +41,28 @@ export const rangeForValue = (
   }
 };
 
-const loggedKeys = new Set(); // just to make sure we log each mismatch only once
-export function fieldRefForColumnWithLegacyFallback(
-  column: any,
-  fieldRefForColumn_LEGACY: any,
-  debugName: any,
-  whitelist?: string[],
-): any {
-  // NOTE: matching existing behavior of returning the unwrapped base dimension until we understand the implications of changing this
-  const fieldRef =
-    column.field_ref &&
-    Dimension.parseMBQL(column.field_ref)
-      .baseDimension()
-      .mbql();
-
-  // TODO: remove this once we're sure field_ref is returning correct values
-  const fieldRef_LEGACY =
-    fieldRefForColumn_LEGACY && fieldRefForColumn_LEGACY(column);
-
-  const key = JSON.stringify([debugName, fieldRef, fieldRef_LEGACY]);
-  if (fieldRefForColumn_LEGACY && !loggedKeys.has(key)) {
-    loggedKeys.add(key);
-    if (!_.isEqual(fieldRef, fieldRef_LEGACY)) {
-      console.group(debugName + " mismatch");
-      console.warn("column", column.name, column.field_ref);
-      console.warn("new", fieldRef);
-      console.warn("old", fieldRef_LEGACY);
-      console.groupEnd();
-    }
-  }
-
-  // NOTE: whitelisting known correct clauses for now while we make sure the rest are correct
-  if (!whitelist || (fieldRef && whitelist.includes(fieldRef[0]))) {
-    return fieldRef;
-  }
-  return fieldRef_LEGACY;
-}
-
 /**
  * Returns a MBQL field reference (FieldReference) for a given result dataset column
  *
  * @param  {Column} column Dataset result column
- * @param  {?Column[]} columns Full array of columns, unfortunately needed to determine the aggregation index
  * @return {?FieldReference} MBQL field reference
  */
-export function fieldRefForColumn(
-  column: Column,
-  columns?: Column[],
-): ?FieldReference {
-  return fieldRefForColumnWithLegacyFallback(
-    column,
-    c => fieldRefForColumn_LEGACY(c, columns),
-    "dataset::fieldRefForColumn",
-    ["field-literal"],
+export function fieldRefForColumn(column: Column): ?FieldReference {
+  // NOTE: matching existing behavior of returning the unwrapped base dimension until we understand the implications of changing this
+  return (
+    column.field_ref &&
+    Dimension.parseMBQL(column.field_ref)
+      .baseDimension()
+      .mbql()
   );
-}
-
-function fieldRefForColumn_LEGACY(
-  column: Column,
-  columns?: Column[],
-): ?FieldReference {
-  if (column.id != null) {
-    if (Array.isArray(column.id)) {
-      // $FlowFixMe: sometimes col.id is a field reference (e.x. nested queries), if so just return it
-      return column.id;
-    } else if (column.fk_field_id != null) {
-      return [
-        "fk->",
-        ["field-id", column.fk_field_id],
-        ["field-id", column.id],
-      ];
-    } else {
-      return ["field-id", column.id];
-    }
-  } else if (column.expression_name != null) {
-    return ["expression", column.expression_name];
-  } else if (column.source === "aggregation" && columns) {
-    // HACK: find the aggregation index, preferably this would be included on the column
-    const aggIndex = columns
-      .filter(c => c.source === "aggregation")
-      .indexOf(column);
-    if (aggIndex >= 0) {
-      return ["aggregation", aggIndex];
-    }
-  }
-  return null;
 }
 
 export const keyForColumn = (column: Column): string => {
   const ref = fieldRefForColumn(column);
+  // match bug where joined-field returned field-id instead
+  if (Array.isArray(ref) && ref[0] === "joined-field") {
+    return JSON.stringify(["ref", ref[2]]);
+  }
   // match legacy behavior which didn't have "field-literal" or "aggregation" field refs
   if (
     Array.isArray(ref) &&
