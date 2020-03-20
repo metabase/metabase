@@ -60,6 +60,8 @@ If you come across an x-ray that's particularly interesting, you can save it as 
 
 If for some reason x-rays aren't a good fit for your team or your data, administrators can turn them off completely in the general settings area of the Admin Panel.
 
+If you want to hide the suggestions from the home page for all users, while still keeping X-rays enabled, then hover the home page section and click the `X` next to "Try these x-rays based on your data", when logged in as an administrator.
+
 ### Need help?
 
 If you still have questions about x-rays or comparisons, you can head over to our [discussion forum](https://discourse.metabase.com/). See you there!
