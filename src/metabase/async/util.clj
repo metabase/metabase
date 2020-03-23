@@ -6,7 +6,7 @@
             [schema.core :as s])
   (:import clojure.core.async.impl.buffers.PromiseBuffer
            clojure.core.async.impl.channels.ManyToManyChannel
-           java.util.concurrent.Future))
+           [java.util.concurrent Executor Future]))
 
 ;; TODO - most of this stuff can be removed now that we have the new-new reducible/async QP implementation of early
 ;; 2020. No longer needed
@@ -36,7 +36,7 @@
       (a/close! out-chan)))
   nil)
 
-(s/defn ^:private do-on-separate-thread* :- Future
+(s/defn ^:deprecated ^:private do-on-separate-thread* :- Future
   [out-chan f & args]
   (future
     (try
@@ -58,12 +58,15 @@
       (finally
         (a/close! out-chan)))))
 
-(s/defn do-on-separate-thread :- PromiseChan
+(s/defn ^:deprecated do-on-separate-thread :- PromiseChan
   "Run `(apply f args)` on a separate thread, returns a channel to fetch the results. Closing this channel early will
   cancel the future running the function, if possible.
 
   This is basically like `core.async/thread-call` but returns a promise channel instead of a regular channel and
-  cancels the execution of `f` if the channel closes early."
+  cancels the execution of `f` if the channel closes early.
+
+  DEPRECATED -- use `cancelable-thread-call` or `cancelable-thread` instead, which accomplishes the same thing in a
+  simpler fashion with an interface more similar to existing `a/thread` and `a/thread-call`."
   [f & args]
   (let [out-chan (a/promise-chan)
         ;; Run `f` on a separarate thread because it's a potentially long-running QP query and we don't want to tie
@@ -75,3 +78,42 @@
         (log/debug (trs "Request canceled, canceling future."))
         (future-cancel futur)))
     out-chan))
+
+(defn cancelable-thread-call
+  "Exactly like `a/thread-call`, with two differences:
+
+    1) the result channel is a promise channel instead of a regular channel
+    2) Closing the result channel early will cancel the async thread call."
+  [f]
+  ;; create two channels:
+  ;; * `done-chan` will always get closed immediately after `(f)` is finished
+  ;; * `result-chan` will get the result of `(f)`, *after* `done-chan` is closed
+  (let [done-chan   (a/promise-chan)
+        result-chan (a/promise-chan)
+        f*          (bound-fn []
+                      (let [result (try
+                                     (f)
+                                     (catch Throwable e
+                                       (log/trace e "cancelable-thread-call: caught exception in f")
+                                       e))]
+                        (a/close! done-chan)
+                        (when (some? result)
+                          (a/>!! result-chan result)))
+                      (a/close! result-chan))
+        futur       (.execute ^Executor (var-get (resolve 'clojure.core.async/thread-macro-executor)) f*)]
+    ;; if `result-chan` gets a result/closed *before* `done-chan`, it means it was closed by the caller, so we should
+    ;; cancel the thread running `f*`
+    (a/go
+      (let [[_ port] (a/alts! [done-chan result-chan] :priority true)]
+        (when (= port result-chan)
+          (log/trace "cancelable-thread-call: result channel closed before f finished; canceling thread")
+          (future-cancel futur))))
+    result-chan))
+
+(defmacro cancelable-thread
+  "Exactly like `a/thread`, with two differences:
+
+    1) the result channel is a promise channel instead of a regular channel
+    2) Closing the result channel early will cancel the async thread call."
+  [& body]
+  `(cancelable-thread-call (fn [] ~@body)))
