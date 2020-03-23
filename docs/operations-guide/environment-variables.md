@@ -5,15 +5,20 @@ Many settings in Metabase can viewed and modified in the Admin Panel, or set via
 Setting environment variables can be done in various ways depending on how Metabase is being run.
 
 JAR (Note that on Windows, use `set` instead of `export`):
+
 ```
 export MB_SITE_NAME="Awesome Company"
 java -jar metabase.jar
 ```
+
 JAR alternative (declared with `-D` prepending the variable):
+
 ```
 java -DMB_SITE_NAME="Awesome Company" -jar metabase.jar
 ```
+
 Docker:
+
 ```
 docker run -d -p 3000:3000 -e 'MB_SITE_NAME=Awesome Company' --name metabase metabase/metabase
 ```
@@ -543,14 +548,14 @@ Search base for users. (Will be searched recursively)
 #### `MB_LDAP_USER_FILTER`
 
 Type: string<br>
-Default: ```"(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))"```
+Default: `"(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))"`
 
 User lookup filter, the placeholder `{login}` will be replaced by the user supplied login.
 
 #### `MB_MAP_TILE_SERVER_URL`
 
 Type: string<br>
-Default: ```"http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"```
+Default: `"http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"`
 
 The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.
 
@@ -727,4 +732,3 @@ Type: string<br>
 Default: `"http://static.metabase.com/version-info.json"`
 
 The address used to check for newer versions of Metabase.
-
