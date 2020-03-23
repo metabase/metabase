@@ -34,6 +34,8 @@ You can add subsequent filter steps after every Summarize step. This lets you do
 
 **Filter expressions and including ORs in filters**
 
+![Filter expression](./images/expressions/filter-expression.png)
+
 If you have a more complex filter you're trying to express, you can pick "Custom Expression" from the add-filter menu create a filter expression. You can use comparison operators like greater than (>) or less than (<), as well as spreadsheet-like functions. For example, `[Subtotal] > 100 OR median([Age]) < 40`. [Learn more about writing expressions](./expressions.md)
 
 #### Summarizing
@@ -48,9 +50,13 @@ If you summarize and add a grouping you can then summarize _again_. You can also
 
 **Custom expressions**
 
+![Custom expression](./images/expressions/aggregation-expression.png)
+
 Custom expressions allow you to use spreadsheet-like functions and simple arithmetic within or between aggregation functions. For example, you could do `Average(sqrt[FieldX]) + Sum([FieldY])` or `Max(floor([FieldX] - [FieldY]))`, where `FieldX` and `FieldY` are fields in the currently selected table. [Learn more about writing expressions](./expressions.md)
 
 #### Creating custom columns
+
+![Custom column](./images/expressions/custom-column.png)
 
 Custom columns are helpful when you need to create a new column based on a calculation, such as subtracting the value of one column from another, or extracting a portion of an existing text column. Note that columns you add in a custom question are not permanently added to your table; they'll only be present in the given question.
 

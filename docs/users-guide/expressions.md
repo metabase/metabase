@@ -7,7 +7,7 @@ Custom expressions are a way to create more advanced filters and aggregations, o
 In each of these three places, you can:
 
 - Use parentheses to group parts of your expression.
-- Use basic mathematical operators: `+`, `-`, `*` (multiply), `/` (divide).
+- Use basic mathematical operators: `+`, `-`, `*` (multiply), `/` (divide) on numeric column with numeric values, like integers, floats, and doubles. You can't currently do math on timestamp columns.
 - Use conditional operators: `AND`, `OR`, `NOT`, `>`, `>=` (greater than or equal to), `<`, `<=` (less than or equal to), `=`, `!=` (not equal to).
 - Refer to columns in the current table, or columns that are linked via a foreign key relationship. Column names should be included inside of square brackets, like this: `[Name of Column]`. Columns in connected tables can be referred to like this: `[ConnectedTableName.Column]`.
 - Refer to saved [Segments or Metrics](../administration-guide/07-segments-and-metrics.md) that are present in the currently selected table. You write these out the same as with columns, like this: `[Valid User Sessions]`.
@@ -36,6 +36,16 @@ Some other things to keep in mind about filter expressions and conditionals:
 
 - Filter expressions are different in that they must return something that's true or false. E.g., you could write `[Subtotal] + [Tax] < 100`, but not just `[Subtotal] + [Tax]`.
 - You can use functions inside of the conditional portion of the `countif` and `sumif` aggregations, like so: `countif( round([Subtotal]) > 100 OR floor([Tax]) < 10 )`
+
+### Working with dates in filter expressions
+
+If you want to work with dates in your filter expressions, they'll need to follow the format, `"YYYY-MM-DD"` — i.e., four characters for the year, two for the month, and two for the day, enclosed in quotes and separated by dashes.
+
+Example:
+
+`between([Created At], "2020-01-01", "2020-03-31") OR [Received At] > "2019-12-25"`
+
+This would return rows where `Created At` is between January 1, 2020 and March 31, 2020, or where `Received At` is after December 25, 2019.
 
 ### List of all available functions for expressions
 
@@ -100,3 +110,5 @@ SQLite
 - variance
 
 Additionally, **Vertica**, **BigQuery**, and **Presto** only provide _approximate_ results for median and percentile.
+
+If you're using or maintaining a third-party database driver, please [refer to the wiki](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) to see how your driver might be impacted.
