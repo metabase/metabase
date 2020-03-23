@@ -3,11 +3,12 @@
             [clojure.core.async :as a]
             [clojure.test :refer :all]
             [metabase
-             [config :as config]
              [driver :as driver]
              [http-client :as test-client]
              [models :refer [Database]]
-             [test :as mt]]
+             [test :as mt]
+             [util :as u]]
+            [metabase.async.streaming-response :as streaming-response]
             [metabase.async.streaming-response.thread-pool :as thread-pool]
             [metabase.query-processor.context :as context])
   (:import java.util.concurrent.Executors
@@ -45,7 +46,10 @@
   "A core.async channel that will get a message when query execution starts."
   (atom nil))
 
-(defmacro ^:private with-start-execution-chan [[chan-binding] & body]
+(defmacro ^:private with-start-execution-chan
+  "Runs body with `chan-binding` bound to a core.async promise channel that will get a message once a query execution
+  starts running on the streaming response thread pool."
+  [[chan-binding] & body]
   `(mt/with-open-channels [chan# (a/promise-chan)]
      (try
        (reset! start-execution-chan chan#)
@@ -89,8 +93,7 @@
 (deftest truly-async-test
   (testing "StreamingResponses should truly be asynchronous, and not block Jetty threads while waiting for results"
     (with-test-driver-db
-      (let [max-threads        (or (config/config-int :mb-jetty-maxthreads) 50)
-            num-requests       (+ max-threads 20)
+      (let [num-requests       (+ thread-pool-size 20)
             remaining          (atom num-requests)
             session-token      (test-client/authenticate (mt/user->credentials :lucky))
             url                (test-client/build-url "dataset" nil)
@@ -110,3 +113,28 @@
               (testing "(Usually this is under 100ms but might be a little over if CircleCI is being slow)"
                 (let [elapsed-ms (- (System/currentTimeMillis) start-time-ms)]
                   (is (< elapsed-ms 500)))))))))))
+
+(deftest cancelation-test
+  (testing "Make sure canceling a HTTP request ultimately causes the query to be canceled"
+    (with-redefs [streaming-response/async-cancellation-poll-interval-ms 50]
+      (with-test-driver-db
+        (reset! canceled? false)
+        (with-start-execution-chan [start-chan]
+          (let [url           (test-client/build-url "dataset" nil)
+                session-token (test-client/authenticate (mt/user->credentials :lucky))
+                request       (test-client/build-request-map session-token
+                                                             {:database (mt/id)
+                                                              :type     "native"
+                                                              :native   {:query {:sleep 5000}}})
+                futur         (http/post url (assoc request :async? true) identity (fn [e] (throw e)))]
+            (is (future? futur))
+            ;; wait a little while for the query to start running -- this should usually happen fairly quickly
+            (mt/wait-for-result start-chan (u/seconds->ms 15))
+            (future-cancel futur)
+            ;; check every 50ms, up to 500ms, whether `canceled?` is now `true`
+            (is (= true
+                   (loop [[wait & more] (repeat 10 50)]
+                     (or @canceled?
+                         (when wait
+                           (Thread/sleep wait)
+                           (recur more))))))))))))
