@@ -1,5 +1,6 @@
 (ns metabase.query-processor.streaming-test
   (:require [cheshire.core :as json]
+            [clojure.core.async :as a]
             [clojure.data.csv :as csv]
             [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
@@ -52,14 +53,16 @@
 (defn- process-query-api-response-streaming [export-format query]
   (with-open [bos (ByteArrayOutputStream.)
               os  (BufferedOutputStream. bos)]
-    (let [streaming-response (qp.streaming/streaming-response [context export-format]
-                               (qp/process-query-async query (assoc context :timeout 5000)))]
-      (#'streaming-response/do-f-async (proxy [AsyncContext] []
-                                         (complete []))
-                                       (.f streaming-response)
-                                       os
-                                       (.donechan streaming-response))
-      (mt/wait-for-result (streaming-response/finished-chan streaming-response) 1000))
+    (mt/with-open-channels [canceled-chan (a/promise-chan)]
+      (let [streaming-response (qp.streaming/streaming-response [context export-format]
+                                 (qp/process-query-async query (assoc context :timeout 5000)))]
+        (#'streaming-response/do-f-async (proxy [AsyncContext] []
+                                           (complete []))
+                                         (.f streaming-response)
+                                         os
+                                         (.donechan streaming-response)
+                                         canceled-chan)
+        (mt/wait-for-result (streaming-response/finished-chan streaming-response) 1000)))
     (let [bytea (.toByteArray bos)]
       (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]
         (parse-result export-format is)))))

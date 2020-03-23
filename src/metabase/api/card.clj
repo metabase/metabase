@@ -202,17 +202,16 @@
   "Save `card-data` as a new Card on a separate thread. Returns a channel to fetch the response; closing this channel
   will cancel the save."
   [card-data]
-  (async.u/do-on-separate-thread
-   (fn []
-     (let [card (db/transaction
-                  ;; Adding a new card at `collection_position` could cause other cards in this
-                  ;; collection to change position, check that and fix it if needed
-                  (api/maybe-reconcile-collection-position! card-data)
-                  (db/insert! Card card-data))]
-       (events/publish-event! :card-create card)
-       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it
-       ;; currently has with returned one -- See #4283
-       (hydrate card :creator :dashboard_count :can_write :collection)))))
+  (async.u/cancelable-thread
+    (let [card (db/transaction
+                 ;; Adding a new card at `collection_position` could cause other cards in this
+                 ;; collection to change position, check that and fix it if needed
+                 (api/maybe-reconcile-collection-position! card-data)
+                 (db/insert! Card card-data))]
+      (events/publish-event! :card-create card)
+      ;; include same information returned by GET /api/card/:id since frontend replaces the Card it
+      ;; currently has with returned one -- See #4283
+      (hydrate card :creator :dashboard_count :can_write :collection))))
 
 (defn- create-card-async!
   "Create a new Card asynchronously. Returns a channel for fetching the newly created Card, or an Exception if one was
@@ -393,29 +392,30 @@
       :else
       nil)))
 
-(defn- update-card-async! [{:keys [id], :as card-before-update} {:keys [archived], :as card-updates}]
+(defn- update-card-async!
+  "Update a Card asynchronously. Returns a `core.async` promise channel that will return updated Card."
+  [{:keys [id], :as card-before-update} {:keys [archived], :as card-updates}]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
-  (async.u/do-on-separate-thread
-   (fn []
-     ;; Setting up a transaction here so that we don't get a partially reconciled/updated card.
-     (db/transaction
-       (api/maybe-reconcile-collection-position! card-before-update card-updates)
+  (async.u/cancelable-thread
+    ;; Setting up a transaction here so that we don't get a partially reconciled/updated card.
+    (db/transaction
+      (api/maybe-reconcile-collection-position! card-before-update card-updates)
 
-       ;; ok, now save the Card
-       (db/update! Card id
-         ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
-         ;; modified if they're passed in as non-nil
-         (u/select-keys-when card-updates
-           :present #{:collection_id :collection_position :description}
-           :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
-                      :embedding_params :result_metadata})))
-     ;; Fetch the updated Card from the DB
-     (let [card (Card id)]
-       (delete-alerts-if-needed! card-before-update card)
-       (publish-card-update! card archived)
-       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
-       ;; has with returned one -- See #4142
-       (hydrate card :creator :dashboard_count :can_write :collection)))))
+      ;; ok, now save the Card
+      (db/update! Card id
+        ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
+        ;; modified if they're passed in as non-nil
+        (u/select-keys-when card-updates
+          :present #{:collection_id :collection_position :description}
+          :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
+                     :embedding_params :result_metadata})))
+    ;; Fetch the updated Card from the DB
+    (let [card (Card id)]
+      (delete-alerts-if-needed! card-before-update card)
+      (publish-card-update! card archived)
+      ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
+      ;; has with returned one -- See #4142
+      (hydrate card :creator :dashboard_count :can_write :collection))))
 
 (api/defendpoint ^:returns-chan PUT "/:id"
   "Update a `Card`."
