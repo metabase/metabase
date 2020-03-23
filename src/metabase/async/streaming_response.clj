@@ -141,6 +141,8 @@
           status (.read channel buf)]
       (log/tracef "Check cancelation status: .read returned %d" status)
       (neg? status))
+    (catch InterruptedException _
+      false)
     (catch ClosedChannelException _
       true)
     (catch Throwable e
