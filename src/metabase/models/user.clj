@@ -206,6 +206,13 @@
   (u/prog1 (insert-new-user! new-user)
     (send-welcome-email! <> invitor)))
 
+(s/defn create-without-invite-user!
+  "Convenience function for inviting a new `User` without sending   the welcome email."
+  [new-user :- NewUser, invitor :- Invitor]
+  ;; create the new user 
+   (insert-new-user! new-user))
+
+
 (s/defn create-new-google-auth-user!
   "Convenience for creating a new user via Google Auth. This account is considered active immediately; thus all active
   admins will receive an email right away."
@@ -274,7 +281,7 @@
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
 (defn permissions-set
-  "Return a set of all permissions object paths that USER-OR-ID has been granted access to. (2 DB Calls)"
+  "Return a set of all permissions object paths that `user-or-id` has been granted access to. (2 DB Calls)"
   [user-or-id]
   (set (when-let [user-id (u/get-id user-or-id)]
          (concat

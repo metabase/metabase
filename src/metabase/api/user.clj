@@ -82,7 +82,11 @@
                 (hh/merge-order-by [:%lower.last_name :asc] [:%lower.first_name :asc])
                 (hh/merge-where (when-not include_deactivated
                                   [:= :is_active true]))))
+    ;; For not admins, also include the IDs of the  Users' groups
+
+    api/*current-user* (hydrate  :group_ids)
     ;; For admins, also include the IDs of the  Users' Personal Collections
+
     api/*is-superuser?* (hydrate :personal_collection_id :group_ids)))
 
 (api/defendpoint GET "/current"
@@ -123,7 +127,25 @@
       (-> (fetch-user :id new-user-id)
           (hydrate :group_ids)))))
 
-
+(api/defendpoint POST "/no-mail"
+  "Create a new `User`, return a 400 if the email address is already taken"
+  [:as {{:keys [first_name last_name email password group_ids login_attributes] :as body} :body}]
+  {first_name       su/NonBlankString
+   last_name        su/NonBlankString
+   email            su/Email
+   group_ids        (s/maybe [su/IntGreaterThanZero])
+   login_attributes (s/maybe user/LoginAttributes)}
+  (api/check-superuser)
+  (api/checkp (not (db/exists? User :email email))
+    "email" (tru "Email address already in use."))
+  (db/transaction
+    (let [new-user-id (u/get-id (user/create-without-invite-user!
+                                 (u/select-keys-when body
+                                   :non-nil [:first_name :last_name :email :password :login_attributes])
+                                 @api/*current-user*))]
+      (maybe-set-user-permissions-groups! new-user-id group_ids)
+      (-> (fetch-user :id new-user-id)
+          (hydrate :group_ids)))))
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                      Updating a User -- PUT /api/user/:id                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
