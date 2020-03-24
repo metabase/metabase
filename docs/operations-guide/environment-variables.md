@@ -57,10 +57,19 @@ Default: `null`
 
 Middleware that enforces validation of the client via the request header `X-Metabase-Apikey`. If the header is available, then it’s validated against `MB_API_KEY`. When it matches, the request continues otherwise it’s blocked with a 403 Forbidden response.
 
+#### `MB_APPLICATION_COLORS`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"{}"`
+
+JSON object of primary colors used in charts and throughout Metabase.
+
 #### `MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE`
 
 Type: integer<br>
-Default: `15`
+Default: `15`<br>
+Since: 0.35.0
 
 Maximum number of connections to the Metabase application database.
 
@@ -70,10 +79,35 @@ Check the Metabase log, look for lines that contains the following `… App DB c
 
 See [MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE](#MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE) for setting maximum connections to the databases setup in Metabase.
 
+#### `MB_APPLICATION_FAVICON_URL`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"frontend_client/favicon.ico"`
+
+Path or URL to favicon file.
+
+#### `MB_APPLICATION_LOGO_URL`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"app/assets/img/logo.svg"`
+
+Path or URL to logo file. For best results use SVG format.
+
+#### `MB_APPLICATION_NAME`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"Metabase"`
+
+Replace the word `Metabase` wherever it appears with the defined string.
+
 #### `MB_ASYNC_QUERY_THREAD_POOL_SIZE`
 
 Type: integer<br>
-Default: `50`
+Default: `50`<br>
+Since: 0.35.0
 
 Maximum number of async Jetty threads. If not set, then [MB_JETTY_MAXTHREADS](#MB_JETTY_MAXTHREADS) will be used, otherwise it will use the default.
 
@@ -195,7 +229,7 @@ The port for [MB_DB_HOST](#MB_DB_HOST).
 
 #### `MB_DB_TYPE`
 
-Type: string<br>
+Type: string (`"h2"`, `"postgres"`, `"mysql"`)<br>
 Default: `"h2"`
 
 When `"h2"`, the application database is loaded from [MB_DB_FILE](#MB_DB_FILE), otherwise [MB_DB_HOST](#MB_DB_HOST) will be used to define application database.
@@ -246,7 +280,7 @@ The port your SMTP server uses for outgoing emails.
 
 #### `MB_EMAIL_SMTP_SECURITY`
 
-Type: string<br>
+Type: string (`"tls"`, `"ssl"`, `"starttls"`, `"none"`)<br>
 Default: `"none"`
 
 SMTP secure connection protocol.
@@ -257,6 +291,14 @@ Type: string<br>
 Default: `null`
 
 SMTP username.
+
+#### `MB_EMBEDDING_APP_ORIGIN`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `null`
+
+URL of origin allowed to embed the full Metabase application.
 
 #### `MB_EMOJI_IN_LOGS`
 
@@ -278,6 +320,14 @@ Type: boolean<br>
 Default: `true`
 
 Allow using a saved question as the source for other queries?
+
+#### `MB_ENABLE_PASSWORD_LOGIN`
+
+Only available in Enterprise Edition<br>
+Type: boolean<br>
+Default: `true`
+
+Allow logging in by email and password, when SSO login options are enabled.
 
 #### `MB_ENABLE_PUBLIC_SHARING`
 
@@ -333,7 +383,8 @@ Client ID for Google Auth SSO. If this is set, Google Auth is considered to be e
 #### `MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE`
 
 Type: integer<br>
-Default: `15`
+Default: `15`<br>
+Since: 0.35.0
 
 Maximum number of connections to the data source databases. The maximum is for each database setup in Admin Panel > Databases, not a total for all databases.
 
@@ -344,7 +395,8 @@ See [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#MB_APPLICATION_DB_MAX_CONNECTI
 #### `MB_JETTY_ASYNC_RESPONSE_TIMEOUT`
 
 Type: integer<br>
-Default: `600000`
+Default: `600000`<br>
+Since: 0.35.0
 
 Timeout of Jetty async threads, defined in milliseconds. The default is 10 minutes. Very few things might reach the timeout, since they return some type of data before, but things like CSV might.
 
@@ -454,6 +506,14 @@ Default: `null`
 
 Password for Java TrustStore file.
 
+#### `MB_LANDING_PAGE`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `""`
+
+Default page to show the user.
+
 #### `MB_LDAP_ATTRIBUTE_EMAIL`
 
 Type: string<br>
@@ -538,6 +598,22 @@ Default: `"none"`
 
 Use SSL, TLS or plain text.
 
+#### `MB_LDAP_SYNC_USER_ATTRIBUTES`
+
+Only available in Enterprise Edition<br>
+Type: boolean<br>
+Default: `true`
+
+Should user attributes be synced when someone logs in via LDAP?
+
+#### `MB_LDAP_SYNC_USER_ATTRIBUTES_BLACKLIST`
+
+Only available in Enterprise Edition<br>
+Type: string<br>
+Default: `"userPassword,dn,distinguishedName"`
+
+Comma-separated list of user attributes to skip syncing for LDAP users.
+
 #### `MB_LDAP_USER_BASE`
 
 Type: string<br>
@@ -575,7 +651,7 @@ Comma-separated namespaces to trace. **WARNING:** Could log sensitive informatio
 
 #### `MB_PASSWORD_COMPLEXITY`
 
-Type: string<br>
+Type: string (`"weak"`, `"normal"`, `"strong"`)<br>
 Default: `"normal"`
 
 Enforce a password complexity rule to increase security for regular logins. This only applies to new users or users that are changing their password. Related [MB_PASSWORD_LENGTH](#MB_PASSWORD_LENGTH)
