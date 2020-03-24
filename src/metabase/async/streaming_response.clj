@@ -162,7 +162,7 @@
     (let [poll-timeout-chan (a/timeout async-cancellation-poll-interval-ms)
           [_ port]          (a/alts! [poll-timeout-chan finished-chan])]
       (when (= port poll-timeout-chan)
-        (log/tracef "Checking cancelation status after waiting %s")
+        (log/tracef "Checking cancelation status after waiting %s" (u/format-milliseconds async-cancellation-poll-interval-ms))
         (let [canceled-status-chan (async.u/cancelable-thread (canceled? request))
               status-timeout-chan  (a/timeout async-cancellation-poll-timeout-ms)
               [canceled? port]     (a/alts! [finished-chan canceled-status-chan status-timeout-chan])]
