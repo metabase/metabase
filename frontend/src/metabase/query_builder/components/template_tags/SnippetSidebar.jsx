@@ -120,17 +120,23 @@ export default class SnippetSidebar extends React.Component {
 
     return (
       <Modal>
-        {Snippets.ModalForm({
-          snippet,
-          title:
+        <Snippets.ModalForm
+          snippet={snippet}
+          title={
             snippet.id != null
               ? t`Editing ${snippet.name}`
-              : t`Create your new snippet`,
-          onSaved: closeModal,
-          onClose: closeModal, // the "x" button
-          onCancel: closeModal, // the cancel button
-          submitTitle: t`Save`,
-          footerLeftButtons:
+              : t`Create your new snippet`
+          }
+          onSaved={savedSnippet => {
+            if (snippet.id == null) {
+              this.insertSnippet(savedSnippet);
+            }
+            closeModal();
+          }}
+          onClose={closeModal} // the "x" button
+          onCance={closeModal} // the cancel button
+          submitTitle={t`Save`}
+          footerLeftButtons={
             // only display archive for saved snippets
             snippet.id != null ? (
               <Link
@@ -141,8 +147,9 @@ export default class SnippetSidebar extends React.Component {
                   closeModal();
                 }}
               >{t`Archive`}</Link>
-            ) : null,
-        })}
+            ) : null
+          }
+        />
       </Modal>
     );
   }
