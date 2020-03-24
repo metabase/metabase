@@ -489,7 +489,7 @@
 (defclause <=, field OrderComparible, value-or-field OrderComparible)
 (defclause >=, field OrderComparible, value-or-field OrderComparible)
 
-(defclause between field Field, min OrderComparible, max OrderComparible)
+(defclause between field OrderComparible, min OrderComparible, max OrderComparible)
 
 ;; SUGAR CLAUSE: This is automatically written as a pair of `:between` clauses by the `:desugar` middleware.
 (defclause ^:sugar inside
