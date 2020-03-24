@@ -465,3 +465,35 @@ export const OPERATORS = new Set([
   ...BOOLEAN_UNARY_OPERATORS,
   ...BOOLEAN_BINARY_OPERATORS,
 ]);
+
+// "standard" filters, can be edited using UI
+export const STANDARD_FILTERS = new Set([
+  "!=",
+  "<=",
+  ">=",
+  "<",
+  ">",
+  "=",
+  "contains",
+  "does-not-contain",
+  "ends-with",
+  "starts-with",
+  "between",
+  "time-interval",
+  "is-null",
+  "not-null",
+  "inside",
+]);
+
+// "standard" aggregations, can be edited using UI
+export const STANDARD_AGGREGATIONS = new Set([
+  "count",
+  "cum-count",
+  "sum",
+  "cum-sum",
+  "distinct",
+  "stddev",
+  "avg",
+  "min",
+  "max",
+]);

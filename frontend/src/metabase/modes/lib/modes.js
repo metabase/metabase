@@ -34,7 +34,7 @@ export function getMode(question: ?Question): ?QueryMode {
 
     if (aggregations.length === 0 && breakouts.length === 0) {
       const isPKFilterWithOneID = filter => {
-        if (filter.isFieldFilter()) {
+        if (filter.isStandard()) {
           const field = filter.field();
           if (
             field &&

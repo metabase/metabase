@@ -71,8 +71,9 @@ export default class TimeseriesFilterWidget extends Component {
       const filterIndex = _.findIndex(
         filters,
         filter =>
-          Filter.isFieldFilter(filter) &&
-          FieldRef.getFieldTargetId(filter[1]) === timeFieldId,
+          console.log(filter) ||
+          (Filter.isStandard(filter) &&
+            FieldRef.getFieldTargetId(filter[1]) === timeFieldId),
       );
 
       let filter, currentFilter;

@@ -1,6 +1,9 @@
 /* @flow */
 
 import { noNullValues, add, update, remove, clear } from "./util";
+import { isValidField } from "./field_ref";
+import { STANDARD_AGGREGATIONS } from "metabase/lib/expressions";
+
 import _ from "underscore";
 
 import type { AggregationClause, Aggregation } from "metabase/meta/types/Query";
@@ -70,4 +73,22 @@ export function hasEmptyAggregation(ac: ?AggregationClause): boolean {
 
 export function hasValidAggregation(ac: ?AggregationClause): boolean {
   return _.all(getAggregations(ac), aggregation => noNullValues(aggregation));
+}
+
+// AGGREGATION TYPES
+
+export function isStandard(aggregation: AggregationClause): boolean {
+  return (
+    Array.isArray(aggregation) &&
+    STANDARD_AGGREGATIONS.has(aggregation[0]) &&
+    (aggregation[1] === undefined || isValidField(aggregation[1]))
+  );
+}
+
+export function isMetric(aggregation: AggregationClause): boolean {
+  return Array.isArray(aggregation) && aggregation[0] === "metric";
+}
+
+export function isCustom(aggregation: AggregationClause): boolean {
+  return !isStandard(aggregation) && !isMetric(aggregation);
 }

@@ -152,7 +152,7 @@ export const getSegmentQuestions = createSelector(
         question =>
           question.dataset_query.type === "query" &&
           Query.getFilters(question.dataset_query.query).some(
-            filter => Filter.isSegmentFilter(filter) && filter[1] === segmentId,
+            filter => Filter.isSegment(filter) && filter[1] === segmentId,
           ),
       )
       .reduce((map, question) => assoc(map, question.id, question), {}),

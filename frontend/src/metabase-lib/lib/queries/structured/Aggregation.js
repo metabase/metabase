@@ -4,9 +4,9 @@ import MBQLClause from "./MBQLClause";
 
 import { t } from "ttag";
 
-import * as A_DEPRECATED from "metabase/lib/query_aggregation";
-
 import { TYPE } from "metabase/lib/types";
+
+import { isStandard, isMetric, isCustom } from "metabase/lib/query/aggregation";
 
 import type { Aggregation as AggregationObject } from "metabase/meta/types/Query";
 import type StructuredQuery from "../StructuredQuery";
@@ -154,14 +154,30 @@ export default class Aggregation extends MBQLClause {
     }
   }
 
-  // STANDARD AGGREGATION
+  // There are currently 3 "classes" of aggregations that are handled differently, "standard", "segment", and "custom"
 
   /**
    * Returns true if this is a "standard" metric
    */
   isStandard(): boolean {
-    return A_DEPRECATED.isStandard(this);
+    return isStandard(this);
   }
+
+  /**
+   * Returns true if this is a metric
+   */
+  isMetric(): boolean {
+    return isMetric(this);
+  }
+
+  /**
+   * Returns true if this is custom expression created with the expression editor
+   */
+  isCustom(): boolean {
+    return isCustom(this);
+  }
+
+  // STANDARD AGGREGATION
 
   /**
    * Gets the aggregation option matching this aggregation
@@ -210,13 +226,6 @@ export default class Aggregation extends MBQLClause {
   // METRIC AGGREGATION
 
   /**
-   * Returns true if this is a metric
-   */
-  isMetric(): boolean {
-    return this[0] === "metric";
-  }
-
-  /**
    * Get metricId from a metric aggregation clause
    * Returns `null` if the clause doesn't represent a metric
    */
@@ -230,15 +239,6 @@ export default class Aggregation extends MBQLClause {
     if (this.isMetric()) {
       return this.metadata().metric(this.metricId());
     }
-  }
-
-  // CUSTOM
-
-  /**
-   * Returns true if this is custom expression created with the expression editor
-   */
-  isCustom(): boolean {
-    return A_DEPRECATED.isCustom(this);
   }
 
   // OPTIONS
