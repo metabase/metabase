@@ -142,7 +142,6 @@ export default class SnippetSidebar extends React.Component {
               <Link
                 style={{ color: colors.error }}
                 onClick={async () => {
-                  // $FlowFixMe
                   await snippet.update({ archived: true });
                   closeModal();
                 }}
