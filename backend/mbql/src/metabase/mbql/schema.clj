@@ -493,8 +493,8 @@
 
 ;; SUGAR CLAUSE: This is automatically written as a pair of `:between` clauses by the `:desugar` middleware.
 (defclause ^:sugar inside
-  lat-field Field
-  lon-field Field
+  lat-field OrderComparible
+  lon-field OrderComparible
   lat-max   OrderComparible
   lon-min   OrderComparible
   lat-min   OrderComparible
