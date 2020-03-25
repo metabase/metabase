@@ -315,7 +315,7 @@
 (defmethod ->honeysql [:sql :round] [driver [_ field]] (hsql/call :round (->honeysql driver field)))
 (defmethod ->honeysql [:sql :abs]   [driver [_ field]] (hsql/call :abs (->honeysql driver field)))
 
-(defmethod ->honeysql [:sql :log]   [driver [_ field]] (hsql/call :log  (->honeysql driver field)))
+(defmethod ->honeysql [:sql :log]   [driver [_ field]] (hsql/call :log 10 (->honeysql driver field)))
 (defmethod ->honeysql [:sql :exp]   [driver [_ field]] (hsql/call :exp (->honeysql driver field)))
 (defmethod ->honeysql [:sql :sqrt]  [driver [_ field]] (hsql/call :sqrt (->honeysql driver field)))
 (defmethod ->honeysql [:sql :power] [driver [_ field power]]

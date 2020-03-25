@@ -39,26 +39,26 @@
 
 (deftest test-power
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
-    (is (= 4.0 (test-math-expression [:power 2 2])))
-    (is (= 2.0 (test-math-expression [:power 4 0.5])))
-    (is (= 0.25 (test-math-expression [:power 2 -2])))))
+    (is (= 4.0 (test-math-expression [:power 2.0 2])))
+    (is (= 2.0 (test-math-expression [:power 4.0 0.5])))
+    (is (= 0.25 (test-math-expression [:power 2.0 -2])))))
 
 (deftest test-sqrt
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
-    (is (= 2.0 (test-math-expression [:sqrt 4])))))
+    (is (= 2.0 (test-math-expression [:sqrt 4.0])))))
 
 (deftest test-exp
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
-    (is (= 7.39 (test-math-expression [:exp 2])))))
+    (is (= 7.39 (test-math-expression [:exp 2.0])))))
 
 (deftest test-log
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
-    (is (= 2.3 (test-math-expression [:log 10])))))
+    (is (= 1.0 (test-math-expression [:log 10.0])))))
 
 
 (deftest test-nesting
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
-    (is (= 2.0 (test-math-expression [:sqrt [:power 2 2]])))))
+    (is (= 2.0 (test-math-expression [:sqrt [:power 2.0 2]])))))
 
 
 (deftest test-filter
