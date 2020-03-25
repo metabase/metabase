@@ -63,8 +63,8 @@
 
 (deftest test-filter
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
-    (is (= 19 (->> {:aggregation [[:count]]
-                    :filter      [:> [:round [:power [:field-id (data/id :venues :price)] 2]] 5]}
+    (is (= 59 (->> {:aggregation [[:count]]
+                    :filter      [:between [:- [:round [:power [:field-id (data/id :venues :price)] 2]] 1] 1 5]}
                    (mt/run-mbql-query venues)
                    rows
                    ffirst

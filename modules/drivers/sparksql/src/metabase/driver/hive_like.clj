@@ -121,7 +121,7 @@
   [driver [_ arg]]
   (hsql/call :percentile (sql.qp/->honeysql driver arg) 0.5))
 
-(defmethod sql.qp/->honeysql [:hive-like :median]
+(defmethod sql.qp/->honeysql [:hive-like :percentile]
   [driver [_ arg p]]
   (hsql/call :percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)))
 

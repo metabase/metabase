@@ -254,6 +254,10 @@
   [driver [_ arg]]
   (hsql/call :round (hx/cast :float (sql.qp/->honeysql driver arg)) 0))
 
+(defmethod sql.qp/->honeysql [:sqlserver :power]
+  [driver [_ arg power]]
+  (hsql/call :power (hx/cast :float (sql.qp/->honeysql driver arg)) (sql.qp/->honeysql driver power)))
+
 (defmethod sql.qp/->honeysql [:sqlserver :median]
   [driver [_ arg]]
   (sql.qp/->honeysql driver [:percentile arg 0.5]))
