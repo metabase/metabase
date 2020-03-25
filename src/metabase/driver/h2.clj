@@ -180,6 +180,10 @@
                                                         3)
                                                   2))))
 
+(defmethod sql.qp/->honeysql [:h2 :log]
+  [driver [_ field]]
+  (hsql/call :log10 (sql.qp/->honeysql driver field)))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
