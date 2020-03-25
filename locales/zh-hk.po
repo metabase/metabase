@@ -14023,7 +14023,7 @@ msgstr "返回此欄位的最大值"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:163
 msgid "Age"
-msgstr "年齡""
+msgstr "年齡"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:165
 msgid "The numeric column whose maximum you want to find."
@@ -14053,7 +14053,7 @@ msgstr "位置"
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:237
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:244
 msgid "length"
-msgstr "長度""
+msgstr "長度"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:185
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:196
@@ -14102,7 +14102,7 @@ msgstr "假如文字開頭符合比較的文字則返回結果為真"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:220
 msgid "Course Name"
-msgstr "課程名""
+msgstr "課程名"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:220
 msgid "Computer Science"

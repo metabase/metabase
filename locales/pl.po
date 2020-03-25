@@ -11837,8 +11837,7 @@ msgstr "Wtyczka \"{0}\" zależy od wtyczki \"{1}\""
 
 #: src/metabase/plugins/dependencies.clj
 msgid "{0} dependency {1} satisfied? {2}"
-msgstr "{0} zależności {1} zadowolony? {2}\n"
-""
+msgstr "{0} zależności {1} zadowolony? {2}"
 
 #: src/metabase/plugins/dependencies.clj
 msgid "Plugins with unsatisfied deps: {0}"
@@ -12887,8 +12886,7 @@ msgstr "Błąd podczas niszczenia puli wątków dla bazy danych."
 
 #: src/metabase/models/humanization.clj
 msgid "Updating display name for {0} ''{1}'': ''{2}'' -> ''{3}''"
-msgstr "Aktualizowanie nazwy wyświetlanej dla {0} ''{1}'': ''{2}'' -> ''{3}''\n"
-""
+msgstr "Aktualizowanie nazwy wyświetlanej dla {0} ''{1}'': ''{2}'' -> ''{3}''"
 
 #: src/metabase/models/humanization.clj
 msgid "Invalid humanization strategy ''{0}''. Valid strategies are: {1}"
@@ -13185,7 +13183,7 @@ msgstr "Nie udało się zaplanować zadań dla bazy danych {0}"
 msgid "All elements must be distinct."
 msgstr "Wszystkie elementy muszą być unikalne."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Wybierz kolumny, które chcesz uwzględnić"
@@ -13739,9 +13737,7 @@ msgstr "Podaj te szczegóły w prośbach o wsparcie. Dziękujemy!"
 
 #: frontend/src/metabase/auth/components/LdapAndEmailForm.jsx:37
 msgid "youlooknicetoday@email.com"
-msgstr "\n"
-"youlooknicetoday@email.com\n"
-""
+msgstr "youlooknicetoday@email.com"
 
 #: frontend/src/metabase/auth/components/LdapAndEmailForm.jsx:50
 msgid "Remember me"
@@ -14540,8 +14536,7 @@ msgstr "Ustaw transakcję do automatycznego wycofania ..."
 #. Disable auto-commit. This should already be off but set it just to be safe
 #: src/metabase/db.clj
 msgid "Disable auto-commit..."
-msgstr "Wyłącz auto-commit...\n"
-""
+msgstr "Wyłącz auto-commit..."
 
 #: src/metabase/db.clj
 msgid "Set default db connection with connection pool..."
@@ -14630,8 +14625,7 @@ msgstr "Nie można ustawić {0}; jest to ustawienie tylko do odczytu."
 
 #: src/metabase/models/setting.clj
 msgid "defsetting descriptions strings must have `:visibilty` `:internal`, `:setter` `:none`, or internationalized, found: `{0}`"
-msgstr "ciągi opisów ustawień muszą mieć: `:visibilty` `:internal`, `:setter` `:none`, or internationalized, found: `{0}`\n"
-""
+msgstr "ciągi opisów ustawień muszą mieć: `:visibilty` `:internal`, `:setter` `:none`, or internationalized, found: `{0}`"
 
 #: src/metabase/models/setting.clj
 msgid "Setting {0} is internal"
@@ -14774,4 +14768,3 @@ msgstr "Błąd podczas generowania statystyk dla kolumny:"
 #: src/metabase/task/follow_up_emails.clj
 msgid "Sending abandonment email!"
 msgstr "Wysyłanie wiadomości e-mail o rezygnacji!"
-
