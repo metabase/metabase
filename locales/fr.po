@@ -13042,8 +13042,7 @@ msgstr "Incapable de mettre à jour le champ binné: la requête manque de méta
 
 #: src/metabase/query_processor/middleware/binning.clj
 msgid "Cannot update binned field: could not find matching source metadata for Field ''{0}''"
-msgstr "Dans l'incapacité de mttre à jour le champ binné: métadonnées correspondantes non trouvées pour le champ \"{0}\"\n"
-""
+msgstr "Dans l'incapacité de mttre à jour le champ binné: métadonnées correspondantes non trouvées pour le champ ''{0}''"
 
 #: src/metabase/query_processor/middleware/cache.clj
 msgid "Using query processor cache backend: {0}"
@@ -13153,7 +13152,7 @@ msgstr "Echec à la planification des tâches pour la base de données {0}"
 msgid "All elements must be distinct."
 msgstr "Tous les éléments doivent être distincts."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Choisissez les colonnes concernées"
@@ -13771,8 +13770,7 @@ msgstr "Collection"
 
 #: frontend/src/metabase/entities/users/forms.js:40
 msgid "Confirm your password"
-msgstr "Confirmez votre mot de passe\n"
-""
+msgstr "Confirmez votre mot de passe"
 
 #: frontend/src/metabase/entities/users/forms.js:45
 msgid "passwords do not match"
@@ -13801,8 +13799,7 @@ msgstr "Numérique"
 #: frontend/src/metabase/lib/core.js:219 frontend/src/metabase/lib/core.js:224
 #: frontend/src/metabase/lib/core.js:229 frontend/src/metabase/lib/core.js:234
 msgid "Date and Time"
-msgstr "Date et heure\n"
-""
+msgstr "Date et heure"
 
 #: frontend/src/metabase/lib/core.js:241 frontend/src/metabase/lib/core.js:246
 #: frontend/src/metabase/lib/core.js:251
@@ -14731,4 +14728,3 @@ msgstr "Erreur lors de la génération des aperçus pour la colonne :"
 #: src/metabase/task/follow_up_emails.clj
 msgid "Sending abandonment email!"
 msgstr "Envoi d'un courriel d'abandon !"
-

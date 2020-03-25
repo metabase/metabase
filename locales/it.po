@@ -13077,8 +13077,7 @@ msgstr "Caricamento database di esempio..."
 
 #: src/metabase/sample_data.clj
 msgid "Failed to load sample dataset"
-msgstr "Caricamento del database di esempio fallito\n"
-""
+msgstr "Caricamento del database di esempio fallito"
 
 #: src/metabase/sync/sync_metadata/tables.clj
 msgid "Found new tables:"
@@ -13114,10 +13113,9 @@ msgstr "Scheduling dei task per il Database {0} non riuscita"
 
 #: src/metabase/util/schema.clj
 msgid "All elements must be distinct."
-msgstr "All elements must be distinct.\n"
-""
+msgstr "Tutti gli elementi devono essere distinti."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Scegli le colonne che desideri includere"
@@ -14691,4 +14689,3 @@ msgstr "Errore durante la generazione dell'approfondimento della colonnna:"
 #: src/metabase/task/follow_up_emails.clj
 msgid "Sending abandonment email!"
 msgstr "Sto inviando l'email di abbandono!"
-

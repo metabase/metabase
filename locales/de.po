@@ -13171,7 +13171,7 @@ msgstr "Fehler beim Planen der Aufgaben für Datenbank {0}"
 msgid "All elements must be distinct."
 msgstr "Jedes Element muss eindeutig sein."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Wähle die Spalten aus, die Du einbeziehen möchtest."
@@ -13304,8 +13304,7 @@ msgstr "Nur in Detailansichten"
 
 #: frontend/src/metabase/lib/core.js:303
 msgid "Do not include"
-msgstr "Nicht enthalten\n"
-""
+msgstr "Nicht enthalten"
 
 #: frontend/src/metabase/lib/core.js:304
 msgid "This field won't be visible or selectable in questions created with the GUI interfaces. It will still be accessible in SQL/native queries."
@@ -14704,8 +14703,7 @@ msgstr "Ergebnisse für die Abfrage werden mit Hash {0} gespeichert."
 
 #: src/metabase/query_processor/middleware/process_userland_query.clj
 msgid "Cannot save QueryExecution, missing :context"
-msgstr "Abfrageausführung kann nicht gespeichert werden, fehlender :context\n"
-""
+msgstr "Abfrageausführung kann nicht gespeichert werden, fehlender :context"
 
 #: src/metabase/query_processor/middleware/process_userland_query.clj
 msgid "Error saving query execution info"
@@ -14750,4 +14748,3 @@ msgstr "Fehler bei der Generierung von Einsichten für die Spalte:"
 #: src/metabase/task/follow_up_emails.clj
 msgid "Sending abandonment email!"
 msgstr "Sende Verlassensemail!"
-

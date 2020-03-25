@@ -13177,7 +13177,7 @@ msgstr "Nepodarilo sa naplánovať úlohy pre databázu {0}"
 msgid "All elements must be distinct."
 msgstr "Všetky prvky musia byť jednoznačné."
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Vyberte stĺpce, ktoré chcete zahrnúť"
@@ -13585,8 +13585,7 @@ msgstr "Upozornenie od Metabase: {0} ma {1}"
 
 #: src/metabase/pulse.clj
 msgid "Sending Alert ({0}: {1}) via Slack"
-msgstr "Posiela sa upozornenie ({0}: {1}) cez Slack\n"
-""
+msgstr "Posiela sa upozornenie ({0}: {1}) cez Slack"
 
 #: src/metabase/pulse.clj
 msgid "Alert: {0}"
@@ -14762,4 +14761,3 @@ msgstr "Chyba pri generovaní štatistík pre stĺpec:"
 #: src/metabase/task/follow_up_emails.clj
 msgid "Sending abandonment email!"
 msgstr "Odosielame e-mail o opustení účtu!"
-

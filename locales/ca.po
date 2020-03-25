@@ -13104,7 +13104,7 @@ msgstr "Error al programar tasques per la base de dades {0}"
 msgid "All elements must be distinct."
 msgstr "Tots els elements han de ser diferents"
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Esculleix les columnes que vols incloure"
@@ -13394,8 +13394,7 @@ msgstr "Les clàusules '{{...}}' no poden ser buides."
 
 #: src/metabase/driver/common/parameters/parse.clj
 msgid "'[[...]]' clauses must contain at least one '{{...}}' clause."
-msgstr "Les clàusules '[[...]]' han de contenir com a mínim una clàusula '{{...}}'.\n"
-""
+msgstr "Les clàusules '[[...]]' han de contenir com a mínim una clàusula '{{...}}'."
 
 #: src/metabase/driver/common/parameters/parse.clj
 msgid "Invalid query: found '[[' or '{{' with no matching ']]' or '}}'"
@@ -14679,4 +14678,3 @@ msgstr "Error al generar l'informaciód de la columna:"
 #: src/metabase/task/follow_up_emails.clj
 msgid "Sending abandonment email!"
 msgstr "Enviant correu d'abondonament!"
-
