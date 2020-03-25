@@ -15,10 +15,9 @@ const url = require("url");
 const POEDITOR_API_TOKEN = process.env["POEDITOR_API_TOKEN"];
 const POEDITOR_PROJECT_ID = "200535"; // Metabae POEditor project
 
-// currently we don't support variants of language
 const aliases = {
-  "pt-br": "pt",
-  "zh-CN": "zh",
+  "pt-br": "pt", // default to brazilian portuguese
+  "zh-Hans": "zh", // default to simplified chinese
 };
 
 async function main(args) {
