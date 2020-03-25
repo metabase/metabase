@@ -27,7 +27,10 @@ async function main(args) {
   // list available languages
   const { result: { languages } } = await poeditor("languages/list");
   for (const language of languages) {
-    const code = aliases[language.code] || language.code;
+    const code = (aliases[language.code] || language.code)
+      // use "zh-TW" rather than "zh-tw"
+      .replace(/-.*$/, s => s.toUpperCase());
+
     if (wanted.has(code)) {
       wanted.delete(code);
       console.log(`Downloading: ${code}  (${language.percentage}%)`);
