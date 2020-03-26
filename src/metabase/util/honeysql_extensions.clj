@@ -37,8 +37,8 @@
   (str "count(distinct " (hformat/to-sql field) ")"))
 
 ;; register the function `percentile` with HoneySQL
-;; (hsql/format (hsql/call :percentile :a 0.9)) -> "percentile_cont(0.9) within group (order by a)"
-(defmethod hformat/fn-handler "percentile" [_ field p]
+;; (hsql/format (hsql/call :percentile-cont :a 0.9)) -> "percentile_cont(0.9) within group (order by a)"
+(defmethod hformat/fn-handler "percentile-cont" [_ field p]
   (str "PERCENTILE_CONT(" (hformat/to-sql p) ") within group (order by " (hformat/to-sql field) ")"))
 
 

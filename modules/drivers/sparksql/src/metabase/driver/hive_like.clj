@@ -123,7 +123,7 @@
 
 (defmethod sql.qp/->honeysql [:hive-like :percentile]
   [driver [_ arg p]]
-  (hsql/raw (str "PERCENTILE(" (hformat/to-sql (sql.qp/->honeysql driver arg)) ","  (hformat/to-sql (sql.qp/->honeysql driver arg)) ")")))
+  (hsql/call :percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)))
 
 (defmethod sql.qp/add-interval-honeysql-form :hive-like
   [_ hsql-form amount unit]
