@@ -38,9 +38,9 @@
                :rows [[nil]]}))))
 
     (testing "should attempt to infer better base type if driver returns :type/* (#12150)"
-      ;; `column-info*` handles merging info returned by driver & inferred by annotate
+      ;; `merged-column-info` handles merging info returned by driver & inferred by annotate
       (is (= [{:name "a", :display_name "a", :base_type :type/Integer, :source :native, :field_ref [:field-literal "a" :type/Integer]}]
-             (annotate/column-info*
+             (annotate/merged-column-info
               {:type :native}
               {:cols [{:name "a", :base_type :type/*}]
                :rows [[1] [2] [nil] [3]]}))))))

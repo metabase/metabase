@@ -544,7 +544,7 @@
          cols-returned-by-driver)
     cols))
 
-(s/defn column-info* :- ColsWithUniqueNames
+(s/defn merged-column-info :- ColsWithUniqueNames
   "Returns deduplicated and merged column metadata (`:cols`) for query results by combining (a) the initial results
   metadata returned by the driver's impl of `execute-reducible-query` and (b) column metadata inferred by logic in
   this namespace."
@@ -565,7 +565,7 @@
    (fn combine [result sampled-rows]
      (rf (cond-> result
            (map? result)
-           (assoc-in [:data :cols] (column-info* query (assoc metadata :rows sampled-rows))))))))
+           (assoc-in [:data :cols] (merged-column-info query (assoc metadata :rows sampled-rows))))))))
 
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
@@ -575,7 +575,7 @@
      query
      (fn [metadata]
        (if (= query-type :query)
-         (rff (assoc metadata :cols (column-info* query metadata)))
+         (rff (assoc metadata :cols (merged-column-info query metadata)))
          ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
          ;; queries...
          (add-column-info-xform query metadata (rff metadata))))
