@@ -297,7 +297,8 @@
 ;; de-CLOB any CLOB values that come back
 (defmethod sql-jdbc.execute/read-column-thunk :h2
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
-  (let [classname (Class/forName (.getColumnClassName rsmeta i) true (classloader/the-classloader))]
+  (let [classname (some-> (.getColumnClassName rsmeta i)
+                          (Class/forName true (classloader/the-classloader)))]
     (if (isa? classname Clob)
       (fn []
         (jdbc-protocols/clob->str (.getObject rs i)))
