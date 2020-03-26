@@ -21,22 +21,29 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest native-column-info-test
-  (testing (str "make sure that `column-info` for `:native` queries can still infer types even if the initial value(s) "
-                "are `nil` (#4256)")
-    (is (= [{:name "a", :display_name "a", :base_type :type/Integer, :source :native, :field_ref [:field-literal "a" :type/Integer]}
-            {:name "b", :display_name "b", :base_type :type/Integer, :source :native, :field_ref [:field-literal "b" :type/Integer]}]
-           (annotate/column-info
-            {:type :native}
-            {:cols [{:name "a"} {:name "b"}]
-             :rows [[1 nil] [2 nil] [3 nil] [4 5] [6 7]]}))))
+  (testing "native column info"
+    (testing "should still infer types even if the initial value(s) are `nil` (#4256)"
+      (is (= [{:name "a", :display_name "a", :base_type :type/Integer, :source :native, :field_ref [:field-literal "a" :type/Integer]}
+              {:name "b", :display_name "b", :base_type :type/Integer, :source :native, :field_ref [:field-literal "b" :type/Integer]}]
+             (annotate/column-info
+              {:type :native}
+              {:cols [{:name "a"} {:name "b"}]
+               :rows [[1 nil] [2 nil] [3 nil] [4 5] [6 7]]}))))
 
-  (testing (str "make sure that `column-info` for `:native` queries defaults `base_type` to `type/*` if there are no "
-                "non-nil values when we peek.")
-    (is (= [{:name "a", :display_name "a", :base_type :type/*, :source :native, :field_ref [:field-literal "a" :type/*]}]
-           (annotate/column-info
-            {:type :native}
-            {:cols [{:name "a"}]
-             :rows [[nil]]})))))
+    (testing "should use default `base_type` of `type/*` if there are no non-nil values in the sample"
+      (is (= [{:name "a", :display_name "a", :base_type :type/*, :source :native, :field_ref [:field-literal "a" :type/*]}]
+             (annotate/column-info
+              {:type :native}
+              {:cols [{:name "a"}]
+               :rows [[nil]]}))))
+
+    (testing "should attempt to infer better base type if driver returns :type/* (#12150)"
+      ;; `column-info*` handles merging info returned by driver & inferred by annotate
+      (is (= [{:name "a", :display_name "a", :base_type :type/Integer, :source :native, :field_ref [:field-literal "a" :type/Integer]}]
+             (annotate/column-info*
+              {:type :native}
+              {:cols [{:name "a", :base_type :type/*}]
+               :rows [[1] [2] [nil] [3]]}))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

@@ -73,30 +73,39 @@
                   :first-row        (first rows)
                   :type             error-type/qp}))))))
 
+(defn- native-column-info-for-a-single-column
+  "Determine column metadata for a single column for native query results."
+  [{col-name :name, driver-base-type :base_type, :as col} values-sample]
+  ;; Native queries don't have the type information from the original `Field` objects used in the query.
+  ;;
+  ;; If the driver returned a base type more specific than :type/*, use that; otherwise look at the sample
+  ;; of rows and infer the base type based on the classes of the values
+  (let [col-name  (name col-name)
+        base-type (or (when-not (= driver-base-type :type/*)
+                        driver-base-type)
+                      (driver.common/values->base-type values-sample)
+                      :type/*)]
+    (merge
+     {:display_name (u/qualified-name col-name)
+      :base_type    base-type
+      :source       :native}
+     ;; It is perfectly legal for a driver to return a column with a blank name; for example, SQL Server does this
+     ;; for aggregations like `count(*)` if no alias is used. However, it is *not* legal to use blank names in MBQL
+     ;; `:field-literal` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a valid
+     ;; `:field-literal`, omit the `:field_ref`.
+     (when (seq col-name)
+       {:field_ref [:field-literal col-name base-type]})
+     col
+     {:base_type base-type})))
+
 (defmethod column-info :native
   [_ {:keys [cols rows]}]
   (check-driver-native-columns cols rows)
-  ;; Infer the types of columns by looking at the first value for each in the results. Native queries don't have the
-  ;; type information from the original `Field` objects used in the query.
-  (vec
-   (for [i    (range (count cols))
-         :let [{col-name :name, :as col} (nth cols i)
-               col-name                  (name col-name)
-               base-type                 (or (:base_type col)
-                                             (driver.common/values->base-type (for [row rows]
-                                                                                (nth row i)))
-                                             :type/*)]]
-     (merge
-      {:display_name (u/qualified-name col-name)
-       :base_type    base-type
-       :source       :native}
-      ;; It is perfectly legal for a driver to return a column with a blank name; for example, SQL Server does this
-      ;; for aggregations like `count(*)` if no alias is used. However, it is *not* legal to use blank names in MBQL
-      ;; `:field-literal` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a valid
-      ;; `:field-literal`, omit the `:field_ref`.
-      (when (seq col-name)
-        {:field_ref [:field-literal col-name base-type]})
-      col))))
+  (mapv native-column-info-for-a-single-column
+        cols
+        (for [i (range (count cols))]
+          (for [row rows]
+            (nth row i)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -517,19 +526,28 @@
   It's the responsibility of the driver to make sure the `:cols` are returned in the correct number and order."
   [cols cols-returned-by-driver]
   (if (seq cols-returned-by-driver)
-    (map (fn [col driver-col]
+    (map (fn [our-col-metadata driver-col-metadata]
            ;; 1. Prefer our `:name` if it's something different that what's returned by the driver
            ;;    (e.g. for named aggregations)
-           ;; 2. Then, prefer any non-nil keys returned by the driver
-           ;; 3. Finally, merge in any of our other keys
-           (merge col (m/filter-vals some? driver-col) (u/select-non-nil-keys col [:name])))
+           ;; 2. Prefer our inferred base type if the driver returned `:type/*` and ours is more specific
+           ;; 3. Then, prefer any non-nil keys returned by the driver
+           ;; 4. Finally, merge in any of our other keys
+           (let [non-nil-driver-col-metadata (m/filter-vals some? driver-col-metadata)
+                 our-base-type               (when (= (:base_type driver-col-metadata) :type/*)
+                                               (u/select-non-nil-keys our-col-metadata [:base_type]))
+                 our-name                    (u/select-non-nil-keys our-col-metadata [:name])]
+             (merge our-col-metadata
+                    non-nil-driver-col-metadata
+                    our-base-type
+                    our-name)))
          cols
          cols-returned-by-driver)
     cols))
 
 (s/defn column-info* :- ColsWithUniqueNames
-  "Returns deduplicated `:cols` metadata given a query and the initial results metadata returned by the driver's impl
-  of `execute-reducible-query`."
+  "Returns deduplicated and merged column metadata (`:cols`) for query results by combining (a) the initial results
+  metadata returned by the driver's impl of `execute-reducible-query` and (b) column metadata inferred by logic in
+  this namespace."
   [query {cols-returned-by-driver :cols, :as result}]
   ;; merge in `:cols` if returned by the driver, then make sure the `:name` of each map in `:cols` is unique, since
   ;; the FE uses it as a key for stuff like column settings
