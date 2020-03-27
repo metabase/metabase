@@ -60,7 +60,7 @@ If you come across an x-ray that's particularly interesting, you can save it as 
 
 If for some reason x-rays aren't a good fit for your team or your data, administrators can turn them off completely in the general settings area of the Admin Panel.
 
-If you want to hide the suggestions from the home page for all users, while still keeping X-rays enabled, then hover the home page section and click the `X` next to "Try these x-rays based on your data", when logged in as an administrator.
+The x-ray suggestions that appear on the homepage of Metabase will be hidden if you pin any dashboards in the "Our Analytics" collection. You can also manually remove these suggestions for all users by hovering over that section on the homepage and clicking the `X` next to "Try these x-rays based on your data" when logged in as an administrator. This won't disable the x-ray features in the rest of Metabase.
 
 ### Need help?
 
