@@ -68,7 +68,7 @@ contain attributes for each user's first name, last name, and email. The asserti
         </saml2:Attribute>
         <saml2:Attribute Name="http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress" NameFormat="urn:oasis:names:tc:SAML:2.0:attrname-format:uri">
             <saml2:AttributeValue xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="xs:string">
-              cam@metabse.com
+              cam@metabase.com
             </saml2:AttributeValue>
         </saml2:Attribute>
     </saml2:AttributeStatement>
