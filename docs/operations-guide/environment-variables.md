@@ -1,6 +1,6 @@
 # Environment variables
 
-Many settings in Metabase can viewed and modified in the Admin Panel, or set via environment variables. The environment variables always take precedence.
+Many settings in Metabase can be viewed and modified in the Admin Panel, or set via environment variables. The environment variables always take precedence.
 
 Setting environment variables can be done in various ways depending on how Metabase is being run.
 
@@ -30,7 +30,7 @@ docker run -d -p 3000:3000 -e 'MB_SITE_NAME=Awesome Company' --name metabase met
 Type: integer<br>
 Default: `20160`
 
-Session expiration, defined in seconds (default is 2 weeks), which will logout users after the defined period and require re-authentication.
+Session expiration, defined in seconds (default is 2 weeks), which will log out users after the defined period and require re-authentication.
 
 Note: This setting is not an idle/inactivity timeout. If you set this to 15 minutes, your users have to login (or re-authenticate) again every 15 minutes.
 
@@ -55,7 +55,7 @@ Enable the collection of anonymous usage data in order to help Metabase improve.
 Type: string<br>
 Default: `null`
 
-Middleware that enforces validation of the client via the request header `X-Metabase-Apikey`. If the header is available, then it’s validated against `MB_API_KEY`. When it matches, the request continues otherwise it’s blocked with a 403 Forbidden response.
+Middleware that enforces validation of the client via the request header `X-Metabase-Apikey`. If the header is available, then it’s validated against `MB_API_KEY`. When it matches, the request continues; otherwise it’s blocked with a 403 Forbidden response.
 
 #### `MB_APPLICATION_COLORS`
 
@@ -73,11 +73,11 @@ Since: 0.35.0
 
 Maximum number of connections to the Metabase application database.
 
-Change this to a higher value, if you notice that regular usage consumes close to or all connections. When all connections are in use, then Metabase might feel slow or unresponsive, when clicking around in the interface.
+Change this to a higher value if you notice that regular usage consumes all or close to all connections. When all connections are in use, Metabase might feel slow or unresponsive when clicking around the interface.
 
-Check the Metabase log, look for lines that contains the following `… App DB connections: 12/15 …`, where that example would indicate you’re using 12 out of 15 available connections.
+To see how many connections are being used, check the Metabase logs and look for lines that contains the following: `… App DB connections: 12/15 …`. In this example, 12 out of 15 available connections are being used.
 
-See [MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE](#MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE) for setting maximum connections to the databases setup in Metabase.
+See [MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE](#MB_JDBC_DATA_WAREHOUSE_MAX_CONNECTION_POOL_SIZE) for setting maximum connections to the databases connected to Metabase.
 
 #### `MB_APPLICATION_FAVICON_URL`
 
@@ -144,14 +144,14 @@ Used to recognize the Mac App client, which then defaults to `"OSX"`.
 Type: boolean<br>
 Default: `true`
 
-Color log lines. When set to `false` it will disable log line colors. This is disabled on Windows. Related to [MB_EMOJI_IN_LOGS](#MB_EMOJI_IN_LOGS)
+Color log lines. When set to `false` it will disable log line colors. This is disabled on Windows. Related to [MB_EMOJI_IN_LOGS](#MB_EMOJI_IN_LOGS).
 
 #### `MB_CUSTOM_FORMATTING`
 
 Type: string<br>
 Default: `"{}"`
 
-JSON object keyed by type, containing formatting settings
+JSON object keyed by type, containing formatting settings.
 
 #### `MB_CUSTOM_GEOJSON`
 
@@ -165,7 +165,7 @@ JSON object containing information about custom GeoJSON files for use in map vis
 Type: boolean<br>
 Default: `true`
 
-When set to `false`, Metabase will print migrations needed to done in the application database and exit. Those migrations needs to applied manually. When `true`, Metabase will automatically make changes to the application database. This is not related to migrating away from H2.
+When set to `false`, Metabase will print migrations needed to be done in the application database and exit. Those migrations need to be applied manually. When `true`, Metabase will automatically make changes to the application database. This is not related to migrating away from H2.
 
 #### `MB_DB_CONNECTION_TIMEOUT_MS`
 
@@ -179,7 +179,7 @@ Timeout in milliseconds for connecting to the application database.
 Type: string<br>
 Default: `null`
 
-A JDBC style connection URI that can be used instead of most of `MB_DB_*` like [MB_DB_HOST](#MB_DB_HOST). Also used, when certain Connection String parameters are required for the connection. The connection type requirement is the same as [MB_DB_TYPE](#MB_DB_TYPE).
+A JDBC-style connection URI that can be used instead of most of `MB_DB_*` like [MB_DB_HOST](#MB_DB_HOST). Also used when certain Connection String parameters are required for the connection. The connection type requirement is the same as [MB_DB_TYPE](#MB_DB_TYPE).
 
 Example: `postgres://dbuser:dbpassword@db.example.com:port/mydb?ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactorydbpassword@db.example.com`
 
@@ -197,7 +197,7 @@ Default: `"metabase.db"`
 
 Location of H2 database file. Should not include the `.mv.db` (or `.h2.db`) file extension. Used when [MB_DB_TYPE](#MB_DB_TYPE) is set to`"h2"`.
 
-Can also be used, when migrating away from H2, to specify where the existing data should be read from.
+Can also be used when migrating away from H2 to specify where the existing data should be read from.
 
 #### `MB_DB_HOST`
 
@@ -255,7 +255,7 @@ Use [MB_SOURCE_ADDRESS_HEADER](#MB_SOURCE_ADDRESS_HEADER) to set the IP address 
 Type: string<br>
 Default: `null`
 
-Email address you want to use as the sender of Metabase.
+Address you want to use as the sender of emails generated by Metabase, such as pulses or account invitations.
 
 #### `MB_EMAIL_SMTP_HOST`
 
@@ -312,7 +312,7 @@ Emojis on log lines. When set to `false` it will disable log line emojis. This i
 Type: boolean<br>
 Default: `false`
 
-Allow admins to securely embed questions and dashboards within other applications?
+Allow admins to securely embed questions and dashboards within other applications.
 
 #### `MB_ENABLE_NESTED_QUERIES`
 
@@ -327,7 +327,7 @@ Only available in Enterprise Edition<br>
 Type: boolean<br>
 Default: `true`
 
-Allow logging in by email and password, when SSO login options are enabled.
+Still allow logging in by email and password when SSO login options are enabled.
 
 #### `MB_ENABLE_PUBLIC_SHARING`
 
@@ -355,7 +355,7 @@ When `true`, this will enable `/api/testing` endpoint. **Warning:** This should 
 Type: boolean<br>
 Default: `true`
 
-Allow users to explore data using X-rays
+Allow users to explore data using X-rays.
 
 #### `MB_ENCRYPTION_SECRET_KEY`
 
@@ -371,7 +371,7 @@ Also see documentation page [Encrypting database details at rest](encrypting-dat
 Type: string<br>
 Default: `null`
 
-When set, allow users to sign up on their own if their Google account email address is from this domain.
+When set, allows users to automatically create their Metabase account by logging in if their Google account email address is from this domain.
 
 #### `MB_GOOGLE_AUTH_CLIENT_ID`
 
@@ -388,7 +388,7 @@ Since: 0.35.0
 
 Maximum number of connections to the data source databases. The maximum is for each database setup in Admin Panel > Databases, not a total for all databases.
 
-Change this to a higher value, if you notice that regular usage consumes close to or all connections. When all connections are in use, then Metabase will be slower to return results for queries, since it would have to wait for an available connection before processing the next query in the queue.
+Change this to a higher value if you notice that regular usage consumes all or close to all connections. When all connections are in use then Metabase will be slower to return results for queries, since it would have to wait for an available connection before processing the next query in the queue.
 
 See [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE) for setting maximum connections to the Metabase application database.
 
@@ -398,7 +398,7 @@ Type: integer<br>
 Default: `600000`<br>
 Since: 0.35.0
 
-Timeout of Jetty async threads, defined in milliseconds. The default is 10 minutes. Very few things might reach the timeout, since they return some type of data before, but things like CSV might.
+Timeout of Jetty async threads, defined in milliseconds. The default is 10 minutes. Very few things might reach that timeout, since they return some type of data before, but things like CSV downloads might.
 
 #### `MB_JETTY_DAEMON`
 
@@ -426,12 +426,12 @@ Blocks the thread until server ends.
 Type: integer<br>
 Default: `200000`
 
-Maximum idle time in milliseconds for a connection, defined in milliseconds.
+Maximum idle time for a connection, in milliseconds.
 
 #### `MB_JETTY_MAXQUEUED`
 
 Type: integer<br>
-Default: ???
+Default: _"FIX ME"_
 
 Maximum number of requests to be queued, when all threads are busy.
 
@@ -442,9 +442,9 @@ Default: `50`
 
 Maximum number of threads.
 
-Change this to a higher value, if you notice that regular usage consumes close to or all threads. When all threads are in use, then Metabase might feel slow or unresponsive, when clicking around in the interface.
+Change this to a higher value if you notice that regular usage consumes all or close to all threads. When all threads are in use Metabase might feel slow or unresponsive when clicking around the interface.
 
-Check the Metabase log, look for lines that contains the following `… Jetty threads: 45/50 …`, where that example would indicate you’re using 45 out of 50 available threads.
+To see how many threads are being used, check the Metabase logs and look for lines that contain the following: `… Jetty threads: 45/50 …`, which in this case would indicate 45 out of 50 available threads are being used.
 
 Related [MB_ASYNC_QUERY_THREAD_POOL_SIZE](#MB_ASYNC_QUERY_THREAD_POOL_SIZE).
 
@@ -469,7 +469,7 @@ Default: `null`
 
 When set to `true`, will enable HTTPS with the options configured in the `MB_JETTY_SSL_*` variables.
 
-Also see documentation page [Customizing Jetty webserver](customizing-jetty-webserver.md)
+Also see the [Customizing Jetty web server](customizing-jetty-webserver.md) documentation page. 
 
 #### `MB_JETTY_SSL_KEYSTORE`
 
@@ -519,7 +519,7 @@ Default page to show the user.
 Type: string<br>
 Default: `"mail"`
 
-Attribute to use for the users email. (usually 'mail', 'email' or 'userPrincipalName')
+Attribute to use for the user's email. (usually 'mail', 'email' or 'userPrincipalName')
 
 #### `MB_LDAP_ATTRIBUTE_FIRSTNAME`
 
@@ -540,7 +540,7 @@ Attribute to use for the user's last name. (usually 'sn')
 Type: string<br>
 Default: `null`
 
-The Distinguished Name to bind as (if any), this user will be used to lookup information about other users.
+The Distinguished Name to bind as (if any). This user will be used to lookup information about other users.
 
 #### `MB_LDAP_ENABLED`
 
@@ -554,7 +554,7 @@ Enable LDAP authentication.
 Type: string<br>
 Default: `null`
 
-Search base for groups, not required if your LDAP directory provides a 'memberOf' overlay. (Will be searched recursively)
+Search base for groups. Not required if your LDAP directory provides a 'memberOf' overlay. (Will be searched recursively.)
 
 #### `MB_LDAP_GROUP_MAPPINGS`
 
@@ -619,14 +619,14 @@ Comma-separated list of user attributes to skip syncing for LDAP users.
 Type: string<br>
 Default: `null`
 
-Search base for users. (Will be searched recursively)
+Search base for users. (Will be searched recursively.)
 
 #### `MB_LDAP_USER_FILTER`
 
 Type: string<br>
 Default: `"(&(objectClass=inetOrgPerson)(|(uid={login})(mail={login})))"`
 
-User lookup filter, the placeholder `{login}` will be replaced by the user supplied login.
+User lookup filter. The placeholder `{login}` will be replaced by the user supplied login.
 
 #### `MB_MAP_TILE_SERVER_URL`
 
@@ -672,7 +672,7 @@ Set a minimum password length to increase security for regular logins. This only
 Type: string<br>
 Default: `"plugins"`
 
-Path of the “plugins" directory, which is used for the Metabase database drivers. The path should be to a writable directory. When using JAR, the default directory is `plugins`, created in the same location as the JAR file. When using Docker, the default directory is `/plugins`
+Path of the “plugins" directory, which is used for the Metabase database drivers. The path should be to a writable directory. When using JAR, the default directory is `plugins`, created in the same location as the JAR file. When using Docker, the default directory is `/plugins`.
 
 The location is where custom third-party drivers should be added. Then Metabase will load the driver on startup, which can be verified in the log.
 
@@ -681,14 +681,14 @@ The location is where custom third-party drivers should be added. Then Metabase 
 Type: string<br>
 Default: `null`
 
-Token for premium features. Go to the https://store.metabase.com/ to get yours!
+Token for premium features.
 
 #### `MB_QP_CACHE_BACKEND`
 
 Type: string<br>
 Default: `"db"`
 
-Current cache backend. Dynamically rebindable primary for test purposes.
+Current cache backend. Dynamically rebindable primarily for test purposes.
 
 #### `MB_QUERY_CACHING_MAX_KB`
 
@@ -751,7 +751,7 @@ Hide the “Our data" section from the homepage by setting it to `false`. Show t
 Type: boolean<br>
 Default: `null`
 
-Hide the X-rays section from the homepage by setting it to `false`. Show the section with `true`, in case it was manually removed.
+Hide the X-rays section from the homepage by setting it to `false`. Show the section with `true`, in case it was manually removed. Even if set to `true`, these will be hidden if any dashboards have been pinned in the "Our Analytics" collection.
 
 #### `MB_SITE_LOCALE`
 
@@ -793,7 +793,7 @@ Slack API bearer token obtained from https://api.slack.com/web#authentication
 Type: string<br>
 Default: `X-Forwarded-For`
 
-Identify the source of HTTP requests by this headers value, instead of its remote address. Related to [MB_DISABLE_SESSION_THROTTLE](#MB_DISABLE_SESSION_THROTTLE)
+Identify the source of HTTP requests by this header's value, instead of its remote address. Related to [MB_DISABLE_SESSION_THROTTLE](#MB_DISABLE_SESSION_THROTTLE).
 
 #### `MB_SSL_CERTIFICATE_PUBLIC_KEY`
 
