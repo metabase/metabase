@@ -145,6 +145,10 @@ export default class PulseEditChannels extends Component {
   };
 
   renderFields(channel, index, channelSpec) {
+    const valueForField = field => {
+      const value = channel.details && channel.details[field.name];
+      return value != null ? value : null; // convert undefined to null so Uncontrollable doesn't ignore changes
+    };
     return (
       <div>
         {channelSpec.fields.map(field => (
@@ -153,7 +157,7 @@ export default class PulseEditChannels extends Component {
             {field.type === "select" ? (
               <Select
                 className="h4 text-bold bg-white inline-block"
-                value={channel.details && channel.details[field.name]}
+                value={valueForField(field)}
                 placeholder={t`Pick a user or channel...`}
                 searchProp="name"
                 // Address #5799 where `details` object is missing for some reason
