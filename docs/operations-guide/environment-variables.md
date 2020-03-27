@@ -188,7 +188,7 @@ Example: `postgres://dbuser:dbpassword@db.example.com:port/mydb?ssl=true&sslfact
 Type: string<br>
 Default: `null`
 
-The database name of the application database used with [MB_DB_HOST](#MB_DB_HOST)
+The database name of the application database used with [MB_DB_HOST](#MB_DB_HOST).
 
 #### `MB_DB_FILE`
 
@@ -319,7 +319,7 @@ Allow admins to securely embed questions and dashboards within other application
 Type: boolean<br>
 Default: `true`
 
-Allow using a saved question as the source for other queries?
+Allow using a saved question as the source for other queries.
 
 #### `MB_ENABLE_PASSWORD_LOGIN`
 
@@ -334,7 +334,7 @@ Still allow logging in by email and password when SSO login options are enabled.
 Type: boolean<br>
 Default: `false`
 
-Enable admins to create publicly viewable links (and embedded iframes) for Questions and Dashboards?
+Enable admins to create publicly viewable links (and embedded iframes) for questions and dashboards.
 
 #### `MB_ENABLE_QUERY_CACHING`
 
@@ -433,7 +433,7 @@ Maximum idle time for a connection, in milliseconds.
 Type: integer<br>
 Default: _"FIX ME"_
 
-Maximum number of requests to be queued, when all threads are busy.
+Maximum number of requests to be queued when all threads are busy.
 
 #### `MB_JETTY_MAXTHREADS`
 
@@ -469,7 +469,7 @@ Default: `null`
 
 When set to `true`, will enable HTTPS with the options configured in the `MB_JETTY_SSL_*` variables.
 
-Also see the [Customizing Jetty web server](customizing-jetty-webserver.md) documentation page. 
+Also see the [Customizing Jetty web server](customizing-jetty-webserver.md) documentation page.
 
 #### `MB_JETTY_SSL_KEYSTORE`
 
@@ -519,21 +519,21 @@ Default page to show the user.
 Type: string<br>
 Default: `"mail"`
 
-Attribute to use for the user's email. (usually 'mail', 'email' or 'userPrincipalName')
+Attribute to use for the user's email. Usually 'mail', 'email' or 'userPrincipalName'.
 
 #### `MB_LDAP_ATTRIBUTE_FIRSTNAME`
 
 Type: string<br>
 Default: `"givenName"`
 
-Attribute to use for the user's first name. (usually 'givenName')
+Attribute to use for the user's first name. Usually 'givenName'.
 
 #### `MB_LDAP_ATTRIBUTE_LASTNAME`
 
 Type: string<br>
 Default: `"sn"`
 
-Attribute to use for the user's last name. (usually 'sn')
+Attribute to use for the user's last name. Usually 'sn'.
 
 #### `MB_LDAP_BIND_DN`
 
@@ -604,7 +604,7 @@ Only available in Enterprise Edition<br>
 Type: boolean<br>
 Default: `true`
 
-Should user attributes be synced when someone logs in via LDAP?
+Sync user attributes when someone logs in via LDAP.
 
 #### `MB_LDAP_SYNC_USER_ATTRIBUTES_BLACKLIST`
 
@@ -672,7 +672,7 @@ Set a minimum password length to increase security for regular logins. This only
 Type: string<br>
 Default: `"plugins"`
 
-Path of the “plugins" directory, which is used for the Metabase database drivers. The path should be to a writable directory. When using JAR, the default directory is `plugins`, created in the same location as the JAR file. When using Docker, the default directory is `/plugins`.
+Path of the "plugins" directory, which is used for the Metabase database drivers. The path should be to a writable directory. When using JAR, the default directory is `plugins`, created in the same location as the JAR file. When using Docker, the default directory is `/plugins`.
 
 The location is where custom third-party drivers should be added. Then Metabase will load the driver on startup, which can be verified in the log.
 
@@ -744,7 +744,7 @@ An UUID token used to signify that an instance has permissions to create the ini
 Type: boolean<br>
 Default: `null`
 
-Hide the “Our data" section from the homepage by setting it to `false`. Show the section with `true`, in case it was manually removed.
+Hide the "Our data" section from the homepage by setting it to `false`. Show the section with `true`, in case it was manually removed.
 
 #### `MB_SHOW_HOMEPAGE_XRAYS`
 
