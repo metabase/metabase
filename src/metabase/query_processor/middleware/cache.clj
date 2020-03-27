@@ -25,7 +25,8 @@
              [interface :as i]]
             [metabase.query-processor.middleware.cache.impl :as impl]
             [metabase.util.i18n :refer [trs]])
-  (:import org.eclipse.jetty.io.EofException))
+  (:import java.util.concurrent.locks.ReentrantLock
+           org.eclipse.jetty.io.EofException))
 
 (comment backend.db/keep-me)
 
@@ -48,42 +49,47 @@
 
 ;;; ------------------------------------------------------ Save ------------------------------------------------------
 
-;; purge runs on a loop that gets triggered whenever a new cache entry is saved. On each save, `purge-chan` is sent a
-;; `::purge` message; the channel itself uses a sliding buffer of size 1, so additional messages are dropped. Thus
-;; purge actions won't queue up if multiple queries are ran before we get a chance to finish the last one.
-
 (defn- purge! [backend]
   (try
-    (log/tracef "Purging old cache entires older than %s" (u/format-seconds (public-settings/query-caching-max-ttl)))
+    (log/tracef "Purging cache entires older than %s" (u/format-seconds (public-settings/query-caching-max-ttl)))
     (i/purge-old-entries! backend (public-settings/query-caching-max-ttl))
     (catch Throwable e
       (log/error e (trs "Error purging old cache entires")))))
 
-(defonce ^:private purge-chan
-  (delay
-    (let [purge-chan (a/chan (a/sliding-buffer 1))]
-      (a/go-loop []
-        (when-let [backend (a/<! purge-chan)]
-          (a/<! (a/thread (purge! backend)))
-          (recur)))
-      purge-chan)))
+;; NOCOMMIT
+(comment (defonce ^:private ^ReentrantLock purge-lock-2 (ReentrantLock.)))
 
-(defn- purge-async! []
-  (log/tracef "Sending async purge message to purge-chan")
-  (a/put! @purge-chan *backend*))
+#_(defn- maybe-purge! [backend]
+    (println "(.isLocked purge-lock):" (.isLocked purge-lock-2)) ; NOCOMMIT
+    (when-not (.isHeldByCurrentThread purge-lock-2)
+      (when (.tryLock purge-lock-2)
+        (try
+          (purge! backend)
+          (finally
+            (.unlock purge-lock-2))))))
 
 (defn- min-duration-ms
-  "Minimum duration it must take a query to complete in order for it to be eligable for caching."
+  "Minimum duration it must take a query to complete in order for it to be eligible for caching."
   []
   (* (public-settings/query-caching-min-ttl) 1000))
 
-(defn- cache-results-async! [query-hash out-chan]
+(defn- cache-results-async!
+  "Save the results of a query asynchronously once they are delivered (as a byte array) to the promise channel
+  `out-chan`."
+  [query-hash out-chan]
   (log/info (trs "Caching results for next time for query with hash {0}." (pr-str (i/short-hex-hash query-hash))) (u/emoji "💾"))
   (a/go
     (let [x (a/<! out-chan)]
-      (if (instance? Throwable x)
-        (when-not (= (:type (ex-data x)) ::impl/max-bytes)
+      (cond
+        (instance? Throwable x)
+        (if (= (:type (ex-data x)) ::impl/max-bytes)
+          (log/debug x (trs "Not caching results: results are larger than {0} KB" (public-settings/query-caching-max-kb)))
           (log/error x (trs "Error saving query results to cache.")))
+
+        (not (bytes? x))
+        (log/error (trs "Cannot cache results: expected byte array, got {0}" (class x)))
+
+        :else
         (let [y (a/<! (a/thread
                         (try
                           (i/save-results! *backend* query-hash x)
@@ -93,7 +99,7 @@
             (log/error y (trs "Error saving query results to cache."))
             (do
               (log/debug (trs "Successfully cached results for query."))
-              (purge-async!))))))))
+              (purge! *backend*))))))))
 
 (defn- save-results-xform [start-time metadata query-hash rf]
   (let [{:keys [in-chan out-chan]} (impl/serialize-async)]
