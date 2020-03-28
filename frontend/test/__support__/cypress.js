@@ -71,7 +71,17 @@ export function sidebar() {
   return cy.get(".scroll-y");
 }
 
+<<<<<<< HEAD
 // Metabase utility functions for commonly-used patterns
+=======
+// Metabase utility functions for navigating the UI
+export function selectDashboardFilter(selection, filterName) {
+  selection.contains("Select…").click();
+  popover()
+    .contains(filterName)
+    .click({ force: true });
+}
+>>>>>>> Add helper for selecting a dashboard filter and first rev of customer repro
 
 export function openOrdersTable() {
   cy.visit("/question/new?database=1&table=2");
