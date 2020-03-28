@@ -13,6 +13,7 @@
   (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
             [java-time :as t]
+            [medley.core :as m]
             [metabase
              [config :as config]
              [public-settings :as public-settings]
@@ -25,16 +26,15 @@
              [interface :as i]]
             [metabase.query-processor.middleware.cache.impl :as impl]
             [metabase.util.i18n :refer [trs]])
-  (:import java.util.concurrent.locks.ReentrantLock
-           org.eclipse.jetty.io.EofException))
+  (:import org.eclipse.jetty.io.EofException))
 
 (comment backend.db/keep-me)
 
 (def ^:private cache-version
   "Current serialization format version. Basically
 
-    [initial-metadata & rows]"
-  2)
+    [initial-metadata row-1 row-2 ... row-n final-metadata]"
+  3)
 
 ;; TODO - Why not make this an option in the query itself? :confused:
 (def ^:dynamic ^Boolean *ignore-cached-results*
@@ -55,18 +55,6 @@
     (i/purge-old-entries! backend (public-settings/query-caching-max-ttl))
     (catch Throwable e
       (log/error e (trs "Error purging old cache entires")))))
-
-;; NOCOMMIT
-(comment (defonce ^:private ^ReentrantLock purge-lock-2 (ReentrantLock.)))
-
-#_(defn- maybe-purge! [backend]
-    (println "(.isLocked purge-lock):" (.isLocked purge-lock-2)) ; NOCOMMIT
-    (when-not (.isHeldByCurrentThread purge-lock-2)
-      (when (.tryLock purge-lock-2)
-        (try
-          (purge! backend)
-          (finally
-            (.unlock purge-lock-2))))))
 
 (defn- min-duration-ms
   "Minimum duration it must take a query to complete in order for it to be eligible for caching."
@@ -110,6 +98,7 @@
       ([] (rf))
 
       ([result]
+       (a/put! in-chan (if (map? result) (m/dissoc-in result [:data :rows]) {}))
        (a/close! in-chan)
        (let [duration-ms (- (System/currentTimeMillis) start-time)]
          (log/info (trs "Query took {0} to run; miminum for cache eligibility is {1}"
@@ -124,20 +113,33 @@
 
 ;;; ----------------------------------------------------- Fetch ------------------------------------------------------
 
-(defn- add-cached-metadata-xform [rf]
-  (fn
-    ([] (rf))
+(defn- cached-results-rff
+  "Reducing function for cached results. Merges the final object in the cached results, the `final-metdata` map, with
+  the reduced value assuming it is a normal metadata map."
+  [rff]
+  (fn [{:keys [last-ran], :as metadata}]
+    (let [metadata       (dissoc metadata :last-ran :cache-version)
+          rf             (rff metadata)
+          final-metadata (volatile! nil)]
+      (fn
+        ([]
+         (rf))
 
-    ([acc]
-     (rf (if-not (map? acc)
-           acc
-           (-> acc
-               (assoc :cached true
-                      :updated_at (get-in acc [:data :last-ran]))
-               (update :data dissoc :last-ran :cache-version)))))
+        ([acc]
+         ;; if results are in the 'normal format' the use return the final metadata from the cache rather than
+         ;; whatever `acc` is right now since we don't run the entire post-processing pipeline for cached results
+         (let [normal-format? (and (map? acc) (seq (get-in acc [:data :cols])))
+               acc*           (-> (if normal-format?
+                                    @final-metadata
+                                    acc)
+                                  (assoc :cached true, :updated_at last-ran))]
+           (rf acc*)))
 
-    ([acc row]
-     (rf acc row))))
+        ([acc row]
+         (if (map? row)
+           (do (vreset! final-metadata row)
+               (rf acc))
+           (rf acc row)))))))
 
 (defn- maybe-reduce-cached-results
   "Reduces cached results if there is a hit. Otherwise, returns `::miss` directly."
@@ -149,13 +151,13 @@
           (i/with-cached-results *backend* query-hash max-age-seconds [is]
             (when is
               (impl/with-reducible-deserialized-results [[metadata reducible-rows] is]
-                (when reducible-rows
-                  (let [rff* (fn [metadata]
-                               (add-cached-metadata-xform (rff metadata)))]
-                    (log/tracef "Reducing cached rows...")
-                    (context/reducef rff* context metadata reducible-rows)
-                    (log/tracef "All cached rows reduced")
-                    ::ok))))))
+                (log/tracef "Found cached results. Version: %s" (pr-str (:cache-version metadata)))
+                (when (and (= (:cache-version metadata) cache-version)
+                           reducible-rows)
+                  (log/tracef "Reducing cached rows...")
+                  (context/reducef (cached-results-rff rff) context metadata reducible-rows)
+                  (log/tracef "All cached rows reduced")
+                  ::ok)))))
         ::miss)
     (catch EofException _
       (log/debug (trs "Request is closed; no one to return cached results to"))

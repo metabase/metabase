@@ -4,6 +4,7 @@
             [clojure.core.async :as a]
             [clojure.data.csv :as csv]
             [clojure.test :refer :all]
+            [clojure.tools.logging :as log]
             [java-time :as t]
             [medley.core :as m]
             [metabase
@@ -17,20 +18,26 @@
             [metabase.query-processor.middleware.cache :as cache]
             [metabase.query-processor.middleware.cache-backend.interface :as i]
             [metabase.query-processor.middleware.cache.impl :as impl]
-            [metabase.test.fixtures :as fixtures]))
+            [metabase.test.fixtures :as fixtures]
+            [pretty.core :as pretty]))
 
 (use-fixtures :once (fixtures/initialize :db))
 
-;; NOCOMMIT
-(defn lprintln [& args] (locking println (apply println args)))
+(def ^:private ^:dynamic *save-chan*
+  "Gets a message whenever results are saved to the test backend, or if the reducing function stops serializing results
+  because of an Exception or if the byte threshold is passed."
+  nil)
 
-(def ^:private ^:dynamic *save-chan* nil)
-(def ^:private ^:dynamic *purge-chan* nil)
+(def ^:private ^:dynamic *purge-chan*
+  "Gets a message whenever old entries are purged from the test backend."
+  nil)
 
-(defn- test-backend [save-chan purge-chan]
+(defn- test-backend
+  "In in-memory cache backend implementation."
+  [save-chan purge-chan]
   (let [store (atom nil)]
     (reify
-      pretty.core/PrettyPrintable
+      pretty/PrettyPrintable
       (pretty [_]
         (str "\n"
              (metabase.util/pprint-to-str 'blue
@@ -38,9 +45,9 @@
                  [hash (metabase.util/format-nanoseconds (.getNano (t/duration created (t/instant))))]))))
 
       i/CacheBackend
-      (cached-results [_ query-hash max-age-seconds respond]
+      (cached-results [this query-hash max-age-seconds respond]
         (let [hex-hash (codecs/bytes->hex query-hash)]
-          (lprintln "fetch" hex-hash _) ; NOCOMMIT
+          (log/tracef "Fetch results for %s store: %s" hex-hash this)
           (if-let [^bytes results (when-let [{:keys [created results]} (some (fn [[hash entry]]
                                                                                (when (= hash hex-hash)
                                                                                  entry))
@@ -48,26 +55,22 @@
                                     (when (t/after? created (t/minus (t/instant) (t/seconds max-age-seconds)))
                                       results))]
             (with-open [is (java.io.ByteArrayInputStream. results)]
-              (lprintln "(respond is)")
               (respond is))
-            (do
-              (lprintln "(respond nil)")
-              (respond nil)))))
+            (respond nil))))
 
-      (save-results! [_ query-hash results]
+      (save-results! [this query-hash results]
         (let [hex-hash (buddy.core.codecs/bytes->hex query-hash)]
-          (lprintln "save" hex-hash)    ; NOCOMMIT
           (swap! store assoc hex-hash {:results results
-                                       :created (t/instant)}))
-        (lprintln _)
+                                       :created (t/instant)})
+          (log/tracef "Save results for %s --> store: %s" hex-hash this))
         (a/>!! save-chan results))
 
-      (purge-old-entries! [_ max-age-seconds]
+      (purge-old-entries! [this max-age-seconds]
         (swap! store (fn [store]
                        (into {} (filter (fn [[_ {:keys [created]}]]
                                           (t/after? created (t/minus (t/instant) (t/seconds max-age-seconds))))
                                         store))))
-        (lprintln "purge!" _)           ; NOCOMMIT
+        (log/tracef "Purge old entries --> store: %s" this)
         (a/>!! purge-chan ::purge)))))
 
 (defn- do-with-mock-cache [f]
@@ -101,12 +104,8 @@
 
 (defn- run-query* [& {:as query-kvs}]
   ;; clear out stale values in save/purge channels
-  (while (a/poll! *save-chan*)
-    (lprintln "CLEARED OLD VALUE FROM SAVE CHAN") ; NOCOMMIT
-    )
-  (while (a/poll! *purge-chan*)
-    (lprintln "CLEARED OLD VALUE FROM PURGE CHAN") ; NOCOMMIT
-    )
+  (while (a/poll! *save-chan*))
+  (while (a/poll! *purge-chan*))
   (:metadata
    (mt/test-qp-middleware
     cache/maybe-return-cached-results
@@ -125,7 +124,6 @@
                 (Thread/sleep *query-execution-delay-ms*))})))
 
 (defn- run-query [& args]
-  (lprintln "run-query" args) ; NOCOMMIT
   (let [result (apply run-query* args)]
     (is (= :completed
            (:status result)))
@@ -286,28 +284,33 @@
 (deftest e2e-test
   (testing "Test that the caching middleware actually working in the context of the entire QP"
     (with-mock-cache [save-chan]
-      (let [query (assoc (mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})
-                         :cache-ttl 100)]
-        (is (= true
-               (boolean (#'cache/is-cacheable? query)))
-            "Query should be cacheable")
+      (doseq [query [(mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})
+                     (mt/native-query {:query "SELECT * FROM VENUES ORDER BY ID ASC LIMIT 5;"})]]
+        (let [query (assoc query :cache-ttl 100)]
+          (testing (format "query = %s" (pr-str query))
+            (is (= true
+                   (boolean (#'cache/is-cacheable? query)))
+                "Query should be cacheable")
 
-        (mt/with-clock #t "2020-02-19T04:44:26.056Z[UTC]"
-          (qp/process-query query)
-          (let [cached-result (qp/process-query query)]
-            (is (= {:cached     true
-                    :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
-                    :row_count  5
-                    :status     :completed}
-                   (dissoc cached-result :data))
-                "Results should be cached")
-            ;; remove metadata checksums because they can be different between runs when using an encryption key
-            (is (= (-> (qp/process-query (dissoc query :cache-ttl))
-                       (m/dissoc-in [:data :results_metadata :checksum]))
-                   (-> cached-result
-                       (dissoc :cached :updated_at)
-                       (m/dissoc-in [:data :results_metadata :checksum])))
-                "Cached result should be in the same format as the uncached result, except for added keys")))))))
+            (mt/with-clock #t "2020-02-19T04:44:26.056Z[UTC]"
+              (let [original-result (qp/process-query query)
+                    ;; clear any existing values in the `save-chan`
+                    _               (while (a/poll! save-chan))
+                    _               (mt/wait-for-result save-chan)
+                    cached-result   (qp/process-query query)]
+                (is (= {:cached     true
+                        :updated_at #t "2020-02-19T04:44:26.056Z[UTC]"
+                        :row_count  5
+                        :status     :completed}
+                       (dissoc cached-result :data))
+                    "Results should be cached")
+                ;; remove metadata checksums because they can be different between runs when using an encryption key
+                (is (= (-> original-result
+                           (m/dissoc-in [:data :results_metadata :checksum]))
+                       (-> cached-result
+                           (dissoc :cached :updated_at)
+                           (m/dissoc-in [:data :results_metadata :checksum])))
+                    "Cached result should be in the same format as the uncached result, except for added keys")))))))))
 
 (deftest export-test
   (testing "Should be able to cache results streaming as an alternate download format, e.g. csv"
@@ -334,3 +337,23 @@
               (is (= uncached-results
                      (vec (csv/read-csv reader)))
                   "CSV results should match results when caching isn't in play"))))))))
+
+(deftest caching-across-different-formats-test
+  (testing "If we run a query with a download format such as CSV we should be able to use cached results elsewhere"
+    (let [query          (mt/mbql-query venues {:order-by [[:asc $id]], :limit 7})
+          normal-results (qp/process-query query)]
+      (is (= false
+             (boolean (:cached normal-results)))
+          "Query shouldn't be cached when running without mock cache in place")
+      (with-mock-cache [save-chan]
+        (let [query (assoc query :cache-ttl 100)]
+          (with-open [os (java.io.ByteArrayOutputStream.)]
+            (is (= false
+                   (boolean (:cached (qp/process-query query (qp.streaming/streaming-context :csv os)))))
+                "Query shouldn't be cached after first run with the mock cache in place")
+            (mt/wait-for-result save-chan))
+          (is (= (-> (assoc normal-results :cached true)
+                     (dissoc :updated_at))
+                 (-> (qp/process-query query)
+                     (dissoc :updated_at)))
+              "Query should be cached and results should match those ran without cache"))))))
