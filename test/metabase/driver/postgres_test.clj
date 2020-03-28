@@ -508,6 +508,6 @@
           (is (= [{:display_name "sleep"
                    :base_type    :type/*
                    :source       :native
-                   :field_ref    [:field-literal "sleep" :type/*]
+                   :field_ref    [:field-literal "sleep" :type/Text]
                    :name         "sleep"}]
                  (mt/cols results))))))))
