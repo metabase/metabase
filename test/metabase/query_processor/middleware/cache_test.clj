@@ -283,9 +283,9 @@
 
 (deftest e2e-test
   (testing "Test that the caching middleware actually working in the context of the entire QP"
-    (with-mock-cache [save-chan]
-      (doseq [query [(mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})
-                     (mt/native-query {:query "SELECT * FROM VENUES ORDER BY ID ASC LIMIT 5;"})]]
+    (doseq [query [(mt/mbql-query venues {:order-by [[:asc $id]], :limit 5})
+                   (mt/native-query {:query "SELECT * FROM VENUES ORDER BY ID ASC LIMIT 5;"})]]
+      (with-mock-cache [save-chan]
         (let [query (assoc query :cache-ttl 100)]
           (testing (format "query = %s" (pr-str query))
             (is (= true
@@ -353,7 +353,9 @@
                 "Query shouldn't be cached after first run with the mock cache in place")
             (mt/wait-for-result save-chan))
           (is (= (-> (assoc normal-results :cached true)
-                     (dissoc :updated_at))
+                     (dissoc :updated_at)
+                     (m/dissoc-in [:data :results_metadata :checksum]))
                  (-> (qp/process-query query)
-                     (dissoc :updated_at)))
+                     (dissoc :updated_at)
+                     (m/dissoc-in [:data :results_metadata :checksum])))
               "Query should be cached and results should match those ran without cache"))))))

@@ -68,16 +68,13 @@
   (log/info (trs "Caching results for next time for query with hash {0}." (pr-str (i/short-hex-hash query-hash))) (u/emoji "💾"))
   (a/go
     (let [x (a/<! out-chan)]
-      (cond
-        (instance? Throwable x)
+      (condp instance? x
+        Throwable
         (if (= (:type (ex-data x)) ::impl/max-bytes)
           (log/debug x (trs "Not caching results: results are larger than {0} KB" (public-settings/query-caching-max-kb)))
           (log/error x (trs "Error saving query results to cache.")))
 
-        (not (bytes? x))
-        (log/error (trs "Cannot cache results: expected byte array, got {0}" (class x)))
-
-        :else
+        (Class/forName "[B")
         (let [y (a/<! (a/thread
                         (try
                           (i/save-results! *backend* query-hash x)
@@ -87,7 +84,9 @@
             (log/error y (trs "Error saving query results to cache."))
             (do
               (log/debug (trs "Successfully cached results for query."))
-              (purge! *backend*))))))))
+              (purge! *backend*))))
+
+        (log/error (trs "Cannot cache results: expected byte array, got {0}" (class x)))))))
 
 (defn- save-results-xform [start-time metadata query-hash rf]
   (let [{:keys [in-chan out-chan]} (impl/serialize-async)]
