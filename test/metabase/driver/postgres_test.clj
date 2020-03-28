@@ -506,7 +506,7 @@
                  (mt/rows results))))
         (testing "cols"
           (is (= [{:display_name "sleep"
-                   :base_type    :type/*
+                   :base_type    :type/Text
                    :source       :native
                    :field_ref    [:field-literal "sleep" :type/Text]
                    :name         "sleep"}]
