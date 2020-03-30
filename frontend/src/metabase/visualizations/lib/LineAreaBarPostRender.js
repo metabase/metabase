@@ -262,15 +262,17 @@ function onRenderValueLabels(chart, formatYValue, [data]) {
 
   // Update `data` to use named x/y and include `showLabelBelow`.
   // We need to do that before data is filtered to show every nth value.
-  data = data.map(([x, y], i) => {
-    const isLocalMin =
-      // first point or prior is greater than y
-      (i === 0 || data[i - 1][1] > y) &&
-      // last point point or next is greater than y
-      (i === data.length - 1 || data[i + 1][1] > y);
-    const showLabelBelow = isLocalMin && display === "line";
-    return { x, y, showLabelBelow };
-  });
+  data = data
+    .map(([x, y], i) => {
+      const isLocalMin =
+        // first point or prior is greater than y
+        (i === 0 || data[i - 1][1] > y) &&
+        // last point point or next is greater than y
+        (i === data.length - 1 || data[i + 1][1] > y);
+      const showLabelBelow = isLocalMin && display === "line";
+      return { x, y, showLabelBelow };
+    })
+    .filter(d => display !== "bar" || d.y !== 0);
 
   const formattingSetting = chart.settings["graph.label_value_formatting"];
   let compact;

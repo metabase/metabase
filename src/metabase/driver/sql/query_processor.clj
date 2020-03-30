@@ -826,7 +826,7 @@
 ;;; -------------------------------------------- putting it all togetrher --------------------------------------------
 
 (defn- expressions->subselect
-  [{:keys [expressions fields] :as query}]
+  [{:keys [expressions] :as query}]
   (let [subselect (-> query
                       (select-keys [:joins :source-table :source-query :source-metadata])
                       (assoc :fields
@@ -837,14 +837,12 @@
                                  (mbql.u/replace expression-definition
                                    [:expression expr] (expressions (keyword expr)))])
                               (distinct
-                               (mbql.u/match query [(_ :guard #{:field-literal :field-id :joined-field}) & _])))))
-        ;; TODO -- correctly handle fields in multiple tables with the same name
-        fields    (mbql.u/replace fields
-                    [:joined-field alias field] [:joined-field "source" field])]
+                               (mbql.u/match query [(_ :guard #{:field-literal :field-id :joined-field}) & _])))))]
     (-> query
+        ;; TODO -- correctly handle fields in multiple tables with the same name
+        (mbql.u/replace [:joined-field alias field] [:joined-field "source" field])
         (dissoc :source-table :source-query :joins :expressions :source-metadata)
-        (assoc :source-query subselect
-               :fields       fields))))
+        (assoc :source-query subselect))))
 
 (defn- apply-clauses
   "Like `apply-top-level-clauses`, but handles `source-query` as well, which needs to be handled in a special way

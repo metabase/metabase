@@ -170,14 +170,14 @@
   with-test-drivers])
 
 (defn do-with-clock [clock thunk]
-  (let [clock (cond
-                (t/clock? clock)           clock
-                (t/zoned-date-time? clock) (t/mock-clock (t/instant clock) (t/zone-id clock))
-                :else                      (throw (Exception. (format "Invalid clock: ^%s %s"
-                                                                      (.getName (class clock))
-                                                                      (pr-str clock)))))]
-    (t/with-clock clock
-      (testing (format "\nsystem clock = %s" (pr-str clock))
+  (testing (format "\nsystem clock = %s" (pr-str clock))
+    (let [clock (cond
+                  (t/clock? clock)           clock
+                  (t/zoned-date-time? clock) (t/mock-clock (t/instant clock) (t/zone-id clock))
+                  :else                      (throw (Exception. (format "Invalid clock: ^%s %s"
+                                                                        (.getName (class clock))
+                                                                        (pr-str clock)))))]
+      (t/with-clock clock
         (thunk)))))
 
 (defmacro with-clock

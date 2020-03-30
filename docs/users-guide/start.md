@@ -10,6 +10,7 @@
 - [Basic exploration in Metabase](03-basic-exploration.md)
 - [Asking questions in Metabase](04-asking-questions.md)
 - [Using the notebook editor to ask custom questions](custom-questions.md)
+- [Writing custom expressions in the notebook editor](expressions.md)
 - [Using the SQL editor](writing-sql.md)
 - [How to visualize the answers to questions](05-visualizing-results.md)
 

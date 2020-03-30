@@ -692,23 +692,3 @@
 .ParameterValuePickerNoPopover input::-webkit-input-placeholder {
   color: var(--color-text-medium);
 }
-
-text.value-label-outline {
-  font-weight: 900;
-  stroke-width: 4px;
-  stroke: var(--color-text-white);
-}
-
-text.value-label {
-  fill: var(--color-text-dark);
-  font-weight: 900;
-}
-
-text.value-label-outline,
-text.value-label {
-  pointer-events: none;
-}
-
-.Dashboard--night text.value-label-outline {
-  stroke: var(--night-mode-card);
-}
