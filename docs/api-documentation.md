@@ -866,7 +866,7 @@ Fetch all `Databases`.
 
 *  **`include_cards`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
-*  **`include`** null
+*  **`include`** value may be nil, or if non-nil, value must be `tables`
 
 *  **`saved`** value may be nil, or if non-nil, value must be a valid boolean string ('true' or 'false').
 
