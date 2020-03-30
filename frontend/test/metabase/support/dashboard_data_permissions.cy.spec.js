@@ -15,7 +15,7 @@ describe("support > permissions", () => {
       .click();
 
     // Filter the first card by product category
-    selectDashboardFilter(cy.get(".DashCard").first(), "Category");
+    selectDashboardFilter(cy.get(".DashCard").first(), "Title");
 
     cy.contains("Done").click();
     cy.contains("Save").click();
@@ -31,5 +31,12 @@ describe("support > permissions", () => {
       signIn("nodata");
       cy.visit("/dashboard/1");
       cy.contains("Orders");
+
+      cy.contains("Category").type("Aero");
+
+      // We should get a suggested response and be able to click it
+      cy.contains("Aerodynamic").click();
+      cy.contains("Add filter").click();
+      cy.contains("Rows 1-1 of 96");
   })
 })
