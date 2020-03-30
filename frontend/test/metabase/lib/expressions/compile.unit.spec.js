@@ -6,17 +6,26 @@ import {
   expressionOpts,
 } from "./__support__/expressions";
 
-const ENABLE_PERF_TESTS = false;
+const ENABLE_PERF_TESTS = !process.env["CI"];
+
+function expectFast(fn, milliseconds = 1000) {
+  const start = Date.now();
+  fn();
+  const end = Date.now();
+  if (ENABLE_PERF_TESTS) {
+    expect(end - start).toBeLessThan(milliseconds);
+  }
+}
 
 describe("metabase/lib/expressions/compile", () => {
   let compile, parseOperators;
-  it("should load compile within 3 seconds", () => {
-    const start = Date.now();
-    ({ compile, parseOperators } = require("metabase/lib/expressions/compile"));
-    const end = Date.now();
-    if (ENABLE_PERF_TESTS) {
-      expect(end - start).toBeLessThan(3000);
-    }
+  it("should load compile quickly", () => {
+    expectFast(() => {
+      ({
+        compile,
+        parseOperators,
+      } = require("metabase/lib/expressions/compile"));
+    });
   });
 
   describe("parseOperators", () => {
@@ -58,21 +67,15 @@ describe("metabase/lib/expressions/compile", () => {
         for (const [source, mbql, description] of cases) {
           if (mbql) {
             it(`should compile ${description}`, () => {
-              const start = Date.now();
-              expect(compile({ source, ...opts })).toEqual(mbql);
-              const elapsed = Date.now() - start;
-              if (ENABLE_PERF_TESTS) {
-                expect(elapsed).toBeLessThan(250);
-              }
+              expectFast(() => {
+                expect(compile({ source, ...opts })).toEqual(mbql);
+              }, 250);
             });
           } else {
             it(`should not compile ${description}`, () => {
-              const start = Date.now();
-              expect(() => compile({ source, ...opts })).toThrow();
-              const elapsed = Date.now() - start;
-              if (ENABLE_PERF_TESTS) {
-                expect(elapsed).toBeLessThan(250);
-              }
+              expectFast(() => {
+                expect(() => compile({ source, ...opts })).toThrow();
+              }, 250);
             });
           }
         }
@@ -96,6 +99,17 @@ describe("metabase/lib/expressions/compile", () => {
         "avg",
         ["field-id", 1],
       ]);
+    });
+
+    it("should not take a long time to parse long string literals", () => {
+      expectFast(() => {
+        try {
+          compile({
+            source: '"12345678901234567901234567890',
+            ...expressionOpts,
+          });
+        } catch (e) {}
+      });
     });
   });
 });
