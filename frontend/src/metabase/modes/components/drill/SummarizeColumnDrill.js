@@ -1,6 +1,6 @@
 /* @flow */
 
-import { getFieldRefFromColumn } from "metabase/modes/lib/actions";
+import { fieldRefForColumn } from "metabase/lib/dataset";
 import {
   getAggregationOperator,
   isCompatibleAggregationOperatorForField,
@@ -66,7 +66,7 @@ export default ({
       question: () =>
         query
           // $FlowFixMe
-          .aggregate([aggregator.short, getFieldRefFromColumn(column)])
+          .aggregate([aggregator.short, fieldRefForColumn(column)])
           .question()
           .setDefaultDisplay(),
       action: () => dispatch => {

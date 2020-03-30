@@ -14,6 +14,7 @@ import View from "../components/view/View";
 // import Notebook from "../components/notebook/Notebook";
 
 import title from "metabase/hoc/Title";
+import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
 
 import {
   getCard,
@@ -42,6 +43,7 @@ import {
   getQuestion,
   getOriginalQuestion,
   getSettings,
+  getQueryStartTime,
   getRawSeries,
   getQuestionAlerts,
   getVisualizationSettings,
@@ -140,6 +142,7 @@ const mapStateToProps = (state, props) => {
       state,
       props,
     ),
+    queryStartTime: getQueryStartTime(state),
   };
 };
 
@@ -153,6 +156,7 @@ const mapDispatchToProps = {
   mapDispatchToProps,
 )
 @title(({ card }) => (card && card.name) || t`Question`)
+@titleWithLoadingTime("queryStartTime")
 @fitViewport
 export default class QueryBuilder extends Component {
   timeout: any;
@@ -218,6 +222,8 @@ export default class QueryBuilder extends Component {
     window.removeEventListener("resize", this.handleResize);
 
     clearTimeout(this.timeout);
+
+    this.closeModal(); // close any modal that might be open
   }
 
   // When the window is resized we need to re-render, mainly so that our visualization pane updates

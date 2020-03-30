@@ -52,6 +52,23 @@ executors:
           POSTGRES_USER: circle_test
           POSTGRES_DB: circle_test
 
+  postgres-latest:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1
+        environment:
+          MB_DB_TYPE: postgres
+          MB_DB_PORT: 5432
+          MB_DB_HOST: localhost
+          MB_DB_DBNAME: metabase_test
+          MB_DB_USER: metabase_test
+          MB_POSTGRESQL_TEST_USER: metabase_test
+      - image: postgres:latest
+        environment:
+          POSTGRES_USER: metabase_test
+          POSTGRES_DB: metabase_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+
   mysql-5-7:
     parameters:
       # for testing the use of an at-rest encryption key. Optional.
@@ -71,19 +88,59 @@ executors:
           MB_ENCRYPTION_SECRET_KEY: << parameters.encryption-key >>
       - image: circleci/mysql:5.7.23
 
+  mysql-latest:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1
+        environment:
+          MB_DB_TYPE: mysql
+          MB_DB_HOST: localhost
+          MB_DB_PORT: 3306
+          MB_DB_DBNAME: circle_test
+          MB_DB_USER: root
+          MB_MYSQL_TEST_USER: root
+      - image: circleci/mysql:latest
+
+  mariadb-10-2:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1
+        environment:
+          MB_DB_TYPE: mysql
+          MB_DB_HOST: localhost
+          MB_DB_PORT: 3306
+          MB_DB_DBNAME: circle_test
+          MB_DB_USER: root
+          MB_MYSQL_TEST_USER: root
+      - image: circleci/mariadb:10.2.23
+
+  mariadb-latest:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1
+        environment:
+          MB_DB_TYPE: mysql
+          MB_DB_HOST: localhost
+          MB_DB_PORT: 3306
+          MB_DB_DBNAME: metabase_test
+          MB_DB_USER: root
+          MB_MYSQL_TEST_USER: root
+      - image: mariadb:latest
+        environment:
+          MYSQL_DATABASE: metabase_test
+          MYSQL_USER: root
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+
   mongo:
      working_directory: /home/circleci/metabase/metabase/
      docker:
        - image: circleci/clojure:lein-2.8.1
-       - image: circleci/mongo:3.4
+       - image: circleci/mongo:4.0
 
   presto:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: circleci/clojure:lein-2.8.1
-        environment:
-          MB_PRESTO_TEST_HOST: localhost
-          MB_PRESTO_TEST_PORT: 8080
       - image: metabase/presto-mb-ci
         environment:
           JAVA_TOOL_OPTIONS: "-Xmx2g"
@@ -129,8 +186,8 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - be-deps-{{ checksum "project.clj" }}
-            - be-deps-
+            - be-deps-v2-{{ checksum "project.clj" }}
+            - be-deps-v2-
 
   restore-fe-deps-cache:
     steps:
@@ -157,6 +214,32 @@ commands:
           command: yarn << parameters.command >>
           no_output_timeout: 5m
 
+  wait-for-port:
+    parameters:
+      port:
+        type: integer
+    steps:
+      - run:
+          name: Wait for port << parameters.port >> to be ready
+          command: >
+            while ! nc -z localhost << parameters.port >>; do sleep 0.1; done
+          no_output_timeout: 5m
+
+  fetch-jdbc-driver:
+    parameters:
+      source:
+        type: string
+      dest:
+        type: string
+    steps:
+      - run:
+          name: Make plugins dir
+          command: mkdir /home/circleci/metabase/metabase/plugins
+      - run:
+          name: Download JDBC driver JAR << parameters.dest >>
+          command: >
+            wget --output-document=plugins/<< parameters.dest >> ${<< parameters.source >>}
+          no_output_timeout: 5m
 
 jobs:
 
@@ -183,10 +266,28 @@ jobs:
       - run:
           name: Generate checksums of all backend source files to use as Uberjar cache key
           command: >
-            for file in `find ./src -type f -name '*.clj' | sort`;
+            for file in `find ./src ./backend -type f -name '*.clj' | sort`;
               do echo `md5sum $file` >> backend-checksums.txt;
             done;
             echo `md5sum project.clj` >> backend-checksums.txt
+      # Do the same for the frontend
+      - run:
+          name: Generate checksums of all frontend source files to use as Uberjar cache key
+          command: >
+            for file in `find ./frontend -type f | sort`;
+              do echo `md5sum $file` >> frontend-checksums.txt;
+            done;
+            echo `md5sum yarn.lock` >> frontend-checksums.txt
+            echo `md5sum webpack.config.js` >> frontend-checksums.txt
+      - run:
+          name: Save last git commit message
+          command: git log -1 --oneline > commit.txt
+      - run:
+          name: Remove .git directory (not needed for tests)
+          command: rm -rf /home/circleci/metabase/metabase/.git
+      - run:
+          name: Remove ./OSX directory (not needed for tests)
+          command: rm -rf /home/circleci/metabase/metabase/OSX
       - persist_to_workspace:
           root: /home/circleci/
           paths:
@@ -233,7 +334,7 @@ jobs:
       - restore-be-deps-cache
       - run: lein with-profile +include-all-drivers deps
       - save_cache:
-          key: be-deps-{{ checksum "project.clj" }}
+          key: be-deps-v2-{{ checksum "project.clj" }}
           paths:
             - /home/circleci/.m2
 
@@ -244,6 +345,9 @@ jobs:
         default: clojure
       lein-command:
         type: string
+      store-results:
+        type: boolean
+        default: false
     executor: << parameters.e >>
     steps:
       - attach-workspace
@@ -251,6 +355,11 @@ jobs:
       - run:
           command: lein with-profile +ci << parameters.lein-command >>
           no_output_timeout: 5m
+      - when:
+          condition: << parameters.store-results >>
+          steps:
+            - store_test_results:
+                path: /home/circleci/metabase/metabase/target/test
 
   be-linter-reflection-warnings:
     executor: clojure
@@ -272,48 +381,25 @@ jobs:
       timeout:
         type: string
         default: 5m
-      jdbc-driver-source:
-        type: string
-        default: ""
-      jdbc-driver-dest:
-        type: string
-        default: ""
-      wait-for-port:
-        type: string
-        default: ""
+      before-steps:
+        type: steps
+        default: []
       auto-retry:
         type: boolean
         default: false
+      description:
+        type: string
+        default: ""
     executor: << parameters.e >>
     steps:
       - attach-workspace
       - restore-be-deps-cache
-      - when:
-          condition: << parameters.wait-for-port >>
-          steps:
-            - run:
-                name: Wait for << parameters.driver >> to be ready
-                command: >
-                  /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
-                  while ! nc -z localhost << parameters.wait-for-port >>; do sleep 0.1; done
-                no_output_timeout: 5m
-      - when:
-          condition: << parameters.jdbc-driver-source >>
-          steps:
-            - run:
-                name: Make plugins dir
-                command: mkdir /home/circleci/metabase/metabase/plugins
-            - run:
-                name: Download << parameters.driver >> JDBC driver JAR
-                command: >
-                  /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
-                  wget --output-document=plugins/<< parameters.jdbc-driver-dest >> ${<< parameters.jdbc-driver-source >>}
-                no_output_timeout: 5m
+      - steps: << parameters.before-steps >>
       - unless:
           condition: << parameters.auto-retry >>
           steps:
             - run:
-                name: Test << parameters.driver >> driver
+                name: Test << parameters.driver >> driver << parameters.description >>
                 environment:
                   DRIVERS: h2,<< parameters.driver >>
                 command: >
@@ -332,7 +418,6 @@ jobs:
                   /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
                   lein with-profile +ci test || lein with-profile +ci test
                 no_output_timeout: << parameters.timeout >>
-
 
   test-migrate-from-h2:
     parameters:
@@ -380,6 +465,7 @@ jobs:
             - /home/circleci/.yarn-cache
             - /home/circleci/metabase/metabase/node_modules
             - /home/circleci/yarn.lock.checksum
+            - /home/circleci/.cache/Cypress
 
   fe-linter-eslint:
     executor: node
@@ -400,7 +486,14 @@ jobs:
     steps:
       - run-yarn-command:
           command-name: Run Flow type checker
-          command: flow
+          command: lint-flow
+
+  fe-linter-docs-links:
+    executor: node
+    steps:
+      - run-yarn-command:
+          command-name: Run docs links checker
+          command: lint-docs-links
 
   fe-tests-karma:
     executor: node
@@ -423,6 +516,13 @@ jobs:
           command-name: Run frontend integration tests
           command: run test-integration
 
+  fe-tests-timezones:
+    executor: node
+    steps:
+      - run-yarn-command:
+          command-name: Run frontend timezone tests
+          command: run test-timezones
+
   build-uberjar:
     executor: clojure-and-node
     steps:
@@ -430,16 +530,18 @@ jobs:
       - restore-be-deps-cache
       - restore_cache:
           keys:
-            - uberjar-{{ checksum "./backend-checksums.txt" }}
+            - uberjar-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
       - run:
           name: Build uberjar if needed
           command: >
             if [ ! -f './target/uberjar/metabase.jar' ];
-              then ./bin/build version uberjar;
+              then ./bin/build version frontend uberjar;
             fi
           no_output_timeout: 5m
+      - store_artifacts:
+          path: /home/circleci/metabase/metabase/target/uberjar/metabase.jar
       - save_cache:
-          key: uberjar-{{ checksum "./backend-checksums.txt" }}
+          key: uberjar-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
           paths:
             - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
 
@@ -457,6 +559,23 @@ jobs:
                 name: Generate version file
                 command: ./bin/build version
 
+  fe-tests-cypress:
+    executor: clojure-and-node
+    steps:
+      - run-yarn-command:
+          command-name: Run Cypress tests
+          command: run test-cypress-no-build
+          before-steps:
+            - restore_cache:
+                keys:
+                  - uberjar-{{ checksum "./backend-checksums.txt" }}
+            - run:
+                name: Generate version file
+                command: ./bin/build version
+      - store_artifacts:
+          path: /home/circleci/metabase/metabase/cypress
+      - store_test_results:
+          path: cypress/results
 
 ########################################################################################################################
 #                                                   DEPLOYMENT, ETC.                                                   #
@@ -560,6 +679,7 @@ workflows:
 
       - test-driver:
           name: be-tests-mysql
+          description: "(MySQL 5.7)"
           requires:
             - be-tests
           e:
@@ -568,18 +688,56 @@ workflows:
           driver: mysql
 
       - test-driver:
+          name: be-tests-mysql-latest
+          description: "(MySQL latest)"
+          requires:
+            - be-tests
+          e:
+            name: mysql-latest
+          driver: mysql
+
+      - test-driver:
+          name: be-tests-mariadb
+          description: "(MariaDB 10.2)"
+          requires:
+            - be-tests
+          e:
+            name: mariadb-10-2
+          driver: mysql
+
+      - test-driver:
+          name: be-tests-mariadb-latest
+          description: "(MariaDB latest)"
+          requires:
+            - be-tests
+          e:
+            name: mariadb-latest
+          driver: mysql
+
+      - test-driver:
           name: be-tests-oracle
           requires:
             - be-tests
-          jdbc-driver-source: ORACLE_JDBC_JAR
-          jdbc-driver-dest: ojdbc8.jar
+          before-steps:
+            - fetch-jdbc-driver:
+                source: ORACLE_JDBC_JAR
+                dest: ojdbc8.jar
           driver: oracle
 
       - test-driver:
           name: be-tests-postgres
+          description: "(9.6)"
           requires:
             - be-tests
           e: postgres-9-6
+          driver: postgres
+
+      - test-driver:
+          name: be-tests-postgres-latest
+          description: "(Latest)"
+          requires:
+            - be-tests
+          e: postgres-latest
           driver: postgres
 
       - test-driver:
@@ -587,7 +745,9 @@ workflows:
           requires:
             - be-tests
           e: presto
-          wait-for-port: "8080"
+          before-steps:
+            - wait-for-port:
+                port: 8080
           driver: presto
 
       - test-driver:
@@ -609,7 +769,9 @@ workflows:
           requires:
             - be-tests
           e: sparksql
-          wait-for-port: "10000"
+          before-steps:
+            - wait-for-port:
+                port: 10000
           driver: sparksql
 
       - test-driver:
@@ -630,8 +792,10 @@ workflows:
           requires:
             - be-tests
           e: vertica
-          jdbc-driver-source: VERTICA_JDBC_JAR
-          jdbc-driver-dest: vertica-jdbc-7.1.2-0.jar
+          before-steps:
+            - fetch-jdbc-driver:
+                source: VERTICA_JDBC_JAR
+                dest: vertica-jdbc-7.1.2-0.jar
           driver: vertica
           auto-retry: true
 
@@ -661,6 +825,9 @@ workflows:
       - fe-linter-flow:
           requires:
             - fe-deps
+      - fe-linter-docs-links:
+          requires:
+            - fe-deps
       - fe-tests-karma:
           requires:
             - fe-deps
@@ -670,10 +837,17 @@ workflows:
       - fe-tests-integration:
           requires:
             - fe-deps
+      - fe-tests-timezones:
+          requires:
+            - fe-deps
       - build-uberjar:
           requires:
             - be-deps
       - fe-tests-e2e:
+          requires:
+            - build-uberjar
+            - fe-deps
+      - fe-tests-cypress:
           requires:
             - build-uberjar
             - fe-deps
@@ -697,8 +871,12 @@ workflows:
             - be-tests-googleanalytics
             - be-tests-mongo
             - be-tests-mysql
+            - be-tests-mysql-latest
+            - be-tests-mariadb
+            - be-tests-mariadb-latest
             - be-tests-oracle
             - be-tests-postgres
+            - be-tests-postgres-latest
             - be-tests-presto
             - be-tests-redshift
             - be-tests-snowflake
@@ -713,9 +891,11 @@ workflows:
             - fe-linter-eslint
             - fe-linter-flow
             - fe-linter-prettier
+            - fe-linter-docs-links
 
             - fe-tests-e2e
             - fe-tests-integration
+            - fe-tests-timezones
             - fe-tests-karma
             - fe-tests-unit
           filters:

@@ -3,26 +3,38 @@
   (:require [cheshire
              [core :as json]
              [generate :as json.generate]]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [java-time :as t]
             [metabase
              [driver :as driver]
              [util :as u]]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver.common :as driver.common]
             [metabase.driver.mongo
+             [execute :as execute]
+             [parameters :as parameters]
              [query-processor :as qp]
              [util :refer [with-mongo-connection]]]
-            [metabase.query-processor.store :as qp.store]
+            [metabase.plugins.classloader :as classloader]
+            [metabase.query-processor
+             [store :as qp.store]
+             [timezone :as qp.timezone]]
             [monger
              [collection :as mc]
              [command :as cmd]
-             [conversion :as conv]
+             [conversion :as m.conversion]
              [db :as mdb]]
             [schema.core :as s]
             [taoensso.nippy :as nippy])
   (:import com.mongodb.DB
+           [java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            org.bson.BsonUndefined
            org.bson.types.ObjectId))
+
+;; See http://clojuremongodb.info/articles/integration.html Loading this namespace will load appropriate Monger
+;; integrations with Cheshire.
+(classloader/require 'monger.json)
 
 ;; JSON Encoding (etc.)
 
@@ -30,8 +42,8 @@
 (json.generate/add-encoder org.bson.BsonUndefined json.generate/encode-nil)
 
 (nippy/extend-freeze ObjectId :mongodb/ObjectId
-  [^ObjectId oid data-output]
-  (.writeUTF data-output (.toHexString oid)))
+                     [^ObjectId oid data-output]
+                     (.writeUTF data-output (.toHexString oid)))
 
 (nippy/extend-thaw :mongodb/ObjectId
   [data-input]
@@ -43,7 +55,7 @@
   [_ details]
   (with-mongo-connection [^DB conn, details]
     (= (float (-> (cmd/db-stats conn)
-                  (conv/from-db-object :keywordize)
+                  (m.conversion/from-db-object :keywordize)
                   :ok))
        1.0)))
 
@@ -68,11 +80,6 @@
     #".*"                               ; default
     message))
 
-(defmethod driver/process-query-in-context :mongo [_ qp]
-  (fn [{database-id :database, :as query}]
-    (with-mongo-connection [_ (qp.store/database)]
-      (qp query))))
-
 
 ;;; ### Syncing
 
@@ -92,8 +99,8 @@
 
     ;; 2. json?
     (and (string? field-value)
-         (or (.startsWith "{" field-value)
-             (.startsWith "[" field-value)))
+         (or (str/starts-with? "{" field-value)
+             (str/starts-with? "[" field-value)))
     (when-let [j (u/ignore-exceptions (json/parse-string field-value))]
       (when (or (map? j)
                 (sequential? j))
@@ -189,13 +196,64 @@
        :fields (set (for [[field info] column-info]
                       (describe-table-field field info)))})))
 
-(defmethod driver/supports? [:mongo :basic-aggregations] [_ _] true)
-(defmethod driver/supports? [:mongo :nested-fields]      [_ _] true)
+(doseq [feature [:basic-aggregations
+                 :nested-fields
+                 :native-parameters]]
+  (defmethod driver/supports? [:mongo feature] [_ _] true))
 
 (defmethod driver/mbql->native :mongo
   [_ query]
   (qp/mbql->native query))
 
-(defmethod driver/execute-query :mongo
-  [_ query]
-  (qp/execute-query query))
+(defmethod driver/execute-reducible-query :mongo
+  [_ query context respond]
+  ;; TODO - there's a bug in normalization where the columns in `:projection` are getting converted to keywords
+  ;; (#11897). Until we fix that, work around it here
+  (let [query (cond-> query
+                (-> query :native :projections seq) (update-in [:native :projections] (partial mapv u/qualified-name)))]
+    (with-mongo-connection [_ (qp.store/database)]
+      (execute/execute-reducible-query query context respond))))
+
+(defmethod driver/substitute-native-parameters :mongo
+  [driver inner-query]
+  (parameters/substitute-native-parameters driver inner-query))
+
+;; It seems to be the case that the only thing BSON supports is DateTime which is basically the equivalent of Instant;
+;; for the rest of the types, we'll have to fake it
+(extend-protocol m.conversion/ConvertToDBObject
+  Instant
+  (to-db-object [t]
+    (org.bson.BsonDateTime. (t/to-millis-from-epoch t)))
+
+  LocalDate
+  (to-db-object [t]
+    (m.conversion/to-db-object (t/local-date-time t (t/local-time 0))))
+
+  LocalDateTime
+  (to-db-object [t]
+    ;; QP store won't be bound when loading test data for example.
+    (m.conversion/to-db-object (t/instant t (t/zone-id (try
+                                                         (qp.timezone/results-timezone-id)
+                                                         (catch Throwable _
+                                                           "UTC"))))))
+
+  LocalTime
+  (to-db-object [t]
+    (m.conversion/to-db-object (t/local-date-time (t/local-date "1970-01-01") t)))
+
+  OffsetDateTime
+  (to-db-object [t]
+    (m.conversion/to-db-object (t/instant t)))
+
+  OffsetTime
+  (to-db-object [t]
+    (m.conversion/to-db-object (t/offset-date-time (t/local-date "1970-01-01") t (t/zone-offset t))))
+
+  ZonedDateTime
+  (to-db-object [t]
+    (m.conversion/to-db-object (t/instant t))))
+
+(extend-protocol m.conversion/ConvertFromDBObject
+  java.util.Date
+  (from-db-object [t _]
+    (t/instant t)))

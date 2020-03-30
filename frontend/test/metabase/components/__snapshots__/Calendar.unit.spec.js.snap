@@ -2,13 +2,13 @@
 
 exports[`Calendar should render correctly 1`] = `
 <div
-  className="Calendar Grid-cell"
+  className="Calendar"
 >
   <div
-    className="Calendar-header flex align-center"
+    className="Calendar-header flex align-center border-bottom"
   >
     <div
-      className="bordered rounded p1 cursor-pointer transition-border border-hover px1"
+      className="cursor-pointer text-brand-hover"
       onClick={[Function]}
     >
       <svg
@@ -26,16 +26,14 @@ exports[`Calendar should render correctly 1`] = `
     <span
       className="flex-full"
     />
-    <h4
-      className="cursor-pointer rounded p1"
-    >
+    <h4>
       January 2018
     </h4>
     <span
       className="flex-full"
     />
     <div
-      className="bordered border-hover rounded p1 transition-border cursor-pointer px1"
+      className="cursor-pointer text-brand-hover"
       onClick={[Function]}
     >
       <svg
@@ -97,43 +95,43 @@ exports[`Calendar should render correctly 1`] = `
       className="Calendar-week"
     >
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--week-start"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--week-start"
         onClick={[Function]}
       >
         31
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--selected"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month Calendar-day--selected"
         onClick={[Function]}
       >
         1
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month"
         onClick={[Function]}
       >
         2
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month"
         onClick={[Function]}
       >
         3
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month"
         onClick={[Function]}
       >
         4
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month"
         onClick={[Function]}
       >
         5
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-end"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-end"
         onClick={[Function]}
       >
         6
@@ -143,43 +141,43 @@ exports[`Calendar should render correctly 1`] = `
       className="Calendar-week"
     >
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-start"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-start"
         onClick={[Function]}
       >
         7
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month"
         onClick={[Function]}
       >
         8
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month"
         onClick={[Function]}
       >
         9
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month"
         onClick={[Function]}
       >
         10
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month"
         onClick={[Function]}
       >
         11
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--today Calendar-day--this-month"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--today Calendar-day--this-month"
         onClick={[Function]}
       >
         12
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-end"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-end"
         onClick={[Function]}
       >
         13
@@ -189,43 +187,43 @@ exports[`Calendar should render correctly 1`] = `
       className="Calendar-week"
     >
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-start"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-start"
         onClick={[Function]}
       >
         14
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month"
         onClick={[Function]}
       >
         15
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month"
         onClick={[Function]}
       >
         16
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month"
         onClick={[Function]}
       >
         17
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month"
         onClick={[Function]}
       >
         18
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month"
         onClick={[Function]}
       >
         19
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-end"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-end"
         onClick={[Function]}
       >
         20
@@ -235,43 +233,43 @@ exports[`Calendar should render correctly 1`] = `
       className="Calendar-week"
     >
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-start"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-start"
         onClick={[Function]}
       >
         21
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month"
         onClick={[Function]}
       >
         22
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month"
         onClick={[Function]}
       >
         23
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month"
         onClick={[Function]}
       >
         24
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month"
         onClick={[Function]}
       >
         25
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month"
         onClick={[Function]}
       >
         26
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-end"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-end"
         onClick={[Function]}
       >
         27
@@ -281,43 +279,43 @@ exports[`Calendar should render correctly 1`] = `
       className="Calendar-week"
     >
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-start"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month Calendar-day--week-start"
         onClick={[Function]}
       >
         28
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month"
         onClick={[Function]}
       >
         29
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month"
         onClick={[Function]}
       >
         30
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--this-month"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--this-month"
         onClick={[Function]}
       >
         31
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered"
+        className="Calendar-day cursor-pointer text-centered"
         onClick={[Function]}
       >
         1
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered"
+        className="Calendar-day cursor-pointer text-centered"
         onClick={[Function]}
       >
         2
       </span>
       <span
-        className="Calendar-day p1 cursor-pointer text-centered Calendar-day--week-end"
+        className="Calendar-day cursor-pointer text-centered Calendar-day--week-end"
         onClick={[Function]}
       >
         3

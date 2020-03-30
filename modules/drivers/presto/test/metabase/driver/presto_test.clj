@@ -1,12 +1,13 @@
 (ns metabase.driver.presto-test
   (:require [clj-http.client :as http]
+            [clojure.core.async :as a]
             [clojure.test :refer :all]
             [expectations :refer [expect]]
             [java-time :as t]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
-             [query-processor-test :as qp.test]]
+             [test :as mt]]
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver
              [presto :as presto]
@@ -15,15 +16,13 @@
             [metabase.models
              [field :refer [Field]]
              [table :as table :refer [Table]]]
-            [metabase.query-processor
-             [test-util :as qp.test-util]
-             [timezone :as qp.timezone]]
             [metabase.test
-             [data :as data]
+             [fixtures :as fixtures]
              [util :as tu]]
-            [metabase.test.data.datasets :as datasets]
             [metabase.test.util.log :as tu.log]
             [toucan.db :as db]))
+
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest details->uri-test
   (is (= "http://localhost:8080/"
@@ -37,44 +36,51 @@
   (driver/with-driver :presto
     (is (= {:headers {"X-Presto-Source" "metabase"
                       "X-Presto-User"   "user"}}
-           (qp.timezone/with-report-timezone-id nil
+           (mt/with-report-timezone-id nil
              (#'presto/details->request {:user "user"}))))
     (is (= {:headers    {"X-Presto-Source" "metabase"
                          "X-Presto-User"   "user"}
             :basic-auth ["user" "test"]}
-           (qp.timezone/with-report-timezone-id nil
+           (mt/with-report-timezone-id nil
              (#'presto/details->request {:user "user", :password "test"}))))
     (is (= {:headers {"X-Presto-Source"    "metabase"
                       "X-Presto-User"      "user"
                       "X-Presto-Catalog"   "test_data"
                       "X-Presto-Time-Zone" "America/Toronto"}}
-           (qp.timezone/with-report-timezone-id "America/Toronto"
-             (#'presto/details->request {:user "user", :catalog "test_data"}))))))
+           (mt/with-report-timezone-id "America/Toronto"
+             (#'presto/details->request {:user "user", :catalog "test_data"})))))
+  (testing "details->request should still work if driver is unbound, e.g. when connecting a DB (#11598)"
+    (is (= {:headers {"X-Presto-Source" "metabase"
+                      "X-Presto-User"   nil}}
+           (#'presto/details->request {})))))
 
 (deftest parse-results-test
   (driver/with-driver :presto
-    (qp.test-util/with-everything-store
-      (is (= [["2017-04-03"
-               (t/zoned-date-time "2017-04-03T10:19:17.417-04:00[America/Toronto]")
-               (t/zoned-date-time "2017-04-03T10:19:17.417Z[UTC]")
-               3.1416M
-               "test"]]
-             (#'presto/parse-presto-results
-              [{:type "date"} {:type "timestamp with time zone"} {:type "timestamp"} {:type "decimal(10,4)"} {:type "varchar(255)"}]
-              [["2017-04-03", "2017-04-03 10:19:17.417 America/Toronto", "2017-04-03 10:19:17.417", "3.1416", "test"]])))
-      (is (=
-           [[0, false, "", nil]]
-           (#'presto/parse-presto-results
-            [{:type "integer"} {:type "boolean"} {:type "varchar(255)"} {:type "date"}]
-            [[0, false, "", nil]]))))))
+    (mt/with-everything-store
+      (is (= ["2017-04-03"
+              (t/zoned-date-time "2017-04-03T10:19:17.417-04:00[America/Toronto]")
+              (t/zoned-date-time "2017-04-03T10:19:17.417Z[UTC]")
+              3.1416M
+              "test"]
+             ((#'presto/parse-row-fn
+               [{:type "date"}
+                {:type "timestamp with time zone"}
+                {:type "timestamp"}
+                {:type "decimal(10,4)"}
+                {:type "varchar(255)"}])
+              ["2017-04-03" "2017-04-03 10:19:17.417 America/Toronto" "2017-04-03 10:19:17.417" "3.1416" "test"])))
+      (is (= [0 false "" nil]
+             ((#'presto/parse-row-fn
+               [{:type "integer"} {:type "boolean"} {:type "varchar(255)"} {:type "date"}])
+              [0 false "" nil]))))))
 
 (deftest describe-database-test
-  (datasets/test-driver :presto
+  (mt/test-driver :presto
     (is (= {:tables #{{:name "test_data_categories" :schema "default"}
                       {:name "test_data_venues" :schema "default"}
                       {:name "test_data_checkins" :schema "default"}
                       {:name "test_data_users" :schema "default"}}}
-           (-> (driver/describe-database :presto (data/db))
+           (-> (driver/describe-database :presto (mt/db))
                (update :tables (comp set (partial filter (comp #{"test_data_categories"
                                                                  "test_data_venues"
                                                                  "test_data_checkins"
@@ -82,7 +88,7 @@
                                                                :name)))))))))
 
 (deftest describe-table-test
-  (datasets/test-driver :presto
+  (mt/test-driver :presto
     (is (= {:name   "test_data_venues"
             :schema "default"
             :fields #{{:name          "name",
@@ -103,17 +109,17 @@
                       {:name          "id"
                        :database-type "integer"
                        :base-type     :type/Integer}}}
-           (driver/describe-table :presto (data/db) (db/select-one 'Table :id (data/id :venues)))))))
+           (driver/describe-table :presto (mt/db) (db/select-one 'Table :id (mt/id :venues)))))))
 
-;;; TABLE-ROWS-SAMPLE
-(datasets/expect-with-driver :presto
-  [["Red Medicine"]
-   ["Stout Burgers & Beers"]
-   ["The Apple Pan"]
-   ["Wurstküche"]
-   ["Brite Spot Family Restaurant"]]
-  (take 5 (metadata-queries/table-rows-sample (Table (data/id :venues))
-            [(Field (data/id :venues :name))])))
+(deftest table-rows-sample-test
+  (mt/test-driver :prestor
+    (is (= [["Red Medicine"]
+            ["Stout Burgers & Beers"]
+            ["The Apple Pan"]
+            ["Wurstküche"]
+            ["Brite Spot Family Restaurant"]]
+           (take 5 (metadata-queries/table-rows-sample (Table (mt/id :venues))
+                     [(Field (mt/id :venues :name))]))))))
 
 
 ;;; APPLY-PAGE
@@ -151,33 +157,38 @@
     (catch Exception e
       (.getMessage e))))
 
-(datasets/expect-with-driver :presto
-  "UTC"
-  (tu/db-timezone-id))
+(deftest db-default-timezone-test
+  (mt/test-driver :presto
+    (is (= "UTC"
+           (tu/db-timezone-id)))))
 
-;; Query cancellation test, needs careful coordination between the query thread, cancellation thread to ensure
-;; everything works correctly together
 (deftest query-cancelation-test
-  (datasets/test-driver :presto
-    (let [called-cancel-promise (atom nil)]
-      (with-redefs [http/delete (fn [& _]
-                                  (deliver @called-cancel-promise true))]
-        (is (= ::tu/success
-               (tu/call-with-paused-query
-                (fn [query-thunk called-query? called-cancel? pause-query]
-                  (reset! called-cancel-promise called-cancel?)
-                  (future
-                    (with-redefs [presto/fetch-presto-results! (fn [_ _ _] (deliver called-query? true) @pause-query)]
-                      (query-thunk)))))))))))
+  (mt/test-driver :presto
+    (let [query (mt/mbql-query venues)]
+      (mt/with-open-channels [running-chan (a/promise-chan)
+                              cancel-chan  (a/promise-chan)]
+        (with-redefs [http/delete            (fn [& _]
+                                               (a/>!! cancel-chan ::cancel))
+                      presto/fetch-next-page (fn [& _]
+                                               (a/>!! running-chan ::running)
+                                               (Thread/sleep 5000)
+                                               (throw (Exception. "Don't actually run!")))]
+          (let [out-chan (qp/process-query-async query)]
+            ;; wait for query to start running, then close `out-chan`
+            (a/go
+              (a/<! running-chan)
+              (a/close! out-chan)))
+          (is (= ::cancel
+                 (mt/wait-for-result cancel-chan 2000))))))))
 
 (deftest template-tag-timezone-test
-  (datasets/test-driver :presto
+  (mt/test-driver :presto
     (testing "Make sure date params work correctly when report timezones are set (#10487)"
-      (tu/with-temporary-setting-values [report-timezone "Asia/Hong_Kong"]
+      (mt/with-temporary-setting-values [report-timezone "Asia/Hong_Kong"]
         (is (= [["2014-08-02T00:00:00+08:00" "2014-08-02"]]
-               (qp.test/rows
+               (mt/rows
                  (qp/process-query
-                   {:database   (data/id)
+                   {:database   (mt/id)
                     :type       :native
                     :native     {:query         "SELECT {{date}}, cast({{date}} AS date)"
                                  :template-tags {:date {:name "date" :display_name "Date" :type "date"}}}

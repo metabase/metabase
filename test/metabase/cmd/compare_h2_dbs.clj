@@ -5,8 +5,9 @@
              [pprint :as pprint]
              [string :as str]]
             [clojure.java.jdbc :as jdbc]
-            [metabase.util :as u])
-  (:import org.h2.jdbc.JdbcClob))
+            metabase.db.jdbc-protocols))
+
+(comment metabase.db.jdbc-protocols/keep-me)
 
 (defn- jdbc-spec [db-file]
   {:classname         "org.h2.Driver"
@@ -42,7 +43,7 @@
   (jdbc/with-db-metadata [metadata spec]
     (let [result (jdbc/metadata-result
                   (.getTables metadata nil nil nil
-                              (into-array String ["TABLE", "VIEW", "FOREIGN TABLE", "MATERIALIZED VIEW"])))]
+                              (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"])))]
       (sort (remove ignored-table-names (map :table_name result))))))
 
 (defmulti ^:private normalize-value
@@ -51,10 +52,6 @@
 (defmethod normalize-value :default
   [v]
   v)
-
-(defmethod normalize-value JdbcClob
-  [v]
-  (u/jdbc-clob->str v))
 
 (def ^:private ignored-keys
   #{:created_at :updated_at :timestamp :last_login :date_joined :last_analyzed})
@@ -77,8 +74,7 @@
     (->> rows (mapv normalize-values) sort-rows)))
 
 (defn- different-table-names?
-  "Diff the table names in two DBs. Returns a truthy value if there is a difference.
-  the same."
+  "True if the set of tables names is different between DBs represented by `conn-1` and `conn-2`."
   [conn-1 conn-2]
   (let [[table-names-1 table-names-2] (map table-names [conn-1 conn-2])
         _                             (printf "Diffing %d/%d table names...\n" (count table-names-1) (count table-names-2))

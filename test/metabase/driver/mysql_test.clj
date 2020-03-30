@@ -1,6 +1,5 @@
 (ns metabase.driver.mysql-test
-  (:require [clj-time.core :as t]
-            [clojure
+  (:require [clojure
              [string :as str]
              [test :refer :all]]
             [clojure.java.jdbc :as jdbc]
@@ -22,7 +21,6 @@
              [datasets :as datasets :refer [expect-with-driver]]
              [interface :as tx]]
             [metabase.test.util.timezone :as tu.tz]
-            [metabase.util.date :as du]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -100,25 +98,32 @@
                                                       [result-row]
                                                       (apply orig spec sql-args options))))]
                          (driver/db-default-timezone driver/*driver* db))))]
-      (is (= "US/Pacific"
-             (timezone {:global "US/Pacific", :system "UTC"}))
-          "Should use global timezone by default")
-      (is (= "UTC"
-             (timezone {:global "SYSTEM", :system "UTC"}))
-          "If global timezone is 'SYSTEM', should use system timezone")
-      (is (= "+00:00"
-             (timezone {:offset "00:00"}))
-          "Should fall back to returning `offset` if global/system aren't present")
-      (is (= "-08:00"
-             (timezone {:global "PDT", :system "PDT", :offset "-08:00"}))
-          "If global timezone is invalid, should fall back to offset")
-      (is (= "+00:00"
-             (timezone {:global "PDT", :system "UTC", :offset "00:00"}))
-          "Should add a `+` if needed to offset"))))
+      (testing "Should use global timezone by default"
+        (is (= "US/Pacific"
+               (timezone {:global_tz "US/Pacific", :system_tz "UTC"}))))
+      (testing "If global timezone is 'SYSTEM', should use system timezone"
+        (is (= "UTC"
+               (timezone {:global_tz "SYSTEM", :system_tz "UTC"}))))
+      (testing "Should fall back to returning `offset` if global/system aren't present"
+        (is (= "+00:00"
+               (timezone {:offset "00:00"}))))
+      (testing "If global timezone is invalid, should fall back to offset"
+        (is (= "-08:00"
+               (timezone {:global_tz "PDT", :system_tz "PDT", :offset "-08:00"}))))
+      (testing "Should add a `+` if needed to offset"
+        (is (= "+00:00"
+               (timezone {:global_tz "PDT", :system_tz "UTC", :offset "00:00"})))))
+
+    (testing "real timezone query doesn't fail"
+      (is (nil? (try
+                  (driver/db-default-timezone driver/*driver* (data/db))
+                  nil
+                  (catch Throwable e
+                    e)))))))
 
 
-(def ^:private before-daylight-savings (du/str->date-time "2018-03-10 10:00:00" du/utc))
-(def ^:private after-daylight-savings  (du/str->date-time "2018-03-12 10:00:00" du/utc))
+(def ^:private before-daylight-savings #t "2018-03-10T10:00:00Z")
+(def ^:private after-daylight-savings  #t "2018-03-12T10:00:00Z")
 
 ;; Most of our tests either deal in UTC (offset 00:00) or America/Los_Angeles timezones (-07:00/-08:00). When dealing
 ;; with dates, we will often truncate the timestamp to a date. When we only test with negative timezone offsets, in
@@ -131,10 +136,10 @@
 ;; This test ensures if our JVM timezone and reporting timezone are Asia/Hong_Kong, we get a correctly formatted date
 (expect-with-driver :mysql
   ["2018-04-18T00:00:00+08:00"]
-  (tu.tz/with-jvm-tz (t/time-zone-for-id "Asia/Hong_Kong")
+  (tu.tz/with-system-timezone-id "Asia/Hong_Kong"
     (tu/with-temporary-setting-values [report-timezone "Asia/Hong_Kong"]
       (qp.test/first-row
-       (du/with-effective-timezone (data/db)
+       (identity #_du/with-effective-timezone #_(data/db)
          (qp/process-query
            {:database   (data/id)
             :type       :native
@@ -154,10 +159,10 @@
 ;; off by a day
 (expect-with-driver :mysql
   ["2018-04-18T00:00:00-07:00"]
-  (tu.tz/with-jvm-tz (t/time-zone-for-id "Asia/Hong_Kong")
+  (tu.tz/with-system-timezone-id "Asia/Hong_Kong"
     (tu/with-temporary-setting-values [report-timezone "America/Los_Angeles"]
       (qp.test/first-row
-       (du/with-effective-timezone (data/db)
+       (identity #_du/with-effective-timezone #_(data/db)
          (qp/process-query
            {:database   (data/id)
             :type       :native

@@ -5,22 +5,22 @@
              [email :as email]
              [query-processor :as qp]
              [util :as u]]
-            [metabase.driver.util :as driver.u]
             [metabase.email.messages :as messages]
             [metabase.integrations.slack :as slack]
             [metabase.middleware.session :as session]
             [metabase.models
              [card :refer [Card]]
+             [database :refer [Database]]
              [pulse :as pulse :refer [Pulse]]]
             [metabase.pulse.render :as render]
+            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util
              [i18n :refer [deferred-tru trs tru]]
              [ui-logic :as ui]
              [urls :as urls]]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import java.util.TimeZone
-           metabase.models.card.CardInstance))
+  (:import metabase.models.card.CardInstance))
 
 ;;; ------------------------------------------------- PULSE SENDING --------------------------------------------------
 
@@ -36,11 +36,12 @@
         (let [query (assoc query :async? false)]
           (session/with-current-user pulse-creator-id
             {:card   card
-             :result (qp/process-query-and-save-with-max-results-constraints! query
-                       (merge {:executed-by pulse-creator-id
-                               :context     :pulse
-                               :card-id     card-id}
-                              options))})))
+             :result (qp/process-query-and-save-with-max-results-constraints!
+                      query
+                      (merge {:executed-by pulse-creator-id
+                              :context     :pulse
+                              :card-id     card-id}
+                             options))})))
       (catch Throwable e
         (log/warn e (trs "Error running query for Card {0}" card-id))))))
 
@@ -48,12 +49,11 @@
   (or (:database_id card)
       (get-in card [:dataset_query :database])))
 
-(s/defn defaulted-timezone :- TimeZone
-  "Returns the timezone for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
+(s/defn defaulted-timezone :- s/Str
+  "Returns the timezone ID for the given `card`. Either the report timezone (if applicable) or the JVM timezone."
   [card :- CardInstance]
-  (let [^String timezone-str (or (some-> card database-id driver.u/database->driver driver.u/report-timezone-if-supported)
-                                 (System/getProperty "user.timezone"))]
-    (TimeZone/getTimeZone timezone-str)))
+  (or (some-> card database-id Database qp.timezone/results-timezone-id)
+      (qp.timezone/system-timezone-id)))
 
 (defn- first-question-name [pulse]
   (-> pulse :cards first :name))
@@ -158,9 +158,10 @@
     [(alert-or-pulse pulse) (keyword channel_type)]))
 
 (defmethod notification [:pulse :email]
-  [{:keys [id name] :as pulse} results {:keys [recipients] :as channel}]
-  (log/debug (trs "Sending Pulse ({0}: {1}) via email" id name))
-  (let [email-subject    (trs "Pulse: {0}" name)
+  [{pulse-id :id, pulse-name :name, :as pulse} results {:keys [recipients] :as channel}]
+  (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via email"
+                                        pulse-id (pr-str pulse-name) (count results))))
+  (let [email-subject    (trs "Pulse: {0}" pulse-name)
         email-recipients (filterv u/email? (map :email recipients))
         timezone         (-> results first :card defaulted-timezone)]
     {:subject      email-subject
@@ -169,10 +170,11 @@
      :message      (messages/render-pulse-email timezone pulse results)}))
 
 (defmethod notification [:pulse :slack]
-  [pulse results {{channel-id :channel} :details :as channel}]
-  (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) via Slack" (:id pulse) (:name pulse))))
+  [{pulse-id :id, pulse-name :name, :as pulse} results {{channel-id :channel} :details :as channel}]
+  (log/debug (u/format-color 'cyan (trs "Sending Pulse ({0}: {1}) with {2} Cards via Slack"
+                                        pulse-id (pr-str pulse-name) (count results))))
   {:channel-id  channel-id
-   :message     (str "Pulse: " (:name pulse))
+   :message     (str "Pulse: " pulse-name)
    :attachments (create-slack-attachment-data results)})
 
 (defmethod notification [:alert :email]

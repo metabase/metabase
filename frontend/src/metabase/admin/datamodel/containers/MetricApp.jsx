@@ -15,6 +15,7 @@ import MetricForm from "./MetricForm";
 const mapDispatchToProps = {
   updatePreviewSummary,
   createMetric: Metrics.actions.create,
+  updateMetric: Metrics.actions.update,
   onChangeLocation: push,
 };
 
@@ -23,15 +24,12 @@ const mapStateToProps = (state, props) => ({
   previewSummary: getPreviewSummary(state),
 });
 
-@Metrics.load({
-  id: (state, props) => parseInt(props.params.id),
-  wrapped: true,
-})
+@Metrics.load({ id: (state, props) => parseInt(props.params.id) })
 @Tables.load({ id: (state, props) => props.metric.table_id, wrapped: true })
 @withTableMetadataLoaded
 class UpdateMetricForm extends Component {
   onSubmit = async metric => {
-    await this.props.metric.update(metric);
+    await this.props.updateMetric(metric);
     MetabaseAnalytics.trackEvent("Data Model", "Metric Updated");
     const { id: tableId, db_id: databaseId } = this.props.table;
     this.props.onChangeLocation(
@@ -40,7 +38,14 @@ class UpdateMetricForm extends Component {
   };
 
   render() {
-    return <MetricForm {...this.props} onSubmit={this.onSubmit} />;
+    const { metric, ...props } = this.props;
+    return (
+      <MetricForm
+        {...props}
+        metric={metric.getPlainObject()}
+        onSubmit={this.onSubmit}
+      />
+    );
   }
 }
 

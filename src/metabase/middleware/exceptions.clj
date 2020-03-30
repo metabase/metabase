@@ -41,44 +41,37 @@
   class)
 
 (defmethod api-exception-response Throwable [^Throwable e]
-  (let [{:keys [status-code], :as info}
-        (ex-data e)
+  (let [{:keys [status-code] :as info} (ex-data e)
 
-        other-info
-        (dissoc info :status-code :schema :type)
+        other-info (dissoc info :status-code :schema :type)
+        message    (.getMessage e)
+        body       (cond
+                     ;; Exceptions that include a status code *and* other info are things like
+                     ;; Field validation exceptions. Return those as is
+                     (and status-code (seq other-info))
+                     (ui18n/localized-strings->strings other-info)
 
-        message
-        (.getMessage e)
+                     ;; If status code was specified but other data wasn't, it's something like a
+                     ;; 404. Return message as the (plain-text) body.
+                     status-code
+                     (str message)
 
-        body
-        (cond
-          ;; Exceptions that include a status code *and* other info are things like
-          ;; Field validation exceptions. Return those as is
-          (and status-code
-               (seq other-info))
-          (ui18n/localized-strings->strings other-info)
+                     ;; Otherwise it's a 500. Return a body that includes exception & filtered
+                     ;; stacktrace for debugging purposes
+                     :else
+                     (assoc other-info
+                            :message    message
+                            :type       (class e)
+                            :stacktrace (u/filtered-stacktrace e)))]
 
-          ;; If status code was specified but other data wasn't, it's something like a
-          ;; 404. Return message as the (plain-text) body.
-          status-code
-          (str message)
-
-          ;; Otherwise it's a 500. Return a body that includes exception & filtered
-          ;; stacktrace for debugging purposes
-          :else
-          (assoc other-info
-            :message    message
-            :type       (class e)
-            :stacktrace (u/filtered-stacktrace e)))]
     {:status  (or status-code 500)
      :headers (mw.security/security-headers)
      :body    body}))
 
 (defmethod api-exception-response SQLException [e]
-  (->
-   ((get-method api-exception-response (.getSuperclass SQLException)) e)
-   (assoc-in [:body :sql-exception-chain] (str/split (with-out-str (jdbc/print-sql-exception-chain e))
-                                                     #"\s*\n\s*"))))
+  (-> ((get-method api-exception-response (.getSuperclass SQLException)) e)
+      (assoc-in [:body :sql-exception-chain] (str/split (with-out-str (jdbc/print-sql-exception-chain e))
+                                                        #"\s*\n\s*"))))
 
 (defmethod api-exception-response EofException [e]
   (log/info (trs "Request canceled before finishing."))

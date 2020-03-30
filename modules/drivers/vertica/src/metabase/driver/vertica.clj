@@ -13,7 +13,6 @@
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.util
-             [date :as du]
              [date-2 :as u.date]
              [honeysql-extensions :as hx]
              [i18n :refer [trs]]])
@@ -53,16 +52,17 @@
              (dissoc details :host :port :dbname :db :ssl))
       (sql-jdbc.common/handle-additional-options details)))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:vertica :seconds]
+(defmethod sql.qp/unix-timestamp->honeysql [:vertica :seconds]
   [_ _ expr]
   (hsql/call :to_timestamp expr))
 
+;; TODO - not sure if needed or not
 (defn- cast-timestamp
   "Vertica requires stringified timestamps (what Date/DateTime/Timestamps are converted to) to be cast as timestamps
   before date operations can be performed. This function will add that cast if it is a timestamp, otherwise this is a
-  noop."
+  no-op."
   [expr]
-  (if (du/is-temporal? expr)
+  (if (instance? java.time.temporal.Temporal expr)
     (hx/cast :timestamp expr)
     expr))
 
@@ -95,9 +95,13 @@
                                 one-day))
         one-day))
 
-(defmethod driver/date-add :vertica
-  [_ dt amount unit]
-  (hx/+ (hx/->timestamp dt) (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit)))))
+(defmethod sql.qp/->honeysql [:vertica :regex-match-first]
+  [driver [_ arg pattern]]
+  (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+
+(defmethod sql.qp/add-interval-honeysql-form :vertica
+  [_ hsql-form amount unit]
+  (hx/+ (hx/->timestamp hsql-form) (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit)))))
 
 (defn- materialized-views
   "Fetch the Materialized Views for a Vertica `database`.
@@ -129,14 +133,14 @@
 
 (defmethod sql-jdbc.execute/read-column [:vertica Types/TIME]
   [_ _ ^ResultSet rs _ ^Integer i]
-  (let [s (.getString rs i)
-        t (u.date/parse s)]
-    (log/tracef "(.getString rs %d) [TIME] -> %s -> %s" i s t)
-    t))
+  (when-let [s (.getString rs i)]
+    (let [t (u.date/parse s)]
+      (log/tracef "(.getString rs %d) [TIME] -> %s -> %s" i s t)
+      t)))
 
 (defmethod sql-jdbc.execute/read-column [:vertica Types/TIME_WITH_TIMEZONE]
   [_ _ ^ResultSet rs _ ^Integer i]
-  (let [s (.getString rs i)
-        t (u.date/parse s)]
-    (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
-    t))
+  (when-let [s (.getString rs i)]
+    (let [t (u.date/parse s)]
+      (log/tracef "(.getString rs %d) [TIME_WITH_TIMEZONE] -> %s -> %s" i s t)
+      t)))

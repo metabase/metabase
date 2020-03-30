@@ -9,6 +9,7 @@
             [metabase.email.messages :as email]
             [metabase.integrations.ldap :as ldap]
             [metabase.models
+             [collection :as collection :refer [Collection]]
              [permissions-group :as group]
              [user :as user :refer [User]]]
             [metabase.util :as u]
@@ -45,6 +46,22 @@
       (api/check-superuser)
       (user/set-permissions-groups! user-or-id new-groups-or-ids))))
 
+(defn- updated-user-name [user-before-update first_name last_name]
+  (let [prev_first_name (:first_name user-before-update)
+        prev_last_name (:last_name user-before-update)
+        first_name (or first_name prev_first_name)
+        last_name (or last_name prev_last_name)]
+    (when (or (not= first_name prev_first_name)
+              (not= last_name prev_last_name))
+      [first_name last_name])))
+
+(defn- maybe-update-user-personal-collection-name! [user-before-update first_name last_name]
+  ;; If the user name is updated, we shall also update the personal collection name (if such collection exists).
+  (when-some [[first_name last_name] (updated-user-name user-before-update first_name last_name)]
+    (when-some [collection (collection/user->existing-personal-collection (u/get-id user-before-update))]
+      (let [new-collection-name (collection/format-personal-collection-name first_name last_name)]
+        (when-not (= new-collection-name (:name collection))
+          (db/update! Collection (:id collection) :name new-collection-name))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                   Fetching Users -- GET /api/user, GET /api/user/current, GET /api/user/:id                    |
@@ -140,17 +157,18 @@
     (api/check-403 (valid-email-update? user-before-update email))
     ;; can't change email if it's already taken BY ANOTHER ACCOUNT
     (api/checkp (not (db/exists? User, :email email, :id [:not= id]))
-      "email" (tru "Email address already associated to another user.")))
-  (db/transaction
-    (api/check-500
-     (db/update! User id
-       (u/select-keys-when body
-         :present (when api/*is-superuser?*
-                    #{:login_attributes})
-         :non-nil (set (concat [:first_name :last_name :email]
-                               (when api/*is-superuser?*
-                                 [:is_superuser]))))))
-    (maybe-set-user-permissions-groups! id group_ids is_superuser))
+      "email" (tru "Email address already associated to another user."))
+    (db/transaction
+      (api/check-500
+       (db/update! User id
+         (u/select-keys-when body
+           :present (when api/*is-superuser?*
+                      #{:login_attributes})
+           :non-nil (set (concat [:first_name :last_name :email]
+                                 (when api/*is-superuser?*
+                                   [:is_superuser]))))))
+      (maybe-set-user-permissions-groups! id group_ids is_superuser)
+      (maybe-update-user-personal-collection-name! user-before-update first_name last_name)))
   (-> (fetch-user :id id)
       (hydrate :group_ids)))
 

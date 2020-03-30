@@ -92,7 +92,3 @@
 (defmethod tx/before-run :redshift
   [_]
   (execute! "DROP SCHEMA IF EXISTS %s CASCADE; CREATE SCHEMA %s;" session-schema-name session-schema-name))
-
-(defmethod tx/after-run :redshift
-  [_]
-  (execute! "DROP SCHEMA IF EXISTS %s CASCADE;" session-schema-name))

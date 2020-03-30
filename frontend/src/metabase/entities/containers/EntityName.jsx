@@ -2,11 +2,11 @@ import React from "react";
 
 import EntityObjectLoader from "./EntityObjectLoader";
 
-const EntityName = ({ entityType, entityId }) => (
+const EntityName = ({ entityType, entityId, name = "name" }) => (
   <EntityObjectLoader
     entityType={entityType}
     entityId={entityId}
-    properties={["name"]}
+    properties={[name]}
     loadingAndErrorWrapper={false}
     wrapped
   >

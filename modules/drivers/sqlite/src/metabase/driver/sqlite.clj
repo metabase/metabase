@@ -14,17 +14,20 @@
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]
              [sync :as sql-jdbc.sync]]
+            [metabase.driver.sql.parameters.substitution :as params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.query-processor.timezone :as qp.timezone]
             [metabase.util
              [date-2 :as u.date]
              [honeysql-extensions :as hx]]
             [schema.core :as s])
-  (:import [java.sql ResultSet Types]
+  (:import [java.sql Connection ResultSet Types]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            java.time.temporal.Temporal))
 
 (driver/register! :sqlite, :parent :sql-jdbc)
+
+(defmethod driver/supports? [:sqlite :regex] [_ _] false)
 
 (defmethod sql-jdbc.conn/connection-details->spec :sqlite
   [_ {:keys [db]
@@ -160,7 +163,8 @@
   [driver _ expr]
   (->date (sql.qp/->honeysql driver expr) (hx/literal "start of year")))
 
-(defmethod driver/date-add :sqlite [driver dt amount unit]
+(defmethod sql.qp/add-interval-honeysql-form :sqlite
+  [driver hsql-form amount unit]
   (let [[multiplier sqlite-unit] (case unit
                                    :second  [1 "seconds"]
                                    :minute  [1 "minutes"]
@@ -182,10 +186,10 @@
     ;; The SQL we produce instead (for "last month") ends up looking something like:
     ;; DATE(DATETIME(DATE('2015-03-30', 'start of month'), '-1 month'), 'start of month').
     ;; It's a little verbose, but gives us the correct answer (Feb 1st).
-    (->datetime (sql.qp/date driver unit dt)
+    (->datetime (sql.qp/date driver unit hsql-form)
                 (hx/literal (format "%+d %s" (* amount multiplier) sqlite-unit)))))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:sqlite :seconds]
+(defmethod sql.qp/unix-timestamp->honeysql [:sqlite :seconds]
   [_ _ expr]
   (->datetime expr (hx/literal "unixepoch")))
 
@@ -194,44 +198,77 @@
 ;;
 ;; TODO - not sure why this doesn't need to be done in `->honeysql` as well? I think it's because the MBQL date values
 ;; are funneled through the `date` family of functions above
-;; TIMESTAMP FIXME
+;;
+;; TIMESTAMP FIXME — this doesn't seem like the correct thing to do for non-Dates. I think params only support dates
+;; rn however
 (s/defmethod sql/->prepared-substitution [:sqlite Temporal] :- sql/PreparedStatementSubstitution
   [_ date]
-  ;; for anything that's a Date (usually a java.sql.Timestamp) convert it to a yyyy-MM-dd formatted date literal
+  ;; for anything that's a Temporal value convert it to a yyyy-MM-dd formatted date literal
   ;; string For whatever reason the SQL generated from parameters ends up looking like `WHERE date(some_field) = ?`
   ;; sometimes so we need to use just the date rather than a full ISO-8601 string
-  (sql/make-stmt-subs "?" [(t/format "yyyy-MM-dd" date)]))
+  (params.substitution/make-stmt-subs "?" [(t/format "yyyy-MM-dd" date)]))
 
 ;; SQLite doesn't support `TRUE`/`FALSE`; it uses `1`/`0`, respectively; convert these booleans to numbers.
 (defmethod sql.qp/->honeysql [:sqlite Boolean]
   [_ bool]
   (if bool 1 0))
 
+(defmethod sql.qp/->honeysql [:sqlite :substring]
+  [driver [_ arg start length]]
+  (if length
+    (hsql/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
+    (hsql/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start))))
+
+(defmethod sql.qp/->honeysql [:sqlite :concat]
+  [driver [_ & args]]
+  (hsql/raw (str/join " || " (for [arg args]
+                               (let [arg (sql.qp/->honeysql driver arg)]
+                                 (hformat/to-sql
+                                  (if (string? arg)
+                                    (hx/literal arg)
+                                    arg)))))))
+
+
 ;; See https://sqlite.org/lang_datefunc.html
+
+;; MEGA HACK
+;;
+;; if the time portion is zeroed out generate a date() instead, because SQLite isn't smart enough to compare DATEs
+;; and DATETIMEs in a way that could be considered to make any sense whatsoever, e.g.
+;;
+;; date('2019-12-03') < datetime('2019-12-03 00:00')
+(defn- zero-time? [t]
+  (= (t/local-time t) (t/local-time 0)))
 
 (defmethod sql.qp/->honeysql [:sqlite LocalDate]
   [_ t]
   (hsql/call :date (hx/literal (u.date/format-sql t))))
 
 (defmethod sql.qp/->honeysql [:sqlite LocalDateTime]
-  [_ t]
-  (hsql/call :datetime (hx/literal (u.date/format-sql t))))
+  [driver t]
+  (if (zero-time? t)
+    (sql.qp/->honeysql driver (t/local-date t))
+    (hsql/call :datetime (hx/literal (u.date/format-sql t)))))
 
 (defmethod sql.qp/->honeysql [:sqlite LocalTime]
   [_ t]
   (hsql/call :time (hx/literal (u.date/format-sql t))))
 
 (defmethod sql.qp/->honeysql [:sqlite OffsetDateTime]
-  [_ t]
-  (hsql/call :datetime (hx/literal (u.date/format-sql t))))
+  [driver t]
+  (if (zero-time? t)
+    (sql.qp/->honeysql driver (t/local-date t))
+    (hsql/call :datetime (hx/literal (u.date/format-sql t)))))
 
 (defmethod sql.qp/->honeysql [:sqlite OffsetTime]
   [_ t]
   (hsql/call :time (hx/literal (u.date/format-sql t))))
 
 (defmethod sql.qp/->honeysql [:sqlite ZonedDateTime]
-  [_ t]
-  (hsql/call :datetime (hx/literal (u.date/format-sql t))))
+  [driver t]
+  (if (zero-time? t)
+    (sql.qp/->honeysql driver (t/local-date t))
+    (hsql/call :datetime (hx/literal (u.date/format-sql t)))))
 
 ;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made case-sensitive. So let people know
 ;; we have this 'feature' so the frontend doesn't try to present the option to you.
@@ -261,14 +298,43 @@
   [& args]
   (apply sql-jdbc.sync/post-filtered-active-tables args))
 
-(defmethod sql.qp/current-datetime-fn :sqlite [_]
+(defmethod sql.qp/current-datetime-honeysql-form :sqlite
+  [_]
   (hsql/call :datetime (hx/literal :now)))
+
+;; SQLite's JDBC driver is fussy and won't let you change connections to read-only after you create them
+(defmethod sql-jdbc.execute/connection-with-timezone :sqlite
+  [driver database ^String timezone-id]
+  (let [conn (.getConnection (sql-jdbc.execute/datasource database))]
+    (try
+      (sql-jdbc.execute/set-best-transaction-level! driver conn)
+      conn
+      (catch Throwable e
+        (.close conn)
+        (throw e)))))
+
+;; SQLite's JDBC driver is dumb and complains if you try to call `.setFetchDirection` on the Connection
+(defmethod sql-jdbc.execute/prepared-statement :sqlite
+  [driver ^Connection conn ^String sql params]
+  (let [stmt (.prepareStatement conn sql
+                                ResultSet/TYPE_FORWARD_ONLY
+                                ResultSet/CONCUR_READ_ONLY
+                                ResultSet/CLOSE_CURSORS_AT_COMMIT)]
+    (try
+      (sql-jdbc.execute/set-parameters! driver stmt params)
+      stmt
+      (catch Throwable e
+        (.close stmt)
+        (throw e)))))
 
 ;; (.getObject rs i LocalDate) doesn't seem to work, nor does `(.getDate)`; and it seems to be the case that
 ;; timestamps come back as `Types/DATE` as well? Fetch them as a String and then parse them
-(defmethod sql-jdbc.execute/read-column [:sqlite Types/DATE]
-  [_ _ ^ResultSet rs _ ^Integer i]
-  (try
-    (t/local-date (.getDate rs i))
-    (catch Throwable _
-      (u.date/parse (.getString rs i) (qp.timezone/results-timezone-id)))))
+(defmethod sql-jdbc.execute/read-column-thunk [:sqlite Types/DATE]
+  [_ ^ResultSet rs _ ^Integer i]
+  (fn []
+    (try
+      (when-let [t (.getDate rs i)]
+        (t/local-date t))
+      (catch Throwable _
+        (when-let [s (.getString rs i)]
+          (u.date/parse s (qp.timezone/results-timezone-id)))))))

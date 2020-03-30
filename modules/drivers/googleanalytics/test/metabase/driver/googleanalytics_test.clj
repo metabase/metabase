@@ -4,24 +4,27 @@
             [java-time :as t]
             [medley.core :as m]
             [metabase
+             [driver :as driver]
+             [models :refer [Card Database Field Table]]
              [query-processor :as qp]
+             [test :as mt]
              [util :as u]]
-            [metabase.driver.googleanalytics :as ga]
-            [metabase.driver.googleanalytics.query-processor :as ga.qp]
-            [metabase.models
-             [card :refer [Card]]
-             [database :refer [Database]]
-             [field :refer [Field]]
-             [table :refer [Table]]]
-            [metabase.query-processor.store :as qp.store]
+            metabase.driver.googleanalytics
+            [metabase.driver.googleanalytics
+             [execute :as ga.execute]
+             [query-processor :as ga.qp]]
+            [metabase.query-processor
+             [context :as qp.context]
+             [store :as qp.store]]
             [metabase.test
              [data :as data]
              [fixtures :as fixtures]
              [util :as tu]]
             [metabase.test.data.users :as users]
-            [metabase.test.util.timezone :as tu.timezone]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
+
+(comment metabase.driver.googleanalytics/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db))
 
@@ -43,7 +46,7 @@
   (binding [qp.store/*store* (atom {:tables {1 #metabase.models.table.TableInstance{:name   "0123456"
                                                                                     :schema nil
                                                                                     :id     1}}})]
-    (ga.qp/mbql->native (update query :query (partial merge {:source-table 1})))))
+    (driver/mbql->native :googleanalytics (update query :query (partial merge {:source-table 1})))))
 
 (deftest basic-compilation-test
   (testing "just check that a basic almost-empty MBQL query can be compiled"
@@ -93,60 +96,61 @@
                                            [:> (ga-date-field :day) [:absolute-datetime (t/local-date "2016-09-09") :day]]]}})))))
 
 (deftest filter-by-relative-date-test
-  ;; system timezone should not affect the queries that get generated
-  (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-    (tu.timezone/with-system-timezone-id system-timezone-id
-      (t/with-clock (t/mock-clock (t/instant (t/zoned-date-time
-                                              (t/local-date "2019-11-18")
-                                              (t/local-time 0)
-                                              (t/zone-id system-timezone-id)))
-                                  (t/zone-id system-timezone-id))
-        (testing "last month"
-          (is (= (ga-query {:start-date "2019-10-01"
-                            :end-date   "2019-10-31"})
-                 (mbql->native {:query {:filter [:= (ga-date-field :month) [:relative-datetime -1 :month]]}}))))
-        (testing "this month"
-          (is (= (ga-query {:start-date "2019-11-01"
-                            :end-date   "2019-11-30"})
-                 (mbql->native {:query {:filter [:= (ga-date-field :month) [:relative-datetime 0 :month]]}}))))
-        (testing "next month"
-          (is (= (ga-query {:start-date "2019-12-01"
-                            :end-date   "2019-12-31"})
-                 (mbql->native {:query {:filter [:= (ga-date-field :month) [:relative-datetime 1 :month]]}}))))
-        (testing "month is 2 months from current month"
-          (is (= (ga-query {:start-date "2020-01-01"
-                            :end-date   "2020-01-31"})
-                 (mbql->native {:query {:filter [:= (ga-date-field :month) [:relative-datetime 2 :month]]}}))))
-        (testing "last year"
-          (is (= (ga-query {:start-date "2018-01-01"
-                            :end-date   "2018-12-31"})
-                 (mbql->native {:query {:filter [:= (ga-date-field :year) [:relative-datetime -1 :year]]}}))))
-        (testing "day is > yesterday (start-date should be today)"
-          (is (= (ga-query {:start-date "today", :end-date "today"})
-                 (mbql->native {:query {:filter [:> (ga-date-field :day) [:relative-datetime -1 :day]]}}))))
-        (testing "day is > 30 days ago (start-date should be 29 days ago)"
-          (is (= (ga-query {:start-date "29daysAgo"
-                            :end-date   "today"})
-                 (mbql->native {:query {:filter [:> (ga-date-field :day) [:relative-datetime -30 :day]]}}))))
-        (testing "day is >= 30 days ago (start-date should be 30 days ago)"
-          (is (= (ga-query {:start-date "30daysAgo"
-                            :end-date   "today"})
-                 (mbql->native {:query {:filter [:>= (ga-date-field :day) [:relative-datetime -30 :day]]}}))))
-        (testing "day is within last year"
-          (is (= (ga-query {:start-date "2018-11-19"
-                            :end-date   "today"})
-                 (mbql->native {:query {:filter [:> (ga-date-field :day) [:relative-datetime -1 :year]]}}))))
-        (testing "year > last year"
-          (is (= (ga-query {:start-date "2019-01-01"
-                            :end-date   "today"})
-                 (mbql->native {:query {:filter [:> (ga-date-field :year) [:relative-datetime -1 :year]]}}))))
-        (testing "month is between 4 months ago and 1 month ago (:between is inclusive) (i.e., July, August, September, or Octover)"
-          (is (= (ga-query {:start-date "2019-07-01", :end-date "2019-10-31"})
-                 (mbql->native
-                  {:query {:filter [:between
-                                    (ga-date-field :month)
-                                    [:relative-datetime -4 :month]
-                                    [:relative-datetime -1 :month]]}}))))))))
+  (mt/with-database-timezone-id nil
+    (testing "\nsystem timezone should not affect the queries that get generated"
+      (doseq [system-timezone-id ["UTC" "US/Pacific"]]
+        (mt/with-system-timezone-id system-timezone-id
+          (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
+                                                   (t/local-date "2019-11-18")
+                                                   (t/local-time 0)
+                                                   (t/zone-id system-timezone-id)))
+                                       (t/zone-id system-timezone-id))
+            (testing "last month"
+              (is (= (ga-query {:start-date "2019-10-01"
+                                :end-date   "2019-10-31"})
+                     (mbql->native {:query {:filter [:= (ga-date-field :month) [:relative-datetime -1 :month]]}}))))
+            (testing "this month"
+              (is (= (ga-query {:start-date "2019-11-01"
+                                :end-date   "2019-11-30"})
+                     (mbql->native {:query {:filter [:= (ga-date-field :month) [:relative-datetime 0 :month]]}}))))
+            (testing "next month"
+              (is (= (ga-query {:start-date "2019-12-01"
+                                :end-date   "2019-12-31"})
+                     (mbql->native {:query {:filter [:= (ga-date-field :month) [:relative-datetime 1 :month]]}}))))
+            (testing "month is 2 months from current month"
+              (is (= (ga-query {:start-date "2020-01-01"
+                                :end-date   "2020-01-31"})
+                     (mbql->native {:query {:filter [:= (ga-date-field :month) [:relative-datetime 2 :month]]}}))))
+            (testing "last year"
+              (is (= (ga-query {:start-date "2018-01-01"
+                                :end-date   "2018-12-31"})
+                     (mbql->native {:query {:filter [:= (ga-date-field :year) [:relative-datetime -1 :year]]}}))))
+            (testing "day is > yesterday (start-date should be today)"
+              (is (= (ga-query {:start-date "today", :end-date "today"})
+                     (mbql->native {:query {:filter [:> (ga-date-field :day) [:relative-datetime -1 :day]]}}))))
+            (testing "day is > 30 days ago (start-date should be 29 days ago)"
+              (is (= (ga-query {:start-date "29daysAgo"
+                                :end-date   "today"})
+                     (mbql->native {:query {:filter [:> (ga-date-field :day) [:relative-datetime -30 :day]]}}))))
+            (testing "day is >= 30 days ago (start-date should be 30 days ago)"
+              (is (= (ga-query {:start-date "30daysAgo"
+                                :end-date   "today"})
+                     (mbql->native {:query {:filter [:>= (ga-date-field :day) [:relative-datetime -30 :day]]}}))))
+            (testing "day is within last year"
+              (is (= (ga-query {:start-date "2018-11-19"
+                                :end-date   "today"})
+                     (mbql->native {:query {:filter [:> (ga-date-field :day) [:relative-datetime -1 :year]]}}))))
+            (testing "year > last year"
+              (is (= (ga-query {:start-date "2019-01-01"
+                                :end-date   "today"})
+                     (mbql->native {:query {:filter [:> (ga-date-field :year) [:relative-datetime -1 :year]]}}))))
+            (testing "month is between 4 months ago and 1 month ago (:between is inclusive) (i.e., July, August, September, or Octover)"
+              (is (= (ga-query {:start-date "2019-07-01", :end-date "2019-10-31"})
+                     (mbql->native
+                      {:query {:filter [:between
+                                        (ga-date-field :month)
+                                        [:relative-datetime -4 :month]
+                                        [:relative-datetime -1 :month]]}}))))))))))
 
 (deftest limit-test
   (is (= (ga-query {:max-results 25})
@@ -218,8 +222,8 @@
 (deftest almost-e2e-test-1
   ;; system timezone ID shouldn't affect generated query
   (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-    (tu.timezone/with-system-timezone-id system-timezone-id
-      (t/with-clock (t/mock-clock (t/instant (t/zoned-date-time
+    (mt/with-system-timezone-id system-timezone-id
+      (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                               (t/local-date "2019-11-18")
                                               (t/local-time 0)
                                               (t/zone-id system-timezone-id)))
@@ -249,8 +253,8 @@
 
 (deftest almost-e2e-test-2
   (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-    (tu.timezone/with-system-timezone-id system-timezone-id
-      (t/with-clock (t/mock-clock (t/instant (t/zoned-date-time
+    (mt/with-system-timezone-id system-timezone-id
+      (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                               (t/local-date "2019-11-18")
                                               (t/local-time 0)
                                               (t/zone-id system-timezone-id)))
@@ -261,58 +265,63 @@
 
 ;; ok, now do the same query again, but run the entire QP pipeline, swapping out a few things so nothing is actually
 ;; run externally.
-;; TODO - Saw random test failure
 (deftest almost-e2e-test-3
-  ;; system timezone ID shouldn't affect generated query
-  (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-    (tu.timezone/with-system-timezone-id system-timezone-id
-      (t/with-clock (t/mock-clock (t/instant (t/zoned-date-time
-                                              (t/local-date "2019-11-18")
-                                              (t/local-time 0)
-                                              (t/zone-id system-timezone-id)))
-                                  (t/zone-id system-timezone-id))
-        (with-redefs [ga/memoized-column-metadata (fn [_ column-name]
-                                                    {:display_name column-name
-                                                     :description  (str "This is " column-name)
-                                                     :base_type    :type/Text})]
-          (is (= {:row_count 1
-                  :status    :completed
-                  :data      {:rows             [["Toucan Sighting" 1000]]
-                              :native_form      expected-ga-query
-                              :cols             [{:description     "This is ga:eventLabel"
-                                                  :special_type    nil
-                                                  :name            "ga:eventLabel"
-                                                  :settings        nil
-                                                  :source          :breakout
-                                                  :parent_id       nil
-                                                  :visibility_type :normal
-                                                  :display_name    "ga:eventLabel"
-                                                  :fingerprint     nil
-                                                  :base_type       :type/Text}
-                                                 {:name         "metric"
-                                                  :display_name "metric"
-                                                  :source       :aggregation
-                                                  :description  "This is metric"
-                                                  :base_type    :type/Text}]
-                              :results_timezone system-timezone-id}}
-                 (do-with-some-fields
-                  (fn [objects]
-                    (let [results {:columns [:ga:eventLabel :ga:totalEvents]
-                                   :cols    [{}, {:base_type :type/Text}]
-                                   :rows    [["Toucan Sighting" 1000]]}
-                          qp      (#'metabase.query-processor/build-pipeline (constantly results))
-                          query   (query-with-some-fields objects)]
-                      (-> (tu/doall-recursive (qp query))
-                          (update-in [:data :cols] #(for [col %]
-                                                      (dissoc col :table_id :id :field_ref)))
-                          (m/dissoc-in [:data :results_metadata])
-                          (m/dissoc-in [:data :insights]))))))))))))
+  (testing "system timezone ID shouldn't affect generated query"
+    (doseq [system-timezone-id ["UTC" "US/Pacific"]]
+      (mt/with-system-timezone-id system-timezone-id
+        (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
+                                                 (t/local-date "2019-11-18")
+                                                 (t/local-time 0)
+                                                 (t/zone-id system-timezone-id)))
+                                     (t/zone-id system-timezone-id))
+          (with-redefs [ga.execute/memoized-column-metadata (fn [_ column-name]
+                                                              {:display_name column-name
+                                                               :description  (str "This is " column-name)
+                                                               :base_type    :type/Text})]
+            (do-with-some-fields
+             (fn [objects]
+               (let [query   (query-with-some-fields objects)
+                     cols    (for [col [{:name "ga:eventLabel"}
+                                        {:name "ga:totalEvents", :base_type :type/Text}]]
+                               (#'ga.execute/add-col-metadata query col))
+                     rows    [["Toucan Sighting" 1000]]
+                     context {:timeout 500
+                              :runf    (fn [query rff context]
+                                         (let [metadata {:cols cols}]
+                                           (qp.context/reducef rff context metadata rows)))}
+                     qp      (fn [query]
+                               (qp/process-query query context))]
+                 (is (= {:row_count 1
+                         :status    :completed
+                         :data      {:rows             [["Toucan Sighting" 1000]]
+                                     :native_form      expected-ga-query
+                                     :cols             [{:description     "This is ga:eventLabel"
+                                                         :special_type    nil
+                                                         :name            "ga:eventLabel"
+                                                         :settings        nil
+                                                         :source          :breakout
+                                                         :parent_id       nil
+                                                         :visibility_type :normal
+                                                         :display_name    "ga:eventLabel"
+                                                         :fingerprint     nil
+                                                         :base_type       :type/Text}
+                                                        {:name         "metric"
+                                                         :display_name "ga:totalEvents"
+                                                         :source       :aggregation
+                                                         :description  "This is ga:totalEvents"
+                                                         :base_type    :type/Text}]
+                                     :results_timezone system-timezone-id}}
+                        (-> (tu/doall-recursive (qp query))
+                            (update-in [:data :cols] #(for [col %]
+                                                        (dissoc col :table_id :id :field_ref)))
+                            (m/dissoc-in [:data :results_metadata])
+                            (m/dissoc-in [:data :insights])))))))))))))
 
 (deftest almost-e2e-time-interval-test
   (testing "Make sure filtering by the previous 4 months actually filters against the right months (#10701)"
     (doseq [system-timezone-id ["UTC" "US/Pacific"]]
-      (tu.timezone/with-system-timezone-id system-timezone-id
-        (t/with-clock (t/mock-clock (t/instant (t/zoned-date-time
+      (mt/with-system-timezone-id system-timezone-id
+        (mt/with-clock (t/mock-clock (t/instant (t/zoned-date-time
                                                 (t/local-date "2019-11-18")
                                                 (t/local-time 0)
                                                 (t/zone-id system-timezone-id)))
@@ -344,7 +353,7 @@
   (tt/with-temp* [Database [db    {:engine :googleanalytics}]
                   Table    [table {:db_id (u/get-id db)}]
                   Field    [field {:table_id (u/get-id table)}]]
-    (let [cnt (->> ((users/user->client :crowberto) :post 200 "card"
+    (let [cnt (->> ((users/user->client :crowberto) :post 202 "card"
                     {:name                   "Metabase Websites, Sessions and 1 Day Active Users, Grouped by Date (day)"
                      :display                :table
                      :visualization_settings {}

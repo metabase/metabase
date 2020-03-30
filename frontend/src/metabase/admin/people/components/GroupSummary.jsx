@@ -9,7 +9,7 @@ const GroupSummary = ({ groups, selectedGroups }) => {
   const otherGroups = groups.filter(
     g => selectedGroups[g.id] && !isAdminGroup(g) && !isDefaultGroup(g),
   );
-  if (selectedGroups[adminGroup.id]) {
+  if (adminGroup && selectedGroups[adminGroup.id]) {
     return (
       <span>
         <span className="text-purple">{t`Admin`}</span>

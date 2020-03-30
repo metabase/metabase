@@ -1,14 +1,24 @@
-import React, { Component } from "react";
+import React from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-import S from "./ExpressionEditorTextfield.css";
+
 import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
 
-import { compile, suggest } from "metabase/lib/expressions/parser";
-import { format } from "metabase/lib/expressions/formatter";
-import { setCaretPosition, getSelectionPosition } from "metabase/lib/dom";
+import { format } from "metabase/lib/expressions/format";
+import { processSource } from "metabase/lib/expressions/process";
+import MetabaseSettings from "metabase/lib/settings";
+import colors from "metabase/lib/colors";
+
+import memoize from "lodash.memoize";
+
+import {
+  setCaretPosition,
+  getSelectionPosition,
+  isObscured,
+} from "metabase/lib/dom";
+
 import {
   KEYCODE_ENTER,
   KEYCODE_ESCAPE,
@@ -18,13 +28,13 @@ import {
   KEYCODE_DOWN,
 } from "metabase/lib/keyboard";
 
+import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
+import ExplicitSize from "metabase/components/ExplicitSize";
 
 import TokenizedInput from "./TokenizedInput";
 
 import { isExpression } from "metabase/lib/expressions";
-
-const MAX_SUGGESTIONS = 30;
 
 const SUGGESTION_SECTION_NAMES = {
   fields: t`Fields`,
@@ -34,25 +44,23 @@ const SUGGESTION_SECTION_NAMES = {
   other: t`Other`,
 };
 
-export default class ExpressionEditorTextfield extends Component {
-  constructor(props, context) {
-    super(props, context);
-    _.bindAll(
-      this,
-      "_triggerAutosuggest",
-      "onInputKeyDown",
-      "onInputBlur",
-      "onSuggestionAccepted",
-      "onSuggestionMouseDown",
+@ExplicitSize()
+export default class ExpressionEditorTextfield extends React.Component {
+  constructor() {
+    super();
+    // memoize processSource for performance when editing previously seen source/targetOffset
+    this._processSource = memoize(processSource, ({ source, targetOffset }) =>
+      // resovle should include anything that affect the results of processSource
+      // except currently we exclude `startRule` and `query` since they shouldn't change
+      [source, targetOffset].join(","),
     );
   }
 
   static propTypes = {
-    expression: PropTypes.array, // should be an array like [parsedExpressionObj, expressionString]
+    expression: PropTypes.array, // should be an array like [expressionObj, source]
     onChange: PropTypes.func.isRequired,
     onError: PropTypes.func.isRequired,
     startRule: PropTypes.string.isRequired,
-    className: PropTypes.string,
   };
 
   static defaultProps = {
@@ -61,7 +69,7 @@ export default class ExpressionEditorTextfield extends Component {
     placeholder: "write some math!",
   };
 
-  _getParserInfo(props = this.props) {
+  _getParserOptions(props = this.props) {
     return {
       query: props.query,
       startRule: props.startRule,
@@ -74,25 +82,21 @@ export default class ExpressionEditorTextfield extends Component {
 
   componentWillReceiveProps(newProps) {
     // we only refresh our state if we had no previous state OR if our expression changed
-    if (!this.state || this.props.expression !== newProps.expression) {
-      const parserInfo = this._getParserInfo(newProps);
-      const parsedExpression = newProps.expression;
-      const expressionString = format(newProps.expression, parserInfo);
-      let expressionErrorMessage = null;
-      const suggestions = [];
-      try {
-        if (expressionString) {
-          compile(expressionString, parserInfo);
-        }
-      } catch (e) {
-        expressionErrorMessage = e;
-      }
+    if (!this.state || !_.isEqual(this.props.expression, newProps.expression)) {
+      const parserOptions = this._getParserOptions(newProps);
+      const source = format(newProps.expression, parserOptions);
+
+      const { expression, compileError, syntaxTree } = this._processSource({
+        source,
+        ...this._getParserOptions(newProps),
+      });
 
       this.setState({
-        parsedExpression,
-        expressionString,
-        expressionErrorMessage,
-        suggestions,
+        source,
+        expression,
+        compileError,
+        syntaxTree,
+        suggestions: [],
         highlightedSuggestion: 0,
       });
     }
@@ -100,21 +104,29 @@ export default class ExpressionEditorTextfield extends Component {
 
   componentDidMount() {
     this._setCaretPosition(
-      this.state.expressionString.length,
-      this.state.expressionString.length === 0,
+      this.state.source.length,
+      this.state.source.length === 0,
     );
   }
 
-  onSuggestionAccepted() {
-    const { expressionString } = this.state;
+  componentDidUpdate(prevProps, prevState) {
+    if (prevState.highlightedSuggestion !== this.state.highlightedSuggestion) {
+      if (this._selectedRow && isObscured(this._selectedRow)) {
+        this._selectedRow.scrollIntoView({ block: "nearest" });
+      }
+    }
+  }
+
+  onSuggestionAccepted = () => {
+    const { source } = this.state;
     const suggestion = this.state.suggestions[this.state.highlightedSuggestion];
 
     if (suggestion) {
-      let prefix = expressionString.slice(0, suggestion.index);
+      let prefix = source.slice(0, suggestion.index);
       if (suggestion.prefixTrim) {
         prefix = prefix.replace(suggestion.prefixTrim, "");
       }
-      let postfix = expressionString.slice(suggestion.index);
+      let postfix = source.slice(suggestion.index);
       if (suggestion.postfixTrim) {
         postfix = postfix.replace(suggestion.postfixTrim, "");
       }
@@ -131,16 +143,16 @@ export default class ExpressionEditorTextfield extends Component {
     this.setState({
       highlightedSuggestion: 0,
     });
-  }
+  };
 
-  onSuggestionMouseDown(event, index) {
+  onSuggestionMouseDown = (event, index) => {
     // when a suggestion is clicked, we'll highlight the clicked suggestion and then hand off to the same code that deals with ENTER / TAB keydowns
     event.preventDefault();
     event.stopPropagation();
     this.setState({ highlightedSuggestion: index }, this.onSuggestionAccepted);
-  }
+  };
 
-  onInputKeyDown(e) {
+  onInputKeyDown = e => {
     const { suggestions, highlightedSuggestion } = this.state;
 
     if (e.keyCode === KEYCODE_LEFT || e.keyCode === KEYCODE_RIGHT) {
@@ -155,6 +167,13 @@ export default class ExpressionEditorTextfield extends Component {
     }
 
     if (!suggestions.length) {
+      if (
+        e.keyCode === KEYCODE_ENTER &&
+        this.props.onCommit &&
+        this.state.expression != null
+      ) {
+        this.props.onCommit(this.state.expression);
+      }
       return;
     }
     if (e.keyCode === KEYCODE_ENTER) {
@@ -173,7 +192,7 @@ export default class ExpressionEditorTextfield extends Component {
       });
       e.preventDefault();
     }
-  }
+  };
 
   clearSuggestions() {
     this.setState({
@@ -182,25 +201,28 @@ export default class ExpressionEditorTextfield extends Component {
     });
   }
 
-  onInputBlur() {
+  onInputBlur = () => {
     this.clearSuggestions();
 
     // whenever our input blurs we push the updated expression to our parent if valid
-    if (isExpression(this.state.parsedExpression)) {
-      this.props.onChange(this.state.parsedExpression);
-    } else if (this.state.expressionErrorMessage) {
-      this.props.onError(this.state.expressionErrorMessage);
+    if (this.state.expression) {
+      if (!isExpression(this.state.expression)) {
+        console.warn("isExpression=false", this.state.expression);
+      }
+      this.props.onChange(this.state.expression);
+    } else if (this.state.compileError) {
+      this.props.onError(this.state.compileError);
     } else {
       this.props.onError({ message: t`Invalid expression` });
     }
-  }
+  };
 
   onInputClick = () => {
     this._triggerAutosuggest();
   };
 
   _triggerAutosuggest = () => {
-    this.onExpressionChange(this.state.expressionString);
+    this.onExpressionChange(this.state.source);
   };
 
   _setCaretPosition = (position, autosuggest) => {
@@ -210,99 +232,132 @@ export default class ExpressionEditorTextfield extends Component {
     }
   };
 
-  onExpressionChange(expressionString) {
+  onExpressionChange(source) {
     const inputElement = ReactDOM.findDOMNode(this.refs.input);
     if (!inputElement) {
       return;
     }
 
-    const parserInfo = this._getParserInfo();
-
-    let expressionErrorMessage = null;
-    let suggestions = [];
-    let parsedExpression;
-
-    try {
-      parsedExpression = compile(expressionString, parserInfo);
-    } catch (e) {
-      expressionErrorMessage = e;
-      console.error("expression error:", expressionErrorMessage);
-    }
-
-    const isValid = parsedExpression && parsedExpression.length > 0;
     const [selectionStart, selectionEnd] = getSelectionPosition(inputElement);
     const hasSelection = selectionStart !== selectionEnd;
-    const isAtEnd = selectionEnd === expressionString.length;
-    const endsWithWhitespace = /\s$/.test(expressionString);
+    const isAtEnd = selectionEnd === source.length;
+    const endsWithWhitespace = /\s$/.test(source);
+    const targetOffset = !hasSelection ? selectionEnd : null;
 
+    const {
+      expression,
+      compileError,
+      suggestions,
+      helpText,
+      syntaxTree,
+    } = this._processSource({
+      source,
+      targetOffset,
+      ...this._getParserOptions(),
+    });
+
+    const isValid = expression !== undefined;
     // don't show suggestions if
-    // * there's a section
+    // * there's a selection
     // * we're at the end of a valid expression, unless the user has typed another space
-    if (!hasSelection && !(isValid && isAtEnd && !endsWithWhitespace)) {
-      try {
-        suggestions = suggest(expressionString, {
-          ...parserInfo,
-          index: selectionEnd,
-        });
-      } catch (e) {
-        console.error("suggest error:", e);
-      }
-    }
+    const showSuggestions =
+      !hasSelection && !(isValid && isAtEnd && !endsWithWhitespace);
 
     this.setState({
-      expressionErrorMessage,
-      expressionString,
-      parsedExpression,
-      suggestions,
-      showAll: false,
+      source,
+      expression,
+      syntaxTree,
+      compileError,
+      suggestions: showSuggestions ? suggestions : [],
+      helpText,
     });
   }
 
-  onShowMoreMouseDown(e) {
-    e.preventDefault();
-    this.setState({ showAll: true });
-  }
-
   render() {
-    let errorMessage = this.state.expressionErrorMessage;
-    if (errorMessage && !errorMessage.length) {
-      errorMessage = t`unknown error`;
+    const { placeholder } = this.props;
+    let { compileError } = this.state;
+    const { source, suggestions, helpText, syntaxTree } = this.state;
+
+    if (compileError && !compileError.length) {
+      compileError = t`unknown error`;
     }
 
-    const { placeholder, className, style } = this.props;
-    const { suggestions, showAll } = this.state;
+    const inputClassName = cx("input text-bold text-monospace", {
+      "text-dark": source,
+      "text-light": !source,
+    });
+    const inputStyle = { fontSize: 12 };
 
     return (
-      <div className={cx(S.editor, "relative")}>
+      <div className={cx("relative my1")}>
+        <div
+          className={cx(inputClassName, "absolute top left")}
+          style={{
+            ...inputStyle,
+            pointerEvents: "none",
+            borderColor: "transparent",
+          }}
+        >
+          {"= "}
+        </div>
         <TokenizedInput
           ref="input"
-          style={style}
-          className={cx(
-            S.input,
-            "my1 input block full",
-            {
-              "border-error": errorMessage,
-            },
-            className,
-          )}
           type="text"
+          className={cx(inputClassName, {
+            "border-error": compileError,
+          })}
+          style={{ ...inputStyle, paddingLeft: 26 }}
           placeholder={placeholder}
-          value={this.state.expressionString}
+          value={source}
+          syntaxTree={syntaxTree}
+          parserOptions={this._getParserOptions()}
           onChange={e => this.onExpressionChange(e.target.value)}
           onKeyDown={this.onInputKeyDown}
           onBlur={this.onInputBlur}
           onFocus={e => this._triggerAutosuggest()}
           onClick={this.onInputClick}
           autoFocus
-          parserInfo={this._getParserInfo()}
         />
-        <div
-          className={cx(S.equalSign, "spread flex align-center h4 text-dark", {
-            [S.placeholder]: !this.state.expressionString,
-          })}
-        >
-          =
-        </div>
+        {helpText && (
+          <Popover
+            tetherOptions={{
+              attachment: "top left",
+              targetAttachment: "bottom left",
+            }}
+            style={{ width: this.props.width }}
+            isOpen
+          >
+            <p
+              className="p2 m0 text-monospace text-bold"
+              style={{ background: colors["bg-yellow"] }}
+            >
+              {helpText.structure}
+            </p>
+            <div className="p2 border-top">
+              <p className="mt0 text-bold">{helpText.description}</p>
+              <p className="text-code m0 text-body">{helpText.example}</p>
+            </div>
+            <div className="p2 border-top">
+              {helpText.args.map(({ name, description }) => (
+                <div>
+                  <h4 className="text-medium">{name}</h4>
+                  <p className="mt1 text-bold">{description}</p>
+                </div>
+              ))}
+              <a
+                className="link text-bold block my1"
+                target="_blank"
+                href={MetabaseSettings.docsUrl(
+                  "users-guide/04-asking-questions",
+                  "creating-a-custom-field",
+                )}
+              >
+                <Icon name="reference" size={12} className="mr1" />
+                {t`Learn more`}
+              </a>
+            </div>
+          </Popover>
+        )}
         {suggestions.length ? (
           <Popover
             className="pb1 not-rounded border-dark"
@@ -311,28 +366,27 @@ export default class ExpressionEditorTextfield extends Component {
               attachment: "top left",
               targetAttachment: "bottom left",
             }}
+            sizeToFit
           >
-            <ul style={{ minWidth: 150, overflow: "hidden" }}>
-              {(showAll
-                ? suggestions
-                : suggestions.slice(0, MAX_SUGGESTIONS)
-              ).map((suggestion, i) =>
+            <ul style={{ minWidth: 150, overflowY: "scroll" }}>
+              {suggestions.map((suggestion, i) =>
                 // insert section title. assumes they're sorted by type
                 [
                   (i === 0 || suggestion.type !== suggestions[i - 1].type) && (
-                    <li
-                      ref={"header-" + i}
-                      className="mx2 h6 text-uppercase text-bold text-medium py1 pt2"
-                    >
+                    <li className="mx2 h6 text-uppercase text-bold text-medium py1 pt2">
                       {SUGGESTION_SECTION_NAMES[suggestion.type] ||
                         suggestion.type}
                     </li>
                   ),
                   <li
-                    ref={i}
+                    ref={r => {
+                      if (i === this.state.highlightedSuggestion) {
+                        this._selectedRow = r;
+                      }
+                    }}
                     style={{ paddingTop: 5, paddingBottom: 5 }}
                     className={cx(
-                      "px2 cursor-pointer text-white-hover bg-brand-hover",
+                      "px2 cursor-pointer text-white-hover bg-brand-hover hover-parent hover--inherit",
                       {
                         "text-white bg-brand":
                           i === this.state.highlightedSuggestion,
@@ -344,7 +398,7 @@ export default class ExpressionEditorTextfield extends Component {
                       <span>
                         {suggestion.name.slice(0, suggestion.range[0])}
                         <span
-                          className={cx("text-brand text-bold", {
+                          className={cx("text-brand text-bold hover-child", {
                             "text-white bg-brand":
                               i === this.state.highlightedSuggestion,
                           })}
@@ -361,15 +415,6 @@ export default class ExpressionEditorTextfield extends Component {
                     )}
                   </li>,
                 ],
-              )}
-              {!showAll && suggestions.length >= MAX_SUGGESTIONS && (
-                <li
-                  style={{ paddingTop: 5, paddingBottom: 5 }}
-                  onMouseDownCapture={e => this.onShowMoreMouseDown(e)}
-                  className="px2 text-italic text-medium cursor-pointer text-brand-hover"
-                >
-                  and {suggestions.length - MAX_SUGGESTIONS} more
-                </li>
               )}
             </ul>
           </Popover>

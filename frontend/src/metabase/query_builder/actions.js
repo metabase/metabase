@@ -5,15 +5,17 @@ declare var ace: any;
 
 import { createAction } from "redux-actions";
 import _ from "underscore";
-import { assocIn, getIn, updateIn } from "icepick";
+import { assocIn, updateIn } from "icepick";
 
 import * as Urls from "metabase/lib/urls";
 
 import { createThunkAction } from "metabase/lib/redux";
 import { push, replace } from "react-router-redux";
 import { setErrorPage } from "metabase/redux/app";
+import { loadMetadataForQuery } from "metabase/redux/metadata";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
+import { startTimer } from "metabase/lib/performance";
 import {
   loadCard,
   startNewCard,
@@ -58,7 +60,6 @@ import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/util
 import { getPersistableDefaultSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
 import Questions from "metabase/entities/questions";
-import Tables from "metabase/entities/tables";
 import Databases from "metabase/entities/databases";
 
 import { getMetadata } from "metabase/selectors/metadata";
@@ -130,6 +131,7 @@ export const POP_STATE = "metabase/qb/POP_STATE";
 export const popState = createThunkAction(
   POP_STATE,
   location => async (dispatch, getState) => {
+    dispatch(cancelQuery());
     const card = getCard(getState());
     if (location.state && location.state.card) {
       if (!Utils.equals(card, location.state.card)) {
@@ -298,6 +300,10 @@ export const initializeQB = (location, params) => {
     dispatch(resetQB());
     dispatch(cancelQuery());
 
+    // preload metadata that's used in DataSelector
+    dispatch(Databases.actions.fetchList({ include: "tables" }));
+    dispatch(Databases.actions.fetchList({ saved: true }));
+
     const { currentUser } = getState();
 
     let card, originalCard;
@@ -306,25 +312,6 @@ export const initializeQB = (location, params) => {
       isShowingTemplateTagsEditor: false,
       queryBuilderMode: getQueryBuilderModeFromLocation(location),
     };
-
-    // always start the QB by loading up the databases for the application
-    let databaseFetch;
-    try {
-      databaseFetch = dispatch(
-        Databases.actions.fetchList({
-          include_tables: true,
-          include_cards: true,
-        }),
-      );
-    } catch (error) {
-      console.error("error fetching dbs", error);
-      // NOTE: don't actually error if dbs can't be fetched for some reason,
-      // we may still be able to run the query
-      // NOTE: for some reason previously fetchDatabases would fall back to []
-      // if there was an API error so this would never be hit
-      // dispatch(setErrorPage(error));
-      // return { uiControls };
-    }
 
     // load up or initialize the card we'll be working on
     let options = {};
@@ -449,18 +436,7 @@ export const initializeQB = (location, params) => {
     }
     // Fetch the question metadata (blocking)
     if (card) {
-      // ensure that the database fetch completed before getting the tables
-      if (databaseFetch) {
-        await databaseFetch;
-      }
-      const { tables } = getMetadata(getState());
-      const tableId = getIn(card, ["dataset_query", "query", "source-table"]);
-      // Only fetch the table metadata if the table was returned in the earlier
-      // call to fetch databases and tables. Otherwise, this user doesn't have
-      // permissions and the call will fail.
-      if (tables[tableId] != null) {
-        await dispatch(loadMetadataForCard(card));
-      }
+      await dispatch(loadMetadataForCard(card));
     }
 
     let question = card && new Question(card, getMetadata(getState()));
@@ -543,39 +519,10 @@ export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {
   };
 });
 
-// TODO Atte Keinänen 6/8/17: Could (should?) use the stored question by default instead of always requiring the explicit `card` parameter
-export const LOAD_METADATA_FOR_CARD = "metabase/qb/LOAD_METADATA_FOR_CARD";
-export const loadMetadataForCard = createThunkAction(
-  LOAD_METADATA_FOR_CARD,
-  card => {
-    return async (dispatch, getState) => {
-      // Short-circuit if we're in a weird state where the card isn't completely loaded
-      if (!card || !card.dataset_query) {
-        return;
-      }
-      const query = new Question(card, getMetadata(getState())).query();
-      if (query instanceof StructuredQuery) {
-        try {
-          const rootTableId = query.rootTableId();
-          if (rootTableId != null) {
-            await Promise.all([
-              dispatch(Tables.actions.fetchTableMetadata({ id: rootTableId })),
-              dispatch(Tables.actions.fetchForeignKeys({ id: rootTableId })),
-            ]);
-          }
-          await Promise.all(
-            query
-              .dependentTableIds()
-              .map(id => dispatch(Tables.actions.fetchMetadata({ id }))),
-          );
-        } catch (e) {
-          console.error("Error loading metadata for card", e);
-          throw e;
-        }
-      }
-    };
-  },
-);
+export const loadMetadataForCard = card => (dispatch, getState) =>
+  dispatch(
+    loadMetadataForQuery(new Question(card, getMetadata(getState())).query()),
+  );
 
 function hasNewColumns(question, queryResult) {
   // NOTE: this assume column names will change
@@ -628,11 +575,19 @@ export const updateTemplateTag = createThunkAction(
         delete updatedCard.description;
       }
 
-      // using updateIn instead of assocIn due to not preserving order of keys
+      // we need to preserve the order of the keys to avoid UI jumps
       return updateIn(
         updatedCard,
         ["dataset_query", "native", "template-tags"],
-        tags => ({ ...tags, [templateTag.name]: templateTag }),
+        tags => {
+          const { name } = templateTag;
+          const newTag =
+            tags[name] && tags[name].type !== templateTag.type
+              ? // when we switch type, null out any default
+                { ...templateTag, default: null }
+              : templateTag;
+          return { ...tags, [name]: newTag };
+        },
       );
     };
   },
@@ -786,11 +741,11 @@ export const updateQuestion = (
     try {
       if (
         !_.isEqual(
-          oldQuestion.query().dependentTableIds(),
-          newQuestion.query().dependentTableIds(),
+          oldQuestion.query().dependentMetadata(),
+          newQuestion.query().dependentMetadata(),
         )
       ) {
-        await dispatch(loadMetadataForCard(newQuestion.card()));
+        await dispatch(loadMetadataForQuery(newQuestion.query()));
       }
 
       // setDefaultQuery requires metadata be loaded, need getQuestion to use new metadata
@@ -803,6 +758,7 @@ export const updateQuestion = (
       }
     } catch (e) {
       // this will fail if user doesn't have data permissions but thats ok
+      console.warn("Couldn't load metadata", e);
     }
 
     // run updated query
@@ -942,20 +898,26 @@ export const runQuestionQuery = ({
     const startTime = new Date();
     const cancelQueryDeferred = defer();
 
+    const queryTimer = startTimer();
+
     question
       .apiGetResults({
         cancelDeferred: cancelQueryDeferred,
         ignoreCache: ignoreCache,
         isDirty: cardIsDirty,
       })
-      .then(queryResults => dispatch(queryCompleted(question, queryResults)))
+      .then(queryResults => {
+        queryTimer(duration =>
+          MetabaseAnalytics.trackEvent(
+            "QueryBuilder",
+            "Run Query",
+            question.query().datasetQuery().type,
+            duration,
+          ),
+        );
+        return dispatch(queryCompleted(question, queryResults));
+      })
       .catch(error => dispatch(queryErrored(startTime, error)));
-
-    MetabaseAnalytics.trackEvent(
-      "QueryBuilder",
-      "Run Query",
-      question.query().datasetQuery().type,
-    );
 
     // TODO Move this out from Redux action asap
     // HACK: prevent SQL editor from losing focus

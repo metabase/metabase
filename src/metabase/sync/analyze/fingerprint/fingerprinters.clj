@@ -2,22 +2,21 @@
   "Non-identifying fingerprinters for various field types."
   (:require [bigml.histogram.core :as hist]
             [cheshire.core :as json]
-            [clj-time.coerce :as t.coerce]
             [java-time :as t]
             [kixi.stats
              [core :as stats]
              [math :as math]]
             [metabase.models.field :as field]
-            [metabase.query-processor.timezone :as qp.timezone]
             [metabase.sync.analyze.classifiers.name :as classify.name]
             [metabase.sync.util :as sync-util]
             [metabase.util :as u]
             [metabase.util
-             [date :as du]
+             [date-2 :as u.date]
              [i18n :refer [trs]]]
             [redux.core :as redux])
   (:import com.bigml.histogram.Histogram
-           com.clearspring.analytics.stream.cardinality.HyperLogLogPlus))
+           com.clearspring.analytics.stream.cardinality.HyperLogLogPlus
+           java.time.temporal.Temporal))
 
 (defn col-wise
   "Apply reducing functinons `rfs` coll-wise to a seq of seqs."
@@ -59,7 +58,7 @@
   {:arglists '([field])}
   (fn [{:keys [base_type special_type unit] :as field}]
     [(cond
-       (du/date-extract-units unit)    :type/Integer
+       (u.date/extract-units unit)     :type/Integer
        (field/unix-timestamp? field)   :type/DateTime
        ;; for historical reasons the Temporal fingerprinter is still called `:type/DateTime` so anything that derives
        ;; from `Temporal` (such as DATEs and TIMEs) should still use the `:type/DateTime` fingerprinter
@@ -137,55 +136,37 @@
          (trs "Error generating fingerprint for {0}" (sync-util/name-for-logging field#))))))
 
 (defn- earliest
-  ([] (java.util.Date. Long/MAX_VALUE))
+  ([] nil)
   ([acc]
-   (when (not= acc (earliest))
-     (du/date->iso-8601 acc)))
-  ([^java.util.Date acc dt]
-   (if dt
-     (if (.before ^java.util.Date dt acc)
-       dt
-       acc)
-     acc)))
+   (some-> acc u.date/format))
+  ([acc t]
+   (if (and t acc (t/before? t acc))
+     t
+     (or acc t))))
 
 (defn- latest
-  ([] (java.util.Date. 0))
+  ([] nil)
   ([acc]
-   (when (not= acc (latest))
-     (du/date->iso-8601 acc)))
-  ([^java.util.Date acc dt]
-   (if dt
-     (if (.after ^java.util.Date dt acc)
-       dt
-       acc)
-     acc)))
+   (some-> acc u.date/format))
+  ([acc t]
+   (if (and t acc (t/after? t acc))
+     t
+     (or acc t))))
 
-(defprotocol IDateCoercible
-  "Protocol for converting objects in resultset to `java.util.Date`"
-  (->date ^java.util.Date [this]
-    "Coerce object to a `java.util.Date`."))
+(defprotocol ^:private ITemporalCoerceable
+  "Protocol for converting objects in resultset to a `java.time` temporal type."
+  (->temporal ^java.time.temporal.Temporal [this]
+    "Coerce object to a `java.time` temporal type."))
 
-(defn- date-coercion-timezone-id []
-  ;; TODO - if `database-timezone-id` isn't bound we should probably throw an Exception or at the very least log a
-  ;; warning
-  (t/zone-id (or (qp.timezone/database-timezone-id) "UTC")))
-
-(extend-protocol IDateCoercible
-  nil                         (->date [_] nil)
-  String                      (->date [this] (-> this du/str->date-time t.coerce/to-date))
-  ;; TIMEZONE FIXME — update the fingerprint code to use new `java.time` classes directly, and remove support for
-  ;; `java.util.Date` and Joda-Time types
-  java.util.Date              (->date [this] this)
-  org.joda.time.DateTime      (->date [this] (t.coerce/to-date this))
-  Long                        (->date [^Long this] (java.util.Date. this))
-  Integer                     (->date [^Integer this] (java.util.Date. (long this)))
-  java.time.temporal.Temporal (->date [this] (t/to-java-date this))
-  java.time.LocalDate         (->date [this] (t/to-java-date (t/zoned-date-time this (t/local-time 0) (date-coercion-timezone-id))))
-  java.time.LocalTime         (->date [this] (t/to-java-date (t/zoned-date-time (t/local-date 1970 1 1) this (date-coercion-timezone-id))))
-  java.time.LocalDateTime     (->date [this] (t/to-java-date (t/zoned-date-time this (date-coercion-timezone-id)))))
+(extend-protocol ITemporalCoerceable
+  nil      (->temporal [_]    nil)
+  String   (->temporal [this] (u.date/parse this))
+  Long     (->temporal [this] (t/instant this))
+  Integer  (->temporal [this] (t/instant this))
+  Temporal (->temporal [this] this))
 
 (deffingerprinter :type/DateTime
-  ((map ->date)
+  ((map ->temporal)
    (redux/fuse {:earliest earliest
                 :latest   latest})))
 
@@ -214,9 +195,9 @@
     ((some-fn map? sequential?) (json/parse-string x))))
 
 (deffingerprinter :type/Text
-  ((map (comp str u/jdbc-clob->str)) ; we cast to str to support `field-literal` type overwriting:
-                                     ; `[:field-literal "A_NUMBER" :type/Text]` (which still
-                                     ; returns numbers in the result set)
+  ((map str) ; we cast to str to support `field-literal` type overwriting:
+             ; `[:field-literal "A_NUMBER" :type/Text]` (which still
+             ; returns numbers in the result set)
    (redux/fuse {:percent-json   (stats/share valid-serialized-json?)
                 :percent-url    (stats/share u/url?)
                 :percent-email  (stats/share u/email?)

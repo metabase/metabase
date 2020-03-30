@@ -2,6 +2,7 @@
   "Amazon Redshift Driver."
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
@@ -10,8 +11,10 @@
              [execute :as sql-jdbc.execute]]
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.util.honeysql-extensions :as hx])
-  (:import java.sql.Types
+            [metabase.util
+             [honeysql-extensions :as hx]
+             [i18n :refer [trs]]])
+  (:import [java.sql ResultSet Types]
            java.time.OffsetTime))
 
 (driver/register! :redshift, :parent #{:postgres ::legacy/use-legacy-classes-for-read-and-set})
@@ -81,23 +84,53 @@
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod driver/date-add :redshift
-  [_ dt amount unit]
-  (hsql/call :dateadd (hx/literal unit) amount (hx/->timestamp dt)))
+(defmethod sql.qp/add-interval-honeysql-form :redshift
+  [_ hsql-form amount unit]
+  (hsql/call :dateadd (hx/literal unit) amount (hx/->timestamp hsql-form)))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:redshift :seconds]
+(defmethod sql.qp/unix-timestamp->honeysql [:redshift :seconds]
   [_ _ expr]
   (hx/+ (hsql/raw "TIMESTAMP '1970-01-01T00:00:00Z'")
         (hx/* expr
               (hsql/raw "INTERVAL '1 second'"))))
 
-(defmethod sql.qp/current-datetime-fn :redshift
+(defmethod sql.qp/current-datetime-honeysql-form :redshift
   [_]
   :%getdate)
 
 (defmethod sql-jdbc.execute/set-timezone-sql :redshift
   [_]
   "SET TIMEZONE TO %s;")
+
+;; This impl is basically the same as the default impl in `sql-jdbc.execute`, but doesn't attempt to make the
+;; connection read-only, because that seems to be causing problems for people
+(defmethod sql-jdbc.execute/connection-with-timezone :redshift
+  [driver database ^String timezone-id]
+  (let [conn (.getConnection (sql-jdbc.execute/datasource database))]
+    (try
+      (sql-jdbc.execute/set-best-transaction-level! driver conn)
+      (sql-jdbc.execute/set-time-zone-if-supported! driver conn timezone-id)
+      (try
+        (.setHoldability conn ResultSet/CLOSE_CURSORS_AT_COMMIT)
+        (catch Throwable e
+          (log/debug e (trs "Error setting default holdability for connection"))))
+      conn
+      (catch Throwable e
+        (.close conn)
+        (throw e)))))
+
+(defn- splice-raw-string-value
+  [driver s]
+  (hsql/raw (str "'" (sql.qp/->honeysql driver s) "'")))
+
+(defmethod sql.qp/->honeysql [:redshift :regex-match-first]
+  [driver [_ arg pattern]]
+  (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (splice-raw-string-value driver pattern)))
+
+(defmethod sql.qp/->honeysql [:redshift :replace]
+  [driver [_ arg pattern replacement]]
+  (hsql/call :replace (sql.qp/->honeysql driver arg) (splice-raw-string-value driver pattern)
+              (splice-raw-string-value driver replacement)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
@@ -114,7 +147,7 @@
    (dissoc opts :host :port :db)))
 
 (prefer-method
- sql-jdbc.execute/read-column
+ sql-jdbc.execute/read-column-thunk
  [::legacy/use-legacy-classes-for-read-and-set Types/TIMESTAMP]
  [:postgres Types/TIMESTAMP])
 

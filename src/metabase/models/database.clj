@@ -44,15 +44,6 @@
     (catch Throwable e
       (log/error e (trs "Error unscheduling tasks for DB.")))))
 
-(defn- destroy-qp-thread-pool!
-  [database]
-  (try
-    (classloader/the-classloader)
-    (classloader/require 'metabase.query-processor.middleware.async-wait)
-    ((resolve 'metabase.query-processor.middleware.async-wait/destroy-thread-pool!) database)
-    (catch Throwable e
-      (log/error e (trs "Error destroying thread pool for DB.")))))
-
 (defn- post-insert [database]
   (u/prog1 database
     ;; add this database to the All Users permissions groups
@@ -67,11 +58,13 @@
 
 (defn- pre-delete [{id :id, driver :engine, :as database}]
   (unschedule-tasks! database)
-  (destroy-qp-thread-pool! database)
   (db/delete! 'Card        :database_id id)
   (db/delete! 'Permissions :object      [:like (str (perms/object-path id) "%")])
   (db/delete! 'Table       :db_id       id)
-  (driver/notify-database-updated driver database))
+  (try
+    (driver/notify-database-updated driver database)
+    (catch Throwable e
+      (log/error e (trs "Error sending database deletion notification")))))
 
 ;; TODO - this logic would make more sense in post-update if such a method existed
 (defn- pre-update

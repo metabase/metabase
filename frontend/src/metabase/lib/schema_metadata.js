@@ -18,6 +18,7 @@ export const TEMPORAL = "TEMPORAL";
 export const LOCATION = "LOCATION";
 export const COORDINATE = "COORDINATE";
 export const FOREIGN_KEY = "FOREIGN_KEY";
+export const PRIMARY_KEY = "PRIMARY_KEY";
 
 // other types used for various purporses
 export const ENTITY = "ENTITY";
@@ -59,6 +60,9 @@ const TYPES = {
   },
   [FOREIGN_KEY]: {
     special: [TYPE.FK],
+  },
+  [PRIMARY_KEY]: {
+    special: [TYPE.PK],
   },
   [SUMMABLE]: {
     include: [NUMBER],
@@ -119,6 +123,7 @@ export function getFieldType(field) {
     LOCATION,
     COORDINATE,
     FOREIGN_KEY,
+    PRIMARY_KEY,
     NUMBER,
     STRING,
     STRING_LIKE,
@@ -146,12 +151,12 @@ export const isMetric = col =>
 export const isFK = field => field && isTypeFK(field.special_type);
 export const isPK = field => field && isTypePK(field.special_type);
 export const isEntityName = field =>
-  isa(field && field.special_type, TYPE.Name);
+  field && isa(field.special_type, TYPE.Name);
 
 export const isAny = col => true;
 
 export const isNumericBaseType = field =>
-  isa(field && field.base_type, TYPE.Number);
+  field && isa(field.base_type, TYPE.Number);
 
 // ZipCode, ID, etc derive from Number but should not be formatted as numbers
 export const isNumber = field =>
@@ -161,34 +166,37 @@ export const isNumber = field =>
 
 export const isBinnedNumber = field => isNumber(field) && !!field.binning_info;
 
-export const isTime = field => isa(field && field.base_type, TYPE.Time);
+export const isTime = field => field && isa(field.base_type, TYPE.Time);
 
 export const isAddress = field =>
-  isa(field && field.special_type, TYPE.Address);
-export const isState = field => isa(field && field.special_type, TYPE.State);
+  field && isa(field.special_type, TYPE.Address);
+export const isCity = field => field && isa(field.special_type, TYPE.City);
+export const isState = field => field && isa(field.special_type, TYPE.State);
+export const isZipCode = field =>
+  field && isa(field.special_type, TYPE.ZipCode);
 export const isCountry = field =>
-  isa(field && field.special_type, TYPE.Country);
+  field && isa(field.special_type, TYPE.Country);
 export const isCoordinate = field =>
-  isa(field && field.special_type, TYPE.Coordinate);
+  field && isa(field.special_type, TYPE.Coordinate);
 export const isLatitude = field =>
-  isa(field && field.special_type, TYPE.Latitude);
+  field && isa(field.special_type, TYPE.Latitude);
 export const isLongitude = field =>
-  isa(field && field.special_type, TYPE.Longitude);
+  field && isa(field.special_type, TYPE.Longitude);
 
 export const isCurrency = field =>
-  isa(field && field.special_type, TYPE.Currency);
+  field && isa(field.special_type, TYPE.Currency);
 
 export const isDescription = field =>
-  isa(field && field.special_type, TYPE.Description);
+  field && isa(field.special_type, TYPE.Description);
 
 export const isID = field => isFK(field) || isPK(field);
 
-export const isURL = field => isa(field && field.special_type, TYPE.URL);
-export const isEmail = field => isa(field && field.special_type, TYPE.Email);
+export const isURL = field => field && isa(field.special_type, TYPE.URL);
+export const isEmail = field => field && isa(field.special_type, TYPE.Email);
 export const isAvatarURL = field =>
-  isa(field && field.special_type, TYPE.AvatarURL);
+  field && isa(field.special_type, TYPE.AvatarURL);
 export const isImageURL = field =>
-  isa(field && field.special_type, TYPE.ImageURL);
+  field && isa(field.special_type, TYPE.ImageURL);
 
 // filter operator argument constructors:
 
@@ -274,7 +282,8 @@ const CASE_SENSITIVE_OPTION = {
   },
 };
 
-const FILTER_OPERATORS = {
+// each of these has an implicit field argument, followed by 0 or more additional arguments
+const FIELD_FILTER_OPERATORS = {
   "=": {
     validArgumentsFilters: [equivalentArgument],
     multi: true,
@@ -410,6 +419,7 @@ const FILTER_OPERATORS_BY_TYPE_ORDERED = {
     { name: "not-null", verboseName: t`Not empty` },
   ],
   [FOREIGN_KEY]: DEFAULT_FILTER_OPERATORS,
+  [PRIMARY_KEY]: DEFAULT_FILTER_OPERATORS,
   [UNKNOWN]: DEFAULT_FILTER_OPERATORS,
 };
 
@@ -428,7 +438,7 @@ const MORE_VERBOSE_NAMES = {
 export function getFilterOperators(field, table) {
   const type = getFieldType(field) || UNKNOWN;
   return FILTER_OPERATORS_BY_TYPE_ORDERED[type].map(operatorForType => {
-    const operator = FILTER_OPERATORS[operatorForType.name];
+    const operator = FIELD_FILTER_OPERATORS[operatorForType.name];
     const verboseNameLower = operatorForType.verboseName.toLowerCase();
     return {
       ...operator,

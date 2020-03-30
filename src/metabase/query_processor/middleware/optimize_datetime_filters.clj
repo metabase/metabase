@@ -1,7 +1,8 @@
 (ns metabase.query-processor.middleware.optimize-datetime-filters
   "Middlware that optimizes equality (`=` and `!=`) and comparison (`<`, `between`, etc.) filter clauses against
   bucketed datetime fields. See docstring for `optimize-datetime-filters` for more details."
-  (:require [metabase.mbql.util :as mbql.u]
+  (:require [clojure.tools.logging :as log]
+            [metabase.mbql.util :as mbql.u]
             [metabase.util.date-2 :as u.date]))
 
 (def ^:private optimizable-units
@@ -63,26 +64,26 @@
   (mbql.u/negate-filter-clause ((get-method optimize-filter :=) filter-clause)))
 
 (defn- optimize-comparison-filter
-  [trunc-fn [filter-type field [_ inst unit]]]
-  [filter-type
+  [trunc-fn [filter-type field [_ inst unit]] new-filter-type]
+  [new-filter-type
    (change-datetime-field-unit-to-default field)
    [:absolute-datetime (trunc-fn unit inst) :default]])
 
 (defmethod optimize-filter :<
   [filter-clause]
-  (optimize-comparison-filter lower-bound filter-clause))
+  (optimize-comparison-filter lower-bound filter-clause :<))
 
 (defmethod optimize-filter :<=
   [filter-clause]
-  (optimize-comparison-filter lower-bound filter-clause))
+  (optimize-comparison-filter upper-bound filter-clause :<))
 
 (defmethod optimize-filter :>
   [filter-clause]
-  (optimize-comparison-filter upper-bound filter-clause))
+  (optimize-comparison-filter upper-bound filter-clause :>=))
 
 (defmethod optimize-filter :>=
   [filter-clause]
-  (optimize-comparison-filter upper-bound filter-clause))
+  (optimize-comparison-filter lower-bound filter-clause :>=))
 
 (defmethod optimize-filter :between
   [[_ field [_ lower unit] [_ upper]]]
@@ -97,7 +98,10 @@
     (mbql.u/replace query
       (_ :guard (partial mbql.u/is-clause? (set (keys (methods optimize-filter)))))
       (if (can-optimize-filter? &match)
-        (optimize-filter &match)
+        (let [optimized (optimize-filter &match)]
+          (when-not (= &match optimized)
+            (log/tracef "Optimized filter %s to %s" (pr-str &match) (pr-str optimized)))
+          optimized)
         &match))))
 
 (defn optimize-datetime-filters
@@ -105,11 +109,11 @@
   bucketed datetime fields. Rewrites those filter clauses as logically equivalent filter clauses that do not use
   bucketing (i.e., their datetime unit is `:default`, meaning no bucketing functions need be applied).
 
-    [:= [:datetime-field [:field-id 1] :month] [:absolute-datetime #inst \"2019-09-01\" :month]]
+    [:= [:datetime-field [:field-id 1] :month] [:absolute-datetime #t \"2019-09-01\" :month]]
     ->
     [:and
-     [:>= [:datetime-field [:field-id 1] :default] [:absolute-datetime #inst \"2019-09-01\" :month]]
-     [:<  [:datetime-field [:field-id 1] :default] [:absolute-datetime #inst \"2019-10-01\" :month]]]
+     [:>= [:datetime-field [:field-id 1] :default] [:absolute-datetime #t \"2019-09-01\" :month]]
+     [:<  [:datetime-field [:field-id 1] :default] [:absolute-datetime #t \"2019-10-01\" :month]]]
 
   The equivalent SQL, before and after, looks like:
 
@@ -125,4 +129,5 @@
   This namespace expects to run *after* the `wrap-value-literals` middleware, meaning datetime literal strings like
   `\"2019-09-24\"` should already have been converted to `:absolute-datetime` clauses."
   [qp]
-  (comp qp optimize-datetime-filters*))
+  (fn [query rff context]
+    (qp (optimize-datetime-filters* query) rff context)))

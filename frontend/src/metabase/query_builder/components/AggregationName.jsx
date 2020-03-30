@@ -9,13 +9,14 @@ import * as Q_DEPRECATED from "metabase/lib/query";
 import * as A_DEPRECATED from "metabase/lib/query_aggregation";
 
 import { getAggregationOperator } from "metabase/lib/schema_metadata";
-import { format } from "metabase/lib/expressions/formatter";
+import { format } from "metabase/lib/expressions/format";
 
 import FieldName from "./FieldName";
 
 import type { Aggregation } from "metabase/meta/types/Query";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import AggregationWrapper from "metabase-lib/lib/queries/structured/Aggregation";
+import { DISPLAY_QUOTES } from "../../lib/expressions";
 
 type Props = {
   aggregation: Aggregation | AggregationWrapper,
@@ -76,13 +77,11 @@ const NamedAggregation = ({ aggregation, className }) => (
   <span className={className}>{A_DEPRECATED.getName(aggregation)}</span>
 );
 
-const CustomAggregation = ({
-  query,
-  aggregation,
-  tableMetadata,
-  customFields,
-  className,
-}) => <span className={className}>{format(aggregation, { query })}</span>;
+const CustomAggregation = ({ aggregation, query, className }) => (
+  <span className={className}>
+    {format(aggregation, { query, quotes: DISPLAY_QUOTES })}
+  </span>
+);
 
 const MetricAggregation = ({ aggregation, tableMetadata, className }) => {
   const metricId = A_DEPRECATED.getMetric(aggregation);

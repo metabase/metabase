@@ -83,7 +83,7 @@ const Tables = createEntity({
     }),
 
     // like fetchMetadata but also loads tables linked by foreign key
-    fetchTableMetadata: createThunkAction(
+    fetchMetadataAndForeignTables: createThunkAction(
       FETCH_TABLE_METADATA,
       ({ id }, options) => async (dispatch, getState) => {
         await dispatch(Tables.actions.fetchMetadata({ id }, options));

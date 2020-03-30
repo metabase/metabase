@@ -121,9 +121,7 @@ export default class QueryVisualization extends Component {
             "Visualization--loading": isRunning,
           })}
         >
-          {result && result.error && isResultDirty ? null : result &&
-            result.error &&
-            !isResultDirty ? (
+          {result && result.error ? (
             <VisualizationError
               className="spread"
               error={result.error}

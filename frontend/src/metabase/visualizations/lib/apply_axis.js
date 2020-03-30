@@ -8,8 +8,9 @@ import moment from "moment";
 import { datasetContainsNoResults } from "metabase/lib/dataset";
 import { formatValue } from "metabase/lib/formatting";
 
-import { computeTimeseriesTicksInterval, timeseriesScale } from "./timeseries";
-import { isMultipleOf, getModuloScaleFactor } from "./numeric";
+import { computeTimeseriesTicksInterval } from "./timeseries";
+import timeseriesScale from "./timeseriesScale";
+import { isMultipleOf } from "./numeric";
 import { getFriendlyName } from "./utils";
 import { isHistogram } from "./renderer_utils";
 
@@ -219,14 +220,9 @@ export function applyChartQuantitativeXAxis(
     );
     adjustXAxisTicksIfNeeded(chart.xAxis(), chart.width(), xValues);
 
-    // if xInterval is less than 1 we need to scale the values before doing
-    // modulo comparison. isMultipleOf will compute it for us but we can do it
-    // once here as an optimization
-    const modulorScale = getModuloScaleFactor(xInterval);
-
     chart.xAxis().tickFormat(d => {
       // don't show ticks that aren't multiples of xInterval
-      if (isMultipleOf(d, xInterval, modulorScale)) {
+      if (isMultipleOf(d, xInterval)) {
         return formatValue(d, {
           ...chart.settings.column(dimensionColumn),
           type: "axis",
@@ -356,18 +352,7 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
   }
 
   if (axis.setting("axis_enabled")) {
-    // special case for normalized stacked charts
-    // for normalized stacked charts the y-axis is a percentage number. In Javascript, 0.07 * 100.0 = 7.000000000000001 (try it) so we
-    // round that number to get something nice like "7". Then we append "%" to get a nice tick like "7%"
-    if (chart.settings["stackable.stack_type"] === "normalized") {
-      axis.axis().tickFormat(value => Math.round(value * 100) + "%");
-    } else {
-      const metricColumn = series[0].data.cols[1];
-      axis.axis().tickFormat(value => {
-        value = maybeRoundValueToZero(value, yExtent);
-        return formatValue(value, chart.settings.column(metricColumn));
-      });
-    }
+    axis.axis().tickFormat(getYValueFormatter(chart, series, yExtent));
     chart.renderHorizontalGridLines(true);
     adjustYAxisTicksIfNeeded(axis.axis(), chart.height());
   } else {
@@ -382,6 +367,33 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
     // axis.axis().tickFormat((d) => scale.tickFormat(4,d3.format(",d"))(d));
   } else {
     scale = d3.scale.linear();
+  }
+
+  // This makes non-zero bar values take up at least one pixel.
+  // Ideally, we would just pass a custom interpolate factory to `interpolate`.
+  // However, dc.js passes its own after we give it the scael, so instead we
+  // overwrite the scale's interpolate method. That let's us use theirs but
+  // special case values withing one pixel of the edge.
+  if (series.every(s => s.card.display === "bar")) {
+    const _interpolate = scale.interpolate.bind(scale);
+    scale.interpolate = customInterpolatorFactory =>
+      _interpolate((a, b) => {
+        // dc.js uses a rounding interpolator. We want to use the factory they
+        // pass in, but we also need to create d3's default interpolator. We use
+        // that to see when a value is between 0 and 1. If we just looked at the
+        // rounded value, 0.49 would round to 0 and we wouldn't bump it up to 1.
+        const custom = customInterpolatorFactory(a, b);
+        const unrounded = d3.interpolate(a, b);
+        return t => {
+          const value = unrounded(t);
+          const onePixelUp = custom(0) - 1;
+          // y goes from top to bottom, so "onePixelUp" is actually the largest value
+          if (onePixelUp < value && value < unrounded(0)) {
+            return onePixelUp;
+          }
+          return custom(t);
+        };
+      });
   }
 
   scale.clamp(true);
@@ -426,4 +438,19 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
     }
     axis.scale(scale.domain([min, max]));
   }
+}
+
+export function getYValueFormatter(chart, series, yExtent) {
+  // special case for normalized stacked charts
+  // for normalized stacked charts the y-axis is a percentage number. In Javascript, 0.07 * 100.0 = 7.000000000000001 (try it) so we
+  // round that number to get something nice like "7". Then we append "%" to get a nice tick like "7%"
+  if (chart.settings["stackable.stack_type"] === "normalized") {
+    return value => Math.round(value * 100) + "%";
+  }
+  const metricColumn = series[0].data.cols[1];
+  const columnSettings = chart.settings.column(metricColumn);
+  return (value, options) => {
+    const roundedValue = maybeRoundValueToZero(value, yExtent);
+    return formatValue(roundedValue, { ...columnSettings, ...options });
+  };
 }

@@ -14,17 +14,15 @@
             [flatland.ordered.map :refer [ordered-map]]
             [medley.core :as m]
             [metabase.config :as config]
-            [metabase.plugins.classloader :as classloader]
             [metabase.util.i18n :refer [trs tru]]
             [ring.util.codec :as codec]
             [weavejester.dependency :as dep])
-  (:import [java.io BufferedReader Reader]
-           [java.net InetAddress InetSocketAddress Socket]
+  (:import [java.net InetAddress InetSocketAddress Socket]
            [java.text Normalizer Normalizer$Form]
            java.util.concurrent.TimeoutException
            java.util.Locale
            javax.xml.bind.DatatypeConverter
-           org.apache.commons.validator.routines.UrlValidator))
+           [org.apache.commons.validator.routines RegexValidator UrlValidator]))
 
 ;; This is the very first log message that will get printed.
 ;;
@@ -59,43 +57,6 @@
   [& body]
   `(try ~@body (catch Throwable ~'_)))
 
-;;; ## Etc
-
-(defprotocol ^:private ^:deprecated IClobToStr
-  (^:deprecated jdbc-clob->str ^String [this]
-   "Convert a Postgres/H2/SQLServer JDBC Clob to a string. (If object isn't a Clob, this function returns it as-is.)
-   DEPRECATED — we should convert CLOBS to strings as they're read out of the database, instead of doing it after the
-   fact."))
-
-(extend-protocol IClobToStr
-  nil     (jdbc-clob->str [_]    nil)
-  Object  (jdbc-clob->str [this] this)
-
-  org.postgresql.util.PGobject
-  (jdbc-clob->str [this] (.getValue this))
-
-  ;; H2 + SQLServer clobs both have methods called `.getCharacterStream` that officially return a `Reader`,
-  ;; but in practice I've only seen them return a `BufferedReader`. Just to be safe include a method to convert
-  ;; a plain `Reader` to a `BufferedReader` so we don't get caught with our pants down
-  Reader
-  (jdbc-clob->str [this]
-    (jdbc-clob->str (BufferedReader. this)))
-
-  ;; Read all the lines for the `BufferedReader` and combine into a single `String`
-  BufferedReader
-  (jdbc-clob->str [this]
-    (with-open [_ this]
-      (loop [acc []]
-        (if-let [line (.readLine this)]
-          (recur (conj acc line))
-          (str/join "\n" acc)))))
-
-  ;; H2 -- See also http://h2database.com/javadoc/org/h2/jdbc/JdbcClob.html
-  org.h2.jdbc.JdbcClob
-  (jdbc-clob->str [this]
-    (jdbc-clob->str (.getCharacterStream this))))
-
-
 (defn optional
   "Helper function for defining functions that accept optional arguments. If `pred?` is true of the first item in `args`,
   a pair like `[first-arg other-args]` is returned; otherwise, a pair like `[default other-args]` is returned.
@@ -121,7 +82,7 @@
 
     (u/varargs String)
     (u/varargs String [\"A\" \"B\"])"
-  {:style/indent 1}
+  {:style/indent 1, :arglists '([klass] [klass xs])}
   [klass & [objects]]
   (vary-meta `(into-array ~klass ~objects)
              assoc :tag (format "[L%s;" (.getCanonicalName ^Class (ns-resolve *ns* klass)))))
@@ -136,7 +97,9 @@
 (defn url?
   "Is `s` a valid HTTP/HTTPS URL string?"
   ^Boolean [s]
-  (let [validator (UrlValidator. (varargs String ["http" "https"]) UrlValidator/ALLOW_LOCAL_URLS)]
+  (let [validator (UrlValidator. (varargs String ["http" "https"])
+                                 (RegexValidator. "^\\p{Alnum}+([\\.|\\-]\\p{Alnum}+)*(:\\d*)?")
+                                 UrlValidator/ALLOW_LOCAL_URLS)]
     (.isValid validator (str s))))
 
 (defn maybe?
@@ -187,7 +150,7 @@
     (catch Throwable _ false)))
 
 (defn ^:deprecated rpartial
-  "Like `partial`, but applies additional args *before* BOUND-ARGS.
+  "Like `partial`, but applies additional args *before* `bound-args`.
    Inspired by [`-rpartial` from dash.el](https://github.com/magnars/dash.el#-rpartial-fn-rest-args)
 
     ((partial - 5) 8)  -> (- 5 8) -> -3
@@ -244,28 +207,33 @@
     identity
     (constantly "")))
 
-(def ^:private ^{:arglists '([color-symb x])} colorize
-  "Colorize string `x` with the function matching `color` symbol or keyword, but only if `MB_COLORIZE_LOGS` is
-  enabled (the default)."
-  (if (config/config-bool :mb-colorize-logs)
+(def ^:private colorize?
+  ;; As of 0.35.0 we support the NO_COLOR env var. See https://no-color.org/ (But who hates color logs?)
+  (if (config/config-str :no-color)
+    false
+    (config/config-bool :mb-colorize-logs)))
+
+(def ^{:arglists '(^String [color-symb x]), :style/indent 1} colorize
+  "Colorize string `x` using `color`, a symbol or keyword, but only if `MB_COLORIZE_LOGS` is enabled (the default).
+  `color` can be `green`, `red`, `yellow`, `blue`, `cyan`, `magenta`, etc. See the entire list of avaliable
+  colors [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj)"
+  (if colorize?
     (fn [color x]
-      (colorize/color (keyword color) x))
+      (colorize/color (keyword color) (str x)))
     (fn [_ x]
-      x)))
+      (str x))))
 
 (defn format-color
-  "Like `format`, but colorizes the output. `color` should be a symbol or keyword like `green`, `red`, `yellow`, `blue`,
-  `cyan`, `magenta`, etc. See the entire list of avaliable
-  colors [here](https://github.com/ibdknox/colorize/blob/master/src/colorize/core.clj).
+  "With one arg, converts something to a string and colorizes it. With two args, behaves like `format`, but colorizes
+  the output.
 
-     (format-color :red \"Fatal error: %s\" error-message)"
-  {:style/indent 2}
+    (format-color :red \"%d cans\" 2)"
+  {:arglists '(^String [color x] ^String [color format-string & args]), :style/indent 2}
   (^String [color x]
-   {:pre [((some-fn symbol? keyword?) color)]}
-   (colorize color (str x)))
+   (colorize color x))
 
-  (^String [color format-string & args]
-   (colorize color (apply format (str format-string) args))))
+  (^String [color format-str & args]
+   (colorize color (apply format format-str args))))
 
 (defn pprint-to-str
   "Returns the output of pretty-printing `x` as a string.
@@ -276,7 +244,10 @@
   {:style/indent 1}
   (^String [x]
    (when x
-     (with-out-str (pprint x))))
+     (with-open [w (java.io.StringWriter.)]
+       (pprint x w)
+       (str w))))
+
   (^String [color-symb x]
    (colorize color-symb (pprint-to-str x))))
 
@@ -309,13 +280,15 @@
            [last-mb-frame & frames-before-last-mb] (for [frame other-frames
                                                          :when (str/includes? frame "metabase")]
                                                      (str/replace frame #"^metabase\." ""))]
-       (concat
-        (map str frames-after-last-mb)
-        ;; add a little arrow to the frame so it stands out more
-        (cons
-         (some->> last-mb-frame (str "--> "))
-         frames-before-last-mb))))})
+       (vec
+        (concat
+         (map str frames-after-last-mb)
+         ;; add a little arrow to the frame so it stands out more
+         (cons
+          (some->> last-mb-frame (str "--> "))
+          frames-before-last-mb)))))})
 
+(declare format-milliseconds)
 
 (defn deref-with-timeout
   "Call `deref` on a something derefable (e.g. a future or promise), and throw an exception if it takes more than
@@ -325,7 +298,7 @@
     (when (= result ::timeout)
       (when (instance? java.util.concurrent.Future reff)
         (future-cancel reff))
-      (throw (TimeoutException. (tru "Timed out after {0} milliseconds." timeout-ms))))
+      (throw (TimeoutException. (tru "Timed out after {0}" (format-milliseconds timeout-ms)))))
     result))
 
 (defn do-with-timeout
@@ -421,6 +394,24 @@
   (^String [s max-length]
    (str/join (take max-length (slugify s)))))
 
+(defn all-ex-data
+  "Like `ex-data`, but merges `ex-data` from causes. If duplicate keys exist, the keys from the highest level are
+  preferred.
+
+    (def e (ex-info \"A\" {:a true, :both \"a\"} (ex-info \"B\" {:b true, :both \"A\"})))
+
+    (ex-data e)
+    ;; -> {:a true, :both \"a\"}
+
+    (u/all-ex-data e)
+    ;; -> {:a true, :b true, :both \"a\"}"
+  [e]
+  (reduce
+   (fn [data e]
+     (merge (ex-data e) data))
+   nil
+   (take-while some? (iterate #(.getCause ^Throwable %) e))))
+
 (defn do-with-auto-retries
   "Execute `f`, a function that takes no arguments, and return the results.
    If `f` fails with an exception, retry `f` up to `num-retries` times until it succeeds.
@@ -430,14 +421,20 @@
   [num-retries f]
   (if (<= num-retries 0)
     (f)
-    (try (f)
-         (catch Throwable e
-           (log/warn (format-color 'red "auto-retry %s: %s" f (.getMessage e)))
-           (do-with-auto-retries (dec num-retries) f)))))
+    (try
+      (f)
+      (catch Throwable e
+        (when (::no-auto-retry? (all-ex-data e))
+          (throw e))
+        (log/warn (format-color 'red "auto-retry %s: %s" f (.getMessage e)))
+        (do-with-auto-retries (dec num-retries) f)))))
 
 (defmacro auto-retry
-  "Execute `body` and return the results.
-   If `body` fails with an exception, retry execution up to `num-retries` times until it succeeds."
+  "Execute `body` and return the results. If `body` fails with an exception, retry execution up to `num-retries` times
+  until it succeeds.
+
+  You can disable auto-retries for a specific ExceptionInfo by including `{:metabase.util/no-auto-retry? true}` in its
+  data (or the data of one of its causes.)"
   {:style/indent 1}
   [num-retries & body]
   `(do-with-auto-retries ~num-retries
@@ -491,22 +488,15 @@
   (or (id object-or-id)
       (throw (Exception. (tru "Not something with an ID: {0}" object-or-id)))))
 
-(defn- namespace-symbs* []
-  (for [ns-symb (ns-find/find-namespaces (concat (classpath/system-classpath)
-                                                 (classpath/classpath (classloader/the-classloader))))
-        :when   (and (.startsWith (name ns-symb) "metabase.")
-                     (not (.contains (name ns-symb) "test")))]
-    ns-symb))
-
-(def metabase-namespace-symbols
-  "Delay to a vector of symbols of all Metabase namespaces, excluding test namespaces.
-   This is intended for use by various routines that load related namespaces, such as task and events initialization.
-   Using `ns-find/find-namespaces` is fairly slow, and can take as much as half a second to iterate over the thousand
-   or so namespaces that are part of the Metabase project; use this instead for a massive performance increase."
-  ;; We want to give JARs in the ./plugins directory a chance to load. At one point we have this as a future so it
-  ;; start looking for things in the background while other stuff is happening but that meant plugins couldn't
-  ;; introduce new Metabase namespaces such as drivers.
-  (delay (vec (namespace-symbs*))))
+;; This is made `^:const` so it will get calculated when the uberjar is compiled. `find-namespaces` won't work if
+;; source is excluded; either way this takes a few seconds, so doing it at compile time speeds up launch as well.
+(defonce ^:const ^{:doc "Vector of symbols of all Metabase namespaces, excluding test namespaces. This is intended for
+  use by various routines that load related namespaces, such as task and events initialization."}
+  metabase-namespace-symbols
+  (vec (sort (for [ns-symb (ns-find/find-namespaces (classpath/system-classpath))
+                   :when   (and (.startsWith (name ns-symb) "metabase.")
+                                (not (.contains (name ns-symb) "test")))]
+               ns-symb))))
 
 (def ^java.util.regex.Pattern uuid-regex
   "A regular expression for matching canonical string representations of UUIDs."
@@ -606,37 +596,12 @@
     (long (math/floor (/ (Math/log (math/abs x))
                          (Math/log 10))))))
 
-(defn update-when
-  "Like `clojure.core/update` but does not create a new key if it does not exist. Useful when you don't want to create
-  cruft."
-  [m k f & args]
-  (if (contains? m k)
-    (apply update m k f args)
-    m))
-
-(defn update-in-when
-  "Like `clojure.core/update-in` but does not create new keys if they do not exist. Useful when you don't want to create
-  cruft."
-  [m k f & args]
-  (if (not= ::not-found (get-in m k ::not-found))
-    (apply update-in m k f args)
-    m))
-
 (defn index-of
   "Return index of the first element in `coll` for which `pred` reutrns true."
   [pred coll]
   (first (keep-indexed (fn [i x]
                          (when (pred x) i))
                        coll)))
-
-
-(defn is-java-9-or-higher?
-  "Are we running on Java 9 or above?"
-  ([]
-   (is-java-9-or-higher? (System/getProperty "java.version")))
-  ([java-version-str]
-   (when-let [[_ java-major-version-str] (re-matches #"^(?:1\.)?(\d+).*$" java-version-str)]
-     (>= (Integer/parseInt java-major-version-str) 9))))
 
 (defn hexadecimal-string?
   "Returns truthy if `new-value` is a hexadecimal-string"
@@ -710,32 +675,9 @@
   [& body]
   `(do-with-us-locale (fn [] ~@body)))
 
-(defn xor
-  "Exclusive or. (Because this is implemented as a function, rather than a macro, it is not short-circuting the way `or`
-  is.)"
-  [x y & more]
-  (loop [[x y & more] (into [x y] more)]
-    (cond
-      (and x y)
-      false
-
-      (seq more)
-      (recur (cons (or x y) more))
-
-      :else
-      (or x y))))
-
-(defn xor-pred
-  "Takes a set of predicates and returns a function that is true if *exactly one* of its composing predicates returns a
-  logically true value. Compare to `every-pred`."
-  [& preds]
-  (fn [& args]
-    (apply xor (for [pred preds]
-                 (apply pred args)))))
-
 (defn topological-sort
   "Topologically sorts vertexs in graph g. Graph is a map of vertexs to edges. Optionally takes an
-   additional argument `edge-fn`, a function used to extract edges. Returns data in the same shape
+   additional argument `edges-fn`, a function used to extract edges. Returns data in the same shape
    (a graph), only sorted.
 
    Say you have a graph shaped like:
@@ -786,3 +728,97 @@
   `Locale/US` locale."
   [^CharSequence s]
   (.. s toString (toLowerCase (Locale/US))))
+
+(defn lower-case-map-keys
+  "Changes the keys of a given map to lower case."
+  [m]
+  (into {} (for [[k v] m]
+             [(-> k name lower-case-en keyword) v])))
+
+(defn format-nanoseconds
+  "Format a time interval in nanoseconds to something more readable. (µs/ms/etc.)"
+  ^String [nanoseconds]
+  ;; The basic idea is to take `n` and see if it's greater than the divisior. If it is, we'll print it out as that
+  ;; unit. If more, we'll divide by the divisor and recur, trying each successively larger unit in turn. e.g.
+  ;;
+  ;; (format-nanoseconds 500)    ; -> "500 ns"
+  ;; (format-nanoseconds 500000) ; -> "500 µs"
+  (loop [n nanoseconds, [[unit divisor] & more] [[:ns 1000] [:µs 1000] [:ms 1000] [:s 60] [:mins 60] [:hours 24]
+                                                 [:days 7] [:weeks (/ 365.25 7)] [:years Double/POSITIVE_INFINITY]]]
+    (if (and (> n divisor)
+             (seq more))
+      (recur (/ n divisor) more)
+      (format "%.1f %s" (double n) (name unit)))))
+
+(defn format-microseconds
+  "Format a time interval in microseconds into something more readable."
+  ^String [microseconds]
+  (format-nanoseconds (* 1000.0 microseconds)))
+
+(defn format-milliseconds
+  "Format a time interval in milliseconds into something more readable."
+  ^String [milliseconds]
+  (format-microseconds (* 1000.0 milliseconds)))
+
+(defn format-seconds
+  "Format a time interval in seconds into something more readable."
+  ^String [seconds]
+  (format-milliseconds (* 1000.0 seconds)))
+
+(defmacro profile
+  "Like `clojure.core/time`, but lets you specify a `message` that gets printed with the total time, and formats the
+  time nicely using `format-nanoseconds`."
+  {:style/indent 1}
+  ([form]
+   `(profile ~(str form) ~form))
+  ([message & body]
+   `(let [start-time# (System/nanoTime)]
+      (prog1 (do ~@body)
+        (println (format-color '~'green "%s took %s"
+                   ~message
+                   (format-nanoseconds (- (System/nanoTime) start-time#))))))))
+
+(defn seconds->ms
+  "Convert `seconds` to milliseconds. More readable than doing this math inline."
+  [seconds]
+  (* seconds 1000))
+
+(defn minutes->seconds
+  "Convert `minutes` to seconds. More readable than doing this math inline."
+  [minutes]
+  (* 60 minutes))
+
+(defn minutes->ms
+  "Convert `minutes` to milliseconds. More readable than doing this math inline."
+  [minutes]
+  (-> minutes minutes->seconds seconds->ms))
+
+(defn hours->ms
+  "Convert `hours` to milliseconds. More readable than doing this math inline."
+  [hours]
+  (-> (* 60 hours) minutes->seconds seconds->ms))
+
+(defn parse-currency
+  "Parse a currency String to a BigDecimal. Handles a variety of different formats, such as:
+
+    $1,000.00
+    -£127.54
+    -127,54 €
+    kr-127,54
+    € 127,54-
+    ¥200"
+  ^java.math.BigDecimal [^String s]
+  (when-not (str/blank? s)
+    (bigdec
+     (reduce
+      (partial apply str/replace)
+      s
+      [
+       ;; strip out any current symbols
+       [#"[^\d,.-]+"          ""]
+       ;; now strip out any thousands separators
+       [#"(?<=\d)[,.](\d{3})" "$1"]
+       ;; now replace a comma decimal seperator with a period
+       [#","                  "."]
+       ;; move minus sign at end to front
+       [#"(^[^-]+)-$"         "-$1"]]))))

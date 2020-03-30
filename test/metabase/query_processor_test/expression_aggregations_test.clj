@@ -3,6 +3,7 @@
   (:require [metabase
              [driver :as driver]
              [query-processor-test :as qp.test]
+             [test :as mt]
              [util :as u]]
             [metabase.models.metric :refer [Metric]]
             [metabase.test.data :as data]
@@ -10,7 +11,7 @@
             [toucan.util.test :as tt]))
 
 ;; sum, *
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :expression-aggregations)
   [[1 1211]
    [2 5710]
    [3 1845]
@@ -22,7 +23,7 @@
          :breakout    [$price]}))))
 
 ;; min, +
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :expression-aggregations)
   [[1 10]
    [2  4]
    [3  4]
@@ -34,7 +35,7 @@
          :breakout    [$price]}))))
 
 ;; max, /
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :expression-aggregations)
   [[1 94]
    [2 50]
    [3 26]
@@ -46,7 +47,7 @@
          :breakout    [$price]}))))
 
 ;; avg, -
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :expression-aggregations)
   (if (= driver/*driver* :h2)
     [[1  55]
      [2  97]
@@ -63,7 +64,7 @@
          :breakout    [$price]}))))
 
 ;; post-aggregation math w/ 2 args: count + sum
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :expression-aggregations)
   [[1  44]
    [2 177]
    [3  52]
@@ -77,7 +78,7 @@
          :breakout    [$price]}))))
 
 ;; post-aggregation math w/ 3 args: count + sum + count
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :expression-aggregations)
   [[1  66]
    [2 236]
    [3  65]
@@ -89,7 +90,7 @@
          :breakout    [$price]}))))
 
 ;; post-aggregation math w/ a constant: count * 10
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :expression-aggregations)
   [[1 220]
    [2 590]
    [3 130]
@@ -101,7 +102,7 @@
          :breakout    [$price]}))))
 
 ;; nested post-aggregation math: count + (count * sum)
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :expression-aggregations)
   [[1  506]
    [2 7021]
    [3  520]
@@ -115,7 +116,7 @@
          :breakout    [$price]}))))
 
 ;; post-aggregation math w/ avg: count + avg
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :expression-aggregations)
   (if (= driver/*driver* :h2)
     [[1  77]
      [2 107]
@@ -132,7 +133,7 @@
          :breakout    [$price]}))))
 
 ;; post aggregation math + math inside aggregations: max(venue_price) + min(venue_price - id)
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :expression-aggregations)
   [[1 -92]
    [2 -96]
    [3 -74]
@@ -144,7 +145,7 @@
          :breakout    [$price]}))))
 
 ;; aggregation w/o field
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :expression-aggregations)
   [[1 23]
    [2 60]
    [3 14]
@@ -156,7 +157,7 @@
          :breakout    [$price]}))))
 
 ;; Sorting by an un-named aggregate expression
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :expression-aggregations)
   [[1 2] [2 2] [12 2] [4 4] [7 4] [10 4] [11 4] [8 8]]
   (qp.test/format-rows-by [int int]
     (qp.test/rows
@@ -166,7 +167,7 @@
          :order-by    [[:asc [:aggregation 0]]]}))))
 
 ;; aggregation with math inside the aggregation :scream_cat:
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :expression-aggregations)
   [[1  44]
    [2 177]
    [3  52]
@@ -178,7 +179,7 @@
          :breakout    [$price]}))))
 
 ;; check that we can name an expression aggregation w/ aggregation at top-level
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :expression-aggregations)
   {:rows    [[1  44]
              [2 177]
              [3  52]
@@ -192,7 +193,7 @@
          :breakout    [$price]}))))
 
 ;; check that we can name an expression aggregation w/ expression at top-level
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :expression-aggregations)
   {:rows    [[1 -19]
              [2  77]
              [3  -2]
@@ -206,7 +207,7 @@
          :breakout    [$price]}))))
 
 ;; check that we can handle Metrics inside expression aggregation clauses
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :expression-aggregations)
   [[2 119]
    [3  40]
    [4  25]]
@@ -221,7 +222,7 @@
 
 ;; check that we can handle Metrics inside an `:aggregation-options` clause
 ;; TODO - Pretty sure this test doesn't belong here (?)
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :expression-aggregations)
   {:rows    [[2 118]
              [3  39]
              [4  24]]
@@ -237,7 +238,7 @@
            :breakout    [[:field-id $price]]})))))
 
 ;; check that Metrics with a nested aggregation still work inside an `:aggregation-options` clause
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :expression-aggregations)
   {:rows    [[2 118]
              [3  39]
              [4  24]]
@@ -254,7 +255,7 @@
            :breakout    [[:field-id $price]]})))))
 
 ;; check that named aggregations come back with the correct column metadata (#4002)
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :expression-aggregations)
   (assoc (qp.test/aggregate-col :count)
     :name         "auto_generated_name"
     :display_name "Count of Things")
@@ -264,7 +265,7 @@
       first))
 
 ;; check that we can use cumlative count in expression aggregations
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :expression-aggregations)
   [[1000]]
   (qp.test/format-rows-by [int]
     (qp.test/rows
@@ -272,7 +273,7 @@
         {:aggregation [["*" ["cum_count"] 10]]}))))
 
 ;; can we use named expressions inside expression aggregations?
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :expression-aggregations)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :expression-aggregations)
   [[406]]
   (qp.test/format-rows-by [int]
     (qp.test/rows

@@ -5,7 +5,7 @@ import { stripId, FK_SYMBOL } from "metabase/lib/formatting";
 import { TYPE } from "metabase/lib/types";
 
 import Field from "./metadata/Field";
-import Metadata from "./metadata/Metadata";
+import type Metadata from "./metadata/Metadata";
 
 import type {
   ConcreteField,
@@ -37,6 +37,7 @@ type DimensionOption = {
  *     - DatetimeFieldDimension
  *   - ExpressionDimension
  *   - AggregationDimension
+ *   - TemplateTagDimension
  */
 
 /**
@@ -51,6 +52,7 @@ export default class Dimension {
   _parent: ?Dimension;
   _args: any;
   _metadata: ?Metadata;
+  _query: ?Query;
 
   // Display names provided by the backend
   _subDisplayName: ?String;
@@ -821,6 +823,11 @@ export class ExpressionDimension extends Dimension {
   }
 }
 
+// These types aren't aggregated. e.g. if you take the distinct count of a FK
+// column, you now have a normal integer and should see relevant filters for
+// that type.
+const UNAGGREGATED_SPECIAL_TYPES = new Set([TYPE.FK, TYPE.PK]);
+
 /**
  * Aggregation reference, `["aggregation", aggregation-index]`
  */
@@ -840,19 +847,30 @@ export class AggregationDimension extends Dimension {
   }
 
   column(extra = {}) {
-    const aggregation = this.aggregation();
     return {
       ...super.column(),
-      base_type: aggregation ? aggregation.baseType() : TYPE.Float,
       source: "aggregation",
       ...extra,
     };
   }
 
   field() {
-    // FIXME: it isn't really correct to return the unaggregated field. return a fake Field object?
-    const dimension = this.aggregation().dimension();
-    return dimension ? dimension.field() : super.field();
+    const aggregation = this.aggregation();
+    if (!aggregation) {
+      return super.field();
+    }
+    const dimension = aggregation.dimension();
+    const field = dimension && dimension.field();
+    const { special_type } = field || {};
+    return new Field({
+      name: aggregation.columnName(),
+      display_name: aggregation.displayName(),
+      base_type: aggregation.baseType(),
+      // don't pass through `special_type` when aggregating these types
+      ...(!UNAGGREGATED_SPECIAL_TYPES.has(special_type) && { special_type }),
+      query: this._query,
+      metadata: this._metadata,
+    });
   }
 
   /**
@@ -966,6 +984,31 @@ export class JoinedDimension extends FieldDimension {
 
   render() {
     return `${this.joinAlias()} ${FK_SYMBOL} ${super.render()}`;
+  }
+}
+
+export class TemplateTagDimension extends FieldDimension {
+  dimension() {
+    if (this._query) {
+      const tag = this._query.templateTagsMap()[this.tagName()];
+      if (tag && tag.type === "dimension") {
+        return this.parseMBQL(tag.dimension);
+      }
+    }
+    return null;
+  }
+
+  field() {
+    const dimension = this.dimension();
+    return dimension ? dimension.field() : super.field();
+  }
+
+  tagName() {
+    return this._args[0];
+  }
+
+  mbql() {
+    return ["template-tag", this.tagName()];
   }
 }
 

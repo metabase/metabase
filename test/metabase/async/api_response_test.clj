@@ -1,12 +1,7 @@
 (ns metabase.async.api-response-test
   (:require [cheshire.core :as json]
-            [clj-http.client :as client]
             [clojure.core.async :as a]
-            [compojure.core :as compojure]
             [expectations :refer [expect]]
-            [metabase
-             [server :as server]
-             [util :as u]]
             [metabase.async.api-response :as async-response]
             [metabase.test.util.async :as tu.async]
             [ring.core.protocols :as ring.protocols])
@@ -121,9 +116,10 @@
 
 ;; An error should be written to the output stream
 (expect
-  {:message    "Input channel unexpectedly closed."
-   :type       "class java.lang.InterruptedException"
-   :stacktrace true}
+  {:message     "Input channel unexpectedly closed."
+   :type        "class java.lang.InterruptedException"
+   :_status 500
+   :stacktrace  true}
   (tu.async/with-chans [input-chan]
     (with-response [{:keys [os os-closed-chan]} input-chan]
       (a/close! input-chan)
@@ -158,25 +154,11 @@
       (os->response os))))
 
 
-;;; ------------ Normal response with a delay: message sent to Input chan at unspecified point in future -------------
-
-;; Should write newlines if it has to wait
-(expect
-  "\n\n{\"ready?\":true}"
-  (with-redefs [async-response/keepalive-interval-ms 500]
-    (tu.async/with-chans [input-chan]
-      (with-response [{:keys [os-closed-chan os]} input-chan]
-        (a/<!! (a/timeout 1400))
-        (a/>!! input-chan {:ready? true})
-        (wait-for-close os-closed-chan)
-        (.toString os)))))
-
-
 ;;; --------------------------------------- input chan message is an Exception ---------------------------------------
 
 ;; If the message sent to input-chan is an Exception an appropriate response should be generated
 (expect
-  {:message "Broken", :type "class java.lang.Exception", :stacktrace true}
+  {:message "Broken", :type "class java.lang.Exception", :stacktrace true, :_status 500}
   (tu.async/with-chans [input-chan]
     (with-response [{:keys [os os-closed-chan]} input-chan]
       (a/>!! input-chan (Exception. "Broken"))
@@ -189,9 +171,10 @@
 ;; If we write a bad API endpoint and return a channel but never write to it, the request should be canceled after
 ;; `absolute-max-keepalive-ms`
 (expect
-  {:message    "No response after waiting 500.0 ms. Canceling request."
-   :type       "class java.util.concurrent.TimeoutException"
-   :stacktrace true}
+  {:message     "No response after waiting 500.0 ms. Canceling request."
+   :type        "class java.util.concurrent.TimeoutException"
+   :_status 500
+   :stacktrace  true}
   (with-redefs [async-response/absolute-max-keepalive-ms 500]
     (tu.async/with-chans [input-chan]
       (with-response [{:keys [os os-closed-chan]} input-chan]
@@ -213,59 +196,3 @@
       (with-response [{:keys [output-chan os-closed-chan]} input-chan]
         (wait-for-close os-closed-chan)
         (wait-for-close output-chan)))))
-
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                            Tests to make sure keepalive bytes actually get written                             |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-(defn- do-with-temp-server [handler f]
-  (let [port   (+ 60000 (rand-int 5000))
-        server (server/create-server handler {:port port})]
-    (try
-      (.start server)
-      (f port)
-      (finally
-        (.stop server)))))
-
-(defmacro ^:private with-temp-server
-  "Spin up a Jetty server with `handler` with a random port between 60000 and 65000; bind the random port to `port`, and
-  execute body. Shuts down server when finished."
-  [[port-binding handler] & body]
-  `(do-with-temp-server ~handler (fn [~port-binding] ~@body)))
-
-(defn- num-keepalive-chars-in-response
-  "Make a request to `handler` and count the number of newline keepalive chars in the response."
-  [handler]
-  (with-redefs [async-response/keepalive-interval-ms 50]
-    (with-temp-server [port handler]
-      (let [{response :body} (client/get (format "http://localhost:%d/" port))]
-        (count (re-seq #"\n" response))))))
-
-(defn- output-chan-with-delayed-result
-  "Returns an output channel that receives a 'DONE' value after 400ms. "
-  []
-  (u/prog1 (a/chan 1)
-    (a/go
-      (a/<! (a/timeout 400))
-      (a/>! <> "DONE"))))
-
-;; confirm that some newlines were written as part of the response for an async API response
-(defn- async-handler [_ respond _]
-  (respond {:status 200, :headers {"Content-Type" "text/plain"}, :body (output-chan-with-delayed-result)}))
-
-(expect pos? (num-keepalive-chars-in-response async-handler))
-
-;; make sure newlines are written for sync-style compojure endpoints (e.g. `defendpoint`)
-(def ^:private compojure-sync-handler
-  (compojure/routes
-   (compojure/GET "/" [_] (output-chan-with-delayed-result))))
-
-(expect pos? (num-keepalive-chars-in-response compojure-sync-handler))
-
-;; ...and for true async compojure endpoints (e.g. `defendpoint-async`)
-(def ^:private compojure-async-handler
-  (compojure/routes
-   (compojure/GET "/" [] (fn [_ respond _] (respond (output-chan-with-delayed-result))))))
-
-(expect pos? (num-keepalive-chars-in-response compojure-async-handler))

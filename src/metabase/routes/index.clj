@@ -8,6 +8,7 @@
             [clojure.tools.logging :as log]
             [hiccup.util :as h.util]
             [metabase.core.initialization-status :as init-status]
+            [metabase.models.setting :as setting]
             [metabase.public-settings :as public-settings]
             [metabase.util
              [embed :as embed]
@@ -69,7 +70,7 @@
 (defn- load-entrypoint-template [entrypoint-name embeddable? uri]
   (load-template
    (str "frontend_client/" entrypoint-name ".html")
-   (let [{:keys [anon_tracking_enabled google_auth_client_id], :as public-settings} (public-settings/public-settings)]
+   (let [{:keys [anon-tracking-enabled google-auth-client-id], :as public-settings} (setting/properties :public)]
      {:bootstrapJS        (load-inline-js "index_bootstrap")
       :googleAnalyticsJS  (load-inline-js "index_ganalytics")
       :bootstrapJSON      (escape-script (json/generate-string public-settings))
@@ -77,8 +78,8 @@
       :uri                (h.util/escape-html uri)
       :baseHref           (h.util/escape-html (base-href))
       :embedCode          (when embeddable? (embed/head uri))
-      :enableGoogleAuth   (boolean google_auth_client_id)
-      :enableAnonTracking (boolean anon_tracking_enabled)})))
+      :enableGoogleAuth   (boolean google-auth-client-id)
+      :enableAnonTracking (boolean anon-tracking-enabled)})))
 
 (defn- load-init-template []
   (load-template
