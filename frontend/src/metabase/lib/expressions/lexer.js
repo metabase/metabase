@@ -196,6 +196,14 @@ const getQuoteCategories = character => {
     : [];
 };
 
+const quotedStringRegex = (character, closed = true) => {
+  const open = character;
+  const close = closed ? character : "";
+  return new RegExp(
+    `${open}(?:[^\\\\${character}]|\\\\(?:[bfnrtv${character}\\\\/]|u[0-9a-fA-F]{4}))*${close}`,
+  );
+};
+
 export const BracketQuotedString = createToken({
   name: "BracketQuotedString",
   pattern: /\[[^\]]*\]/,
@@ -203,12 +211,12 @@ export const BracketQuotedString = createToken({
 });
 export const SingleQuotedString = createToken({
   name: "SingleQuotedString",
-  pattern: /'(?:[^\\']+|\\(?:[bfnrtv'\\/]|u[0-9a-fA-F]{4}))*'/,
+  pattern: quotedStringRegex("'"),
   categories: getQuoteCategories("'"),
 });
 export const DoubleQuotedString = createToken({
   name: "DoubleQuotedString",
-  pattern: /"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*"/,
+  pattern: quotedStringRegex('"'),
   categories: getQuoteCategories('"'),
 });
 
@@ -274,12 +282,12 @@ export const UnclosedBracketQuotedString = createToken({
 });
 export const UnclosedSingleQuotedString = createToken({
   name: "UnclosedSingleQuotedString",
-  pattern: /'(?:[^\\']+|\\(?:[bfnrtv'\\/]|u[0-9a-fA-F]{4}))*/,
+  pattern: quotedStringRegex("'", false),
   categories: [RecoveryToken, UnclosedQuotedString, ...getQuoteCategories("'")],
 });
 export const UnclosedDoubleQuotedString = createToken({
-  name: "DoubleQuoUnclosedDoubleQuotedStringtedString",
-  pattern: /"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*/,
+  name: "UnclosedDoubleQuotedString",
+  pattern: quotedStringRegex('"', false),
   categories: [RecoveryToken, UnclosedQuotedString, ...getQuoteCategories('"')],
 });
 export const Any = createToken({
