@@ -83,6 +83,10 @@ export function isCustom(filter: FilterClause): boolean {
   return !isStandard(filter) && !isSegment(filter);
 }
 
+export function isFieldFilter(filter: FilterClause): boolean {
+  return !isSegment(filter) && isValidField(filter[1]);
+}
+
 // FILTER OPTIONS
 
 // TODO: is it safe to assume if the last item is an object then it's options?

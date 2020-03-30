@@ -16,6 +16,7 @@ import {
   isStandard,
   isSegment,
   isCustom,
+  isFieldFilter,
   hasFilterOptions,
 } from "metabase/lib/query/filter";
 
@@ -134,6 +135,13 @@ export default class Filter extends MBQLClause {
     return isCustom(this);
   }
 
+  /**
+   * Returns true for filters where the first argument is a field
+   */
+  isFieldFilter(): boolean {
+    return isFieldFilter(this);
+  }
+
   // SEGMENT FILTERS
 
   segmentId() {
@@ -148,10 +156,10 @@ export default class Filter extends MBQLClause {
     }
   }
 
-  // STANDARD (previously "FIELD FILTERS")
+  // FIELD FILTERS
 
   dimension(): ?Dimension {
-    if (this.isStandard()) {
+    if (this.isFieldFilter()) {
       return this._query.parseFieldReference(this[1]);
     }
   }
@@ -223,7 +231,7 @@ export default class Filter extends MBQLClause {
     const dimension = this._query.parseFieldReference(fieldRef);
     if (
       dimension &&
-      (!this.isStandard() || !dimension.isEqual(this.dimension()))
+      (!this.isFieldFilter() || !dimension.isEqual(this.dimension()))
     ) {
       const operator =
         // see if the new dimension supports the existing operator
@@ -235,7 +243,7 @@ export default class Filter extends MBQLClause {
 
       // $FlowFixMe
       const filter: Filter = this.set(
-        this.isStandard()
+        this.isFieldFilter()
           ? [this[0], dimension.mbql(), ...this.slice(2)]
           : [null, dimension.mbql()],
       );
