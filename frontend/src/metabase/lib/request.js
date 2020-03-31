@@ -48,7 +48,7 @@ export class RestfulRequest {
     }
   };
 
-  reset = () => dispatch => dispatch(this.actions.reset);
+  reset = () => ({ type: this.actions.resetRequest });
 
   mergeToDictionary = (dict, result) => {
     dict = dict || {};
