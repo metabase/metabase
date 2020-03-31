@@ -1,6 +1,8 @@
 /* @flow */
 
 import { op, args, noNullValues, add, update, remove, clear } from "./util";
+import { isValidField } from "./field_ref";
+import { STANDARD_FILTERS } from "metabase/lib/expressions";
 
 import type {
   FilterClause,
@@ -63,20 +65,29 @@ export function canAddFilter(filter: ?FilterClause): boolean {
   return true;
 }
 
-export function isSegmentFilter(filter: FilterClause): boolean {
-  return Array.isArray(filter) && filter[0] === "segment";
-}
+// FILTER TYPES
 
-export function isCompoundFilter(filter: FilterClause): boolean {
+export function isStandard(filter: FilterClause): boolean {
   return (
     Array.isArray(filter) &&
-    (filter[0] === "and" || filter[0] === "or" || filter[0] === "not")
+    STANDARD_FILTERS.has(filter[0]) &&
+    (filter[1] === undefined || isValidField(filter[1]))
   );
 }
 
-export function isFieldFilter(filter: FilterClause): boolean {
-  return !isSegmentFilter(filter) && !isCompoundFilter(filter);
+export function isSegment(filter: FilterClause): boolean {
+  return Array.isArray(filter) && filter[0] === "segment";
 }
+
+export function isCustom(filter: FilterClause): boolean {
+  return !isStandard(filter) && !isSegment(filter);
+}
+
+export function isFieldFilter(filter: FilterClause): boolean {
+  return !isSegment(filter) && isValidField(filter[1]);
+}
+
+// FILTER OPTIONS
 
 // TODO: is it safe to assume if the last item is an object then it's options?
 export function hasFilterOptions(filter: Filter): boolean {

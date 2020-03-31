@@ -157,6 +157,18 @@
                                                                      [["=" ["field-id" 2] 1] "foo"]]
                                                               {:default ["field-id" 2]}]]}}))
 
+(expect
+ {:query {:aggregation [:median [:field-id 13]]}}
+ (#'normalize/normalize-tokens {:query {:aggregation ["median" ["field-id" 13]]}}))
+
+(expect
+ {:query {:aggregation [:var [:field-id 13]]}}
+ (#'normalize/normalize-tokens {:query {:aggregation ["var" ["field-id" 13]]}}))
+
+(expect
+ {:query {:aggregation [:percentile [:field-id 13] 0.9]}}
+ (#'normalize/normalize-tokens {:query {:aggregation ["percentile" ["field-id" 13] 0.9]}}))
+
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 

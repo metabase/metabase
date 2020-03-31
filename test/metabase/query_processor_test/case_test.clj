@@ -43,7 +43,7 @@
                                              :definition {:source-table (data/id :venues)
                                                           :filter       [:< [:field-id (data/id :venues :price)] 4]}}]]
         (is (=  179.0  (test-case [:sum [:case [[[:segment segment-id] [:field-id (data/id :venues :price)]]]]])))))
-    (testing "Can we use case in metricw"
+    (testing "Can we use case in metric"
       (tt/with-temp* [Metric [{metric-id :id} {:table_id   (data/id :venues)
                                            :definition {:source-table (data/id :venues)
                                                         :aggregation  [:sum

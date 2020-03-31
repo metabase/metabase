@@ -63,7 +63,6 @@ import { augmentDatabase } from "metabase/lib/table";
 
 import { TYPE } from "metabase/lib/types";
 
-import { isSegmentFilter } from "metabase/lib/query/filter";
 import { fieldRefForColumn } from "metabase/lib/dataset";
 
 type DimensionFilter = (dimension: Dimension) => boolean;
@@ -693,15 +692,6 @@ export default class StructuredQuery extends AtomicQuery {
     return !this.hasAggregations() && !this.hasBreakouts();
   }
 
-  /**
-   * @deprecated use this.aggregations()[index].displayName() directly
-   * @returns the formatted named of the aggregation at the provided index.
-   */
-  aggregationName(index: number = 0): ?string {
-    const aggregation = this.aggregations()[index];
-    return aggregation && aggregation.displayName();
-  }
-
   formatExpression(expression, { quotes = DISPLAY_QUOTES, ...options } = {}) {
     return formatExpression(expression, { quotes, ...options, query: this });
   }
@@ -886,8 +876,7 @@ export default class StructuredQuery extends AtomicQuery {
     if (filter && !(filter instanceof FilterWrapper)) {
       filter = new FilterWrapper(filter, null, this);
     }
-    const currentSegmentId =
-      filter && filter.isSegmentFilter() && filter.segmentId();
+    const currentSegmentId = filter && filter.isSegment() && filter.segmentId();
     return this.table().segments.filter(
       segment =>
         (currentSegmentId != null && currentSegmentId === segment.id) ||
@@ -900,13 +889,8 @@ export default class StructuredQuery extends AtomicQuery {
    */
   segments() {
     return this.filters()
-      .filter(f => isSegmentFilter(f))
-      .map(segmentFilter => {
-        // segment id is stored as the second part of the filter clause
-        // e.x. ["segment", 1]
-        const segmentId = segmentFilter[1];
-        return this.metadata().segment(segmentId);
-      });
+      .filter(filter => filter.isSegment())
+      .map(filter => filter.segment());
   }
 
   /**

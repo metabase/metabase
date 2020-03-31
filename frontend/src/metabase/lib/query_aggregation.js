@@ -1,9 +1,14 @@
 import { isValidField } from "./query/field_ref";
 
+// these are aggregations that can't only be added via custom aggregations
 export const SPECIAL_AGGREGATIONS = new Set([
   "share",
   "sum-where",
   "count-where",
+  // TODO: add these to schema_metadata.js and remove from here
+  "var",
+  "median",
+  "percentile",
 ]);
 
 export function hasOptions(clause) {

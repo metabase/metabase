@@ -28,6 +28,8 @@
 (driver/register! :sqlite, :parent :sql-jdbc)
 
 (defmethod driver/supports? [:sqlite :regex] [_ _] false)
+(defmethod driver/supports? [:sqlite :percentile-aggregations] [_ _] false)
+(defmethod driver/supports? [:sqlite :advanced-math-expressions] [_ _] false)
 
 (defmethod sql-jdbc.conn/connection-details->spec :sqlite
   [_ {:keys [db]
@@ -227,6 +229,14 @@
                                   (if (string? arg)
                                     (hx/literal arg)
                                     arg)))))))
+
+(defmethod sql.qp/->honeysql [:sqlite :floor]
+  [driver [_ arg]]
+  (hsql/call :round (hsql/call :- arg 0.5)))
+
+(defmethod sql.qp/->honeysql [:sqlite :ceil]
+  [driver [_ arg]]
+  (hsql/call :round (hsql/call :+ arg 0.5)))
 
 
 ;; See https://sqlite.org/lang_datefunc.html

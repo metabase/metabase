@@ -8,7 +8,6 @@ import {
   BOOLEAN_UNARY_OPERATORS,
   AGGREGATION_FUNCTIONS,
   EXPRESSION_FUNCTIONS,
-  FILTER_FUNCTIONS,
   MBQL_CLAUSES,
   EDITOR_QUOTES,
 } from "./config";
@@ -154,18 +153,6 @@ for (const clause of Array.from(EXPRESSION_FUNCTIONS)) {
 // special-case Case since it uses different syntax
 export const Case = createClauseToken("case");
 
-// FILTERS
-
-export const FilterFunctionName = createToken({
-  name: "FilterFunctionName",
-  pattern: Lexer.NA,
-  categories: [FunctionName],
-});
-
-for (const clause of Array.from(FILTER_FUNCTIONS)) {
-  createClauseToken(clause, { categories: [FilterFunctionName] });
-}
-
 // MISC
 
 export const Comma = createToken({
@@ -246,7 +233,6 @@ export const allTokens = [
   FunctionName,
   AggregationFunctionName,
   ExpressionFunctionName,
-  FilterFunctionName,
   // all clauses
   ...CLAUSE_TOKENS.keys(),
   // literals

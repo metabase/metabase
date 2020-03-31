@@ -241,18 +241,28 @@ export function suggest({
       isTokenType(nextTokenType, FunctionName) ||
       nextTokenType === Case
     ) {
+      const database = query.database();
       let functions = [];
       if (isExpressionType(expectedType, "aggregation")) {
         // special case for aggregation
         finalSuggestions.push(
-          ...query
-            .aggregationOperatorsWithoutRows()
-            .filter(a => getExpressionName(a.short))
-            .map(aggregationOperator =>
+          // ...query
+          //   .aggregationOperatorsWithoutRows()
+          //   .filter(a => getExpressionName(a.short))
+          //   .map(aggregationOperator =>
+          //     functionSuggestion(
+          //       "aggregations",
+          //       aggregationOperator.short,
+          //       aggregationOperator.fields.length > 0,
+          //     ),
+          //   ),
+          ...FUNCTIONS_BY_TYPE["aggregation"]
+            .filter(clause => database.hasFeature(clause.requiresFeature))
+            .map(clause =>
               functionSuggestion(
                 "aggregations",
-                aggregationOperator.short,
-                aggregationOperator.fields.length > 0,
+                clause.name,
+                clause.args.length > 0,
               ),
             ),
         );
@@ -265,14 +275,9 @@ export function suggest({
       } else {
         functions = FUNCTIONS_BY_TYPE[expectedType];
       }
-      const database = query.database();
       finalSuggestions.push(
         ...functions
-          .filter(
-            clause =>
-              !clause.requiredFeatures ||
-              clause.requiredFeatures.every(f => database.hasFeature(f)),
-          )
+          .filter(clause => database.hasFeature(clause.requiresFeature))
           .map(clause => functionSuggestion("functions", clause.name)),
       );
     } else if (nextTokenType === LParen) {

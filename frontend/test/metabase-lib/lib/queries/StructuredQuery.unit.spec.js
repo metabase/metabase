@@ -232,26 +232,26 @@ describe("StructuredQuery", () => {
       });
     });
 
-    describe("aggregationName", () => {
+    describe("aggregation name", () => {
       it("returns a saved metric's name", () => {
         expect(
-          makeQueryWithAggregation([
-            "metric",
-            MAIN_METRIC_ID,
-          ]).aggregationName(),
+          makeQueryWithAggregation(["metric", MAIN_METRIC_ID])
+            .aggregations()[0]
+            .displayName(),
         ).toBe("Total Order Value");
       });
       it("returns a standard aggregation name", () => {
-        expect(makeQueryWithAggregation(["count"]).aggregationName()).toBe(
-          "Count",
-        );
+        expect(
+          makeQueryWithAggregation(["count"])
+            .aggregations()[0]
+            .displayName(),
+        ).toBe("Count");
       });
       it("returns a standard aggregation name with field", () => {
         expect(
-          makeQueryWithAggregation([
-            "sum",
-            ["field-id", ORDERS.TOTAL.id],
-          ]).aggregationName(),
+          makeQueryWithAggregation(["sum", ["field-id", ORDERS.TOTAL.id]])
+            .aggregations()[0]
+            .displayName(),
         ).toBe("Sum of Total");
       });
       it("returns a standard aggregation name with fk field", () => {
@@ -259,7 +259,9 @@ describe("StructuredQuery", () => {
           makeQueryWithAggregation([
             "sum",
             ["fk->", ORDERS.PRODUCT_ID.id, PRODUCTS.TITLE.id],
-          ]).aggregationName(),
+          ])
+            .aggregations()[0]
+            .displayName(),
         ).toBe("Sum of Product → Title");
       });
       it("returns a custom expression description", () => {
@@ -268,7 +270,9 @@ describe("StructuredQuery", () => {
             "+",
             1,
             ["sum", ["field-id", ORDERS.TOTAL.id]],
-          ]).aggregationName(),
+          ])
+            .aggregations()[0]
+            .displayName(),
         ).toBe("1 + Sum(Total)");
       });
       it("returns a named expression name", () => {
@@ -277,7 +281,9 @@ describe("StructuredQuery", () => {
             "aggregation-options",
             ["sum", ["field-id", ORDERS.TOTAL.id]],
             { "display-name": "Named" },
-          ]).aggregationName(),
+          ])
+            .aggregations()[0]
+            .displayName(),
         ).toBe("Named");
       });
     });

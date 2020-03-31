@@ -33,6 +33,7 @@
 
 (defmethod driver/supports? [:h2 :full-join] [_ _] false)
 (defmethod driver/supports? [:h2 :regex] [_ _] false)
+(defmethod driver/supports? [:h2 :percentile-aggregations] [_ _] false)
 
 (defmethod driver/connection-properties :h2
   [_]
@@ -178,6 +179,10 @@
                   (hx/concat (hx/year expr) (hx/- (hx/* (hx/quarter expr)
                                                         3)
                                                   2))))
+
+(defmethod sql.qp/->honeysql [:h2 :log]
+  [driver [_ field]]
+  (hsql/call :log10 (sql.qp/->honeysql driver field)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

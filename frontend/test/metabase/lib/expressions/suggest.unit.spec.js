@@ -20,11 +20,14 @@ const AGGREGATION_FUNCTIONS = [
   { type: "aggregations", text: "CumulativeSum(" },
   { type: "aggregations", text: "Distinct(" },
   { type: "aggregations", text: "Max(" },
+  { type: "aggregations", text: "Median(" },
   { type: "aggregations", text: "Min(" },
+  { type: "aggregations", text: "Percentile(" },
   { type: "aggregations", text: "Share(" },
   { type: "aggregations", text: "StandardDeviation(" },
   { type: "aggregations", text: "Sum(" },
   { type: "aggregations", text: "SumIf(" },
+  { type: "aggregations", text: "Variance(" },
 ];
 const STRING_FUNCTIONS = [
   { text: "concat(", type: "functions" },
@@ -37,6 +40,18 @@ const STRING_FUNCTIONS = [
   { text: "trim(", type: "functions" },
   { text: "upper(", type: "functions" },
 ];
+const NUMERIC_FUNCTIONS = [
+  { text: "abs(", type: "functions" },
+  { text: "ceil(", type: "functions" },
+  { text: "exp(", type: "functions" },
+  { text: "floor(", type: "functions" },
+  { text: "length(", type: "functions" },
+  { text: "log(", type: "functions" },
+  { text: "power(", type: "functions" },
+  { text: "round(", type: "functions" },
+  { text: "sqrt(", type: "functions" },
+];
+
 const STRING_FUNCTIONS_EXCLUDING_REGEX = STRING_FUNCTIONS.filter(
   ({ text }) => text !== "regexextract(",
 );
@@ -141,8 +156,11 @@ describe("metabase/lib/expression/suggest", () => {
         expect(suggest({ source: "", ...expressionOpts })).toEqual([
           ...FIELDS_CUSTOM,
           ...FIELDS_CUSTOM_NON_NUMERIC,
-          { type: "functions", text: "coalesce(" },
-          ...STRING_FUNCTIONS_EXCLUDING_REGEX,
+          ...[
+            { type: "functions", text: "coalesce(" },
+            ...NUMERIC_FUNCTIONS,
+            ...STRING_FUNCTIONS_EXCLUDING_REGEX,
+          ].sort(suggestionSort),
           OPEN_PAREN,
         ]);
       });
@@ -150,6 +168,7 @@ describe("metabase/lib/expression/suggest", () => {
       it("should suggest numeric fields after an aritmetic", () => {
         expect(suggest({ source: "1 + ", ...expressionOpts })).toEqual([
           ...FIELDS_CUSTOM,
+          ...NUMERIC_FUNCTIONS,
           OPEN_PAREN,
         ]);
       });
@@ -157,6 +176,7 @@ describe("metabase/lib/expression/suggest", () => {
         expect(suggest({ source: "1 + C", ...expressionOpts })).toEqual([
           { type: "fields", text: "[C] " },
           { type: "fields", text: "[count] " },
+          { type: "functions", text: "ceil(" },
         ]);
       });
       it("should suggest partial matches in unterminated quoted string", () => {
@@ -218,13 +238,16 @@ describe("metabase/lib/expression/suggest", () => {
               .nest(),
             startRule: "expression",
           }),
-        ).toEqual([
-          { text: "[Count] ", type: "fields" },
-          { text: "[Total] ", type: "fields" },
-          { text: "coalesce(", type: "functions" },
-          ...STRING_FUNCTIONS,
-          OPEN_PAREN,
-        ]);
+        ).toEqual(
+          [
+            { text: "[Count] ", type: "fields" },
+            { text: "[Total] ", type: "fields" },
+            { text: "coalesce(", type: "functions" },
+            ...STRING_FUNCTIONS,
+            ...NUMERIC_FUNCTIONS,
+            OPEN_PAREN,
+          ].sort(suggestionSort),
+        );
       });
       it("should suggest numeric operators after field in an expression", () => {
         expect(
@@ -284,11 +307,13 @@ describe("metabase/lib/expression/suggest", () => {
           { type: "fields", text: "[count] " },
           // { text: "case(", type: "functions" },
           // { text: "coalesce(", type: "functions" },
+          { text: "ceil(", type: "functions" },
         ]);
       });
       it("should suggest aggregations and metrics after an operator", () => {
         expect(suggest({ source: "1 + ", ...aggregationOpts })).toEqual([
           ...AGGREGATION_FUNCTIONS,
+          ...NUMERIC_FUNCTIONS,
           ...METRICS_CUSTOM,
           OPEN_PAREN,
         ]);
@@ -296,6 +321,7 @@ describe("metabase/lib/expression/suggest", () => {
       it("should suggest fields after an aggregation without closing paren", () => {
         expect(suggest({ source: "Average(", ...aggregationOpts })).toEqual([
           ...FIELDS_CUSTOM,
+          ...NUMERIC_FUNCTIONS,
           OPEN_PAREN,
           CLOSE_PAREN,
         ]);
@@ -303,7 +329,12 @@ describe("metabase/lib/expression/suggest", () => {
       it("should suggest fields after an aggregation with closing paren", () => {
         expect(
           suggest({ source: "Average()", ...aggregationOpts, targetOffset: 8 }),
-        ).toEqual([...FIELDS_CUSTOM, OPEN_PAREN, CLOSE_PAREN]);
+        ).toEqual([
+          ...FIELDS_CUSTOM,
+          ...NUMERIC_FUNCTIONS,
+          OPEN_PAREN,
+          CLOSE_PAREN,
+        ]);
       });
       it("should suggest partial matches in aggregation", () => {
         expect(suggest({ source: "1 + C", ...aggregationOpts })).toEqual([
@@ -311,6 +342,7 @@ describe("metabase/lib/expression/suggest", () => {
           { type: "aggregations", text: "CountIf(" },
           { type: "aggregations", text: "CumulativeCount " },
           { type: "aggregations", text: "CumulativeSum(" },
+          { type: "functions", text: "ceil(" },
         ]);
       });
 
@@ -321,7 +353,12 @@ describe("metabase/lib/expression/suggest", () => {
             query: ORDERS.query(),
             startRule: "aggregation",
           }),
-        ).toEqual([...AGGREGATION_FUNCTIONS, ...METRICS_ORDERS, OPEN_PAREN]);
+        ).toEqual([
+          ...AGGREGATION_FUNCTIONS,
+          ...NUMERIC_FUNCTIONS,
+          ...METRICS_ORDERS,
+          OPEN_PAREN,
+        ]);
       });
 
       it("should show help text in an aggregation functiom", () => {
@@ -497,3 +534,6 @@ function cleanSuggestions(suggestions) {
     .sortBy("type")
     .value();
 }
+
+const suggestionSort = (a, b) =>
+  a.type.localeCompare(b.type) || a.text.localeCompare(b.text);

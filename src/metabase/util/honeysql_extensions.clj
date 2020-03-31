@@ -31,10 +31,15 @@
 (defmethod hformat/fn-handler "extract" [_ unit expr]
   (str "extract(" (name unit) " from " (hformat/to-sql expr) ")"))
 
-;; register the function "distinct-count" with HoneySQL
+;; register the function `distinct-count` with HoneySQL
 ;; (hsql/format :%distinct-count.x) -> "count(distinct x)"
 (defmethod hformat/fn-handler "distinct-count" [_ field]
   (str "count(distinct " (hformat/to-sql field) ")"))
+
+;; register the function `percentile` with HoneySQL
+;; (hsql/format (hsql/call :percentile-cont :a 0.9)) -> "percentile_cont(0.9) within group (order by a)"
+(defmethod hformat/fn-handler "percentile-cont" [_ field p]
+  (str "PERCENTILE_CONT(" (hformat/to-sql p) ") within group (order by " (hformat/to-sql field) ")"))
 
 
 ;; HoneySQL 0.7.0+ parameterizes numbers to fix issues with NaN and infinity -- see

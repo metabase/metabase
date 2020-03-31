@@ -137,6 +137,10 @@
   [driver [_ arg pattern]]
   (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
 
+(defmethod sql.qp/->honeysql [:snowflake :median]
+  [driver [_ arg]]
+  (sql.qp/->honeysql driver [:percentile arg 0.5]))
+
 (defn- db-name
   "As mentioned above, old versions of the Snowflake driver used `details.dbname` to specify the physical database, but
   tests (and Snowflake itself) expected `details.db`. This has since been fixed, but for legacy support we'll still

@@ -117,6 +117,14 @@
   [driver [_ arg pattern]]
   (hsql/call :regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
 
+(defmethod sql.qp/->honeysql [:hive-like :median]
+  [driver [_ arg]]
+  (hsql/call :percentile (sql.qp/->honeysql driver arg) 0.5))
+
+(defmethod sql.qp/->honeysql [:hive-like :percentile]
+  [driver [_ arg p]]
+  (hsql/call :percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)))
+
 (defmethod sql.qp/add-interval-honeysql-form :hive-like
   [_ hsql-form amount unit]
   (hx/+ (hx/->timestamp hsql-form) (hsql/raw (format "(INTERVAL '%d' %s)" (int amount) (name unit)))))

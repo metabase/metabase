@@ -2,7 +2,9 @@
   (:require [clojure.java.jdbc :as jdbc]
             [clojure.set :as set]
             [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
+            [honeysql
+             [core :as hsql]
+             [format :as hformat]]
             [metabase.driver :as driver]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc
@@ -19,6 +21,9 @@
   (:import [java.sql ResultSet Types]))
 
 (driver/register! :vertica, :parent #{:sql-jdbc ::legacy/use-legacy-classes-for-read-and-set})
+
+(defmethod driver/supports? [:vertica :percentile-aggregations] [_ _] false)
+
 
 (defmethod sql-jdbc.sync/database-type->base-type :vertica
   [_ database-type]
@@ -98,6 +103,16 @@
 (defmethod sql.qp/->honeysql [:vertica :regex-match-first]
   [driver [_ arg pattern]]
   (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+
+(defmethod sql.qp/->honeysql [:vertica :percentile]
+  [driver [_ arg p]]
+  (hsql/raw (format "APPROXIMATE_PERCENTILE(%s USING PARAMETERS percentile=%s)"
+                    (hformat/to-sql (sql.qp/->honeysql driver arg))
+                    (hformat/to-sql (sql.qp/->honeysql driver p)))))
+
+(defmethod sql.qp/->honeysql [:vertica :median]
+  [driver [_ arg]]
+  (hsql/call :approximate_median (sql.qp/->honeysql driver arg)))
 
 (defmethod sql.qp/add-interval-honeysql-form :vertica
   [_ hsql-form amount unit]

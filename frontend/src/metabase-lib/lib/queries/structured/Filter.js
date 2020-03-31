@@ -13,11 +13,14 @@ import type Dimension from "../../Dimension";
 
 import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
 import {
-  isSegmentFilter,
-  isCompoundFilter,
+  isStandard,
+  isSegment,
+  isCustom,
   isFieldFilter,
   hasFilterOptions,
 } from "metabase/lib/query/filter";
+
+import { isExpression } from "metabase/lib/expressions";
 import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 
 import { t, ngettext, msgid } from "ttag";
@@ -54,10 +57,10 @@ export default class Filter extends MBQLClause {
    * Returns the display name for the filter
    */
   displayName() {
-    if (this.isSegmentFilter()) {
+    if (this.isSegment()) {
       const segment = this.segment();
       return segment ? segment.displayName() : t`Unknown Segment`;
-    } else if (this.isFieldFilter()) {
+    } else if (this.isStandard()) {
       const dimension = this.dimension();
       const operator = this.operator();
       const dimensionName = dimension && dimension.displayName();
@@ -75,9 +78,12 @@ export default class Filter extends MBQLClause {
    * Returns true if the filter is valid
    */
   isValid() {
-    if (this.isFieldFilter()) {
-      // has an operator name and dimension
+    if (this.isStandard()) {
+      // has an operator name and dimension or expression
       const dimension = this.dimension();
+      if (!dimension && isExpression(this[1])) {
+        return true;
+      }
       const query = this.query();
       if (
         !dimension ||
@@ -98,38 +104,59 @@ export default class Filter extends MBQLClause {
         }
       }
       return true;
-    } else if (this.isSegmentFilter()) {
+    } else if (this.isSegment()) {
       return !!this.segment();
-    } else if (this.isCompoundFilter()) {
-      // TODO: compound filters
+    } else if (this.isCustom()) {
       return true;
     }
     return false;
   }
 
-  // SEGMENT FILTERS
+  // There are currently 3 "classes" of filters that are handled differently, "standard", "segment", and "custom"
 
-  isSegmentFilter() {
-    return isSegmentFilter(this);
+  /**
+   * Returns true if this is a "standard" filter
+   */
+  isStandard(): boolean {
+    return isStandard(this);
   }
 
+  /**
+   * Returns true if this is a segment
+   */
+  isSegment(): boolean {
+    return isSegment(this);
+  }
+
+  /**
+   * Returns true if this is custom filter created with the expression editor
+   */
+  isCustom(): boolean {
+    return isCustom(this);
+  }
+
+  /**
+   * Returns true for filters where the first argument is a field
+   */
+  isFieldFilter(): boolean {
+    return isFieldFilter(this);
+  }
+
+  // SEGMENT FILTERS
+
   segmentId() {
-    if (this.isSegmentFilter()) {
+    if (this.isSegment()) {
       return this[1];
     }
   }
 
   segment() {
-    if (this.isSegmentFilter()) {
+    if (this.isSegment()) {
       return this.metadata().segment(this.segmentId());
     }
   }
 
   // FIELD FILTERS
-
-  isFieldFilter() {
-    return isFieldFilter(this);
-  }
 
   dimension(): ?Dimension {
     if (this.isFieldFilter()) {
@@ -297,15 +324,5 @@ export default class Filter extends MBQLClause {
         ? otherOperator
         : otherOperator && otherOperator.name;
     return operator && operator.name === operatorName;
-  }
-
-  // COMPOUND FILTER
-
-  isCompoundFilter() {
-    return isCompoundFilter(this);
-  }
-
-  isCustom() {
-    return this.isCompoundFilter();
   }
 }

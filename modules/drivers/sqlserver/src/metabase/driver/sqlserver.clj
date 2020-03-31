@@ -24,6 +24,7 @@
 (driver/register! :sqlserver, :parent :sql-jdbc)
 
 (defmethod driver/supports? [:sqlserver :regex] [_ _] false)
+(defmethod driver/supports? [:sqlserver :percentile-aggregations] [_ _] false)
 
 ;; See the list here: https://docs.microsoft.com/en-us/sql/connect/jdbc/using-basic-data-types
 (defmethod sql-jdbc.sync/database-type->base-type :sqlserver
@@ -229,7 +230,11 @@
 
 (defmethod sql.qp/->honeysql [:sqlserver :stddev]
   [driver [_ field]]
-  (hsql/call :stdev (sql.qp/->honeysql driver field)))
+  (hsql/call :stdevp (sql.qp/->honeysql driver field)))
+
+(defmethod sql.qp/->honeysql [:sqlserver :var]
+  [driver [_ field]]
+  (hsql/call :varp (sql.qp/->honeysql driver field)))
 
 (defmethod sql.qp/->honeysql [:sqlserver :substring]
   [driver [_ arg start length]]
@@ -240,6 +245,22 @@
 (defmethod sql.qp/->honeysql [:sqlserver :length]
   [driver [_ arg]]
   (hsql/call :len (sql.qp/->honeysql driver arg)))
+
+(defmethod sql.qp/->honeysql [:sqlserver :ceil]
+  [driver [_ arg]]
+  (hsql/call :ceiling (sql.qp/->honeysql driver arg)))
+
+(defmethod sql.qp/->honeysql [:sqlserver :round]
+  [driver [_ arg]]
+  (hsql/call :round (hx/cast :float (sql.qp/->honeysql driver arg)) 0))
+
+(defmethod sql.qp/->honeysql [:sqlserver :power]
+  [driver [_ arg power]]
+  (hsql/call :power (hx/cast :float (sql.qp/->honeysql driver arg)) (sql.qp/->honeysql driver power)))
+
+(defmethod sql.qp/->honeysql [:sqlserver :median]
+  [driver [_ arg]]
+  (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
 (defmethod driver.common/current-db-time-date-formatters :sqlserver
   [_]
