@@ -1,10 +1,10 @@
 **This guide will teach you:**
 
-* [How to compile your own copy of Metabase](#build-metabase)
-* [How to set up a development environment](#development-environment)
-* [How to run the Metabase Server](#development-server-quick-start)
-* [How to contribute back to the Metabase project](#contributing)
-* [How to add support in Metabase for other languages](#internationalization)
+- [How to compile your own copy of Metabase](#build-metabase)
+- [How to set up a development environment](#development-environment)
+- [How to run the Metabase Server](#development-server-quick-start)
+- [How to contribute back to the Metabase project](#contributing)
+- [How to add support in Metabase for other languages](#internationalization)
 
 # Contributing
 
@@ -79,9 +79,9 @@ Start the frontend build process with
 
 We use these technologies for our FE build process to allow us to use modules, es6 syntax, and css variables.
 
-* webpack
-* babel
-* cssnext
+- webpack
+- babel
+- cssnext
 
 Frontend tasks are executed using `yarn`. All available tasks can be found in `package.json` under _scripts_.
 
@@ -324,10 +324,10 @@ and in the backend using `trs` and related macros (see more details in https://g
 
 ### Translation errors or missing strings
 
-If you see incorrect or missing strings for your langauge, please visit our [POEditor project](https://poeditor.com/join/project/ynjQmwSsGh) and submit your fixes there.
+If you see incorrect or missing strings for your language, please visit our [POEditor project](https://poeditor.com/join/project/ynjQmwSsGh) and submit your fixes there.
 
 ## License
 
-Copyright © 2017 Metabase, Inc
+Copyright © 2020 Metabase, Inc.
 
 Distributed under the terms of the GNU Affero General Public License (AGPL) except as otherwise noted. See individual files for details.
