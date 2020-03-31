@@ -32,7 +32,7 @@ Some translations were previously available in Metabase, but have been removed a
 
 The community contributes to Metabase translations on our [POEditor project](https://poeditor.com/join/project/ynjQmwSsGh). If you're a fan of Metabase and would like to see it made available in a language you're fluent in, we'd love your help!
 
-For new translations to be added to Metabase they must reach 100%. Once they are, we'll add them in the next major or minor release of Metabase. All _existing_ translations in Metabase _must stay at 100%_ to continue being included in the next _major_ version of Metabase. This is to ensure that no one encounters a confusing mishmash of English and another language when using Metabase.
+For new translations to be added to Metabase they must reach 100%. Once they have, we'll add them in the next major or minor release of Metabase. All _existing_ translations in Metabase _must stay at 100%_ to continue being included in the next _major_ version of Metabase. This is to ensure that no one encounters a confusing mishmash of English and another language when using Metabase.
 
 We understand that this is a high bar, so we commit to making sure that before each major release, any additions or changes to text in the product will be completed at least 10 calendar days before the final release ships, at which point we notify all translators that a new release will be happening soon.
 
