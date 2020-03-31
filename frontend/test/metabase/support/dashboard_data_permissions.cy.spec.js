@@ -1,10 +1,23 @@
 import { signIn, restore, popover, modal, selectDashboardFilter } from "__support__/cypress";
 
-describe("support > permissions", () => {
-  before(restore);
+function filterDashboard() {
+  cy.visit("/dashboard/1");
+  cy.contains("Orders");
 
-  it("should set up a dashboard with a text filter", () => {
+  cy.contains("Category").type("Aero");
+
+  // We should get a suggested response and be able to click it
+  cy.contains("Aerodynamic").click();
+  cy.contains("Add filter").click();
+  cy.contains("Rows 1-1 of 96");
+}
+
+describe("support > permissions (metabase#8472)", () => {
+  before(() => {
+    restore();
     signIn("admin");
+
+    // Setup a dashboard with a text filter
     cy.visit("/dashboard/1");
     // click pencil icon to edit
     cy.get(".Icon-pencil").click();
@@ -19,24 +32,16 @@ describe("support > permissions", () => {
 
     cy.contains("Done").click();
     cy.contains("Save").click();
-
-    // confirm filter ios still there
-    // cy.get("input[placeholder=Category]");
-
-
     cy.contains("Orders in a dashboard").click();
   });
 
-  it("should allow a nodata user to select the filter", () => {
-      signIn("nodata");
-      cy.visit("/dashboard/1");
-      cy.contains("Orders");
+  it("should allow an admin user to select the filter", () => {
+    signIn("admin");
+    filterDashboard();
+  });
 
-      cy.contains("Category").type("Aero");
-
-      // We should get a suggested response and be able to click it
-      cy.contains("Aerodynamic").click();
-      cy.contains("Add filter").click();
-      cy.contains("Rows 1-1 of 96");
-  })
-})
+  it.skip("should allow a nodata user to select the filter", () => {
+    signIn("nodata");
+    filterDashboard();
+  });
+});
