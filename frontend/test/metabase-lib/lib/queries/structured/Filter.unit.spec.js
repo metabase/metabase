@@ -72,7 +72,7 @@ describe("Filter", () => {
         filter(["segment", 1]).setDimension(["field-id", ORDERS.TOTAL.id]),
       ).toEqual([null, ["field-id", ORDERS.TOTAL.id]]);
     });
-    fit("should set joined-field for new filter clause", () => {
+    it("should set joined-field for new filter clause", () => {
       const q = ORDERS.query().join({
         alias: "foo",
         "source-table": PEOPLE.id,
