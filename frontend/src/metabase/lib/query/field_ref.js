@@ -62,7 +62,7 @@ export function isValidField(field) {
     (isAggregateField(field) && typeof field[1] === "number") ||
     (isJoinedField(field) &&
       typeof field[1] === "string" &&
-      isValidField(field[0])) ||
+      isValidField(field[2])) ||
     isFieldLiteral(field)
   );
 }

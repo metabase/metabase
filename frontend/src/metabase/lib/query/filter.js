@@ -70,7 +70,7 @@ export function canAddFilter(filter: ?FilterClause): boolean {
 export function isStandard(filter: FilterClause): boolean {
   return (
     Array.isArray(filter) &&
-    STANDARD_FILTERS.has(filter[0]) &&
+    (STANDARD_FILTERS.has(filter[0]) || filter[0] === null) &&
     (filter[1] === undefined || isValidField(filter[1]))
   );
 }
