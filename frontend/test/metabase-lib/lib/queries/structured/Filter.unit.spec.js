@@ -1,6 +1,6 @@
 import Filter from "metabase-lib/lib/queries/structured/Filter";
 
-import { ORDERS } from "__support__/sample_dataset_fixture";
+import { ORDERS, PEOPLE } from "__support__/sample_dataset_fixture";
 
 const query = ORDERS.query();
 
@@ -71,6 +71,22 @@ describe("Filter", () => {
       expect(
         filter(["segment", 1]).setDimension(["field-id", ORDERS.TOTAL.id]),
       ).toEqual([null, ["field-id", ORDERS.TOTAL.id]]);
+    });
+    fit("should set joined-field for new filter clause", () => {
+      const q = ORDERS.query().join({
+        alias: "foo",
+        "source-table": PEOPLE.id,
+      });
+      const f = new Filter([], 0, q);
+      expect(
+        f.setDimension(["joined-field", "foo", ["field-id", PEOPLE.EMAIL.id]], {
+          useDefaultOperator: true,
+        }),
+      ).toEqual([
+        "=",
+        ["joined-field", "foo", ["field-id", PEOPLE.EMAIL.id]],
+        undefined,
+      ]);
     });
   });
 });
