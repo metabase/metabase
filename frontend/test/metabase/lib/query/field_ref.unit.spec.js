@@ -1,5 +1,4 @@
 import { isValidField } from "metabase/lib/query/field_ref";
-import MBQLArrayClause from "../../../../src/metabase-lib/lib/queries/structured/MBQLClause";
 
 describe("field_ref", () => {
   describe("isValidField", () => {
