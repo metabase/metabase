@@ -89,4 +89,21 @@ describe("Filter", () => {
       ]);
     });
   });
+
+  const CASES = [
+    ["isStandard", ["=", ["field-id", 1]]],
+    ["isStandard", [null, ["field-id", 1]]], // assume null operator is standard
+    ["isSegment", ["segment", 1]],
+    ["isCustom", ["or", ["=", ["field-id", 1], 42]]],
+  ];
+  for (const method of ["isStandard", "isSegment", "isCustom"]) {
+    describe(method, () => {
+      for (const [method_, mbql] of CASES) {
+        const expected = method_ === method;
+        it(`should return ${expected} for ${JSON.stringify(mbql)}`, () => {
+          expect(filter(mbql)[method]()).toEqual(expected);
+        });
+      }
+    });
+  }
 });
