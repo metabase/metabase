@@ -89,7 +89,7 @@ Next, you'll need to pick the columns you want to join on. This means you pick a
 By default, Metabase will do a left outer join, but you can click on the Venn diagram icon to change this to a different type of join. The options you'll see will differ based on the type of database you're using. Here are what the basic types of joins each do:
 
 - **Left outer join:** select all records from Table A, along with records from Table B that meet the join condition, if any.
-- **Right outer join:** select all records from Table B, along with records from Table B that meet the join condition, if any.
+- **Right outer join:** select all records from Table B, along with records from Table A that meet the join condition, if any.
 - **Inner join:** only select the records from Table A and B where the join condition is met.
 - **Full outer join:** select all records from both tables, whether or not the join condition is met. This is not available for MySQL or H2, and is only available for some database types, like Spark SQL, SQL Server, and SQLite.
 
