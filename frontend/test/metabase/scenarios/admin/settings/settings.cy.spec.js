@@ -108,7 +108,7 @@ describe("scenarios > admin > settings", () => {
 
   it("should be able to set a premium embedding token", () => {
     // A random embedding token with valid format
-    let embeddingToken =
+    const embeddingToken =
       "11397b1e60cfb1372f2f33ac8af234a15faee492bbf5c04d0edbad76da3e614a";
 
     cy.server();
