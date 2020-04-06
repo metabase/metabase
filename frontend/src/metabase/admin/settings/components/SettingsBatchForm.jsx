@@ -33,6 +33,8 @@ const SAVE_SETTINGS_BUTTONS_STATES = {
 @connect(
   null,
   { updateSettings },
+  null,
+  { withRef: true }, // HACK: needed so consuming components can call methods on the component :-/
 )
 export default class SettingsBatchForm extends Component {
   constructor(props, context) {
