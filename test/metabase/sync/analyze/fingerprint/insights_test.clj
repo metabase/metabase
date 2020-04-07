@@ -126,5 +126,6 @@
   (is (= -1.0 (change 0 1)))
   (is (= 2.0 (change 1 -1)))
   (is (= -2.0 (change -1 1)))
+  (is (= 1.0 (change -1 -2)))
   (is (= nil (change -1 0)))
   (is (= 1.0 (change 0 -1))))
