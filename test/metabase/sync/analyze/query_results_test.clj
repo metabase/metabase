@@ -13,11 +13,11 @@
              [fingerprinters :as fprint]
              [insights :as insights]]
             [metabase.sync.analyze.query-results :as qr]
-            [metabase.test.mock.util :as mock.u]
             [metabase.test
              [data :as data]
              [sync :as sync-test]
-             [util :as tu]]))
+             [util :as tu]]
+            [metabase.test.mock.util :as mock.u]))
 
 (defn- column->name-keyword [field-or-column-metadata]
   (-> field-or-column-metadata
