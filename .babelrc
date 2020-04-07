@@ -7,7 +7,8 @@
     ["transform-builtin-extend", {
         "globals": ["Error", "Array"]
     }],
-    "syntax-trailing-function-commas"
+    "syntax-trailing-function-commas",
+    "istanbul"
   ],
   "presets": ["es2015", "stage-0", "react"],
   "env": {

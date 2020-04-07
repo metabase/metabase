@@ -92,6 +92,7 @@
   },
   "devDependencies": {
     "@babel/standalone": "^7.4.5",
+    "@cypress/code-coverage": "^3.0.0",
     "@cypress/webpack-preprocessor": "^4.1.0",
     "@slack/client": "^3.5.4",
     "@testing-library/cypress": "^5.0.2",
@@ -140,6 +141,7 @@
     "image-diff": "^1.6.3",
     "imports-loader": "^0.7.0",
     "insightful": "^1.1.0",
+    "istanbul-lib-coverage": "^3.0.0",
     "jasmine": "^2.4.1",
     "jasmine-core": "^2.4.1",
     "jasmine-promises": "^0.4.1",
@@ -157,6 +159,7 @@
     "karma-webpack": "^2.0.5",
     "lint-staged": "^3.3.1",
     "mockdate": "^2.0.2",
+    "nyc": "^15.0.1",
     "postcss-cssnext": "^2.4.0",
     "postcss-import": "^9.0.0",
     "postcss-loader": "^2.0.8",
