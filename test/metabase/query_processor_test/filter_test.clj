@@ -78,6 +78,24 @@
         {:filter   [:!= $liked true]
          :order-by [[:asc $id]]}))))
 
+;;; filter != nil
+(qp.test/expect-with-non-timeseries-dbs
+  [[12]]
+  (qp.test/formatted-rows [int str ->bool] :format-nil-values
+    (data/dataset bird-flocks
+      (data/run-mbql-query bird
+        {:filter      [:!= $flock_id nil]
+         :aggregation [[:count]]}))))
+
+;;; filter = nil
+(qp.test/expect-with-non-timeseries-dbs
+  [[6]]
+  (qp.test/formatted-rows [int str ->bool] :format-nil-values
+    (data/dataset bird-flocks
+      (data/run-mbql-query bird
+        {:filter      [:= $flock_id nil]
+         :aggregation [[:count]]}))))
+
 
 (deftest between-test
   (datasets/test-drivers (qp.test/normal-drivers)
