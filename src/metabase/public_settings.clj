@@ -10,12 +10,15 @@
             [metabase.models
              [common :as common]
              [setting :as setting :refer [defsetting]]]
-            [metabase.public-settings.metastore]
+            metabase.public-settings.metastore
             [metabase.util
              [i18n :refer [available-locales-with-names deferred-tru set-locale trs tru]]
              [password :as password]]
             [toucan.db :as db])
   (:import java.util.UUID))
+
+;; These modules register settings but are otherwise unused. They still must be imported.
+(comment metabase.public-settings.metastore/keep-me)
 
 (defsetting check-for-updates
   (deferred-tru "Identify when new versions of Metabase are available.")
