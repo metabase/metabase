@@ -78,12 +78,12 @@
                           :aggregation [[:count]]}
                          (data/run-mbql-query bird)
                          (data/dataset bird-flocks)
-                         qp.test/rows)))
+                         (qp.test/formatted-rows [int]))))
       (is (= [[6]] (->> {:filter       [:= $flock_id nil]
                           :aggregation [[:count]]}
                          (data/run-mbql-query bird)
                          (data/dataset bird-flocks)
-                         qp.test/rows))))))))
+                         (qp.test/formatted-rows [int])))))))))
 
 (deftest between-test
   (datasets/test-drivers (qp.test/normal-drivers)
