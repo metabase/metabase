@@ -17,7 +17,7 @@ const EmbeddingLegalese = ({ onChange }) => (
       .
     </p>
     <p className="text-medium" style={{ lineHeight: 1.48 }}>
-      {t`In plain English, when you embed charts or dashboards from Metabase in your own application, that application isn't subject to the Affero General Public License that covers the rest of Metabase, provided you keep the Metabase logo and the "Powered by Metabase" visible on those embeds. You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature.`}
+      {t`In plain English, when you embed charts or dashboards from Certilytics in your own application, that application isn't subject to the Affero General Public License that covers the rest of Certilytics, provided you keep the Certilytics logo and the "Powered by Certilytics" visible on those embeds. You should, however, read the license text linked above as that is the actual license that you will be agreeing to by enabling this feature.`}
     </p>
     <div className="flex layout-centered mt4">
       <button

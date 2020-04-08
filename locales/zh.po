@@ -1341,7 +1341,7 @@ msgstr "Google账号登录"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:120
 #: frontend/src/metabase/plugins/builtin/auth/google.js:32
-msgid "Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password."
+msgid "Allows users with existing Certilytics accounts to login with a Google account that matches their email address in addition to their Certilytics username and password."
 msgstr "允许拥有Metabase帐户的用户使用与其电子邮件地址匹配的Google帐户以及其Metabase用户名和密码进行登录。"
 
 #: frontend/src/metabase/admin/settings/components/widgets/AuthenticationOption.jsx:24
@@ -1355,7 +1355,7 @@ msgid "LDAP"
 msgstr "LDAP"
 
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:16
-msgid "Allows users within your LDAP directory to log in to Metabase with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups."
+msgid "Allows users within your LDAP directory to log in to Certilytics with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups."
 msgstr "允许LDAP目录中的用户使用他们的LDAP凭证登录到Metabase，并且允许自动同步LDAP组的数据到Metabase中来。"
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:19
@@ -1423,7 +1423,7 @@ msgid "Getting set up"
 msgstr "开始设置向导"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:106
-msgid "A few things you can do to get the most out of Metabase."
+msgid "A few things you can do to get the most out of Certilytics."
 msgstr "您可以采取一些措施来充分利用Metabase。"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:115
@@ -1880,7 +1880,7 @@ msgid "Map tile server URL"
 msgstr "地图贴片服务器URL"
 
 #: frontend/src/metabase/admin/settings/selectors.js:204
-msgid "Metabase uses OpenStreetMaps by default."
+msgid "Certilytics uses OpenStreetMaps by default."
 msgstr "Metabase默认使用PoenStreet地图"
 
 #: frontend/src/metabase/admin/settings/selectors.js:209
@@ -7989,8 +7989,8 @@ msgstr "成功用JDBC注册Metabse.驱动.修复的Hive驱动"
 #. CONFIG
 #. TODO - smtp-port should be switched to type :integer
 #: src/metabase/email.clj
-msgid "Email address you want to use as the sender of Metabase."
-msgstr "你想要使用的作为Metabse发送者的邮箱地址"
+msgid "Email address you want to use as the sender of Certilytics."
+msgstr "你想要使用的作为Certilytics发送者的邮箱地址"
 
 #: src/metabase/email.clj
 msgid "The address of the SMTP server that handles your emails."
@@ -8298,7 +8298,7 @@ msgid "Storing FieldValues for Field {0}..."
 msgstr "保存Field{0}的FieldValues"
 
 #: src/metabase/models/humanization.clj
-msgid "Metabase can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\"."
+msgid "Certilytics can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\"."
 msgstr "Metabase 会尝试将数据表名称和表中字段名称转换为适合阅读的版本，例如：将somehorriblename转换为 Some Horrible Name。"
 
 #: src/metabase/models/humanization.clj
@@ -8464,7 +8464,7 @@ msgid "(If you're already running Metabase this way, you can ignore this message
 msgstr "（如果你已经用这个方法运行了Metabse，你可以忽略这条信息）"
 
 #: src/metabase/public_settings.clj
-msgid "Identify when new versions of Metabase are available."
+msgid "Identify when new versions of Certilytics are available."
 msgstr "确定新版本的Metabase何时可用。"
 
 #: src/metabase/public_settings.clj
@@ -8472,15 +8472,15 @@ msgid "Information about available versions of Metabase."
 msgstr "关于Metabase可用版本的信息"
 
 #: src/metabase/public_settings.clj
-msgid "The name used for this instance of Metabase."
+msgid "The name used for this instance of Certilytics."
 msgstr "用于此Metabase实例的名称。"
 
 #: src/metabase/public_settings.clj
-msgid "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"."
+msgid "The base URL of this Certilytics instance, e.g. \"http://metabase.my-company.com\"."
 msgstr "此Metabase实例的基本URL，例如“http://metabase.my-company.com”。"
 
 #: src/metabase/public_settings.clj
-msgid "The default language for this Metabase instance."
+msgid "The default language for this Certilytics instance."
 msgstr "这个Metabse实例的默认语言"
 
 #: src/metabase/public_settings.clj
@@ -8492,7 +8492,7 @@ msgid "The email address users should be referred to if they encounter a problem
 msgstr "如果碰到问题，可以使用用户的邮件地址"
 
 #: src/metabase/public_settings.clj
-msgid "Enable the collection of anonymous usage data in order to help Metabase improve."
+msgid "Enable the collection of anonymous usage data in order to help Certilytics improve."
 msgstr "启用匿名使用数据的收集，以帮助改进Metabase。"
 
 #: src/metabase/public_settings.clj

@@ -14,7 +14,7 @@
 ;;; CONFIG
 
 (defsetting email-from-address
-  (deferred-tru "Email address you want to use as the sender of Metabase.")
+  (deferred-tru "Email address you want to use as the sender of Certilytics.")
   :default "notifications@metabase.com")
 
 (defsetting email-smtp-host

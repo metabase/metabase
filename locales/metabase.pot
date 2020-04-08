@@ -1472,8 +1472,8 @@ msgstr ""
 #: frontend/src/metabase/admin/settings/components/SettingsAuthenticationOptions.jsx:12
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:120
 msgid ""
-"Allows users with existing Metabase accounts to login with a Google account "
-"that matches their email address in addition to their Metabase username and "
+"Allows users with existing Certilytics accounts to login with a Google account "
+"that matches their email address in addition to their Certilytics username and "
 "password."
 msgstr ""
 
@@ -1565,7 +1565,7 @@ msgid "Getting set up"
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:106
-msgid "A few things you can do to get the most out of Metabase."
+msgid "A few things you can do to get the most out of Certilytics."
 msgstr ""
 
 #: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:115
@@ -9640,7 +9640,7 @@ msgid "Error loading namespace"
 msgstr ""
 
 #: src/metabase/email.clj
-msgid "Email address you want to use as the sender of Metabase."
+msgid "Email address you want to use as the sender of Certilytics."
 msgstr ""
 
 #: src/metabase/email.clj
@@ -10136,7 +10136,7 @@ msgstr ""
 
 #: src/metabase/models/humanization.clj
 msgid ""
-"Metabase can attempt to transform your table and field names into more "
+"Certilytics can attempt to transform your table and field names into more "
 "sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some "
 "Horrible Name\"."
 msgstr ""
@@ -10487,7 +10487,7 @@ msgid "Registering lazy loading driver {0}..."
 msgstr ""
 
 #: src/metabase/public_settings.clj
-msgid "Identify when new versions of Metabase are available."
+msgid "Identify when new versions of Certilytics are available."
 msgstr ""
 
 #: src/metabase/public_settings.clj
@@ -10495,7 +10495,7 @@ msgid "Information about available versions of Metabase."
 msgstr ""
 
 #: src/metabase/public_settings.clj
-msgid "The name used for this instance of Metabase."
+msgid "The name used for this instance of Certilytics."
 msgstr ""
 
 #: src/metabase/public_settings.clj
@@ -10514,7 +10514,7 @@ msgid ""
 msgstr ""
 
 #: src/metabase/public_settings.clj
-msgid "The default language for this Metabase instance."
+msgid "The default language for this Certilytics instance."
 msgstr ""
 
 #: src/metabase/public_settings.clj

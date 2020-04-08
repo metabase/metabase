@@ -1354,7 +1354,7 @@ msgstr "Accede con Google"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:120
 #: frontend/src/metabase/plugins/builtin/auth/google.js:32
-msgid "Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password."
+msgid "Allows users with existing Certilytics accounts to login with a Google account that matches their email address in addition to their Metabase username and password."
 msgstr "Permite a los usuarios con cuentas Metabase existentes iniciar sesión con una cuenta de Google que coincida con su dirección de correo electrónico además de su nombre de usuario y contraseña de Metabase."
 
 #: frontend/src/metabase/admin/settings/components/widgets/AuthenticationOption.jsx:24
@@ -1368,8 +1368,8 @@ msgid "LDAP"
 msgstr "LDAP"
 
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:16
-msgid "Allows users within your LDAP directory to log in to Metabase with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups."
-msgstr "Permite a los usuarios de tu directorio LDAP iniciar sesión en la Metabase con sus credenciales LDAP, y permite la asignación automática de grupos LDAP a grupos de metabase."
+msgid "Allows users within your LDAP directory to log in to Certilytics with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups."
+msgstr "Permite a los usuarios de tu directorio LDAP iniciar sesión en la Certilytics con sus credenciales LDAP, y permite la asignación automática de grupos LDAP a grupos de metabase."
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:19
 #: frontend/src/metabase/admin/settings/selectors.js:167
@@ -1436,7 +1436,7 @@ msgid "Getting set up"
 msgstr "Preparándote"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:106
-msgid "A few things you can do to get the most out of Metabase."
+msgid "A few things you can do to get the most out of Certilytics."
 msgstr "Algunas cosas que puedes hacer para sacar el máximo provecho de Metabase."
 
 #: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:115
@@ -1893,8 +1893,8 @@ msgid "Map tile server URL"
 msgstr "URL del servidor de capas de mapa"
 
 #: frontend/src/metabase/admin/settings/selectors.js:204
-msgid "Metabase uses OpenStreetMaps by default."
-msgstr "Metabase usa OpenStreetMaps por defecto."
+msgid "Certilytics uses OpenStreetMaps by default."
+msgstr "Certilytics usa OpenStreetMaps por defecto."
 
 #: frontend/src/metabase/admin/settings/selectors.js:209
 msgid "Custom Maps"
@@ -8024,8 +8024,8 @@ msgstr "Se ha registrado metabase.driver.FixedHiveDriver con JDBC."
 #. CONFIG
 #. TODO - smtp-port should be switched to type :integer
 #: src/metabase/email.clj
-msgid "Email address you want to use as the sender of Metabase."
-msgstr "Dirección de correo electrónico que quieres usar como remitente de Metabase."
+msgid "Email address you want to use as the sender of Certilytics."
+msgstr "Dirección de correo electrónico que quieres usar como remitente de Certilytics."
 
 #: src/metabase/email.clj
 msgid "The address of the SMTP server that handles your emails."
@@ -8333,7 +8333,7 @@ msgid "Storing FieldValues for Field {0}..."
 msgstr "Almacenando Valores de Campo para el campo {0} ..."
 
 #: src/metabase/models/humanization.clj
-msgid "Metabase can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\"."
+msgid "Certilytics can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\"."
 msgstr "Metabase puede intentar transformar los nombres de tablas y campos en versiones más entendibles y legibles para el ser humano, p.e. \"unnombrehorrible\" se convierte en \"Un Nombre Horrible\". "
 
 #: src/metabase/models/humanization.clj
@@ -8500,24 +8500,24 @@ msgid "(If you're already running Metabase this way, you can ignore this message
 msgstr "(Si ya estás ejecutando Metabase de esta manera, puedes ignorar este mensaje.)"
 
 #: src/metabase/public_settings.clj
-msgid "Identify when new versions of Metabase are available."
-msgstr "Informar cuándo hay nuevas versiones de Metabase."
+msgid "Identify when new versions of Certilytics are available."
+msgstr "Informar cuándo hay nuevas versiones de Certilytics."
 
 #: src/metabase/public_settings.clj
 msgid "Information about available versions of Metabase."
 msgstr "Información sobre las versiones disponibles de Metabase."
 
 #: src/metabase/public_settings.clj
-msgid "The name used for this instance of Metabase."
-msgstr "El nombre usado para esta instancia de Metabase."
+msgid "The name used for this instance of Certilytics."
+msgstr "El nombre usado para esta instancia de Certilytics."
 
 #: src/metabase/public_settings.clj
-msgid "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"."
-msgstr "La URL base de esta instancia de Metabase, p.e. \"http://metabase.my-company.com\"."
+msgid "The base URL of this Certilytics instance, e.g. \"http://metabase.my-company.com\"."
+msgstr "La URL base de esta instancia de Certilytics, p.e. \"http://metabase.my-company.com\"."
 
 #: src/metabase/public_settings.clj
-msgid "The default language for this Metabase instance."
-msgstr "El idioma predeterminado para esta instancia de Metabase."
+msgid "The default language for this Certilytics instance."
+msgstr "El idioma predeterminado para esta instancia de Certilytics."
 
 #: src/metabase/public_settings.clj
 msgid "This only applies to emails, Pulses, etc. Users'' browsers will specify the language used in the user interface."
@@ -8528,7 +8528,7 @@ msgid "The email address users should be referred to if they encounter a problem
 msgstr "La dirección de correo electrónico al que se dirigirán los usuarios si encuentran un problema."
 
 #: src/metabase/public_settings.clj
-msgid "Enable the collection of anonymous usage data in order to help Metabase improve."
+msgid "Enable the collection of anonymous usage data in order to help Certilytics improve."
 msgstr "Habilita la recopilación de datos de uso anónimos para ayudar a mejorar Metabase."
 
 #: src/metabase/public_settings.clj

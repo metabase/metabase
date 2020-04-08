@@ -161,7 +161,7 @@ const SECTIONS = updateSectionsWithPlugins({
       {
         key: "email-from-address",
         display_name: t`From Address`,
-        placeholder: "metabase@yourcompany.com",
+        placeholder: "certilytics@yourcompany.com",
         type: "string",
         required: true,
         validations: [["email", t`That's not a valid email address`]],
@@ -201,7 +201,7 @@ const SECTIONS = updateSectionsWithPlugins({
       {
         key: "map-tile-server-url",
         display_name: t`Map tile server URL`,
-        note: t`Metabase uses OpenStreetMaps by default.`,
+        note: t`Certilytics uses OpenStreetMaps by default.`,
         type: "string",
       },
       {
@@ -273,7 +273,7 @@ const SECTIONS = updateSectionsWithPlugins({
       },
       {
         key: "enable-embedding",
-        display_name: t`Enable Embedding Metabase in other Applications`,
+        display_name: t`Enable Embedding Certilytics in other Applications`,
         type: "boolean",
         getHidden: settings => !settings["enable-embedding"],
       },

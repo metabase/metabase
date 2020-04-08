@@ -1343,7 +1343,7 @@ msgstr "Googleを利用してサインインする"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:120
 #: frontend/src/metabase/plugins/builtin/auth/google.js:32
-msgid "Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password."
+msgid "Allows users with existing Certilytics accounts to login with a Google account that matches their email address in addition to their Metabase username and password."
 msgstr "Metabaseアカウント保有者に、Metabaseユーザーネームとパスワード以外に、登録されたメールアドレスと一致するGoogleアカウントでログインすることを許可する"
 
 #: frontend/src/metabase/admin/settings/components/widgets/AuthenticationOption.jsx:24
@@ -1357,7 +1357,7 @@ msgid "LDAP"
 msgstr "LDAP"
 
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:16
-msgid "Allows users within your LDAP directory to log in to Metabase with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups."
+msgid "Allows users within your LDAP directory to log in to Certilytics with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups."
 msgstr "LDAPディレクトリ内のユーザーに対し、LDAP資格情報によるMetabaseへのログインを許可し、LDAPグループをMetabaseグループに自動的にマッピングできるようにする。"
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:19
@@ -1425,7 +1425,7 @@ msgid "Getting set up"
 msgstr "開始する"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:106
-msgid "A few things you can do to get the most out of Metabase."
+msgid "A few things you can do to get the most out of Certilytics."
 msgstr "Metabaseを有効活用するためにできること"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:115
@@ -1882,7 +1882,7 @@ msgid "Map tile server URL"
 msgstr "マップタイルサーバーのURL"
 
 #: frontend/src/metabase/admin/settings/selectors.js:204
-msgid "Metabase uses OpenStreetMaps by default."
+msgid "Certilytics uses OpenStreetMaps by default."
 msgstr "Metabaseはデフォルト設定でOpenStreetMapsを使用します"
 
 #: frontend/src/metabase/admin/settings/selectors.js:209
@@ -7994,7 +7994,7 @@ msgstr "metabase.driver.FixedHiveDriverが正常にJDBCに登録されました�
 #. CONFIG
 #. TODO - smtp-port should be switched to type :integer
 #: src/metabase/email.clj
-msgid "Email address you want to use as the sender of Metabase."
+msgid "Email address you want to use as the sender of Certilytics."
 msgstr "Metabaseの送信者として使用したいメールアドレス"
 
 #: src/metabase/email.clj
@@ -8303,7 +8303,7 @@ msgid "Storing FieldValues for Field {0}..."
 msgstr "フィールド{0}のフィールド値を保存中..."
 
 #: src/metabase/models/humanization.clj
-msgid "Metabase can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\"."
+msgid "Certilytics can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\"."
 msgstr "Metabaseはテーブルとフィールド名をより理に適った、読みやすい名前に変更することができます。例: 「somehorriblename」を「Some Horrible Name」へ変更する"
 
 #: src/metabase/models/humanization.clj
@@ -8469,7 +8469,7 @@ msgid "(If you're already running Metabase this way, you can ignore this message
 msgstr "（すでにこの方法でMetabaseを実行している場合は、このメッセージを無視してください。）"
 
 #: src/metabase/public_settings.clj
-msgid "Identify when new versions of Metabase are available."
+msgid "Identify when new versions of Certilytics are available."
 msgstr "Metabaseの新しいバージョンがいつ入手可能かを確認する"
 
 #: src/metabase/public_settings.clj
@@ -8477,7 +8477,7 @@ msgid "Information about available versions of Metabase."
 msgstr "Metabaseの利用可能なバージョンに関する情報"
 
 #: src/metabase/public_settings.clj
-msgid "The name used for this instance of Metabase."
+msgid "The name used for this instance of Certilytics."
 msgstr "このMetabaseのインスタンスの名前"
 
 #: src/metabase/public_settings.clj
@@ -8485,7 +8485,7 @@ msgid "The base URL of this Metabase instance, e.g. \"http://metabase.my-company
 msgstr "このMetabaseインスタンスのベースURL、例: \"http://metabase.my-company.com\""
 
 #: src/metabase/public_settings.clj
-msgid "The default language for this Metabase instance."
+msgid "The default language for this Certilytics instance."
 msgstr "このMetabaseインスタンスのデフォルトの言語です。"
 
 #: src/metabase/public_settings.clj
@@ -8497,7 +8497,7 @@ msgid "The email address users should be referred to if they encounter a problem
 msgstr "問題が発生した場合に、ユーザーが参照すべきメールアドレス"
 
 #: src/metabase/public_settings.clj
-msgid "Enable the collection of anonymous usage data in order to help Metabase improve."
+msgid "Enable the collection of anonymous usage data in order to help Certilytics improve."
 msgstr "Metabaseのサービス向上のため、匿名の使用状況データの収集を許可する。"
 
 #: src/metabase/public_settings.clj

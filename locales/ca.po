@@ -1345,7 +1345,7 @@ msgstr "Identificar-se amb Google"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:120
 #: frontend/src/metabase/plugins/builtin/auth/google.js:32
-msgid "Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password."
+msgid "Allows users with existing Certilytics accounts to login with a Google account that matches their email address in addition to their Metabase username and password."
 msgstr "Permet als usuaris amb una compta de Metabase existent iniciar sessió amb un compte de Google que coincideixi amb la seva direcció de correu electrònic a més de poder accedir amb el seu nom d'usuari i contrasenya."
 
 #: frontend/src/metabase/admin/settings/components/widgets/AuthenticationOption.jsx:24
@@ -1359,8 +1359,8 @@ msgid "LDAP"
 msgstr "LDAP"
 
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:16
-msgid "Allows users within your LDAP directory to log in to Metabase with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups."
-msgstr "Permet als usuaris del teu directori LDAP iniciar sessió a Metabase amb les seves credencials LDAP i permet la assignació automàtica de grups LDAP a grups de metabase."
+msgid "Allows users within your LDAP directory to log in to Certilytics with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups."
+msgstr "Permet als usuaris del teu directori LDAP iniciar sessió a Certilytics amb les seves credencials LDAP i permet la assignació automàtica de grups LDAP a grups de metabase."
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:19
 #: frontend/src/metabase/admin/settings/selectors.js:167
@@ -1427,7 +1427,7 @@ msgid "Getting set up"
 msgstr "Preparant configuració"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:106
-msgid "A few things you can do to get the most out of Metabase."
+msgid "A few things you can do to get the most out of Certilytics."
 msgstr "Algunes coses que podeu fer per treure el millor profit de Metabase"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:115
@@ -1884,8 +1884,8 @@ msgid "Map tile server URL"
 msgstr "URL del servidor de capes de mapes"
 
 #: frontend/src/metabase/admin/settings/selectors.js:204
-msgid "Metabase uses OpenStreetMaps by default."
-msgstr "El Metabase fa servir OpenStretMaps per defecte"
+msgid "Certilytics uses OpenStreetMaps by default."
+msgstr "El Certilytics fa servir OpenStretMaps per defecte"
 
 #: frontend/src/metabase/admin/settings/selectors.js:209
 msgid "Custom Maps"
@@ -8009,8 +8009,8 @@ msgstr "S'ha registrat metabase.driver.FixedHiveDriver a través de JDBC."
 #. CONFIG
 #. TODO - smtp-port should be switched to type :integer
 #: src/metabase/email.clj
-msgid "Email address you want to use as the sender of Metabase."
-msgstr "Direcció de correu electrònic que s'utilitzara com a remeitent del Metabase"
+msgid "Email address you want to use as the sender of Certilytics."
+msgstr "Direcció de correu electrònic que s'utilitzara com a remeitent del Certilytics"
 
 #: src/metabase/email.clj
 msgid "The address of the SMTP server that handles your emails."
@@ -8318,7 +8318,7 @@ msgid "Storing FieldValues for Field {0}..."
 msgstr "Guardant valor del camp per al camp {0}"
 
 #: src/metabase/models/humanization.clj
-msgid "Metabase can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\"."
+msgid "Certilytics can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\"."
 msgstr "El Metabase intenta transformar els noms de les taules i els camps en versions més comprensibles i llegibles per al ser humà. Per exemple: \"unnomhorrible\" es converteix en \"Un Nom Horrible\""
 
 #: src/metabase/models/humanization.clj
@@ -8484,23 +8484,23 @@ msgid "(If you're already running Metabase this way, you can ignore this message
 msgstr "(Si ja estas ejecutant el Metabase d'aquesta forma pots ignorar aquest missatge:)"
 
 #: src/metabase/public_settings.clj
-msgid "Identify when new versions of Metabase are available."
-msgstr "Informar quan hi ha noves versions de Metabase"
+msgid "Identify when new versions of Certilytics are available."
+msgstr "Informar quan hi ha noves versions de Certilytics"
 
 #: src/metabase/public_settings.clj
 msgid "Information about available versions of Metabase."
 msgstr "Informació sobre les versions disponibles de Metabase"
 
 #: src/metabase/public_settings.clj
-msgid "The name used for this instance of Metabase."
+msgid "The name used for this instance of Certilytics."
 msgstr "El nom utilitzat per aquesta instància de Metabase"
 
 #: src/metabase/public_settings.clj
-msgid "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"."
-msgstr "La URL base d'aquesta instància del Metabase, p.e: \"http://metabase.my-company.com\""
+msgid "The base URL of this Certilytics instance, e.g. \"http://metabase.my-company.com\"."
+msgstr "La URL base d'aquesta instància del Certilytics, p.e: \"http://metabase.my-company.com\""
 
 #: src/metabase/public_settings.clj
-msgid "The default language for this Metabase instance."
+msgid "The default language for this Certilytics instance."
 msgstr "El idioma predeterminat per aquesta instància de Metabase."
 
 #: src/metabase/public_settings.clj
@@ -8512,7 +8512,7 @@ msgid "The email address users should be referred to if they encounter a problem
 msgstr "La direcció de correu electrònic a la que es dirigiran els usuaris si es troben amb algun problema."
 
 #: src/metabase/public_settings.clj
-msgid "Enable the collection of anonymous usage data in order to help Metabase improve."
+msgid "Enable the collection of anonymous usage data in order to help Certilytics improve."
 msgstr "Activa la recopilació de dades anònimes per ajudar a millorar Metabase."
 
 #: src/metabase/public_settings.clj

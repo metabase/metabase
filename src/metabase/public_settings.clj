@@ -17,7 +17,7 @@
   (:import java.util.UUID))
 
 (defsetting check-for-updates
-  (deferred-tru "Identify when new versions of Metabase are available.")
+  (deferred-tru "Identify when new versions of Certilytics are available.")
   :type    :boolean
   :default true)
 
@@ -27,7 +27,7 @@
   :default {})
 
 (defsetting site-name
-  (deferred-tru "The name used for this instance of Metabase.")
+  (deferred-tru "The name used for this instance of Certilytics.")
   :default "Metabase")
 
 (defsetting site-uuid
@@ -58,7 +58,7 @@
 ;; This value is *guaranteed* to never have a trailing slash :D
 ;; It will also prepend `http://` to the URL if there's not protocol when it comes in
 (defsetting site-url
-  (deferred-tru "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\".")
+  (deferred-tru "The base URL of this Certilytics instance, e.g. \"http://metabase.my-company.com\".")
   :visibility :public
   :getter (fn []
             (try
@@ -69,7 +69,7 @@
             (setting/set-string! :site-url (some-> new-value normalize-site-url))))
 
 (defsetting site-locale
-  (str  (deferred-tru "The default language for this Metabase instance.")
+  (str  (deferred-tru "The default language for this Certilytics instance.")
         " "
         (deferred-tru "This only applies to emails, Pulses, etc. Users'' browsers will specify the language used in the user interface."))
   :type      :string
@@ -81,7 +81,7 @@
   :visibility :authenticated)
 
 (defsetting anon-tracking-enabled
-  (deferred-tru "Enable the collection of anonymous usage data in order to help Metabase improve.")
+  (deferred-tru "Enable the collection of anonymous usage data in order to help Certilytics improve.")
   :type       :boolean
   :default    true
   :visibility :public)

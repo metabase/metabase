@@ -1362,8 +1362,8 @@ msgstr "با Google وارد شوید"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSingleSignOnForm.jsx:120
 #: frontend/src/metabase/plugins/builtin/auth/google.js:32
-msgid "Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password."
-msgstr "به کاربران امکان می دهد با حساب های Metabase موجود برای ورود به حساب Google که با آدرس ایمیل خود علاوه بر نام کاربری و رمز عبور متاباز خود نیز منطبق باشد."
+msgid "Allows users with existing Certilytics accounts to login with a Google account that matches their email address in addition to their Metabase username and password."
+msgstr "به کاربران امکان می دهد با حساب های Certilytics موجود برای ورود به حساب Google که با آدرس ایمیل خود علاوه بر نام کاربری و رمز عبور متاباز خود نیز منطبق باشد."
 
 #: frontend/src/metabase/admin/settings/components/widgets/AuthenticationOption.jsx:24
 #: frontend/src/metabase/components/ChannelSetupMessage.jsx:32
@@ -1376,7 +1376,7 @@ msgid "LDAP"
 msgstr "LDAP"
 
 #: frontend/src/metabase/plugins/builtin/auth/ldap.js:16
-msgid "Allows users within your LDAP directory to log in to Metabase with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups."
+msgid "Allows users within your LDAP directory to log in to Certilytics with their LDAP credentials, and allows automatic mapping of LDAP groups to Metabase groups."
 msgstr "اجازه می دهد تا کاربران در دایرکتوری LDAP خود را به Metabase با اعتبار LDAP خود وارد شوند، و اجازه می دهد تا نقشه های خودکار LDAP را به گروه های Metabase بطور خودکار."
 
 #: frontend/src/metabase/admin/settings/components/SettingsBatchForm.jsx:19
@@ -1444,7 +1444,7 @@ msgid "Getting set up"
 msgstr "راه اندازی"
 
 #: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:106
-msgid "A few things you can do to get the most out of Metabase."
+msgid "A few things you can do to get the most out of Certilytics."
 msgstr "چند چیز که می توانید انجام دهید برای به دست آوردن بیشتر از Metabase."
 
 #: frontend/src/metabase/admin/settings/components/SettingsSetupList.jsx:115
@@ -1903,7 +1903,7 @@ msgid "Map tile server URL"
 msgstr "URL کاشی نقشه کاشی"
 
 #: frontend/src/metabase/admin/settings/selectors.js:204
-msgid "Metabase uses OpenStreetMaps by default."
+msgid "Certilytics uses OpenStreetMaps by default."
 msgstr "Metabase از طریق OpenStreetMaps به طور پیش فرض استفاده می کند."
 
 #: frontend/src/metabase/admin/settings/selectors.js:209
@@ -8015,8 +8015,8 @@ msgstr "Metabase.driver.FixedHiveDriver با JDBC ثبت نام شده است."
 #. CONFIG
 #. TODO - smtp-port should be switched to type :integer
 #: src/metabase/email.clj
-msgid "Email address you want to use as the sender of Metabase."
-msgstr "آدرس ایمیل شما می خواهید به عنوان فرستنده Metabase استفاده کنید."
+msgid "Email address you want to use as the sender of Certilytics."
+msgstr "آدرس ایمیل شما می خواهید به عنوان فرستنده Certilytics استفاده کنید."
 
 #: src/metabase/email.clj
 msgid "The address of the SMTP server that handles your emails."
@@ -8324,7 +8324,7 @@ msgid "Storing FieldValues for Field {0}..."
 msgstr "ذخیره فیلد فیلد برای فیلد {0} ..."
 
 #: src/metabase/models/humanization.clj
-msgid "Metabase can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\"."
+msgid "Certilytics can attempt to transform your table and field names into more sensible, human-readable versions, e.g. \"somehorriblename\" becomes \"Some Horrible Name\"."
 msgstr "Metabase می تواند تلاش کند نام جدول و فیلدهای خود را به نسخه های قابل اعتماد تر و قابل خواندن با انسانی تبدیل کند، برای مثال \"somehorriblename\" می شود \"برخی از نام وحشتناک\"."
 
 #: src/metabase/models/humanization.clj
@@ -8490,23 +8490,23 @@ msgid "(If you're already running Metabase this way, you can ignore this message
 msgstr "(اگر شما در حال حاضر Metabase را در این راه اجرا می کنید، می توانید این پیام را نادیده بگیرید.)"
 
 #: src/metabase/public_settings.clj
-msgid "Identify when new versions of Metabase are available."
-msgstr "شناسایی زمانی که نسخه های جدید Metabase در دسترس هستند."
+msgid "Identify when new versions of Certilytics are available."
+msgstr "شناسایی زمانی که نسخه های جدید Certilytics در دسترس هستند."
 
 #: src/metabase/public_settings.clj
 msgid "Information about available versions of Metabase."
 msgstr "اطلاعات در مورد نسخه های موجود Metabase."
 
 #: src/metabase/public_settings.clj
-msgid "The name used for this instance of Metabase."
-msgstr "نام مورد استفاده برای این مثال Metabase."
+msgid "The name used for this instance of Certilytics."
+msgstr "نام مورد استفاده برای این مثال Certilytics."
 
 #: src/metabase/public_settings.clj
-msgid "The base URL of this Metabase instance, e.g. \"http://metabase.my-company.com\"."
+msgid "The base URL of this Certilytics instance, e.g. \"http://metabase.my-company.com\"."
 msgstr "آدرس پایه این نمونه متاباز، به عنوان مثال \"http://metabase.my-company.com\"."
 
 #: src/metabase/public_settings.clj
-msgid "The default language for this Metabase instance."
+msgid "The default language for this Certilytics instance."
 msgstr "زبان پیشفرض برای این نمونه متابیس"
 
 #: src/metabase/public_settings.clj
@@ -8518,7 +8518,7 @@ msgid "The email address users should be referred to if they encounter a problem
 msgstr "اگر با یک مشکل مواجه شدید، کاربران آدرس ایمیل باید مراجعه کنند."
 
 #: src/metabase/public_settings.clj
-msgid "Enable the collection of anonymous usage data in order to help Metabase improve."
+msgid "Enable the collection of anonymous usage data in order to help Certilytics improve."
 msgstr "مجموعه ای از داده های استفاده ناشناس را برای کمک به بهبود Metabase فعال کنید."
 
 #: src/metabase/public_settings.clj
