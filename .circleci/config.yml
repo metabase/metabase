@@ -540,7 +540,7 @@ jobs:
           name: Build uberjar if needed
           command: >
             if [ ! -f './target/uberjar/metabase.jar' ];
-              then ./bin/build version frontend uberjar;
+              then ./bin/build version frontend drivers uberjar;
             fi
           no_output_timeout: 5m
       - store_artifacts:
@@ -573,6 +573,9 @@ jobs:
         type: boolean
         default: false
       test-files-location:
+        type: string
+        default: ""
+      driver:
         type: string
         default: ""
     executor: << parameters.e >>
@@ -873,8 +876,9 @@ workflows:
             - build-uberjar
             - fe-deps
           e: fe-mongo
+          driver: mongo
           only-single-database: true
-          test-files-location: frontend/test/metabase/mongo
+          test-files-location: frontend/test/metabase-db/mongo
 
       - deploy-master:
           requires:
