@@ -32,7 +32,7 @@
       (cond
         (every? neg? [x1 x2])     (change (- x1) (- x2))
         (and (neg? x1) (pos? x2)) (- (change x1 x2))
-        (neg? x1)                 (- (change x2 x1))
+        (neg? x1)                 (- (change x2 (- x1)))
         :else                     (/ (- x2 x1) x1)))))
 
 (defn reservoir-sample
