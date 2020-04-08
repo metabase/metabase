@@ -74,15 +74,15 @@
                   (data/dataset places-cam-likes)
                   (qp.test/formatted-rows [int str ->bool] :format-nil-values))))
     (testing "Can we use nil literal in comparisons"
-      (is (= [[12]] (->> {:filter      [:!= $flock_id nil]
+      (is (= [[25]] (->> {:filter      [:!= $count nil]
                           :aggregation [[:count]]}
-                         (data/run-mbql-query bird)
-                         (data/dataset bird-flocks)
+                         (data/run-mbql-query bird-count)
+                         (data/dataset daily-bird-counts)
                          (qp.test/formatted-rows [int]))))
-      (is (= [[6]] (->> {:filter       [:= $flock_id nil]
-                          :aggregation [[:count]]}
-                         (data/run-mbql-query bird)
-                         (data/dataset bird-flocks)
+      (is (= [[5]] (->> {:filter       [:= $count nil]
+                         :aggregation [[:count]]}
+                         (data/run-mbql-query bird-count)
+                         (data/dataset daily-bird-counts)
                          (qp.test/formatted-rows [int])))))))))
 
 (deftest between-test
