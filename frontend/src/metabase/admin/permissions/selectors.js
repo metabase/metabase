@@ -662,7 +662,7 @@ export const getDatabasesPermissionsGrid = createSelector(
           },
           name: database.name,
           link:
-            schemas.length === 0 || (schemas.length === 1 && schemas[0] === "")
+            schemas.length === 0 || (schemas.length === 1 && schemas[0] == null)
               ? {
                   name: t`View tables`,
                   url: `/admin/permissions/databases/${database.id}/tables`,
