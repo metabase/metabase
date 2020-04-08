@@ -117,6 +117,5 @@
     (is (= 36 (with-redefs [fprint/earliest sync-test/crash-fn]
                 (-> (timeseries-dataset) :rows count)))))
   (testing "Data should come back even if there is an error when calculating insights"
-    (testing "Data should come back even if there is an error during fingerprinting"
-      (is (= 36 (with-redefs [insights/change sync-test/crash-fn]
-                  (-> (timeseries-dataset) :rows count)))))))
+    (is (= 36 (with-redefs [insights/change sync-test/crash-fn]
+                (-> (timeseries-dataset) :rows count))))))
