@@ -59,4 +59,37 @@ describe("scenarios > admin > settings", () => {
     openOrdersTable();
     cy.contains(/^February 11, 2019, 9:40 PM$/);
   });
+
+  describe(" > email settings", () => {
+    it("should be able to save email settings", () => {
+      cy.visit("/admin/settings/email");
+      cy.findByPlaceholderText("smtp.yourservice.com")
+        .type("localhost")
+        .blur();
+      cy.findByPlaceholderText("587")
+        .type("1234")
+        .blur();
+      cy.findByPlaceholderText("metabase@yourcompany.com")
+        .type("admin@metabase.com")
+        .blur();
+      cy.findByText("Save changes").click();
+
+      cy.findByText("Changes saved!");
+    });
+    it("should show an error if test email fails", () => {
+      cy.visit("/admin/settings/email");
+      cy.findByText("Send test email").click();
+      cy.findByText("Sorry, something went wrong. Please try again.");
+    });
+    it("should be able to clear email settings", () => {
+      cy.visit("/admin/settings/email");
+      cy.findByText("Clear").click();
+      cy.findByPlaceholderText("smtp.yourservice.com").should("have.value", "");
+      cy.findByPlaceholderText("587").should("have.value", "");
+      cy.findByPlaceholderText("metabase@yourcompany.com").should(
+        "have.value",
+        "",
+      );
+    });
+  });
 });
