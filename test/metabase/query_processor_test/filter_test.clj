@@ -49,35 +49,41 @@
     nil false
     x))
 
-;;; filter = true
-(qp.test/expect-with-non-timeseries-dbs
-  [[1 "Tempest" true]
-   [2 "Bullit"  true]]
-  (qp.test/formatted-rows [int str ->bool] :format-nil-values
-    (data/dataset places-cam-likes
-      (data/run-mbql-query places
-        {:filter   [:= $liked true]
-         :order-by [[:asc $id]]}))))
-
-;;; filter != false
-(qp.test/expect-with-non-timeseries-dbs
-  [[1 "Tempest" true]
-   [2 "Bullit"  true]]
-  (qp.test/formatted-rows [int str ->bool] :format-nil-values
-    (data/dataset places-cam-likes
-      (data/run-mbql-query places
-        {:filter   [:!= $liked false]
-         :order-by [[:asc $id]]}))))
-
-;;; filter != true
-(qp.test/expect-with-non-timeseries-dbs
-  [[3 "The Dentist" false]]
-  (qp.test/formatted-rows [int str ->bool] :format-nil-values
-    (data/dataset places-cam-likes
-      (data/run-mbql-query places
-        {:filter   [:!= $liked true]
-         :order-by [[:asc $id]]}))))
-
+(deftest comparison-test
+  (datasets/test-drivers (qp.test/normal-drivers)
+    (testing "Can we use true literal in comparisons"
+      (is (= [[1 "Tempest" true]
+              [2 "Bullit"  true]]
+             (->> {:filter   [:= $liked true]
+                   :order-by [[:asc $id]]}
+                  (data/run-mbql-query places)
+                  (data/dataset places-cam-likes)
+                  (qp.test/formatted-rows [int str ->bool] :format-nil-values))))
+      (is (= [[3 "The Dentist" false]]
+             (->> {:filter   [:!= $liked true]
+                   :order-by [[:asc $id]]}
+                  (data/run-mbql-query places)
+                  (data/dataset places-cam-likes)
+                  (qp.test/formatted-rows [int str ->bool] :format-nil-values))))
+    (testing "Can we use false literal in comparisons"
+      (is (= [[1 "Tempest" true]
+              [2 "Bullit"  true]]
+             (->> {:filter   [:!= $liked false]
+                   :order-by [[:asc $id]]}
+                  (data/run-mbql-query places)
+                  (data/dataset places-cam-likes)
+                  (qp.test/formatted-rows [int str ->bool] :format-nil-values))))
+    (testing "Can we use nil literal in comparisons"
+      (is (= [[12]] (->> {:filter      [:!= $flock_id nil]
+                          :aggregation [[:count]]}
+                         (data/run-mbql-query bird)
+                         (data/dataset bird-flocks)
+                         qp.test/rows)))
+      (is (= [[6]] (->> {:filter       [:= $flock_id nil]
+                          :aggregation [[:count]]}
+                         (data/run-mbql-query bird)
+                         (data/dataset bird-flocks)
+                         qp.test/rows))))))))
 
 (deftest between-test
   (datasets/test-drivers (qp.test/normal-drivers)
