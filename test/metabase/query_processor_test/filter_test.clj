@@ -83,7 +83,7 @@
                           :aggregation [[:count]]}
                          (data/run-mbql-query bird)
                          (data/dataset bird-flocks)
-                         qp.test/rows))))))
+                         qp.test/rows))))))))
 
 (deftest between-test
   (datasets/test-drivers (qp.test/normal-drivers)
