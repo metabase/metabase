@@ -64,7 +64,7 @@
                    :order-by [[:asc $id]]}
                   (data/run-mbql-query places)
                   (data/dataset places-cam-likes)
-                  (qp.test/formatted-rows [int str ->bool] :format-nil-values))))
+                  (qp.test/formatted-rows [int str ->bool] :format-nil-values)))))
     (testing "Can we use false literal in comparisons"
       (is (= [[1 "Tempest" true]
               [2 "Bullit"  true]]
@@ -72,18 +72,21 @@
                    :order-by [[:asc $id]]}
                   (data/run-mbql-query places)
                   (data/dataset places-cam-likes)
-                  (qp.test/formatted-rows [int str ->bool] :format-nil-values))))
+                  (qp.test/formatted-rows [int str ->bool] :format-nil-values)))))
     (testing "Can we use nil literal in comparisons"
       (is (= [[3]] (->> {:filter      [:!= $liked nil]
                          :aggregation [[:count]]}
-                         (data/run-mbql-query places)
-                         (data/dataset places-cam-likes)
-                         (qp.test/formatted-rows [int]))))
-      (is (= [[0]] (->> {:filter      [:= $liked nil]
-                         :aggregation [[:count]]}
                         (data/run-mbql-query places)
                         (data/dataset places-cam-likes)
-                        (qp.test/formatted-rows [int])))))))))
+                        (qp.test/formatted-rows [int]))))
+      (is (= true (->> {:filter      [:= $liked nil]
+                        :aggregation [[:count]]}
+                       (data/run-mbql-query places)
+                       (data/dataset places-cam-likes)
+                       (qp.test/formatted-rows [int])
+                       first
+                       ;; Some DBs like Mongo don't return any results at all in this case, and there's no easy workaround
+                       (contains? #{[0] [0M] [nil] nil})))))))
 
 (deftest between-test
   (datasets/test-drivers (qp.test/normal-drivers)
