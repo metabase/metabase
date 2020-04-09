@@ -322,7 +322,7 @@ export default class Form extends React.Component {
         validate={this._validate}
         onSubmit={this._onSubmit}
         onChangeField={this._handleChangeField}
-        // HACK: _state is a mutable object so we can pass by referecen into the ReduxFormComponent
+        // HACK: _state is a mutable object so we can pass by reference into the ReduxFormComponent
         submitState={this._state}
       />
     );
