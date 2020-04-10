@@ -53,6 +53,9 @@ const init = async () => {
   console.log(chalk.bold("Starting backend"));
   await BackendResource.start(server);
 
+  console.log(chalk.bold("Generating snapshots"));
+  await generateSnapshots();
+
   console.log(chalk.bold("Starting Cypress"));
   const cypressProcess = spawn(
     "yarn",
@@ -98,3 +101,22 @@ launch();
 
 process.on("SIGTERM", cleanup);
 process.on("SIGINT", cleanup);
+
+async function generateSnapshots() {
+  const cypressProcess = spawn(
+    "yarn",
+    [
+      "cypress",
+      "run",
+      "--config-file",
+      "frontend/test/cypress-snapshots.json",
+      "--config",
+      `baseUrl=${server.host}`,
+    ],
+    { stdio: "inherit" },
+  );
+
+  return new Promise((resolve, reject) => {
+    cypressProcess.on("exit", resolve);
+  });
+}

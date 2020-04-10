@@ -32,6 +32,7 @@
 /cypress
 /deploy/artifacts/*
 /docs/uberdoc.html
+/frontend/test/snapshots/*
 /lein-plugins/*/target
 /local/src
 /local/src
