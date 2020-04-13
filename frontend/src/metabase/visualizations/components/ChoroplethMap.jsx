@@ -330,6 +330,7 @@ export default class ChoroplethMap extends Component {
             onClickFeature={onClickFeature}
             projection={projection}
             projectionFrame={projectionFrame}
+            onRenderError={this.props.onRenderError}
           />
         ) : (
           <LeafletChoropleth
@@ -339,6 +340,7 @@ export default class ChoroplethMap extends Component {
             onHoverFeature={onHoverFeature}
             onClickFeature={onClickFeature}
             minimalBounds={minimalBounds}
+            onRenderError={this.props.onRenderError}
           />
         )}
       </ChartWithLegend>
