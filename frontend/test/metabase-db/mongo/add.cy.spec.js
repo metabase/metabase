@@ -1,11 +1,9 @@
-import { signInAsAdmin, restore, modal } from "__support__/cypress";
-
-function typeField(label, value) {
-  cy.findByLabelText(label)
-    .clear()
-    .type(value)
-    .blur();
-}
+import {
+  signInAsAdmin,
+  restore,
+  modal,
+  typeAndBlurUsingLabel,
+} from "__support__/cypress";
 
 function addMongoDatabase() {
   cy.visit("/admin/databases/create");
@@ -16,8 +14,8 @@ function addMongoDatabase() {
   cy.contains("MongoDB").click({ force: true });
   cy.contains("Additional Mongo connection");
 
-  typeField("Name", "MongoDB");
-  typeField("Database name", "admin");
+  typeAndBlurUsingLabel("Name", "MongoDB");
+  typeAndBlurUsingLabel("Database name", "admin");
 
   cy.findByText("Save")
     .should("not.be.disabled")

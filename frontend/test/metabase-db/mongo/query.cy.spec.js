@@ -5,28 +5,38 @@ import {
   signInAsNormalUser,
 } from "__support__/cypress";
 
-function typeField(label, value) {
-  cy.findByLabelText(label)
-    .clear()
-    .type(value)
-    .blur();
-}
-
 function addMongoDatabase() {
-  cy.visit("/admin/databases/create");
-  cy.contains("Database type")
-    .closest(".Form-field")
-    .find("a")
-    .click();
-  cy.contains("MongoDB").click({ force: true });
-  cy.contains("Additional Mongo connection");
-
-  typeField("Name", "MongoDB");
-  typeField("Database name", "admin");
-
-  cy.findByText("Save")
-    .should("not.be.disabled")
-    .click();
+  cy.request("POST", "/api/database", {
+    engine: "mongo",
+    name: "MongoDB",
+    details: {
+      host: "localhost",
+      dbname: "admin",
+      port: 27017,
+      user: null,
+      pass: null,
+      authdb: null,
+      "additional-options": null,
+      "use-srv": false,
+      "tunnel-enabled": false,
+    },
+    auto_run_queries: true,
+    is_full_sync: true,
+    schedules: {
+      cache_field_values: {
+        schedule_day: null,
+        schedule_frame: null,
+        schedule_hour: 0,
+        schedule_type: "daily",
+      },
+      metadata_sync: {
+        schedule_day: null,
+        schedule_frame: null,
+        schedule_hour: null,
+        schedule_type: "hourly",
+      },
+    },
+  });
 }
 
 describe("mongodb > user > query", () => {
@@ -60,7 +70,7 @@ describe("mongodb > user > query", () => {
     cy.contains("1");
   });
 
-  it.only("can save a native MongoDB query", () => {
+  it("can save a native MongoDB query", () => {
     cy.server();
     cy.route("POST", "/api/card").as("createQuestion");
 
