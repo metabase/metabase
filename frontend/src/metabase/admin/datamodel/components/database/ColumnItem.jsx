@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link, withRouter } from "react-router";
+import { Box, Flex } from "grid-styled";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/components/Select";
@@ -60,25 +61,23 @@ export default class Column extends Component {
               value={this.props.field.display_name || ""}
               onBlurChange={this.handleChangeName}
             />
-            <div className="clearfix">
-              <div className="flex flex-auto">
-                <div className="flex-auto pl1">
+            <Flex>
+              <Flex>
+                <Flex className="pl1">
                   <FieldVisibilityPicker
-                    className="block"
                     field={field}
                     updateField={this.updateField}
                   />
-                </div>
-                <div className="flex-auto px1">
+                </Flex>
+                <Flex className="px1">
                   <SpecialTypeAndTargetPicker
-                    className="block"
                     field={field}
                     updateField={this.updateField}
                     idfields={idfields}
                   />
-                </div>
-              </div>
-            </div>
+                </Flex>
+              </Flex>
+            </Flex>
           </div>
           <div className="MetadataTable-title flex flex-column flex-full bordered rounded mt1 mr1">
             <InputBlurChange
@@ -210,7 +209,7 @@ export class SpecialTypeAndTargetPicker extends Component {
     );
 
     return (
-      <div>
+      <Flex className="align-center">
         <Select
           className={cx("TableEditor-field-special-type mt0", className)}
           value={field.special_type}
@@ -264,7 +263,7 @@ export class SpecialTypeAndTargetPicker extends Component {
             optionIconFn={field => null}
           />
         )}
-      </div>
+      </Flex>
     );
   }
 }
