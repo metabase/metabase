@@ -3,6 +3,7 @@ import React from "react";
 import { t } from "ttag";
 import _ from "underscore";
 import cx from "classnames";
+import { Flex } from "grid-styled";
 
 import SelectButton from "metabase/components/SelectButton";
 import Select from "metabase/components/Select";
@@ -253,15 +254,16 @@ export default class FieldRemapping extends React.Component {
       hasFKMappingValue && fields[field.dimensions.human_readable_field_id];
 
     return (
-      <div>
+      <Flex className="align-center">
         <Select
           value={mappingType}
           onChange={this.handleChangeMappingType}
           options={this.getAvailableMappingTypes()}
           optionValueFn={o => o}
+          className="inline-block"
         />
         {mappingType === MAP_OPTIONS.foreign && [
-          <SelectSeparator key="foreignKeySeparator" />,
+          <SelectSeparator classname="flex" key="foreignKeySeparator" />,
           <PopoverWithTrigger
             ref="fkPopover"
             triggerElement={
@@ -296,7 +298,7 @@ export default class FieldRemapping extends React.Component {
             />
           </PopoverWithTrigger>,
           dismissedInitialFkTargetPopover && (
-            <div className="text-error my2">{t`Please select a column to use for display.`}</div>
+            <div className="text-error ml2">{t`Please select a column to use for display.`}</div>
           ),
           hasChanged && hasFKMappingValue && <RemappingNamingTip />,
         ]}
@@ -309,7 +311,7 @@ export default class FieldRemapping extends React.Component {
             />
           </div>
         )}
-      </div>
+      </Flex>
     );
   }
 }

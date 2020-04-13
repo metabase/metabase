@@ -250,7 +250,7 @@ export class SpecialTypeAndTargetPicker extends Component {
         {showFKTargetSelect && selectSeparator}
         {showFKTargetSelect && (
           <Select
-            className={cx("TableEditor-field-target text-wrap", className)}
+            className={cx("TableEditor-field-target text-wrap mt0", className)}
             placeholder={t`Select a target`}
             searchProp="name"
             value={field.fk_target_field_id}
