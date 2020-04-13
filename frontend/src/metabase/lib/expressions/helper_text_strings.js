@@ -235,17 +235,9 @@ const helperTextStrings = [
   },
   {
     name: "replace",
-    structure:
-      "replace(" +
-      t`text` +
-      ", " +
-      t`find` +
-      ", " +
-      t`replace` +
-      ")",
+    structure: "replace(" + t`text` + ", " + t`find` + ", " + t`replace` + ")",
     description: t`Replaces a part of the input text with new text.`,
-    example:
-      "replace([" + t`Title` + '] , "Enormous", "Gigantic")',
+    example: "replace([" + t`Title` + '] , "Enormous", "Gigantic")',
     args: [
       {
         name: t`text`,
