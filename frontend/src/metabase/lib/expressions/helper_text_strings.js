@@ -239,31 +239,25 @@ const helperTextStrings = [
       "replace(" +
       t`text` +
       ", " +
-      t`position` +
+      t`find` +
       ", " +
-      t`length` +
-      ", " +
-      t`new_text` +
+      t`replace` +
       ")",
     description: t`Replaces a part of the input text with new text.`,
     example:
-      "replace([" + t`Order ID` + "] , 8, 3, [" + t`Updated Part of ID` + "] )",
+      "replace([" + t`Title` + '] , "Enormous", "Gigantic")',
     args: [
       {
         name: t`text`,
         description: t`The text that will be modified.`,
       },
       {
-        name: t`position`,
-        description: t`The position where the replacing will start.`,
+        name: t`find`,
+        description: t`The text to find.`,
       },
       {
-        name: t`length`,
-        description: t`The number of characters to replace.`,
-      },
-      {
-        name: t`new_text`,
-        description: t`The text to use in the replacement.`,
+        name: t`replace`,
+        description: t`The text to replace with.`,
       },
     ],
   },
