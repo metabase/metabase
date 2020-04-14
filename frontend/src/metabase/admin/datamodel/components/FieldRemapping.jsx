@@ -255,7 +255,7 @@ export default class FieldRemapping extends React.Component {
 
     return (
       <div>
-        <Flex className="align-center">
+        <Flex align="center">
           <Select
             value={mappingType}
             onChange={this.handleChangeMappingType}
