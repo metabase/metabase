@@ -10,6 +10,7 @@
              [collection :refer [Collection]]
              [permissions :as perms]
              [permissions-group :as group]]
+            [metabase.query-processor.middleware.results-metadata :as results-metadata]
             [metabase.query-processor.util :as qputil]
             [metabase.sync.analyze.query-results :as qr]
             [metabase.test.data.users :as users]
