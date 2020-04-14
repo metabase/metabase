@@ -249,14 +249,15 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest expressions+joins-test
-  (datasets/test-drivers (mt/normal-drivers-with-feature :expressions)
+  (datasets/test-drivers (mt/normal-drivers-with-feature :expressions :left-join)
     (testing "Do calculated columns play well with joins"
-      (is (= "Quentin Sören"
+      (is (= "Simcha Yan"
              (-> (mt/run-mbql-query checkins
                    {:expressions {:prev_month [:+ $date [:interval -31 :day]]}
                     :fields      [[:joined-field "users__via__user_id" [:field-id (data/id :users :name)]]
                                   [:expression :prev_month]]
                     :limit       1
+                    :order-by    [[:asc $date]]
                     :joins       [{:strategy :left-join
                                    :source-table (data/id :users)
                                    :alias        "users__via__user_id"

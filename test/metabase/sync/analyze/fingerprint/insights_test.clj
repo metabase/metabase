@@ -117,3 +117,15 @@
   (transduce identity
              (insights [{:base_type :type/DateTime} {:base_type :type/Number} {:base_type :type/Number}])
              ts))
+
+(deftest change-test
+  (is (= 0.0 (change 1 1)))
+  (is (= -0.5 (change 1 2)))
+  (is (= 1.0 (change 2 1)))
+  (is (= nil (change 1 0)))
+  (is (= -1.0 (change 0 1)))
+  (is (= 2.0 (change 1 -1)))
+  (is (= -2.0 (change -1 1)))
+  (is (= 1.0 (change -1 -2)))
+  (is (= nil (change -1 0)))
+  (is (= 1.0 (change 0 -1))))
