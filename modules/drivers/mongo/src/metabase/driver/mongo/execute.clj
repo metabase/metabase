@@ -68,7 +68,7 @@
                     (vec (for [k projections]
                            (get unescape-map k k))))})))
 
-(defn- result-metadata [{:keys [mbql?]} unescaped-col-names]
+(defn- result-metadata [unescaped-col-names]
   {:cols (vec (for [col-name unescaped-col-names]
                 {:name col-name}))})
 
@@ -148,7 +148,7 @@
           {row-col-names       :row
            unescaped-col-names :unescaped} (result-col-names native-query (row-keys first-row))]
       (log/tracef "Renaming columns in results %s -> %s" (pr-str row-col-names) (pr-str unescaped-col-names))
-      (respond (result-metadata native-query unescaped-col-names)
+      (respond (result-metadata unescaped-col-names)
                (if-not first-row
                  []
                  (reducible-rows context cursor first-row (post-process-row native-query row-col-names)))))
