@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link, withRouter } from "react-router";
-import { Box, Flex } from "grid-styled";
+import { Flex } from "grid-styled";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/components/Select";
