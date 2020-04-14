@@ -1,7 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link, withRouter } from "react-router";
-import { Flex } from "grid-styled";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/components/Select";
@@ -61,23 +60,25 @@ export default class Column extends Component {
               value={this.props.field.display_name || ""}
               onBlurChange={this.handleChangeName}
             />
-            <Flex>
-              <Flex>
-                <Flex className="pl1">
+            <div className="clearfix">
+              <div className="flex flex-auto">
+                <div className="pl1 flex-auto">
                   <FieldVisibilityPicker
+                    className="block"
                     field={field}
                     updateField={this.updateField}
                   />
-                </Flex>
-                <Flex className="px1">
+                </div>
+                <div className="flex-auto px1">
                   <SpecialTypeAndTargetPicker
+                    className="block"
                     field={field}
                     updateField={this.updateField}
                     idfields={idfields}
                   />
-                </Flex>
-              </Flex>
-            </Flex>
+                </div>
+              </div>
+            </div>
           </div>
           <div className="MetadataTable-title flex flex-column flex-full bordered rounded mt1 mr1">
             <InputBlurChange
@@ -209,7 +210,7 @@ export class SpecialTypeAndTargetPicker extends Component {
     );
 
     return (
-      <Flex className="align-center">
+      <div className={cx(selectSeparator ? "flex align-center" : null)}>
         <Select
           className={cx("TableEditor-field-special-type mt0", className)}
           value={field.special_type}
@@ -226,7 +227,11 @@ export class SpecialTypeAndTargetPicker extends Component {
         // handle a "secondary" input more elegantly
         showCurrencyTypeSelect && (
           <Select
-            className={cx("TableEditor-field-target inline-block", className)}
+            className={cx(
+              "TableEditor-field-target inline-block",
+              selectSeparator ? "mt0" : "mt1",
+              className,
+            )}
             value={
               (field.settings && field.settings.currency) ||
               getGlobalSettingsForColumn(field).currency ||
@@ -250,7 +255,11 @@ export class SpecialTypeAndTargetPicker extends Component {
         {showFKTargetSelect && selectSeparator}
         {showFKTargetSelect && (
           <Select
-            className={cx("TableEditor-field-target text-wrap mt0", className)}
+            className={cx(
+              "TableEditor-field-target text-wrap",
+              selectSeparator ? "mt0" : "mt1",
+              className,
+            )}
             placeholder={t`Select a target`}
             searchProp="name"
             value={field.fk_target_field_id}
@@ -263,7 +272,7 @@ export class SpecialTypeAndTargetPicker extends Component {
             optionIconFn={field => null}
           />
         )}
-      </Flex>
+      </div>
     );
   }
 }

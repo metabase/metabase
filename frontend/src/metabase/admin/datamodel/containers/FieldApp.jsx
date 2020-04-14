@@ -299,6 +299,7 @@ const FieldGeneralPane = ({
     <Section>
       <SectionHeader title={t`Field Type`} />
       <SpecialTypeAndTargetPicker
+        className="flex align-center"
         field={field.getPlainObject()}
         updateField={onUpdateFieldProperties}
         idfields={idfields}

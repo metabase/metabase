@@ -254,54 +254,56 @@ export default class FieldRemapping extends React.Component {
       hasFKMappingValue && fields[field.dimensions.human_readable_field_id];
 
     return (
-      <Flex className="align-center">
-        <Select
-          value={mappingType}
-          onChange={this.handleChangeMappingType}
-          options={this.getAvailableMappingTypes()}
-          optionValueFn={o => o}
-          className="inline-block"
-        />
-        {mappingType === MAP_OPTIONS.foreign && [
-          <SelectSeparator classname="flex" key="foreignKeySeparator" />,
-          <PopoverWithTrigger
-            ref="fkPopover"
-            triggerElement={
-              <SelectButton
-                hasValue={hasFKMappingValue}
-                className={cx("flex inline-block no-decoration", {
-                  "border-error": dismissedInitialFkTargetPopover,
-                  "border-dark": !dismissedInitialFkTargetPopover,
-                })}
-              >
-                {fkMappingField ? (
-                  fkMappingField.display_name
-                ) : (
-                  <span className="text-medium">{t`Choose a field`}</span>
-                )}
-              </SelectButton>
-            }
-            isInitiallyOpen={isChoosingInitialFkTarget}
-            onClose={this.onFkPopoverDismiss}
-          >
-            <FieldList
-              className="text-purple"
-              field={fkMappingField}
-              fieldOptions={{
-                count: 0,
-                dimensions: [],
-                fks: this.getForeignKeys(),
-              }}
-              table={table}
-              onFieldChange={this.onForeignKeyFieldChange}
-              hideSingleSectionTitle
-            />
-          </PopoverWithTrigger>,
-          dismissedInitialFkTargetPopover && (
-            <div className="text-error ml2">{t`Please select a column to use for display.`}</div>
-          ),
-          hasChanged && hasFKMappingValue && <RemappingNamingTip />,
-        ]}
+      <div>
+        <Flex className="align-center">
+          <Select
+            value={mappingType}
+            onChange={this.handleChangeMappingType}
+            options={this.getAvailableMappingTypes()}
+            optionValueFn={o => o}
+            className="inline-block"
+          />
+          {mappingType === MAP_OPTIONS.foreign && [
+            <SelectSeparator classname="flex" key="foreignKeySeparator" />,
+            <PopoverWithTrigger
+              ref="fkPopover"
+              triggerElement={
+                <SelectButton
+                  hasValue={hasFKMappingValue}
+                  className={cx("flex inline-block no-decoration", {
+                    "border-error": dismissedInitialFkTargetPopover,
+                    "border-dark": !dismissedInitialFkTargetPopover,
+                  })}
+                >
+                  {fkMappingField ? (
+                    fkMappingField.display_name
+                  ) : (
+                    <span className="text-medium">{t`Choose a field`}</span>
+                  )}
+                </SelectButton>
+              }
+              isInitiallyOpen={isChoosingInitialFkTarget}
+              onClose={this.onFkPopoverDismiss}
+            >
+              <FieldList
+                className="text-purple"
+                field={fkMappingField}
+                fieldOptions={{
+                  count: 0,
+                  dimensions: [],
+                  fks: this.getForeignKeys(),
+                }}
+                table={table}
+                onFieldChange={this.onForeignKeyFieldChange}
+                hideSingleSectionTitle
+              />
+            </PopoverWithTrigger>,
+            dismissedInitialFkTargetPopover && (
+              <div className="text-error ml2">{t`Please select a column to use for display.`}</div>
+            ),
+          ]}
+        </Flex>
+        {hasChanged && hasFKMappingValue && <RemappingNamingTip />}
         {mappingType === MAP_OPTIONS.custom && (
           <div className="mt3">
             {hasChanged && <RemappingNamingTip />}
@@ -311,7 +313,7 @@ export default class FieldRemapping extends React.Component {
             />
           </div>
         )}
-      </Flex>
+      </div>
     );
   }
 }
