@@ -88,4 +88,5 @@
                            (assoc metadata :fingerprint fingerprint)))
                        fingerprints
                        cols)
-        :insights insights}))))
+        :insights (when-not (instance? Throwable insights)
+                    insights)}))))
