@@ -249,7 +249,7 @@ const helperTextStrings = [
       },
       {
         name: t`replace`,
-        description: t`The text to replace with.`,
+        description: t`The text to use as the replacement.`,
       },
     ],
   },
