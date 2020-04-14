@@ -49,7 +49,9 @@
           not-in-expected (set/difference actual-cols expected-cols)]
       (when (seq not-in-expected)
         (throw (ex-info (tru "Unexpected columns in results: {0}" (sort not-in-expected))
-                 {:type error-type/driver}))))))
+                        {:type     error-type/driver
+                         :actual   actual-cols
+                         :expected expected-cols}))))))
 
 (s/defn ^:private result-col-names :- {:row [s/Str], :unescaped [s/Str]}
   "Return column names we can expect in each `:row` of the results, and the `:unescaped` versions we should return in
