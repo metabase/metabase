@@ -29,7 +29,7 @@
       (let [e1 (ex-info "1" {:level 1})
             e2 (ex-info "2" {:level 2, :type error-type/qp} e1)
             e3 (ex-info "3" {:level 3} e2)]
-        (is (= {:status     :failed,
+        (is (= {:status     :failed
                 :class      clojure.lang.ExceptionInfo
                 :error      "1"
                 :stacktrace true
