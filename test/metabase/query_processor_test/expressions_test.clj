@@ -95,14 +95,50 @@
        :limit       3
        :order-by    [[:desc [:expression :x]]]})))
 
-;; Can we AGGREGATE + BREAKOUT by an EXPRESSION?
-(datasets/expect-with-drivers (mt/normal-drivers-with-feature :expressions)
-  [[2 22] [4 59] [6 13] [8 6]]
-  (mt/formatted-rows [int int]
-    (mt/run-mbql-query venues
-      {:expressions {:x [:* $price 2.0]}
-       :aggregation [[:count]]
-       :breakout    [[:expression :x]]})))
+(deftest aggregate+breakout-by-expression-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (is (= [[2 22] [4 59] [6 13] [8 6]]
+           (mt/formatted-rows [int int]
+             (mt/run-mbql-query venues
+               {:expressions {:x [:* $price 2.0]}
+                :aggregation [[:count]]
+                :breakout    [[:expression :x]]}))))))
+
+(deftest use-expressions-in-aggregations-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (is (= [[406]]
+           (mt/formatted-rows [int]
+             (mt/run-mbql-query venues
+               {:expressions {:x [:* $price 2.0]}
+                :aggregation [[:sum [:expression :x]]]}))))
+    (testing "Can we refer to expressions in nested queries"
+      (is (= [[406]]
+             (mt/formatted-rows [int]
+               (mt/run-mbql-query venues
+                 {:source-query {:source-table (data/id :venues)
+                                 :expressions {:x [:* [:field-id (data/id :venues :price)] 2.0]}}
+                  :aggregation [[:sum [:field-literal "x" :type/Float]]]})))))))
+
+(deftest nesting+use-aggregations-in-expression-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (is (= [[200]]
+           (mt/formatted-rows [int]
+             (mt/run-mbql-query venues
+               {:expressions  {:x [:* [:field-literal "count" :type/Integer] 2]}
+                :fields       [[:expression :x]]
+                :source-query {:source-table (data/id :venues)
+                               :aggregation  [[:count]]}}))))
+    ;; (is (= [[200]]
+    ;;        (mt/formatted-rows [int]
+    ;;          (mt/run-mbql-query venues
+    ;;            {:expressions  {:x [:* [:field-literal "count" :type/Integer] 2]}
+    ;;             :fields       [[:expression :x]]
+    ;;             :source-query {:source-table (data/id :venues)
+    ;;                            :aggregation  [[:count]]
+    ;;                            :breakout     [[:field-id (data/id :venues :name)]]}
+    ;;             :limit        1}))))
+
+    ))
 
 (deftest expressions-should-include-type-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -268,11 +304,11 @@
     (testing "Do joins where the same field name is present in multiple tables work with expression hoisting"
       (is (= [[1 5 6]]
              (->> (mt/run-mbql-query checkins
-                    {:expressions {:prev_month [:+ [:field-id (data/id :checkins :id)]
+                    {:expressions {:id-sum [:+ [:field-id (data/id :checkins :id)]
                                                 [:joined-field "users__via__user_id" [:field-id (data/id :users :id)]]]}
                      :fields      [[:field-id (data/id :checkins :id)]
                                    [:joined-field "users__via__user_id" [:field-id (data/id :users :id)]]
-                                   [:expression :prev_month]]
+                                   [:expression :id-sum]]
                      :limit       1
                      :order-by    [[:asc [:field-id (data/id :checkins :id)]]]
                      :joins       [{:strategy :left-join

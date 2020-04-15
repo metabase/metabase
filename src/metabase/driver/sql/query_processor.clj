@@ -830,7 +830,7 @@
     (apply-top-level-clauses driver honeysql-form (dissoc inner-query :source-query))))
 
 
-;;; -------------------------------------------- putting it all togetrher --------------------------------------------
+;;; -------------------------------------------- putting it all together --------------------------------------------
 
 (defn- expressions->subselect
   [{:keys [expressions] :as query}]
