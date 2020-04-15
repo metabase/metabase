@@ -209,7 +209,7 @@
   schema + Table name. Used to implement things like `:joined-field`s."
   nil)
 
-(def ^:dynamic *name-aliasing-fn-for-source* {})
+(def ^:dynamic ^:private *name-aliasing-fn-for-source* {})
 
 (defmethod ->honeysql [:sql nil]    [_ _]    nil)
 (defmethod ->honeysql [:sql Object] [_ this] this)
