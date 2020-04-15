@@ -264,4 +264,19 @@
                                    :condition    [:= $user_id
                                                   [:joined-field "users__via__user_id" [:field-id (data/id :users :id)]]]}]})
                  mt/rows
-                 ffirst))))))
+                 ffirst))))
+    (testing "Do joins where the same field name is present in multiple tables work with expression hoisting"
+      (is (= [1 2 5]
+             (->> (mt/run-mbql-query checkins
+                    {:expressions {:prev_month [:+ [:field-id (data/id :checkins :id)]
+                                                [:joined-field "users__via__user_id" [:field-id (data/id :users :id)]]]}
+                     :fields      [[:field-id (data/id :checkins :id)]
+                                   [:joined-field "users__via__user_id" [:field-id (data/id :users :id)]]
+                                   [:expression :prev_month]]
+                     :limit       1
+                     :joins       [{:strategy :left-join
+                                    :source-table (data/id :users)
+                                    :alias        "users__via__user_id"
+                                    :condition    [:= $user_id
+                                                   [:joined-field "users__via__user_id" [:field-id (data/id :users :id)]]]}]})
+                  (mt/formatted-rows [int int int])))))))

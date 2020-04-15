@@ -209,6 +209,8 @@
   schema + Table name. Used to implement things like `:joined-field`s."
   nil)
 
+(def ^:dynamic *name-aliasing-fn-for-source* {})
+
 (defmethod ->honeysql [:sql nil]    [_ _]    nil)
 (defmethod ->honeysql [:sql Object] [_ this] this)
 
@@ -242,6 +244,9 @@
                      [*table-alias*]
                      (let [{schema :schema, table-name :name} (qp.store/table table-id)]
                        [schema table-name]))
+        field-name (if-let [aliasing-fn (*name-aliasing-fn-for-source* *table-alias*)]
+                     (aliasing-fn field field-name)
+                     field-name)
         identifier (->honeysql driver (apply hx/identifier :field (concat qualifiers [field-name])))]
     (cast-unix-timestamp-field-if-needed driver field identifier)))
 
@@ -819,7 +824,9 @@
   that table to the `source` alias and handle other clauses. This is done so `field-id` references and the like
   referring to Fields belonging to the Table in the source query work normally."
   [driver honeysql-form {:keys [source-query], :as inner-query}]
-  (binding [*table-alias* source-query-alias]
+  (binding [*table-alias*                 source-query-alias
+            *name-aliasing-fn-for-source* (assoc *name-aliasing-fn-for-source*
+                                            source-query-alias (mbql.u/unique-name-generator))]
     (apply-top-level-clauses driver honeysql-form (dissoc inner-query :source-query))))
 
 
@@ -839,9 +846,8 @@
                               (distinct
                                (mbql.u/match query [(_ :guard #{:field-literal :field-id :joined-field}) & _])))))]
     (-> query
-        ;; TODO -- correctly handle fields in multiple tables with the same name
-        (mbql.u/replace [:joined-field alias field] [:joined-field "source" field])
-        (dissoc :source-table :source-query :joins :expressions :source-metadata)
+        (mbql.u/replace [:joined-field alias field] field)
+        (dissoc :source-table :joins :expressions :source-metadata)
         (assoc :source-query subselect))))
 
 (defn- apply-clauses
