@@ -844,7 +844,8 @@
                                  (mbql.u/replace expression-definition
                                    [:expression expr] (expressions (keyword expr)))])
                               (distinct
-                               (mbql.u/match query [(_ :guard #{:field-literal :field-id :joined-field}) & _])))))]
+                               (mbql.u/match (dissoc query :source-query)
+                                 [(_ :guard #{:field-literal :field-id :joined-field}) & _])))))]
     (-> query
         (mbql.u/replace [:joined-field alias field] field)
         (dissoc :source-table :joins :expressions :source-metadata)

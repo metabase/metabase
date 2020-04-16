@@ -128,17 +128,15 @@
                 :fields       [[:expression :x]]
                 :source-query {:source-table (data/id :venues)
                                :aggregation  [[:count]]}}))))
-    ;; (is (= [[200]]
-    ;;        (mt/formatted-rows [int]
-    ;;          (mt/run-mbql-query venues
-    ;;            {:expressions  {:x [:* [:field-literal "count" :type/Integer] 2]}
-    ;;             :fields       [[:expression :x]]
-    ;;             :source-query {:source-table (data/id :venues)
-    ;;                            :aggregation  [[:count]]
-    ;;                            :breakout     [[:field-id (data/id :venues :name)]]}
-    ;;             :limit        1}))))
-
-    ))
+    (is (= [[2]]
+           (mt/formatted-rows [int]
+             (mt/run-mbql-query venues
+               {:expressions  {:x [:* [:field-literal "count" :type/Integer] 2]}
+                :fields       [[:expression :x]]
+                :source-query {:source-table (data/id :venues)
+                               :aggregation  [[:count]]
+                               :breakout     [[:field-id (data/id :venues :name)]]}
+                :limit        1}))))))
 
 (deftest expressions-should-include-type-test
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
