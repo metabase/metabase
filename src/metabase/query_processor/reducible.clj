@@ -47,6 +47,7 @@
 
 (defn quit
   "Create a special Exception that, when thrown or raised in the QP, will cause `result` to be returned directly.
+  Similar in concept to using `reduced` to stip reduction early.
 
     (context/raisef (qp.reducible/quit :my-result) context)"
   [result]

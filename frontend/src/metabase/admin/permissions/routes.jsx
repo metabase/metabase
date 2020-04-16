@@ -31,7 +31,7 @@ const getRoutes = store => (
       </Route>
 
       {/* TABLES NO SCHEMA */}
-      {/* NOTE: this route is to support null schemas, inject the empty string as the schemaName */}
+      {/* NOTE: this route is to support null schemas */}
       <Route
         path=":databaseId/tables"
         component={(
@@ -39,7 +39,7 @@ const getRoutes = store => (
         ) => (
           <TablesPermissionsApp
             {...props}
-            params={{ ...props.params, schemaName: "" }}
+            params={{ ...props.params, schemaName: null }}
           />
         )}
       >

@@ -170,6 +170,11 @@ executors:
           ACCEPT_EULA: Y
           SA_PASSWORD: 'P@ssw0rd'
 
+  fe-mongo:
+    working_directory: /home/circleci/metabase/metabase/
+    docker:
+      - image: circleci/clojure:lein-2.8.1-node-browsers
+      - image: circleci/mongo:4.0
 
 
 ########################################################################################################################
@@ -279,6 +284,13 @@ jobs:
             done;
             echo `md5sum yarn.lock` >> frontend-checksums.txt
             echo `md5sum webpack.config.js` >> frontend-checksums.txt
+      # As well as driver modules (database drivers)
+      - run:
+          name: Generate checksums of all driver module source files to use as Uberjar cache key
+          command: >
+            for file in `find ./modules -type f | sort`;
+              do echo `md5sum $file` >> modules-checksums.txt;
+            done;
       - run:
           name: Save last git commit message
           command: git log -1 --oneline > commit.txt
@@ -530,18 +542,18 @@ jobs:
       - restore-be-deps-cache
       - restore_cache:
           keys:
-            - uberjar-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
+            - uberjar-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
       - run:
           name: Build uberjar if needed
           command: >
             if [ ! -f './target/uberjar/metabase.jar' ];
-              then ./bin/build version frontend uberjar;
+              then ./bin/build version frontend drivers uberjar;
             fi
           no_output_timeout: 5m
       - store_artifacts:
           path: /home/circleci/metabase/metabase/target/uberjar/metabase.jar
       - save_cache:
-          key: uberjar-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}
+          key: uberjar-{{ checksum "./backend-checksums.txt" }}-{{ checksum "./frontend-checksums.txt" }}-{{ checksum "./modules-checksums.txt" }}
           paths:
             - /home/circleci/metabase/metabase/target/uberjar/metabase.jar
 
@@ -560,11 +572,24 @@ jobs:
                 command: ./bin/build version
 
   fe-tests-cypress:
-    executor: clojure-and-node
+    parameters:
+      e:
+        type: executor
+        default: clojure-and-node
+      only-single-database:
+        type: boolean
+        default: false
+      test-files-location:
+        type: string
+        default: ""
+      driver:
+        type: string
+        default: ""
+    executor: << parameters.e >>
     steps:
       - run-yarn-command:
           command-name: Run Cypress tests
-          command: run test-cypress-no-build
+          command: run test-cypress-no-build <<# parameters.only-single-database >> --testFiles << parameters.test-files-location >> <</ parameters.only-single-database >>
           before-steps:
             - restore_cache:
                 keys:
@@ -851,6 +876,16 @@ workflows:
           requires:
             - build-uberjar
             - fe-deps
+
+      - fe-tests-cypress:
+          name: fe-tests-cypress-mongo
+          requires:
+            - build-uberjar
+            - fe-deps
+          e: fe-mongo
+          driver: mongo
+          only-single-database: true
+          test-files-location: frontend/test/metabase-db/mongo
 
       - deploy-master:
           requires:

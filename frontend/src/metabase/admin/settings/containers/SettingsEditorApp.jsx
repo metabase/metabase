@@ -109,6 +109,7 @@ export default class SettingsEditorApp extends Component {
     const { settings, updateSetting } = this.props;
     const setting = _.findWhere(settings, { key });
     if (!setting) {
+      console.error(`Attempted to change unknown setting ${key}`);
       throw new Error(t`Unknown setting ${key}`);
     }
     return updateSetting({ ...setting, value });

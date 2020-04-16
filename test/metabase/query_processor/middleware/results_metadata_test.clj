@@ -2,6 +2,7 @@
   (:require [clojure.test :refer :all]
             [metabase
              [query-processor :as qp]
+             [test :as mt]
              [util :as u]]
             [metabase.mbql.schema :as mbql.s]
             [metabase.models
@@ -11,17 +12,17 @@
              [permissions-group :as group]]
             [metabase.query-processor.middleware.results-metadata :as results-metadata]
             [metabase.query-processor.util :as qputil]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
+            [metabase.sync.analyze.query-results :as qr]
             [metabase.test.data.users :as users]
             [metabase.test.mock.util :as mutil]
-            [metabase.util.encryption :as encrypt]
-            [toucan.db :as db]
-            [toucan.util.test :as tt]))
+            [metabase.test.util :as tu]
+            [metabase.util
+             [encryption :as encrypt]
+             [schema :as su]]
+            [toucan.db :as db]))
 
 (defn- native-query [sql]
-  {:database (data/id)
+  {:database (mt/id)
    :type     :native
    :native   {:query sql}})
 
@@ -29,9 +30,9 @@
   (db/select-one-field :result_metadata Card :id (u/get-id card)))
 
 (defn- round-to-2-decimals
-  "Defaults `tu/round-all-decimals` to 2 digits"
+  "Defaults `mt/round-all-decimals` to 2 digits"
   [data]
-  (tu/round-all-decimals 2 data))
+  (mt/round-all-decimals 2 data))
 
 (def ^:private default-card-results
   [{:name         "ID",      :display_name "ID", :base_type "type/BigInteger",
@@ -54,7 +55,7 @@
 
 (deftest save-result-metadata-test
   (testing "test that Card result metadata is saved after running a Card"
-    (tt/with-temp Card [card]
+    (mt/with-temp Card [card]
       (let [result (qp/process-userland-query
                     (assoc (native-query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES")
                            :info {:card-id    (u/get-id card)
@@ -65,7 +66,7 @@
              (-> card card-metadata round-to-2-decimals tu/round-fingerprint-cols)))))
 
   (testing "check that using a Card as your source doesn't overwrite the results metadata..."
-    (tt/with-temp Card [card {:dataset_query   (native-query "SELECT * FROM VENUES")
+    (mt/with-temp Card [card {:dataset_query   (native-query "SELECT * FROM VENUES")
                               :result_metadata [{:name "NAME", :display_name "Name", :base_type "type/Text"}]}]
       (let [result (qp/process-userland-query {:database mbql.s/saved-questions-virtual-database-id
                                                :type     :query
@@ -76,7 +77,7 @@
              (card-metadata card)))))
 
   (testing "...even when running via the API endpoint"
-    (tt/with-temp* [Collection [collection]
+    (mt/with-temp* [Collection [collection]
                     Card       [card {:collection_id   (u/get-id collection)
                                       :dataset_query   (native-query "SELECT * FROM VENUES")
                                       :result_metadata [{:name "NAME", :display_name "Name", :base_type "type/Text"}]}]]
@@ -154,7 +155,7 @@
             :columns  (for [col default-card-results-native]
                         (-> col (update :special_type keyword) (update :base_type keyword)))}
            (-> (qp/process-userland-query
-                {:database (data/id)
+                {:database (mt/id)
                  :type     :native
                  :native   {:query "SELECT ID, NAME, PRICE, CATEGORY_ID, LATITUDE, LONGITUDE FROM VENUES"}})
                (get-in [:data :results_metadata])
@@ -164,13 +165,13 @@
 
 (deftest card-with-datetime-breakout-by-year-test
   (testing "make sure that a Card where a DateTime column is broken out by year works the way we'd expect"
-    (tt/with-temp Card [card]
+    (mt/with-temp Card [card]
       (qp/process-userland-query
-       {:database (data/id)
+       {:database (mt/id)
         :type     :query
-        :query    {:source-table (data/id :checkins)
+        :query    {:source-table (mt/id :checkins)
                    :aggregation  [[:count]]
-                   :breakout     [[:datetime-field [:field-id (data/id :checkins :date)] :year]]}
+                   :breakout     [[:datetime-field [:field-id (mt/id :checkins :date)] :year]]}
         :info     {:card-id    (u/get-id card)
                    :query-hash (qputil/query-hash {})}})
       (is (= [{:base_type    "type/DateTime"
@@ -191,3 +192,16 @@
                  card-metadata
                  round-to-2-decimals
                  tu/round-fingerprint-cols))))))
+
+(deftest valid-results-metadata-test
+  (mt/test-drivers (mt/normal-drivers)
+    (letfn [(results-metadata [query]
+              (-> (qp/process-query query) :data :results_metadata :columns))]
+      (testing "MBQL queries should come back with valid results metadata"
+
+        (is (schema= (su/non-empty qr/ResultsMetadata)
+                     (results-metadata (mt/query venues)))))
+
+      (testing "Native queries should come back with valid results metadata (#12265)"
+        (is (schema= (su/non-empty qr/ResultsMetadata)
+                     (results-metadata (-> (mt/mbql-query venues) qp/query->native mt/native-query))))))))

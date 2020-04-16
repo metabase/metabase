@@ -428,6 +428,14 @@
                     :params ["Red Medicine"]}}))
       ":native :params shouldn't get normalized."))
 
+(deftest normalize-projections-test
+  (testing "Native :projections shouldn't get normalized."
+    (is (= {:type   :native
+            :native {:projections ["_id" "name" "category_id" "latitude" "longitude" "price"]}}
+           (#'normalize/normalize-tokens
+            {:type   :native
+             :native {:projections ["_id" "name" "category_id" "latitude" "longitude" "price"]}})))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  CANONICALIZE                                                  |

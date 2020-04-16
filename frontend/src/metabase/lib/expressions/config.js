@@ -177,7 +177,7 @@ export const MBQL_CLAUSES = {
     multiple: true,
   },
   replace: {
-    displayName: `substitute`,
+    displayName: `replace`,
     type: "string",
     args: ["string", "string", "string"],
   },

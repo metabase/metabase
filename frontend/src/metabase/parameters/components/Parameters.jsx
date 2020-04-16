@@ -71,10 +71,14 @@ export default class Parameters extends Component {
         const queryParam = query && query[parameter.slug];
         if (queryParam != null || parameter.default != null) {
           let value = queryParam != null ? queryParam : parameter.default;
-          if (parameter.hasOnlyFieldTargets && value && !Array.isArray(value)) {
-            // FieldValuesWidget always produces an array. If this param has
-            // only field targets we'll use that widget, so we should start with
-            // an array to match.
+
+          // ParameterValueWidget uses FieldValuesWidget if there's no available
+          // date widget and all targets are fields. This matches that logic.
+          const willUseFieldValuesWidget =
+            parameter.hasOnlyFieldTargets && !/^date\//.test(parameter.type);
+          if (willUseFieldValuesWidget && value && !Array.isArray(value)) {
+            // FieldValuesWidget always produces an array. If we'll use that
+            // widget, we should start with an array to match.
             value = [value];
           }
           const fieldIds = parameter.field_ids || [];
