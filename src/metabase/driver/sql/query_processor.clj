@@ -209,7 +209,10 @@
   schema + Table name. Used to implement things like `:joined-field`s."
   nil)
 
-(def ^:dynamic ^:private *name-aliasing-fn-for-source* {})
+(def ^:dynamic ^:private *name-store*
+  "Record of all field aliases introduced via `as`. Used to correctly reference fields in nested queries.
+  Dynamic so we can have a fresh instance for each query."
+  nil)
 
 (defmethod ->honeysql [:sql nil]    [_ _]    nil)
 (defmethod ->honeysql [:sql Object] [_ this] this)
@@ -238,15 +241,13 @@
   identifier)
 
 (defmethod ->honeysql [:sql (class Field)]
-  [driver {field-name :name, table-id :table_id, :as field}]
+  [driver {field-name :name, table-id :table_id, field-id :id :as field}]
   ;; `indentifer` will automatically unnest nested calls to `identifier`
   (let [qualifiers (if *table-alias*
                      [*table-alias*]
                      (let [{schema :schema, table-name :name} (qp.store/table table-id)]
                        [schema table-name]))
-        field-name (if-let [aliasing-fn (*name-aliasing-fn-for-source* *table-alias*)]
-                     (aliasing-fn field field-name)
-                     field-name)
+        field-name (@*name-store* field-id field-name)
         identifier (->honeysql driver (apply hx/identifier :field (concat qualifiers [field-name])))]
     (cast-unix-timestamp-field-if-needed driver field identifier)))
 
@@ -260,7 +261,8 @@
 
 (defmethod ->honeysql [:sql :joined-field]
   [driver [_ alias field]]
-  (binding [*table-alias* alias]
+  (binding [*table-alias* alias
+            *name-store*  (atom {})]
     (->honeysql driver field)))
 
 ;; (p.types/defrecord+ AtTimezone [expr timezone-id]
@@ -480,7 +482,7 @@
 ;;; |                                            Field Aliases (AS Forms)                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn field-clause->alias
+(defn- field-clause->alias
   "Generate HoneySQL for an approriate alias (e.g., for use with SQL `AS`) for a Field clause of any type, or `nil` if
   the Field should not be aliased (e.g. if `field->alias` returns `nil`).
 
@@ -495,7 +497,7 @@
                       [:expression-definition expression-name _] expression-name
                       [:field-literal field-name _]              field-name
                       [:field-id id]                             (field->alias driver (qp.store/field id)))]
-     (->honeysql driver (hx/identifier :field-alias (unique-name-fn alias))))))
+     (unique-name-fn alias))))
 
 (defn as
   "Generate HoneySQL for an `AS` form (e.g. `<form> AS <field>`) using the name information of a `field-clause`. The
@@ -519,7 +521,13 @@
   ([driver field-clause unique-name-fn]
    (let [honeysql-form (->honeysql driver field-clause)]
      (if-let [alias (field-clause->alias driver field-clause unique-name-fn)]
-       [honeysql-form alias]
+       (do
+         (when-let [field-id (case (first field-clause)
+                               :field-id     (second field-clause)
+                               :joined-field (get-in field-clause [2 1])
+                               nil)]
+           (swap! *name-store* assoc field-id alias))
+         [honeysql-form (->honeysql driver (hx/identifier :field-alias alias))])
        honeysql-form))))
 
 
@@ -824,9 +832,7 @@
   that table to the `source` alias and handle other clauses. This is done so `field-id` references and the like
   referring to Fields belonging to the Table in the source query work normally."
   [driver honeysql-form {:keys [source-query], :as inner-query}]
-  (binding [*table-alias*                 source-query-alias
-            *name-aliasing-fn-for-source* (assoc *name-aliasing-fn-for-source*
-                                            source-query-alias (mbql.u/unique-name-generator))]
+  (binding [*table-alias* source-query-alias]
     (apply-top-level-clauses driver honeysql-form (dissoc inner-query :source-query))))
 
 
@@ -837,15 +843,16 @@
   (let [subselect (-> query
                       (select-keys [:joins :source-table :source-query :source-metadata])
                       (assoc :fields
-                             (concat
-                              (for [[expression-name expression-definition] expressions]
-                                [:expression-definition
-                                 (name expression-name)
-                                 (mbql.u/replace expression-definition
-                                   [:expression expr] (expressions (keyword expr)))])
-                              (distinct
-                               (mbql.u/match (dissoc query :source-query)
-                                 [(_ :guard #{:field-literal :field-id :joined-field}) & _])))))]
+                             (vec
+                              (concat
+                               (for [[expression-name expression-definition] expressions]
+                                 [:expression-definition
+                                  (name expression-name)
+                                  (mbql.u/replace expression-definition
+                                    [:expression expr] (expressions (keyword expr)))])
+                               (distinct
+                                (mbql.u/match (dissoc query :source-query :expressions)
+                                  [(_ :guard #{:field-literal :field-id :joined-field}) & _]))))))]
     (-> query
         (mbql.u/replace [:joined-field alias field] field)
         (dissoc :source-table :joins :expressions :source-metadata)
@@ -871,9 +878,10 @@
 (s/defn build-honeysql-form
   "Build the HoneySQL form we will compile to SQL and execute."
   [driver, {inner-query :query} :- su/Map]
-  (u/prog1 (apply-clauses driver {} inner-query)
-    (when-not i/*disable-qp-logging*
-      (log/tracef "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>)))))
+  (binding [*name-store* (atom {})]
+    (u/prog1 (apply-clauses driver {} inner-query)
+      (when-not i/*disable-qp-logging*
+        (log/tracef "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
