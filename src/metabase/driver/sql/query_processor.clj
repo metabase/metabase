@@ -214,6 +214,19 @@
   Dynamic so we can have a fresh instance for each query."
   nil)
 
+(defmacro ^:private with-fresh-namestore
+  [& body]
+  `(binding [*name-store* (atom {})]
+     ~@body))
+
+(defn- name-store
+  [field-id]
+  (some-> *name-store* deref (get field-id)))
+
+(defn- store-alias
+  [field-id alias]
+  (some-> *name-store* deref (swap! assoc field-id alias)))
+
 (defmethod ->honeysql [:sql nil]    [_ _]    nil)
 (defmethod ->honeysql [:sql Object] [_ this] this)
 
@@ -247,7 +260,7 @@
                      [*table-alias*]
                      (let [{schema :schema, table-name :name} (qp.store/table table-id)]
                        [schema table-name]))
-        field-name (@*name-store* field-id field-name)
+        field-name (or (name-store field-id) field-name)
         identifier (->honeysql driver (apply hx/identifier :field (concat qualifiers [field-name])))]
     (cast-unix-timestamp-field-if-needed driver field identifier)))
 
@@ -261,9 +274,9 @@
 
 (defmethod ->honeysql [:sql :joined-field]
   [driver [_ alias field]]
-  (binding [*table-alias* alias
-            *name-store*  (atom {})]
-    (->honeysql driver field)))
+  (binding [*table-alias* alias]
+    (with-fresh-namestore
+      (->honeysql driver field))))
 
 ;; (p.types/defrecord+ AtTimezone [expr timezone-id]
 ;;   PrettyPrintable
@@ -528,7 +541,7 @@
                                :field-id     (second field-clause)
                                :joined-field (get-in field-clause [2 1])
                                nil)]
-           (swap! *name-store* assoc field-id (-> alias :components first)))
+           (store-alias field-id (-> alias :components first)))
          [honeysql-form alias])
        honeysql-form))))
 
@@ -880,7 +893,7 @@
 (s/defn build-honeysql-form
   "Build the HoneySQL form we will compile to SQL and execute."
   [driver, {inner-query :query} :- su/Map]
-  (binding [*name-store* (atom {})]
+  (with-fresh-namestore
     (u/prog1 (apply-clauses driver {} inner-query)
       (when-not i/*disable-qp-logging*
         (log/tracef "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))))))
