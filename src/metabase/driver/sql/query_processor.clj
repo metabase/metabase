@@ -225,7 +225,7 @@
 
 (defn- store-alias
   [field-id alias]
-  (some-> *name-store* deref (swap! assoc field-id alias)))
+  (some-> *name-store* (swap! assoc field-id alias)))
 
 (defmethod ->honeysql [:sql nil]    [_ _]    nil)
 (defmethod ->honeysql [:sql Object] [_ this] this)
