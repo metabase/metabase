@@ -502,17 +502,20 @@
   Optionally pass a state-maintaining `unique-name-fn`, such as `mbql.u/unique-name-generator`, to guarantee that each
   alias generated is unique when generating a sequence of aliases, such as for a `SELECT` clause."
   ([driver field-clause]
-   (field-clause->alias driver field-clause identity))
+   (field-clause->alias driver field-clause nil))
 
   ([driver field-clause unique-name-fn]
-   (some->> (mbql.u/match-one field-clause
-              [:expression expression-name]              expression-name
-              [:expression-definition expression-name _] expression-name
-              [:field-literal field-name _]              field-name
-              [:field-id id]                             (field->alias driver (qp.store/field id)))
-            unique-name-fn
-            (hx/identifier :field-alias)
-            (->honeysql driver))))
+   (let [unique-name-fn (if unique-name-fn
+                          (partial unique-name-fn (mbql.u/match-one field-clause [:field-id id] id))
+                          identity)]
+     (some->> (mbql.u/match-one field-clause
+                [:expression expression-name]              expression-name
+                [:expression-definition expression-name _] expression-name
+                [:field-literal field-name _]              field-name
+                [:field-id id]                             (field->alias driver (qp.store/field id)))
+              unique-name-fn
+              (hx/identifier :field-alias)
+              (->honeysql driver)))))
 
 (defn as
   "Generate HoneySQL for an `AS` form (e.g. `<form> AS <field>`) using the name information of a `field-clause`. The
@@ -531,7 +534,7 @@
   As with `field-clause->alias`, you can pass a `unique-name-fn` to generate unique names for a sequence of aliases,
   such as for a `SELECT` clause."
   ([driver field-clause]
-   (as driver field-clause identity))
+   (as driver field-clause nil))
 
   ([driver field-clause unique-name-fn]
    (let [honeysql-form (->honeysql driver field-clause)]
@@ -863,7 +866,7 @@
                        (mbql.u/replace expression-definition
                          [:expression expr] (expressions (keyword expr)))])
                     (distinct
-                     (mbql.u/match (select-keys query [:aggregation :filter :breakout :fields])
+                     (mbql.u/match (select-keys query [:aggregation :filter :breakout :fields :order-by])
                        [(_ :guard #{:field-literal :field-id :joined-field}) & _]))))
         subselect (-> query
                       (select-keys [:joins :source-table :source-query :source-metadata])
