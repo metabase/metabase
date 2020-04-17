@@ -70,7 +70,7 @@
 (deftest test-case-normalization
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= 116.0 (test-case ["sum" ["case" [[["<" ["field-id" (mt/id :venues :price)] 2] 2]
-                                            [["<" ["field-id" (mt/id :venues :price)] 4] 1]] ]])))))
+                                            [["<" ["field-id" (mt/id :venues :price)] 4] 1]]]])))))
 
 (deftest test-case-expressions
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)

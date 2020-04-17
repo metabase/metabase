@@ -855,19 +855,19 @@
 
 (defn- expressions->subselect
   [{:keys [expressions] :as query}]
-  (let [subselect (-> query
+  (let [fields    (vec
+                   (concat
+                    (for [[expression-name expression-definition] expressions]
+                      [:expression-definition
+                       (name expression-name)
+                       (mbql.u/replace expression-definition
+                         [:expression expr] (expressions (keyword expr)))])
+                    (distinct
+                     (mbql.u/match (select-keys query [:aggregation :filters :breakout :fields :order-by])
+                       [(_ :guard #{:field-literal :field-id :joined-field}) & _]))))
+        subselect (-> query
                       (select-keys [:joins :source-table :source-query :source-metadata])
-                      (assoc :fields
-                             (vec
-                              (concat
-                               (for [[expression-name expression-definition] expressions]
-                                 [:expression-definition
-                                  (name expression-name)
-                                  (mbql.u/replace expression-definition
-                                    [:expression expr] (expressions (keyword expr)))])
-                               (distinct
-                                (mbql.u/match (dissoc query :source-query :expressions)
-                                  [(_ :guard #{:field-literal :field-id :joined-field}) & _]))))))]
+                      (assoc :fields fields))]
     (-> query
         (mbql.u/replace [:joined-field alias field] field)
         (dissoc :source-table :joins :expressions :source-metadata)
