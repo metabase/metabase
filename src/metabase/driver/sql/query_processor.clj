@@ -863,7 +863,7 @@
                        (mbql.u/replace expression-definition
                          [:expression expr] (expressions (keyword expr)))])
                     (distinct
-                     (mbql.u/match (select-keys query [:aggregation :filter :breakout :fields :order-by])
+                     (mbql.u/match (select-keys query [:aggregation :filter :breakout :fields])
                        [(_ :guard #{:field-literal :field-id :joined-field}) & _]))))
         subselect (-> query
                       (select-keys [:joins :source-table :source-query :source-metadata])
