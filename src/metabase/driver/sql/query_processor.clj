@@ -482,7 +482,7 @@
 ;;; |                                            Field Aliases (AS Forms)                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- field-clause->alias
+(defn field-clause->alias
   "Generate HoneySQL for an approriate alias (e.g., for use with SQL `AS`) for a Field clause of any type, or `nil` if
   the Field should not be aliased (e.g. if `field->alias` returns `nil`).
 
@@ -492,12 +492,14 @@
    (field-clause->alias driver field-clause identity))
 
   ([driver field-clause unique-name-fn]
-   (when-let [alias (mbql.u/match-one field-clause
-                      [:expression expression-name]              expression-name
-                      [:expression-definition expression-name _] expression-name
-                      [:field-literal field-name _]              field-name
-                      [:field-id id]                             (field->alias driver (qp.store/field id)))]
-     (unique-name-fn alias))))
+   (some->> (mbql.u/match-one field-clause
+              [:expression expression-name]              expression-name
+              [:expression-definition expression-name _] expression-name
+              [:field-literal field-name _]              field-name
+              [:field-id id]                             (field->alias driver (qp.store/field id)))
+            unique-name-fn
+            (hx/identifier :field-alias)
+            (->honeysql driver))))
 
 (defn as
   "Generate HoneySQL for an `AS` form (e.g. `<form> AS <field>`) using the name information of a `field-clause`. The
@@ -526,8 +528,8 @@
                                :field-id     (second field-clause)
                                :joined-field (get-in field-clause [2 1])
                                nil)]
-           (swap! *name-store* assoc field-id alias))
-         [honeysql-form (->honeysql driver (hx/identifier :field-alias alias))])
+           (swap! *name-store* assoc field-id (-> alias :components first)))
+         [honeysql-form alias])
        honeysql-form))))
 
 
