@@ -1,6 +1,7 @@
 import { signInAsAdmin, restore } from "__support__/cypress";
 
-const ORDERS_URL = "/admin/datamodel/database/1/table/2";
+const SAMPLE_DB_URL = "/admin/datamodel/database/1";
+const ORDERS_URL = `${SAMPLE_DB_URL}/table/2`;
 
 describe("scenarios > admin > datamodel > table", () => {
   beforeEach(() => {
@@ -64,6 +65,11 @@ describe("scenarios > admin > datamodel > table", () => {
 
       cy.reload();
       cy.contains("Technical Data").should("have.class", "text-brand");
+
+      // check that it still appears in the sidebar on the db page
+      cy.visit(SAMPLE_DB_URL);
+      cy.contains("1 Hidden Table");
+      cy.contains("Orders");
     });
 
     function field(name) {
