@@ -26,18 +26,18 @@ import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 
 const listTables = GET("/api/table");
-const listTablesForDatabase = async (...args) =>
+const listTablesForDatabase = async (params, ...args) =>
   // HACK: no /api/database/:dbId/tables endpoint
-  (await GET("/api/database/:dbId/metadata")(...args)).tables.filter(
-    /*
-     * HACK: Right now the endpoint returns all tables regardless of
-     * whether they're hidden. make sure table lists only use non hidden tables
-     * Ideally this should live in the API?
-     */
+  (await GET("/api/database/:dbId/metadata")(params, ...args)).tables.filter(
+    /* HACK: Right now the endpoint returns all tables regardless of whether
+       they're hidden. make sure table lists only use non hidden tables Ideally
+       this should live in the API? The `includeHidden` exception is used in the
+       admin panel where hidden tables are listed separately. */
     t =>
-      t.visibility_type !== "hidden" &&
-      t.visibility_type !== "technical" &&
-      t.visibility_type !== "cruft",
+      params.includeHidden ||
+      (t.visibility_type !== "hidden" &&
+        t.visibility_type !== "technical" &&
+        t.visibility_type !== "cruft"),
   );
 const listTablesForSchema = GET("/api/database/:dbId/schema/:schemaName");
 
