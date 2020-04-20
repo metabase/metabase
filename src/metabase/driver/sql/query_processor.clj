@@ -219,11 +219,11 @@
   `(binding [*name-store* (atom {})]
      ~@body))
 
-(defn- name-store
+(defn- alias-for-field
   [field-id]
   (some-> *name-store* deref (get field-id)))
 
-(defn- store-alias
+(defn- store-field-alias
   [field-id field-alias]
   (some-> *name-store* (swap! assoc field-id field-alias)))
 
@@ -260,7 +260,7 @@
                      [*table-alias*]
                      (let [{schema :schema, table-name :name} (qp.store/table table-id)]
                        [schema table-name]))
-        field-name (or (name-store field-id) field-name)
+        field-name (or (alias-for-field field-id) field-name)
         identifier (->honeysql driver (apply hx/identifier :field (concat qualifiers [field-name])))]
     (cast-unix-timestamp-field-if-needed driver field identifier)))
 
@@ -544,7 +544,7 @@
                                :field-id     (second field-clause)
                                :joined-field (get-in field-clause [2 1])
                                nil)]
-           (store-alias field-id (-> alias :components first)))
+           (store-field-alias field-id (-> alias :components first)))
          [honeysql-form alias])
        honeysql-form))))
 
@@ -858,7 +858,7 @@
 
 (defn- expressions->subselect
   [{:keys [expressions] :as query}]
-  (let [fields    (vec
+  (let [fields    (vec ; lazyness does not play well with dynamic binding
                    (concat
                     (for [[expression-name expression-definition] expressions]
                       [:expression-definition
