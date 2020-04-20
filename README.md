@@ -27,6 +27,7 @@ For more information check out [metabase.com](https://metabase.com/)
 
 - Postgres
 - MySQL
+- TiDB
 - Druid
 - SQL Server
 - Redshift
