@@ -48,7 +48,10 @@ export const loginGoogle = createThunkAction(LOGIN_GOOGLE, function(
       MetabaseAnalytics.trackEvent("Auth", "Google Auth Login");
 
       // TODO: redirect after login (carry user to intended destination)
-      await dispatch(refreshCurrentUser());
+      await Promise.all([
+        dispatch(refreshCurrentUser()),
+        dispatch(refreshSiteSettings()),
+      ]);
       dispatch(push(redirectUrl || "/"));
     } catch (error) {
       await clearGoogleAuthCredentials();
