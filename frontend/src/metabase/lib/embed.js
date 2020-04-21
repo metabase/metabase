@@ -49,7 +49,7 @@ export function initializeEmbedding(store) {
 function sendMessage(message) {
   window.parent.postMessage(
     { metabase: message },
-    MetabaseSettings.get("embedding_app_origin"),
+    MetabaseSettings.get("embedding-app-origin"),
   );
 }
 

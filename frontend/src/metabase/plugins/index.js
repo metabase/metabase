@@ -56,5 +56,7 @@ export const PLUGIN_FORMATTING_HELPERS = {
 };
 
 // selectors that customize behavior between app versions
-export const PLUGIN_SHOW_AUTH_SCENE_SELECTOR = (state, props) => true;
-export const PLUGIN_LOGO_BACKGROUND_SELECTOR = (state, props) => "bg-white";
+export const PLUGIN_SELECTORS = {
+  getShowAuthScene: (state, props) => true,
+  getLogoBackgroundClass: (state, props) => "bg-white",
+};
