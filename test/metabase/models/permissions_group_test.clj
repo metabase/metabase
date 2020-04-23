@@ -7,6 +7,7 @@
              [permissions-group-membership :refer [PermissionsGroupMembership]]
              [user :refer [User]]]
             [metabase.test.data.users :as test-users]
+            [metabase.util :as u]
             [metabase.util.honeysql-extensions :as hx]
             [toucan.db :as db]
             [toucan.util.test :as tt])
@@ -98,9 +99,17 @@
   (tt/with-temp Database [{database-id :id}]
     (group-has-full-access? (:id (perm-group/admin)) (perms/object-path database-id))))
 
+;; (Except for the MetaBot, which doesn't get data permissions)
 (expect
+  false
   (tt/with-temp Database [{database-id :id}]
     (group-has-full-access? (:id (perm-group/metabot)) (perms/object-path database-id))))
+
+;; Attempting to create a data permissions entry for the MetaBot should throw an Exception
+(expect
+  Exception
+  (tt/with-temp Database [{database-id :id}]
+    (db/insert! Permissions :group_id (u/get-id (perm-group/metabot)), :object (perms/object-path database-id))))
 
 
 ;;; -------------- flipping the is_superuser bit should add/remove user from Admin group as appropriate --------------

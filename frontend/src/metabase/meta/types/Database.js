@@ -11,7 +11,10 @@ export type DatabaseFeature =
   | "expression-aggregations"
   | "foreign-keys"
   | "native-parameters"
-  | "expressions";
+  | "nested-queries"
+  | "expressions"
+  | "case-sensitivity-string-filter-options"
+  | "binning";
 
 export type DatabaseDetails = {
   [key: string]: any,

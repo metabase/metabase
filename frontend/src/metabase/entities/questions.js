@@ -1,10 +1,11 @@
 /* @flow */
 
 import { assocIn } from "icepick";
+import { t } from "ttag";
 
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import {
   canonicalCollectionId,
@@ -64,7 +65,7 @@ const Questions = createEntity({
   objectSelectors: {
     getName: question => question && question.name,
     getUrl: question => question && Urls.question(question.id),
-    getColor: () => colors["text-medium"],
+    getColor: () => color("text-medium"),
     getIcon: question =>
       (require("metabase/visualizations").default.get(question.display) || {})
         .iconName || "beaker",
@@ -79,16 +80,34 @@ const Questions = createEntity({
     return state;
   },
 
-  form: {
-    fields: [
-      { name: "name" },
-      { name: "description", type: "text" },
-      {
-        name: "collection_id",
-        title: "Collection",
-        type: "collection",
-      },
-    ],
+  forms: {
+    details: {
+      fields: [
+        { name: "name", title: t`Name` },
+        {
+          name: "description",
+          title: t`Description`,
+          type: "text",
+          placeholder: t`It's optional but oh, so helpful`,
+        },
+        {
+          name: "collection_id",
+          title: t`Collection`,
+          type: "collection",
+        },
+      ],
+    },
+    details_without_collection: {
+      fields: [
+        { name: "name", title: t`Name` },
+        {
+          name: "description",
+          title: t`Description`,
+          type: "text",
+          placeholder: t`It's optional but oh, so helpful`,
+        },
+      ],
+    },
   },
 
   // NOTE: keep in sync with src/metabase/api/card.clj
@@ -107,7 +126,7 @@ const Questions = createEntity({
     "metadata_checksum",
   ],
 
-  getAnalyticsMetadata(action, object, getState) {
+  getAnalyticsMetadata([object], { action }, getState) {
     const type = object && getCollectionType(object.collection_id, getState());
     return type && `collection=${type}`;
   },

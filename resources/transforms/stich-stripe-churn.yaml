@@ -1,0 +1,34 @@
+name: Stripe subscription churn
+requires: Subscriptions
+provides: MonthlyChurn
+steps:
+  SubscriptionsCleanedUp:
+    source: Subscriptions
+    description: Truncate the dates we'll be using
+    expressions:
+      Month: [datetime-field, [dimension, CreationTimestamp], month]
+      StartMonth: [datetime-field, [dimension, CreationTimestamp], month]
+      CancelationMonth: [datetime-field, [dimension, CancelationTimestamp], month]
+  Calendar:
+    source: SubscriptionsCleanedUp
+    description: Build a calendar of all the months we have data for. Note this assumes at least one new subscription each month
+    aggregation:
+      Count: [count]
+    breakout: Month
+  SubscriptionsUnrolled:
+    source: Calendar
+    description: Unroll Subscriptions table so that each month has its own entry (rather than just one per subscription)
+    joins:
+      - source: SubscriptionsCleanedUp
+        strategy: left-join
+        condition: [and, [">=", [dimension, Month], [dimension, SubscriptionsCleanedUp.StartMonth]], [or, ["<=", [dimension, Month], [dimension, SubscriptionsCleanedUp.CancelationMonth]], [is-null, [dimension, SubscriptionsCleanedUp.CancelationMonth]]]]
+  MonthlyChurn:
+    source: SubscriptionsUnrolled
+    description: Calculate per-month statistics
+    breakout: Month
+    aggregation:
+      Churned: [count-where, [=, [dimension, Month], [dimension, CancelationMonth]]]
+      ChurnRate: [share, [=, [dimension, Month], [dimension, CancelationMonth]]]
+      Total: [count-where, [or, ["!=", [dimension, Month], [dimension, CancelationMonth]], [is-null, [dimension, CancelationMonth]]]]
+      TotalCount: [count]
+      New: [min, [dimension, Count]]

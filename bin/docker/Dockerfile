@@ -1,16 +1,10 @@
-FROM openjdk:8-jre-alpine
+FROM adoptopenjdk/openjdk11:alpine-jre
 
 ENV FC_LANG en-US
 ENV LC_CTYPE en_US.UTF-8
 
 # dependencies
-RUN apk add --update bash ttf-dejavu fontconfig
-
-# fix broken cacerts
-RUN apk add --update java-cacerts && \
-    rm -f /usr/lib/jvm/default-jvm/jre/lib/security/cacerts && \
-    ln -s /etc/ssl/certs/java/cacerts /usr/lib/jvm/default-jvm/jre/lib/security/cacerts && \
-    rm -rf /tmp/* /var/cache/apk/*
+RUN apk add --no-cache bash ttf-dejavu fontconfig
 
 # add Metabase jar
 COPY ./metabase.jar /app/
@@ -24,6 +18,11 @@ RUN chmod a+rwx /plugins
 
 # expose our default runtime port
 EXPOSE 3000
+
+# if you have an H2 database that you want to initialize the new Metabase
+# instance with, mount it in the container as a volume that will match the
+# pattern /app/initial*.db:
+# $ docker run ... -v $PWD/metabase.db.mv.db:/app/initial.db.mv.db ...
 
 # run it
 ENTRYPOINT ["/app/run_metabase.sh"]

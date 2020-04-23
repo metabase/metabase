@@ -1,6 +1,6 @@
 /* @flow */
 
-import { t } from "c-3po";
+import { t } from "ttag";
 import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
 import { lineRenderer } from "../lib/LineAreaBarRenderer";
 
@@ -10,7 +10,9 @@ import {
   GRAPH_GOAL_SETTINGS,
   GRAPH_COLORS_SETTINGS,
   GRAPH_AXIS_SETTINGS,
+  GRAPH_DISPLAY_VALUES_SETTINGS,
 } from "../lib/settings/graph";
+import { PLUGIN_CHART_SETTINGS } from "metabase/plugins";
 
 export default class LineChart extends LineAreaBarChart {
   static uiName = t`Line`;
@@ -24,6 +26,8 @@ export default class LineChart extends LineAreaBarChart {
     ...GRAPH_GOAL_SETTINGS,
     ...GRAPH_COLORS_SETTINGS,
     ...GRAPH_AXIS_SETTINGS,
+    ...PLUGIN_CHART_SETTINGS,
+    ...GRAPH_DISPLAY_VALUES_SETTINGS,
   };
 
   static renderer = lineRenderer;

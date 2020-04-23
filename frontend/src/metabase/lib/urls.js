@@ -6,7 +6,7 @@ import Question from "metabase-lib/lib/Question";
 
 export const activity = "/activity";
 
-export const newQuestion = () => "/question/new";
+export const newQuestionFlow = () => "/question/new";
 
 export const newDashboard = collectionId =>
   `collection/${collectionId}/new_dashboard`;
@@ -45,11 +45,17 @@ const flattenParam = ([key, value]) => {
   if (value instanceof Array) {
     return value.map(p => [key, p]);
   }
+
   return [[key, value]];
 };
 
-export function plainQuestion() {
-  return Question.create({ metadata: null }).getUrl();
+export function newQuestion({ mode, ...options } = {}) {
+  const url = Question.create(options).getUrl();
+  if (mode) {
+    return url.replace(/^\/question/, `/question\/${mode}`);
+  } else {
+    return url;
+  }
 }
 
 export function dashboard(dashboardId, { addCardWithId } = {}) {
@@ -108,21 +114,23 @@ export function label(label) {
 }
 
 export function publicQuestion(uuid, type = null) {
-  const siteUrl = MetabaseSettings.get("site_url");
+  const siteUrl = MetabaseSettings.get("site-url");
   return `${siteUrl}/public/question/${uuid}` + (type ? `.${type}` : ``);
 }
 
 export function publicDashboard(uuid) {
-  const siteUrl = MetabaseSettings.get("site_url");
+  const siteUrl = MetabaseSettings.get("site-url");
   return `${siteUrl}/public/dashboard/${uuid}`;
 }
 
 export function embedCard(token, type = null) {
-  return `/embed/question/${token}` + (type ? `.${type}` : ``);
+  const siteUrl = MetabaseSettings.get("site-url");
+  return `${siteUrl}/embed/question/${token}` + (type ? `.${type}` : ``);
 }
 
 export function embedDashboard(token) {
-  return `/embed/dashboard/${token}`;
+  const siteUrl = MetabaseSettings.get("site-url");
+  return `${siteUrl}/embed/dashboard/${token}`;
 }
 
 export function userCollection(userCollectionId) {
@@ -133,9 +141,38 @@ export function accountSettings() {
   return `/user/edit_current`;
 }
 
-export function presentationStart(dashboardId) {
-  return `/dashboard/${dashboardId}/present`;
+export function newUser() {
+  return `/admin/people/new`;
 }
-export function presentationSlide(dashboardId, slideIndex) {
-  return `/dashboard/${dashboardId}/present/${slideIndex}`;
+
+export function editUser(userId) {
+  return `/admin/people/${userId}/edit`;
+}
+
+export function resetPassword(userId) {
+  return `/admin/people/${userId}/reset`;
+}
+
+export function newUserSuccess(userId) {
+  return `/admin/people/${userId}/success`;
+}
+
+export function deactivateUser(userId) {
+  return `/admin/people/${userId}/deactivate`;
+}
+
+export function reactivateUser(userId) {
+  return `/admin/people/${userId}/reactivate`;
+}
+
+export function browseDatabase(database) {
+  return `/browse/${database.id}`;
+}
+
+export function browseSchema(table) {
+  return `/browse/${table.db.id}/schema/${table.schema_name}`;
+}
+
+export function browseTable(table) {
+  return `/browse/${table.db.id}/schema/${table.schema_name}`;
 }

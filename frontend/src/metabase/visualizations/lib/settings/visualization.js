@@ -7,10 +7,12 @@ import {
 } from "../settings";
 
 import { getVisualizationRaw } from "metabase/visualizations";
-import { t } from "c-3po";
+import { normalizeFieldRef } from "metabase/lib/dataset";
+import { t } from "ttag";
 
 import type { Settings, SettingDefs, WidgetDef } from "../settings";
 import type { Series } from "metabase/meta/types/Visualization";
+import type { VisualizationSettings } from "metabase/meta/types/Card";
 
 const COMMON_SETTINGS = {
   "card.title": {
@@ -34,10 +36,10 @@ function getSettingDefintionsForSeries(series: ?Series): SettingDefs {
   if (!series) {
     return {};
   }
-  const { CardVisualization } = getVisualizationRaw(series);
+  const { visualization } = getVisualizationRaw(series);
   const definitions = {
     ...COMMON_SETTINGS,
-    ...(CardVisualization.settings || {}),
+    ...(visualization.settings || {}),
   };
   for (const id in definitions) {
     definitions[id].id = id;
@@ -45,8 +47,30 @@ function getSettingDefintionsForSeries(series: ?Series): SettingDefs {
   return definitions;
 }
 
+function normalizeColumnSettings(columnSettings) {
+  const newColumnSettings = {};
+  for (const oldColumnKey of Object.keys(columnSettings)) {
+    const [refOrName, fieldRef] = JSON.parse(oldColumnKey);
+    // if the key is a reference, normalize the mbql syntax
+    const newColumnKey =
+      refOrName === "ref"
+        ? JSON.stringify(["ref", normalizeFieldRef(fieldRef)])
+        : oldColumnKey;
+    newColumnSettings[newColumnKey] = columnSettings[oldColumnKey];
+  }
+  return newColumnSettings;
+}
+
 export function getStoredSettingsForSeries(series: ?Series): Settings {
-  return (series && series[0] && series[0].card.visualization_settings) || {};
+  const storedSettings: VisualizationSettings =
+    (series && series[0] && series[0].card.visualization_settings) || {};
+  if (storedSettings.column_settings) {
+    // normalize any settings stored under old style keys: [ref, [fk->, 1, 2]]
+    storedSettings.column_settings = normalizeColumnSettings(
+      storedSettings.column_settings,
+    );
+  }
+  return storedSettings;
 }
 
 export function getComputedSettingsForSeries(series: ?Series): Settings {

@@ -1,49 +1,38 @@
-import React, { Component } from "react";
+import React from "react";
 import PropTypes from "prop-types";
+import { t } from "ttag";
+
+import ModalContent from "metabase/components/ModalContent";
+import QuestionPicker from "metabase/containers/QuestionPicker";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
-import AddToDashboard from "metabase/questions/containers/AddToDashboard.jsx";
 
-export default class AddToDashSelectQuestionModal extends Component {
-  constructor(props, context) {
-    super(props, context);
-
-    this.state = {
-      error: null,
-    };
-  }
-
+export default class AddToDashSelectQuestionModal extends React.Component {
   static propTypes = {
     dashboard: PropTypes.object.isRequired,
-    cards: PropTypes.array,
-
-    fetchCards: PropTypes.func.isRequired,
     addCardToDashboard: PropTypes.func.isRequired,
     onEditingChange: PropTypes.func.isRequired,
-
     onClose: PropTypes.func.isRequired,
   };
 
-  async componentDidMount() {
-    try {
-      await this.props.fetchCards();
-    } catch (error) {
-      console.error(error);
-      this.setState({ error });
-    }
-  }
-
-  onAdd = cardId => {
+  handleAdd = cardId => {
     this.props.addCardToDashboard({
       dashId: this.props.dashboard.id,
       cardId: cardId,
     });
-    this.props.onEditingChange(true);
+    this.props.onEditingChange(this.props.dashboard);
     this.props.onClose();
     MetabaseAnalytics.trackEvent("Dashboard", "Add Card");
   };
 
   render() {
-    return <AddToDashboard onAdd={this.onAdd} onClose={this.props.onClose} />;
+    return (
+      <ModalContent
+        title={t`Pick a question to add`}
+        onClose={this.props.onClose}
+      >
+        <QuestionPicker onChange={this.handleAdd} />
+      </ModalContent>
+    );
   }
 }

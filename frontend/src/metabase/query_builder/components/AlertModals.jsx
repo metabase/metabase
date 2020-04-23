@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { t, jt, ngettext, msgid } from "c-3po";
+import { t, jt, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
 // components
@@ -16,7 +16,7 @@ import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
 import RetinaImage from "react-retina-image";
 
-import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
+import User from "metabase/entities/users";
 
 // actions
 import { createAlert, deleteAlert, updateAlert } from "metabase/alert/alert";
@@ -368,25 +368,24 @@ export class DeleteAlertSection extends Component {
 
   getConfirmItems() {
     // same as in PulseEdit but with some changes to copy
-    return this.props.alert.channels.map(
-      c =>
-        c.channel_type === "email" ? (
-          <span>{jt`This alert will no longer be emailed to ${(
-            <strong>
-              {(n => ngettext(msgid`${n} address`, `${n} addresses`, n))(
-                c.recipients.length,
-              )}
-            </strong>
-          )}.`}</span>
-        ) : c.channel_type === "slack" ? (
-          <span>{jt`Slack channel ${(
-            <strong>{c.details && c.details.channel}</strong>
-          )} will no longer get this alert.`}</span>
-        ) : (
-          <span>{jt`Channel ${(
-            <strong>{c.channel_type}</strong>
-          )} will no longer receive this alert.`}</span>
-        ),
+    return this.props.alert.channels.map(c =>
+      c.channel_type === "email" ? (
+        <span>{jt`This alert will no longer be emailed to ${(
+          <strong>
+            {(n => ngettext(msgid`${n} address`, `${n} addresses`, n))(
+              c.recipients.length,
+            )}
+          </strong>
+        )}.`}</span>
+      ) : c.channel_type === "slack" ? (
+        <span>{jt`Slack channel ${(
+          <strong>{c.details && c.details.channel}</strong>
+        )} will no longer get this alert.`}</span>
+      ) : (
+        <span>{jt`Channel ${(
+          <strong>{c.channel_type}</strong>
+        )} will no longer receive this alert.`}</span>
+      ),
     );
   }
 
@@ -433,7 +432,10 @@ const AlertModalTitle = ({ text }) => (
   </div>
 );
 
-@connect(state => ({ isAdmin: getUserIsAdmin(state) }), null)
+@connect(
+  state => ({ isAdmin: getUserIsAdmin(state) }),
+  null,
+)
 export class AlertEditForm extends Component {
   props: {
     alertType: AlertType,
@@ -574,7 +576,7 @@ export class AlertEditSchedule extends Component {
   }
 }
 
-@entityListLoader({ entityType: "users" })
+@User.loadList()
 @connect(
   (state, props) => ({
     user: getUser(state),

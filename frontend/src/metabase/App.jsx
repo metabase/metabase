@@ -3,7 +3,9 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import ScrollToTop from "metabase/hoc/ScrollToTop";
-import Navbar from "metabase/nav/containers/Navbar.jsx";
+import Navbar from "metabase/nav/containers/Navbar";
+
+import { IFRAMED, initializeIframeResizer } from "metabase/lib/dom";
 
 import UndoListing from "metabase/containers/UndoListing";
 
@@ -47,6 +49,10 @@ export default class App extends Component {
     hasError: false,
   };
 
+  componentWillMount() {
+    initializeIframeResizer();
+  }
+
   componentDidCatch(error, info) {
     console.error("Error caught in <App>", error, info);
     this.setState({ hasError: true });
@@ -62,7 +68,7 @@ export default class App extends Component {
     return (
       <ScrollToTop>
         <div className="relative">
-          {currentUser && <Navbar location={location} />}
+          {currentUser && !IFRAMED && <Navbar location={location} />}
           {errorPage ? getErrorComponent(errorPage) : children}
           <UndoListing />
         </div>

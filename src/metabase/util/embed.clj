@@ -1,9 +1,7 @@
 (ns metabase.util.embed
   "Utility functions for public links and embedding."
   (:require [buddy.core.codecs :as codecs]
-            [buddy.sign
-             [jwt :as jwt]
-             [util :as buddy-util]]
+            [buddy.sign.jwt :as jwt]
             [cheshire.core :as json]
             [clojure.string :as str]
             [hiccup.core :refer [html]]
@@ -11,7 +9,7 @@
              [public-settings :as public-settings]
              [util :as u]]
             [metabase.models.setting :as setting]
-            [metabase.util.i18n :refer [trs tru]]
+            [metabase.util.i18n :refer [deferred-tru trs tru]]
             [ring.util.codec :as codec]))
 
 ;;; --------------------------------------------- PUBLIC LINKS UTIL FNS ----------------------------------------------
@@ -56,7 +54,8 @@
 ;;; ----------------------------------------------- EMBEDDING UTIL FNS -----------------------------------------------
 
 (setting/defsetting ^:private embedding-secret-key
-  (tru "Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints.")
+  (deferred-tru "Secret key used to sign JSON Web Tokens for requests to `/api/embed` endpoints.")
+  :visibility :admin
   :setter (fn [new-value]
             (when (seq new-value)
               (assert (u/hexadecimal-string? new-value)
@@ -76,9 +75,9 @@
   [^String message]
   (let [{:keys [alg]} (jwt-header message)]
     (when-not alg
-      (throw (Exception. (str (trs "JWT is missing `alg`.")))))
+      (throw (Exception. (trs "JWT is missing `alg`."))))
     (when (= alg "none")
-      (throw (Exception. (str (trs "JWT `alg` cannot be `none`.")))))))
+      (throw (Exception. (trs "JWT `alg` cannot be `none`."))))))
 
 (defn unsign
   "Parse a \"signed\" (base-64 encoded) JWT and return a Clojure representation. Check that the signature is
@@ -90,17 +89,16 @@
       (check-valid-alg message)
       (jwt/unsign message
                   (or (embedding-secret-key)
-                      (throw (ex-info (str (tru "The embedding secret key has not been set.")) {:status-code 400})))
+                      (throw (ex-info (tru "The embedding secret key has not been set.") {:status-code 400})))
                   ;; The library will reject tokens with a created at timestamp in the future, so to account for clock
-                  ;; skew tell the library that "now" is actually two minutes ahead of whatever the system time is so
-                  ;; tokens don't get inappropriately rejected
-                  {:now (+ (buddy-util/now) 120)})
+                  ;; skew tell the library to allow for 60 seconds of leeway
+                  {:leeway 60})
       ;; if `jwt/unsign` throws an Exception rethrow it in a format that's friendlier to our API
       (catch Throwable e
         (throw (ex-info (.getMessage e) {:status-code 400}))))))
 
 (defn get-in-unsigned-token-or-throw
-  "Find KEYSEQ in the UNSIGNED-TOKEN (a JWT token decoded by `unsign`) or throw a 400."
+  "Find `keyseq` in the `unsigned-token` (a JWT token decoded by `unsign`) or throw a 400."
   [unsigned-token keyseq]
   (or (get-in unsigned-token keyseq)
-      (throw (ex-info (str (tru "Token is missing value for keypath") " " keyseq) {:status-code 400}))))
+      (throw (ex-info (tru "Token is missing value for keypath {0}" keyseq) {:status-code 400}))))

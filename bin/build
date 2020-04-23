@@ -34,19 +34,11 @@ frontend-fast() {
 }
 
 translations() {
+    frontend-deps
     echo "Running './bin/i18n/build-translation-resources' to build translation resources..."
     if ! ./bin/i18n/build-translation-resources; then
       echo "Building translation resources failed, please install 'gettext', or build without translations by running './bin/build no-translations'."
       exit 1
-    fi
-}
-
-sample-dataset() {
-    if [ -f resources/sample-dataset.db.mv.db ]; then
-        echo "Sample Dataset already generated."
-    else
-        echo "Running 'lein generate-sample-dataset' to generate the sample dataset..."
-        lein generate-sample-dataset
     fi
 }
 
@@ -61,11 +53,11 @@ uberjar() {
 }
 
 all() {
-    version && translations && frontend && sample-dataset && drivers && uberjar
+    version && translations && frontend && drivers && uberjar
 }
 
 no-translations() {
-    version && frontend && sample-dataset && drivers && uberjar
+    version && frontend && drivers && uberjar
 }
 
 # Default to running all but let someone specify one or more sub-tasks to run instead if desired

@@ -1,17 +1,17 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
-import ColumnItem from "./ColumnItem.jsx";
+import { t } from "ttag";
+import ColumnItem from "./ColumnItem";
 
 export default class ColumnsList extends Component {
   static propTypes = {
-    tableMetadata: PropTypes.object,
+    fields: PropTypes.array,
     idfields: PropTypes.array,
     updateField: PropTypes.func.isRequired,
   };
 
   render() {
-    let { tableMetadata } = this.props;
+    const { fields = [] } = this.props;
     return (
       <div id="ColumnsList" className="my3">
         <h2 className="px1 text-orange">{t`Columns`}</h2>
@@ -26,12 +26,12 @@ export default class ColumnsList extends Component {
           </div>
         </div>
         <ol className="border-top border-bottom">
-          {tableMetadata.fields.map(field => (
+          {fields.map(field => (
             <ColumnItem
               key={field.id}
               field={field}
-              idfields={this.props.idfields}
               updateField={this.props.updateField}
+              idfields={this.props.idfields}
             />
           ))}
         </ol>

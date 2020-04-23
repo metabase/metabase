@@ -5,7 +5,9 @@
             [metabase.models.field :as field :refer [Field]]
             [metabase.query-processor.util :as qp.util]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [date-2 :as u.date]
+             [schema :as su]]
             [schema.core :as s]
             [toucan.db :as db]))
 
@@ -50,17 +52,12 @@
                  identity)
        (filter field-reference?)))
 
-(def ^{:arglists '([field])} periodic-datetime?
-  "Is `field` a periodic datetime (eg. day of month)?"
-  (comp #{:minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year
-          :month-of-year :quarter-of-year}
-        :unit))
-
+;; TODO — this function name is inaccurate, rename to `temporal?`
 (defn datetime?
-  "Is `field` a datetime?"
+  "Does `field` represent a temporal value, i.e. a date, time, or datetime?"
   [field]
-  (and (not (periodic-datetime? field))
-       (or (isa? (:base_type field) :type/DateTime)
+  (and (not ((disj u.date/extract-units :year) (:unit field)))
+       (or (isa? (:base_type field) :type/Temporal)
            (field/unix-timestamp? field))))
 
 (defn- interestingness
@@ -70,11 +67,28 @@
     (some-> fingerprint :global :distinct-count (> 20)) dec
     ((descendants :type/Category) special_type)         inc
     (field/unix-timestamp? field)                       inc
-    (isa? base_type :type/DateTime)                     inc
-    ((descendants :type/DateTime) special_type)         inc
+    (isa? base_type :type/Temporal)                     inc
+    ((descendants :type/Temporal) special_type)         inc
     (isa? special_type :type/CreationTimestamp)         inc
     (#{:type/State :type/Country} special_type)         inc))
 
+(defn- interleave-all
+  [& colls]
+  (lazy-seq
+   (when-not (empty? colls)
+     (concat (map first colls) (apply interleave-all (keep (comp seq rest) colls))))))
+
+(defn- sort-by-interestingness
+  [fields]
+  (->> fields
+       (map #(assoc % :interestingness (interestingness %)))
+       (sort-by interestingness >)
+       (partition-by :interestingness)
+       (mapcat (fn [fields]
+                 (->> fields
+                      (group-by (juxt :base_type :special_type))
+                      vals
+                      (apply interleave-all))))))
 
 (defn interesting-fields
   "Pick out interesting fields and sort them by interestingness."
@@ -83,7 +97,7 @@
        (filter (fn [{:keys [special_type] :as field}]
                  (or (datetime? field)
                      (isa? special_type :type/Category))))
-       (sort-by interestingness >)))
+       sort-by-interestingness))
 
 (defn- candidates-for-filtering
   [fieldset cards]
@@ -160,7 +174,7 @@
                   field/with-targets)]
      (->> dimensions
           remove-unqualified
-          (sort-by interestingness >)
+          sort-by-interestingness
           (take max-filters)
           (reduce
            (fn [dashboard candidate]

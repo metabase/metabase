@@ -3,9 +3,9 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 
-import DatabaseSidebar from "./DatabaseSidebar.jsx";
-import SidebarLayout from "metabase/components/SidebarLayout.jsx";
-import DatabaseDetail from "metabase/reference/databases/DatabaseDetail.jsx";
+import DatabaseSidebar from "./DatabaseSidebar";
+import SidebarLayout from "metabase/components/SidebarLayout";
+import DatabaseDetail from "metabase/reference/databases/DatabaseDetail";
 
 import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
@@ -23,7 +23,10 @@ const mapDispatchToProps = {
   ...actions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class DatabaseDetailContainer extends Component {
   static propTypes = {
     params: PropTypes.object.isRequired,

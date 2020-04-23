@@ -1,10 +1,10 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import styles from "./Legend.css";
-import { t } from "c-3po";
-import Tooltip from "metabase/components/Tooltip.jsx";
+import { t } from "ttag";
+import Tooltip from "metabase/components/Tooltip";
 
-import LegendItem from "./LegendItem.jsx";
+import LegendItem from "./LegendItem";
 
 import cx from "classnames";
 
@@ -20,18 +20,23 @@ export default class LegendVertical extends Component {
   static propTypes = {};
   static defaultProps = {};
 
-  componentDidUpdate() {
+  componentDidUpdate(prevProps, prevState) {
     // Get the bounding rectangle of the chart widget to determine if
     // legend items will overflow the widget area
-    let size = ReactDOM.findDOMNode(this).getBoundingClientRect();
+    const size = ReactDOM.findDOMNode(this).getBoundingClientRect();
 
-    // only check the height. width may flucatuate depending on the browser causing an infinite loop
-    if (this.state.size && size.height !== this.state.size.height) {
+    // check the height, width may flucatuate depending on the browser causing an infinite loop
+    // check overflowCount, because after setting overflowCount the height changes and it causing an infinite loop too
+    if (
+      this.state.size &&
+      size.height !== this.state.size.height &&
+      prevState.overflowCount === this.state.overflowCount
+    ) {
       this.setState({ overflowCount: 0, size });
     } else if (this.state.overflowCount === 0) {
       let overflowCount = 0;
       for (let i = 0; i < this.props.titles.length; i++) {
-        let itemSize = ReactDOM.findDOMNode(
+        const itemSize = ReactDOM.findDOMNode(
           this.refs["item" + i],
         ).getBoundingClientRect();
         if (size.top > itemSize.top || size.bottom < itemSize.bottom) {

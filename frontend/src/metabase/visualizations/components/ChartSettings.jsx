@@ -2,13 +2,13 @@ import React, { Component } from "react";
 import cx from "classnames";
 import { assocIn } from "icepick";
 import _ from "underscore";
-import { t } from "c-3po";
-import Warnings from "metabase/query_builder/components/Warnings.jsx";
+import { t } from "ttag";
+import Warnings from "metabase/query_builder/components/Warnings";
 
 import Button from "metabase/components/Button";
 import Radio from "metabase/components/Radio";
 
-import Visualization from "metabase/visualizations/components/Visualization.jsx";
+import Visualization from "metabase/visualizations/components/Visualization";
 import ChartSettingsWidget from "./ChartSettingsWidget";
 
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
@@ -46,6 +46,9 @@ const withTransientSettingState = ComposedComponent =>
           {...this.props}
           settings={this.state.settings}
           onChange={settings => this.setState({ settings })}
+          onDone={settings =>
+            this.props.onChange(settings || this.state.settings)
+          }
         />
       );
     }
@@ -84,7 +87,7 @@ class ChartSettings extends Component {
   };
 
   handleDone = () => {
-    this.props.onChange(this._getSettings());
+    this.props.onDone(this._getSettings());
     this.props.onClose();
   };
 
@@ -98,30 +101,59 @@ class ChartSettings extends Component {
     );
   }
 
-  render() {
-    const { isDashboard, question, addField, series, children } = this.props;
-    const { currentWidget } = this.state;
+  _getWidgets() {
+    if (this.props.widgets) {
+      return this.props.widgets;
+    } else {
+      const { isDashboard } = this.props;
+      const transformedSeries = this._getTransformedSeries();
 
+      return getSettingsWidgetsForSeries(
+        transformedSeries,
+        this.handleChangeSettings,
+        isDashboard,
+      );
+    }
+  }
+
+  // TODO: move this logic out of the React component
+  _getRawSeries() {
+    const { series } = this.props;
     const settings = this._getSettings();
-
     const rawSeries = assocIn(
       series,
       [0, "card", "visualization_settings"],
       settings,
     );
-
+    return rawSeries;
+  }
+  _getTransformedSeries() {
+    const rawSeries = this._getRawSeries();
     const { series: transformedSeries } = getVisualizationTransformed(
       extractRemappings(rawSeries),
     );
+    return transformedSeries;
+  }
+
+  render() {
+    const {
+      className,
+      question,
+      addField,
+      noPreview,
+      children,
+      setSidebarPropsOverride,
+    } = this.props;
+    const { currentWidget } = this.state;
+
+    const settings = this._getSettings();
+    const widgets = this._getWidgets();
+    const rawSeries = this._getRawSeries();
 
     const widgetsById = {};
-
     const sections = {};
-    for (const widget of getSettingsWidgetsForSeries(
-      transformedSeries,
-      this.handleChangeSettings,
-      isDashboard,
-    )) {
+
+    for (const widget of widgets) {
       widgetsById[widget.id] = widget;
       if (widget.widget && !widget.hidden) {
         sections[widget.section] = sections[widget.section] || [];
@@ -131,18 +163,19 @@ class ChartSettings extends Component {
 
     // Move settings from the "undefined" section in the first tab
     if (sections["undefined"] && Object.values(sections).length > 1) {
-      let extra = sections["undefined"];
+      const extra = sections["undefined"];
       delete sections["undefined"];
       Object.values(sections)[0].unshift(...extra);
     }
 
     const sectionNames = Object.keys(sections);
     const currentSection =
-      this.state.currentSection ||
-      _.find(DEFAULT_TAB_PRIORITY, name => name in sections) ||
-      sectionNames[0];
+      this.state.currentSection && sections[this.state.currentSection]
+        ? this.state.currentSection
+        : _.find(DEFAULT_TAB_PRIORITY, name => name in sections) ||
+          sectionNames[0];
 
-    let widgets;
+    let visibleWidgets;
     let widget = currentWidget && widgetsById[currentWidget.id];
     if (widget) {
       widget = {
@@ -153,10 +186,17 @@ class ChartSettings extends Component {
           ...(currentWidget.props || {}),
         },
       };
-      widgets = [widget];
+      visibleWidgets = [widget];
     } else {
-      widgets = sections[currentSection];
+      visibleWidgets = sections[currentSection] || [];
     }
+
+    // This checks whether the current section contains a column settings widget
+    // at the top level. If it does, we avoid hiding the section tabs and
+    // overriding the sidebar title.
+    const currentSectionHasColumnSettings = (
+      sections[currentSection] || []
+    ).some(widget => widget.id === "column_settings");
 
     const extraWidgetProps = {
       // NOTE: special props to support adding additional fields
@@ -164,6 +204,7 @@ class ChartSettings extends Component {
       addField: addField,
       onShowWidget: this.handleShowWidget,
       onEndShowWidget: this.handleEndShowWidget,
+      currentSectionHasColumnSettings,
     };
 
     const sectionPicker = (
@@ -173,15 +214,16 @@ class ChartSettings extends Component {
         options={sectionNames}
         optionNameFn={v => v}
         optionValueFn={v => v}
-        underlined
+        bubble
       />
     );
 
-    const widgetList = widgets.map(widget => (
+    const widgetList = visibleWidgets.map(widget => (
       <ChartSettingsWidget
         key={`${widget.id}`}
         {...widget}
         {...extraWidgetProps}
+        setSidebarPropsOverride={setSidebarPropsOverride}
       />
     ));
 
@@ -199,16 +241,29 @@ class ChartSettings extends Component {
       });
     }
 
+    const showSectionPicker =
+      // don't show section tabs for a single section
+      sectionNames.length > 1 &&
+      // hide the section picker if the only widget is column_settings
+      !(
+        visibleWidgets.length === 1 &&
+        visibleWidgets[0].id === "column_settings" &&
+        // and this section doesn't doesn't have that as a direct child
+        !currentSectionHasColumnSettings
+      );
+
     // default layout with visualization
     return (
-      <div className="flex flex-column spread">
-        {sectionNames.length > 1 && (
-          <div className="border-bottom flex flex-no-shrink pl4">
-            {sectionPicker}
-          </div>
+      <div className={cx(className, "flex flex-column")}>
+        {showSectionPicker && (
+          <div className="flex flex-no-shrink pl4 pt2 pb1">{sectionPicker}</div>
         )}
-        <div className="full-height relative">
-          <div className="Grid spread">
+        {noPreview ? (
+          <div className="full-height relative scroll-y scroll-show py4">
+            {widgetList}
+          </div>
+        ) : (
+          <div className="Grid flex-full">
             <div className="Grid-cell Cell--1of3 scroll-y scroll-show border-right py4">
               {widgetList}
             </div>
@@ -240,7 +295,7 @@ class ChartSettings extends Component {
               />
             </div>
           </div>
-        </div>
+        )}
       </div>
     );
   }

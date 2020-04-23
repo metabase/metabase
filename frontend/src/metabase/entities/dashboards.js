@@ -1,14 +1,17 @@
 /* @flow */
 
-import { createThunkAction } from "metabase/lib/redux";
-import { setRequestState } from "metabase/redux/requests";
-import { normalize } from "normalizr";
+import {
+  compose,
+  withAction,
+  withAnalytics,
+  withRequestState,
+} from "metabase/lib/redux";
 
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
-import { normal } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { assocIn } from "icepick";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import { addUndo } from "metabase/redux/undo";
 
@@ -25,6 +28,9 @@ const COPY_ACTION = `metabase/entities/dashboards/COPY`;
 const Dashboards = createEntity({
   name: "dashboards",
   path: "/api/dashboard",
+
+  displayNameOne: t`dashboard`,
+  displayNameMany: t`dashboards`,
 
   api: {
     favorite: POST("/api/dashboard/:id/favorite"),
@@ -68,8 +74,35 @@ const Dashboards = createEntity({
       }
     },
 
-    copy: ({ id }, overrides, opts) =>
-      Dashboards.actions.copy({ id }, overrides, opts),
+    // TODO move into more common area as copy is implemented for more entities
+    copy: compose(
+      withAction(COPY_ACTION),
+      // NOTE: unfortunately we can't use Dashboard.withRequestState, etc because the entity isn't defined yet
+      withRequestState(dashboard => [
+        "entities",
+        "dashboard",
+        dashboard.id,
+        "copy",
+      ]),
+      withAnalytics("entities", "dashboard", "copy"),
+    )(
+      (entityObject, overrides, { notify } = {}) => async (
+        dispatch,
+        getState,
+      ) => {
+        const result = Dashboards.normalize(
+          await Dashboards.api.copy({
+            id: entityObject.id,
+            ...overrides,
+          }),
+        );
+        if (notify) {
+          dispatch(addUndo(notify));
+        }
+        dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
+        return result;
+      },
+    ),
   },
 
   actions: {
@@ -81,39 +114,6 @@ const Dashboards = createEntity({
         payload: savedDashboard,
       };
     },
-
-    // TODO move into more common area as copy is implemented for more entities
-    copy: createThunkAction(
-      COPY_ACTION,
-      (entityObject, overrides, { notify } = {}) => async (
-        dispatch,
-        getState,
-      ) => {
-        const statePath = [
-          "entities",
-          entityObject.name,
-          entityObject.id,
-          "copy",
-        ];
-        try {
-          dispatch(setRequestState({ statePath, state: "LOADING" }));
-          const result = normalize(
-            await Dashboards.api.copy({ id: entityObject.id, ...overrides }),
-            Dashboards.schema,
-          );
-          dispatch(setRequestState({ statePath, state: "LOADED" }));
-          if (notify) {
-            dispatch(addUndo(notify));
-          }
-          dispatch({ type: Dashboards.actionTypes.INVALIDATE_LISTS_ACTION });
-          return result;
-        } catch (error) {
-          console.error(`${COPY_ACTION} failed:`, error);
-          dispatch(setRequestState({ statePath, error }));
-          throw error;
-        }
-      },
-    ),
   },
 
   reducer: (state = {}, { type, payload, error }) => {
@@ -132,7 +132,7 @@ const Dashboards = createEntity({
     getName: dashboard => dashboard && dashboard.name,
     getUrl: dashboard => dashboard && Urls.dashboard(dashboard.id),
     getIcon: dashboard => "dashboard",
-    getColor: () => normal.blue,
+    getColor: () => color("dashboard"),
   },
 
   form: {
@@ -159,7 +159,7 @@ const Dashboards = createEntity({
     ],
   },
 
-  getAnalyticsMetadata(action, object, getState) {
+  getAnalyticsMetadata([object], { action }, getState) {
     const type = object && getCollectionType(object.collection_id, getState());
     return type && `collection=${type}`;
   },

@@ -1,5 +1,4 @@
-(ns metabase.test.mock.util
-  (:require [metabase.mbql.util :as mbql.u]))
+(ns metabase.test.mock.util)
 
 (def table-defaults
   {:description             nil
@@ -60,32 +59,9 @@
                           :nil%           0.0},
                  :type   {:type/Number {:min -165.37, :max -73.95, :avg -116.0 :q1 -122.0, :q3 -118.0 :sd 14.16}}}})
 
-;; This is just a fake implementation that just swoops in and returns somewhat-correct looking results for different
-;; queries we know will get ran as part of sync
-(defn- is-table-row-count-query? [query]
-  (boolean
-   (mbql.u/match (-> :query :aggregation)
-     [:count & _])))
-
-(defn- is-table-sample-query? [query]
-  (seq (get-in query [:query :fields])))
-
-(defn process-query-in-context
-  "QP mock that will return some 'appropriate' fake answers to the questions we know are ran during the sync process
-   -- the ones that determine Table row count and rows samples (for fingerprinting). Currently does not do anything
-   for any other queries, including ones for determining FieldValues."
-  [_ _]
-  (fn [query]
-    {:data
-     {:rows
-      (cond
-        (is-table-row-count-query? query)
-        [[1000]]
-
-        (is-table-sample-query? query)
-        (let [fields-count (count (get-in query [:query :fields]))]
-          (for [i (range 500)]
-            (repeat fields-count i)))
-
-        :else
-        nil)}}))
+(defn mock-execute-reducible-query [query respond]
+  (respond
+   {}
+   (let [fields-count (count (get-in query [:query :fields]))]
+     (for [i (range 500)]
+       (repeat fields-count i)))))

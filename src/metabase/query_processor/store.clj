@@ -20,58 +20,39 @@
             [metabase.util
              [i18n :refer [tru]]
              [schema :as su]]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [toucan.db :as db]))
 
 ;;; ---------------------------------------------- Setting up the Store ----------------------------------------------
 
+(def ^:private uninitialized-store
+  (delay (throw (Exception. (tru "Error: Query Processor store is not initialized.")))))
+
 (def ^:private ^:dynamic *store*
   "Dynamic var used as the QP store for a given query execution."
-  (delay (throw (Exception. (str (tru "Error: Query Processor store is not initialized."))))))
+  uninitialized-store)
 
-(defn do-with-new-store
-  "Execute `f` with a freshly-bound `*store*`."
+(defn initialized?
+  "Is the QP store currently initialized?"
+  []
+  (not (identical? *store* uninitialized-store)))
+
+(defn do-with-store
+  "Execute `f` with an initialized `*store*` if one is not already bound."
   [f]
-  (binding [*store* (atom {})]
-    (f)))
+  (if (initialized?)
+    (f)
+    (binding [*store* (atom {})]
+      (f))))
 
 (defmacro with-store
-  "Execute `body` with a freshly-bound QP `*store*`. The `store` middleware takes care of setting up a fresh store for
-  each query execution; you should have no need to use this macro yourself outside of that namespace."
+  "Execute `body` with an initialized QP `*store*`. The `store` middleware takes care of setting up a store as needed
+  for each query execution; you should have no need to use this macro yourself outside of that namespace."
   {:style/indent 0}
   [& body]
-  `(do-with-new-store (fn [] ~@body)))
+  `(do-with-store (fn [] ~@body)))
 
-(defn do-with-pushed-store
-  "Execute bind a *copy* of the current store and execute `f`."
-  [f]
-  (binding [*store* (atom @*store*)]
-    (f)))
-
-(defmacro with-pushed-store
-  "Bind a temporary copy of the current store (presumably so you can make temporary changes) for the duration of `body`.
-  All changes to this 'pushed' copy will be discarded after the duration of `body`.
-
-  This is used to make it easily to write downstream clause-handling functions in driver QP implementations without
-  needing to code them in a way where they are explicitly aware of the context in which they are called. For example,
-  we use this to temporarily give Tables a different `:name` in the SQL QP when we need to use an alias for them in
-  `fk->` forms.
-
-  Pushing stores is cumulative: nesting a `with-pushed-store` form inside another will make a copy of the copy.
-
-    (with-pushed-store
-      ;; store is now a temporary copy of original
-      (store-table! (assoc (table table-id) :name \"Temporary New Name\"))
-      (with-pushed-store
-        ;; store is now a temporary copy of the copy
-        (:name (table table-id)) ; -> \"Temporary New Name\"
-        ...)
-    ...)
-    (:name (table table-id)) ; -> \"Original Name\""
-  {:style/indent 0}
-  [& body]
-  `(do-with-pushed-store (fn [] ~@body)))
-
-(def database-columns-to-fetch
+(def ^:private database-columns-to-fetch
   "Columns you should fetch for the Database referenced by the query before stashing in the store."
   [:id
    :engine
@@ -87,10 +68,11 @@
     :details su/Map
     s/Any    s/Any}))
 
-(def table-columns-to-fetch
+(def ^:private table-columns-to-fetch
   "Columns you should fetch for any Table you want to stash in the Store."
   [:id
    :name
+   :display_name
    :schema])
 
 (def ^:private TableInstanceWithRequiredStoreKeys
@@ -101,7 +83,7 @@
     s/Any   s/Any}))
 
 
-(def field-columns-to-fetch
+(def ^:private field-columns-to-fetch
   "Columns to fetch for and Field you want to stash in the Store. These get returned as part of the `:cols` metadata in
   query results. Try to keep this set pared down to just what's needed by the QP and frontend, since it has to be done
   for every MBQL query."
@@ -140,6 +122,8 @@
   [database :- DatabaseInstanceWithRequiredStoreKeys]
   (swap! *store* assoc :database database))
 
+;; TODO ­ I think these can be made private
+
 (s/defn store-table!
   "Store a `table` in the QP Store for the duration of the current query execution. Throws an Exception if table is
   invalid or doesn't have all required keys."
@@ -152,10 +136,84 @@
   [field :- FieldInstanceWithRequiredStorekeys]
   (swap! *store* assoc-in [:fields (u/get-id field)] field))
 
-(s/defn already-fetched-field-ids :- #{su/IntGreaterThanZero}
-  "Get a set of all the IDs of Fields that have already been fetched -- which means you don't have to do it again."
+
+;;; ----------------------- Fetching objects from application DB, and saving them in the store -----------------------
+
+(s/defn ^:private db-id :- su/IntGreaterThanZero
   []
-  (set (keys (:fields @*store*))))
+  (or (get-in @*store* [:database :id])
+      (throw (Exception. (tru "Cannot store Tables or Fields before Database is stored.")))))
+
+(s/defn fetch-and-store-database!
+  "Fetch the Database this query will run against from the application database, and store it in the QP Store for the
+  duration of the current query execution. If Database has already been fetched, this function will no-op. Throws an
+  Exception if Table does not exist."
+  [database-id :- su/IntGreaterThanZero]
+  (if-let [existing-db-id (get-in @*store* [:database :id])]
+    ;; if there's already a DB in the Store, double-check it has the same ID as the one that we were asked to fetch
+    (when-not (= existing-db-id database-id)
+      (throw (ex-info (tru "Attempting to fetch second Database. Queries can only reference one Database.")
+               {:existing-id existing-db-id, :attempted-to-fetch database-id})))
+    ;; if there's no DB, fetch + save
+    (store-database!
+     (or (db/select-one (into [Database] database-columns-to-fetch) :id database-id)
+         (throw (ex-info (tru "Database {0} does not exist." (str database-id))
+                  {:database database-id}))))))
+
+(def ^:private IDs
+  (s/maybe
+   (s/cond-pre
+    #{su/IntGreaterThanZero}
+    [su/IntGreaterThanZero])))
+
+(s/defn fetch-and-store-tables!
+  "Fetch Table(s) from the application database, and store them in the QP Store for the duration of the current query
+  execution. If Table(s) have already been fetched, this function will no-op. Throws an Exception if Table(s) do not
+  exist."
+  [table-ids :- IDs]
+  ;; remove any IDs for Tables that have already been fetched
+  (when-let [ids-to-fetch (seq (remove (set (keys (:tables @*store*))) table-ids))]
+    (let [fetched-tables (db/select (into [Table] table-columns-to-fetch)
+                           :id    [:in (set ids-to-fetch)]
+                           :db_id (db-id))
+          fetched-ids    (set (map :id fetched-tables))]
+      ;; make sure all Tables in table-ids were fetched, or throw an Exception
+      (doseq [id ids-to-fetch]
+        (when-not (fetched-ids id)
+          (throw
+           (ex-info (tru "Failed to fetch Table {0}: Table does not exist, or belongs to a different Database." id)
+             {:table id, :database (db-id)}))))
+      ;; ok, now store them all in the Store
+      (doseq [table fetched-tables]
+        (store-table! table)))))
+
+(s/defn fetch-and-store-fields!
+  "Fetch Field(s) from the application database, and store them in the QP Store for the duration of the current query
+  execution. If Field(s) have already been fetched, this function will no-op. Throws an Exception if Field(s) do not
+  exist."
+  [field-ids :- IDs]
+  ;; remove any IDs for Fields that have already been fetched
+  (when-let [ids-to-fetch (seq (remove (set (keys (:fields @*store*))) field-ids))]
+    (let [fetched-fields (db/do-post-select Field
+                           (db/query
+                            {:select    (for [column-kw field-columns-to-fetch]
+                                          [(keyword (str "field." (name column-kw)))
+                                           column-kw])
+                             :from      [[Field :field]]
+                             :left-join [[Table :table] [:= :field.table_id :table.id]]
+                             :where     [:and
+                                         [:in :field.id (set ids-to-fetch)]
+                                         [:= :table.db_id (db-id)]]}))
+          fetched-ids    (set (map :id fetched-fields))]
+      ;; make sure all Fields in field-ids were fetched, or throw an Exception
+      (doseq [id ids-to-fetch]
+        (when-not (fetched-ids id)
+          (throw
+           (ex-info (tru "Failed to fetch Field {0}: Field does not exist, or belongs to a different Database." id)
+             {:field id, :database (db-id)}))))
+      ;; ok, now store them all in the Store
+      (doseq [field fetched-fields]
+        (store-field! field)))))
 
 
 ;;; ---------------------------------------- Fetching objects from the Store -----------------------------------------
@@ -165,16 +223,65 @@
   returned."
   []
   (or (:database @*store*)
-      (throw (Exception. (str (tru "Error: Database is not present in the Query Processor Store."))))))
+      (throw (Exception. (tru "Error: Database is not present in the Query Processor Store.")))))
 
 (s/defn table :- TableInstanceWithRequiredStoreKeys
   "Fetch Table with `table-id` from the QP Store. Throws an Exception if valid item is not returned."
   [table-id :- su/IntGreaterThanZero]
   (or (get-in @*store* [:tables table-id])
-      (throw (Exception. (str (tru "Error: Table {0} is not present in the Query Processor Store." table-id))))))
+      (throw (Exception. (tru "Error: Table {0} is not present in the Query Processor Store." table-id)))))
 
 (s/defn field :- FieldInstanceWithRequiredStorekeys
   "Fetch Field with `field-id` from the QP Store. Throws an Exception if valid item is not returned."
   [field-id :- su/IntGreaterThanZero]
   (or (get-in @*store* [:fields field-id])
-      (throw (Exception. (str (tru "Error: Field {0} is not present in the Query Processor Store." field-id))))))
+      (throw (Exception. (tru "Error: Field {0} is not present in the Query Processor Store." field-id)))))
+
+
+;;; ------------------------------------------ Caching Miscellaneous Values ------------------------------------------
+
+(s/defn store-miscellaneous-value!
+  "Store a miscellaneous value in a the cache. Persists for the life of this QP invocation, including for recursive
+  calls."
+  [ks v]
+  (swap! *store* assoc-in (cons :misc ks) v))
+
+(s/defn miscellaneous-value
+  "Fetch a miscellaneous value from the cache. Unlike other Store functions, does not throw if value is not found."
+  ([ks]
+   (miscellaneous-value ks nil))
+
+  ([ks not-found]
+   (get-in @*store* (cons :misc ks) not-found)))
+
+(defn cached-fn
+  "Attempt to fetch a miscellaneous value from the cache using key sequence `ks`; if not found, runs `thunk` to get the
+  value, stores it in the cache, and returns the value. You can use this to ensure a given function is only ran once
+  during the duration of a QP execution.
+
+  See also `cached` macro."
+  {:style/indent 1}
+  [ks thunk]
+  (let [cached-value (miscellaneous-value ks ::not-found)]
+    (if-not (= cached-value ::not-found)
+      cached-value
+      (let [v (thunk)]
+        (store-miscellaneous-value! ks v)
+        v))))
+
+(defmacro cached
+  "Cache the value of `body` for key(s) for the duration of this QP execution. (Body is only evaluated the once per QP
+  run; subsequent calls return the cached result.)
+
+  Note that each use of `cached` generates its own unique first key for cache keyseq; thus while it is not possible to
+  share values between multiple `cached` forms, you do not need to worry about conflicts with other places using this
+  macro.
+
+    ;; cache lookups of Card.dataset_query
+    (qp.store/cached card-id
+      (db/select-one-field :dataset_query Card :id card-id))"
+  {:style/indent 1}
+  [k-or-ks & body]
+  ;; for the unique key use a gensym prefixed by the namespace to make for easier store debugging if needed
+  (let [ks (into [(list 'quote (gensym (str (name (ns-name *ns*)) "/misc-cache-")))] (u/one-or-many k-or-ks))]
+    `(cached-fn ~ks (fn [] ~@body))))

@@ -2,13 +2,15 @@
   (:require [clojure.java
              [io :as io]
              [shell :as shell]]
-            [clojure.string :as s]
-            [environ.core :as environ])
-  (:import clojure.lang.Keyword))
+            [clojure.string :as str]
+            [environ.core :as environ]
+            [metabase.plugins.classloader :as classloader])
+  (:import clojure.lang.Keyword
+           java.util.UUID))
 
 (def ^Boolean is-windows?
   "Are we running on a Windows machine?"
-  (s/includes? (s/lower-case (System/getProperty "os.name")) "win"))
+  (str/includes? (str/lower-case (System/getProperty "os.name")) "win"))
 
 (def ^:private app-defaults
   "Global application defaults"
@@ -24,6 +26,7 @@
    ;; other application settings
    :mb-password-complexity "normal"
    :mb-version-info-url    "http://static.metabase.com/version-info.json"
+   :mb-ns-trace            ""                                             ; comma-separated namespaces to trace
    :max-session-age        "20160"                                        ; session length in minutes (14 days)
    :mb-colorize-logs       (str (not is-windows?))                        ; since PowerShell and cmd.exe don't support ANSI color escape codes or emoji,
    :mb-emoji-in-logs       (str (not is-windows?))                        ; disable them by default when running on Windows. Otherwise they're enabled
@@ -39,13 +42,17 @@
    2.  jvm options (ex: -Dmb.db.type -> :mb-db-type)
    3.  hard coded `app-defaults`"
   [k]
-  (let [k (keyword k)]
-    (or (k environ/env) (k app-defaults))))
+  (let [k       (keyword k)
+        env-val (k environ/env)]
+    (or (when-not (str/blank? env-val) env-val)
+        (k app-defaults))))
 
 
 ;; These are convenience functions for accessing config values that ensures a specific return type
-;; TODO - These names are bad. They should be something like  `int`, `boolean`, and `keyword`, respectively.
-;; See https://github.com/metabase/metabase/wiki/Metabase-Clojure-Style-Guide#dont-repeat-namespace-alias-in-function-names for discussion
+;;
+;; TODO - These names are bad. They should be something like `int`, `boolean`, and `keyword`, respectively. See
+;; https://github.com/metabase/metabase/wiki/Metabase-Clojure-Style-Guide#dont-repeat-namespace-alias-in-function-names
+;; for discussion
 (defn ^Integer config-int  "Fetch a configuration key and parse it as an integer." [k] (some-> k config-str Integer/parseInt))
 (defn ^Boolean config-bool "Fetch a configuration key and parse it as a boolean."  [k] (some-> k config-str Boolean/parseBoolean))
 (defn ^Keyword config-kw   "Fetch a configuration key and parse it as a keyword."  [k] (some-> k config-str keyword))
@@ -54,18 +61,18 @@
 (def ^Boolean is-prod? "Are we running in `prod` mode (i.e. from a JAR)?"                         (= :prod (config-kw :mb-run-mode)))
 (def ^Boolean is-test? "Are we running in `test` mode (i.e. via `lein test`)?"                    (= :test (config-kw :mb-run-mode)))
 
-
 ;;; Version stuff
 ;; Metabase version is of the format `GIT-TAG (GIT-SHORT-HASH GIT-BRANCH)`
 
 (defn- version-info-from-shell-script []
   (try
-    (let [[tag hash branch date] (-> (shell/sh "./bin/version") :out s/trim (s/split #" "))]
+    (let [[tag hash branch date] (-> (shell/sh "./bin/version") :out str/trim (str/split #" "))]
       {:tag    (or tag "?")
        :hash   (or hash "?")
        :branch (or branch "?")
        :date   (or date "?")})
-    ;; if ./bin/version fails (e.g., if we are developing on Windows) just return something so the whole thing doesn't barf
+    ;; if ./bin/version fails (e.g., if we are developing on Windows) just return something so the whole thing doesn't
+    ;; barf
     (catch Throwable _
       {:tag "?", :hash "?", :branch "?", :date "?"})))
 
@@ -77,9 +84,11 @@
         (into {} (for [[k v] props]
                    [(keyword k) v]))))))
 
+;; TODO - Can we make this `^:const`, so we don't have to read the file at launch when running from the uberjar?
 (def mb-version-info
   "Information about the current version of Metabase.
-   This comes from `resources/version.properties` for prod builds and is fetched from `git` via the `./bin/version` script for dev.
+   This comes from `resources/version.properties` for prod builds and is fetched from `git` via the `./bin/version`
+  script for dev.
 
      mb-version-info -> {:tag: \"v0.11.1\", :hash: \"afdf863\", :branch: \"about_metabase\", :date: \"2015-10-05\"}"
   (or (if is-prod?
@@ -100,13 +109,19 @@
    Looks something like `Metabase v0.25.0.RC1`."
   (str "Metabase " (mb-version-info :tag)))
 
+(defonce ^{:doc "This UUID is randomly-generated upon launch and used to identify this specific Metabase instance during
+                this specifc run. Restarting the server will change this UUID, and each server in a horizontal cluster
+                will have its own ID, making this different from the `site-uuid` Setting."}
+  local-process-uuid
+  (str (UUID/randomUUID)))
+
 
 ;; This only affects dev:
 ;;
 ;; If for some wacky reason the test namespaces are getting loaded (e.g. when running via
 ;; `lein ring` or `lein ring sever`, DO NOT RUN THE EXPECTATIONS TESTS AT SHUTDOWN! THIS WILL NUKE YOUR APPLICATION DB
 (try
-  (require 'expectations)
+  (classloader/require 'expectations)
   ((resolve 'expectations/disable-run-on-shutdown))
   ;; This will fail if the test dependencies aren't present (e.g. in a JAR situation) which is totally fine
   (catch Throwable _))

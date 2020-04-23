@@ -1,10 +1,13 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import colors from "metabase/lib/colors";
+import styled from "styled-components";
+import { space } from "styled-system";
 
-import cx from "classnames";
+import { color, lighten } from "metabase/lib/colors";
+
 import _ from "underscore";
+import cx from "classnames";
 
 export default class Radio extends Component {
   static propTypes = {
@@ -26,6 +29,7 @@ export default class Radio extends Component {
     optionKeyFn: option => option.value,
     vertical: false,
     underlined: false,
+    bubble: false,
   };
 
   constructor(props, context) {
@@ -35,6 +39,7 @@ export default class Radio extends Component {
 
   render() {
     const {
+      name = this._id,
       value,
       options,
       onChange,
@@ -43,55 +48,121 @@ export default class Radio extends Component {
       optionKeyFn,
       vertical,
       underlined,
-      className,
+      bubble,
+      xspace,
+      yspace,
       py,
+      showButtons = vertical && !bubble, // show buttons for vertical only by default
+      ...props
     } = this.props;
-    // show buttons for vertical only by default
-    const showButtons =
-      this.props.showButtons != undefined ? this.props.showButtons : vertical;
-    return (
-      <ul
-        className={cx(className, "flex", {
-          "flex-column": vertical,
-          "text-bold h3": !showButtons,
-        })}
-      >
-        {options.map(option => {
-          const selected = value === optionValueFn(option);
 
+    const [List, Item] = bubble
+      ? [BubbleList, BubbleItem]
+      : underlined
+      ? [UnderlinedList, UnderlinedItem]
+      : [NormalList, NormalItem];
+
+    if (underlined && value === undefined) {
+      console.warn(
+        "Radio can't underline selected option when no value is given.",
+      );
+    }
+
+    return (
+      <List {...props} vertical={vertical} showButtons={showButtons}>
+        {options.map((option, index) => {
+          const selected = value === optionValueFn(option);
+          const last = index === options.length - 1;
           return (
-            <li
+            <Item
               key={optionKeyFn(option)}
-              className={cx(
-                "flex align-center cursor-pointer mr3",
-                { "text-brand-hover": !showButtons },
-                py != undefined ? `py${py}` : underlined ? "py2" : "pt1",
-              )}
-              style={{
-                borderBottom: underlined ? `3px solid transparent` : undefined,
-                borderColor:
-                  selected && underlined ? colors["brand"] : "transparent",
-              }}
+              selected={selected}
+              last={last}
+              vertical={vertical}
+              showButtons={showButtons}
+              py={py}
+              xspace={xspace}
+              yspace={yspace}
               onClick={e => onChange(optionValueFn(option))}
             >
               <input
                 className="Form-radio"
                 type="radio"
-                name={this._id}
+                name={name}
                 value={optionValueFn(option)}
                 checked={selected}
-                id={this._id + "-" + optionKeyFn(option)}
+                id={name + "-" + optionKeyFn(option)}
               />
               {showButtons && (
-                <label htmlFor={this._id + "-" + optionKeyFn(option)} />
+                <label htmlFor={name + "-" + optionKeyFn(option)} />
               )}
-              <span className={cx({ "text-brand": selected })}>
-                {optionNameFn(option)}
-              </span>
-            </li>
+              <span>{optionNameFn(option)}</span>
+            </Item>
           );
         })}
-      </ul>
+      </List>
     );
   }
 }
+
+// BASE components all variants inherit from
+const BaseList = styled.ul`
+  display: flex;
+  flex-direction: ${props => (props.vertical ? "column" : "row")};
+`;
+const BaseItem = styled.li.attrs({
+  mr: props => (!props.vertical && !props.last ? props.xspace : null),
+  mb: props => (props.vertical && !props.last ? props.yspace : null),
+  "aria-selected": props => props.selected,
+})`
+  ${space}
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  :hover {
+    color: ${props =>
+      !props.showButtons && !props.selected ? color("brand") : null};
+  }
+`;
+BaseItem.defaultProps = {
+  xspace: 3,
+  yspace: 1,
+};
+
+// NORMAL
+const NormalList = styled(BaseList).attrs({
+  className: props =>
+    cx(props.className, { "h3 text-bold": !props.showButtons }), // TODO: better way to merge classname?
+})``;
+const NormalItem = styled(BaseItem)`
+  color: ${props => (props.selected ? color("brand") : null)};
+`;
+
+// UNDERLINE
+const UnderlinedList = styled(NormalList)``;
+const UnderlinedItem = styled(NormalItem)`
+  border-bottom: 3px solid transparent;
+  border-color: ${props => (props.selected ? color("brand") : null)};
+`;
+UnderlinedItem.defaultProps = {
+  py: 2,
+};
+
+// BUBBLE
+const BubbleList = styled(BaseList)``;
+const BubbleItem = styled(BaseItem)`
+  font-weight: 700;
+  border-radius: 99px;
+  color: ${props => (props.selected ? color("white") : color("brand"))};
+  background-color: ${props =>
+    props.selected ? color("brand") : lighten("brand")};
+  :hover {
+    background-color: ${props => !props.selected && lighten("brand", 0.38)};
+    transition: background 300ms linear;
+  }
+`;
+BubbleItem.defaultProps = {
+  xspace: 1,
+  py: 1,
+  px: 2,
+};

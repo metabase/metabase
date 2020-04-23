@@ -27,8 +27,17 @@ const ScalarValue = ({ value, isFullscreen, isDashboard }) => (
   <h1 className="ScalarValue cursor-pointer text-brand-hover">{value}</h1>
 );
 
+const ICON_WIDTH = 24;
+
 export const ScalarTitle = ({ title, description, onClick }) => (
   <div className="flex align-center full justify-center px2">
+    {/*
+      This is a hacky spacer so that the h3 is centered correctly.
+      It needs match the width of the tooltip icon on the other side.
+     */}
+    {description && description.length > 0 && (
+      <div style={{ width: ICON_WIDTH }} />
+    )}
     <h3
       onClick={onClick}
       className={cx(
@@ -40,17 +49,16 @@ export const ScalarTitle = ({ title, description, onClick }) => (
     >
       <Ellipsified tooltip={title}>{title}</Ellipsified>
     </h3>
-    {description &&
-      description.length > 0 && (
-        <div
-          className="hover-child cursor-pointer ml1 text-brand-hover"
-          style={{ marginTop: 5 }}
-        >
-          <Tooltip tooltip={description} maxWidth={"22em"}>
-            <Icon name="infooutlined" />
-          </Tooltip>
-        </div>
-      )}
+    {description && description.length > 0 && (
+      <div
+        className="hover-child cursor-pointer pl1 text-brand-hover"
+        style={{ marginTop: 5, width: ICON_WIDTH }}
+      >
+        <Tooltip tooltip={description} maxWidth={"22em"}>
+          <Icon name="info_outline" />
+        </Tooltip>
+      </div>
+    )}
   </div>
 );
 

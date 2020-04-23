@@ -1,8 +1,10 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import cx from "classnames";
+
 import Icon from "metabase/components/Icon";
 
-import colors, { normal as defaultColors } from "metabase/lib/colors";
+import { color as c, normal as defaultColors } from "metabase/lib/colors";
 
 export default class CheckBox extends Component {
   static propTypes = {
@@ -19,6 +21,7 @@ export default class CheckBox extends Component {
     size: 16,
     padding: 2,
     color: "blue",
+    style: {},
   };
 
   onClick(e) {
@@ -33,10 +36,19 @@ export default class CheckBox extends Component {
   }
 
   render() {
-    const { checked, indeterminate, color, padding, size, noIcon } = this.props;
+    const {
+      className,
+      style,
+      checked,
+      indeterminate,
+      color,
+      padding,
+      size,
+      noIcon,
+    } = this.props;
 
     const checkedColor = defaultColors[color];
-    const uncheckedColor = colors["text-light"];
+    const uncheckedColor = c("text-light");
 
     const checkboxStyle = {
       width: size,
@@ -46,24 +58,22 @@ export default class CheckBox extends Component {
     };
     return (
       <div
-        className="cursor-pointer"
+        className={cx(
+          className,
+          "flex align-center justify-center rounded cursor-pointer",
+        )}
+        style={{ ...style, ...checkboxStyle }}
         onClick={e => {
           this.onClick(e);
         }}
       >
-        <div
-          style={checkboxStyle}
-          className="flex align-center justify-center rounded"
-        >
-          {(checked || indeterminate) &&
-            !noIcon && (
-              <Icon
-                style={{ color: checked ? "white" : uncheckedColor }}
-                name={indeterminate ? "dash" : "check"}
-                size={size - padding * 2}
-              />
-            )}
-        </div>
+        {(checked || indeterminate) && !noIcon && (
+          <Icon
+            style={{ color: checked ? "white" : uncheckedColor }}
+            name={indeterminate ? "dash" : "check"}
+            size={size - padding * 2}
+          />
+        )}
       </div>
     );
   }

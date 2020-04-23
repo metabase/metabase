@@ -5,7 +5,7 @@ import React, { Component } from "react";
 import SettingInput from "./SettingInput";
 import Button from "metabase/components/Button";
 import Confirm from "metabase/components/Confirm";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { UtilApi } from "metabase/services";
 
 type Props = {

@@ -1,10 +1,10 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 
-import GridItem from "./GridItem.jsx";
+import GridItem from "./GridItem";
 
 import _ from "underscore";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 export default class GridLayout extends Component {
   constructor(props, context) {
@@ -41,7 +41,7 @@ export default class GridLayout extends Component {
   }
 
   componentDidUpdate() {
-    let width = ReactDOM.findDOMNode(this).parentNode.offsetWidth;
+    const width = ReactDOM.findDOMNode(this).parentNode.offsetWidth;
     if (this.state.width !== width) {
       this.setState({ width });
     }
@@ -58,7 +58,7 @@ export default class GridLayout extends Component {
   }
 
   onDrag(i, { position }) {
-    let placeholderLayout = {
+    const placeholderLayout = {
       ...this.computeDraggedLayout(i, position),
       i: "placeholder",
     };
@@ -70,9 +70,9 @@ export default class GridLayout extends Component {
     const { placeholderLayout } = this.state;
     let newLayout;
     if (placeholderLayout) {
-      let { x, y, w, h } = placeholderLayout;
-      newLayout = this.state.layout.map(
-        l => (l.i === i ? { ...l, x, y, w, h } : l),
+      const { x, y, w, h } = placeholderLayout;
+      newLayout = this.state.layout.map(l =>
+        l.i === i ? { ...l, x, y, w, h } : l,
       );
     }
     this.setState({ dragging: false, placeholderLayout: null });
@@ -84,22 +84,22 @@ export default class GridLayout extends Component {
 
   computeDraggedLayout(i, position) {
     const cellSize = this.getCellSize();
-    let originalLayout = this.getLayoutForItem(i);
-    let pos = this.getStyleForLayout(originalLayout);
+    const originalLayout = this.getLayoutForItem(i);
+    const pos = this.getStyleForLayout(originalLayout);
     pos.top += position.y;
     pos.left += position.x;
 
-    let maxX = this.props.cols - originalLayout.w;
-    let maxY = Infinity;
+    const maxX = this.props.cols - originalLayout.w;
+    const maxY = Infinity;
 
-    let targetLayout = {
+    const targetLayout = {
       w: originalLayout.w,
       h: originalLayout.h,
       x: Math.min(maxX, Math.max(0, Math.round(pos.left / cellSize.width))),
       y: Math.min(maxY, Math.max(0, Math.round(pos.top / cellSize.height))),
     };
-    let proposedLayout = targetLayout;
-    for (let otherLayout of this.state.layout) {
+    const proposedLayout = targetLayout;
+    for (const otherLayout of this.state.layout) {
       if (
         originalLayout !== otherLayout &&
         this.layoutsOverlap(proposedLayout, otherLayout)
@@ -112,10 +112,11 @@ export default class GridLayout extends Component {
 
   onResizeStart(i, { size }) {
     this.setState({ resizing: true });
+    this.onResize(i, { size });
   }
 
   onResize(i, { size }) {
-    let placeholderLayout = {
+    const placeholderLayout = {
       ...this.computeResizedLayout(i, size),
       i: "placeholder",
     };
@@ -123,9 +124,9 @@ export default class GridLayout extends Component {
   }
 
   onResizeStop(i, { size }) {
-    let { x, y, w, h } = this.state.placeholderLayout;
-    let newLayout = this.state.layout.map(
-      l => (l.i === i ? { ...l, x, y, w, h } : l),
+    const { x, y, w, h } = this.state.placeholderLayout;
+    const newLayout = this.state.layout.map(l =>
+      l.i === i ? { ...l, x, y, w, h } : l,
     );
     this.setState({ resizing: false, placeholderLayout: null }, () =>
       this.props.onLayoutChange(newLayout),
@@ -133,14 +134,14 @@ export default class GridLayout extends Component {
   }
 
   computeResizedLayout(i, size) {
-    let cellSize = this.getCellSize();
-    let originalLayout = this.getLayoutForItem(i);
+    const cellSize = this.getCellSize();
+    const originalLayout = this.getLayoutForItem(i);
 
-    let minW = originalLayout.minSize.width;
-    let minH = originalLayout.minSize.height;
-    let maxW = this.props.cols - originalLayout.x;
-    let maxH = Infinity;
-    let targetLayout = {
+    const minW = originalLayout.minSize.width;
+    const minH = originalLayout.minSize.height;
+    const maxW = this.props.cols - originalLayout.x;
+    const maxH = Infinity;
+    const targetLayout = {
       w: Math.min(
         maxW,
         Math.max(minW, Math.round(size.width / cellSize.width)),
@@ -153,8 +154,8 @@ export default class GridLayout extends Component {
       y: originalLayout.y,
     };
 
-    let proposedLayout = targetLayout;
-    for (let otherLayout of this.state.layout) {
+    const proposedLayout = targetLayout;
+    for (const otherLayout of this.state.layout) {
       if (
         originalLayout !== otherLayout &&
         this.layoutsOverlap(proposedLayout, otherLayout)
@@ -170,7 +171,7 @@ export default class GridLayout extends Component {
   }
 
   getCellSize() {
-    let { margin } = this.props;
+    const { margin } = this.props;
     // add 1 margin to make it fill the full width
     return {
       width: (this.state.width + margin) / this.props.cols,
@@ -179,8 +180,8 @@ export default class GridLayout extends Component {
   }
 
   getMinSizeForLayout(l) {
-    let { margin } = this.props;
-    let cellSize = this.getCellSize();
+    const { margin } = this.props;
+    const cellSize = this.getCellSize();
     return {
       width: cellSize.width * l.minSize.width - margin,
       height: cellSize.height * l.minSize.height - margin,
@@ -188,8 +189,8 @@ export default class GridLayout extends Component {
   }
 
   getStyleForLayout(l) {
-    let { margin } = this.props;
-    let cellSize = this.getCellSize();
+    const { margin } = this.props;
+    const cellSize = this.getCellSize();
     return {
       width: cellSize.width * l.w - margin,
       height: cellSize.height * l.h - margin,
@@ -199,8 +200,8 @@ export default class GridLayout extends Component {
   }
 
   renderChild(child) {
-    let l = this.getLayoutForItem(child.key);
-    let style = this.getStyleForLayout(l);
+    const l = this.getLayoutForItem(child.key);
+    const style = this.getStyleForLayout(l);
     return (
       <GridItem
         {...l}
@@ -221,39 +222,40 @@ export default class GridLayout extends Component {
 
   renderPlaceholder() {
     if (this.state.placeholderLayout) {
-      let style = {
+      const style = {
         ...this.getStyleForLayout(this.state.placeholderLayout),
       };
       return <div className="react-grid-placeholder absolute" style={style} />;
     }
   }
 
+  // generate one row of the grid, it will repeat because it's a background image
   getGridBackground() {
-    let { margin, cols } = this.props;
-    let cellSize = this.getCellSize();
-    return (
-      `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='${cellSize.width *
+    const { margin, cols } = this.props;
+    const cellSize = this.getCellSize();
+    const svg =
+      `<svg xmlns='http://www.w3.org/2000/svg' width='${cellSize.width *
         cols}' height='${cellSize.height}'>` +
       _(cols)
         .times(
           i =>
-            `<rect stroke='${
-              colors["border"]
-            }' stroke-width='1' fill='none' x='${Math.round(
+            `<rect stroke='${color(
+              "border",
+            )}' stroke-width='1' fill='none' x='${Math.round(
               margin / 2 + i * cellSize.width,
             ) + 1.5}' y='${margin / 2 + 1.5}' width='${Math.round(
               cellSize.width - margin - 3,
             )}' height='${cellSize.height - margin - 3}'/>`,
         )
         .join("") +
-      `</svg>")`
-    );
+      `</svg>`;
+    return `url("data:image/svg+xml;utf8,${encodeURIComponent(svg)}")`;
   }
 
   render() {
     const { className, layout, cols, margin, isEditing } = this.props;
 
-    let cellSize = this.getCellSize();
+    const cellSize = this.getCellSize();
     let bottom = Math.max(...layout.map(l => l.y + l.h));
 
     let backgroundImage;
@@ -264,8 +266,8 @@ export default class GridLayout extends Component {
       bottom += Math.ceil(window.innerHeight / cellSize.height);
     }
 
-    let width = cellSize.width * cols;
-    let height = cellSize.height * bottom;
+    const width = cellSize.width * cols;
+    const height = cellSize.height * bottom;
 
     // subtract half of a margin to ensure it lines up with the edges
     return (

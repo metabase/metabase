@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 
 import "./ColumnarSelector.css";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
 import cx from "classnames";
 
@@ -22,15 +22,15 @@ export default class ColumnarSelector extends Component {
         ? column.disabledOptionIds.includes(item.id)
         : false;
 
-    let columns = this.props.columns.map((column, columnIndex) => {
+    const columns = this.props.columns.map((column, columnIndex) => {
       let sectionElements;
       if (column) {
-        let lastColumn = columnIndex === this.props.columns.length - 1;
-        let sections = column.sections || [column];
+        const lastColumn = columnIndex === this.props.columns.length - 1;
+        const sections = column.sections || [column];
         sectionElements = sections.map((section, sectionIndex) => {
-          let title = section.title;
-          let items = section.items.map((item, rowIndex) => {
-            let itemClasses = cx({
+          const title = section.title;
+          const items = section.items.map((item, rowIndex) => {
+            const itemClasses = cx({
               "ColumnarSelector-row": true,
               "ColumnarSelector-row--selected": isItemSelected(item, column),
               "ColumnarSelector-row--disabled": isItemDisabled(item, column),
@@ -38,9 +38,11 @@ export default class ColumnarSelector extends Component {
               "no-decoration": true,
               "cursor-default": isItemDisabled(item, column),
             });
-            let checkIcon = lastColumn ? <Icon name="check" size={14} /> : null;
+            const checkIcon = lastColumn ? (
+              <Icon name="check" size={14} />
+            ) : null;
             let descriptionElement;
-            let description =
+            const description =
               column.itemDescriptionFn && column.itemDescriptionFn(item);
             if (description) {
               descriptionElement = (

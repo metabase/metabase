@@ -2,7 +2,7 @@ import React from "react";
 import cx from "classnames";
 import pure from "recompose/pure";
 
-import Popover from "./Popover.jsx";
+import Popover from "./Popover";
 
 // if the tooltip is passed a long description we'll want to conditionally
 // format it to make it easier to read.
@@ -35,6 +35,8 @@ const TooltipPopover = ({ children, maxWidth, ...props }) => {
     <Popover
       className="PopoverBody--tooltip"
       targetOffsetY={10}
+      hasArrow
+      horizontalAttachments={["center", "left", "right"]}
       // OnClickOutsideWrapper is unecessary and causes existing popovers not to
       // be dismissed if a tooltip is visisble, so pass noOnClickOutsideWrapper
       noOnClickOutsideWrapper

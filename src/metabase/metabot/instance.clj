@@ -14,37 +14,32 @@
 
   How do we uniquiely identify each instance?
 
-  `local-process-uuid` is randomly-generated upon launch and used to identify this specific Metabase instance during
-  this specifc run. Restarting the server will change this UUID, and each server in a hortizontal cluster will have
-  its own ID, making this different from the `site-uuid` Setting. The local process UUID is used to differentiate
-  different horizontally clustered MB instances so we can determine which of them will handle MetaBot duties.
-
-  TODO - if we ever want to use this elsewhere, we need to move it to `metabase.config` or somewhere else central like
-  that."
+  `metabase.public-settings/local-process-uuid` is randomly-generated upon launch and used to identify this specific
+  Metabase instance during this specifc run. Restarting the server will change this UUID, and each server in a
+  hortizontal cluster will have its own ID, making this different from the `site-uuid` Setting. The local process UUID
+  is used to differentiate different horizontally clustered MB instances so we can determine which of them will handle
+  MetaBot duties."
   (:require [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
+            [java-time :as t]
+            [metabase
+             [config :refer [local-process-uuid]]
+             [util :as u]]
             [metabase.models.setting :as setting :refer [defsetting]]
-            [metabase.util :as u]
-            [metabase.util
-             [date :as du]
-             [i18n :refer [trs]]]
+            [metabase.util.i18n :refer [trs]]
             [toucan.db :as db])
-  (:import java.sql.Timestamp
-           java.util.UUID))
-
-(defonce ^:private local-process-uuid
-  (str (UUID/randomUUID)))
+  (:import java.time.temporal.Temporal))
 
 (defsetting ^:private metabot-instance-uuid
   "UUID of the active MetaBot instance (the Metabase process currently handling MetaBot duties.)"
   ;; This should be cached because we'll be checking it fairly often, basically every 2 seconds as part of the
   ;; websocket monitor thread to see whether we're MetaBot (the thread won't open the WebSocket unless that instance
   ;; is handling MetaBot duties)
-  :internal? true)
+  :visibility :internal)
 
 (defsetting ^:private metabot-instance-last-checkin
   "Timestamp of the last time the active MetaBot instance checked in."
-  :internal? true
+  :visibility :internal
   ;; caching is disabled for this, since it is intended to be updated frequently (once a minute or so) If we use the
   ;; cache, it will trigger cache invalidation for all the other instances (wasteful), and possibly at any rate be
   ;; incorrect (for example, if another instance checked in a minute ago, our local cache might not get updated right
@@ -56,7 +51,7 @@
   "Fetch the current timestamp from the DB. Why do this from the DB? It's not safe to assume multiple instances have
   clocks exactly in sync; but since each instance is using the same application DB, we can use it as a cannonical
   source of truth."
-  ^Timestamp []
+  ^Temporal []
   (-> (db/query {:select [[(hsql/raw "current_timestamp") :current_timestamp]]})
       first
       :current_timestamp))
@@ -72,10 +67,8 @@
   `last-checkin` is one of the few Settings that isn't cached, this always requires a DB call.)"
   []
   (when-let [last-checkin (metabot-instance-last-checkin)]
-    (u/prog1 (-> (- (.getTime (current-timestamp-from-db))
-                    (.getTime last-checkin))
-                 (/ 1000))
-      (log/debug (u/format-color 'magenta (trs "Last MetaBot checkin was {0} ago." (du/format-seconds <>)))))))
+    (u/prog1 (.getSeconds (t/duration last-checkin (current-timestamp-from-db)))
+      (log/debug (u/format-color 'magenta (trs "Last MetaBot checkin was {0} ago." (u/format-seconds <>)))))))
 
 (def ^:private ^Integer recent-checkin-timeout-interval-seconds
   "Number of seconds since the last MetaBot checkin that we will consider the MetaBot job to be 'up for grabs',

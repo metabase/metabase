@@ -1,8 +1,8 @@
 import React, { Component } from "react";
 
-import Icon from "metabase/components/Icon.jsx";
-import Tooltip from "metabase/components/Tooltip.jsx";
-import Ellipsified from "metabase/components/Ellipsified.jsx";
+import Icon from "metabase/components/Icon";
+import Tooltip from "metabase/components/Tooltip";
+import Ellipsified from "metabase/components/Ellipsified";
 
 import cx from "classnames";
 
@@ -73,12 +73,10 @@ export default class LegendItem extends Component {
           </Tooltip>
         )}
         {showTitle && (
-          <div className="flex align-center">
-            <span className="mr1">
-              <Ellipsified showTooltip={showTooltip}>{title}</Ellipsified>
-            </span>
+          <div className="flex align-center overflow-hidden">
+            <Ellipsified showTooltip={showTooltip}>{title}</Ellipsified>
             {description && (
-              <div className="hover-child">
+              <div className="hover-child ml1 flex align-center text-medium">
                 <Tooltip tooltip={description} maxWidth={"22em"}>
                   <Icon className={infoClassName} name="info" />
                 </Tooltip>

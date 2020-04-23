@@ -17,4 +17,5 @@ export const examples = {
   underlined: <Radio {...PROPS} underlined />,
   "show buttons": <Radio {...PROPS} showButtons />,
   vertical: <Radio {...PROPS} vertical />,
+  bubble: <Radio {...PROPS} bubble />,
 };

@@ -3,14 +3,17 @@
   results. The current focus of this namespace is around column metadata from the results of a query. Going forward
   this is likely to extend beyond just metadata about columns but also about the query results as a whole and over
   time."
-  (:require [metabase.mbql.predicates :as mbql.preds]
+  (:require [clojure.tools.logging :as log]
+            [metabase.mbql.predicates :as mbql.preds]
             [metabase.sync.analyze.classifiers.name :as classify-name]
             [metabase.sync.analyze.fingerprint
              [fingerprinters :as f]
              [insights :as insights]]
             [metabase.sync.interface :as i]
             [metabase.util :as u]
-            [metabase.util.schema :as su]
+            [metabase.util
+             [i18n :refer [trs]]
+             [schema :as su]]
             [redux.core :as redux]
             [schema.core :as s]))
 
@@ -22,8 +25,8 @@
 
 (def ^:private ResultColumnMetadata
   "Result metadata for a single column"
-  {:name                          su/NonBlankString
-   :display_name                  su/NonBlankString
+  {:name                          s/Str
+   :display_name                  s/Str
    (s/optional-key :description)  (s/maybe su/NonBlankString)
    :base_type                     su/FieldTypeKeywordOrString
    (s/optional-key :special_type) (s/maybe su/FieldTypeKeywordOrString)
@@ -39,48 +42,51 @@
 (s/defn ^:private maybe-infer-special-type :- ResultColumnMetadata
   "Infer the special type and add it to the result metadata. If the inferred special type is nil, don't override the
   special type with a nil special type"
-  [result-metadata col]
-  (update result-metadata :special_type (fn [original-value]
-                                          ;; If we already know the special type, becouse it is stored, don't classify again,
-                                          ;; but try to refine special type set upstream for aggregation cols (which come back as :type/Number).
-                                          (case original-value
-                                            (nil :type/Number) (classify-name/infer-special-type col)
-                                            original-value))))
+  [col]
+  (update
+   col
+   :special_type
+   (fn [original-value]
+     ;; If we already know the special type, becouse it is stored, don't classify again, but try to refine special
+     ;; type set upstream for aggregation cols (which come back as :type/Number).
+     (case original-value
+       (nil :type/Number) (classify-name/infer-special-type col)
+       original-value))))
 
-(s/defn ^:private stored-column-metadata->result-column-metadata :- ResultColumnMetadata
-  "The metadata in the column of our resultsets come from the metadata we store in the `Field` associated with the
-  column. It is cheapest and easiest to just use that. This function takes what it can from the column metadata to
-  populate the ResultColumnMetadata"
+(s/defn ^:private col->ResultColumnMetadata :- ResultColumnMetadata
+  "Make sure a `column` as it comes back from a driver's initial results metadata matches the schema for valid results
+  column metadata, adding placeholder values and removing nil keys."
   [column]
+  ;; HACK - not sure why we don't have display_name yet in some cases
   (merge
-   (u/select-non-nil-keys column [:name :display_name :description :base_type :special_type :unit :fingerprint])
-   ;; since years are actually returned as text they can't be used for breakout purposes so don't advertise them as DateTime columns
-   (when (= (:unit column) :year)
-     {:base_type :type/Text
-      :unit      nil})))
+   {:base_type    :type/*
+    :display_name (:name column)}
+   (u/select-non-nil-keys column [:name :display_name :description :base_type :special_type :unit :fingerprint])))
 
-;; TODO schema
-(defn results->column-metadata
-  "Return the desired storage format for the column metadata coming back from RESULTS and fingerprint the RESULTS."
-  [results]
-  (let [result-metadata (for [col (:cols results)]
-                          (-> col
-                              stored-column-metadata->result-column-metadata
-                              (maybe-infer-special-type col)))]
-    (transduce identity
-               (redux/post-complete
-                (redux/juxt
-                 (apply f/col-wise (for [metadata result-metadata]
-                                     (if-not (:fingerprint metadata)
-                                       (f/fingerprinter metadata)
-                                       (f/constant-fingerprinter (:fingerprint metadata)))))
-                 (insights/insights result-metadata))
-                (fn [[fingerprints insights]]
-                  {:metadata (map (fn [fingerprint metadata]
-                                    (if (instance? Throwable fingerprint)
-                                      metadata
-                                      (assoc metadata :fingerprint fingerprint)))
-                                  fingerprints
-                                  result-metadata)
-                   :insights insights}))
-               (:rows results))))
+(defn insights-rf
+  "A reducing function that calculates what is ultimately returned as `[:data :results_metadata]` in userland QP
+  results. `metadata` is the usual QP results metadata e.g. as recieved by an `rff`."
+  {:arglists '([metadata])}
+  [{:keys [cols]}]
+  (let [cols (for [col cols]
+               (try
+                 (maybe-infer-special-type (col->ResultColumnMetadata col))
+                 (catch Throwable e
+                   (log/error e (trs "Error generating insights for column:") col)
+                   col)))]
+    (redux/post-complete
+     (redux/juxt
+      (apply f/col-wise (for [{:keys [fingerprint], :as metadata} cols]
+                          (if-not fingerprint
+                            (f/fingerprinter metadata)
+                            (f/constant-fingerprinter fingerprint))))
+      (insights/insights cols))
+     (fn [[fingerprints insights]]
+       {:metadata (map (fn [fingerprint metadata]
+                         (if (instance? Throwable fingerprint)
+                           metadata
+                           (assoc metadata :fingerprint fingerprint)))
+                       fingerprints
+                       cols)
+        :insights (when-not (instance? Throwable insights)
+                    insights)}))))

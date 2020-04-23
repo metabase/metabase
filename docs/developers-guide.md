@@ -1,10 +1,10 @@
 **This guide will teach you:**
 
-* [How to compile your own copy of Metabase](#build-metabase)
-* [How to set up a development environment](#development-environment)
-* [How to run the Metabase Server](#development-server-quick-start)
-* [How to contribute back to the Metabase project](#contributing)
-* [How to add support in Metabase for other languages](#internationalization)
+- [How to compile your own copy of Metabase](#build-metabase)
+- [How to set up a development environment](#development-environment)
+- [How to run the Metabase Server](#development-server-quick-start)
+- [How to contribute back to the Metabase project](#contributing)
+- [How to add support in Metabase for other languages](#internationalization)
 
 # Contributing
 
@@ -73,28 +73,28 @@ Run your backend development server with
 
 Start the frontend build process with
 
-    yarn run build-hot
+    yarn build-hot
 
 ## Frontend development
 
 We use these technologies for our FE build process to allow us to use modules, es6 syntax, and css variables.
 
-* webpack
-* babel
-* cssnext
+- webpack
+- babel
+- cssnext
 
-Frontend tasks are executed using `yarn run`. All available tasks can be found in `package.json` under _scripts_.
+Frontend tasks are executed using `yarn`. All available tasks can be found in `package.json` under _scripts_.
 
 To build the frontend client without watching for changes, you can use:
 
 ```sh
-$ yarn run build
+$ yarn build
 ```
 
 If you're working on the frontend directly, you'll most likely want to reload changes on save, and in the case of React components, do so while maintaining state. To start a build with hot reloading, use:
 
 ```sh
-$ yarn run build-hot
+$ yarn build-hot
 ```
 
 Note that at this time if you change CSS variables, those changes will only be picked up when a build is restarted.
@@ -102,31 +102,33 @@ Note that at this time if you change CSS variables, those changes will only be p
 There is also an option to reload changes on save without hot reloading if you prefer that.
 
 ```sh
-$ yarn run build-watch
+$ yarn build-watch
 ```
+
+Some systems may have trouble detecting changes to frontend files. You can enable filesystem polling by uncommenting the `watchOptions` clause in `webpack.config.js`. If you do this it may be worth making git ignore changes to webpack config, using `git update-index --assume-unchanged webpack.config.js`
 
 ### Frontend testing
 
 All frontend tests are located in `frontend/test` directory. Run all frontend tests with
 
 ```
-yarn run test
+yarn test
 ```
 
-which will first build the backend JAR and then run integration, unit and Karma browser tests in sequence.
+which will run unit, end-to-end, and legacy Karma browser tests in sequence.
 
-### Jest integration tests
+### End-to-end tests
 
-Integration tests simulate realistic sequences of user interactions. They render a complete DOM tree using [Enzyme](http://airbnb.io/enzyme/docs/api/index.html) and use temporary backend instances for executing API calls.
+End-to-end tests simulate realistic sequences of user interactions. They render a complete DOM tree using [Enzyme](http://airbnb.io/enzyme/docs/api/index.html) and use temporary backend instances for executing API calls.
 
-Integration tests use an enforced file naming convention `<test-suite-name>.integ.js` to separate them from unit tests.
+End-to-end tests use an enforced file naming convention `<test-suite-name>.e2e.spec.js` to separate them from unit tests.
 
 Useful commands:
 
 ```bash
 lein run refresh-integration-test-db-metadata # Scan the sample dataset and re-run sync/classification/field values caching
-yarn run test-integrated-watch # Watches for file changes and runs the tests that have changed
-yarn run test-integrated-watch TestFileName # Watches the files in paths that match the given (regex) string
+yarn test-e2e-watch # Watches for file changes and runs the tests that have changed
+yarn test-e2e-watch TestFileName # Watches the files in paths that match the given (regex) string
 ```
 
 The way integration tests are written is a little unconventional so here is an example that hopefully helps in getting up to speed:
@@ -135,10 +137,10 @@ The way integration tests are written is a little unconventional so here is an e
 import {
     useSharedAdminLogin,
     createTestStore,
-} from "__support__/integrated_tests";
+} from "__support__/e2e";
 import {
     click
-} from "__support__/enzyme_utils"
+} from "__support__/enzyme"
 
 import { mount } from "enzyme"
 
@@ -178,7 +180,7 @@ describe("Query builder", () => {
         store.debug();
 
         // For simulating user interactions like clicks and input events you should use methods defined
-        // in `enzyme_utils.js` as they abstract away some React/Redux complexities.
+        // in `enzyme.js` as they abstract away some React/Redux complexities.
         click(app.find(RunButton))
 
         // Note: In pretty rare cases where rendering the whole app is problematic or slow, you can just render a single
@@ -188,17 +190,17 @@ describe("Query builder", () => {
 })
 ```
 
-You can also skim through [`__support__/integrated_tests.js`](https://github.com/metabase/metabase/blob/master/frontend/test/__support__/integrated_tests.js) and [`__support__/enzyme_utils.js`](https://github.com/metabase/metabase/blob/master/frontend/test/__support__/enzyme_utils.js) to see all available methods.
+You can also skim through [`__support__/e2e.js`](https://github.com/metabase/metabase/blob/master/frontend/test/__support__/e2e.js) and [`__support__/enzyme.js`](https://github.com/metabase/metabase/blob/master/frontend/test/__support__/enzyme.js) to see all available methods.
 
 ### Jest unit tests
 
 Unit tests are focused around isolated parts of business logic.
 
-Unit tests use an enforced file naming convention `<test-suite-name>.unit.js` to separate them from integration tests.
+Unit tests use an enforced file naming convention `<test-suite-name>.unit.spec.js` to separate them from end-to-end and integration tests.
 
 ```
-yarn run test-unit # Run all tests at once
-yarn run test-unit-watch # Watch for file changes
+yarn test-unit # Run all tests at once
+yarn test-unit-watch # Watch for file changes
 ```
 
 ### Karma browser tests
@@ -206,8 +208,8 @@ yarn run test-unit-watch # Watch for file changes
 If you need to test code which uses browser APIs that are only available in real browsers, you can add a Karma test to `frontend/test/legacy-karma` directory.
 
 ```
-yarn run test-karma # Run all tests once
-yarn run test-karma-watch # Watch for file changes
+yarn test-karma # Run all tests once
+yarn test-karma-watch # Watch for file changes
 ```
 
 ## Backend development
@@ -307,7 +309,7 @@ We are an application with lots of users all over the world. To help them use Me
 
 If you need to add new strings (try to be judicious about adding copy) do the following:
 
-1. Tag strings in the frontend using `t` and `jt` ES6 template literals (see more details in https://c-3po.js.org/):
+1. Tag strings in the frontend using `t` and `jt` ES6 template literals (see more details in https://ttag.js.org/):
 
 ```javascript
 const someString = t`Hello ${name}!`;
@@ -322,10 +324,10 @@ and in the backend using `trs` and related macros (see more details in https://g
 
 ### Translation errors or missing strings
 
-If you see incorrect or missing strings for your langauge, please visit our [POEditor project](https://poeditor.com/join/project/ynjQmwSsGh) and submit your fixes there.
+If you see incorrect or missing strings for your language, please visit our [POEditor project](https://poeditor.com/join/project/ynjQmwSsGh) and submit your fixes there.
 
 ## License
 
-Copyright © 2017 Metabase, Inc
+Copyright © 2020 Metabase, Inc.
 
 Distributed under the terms of the GNU Affero General Public License (AGPL) except as otherwise noted. See individual files for details.

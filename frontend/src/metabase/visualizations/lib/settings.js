@@ -1,16 +1,16 @@
 /* @flow */
 
-import ChartSettingInput from "metabase/visualizations/components/settings/ChartSettingInput.jsx";
-import ChartSettingInputGroup from "metabase/visualizations/components/settings/ChartSettingInputGroup.jsx";
-import ChartSettingInputNumeric from "metabase/visualizations/components/settings/ChartSettingInputNumeric.jsx";
-import ChartSettingRadio from "metabase/visualizations/components/settings/ChartSettingRadio.jsx";
-import ChartSettingSelect from "metabase/visualizations/components/settings/ChartSettingSelect.jsx";
-import ChartSettingToggle from "metabase/visualizations/components/settings/ChartSettingToggle.jsx";
-import ChartSettingButtonGroup from "metabase/visualizations/components/settings/ChartSettingButtonGroup.jsx";
-import ChartSettingFieldPicker from "metabase/visualizations/components/settings/ChartSettingFieldPicker.jsx";
-import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker.jsx";
-import ChartSettingColorPicker from "metabase/visualizations/components/settings/ChartSettingColorPicker.jsx";
-import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker.jsx";
+import ChartSettingInput from "metabase/visualizations/components/settings/ChartSettingInput";
+import ChartSettingInputGroup from "metabase/visualizations/components/settings/ChartSettingInputGroup";
+import ChartSettingInputNumeric from "metabase/visualizations/components/settings/ChartSettingInputNumeric";
+import ChartSettingRadio from "metabase/visualizations/components/settings/ChartSettingRadio";
+import ChartSettingSelect from "metabase/visualizations/components/settings/ChartSettingSelect";
+import ChartSettingToggle from "metabase/visualizations/components/settings/ChartSettingToggle";
+import ChartSettingButtonGroup from "metabase/visualizations/components/settings/ChartSettingButtonGroup";
+import ChartSettingFieldPicker from "metabase/visualizations/components/settings/ChartSettingFieldPicker";
+import ChartSettingFieldsPicker from "metabase/visualizations/components/settings/ChartSettingFieldsPicker";
+import ChartSettingColorPicker from "metabase/visualizations/components/settings/ChartSettingColorPicker";
+import ChartSettingColorsPicker from "metabase/visualizations/components/settings/ChartSettingColorsPicker";
 
 import MetabaseAnalytics from "metabase/lib/analytics";
 
@@ -84,7 +84,7 @@ export function getComputedSettings(
   extra?: ExtraProps = {},
 ) {
   const computedSettings = {};
-  for (let settingId in settingsDefs) {
+  for (const settingId in settingsDefs) {
     getComputedSetting(
       computedSettings,
       settingsDefs,
@@ -111,7 +111,7 @@ function getComputedSetting(
 
   const settingDef = settingDefs[settingId] || {};
 
-  for (let dependentId of settingDef.readDependencies || []) {
+  for (const dependentId of settingDef.readDependencies || []) {
     getComputedSetting(
       computedSettings,
       settingDefs,
@@ -234,8 +234,8 @@ export function getPersistableDefaultSettings(
   settingsDefs: SettingDefs,
   completeSettings: Settings,
 ): Settings {
-  let persistableDefaultSettings = {};
-  for (let settingId in settingsDefs) {
+  const persistableDefaultSettings = {};
+  for (const settingId in settingsDefs) {
     const settingDef = settingsDefs[settingId];
     if (settingDef.persistDefault) {
       persistableDefaultSettings[settingId] = completeSettings[settingId];

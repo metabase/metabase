@@ -8,6 +8,8 @@ import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
 
+import { PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE } from "metabase/plugins";
+
 import type {
   Group,
   GroupId,
@@ -29,7 +31,7 @@ export function getPermission(
   path: Array<string | number>,
   isControlledType: boolean = false,
 ): string {
-  let value = getIn(permissions, [groupId].concat(path));
+  const value = getIn(permissions, [groupId].concat(path));
   if (isControlledType) {
     if (!value) {
       return "none";
@@ -53,7 +55,7 @@ export function updatePermission(
   entityIds: ?(Array<string> | Array<number>),
 ): GroupsPermissions {
   const fullPath = [groupId].concat(path);
-  let current = getIn(permissions, fullPath);
+  const current = getIn(permissions, fullPath);
   if (
     current === value ||
     (current && typeof current === "object" && value === "controlled")
@@ -64,7 +66,7 @@ export function updatePermission(
   if (value === "controlled") {
     newValue = {};
     if (entityIds) {
-      for (let entityId of entityIds) {
+      for (const entityId of entityIds) {
         newValue[entityId] = current;
       }
     }
@@ -100,7 +102,7 @@ export const getTablesPermission = (
   groupId: GroupId,
   { databaseId, schemaName }: SchemaEntityId,
 ): string => {
-  let schemas = getSchemasPermission(permissions, groupId, { databaseId });
+  const schemas = getSchemasPermission(permissions, groupId, { databaseId });
   if (schemas === "controlled") {
     return getPermission(
       permissions,
@@ -118,7 +120,7 @@ export const getFieldsPermission = (
   groupId: GroupId,
   { databaseId, schemaName, tableId }: TableEntityId,
 ): string => {
-  let tables = getTablesPermission(permissions, groupId, {
+  const tables = getTablesPermission(permissions, groupId, {
     databaseId,
     schemaName,
   });
@@ -141,10 +143,12 @@ export function downgradeNativePermissionsIfNeeded(
   value: string,
   metadata: Metadata,
 ): GroupsPermissions {
-  let currentSchemas = getSchemasPermission(permissions, groupId, {
+  const currentSchemas = getSchemasPermission(permissions, groupId, {
     databaseId,
   });
-  let currentNative = getNativePermission(permissions, groupId, { databaseId });
+  const currentNative = getNativePermission(permissions, groupId, {
+    databaseId,
+  });
 
   if (value === "none") {
     // if changing schemas to none, downgrade native to none
@@ -175,7 +179,7 @@ export function downgradeNativePermissionsIfNeeded(
 
 const metadataTableToTableEntityId = (table: Table): TableEntityId => ({
   databaseId: table.db_id,
-  schemaName: table.schema || "",
+  schemaName: table.schema_name || "",
   tableId: table.id,
 });
 
@@ -184,7 +188,7 @@ const entityIdToMetadataTableFields = (entityId: EntityId) => ({
   ...(entityId.databaseId ? { db_id: entityId.databaseId } : {}),
   // $FlowFixMe Because schema name can be an empty string, which means an empty schema, this check becomes a little nasty
   ...(entityId.schemaName !== undefined
-    ? { schema: entityId.schemaName !== "" ? entityId.schemaName : null }
+    ? { schema_name: entityId.schemaName !== "" ? entityId.schemaName : null }
     : {}),
   ...(entityId.tableId ? { id: entityId.tableId } : {}),
 });
@@ -295,7 +299,7 @@ export function updateFieldsPermission(
     permissions,
     groupId,
     [databaseId, "schemas", schemaName, tableId],
-    value /* TODO: field ids, when enabled "controlled" fields */,
+    PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE[value] || value,
   );
 
   return permissions;
@@ -308,10 +312,8 @@ export function updateTablesPermission(
   value: string,
   metadata: Metadata,
 ): GroupsPermissions {
-  const database = metadata && metadata.databases[databaseId];
-  const tableIds: ?(number[]) =
-    database &&
-    database.tables.filter(t => (t.schema || "") === schemaName).map(t => t.id);
+  const schema = metadata && metadata.database(databaseId).schema(schemaName);
+  const tableIds = schema && schema.tables.map(t => t.id);
 
   permissions = updateSchemasPermission(
     permissions,
@@ -437,12 +439,12 @@ function diffDatabasePermissions(
   for (const table of database.tables) {
     const oldFieldsPerm = getFieldsPermission(oldPerms, groupId, {
       databaseId: database.id,
-      schemaName: table.schema || "",
+      schemaName: table.schema_name || "",
       tableId: table.id,
     });
     const newFieldsPerm = getFieldsPermission(newPerms, groupId, {
       databaseId: database.id,
-      schemaName: table.schema || "",
+      schemaName: table.schema_name || "",
       tableId: table.id,
     });
     if (oldFieldsPerm !== newFieldsPerm) {
@@ -454,7 +456,7 @@ function diffDatabasePermissions(
     }
   }
   // remove types that have no tables
-  for (let type of ["grantedTables", "revokedTables"]) {
+  for (const type of ["grantedTables", "revokedTables"]) {
     deleteIfEmpty(databaseDiff, type);
   }
   return databaseDiff;
@@ -466,7 +468,7 @@ function diffGroupPermissions(
   groupId: GroupId,
   metadata: Metadata,
 ): GroupPermissionsDiff {
-  let groupDiff: GroupPermissionsDiff = { databases: {} };
+  const groupDiff: GroupPermissionsDiff = { databases: {} };
   for (const database of metadata.databasesList()) {
     groupDiff.databases[database.id] = diffDatabasePermissions(
       newPerms,
@@ -489,9 +491,9 @@ export function diffPermissions(
   groups: Array<Group>,
   metadata: Metadata,
 ): PermissionsDiff {
-  let permissionsDiff: PermissionsDiff = { groups: {} };
+  const permissionsDiff: PermissionsDiff = { groups: {} };
   if (newPerms && oldPerms && metadata) {
-    for (let group of groups) {
+    for (const group of groups) {
       permissionsDiff.groups[group.id] = diffGroupPermissions(
         newPerms,
         oldPerms,

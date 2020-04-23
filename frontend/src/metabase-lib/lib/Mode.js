@@ -1,7 +1,7 @@
 import _ from "underscore";
 
 import Question from "metabase-lib/lib/Question";
-import { getMode } from "metabase/qb/lib/modes";
+import { getMode } from "metabase/modes/lib/modes";
 
 import type {
   ClickAction,
@@ -20,9 +20,7 @@ export default class Mode {
 
   static forQuestion(question: Question): ?Mode {
     // TODO Atte Keinänen 6/22/17: Move getMode here and refactor it after writing tests
-    const card = question.card();
-    const tableMetadata = question.tableMetadata();
-    const queryMode = getMode(card, tableMetadata);
+    const queryMode = getMode(question);
 
     if (queryMode) {
       return new Mode(question, queryMode);
@@ -39,19 +37,13 @@ export default class Mode {
     return this._queryMode.name;
   }
 
-  actions(settings): ClickAction[] {
-    return _.flatten(
-      this._queryMode.actions.map(actionCreator =>
-        actionCreator({ question: this._question, settings }),
-      ),
-    );
-  }
-
   actionsForClick(clicked: ?ClickObject, settings): ClickAction[] {
     return _.flatten(
-      this._queryMode.drills.map(actionCreator =>
-        actionCreator({ question: this._question, settings, clicked }),
-      ),
+      this._queryMode
+        .drills()
+        .map(actionCreator =>
+          actionCreator({ question: this._question, settings, clicked }),
+        ),
     );
   }
 }

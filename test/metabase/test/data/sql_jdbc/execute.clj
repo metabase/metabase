@@ -1,6 +1,6 @@
 (ns metabase.test.data.sql-jdbc.execute
   (:require [clojure.java.jdbc :as jdbc]
-            [clojure.string :as s]
+            [clojure.string :as str]
             [metabase.driver :as driver]
             [metabase.test.data.interface :as tx]
             [metabase.test.data.sql-jdbc.spec :as spec])
@@ -15,12 +15,12 @@
 
 (defn default-execute-sql! [driver context dbdef sql & {:keys [execute!]
                                                         :or   {execute! jdbc-execute!}}]
-  (let [sql (some-> sql s/trim)]
+  (let [sql (some-> sql str/trim)]
     (when (and (seq sql)
                ;; make sure SQL isn't just semicolons
-               (not (s/blank? (s/replace sql #";" ""))))
+               (not (str/blank? (str/replace sql #";" ""))))
       ;; Remove excess semicolons, otherwise snippy DBs like Oracle will barf
-      (let [sql (s/replace sql #";+" ";")]
+      (let [sql (str/replace sql #";+" ";")]
         (try
           (execute! (spec/dbdef->spec driver context dbdef) sql)
           (catch SQLException e
@@ -42,9 +42,9 @@
   ampersand (`⅋`) is understood as an \"escaped\" semicolon in the resulting SQL statement."
   [driver context dbdef sql  & {:keys [execute!] :or {execute! default-execute-sql!}}]
   (when sql
-    (doseq [statement (map s/trim (s/split sql #";+"))]
+    (doseq [statement (map str/trim (str/split sql #";+"))]
       (when (seq statement)
-        (execute! driver context dbdef (s/replace statement #"⅋" ";"))))))
+        (execute! driver context dbdef (str/replace statement #"⅋" ";"))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

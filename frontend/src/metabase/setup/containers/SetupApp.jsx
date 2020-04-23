@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import fitViewport from "metabase/hoc/FitViewPort";
 
-import Setup from "../components/Setup.jsx";
+import Setup from "../components/Setup";
 
 import { setupSelectors } from "../selectors";
 import {
@@ -28,7 +28,10 @@ const mapDispatchToProps = {
   submitSetup,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @fitViewport
 export default class SetupApp extends Component {
   render() {

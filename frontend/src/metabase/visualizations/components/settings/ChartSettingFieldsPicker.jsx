@@ -1,6 +1,6 @@
 import React from "react";
-import { t } from "c-3po";
-import ChartSettingFieldPicker from "./ChartSettingFieldPicker.jsx";
+import { t } from "ttag";
+import ChartSettingFieldPicker from "./ChartSettingFieldPicker";
 
 const ChartSettingFieldsPicker = ({
   value = [],
@@ -19,9 +19,9 @@ const ChartSettingFieldsPicker = ({
           value={v}
           options={options}
           onChange={v => {
-            let newValue = [...value];
+            const newValue = [...value];
             // this swaps the position of the existing value
-            let existingIndex = value.indexOf(v);
+            const existingIndex = value.indexOf(v);
             if (existingIndex >= 0) {
               newValue.splice(existingIndex, 1, value[index]);
             }
@@ -45,8 +45,9 @@ const ChartSettingFieldsPicker = ({
       <span className="text-error">{t`error`}</span>
     )}
     {addAnother && (
-      <div className="mt1">
+      <div className="mt2 mb3">
         <a
+          className="text-brand text-bold py1 px2 rounded bg-light bg-medium-hover"
           onClick={() => {
             const remaining = options.filter(o => value.indexOf(o.value) < 0);
             if (remaining.length === 1) {

@@ -1,21 +1,23 @@
 import React from "react";
 
-import Calendar from "metabase/components/Calendar.jsx";
+import Calendar from "metabase/components/Calendar";
 import moment from "moment";
 
-const DateSingleWidget = ({ value, setValue, onClose }) => (
-  <div className="p1">
+const DateSingleWidget = ({ value, setValue, onClose }) => {
+  value = value ? moment(value) : moment();
+  return (
     <Calendar
-      initial={value ? moment(value) : null}
-      selected={value ? moment(value) : null}
-      selectedEnd={value ? moment(value) : null}
+      initial={value}
+      selected={value}
+      selectedEnd={value}
+      isRangePicker={false}
       onChange={value => {
         setValue(value);
         onClose();
       }}
     />
-  </div>
-);
+  );
+};
 
 DateSingleWidget.format = value =>
   value ? moment(value).format("MMMM D, YYYY") : "";

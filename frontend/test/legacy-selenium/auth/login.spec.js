@@ -10,6 +10,8 @@ import {
   describeE2E,
 } from "../support/utils";
 
+import { METABASE_SESSION_COOKIE } from "metabase/lib/cookies";
+
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 60000;
 
 describeE2E("auth/login", () => {
@@ -36,7 +38,7 @@ describeE2E("auth/login", () => {
       await waitForUrl(driver, `${server.host}/`);
       const sessionCookie = await driver
         .manage()
-        .getCookie("metabase.SESSION_ID");
+        .getCookie(METABASE_SESSION_COOKIE);
       sessionId = sessionCookie.value;
     });
 
@@ -55,7 +57,7 @@ describeE2E("auth/login", () => {
     beforeEach(async () => {
       await driver.get(`${server.host}/`);
       await driver.manage().deleteAllCookies();
-      await driver.manage().addCookie("metabase.SESSION_ID", sessionId);
+      await driver.manage().addCookie(METABASE_SESSION_COOKIE, sessionId);
     });
 
     it("is logged in", async () => {
@@ -66,15 +68,11 @@ describeE2E("auth/login", () => {
 
     it("loads the qb", async () => {
       await driver.get(
-        `${
-          server.host
-        }/question#eyJuYW1lIjpudWxsLCJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjoxLCJ0eXBlIjoibmF0aXZlIiwibmF0aXZlIjp7InF1ZXJ5Ijoic2VsZWN0ICdvaCBoYWkgZ3Vpc2Ug8J-QsScifSwicGFyYW1ldGVycyI6W119LCJkaXNwbGF5Ijoic2NhbGFyIiwidmlzdWFsaXphdGlvbl9zZXR0aW5ncyI6e319`,
+        `${server.host}/question#eyJuYW1lIjpudWxsLCJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjoxLCJ0eXBlIjoibmF0aXZlIiwibmF0aXZlIjp7InF1ZXJ5Ijoic2VsZWN0ICdvaCBoYWkgZ3Vpc2Ug8J-QsScifSwicGFyYW1ldGVycyI6W119LCJkaXNwbGF5Ijoic2NhbGFyIiwidmlzdWFsaXphdGlvbl9zZXR0aW5ncyI6e319`,
       );
       await waitForUrl(
         driver,
-        `${
-          server.host
-        }/question#eyJuYW1lIjpudWxsLCJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjoxLCJ0eXBlIjoibmF0aXZlIiwibmF0aXZlIjp7InF1ZXJ5Ijoic2VsZWN0ICdvaCBoYWkgZ3Vpc2Ug8J-QsScifSwicGFyYW1ldGVycyI6W119LCJkaXNwbGF5Ijoic2NhbGFyIiwidmlzdWFsaXphdGlvbl9zZXR0aW5ncyI6e319`,
+        `${server.host}/question#eyJuYW1lIjpudWxsLCJkYXRhc2V0X3F1ZXJ5Ijp7ImRhdGFiYXNlIjoxLCJ0eXBlIjoibmF0aXZlIiwibmF0aXZlIjp7InF1ZXJ5Ijoic2VsZWN0ICdvaCBoYWkgZ3Vpc2Ug8J-QsScifSwicGFyYW1ldGVycyI6W119LCJkaXNwbGF5Ijoic2NhbGFyIiwidmlzdWFsaXphdGlvbl9zZXR0aW5ncyI6e319`,
       );
       await screenshot(driver, "screenshots/qb.png");
     });

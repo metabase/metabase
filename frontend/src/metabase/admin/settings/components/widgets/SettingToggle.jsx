@@ -1,6 +1,6 @@
 import React from "react";
-import { t } from "c-3po";
-import Toggle from "metabase/components/Toggle.jsx";
+import { t } from "ttag";
+import Toggle from "metabase/components/Toggle";
 
 const SettingToggle = ({ setting, onChange, disabled }) => {
   const value = setting.value == null ? setting.default : setting.value;

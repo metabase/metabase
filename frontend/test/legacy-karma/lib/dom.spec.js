@@ -14,7 +14,7 @@ describe("getSelectionPosition/setSelectionPosition", () => {
   });
 
   it("should get/set selection on input correctly", () => {
-    let input = document.createElement("input");
+    const input = document.createElement("input");
     container.appendChild(input);
     input.value = "hello world";
     setSelectionPosition(input, [3, 6]);
@@ -22,7 +22,7 @@ describe("getSelectionPosition/setSelectionPosition", () => {
     expect(position).toEqual([3, 6]);
   });
   it("should get/set selection on contenteditable correctly", () => {
-    let contenteditable = document.createElement("div");
+    const contenteditable = document.createElement("div");
     container.appendChild(contenteditable);
     contenteditable.textContent = "<div>hello world</div>";
     setSelectionPosition(contenteditable, [3, 6]);
@@ -30,7 +30,7 @@ describe("getSelectionPosition/setSelectionPosition", () => {
     expect(position).toEqual([3, 6]);
   });
   it("should not mutate the actual selection", () => {
-    let contenteditable = document.createElement("div");
+    const contenteditable = document.createElement("div");
     container.appendChild(contenteditable);
     contenteditable.textContent = "<div>hello world</div>";
     setSelectionPosition(contenteditable, [3, 6]);

@@ -1,14 +1,14 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 import Ellipsified from "metabase/components/Ellipsified";
 import Link from "metabase/components/Link";
-import SidebarSection from "./SidebarSection.jsx";
+import SidebarSection from "./SidebarSection";
 import * as Urls from "metabase/lib/urls";
 
-import { normal } from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 export default class RecentViews extends Component {
   static propTypes = {
@@ -49,7 +49,9 @@ export default class RecentViews extends Component {
                     size={18}
                     style={{
                       color:
-                        iconName === "dashboard" ? normal.purple : normal.blue,
+                        iconName === "dashboard"
+                          ? color("dashboard")
+                          : color("brand"),
                     }}
                   />
                   <Link

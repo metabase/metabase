@@ -44,9 +44,11 @@
 (defmethod excluded-schemas :sql-jdbc [_] nil)
 
 
+;; TODO - why don't we just use JDBC `DatabaseMetaData` to do this? This is wacky
 (defmulti database-type->base-type
   "Given a native DB column type (as a keyword), return the corresponding `Field` `base-type`, which should derive from
-  `:type/*`. You can use `pattern-based-database-type->base-type` in this namespace to implement this using regex patterns."
+  `:type/*`. You can use `pattern-based-database-type->base-type` in this namespace to implement this using regex
+  patterns."
   {:arglists '([driver database-type])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
@@ -83,35 +85,38 @@
 ;;; |                                                   Sync Impl                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+;; TODO - we should reduce the metadata ResultSets instead of realizing the entire thing in memory at once and then
+;; filtering/transforming in Clojure-land
+
 (defn- get-tables
   "Fetch a JDBC Metadata ResultSet of tables in the DB, optionally limited to ones belonging to a given schema."
-  [^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
-  (vec
-   (jdbc/metadata-result
-    (.getTables metadata db-name-or-nil schema-or-nil "%" ; tablePattern "%" = match all tables
-                (into-array String ["TABLE", "VIEW", "FOREIGN TABLE", "MATERIALIZED VIEW"])))))
+  [^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
+  ;; tablePattern "%" = match all tables
+  (with-open [rs (.getTables metadata db-name-or-nil schema-or-nil "%"
+                             (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))]
+    (vec (jdbc/metadata-result rs))))
 
 (defn fast-active-tables
-  "Default, fast implementation of `ISQLDriver/active-tables` best suited for DBs with lots of system tables (like
-   Oracle). Fetch list of schemas, then for each one not in `excluded-schemas`, fetch its Tables, and combine the
-   results.
+  "Default, fast implementation of `active-tables` best suited for DBs with lots of system tables (like Oracle). Fetch
+  list of schemas, then for each one not in `excluded-schemas`, fetch its Tables, and combine the results.
 
-   This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4
-   seconds vs 60)."
-  [driver, ^DatabaseMetaData metadata, & [db-name-or-nil]]
-  (let [all-schemas (set (map :table_schem (jdbc/metadata-result (.getSchemas metadata))))
-        schemas     (set/difference all-schemas (excluded-schemas driver))]
-    (set (for [schema schemas
-               table  (get-tables metadata schema db-name-or-nil)]
-           (let [remarks (:remarks table)]
-             {:name        (:table_name table)
-              :schema      schema
-              :description (when-not (str/blank? remarks)
-                             remarks)})))))
+  This is as much as 15x faster for Databases with lots of system tables than `post-filtered-active-tables` (4 seconds
+  vs 60)."
+  [driver ^DatabaseMetaData metadata & [db-name-or-nil]]
+  (with-open [rs (.getSchemas metadata)]
+    (let [all-schemas (set (map :table_schem (jdbc/metadata-result rs)))
+          schemas     (set/difference all-schemas (excluded-schemas driver))]
+      (set (for [schema schemas
+                 table  (get-tables metadata schema db-name-or-nil)]
+             (let [remarks (:remarks table)]
+               {:name        (:table_name table)
+                :schema      schema
+                :description (when-not (str/blank? remarks)
+                               remarks)}))))))
 
 (defn post-filtered-active-tables
-  "Alternative implementation of `ISQLDriver/active-tables` best suited for DBs with little or no support for schemas.
-   Fetch *all* Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
+  "Alternative implementation of `active-tables` best suited for DBs with little or no support for schemas. Fetch *all*
+  Tables, then filter out ones whose schema is in `excluded-schemas` Clojure-side."
   [driver, ^DatabaseMetaData metadata, & [db-name-or-nil]]
   (set (for [table   (filter #(not (contains? (excluded-schemas driver) (:table_schem %)))
                              (get-tables metadata nil nil))]
@@ -124,7 +129,8 @@
 (defn get-catalogs
   "Returns a set of all of the catalogs found via `metadata`"
   [^DatabaseMetaData metadata]
-  (set (map :table_cat (jdbc/result-set-seq (.getCatalogs metadata)))))
+  (with-open [rs (.getCatalogs metadata)]
+    (set (map :table_cat (jdbc/metadata-result rs)))))
 
 (defn- database-type->base-type-or-warn
   "Given a `database-type` (e.g. `VARCHAR`) return the mapped Metabase type (e.g. `:type/Text`)."
@@ -145,30 +151,30 @@
 (defn describe-table-fields
   "Returns a set of column metadata for `schema` and `table-name` using `metadata`. "
   [^DatabaseMetaData metadata, driver, {^String schema :schema, ^String table-name :name}, & [^String db-name-or-nil]]
-  (set
-   (for [{database-type :type_name
-          column-name   :column_name
-          remarks       :remarks} (jdbc/metadata-result
-          (.getColumns metadata db-name-or-nil schema table-name nil))]
-     (merge
-      {:name          column-name
-       :database-type database-type
-       :base-type     (database-type->base-type-or-warn driver database-type)}
-      (when (not (str/blank? remarks))
-        {:field-comment remarks})
-      (when-let [special-type (calculated-special-type driver column-name database-type)]
-        {:special-type special-type})))))
+  (with-open [rs (.getColumns metadata db-name-or-nil schema table-name nil)]
+    (set
+     (for [{database-type :type_name
+            column-name   :column_name
+            remarks       :remarks} (jdbc/metadata-result rs)]
+       (merge
+        {:name          column-name
+         :database-type database-type
+         :base-type     (database-type->base-type-or-warn driver database-type)}
+        (when (not (str/blank? remarks))
+          {:field-comment remarks})
+        (when-let [special-type (calculated-special-type driver column-name database-type)]
+          {:special-type special-type}))))))
 
 (defn add-table-pks
   "Using `metadata` find any primary keys for `table` and assoc `:pk?` to true for those columns."
   [^DatabaseMetaData metadata, table]
-  (let [pks (set (map :column_name (jdbc/metadata-result
-                                    (.getPrimaryKeys metadata nil nil (:name table)))))]
-    (update table :fields (fn [fields]
-                            (set (for [field fields]
-                                   (if-not (contains? pks (:name field))
-                                     field
-                                     (assoc field :pk? true))))))))
+  (with-open [rs (.getPrimaryKeys metadata nil nil (:name table))]
+    (let [pks (set (map :column_name (jdbc/metadata-result rs)))]
+      (update table :fields (fn [fields]
+                              (set (for [field fields]
+                                     (if-not (contains? pks (:name field))
+                                       field
+                                       (assoc field :pk? true)))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -199,10 +205,10 @@
   "Default implementation of `driver/describe-table-fks` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
   [driver db-or-id-or-spec table & [^String db-name-or-nil]]
   (jdbc/with-db-metadata [metadata (->spec db-or-id-or-spec)]
-    (set
-     (for [result (jdbc/metadata-result
-                   (.getImportedKeys metadata db-name-or-nil, ^String (:schema table), ^String (:name table)))]
-       {:fk-column-name   (:fkcolumn_name result)
-        :dest-table       {:name   (:pktable_name result)
-                           :schema (:pktable_schem result)}
-        :dest-column-name (:pkcolumn_name result)}))))
+    (with-open [rs (.getImportedKeys metadata db-name-or-nil, ^String (:schema table), ^String (:name table))]
+      (set
+       (for [result (jdbc/metadata-result rs)]
+         {:fk-column-name   (:fkcolumn_name result)
+          :dest-table       {:name   (:pktable_name result)
+                             :schema (:pktable_schem result)}
+          :dest-column-name (:pkcolumn_name result)})))))

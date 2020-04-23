@@ -1,5 +1,5 @@
 import React from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 import Tooltip from "metabase/components/Tooltip";
 import NightModeIcon from "metabase/components/icons/NightModeIcon";
 import FullscreenIcon from "metabase/components/icons/FullscreenIcon";
@@ -13,7 +13,7 @@ export const getDashboardActions = ({
   onNightModeChange,
   onFullscreenChange,
   refreshPeriod,
-  refreshElapsed,
+  setRefreshElapsedHook,
   onRefreshPeriodChange,
 }) => {
   const buttons = [];
@@ -25,7 +25,7 @@ export const getDashboardActions = ({
         data-metabase-event="Dashboard;Refresh Menu Open"
         className="text-brand-hover"
         period={refreshPeriod}
-        elapsed={refreshElapsed}
+        setRefreshElapsedHook={setRefreshElapsedHook}
         onChangePeriod={onRefreshPeriodChange}
       />,
     );

@@ -5,11 +5,13 @@ import querystring from "querystring";
 import EventEmitter from "events";
 
 import { delay } from "metabase/lib/promise";
+import { IFRAMED } from "metabase/lib/dom";
 
 type TransformFn = (o: any) => any;
 
 export type Options = {
   noEvent?: boolean,
+  json?: boolean,
   retry?: boolean,
   retryCount?: number,
   retryDelayIntervals?: number[],
@@ -22,11 +24,16 @@ export type Options = {
 const ONE_SECOND = 1000;
 const MAX_RETRIES = 10;
 
+const ANTI_CSRF_HEADER = "X-Metabase-Anti-CSRF-Token";
+
+let ANTI_CSRF_TOKEN = null;
+
 export type Data = {
   [key: string]: any,
 };
 
 const DEFAULT_OPTIONS: Options = {
+  json: true,
   hasBody: false,
   noEvent: false,
   transformResponse: o => o,
@@ -44,7 +51,7 @@ export type APIMethod = (d?: Data, o?: Options) => Promise<any>;
 export type APICreator = (t: string, o?: Options | TransformFn) => APIMethod;
 
 export class Api extends EventEmitter {
-  basename: "";
+  basename = "";
 
   GET: APICreator;
   POST: APICreator;
@@ -81,7 +88,7 @@ export class Api extends EventEmitter {
         const options: Options = { ...defaultOptions, ...invocationOptions };
         let url = urlTemplate;
         data = { ...data };
-        for (let tag of url.match(/:\w+/g) || []) {
+        for (const tag of url.match(/:\w+/g) || []) {
           const paramName = tag.slice(1);
           let value = data[paramName];
           delete data[paramName];
@@ -101,16 +108,23 @@ export class Api extends EventEmitter {
           }
         }
 
-        let headers: { [key: string]: string } = {
-          Accept: "application/json",
-        };
+        const headers: { [key: string]: string } = options.json
+          ? { Accept: "application/json", "Content-Type": "application/json" }
+          : {};
+
+        if (IFRAMED) {
+          headers["X-Metabase-Embedded"] = "true";
+        }
+
+        if (ANTI_CSRF_TOKEN) {
+          headers[ANTI_CSRF_HEADER] = ANTI_CSRF_TOKEN;
+        }
 
         let body;
         if (options.hasBody) {
-          headers["Content-Type"] = "application/json";
           body = JSON.stringify(data);
         } else {
-          let qs = querystring.stringify(data);
+          const qs = querystring.stringify(data);
           if (qs) {
             url += (url.indexOf("?") >= 0 ? "&" : "?") + qs;
           }
@@ -134,10 +148,10 @@ export class Api extends EventEmitter {
 
   async _makeRequestWithRetries(method, url, headers, body, data, options) {
     // Get a copy of the delay intervals that we can remove items from as we retry
-    let retryDelays = options.retryDelayIntervals.slice();
+    const retryDelays = options.retryDelayIntervals.slice();
     let retryCount: number = 0;
     // maxAttempts is the first attempt followed by the number of retries
-    let maxAttempts: number = options.retryCount + 1;
+    const maxAttempts: number = options.retryCount + 1;
     // Make the first attempt for the request, then loop incrementing the retryCount
     do {
       try {
@@ -167,32 +181,44 @@ export class Api extends EventEmitter {
   _makeRequest(method, url, headers, body, data, options) {
     return new Promise((resolve, reject) => {
       let isCancelled = false;
-      let xhr = new XMLHttpRequest();
+      const xhr = new XMLHttpRequest();
       xhr.open(method, this.basename + url);
-      for (let headerName in headers) {
+      for (const headerName in headers) {
         xhr.setRequestHeader(headerName, headers[headerName]);
       }
       xhr.onreadystatechange = () => {
         // $FlowFixMe
         if (xhr.readyState === XMLHttpRequest.DONE) {
+          // getResponseHeader() is case-insensitive
+          const antiCsrfToken = xhr.getResponseHeader(ANTI_CSRF_HEADER);
+          if (antiCsrfToken) {
+            ANTI_CSRF_TOKEN = antiCsrfToken;
+          }
+
           let body = xhr.responseText;
-          try {
-            body = JSON.parse(body);
-          } catch (e) {}
-          if (xhr.status >= 200 && xhr.status <= 299) {
+          if (options.json) {
+            try {
+              body = JSON.parse(body);
+            } catch (e) {}
+          }
+          let status = xhr.status;
+          if (status === 202 && body && body._status > 0) {
+            status = body._status;
+          }
+          if (status >= 200 && status <= 299) {
             if (options.transformResponse) {
               body = options.transformResponse(body, { data });
             }
             resolve(body);
           } else {
             reject({
-              status: xhr.status,
+              status: status,
               data: body,
               isCancelled: isCancelled,
             });
           }
           if (!options.noEvent) {
-            this.emit(xhr.status, url);
+            this.emit(status, url);
           }
         }
       };

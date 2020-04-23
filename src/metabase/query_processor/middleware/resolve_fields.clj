@@ -1,28 +1,24 @@
 (ns metabase.query-processor.middleware.resolve-fields
   "Middleware that resolves the Fields referenced by a query."
   (:require [metabase.mbql.util :as mbql.u]
-            [metabase.models.field :refer [Field]]
             [metabase.query-processor.store :as qp.store]
-            [metabase.util :as u]
-            [toucan.db :as db]))
+            [metabase.util :as u]))
 
-(defn- resolve-fields-with-ids! [field-ids]
-  (let [fetched-fields (db/select (apply vector Field qp.store/field-columns-to-fetch) :id [:in (set field-ids)])]
-    ;; store the new fields
-    (doseq [field fetched-fields]
-      (qp.store/store-field! field))
-    ;; now recursively fetch parents if needed
-    (when-let [parent-ids (seq (filter some? (map :parent_id fetched-fields)))]
-      (recur parent-ids))))
+(defn- resolve-fields-with-ids!
+  [field-ids]
+  (qp.store/fetch-and-store-fields! field-ids)
+  (when-let [parent-ids (seq (filter some? (map (comp :parent_id qp.store/field) field-ids)))]
+    (recur parent-ids)))
 
-(defn- resolve-fields* [query]
+(defn resolve-fields*
+  "Resolve all field referenced in the `query`, and store them in the QP Store."
+  [query]
   (u/prog1 query
-    (when-let [field-ids (seq (remove (qp.store/already-fetched-field-ids)
-                                      (mbql.u/match (:query query) [:field-id id] id)))]
-      (resolve-fields-with-ids! field-ids))))
+    (resolve-fields-with-ids! (mbql.u/match (:query query) [:field-id id] id))))
 
 (defn resolve-fields
   "Fetch the Fields referenced by `:field-id` clauses in a query and store them in the Query Processor Store for the
   duration of the Query Execution."
   [qp]
-  (comp qp resolve-fields*))
+  (fn [query rff context]
+    (qp (resolve-fields* query) rff context)))

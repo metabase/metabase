@@ -1,11 +1,13 @@
 import React from "react";
 
-import Select, { Option } from "metabase/components/Select.jsx";
+import Select, { Option } from "metabase/components/Select";
 
 import cx from "classnames";
 
 const ChartSettingSelect = ({
-  value,
+  // Use null if value is undefined. If we pass undefined, Select will create an
+  // uncontrolled component because it's wrapped with Uncontrollable.
+  value = null,
   onChange,
   options = [],
   isInitiallyOpen,
@@ -15,7 +17,7 @@ const ChartSettingSelect = ({
   ...props
 }) => (
   <Select
-    className={cx(className, "block flex-full", {
+    className={cx(className, "block", {
       disabled:
         options.length === 0 ||
         (options.length === 1 && options[0].value === value),

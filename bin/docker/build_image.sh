@@ -45,7 +45,7 @@ if [ "$BUILD_TYPE" == "release" ]; then
 
     # download the official version of Metabase which matches our tag
     # http://downloads.metabase.com/${MB_TAG}/metabase.jar
-    curl -f -o ${BASEDIR}/metabase.jar https://s3.amazonaws.com/goldbely-production/metabase/latest/metabase.jar
+    curl -L -f -o ${BASEDIR}/metabase.jar https://s3.amazonaws.com/goldbely-production/metabase/latest/metabase.jar
 
     if [[ $? -ne 0 ]]; then
         echo "Download failed!"

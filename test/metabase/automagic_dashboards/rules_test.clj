@@ -2,11 +2,6 @@
   (:require [expectations :refer :all]
             [metabase.automagic-dashboards.rules :as rules :refer :all]))
 
-(expect nil   (#'rules/ensure-seq nil))
-(expect [nil] (#'rules/ensure-seq [nil]))
-(expect [42]  (#'rules/ensure-seq 42))
-(expect [42]  (#'rules/ensure-seq [42]))
-
 (expect true  (ga-dimension? "ga:foo"))
 (expect false (ga-dimension? "foo"))
 

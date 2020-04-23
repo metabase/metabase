@@ -6,11 +6,11 @@ import moment from "moment";
 import Humanize from "humanize-plus";
 import React from "react";
 import ReactMarkdown from "react-markdown";
-import { ngettext, msgid } from "c-3po";
+import { ngettext, msgid } from "ttag";
 
 import Mustache from "mustache";
 
-import ExternalLink from "metabase/components/ExternalLink.jsx";
+import ExternalLink from "metabase/components/ExternalLink";
 
 import {
   isDate,
@@ -18,8 +18,10 @@ import {
   isCoordinate,
   isLatitude,
   isLongitude,
+  isTime,
+  isURL,
+  isEmail,
 } from "metabase/lib/schema_metadata";
-import { isa, TYPE } from "metabase/lib/types";
 import { parseTimestamp, parseTime } from "metabase/lib/time";
 import { rangeForValue } from "metabase/lib/dataset";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
@@ -32,8 +34,9 @@ import {
   getTimeFormatFromStyle,
   hasHour,
 } from "metabase/lib/formatting/date";
+import { PLUGIN_FORMATTING_HELPERS } from "metabase/plugins";
 
-import Field from "metabase-lib/lib/metadata/Field";
+import type Field from "metabase-lib/lib/metadata/Field";
 import type { Column, Value } from "metabase/meta/types/Dataset";
 import type { DatetimeUnit } from "metabase/meta/types/Query";
 import type { Moment } from "metabase/meta/types";
@@ -43,6 +46,7 @@ import type {
   TimeStyle,
   TimeEnabled,
 } from "metabase/lib/formatting/date";
+import type { ClickObject } from "metabase/meta/types/Visualization";
 
 // a one or two character string specifying the decimal and grouping separator characters
 export type NumberSeparators = ".," | ", " | ",." | ".";
@@ -56,6 +60,7 @@ export type FormattingOptions = {
   majorWidth?: number,
   type?: "axis" | "cell" | "tooltip",
   jsx?: boolean,
+  remap?: boolean,
   // render links for type/URLs, type/Email, etc
   rich?: boolean,
   compact?: boolean,
@@ -75,8 +80,10 @@ export type FormattingOptions = {
   // decimals sets both minimumFractionDigits and maximumFractionDigits
   decimals?: number,
   // STRING
-  view_as?: "link" | "email_link" | "image",
+  view_as?: null | "link" | "email_link" | "image" | "auto",
   link_text?: string,
+  link_template?: string,
+  clicked?: ClickObject,
   // DATE/TIME
   // date/timeout style string that is used to derive a date_format or time_format for different units, see metabase/lib/formatting/date
   date_style?: DateStyle,
@@ -86,9 +93,15 @@ export type FormattingOptions = {
   time_style?: TimeStyle,
   time_enabled?: TimeEnabled,
   time_format?: string,
+  // display in local timezone or parsed timezone
+  local?: boolean,
+  // markdown template
+  markdown_template?: string,
 };
 
 type FormattedString = string | React$Element<any>;
+
+export const FK_SYMBOL = "→";
 
 const DEFAULT_NUMBER_OPTIONS: FormattingOptions = {
   compact: false,
@@ -107,7 +120,7 @@ function getDefaultNumberOptions(options) {
   return defaults;
 }
 
-const PRECISION_NUMBER_FORMATTER = d3.format(".2r");
+const PRECISION_NUMBER_FORMATTER = d3.format(".2f");
 const FIXED_NUMBER_FORMATTER = d3.format(",.f");
 const DECIMAL_DEGREES_FORMATTER = d3.format(".08f");
 const DECIMAL_DEGREES_FORMATTER_COMPACT = d3.format(".02f");
@@ -156,7 +169,7 @@ export function formatNumber(number: number, options: FormattingOptions = {}) {
   }
 
   if (options.compact) {
-    return formatNumberCompact(number);
+    return formatNumberCompact(number, options);
   } else if (options.number_style === "scientific") {
     return formatNumberScientific(number, options);
   } else {
@@ -248,20 +261,60 @@ function formatNumberScientific(
   }
 }
 
-function formatNumberCompact(value: number) {
+const DISPLAY_COMPACT_DECIMALS_CUTOFF = 1000;
+export const COMPACT_CURRENCY_OPTIONS = {
+  // Currencies vary in how many decimals they display, so this is probably
+  // wrong in some cases. Intl.NumberFormat has some of that data built-in, but
+  // I couldn't figure out how to use it here.
+  digits: 2,
+  currency_style: "symbol",
+};
+
+function formatNumberCompact(value: number, options: FormattingOptions) {
+  if (options.number_style === "percent") {
+    return formatNumberCompactWithoutOptions(value * 100) + "%";
+  }
+  if (options.number_style === "currency") {
+    try {
+      const nf = numberFormatterForOptions({
+        ...options,
+        ...COMPACT_CURRENCY_OPTIONS,
+      });
+
+      if (Math.abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
+        return nf.format(value);
+      }
+      const { value: currency } = nf
+        .formatToParts(value)
+        .find(p => p.type === "currency");
+      return currency + formatNumberCompactWithoutOptions(value);
+    } catch (e) {
+      // Intl.NumberFormat failed, so we fall back to a non-currency number
+      return formatNumberCompactWithoutOptions(value);
+    }
+  }
+  if (options.number_style === "scientific") {
+    return formatNumberScientific(value, {
+      ...options,
+      // unsetting maximumFractionDigits prevents truncation of small numbers
+      maximumFractionDigits: undefined,
+      minimumFractionDigits: 1,
+    });
+  }
+  return formatNumberCompactWithoutOptions(value);
+}
+
+function formatNumberCompactWithoutOptions(value: number) {
   if (value === 0) {
     // 0 => 0
     return "0";
-  } else if (value >= -0.01 && value <= 0.01) {
-    // 0.01 => ~0
-    return "~ 0";
-  } else if (value > -1 && value < 1) {
+  } else if (Math.abs(value) < DISPLAY_COMPACT_DECIMALS_CUTOFF) {
     // 0.1 => 0.1
     return PRECISION_NUMBER_FORMATTER(value).replace(/\.?0+$/, "");
   } else {
     // 1 => 1
     // 1000 => 1K
-    return Humanize.compactInteger(value, 1);
+    return Humanize.compactInteger(Math.round(value), 1);
   }
 }
 
@@ -285,8 +338,8 @@ export function formatCoordinate(
   const formattedValue = binWidth
     ? BINNING_DEGREES_FORMATTER(value, binWidth)
     : options.compact
-      ? DECIMAL_DEGREES_FORMATTER_COMPACT(value)
-      : DECIMAL_DEGREES_FORMATTER(value);
+    ? DECIMAL_DEGREES_FORMATTER_COMPACT(value)
+    : DECIMAL_DEGREES_FORMATTER(value);
   return formattedValue + "°" + direction;
 }
 
@@ -337,7 +390,7 @@ export function formatDateTimeRangeWithUnit(
   unit: DatetimeUnit,
   options: FormattingOptions = {},
 ) {
-  let m = parseTimestamp(value, unit);
+  const m = parseTimestamp(value, unit, options.local);
   if (!m.isValid()) {
     return String(value);
   }
@@ -347,8 +400,20 @@ export function formatDateTimeRangeWithUnit(
     options.type === "tooltip" ? "MMMM" : getMonthFormat(options);
   const condensed = options.compact || options.type === "tooltip";
 
-  const start = m.clone().startOf(unit);
-  const end = m.clone().endOf(unit);
+  // The startOf/endOf transition needs to happen in "en" rather than the
+  // current locale. Other locales define week boundaries differently, and they
+  // don't line up with the server's grouping logic.
+  const start = m
+    .clone()
+    .locale("en")
+    .startOf(unit)
+    .locale(false);
+  const end = m
+    .clone()
+    .locale("en")
+    .endOf(unit)
+    .locale(false);
+
   if (start.isValid() && end.isValid()) {
     if (!condensed || start.year() !== end.year()) {
       // January 1, 2018 - January 2, 2019
@@ -390,7 +455,11 @@ function replaceDateFormatNames(format, options) {
 }
 
 function formatDateTimeWithFormats(value, dateFormat, timeFormat, options) {
-  let m = parseTimestamp(value, options.column && options.column.unit);
+  const m = parseTimestamp(
+    value,
+    options.column && options.column.unit,
+    options.local,
+  );
   if (!m.isValid()) {
     return String(value);
   }
@@ -414,7 +483,7 @@ export function formatDateTimeWithUnit(
   unit: DatetimeUnit,
   options: FormattingOptions = {},
 ) {
-  let m = parseTimestamp(value, unit);
+  const m = parseTimestamp(value, unit, options.local);
   if (!m.isValid()) {
     return String(value);
   }
@@ -462,7 +531,7 @@ export function formatDateTimeWithUnit(
 }
 
 export function formatTime(value: Value) {
-  let m = parseTime(value);
+  const m = parseTime(value);
   if (!m.isValid()) {
     return String(value);
   } else {
@@ -475,6 +544,7 @@ const EMAIL_WHITELIST_REGEX = /^(?=.{1,254}$)(?=.{1,64}@)[-!#$%&'*+/0-9=?A-Z^_`a
 
 export function formatEmail(
   value: Value,
+  // $FlowFixMe: unclear problem with `view_as` default
   { jsx, rich, view_as = "auto", link_text }: FormattingOptions = {},
 ) {
   const email = String(value);
@@ -492,23 +562,47 @@ export function formatEmail(
   }
 }
 
-// based on https://github.com/angular/angular.js/blob/v1.6.3/src/ng/directive/input.js#L25
-const URL_WHITELIST_REGEX = /^(https?|mailto):\/*(?:[^:@]+(?::[^@]+)?@)?(?:[^\s:/?#]+|\[[a-f\d:]+])(?::\d+)?(?:\/[^?#]*)?(?:\?[^#]*)?(?:#.*)?$/i;
+function getUrlProtocol(url) {
+  try {
+    const { protocol } = new URL(url);
+    return protocol;
+  } catch (e) {
+    return undefined;
+  }
+}
 
-export function formatUrl(
-  value: Value,
-  { jsx, rich, view_as = "auto", link_text }: FormattingOptions = {},
-) {
-  const url = String(value);
+function isSafeProtocol(protocol) {
+  return (
+    protocol !== "javascript:" && protocol !== "data:" && protocol !== "file:"
+  );
+}
+
+function isDefaultLinkProtocol(protocol) {
+  return (
+    protocol === "http:" || protocol === "https:" || protocol === "mailto:"
+  );
+}
+
+export function formatUrl(value: Value, options: FormattingOptions = {}) {
+  const { jsx, rich, view_as, column } = options;
+  const url = PLUGIN_FORMATTING_HELPERS.url(value, options);
+  const protocol = getUrlProtocol(url);
   if (
     jsx &&
     rich &&
-    (view_as === "link" || view_as === "auto") &&
-    URL_WHITELIST_REGEX.test(url)
+    protocol &&
+    isSafeProtocol(protocol) &&
+    (view_as === undefined
+      ? isURL(column) || isDefaultLinkProtocol(protocol)
+      : view_as === "link"
+      ? true
+      : view_as === "auto"
+      ? isDefaultLinkProtocol(protocol)
+      : false)
   ) {
     return (
       <ExternalLink className="link link--wrappable" href={url}>
-        {link_text || url}
+        {PLUGIN_FORMATTING_HELPERS.urlText(value, options)}
       </ExternalLink>
     );
   } else {
@@ -518,10 +612,13 @@ export function formatUrl(
 
 export function formatImage(
   value: Value,
+  // $FlowFixMe: unclear problem with `view_as` default
   { jsx, rich, view_as = "auto", link_text }: FormattingOptions = {},
 ) {
   const url = String(value);
-  if (jsx && rich && view_as === "image" && URL_WHITELIST_REGEX.test(url)) {
+  const protocol = getUrlProtocol(url);
+  const acceptedProtocol = protocol === "http:" || protocol === "https:";
+  if (jsx && rich && view_as === "image" && acceptedProtocol) {
     return <img src={url} style={{ height: 30 }} />;
   } else {
     return url;
@@ -530,12 +627,14 @@ export function formatImage(
 
 // fallback for formatting a string without a column special_type
 function formatStringFallback(value: Value, options: FormattingOptions = {}) {
-  value = formatUrl(value, options);
-  if (typeof value === "string") {
-    value = formatEmail(value, options);
-  }
-  if (typeof value === "string") {
-    value = formatImage(value, options);
+  if (options.view_as !== null) {
+    value = formatUrl(value, options);
+    if (typeof value === "string") {
+      value = formatEmail(value, options);
+    }
+    if (typeof value === "string") {
+      value = formatImage(value, options);
+    }
   }
   return value;
 }
@@ -583,16 +682,11 @@ export function formatValue(value: Value, options: FormattingOptions = {}) {
   }
 }
 
-export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
-  let column = options.column;
-
-  options = {
-    jsx: false,
-    remap: true,
-    ...options,
-  };
-
-  if (options.remap && column) {
+export function getRemappedValue(
+  value: Value,
+  { remap, column }: FormattingOptions = {},
+): ?string {
+  if (remap && column) {
     // $FlowFixMe: column could be Field or Column
     if (column.hasRemappedValue && column.hasRemappedValue(value)) {
       // $FlowFixMe: column could be Field or Column
@@ -604,14 +698,32 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
     }
     // TODO: get rid of one of these two code paths?
   }
+}
 
-  if (value == undefined) {
+export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
+  options = {
+    jsx: false,
+    remap: true,
+    ...options,
+  };
+
+  const { column } = options;
+
+  const remapped = getRemappedValue(value, options);
+  if (remapped !== undefined && options.view_as !== "link") {
+    return remapped;
+  }
+
+  if (value == null) {
     return null;
-  } else if (column && isa(column.special_type, TYPE.URL)) {
+  } else if (
+    (isURL(column) && options.view_as !== null) ||
+    options.view_as === "link"
+  ) {
     return formatUrl(value, options);
-  } else if (column && isa(column.special_type, TYPE.Email)) {
+  } else if (isEmail(column)) {
     return formatEmail(value, options);
-  } else if (column && isa(column.base_type, TYPE.Time)) {
+  } else if (isTime(column)) {
     return formatTime(value);
   } else if (column && column.unit != null) {
     return formatDateTimeWithUnit(value, column.unit, options);
@@ -623,16 +735,20 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
   ) {
     return formatDateTime(value, options);
   } else if (typeof value === "string") {
-    return formatStringFallback(value, options);
+    if (column && column.special_type != null) {
+      return value;
+    } else {
+      return formatStringFallback(value, options);
+    }
   } else if (typeof value === "number" && isCoordinate(column)) {
-    const range = rangeForValue(value, options.column);
+    const range = rangeForValue(value, column);
     if (range && !options.noRange) {
       return formatRange(range, formatCoordinate, options);
     } else {
       return formatCoordinate(value, options);
     }
   } else if (typeof value === "number" && isNumber(column)) {
-    const range = rangeForValue(value, options.column);
+    const range = rangeForValue(value, column);
     if (range && !options.noRange) {
       return formatRange(range, formatNumber, options);
     } else {
@@ -701,12 +817,21 @@ export function humanize(...args) {
   return inflection.humanize(...args);
 }
 
+export function conjunct(list: string[], conjunction: string) {
+  return (
+    list.slice(0, -1).join(`, `) +
+    (list.length > 2 ? `,` : ``) +
+    (list.length > 1 ? ` ${conjunction} ` : ``) +
+    (list[list.length - 1] || ``)
+  );
+}
+
 export function duration(milliseconds: number) {
   if (milliseconds < 60000) {
-    let seconds = Math.round(milliseconds / 1000);
+    const seconds = Math.round(milliseconds / 1000);
     return ngettext(msgid`${seconds} second`, `${seconds} seconds`, seconds);
   } else {
-    let minutes = Math.round(milliseconds / 1000 / 60);
+    const minutes = Math.round(milliseconds / 1000 / 60);
     return ngettext(msgid`${minutes} minute`, `${minutes} minutes`, minutes);
   }
 }
@@ -732,13 +857,13 @@ export function assignUserColors(
     "bg-medium",
   ],
 ) {
-  let assignments = {};
+  const assignments = {};
 
   const currentUserColor = colorClasses[0];
   const otherUserColors = colorClasses.slice(1);
   let otherUserColorIndex = 0;
 
-  for (let userId of userIds) {
+  for (const userId of userIds) {
     if (!(userId in assignments)) {
       if (userId === currentUserId) {
         assignments[userId] = currentUserColor;

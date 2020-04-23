@@ -4,7 +4,7 @@ import type { Breakout, BreakoutClause } from "metabase/meta/types/Query";
 import type { TableMetadata } from "metabase/meta/types/Metadata";
 import type { Field } from "metabase/meta/types/Field";
 
-import Q from "metabase/lib/query";
+import * as FIELD_REF from "./field_ref";
 
 import { add, update, remove, clear } from "./util";
 
@@ -18,7 +18,7 @@ export function getBreakoutFields(
   tableMetadata: TableMetadata,
 ): Field[] {
   return getBreakouts(breakouts).map(
-    breakout => (Q.getFieldTarget(breakout, tableMetadata) || {}).field,
+    breakout => (FIELD_REF.getFieldTarget(breakout, tableMetadata) || {}).field,
   );
 }
 

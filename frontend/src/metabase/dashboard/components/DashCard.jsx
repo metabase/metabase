@@ -1,20 +1,20 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-import { t } from "c-3po";
+import { t } from "ttag";
 import visualizations, { getVisualizationRaw } from "metabase/visualizations";
 import Visualization, {
   ERROR_MESSAGE_GENERIC,
   ERROR_MESSAGE_PERMISSION,
-} from "metabase/visualizations/components/Visualization.jsx";
+} from "metabase/visualizations/components/Visualization";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
 
-import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
-import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings.jsx";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import { ChartSettingsWithState } from "metabase/visualizations/components/ChartSettings";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 
-import DashCardParameterMapper from "./DashCardParameterMapper.jsx";
+import DashCardParameterMapper from "./DashCardParameterMapper";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 
@@ -48,7 +48,10 @@ export default class DashCard extends Component {
 
     // HACK: way to scroll to a newly added card
     if (dashcard.justAdded) {
-      ReactDOM.findDOMNode(this).scrollIntoView();
+      const element = ReactDOM.findDOMNode(this);
+      if (element && element.scrollIntoView) {
+        element.scrollIntoView({ block: "nearest" });
+      }
       markNewCardSeen(dashcard.id);
     }
   }
@@ -71,6 +74,7 @@ export default class DashCard extends Component {
       metadata,
       dashboard,
       parameterValues,
+      mode,
     } = this.props;
 
     const mainCard = {
@@ -187,6 +191,7 @@ export default class DashCard extends Component {
             )
           }
           metadata={metadata}
+          mode={mode}
           onChangeCardAndRun={
             navigateToNewCardFromDashboard
               ? ({ nextCard, previousCard }) => {
@@ -199,6 +204,7 @@ export default class DashCard extends Component {
                 }
               : null
           }
+          onChangeLocation={this.props.onChangeLocation}
         />
       </div>
     );
@@ -215,11 +221,11 @@ const DashCardActionButtons = ({
     className="DashCard-actions flex align-center"
     style={{ lineHeight: 1 }}
   >
-    {getVisualizationRaw(series).CardVisualization.supportsSeries && (
+    {getVisualizationRaw(series).visualization.supportsSeries && (
       <AddSeriesButton series={series} onAddSeries={onAddSeries} />
     )}
     {onReplaceAllVisualizationSettings &&
-      !getVisualizationRaw(series).CardVisualization.disableSettingsConfig && (
+      !getVisualizationRaw(series).visualization.disableSettingsConfig && (
         <ChartSettingsButton
           series={series}
           onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
@@ -236,9 +242,10 @@ const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) => (
     triggerElement={
       <Icon name="gear" size={HEADER_ICON_SIZE} style={HEADER_ACTION_STYLE} />
     }
-    triggerClasses="text-light text-medium-hover cursor-pointer flex align-center flex-no-shrink mr1"
+    triggerClasses="text-light text-medium-hover cursor-pointer flex align-center flex-no-shrink mr1 drag-disabled"
   >
     <ChartSettingsWithState
+      className="spread"
       series={series}
       onChange={onReplaceAllVisualizationSettings}
       isDashboard
@@ -248,7 +255,7 @@ const ChartSettingsButton = ({ series, onReplaceAllVisualizationSettings }) => (
 
 const RemoveButton = ({ onRemove }) => (
   <a
-    className="text-light text-medium-hover "
+    className="text-light text-medium-hover drag-disabled"
     data-metabase-event="Dashboard;Remove Card Modal"
     onClick={onRemove}
     style={HEADER_ACTION_STYLE}
@@ -260,7 +267,7 @@ const RemoveButton = ({ onRemove }) => (
 const AddSeriesButton = ({ series, onAddSeries }) => (
   <a
     data-metabase-event={"Dashboard;Edit Series Modal;open"}
-    className="text-light text-medium-hover cursor-pointer h3 flex-no-shrink relative mr1"
+    className="text-light text-medium-hover cursor-pointer h3 flex-no-shrink relative mr1 drag-disabled"
     onClick={onAddSeries}
     style={HEADER_ACTION_STYLE}
   >
@@ -283,7 +290,7 @@ const AddSeriesButton = ({ series, onAddSeries }) => (
 
 function getSeriesIconName(series) {
   try {
-    let display = series[0].card.display;
+    const display = series[0].card.display;
     return visualizations.get(display === "scalar" ? "bar" : display).iconName;
   } catch (e) {
     return "bar";

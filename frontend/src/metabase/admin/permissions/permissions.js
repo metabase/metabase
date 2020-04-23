@@ -5,10 +5,10 @@ import {
   combineReducers,
 } from "metabase/lib/redux";
 
-import { canEditPermissions } from "metabase/lib/groups";
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { t } from "c-3po";
+import { t } from "ttag";
 import { PermissionsApi } from "metabase/services";
+import Group from "metabase/entities/groups";
 
 const RESET = "metabase/admin/permissions/RESET";
 export const reset = createAction(RESET);
@@ -18,7 +18,10 @@ export const initialize = createThunkAction(
   INITIALIZE,
   (load, save) => async (dispatch, getState) => {
     dispatch(reset({ load, save }));
-    await Promise.all([dispatch(loadPermissions()), dispatch(loadGroups())]);
+    await Promise.all([
+      dispatch(loadPermissions()),
+      dispatch(Group.actions.fetchList()),
+    ]);
   },
 );
 
@@ -44,7 +47,7 @@ export const updatePermission = createThunkAction(
     getState,
   ) => {
     if (postAction) {
-      let action = postAction(groupId, entityId, value);
+      const action = postAction(groupId, entityId, value);
       if (action) {
         dispatch(action);
       }
@@ -59,7 +62,7 @@ export const savePermissions = createThunkAction(
   () => async (dispatch, getState) => {
     MetabaseAnalytics.trackEvent("Permissions", "save");
     const { permissions, revision, save } = getState().admin.permissions;
-    let result = await save({
+    const result = await save({
       revision: revision,
       groups: permissions,
     });
@@ -70,6 +73,9 @@ export const savePermissions = createThunkAction(
 const SET_PROPAGATE_PERMISSIONS =
   "metabase/admin/permissions/SET_PROPAGATE_PERMISSIONS";
 export const setPropagatePermissions = createAction(SET_PROPAGATE_PERMISSIONS);
+
+const CLEAR_SAVE_ERROR = "metabase/admin/permissions/CLEAR_SAVE_ERROR";
+export const clearSaveError = createAction(CLEAR_SAVE_ERROR);
 
 const save = handleActions(
   {
@@ -112,20 +118,6 @@ const revision = handleActions(
   null,
 );
 
-const groups = handleActions(
-  {
-    [LOAD_GROUPS]: {
-      next: (state, { payload }) =>
-        payload &&
-        payload.map(group => ({
-          ...group,
-          editable: canEditPermissions(group),
-        })),
-    },
-  },
-  null,
-);
-
 const saveError = handleActions(
   {
     [RESET]: { next: () => null },
@@ -139,6 +131,7 @@ const saveError = handleActions(
     [LOAD_PERMISSIONS]: {
       next: state => null,
     },
+    [CLEAR_SAVE_ERROR]: { next: () => null },
   },
   null,
 );
@@ -158,7 +151,6 @@ export default combineReducers({
   originalPermissions,
   saveError,
   revision,
-  groups,
 
   propagatePermissions,
 });

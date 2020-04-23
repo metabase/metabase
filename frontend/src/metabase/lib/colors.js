@@ -15,7 +15,7 @@ export type ColorFamily = { [name: ColorName]: ColorString };
 /* eslint-disable no-color-literals */
 const colors = {
   brand: "#509EE3",
-  accent1: "#9CC177",
+  accent1: "#88BF4D",
   accent2: "#A989C5",
   accent3: "#EF8C8C",
   accent4: "#F9D45C",
@@ -29,7 +29,7 @@ const colors = {
   error: "#ED6E6E",
   warning: "#F9CF48",
   "text-dark": "#2E353B",
-  "text-medium": "#74838F",
+  "text-medium": "#74838f",
   "text-light": "#C7CFD4",
   "text-white": "#FFFFFF",
   "bg-black": "#2E353B",
@@ -37,8 +37,9 @@ const colors = {
   "bg-medium": "#EDF2F5",
   "bg-light": "#F9FBFC",
   "bg-white": "#FFFFFF",
+  "bg-yellow": "#FFFCF2",
   shadow: "rgba(0,0,0,0.08)",
-  border: "#D7DBDE",
+  border: "#F0F0F0",
   /* Saturated colors for the SQL editor. Shouldn't be used elsewhere since they're not white-labelable. */
   "saturated-blue": "#2D86D4",
   "saturated-green": "#70A63A",
@@ -48,6 +49,15 @@ const colors = {
 };
 /* eslint-enable no-color-literals */
 export default colors;
+
+export const aliases = {
+  summarize: "accent1",
+  filter: "accent7",
+  database: "accent2",
+  dashboard: "brand",
+  pulse: "accent4",
+  nav: "brand",
+};
 
 export const harmony = [];
 
@@ -157,26 +167,44 @@ export function roundColor(color: ColorString): ColorString {
   );
 }
 
-export const alpha = (color: ColorString, alpha: number): ColorString =>
-  Color(color)
-    .alpha(alpha)
+export function color(color: ColorString | ColorName): ColorString {
+  if (color in colors) {
+    return colors[color];
+  }
+  if (color in aliases) {
+    return colors[aliases[color]];
+  }
+  // TODO: validate this is a ColorString
+  return color;
+}
+export function alpha(c: ColorString | ColorName, a: number): ColorString {
+  return Color(color(c))
+    .alpha(a)
     .string();
-
-export const darken = (color: ColorString, factor: number): ColorString =>
-  Color(color)
-    .darken(factor)
+}
+export function darken(
+  c: ColorString | ColorName,
+  f: number = 0.25,
+): ColorString {
+  return Color(color(c))
+    .darken(f)
     .string();
-
-export const lighten = (color: ColorString, factor: number): ColorString =>
-  Color(color)
-    .lighten(factor)
+}
+export function lighten(
+  c: ColorString | ColorName,
+  f: number = 0.5,
+): ColorString {
+  return Color(color(c))
+    .lighten(f)
     .string();
+}
 
 const PREFERRED_COLORS = {
   [colors["success"]]: [
     "success",
     "succeeded",
     "pass",
+    "passed",
     "valid",
     "complete",
     "completed",
@@ -185,6 +213,7 @@ const PREFERRED_COLORS = {
     "profit",
   ],
   [colors["error"]]: [
+    "error",
     "fail",
     "failed",
     "failure",
@@ -197,24 +226,26 @@ const PREFERRED_COLORS = {
     "deleted",
     "pending",
   ],
-  [colors["warning"]]: ["warn", "warning", "incomplete"],
+  [colors["warning"]]: ["warn", "warning", "incomplete", "unstable"],
   [colors["brand"]]: ["count"],
   [colors["accent1"]]: ["sum"],
   [colors["accent2"]]: ["average"],
 };
 
-const PREFERRED_COLORS_MAP = new Map();
-for (const [color, keys] of Object.entries(PREFERRED_COLORS)) {
-  // $FlowFixMe
-  for (const key of keys) {
-    PREFERRED_COLORS_MAP.set(key, color);
+const PREFERRED_COLORS_MAP = {};
+for (const color in PREFERRED_COLORS) {
+  if (PREFERRED_COLORS.hasOwnProperty(color)) {
+    const keys = PREFERRED_COLORS[color];
+    for (let i = 0; i < keys.length; i++) {
+      PREFERRED_COLORS_MAP[keys[i]] = color;
+    }
   }
 }
 
 type Key = string;
 
 function getPreferredColor(key: Key) {
-  return PREFERRED_COLORS_MAP.get(key.toLowerCase());
+  return PREFERRED_COLORS_MAP[key.toLowerCase()];
 }
 
 // returns a mapping of deterministically assigned colors to keys, optionally with a fixed value mapping

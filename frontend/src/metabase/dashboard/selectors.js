@@ -37,14 +37,13 @@ export type MappingsByParameter = {
 
 export const getDashboardId = state => state.dashboard.dashboardId;
 export const getIsEditing = state => state.dashboard.isEditing;
-export const getCards = state => state.dashboard.cards;
 export const getDashboards = state => state.dashboard.dashboards;
 export const getDashcards = state => state.dashboard.dashcards;
 export const getCardData = state => state.dashboard.dashcardData;
 export const getSlowCards = state => state.dashboard.slowCards;
-export const getCardIdList = state => state.dashboard.cardList;
-export const getRevisions = state => state.dashboard.revisions;
 export const getParameterValues = state => state.dashboard.parameterValues;
+export const getLoadingStartTime = state =>
+  state.dashboard.loadingDashCards.startTime;
 
 export const getDashboard = createSelector(
   [getDashboardId, getDashboards],
@@ -77,11 +76,6 @@ export const getIsDirty = createSelector(
               dashcards[id].isRemoved),
         ))
     ),
-);
-
-export const getCardList = createSelector(
-  [getCardIdList, getCards],
-  (cardIdList, cards) => cardIdList && cardIdList.map(id => cards[id]),
 );
 
 export const getEditingParameterId = state =>
@@ -120,11 +114,12 @@ export const getMappingsByParameter = createSelector(
     }
 
     let mappingsByParameter: MappingsByParameter = {};
-    let mappings: Array<AugmentedParameterMapping> = [];
-    let countsByParameter = {};
+    const mappings: AugmentedParameterMapping[] = [];
+    const countsByParameter = {};
     for (const dashcard of dashboard.ordered_cards) {
-      const cards: Array<Card> = [dashcard.card].concat(dashcard.series);
-      for (let mapping: ParameterMapping of dashcard.parameter_mappings || []) {
+      const cards: Card[] = [dashcard.card].concat(dashcard.series);
+      for (const mapping: ParameterMapping of dashcard.parameter_mappings ||
+        []) {
         const card = _.findWhere(cards, { id: mapping.card_id });
         const fieldId =
           card && getParameterTargetFieldId(mapping.target, card.dataset_query);
@@ -139,7 +134,7 @@ export const getMappingsByParameter = createSelector(
             (countsByParameter[mapping.parameter_id][value] || 0) + 1;
         }
 
-        let augmentedMapping: AugmentedParameterMapping = {
+        const augmentedMapping: AugmentedParameterMapping = {
           ...mapping,
           parameter_id: mapping.parameter_id,
           dashcard_id: dashcard.id,
@@ -155,11 +150,11 @@ export const getMappingsByParameter = createSelector(
         mappings.push(augmentedMapping);
       }
     }
-    let mappingsWithValuesByParameter = {};
+    const mappingsWithValuesByParameter = {};
     // update max values overlap for each mapping
-    for (let mapping of mappings) {
+    for (const mapping of mappings) {
       if (mapping.values && mapping.values.length > 0) {
-        let overlapMax = Math.max(
+        const overlapMax = Math.max(
           ...mapping.values.map(
             value => countsByParameter[mapping.parameter_id][value],
           ),
@@ -179,7 +174,7 @@ export const getMappingsByParameter = createSelector(
       }
     }
     // update count of mappings with values
-    for (let mapping of mappings) {
+    for (const mapping of mappings) {
       mappingsByParameter = setIn(
         mappingsByParameter,
         [
@@ -201,10 +196,15 @@ export const getParameters = createSelector(
   [getMetadata, getDashboard, getMappingsByParameter],
   (metadata, dashboard, mappingsByParameter) =>
     ((dashboard && dashboard.parameters) || []).map(parameter => {
+      const mappings = _.flatten(
+        _.map(mappingsByParameter[parameter.id] || {}, _.values),
+      );
+
+      // we change out widgets if a parameter is connected to non-field targets
+      const hasOnlyFieldTargets = mappings.every(x => x.field_id != null);
+
       // get the unique list of field IDs these mappings reference
-      const fieldIds = _.chain(mappingsByParameter[parameter.id])
-        .map(_.values)
-        .flatten()
+      const fieldIds = _.chain(mappings)
         .map(m => m.field_id)
         .uniq()
         .filter(fieldId => fieldId != null)
@@ -224,6 +224,7 @@ export const getParameters = createSelector(
           fieldIdsWithFKResolved.length === 1
             ? fieldIdsWithFKResolved[0]
             : null,
+        hasOnlyFieldTargets,
       };
     }),
 );

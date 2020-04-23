@@ -2,7 +2,9 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 
-export default class LogoIcon extends Component {
+import { PLUGIN_LOGO_ICON_COMPONENTS } from "metabase/plugins";
+
+class DefaultLogoIcon extends Component {
   static defaultProps = {
     size: 32,
   };
@@ -15,7 +17,7 @@ export default class LogoIcon extends Component {
   };
 
   render() {
-    let { dark, height, width, size } = this.props;
+    const { dark, height, width, size } = this.props;
     return (
       <svg
         className={cx("Icon", { "text-brand": !dark }, { "text-white": dark })}
@@ -32,4 +34,9 @@ export default class LogoIcon extends Component {
       </svg>
     );
   }
+}
+
+export default function LogoIcon(props) {
+  const [Component = DefaultLogoIcon] = PLUGIN_LOGO_ICON_COMPONENTS;
+  return <Component {...props} />;
 }

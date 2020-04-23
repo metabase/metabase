@@ -4,8 +4,7 @@
   (:require [metabase.driver :as driver]
             [metabase.test.mock.util :as mock-util]))
 
-
-(def ^:private ^:const toucanery-tables
+(def toucanery-tables
   {"transactions" {:name   "transactions"
                    :schema nil
                    :fields #{{:name          "id"
@@ -50,28 +49,36 @@
                               :database-type "VARCHAR"
                               :base-type     :type/Text}}}})
 
-(driver/register! ::toucanery)
+(driver/register! ::toucanery, :abstract? true)
 
-(defmethod driver/available? ::toucanery [_] false)
-
-(defmethod driver/describe-database ::toucanery [_ {:keys [exclude-tables]}]
+(defmethod driver/describe-database ::toucanery
+  [_ {:keys [exclude-tables]}]
   (let [tables (for [table (vals toucanery-tables)
                      :when (not (contains? exclude-tables (:name table)))]
                  (select-keys table [:schema :name]))]
     {:tables (set tables)}))
 
-(defmethod driver/describe-table ::toucanery [_ _ table]
+(defmethod driver/describe-table ::toucanery
+  [_ _ table]
   (get toucanery-tables (:name table)))
 
-(defmethod driver/table-rows-seq ::toucanery [_ _ table]
+(defmethod driver/table-rows-seq ::toucanery
+  [_ _ table]
   (when (= (:name table) "_metabase_metadata")
     [{:keypath "movies.filming.description", :value "If the movie is currently being filmed."}
      {:keypath "movies.description", :value "A cinematic adventure."}]))
 
-(defmethod driver/supports? [::toucanery :nested-fields] [_ _] true)
+(defmethod driver/supports? [::toucanery :nested-fields]
+  [_ _]
+  true)
 
-(defmethod driver/process-query-in-context ::toucanery [& args]
-  (apply mock-util/process-query-in-context args))
+(defmethod driver/mbql->native ::toucanery
+  [_ query]
+  query)
+
+(defmethod driver/execute-reducible-query ::toucanery
+  [_ query _ respond]
+  (mock-util/mock-execute-reducible-query query respond))
 
 (def toucanery-tables-and-fields
   [(merge mock-util/table-defaults

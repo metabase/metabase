@@ -13,6 +13,10 @@
 .*/node_modules/update-notifier/.*
 .*/node_modules/boxen/.*
 .*/node_modules/libnpx/.*
+.*/node_modules/@babel/standalone/.*
+.*/node_modules/@testing-library/jest-dom/.*
+.*/node_modules/.*/node_modules/chalk/.*
+.*/node_modules/react-draggable/lib/.*
 
 [include]
 .*/frontend/.*
@@ -29,6 +33,7 @@ esproposal.class_instance_fields=enable
 suppress_comment= \\(.\\|\n\\)*\\$FlowFixMe
 module.name_mapper='.*\(\.css\)' -> 'CSSModule'
 module.name_mapper='^ace/\(.*\)$' -> '<PROJECT_ROOT>/node_modules/ace-builds/src-min-noconflict/\1'
+module.name_mapper='^assets\/\(.*\)$' -> '<PROJECT_ROOT>/resources/frontend_client/app/assets/\1'
 module.system=haste
 strip_root=true
 module.file_ext=.js

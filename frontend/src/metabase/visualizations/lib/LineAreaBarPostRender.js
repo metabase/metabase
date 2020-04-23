@@ -3,9 +3,11 @@
 import d3 from "d3";
 import _ from "underscore";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 import { clipPathReference } from "metabase/lib/dom";
+import { COMPACT_CURRENCY_OPTIONS } from "metabase/lib/formatting";
 import { adjustYAxisTicksIfNeeded } from "./apply_axis";
+import { isHistogramBar } from "./renderer_utils";
 
 const X_LABEL_MIN_SPACING = 2; // minimum space we want to leave between labels
 const X_LABEL_ROTATE_90_THRESHOLD = 24; // tick width breakpoint for switching from 45° to 90°
@@ -48,14 +50,14 @@ function getMinElementSpacing(elements) {
 // The following functions are applied once the chart is rendered.
 
 function onRenderRemoveClipPath(chart) {
-  for (let elem of chart.selectAll(".sub, .chart-body")[0]) {
+  for (const elem of chart.selectAll(".sub, .chart-body")[0]) {
     // prevents dots from being clipped:
     elem.removeAttribute("clip-path");
   }
 }
 
 function onRenderMoveContentToTop(chart) {
-  for (let element of chart.selectAll(".sub, .chart-body")[0]) {
+  for (const element of chart.selectAll(".sub, .chart-body")[0]) {
     // move chart content on top of axis (z-index doesn't work on SVG):
     moveToTop(element);
   }
@@ -82,24 +84,31 @@ function onRenderReorderCharts(chart) {
   }
 }
 function onRenderSetDotStyle(chart) {
-  for (let elem of chart.svg().selectAll(".dc-tooltip circle.dot")[0]) {
+  for (const elem of chart.svg().selectAll(".dc-tooltip circle.dot")[0]) {
     // set the color of the dots to the fill color so we can use currentColor in CSS rules:
     elem.style.color = elem.getAttribute("fill");
   }
 }
 
-function onRenderSetLineWidth(chart) {
-  const min = getMinElementSpacing(chart.svg().selectAll(".dot")[0]);
-  if (min > 150) {
-    chart.svg().classed("line--heavy", true);
-  } else if (min > 75) {
-    chart.svg().classed("line--medium", true);
-  }
-}
+// more than 500 dots is almost certainly too dense, don't waste time computing the voronoi map or figuring out if we should adjust the line width
+const MAX_DOTS_FOR_VORONOI = 500;
+const MAX_DOTS_FOR_LINE_WIDTH_ADJUSTMENT = 500;
 
 const DOT_OVERLAP_COUNT_LIMIT = 8;
 const DOT_OVERLAP_RATIO = 0.1;
 const DOT_OVERLAP_DISTANCE = 8;
+
+function onRenderSetLineWidth(chart) {
+  const dots = chart.svg()[0][0].querySelectorAll(".dot");
+  if (dots.length < MAX_DOTS_FOR_LINE_WIDTH_ADJUSTMENT) {
+    const min = getMinElementSpacing(dots);
+    if (min > 150) {
+      chart.svg().classed("line--heavy", true);
+    } else if (min > 75) {
+      chart.svg().classed("line--medium", true);
+    }
+  }
+}
 
 function onRenderEnableDots(chart) {
   const markerEnabledByIndex = chart.series.map(
@@ -112,24 +121,22 @@ function onRenderEnableDots(chart) {
   if (hasAuto) {
     // get all enabled or auto dots
     const dots = [].concat(
-      ...markerEnabledByIndex.map(
-        (markerEnabled, index) =>
-          markerEnabled === false
-            ? []
-            : chart.svg().selectAll(`.sub._${index} .dc-tooltip .dot`)[0],
+      ...markerEnabledByIndex.map((markerEnabled, index) =>
+        markerEnabled === false
+          ? []
+          : chart.svg().selectAll(`.sub._${index} .dc-tooltip .dot`)[0],
       ),
     );
-    if (dots.length > 500) {
-      // more than 500 dots is almost certainly too dense, don't waste time computing the voronoi map
+    if (dots.length > MAX_DOTS_FOR_VORONOI) {
       enableDotsAuto = false;
     } else {
       const vertices = dots.map((e, index) => {
-        let rect = e.getBoundingClientRect();
+        const rect = e.getBoundingClientRect();
         return [rect.left, rect.top, index];
       });
       const overlappedIndex = {};
       // essentially pairs of vertices closest to each other
-      for (let { source, target } of d3.geom.voronoi().links(vertices)) {
+      for (const { source, target } of d3.geom.voronoi().links(vertices)) {
         if (
           Math.sqrt(
             Math.pow(source[0] - target[0], 2) +
@@ -163,7 +170,7 @@ const VORONOI_MAX_POINTS = 300;
 
 /// dispatchUIEvent used below in the "Voroni Hover" stuff
 function dispatchUIEvent(element, eventName) {
-  let e = document.createEvent("UIEvents");
+  const e = document.createEvent("UIEvents");
   // $FlowFixMe
   e.initUIEvent(eventName, true, true, window, 1);
   element.dispatchEvent(e);
@@ -219,25 +226,171 @@ function onRenderVoronoiHover(chart) {
     .data(voronoi(vertices), d => d && d.join(","))
     .enter()
     .append("svg:path")
-    .filter(d => d != undefined)
+    .filter(d => d != null)
     .attr("d", d => "M" + d.join("L") + "Z")
     .attr("clip-path", (d, i) => clipPathReference("clip-" + i))
     // in the functions below e is not an event but the circle element being hovered/clicked
     .on("mousemove", ({ point }) => {
-      let e = point[2];
+      const e = point[2];
       dispatchUIEvent(e, "mousemove");
       d3.select(e).classed("hover", true);
     })
     .on("mouseleave", ({ point }) => {
-      let e = point[2];
+      const e = point[2];
       dispatchUIEvent(e, "mouseleave");
       d3.select(e).classed("hover", false);
     })
     .on("click", ({ point }) => {
-      let e = point[2];
+      const e = point[2];
       dispatchUIEvent(e, "click");
     })
     .order();
+}
+
+function onRenderValueLabels(chart, formatYValue, [data]) {
+  const hasDuplicateX = new Set(data.map(([x]) => x)).size < data.length;
+  if (
+    !chart.settings["graph.show_values"] || // setting is off
+    chart.settings["stackable.stack_type"] === "normalized" || // no normalized
+    chart.series.length > 1 || // no multiseries
+    hasDuplicateX // need unique x values
+  ) {
+    return;
+  }
+  const showAll = chart.settings["graph.label_value_frequency"] === "all";
+  const { display } = chart.settings.series(chart.series[0]);
+
+  // Update `data` to use named x/y and include `showLabelBelow`.
+  // We need to do that before data is filtered to show every nth value.
+  data = data
+    .map(([x, y], i) => {
+      const isLocalMin =
+        // first point or prior is greater than y
+        (i === 0 || data[i - 1][1] > y) &&
+        // last point point or next is greater than y
+        (i === data.length - 1 || data[i + 1][1] > y);
+      const showLabelBelow = isLocalMin && display === "line";
+      return { x, y, showLabelBelow };
+    })
+    .filter(d => display !== "bar" || d.y !== 0);
+
+  const formattingSetting = chart.settings["graph.label_value_formatting"];
+  let compact;
+  if (formattingSetting === "compact") {
+    compact = true;
+  } else if (formattingSetting === "full") {
+    compact = false;
+  } else {
+    // for "auto" we use compact if it shortens avg label length by >3 chars
+    const getAvgLength = compact => {
+      const options = {
+        compact,
+        // We include compact currency options here for both compact and
+        // non-compact formatting. This prevents auto's logic from depending on
+        // those settings.
+        ...COMPACT_CURRENCY_OPTIONS,
+        // We need this to ensure the settings are used. Otherwise, a cached
+        // _numberFormatter would take precedence.
+        _numberFormatter: undefined,
+      };
+      const lengths = data.map(d => formatYValue(d.y, options).length);
+      return lengths.reduce((sum, l) => sum + l, 0) / lengths.length;
+    };
+    compact = getAvgLength(true) < getAvgLength(false) - 3;
+  }
+
+  // use the chart body so things line up properly
+  const parent = chart.svg().select(".chart-body");
+
+  const xScale = chart.x();
+  const yScale = chart.y();
+
+  // Ordinal bar charts and histograms need extra logic to center the label.
+  let xShift = 0;
+  if (xScale.rangeBand) {
+    xShift += xScale.rangeBand() / 2;
+  }
+  if (isHistogramBar({ settings: chart.settings, chartType: display })) {
+    // this has to match the logic in `doHistogramBarStuff`
+    const [x1, x2] = chart
+      .svg()
+      .selectAll("rect")
+      .flat()
+      .map(r => parseFloat(r.getAttribute("x")));
+    const barWidth = x2 - x1;
+    xShift += barWidth / 2;
+  }
+
+  const addLabels = data => {
+    // make sure we don't add .value-lables multiple times
+    parent.select(".value-labels").remove();
+    // Safari had an issue with rendering paint-order: stroke. To work around
+    // that, we create two text labels: one for the the black text and another
+    // for the white outline behind it.
+    const labelGroups = parent
+      .append("svg:g")
+      .classed("value-labels", true)
+      .selectAll("g")
+      .data(data)
+      .enter()
+      .append("g")
+      .attr("transform", ({ x, y, showLabelBelow }) => {
+        const xPos = xShift + xScale(x);
+        let yPos = yScale(y) + (showLabelBelow ? 18 : -8);
+        // if the yPos is below the x axis, move it to be above the data point
+        const [yMax] = yScale.range();
+        if (yPos > yMax) {
+          yPos = yScale(y) - 8;
+        }
+        return `translate(${xPos}, ${yPos})`;
+      });
+
+    ["value-label-outline", "value-label"].forEach(klass =>
+      labelGroups
+        .append("text")
+        .attr("class", klass)
+        .attr("text-anchor", "middle")
+        .text(({ y }) => formatYValue(y, { compact })),
+    );
+  };
+
+  let nth;
+  if (showAll) {
+    // show all
+    nth = 1;
+  } else {
+    // auto fit
+    // Render a sample of rows to estimate average label size.
+    // We use that estimate to compute the label interval.
+    const LABEL_PADDING = 6;
+    const MAX_SAMPLE_SIZE = 30;
+    const sampleStep = Math.ceil(data.length / MAX_SAMPLE_SIZE);
+    const sample = data.filter((d, i) => i % sampleStep === 0);
+    addLabels(sample);
+    const totalWidth = chart
+      .svg()
+      .selectAll(".value-label-outline")
+      .flat()
+      .reduce((sum, label) => sum + label.getBoundingClientRect().width, 0);
+    const labelWidth = totalWidth / sample.length + LABEL_PADDING;
+
+    const { width: chartWidth } = chart
+      .svg()
+      .select(".axis.x")
+      .node()
+      .getBoundingClientRect();
+
+    nth = Math.ceil((labelWidth * data.length) / chartWidth);
+  }
+
+  addLabels(data.filter((d, i) => i % nth === 0));
+
+  moveToTop(
+    chart
+      .svg()
+      .select(".value-labels")
+      .node().parentNode,
+  );
 }
 
 function onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis) {
@@ -250,10 +403,10 @@ function onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis) {
   });
 
   // add the label
-  let goalLine = chart.selectAll(".goal .line")[0][0];
+  const goalLine = chart.selectAll(".goal .line")[0][0];
   if (goalLine) {
     // stretch the goal line all the way across, use x axis as reference
-    let xAxisLine = chart.selectAll(".axis.x .domain")[0][0];
+    const xAxisLine = chart.selectAll(".axis.x .domain")[0][0];
 
     // HACK Atte Keinänen 8/8/17: For some reason getBBox method is not present in Jest/Enzyme tests
     if (xAxisLine && goalLine.getBBox) {
@@ -279,7 +432,7 @@ function onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis) {
         y: y - 5,
         "text-anchor": labelOnRight ? "end" : "start",
         "font-weight": "bold",
-        fill: colors["text-medium"],
+        fill: color("text-medium"),
       })
       .on("mouseenter", function() {
         onGoalHover(this);
@@ -309,7 +462,7 @@ function onRenderHideDisabledAxis(chart) {
 }
 
 function onRenderHideBadAxis(chart) {
-  if (chart.selectAll(".axis.x .tick")[0].length === 1) {
+  if (chart.selectAll(".axis.x .tick")[0].length === 0) {
     chart.selectAll(".axis.x").remove();
   }
 }
@@ -336,7 +489,7 @@ function onRenderSetClassName(chart, isStacked) {
 }
 
 function getXAxisRotation(chart) {
-  let match = String(chart.settings["graph.x_axis.axis_enabled"] || "").match(
+  const match = String(chart.settings["graph.x_axis.axis_enabled"] || "").match(
     /^rotate-(\d+)$/,
   );
   if (match) {
@@ -347,20 +500,36 @@ function getXAxisRotation(chart) {
 }
 
 function onRenderRotateAxis(chart) {
-  let degrees = getXAxisRotation(chart);
+  const degrees = getXAxisRotation(chart);
   if (degrees !== 0) {
     chart.selectAll("g.x text").attr("transform", function() {
       const { width, height } = this.getBBox();
-      return (// translate left half the width so the right edge is at the tick
+      return (
+        // translate left half the width so the right edge is at the tick
         `translate(-${width / 2},${-height / 2}) ` +
         // rotate counter-clockwise around the right edge
-        `rotate(${-degrees}, ${width / 2}, ${height})` );
+        `rotate(${-degrees}, ${width / 2}, ${height})`
+      );
     });
   }
 }
 
+function onRenderAddExtraClickHandlers(chart) {
+  const { onEditBreakout } = chart.props;
+  if (onEditBreakout) {
+    chart
+      .svg()
+      .select(".x-axis-label")
+      .classed("cursor-pointer", true)
+      .on("click", () => onEditBreakout(d3.event, 0));
+  }
+}
+
 // the various steps that get called
-function onRender(chart, onGoalHover, isSplitAxis, isStacked) {
+function onRender(
+  chart,
+  { onGoalHover, isSplitAxis, isStacked, formatYValue, datas },
+) {
   onRenderRemoveClipPath(chart);
   onRenderMoveContentToTop(chart);
   onRenderReorderCharts(chart);
@@ -369,6 +538,7 @@ function onRender(chart, onGoalHover, isSplitAxis, isStacked) {
   onRenderEnableDots(chart);
   onRenderVoronoiHover(chart);
   onRenderCleanupGoalAndTrend(chart, onGoalHover, isSplitAxis); // do this before hiding x-axis
+  onRenderValueLabels(chart, formatYValue, datas);
   onRenderHideDisabledLabels(chart);
   onRenderHideDisabledAxis(chart);
   onRenderHideBadAxis(chart);
@@ -376,6 +546,7 @@ function onRender(chart, onGoalHover, isSplitAxis, isStacked) {
   onRenderFixStackZIndex(chart);
   onRenderSetClassName(chart, isStacked);
   onRenderRotateAxis(chart);
+  onRenderAddExtraClickHandlers(chart);
 }
 
 // +-------------------------------------------------------------------------------------------------------------------+
@@ -414,7 +585,7 @@ function adjustMargin(
 }
 
 function computeMinHorizontalMargins(chart) {
-  let min = { left: 0, right: 0 };
+  const min = { left: 0, right: 0 };
   const ticks = chart.selectAll(".axis.x .tick text")[0];
   if (ticks.length > 0) {
     const chartRect = chart
@@ -591,15 +762,8 @@ function beforeRender(chart) {
 // +-------------------------------------------------------------------------------------------------------------------+
 
 /// once chart has rendered and we can access the SVG, do customizations to axis labels / etc that you can't do through dc.js
-export default function lineAndBarOnRender(
-  chart,
-  onGoalHover,
-  isSplitAxis,
-  isStacked,
-) {
+export default function lineAndBarOnRender(chart, args) {
   beforeRender(chart);
-  chart.on("renderlet.on-render", () =>
-    onRender(chart, onGoalHover, isSplitAxis, isStacked),
-  );
+  chart.on("renderlet.on-render", () => onRender(chart, args));
   chart.render();
 }

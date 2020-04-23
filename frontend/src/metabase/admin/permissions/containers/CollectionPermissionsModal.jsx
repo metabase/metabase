@@ -1,11 +1,11 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/components/Button";
 import Link from "metabase/components/Link";
-import PermissionsGrid from "../components/PermissionsGrid.jsx";
+import PermissionsGrid from "../components/PermissionsGrid";
 import fitViewport from "metabase/hoc/FitViewPort";
 
 import { CollectionsApi } from "metabase/services";
@@ -14,7 +14,6 @@ import Collections from "metabase/entities/collections";
 import {
   getCollectionsPermissionsGrid,
   getIsDirty,
-  getSaveError,
   getDiff,
 } from "../selectors";
 import { initialize, updatePermission, savePermissions } from "../permissions";
@@ -26,7 +25,6 @@ const mapStateToProps = (state, props) => {
       singleCollectionMode: true,
     }),
     isDirty: getIsDirty(state, props),
-    saveError: getSaveError(state, props),
     diff: getDiff(state, props),
   };
 };
@@ -38,7 +36,10 @@ const mapDispatchToProps = {
   onSave: savePermissions,
 };
 
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 @fitViewport
 export default class CollectionPermissionsModal extends Component {
   componentWillMount() {

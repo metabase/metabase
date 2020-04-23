@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import sys from "system-components";
 
-import Icon from "metabase/components/Icon.jsx";
+import Icon from "metabase/components/Icon";
 import cx from "classnames";
 import _ from "underscore";
 
@@ -17,6 +17,7 @@ const BUTTON_VARIANTS = [
   "cancel",
   "success",
   "purple",
+  "white",
   "borderless",
   "onlyIcon",
 ];
@@ -27,36 +28,46 @@ const BaseButton = ({
   iconRight,
   iconSize,
   iconColor,
+  iconVertical,
+  labelBreakpoint,
+  color,
   children,
   ...props
 }) => {
-  let variantClasses = BUTTON_VARIANTS.filter(variant => props[variant]).map(
+  const variantClasses = BUTTON_VARIANTS.filter(variant => props[variant]).map(
     variant => "Button--" + variant,
   );
-
-  const onlyIcon = !children;
 
   return (
     <button
       {..._.omit(props, ...BUTTON_VARIANTS)}
-      className={cx("Button", className, variantClasses)}
+      className={cx("Button", className, "flex-no-shrink", variantClasses, {
+        p1: !children,
+      })}
     >
-      <div className="flex layout-centered">
+      <div
+        className={cx("flex layout-centered", { "flex-column": iconVertical })}
+        style={iconVertical ? { minWidth: 60 } : null}
+      >
         {icon && (
-          <Icon
-            color={iconColor}
-            name={icon}
-            size={iconSize ? iconSize : 14}
-            className={cx({ mr1: !onlyIcon })}
-          />
+          <Icon color={iconColor} name={icon} size={iconSize ? iconSize : 14} />
         )}
-        <div>{children}</div>
+        {children && (
+          <div
+            className={cx({
+              [iconVertical ? "mt1" : "ml1"]: icon,
+              [iconVertical ? "mb1" : "mr1"]: iconRight,
+              [`hide ${labelBreakpoint}-show`]: !!labelBreakpoint,
+            })}
+          >
+            {children}
+          </div>
+        )}
         {iconRight && (
           <Icon
             color={iconColor}
             name={iconRight}
             size={iconSize ? iconSize : 14}
-            className={cx({ ml1: !onlyIcon })}
           />
         )}
       </div>
@@ -89,5 +100,7 @@ const Button = sys(
   "space",
   "color",
 );
+
+Button.displayName = "Button";
 
 export default Button;

@@ -1,6 +1,6 @@
 import React from "react";
 
-import InputBlurChange from "metabase/components/InputBlurChange.jsx";
+import InputBlurChange from "metabase/components/InputBlurChange";
 
 // value is an array of strings. This component provides one input box per string
 export default function ChartSettingInputGroup({ value: values, onChange }) {

@@ -3,7 +3,7 @@
  */
 :root {
   --color-brand: #509ee3;
-  --color-accent1: #9cc177;
+  --color-accent1: #88bf4d;
   --color-accent2: #a989c5;
   --color-accent3: #ef8c8c;
   --color-accent4: #f9d45c;
@@ -25,8 +25,9 @@
   --color-bg-medium: #edf2f5;
   --color-bg-light: #f9fbfc;
   --color-bg-white: #ffffff;
-  --color-shadow: rgba(0, 0, 0, 0.08);
-  --color-border: #d7dbde;
+  --color-bg-yellow: #fffcf2;
+  --color-shadow: rgba(0, 0, 0, 0.13);
+  --color-border: #f0f0f0;
 
   /* Saturated colors for the SQL editor. Shouldn't be used elsewhere since they're not white-labelable. */
   --color-saturated-blue: #2d86d4;
@@ -58,7 +59,7 @@
   --alt-color: var(--color-bg-light);
   --alt-bg-color: var(--color-bg-light);
 
-  --success-color: var(--color-accent1);
+  --success-color: var(--color-success);
   --headsup-color: var(--color-warning);
 
   --gold-color: var(--color-accent4);
@@ -127,10 +128,10 @@
 /* success */
 
 .text-success {
-  color: var(--color-accent1);
+  color: var(--color-success);
 }
 .bg-success {
-  background-color: var(--color-accent1);
+  background-color: var(--color-success);
 }
 
 /* error */
@@ -157,7 +158,7 @@
 
 .text-purple,
 .text-purple-hover:hover {
-  color: var(--color-accent2);
+  color: var(--color-accent7);
 }
 
 .text-green,

@@ -6,6 +6,9 @@ export function dimensionIsNumeric({ cols, rows }, i = 0) {
   return isNumeric(cols[i]) || typeof (rows[0] && rows[0][i]) === "number";
 }
 
+// We seem to run into float bugs if we get any more precise than this.
+const SMALLEST_PRECISION_EXP = -14;
+
 export function precision(a) {
   if (!isFinite(a)) {
     return 0;
@@ -13,14 +16,15 @@ export function precision(a) {
   if (!a) {
     return 0;
   }
-  let e = 1;
-  while (Math.round(a / e) !== a / e) {
-    e /= 10;
+
+  // Find the largest power of ten needed to evenly divide the value. We start
+  // with the power of ten greater than the value and walk backwards until we
+  // hit our limit of SMALLEST_PRECISION_EXP or isMultipleOf returns true.
+  let e = Math.ceil(Math.log10(Math.abs(a)));
+  while (e > SMALLEST_PRECISION_EXP && !isMultipleOf(a, Math.pow(10, e))) {
+    e--;
   }
-  while (Math.round(a / Math.pow(10, e)) === a / Math.pow(10, e)) {
-    e *= 10;
-  }
-  return e;
+  return Math.pow(10, e);
 }
 
 export function decimalCount(a) {
@@ -39,7 +43,7 @@ export function decimalCount(a) {
 export function computeNumericDataInverval(xValues) {
   let bestPrecision = Infinity;
   for (const value of xValues) {
-    let p = precision(value) || 1;
+    const p = precision(value) || 1;
     if (p < bestPrecision) {
       bestPrecision = p;
     }
@@ -49,18 +53,20 @@ export function computeNumericDataInverval(xValues) {
 
 // logTickFormat(chart.xAxis())
 export function logTickFormat(axis) {
-  let superscript = "⁰¹²³⁴⁵⁶⁷⁸⁹";
-  let formatPower = d =>
+  const superscript = "⁰¹²³⁴⁵⁶⁷⁸⁹";
+  const formatPower = d =>
     (d + "")
       .split("")
       .map(c => superscript[c])
       .join("");
-  let formatTick = d => 10 + formatPower(Math.round(Math.log(d) / Math.LN10));
+  const formatTick = d => 10 + formatPower(Math.round(Math.log(d) / Math.LN10));
   axis.tickFormat(formatTick);
 }
 
-export const getModuloScaleFactor = base =>
-  Math.max(1, Math.pow(10, Math.ceil(Math.log10(1 / base))));
-
-export const isMultipleOf = (value, base, scale = getModuloScaleFactor(base)) =>
-  (value * scale) % (base * scale) === 0;
+export const isMultipleOf = (value, base) => {
+  // Ideally we could use Number.EPSILON as constant diffThreshold here.
+  // However, we sometimes see very small errors that are bigger than EPSILON.
+  // For example, when called 1.23456789 and 1e-8 we see a diff of ~1e-16.
+  const diffThreshold = Math.pow(10, SMALLEST_PRECISION_EXP);
+  return Math.abs(value - Math.round(value / base) * base) < diffThreshold;
+};

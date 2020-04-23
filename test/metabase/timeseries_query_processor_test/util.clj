@@ -1,41 +1,31 @@
 (ns metabase.timeseries-query-processor-test.util
   "Utility functions and macros for testing timeseries database drivers, such as Druid."
-  (:require [metabase.test.data :as data]
+  (:require [metabase.test :as mt]
             [metabase.test.data
              [dataset-definitions :as defs]
-             [datasets :as datasets]
-             [interface :as tx]]
-            [metabase.util :as u]))
+             [interface :as tx]]))
 
-(def event-based-dbs
+(defn timeseries-drivers []
   #{:druid})
 
-(def flattened-db-def
-  "The normal test-data DB definition as a flattened, single-table DB definition. (This is a function rather than a
-  straight delay because clojure complains when they delay gets embedding in expanded macros)"
-  (delay (tx/flatten-dbdef defs/test-data "checkins")))
-
-;; force loading of the flattened db definitions for the DBs that need it
-(defn- load-event-based-db-data!
-  {:expectations-options :before-run}
-  []
-  (doseq [driver event-based-dbs]
-    (datasets/with-driver-when-testing driver
-      (data/do-with-temp-db @flattened-db-def (constantly nil)))))
+(def ^:private flattened-db-def
+  "The normal test-data DB definition as a flattened, single-table DB definition."
+  (tx/flattened-dataset-definition defs/test-data "checkins"))
 
 (defn do-with-flattened-dbdef
-  "Execute F with a flattened version of the test data DB as the current DB def."
+  "Execute `f` with a flattened version of the test data DB as the current DB def."
   [f]
-  (data/do-with-temp-db @flattened-db-def (u/drop-first-arg f)))
+  (mt/dataset flattened-db-def (f)))
 
 (defmacro with-flattened-dbdef
-  "Execute BODY using the flattened test data DB definition."
+  "Execute `body` using the flattened test data DB definition."
   [& body]
   `(do-with-flattened-dbdef (fn [] ~@body)))
 
-(defmacro expect-with-timeseries-dbs
-  {:style/indent 0}
-  [expected actual]
-  `(datasets/expect-with-drivers event-based-dbs
-     (with-flattened-dbdef ~expected)
-     (with-flattened-dbdef ~actual)))
+(defn do-test-timeseries-drivers [thunk]
+  (mt/test-drivers (timeseries-drivers)
+    (with-flattened-dbdef
+      (thunk))))
+
+(defmacro test-timeseries-drivers {:style/indent 0} [& body]
+  `(do-test-timeseries-drivers (fn [] ~@body)))

@@ -7,7 +7,6 @@
      CREATE TABLE IF NOT EXISTS ... -- Good
      CREATE TABLE ...               -- Bad"
   (:require [cemerick.friend.credentials :as creds]
-            [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [metabase
@@ -15,11 +14,12 @@
              [db :as mdb]
              [public-settings :as public-settings]
              [util :as u]]
+            [metabase.mbql.schema :as mbql.s]
             [metabase.models
              [card :refer [Card]]
              [collection :as collection :refer [Collection]]
              [dashboard :refer [Dashboard]]
-             [database :refer [Database virtual-id]]
+             [database :refer [Database]]
              [field :refer [Field]]
              [humanization :as humanization]
              [permissions :as perms :refer [Permissions]]
@@ -28,9 +28,7 @@
              [pulse :refer [Pulse]]
              [setting :as setting :refer [Setting]]
              [user :refer [User]]]
-            [metabase.util
-             [date :as du]
-             [i18n :refer [trs]]]
+            [metabase.util.i18n :refer [trs]]
             [toucan
              [db :as db]
              [models :as models]])
@@ -41,8 +39,8 @@
 (models/defmodel DataMigrations :data_migrations)
 
 (defn- run-migration-if-needed!
-  "Run migration defined by MIGRATION-VAR if needed.
-   RAN-MIGRATIONS is a set of migrations names that have already been run.
+  "Run migration defined by `migration-var` if needed. `ran-migrations` is a set of migrations names that have already
+  been run.
 
      (run-migration-if-needed! #{\"migrate-base-types\"} #'set-card-database-and-table-ids)"
   [ran-migrations migration-var]
@@ -52,7 +50,7 @@
       (@migration-var)
       (db/insert! DataMigrations
         :id        migration-name
-        :timestamp (du/new-sql-timestamp)))))
+        :timestamp :%now))))
 
 (def ^:private data-migrations (atom []))
 
@@ -198,21 +196,9 @@
   (when-let [site-url (db/select-one-field :value Setting :key "-site-url")]
     (public-settings/site-url site-url)))
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                           Migrating QueryExecutions                                            |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
-;; drop the legacy QueryExecution table now that we don't need it anymore
-(defmigration ^{:author "camsaul", :added "0.23.0"} drop-old-query-execution-table
-  ;; DROP TABLE IF EXISTS should work on Postgres, MySQL, and H2
-  (jdbc/execute! (db/connection) [(format "DROP TABLE IF EXISTS %s;" ((db/quote-fn) "query_queryexecution"))]))
-
-;; There's a window on in the 0.23.0 and 0.23.1 releases that the
-;; site-url could be persisted without a protocol specified. Other
-;; areas of the application expect that site-url will always include
-;; http/https. This migration ensures that if we have a site-url
-;; stored it has the current defaulting logic applied to it
+;; There's a window on in the 0.23.0 and 0.23.1 releases that the site-url could be persisted without a protocol
+;; specified. Other areas of the application expect that site-url will always include http/https. This migration
+;; ensures that if we have a site-url stored it has the current defaulting logic applied to it
 (defmigration ^{:author "senior", :added "0.25.1"} ensure-protocol-specified-in-site-url
   (let [stored-site-url (db/select-one-field :value Setting :key "site-url")
         defaulted-site-url (public-settings/site-url stored-site-url)]
@@ -220,13 +206,12 @@
                (not= stored-site-url defaulted-site-url))
       (setting/set! "site-url" stored-site-url))))
 
-;; There was a bug (#5998) preventing database_id from being persisted with
-;; native query type cards. This migration populates all of the Cards
-;; missing those database ids
+;; There was a bug (#5998) preventing database_id from being persisted with native query type cards. This migration
+;; populates all of the Cards missing those database ids
 (defmigration ^{:author "senior", :added "0.27.0"} populate-card-database-id
   (doseq [[db-id cards] (group-by #(get-in % [:dataset_query :database])
                                   (db/select [Card :dataset_query :id :name] :database_id [:= nil]))
-          :when (not= db-id virtual-id)]
+          :when (not= db-id mbql.s/saved-questions-virtual-database-id)]
     (if (and (seq cards)
              (db/exists? Database :id db-id))
       (db/update-where! Card {:id [:in (map :id cards)]}
@@ -336,9 +321,9 @@
     (doseq [group-id non-admin-group-ids]
       (perms/grant-collection-readwrite-permissions! group-id collection/root-collection))
     ;; 2. Create the new collections.
-    (doseq [[model new-collection-name] {Dashboard (str (trs "Migrated Dashboards"))
-                                         Pulse     (str (trs "Migrated Pulses"))
-                                         Card      (str (trs "Migrated Questions"))}
+    (doseq [[model new-collection-name] {Dashboard (trs "Migrated Dashboards")
+                                         Pulse     (trs "Migrated Pulses")
+                                         Card      (trs "Migrated Questions")}
             :when                       (db/exists? model :collection_id nil)
             :let                        [new-collection (db/insert! Collection
                                                           :name  new-collection-name
@@ -347,7 +332,7 @@
       (doseq [group-id non-admin-group-ids]
         (perms/revoke-collection-permissions! group-id new-collection))
       ;; 4. move everything not in this Collection to a new Collection
-      (log/info (trs "Moving instances of {0} that aren't in a Collection to {1} Collection {2}"
+      (log/info (trs "Moving instances of {0} that aren''t in a Collection to {1} Collection {2}"
                      (name model) new-collection-name (u/get-id new-collection)))
       (db/update-where! model {:collection_id nil}
         :collection_id (u/get-id new-collection)))))

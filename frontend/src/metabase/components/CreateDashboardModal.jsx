@@ -6,11 +6,11 @@ import { push } from "react-router-redux";
 
 import * as Urls from "metabase/lib/urls";
 
-import Collections from "metabase/entities/collections";
-import DashboardForm from "metabase/containers/DashboardForm";
+import Collection from "metabase/entities/collections";
+import Dashboard from "metabase/entities/dashboards";
 
 const mapStateToProps = (state, props) => ({
-  initialCollectionId: Collections.selectors.getInitialCollectionId(
+  initialCollectionId: Collection.selectors.getInitialCollectionId(
     state,
     props,
   ),
@@ -21,7 +21,10 @@ const mapDispatchToProps = {
 };
 
 @withRouter
-@connect(mapStateToProps, mapDispatchToProps)
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class CreateDashboardModal extends Component {
   static propTypes = {
     onClose: PropTypes.func,
@@ -30,7 +33,7 @@ export default class CreateDashboardModal extends Component {
   render() {
     const { initialCollectionId, onClose, onChangeLocation } = this.props;
     return (
-      <DashboardForm
+      <Dashboard.ModalForm
         dashboard={{ collection_id: initialCollectionId }}
         onClose={onClose}
         onSaved={dashboard => {

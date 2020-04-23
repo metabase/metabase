@@ -1,11 +1,16 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import MetadataTableList from "./MetadataTableList.jsx";
-import MetadataSchemaList from "./MetadataSchemaList.jsx";
+import MetadataTableList from "./MetadataTableList";
+import MetadataSchemaList from "./MetadataSchemaList";
 
-import { titleize, humanize } from "metabase/lib/formatting";
+import Tables from "metabase/entities/tables";
 
+import _ from "underscore";
+
+@Tables.loadList({
+  query: (state, { databaseId }) => ({ dbId: databaseId }),
+})
 export default class MetadataTablePicker extends Component {
   constructor(props, context) {
     super(props, context);
@@ -19,7 +24,7 @@ export default class MetadataTablePicker extends Component {
 
   static propTypes = {
     tableId: PropTypes.number,
-    tables: PropTypes.array.isRequired,
+    databaseId: PropTypes.number,
     selectTable: PropTypes.func.isRequired,
   };
 
@@ -27,26 +32,14 @@ export default class MetadataTablePicker extends Component {
     this.componentWillReceiveProps(this.props);
   }
 
-  componentWillReceiveProps(newProps) {
-    const { tables } = newProps;
-    let schemas = {};
-    let selectedSchema;
-    for (let table of tables) {
-      let name = table.schema || ""; // possibly null
-      schemas[name] = schemas[name] || {
-        name: titleize(humanize(name)),
-        tables: [],
-      };
-      schemas[name].tables.push(table);
-      if (table.id === newProps.tableId) {
-        selectedSchema = schemas[name];
-      }
-    }
+  componentWillReceiveProps({ tables, tableId }) {
+    const table = tables.find(t => t.id === tableId);
+    const schemas = _.uniq(tables.map(t => t.schema)).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
     this.setState({
-      schemas: Object.values(schemas).sort((a, b) =>
-        a.name.localeCompare(b.name),
-      ),
-      selectedSchema: selectedSchema,
+      schemas: schemas,
+      selectedSchema: table && table.schema,
     });
   }
 
@@ -68,7 +61,7 @@ export default class MetadataTablePicker extends Component {
     return (
       <MetadataSchemaList
         schemas={schemas}
-        selectedSchema={this.state.schema}
+        selectedSchema={this.state.selectedSchema}
         onChangeSchema={schema =>
           this.setState({ selectedSchema: schema, showTablePicker: true })
         }

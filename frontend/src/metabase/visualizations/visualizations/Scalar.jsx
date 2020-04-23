@@ -1,7 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import Ellipsified from "metabase/components/Ellipsified";
 
@@ -33,6 +33,12 @@ function legacyScalarSettingsToFormatOptions(settings) {
     .value();
 }
 
+// used below to determine whether we show compact formatting
+const COMPACT_MAX_WIDTH = 250;
+const COMPACT_MIN_LENGTH = 6;
+
+// Scalar visualization shows a single number
+// Multiseries Scalar is transformed to a Funnel
 export default class Scalar extends Component {
   props: VisualizationProps;
 
@@ -41,6 +47,7 @@ export default class Scalar extends Component {
   static iconName = "number";
 
   static noHeader = true;
+  static supportsSeries = true;
 
   static minSize = { width: 2, height: 2 };
 
@@ -50,7 +57,11 @@ export default class Scalar extends Component {
     return rows.length === 1 && cols.length === 1;
   }
 
-  static checkRenderable([{ data: { cols, rows } }]) {
+  static checkRenderable([
+    {
+      data: { cols, rows },
+    },
+  ]) {
     // scalar can always be rendered, nothing needed here
   }
 
@@ -75,7 +86,12 @@ export default class Scalar extends Component {
         },
         data: {
           cols: [
-            { base_type: TYPE.Text, display_name: t`Name`, name: "name" },
+            {
+              base_type: TYPE.Text,
+              display_name: t`Name`,
+              name: "name",
+              source: "query-transform",
+            },
             { ...s.data.cols[0] },
           ],
           rows: [[s.card.name, s.data.rows[0][0]]],
@@ -89,11 +105,26 @@ export default class Scalar extends Component {
   static settings = {
     ...fieldSetting("scalar.field", {
       title: t`Field to show`,
-      getDefault: ([{ data: { cols } }]) => cols[0].name,
-      getHidden: ([{ data: { cols } }]) => cols.length < 2,
+      getDefault: ([
+        {
+          data: { cols },
+        },
+      ]) => cols[0].name,
+      getHidden: ([
+        {
+          data: { cols },
+        },
+      ]) => cols.length < 2,
     }),
     ...columnSettings({
-      getColumns: ([{ data: { cols } }], settings) => [
+      getColumns: (
+        [
+          {
+            data: { cols },
+          },
+        ],
+        settings,
+      ) => [
         _.find(cols, col => col.name === settings["scalar.field"]) || cols[0],
       ],
       readDependencies: ["scalar.field"],
@@ -139,18 +170,21 @@ export default class Scalar extends Component {
   }
 
   render() {
-    let {
+    const {
       actionButtons,
-      series: [{ card, data: { cols, rows } }],
+      series: [
+        {
+          card,
+          data: { cols, rows },
+        },
+      ],
       isDashboard,
       onChangeCardAndRun,
-      gridSize,
       settings,
       visualizationIsClickable,
       onVisualizationClick,
+      width,
     } = this.props;
-
-    let isSmall = gridSize && gridSize.width < 4;
 
     const columnIndex = this._getColumnIndex(cols, settings);
     const value = rows[0] && rows[0][columnIndex];
@@ -163,9 +197,16 @@ export default class Scalar extends Component {
     };
 
     const fullScalarValue = formatValue(value, formatOptions);
-    const compactScalarValue = isSmall
-      ? formatValue(value, { ...formatOptions, compact: true })
-      : fullScalarValue;
+    const compactScalarValue = formatValue(value, {
+      ...formatOptions,
+      compact: true,
+    });
+
+    // use the compact version of formatting if the component is narrower than
+    // the cutoff and the formatted value is longer than the cutoff
+    const displayCompact =
+      fullScalarValue.length > COMPACT_MIN_LENGTH && width < COMPACT_MAX_WIDTH;
+    const displayValue = displayCompact ? compactScalarValue : fullScalarValue;
 
     const clicked = { value, column };
     const isClickable = visualizationIsClickable(clicked);
@@ -180,7 +221,7 @@ export default class Scalar extends Component {
             "text-brand-hover cursor-pointer": isClickable,
           })}
           tooltip={fullScalarValue}
-          alwaysShowTooltip={fullScalarValue !== compactScalarValue}
+          alwaysShowTooltip={fullScalarValue !== displayValue}
           style={{ maxWidth: "100%" }}
         >
           <span
@@ -192,7 +233,7 @@ export default class Scalar extends Component {
             }
             ref={scalar => (this._scalar = scalar)}
           >
-            <ScalarValue value={compactScalarValue} />
+            <ScalarValue value={displayValue} />
           </span>
         </Ellipsified>
         {isDashboard && (

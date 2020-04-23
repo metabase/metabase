@@ -1,8 +1,8 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
-import PermissionsEditor from "../components/PermissionsEditor.jsx";
-import PermissionsApp from "./PermissionsApp.jsx";
+import PermissionsEditor from "../components/PermissionsEditor";
+import PermissionsApp from "./PermissionsApp";
 import fitViewport from "metabase/hoc/FitViewPort";
 
 import { CollectionsApi } from "metabase/services";
@@ -11,7 +11,6 @@ import Collections from "metabase/entities/collections";
 import {
   getCollectionsPermissionsGrid,
   getIsDirty,
-  getSaveError,
   getDiff,
 } from "../selectors";
 import {
@@ -25,7 +24,6 @@ const mapStateToProps = (state, props) => {
   return {
     grid: getCollectionsPermissionsGrid(state, props),
     isDirty: getIsDirty(state, props),
-    saveError: getSaveError(state, props),
     diff: getDiff(state, props),
     tab: "collections",
   };
@@ -38,12 +36,18 @@ const mapDispatchToProps = {
   onChangeTab: tab => push(`/admin/permissions/${tab}`),
 };
 
-const Editor = connect(mapStateToProps, mapDispatchToProps)(PermissionsEditor);
+const Editor = connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)(PermissionsEditor);
 
-@connect(null, {
-  loadCollections: Collections.actions.fetchList,
-  push,
-})
+@connect(
+  null,
+  {
+    loadCollections: Collections.actions.fetchList,
+    push,
+  },
+)
 @fitViewport
 export default class CollectionsPermissionsApp extends Component {
   componentWillMount() {

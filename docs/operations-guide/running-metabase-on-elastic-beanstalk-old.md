@@ -295,13 +295,3 @@ This provides a simple way to use the Papertrail logging service for collecting 
 * Scroll to the bottom of the page and click `Apply` in the lower right, then wait for your application to update.
 
 *NOTE:* sometimes these settings will not apply until you restart your application server, which you can do by either choosing `Restart App Server(s)` from the Actions dropdown or by deploying the same version again.
-
-
-# Protecting against invalid hostname access
-
-For the truly paranoid, we provide a setting in the AWS EB deployment which enforces an nginx check of the hostname of the incoming request and terminates the request if the client is not requesting the exact hostname that we expect.  This is nice for preventing random internet traffic from stumbling upon your Metabase instance.
-
-1. Click on `Configuration` on the left hand sidebar
-* Scroll down to `Software Configuration` under the _Web Tier_ section and click the gear icon to edit those settings.
-* Under `Environment Properties` add an entry for `NGINX_SERVER_NAME` with a value corresponding to the exact domain name you are using for your Metabase instance.
-* Scroll to the bottom of the page and click `Apply` in the lower right, then wait for your application to update.

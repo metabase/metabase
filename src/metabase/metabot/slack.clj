@@ -12,7 +12,7 @@
   (binding [*channel-id* channel-id]
     (f)))
 
-(defn with-channel-id
+(defmacro with-channel-id
   "Execute `body` with `channel-id` as the current Slack channel; all messages will be posted to that channel. (This is
   bound to the channel that recieved the MetaBot command we're currently handling by the
   `metabase.metabot.events/handle-slack-event` event handler.)"
@@ -20,18 +20,23 @@
   [channel-id & body]
   `(do-with-channel-id ~channel-id (fn [] ~@body)))
 
-(def ^{:arglists '([text-or-nil] [text-or-nil attachments])} post-chat-message!
+(defn post-chat-message!
   "Post a MetaBot response Slack message. Goes to channel where the MetaBot command we're replying to was posted."
-  (partial slack/post-chat-message! *channel-id*))
+  {:arglists '([text-or-nil] [text-or-nil attachments])}
+  [& args]
+  {:pre [(some? *channel-id*)]}
+  (apply slack/post-chat-message! *channel-id* args))
 
 (defn format-exception
   "Format a `Throwable` the way we'd like for posting it on Slack."
   [^Throwable e]
-  (str (tru "Uh oh! :cry:\n> {0}" (.getMessage e))))
+  (tru "Uh oh! :cry:\n> {0}" (.getMessage e)))
 
+;; TODO - this stuff should be implemented with an agent or something. Or with core.async
 (defn do-async
   "Impl for `async` macro."
   [f]
+  ;; don't fret -- futures preserve the calling thread's dynamic bindings, so `*channel-id*` will still be bound
   (future
     (try
       (f)

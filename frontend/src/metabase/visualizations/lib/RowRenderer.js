@@ -6,9 +6,17 @@ import dc from "dc";
 
 import { formatValue } from "metabase/lib/formatting";
 
-import { initChart, forceSortedGroup, makeIndexMap } from "./renderer_utils";
+import {
+  initChart,
+  forceSortedGroup,
+  makeIndexMap,
+  formatNull,
+} from "./renderer_utils";
 import { getFriendlyName } from "./utils";
 import { checkXAxisLabelOverlap } from "./LineAreaBarPostRender";
+
+const ROW_GAP = 5;
+const ROW_MAX_HEIGHT = 30;
 
 export default function rowRenderer(
   element,
@@ -25,16 +33,20 @@ export default function rowRenderer(
   // disable clicks
   chart.onClick = () => {};
 
-  const formatDimension = row =>
-    formatValue(row[0], { column: cols[0], type: "axis" });
-
   // dc.js doesn't give us a way to format the row labels from unformatted data, so we have to
   // do it here then construct a mapping to get the original dimension for tooltipsd/clicks
-  const rows = series[0].data.rows.map(row => [formatDimension(row), row[1]]);
+  const rowsWithFormattedNull = series[0].data.rows.map(([first, ...rest]) => [
+    formatNull(first),
+    ...rest,
+  ]);
+  const rows = rowsWithFormattedNull.map(([a, b]) => [
+    formatValue(a, { column: cols[0], type: "axis" }),
+    b,
+  ]);
   const formattedDimensionMap = new Map(
     rows.map(([formattedDimension], index) => [
       formattedDimension,
-      series[0].data.rows[index][0],
+      rowsWithFormattedNull[index][0],
     ]),
   );
 
@@ -85,6 +97,7 @@ export default function rowRenderer(
             },
           ],
           element: this,
+          settings,
         });
       });
     }
@@ -98,8 +111,8 @@ export default function rowRenderer(
     .group(group)
     .ordering(d => d.index);
 
-  let labelPadHorizontal = 5;
-  let labelPadVertical = 1;
+  const labelPadHorizontal = 5;
+  const labelPadVertical = 1;
   let labelsOutside = false;
 
   chart.on("renderlet.bar-labels", chart => {
@@ -123,6 +136,8 @@ export default function rowRenderer(
     });
   }
 
+  chart.gap(ROW_GAP);
+
   // inital render
   chart.render();
 
@@ -137,26 +152,32 @@ export default function rowRenderer(
   }
 
   // cap number of rows to fit
-  let rects = chart.selectAll(".row rect")[0];
-  let containerHeight =
+  const rects = chart.selectAll(".row rect")[0];
+  const containerHeight =
     rects[rects.length - 1].getBoundingClientRect().bottom -
     rects[0].getBoundingClientRect().top;
-  let maxTextHeight = Math.max(
+  const maxTextHeight = Math.max(
     ...chart
       .selectAll("g.row text")[0]
       .map(e => e.getBoundingClientRect().height),
   );
-  let rowHeight = maxTextHeight + chart.gap() + labelPadVertical * 2;
-  let cap = Math.max(1, Math.floor(containerHeight / rowHeight));
+  const rowHeight = maxTextHeight + chart.gap() + labelPadVertical * 2;
+  const cap = Math.max(1, Math.floor(containerHeight / rowHeight));
   chart.cap(cap);
+
+  // assume all bars are same height?
+  const barHeight = chart.select("g.row")[0][0].getBoundingClientRect().height;
+  if (barHeight > ROW_MAX_HEIGHT) {
+    chart.fixedBarHeight(ROW_MAX_HEIGHT);
+  }
 
   chart.render();
 
   // check if labels overflow after rendering correct number of rows
   let maxTextWidth = 0;
   for (const elem of chart.selectAll("g.row")[0]) {
-    let rect = elem.querySelector("rect").getBoundingClientRect();
-    let text = elem.querySelector("text").getBoundingClientRect();
+    const rect = elem.querySelector("rect").getBoundingClientRect();
+    const text = elem.querySelector("text").getBoundingClientRect();
     maxTextWidth = Math.max(maxTextWidth, text.width);
     if (rect.width < text.width + labelPadHorizontal * 2) {
       labelsOutside = true;
@@ -170,8 +191,14 @@ export default function rowRenderer(
 
   // hide overlapping x-axis labels
   if (checkXAxisLabelOverlap(chart, ".axis text")) {
-    chart.selectAll(".axis").remove();
+    chart
+      .selectAll(".tick text")[0]
+      .slice(1, -1)
+      .forEach(e => e.remove());
   }
+
+  // add a class our CSS can target
+  chart.svg().classed("rowChart", true);
 
   return () => {
     dc.chartRegistry.deregister(chart);

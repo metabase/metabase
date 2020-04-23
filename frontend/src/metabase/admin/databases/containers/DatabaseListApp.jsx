@@ -4,26 +4,25 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { Link } from "react-router";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import cx from "classnames";
 import MetabaseSettings from "metabase/lib/settings";
 
-import ModalWithTrigger from "metabase/components/ModalWithTrigger.jsx";
-import LoadingSpinner from "metabase/components/LoadingSpinner.jsx";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 import FormMessage from "metabase/components/form/FormMessage";
 
-import CreatedDatabaseModal from "../components/CreatedDatabaseModal.jsx";
-import DeleteDatabaseModal from "../components/DeleteDatabaseModal.jsx";
+import CreatedDatabaseModal from "../components/CreatedDatabaseModal";
+import DeleteDatabaseModal from "../components/DeleteDatabaseModal";
 
-import Databases from "metabase/entities/databases";
-import { entityListLoader } from "metabase/entities/containers/EntityListLoader";
+import Database from "metabase/entities/databases";
 
 import { getDeletes, getDeletionError } from "../selectors";
 import { deleteDatabase, addSampleDataset } from "../database";
 
 const mapStateToProps = (state, props) => ({
-  hasSampleDataset: Databases.selectors.getHasSampleDataset(state),
+  hasSampleDataset: Database.selectors.getHasSampleDataset(state),
 
   created: props.location.query.created,
   engines: MetabaseSettings.get("engines"),
@@ -33,15 +32,17 @@ const mapStateToProps = (state, props) => ({
 });
 
 const mapDispatchToProps = {
-  fetchDatabases: Databases.actions.fetchList,
   // NOTE: still uses deleteDatabase from metabaseadmin/databases/databases.js
   // rather than metabase/entities/databases since it updates deletes/deletionError
   deleteDatabase: deleteDatabase,
   addSampleDataset: addSampleDataset,
 };
 
-@entityListLoader({ entityType: "databases" })
-@connect(mapStateToProps, mapDispatchToProps)
+@Database.loadList()
+@connect(
+  mapStateToProps,
+  mapDispatchToProps,
+)
 export default class DatabaseList extends Component {
   static propTypes = {
     databases: PropTypes.array,
@@ -58,7 +59,7 @@ export default class DatabaseList extends Component {
   }
 
   render() {
-    let {
+    const {
       databases,
       hasSampleDataset,
       created,

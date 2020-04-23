@@ -3,18 +3,17 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { t } from "c-3po";
+import { t } from "ttag";
 
-import PopoverWithTrigger from "metabase/components/PopoverWithTrigger.jsx";
-import Icon from "metabase/components/Icon.jsx";
-import DateSingleWidget from "./widgets/DateSingleWidget.jsx";
-import DateRangeWidget from "./widgets/DateRangeWidget.jsx";
-import DateRelativeWidget from "./widgets/DateRelativeWidget.jsx";
-import DateMonthYearWidget from "./widgets/DateMonthYearWidget.jsx";
-import DateQuarterYearWidget from "./widgets/DateQuarterYearWidget.jsx";
-import DateAllOptionsWidget from "./widgets/DateAllOptionsWidget.jsx";
-import CategoryWidget from "./widgets/CategoryWidget.jsx";
-import TextWidget from "./widgets/TextWidget.jsx";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import Icon from "metabase/components/Icon";
+import DateSingleWidget from "./widgets/DateSingleWidget";
+import DateRangeWidget from "./widgets/DateRangeWidget";
+import DateRelativeWidget from "./widgets/DateRelativeWidget";
+import DateMonthYearWidget from "./widgets/DateMonthYearWidget";
+import DateQuarterYearWidget from "./widgets/DateQuarterYearWidget";
+import DateAllOptionsWidget from "./widgets/DateAllOptionsWidget";
+import TextWidget from "./widgets/TextWidget";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget";
 
 import { fetchField, fetchFieldValues } from "metabase/redux/metadata";
@@ -53,7 +52,10 @@ const mapDispatchToProps = {
   fetchField,
 };
 
-@connect(makeMapStateToProps, mapDispatchToProps)
+@connect(
+  makeMapStateToProps,
+  mapDispatchToProps,
+)
 export default class ParameterValueWidget extends Component {
   static propTypes = {
     parameter: PropTypes.object.isRequired,
@@ -81,21 +83,20 @@ export default class ParameterValueWidget extends Component {
     className: "",
   };
 
-  getField() {
-    const { parameter, metadata } = this.props;
-    return parameter.field_id != null
-      ? metadata.fields[parameter.field_id]
-      : null;
+  getFields() {
+    const { metadata } = this.props;
+    if (!metadata) {
+      return [];
+    }
+    return this.fieldIds(this.props).map(id => metadata.field(id));
   }
 
   getWidget() {
-    const { parameter, values } = this.props;
+    const { parameter } = this.props;
     if (DATE_WIDGETS[parameter.type]) {
       return DATE_WIDGETS[parameter.type];
-    } else if (this.getField()) {
+    } else if (this.getFields().length > 0 && parameter.hasOnlyFieldTargets) {
       return ParameterFieldWidget;
-    } else if (values && values.length > 0) {
-      return CategoryWidget;
     } else {
       return TextWidget;
     }
@@ -111,19 +112,20 @@ export default class ParameterValueWidget extends Component {
     }
   }
 
+  fieldIds({ parameter: { field_ids = [], field_id } }) {
+    return field_id ? [field_id] : field_ids;
+  }
+
   componentWillReceiveProps(nextProps) {
-    if (
-      nextProps.parameter.field_id != null &&
-      nextProps.parameter.field_id !== this.props.parameter.field_id
-    ) {
+    if (!_.isEqual(this.fieldIds(this.props), this.fieldIds(nextProps))) {
       this.updateFieldValues(nextProps);
     }
   }
 
   updateFieldValues(props) {
-    if (props.parameter.field_id != null) {
-      props.fetchField(props.parameter.field_id);
-      props.fetchFieldValues(props.parameter.field_id);
+    for (const id of this.fieldIds(props)) {
+      props.fetchField(id);
+      props.fetchFieldValues(id);
     }
   }
 
@@ -142,9 +144,9 @@ export default class ParameterValueWidget extends Component {
       focusChanged: parentFocusChanged,
     } = this.props;
 
-    let hasValue = value != null;
+    const hasValue = value != null;
 
-    let Widget = this.getWidget();
+    const Widget = this.getWidget();
 
     const focusChanged = isFocused => {
       if (parentFocusChanged) {
@@ -189,7 +191,7 @@ export default class ParameterValueWidget extends Component {
       } else if (Widget.noPopover && this.state.isFocused) {
         return (
           <Icon
-            name="enterorreturn"
+            name="enter_or_return"
             className="flex-align-right flex-no-shrink"
             size={12}
           />
@@ -226,7 +228,7 @@ export default class ParameterValueWidget extends Component {
             placeholder={placeholder}
             value={value}
             values={values}
-            field={this.getField()}
+            fields={this.getFields()}
             setValue={setValue}
             isEditing={isEditing}
             commitImmediately={commitImmediately}
@@ -236,7 +238,7 @@ export default class ParameterValueWidget extends Component {
         </div>
       );
     } else {
-      let placeholderText = isEditing
+      const placeholderText = isEditing
         ? t`Select a default value…`
         : placeholder || t`Select…`;
 

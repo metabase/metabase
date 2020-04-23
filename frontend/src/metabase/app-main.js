@@ -1,7 +1,7 @@
 import { push } from "react-router-redux";
 
 import { init } from "metabase/app";
-import { getRoutes } from "metabase/routes.jsx";
+import { getRoutes } from "metabase/routes";
 import reducers from "metabase/reducers-main";
 
 import api from "metabase/lib/api";
@@ -9,17 +9,13 @@ import api from "metabase/lib/api";
 import { setErrorPage } from "metabase/redux/app";
 import { clearCurrentUser } from "metabase/redux/user";
 
-// we shouldn't redirect these URLs because we want to handle them differently
-const WHITELIST_FORBIDDEN_URLS = [
-  // on dashboards, we show permission errors for individual cards we don't have access to
-  /api\/card\/\d+\/query$/,
-  // metadata endpoints should not cause redirects
-  // we should gracefully handle cases where we don't have access to metadata
-  /api\/database\/\d+\/metadata$/,
-  /api\/database\/\d+\/fields/,
-  /api\/field\/\d+\/values/,
-  /api\/table\/\d+\/query_metadata$/,
-  /api\/table\/\d+\/fks$/,
+// If any of these receives a 403, we should display the "not authorized" page.
+const NOT_AUTHORIZED_TRIGGERS = [
+  /\/api\/dashboard\/\d+$/,
+  /\/api\/collection\/\d+$/,
+  /\/api\/card\/\d+$/,
+  /\/api\/pulse\/\d+$/,
+  /\/api\/dataset$/,
 ];
 
 init(reducers, getRoutes, store => {
@@ -34,13 +30,8 @@ init(reducers, getRoutes, store => {
 
   // received a 403 response
   api.on("403", url => {
-    if (url) {
-      for (const regex of WHITELIST_FORBIDDEN_URLS) {
-        if (regex.test(url)) {
-          return;
-        }
-      }
+    if (NOT_AUTHORIZED_TRIGGERS.some(regex => regex.test(url))) {
+      return store.dispatch(setErrorPage({ status: 403 }));
     }
-    store.dispatch(setErrorPage({ status: 403 }));
   });
 });

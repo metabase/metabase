@@ -9,6 +9,7 @@
              [rules :as rules]]
             [metabase.models
              [card :refer [Card]]
+             [collection :refer [Collection]]
              [database :refer [Database]]
              [field :refer [Field]]
              [metric :refer [Metric]]
@@ -17,21 +18,24 @@
              [segment :refer [Segment]]
              [table :refer [Table]]]
             [metabase.models.query.permissions :as query-perms]
+            [metabase.transforms
+             [dashboard :as transform.dashboard]
+             [materialize :as transform.materialize]]
             [metabase.util
-             [i18n :refer [tru]]
+             [i18n :refer [deferred-tru]]
              [schema :as su]]
             [ring.util.codec :as codec]
             [schema.core :as s]))
 
 (def ^:private Show
   (su/with-api-error-message (s/maybe (s/enum "all"))
-    (tru "invalid show value")))
+    (deferred-tru "invalid show value")))
 
 (def ^:private Prefix
   (su/with-api-error-message
       (s/pred (fn [prefix]
                 (some #(not-empty (rules/get-rules [% prefix])) ["table" "metric" "field"])))
-    (tru "invalid value for prefix")))
+    (deferred-tru "invalid value for prefix")))
 
 (def ^:private Rule
   (su/with-api-error-message
@@ -43,7 +47,7 @@
                                     :rule)
                               (rules/get-rules [toplevel])))
                       ["table" "metric" "field"])))
-    (tru "invalid value for rule name")))
+    (deferred-tru "invalid value for rule name")))
 
 (def ^:private ^{:arglists '([s])} decode-base64-json
   (comp #(json/decode % keyword) codecs/bytes->str codec/base64-decode))
@@ -51,7 +55,7 @@
 (def ^:private Base64EncodedJSON
   (su/with-api-error-message
       (s/pred decode-base64-json)
-    (tru "value couldn''t be parsed as base64 encoded JSON")))
+    (deferred-tru "value couldn''t be parsed as base64 encoded JSON")))
 
 (api/defendpoint GET "/database/:id/candidates"
   "Return a list of candidates for automagic dashboards orderd by interestingness."
@@ -76,29 +80,37 @@
     x))
 
 (def ^:private ->entity
-  {"table"    (comp api/read-check Table ensure-int)
-   "segment"  (comp api/read-check Segment ensure-int)
-   "question" (comp api/read-check Card ensure-int)
-   "adhoc"    (comp adhoc-query-read-check query/adhoc-query decode-base64-json)
-   "metric"   (comp api/read-check Metric ensure-int)
-   "field"    (comp api/read-check Field ensure-int)})
+  {"table"     (comp api/read-check Table ensure-int)
+   "segment"   (comp api/read-check Segment ensure-int)
+   "question"  (comp api/read-check Card ensure-int)
+   "adhoc"     (comp adhoc-query-read-check query/adhoc-query decode-base64-json)
+   "metric"    (comp api/read-check Metric ensure-int)
+   "field"     (comp api/read-check Field ensure-int)
+   "transform" (fn [transform-name]
+                 (->> transform-name
+                      transform.materialize/get-collection
+                      Collection
+                      api/read-check)
+                 transform-name)})
 
 (def ^:private Entity
   (su/with-api-error-message
       (apply s/enum (keys ->entity))
-    (tru "Invalid entity type")))
+    (deferred-tru "Invalid entity type")))
 
 (def ^:private ComparisonEntity
   (su/with-api-error-message
       (s/enum "segment" "adhoc" "table")
-    (tru "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\"")))
+    (deferred-tru "Invalid comparison entity type. Can only be one of \"table\", \"segment\", or \"adhoc\"")))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query"
   "Return an automagic dashboard for entity `entity` with id `ìd`."
   [entity entity-id-or-query show]
   {show   Show
    entity Entity}
-  (-> entity-id-or-query ((->entity entity)) (automagic-analysis {:show (keyword show)})))
+  (if (= entity "transform")
+    (transform.dashboard/dashboard ((->entity entity) entity-id-or-query))
+    (-> entity-id-or-query ((->entity entity)) (automagic-analysis {:show (keyword show)}))))
 
 (api/defendpoint GET "/:entity/:entity-id-or-query/rule/:prefix/:rule"
   "Return an automagic dashboard for entity `entity` with id `ìd` using rule `rule`."

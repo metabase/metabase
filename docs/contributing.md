@@ -19,11 +19,11 @@ The core team runs a pretty well defined product process. It is actively being t
 
 ### A) Identify product needs from the community
 
-We actively look for new feature ideas from our community, user base and our own use of Metabase internally. We concentrate on the underlying *problem* or *need*  as opposed to requests for specific features. While sometimes suggested features are built as requested, often we find that they involve changes to existing features, and perhaps an entirely different solution to the underlying problem. These will typically be collected in a number of issues, and tagged [Proposal](https://github.com/metabase/metabase/labels/Proposal)
+We actively look for new feature ideas from our community, user base and our own use of Metabase internally. We concentrate on the underlying *problem* or *need*  as opposed to requests for specific features. While sometimes suggested features are built as requested, often we find that they involve changes to existing features, and perhaps an entirely different solution to the underlying problem. These will typically be collected in a number of issues, and tagged [Proposal](https://github.com/metabase/metabase/labels/.Proposal)
 
 ### B) Synthesize these needs into a concrete feature
 
-We typically will collect a group of issues or suggestions into a new topline feature concept. Typically we'll create a working document that collects all "Open Questions" regarding to what the feature is meant to do, and more importantly not do. We'll chat with our users, maybe do in depth interviews and generally try to tightly define the feature. If a feature seems like it will need time to be discussed and scoped, it will be tagged [Proposal/Being Discussed](https://github.com/metabase/metabase/labels/Proposal%2FBeing%20Discussed) to signify that it is still actively under discussion.
+We typically will collect a group of issues or suggestions into a new topline feature concept. Typically we'll create a working document that collects all "Open Questions" regarding to what the feature is meant to do, and more importantly not do. We'll chat with our users, maybe do in depth interviews and generally try to tightly define the feature. If a feature seems like it will need time to be discussed and scoped, it will be tagged [Proposal/Being Discussed](https://github.com/metabase/metabase/labels/.Proposal%2FBeing%20Discussed) to signify that it is still actively under discussion.
 
 ### C) Design the feature
 
@@ -31,15 +31,15 @@ Once a feature has been defined, typically it will be taken on by a product desi
 
 Once the main UX flows have been dialed in, there will be a hi-fidelity visual design.
 
-Features that are ready for design are are tagged [Design Needed](https://github.com/metabase/metabase/labels/Design%2FNeeded). Once a feature has had a reasonably complete visual design it should be tagged [Help Wanted](https://github.com/metabase/metabase/labels/Help%20Wanted).
+Features that are ready for design are are tagged [Design Needed](https://github.com/metabase/metabase/labels/.Design%20Needed). Once a feature has had a reasonably complete visual design it should be tagged [Help Wanted](https://github.com/metabase/metabase/labels/.Help%20Wanted).
 
 ### D) Build the feature
 
-Once a feature is tagged [Help Wanted](https://github.com/metabase/metabase/labels/Help%20Wanted), it is considered ready to be built. A core team member (or you, awesomely helpful person that you are) can start working on it.
+Once a feature is tagged [Help Wanted](https://github.com/metabase/metabase/labels/.Help%20Wanted), it is considered ready to be built. A core team member (or you, awesomely helpful person that you are) can start working on it.
 
 If you're building something that users will see in Metabase, please refer to the [Style Guide](https://localhost:3000/_internal) while running the development environment to learn how and when to use various Metabase UI elements.
 
-Once one or more people have started to work on a feature, it should be marked [In Progress](https://github.com/metabase/metabase/labels/In%20Progress). Once there is a branch+some code, a pull request is opened, linked to the feature + any issues that were pulled together to inform the feature.
+Once one or more people have started to work on a feature, it should be marked [In Progress](https://github.com/metabase/metabase/labels/.In%20Progress). Once there is a branch+some code, a pull request is opened, linked to the feature + any issues that were pulled together to inform the feature.
 
 ### E) Verification and merging
 
@@ -63,6 +63,8 @@ If you want to help, try out Metabase. Use it at your company, and report back t
 
 Spend time on discourse.metabase.com and on new issues and try to reproduce the bugs reported. For people having trouble with their databases where you have significant knowledge, help them out. Who knows, maybe they'll end up helping you with something in the future.
 
+It is helpful if you understand our [prioritization framework](https://github.com/metabase/metabase/wiki/Bug-Prioritization) when responding.
+
 ### Tell your friends
 
 Let your friends know about Metabase. Start a user group in your area. [Tweet about us](http://twitter.com/metabase). Blog about how you're using Metabase, and share what you've learned.
@@ -81,7 +83,7 @@ Some features, eg Database drivers, don't have any user facing pixels. These are
 
 In situations where a design has already been done, we can always use some help. Chime in on a pull request or an issue and offer to help.
 
-Generally speaking, any issue in [Help Wanted](https://github.com/metabase/metabase/labels/Help%20Wanted) is fair game.
+Generally speaking, any issue in [Help Wanted](https://github.com/metabase/metabase/labels/.Help%20Wanted) is fair game.
 
 ### #YOLO JUST SUBMIT A PR
 

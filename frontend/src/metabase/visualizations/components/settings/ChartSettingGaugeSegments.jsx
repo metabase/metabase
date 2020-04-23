@@ -1,9 +1,9 @@
 import React from 'react';
 
-import { t } from 'c-3po';
-import _ from 'underscore';
+import { t } from "ttag";
+import _ from "underscore";
 
-import colors, { normal } from 'metabase/lib/colors';
+import { color, normal } from "metabase/lib/colors";
 
 import ColorPicker from 'metabase/components/ColorPicker';
 import Button from 'metabase/components/Button';
@@ -88,21 +88,26 @@ const ChartSettingGaugeSegments = ({ value: segments, onChange }) => {
 	);
 };
 
-function getColorPalette () {
-	return [
-		colors['error'],
-		colors['warning'],
-		colors['success'],
-		...Object.values(normal).slice(0, 9),
-		colors['bg-medium'],
-	];
+function getColorPalette() {
+  return [
+    color("error"),
+    color("warning"),
+    color("success"),
+    ...Object.values(normal).slice(0, 9),
+    color("bg-medium"),
+  ];
 }
 
-function newSegment (segments) {
-	const palette = getColorPalette();
-	const lastSegment = segments[segments.length - 1];
-	const lastColorIndex = lastSegment ? _.findIndex(palette, (color) => color === lastSegment.color) : -1;
-	const nextColor = lastColorIndex >= 0 ? palette[lastColorIndex + 1 % palette.length] : palette[0];
+function newSegment(segments) {
+  const palette = getColorPalette();
+  const lastSegment = segments[segments.length - 1];
+  const lastColorIndex = lastSegment
+    ? _.findIndex(palette, color => color === lastSegment.color)
+    : -1;
+  const nextColor =
+    lastColorIndex >= 0
+      ? palette[lastColorIndex + (1 % palette.length)]
+      : palette[0];
 
 	return {
 		min   : lastSegment ? lastSegment.max : 0,

@@ -1,0 +1,30 @@
+#!/usr/bin/env node
+
+const glob = require("glob");
+const fs = require("fs");
+
+glob("./frontend/src/metabase/**/*.{js,jsx}", (err, files) => {
+  if (err) {
+    console.log(err);
+    process.exit(1);
+  }
+  let missing = 0;
+  for (const file of files) {
+    const text = fs.readFileSync(file, "utf-8");
+    const regex = /docsUrl\((?:[\s\n]+)?"([^"]+)"/g;
+    let match;
+    while ((match = regex.exec(text))) {
+      const [_, page, anchor] = match;
+      const path = `./docs/${page}.md`;
+      if (fs.existsSync(path)) {
+        console.log(`Exists:  ${path}`);
+      } else {
+        console.log(`Missing: ${path}`);
+        missing++;
+      }
+    }
+  }
+  if (missing > 0) {
+    process.exit(missing);
+  }
+});

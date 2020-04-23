@@ -2,7 +2,7 @@ import React from "react";
 import { Box, Flex } from "grid-styled";
 
 import * as Urls from "metabase/lib/urls";
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 import Card from "metabase/components/Card";
 import Icon from "metabase/components/Icon";
@@ -10,16 +10,11 @@ import { Grid, GridItem } from "metabase/components/Grid";
 import Link from "metabase/components/Link";
 import BrowserCrumbs from "metabase/components/BrowserCrumbs";
 
-import EntityListLoader from "metabase/entities/containers/EntityListLoader";
-
+import User from "metabase/entities/users";
 import {
   ROOT_COLLECTION,
   PERSONAL_COLLECTIONS,
 } from "metabase/entities/collections";
-
-const UserListLoader = ({ children, ...props }) => (
-  <EntityListLoader entityType="users" children={children} {...props} />
-);
 
 const UserCollectionList = () => (
   <Box px={4}>
@@ -31,7 +26,7 @@ const UserCollectionList = () => (
         ]}
       />
     </Box>
-    <UserListLoader>
+    <User.ListLoader>
       {({ list }) => {
         return (
           <Box>
@@ -50,7 +45,7 @@ const UserCollectionList = () => (
                             <Icon
                               name="person"
                               mr={1}
-                              color={colors["text-medium"]}
+                              color={color("text-medium")}
                               size={18}
                             />
                             <h3>{user.common_name}</h3>
@@ -64,7 +59,7 @@ const UserCollectionList = () => (
           </Box>
         );
       }}
-    </UserListLoader>
+    </User.ListLoader>
   </Box>
 );
 

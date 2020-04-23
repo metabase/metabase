@@ -1,10 +1,10 @@
 import React, { Component } from "react";
 import { Link } from "react-router";
-import Icon from "metabase/components/Icon.jsx";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import Icon from "metabase/components/Icon";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { SetupApi } from "metabase/services";
-import { t } from "c-3po";
-import colors from "metabase/lib/colors";
+import { t } from "ttag";
+import { color } from "metabase/lib/colors";
 
 const TaskList = ({ tasks }) => (
   <ol>
@@ -41,14 +41,14 @@ const CompletionBadge = ({ completed }) => (
     style={{
       borderWidth: 1,
       borderStyle: "solid",
-      borderColor: completed ? colors["success"] : colors["text-light"],
-      backgroundColor: completed ? colors["success"] : colors["text-white"],
+      borderColor: completed ? color("success") : color("text-light"),
+      backgroundColor: completed ? color("success") : color("text-white"),
       width: 32,
       height: 32,
       borderRadius: 99,
     }}
   >
-    {completed && <Icon name="check" color={colors["text-white"]} />}
+    {completed && <Icon name="check" color={color("text-white")} />}
   </div>
 );
 

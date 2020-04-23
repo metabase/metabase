@@ -1,13 +1,13 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 
-import GridLayout from "./grid/GridLayout.jsx";
-import DashCard from "./DashCard.jsx";
+import GridLayout from "./grid/GridLayout";
+import DashCard from "./DashCard";
 
-import Modal from "metabase/components/Modal.jsx";
-import ExplicitSize from "metabase/components/ExplicitSize.jsx";
-import RemoveFromDashboardModal from "./RemoveFromDashboardModal.jsx";
-import AddSeriesModal from "./AddSeriesModal.jsx";
+import Modal from "metabase/components/Modal";
+import ExplicitSize from "metabase/components/ExplicitSize";
+import RemoveFromDashboardModal from "./RemoveFromDashboardModal";
+import AddSeriesModal from "./AddSeriesModal";
 
 import { getVisualizationRaw } from "metabase/visualizations";
 import MetabaseAnalytics from "metabase/lib/analytics";
@@ -42,11 +42,11 @@ export default class DashboardGrid extends Component {
   }
 
   static propTypes = {
-    isEditing: PropTypes.bool.isRequired,
+    isEditing: PropTypes.oneOfType([PropTypes.bool, PropTypes.object])
+      .isRequired,
     isEditingParameter: PropTypes.bool.isRequired,
     dashboard: PropTypes.object.isRequired,
     parameterValues: PropTypes.object.isRequired,
-    cards: PropTypes.array,
 
     setDashCardAttributes: PropTypes.func.isRequired,
     removeCardFromDashboard: PropTypes.func.isRequired,
@@ -73,11 +73,11 @@ export default class DashboardGrid extends Component {
   }
 
   onLayoutChange(layout) {
-    let changes = layout.filter(
+    const changes = layout.filter(
       newLayout =>
         !_.isEqual(newLayout, this.getLayoutForDashCard(newLayout.dashcard)),
     );
-    for (let change of changes) {
+    for (const change of changes) {
       this.props.setDashCardAttributes({
         id: change.dashcard.id,
         attributes: {
@@ -116,9 +116,9 @@ export default class DashboardGrid extends Component {
   }
 
   getLayoutForDashCard(dashcard) {
-    let { CardVisualization } = getVisualizationRaw([{ card: dashcard.card }]);
-    let initialSize = DEFAULT_CARD_SIZE;
-    let minSize = CardVisualization.minSize || DEFAULT_CARD_SIZE;
+    const { visualization } = getVisualizationRaw([{ card: dashcard.card }]);
+    const initialSize = DEFAULT_CARD_SIZE;
+    const minSize = visualization.minSize || DEFAULT_CARD_SIZE;
     return {
       i: String(dashcard.id),
       x: dashcard.col || 0,
@@ -136,7 +136,7 @@ export default class DashboardGrid extends Component {
 
   renderRemoveModal() {
     // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
-    let isOpen = this.state.removeModalDashCard != null;
+    const isOpen = this.state.removeModalDashCard != null;
     return (
       <Modal isOpen={isOpen}>
         {isOpen && (
@@ -153,17 +153,15 @@ export default class DashboardGrid extends Component {
 
   renderAddSeriesModal() {
     // can't use PopoverWithTrigger due to strange interaction with ReactGridLayout
-    let isOpen = this.state.addSeriesModalDashCard != null;
+    const isOpen = this.state.addSeriesModalDashCard != null;
     return (
       <Modal className="Modal AddSeriesModal" isOpen={isOpen}>
         {isOpen && (
           <AddSeriesModal
             dashcard={this.state.addSeriesModalDashCard}
             dashboard={this.props.dashboard}
-            cards={this.props.cards}
             dashcardData={this.props.dashcardData}
             databases={this.props.databases}
-            fetchCards={this.props.fetchCards}
             fetchCardData={this.props.fetchCardData}
             fetchDatabaseMetadata={this.props.fetchDatabaseMetadata}
             removeCardFromDashboard={this.props.removeCardFromDashboard}
@@ -223,9 +221,11 @@ export default class DashboardGrid extends Component {
           this,
           dc.id,
         )}
+        mode={this.props.mode}
         navigateToNewCardFromDashboard={
           this.props.navigateToNewCardFromDashboard
         }
+        onChangeLocation={this.props.onChangeLocation}
         metadata={this.props.metadata}
         dashboard={this.props.dashboard}
       />

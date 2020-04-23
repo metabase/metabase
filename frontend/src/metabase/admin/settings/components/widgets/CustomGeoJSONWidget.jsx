@@ -1,21 +1,21 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import Utils from "metabase/lib/utils";
-import Select, { Option } from "metabase/components/Select.jsx";
-import Confirm from "metabase/components/Confirm.jsx";
-import Ellipsified from "metabase/components/Ellipsified.jsx";
-import Modal from "metabase/components/Modal.jsx";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper.jsx";
+import Select, { Option } from "metabase/components/Select";
+import Confirm from "metabase/components/Confirm";
+import Ellipsified from "metabase/components/Ellipsified";
+import Modal from "metabase/components/Modal";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
-import SettingHeader from "../SettingHeader.jsx";
+import SettingHeader from "../SettingHeader";
 
 import { SettingsApi, GeoJSONApi } from "metabase/services";
 
 import cx from "classnames";
 
-import LeafletChoropleth from "metabase/visualizations/components/LeafletChoropleth.jsx";
+import LeafletChoropleth from "metabase/visualizations/components/LeafletChoropleth";
 
 import pure from "recompose/pure";
 
@@ -86,7 +86,7 @@ export default class CustomGeoJSONWidget extends Component {
         geoJsonError: null,
       });
       await this._saveMap(map.id, map);
-      let geoJson = await GeoJSONApi.get({ id: map.id });
+      const geoJson = await GeoJSONApi.get({ id: map.id });
       this.setState({
         geoJson: geoJson,
         geoJsonLoading: false,
@@ -185,31 +185,33 @@ const ListMaps = ({ maps, onEditMap, onDeleteMap }) => (
         </tr>
       </thead>
       <tbody>
-        {maps.filter(map => !map.builtin).map(map => (
-          <tr key={map.id}>
-            <td className="cursor-pointer" onClick={() => onEditMap(map)}>
-              {map.name}
-            </td>
-            <td className="cursor-pointer" onClick={() => onEditMap(map)}>
-              <Ellipsified style={{ maxWidth: 600 }}>{map.url}</Ellipsified>
-            </td>
-            <td className="Table-actions">
-              <Confirm
-                action={() => onDeleteMap(map)}
-                title={t`Delete custom map`}
-              >
-                <button className="Button Button--danger">{t`Remove`}</button>
-              </Confirm>
-            </td>
-          </tr>
-        ))}
+        {maps
+          .filter(map => !map.builtin)
+          .map(map => (
+            <tr key={map.id}>
+              <td className="cursor-pointer" onClick={() => onEditMap(map)}>
+                {map.name}
+              </td>
+              <td className="cursor-pointer" onClick={() => onEditMap(map)}>
+                <Ellipsified style={{ maxWidth: 600 }}>{map.url}</Ellipsified>
+              </td>
+              <td className="Table-actions">
+                <Confirm
+                  action={() => onDeleteMap(map)}
+                  title={t`Delete custom map`}
+                >
+                  <button className="Button Button--danger">{t`Remove`}</button>
+                </Confirm>
+              </td>
+            </tr>
+          ))}
       </tbody>
     </table>
   </section>
 );
 
 const GeoJsonPropertySelect = ({ value, onChange, geoJson }) => {
-  let options = {};
+  const options = {};
   if (geoJson) {
     for (const feature of geoJson.features) {
       for (const property in feature.properties) {

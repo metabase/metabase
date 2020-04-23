@@ -109,15 +109,17 @@
 }
 
 /* text weight */
-.text-light {
-  font-weight: 300;
-}
+/* NOTE: .text-light removed since it conflicted with text-light in colors.css */
 .text-normal {
   font-weight: 400;
 }
 .text-bold,
 :local(.text-bold) {
   font-weight: 700;
+}
+
+.text-heavy {
+  font-weight: 900;
 }
 
 /* text style */
@@ -137,6 +139,11 @@
 .text-paragraph,
 :local(.text-paragraph) {
   font-size: 1.143em;
+  line-height: 1.5em;
+}
+
+.text-spaced,
+:local(.text-spaced) {
   line-height: 1.5em;
 }
 
@@ -162,6 +169,12 @@
 
 .text-ellipsis {
   text-overflow: ellipsis;
+}
+
+.text-wrap {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  word-wrap: anywhere;
 }
 
 .text-nowrap {

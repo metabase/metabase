@@ -1,6 +1,5 @@
 /* @flow weak */
 
-import Question from "../Question";
 import Query from "./Query";
 
 import Database from "metabase-lib/lib/metadata/Database";
@@ -19,13 +18,22 @@ import {
 import { chain, assoc, getIn, assocIn, updateIn } from "icepick";
 import _ from "underscore";
 
+import type Question from "metabase-lib/lib/Question";
 import type {
   DatasetQuery,
   NativeDatasetQuery,
 } from "metabase/meta/types/Card";
 import type { TemplateTags, TemplateTag } from "metabase/meta/types/Query";
 import type { DatabaseEngine, DatabaseId } from "metabase/meta/types/Database";
+
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
+
+import Dimension, { TemplateTagDimension } from "../Dimension";
+import Variable, { TemplateTagVariable } from "../Variable";
+import DimensionOptions from "../DimensionOptions";
+
+type DimensionFilter = (dimension: Dimension) => boolean;
+type VariableFilter = (variable: Variable) => boolean;
 
 export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
   database: null,
@@ -35,6 +43,21 @@ export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
     "template-tags": {},
   },
 };
+
+// This regex needs to match logic in replaceCardId and _getUpdatedTemplateTags.
+const CARD_TAG_REGEX = /^#([0-9]*)$/;
+
+function cardTagCardId(name) {
+  const match = name.match(CARD_TAG_REGEX);
+  if (match && match[1].length > 0) {
+    return parseInt(match[1]);
+  }
+  return null;
+}
+
+function isCardQueryName(name) {
+  return CARD_TAG_REGEX.test(name);
+}
 
 export default class NativeQuery extends AtomicQuery {
   // For Flow type completion
@@ -50,27 +73,37 @@ export default class NativeQuery extends AtomicQuery {
   }
 
   static isDatasetQueryType(datasetQuery: DatasetQuery): boolean {
-    return datasetQuery.type === NATIVE_QUERY_TEMPLATE.type;
+    return datasetQuery && datasetQuery.type === NATIVE_QUERY_TEMPLATE.type;
   }
 
   /* Query superclass methods */
 
+  hasData() {
+    return (
+      this.databaseId() != null && (!this.requiresTable() || this.collection())
+    );
+  }
+
   canRun() {
     return (
-      this.databaseId() != null &&
+      this.hasData() &&
       this.queryText().length > 0 &&
-      (!this.requiresTable() || this.collection())
+      this.allTemplateTagsAreValid()
     );
   }
 
   isEmpty() {
-    return this.databaseId() == null || this.queryText().length == 0;
+    return this.databaseId() == null || this.queryText().length === 0;
   }
 
-  databases(): Database[] {
-    return super
-      .databases()
-      .filter(database => database.native_permissions === "write");
+  clean() {
+    return this.setDatasetQuery(
+      updateIn(
+        this.datasetQuery(),
+        ["native", "template-tags"],
+        tt => tt || {},
+      ),
+    );
   }
 
   /* AtomicQuery superclass methods */
@@ -93,21 +126,42 @@ export default class NativeQuery extends AtomicQuery {
     return database && database.engine;
   }
 
+  /**
+   * Returns true if the database metadata (or lack thererof indicates the user can modify and run this query
+   */
+  readOnly(): boolean {
+    const database = this.database();
+    return !database || database.native_permissions !== "write";
+  }
+
   /* Methods unique to this query type */
 
   /**
    * @returns a new query with the provided Database set.
    */
   setDatabase(database: Database): NativeQuery {
-    if (database.id !== this.databaseId()) {
+    return this.setDatabaseId(database.id);
+  }
+  setDatabaseId(databaseId: DatabaseId): NativeQuery {
+    if (databaseId !== this.databaseId()) {
       // TODO: this should reset the rest of the query?
       return new NativeQuery(
         this._originalQuestion,
-        assoc(this.datasetQuery(), "database", database.id),
+        assoc(this.datasetQuery(), "database", databaseId),
       );
     } else {
       return this;
     }
+  }
+
+  setDefaultCollection(): NativeQuery {
+    if (this.requiresTable()) {
+      const tables = this.tables();
+      if (tables && tables.length > 0) {
+        return this.setCollectionName(tables[0].name);
+      }
+    }
+    return this;
   }
 
   hasWritePermission(): boolean {
@@ -135,7 +189,7 @@ export default class NativeQuery extends AtomicQuery {
     return getIn(this.datasetQuery(), ["native", "query"]) || "";
   }
 
-  updateQueryText(newQueryText: string): Query {
+  setQueryText(newQueryText: string): Query {
     return new NativeQuery(
       this._originalQuestion,
       chain(this._datasetQuery)
@@ -152,7 +206,7 @@ export default class NativeQuery extends AtomicQuery {
     return getIn(this.datasetQuery(), ["native", "collection"]);
   }
 
-  updateCollection(newCollection: string) {
+  setCollectionName(newCollection: string) {
     return new NativeQuery(
       this._originalQuestion,
       assocIn(this._datasetQuery, ["native", "collection"], newCollection),
@@ -210,9 +264,52 @@ export default class NativeQuery extends AtomicQuery {
   templateTagsMap(): TemplateTags {
     return getIn(this.datasetQuery(), ["native", "template-tags"]) || {};
   }
+  allTemplateTagsAreValid(): boolean {
+    return this.templateTags().every(
+      // field filters require a field
+      t => !(t.type === "dimension" && t.dimension == null),
+    );
+  }
+
+  setTemplateTag(name, tag) {
+    return this.setDatasetQuery(
+      assocIn(this.datasetQuery(), ["native", "template-tags", name], tag),
+    );
+  }
 
   setDatasetQuery(datasetQuery: DatasetQuery): NativeQuery {
     return new NativeQuery(this._originalQuestion, datasetQuery);
+  }
+
+  // `replaceCardId` updates the query text to reference a different card.
+  // Template tags are updated as a result of calling `setQueryText`.
+  replaceCardId(oldId, newId) {
+    const re = new RegExp(`{{\\s*#${oldId}\\s*}}`, "g");
+    const newQueryText = this.queryText().replace(re, () => `{{#${newId}}}`);
+    return this.setQueryText(newQueryText);
+  }
+
+  dimensionOptions(
+    dimensionFilter: DimensionFilter = () => true,
+  ): DimensionOptions {
+    const dimensions = this.templateTags()
+      .filter(tag => tag.type === "dimension")
+      .map(
+        tag =>
+          new TemplateTagDimension(null, [tag.name], this.metadata(), this),
+      )
+      .filter(dimensionFilter);
+    return new DimensionOptions({
+      dimensions: dimensions,
+      count: dimensions.length,
+    });
+  }
+
+  variables(variableFilter: VariableFilter = () => true): Variable[] {
+    return this.templateTags()
+      .filter(tag => tag.type !== "dimension")
+      .map(tag => new TemplateTagVariable([tag.name], this.metadata(), this))
+      .filter(variableFilter);
   }
 
   /**
@@ -226,33 +323,38 @@ export default class NativeQuery extends AtomicQuery {
       // a variable name can optionally end with :start or :end which is not considered part of the actual variable name
       // expected pattern is like mustache templates, so we are looking for something like {{category}} or {{date:start}}
       // anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
-      let match,
-        re = /\{\{\s*([A-Za-z0-9_]+?)\s*\}\}/g;
+      // variables referencing other questions, by their card ID, are also supported: {{#123}} references question with ID 123
+      let match;
+      const re = /\{\{\s*([A-Za-z0-9_]+?|#[0-9]*)\s*\}\}/g;
       while ((match = re.exec(queryText)) != null) {
         tags.push(match[1]);
       }
 
       // eliminate any duplicates since it's allowed for a user to reference the same variable multiple times
-      const existingTemplateTags = this.templateTagsMap();
-
       tags = _.uniq(tags);
-      let existingTags = Object.keys(existingTemplateTags);
+      const existingTemplateTags = this.templateTagsMap();
+      const existingTags = Object.keys(existingTemplateTags);
 
       // if we ended up with any variables in the query then update the card parameters list accordingly
       if (tags.length > 0 || existingTags.length > 0) {
-        let newTags = _.difference(tags, existingTags);
-        let oldTags = _.difference(existingTags, tags);
+        const newTags = _.difference(tags, existingTags);
+        const oldTags = _.difference(existingTags, tags);
 
-        let templateTags = { ...existingTemplateTags };
+        const templateTags = { ...existingTemplateTags };
         if (oldTags.length === 1 && newTags.length === 1) {
           // renaming
-          templateTags[newTags[0]] = { ...templateTags[oldTags[0]] };
+          const newTag = { ...templateTags[oldTags[0]] };
 
-          if (templateTags[newTags[0]].display_name === humanize(oldTags[0])) {
-            templateTags[newTags[0]].display_name = humanize(newTags[0]);
+          if (newTag["display-name"] === humanize(oldTags[0])) {
+            newTag["display-name"] = humanize(newTags[0]);
           }
 
-          templateTags[newTags[0]].name = newTags[0];
+          newTag.name = newTags[0];
+          if (isCardQueryName(newTag.name)) {
+            newTag.type = "card";
+            newTag["card-id"] = cardTagCardId(newTag.name);
+          }
+          templateTags[newTag.name] = newTag;
           delete templateTags[oldTags[0]];
         } else {
           // remove old vars
@@ -261,20 +363,28 @@ export default class NativeQuery extends AtomicQuery {
           }
 
           // create new vars
-          for (let tagName of newTags) {
+          for (const tagName of newTags) {
             templateTags[tagName] = {
               id: Utils.uuid(),
               name: tagName,
-              display_name: humanize(tagName),
-              type: null,
+              "display-name": humanize(tagName),
+              type: "text",
             };
+
+            // parse card ID from tag name for card query template tags
+            if (isCardQueryName(tagName)) {
+              templateTags[tagName] = Object.assign(templateTags[tagName], {
+                type: "card",
+                "card-id": cardTagCardId(tagName),
+              });
+            }
           }
         }
 
         // ensure all tags have an id since we need it for parameter values to work
         // $FlowFixMe
         for (const tag: TemplateTag of Object.values(templateTags)) {
-          if (tag.id == undefined) {
+          if (tag.id == null) {
             tag.id = Utils.uuid();
           }
         }

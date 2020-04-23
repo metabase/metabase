@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
-import { t } from "c-3po";
+import { t } from "ttag";
 
 import Settings from "metabase/lib/settings";
 
@@ -17,7 +17,7 @@ export default class ChannelSetupMessage extends Component {
   };
 
   render() {
-    let { user, channels } = this.props;
+    const { user, channels } = this.props;
     let content;
     if (user.is_superuser) {
       content = (
@@ -35,7 +35,7 @@ export default class ChannelSetupMessage extends Component {
         </div>
       );
     } else {
-      let adminEmail = Settings.get("admin_email");
+      const adminEmail = Settings.get("admin-email");
       content = (
         <div className="mb1">
           <h4 className="text-medium">{t`Your admin's email address`}:</h4>

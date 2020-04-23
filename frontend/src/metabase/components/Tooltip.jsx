@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
 
-import TooltipPopover from "./TooltipPopover.jsx";
+import TooltipPopover from "./TooltipPopover";
 
 // TOOLTIP_STACK and related functions are to ensure only the most recent tooltip is visible
 
@@ -55,20 +55,27 @@ export default class Tooltip extends Component {
   static defaultProps = {
     isEnabled: true,
     verticalAttachments: ["top", "bottom"],
+    horizontalAttachments: ["center", "left", "right"],
   };
 
   componentDidMount() {
-    let elem = ReactDOM.findDOMNode(this);
+    const elem = ReactDOM.findDOMNode(this);
 
-    elem.addEventListener("mouseenter", this._onMouseEnter, false);
-    elem.addEventListener("mouseleave", this._onMouseLeave, false);
+    if (elem) {
+      elem.addEventListener("mouseenter", this._onMouseEnter, false);
+      elem.addEventListener("mouseleave", this._onMouseLeave, false);
 
-    // HACK: These two event listeners ensure that if a click on the child causes the tooltip to
-    // unmount (e.x. navigating away) then the popover is removed by the time this component
-    // unmounts. Previously we were seeing difficult to debug error messages like
-    // "Cannot read property 'componentDidUpdate' of null"
-    elem.addEventListener("mousedown", this._onMouseDown, true);
-    elem.addEventListener("mouseup", this._onMouseUp, true);
+      // HACK: These two event listeners ensure that if a click on the child causes the tooltip to
+      // unmount (e.x. navigating away) then the popover is removed by the time this component
+      // unmounts. Previously we were seeing difficult to debug error messages like
+      // "Cannot read property 'componentDidUpdate' of null"
+      elem.addEventListener("mousedown", this._onMouseDown, true);
+      elem.addEventListener("mouseup", this._onMouseUp, true);
+    } else {
+      console.warn(
+        `Tooltip::componentDidMount: no DOM node for tooltip ${this.props.tooltip}`,
+      );
+    }
 
     this._element = document.createElement("div");
     this.componentDidUpdate();
@@ -84,6 +91,7 @@ export default class Tooltip extends Component {
         <TooltipPopover
           isOpen={true}
           target={this}
+          hasArrow
           {...this.props}
           children={this.props.tooltip}
         />,
@@ -96,12 +104,20 @@ export default class Tooltip extends Component {
 
   componentWillUnmount() {
     popTooltip(this);
-    let elem = ReactDOM.findDOMNode(this);
-    elem.removeEventListener("mouseenter", this._onMouseEnter, false);
-    elem.removeEventListener("mouseleave", this._onMouseLeave, false);
-    elem.removeEventListener("mousedown", this._onMouseDown, true);
-    elem.removeEventListener("mouseup", this._onMouseUp, true);
-    ReactDOM.unmountComponentAtNode(this._element);
+    const elem = ReactDOM.findDOMNode(this);
+    if (elem) {
+      elem.removeEventListener("mouseenter", this._onMouseEnter, false);
+      elem.removeEventListener("mouseleave", this._onMouseLeave, false);
+      elem.removeEventListener("mousedown", this._onMouseDown, true);
+      elem.removeEventListener("mouseup", this._onMouseUp, true);
+    } else {
+      console.warn(
+        `Tooltip::componentWillUnmount: no DOM node for tooltip ${this.props.tooltip}`,
+      );
+    }
+    if (this._element) {
+      ReactDOM.unmountComponentAtNode(this._element);
+    }
     clearTimeout(this.timer);
   }
 
@@ -183,19 +199,17 @@ export class TestTooltip extends Component {
           {this.props.children}
         </TestTooltipTarget>
 
-        {tooltip &&
-          isEnabled &&
-          isOpen && (
-            <TestTooltipContent>
-              <TooltipPopover
-                isOpen={true}
-                target={this}
-                {...this.props}
-                children={this.props.tooltip}
-              />
-              {this.props.tooltip}
-            </TestTooltipContent>
-          )}
+        {tooltip && isEnabled && isOpen && (
+          <TestTooltipContent>
+            <TooltipPopover
+              isOpen={true}
+              target={this}
+              {...this.props}
+              children={this.props.tooltip}
+            />
+            {this.props.tooltip}
+          </TestTooltipContent>
+        )}
       </div>
     );
   }

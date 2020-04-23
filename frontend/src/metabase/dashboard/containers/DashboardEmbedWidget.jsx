@@ -2,10 +2,17 @@
 
 import React, { Component } from "react";
 import { connect } from "react-redux";
+import cx from "classnames";
+import { t } from "ttag";
 
-import EmbedWidget from "metabase/public/components/widgets/EmbedWidget";
+import Tooltip from "metabase/components/Tooltip";
+import Icon from "metabase/components/Icon";
+import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+
+import EmbedModalContent from "metabase/public/components/widgets/EmbedModalContent";
 
 import * as Urls from "metabase/lib/urls";
+import MetabaseAnalytics from "metabase/lib/analytics";
 
 import {
   createPublicLink,
@@ -21,8 +28,13 @@ const mapDispatchToProps = {
   updateEmbeddingParams,
 };
 
-@connect(null, mapDispatchToProps)
+@connect(
+  null,
+  mapDispatchToProps,
+)
 export default class DashboardEmbedWidget extends Component {
+  _modal: ?ModalWithTrigger;
+
   render() {
     const {
       className,
@@ -34,22 +46,46 @@ export default class DashboardEmbedWidget extends Component {
       ...props
     } = this.props;
     return (
-      <EmbedWidget
-        {...props}
-        className={className}
-        resource={dashboard}
-        resourceType="dashboard"
-        resourceParameters={dashboard && dashboard.parameters}
-        onCreatePublicLink={() => createPublicLink(dashboard)}
-        onDisablePublicLink={() => deletePublicLink(dashboard)}
-        onUpdateEnableEmbedding={enableEmbedding =>
-          updateEnableEmbedding(dashboard, enableEmbedding)
+      <ModalWithTrigger
+        ref={m => (this._modal = m)}
+        full
+        triggerElement={
+          <Tooltip tooltip={t`Sharing and embedding`}>
+            <Icon
+              name="share"
+              onClick={() =>
+                MetabaseAnalytics.trackEvent(
+                  "Sharing / Embedding",
+                  "dashboard",
+                  "Sharing Link Clicked",
+                )
+              }
+            />
+          </Tooltip>
         }
-        onUpdateEmbeddingParams={embeddingParams =>
-          updateEmbeddingParams(dashboard, embeddingParams)
-        }
-        getPublicUrl={({ public_uuid }) => Urls.publicDashboard(public_uuid)}
-      />
+        triggerClasses={cx(className, "text-brand-hover")}
+        className="scroll-y"
+      >
+        <EmbedModalContent
+          {...props}
+          className={className}
+          resource={dashboard}
+          resourceParameters={dashboard && dashboard.parameters}
+          resourceType="dashboard"
+          onCreatePublicLink={() => createPublicLink(dashboard)}
+          onDisablePublicLink={() => deletePublicLink(dashboard)}
+          onUpdateEnableEmbedding={enableEmbedding =>
+            updateEnableEmbedding(dashboard, enableEmbedding)
+          }
+          onUpdateEmbeddingParams={embeddingParams =>
+            updateEmbeddingParams(dashboard, embeddingParams)
+          }
+          onClose={() => {
+            this._modal && this._modal.close();
+          }}
+          getPublicUrl={({ public_uuid }) => Urls.publicDashboard(public_uuid)}
+        />
+      </ModalWithTrigger>
     );
   }
 }

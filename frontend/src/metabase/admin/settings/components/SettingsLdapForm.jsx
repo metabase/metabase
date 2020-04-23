@@ -1,9 +1,16 @@
-import React, { Component } from "react";
-import { t } from "c-3po";
+import React from "react";
+import { t } from "ttag";
+
+import { connect } from "react-redux";
+import { updateLdapSettings } from "metabase/admin/settings/settings";
 
 import SettingsBatchForm from "./SettingsBatchForm";
 
-export default class SettingsLdapForm extends Component {
+@connect(
+  null,
+  { updateSettings: updateLdapSettings },
+)
+export default class SettingsLdapForm extends React.Component {
   render() {
     return (
       <SettingsBatchForm
@@ -43,7 +50,6 @@ export default class SettingsLdapForm extends Component {
             settings: ["ldap-group-sync", "ldap-group-base"],
           },
         ]}
-        updateSettings={this.props.updateLdapSettings}
       />
     );
   }

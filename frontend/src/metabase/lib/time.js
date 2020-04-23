@@ -42,23 +42,25 @@ const NUMERIC_UNIT_FORMATS = {
 
 // only attempt to parse the timezone if we're sure we have one (either Z or ±hh:mm or +-hhmm)
 // moment normally interprets the DD in YYYY-MM-DD as an offset :-/
-export function parseTimestamp(value, unit) {
+export function parseTimestamp(value, unit = null, local = false) {
+  let m;
   if (moment.isMoment(value)) {
-    return value;
+    m = value;
   } else if (typeof value === "string" && /(Z|[+-]\d\d:?\d\d)$/.test(value)) {
-    return moment.parseZone(value);
-  } else if (unit in NUMERIC_UNIT_FORMATS) {
-    return NUMERIC_UNIT_FORMATS[unit](value);
+    m = moment.parseZone(value);
+  } else if (unit in NUMERIC_UNIT_FORMATS && typeof value == "number") {
+    m = NUMERIC_UNIT_FORMATS[unit](value);
   } else {
-    return moment.utc(value);
+    m = moment.utc(value);
   }
+  return local ? m.local() : m;
 }
 
 export function parseTime(value) {
   if (moment.isMoment(value)) {
     return value;
   } else if (typeof value === "string") {
-    return moment(value, [
+    return moment.parseZone(value, [
       "HH:mm:SS.sssZZ",
       "HH:mm:SS.sss",
       "HH:mm:SS.sss",

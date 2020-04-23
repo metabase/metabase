@@ -3,42 +3,44 @@ import { Flex } from "grid-styled";
 import Icon from "metabase/components/Icon";
 import Link from "metabase/components/Link";
 
-import colors from "metabase/lib/colors";
+import { color } from "metabase/lib/colors";
 
 // TODO: merge with Breadcrumbs
 
 const Crumb = ({ children }) => (
-  <h5
-    className="text-uppercase text-brand-hover text-medium"
-    style={{ fontWeight: 900 }}
-  >
+  <h5 className="text-uppercase text-medium" style={{ fontWeight: 900 }}>
     {children}
   </h5>
 );
 
 const BrowserCrumbs = ({ crumbs, analyticsContext }) => (
   <Flex align="center">
-    {crumbs.filter(c => c).map((crumb, index, crumbs) => [
-      crumb.to && (
+    {crumbs
+      .filter(c => c)
+      .map((crumb, index, crumbs) => [
         <Flex align="center">
-          <Link
-            key={"title" + index}
-            to={crumb.to}
-            data-metabase-event={`${analyticsContext};Bread Crumb;Click`}
-          >
-            <Crumb>{crumb.title}</Crumb>
-          </Link>
+          {crumb.to ? (
+            <Link
+              className="text-brand-hover cursor-pointer"
+              key={"title" + index}
+              to={crumb.to}
+              data-metabase-event={`${analyticsContext};Bread Crumb;Click`}
+            >
+              <Crumb>{crumb.title}</Crumb>
+            </Link>
+          ) : (
+            <Crumb key={"title" + index}>{crumb.title}</Crumb>
+          )}
           {index < crumbs.length - 1 ? (
             <Icon
               key={"divider" + index}
               name="chevronright"
-              color={colors["text-light"]}
+              color={color("text-light")}
               mx={1}
             />
           ) : null}
-        </Flex>
-      ),
-    ])}
+        </Flex>,
+      ])}
   </Flex>
 );
 

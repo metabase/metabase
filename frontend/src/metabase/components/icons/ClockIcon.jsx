@@ -24,7 +24,7 @@ const ClockIcon = ({
       stroke="white"
       strokeWidth={2}
       strokeLinecap="round"
-      transform={`rotate(${(hour % 12) / 12 * 360} 10 10)`}
+      transform={`rotate(${((hour % 12) / 12) * 360} 10 10)`}
     />
     <line
       x1="10"
@@ -34,7 +34,7 @@ const ClockIcon = ({
       stroke="white"
       strokeWidth={2}
       strokeLinecap="round"
-      transform={`rotate(${(minute % 60) / 60 * 360} 10 10)`}
+      transform={`rotate(${((minute % 60) / 60) * 360} 10 10)`}
     />
   </svg>
 );
