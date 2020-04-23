@@ -63,6 +63,18 @@ const ActionMenuItem = ({ children, action, event }) => (
   </div>
 );
 
+const LogoutLink = ({ children, onClose }) => (
+  <form
+    id="dataview-logout-form"
+    method="post"
+    action="http://localhost:3001/users/sign_out"
+    onClick={() => document.querySelector("#dataview-logout-form").submit()}
+   >
+    <input type="hidden" name="_method" value="delete" />
+    { children }
+  </form>
+);
+
 const EntityMenuItem = ({
   action,
   title,
@@ -71,7 +83,9 @@ const EntityMenuItem = ({
   onClose,
   event,
   externalLink,
+  logoutLink,
 }) => {
+  console.log(title, link, externalLink)
   if (link && action) {
     console.warn(
       "EntityMenuItem Error: You cannot specify both action and link props",
@@ -85,6 +99,14 @@ const EntityMenuItem = ({
       <span className="text-bold">{title}</span>
     </Item>
   );
+
+  if (logoutLink) {
+    return (
+      <LogoutLink link={link} onClose={onClose}>
+        {content}
+      </LogoutLink>
+    );
+  }
 
   if (link) {
     return (

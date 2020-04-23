@@ -120,6 +120,7 @@ class EntityMenu extends Component {
                                 icon={item.icon}
                                 title={item.title}
                                 externalLink={item.externalLink}
+                                logoutLink={item.logoutLink}
                                 action={
                                   item.action &&
                                   (() => {

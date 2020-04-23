@@ -1,6 +1,7 @@
 import React, { Component } from "react";
 import { Link } from "react-router";
 import { connect } from "react-redux";
+import { push } from "react-router-redux";
 
 import { t } from "ttag";
 import _ from "underscore";
@@ -15,6 +16,9 @@ const mapStateToProps = (state, props) => ({
 
 @connect(mapStateToProps)
 export default class LoginApp extends Component {
+  componentWillMount() {
+    window.location.href = "http://localhost:3001/dashboard"
+  }
   renderPanel(provider) {
     return <provider.Panel {...this.props} />;
   }

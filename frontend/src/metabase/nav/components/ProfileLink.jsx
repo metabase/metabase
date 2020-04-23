@@ -77,8 +77,8 @@ export default class ProfileLink extends Component {
       {
         title: t`Sign out`,
         icon: null,
-        link: "auth/logout",
-        event: `Navbar;Profile Dropdown;Logout`,
+        logoutLink: true,
+        event: `Logout`,
       },
     ];
   };
