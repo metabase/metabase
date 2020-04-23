@@ -223,7 +223,7 @@
   [field-id]
   (some-> *name-store* deref (get field-id)))
 
-(defn- store-field-alias
+(defn- store-field-alias!
   [field-id field-alias]
   (some-> *name-store* (swap! assoc field-id field-alias)))
 
@@ -544,7 +544,7 @@
                                :field-id     (second field-clause)
                                :joined-field (get-in field-clause [2 1])
                                nil)]
-           (store-field-alias field-id (-> alias :components first)))
+           (store-field-alias! field-id (-> alias :components first)))
          [honeysql-form alias])
        honeysql-form))))
 
@@ -557,11 +557,11 @@
 
 (defmethod apply-top-level-clause [:sql :aggregation]
   [driver _ honeysql-form {aggregations :aggregation}]
-  (let [honeysql-ags (for [ag aggregations]
-                       [(->honeysql driver ag)
-                        (->honeysql driver (hx/identifier
-                                            :field-alias
-                                            (driver/format-custom-field-name driver (annotate/aggregation-name ag))))])]
+  (let [honeysql-ags (vec (for [ag aggregations]
+                            [(->honeysql driver ag)
+                             (->honeysql driver (hx/identifier
+                                                 :field-alias
+                                                 (driver/format-custom-field-name driver (annotate/aggregation-name ag))))]))]
     (reduce h/merge-select honeysql-form honeysql-ags)))
 
 ;;; ----------------------------------------------- breakout & fields ------------------------------------------------
@@ -569,16 +569,17 @@
 (defmethod apply-top-level-clause [:sql :breakout]
   [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as query}]
   (as-> honeysql-form new-hsql
-    (apply h/merge-select new-hsql (for [field-clause breakout-fields
-                                         :when (not (contains? (set fields-fields) field-clause))]
-                                     (as driver field-clause)))
+    (->> breakout-fields
+         (remove (partial contains? (set fields-fields)))
+         (mapv (partial as driver))
+         (apply h/merge-select new-hsql))
     (apply h/group new-hsql (map (partial ->honeysql driver) breakout-fields))))
 
 (defmethod apply-top-level-clause [:sql :fields]
   [driver _ honeysql-form {fields :fields}]
   (let [unique-name-fn (mbql.u/unique-name-generator)]
-    (apply h/merge-select honeysql-form (for [field-clause fields]
-                                          (as driver field-clause unique-name-fn)))))
+    (apply h/merge-select honeysql-form (vec (for [field-clause fields]
+                                               (as driver field-clause unique-name-fn))))))
 
 
 ;;; ----------------------------------------------------- filter -----------------------------------------------------
@@ -727,7 +728,7 @@
 
 (defmethod apply-top-level-clause [:sql :order-by]
   [driver _ honeysql-form {subclauses :order-by}]
-  (reduce h/merge-order-by honeysql-form (map (partial ->honeysql driver) subclauses)))
+  (reduce h/merge-order-by honeysql-form (mapv (partial ->honeysql driver) subclauses)))
 
 ;;; -------------------------------------------------- limit & page --------------------------------------------------
 
