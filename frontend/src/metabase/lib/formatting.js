@@ -699,7 +699,6 @@ export function getRemappedValue(
     // TODO: get rid of one of these two code paths?
   }
 }
-<<<<<<< HEAD
 
 export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
   options = {
@@ -715,23 +714,6 @@ export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
     return remapped;
   }
 
-=======
-
-export function formatValueRaw(value: Value, options: FormattingOptions = {}) {
-  options = {
-    jsx: false,
-    remap: true,
-    ...options,
-  };
-
-  const { column } = options;
-
-  const remapped = getRemappedValue(value, options);
-  if (remapped !== undefined && options.view_as !== "link") {
-    return remapped;
-  }
-
->>>>>>> 3d9d04f5ea6d56523ca3345ad64fc62e2417ceb4
   if (value == null) {
     return null;
   } else if (
