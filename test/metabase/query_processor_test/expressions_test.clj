@@ -327,7 +327,9 @@
 ;;; |                                     MISC BUG FIXES                                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; Make sure no part of query compilation is lazy as that won't play well with dynamic bindings
+;; Make sure no part of query compilation is lazy as that won't play well with dynamic bindings.
+;; This is not an issue limited to expressions, but using expressions is the most straightforward
+;; way to reproducing it.
 (deftest no-lazyness-test
   (one-off-dbs/with-blank-db
     (let [;; need more fields than seq chunking size
