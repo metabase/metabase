@@ -122,7 +122,7 @@
       (throw (ex-info (format "Timed out after %d ms." timeout-ms) {})))
     result))
 
-(def ^:private command-timeout-ms (* 5 60 1000)) ; 5 minutes
+(def ^:private command-timeout-ms (* 15 60 1000)) ; 15 minutes
 
 (defn sh*
   "Run a shell command. Like `clojure.java.shell/sh`, but prints output to stdout/stderr and returns results as a vector
