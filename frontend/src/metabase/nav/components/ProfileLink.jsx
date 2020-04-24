@@ -47,14 +47,6 @@ export default class ProfileLink extends Component {
       },
       ...(admin && [
         {
-          title: adminContext ? t`Exit admin` : t`Admin`,
-          icon: null,
-          link: adminContext ? "/" : "/admin",
-          event: `Navbar;Profile Dropdown;${
-            adminContext ? "Exit Admin" : "Enter Admin"
-          }`,
-        },
-        {
           title: t`Data Model`,
           icon: null,
           link: "/datamodel",
