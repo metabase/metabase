@@ -34,7 +34,7 @@ class UpdateSegmentForm extends Component {
     MetabaseAnalytics.trackEvent("Data Model", "Segment Updated");
     const { id: tableId, db_id: databaseId } = this.props.table;
     this.props.onChangeLocation(
-      `/admin/datamodel/database/${databaseId}/table/${tableId}`,
+      `/datamodel/database/${databaseId}/table/${tableId}`,
     );
   };
 
@@ -61,7 +61,7 @@ class CreateSegmentForm extends Component {
     await this.props.createSegment({ ...segment, table_id: tableId });
     MetabaseAnalytics.trackEvent("Data Model", "Segment Updated");
     this.props.onChangeLocation(
-      `/admin/datamodel/database/${databaseId}/table/${tableId}`,
+      `/datamodel/database/${databaseId}/table/${tableId}`,
     );
   };
 

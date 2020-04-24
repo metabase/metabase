@@ -33,7 +33,7 @@ class UpdateMetricForm extends Component {
     MetabaseAnalytics.trackEvent("Data Model", "Metric Updated");
     const { id: tableId, db_id: databaseId } = this.props.table;
     this.props.onChangeLocation(
-      `/admin/datamodel/database/${databaseId}/table/${tableId}`,
+      `/datamodel/database/${databaseId}/table/${tableId}`,
     );
   };
 
@@ -60,7 +60,7 @@ class CreateMetricForm extends Component {
     await this.props.createMetric({ ...metric, table_id: tableId });
     MetabaseAnalytics.trackEvent("Data Model", "Metric Updated");
     this.props.onChangeLocation(
-      `/admin/datamodel/database/${databaseId}/table/${tableId}`,
+      `/datamodel/database/${databaseId}/table/${tableId}`,
     );
   };
 

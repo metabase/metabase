@@ -55,6 +55,14 @@ import CreateDashboardModal from "metabase/components/CreateDashboardModal";
 
 import { NotFound, Unauthorized } from "metabase/containers/ErrorPages";
 
+// Data model
+import MetadataEditorApp from "metabase/admin/datamodel/containers/MetadataEditorApp";
+import MetricApp from "metabase/admin/datamodel/containers/MetricApp";
+import SegmentApp from "metabase/admin/datamodel/containers/SegmentApp";
+import RevisionHistoryApp from "metabase/admin/datamodel/containers/RevisionHistoryApp";
+import FieldApp from "metabase/admin/datamodel/containers/FieldApp";
+import TableSettingsApp from "metabase/admin/datamodel/containers/TableSettingsApp";
+
 // Reference Metrics
 import MetricListContainer from "metabase/reference/metrics/MetricListContainer";
 import MetricDetailContainer from "metabase/reference/metrics/MetricDetailContainer";
@@ -239,6 +247,31 @@ export const getRoutes = store => (
           <Route path="notebook" component={QueryBuilder} />
           <Route path=":cardId" component={QueryBuilder} />
           <Route path=":cardId/notebook" component={QueryBuilder} />
+        </Route>
+
+        {/* Data model */}
+        <Route path="datamodel" title={t`Data Model`}>
+          <IndexRedirect to="database" />
+          <Route path="database" component={MetadataEditorApp} />
+          <Route path="database/:databaseId" component={MetadataEditorApp} />
+          <Route path="database/:databaseId/:mode" component={MetadataEditorApp} />
+          <Route
+            path="database/:databaseId/:mode/:tableId"
+            component={MetadataEditorApp}
+          />
+          <Route
+            path="database/:databaseId/:mode/:tableId/settings"
+            component={TableSettingsApp}
+          />
+          <Route path="database/:databaseId/:mode/:tableId/:fieldId">
+            <IndexRedirect to="general" />
+            <Route path=":section" component={FieldApp} />
+          </Route>
+          <Route path="metric/create" component={MetricApp} />
+          <Route path="metric/:id" component={MetricApp} />
+          <Route path="segment/create" component={SegmentApp} />
+          <Route path="segment/:id" component={SegmentApp} />
+          <Route path=":entity/:id/revisions" component={RevisionHistoryApp} />
         </Route>
 
         <Route path="/ready" component={PostSetupApp} />

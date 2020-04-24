@@ -20,7 +20,7 @@ export default class SegmentsList extends Component {
         <div className="flex mb1">
           <h2 className="px1 text-purple">{t`Segments`}</h2>
           <Link
-            to={"/admin/datamodel/segment/create?table=" + tableMetadata.id}
+            to={"/datamodel/segment/create?table=" + tableMetadata.id}
             data-metabase-event="Data Model;Add Segment Page"
             className="flex-align-right float-right text-bold text-brand no-decoration"
           >

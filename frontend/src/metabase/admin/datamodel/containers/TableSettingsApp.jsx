@@ -58,10 +58,10 @@ class Nav extends Component {
         <div className="my4 py1 ml2">
           <Breadcrumbs
             crumbs={[
-              db && [db.name, `/admin/datamodel/database/${db.id}`],
+              db && [db.name, `/datamodel/database/${db.id}`],
               table && [
                 table.display_name,
-                `/admin/datamodel/database/${db.id}/table/${table.id}`,
+                `/datamodel/database/${db.id}/table/${table.id}`,
               ],
               t`Settings`,
             ]}

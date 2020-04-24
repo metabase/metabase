@@ -37,7 +37,7 @@ export default class RevisionHistory extends Component {
               crumbs={[
                 [
                   t`Datamodel`,
-                  `/admin/datamodel/database/${table.db_id}/table/${table.id}`,
+                  `/datamodel/database/${table.db_id}/table/${table.id}`,
                 ],
                 [this.props.objectType + t` History`],
               ]}
