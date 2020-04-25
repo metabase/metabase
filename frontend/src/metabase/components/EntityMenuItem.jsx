@@ -63,18 +63,6 @@ const ActionMenuItem = ({ children, action, event }) => (
   </div>
 );
 
-const LogoutLink = ({ children, onClose }) => (
-  <form
-    id="dataview-logout-form"
-    method="post"
-    action="http://localhost:3001/users/sign_out"
-    onClick={() => document.querySelector("#dataview-logout-form").submit()}
-   >
-    <input type="hidden" name="_method" value="delete" />
-    { children }
-  </form>
-);
-
 const EntityMenuItem = ({
   action,
   title,
@@ -83,7 +71,6 @@ const EntityMenuItem = ({
   onClose,
   event,
   externalLink,
-  logoutLink,
 }) => {
   console.log(title, link, externalLink)
   if (link && action) {
@@ -100,11 +87,23 @@ const EntityMenuItem = ({
     </Item>
   );
 
-  if (logoutLink) {
+  if (link  && link === '/sign_out') {
     return (
-      <LogoutLink link={link} onClose={onClose}>
-        {content}
-      </LogoutLink>
+      <form
+        id="dataview-logout-form"
+        method="post"
+        action="http://localhost:3001/users/sign_out"
+        onClick={() => document.querySelector("#dataview-logout-form").submit()}
+       >
+        <input type="hidden" name="_method" value="delete" />
+        { content }
+      </form>
+    );
+  }
+
+  if(link && link === '/admin') {
+    return (
+      <a href="http://localhost:3001/admin">{content}</a>
     );
   }
 
