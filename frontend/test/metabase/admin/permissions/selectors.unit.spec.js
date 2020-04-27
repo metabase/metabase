@@ -202,7 +202,7 @@ describe("permissions selectors", () => {
       expect(schemalessDataset.getPermissions({ groupId: 1 })).toMatchObject({
         native: "none",
         schemas: {
-          null: {
+          "": {
             "10": "none",
             "11": "all",
             "12": "all",
@@ -268,7 +268,7 @@ describe("permissions selectors", () => {
       expect(schemalessDataset.getPermissions({ groupId: 2 })).toMatchObject({
         native: "none",
         schemas: {
-          null: {
+          "": {
             "10": "none",
             "11": "none",
             "12": "all",
@@ -319,7 +319,7 @@ describe("permissions selectors", () => {
       expect(schemalessDataset.getPermissions({ groupId: 2 })).toMatchObject({
         native: "none",
         schemas: {
-          null: "none",
+          "": "none",
         },
       });
 
