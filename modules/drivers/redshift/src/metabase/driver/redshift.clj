@@ -1,6 +1,7 @@
 (ns metabase.driver.redshift
   "Amazon Redshift Driver."
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [cheshire.core :as json]
+            [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
@@ -11,6 +12,7 @@
              [execute :as sql-jdbc.execute]]
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.query-processor.util :as qputil]
             [metabase.util
              [honeysql-extensions :as hx]
              [i18n :refer [trs]]])
@@ -155,3 +157,13 @@
  sql-jdbc.execute/set-parameter
  [::legacy/use-legacy-classes-for-read-and-set OffsetTime]
  [:postgres OffsetTime])
+
+(defmethod qputil/query->remark :redshift
+  [_ {{:keys [executed-by query-hash card-id], :as info} :info, query-type :type :as params}]
+  (str "/* partner: \"metabase\", "
+       (json/generate-string {:dashboard_id nil ;; requires metabase/metabase#11909
+                              :chart_id card-id
+                              :optional_user_id executed-by
+                              :filter_values {}})
+       " */ "
+       (qputil/default-query->remark params)))
