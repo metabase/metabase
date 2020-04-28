@@ -181,4 +181,16 @@ describe("scenarios > admin > settings", () => {
       );
     });
   });
+
+  describe(" > slack settings", () => {
+    it("should present the form and display errors", () => {
+      cy.visit("/admin/settings/slack");
+      cy.contains("Answers sent right to your Slack");
+      cy.findByPlaceholderText("Enter the token you received from Slack")
+        .type("not-a-real-token")
+        .blur();
+      cy.findByText("Save changes").click();
+      cy.contains("Looks like we ran into some problems");
+    });
+  });
 });
