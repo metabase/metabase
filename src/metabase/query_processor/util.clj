@@ -25,6 +25,8 @@
        (nil? aggregations)))
 
 (defn default-query->remark
+  "Generates the default query remark. Exists as a separate function so that overrides of the query->remark multimethod
+   can access the default value."
   [{{:keys [executed-by query-hash], :as info} :info, query-type :type}]
   (str "Metabase" (when executed-by
                     (assert (instance? (Class/forName "[B") query-hash))
