@@ -128,7 +128,7 @@
 (defmethod driver/execute-reducible-query :sparksql
   [driver {:keys [database settings], {sql :query, :keys [params], :as inner-query} :native, :as outer-query} context respond]
   (let [inner-query (-> (assoc inner-query
-                               :remark (qputil/query->remark outer-query)
+                               :remark (qputil/query->remark :sparksql outer-query)
                                :query  (if (seq params)
                                          (unprepare/unprepare driver (cons sql params))
                                          sql)
