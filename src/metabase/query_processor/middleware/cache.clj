@@ -107,7 +107,8 @@
        (rf result))
 
       ([acc row]
-       (a/put! in-chan row)
+       ;; Blocking so we don't exceed async's MAX-QUEUE-SIZE when transducing a large result set
+       (a/>!! in-chan row)
        (rf acc row)))))
 
 ;;; ----------------------------------------------------- Fetch ------------------------------------------------------
