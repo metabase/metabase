@@ -17,6 +17,7 @@ import FormattingWidget from "./components/widgets/FormattingWidget";
 import SettingsUpdatesForm from "./components/SettingsUpdatesForm";
 import SettingsEmailForm from "./components/SettingsEmailForm";
 import SettingsSetupList from "./components/SettingsSetupList";
+import SettingsSlackForm from "./components/SettingsSlackForm";
 
 import { UtilApi } from "metabase/services";
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
@@ -170,6 +171,7 @@ const SECTIONS = updateSectionsWithPlugins({
   },
   slack: {
     name: "Slack",
+    component: SettingsSlackForm,
     settings: [
       {
         key: "slack-token",
