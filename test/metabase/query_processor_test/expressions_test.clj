@@ -1,16 +1,22 @@
 (ns metabase.query-processor-test.expressions-test
   "Tests for expressions (calculated columns)."
   (:require [clj-time.core :as time]
-            [clojure.test :refer :all]
+            [clojure
+             [string :as str]
+             [test :refer :all]]
+            [clojure.java.jdbc :as jdbc]
             [java-time :as t]
             [metabase
              [driver :as driver]
              [query-processor-test :as qp.test]
+             [sync :as sync]
              [test :as mt]]
             [metabase.test
              [data :as data]
              [util :as tu]]
-            [metabase.test.data.datasets :as datasets]
+            [metabase.test.data
+             [datasets :as datasets]
+             [one-off-dbs :as one-off-dbs]]
             [metabase.util.date-2 :as u.date]))
 
 ;; Do a basic query including an expression
@@ -315,3 +321,33 @@
                                     :condition    [:= $user_id
                                                    [:joined-field "users__via__user_id" [:field-id (data/id :users :id)]]]}]})
                   (mt/formatted-rows [int int int])))))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                     MISC BUG FIXES                                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; Make sure no part of query compilation is lazy as that won't play well with dynamic bindings.
+;; This is not an issue limited to expressions, but using expressions is the most straightforward
+;; way to reproducing it.
+(deftest no-lazyness-test
+  (one-off-dbs/with-blank-db
+    (let [;; need more fields than seq chunking size
+          fields (repeatedly 1000 gensym)]
+      (doseq [statement ["drop table if exists \"LOTS_OF_FIELDS\";"
+                         (format "create table \"LOTS_OF_FIELDS\" (a integer, b integer, %s);"
+                                 (str/join ", " (for [field-name fields]
+                                                  (str (name field-name) " integer"))))
+                         (format "insert into \"LOTS_OF_FIELDS\" values(%s);"
+                                 (str/join "," (range (+ (count fields) 2))))]]
+        (jdbc/execute! one-off-dbs/*conn* [statement]))
+      (sync/sync-database! (data/db))
+      (is (= 1
+             (->> (mt/run-mbql-query lots_of_fields
+                    {:expressions {:c [:+ [:field-id (data/id :lots_of_fields :a)]
+                                       [:field-id (data/id :lots_of_fields :b)]]}
+                     :fields      (concat [[:expression :c]]
+                                          (for [field fields]
+                                            [:field-id (data/id :lots_of_fields (keyword field))]))})
+                  (mt/formatted-rows [int])
+                  ffirst))))))
