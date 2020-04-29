@@ -104,16 +104,7 @@ const UserIsAuthenticated = UserAuthWrapper({
   failureRedirectPath: "/auth/login",
   authSelector: state => state.currentUser,
   wrapperDisplayName: "UserIsAuthenticated",
-  redirectAction: location =>
-    // HACK: workaround for redux-auth-wrapper not including hash
-    // https://github.com/mjrussell/redux-auth-wrapper/issues/121
-    routerActions.replace({
-      ...location,
-      query: {
-        ...location.query,
-        redirect: location.query.redirect + (window.location.hash || ""),
-      },
-    }),
+  redirectAction: routerActions.replace,
 });
 
 const UserIsAdmin = UserAuthWrapper({
