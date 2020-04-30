@@ -216,7 +216,8 @@
    {:test-paths ^:replace []}
 
    :run
-   [:exclude-tests {}]
+   [:include-all-drivers
+    :exclude-tests {}]
 
    :run-with-repl
    [:exclude-tests
