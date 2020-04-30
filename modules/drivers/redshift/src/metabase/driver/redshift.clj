@@ -12,6 +12,7 @@
              [execute :as sql-jdbc.execute]]
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.mbql.util :as mbqlu]
             [metabase.query-processor.util :as qputil]
             [metabase.util
              [honeysql-extensions :as hx]
@@ -158,34 +159,10 @@
  [::legacy/use-legacy-classes-for-read-and-set OffsetTime]
  [:postgres OffsetTime])
 
-
-;; example query:
-;; {:database 2
-;; :query
-;; {:source-table 86
-;;  :filter
-;;  [:and
-;;   [:= [:field-id 46] [:value "MOROCCO" {:base_type :type/Text, :special_type :type/Category, :database_type "varchar", :name "c_nation"}]]
-;;   [:= [:field-id 47] [:value "AFRICA" {:base_type :type/Text, :special_type :type/Category, :database_type "varchar", :name "c_region"}]]]
-;;  :fields [[:field-id 48] [:field-id 41] [:field-id 43] [:field-id 44] [:field-id 42] [:field-id 46] [:field-id 45] [:field-id 47]]
-;;  :limit 2000}
-;; :type :query
-;; :middleware {:add-default-userland-constraints? true}
-;; :info
-;; {:executed-by 1
-;;  :context :ad-hoc
-;;  :nested? false
-;;  :query-hash [-98, -79, -69, 52, -33, -66, 92, -59, -30, -96, -90, 105, 14, -8, -50, -37, -69, -84, -84, -6, -106, 126, -8, -36, -52, -128, -58, -65, -8, 111, 14, 12]}
-;; :constraints {:max-results 10000, :max-results-bare-rows 2000}
-;; :native
-;; {:query
-;;  "SELECT \"public\".\"customer\".\"c_address\" AS \"c_address\", \"public\".\"customer\".\"c_city\" AS \"c_city\",
-;;  \"public\".\"customer\".\"c_custkey\" AS \"c_custkey\", \"public\".\"customer\".\"c_mktsegment\" AS \"c_mktsegment\",
-;;  \"public\".\"customer\".\"c_name\" AS \"c_name\", \"public\".\"customer\".\"c_nation\" AS \"c_nation\",
-;;  \"public\".\"customer\".\"c_phone\" AS \"c_phone\", \"public\".\"customer\".\"c_region\" AS \"c_region\"
-;;  FROM \"public\".\"customer\" WHERE (\"public\".\"customer\".\"c_nation\" = ? AND
-;;  \"public\".\"customer\".\"c_region\" = ?) LIMIT 2000"
-;;  :params ("MOROCCO" "AFRICA")}}
+(defn query->field-values
+  "Convert a MBQL query to a map of field->value"
+  [query]
+  (into {} (map (fn [v] [(:name (nth v 2)) (second v)]) (mbqlu/match query :value))))
 
 (defmethod qputil/query->remark :redshift
   [_ {{:keys [executed-by query-hash card-id], :as info} :info, query-type :type :as params}]
@@ -194,6 +171,7 @@
        (json/generate-string {:dashboard_id nil ;; requires metabase/metabase#11909
                               :chart_id card-id
                               :optional_user_id executed-by
-                              :filter_values {}})
+                              :optional_account_id nil
+                              :filter_values (query->field-values params)})
        " */ "
        (qputil/default-query->remark params)))
