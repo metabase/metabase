@@ -42,10 +42,6 @@ const LeafletChoropleth = ({
         keyboard: false,
       });
 
-      // L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      //     attribution: 'Map data © <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
-      // }).addTo(map);
-
       const style = feature => ({
         fillColor: getColor(feature),
         weight: 1,
