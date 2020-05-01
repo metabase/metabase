@@ -5,6 +5,9 @@ import cx from "classnames";
 import { PLUGIN_LOGO_ICON_COMPONENTS } from "metabase/plugins";
 
 class DefaultLogoIcon extends Component {
+  static defaultProps = {
+    height: 32,
+  };
   static propTypes = {
     width: PropTypes.number,
     height: PropTypes.number,
@@ -32,6 +35,7 @@ class DefaultLogoIcon extends Component {
 }
 
 export default function LogoIcon(props) {
+  console.log("logo props?", props);
   const [Component = DefaultLogoIcon] = PLUGIN_LOGO_ICON_COMPONENTS;
   return <Component {...props} />;
 }
