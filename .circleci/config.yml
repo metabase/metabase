@@ -586,6 +586,7 @@ jobs:
         type: string
         default: ""
     executor: << parameters.e >>
+    parallelism: 4
     steps:
       - run-yarn-command:
           command-name: Run Cypress tests

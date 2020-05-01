@@ -1,4 +1,5 @@
 {
+  "projectId": "a394u1",
   "testFiles": "**/*.cy.spec.js",
   "pluginsFile": "frontend/test/cypress-plugins.js",
   "integrationFolder": "frontend/test/metabase",

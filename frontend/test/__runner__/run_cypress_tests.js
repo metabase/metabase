@@ -86,6 +86,8 @@ const init = async () => {
             "junit",
             "--reporter-options",
             "mochaFile=cypress/results/results-[hash].xml",
+            "--record",
+            "--parallel",
           ]
         : []),
     ],
