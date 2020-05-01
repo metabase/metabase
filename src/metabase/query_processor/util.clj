@@ -38,8 +38,8 @@
                             (codecs/bytes->hex query-hash)))))
 
 (defmulti query->remark
-  "Generate an appropriate REMARK to be prepended to a query to give DBAs additional information about the query being
-  executed. See documentation for `mbql->native` and [issue #2386](https://github.com/metabase/metabase/issues/2386)
+  "Generate an appropriate remark `^String` to be prepended to a query to give DBAs additional information about the query
+  being executed. See documentation for `mbql->native` and [issue #2386](https://github.com/metabase/metabase/issues/2386)
   for more information."
   {:arglists '(^String [driver data])}
   driver/dispatch-on-initialized-driver

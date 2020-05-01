@@ -43,25 +43,22 @@
                    " \"%schema%\".\"test_data_users\".\"last_login\" AS \"last_login\""
                    " FROM \"%schema%\".\"test_data_users\""
                    " WHERE (\"%schema%\".\"test_data_users\".\"id\" = 1 OR \"%schema%\".\"test_data_users\".\"name\" = ?"
-                   " OR \"schema_170\".\"test_data_users\".\"name\" = ?)"
+                   " OR \"%schema%\".\"test_data_users\".\"name\" = ?)"
                    " LIMIT 2000")
                   "%schema%" rstest/session-schema-name)]
    (mt/test-driver
     :redshift
     (is (= expected
            (query->native
-            {:database (mt/id)
-             :query
-             {:source-table (mt/id :users)
-              :filter
-              [:or
-               [:= [:field-id (mt/id :users :id)] [:value 1 {:name "userid"}]]
-               [:= [:field-id (mt/id :users :name)] [:value "Rafael" {:name "firstname"}]]
-               [:= [:field-id (mt/id :users :name)] [:value "Robert" {:name "firstname"}]]]
-              :limit 2000}
-             :type :query
+            (assoc
+             (mt/mbql-query users
+               {:filter [:or
+                         [:= $id [:value 1 {:name "userid"}]]
+                         [:= $name [:value "Rafael" {:name "firstname"}]]
+                         [:= $name [:value "Robert" {:name "firstname"}]]]
+                :limit 2000})
              :info {:executed-by 1000
                     :context :ad-hoc
                     :nested? false
-                    :query-hash (byte-array [-53, -125, -44, -10, -18, -36, 37, 14, -37, 15, 44, 22, -8, -39, -94, 30, 93, 66, -13, 34, -52, -20, -31, 73, 76, -114, -13, -42, 52, 88, 31, -30])}}))
+                    :query-hash (byte-array [-53, -125, -44, -10, -18, -36, 37, 14, -37, 15, 44, 22, -8, -39, -94, 30, 93, 66, -13, 34, -52, -20, -31, 73, 76, -114, -13, -42, 52, 88, 31, -30])})))
         "if I run a Redshift query, does it get a remark added to it?"))))
