@@ -185,3 +185,26 @@
              (assoc sample-connection-details
                     :ssl false
                     :additional-options "useSSL=true&trustServerCertificate=true"))))))
+
+(deftest read-timediffs-test
+  (mt/test-driver :mysql
+    (testing "Make sure negative result of *diff() functions don't cause Exceptions (#10983)"
+      (doseq [{:keys [interval expected message]}
+              [{:interval "-1 HOUR"
+                :expected "-01:00:00"
+                :message  "Negative durations should come back as Strings"}
+               {:interval "25 HOUR"
+                :expected "25:00:00"
+                :message  "Durations outside the valid range of `LocalTime` should come back as Strings"}
+               {:interval "1 HOUR"
+                :expected #t "01:00:00"
+                :message  "A `timediff()` result within the valid range should still come back as a `LocalTime`"}]]
+        (testing (str "\n" interval "\n" message)
+          (is (= [expected]
+                 (mt/first-row
+                   (qp/process-query
+                    (assoc (mt/native-query
+                             {:query (format "SELECT timediff(current_timestamp + INTERVAL %s, current_timestamp)" interval)})
+                           ;; disable the middleware that normally converts `LocalTime` to `Strings` so we can verify
+                           ;; our driver is actually doing the right thing
+                           :middleware {:format-rows? false}))))))))))
