@@ -36,13 +36,14 @@
   (let [expected (str/replace
                   (str
                    "-- /* partner: \"metabase\", {\"dashboard_id\":null,\"chart_id\":null,\"optional_user_id\":1000,\"optional_account_id\":null,"
-                   "\"filter_values\":{\"userid\":1,\"firstname\":\"Rafael\"}} */"
+                   "\"filter_values\":{\"userid\":1,\"firstname\":[\"Rafael\",\"Robert\"]}} */"
                    " Metabase:: userID: 1000 queryType: MBQL queryHash: cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2\n"
                    "SELECT \"%schema%\".\"test_data_users\".\"id\" AS \"id\","
                    " \"%schema%\".\"test_data_users\".\"name\" AS \"name\","
                    " \"%schema%\".\"test_data_users\".\"last_login\" AS \"last_login\""
                    " FROM \"%schema%\".\"test_data_users\""
-                   " WHERE (\"%schema%\".\"test_data_users\".\"id\" = 1 AND \"%schema%\".\"test_data_users\".\"name\" = ?)"
+                   " WHERE (\"%schema%\".\"test_data_users\".\"id\" = 1 OR \"%schema%\".\"test_data_users\".\"name\" = ?"
+                   " OR \"schema_170\".\"test_data_users\".\"name\" = ?)"
                    " LIMIT 2000")
                   "%schema%" rstest/session-schema-name)]
    (mt/test-driver
@@ -53,9 +54,10 @@
              :query
              {:source-table (mt/id :users)
               :filter
-              [:and
+              [:or
                [:= [:field-id (mt/id :users :id)] [:value 1 {:name "userid"}]]
-               [:= [:field-id (mt/id :users :name)] [:value "Rafael" {:name "firstname"}]]]
+               [:= [:field-id (mt/id :users :name)] [:value "Rafael" {:name "firstname"}]]
+               [:= [:field-id (mt/id :users :name)] [:value "Robert" {:name "firstname"}]]]
               :limit 2000}
              :type :query
              :info {:executed-by 1000

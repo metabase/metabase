@@ -162,7 +162,12 @@
 (defn query->field-values
   "Convert a MBQL query to a map of field->value"
   [query]
-  (into {} (map (fn [v] [(:name (nth v 2)) (second v)]) (mbqlu/match query :value))))
+  (let [values (mbqlu/match query :value)]
+    (into {} (map (fn [[column values]]
+                    [column (if (> (count values) 1)
+                              (map #(get % 1) values)
+                              (get (first values) 1))])
+                  (group-by #(:name (get % 2)) values)))))
 
 (defmethod qputil/query->remark :redshift
   [_ {{:keys [executed-by query-hash card-id], :as info} :info, query-type :type :as params}]
