@@ -35,7 +35,6 @@ class DefaultLogoIcon extends Component {
 }
 
 export default function LogoIcon(props) {
-  console.log("logo props?", props);
   const [Component = DefaultLogoIcon] = PLUGIN_LOGO_ICON_COMPONENTS;
   return <Component {...props} />;
 }
