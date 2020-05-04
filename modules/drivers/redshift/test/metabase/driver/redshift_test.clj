@@ -31,20 +31,19 @@
         (qp/process-query query))
       @native-query)))
 
-;; TODO: Add executed-by and card-id and such to this
 (deftest remark-test
   (let [expected (str/replace
                   (str
-                   "-- /* partner: \"metabase\", {\"dashboard_id\":null,\"chart_id\":null,\"optional_user_id\":1000,"
+                   "-- /* partner: \"metabase\", {\"dashboard_id\":null,\"chart_id\":1234,\"optional_user_id\":1000,"
                    "\"optional_account_id\":\"" (pubset/site-uuid) "\","
-                   "\"filter_values\":{\"userid\":1,\"firstname\":[\"Rafael\",\"Robert\"]}} */"
+                   "\"filter_values\":{\"id\":[\"1\",\"2\",\"3\"]}} */"
                    " Metabase:: userID: 1000 queryType: MBQL queryHash: cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2\n"
                    "SELECT \"%schema%\".\"test_data_users\".\"id\" AS \"id\","
                    " \"%schema%\".\"test_data_users\".\"name\" AS \"name\","
                    " \"%schema%\".\"test_data_users\".\"last_login\" AS \"last_login\""
                    " FROM \"%schema%\".\"test_data_users\""
-                   " WHERE (\"%schema%\".\"test_data_users\".\"id\" = 1 OR \"%schema%\".\"test_data_users\".\"name\" = ?"
-                   " OR \"%schema%\".\"test_data_users\".\"name\" = ?)"
+                   " WHERE (\"%schema%\".\"test_data_users\".\"id\" = 1 OR \"%schema%\".\"test_data_users\".\"id\" = 2"
+                   " OR \"%schema%\".\"test_data_users\".\"id\" = 3)"
                    " LIMIT 2000")
                   "%schema%" rstest/session-schema-name)]
    (mt/test-driver
@@ -52,13 +51,10 @@
     (is (= expected
            (query->native
             (assoc
-             (mt/mbql-query users
-               {:filter [:or
-                         [:= $id [:value 1 {:name "userid"}]]
-                         [:= $name [:value "Rafael" {:name "firstname"}]]
-                         [:= $name [:value "Robert" {:name "firstname"}]]]
-                :limit 2000})
+             (mt/mbql-query users {:limit 2000})
+             :parameters [{:type "id", :target ["dimension" ["field-id" (mt/id :users :id)]], :value ["1" "2" "3"]}]
              :info {:executed-by 1000
+                    :card-id 1234
                     :context :ad-hoc
                     :nested? false
                     :query-hash (byte-array [-53, -125, -44, -10, -18, -36, 37, 14, -37, 15, 44, 22, -8, -39, -94, 30, 93, 66, -13, 34, -52, -20, -31, 73, 76, -114, -13, -42, 52, 88, 31, -30])})))

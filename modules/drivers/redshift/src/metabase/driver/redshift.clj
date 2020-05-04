@@ -14,8 +14,9 @@
              [execute :as sql-jdbc.execute]]
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql.query-processor :as sql.qp]
-            [metabase.mbql.util :as mbqlu]
-            [metabase.query-processor.util :as qputil]
+            [metabase.query-processor
+             [store :as qp.store]
+             [util :as qputil]]
             [metabase.util
              [honeysql-extensions :as hx]
              [i18n :refer [trs]]])
@@ -164,21 +165,15 @@
 (defn query->field-values
   "Convert a MBQL query to a map of field->value"
   [query]
-  (let [values (mbqlu/match query :value)]
-    (into {} (map (fn [[column values]]
-                    [column (if (> (count values) 1)
-                              (map #(get % 1) values)
-                              (get (first values) 1))])
-                  (group-by #(:name (get % 2)) values)))))
+  (into {} (map (fn [param] [(:name (qp.store/field (get-in param [:target 1 1]))) (:value param)]) (:user-parameters query))))
 
 (defmethod qputil/query->remark :redshift
-  [_ {{:keys [executed-by query-hash card-id], :as info} :info, query-type :type :as params}]
-  (log/spy :error params)
+  [_ {{:keys [executed-by query-hash card-id], :as info} :info, query-type :type :as query}]
   (str "/* partner: \"metabase\", "
        (json/generate-string {:dashboard_id nil ;; requires metabase/metabase#11909
                               :chart_id card-id
                               :optional_user_id executed-by
                               :optional_account_id (pubset/site-uuid)
-                              :filter_values (query->field-values params)})
+                              :filter_values (query->field-values query)})
        " */ "
-       (qputil/default-query->remark params)))
+       (qputil/default-query->remark query)))

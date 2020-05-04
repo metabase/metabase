@@ -1,6 +1,8 @@
 (ns metabase.query-processor.middleware.parameters
   "Middleware for substituting parameters in queries."
-  (:require [clojure.data :as data]
+  (:require [clojure
+             [data :as data]
+             [set :as set]]
             [clojure.tools.logging :as log]
             [metabase.mbql
              [normalize :as normalize]
@@ -66,7 +68,7 @@
   "Move any top-level parameters to the same level (i.e., 'inner query') as the query the affect."
   [{:keys [parameters], query-type :type, :as outer-query}]
   {:pre [(#{:query :native} query-type)]}
-  (cond-> (dissoc outer-query :parameters)
+  (cond-> (set/rename-keys outer-query {:parameters :user-parameters})
     (seq parameters)
     (assoc-in [query-type :parameters] parameters)))
 
