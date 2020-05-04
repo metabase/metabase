@@ -1,16 +1,22 @@
 (ns metabase.driver.redshift
   "Amazon Redshift Driver."
-  (:require [clojure.java.jdbc :as jdbc]
+  (:require [cheshire.core :as json]
+            [clojure.java.jdbc :as jdbc]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [public-settings :as pubset]]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
              [execute :as sql-jdbc.execute]]
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.query-processor
+             [store :as qp.store]
+             [util :as qputil]]
             [metabase.util
              [honeysql-extensions :as hx]
              [i18n :refer [trs]]])
@@ -155,3 +161,19 @@
  sql-jdbc.execute/set-parameter
  [::legacy/use-legacy-classes-for-read-and-set OffsetTime]
  [:postgres OffsetTime])
+
+(defn query->field-values
+  "Convert a MBQL query to a map of field->value"
+  [query]
+  (into {} (map (fn [param] [(:name (qp.store/field (get-in param [:target 1 1]))) (:value param)]) (:user-parameters query))))
+
+(defmethod qputil/query->remark :redshift
+  [_ {{:keys [executed-by query-hash card-id], :as info} :info, query-type :type :as query}]
+  (str "/* partner: \"metabase\", "
+       (json/generate-string {:dashboard_id nil ;; requires metabase/metabase#11909
+                              :chart_id card-id
+                              :optional_user_id executed-by
+                              :optional_account_id (pubset/site-uuid)
+                              :filter_values (query->field-values query)})
+       " */ "
+       (qputil/default-query->remark query)))
