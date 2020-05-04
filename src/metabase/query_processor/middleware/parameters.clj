@@ -38,19 +38,16 @@
     (cond-> expanded
       (join? m) move-join-condition-to-source-query)))
 
-(defn- expand-native-params [_ m]
-  (params.native/expand-inner m))
-
 (defn- expand-one
   "Expand `:parameters` in one inner-query-style map that contains them."
   [outer-query {:keys [source-table source-query parameters], :as m}]
   ;; HACK - normalization does not yet operate on `:parameters` that aren't at the top level, so double-check that
   ;; they're normalized properly before proceeding.
-  (let [m (cond-> m
-            (seq parameters) (update :parameters (partial normalize/normalize-fragment [:parameters])))
-        expanded ((if (or source-table source-query)
-                    expand-mbql-params
-                    expand-native-params) outer-query m)]
+  (let [m        (cond-> m
+                   (seq parameters) (update :parameters (partial normalize/normalize-fragment [:parameters])))
+        expanded (if (or source-table source-query)
+                   (expand-mbql-params outer-query m)
+                   (params.native/expand-inner m))]
     (dissoc expanded :parameters :template-tags)))
 
 (defn- expand-all
@@ -79,7 +76,7 @@
   [outer-query]
   (-> outer-query move-top-level-params-to-inner-query expand-all))
 
-(defn- substitute-parameters*
+(s/defn ^:private substitute-parameters* :- clojure.lang.IPersistentMap
   "If any parameters were supplied then substitute them into the query."
   [query]
   (u/prog1 (expand-parameters query)
@@ -96,4 +93,5 @@
   A SQL query with a param like `{{param}}` will have that part of the query replaced with an appropriate snippet as
   well as any prepared statement args needed. MBQL queries will have additional filter clauses added."
   [qp]
-  (comp qp substitute-parameters*))
+  (fn [query rff context]
+    (qp (substitute-parameters* query) rff context)))

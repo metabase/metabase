@@ -56,8 +56,8 @@ const createListItem = (entity, index) => (
   </li>
 );
 
-const createSchemaSeparator = entity => (
-  <li className={R.schemaSeparator}>{entity.schema}</li>
+const createSchemaSeparator = table => (
+  <li className={R.schemaSeparator}>{table.schema_name}</li>
 );
 
 export const separateTablesBySchema = (
@@ -67,9 +67,9 @@ export const separateTablesBySchema = (
 ) =>
   Object.values(tables)
     .sort((table1, table2) =>
-      table1.schema > table2.schema
+      table1.schema_name > table2.schema_name
         ? 1
-        : table1.schema === table2.schema
+        : table1.schema_name === table2.schema_name
         ? 0
         : -1,
     )
@@ -81,7 +81,7 @@ export const separateTablesBySchema = (
       // add schema header for first element and if schema is different from previous
       const previousTableId = Object.keys(sortedTables)[index - 1];
       return index === 0 ||
-        sortedTables[previousTableId].schema !== table.schema
+        sortedTables[previousTableId].schema_name !== table.schema_name
         ? [createSchemaSeparator(table), createListItem(table, index)]
         : createListItem(table, index);
     });

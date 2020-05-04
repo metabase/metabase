@@ -3,6 +3,7 @@
   (:require [cheshire
              [core :as json]
              [generate :as json.generate]]
+            [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
             [metabase
@@ -11,6 +12,8 @@
             [metabase.db.metadata-queries :as metadata-queries]
             [metabase.driver.common :as driver.common]
             [metabase.driver.mongo
+             [execute :as execute]
+             [parameters :as parameters]
              [query-processor :as qp]
              [util :refer [with-mongo-connection]]]
             [metabase.plugins.classloader :as classloader]
@@ -39,8 +42,8 @@
 (json.generate/add-encoder org.bson.BsonUndefined json.generate/encode-nil)
 
 (nippy/extend-freeze ObjectId :mongodb/ObjectId
-  [^ObjectId oid data-output]
-  (.writeUTF data-output (.toHexString oid)))
+                     [^ObjectId oid data-output]
+                     (.writeUTF data-output (.toHexString oid)))
 
 (nippy/extend-thaw :mongodb/ObjectId
   [data-input]
@@ -77,11 +80,6 @@
     #".*"                               ; default
     message))
 
-(defmethod driver/process-query-in-context :mongo [_ qp]
-  (fn [{database-id :database, :as query}]
-    (with-mongo-connection [_ (qp.store/database)]
-      (qp query))))
-
 
 ;;; ### Syncing
 
@@ -101,8 +99,8 @@
 
     ;; 2. json?
     (and (string? field-value)
-         (or (.startsWith "{" field-value)
-             (.startsWith "[" field-value)))
+         (or (str/starts-with? "{" field-value)
+             (str/starts-with? "[" field-value)))
     (when-let [j (u/ignore-exceptions (json/parse-string field-value))]
       (when (or (map? j)
                 (sequential? j))
@@ -198,16 +196,23 @@
        :fields (set (for [[field info] column-info]
                       (describe-table-field field info)))})))
 
-(defmethod driver/supports? [:mongo :basic-aggregations] [_ _] true)
-(defmethod driver/supports? [:mongo :nested-fields]      [_ _] true)
+(doseq [feature [:basic-aggregations
+                 :nested-fields
+                 :native-parameters]]
+  (defmethod driver/supports? [:mongo feature] [_ _] true))
 
 (defmethod driver/mbql->native :mongo
   [_ query]
   (qp/mbql->native query))
 
-(defmethod driver/execute-query :mongo
-  [_ query]
-  (qp/execute-query query))
+(defmethod driver/execute-reducible-query :mongo
+  [_ query context respond]
+  (with-mongo-connection [_ (qp.store/database)]
+    (execute/execute-reducible-query query context respond)))
+
+(defmethod driver/substitute-native-parameters :mongo
+  [driver inner-query]
+  (parameters/substitute-native-parameters driver inner-query))
 
 ;; It seems to be the case that the only thing BSON supports is DateTime which is basically the equivalent of Instant;
 ;; for the rest of the types, we'll have to fake it

@@ -6,22 +6,18 @@
             [cheshire.core :as json]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
-            [metabase
-             [driver :as driver]
-             [util :as u]]
-            [metabase.sync.analyze.query-results :as qr]
+            [metabase.driver :as driver]
+            [metabase.query-processor.reducible :as qp.reducible]
+            [metabase.sync.analyze.query-results :as analyze.results]
             [metabase.util
              [encryption :as encryption]
              [i18n :refer [tru]]]
             [ring.util.codec :as codec]
             [toucan.db :as db]))
 
-;; TODO - is there some way we could avoid doing this every single time a Card is ran? Perhaps by passing the current
-;; Card metadata as part of the query context so we can compare for changes
-(defn- record-metadata! [card-id metadata]
-  (when metadata
-    (db/update! 'Card card-id
-      :result_metadata metadata)))
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                     Checksum Util Fns (some of these aren't used in the middleware itself)                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- prepare-for-serialization
   "Return version of `node` that will hash consistently"
@@ -80,33 +76,53 @@
        (= (encryption/maybe-decrypt (metadata-checksum metadata) :log-errors? false)
           (encryption/maybe-decrypt checksum                     :log-errors? false))))
 
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                   Middleware                                                   |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+;; TODO -
+;;
+;; 1. Is there some way we could avoid doing this every single time a Card is ran? Perhaps by passing the current Card
+;;    metadata as part of the query context so we can compare for changes
+;;
+;; 2. Consider whether the actual save operation should be async as with
+;;    `metabase.query-processor.middleware.process-userland-query`
+(defn- record-metadata! [{{:keys [card-id nested?]} :info} metadata]
+  (try
+    ;; At the very least we can skip the Extra DB call to update this Card's metadata results
+    ;; if its DB doesn't support nested queries in the first place
+    (when (and metadata
+               driver/*driver*
+               (driver/supports? driver/*driver* :nested-queries)
+               card-id
+               (not nested?))
+      (db/update! 'Card card-id :result_metadata metadata))
+    ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
+    ;; rather than failing the entire query
+    (catch Throwable e
+      (log/error e (tru "Error recording results metadata for query")))))
+
+(defn- insights-xform [orig-metadata record! rf]
+  (qp.reducible/combine-additional-reducing-fns
+   rf
+   [(analyze.results/insights-rf orig-metadata)]
+   (fn combine [result {:keys [metadata insights]}]
+     (record! metadata)
+     (rf (cond-> result
+           (map? result)
+           (update :data assoc
+                   :results_metadata {:checksum (metadata-checksum metadata)
+                                      :columns  metadata}
+                   :insights insights))))))
+
 (defn record-and-return-metadata!
   "Middleware that records metadata about the columns returned when running the query."
   [qp]
-  (fn [{{:keys [card-id nested?]} :info, :as query}]
-    (let [results (qp query)]
-      (if (-> query :middleware :skip-results-metadata?)
-        results
-        (try
-          (let [{:keys [metadata insights]} (qr/results->column-metadata results)]
-            ;; At the very least we can skip the Extra DB call to update this Card's metadata results
-            ;; if its DB doesn't support nested queries in the first place
-            (when (and driver/*driver*
-                       (driver/supports? driver/*driver* :nested-queries)
-                       card-id
-                       (not nested?))
-              (record-metadata! card-id metadata))
-            ;; add the metadata and checksum to the response
-            (assoc results
-              :results_metadata {:checksum (metadata-checksum metadata)
-                                 :columns  metadata}
-              :insights insights))
-          ;; if for some reason we weren't able to record results metadata for this query then just proceed as normal
-          ;; rather than failing the entire query
-          (catch Throwable e
-            (log/error (tru "Error recording results metadata for query:")
-                       "\n"
-                       (class e) (.getMessage e)
-                       "\n"
-                       (u/pprint-to-str (u/filtered-stacktrace e)))
-            results))))))
+  (fn [{{:keys [skip-results-metadata?]} :middleware, :as query} rff context]
+    (if skip-results-metadata?
+      (qp query rff context)
+      (let [record! (partial record-metadata! query)
+            rff' (fn [metadata]
+                   (insights-xform metadata record! (rff metadata)))]
+        (qp query rff' context)))))

@@ -12,8 +12,8 @@
             [metabase.util.i18n :refer [trs]])
   (:import java.io.FileNotFoundException
            java.net.URL
-           [java.nio.file CopyOption Files FileSystem FileSystems LinkOption OpenOption Path StandardCopyOption]
-           [java.nio.file.attribute FileAttribute FileTime]
+           [java.nio.file CopyOption Files FileSystem FileSystems LinkOption OpenOption Path Paths StandardCopyOption]
+           java.nio.file.attribute.FileAttribute
            java.util.Collections))
 
 ;;; --------------------------------------------------- Path Utils ---------------------------------------------------
@@ -38,7 +38,9 @@
 
 ;;; ----------------------------------------------- Other Basic Utils ------------------------------------------------
 
-(defn- exists? [^Path path]
+(defn exists?
+  "Does file at `path` actually exist?"
+  [^Path path]
   (Files/exists path (u/varargs LinkOption)))
 
 (defn regular-file?
@@ -68,18 +70,20 @@
 
 ;;; ------------------------------------------------- Copying Stuff --------------------------------------------------
 
-(defn- last-modified-time ^FileTime [^Path path]
-  (Files/getLastModifiedTime path (u/varargs LinkOption)))
+(defn- last-modified-timestamp ^java.time.Instant [^Path path]
+  (when (exists? path)
+    (.toInstant (Files/getLastModifiedTime path (u/varargs LinkOption)))))
 
 (defn- copy-file! [^Path source, ^Path dest]
   (when (or (not (exists? dest))
-            (pos? (.compareTo (last-modified-time source) (last-modified-time dest))))
+            (not= (last-modified-timestamp source) (last-modified-timestamp dest)))
     (u/profile (trs "Extract file {0} -> {1}" source dest)
-      (Files/copy source dest (u/varargs CopyOption [StandardCopyOption/REPLACE_EXISTING])))))
+      (Files/copy source dest (u/varargs CopyOption [StandardCopyOption/REPLACE_EXISTING
+                                                     StandardCopyOption/COPY_ATTRIBUTES])))))
 
 (defn copy-files!
-  "Copy all files in `source-dir` to `dest-dir`. Overwrites existing files if last modified date is older than that of
-  the source file."
+  "Copy all files in `source-dir` to `dest-dir`. Overwrites existing files if last modified timestamp is not the same as
+  that of the source file — see #11699 for more context."
   [^Path source-dir, ^Path dest-dir]
   (doseq [^Path source (files-seq source-dir)
           :let [target (append-to-path dest-dir (str (.getFileName source)))]]
@@ -107,14 +111,17 @@
     (if (url-inside-jar? url)
       (with-open [fs (jar-file-system-from-url url)]
         (f (get-path-in-filesystem fs "/" resource)))
-      (f (get-path (.getPath url))))))
+      (f (get-path (.toString (Paths/get (.toURI url))))))))
 
 (defmacro with-open-path-to-resource
-  "Execute `body` with an Path to a resource file (i.e. a file in the project `resources/` directory), cleaning up when
-  finished.
+  "Execute `body` with an Path to a resource file or directory (i.e. a file in the project `resources/` directory, or
+  inside the uberjar), cleaning up when finished.
 
   Throws a FileNotFoundException if the resource does not exist; be sure to check with `io/resource` or similar before
-  calling this."
+  calling this.
+
+    (with-open-path-to-resouce [path \"modules\"]
+       ...)"
   [[path-binding resource-filename-str] & body]
   `(do-with-open-path-to-resource
     ~resource-filename-str

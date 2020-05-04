@@ -2,25 +2,18 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import { updateIn } from "icepick";
 
 import { Box } from "grid-styled";
 import StepTitle from "./StepTitle";
 import CollapsedStep from "./CollapsedStep";
 
-import DatabaseDetailsForm from "metabase/components/DatabaseDetailsForm";
-import FormField from "metabase/components/form/FormField";
 import MetabaseAnalytics from "metabase/lib/analytics";
-import MetabaseSettings from "metabase/lib/settings";
 
-import _ from "underscore";
 import { DEFAULT_SCHEDULES } from "metabase/admin/databases/database";
+import Databases from "metabase/entities/databases";
 
 export default class DatabaseConnectionStep extends Component {
-  constructor(props, context) {
-    super(props, context);
-    this.state = { engine: "", formError: null };
-  }
-
   static propTypes = {
     stepNumber: PropTypes.number.isRequired,
     activeStep: PropTypes.number.isRequired,
@@ -32,51 +25,39 @@ export default class DatabaseConnectionStep extends Component {
   };
 
   chooseDatabaseEngine = e => {
-    const engine = e.target.value;
-
-    this.setState({
-      engine: engine,
-    });
-
-    MetabaseAnalytics.trackEvent("Setup", "Choose Database", engine);
+    // FIXME:
+    // MetabaseAnalytics.trackEvent("Setup", "Choose Database", engine);
   };
 
-  connectionDetailsCaptured = async database => {
-    this.setState({
-      formError: null,
-    });
-
-    // make sure that we are trying ssl db connections to start with
-    database.details.ssl = true;
-
+  handleSubmit = async database => {
+    // validate the details before we move forward
+    let formError;
     try {
-      // validate the details before we move forward
+      // make sure that we are trying ssl db connections to start with
+      database.details.ssl = true;
       await this.props.validateDatabase(database);
     } catch (error) {
-      let formError = error;
+      formError = error;
       database.details.ssl = false;
-
       try {
         // ssl connection failed, lets try non-ssl
         await this.props.validateDatabase(database);
-
         formError = null;
-      } catch (error2) {
-        formError = error2;
+      } catch (error) {
+        formError = error;
       }
 
       if (formError) {
         MetabaseAnalytics.trackEvent(
           "Setup",
           "Error",
-          "database validation: " + this.state.engine,
+          "database validation: " + database.engine,
         );
-
-        this.setState({
-          formError: formError,
-        });
-
-        return;
+        // NOTE: need to nest field errors under `details` to get them to appear on the correct fields
+        formError = updateIn(formError, ["data", "errors"], errors => ({
+          details: errors,
+        }));
+        throw formError;
       }
     }
 
@@ -99,41 +80,18 @@ export default class DatabaseConnectionStep extends Component {
         details: database,
       });
 
-      MetabaseAnalytics.trackEvent("Setup", "Database Step", this.state.engine);
+      MetabaseAnalytics.trackEvent("Setup", "Database Step", database.engine);
     }
   };
 
-  skipDatabase() {
-    this.setState({
-      engine: "",
-    });
-
+  skipDatabase = () => {
     this.props.setDatabaseDetails({
       nextStep: this.props.stepNumber + 2,
       details: null,
     });
 
     MetabaseAnalytics.trackEvent("Setup", "Database Step");
-  }
-
-  renderEngineSelect() {
-    const engines = MetabaseSettings.get("engines");
-    const { engine } = this.state;
-    const engineNames = _.keys(engines).sort();
-
-    return (
-      <label className="Select mt1">
-        <select defaultValue={engine} onChange={this.chooseDatabaseEngine}>
-          <option value="">{t`Select the type of Database you use`}</option>
-          {engineNames.map(opt => (
-            <option key={opt} value={opt}>
-              {engines[opt]["driver-name"]}
-            </option>
-          ))}
-        </select>
-      </label>
-    );
-  }
+  };
 
   render() {
     const {
@@ -142,9 +100,6 @@ export default class DatabaseConnectionStep extends Component {
       setActiveStep,
       stepNumber,
     } = this.props;
-    const { engine, formError } = this.state;
-    const engines = MetabaseSettings.get("engines");
-
     let stepText = t`Add your data`;
     if (activeStep > stepNumber) {
       stepText =
@@ -170,42 +125,30 @@ export default class DatabaseConnectionStep extends Component {
           className="SetupStep bg-white rounded full relative SetupStep--active"
         >
           <StepTitle title={stepText} circleText={"2"} />
-          <div className="mb4">
-            <div style={{ maxWidth: 600 }} className="Form-field">
-              {t`You’ll need some info about your database, like the username and password. If you don’t have that right now, Metabase also comes with a sample dataset you can get started with.`}
-            </div>
 
-            <FormField fieldName="engine">
-              {this.renderEngineSelect()}
-            </FormField>
+          <div className="Form-field">
+            {t`You’ll need some info about your database, like the username and password. If you don’t have that right now, Metabase also comes with a sample dataset you can get started with.`}
+          </div>
 
-            {engine !== "" ? (
-              <DatabaseDetailsForm
-                details={
-                  databaseDetails && "details" in databaseDetails
-                    ? {
-                        ...databaseDetails.details,
-                        name: databaseDetails.name,
-                        is_full_sync: databaseDetails.is_full_sync,
-                        auto_run_queries: databaseDetails.auto_run_queries,
-                      }
-                    : null
-                }
-                engine={engine}
-                engines={engines}
-                formError={formError}
-                hiddenFields={{ ssl: true }}
-                submitFn={this.connectionDetailsCaptured}
-                submitButtonText={t`Next`}
-              />
-            ) : null}
+          <Databases.Form
+            form={Databases.forms.connection}
+            database={databaseDetails}
+            onSubmit={this.handleSubmit}
+          >
+            {({ values, formFields, Form, FormField, FormFooter }) => (
+              <Form>
+                {formFields.map(({ name }) => (
+                  <FormField key={name} name={name} />
+                ))}
+                {values.engine && <FormFooter submitTitle={t`Next`} />}
+              </Form>
+            )}
+          </Databases.Form>
 
-            <div className="Form-field mt1">
-              <a
-                className="link"
-                onClick={this.skipDatabase.bind(this)}
-              >{t`I'll add my data later`}</a>
-            </div>
+          <div className="mt2">
+            <a className="link" onClick={this.skipDatabase}>
+              {t`I'll add my data later`}
+            </a>
           </div>
         </Box>
       );

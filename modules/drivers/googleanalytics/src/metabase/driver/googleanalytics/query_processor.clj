@@ -2,35 +2,20 @@
   "The Query Processor is responsible for translating the Metabase Query Language into Google Analytics request format.
   See https://developers.google.com/analytics/devguides/reporting/core/v3"
   (:require [clojure.string :as str]
-            [clojure.tools.reader.edn :as edn]
             [java-time :as t]
             [metabase.mbql.util :as mbql.u]
-            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor
+             [store :as qp.store]
+             [timezone :as qp.timezone]]
             [metabase.util
              [date-2 :as u.date]
              [i18n :as ui18n :refer [deferred-tru tru]]
              [schema :as su]]
-            [metabase.util.date-2.parse :as u.date.parse]
-            [metabase.util.date-2.parse.builder :as u.date.parse.builder]
-            [schema.core :as s])
-  (:import [com.google.api.services.analytics.model GaData GaData$ColumnHeaders]
-           java.time.DayOfWeek
-           java.time.format.DateTimeFormatter
-           org.threeten.extra.YearWeek))
+            [schema.core :as s]))
 
 (def ^:private ^:const earliest-date "2005-01-01")
-(def ^:private ^:const latest-date "today")
+(def ^:private ^:const latest-date   "today")
 (def ^:private ^:const max-rows-maximum 10000)
-
-(def ^:const ga-type->base-type
-  "Map of Google Analytics field types to Metabase types."
-  {"STRING"      :type/Text
-   "FLOAT"       :type/Float
-   "INTEGER"     :type/Integer
-   "PERCENT"     :type/Float
-   "TIME"        :type/Float
-   "CURRENCY"    :type/Float
-   "US_CURRENCY" :type/Float})
 
 (defmulti ^:private ->rvalue mbql.u/dispatch-by-clause-name-or-class)
 
@@ -77,8 +62,11 @@
   (into {} (for [c chars-to-escape]
              {c (str "\\" c)})))
 
-(def ^:private ^{:arglists '([s])} escape-for-regex         #(str/escape % (char-escape-map ".\\+*?[^]$(){}=!<>|:-")))
-(def ^:private ^{:arglists '([s])} escape-for-filter-clause #(str/escape % (char-escape-map ",;\\")))
+(defn- escape-for-regex [s]
+  (str/escape s (char-escape-map ".\\+*?[^]$(){}=!<>|:-")))
+
+(defn- escape-for-filter-clause [s]
+  (str/escape s (char-escape-map ",;\\")))
 
 (defn- ga-filter ^String [& parts]
   (escape-for-filter-clause (apply str parts)))
@@ -239,7 +227,8 @@
                 (:> :>=) {:start-date special-amount}
                 :=       {:start-date special-amount, :end-date special-amount}
                 nil)))))
-      (let [t (u.date/add relative-datetime-unit n)]
+      (let [now (qp.timezone/now :googleanalytics nil :use-report-timezone-id-if-unsupported? true)
+            t   (u.date/add now relative-datetime-unit n)]
         (format-range (u.date/comparison-range t unit comparison-type {:end :inclusive, :resolution :day})))))
 
 (defmethod ->date-range :absolute-datetime
@@ -407,57 +396,3 @@
                     handle-limit]]
              (f inner-query)))
    :mbql? true})
-
-(defn- parse-number [s]
-  (edn/read-string (str/replace s #"^0+(.+)$" "$1")))
-
-(def ^:private ^DateTimeFormatter iso-year-week-formatter
-  (u.date.parse.builder/formatter
-   (u.date.parse.builder/value :iso/week-based-year 4)
-   (u.date.parse.builder/value :iso/week-of-week-based-year 2)))
-
-(defn- parse-iso-year-week [^String s]
-  (when s
-    (-> (YearWeek/from (.parse iso-year-week-formatter s))
-        (.atDay DayOfWeek/MONDAY))))
-
-(def ^:private ga-dimension->date-format-fn
-  {"ga:minute"         parse-number
-   "ga:dateHour"       (partial u.date.parse/parse-with-formatter "yyyyMMddHH")
-   "ga:hour"           parse-number
-   "ga:date"           (partial u.date.parse/parse-with-formatter "yyyyMMdd")
-   "ga:dayOfWeek"      (comp inc parse-number)
-   "ga:day"            parse-number
-   "ga:isoYearIsoWeek" parse-iso-year-week
-   "ga:week"           parse-number
-   "ga:yearMonth"      (partial u.date.parse/parse-with-formatter "yyyyMM")
-   "ga:month"          parse-number
-   "ga:year"           parse-number})
-
-(defn- header->column [^GaData$ColumnHeaders header]
-  (let [date-parser (ga-dimension->date-format-fn (.getName header))]
-    (if date-parser
-      {:name      "ga:date"
-       :base_type :type/DateTime}
-      {:name      (.getName header)
-       :base_type (ga-type->base-type (.getDataType header))})))
-
-(defn- header->getter-fn [^GaData$ColumnHeaders header]
-  (let [date-parser (ga-dimension->date-format-fn (.getName header))
-        base-type   (ga-type->base-type (.getDataType header))]
-    (cond
-      date-parser                   date-parser
-      (isa? base-type :type/Number) edn/read-string
-      :else                         identity)))
-
-(defn execute-query
-  "Execute a `query` using the provided `do-query` function, and return the results in the usual format."
-  [do-query query]
-  (let [^GaData response (do-query query)
-        columns          (map header->column (.getColumnHeaders response))
-        getters          (map header->getter-fn (.getColumnHeaders response))]
-    {:cols     columns
-     :columns  (map :name columns)
-     :rows     (for [row (.getRows response)]
-                 (for [[data getter] (map vector row getters)]
-                   (getter data)))}))

@@ -26,10 +26,10 @@
 
 (defmethod tx/dbdef->connection-details :sqlserver
   [_ context {:keys [database-name]}]
-  {:host     (tx/db-test-env-var-or-throw :sqlserver :host)
+  {:host     (tx/db-test-env-var-or-throw :sqlserver :host "localhost")
    :port     (Integer/parseInt (tx/db-test-env-var-or-throw :sqlserver :port "1433"))
-   :user     (tx/db-test-env-var-or-throw :sqlserver :user)
-   :password (tx/db-test-env-var-or-throw :sqlserver :password)
+   :user     (tx/db-test-env-var-or-throw :sqlserver :user "SA")
+   :password (tx/db-test-env-var-or-throw :sqlserver :password "P@ssw0rd")
    :db       (when (= context :db)
                database-name)})
 

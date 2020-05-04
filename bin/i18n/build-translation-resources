@@ -32,17 +32,18 @@ mkdir -p "$FRONTEND_LANG_DIR"
 
 for LOCALE in $LOCALES; do
   LOCALE_FILE="locales/$LOCALE.po"
+  LOCALE_WITH_UNDERSCORE=$(echo "$LOCALE" | tr '-' '_')
   # frontend
   # NOTE: just copy these for now, but eventially precompile from .po to .json
   ./bin/i18n/build-translation-frontend-resource \
     "$LOCALE_FILE" \
-    "$FRONTEND_LANG_DIR/$LOCALE.json"
+    "$FRONTEND_LANG_DIR/$LOCALE_WITH_UNDERSCORE.json"
 
   # backend
   msgfmt                            \
     --java2                         \
     -d "resources"                  \
     -r "metabase.Messages" \
-    -l "$LOCALE"                    \
+    -l "$LOCALE_WITH_UNDERSCORE"    \
     "$LOCALE_FILE"
 done

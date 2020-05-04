@@ -279,20 +279,21 @@
 
 (defn- optimal-datetime-resolution
   [field]
-  (if-let [[earliest latest] (some->> field
-                                      :fingerprint
-                                      :type
-                                      :type/DateTime
-                                      ((juxt :earliest :latest))
-                                      (map u.date/parse))]
-    ;; e.g. if 3 hours > [duration between earliest and latest] then use `:minute` resolution
-    (condp u.date/greater-than-period-duration? (u.date/period-duration earliest latest)
-      (t/hours 3)  :minute
-      (t/days 7)   :hour
-      (t/months 6) :day
-      (t/years 10) :month
-      :year)
-    :day))
+  (let [[earliest latest] (some->> field
+                                   :fingerprint
+                                   :type
+                                   :type/DateTime
+                                   ((juxt :earliest :latest))
+                                   (map u.date/parse))]
+    (if (and earliest latest)
+      ;; e.g. if 3 hours > [duration between earliest and latest] then use `:minute` resolution
+      (condp u.date/greater-than-period-duration? (u.date/period-duration earliest latest)
+        (t/hours 3)  :minute
+        (t/days 7)   :hour
+        (t/months 6) :day
+        (t/years 10) :month
+        :year)
+      :day)))
 
 (defmethod ->reference [:mbql (type Field)]
   [_ {:keys [fk_target_field_id id link aggregation name base_type] :as field}]
@@ -561,10 +562,10 @@
   (let [dimension->name (comp vector :name dimensions)
         metric->name    (comp vector first :metric metrics)]
     [k (-> v
-           (u/update-when :map.latitude_column dimension->name)
-           (u/update-when :map.longitude_column dimension->name)
-           (u/update-when :graph.metrics metric->name)
-           (u/update-when :graph.dimensions dimension->name))]))
+           (m/update-existing :map.latitude_column dimension->name)
+           (m/update-existing :map.longitude_column dimension->name)
+           (m/update-existing :graph.metrics metric->name)
+           (m/update-existing :graph.dimensions dimension->name))]))
 
 (defn capitalize-first
   "Capitalize only the first letter in a given string."
@@ -584,7 +585,7 @@
                s))
            form))
        x)
-      (u/update-when :visualization #(instantate-visualization % bindings (:metrics context)))))
+      (m/update-existing :visualization #(instantate-visualization % bindings (:metrics context)))))
 
 (defn- valid-breakout-dimension?
   [{:keys [base_type engine fingerprint aggregation]}]
@@ -1238,20 +1239,21 @@
                                         :having   [:= :%count.* 1]}))
                            (into #{} (map :table_id)))
           ;; Table comprised entierly of join keys
-          link-table? (->> (db/query {:select   [:table_id [:%count.* "count"]]
-                                      :from     [Field]
-                                      :where    [:and [:in :table_id (keys field-count)]
-                                                 [:= :active true]
-                                                 [:in :special_type ["type/PK" "type/FK"]]]
-                                      :group-by [:table_id]})
-                           (filter (fn [{:keys [table_id count]}]
-                                     (= count (field-count table_id))))
-                           (into #{} (map :table_id)))]
+          link-table? (when (seq field-count)
+                        (->> (db/query {:select   [:table_id [:%count.* "count"]]
+                                        :from     [Field]
+                                        :where    [:and [:in :table_id (keys field-count)]
+                                                   [:= :active true]
+                                                   [:in :special_type ["type/PK" "type/FK"]]]
+                                        :group-by [:table_id]})
+                             (filter (fn [{:keys [table_id count]}]
+                                       (= count (field-count table_id))))
+                             (into #{} (map :table_id))))]
       (for [table tables]
         (let [table-id (u/get-id table)]
           (assoc table :stats {:num-fields  (field-count table-id 0)
-                               :list-like?  (boolean (list-like? table-id))
-                               :link-table? (boolean (link-table? table-id))}))))))
+                               :list-like?  (boolean (contains? list-like? table-id))
+                               :link-table? (boolean (contains? link-table? table-id))}))))))
 
 (def ^:private ^:const ^Long max-candidate-tables
   "Maximal number of tables per schema shown in `candidate-tables`."

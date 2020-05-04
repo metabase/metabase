@@ -322,7 +322,12 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
     getHidden: (series, vizSettings) =>
       series.length > 1 || vizSettings["stackable.stack_type"] === "normalized",
     getDefault: ([{ card, data }]) =>
-      card.display === "bar" && data.rows.length < AUTO_SHOW_VALUES_MAX_ROWS,
+      // small bar graphs should have this turned on by default,
+      // but bar graphs that were saved without this feature shouldn't
+      card.original_card_id == null &&
+      card.display === "bar" &&
+      data.rows.length < AUTO_SHOW_VALUES_MAX_ROWS,
+    persistDefault: true,
   },
   "graph.label_value_frequency": {
     section: t`Display`,
@@ -339,6 +344,24 @@ export const GRAPH_DISPLAY_VALUES_SETTINGS = {
       ],
     },
     default: "fit",
+    readDependencies: ["graph.show_values"],
+  },
+  "graph.label_value_formatting": {
+    section: t`Display`,
+    title: t`Value formatting`,
+    widget: "radio",
+    getHidden: (series, vizSettings) =>
+      series.length > 1 ||
+      vizSettings["graph.show_values"] !== true ||
+      vizSettings["stackable.stack_type"] === "normalized",
+    props: {
+      options: [
+        { name: t`Auto`, value: "auto" },
+        { name: t`Compact`, value: "compact" },
+        { name: t`Full`, value: "full" },
+      ],
+    },
+    default: "auto",
     readDependencies: ["graph.show_values"],
   },
 };

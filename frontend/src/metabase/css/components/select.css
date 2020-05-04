@@ -98,3 +98,8 @@
 .Select select:focus {
   outline: none;
 }
+
+/* fix the outline that appears when interacting with metabase/components/Select */
+.MB-Select:focus {
+  outline: none;
+}

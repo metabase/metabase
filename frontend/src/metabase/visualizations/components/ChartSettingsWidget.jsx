@@ -6,6 +6,7 @@ import cx from "classnames";
 
 const ChartSettingsWidget = ({
   title,
+  description,
   hidden,
   disabled,
   set,
@@ -45,7 +46,7 @@ const ChartSettingsWidget = ({
           />
         </h4>
       )}
-
+      {description && <div className="mb1">{description}</div>}
       {Widget && (
         <Widget
           value={value}

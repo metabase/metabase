@@ -4,7 +4,7 @@
 
     (deftest my-test
       ;; run tests against all drivers except Druid
-      (datasets/test-drivers qp.test/non-timeseries-drivers
+      (mt/test-drivers (mt/normal-drivers)
         ...))
 
   When the test suite is ran, those tests will be ran against the subset of those drivers that are present in the
@@ -36,22 +36,24 @@
   [driver & body]
   `(do-when-testing-driver ~driver (fn [] ~@body)))
 
+(defn do-with-driver-when-testing [driver thunk]
+  (when-testing-driver driver
+    (driver/with-driver (tx/the-driver-with-test-extensions driver)
+      (thunk))))
+
 (defmacro with-driver-when-testing
   "When `driver` is specified in `DRIVERS` env var, binds `metabase.driver/*driver*` and executes `body`. The currently
   bound driver is used for calls like `(data/db)` and `(data/id)`."
   {:style/indent 1}
   [driver & body]
-  `(let [driver# ~driver]
-     (when-testing-driver driver#
-       (driver/with-driver (tx/the-driver-with-test-extensions driver#)
-         ~@body))))
+  `(do-with-driver-when-testing ~driver (fn [] ~@body)))
 
 (defmacro test-driver
   "Like `test-drivers`, but for a single driver."
   {:style/indent 1}
   [driver & body]
   `(with-driver-when-testing ~driver
-     (t/testing (colorize/cyan ~driver)
+     (t/testing (str "\n" (colorize/cyan ~driver))
        ~@body)))
 
 (defmacro test-drivers
@@ -78,7 +80,7 @@
   ;; speeds up loading of metabase.driver.query-processor-test significantly
   (let [symb (symbol (str "expect-with-drivers-" (hash &form)))]
     `(t/deftest ~symb
-       (t/testing (format ~(str (name (ns-name *ns*)) ":%d") (:line (meta #'~symb)))
+       (t/testing (str "\n" (format ~(str (name (ns-name *ns*)) ":%d") (:line (meta #'~symb))))
          (test-drivers ~drivers
            (t/is (~'expect= ~expected ~actual)))))))
 

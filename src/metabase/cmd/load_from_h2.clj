@@ -113,7 +113,7 @@
 
 (defn- h2-details [h2-connection-string-or-nil]
   (let [h2-filename (add-file-prefix-if-needed (or h2-connection-string-or-nil @metabase.db/db-file))]
-    (mdb/jdbc-details {:type :h2, :db (str h2-filename ";IFEXISTS=TRUE")})))
+    (mdb/jdbc-spec {:type :h2, :db (str h2-filename ";IFEXISTS=TRUE")})))
 
 
 ;;; ------------------------------------------- Fetching & Inserting Rows --------------------------------------------
@@ -214,7 +214,7 @@
 
 ;; Update the sequence nextvals.
 (defmethod update-sequence-values! :postgres []
-  (jdbc/with-db-transaction [target-db-conn (mdb/jdbc-details)]
+  (jdbc/with-db-transaction [target-db-conn (mdb/jdbc-spec)]
     (println (u/format-color 'blue "Setting postgres sequence ids to proper values..."))
     (doseq [e     entities
             :when (not (contains? entities-without-autoinc-ids e))
@@ -242,7 +242,7 @@
   (assert (#{:postgres :mysql} (mdb/db-type))
     (trs "Metabase can only transfer data from H2 to Postgres or MySQL/MariaDB."))
 
-  (jdbc/with-db-transaction [target-db-conn (mdb/jdbc-details)]
+  (jdbc/with-db-transaction [target-db-conn (mdb/jdbc-spec)]
     (jdbc/db-set-rollback-only! target-db-conn)
 
     (println (u/format-color 'blue "Testing if target DB is already populated..."))

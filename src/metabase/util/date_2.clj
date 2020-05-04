@@ -6,6 +6,7 @@
             [clojure.tools.logging :as log]
             [java-time :as t]
             [java-time.core :as t.core]
+            [metabase.config :as config]
             [metabase.util.date-2
              [common :as common]
              [parse :as parse]]
@@ -15,7 +16,9 @@
            [java.time.temporal Temporal TemporalAdjuster WeekFields]
            org.threeten.extra.PeriodDuration))
 
-(defn- add-zone-to-local [t timezone-id]
+(defn- add-zone-to-local
+  "Converts a temporal type without timezone info to one with zone info (i.e., a `ZonedDateTime`)."
+  [t timezone-id]
   (condp instance? t
     LocalDateTime (t/zoned-date-time t (t/zone-id timezone-id))
     LocalDate     (t/zoned-date-time t (t/local-time 0) (t/zone-id timezone-id))
@@ -63,7 +66,8 @@
 (defn format
   "Format temporal value `t` as a ISO-8601 date/time/datetime string."
   ^String [t]
-  (format* (temporal->iso-8601-formatter t) t))
+  (when t
+    (format* (temporal->iso-8601-formatter t) t)))
 
 (defn format-sql
   "Format a temporal value `t` as a SQL-style literal string (for most SQL databases). This is the same as ISO-8601 but
@@ -113,6 +117,8 @@
     :iso-week-of-year
     :month-of-year
     :quarter-of-year
+    ;; TODO - in this namespace `:year` is something you can both extract and truncate to. In MBQL `:year` is a truncation
+    ;; operation. Maybe we should rename this unit to clear up the potential confusion (?)
     :year})
 
 (def ^:private week-fields*
@@ -148,24 +154,51 @@
              :quarter-of-year  :quarter-of-year
              :year             :year))))
 
-(def ^:private adjusters*
-  {:first-day-of-week
-   (reify TemporalAdjuster
-     (adjustInto [_ t]
-       (t/adjust t :previous-or-same-day-of-week :sunday)))
+(defmulti ^TemporalAdjuster adjuster
+  "Get the custom `TemporalAdjuster` named by `k`.
 
-   :first-day-of-iso-week
-   (reify TemporalAdjuster
-     (adjustInto [_ t]
-       (t/adjust t :previous-or-same-day-of-week :monday)))
+    ;; adjust 2019-12-10T17:26 to the second week of the year
+    (t/adjust #t \"2019-12-10T17:26\" (u.date/adjuster :week-of-year 2)) ;; -> #t \"2019-01-06T17:26\""
+  {:arglists '([k & args])}
+  (fn [k & _] (keyword k)))
 
-   :first-day-of-quarter
-   (reify TemporalAdjuster
-     (adjustInto [_ t]
-       (.with t (.atDay (t/year-quarter t) 1))))})
+(defmethod adjuster :default
+  [k]
+  (throw (Exception. (tru "No temporal adjuster named {0}" k))))
 
-(defn- adjusters ^TemporalAdjuster [k]
-  (get adjusters* k))
+(defmethod adjuster :first-day-of-week
+  [_]
+  (reify TemporalAdjuster
+    (adjustInto [_ t]
+      (t/adjust t :previous-or-same-day-of-week :sunday))))
+
+(defmethod adjuster :first-day-of-iso-week
+  [_]
+  (reify TemporalAdjuster
+    (adjustInto [_ t]
+      (t/adjust t :previous-or-same-day-of-week :monday))))
+
+(defmethod adjuster :first-day-of-quarter
+  [_]
+  (reify TemporalAdjuster
+    (adjustInto [_ t]
+      (.with t (.atDay (t/year-quarter t) 1)))))
+
+(defmethod adjuster :first-week-of-year
+  [_]
+  (reify TemporalAdjuster
+    (adjustInto [_ t]
+      (-> t
+          (t/adjust :first-day-of-year)
+          (t/adjust (adjuster :first-day-of-week))))))
+
+(defmethod adjuster :week-of-year
+  [_ week-of-year]
+  (reify TemporalAdjuster
+    (adjustInto [_ t]
+      (-> t
+          (t/adjust (adjuster :first-week-of-year))
+          (t/plus (t/weeks (dec week-of-year)))))))
 
 ;; if you attempt to truncate a `LocalDate` to `:day` or anything smaller we can go ahead and return it as is
 (extend-protocol t.core/Truncatable
@@ -196,10 +229,10 @@
      :minute      (t/truncate-to t :minutes)
      :hour        (t/truncate-to t :hours)
      :day         (t/truncate-to t :days)
-     :week        (-> (.with t (adjusters :first-day-of-week))     (t/truncate-to :days))
-     :iso-week    (-> (.with t (adjusters :first-day-of-iso-week)) (t/truncate-to :days))
+     :week        (-> (.with t (adjuster :first-day-of-week))     (t/truncate-to :days))
+     :iso-week    (-> (.with t (adjuster :first-day-of-iso-week)) (t/truncate-to :days))
      :month       (-> (t/adjust t :first-day-of-month)             (t/truncate-to :days))
-     :quarter     (-> (.with t (adjusters :first-day-of-quarter))  (t/truncate-to :days))
+     :quarter     (-> (.with t (adjuster :first-day-of-quarter))  (t/truncate-to :days))
      :year        (-> (t/adjust t :first-day-of-year)              (t/truncate-to :days)))))
 
 (s/defn bucket :- (s/cond-pre Number Temporal)
@@ -351,8 +384,8 @@
       ZonedDateTime  (t/zoned-date-time))))
 
 (defn older-than?
-  "True if temporal value `t` happened before some period/duration ago. Prefer this over using `t/before?`
-  because it is incredibly fussy about the classes of arguments it is passed.
+  "True if temporal value `t` happened before some period/duration ago, compared to now. Prefer this over using
+  `t/before?` to compare times to now because it is incredibly fussy about the classes of arguments it is passed.
 
     ;; did `t` happen more than 2 months ago?
     (older-than? t (t/months 2))"
@@ -399,10 +432,11 @@
   (print-method (list 't/duration (str d)) writer))
 
 ;; mark everything in the `clj-time` namespaces as `:deprecated`, if they're loaded. If not, we don't care
-(doseq [a-namespace '[clj-time.core clj-time.coerce clj-time.format]]
-  (try
-    (let [a-namespace (the-ns a-namespace)]
-      (alter-meta! a-namespace assoc :deprecated true)
-      (doseq [[_ varr] (ns-publics a-namespace)]
-        (alter-meta! varr assoc :deprecated true)))
-    (catch Throwable _)))
+(when config/is-dev?
+  (doseq [a-namespace '[clj-time.core clj-time.coerce clj-time.format]]
+    (try
+      (let [a-namespace (the-ns a-namespace)]
+        (alter-meta! a-namespace assoc :deprecated true)
+        (doseq [[_ varr] (ns-publics a-namespace)]
+          (alter-meta! varr assoc :deprecated true)))
+      (catch Throwable _))))

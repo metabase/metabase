@@ -36,7 +36,7 @@ const MetricSidebar = ({ metric, user, style, className }) => (
           icon="all"
           name={t`Questions about ${metric.name}`}
         />
-        {MetabaseSettings.get("enable_xrays") && (
+        {MetabaseSettings.get("enable-xrays") && (
           <SidebarItem
             key={`/auto/dashboard/metric/${metric.id}`}
             href={`/auto/dashboard/metric/${metric.id}`}

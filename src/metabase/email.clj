@@ -46,10 +46,12 @@
    Provided so you can swap this out with an \"inbox\" for test purposes."
   postal/send-message)
 
-(defn email-configured?
-  "Predicate function which returns `true` if we have a viable email configuration for the app, `false` otherwise."
-  []
-  (boolean (email-smtp-host)))
+(defsetting email-configured?
+  "Check if email is enabled and that the mandatory settings are configured."
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :getter     #(boolean (email-smtp-host)))
 
 (defn- add-ssl-settings [m ssl-setting]
   (merge

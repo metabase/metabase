@@ -7,7 +7,7 @@ import {
   isDate,
   isAny,
 } from "metabase/lib/schema_metadata";
-import { getFieldRefFromColumn } from "./actions";
+import { fieldRefForColumn } from "metabase/lib/dataset";
 
 import _ from "underscore";
 import { getIn } from "icepick";
@@ -166,12 +166,13 @@ function breakoutForBreakoutTemplate(breakoutTemplate, dimensions, table) {
     : breakoutTemplate;
   const dimensionColumns = dimensions.map(d => d.column);
   const field =
-    _.find(dimensionColumns, fieldFilter) || _.find(table.fields, fieldFilter);
+    dimensionColumns.find(fieldFilter) ||
+    (table && table.fields.find(fieldFilter));
   if (!field) {
     return null;
   }
 
-  let fieldRef = getFieldRefFromColumn(dimensions[0].column);
+  let fieldRef = fieldRefForColumn(dimensions[0].column);
 
   if (Array.isArray(fieldRef) && fieldRef[0] === "field-id") {
     fieldRef = ["field-id", field.id];

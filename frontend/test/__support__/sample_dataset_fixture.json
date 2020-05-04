@@ -1,19 +1,38 @@
 {
   "entities": {
+    "schemas": {
+      "1:PUBLIC": {
+        "id": "1:PUBLIC",
+        "name": "PUBLIC",
+        "database": 1
+      },
+      "4:first_schema": {
+        "id": "4:first_schema",
+        "name": "first_schema",
+        "database": 4
+      },
+      "4:second_schema": {
+        "id": "4:second_schema",
+        "name": "second_schema",
+        "database": 4
+      },
+      "5:other_first_schema": {
+        "id": "5:other_first_schema",
+        "name": "other_first_schema",
+        "database": 5
+      },
+      "5:other_second_schema": {
+        "id": "5:other_second_schema",
+        "name": "other_second_schema",
+        "database": 5
+      }
+    },
     "metrics": {
       "1": {
         "description": "Because we want to know the total I ugess",
         "table_id": 1,
         "definition": {
-          "aggregation": [
-            [
-              "sum",
-              [
-                "field-id",
-                6
-              ]
-            ]
-          ],
+          "aggregation": [["sum", ["field-id", 6]]],
           "source-table": 1
         },
         "creator": {
@@ -42,17 +61,12 @@
     },
     "segments": {
       "1": {
+        "id": 1,
+        "name": "Expensive Things",
         "description": "If it's more expensive it must be better",
         "table_id": 1,
         "definition": {
-          "filter": [
-            ">",
-            [
-              "field-id",
-              6
-            ],
-            30
-          ],
+          "filter": [">", ["field-id", 6], 30],
           "source-table": 1
         },
         "creator": {
@@ -67,12 +81,10 @@
           "common_name": "Sameer Al-Sakran"
         },
         "show_in_getting_started": false,
-        "name": "Expensive Things",
         "archived": false,
         "caveats": null,
         "creator_id": 1,
         "updated_at": "2017-06-14T23:31:46.480Z",
-        "id": 1,
         "created_at": "2017-06-14T23:31:46.480Z",
         "points_of_interest": null
       }
@@ -84,22 +96,20 @@
           "basic-aggregations",
           "standard-deviation-aggregations",
           "expression-aggregations",
+          "percentile-aggregations",
           "foreign-keys",
           "native-parameters",
           "expressions",
+          "advanced-math-expressions",
           "right-join",
           "left-join",
           "inner-join",
-          "nested-queries"
+          "nested-queries",
+          "regex"
         ],
         "name": "Sample Dataset",
         "caveats": null,
-        "tables": [
-          1,
-          2,
-          3,
-          4
-        ],
+        "tables": [1, 2, 3, 4],
         "is_full_sync": true,
         "updated_at": "2017-06-14T23:22:55.349Z",
         "native_permissions": "write",
@@ -139,11 +149,7 @@
       },
       "3": {
         "description": null,
-        "features": [
-          "basic-aggregations",
-          "nested-fields",
-          "dynamic-schema"
-        ],
+        "features": ["basic-aggregations", "nested-fields", "dynamic-schema"],
         "name": "test-data",
         "caveats": null,
         "tables": [],
@@ -158,13 +164,64 @@
         "engine": "mongo",
         "created_at": "2017-06-22T00:33:36.681Z",
         "points_of_interest": null
+      },
+      "4": {
+        "description": null,
+        "features": [
+          "basic-aggregations",
+          "standard-deviation-aggregations",
+          "expression-aggregations",
+          "foreign-keys",
+          "native-parameters",
+          "expressions"
+        ],
+        "name": "Multi-schema Database",
+        "caveats": null,
+        "tables": [5, 6],
+        "is_full_sync": true,
+        "updated_at": "2017-06-14T23:22:55.349Z",
+        "native_permissions": "write",
+        "details": {
+          "db": "zip:/private/tmp/metabase.jar!/sample-dataset.db;USER=GUEST;PASSWORD=guest"
+        },
+        "is_sample": true,
+        "id": 4,
+        "engine": "h2",
+        "created_at": "2017-06-14T23:22:55.349Z",
+        "points_of_interest": null
+      },
+      "5": {
+        "description": null,
+        "features": [
+          "basic-aggregations",
+          "standard-deviation-aggregations",
+          "expression-aggregations",
+          "foreign-keys",
+          "native-parameters",
+          "expressions"
+        ],
+        "name": "Other Multi-schema Database",
+        "caveats": null,
+        "tables": [],
+        "is_full_sync": true,
+        "updated_at": "2017-06-14T23:22:55.349Z",
+        "native_permissions": "write",
+        "details": {
+          "db": "zip:/private/tmp/metabase.jar!/sample-dataset.db;USER=GUEST;PASSWORD=guest"
+        },
+        "is_sample": true,
+        "id": 5,
+        "engine": "h2",
+        "created_at": "2017-06-14T23:22:55.349Z",
+        "points_of_interest": null
       }
     },
     "tables": {
       "1": {
         "description": "This is a confirmed order for a product from a user.",
         "entity_type": null,
-        "schema": "PUBLIC",
+        "schema": "1:PUBLIC",
+        "schema_name": "PUBLIC",
         "show_in_getting_started": false,
         "name": "ORDERS",
         "caveats": null,
@@ -179,27 +236,16 @@
         "created_at": "2017-06-14T23:22:55.758Z",
         "points_of_interest": null,
         "db": 1,
-        "fields": [
-          1,
-          2,
-          3,
-          4,
-          5,
-          6,
-          7
-        ],
-        "segments": [
-          1
-        ],
+        "fields": [1, 2, 3, 4, 5, 6, 7],
+        "segments": [1],
         "field_values": {},
-        "metrics": [
-          1
-        ]
+        "metrics": [1]
       },
       "2": {
         "description": "This is a user account. Note that employees and customer support staff will have accounts.",
         "entity_type": null,
-        "schema": "PUBLIC",
+        "schema": "1:PUBLIC",
+        "schema_name": "PUBLIC",
         "show_in_getting_started": false,
         "name": "PEOPLE",
         "caveats": null,
@@ -214,30 +260,10 @@
         "created_at": "2017-06-14T23:22:55.779Z",
         "points_of_interest": null,
         "db": 1,
-        "fields": [
-          8,
-          9,
-          10,
-          11,
-          12,
-          13,
-          14,
-          15,
-          16,
-          17,
-          18,
-          19,
-          20
-        ],
+        "fields": [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
         "segments": [],
         "field_values": {
-          "18": [
-            "Affiliate",
-            "Facebook",
-            "Google",
-            "Organic",
-            "Twitter"
-          ],
+          "18": ["Affiliate", "Facebook", "Google", "Organic", "Twitter"],
           "19": [
             "AA",
             "AE",
@@ -308,7 +334,8 @@
       "3": {
         "description": "This is our product catalog. It includes all products ever sold by the Sample Company.",
         "entity_type": null,
-        "schema": "PUBLIC",
+        "schema": "1:PUBLIC",
+        "schema_name": "PUBLIC",
         "show_in_getting_started": false,
         "name": "PRODUCTS",
         "caveats": null,
@@ -323,24 +350,10 @@
         "created_at": "2017-06-14T23:22:55.809Z",
         "points_of_interest": null,
         "db": 1,
-        "fields": [
-          21,
-          22,
-          23,
-          24,
-          25,
-          26,
-          27,
-          28
-        ],
+        "fields": [21, 22, 23, 24, 25, 26, 27, 28],
         "segments": [],
         "field_values": {
-          "21": [
-            "Doohickey",
-            "Gadget",
-            "Gizmo",
-            "Widget"
-          ],
+          "21": ["Doohickey", "Gadget", "Gizmo", "Widget"],
           "26": [
             0,
             1,
@@ -374,7 +387,8 @@
       "4": {
         "description": "These are reviews our customers have left on products. Note that these are not tied to orders so it is possible people have reviewed products they did not purchase from us.",
         "entity_type": null,
-        "schema": "PUBLIC",
+        "schema": "1:PUBLIC",
+        "schema_name": "PUBLIC",
         "show_in_getting_started": false,
         "name": "REVIEWS",
         "caveats": null,
@@ -388,14 +402,51 @@
         "display_name": "Reviews",
         "created_at": "2017-06-14T23:22:55.825Z",
         "points_of_interest": null,
-        "fields": [
-          29,
-          30,
-          31,
-          32,
-          33,
-          34
-        ],
+        "fields": [29, 30, 31, 32, 33, 34],
+        "segments": [],
+        "metrics": []
+      },
+      "5": {
+        "description": "",
+        "entity_type": null,
+        "schema": "4:first_schema",
+        "schema_name": "first_schema",
+        "show_in_getting_started": false,
+        "name": "table_in_first_schema",
+        "caveats": null,
+        "rows": 1,
+        "updated_at": "2017-06-14T23:22:58.024Z",
+        "entity_name": null,
+        "active": true,
+        "id": 5,
+        "db_id": 4,
+        "visibility_type": null,
+        "display_name": "Table in First Schema",
+        "created_at": "2017-06-14T23:22:55.825Z",
+        "points_of_interest": null,
+        "fields": [],
+        "segments": [],
+        "metrics": []
+      },
+      "6": {
+        "description": "",
+        "entity_type": null,
+        "schema": "4:second_schema",
+        "schema_name": "second_schema",
+        "show_in_getting_started": false,
+        "name": "table_in_second_schema",
+        "caveats": null,
+        "rows": 1,
+        "updated_at": "2017-06-14T23:22:58.024Z",
+        "entity_name": null,
+        "active": true,
+        "id": 6,
+        "db_id": 4,
+        "visibility_type": null,
+        "display_name": "Table in Second Schema",
+        "created_at": "2017-06-14T23:22:55.825Z",
+        "points_of_interest": null,
+        "fields": [],
         "segments": [],
         "metrics": []
       }
@@ -540,51 +591,28 @@
         "points_of_interest": null,
         "values": [],
         "default_dimension_option": {
-          "mbql": [
-            "binning-strategy",
-            null,
-            "default"
-          ],
+          "mbql": ["binning-strategy", null, "default"],
           "name": "Auto bin",
           "type": "type/Number"
         },
         "dimension_options": [
           {
-            "mbql": [
-              "binning-strategy",
-              null,
-              "default"
-            ],
+            "mbql": ["binning-strategy", null, "default"],
             "name": "Auto bin",
             "type": "type/Number"
           },
           {
-            "mbql": [
-              "binning-strategy",
-              null,
-              "num-bins",
-              10
-            ],
+            "mbql": ["binning-strategy", null, "num-bins", 10],
             "name": "10 bins",
             "type": "type/Number"
           },
           {
-            "mbql": [
-              "binning-strategy",
-              null,
-              "num-bins",
-              50
-            ],
+            "mbql": ["binning-strategy", null, "num-bins", 50],
             "name": "50 bins",
             "type": "type/Number"
           },
           {
-            "mbql": [
-              "binning-strategy",
-              null,
-              "num-bins",
-              100
-            ],
+            "mbql": ["binning-strategy", null, "num-bins", 100],
             "name": "100 bins",
             "type": "type/Number"
           },
@@ -861,13 +889,7 @@
           "id": 2,
           "created_at": "2017-06-14T23:22:57.668Z",
           "updated_at": "2017-06-14T23:22:57.668Z",
-          "values": [
-            "Affiliate",
-            "Facebook",
-            "Google",
-            "Organic",
-            "Twitter"
-          ],
+          "values": ["Affiliate", "Facebook", "Google", "Organic", "Twitter"],
           "human_readable_values": {},
           "field_id": 18
         }
@@ -1010,12 +1032,7 @@
           "id": 4,
           "created_at": "2017-06-14T23:22:57.758Z",
           "updated_at": "2017-06-14T23:22:57.758Z",
-          "values": [
-            "Doohickey",
-            "Gadget",
-            "Gizmo",
-            "Widget"
-          ],
+          "values": ["Doohickey", "Gadget", "Gizmo", "Widget"],
           "human_readable_values": {},
           "field_id": 21
         },
@@ -1339,13 +1356,7 @@
           "id": 10,
           "created_at": "2017-06-14T23:22:58.028Z",
           "updated_at": "2017-06-14T23:22:58.028Z",
-          "values": [
-            1,
-            2,
-            3,
-            4,
-            5
-          ],
+          "values": [1, 2, 3, 4, 5],
           "human_readable_values": {},
           "field_id": 33
         },
@@ -1383,8 +1394,6 @@
       }
     },
     "revisions": {},
-    "databasesList": [
-      1
-    ]
+    "databasesList": [1]
   }
 }

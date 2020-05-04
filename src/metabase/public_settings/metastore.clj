@@ -58,7 +58,7 @@
   (log/info (trs "Checking with the MetaStore to see whether {0} is valid..." token))
   (deref
    (future
-     (println (u/format-color 'green (trs "Using this URL to check token: {0}" (token-status-url token))))
+     (log/debug (u/format-color 'green (trs "Using this URL to check token: {0}" (token-status-url token))))
      (try (some-> (token-status-url token)
                   slurp
                   (json/parse-string keyword))
@@ -137,28 +137,10 @@
       (log/error (trs "Error validating token:") (.getMessage e))
       #{})))
 
-(defn hide-embed-branding?
+(defsetting hide-embed-branding?
   "Should we hide the 'Powered by Metabase' attribution on the embedding pages? `true` if we have a valid premium
    embedding token."
-  []
-  (boolean ((token-features) "embedding")))
-
-(defn enable-whitelabeling?
-  "Should we allow full whitelabel embedding (reskinning the entire interface?)"
-  []
-  (boolean ((token-features) "whitelabel")))
-
-(defn enable-audit-app?
-  "Should we allow use of the audit app?"
-  []
-  (boolean ((token-features) "audit-app")))
-
-(defn enable-sandboxes?
-  "Should we enable data sandboxes (row and column-level permissions?"
-  []
-  (boolean ((token-features) "sandboxes")))
-
-(defn enable-sso?
-  "Should we enable SAML/JWT sign-in?"
-  []
-  (boolean ((token-features) "sso")))
+  :type       :boolean
+  :visibility :public
+  :setter     :none
+  :getter     (fn [] (boolean ((token-features) "embedding"))))

@@ -11,6 +11,7 @@ import NativeQuery, {
   NATIVE_QUERY_TEMPLATE,
 } from "metabase-lib/lib/queries/NativeQuery";
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
+import InternalQuery from "./queries/InternalQuery";
 
 import Query from "metabase-lib/lib/queries/Query";
 
@@ -26,7 +27,7 @@ import {
 } from "metabase-lib/lib/Dimension";
 import Mode from "metabase-lib/lib/Mode";
 
-import { memoize } from "metabase-lib/lib/utils";
+import { memoize, sortObject } from "metabase-lib/lib/utils";
 
 // TODO: remove these dependencies
 import * as Card_DEPRECATED from "metabase/lib/card";
@@ -217,7 +218,7 @@ export default class Question {
   query(): Query {
     const datasetQuery = this._card.dataset_query;
 
-    for (const QueryClass of [StructuredQuery, NativeQuery]) {
+    for (const QueryClass of [StructuredQuery, NativeQuery, InternalQuery]) {
       if (QueryClass.isDatasetQueryType(datasetQuery)) {
         return new QueryClass(this, datasetQuery);
       }
@@ -928,7 +929,7 @@ export default class Question {
         : {}),
     };
 
-    return Card_DEPRECATED.utf8_to_b64url(JSON.stringify(cardCopy));
+    return Card_DEPRECATED.utf8_to_b64url(JSON.stringify(sortObject(cardCopy)));
   }
 }
 

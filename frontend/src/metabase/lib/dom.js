@@ -185,9 +185,14 @@ const STYLE_SHEET = (function() {
 
 export function addCSSRule(selector, rules, index = 0) {
   if ("insertRule" in STYLE_SHEET) {
-    STYLE_SHEET.insertRule(selector + "{" + rules + "}", index);
+    const ruleIndex = STYLE_SHEET.insertRule(
+      selector + "{" + rules + "}",
+      index,
+    );
+    return STYLE_SHEET.cssRules[ruleIndex];
   } else if ("addRule" in STYLE_SHEET) {
-    STYLE_SHEET.addRule(selector, rules, index);
+    const ruleIndex = STYLE_SHEET.addRule(selector, rules, index);
+    return STYLE_SHEET.rules[ruleIndex];
   }
 }
 
@@ -304,12 +309,50 @@ export function shouldOpenInBlankWindow(
     (event && event.metaKey != null ? event.metaKey : metaKey)
   ) {
     return true;
-  } else if (blankOnDifferentOrigin) {
-    const a = document.createElement("a");
-    a.href = url;
-    return a.origin !== window.location.origin;
+  } else if (blankOnDifferentOrigin && !isSameOrigin(url)) {
+    return true;
   }
   return false;
+}
+
+const a = document.createElement("a"); // reuse the same tag for performance
+export function isSameOrigin(url) {
+  a.href = url;
+  return a.origin === window.location.origin;
+}
+
+export function getUrlTarget(url) {
+  if (IFRAMED) {
+    return isSameOrigin(url) ? "_self" : "_top";
+  } else {
+    // if not iframed then _top and _self are equivalent so don't bother checking origin
+    return "_top";
+  }
+}
+
+export function removeAllChildren(element) {
+  while (element.firstChild) {
+    element.removeChild(element.firstChild);
+  }
+}
+
+export function parseDataUri(url) {
+  const match =
+    url && url.match(/^data:(?:([^;]+)(?:;([^;]+))?)?(;base64)?,(.*)$/);
+  if (match) {
+    let [, mimeType, charset, base64, data] = match;
+    if (charset === "base64" && !base64) {
+      base64 = charset;
+      charset = undefined;
+    }
+    return {
+      mimeType,
+      charset,
+      data: base64 ? atob(data) : data,
+      base64: base64 ? data : btoa(data),
+    };
+  }
+  return null;
 }
 
 /**
@@ -320,4 +363,42 @@ export function clipPathReference(id: string): string {
   // https://stackoverflow.com/questions/18259032/using-base-tag-on-a-page-that-contains-svg-marker-elements-fails-to-render-marke
   const url = window.location.href.replace(/#.*$/, "") + "#" + id;
   return `url(${url})`;
+}
+
+export function initializeIframeResizer(readyCallback = () => {}) {
+  if (!IFRAMED) {
+    return;
+  }
+
+  // Make iFrameResizer avaliable so that embed users can
+  // have their embeds autosize to their content
+  if (window.iFrameResizer) {
+    console.error("iFrameResizer resizer already defined.");
+    readyCallback();
+  } else {
+    window.iFrameResizer = {
+      autoResize: true,
+      heightCalculationMethod: "bodyScroll",
+      readyCallback: readyCallback,
+    };
+
+    // FIXME: Crimes
+    // This is needed so the FE test framework which runs in node
+    // without the avaliability of require.ensure skips over this part
+    // which is for external purposes only.
+    //
+    // Ideally that should happen in the test config, but it doesn't
+    // seem to want to play nice when messing with require
+    if (typeof require.ensure !== "function") {
+      // $FlowFixMe: flow doesn't seem to like returning false here
+      return false;
+    }
+
+    // Make iframe-resizer avaliable to the embed
+    // We only care about contentWindow so require that minified file
+
+    require.ensure([], require => {
+      require("iframe-resizer/js/iframeResizer.contentWindow.js");
+    });
+  }
 }

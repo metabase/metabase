@@ -62,8 +62,8 @@
 
 ;; `metabase-query` type is for *outer* queries like Card.dataset_query. Normalizes them on the way in & out
 (defn- maybe-normalize [query]
-  (when query
-    (normalize/normalize query)))
+  (cond-> query
+    (seq query) normalize/normalize))
 
 (defn- catch-normalization-exceptions
   "Wraps normalization fn `f` and returns a version that gracefully handles Exceptions during normalization. When

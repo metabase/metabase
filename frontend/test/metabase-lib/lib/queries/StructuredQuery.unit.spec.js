@@ -41,7 +41,7 @@ describe("StructuredQuery behavioral tests", () => {
 
     const queryWithBreakout = query.breakout(breakoutDimension.mbql());
 
-    const filterDimensionOptions = queryWithBreakout.filterFieldOptions()
+    const filterDimensionOptions = queryWithBreakout.filterDimensionOptions()
       .dimensions;
     const filterDimension = filterDimensionOptions.find(
       d => d.field().id === ORDERS.TOTAL.id,
@@ -51,7 +51,7 @@ describe("StructuredQuery behavioral tests", () => {
   });
 });
 
-describe("StructuredQuery unit tests", () => {
+describe("StructuredQuery", () => {
   describe("DB METADATA METHODS", () => {
     describe("tables", () => {
       it("Tables should return multiple tables", () => {
@@ -80,6 +80,31 @@ describe("StructuredQuery unit tests", () => {
       it("identifies the engine of a query", () => {
         // This is a magic constant and we should probably pull this up into an enum
         expect(query.engine()).toBe("h2");
+      });
+    });
+    describe("dependentMetadata", () => {
+      it("should include source table with foreignTables = true", () => {
+        expect(query.dependentMetadata()).toEqual([
+          { type: "table", id: ORDERS.id, foreignTables: true },
+        ]);
+      });
+      it("should include source table for nested queries with foreignTables = true", () => {
+        expect(query.nest().dependentMetadata()).toEqual([
+          { type: "table", id: ORDERS.id, foreignTables: true },
+        ]);
+      });
+      it("should include joined tables with foreignTables = false", () => {
+        expect(
+          query
+            .join({
+              alias: "x",
+              "source-table": PRODUCTS.id,
+            })
+            .dependentMetadata(),
+        ).toEqual([
+          { type: "table", id: ORDERS.id, foreignTables: true },
+          { type: "table", id: PRODUCTS.id, foreignTables: false },
+        ]);
       });
     });
   });
@@ -207,26 +232,26 @@ describe("StructuredQuery unit tests", () => {
       });
     });
 
-    describe("aggregationName", () => {
+    describe("aggregation name", () => {
       it("returns a saved metric's name", () => {
         expect(
-          makeQueryWithAggregation([
-            "metric",
-            MAIN_METRIC_ID,
-          ]).aggregationName(),
+          makeQueryWithAggregation(["metric", MAIN_METRIC_ID])
+            .aggregations()[0]
+            .displayName(),
         ).toBe("Total Order Value");
       });
       it("returns a standard aggregation name", () => {
-        expect(makeQueryWithAggregation(["count"]).aggregationName()).toBe(
-          "Count",
-        );
+        expect(
+          makeQueryWithAggregation(["count"])
+            .aggregations()[0]
+            .displayName(),
+        ).toBe("Count");
       });
       it("returns a standard aggregation name with field", () => {
         expect(
-          makeQueryWithAggregation([
-            "sum",
-            ["field-id", ORDERS.TOTAL.id],
-          ]).aggregationName(),
+          makeQueryWithAggregation(["sum", ["field-id", ORDERS.TOTAL.id]])
+            .aggregations()[0]
+            .displayName(),
         ).toBe("Sum of Total");
       });
       it("returns a standard aggregation name with fk field", () => {
@@ -234,7 +259,9 @@ describe("StructuredQuery unit tests", () => {
           makeQueryWithAggregation([
             "sum",
             ["fk->", ORDERS.PRODUCT_ID.id, PRODUCTS.TITLE.id],
-          ]).aggregationName(),
+          ])
+            .aggregations()[0]
+            .displayName(),
         ).toBe("Sum of Product → Title");
       });
       it("returns a custom expression description", () => {
@@ -243,7 +270,9 @@ describe("StructuredQuery unit tests", () => {
             "+",
             1,
             ["sum", ["field-id", ORDERS.TOTAL.id]],
-          ]).aggregationName(),
+          ])
+            .aggregations()[0]
+            .displayName(),
         ).toBe("1 + Sum(Total)");
       });
       it("returns a named expression name", () => {
@@ -252,7 +281,9 @@ describe("StructuredQuery unit tests", () => {
             "aggregation-options",
             ["sum", ["field-id", ORDERS.TOTAL.id]],
             { "display-name": "Named" },
-          ]).aggregationName(),
+          ])
+            .aggregations()[0]
+            .displayName(),
         ).toBe("Named");
       });
     });
@@ -345,7 +376,7 @@ describe("StructuredQuery unit tests", () => {
       pending();
     });
 
-    describe("filterFieldOptions", () => {
+    describe("filterDimensionOptions", () => {
       pending();
     });
     describe("filterSegmentOptions", () => {
@@ -538,7 +569,7 @@ describe("StructuredQuery unit tests", () => {
 
   describe("FIELD REFERENCE METHODS", () => {
     describe("fieldReferenceForColumn", () => {
-      it('should return `["field-id", 1]` for a normal column', () => {
+      xit('should return `["field-id", 1]` for a normal column', () => {
         expect(query.fieldReferenceForColumn({ id: ORDERS.TOTAL.id })).toEqual([
           "field-id",
           ORDERS.TOTAL.id,

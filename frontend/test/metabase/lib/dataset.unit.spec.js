@@ -2,59 +2,17 @@ import {
   fieldRefForColumn,
   syncTableColumnsToQuery,
   findColumnForColumnSetting,
+  keyForColumn,
 } from "metabase/lib/dataset";
 
 import { ORDERS, PRODUCTS } from "__support__/sample_dataset_fixture";
 
-const FIELD_COLUMN = { id: 1 };
-const FK_COLUMN = { id: 1, fk_field_id: 2 };
-const EXPRESSION_COLUMN = { expression_name: "foo" };
-const AGGREGATION_COLUMN = { source: "aggregation" };
-
 describe("metabase/util/dataset", () => {
   describe("fieldRefForColumn", () => {
-    it('should return `["field-id", 1]` for a normal column', () => {
-      expect(fieldRefForColumn(FIELD_COLUMN)).toEqual(["field-id", 1]);
-    });
-    it('should return `["fk->", ["field-id", 2], ["field-id", 1]]` for a fk column', () => {
-      expect(fieldRefForColumn(FK_COLUMN)).toEqual([
-        "fk->",
-        ["field-id", 2],
-        ["field-id", 1],
-      ]);
-    });
-    it('should return `["expression", 2, 1]` for a fk column', () => {
-      expect(fieldRefForColumn(EXPRESSION_COLUMN)).toEqual([
-        "expression",
-        "foo",
-      ]);
-    });
-
-    describe("aggregation column", () => {
-      // this is an unfortunate effect of the backend not returning enough information to determine the aggregation index from the column
-      it("should return `null` for aggregation column if list of columns was provided", () => {
-        expect(fieldRefForColumn(AGGREGATION_COLUMN)).toEqual(null);
-      });
-      it('should return `["aggregation", 0]` for aggregation column if list of columns was provided', () => {
-        expect(
-          fieldRefForColumn(AGGREGATION_COLUMN, [AGGREGATION_COLUMN]),
-        ).toEqual(["aggregation", 0]);
-      });
-      it('should return `["aggregation", 1]` for second aggregation column if list of columns was provided', () => {
-        expect(
-          fieldRefForColumn(AGGREGATION_COLUMN, [
-            { source: "aggregation" },
-            AGGREGATION_COLUMN,
-          ]),
-        ).toEqual(["aggregation", 1]);
-      });
-    });
-
-    // NOTE: sometimes id is an MBQL clause itself, e.x. nested queries
-    it("should return `id` if is an MBQL clause", () => {
-      expect(fieldRefForColumn({ id: ["field-id", 3] })).toEqual([
+    it("should return field_ref from the column", () => {
+      expect(fieldRefForColumn({ field_ref: ["field-id", 42] })).toEqual([
         "field-id",
-        3,
+        42,
       ]);
     });
   });
@@ -204,9 +162,9 @@ describe("metabase/util/dataset", () => {
 
   describe("findColumnForColumnSetting", () => {
     const columns = [
-      { name: "bar", id: 42 },
-      { name: "foo", id: 1, fk_field_id: 2 },
-      { name: "baz", id: 43 },
+      { name: "bar", field_ref: ["field-id", 42] },
+      { name: "foo", field_ref: ["fk->", ["field-id", 2], ["field-id", 1]] },
+      { name: "baz", field_ref: ["field-id", 43] },
     ];
     it("should find column with name", () => {
       const column = findColumnForColumnSetting(columns, { name: "foo" });
@@ -223,6 +181,98 @@ describe("metabase/util/dataset", () => {
         fieldRef: ["fk->", 2, 1], // deprecated
       });
       expect(column).toBe(columns[1]);
+    });
+  });
+
+  describe("keyForColumn", () => {
+    // NOTE: run legacy tests with and without a field_ref. without is disabled in latest since it now always uses
+    // field_ref, leaving test code in place to compare against older versions
+    for (const fieldRefEnabled of [/*false,*/ true]) {
+      describe(fieldRefEnabled ? "with field_ref" : "without field_ref", () => {
+        it("should return [ref [field-id ...]] for field", () => {
+          expect(
+            keyForColumn({
+              name: "foo",
+              id: 1,
+              field_ref: fieldRefEnabled ? ["field-id", 1] : undefined,
+            }),
+          ).toEqual(JSON.stringify(["ref", ["field-id", 1]]));
+        });
+        it("should return [ref [fk-> ...]] for foreign field", () => {
+          expect(
+            keyForColumn({
+              name: "foo",
+              id: 1,
+              fk_field_id: 2,
+              field_ref: fieldRefEnabled
+                ? ["fk->", ["field-id", 2], ["field-id", 1]]
+                : undefined,
+            }),
+          ).toEqual(
+            JSON.stringify(["ref", ["fk->", ["field-id", 2], ["field-id", 1]]]),
+          );
+        });
+        it("should return [ref [expression ...]] for expression", () => {
+          expect(
+            keyForColumn({
+              name: "foo",
+              expression_name: "foo",
+              field_ref: fieldRefEnabled ? ["expression", "foo"] : undefined,
+            }),
+          ).toEqual(JSON.stringify(["ref", ["expression", "foo"]]));
+        });
+        it("should return [name ...] for aggregation", () => {
+          const col = {
+            name: "foo",
+            source: "aggregation",
+            field_ref: fieldRefEnabled ? ["aggregation", 0] : undefined,
+          };
+          expect(keyForColumn(col, [col])).toEqual(
+            // NOTE: not ideal, matches existing behavior, but should be ["aggregation", 0]
+            JSON.stringify(["name", "foo"]),
+          );
+        });
+        it("should return [name ...] for field-literal", () => {
+          const col = {
+            name: "foo",
+            id: ["field-literal", "foo", "type/Integer"],
+            field_ref: fieldRefEnabled
+              ? ["field-literal", "foo", "type/Integer"]
+              : undefined,
+          };
+          expect(keyForColumn(col, [col])).toEqual(
+            // NOTE: not ideal, matches existing behavior, but should be ["field-literal", "foo", "type/Integer"]
+            JSON.stringify(["name", "foo"]),
+          );
+        });
+        it("should return [name ...] for native query column", () => {
+          expect(
+            keyForColumn({
+              name: "foo",
+              field_ref: fieldRefEnabled
+                ? ["field-literal", "foo", "type/Integer"]
+                : undefined,
+            }),
+          ).toEqual(
+            // NOTE: not ideal, matches existing behavior, but should be ["field-literal", "foo", "type/Integer"]
+            JSON.stringify(["name", "foo"]),
+          );
+        });
+      });
+    }
+
+    describe("with field_ref", () => {
+      it("should return [ref [field-id ...]] for joined-field", () => {
+        const col = {
+          name: "foo",
+          id: 1,
+          field_ref: ["joined-field", "x", ["field-id", 1]],
+        };
+        expect(keyForColumn(col)).toEqual(
+          // NOTE: not ideal, matches existing behavior, but should be ["joined-field", "x", ["field-id", 1]]
+          JSON.stringify(["ref", ["field-id", 1]]),
+        );
+      });
     });
   });
 });

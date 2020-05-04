@@ -5,7 +5,12 @@ import {
   BROWSER_HISTORY_PUSH,
   BROWSER_HISTORY_POP,
 } from "__support__/e2e";
-import { click, clickButton, setInputValue } from "__support__/enzyme";
+import {
+  click,
+  clickButton,
+  setInputValue,
+  findButtonByText,
+} from "__support__/enzyme";
 import { mount } from "enzyme";
 import {
   CREATE_MEMBERSHIP,
@@ -13,7 +18,6 @@ import {
 } from "metabase/admin/people/people";
 import ModalContent from "metabase/components/ModalContent";
 import { delay } from "metabase/lib/promise";
-import Button from "metabase/components/Button";
 import { getUsersWithMemberships } from "metabase/admin/people/selectors";
 import UserGroupSelect from "metabase/admin/people/components/UserGroupSelect";
 import { GroupOption } from "metabase/admin/people/components/GroupSelect";
@@ -53,7 +57,7 @@ describe("admin/people", () => {
       await store.waitForActions([BROWSER_HISTORY_PUSH]);
 
       const addUserModal = app.find(ModalContent);
-      const addButton = addUserModal.find(Button);
+      const addButton = addUserModal.find(".Button[type='submit']");
       expect(addButton.props().disabled).toBe(true);
 
       setInputValue(addUserModal.find("input[name='first_name']"), firstName);
@@ -115,9 +119,7 @@ describe("admin/people", () => {
 
       const editDetailsModal = app.find(ModalContent);
 
-      const saveButton = editDetailsModal
-        .find('div[children="Update"]')
-        .closest(Button);
+      const saveButton = findButtonByText(app, "Update");
 
       setInputValue(
         editDetailsModal.find("input[name='first_name']"),

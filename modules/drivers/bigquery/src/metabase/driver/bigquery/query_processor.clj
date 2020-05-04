@@ -3,19 +3,23 @@
             [clojure.tools.logging :as log]
             [honeysql
              [core :as hsql]
+             [format :as hformat]
              [helpers :as h]]
             [java-time :as t]
             [metabase
              [driver :as driver]
              [util :as u]]
             [metabase.driver.sql :as sql]
+            [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.driver.sql.util.unprepare :as unprepare]
             [metabase.mbql.util :as mbql.u]
             [metabase.models
              [field :refer [Field]]
              [table :as table]]
-            [metabase.query-processor.store :as qp.store]
+            [metabase.query-processor
+             [error-type :as error-type]
+             [store :as qp.store]]
             [metabase.util
              [date-2 :as u.date]
              [honeysql-extensions :as hx]
@@ -24,6 +28,7 @@
             [schema.core :as s]
             [toucan.db :as db])
   (:import [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
+           metabase.driver.common.parameters.FieldFilter
            metabase.util.honeysql_extensions.Identifier))
 
 (defn- valid-bigquery-identifier?
@@ -102,92 +107,222 @@
 ;;; |                                               SQL Driver Methods                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; EXPERIMENTAL
+(def ^:private temporal-type-hierarchy
+  (-> (make-hierarchy)
+      (derive :date :temporal-type)
+      (derive :time :temporal-type)
+      (derive :datetime :temporal-type)
+      ;; timestamp = datetime with a timezone
+      (derive :timestamp :temporal-type)))
 
 (defmulti ^:private temporal-type
   {:arglists '([x])}
-  mbql.u/dispatch-by-clause-name-or-class)
+  mbql.u/dispatch-by-clause-name-or-class
+  :hierarchy #'temporal-type-hierarchy)
 
 (defmethod temporal-type LocalDate      [_] :date)
 (defmethod temporal-type LocalTime      [_] :time)
 (defmethod temporal-type OffsetTime     [_] :time)
 (defmethod temporal-type LocalDateTime  [_] :datetime)
-(defmethod temporal-type OffsetDateTime [_] :datetime)
-(defmethod temporal-type ZonedDateTime  [_] :datetime)
+(defmethod temporal-type OffsetDateTime [_] :timestamp)
+(defmethod temporal-type ZonedDateTime  [_] :timestamp)
 
 (defn- base-type->temporal-type [base-type]
   (condp #(isa? %2 %1) base-type
-    :type/Date     :date
-    :type/Time     :time
-    :type/DateTime :datetime
+    :type/Date           :date
+    :type/Time           :time
+    :type/DateTimeWithTZ :timestamp
+    :type/DateTime       :datetime
     nil))
 
 (defmethod temporal-type (class Field)
-  [{base-type :base_type}]
-  (base-type->temporal-type base-type))
+  [{base-type :base_type, database-type :database_type}]
+  (case database-type
+    "TIMESTAMP" :timestamp
+    "DATETIME"  :datetime
+    "DATE"      :date
+    "TIME"      :time
+    (base-type->temporal-type base-type)))
 
 (defmethod temporal-type :absolute-datetime
-  [[_ t unit]]
+  [[_ t _]]
   (temporal-type t))
 
 (defmethod temporal-type :time
   [_]
   :time)
 
+(defmethod temporal-type :datetime-field
+  [[_ field unit]]
+  ;; date extraction operations result in integers, so the type of the expression shouldn't be a temporal type
+  ;;
+  ;; `:year` is both an extract unit and a truncate unit in terms of `u.date` capabilities, but in MBQL it should be a
+  ;; truncation operation
+  (if ((disj u.date/extract-units :year) unit)
+    nil
+    (temporal-type field)))
+
 (defmethod temporal-type :default
   [x]
-  (or (mbql.u/match-one x
-        [:field-id id]               (temporal-type (qp.store/field id))
-        [:field-literal _ base-type] (base-type->temporal-type base-type))
-      (:mbql/temporal-type (meta x))))
+  (if (contains? (meta x) :bigquery/temporal-type)
+    (:bigquery/temporal-type (meta x))
+    (mbql.u/match-one x
+      [:field-id id]               (temporal-type (qp.store/field id))
+      [:field-literal _ base-type] (base-type->temporal-type base-type))))
+
+(defn- with-temporal-type {:style/indent 0} [x new-type]
+  (if (= (temporal-type x) new-type)
+    x
+    (vary-meta x assoc :bigquery/temporal-type new-type)))
 
 (defmulti ^:private ->temporal-type
+  "Coerce `x` to target temporal type."
   {:arglists '([target-type x])}
-  (fn [t-type x]
-    [t-type (mbql.u/dispatch-by-clause-name-or-class x)]))
+  (fn [target-type x]
+    [target-type (mbql.u/dispatch-by-clause-name-or-class x)])
+  :hierarchy #'temporal-type-hierarchy)
 
-(defmethod ->temporal-type [:date LocalDate]          [_ t] t)
-(defmethod ->temporal-type [:time LocalDate]          [_ t] (throw (UnsupportedOperationException. (tru "Cannot convert date to time"))))
-(defmethod ->temporal-type [:datetime LocalDate]      [_ t] (t/local-date-time t (t/local-time 0)))
-(defmethod ->temporal-type [:date LocalTime]          [_ t] (throw (UnsupportedOperationException. (tru "Cannot convert time to a date"))))
-(defmethod ->temporal-type [:time LocalTime]          [_ t] t)
-(defmethod ->temporal-type [:datetime LocalTime]      [_ t] (throw (UnsupportedOperationException. (tru "Cannot convert time to a datetime"))))
-(defmethod ->temporal-type [:date OffsetTime]         [_ t] (t/local-date t))
-(defmethod ->temporal-type [:time OffsetTime]         [_ t] (t/local-time t))
-(defmethod ->temporal-type [:datetime OffsetTime]     [_ t] t)
-(defmethod ->temporal-type [:date LocalDateTime]      [_ t] (t/local-date t))
-(defmethod ->temporal-type [:time LocalDateTime]      [_ t] (t/local-time t))
-(defmethod ->temporal-type [:datetime LocalDateTime]  [_ t] t)
-(defmethod ->temporal-type [:date OffsetDateTime]     [_ t] (t/local-date t))
-(defmethod ->temporal-type [:time OffsetDateTime]     [_ t] (t/local-time t))
-(defmethod ->temporal-type [:datetime OffsetDateTime] [_ t] t)
-(defmethod ->temporal-type [:date ZonedDateTime]      [_ t] (t/local-date t))
-(defmethod ->temporal-type [:time ZonedDateTime]      [_ t] (t/local-time t))
-(defmethod ->temporal-type [:datetime ZonedDateTime]  [_ t] t)
+(defn- throw-unsupported-conversion [from to]
+  (throw (ex-info (tru "Cannot convert a {0} to a {1}" from to)
+           {:type error-type/invalid-query})))
+
+(defmethod ->temporal-type [:date LocalTime]           [_ t] (throw-unsupported-conversion "time" "date"))
+(defmethod ->temporal-type [:date OffsetTime]          [_ t] (throw-unsupported-conversion "time" "date"))
+(defmethod ->temporal-type [:date LocalDate]           [_ t] t)
+(defmethod ->temporal-type [:date LocalDateTime]       [_ t] (t/local-date t))
+(defmethod ->temporal-type [:date OffsetDateTime]      [_ t] (t/local-date t))
+(defmethod ->temporal-type [:date ZonedDateTime]       [_ t] (t/local-date t))
+
+(defmethod ->temporal-type [:time LocalTime]           [_ t] t)
+(defmethod ->temporal-type [:time OffsetTime]          [_ t] (t/local-time t))
+(defmethod ->temporal-type [:time LocalDate]           [_ t] (throw-unsupported-conversion "date" "time"))
+(defmethod ->temporal-type [:time LocalDateTime]       [_ t] (t/local-time t))
+(defmethod ->temporal-type [:time OffsetDateTime]      [_ t] (t/local-time t))
+(defmethod ->temporal-type [:time ZonedDateTime]       [_ t] (t/local-time t))
+
+(defmethod ->temporal-type [:datetime LocalTime]       [_ t] (throw-unsupported-conversion "time" "datetime"))
+(defmethod ->temporal-type [:datetime OffsetTime]      [_ t] (throw-unsupported-conversion "time" "datetime"))
+(defmethod ->temporal-type [:datetime LocalDate]       [_ t] (t/local-date-time t (t/local-time 0)))
+(defmethod ->temporal-type [:datetime LocalDateTime]   [_ t] t)
+(defmethod ->temporal-type [:datetime OffsetDateTime]  [_ t] (t/local-date-time t))
+(defmethod ->temporal-type [:datetime ZonedDateTime]   [_ t] (t/local-date-time t))
+
+;; Not sure whether we should be converting local dates/datetimes to ones with UTC timezone or with the report timezone?
+(defmethod ->temporal-type [:timestamp LocalTime]      [_ t] (throw-unsupported-conversion "time" "timestamp"))
+(defmethod ->temporal-type [:timestamp OffsetTime]     [_ t] (throw-unsupported-conversion "time" "timestamp"))
+(defmethod ->temporal-type [:timestamp LocalDate]      [_ t] (t/zoned-date-time t (t/local-time 0) (t/zone-id "UTC")))
+(defmethod ->temporal-type [:timestamp LocalDateTime]  [_ t] (t/zoned-date-time t (t/zone-id "UTC")))
+(defmethod ->temporal-type [:timestamp OffsetDateTime] [_ t] t)
+(defmethod ->temporal-type [:timestamp ZonedDateTime]  [_ t] t)
 
 (defmethod ->temporal-type :default
-  [t-type x]
-  (if (= (temporal-type x) t-type)
-    x
-    (case t-type
-      nil       x
-      :date     (vary-meta (hx/cast :date      (sql.qp/->honeysql :bigquery x)) assoc :mbql/temporal-type :date)
-      :time     (vary-meta (hx/cast :time      (sql.qp/->honeysql :bigquery x)) assoc :mbql/temporal-type :time)
-      :datetime (vary-meta (hx/cast :timestamp (sql.qp/->honeysql :bigquery x)) assoc :mbql/temporal-type :timestamp))))
+  [target-type x]
+  (cond
+    (nil? x)
+    nil
+
+    (= (temporal-type x) target-type)
+    (with-temporal-type x target-type)
+
+    :else
+    (let [hsql-form     (sql.qp/->honeysql :bigquery x)
+          bigquery-type (case target-type
+                          :date      :date
+                          :time      :time
+                          :datetime  :datetime
+                          :timestamp :timestamp
+                          nil)]
+      (cond
+        (nil? hsql-form)
+        nil
+
+        (= (temporal-type hsql-form) target-type)
+        (with-temporal-type hsql-form target-type)
+
+        bigquery-type
+        (do
+          (log/tracef "Coercing %s (temporal type = %s) to %s" (binding [*print-meta* true] (pr-str x)) (pr-str (temporal-type x)) bigquery-type)
+          (with-temporal-type (hx/cast bigquery-type (sql.qp/->honeysql :bigquery x)) target-type))
+
+        :else
+        x))))
+
+(defmethod ->temporal-type [:temporal-type :absolute-datetime]
+  [target-type [_ t unit]]
+  [:absolute-datetime (->temporal-type target-type t) unit])
+
+(def ^:private temporal-type->supported-units
+  {:timestamp #{:microsecond :millisecond :second :minute :hour :day}
+   :datetime  #{:microsecond :millisecond :second :minute :hour :day :week :month :quarter :year}
+   :date      #{:day :week :month :quarter :year}
+   :time      #{:microsecond :millisecond :second :minute :hour}})
+
+(defmethod ->temporal-type [:temporal-type :relative-datetime]
+  [target-type [_ _ unit :as clause]]
+  {:post [(= target-type (temporal-type %))]}
+  (with-temporal-type
+    ;; check and see whether we need to do a conversion. If so, use the parent method which will just wrap this in a
+    ;; cast statement.
+    (if ((temporal-type->supported-units target-type) unit)
+      clause
+      ((get-method ->temporal-type :default) target-type clause))
+    target-type))
+
+(defrecord ^:private TruncForm [hsql-form unit]
+  hformat/ToSql
+  (to-sql [_]
+    (let [t (or (temporal-type hsql-form) :datetime)
+          f (case t
+              :date      :date_trunc
+              :time      :time_trunc
+              :datetime  :datetime_trunc
+              :timestamp :timestamp_trunc)]
+      (hformat/to-sql (hsql/call f (->temporal-type t hsql-form) (hsql/raw (name unit)))))))
+
+(defmethod temporal-type TruncForm
+  [trunc-form]
+  (temporal-type (:hsql-form trunc-form)))
+
+(defmethod ->temporal-type [:temporal-type TruncForm]
+  [target-type trunc-form]
+  (map->TruncForm (update trunc-form :hsql-form (partial ->temporal-type target-type))))
 
 (defn- trunc
-  "Generate a SQL call to `timestamp_truc`, `date_trunc`, or `time_trunc` (depending on the `temporal-type` of `expr`)."
-  [unit expr]
-  (let [expr-type (or (temporal-type expr) :datetime)
-        f         (case expr-type
-                    :date     :date_trunc
-                    :time     :time_trunc
-                    :datetime :timestamp_trunc)]
-    (hsql/call f (->temporal-type expr-type expr) (hsql/raw (name unit)))))
+  "Generate a SQL call an appropriate truncation function, depending on the temporal type of `expr`."
+  [unit hsql-form]
+  (TruncForm. hsql-form unit))
+
+(def ^:private valid-date-extract-units
+  #{:dayofweek :day :dayofyear :week :isoweek :month :quarter :year :isoyear})
+
+(def ^:private valid-time-extract-units
+  #{:microsecond :millisecond :second :minute :hour})
 
 (defn- extract [unit expr]
-  ;; implemenation of extract() in `metabase.util.honeysql-extensions` handles actual conversion to raw SQL (!)
-  (hsql/call :extract unit (hx/->timestamp expr)))
+  (condp = (temporal-type expr)
+    :time
+    (do
+      (assert (valid-time-extract-units unit)
+              (tru "Cannot extract {0} from a TIME field" unit))
+      (recur unit (with-temporal-type (hsql/call :timestamp (hsql/call :datetime "1970-01-01" expr))
+                                      :timestamp)))
+
+    ;; timestamp and date both support extract()
+    :date
+    (do
+      (assert (valid-date-extract-units unit)
+              (tru "Cannot extract {0} from a DATE field" unit))
+      (with-temporal-type (hsql/call :extract unit expr) nil))
+
+    :timestamp
+    (do
+      (assert (or (valid-date-extract-units unit)
+                  (valid-time-extract-units unit))
+              (tru "Cannot extract {0} from a DATETIME or TIMESTAMP" unit))
+      (with-temporal-type (hsql/call :extract unit expr) nil))
+
+    ;; for datetimes or anything without a known temporal type, cast to timestamp and go from there
+    (recur unit (->temporal-type :timestamp expr))))
 
 (defmethod sql.qp/date [:bigquery :minute]          [_ _ expr] (trunc   :minute    expr))
 (defmethod sql.qp/date [:bigquery :minute-of-hour]  [_ _ expr] (extract :minute    expr))
@@ -206,13 +341,39 @@
 (defmethod sql.qp/date [:bigquery :quarter-of-year] [_ _ expr] (extract :quarter   expr))
 (defmethod sql.qp/date [:bigquery :year]            [_ _ expr] (trunc   :year      expr))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:bigquery :seconds]
-  [_ _ expr]
-  (hsql/call :timestamp_seconds expr))
+(doseq [[unix-timestamp-type bigquery-fn] {:seconds      :timestamp_seconds
+                                           :milliseconds :timestamp_millis}]
+  (defmethod sql.qp/unix-timestamp->honeysql [:bigquery unix-timestamp-type]
+    [_ _ expr]
+    (with-temporal-type (hsql/call bigquery-fn expr) :timestamp)))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:bigquery :milliseconds]
-  [_ _ expr]
-  (hsql/call :timestamp_millis expr))
+(defmethod sql.qp/->float :bigquery
+  [_ value]
+  (hx/cast :float64 value))
+
+(defmethod sql.qp/->honeysql [:bigquery :regex-match-first]
+  [driver [_ arg pattern]]
+  (hsql/call :regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+
+(defn- percentile->quantile
+  [x]
+  (loop [x     (double x)
+         power (int 0)]
+    (if (zero? (- x (Math/floor x)))
+      [(Math/round x) (Math/round (Math/pow 10 power))]
+      (recur (* 10 x) (inc power)))))
+
+(defmethod sql.qp/->honeysql [:bigquery :percentile]
+  [driver [_ arg p]]
+  (let [[offset quantiles] (percentile->quantile p)]
+    (hsql/raw (format "APPROX_QUANTILES(%s, %s)[OFFSET(%s)]"
+                      (hformat/to-sql (sql.qp/->honeysql driver arg))
+                      quantiles
+                      offset))))
+
+(defmethod sql.qp/->honeysql [:bigquery :median]
+  [driver [_ arg]]
+  (sql.qp/->honeysql driver [:percentile arg 0.5]))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -245,6 +406,12 @@
          (>= (count components) 2))
     true))
 
+(defmethod sql.qp/->honeysql [:bigquery (class Field)]
+  [driver field]
+  (let [parent-method (get-method sql.qp/->honeysql [:sql (class Field)])
+        identifier    (parent-method driver field)]
+    (with-temporal-type identifier (temporal-type field))))
+
 (defmethod sql.qp/->honeysql [:bigquery Identifier]
   [_ identifier]
   (if-not (should-qualify-identifier? identifier)
@@ -254,6 +421,19 @@
                               (cons (str (dataset-name-for-current-query) \. table)
                                     more)))
         (vary-meta assoc ::already-qualified? true))))
+
+(doseq [clause-type [:datetime-field :field-literal :field-id]]
+  (defmethod sql.qp/->honeysql [:bigquery clause-type]
+    [driver clause]
+    (let [hsql-form ((get-method sql.qp/->honeysql [:sql clause-type]) driver clause)]
+      (with-temporal-type hsql-form (temporal-type clause)))))
+
+(defmethod sql.qp/->honeysql [:bigquery :relative-datetime]
+  [driver clause]
+  ;; wrap the parent method, converting the result if `clause` itself is typed
+  (let [t (temporal-type clause)]
+    (cond->> ((get-method sql.qp/->honeysql [:sql :relative-datetime]) driver clause)
+      t (->temporal-type t))))
 
 (s/defn ^:private honeysql-form->sql :- s/Str
   [driver, honeysql-form :- su/Map]
@@ -324,9 +504,7 @@
   ;;
   ;; TODO - we should make sure these are in the QP store somewhere and then could at least batch the calls
   (let [table-name (db/select-one-field :name table/Table :id (u/get-id table-id))]
-    (with-meta (hx/identifier :field table-name field-name)
-      ;; EXPERIMENTAL
-      {:mbql/temporal-type (temporal-type field)})))
+    (with-temporal-type (hx/identifier :field table-name field-name) (temporal-type field))))
 
 (defmethod sql.qp/apply-top-level-clause [:bigquery :breakout]
   [driver _ honeysql-form {breakouts :breakout, fields :fields}]
@@ -353,25 +531,79 @@
 (defmethod sql.qp/->honeysql [:bigquery :asc]  [driver clause] (alias-order-by-field driver clause))
 (defmethod sql.qp/->honeysql [:bigquery :desc] [driver clause] (alias-order-by-field driver clause))
 
-;; because between clauses are generated for SQL params we need to be careful that the temporal types line up
-(defmethod sql.qp/->honeysql [:bigquery :between]
-  [driver [_ f x y :as clause]]
-  ((get-method sql.qp/->honeysql [:sql :between])
-   driver
-   (if-let [f-type (or (temporal-type f) (temporal-type x))]
-     (do
-       (log/tracef "Coercing args in %s to temporal type %s" (binding [*print-meta* true] (pr-str clause)) f-type)
-       [:between (->temporal-type f-type f) (->temporal-type f-type x) (->temporal-type f-type y)])
-     clause)))
+(defn- reconcile-temporal-types
+  "Make sure the temporal types of fields and values in filter clauses line up."
+  [[clause-type f & args :as clause]]
+  (if-let [target-type (or (temporal-type f) (some temporal-type args))]
+    (do
+      (log/tracef "Coercing args in %s to temporal type %s" (binding [*print-meta* true] (pr-str clause)) target-type)
+      (u/prog1 (into [clause-type] (map (partial ->temporal-type target-type)
+                                        (cons f args)))
+        (when (not= [clause (meta clause)] [<> (meta <>)])
+          (log/tracef "Coerced -> %s" (binding [*print-meta* true] (pr-str <>))))))
+    clause))
+
+(doseq [filter-type [:between := :!= :> :>= :< :<=]]
+  (defmethod sql.qp/->honeysql [:bigquery filter-type]
+    [driver clause]
+    ((get-method sql.qp/->honeysql [:sql filter-type])
+     driver
+     (reconcile-temporal-types clause))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                Other Driver / SQLDriver Method Implementations                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod driver/date-add :bigquery
-  [_ dt amount unit]
-  (hsql/call :datetime_add (hx/->datetime dt) (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit)))))
+(defn- interval [amount unit]
+  (hsql/raw (format "INTERVAL %d %s" (int amount) (name unit))))
+
+(defn- assert-addable-unit [t-type unit]
+  (when-not (contains? (temporal-type->supported-units t-type) unit)
+    ;; trying to add an `hour` to a `date` or a `year` to a `time` is something we shouldn't be allowing in the UI in
+    ;; the first place
+    (throw (ex-info (tru "Invalid query: you cannot add a {0} to a {1} column."
+                         (name unit) (name t-type))
+             {:type error-type/invalid-query}))))
+
+;; We can coerce the HoneySQL form this wraps to whatever we want and generate the appropriate SQL.
+;; Thus for something like filtering against a relative datetime
+;;
+;; [:time-interval <datetime field> -1 :day]
+;;
+;;
+(defrecord ^:private AddIntervalForm [hsql-form amount unit]
+  hformat/ToSql
+  (to-sql [_]
+    (loop [hsql-form hsql-form]
+      (let [t      (temporal-type hsql-form)
+            add-fn (case t
+                     :timestamp :timestamp_add
+                     :datetime  :datetime_add
+                     :date      :date_add
+                     :time      :time_add
+                     nil)]
+        (if-not add-fn
+          (recur (->temporal-type :datetime hsql-form))
+          (do
+            (assert-addable-unit t unit)
+            (hformat/to-sql (hsql/call add-fn hsql-form (interval amount unit)))))))))
+
+(defmethod temporal-type AddIntervalForm
+  [add-interval]
+  (temporal-type (:hsql-form add-interval)))
+
+(defmethod ->temporal-type [:temporal-type AddIntervalForm]
+  [target-type add-interval-form]
+  (let [current-type (temporal-type (:hsql-form add-interval-form))]
+    (when (#{[:date :time] [:time :date]} [current-type target-type])
+      (throw (ex-info (tru "It doesn''t make sense to convert between DATEs and TIMEs!")
+               {:type error-type/invalid-query}))))
+  (map->AddIntervalForm (update add-interval-form :hsql-form (partial ->temporal-type target-type))))
+
+(defmethod sql.qp/add-interval-honeysql-form :bigquery
+  [_ hsql-form amount unit]
+  (AddIntervalForm. hsql-form amount unit))
 
 (defmethod driver/mbql->native :bigquery
   [driver
@@ -390,16 +622,45 @@
                          sql.qp/source-query-alias))
        :mbql?      true})))
 
-(defmethod sql.qp/current-datetime-fn :bigquery
+(defrecord ^:private CurrentMomentForm [t]
+  hformat/ToSql
+  (to-sql [_]
+    (hformat/to-sql
+     (case (or t :timestamp)
+       :time      :%current_time
+       :date      :%current_date
+       :datetime  :%current_datetime
+       :timestamp :%current_timestamp))))
+
+(defmethod temporal-type CurrentMomentForm
+  [^CurrentMomentForm current-moment]
+  (.t current-moment))
+
+(defmethod ->temporal-type [:temporal-type CurrentMomentForm]
+  [t _]
+  (CurrentMomentForm. t))
+
+(defmethod sql.qp/current-datetime-honeysql-form :bigquery
   [_]
-  :%current_timestamp)
+  (CurrentMomentForm. nil))
 
 (defmethod sql.qp/quote-style :bigquery
   [_]
   :mysql)
 
-;; TIMEZONE FIXME — Not working in all cases — see #11222
+;; convert LocalDate to an OffsetDateTime in UTC since BigQuery doesn't handle LocalDates as we'd like
 (defmethod sql/->prepared-substitution [:bigquery LocalDate]
-  [_ t]
-  {:sql-string   "?"
-   :param-values [(t/offset-date-time t (t/local-time 0) (t/zone-offset 0))]})
+  [driver t]
+  (sql/->prepared-substitution driver (t/offset-date-time t (t/local-time 0) (t/zone-offset 0))))
+
+(defmethod sql.params.substitution/->replacement-snippet-info [:bigquery FieldFilter]
+  [driver {:keys [field], :as field-filter}]
+  (let [field-temporal-type (temporal-type field)
+        parent-method       (get-method sql.params.substitution/->replacement-snippet-info [:sql FieldFilter])
+        result              (parent-method driver field-filter)]
+    (cond-> result
+      field-temporal-type (update :prepared-statement-args (fn [args]
+                                                             (for [arg args]
+                                                               (if (instance? java.time.temporal.Temporal arg)
+                                                                 (->temporal-type field-temporal-type arg)
+                                                                 arg)))))))

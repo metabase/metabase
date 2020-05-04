@@ -17,6 +17,9 @@
 .NativeQueryEditor .ace_editor .ace_string {
   color: var(--color-saturated-green);
 }
+.NativeQueryEditor .ace_editor .ace_templateTag {
+  color: var(--color-brand);
+}
 
 .NativeQueryEditor .react-resizable {
   position: relative;
@@ -40,14 +43,11 @@
   font-weight: 700;
   color: var(--color-text-light);
   padding-left: 0;
-  padding-right: 0;
+  padding-right: 7px;
   display: block;
   text-align: center;
 }
 
 .NativeQueryEditor .ace_editor .ace_gutter {
   background-color: var(--color-bg-light);
-  border-right: 1px solid var(--color-border);
-  padding-left: 5px;
-  padding-right: 5px;
 }

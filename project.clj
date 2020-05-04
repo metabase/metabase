@@ -7,16 +7,17 @@
   :min-lein-version "2.5.0"
 
   :aliases
-  {"generate-sample-dataset"           ["with-profile" "+generate-sample-dataset" "run"]
-   "profile"                           ["with-profile" "+profile" "run" "profile"]
+  {"profile"                           ["with-profile" "+profile" "run" "profile"]
    "h2"                                ["with-profile" "+h2-shell" "run" "-url" "jdbc:h2:./metabase.db"
                                         "-user" "" "-password" "" "-driver" "org.h2.Driver"]
    "generate-automagic-dashboards-pot" ["with-profile" "+generate-automagic-dashboards-pot" "run"]
    "install"                           ["with-profile" "+install" "install"]
    "install-for-building-drivers"      ["with-profile" "install-for-building-drivers" "install"]
    "run"                               ["with-profile" "+run" "run"]
+   "run-with-repl"                     ["with-profile" "+run-with-repl" "repl"]
    "ring"                              ["with-profile" "+ring" "ring"]
    "test"                              ["with-profile" "+test" "test"]
+   "eftest"                            ["with-profile" "+test" "with-profile" "+eftest" "eftest"]
    "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed"
                                         "--max-line-length" "205"
                                         ;; see https://github.com/dakrone/lein-bikeshed/issues/41
@@ -30,7 +31,6 @@
    "repl"                              ["with-profile" "+repl" "repl"]
    "strip-and-compress"                ["with-profile" "+strip-and-compress" "run"]
    "compare-h2-dbs"                    ["with-profile" "+compare-h2-dbs" "run"]}
-
 
   ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   ;; !!                                   PLEASE KEEP THESE ORGANIZED ALPHABETICALLY                                  !!
@@ -49,6 +49,7 @@
    [org.clojure/math.numeric-tower "0.0.4"]                           ; math functions like `ceil`
    [org.clojure/tools.logging "0.4.1"]                                ; logging framework
    [org.clojure/tools.namespace "0.2.11"]
+   [org.clojure/tools.trace "0.7.10"]                                 ; function tracing
    [amalloy/ring-buffer "1.2.2"
     :exclusions [org.clojure/clojure
                  org.clojure/clojurescript]]                          ; fixed length queue implementation, used in log buffering
@@ -77,6 +78,7 @@
                  it.unimi.dsi/fastutil]]
    [com.draines/postal "2.0.3"]                                       ; SMTP library
    [com.jcraft/jsch "0.1.55"]                                         ; SSH client for tunnels
+   [com.google.guava/guava "28.2-jre"]                                ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
    [com.h2database/h2 "1.4.197"]                                      ; embedded SQL database
    [com.mattbertolini/liquibase-slf4j "2.0.0"]                        ; Java Migrations lib logging. We don't actually use this AFAIK (?)
    [com.taoensso/nippy "2.14.0"]                                      ; Fast serialization (i.e., GZIP) library for Clojure
@@ -105,15 +107,14 @@
                  com.sun.jdmk/jmxtools
                  com.sun.jmx/jmxri]]
    [me.raynes/fs "1.4.6"]                                             ; Filesystem tools
-   [medley "1.2.0"]                                                   ; lightweight lib of useful functions
-   [metabase/connection-pool "1.0.3"]                                 ; simple wrapper around C3P0. JDBC connection pools
-   [metabase/mbql "1.4.0"]                                            ; MBQL language schema & util fns
+   [medley "1.3.0"]                                                   ; lightweight lib of useful functions
+   [metabase/connection-pool "1.1.1"]                                 ; simple wrapper around C3P0. JDBC connection pools
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
    [org.apache.commons/commons-lang3 "3.9"]                           ; helper methods for working with java.lang stuff
    [org.clojars.pntblnk/clj-ldap "0.0.16"]                            ; LDAP client
-   [org.eclipse.jetty/jetty-server "9.4.15.v20190215"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
-   [org.flatland/ordered "1.5.7"]                                     ; ordered maps & sets
+   [org.eclipse.jetty/jetty-server "9.4.27.v20200227"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
+   [org.flatland/ordered "1.5.9"]                                     ; ordered maps & sets
    [org.liquibase/liquibase-core "3.6.3"                              ; migration management (Java lib)
     :exclusions [ch.qos.logback/logback-classic]]
    [org.mariadb.jdbc/mariadb-java-client "2.5.1"]                     ; MySQL/MariaDB driver
@@ -127,11 +128,11 @@
    [prismatic/schema "1.1.11"]                                        ; Data schema declaration and validation library
    [puppetlabs/i18n "0.8.0"]                                          ; Internationalization library
    [redux "0.1.4"]                                                    ; Utility functions for building and composing transducers
-   [ring/ring-core "1.7.1"]
-   [ring/ring-jetty-adapter "1.7.1"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
+   [ring/ring-core "1.8.0"]
+   [ring/ring-jetty-adapter "1.8.0"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
    [ring/ring-json "0.4.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
-   [toucan "1.15.0" :exclusions [org.clojure/java.jdbc honeysql]]     ; Model layer, hydration, and DB utilities
+   [toucan "1.15.1" :exclusions [org.clojure/java.jdbc honeysql]]     ; Model layer, hydration, and DB utilities
    [weavejester/dependency "0.2.1"]                                   ; Dependency graphs and topological sorting
    ]
 
@@ -156,12 +157,20 @@
   :javac-options
   ["-target" "1.8", "-source" "1.8"]
 
+  :source-paths
+  ["src" "backend/mbql/src"]
+
+  :java-source-paths
+  ["java"]
+
   :uberjar-name
   "metabase.jar"
 
   :profiles
   {:dev
    {:source-paths ["dev/src" "local/src"]
+
+    :test-paths ["test" "backend/mbql/test"]
 
     :dependencies
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
@@ -192,7 +201,9 @@
     {:init-ns user}} ; starting in the user namespace is a lot faster than metabase.core since it has less deps
 
    :ci
-   {:jvm-opts ["-Xmx2500m"]}
+   {:jvm-opts ["-Xmx2500m"]
+    :eftest   {:report         eftest.report.junit/report
+               :report-to-file "target/test/junit.xml"}}
 
    :install
    {}
@@ -205,7 +216,20 @@
    {:test-paths ^:replace []}
 
    :run
-   [:exclude-tests {}]
+   [:include-all-drivers
+    :exclude-tests {}]
+
+   :run-with-repl
+   [:exclude-tests
+    :include-all-drivers
+
+    {:env
+     {:mb-jetty-join "false"}
+
+     :repl-options
+     {:init    (do (require 'metabase.core)
+                   (metabase.core/-main))
+      :timeout 60000}}]
 
    ;; start the dev HTTP server with 'lein ring server'
    :ring
@@ -228,7 +252,7 @@
 
    :with-include-drivers-middleware
    {:plugins
-    [[metabase/lein-include-drivers "1.0.8"]]
+    [[metabase/lein-include-drivers "1.0.9"]]
 
     :middleware
     [leiningen.include-drivers/middleware]}
@@ -251,6 +275,10 @@
       "-Dmb.api.key=test-api-key"
       "-Duser.language=en"]}]
 
+   :eftest
+   {:plugins [[lein-eftest "0.5.9"]]
+    :eftest  {:multithread? false}}
+
    :include-all-drivers
    [:with-include-drivers-middleware
     {:include-drivers :all
@@ -260,7 +288,8 @@
 
    :repl
    [:include-all-drivers
-    {:jvm-opts ["-Duser.timezone=UTC"]}] ; so running the tests doesn't give you different answers
+    ;; so running the tests doesn't give you different answers
+    {:jvm-opts ["-Duser.timezone=UTC"]}]
 
    :bikeshed
    [:include-all-drivers
@@ -312,7 +341,7 @@
    :check-namespace-decls
    [:include-all-drivers
     {:plugins               [[lein-check-namespace-decls "1.0.2"]]
-     :source-paths          ^:replace ["src" "test"]
+     :source-paths          ^:replace ["src" "backend/mbql/src" "test" "backend/mbql/test"]
      :check-namespace-decls {:prefix-rewriting true}}]
 
    ;; build the uberjar with `lein uberjar`
