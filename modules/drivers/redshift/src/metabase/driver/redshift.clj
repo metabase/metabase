@@ -5,7 +5,9 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
-            [metabase.driver :as driver]
+            [metabase
+             [driver :as driver]
+             [public-settings :as pubset]]
             [metabase.driver.common :as driver.common]
             [metabase.driver.sql-jdbc
              [connection :as sql-jdbc.conn]
@@ -176,7 +178,7 @@
        (json/generate-string {:dashboard_id nil ;; requires metabase/metabase#11909
                               :chart_id card-id
                               :optional_user_id executed-by
-                              :optional_account_id nil
+                              :optional_account_id (pubset/site-uuid)
                               :filter_values (query->field-values params)})
        " */ "
        (qputil/default-query->remark params)))

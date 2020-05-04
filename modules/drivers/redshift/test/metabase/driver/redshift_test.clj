@@ -1,26 +1,26 @@
 (ns metabase.driver.redshift-test
-  (:require [clojure.string :as str]
-            [clojure.test :refer :all]
+  (:require [clojure
+             [string :as str]
+             [test :refer :all]]
+            [metabase
+             [public-settings :as pubset]
+             [query-processor :as qp]
+             [test :as mt]
+             [util :as u]]
             [metabase.driver.sql-jdbc.execute :as execute]
             [metabase.plugins.jdbc-proxy :as jdbc-proxy]
-            [metabase.query-processor :as qp]
-            [metabase.test :as mt]
-            [metabase.test.data.datasets :refer [expect-with-driver]]
             [metabase.test.data.redshift :as rstest]
-            [metabase.test.fixtures :as fixtures]
-            [metabase.test.util :as tu]
-            [metabase.util :as u]))
+            [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :plugins))
-
-(expect-with-driver :redshift
-  "UTC"
-  (tu/db-timezone-id))
+(use-fixtures :once (fixtures/initialize :db))
 
 (deftest correct-driver-test
-  (is (= "com.amazon.redshift.jdbc.Driver"
-         (.getName (class (jdbc-proxy/wrapped-driver (java.sql.DriverManager/getDriver "jdbc:redshift://host:5432/testdb")))))
-      "Make sure we're using the correct driver for Redshift"))
+  (mt/test-driver
+    :redshift
+    (is (= "com.amazon.redshift.jdbc.Driver"
+           (.getName (class (jdbc-proxy/wrapped-driver (java.sql.DriverManager/getDriver "jdbc:redshift://host:5432/testdb")))))
+        "Make sure we're using the correct driver for Redshift")))
 
 (defn- query->native [query]
   (let [native-query (atom nil)]
@@ -28,14 +28,15 @@
                                                (reset! native-query sql)
                                                (throw (Exception. "done")))]
       (u/ignore-exceptions
-       (qp/process-query query))
+        (qp/process-query query))
       @native-query)))
 
 ;; TODO: Add executed-by and card-id and such to this
 (deftest remark-test
   (let [expected (str/replace
                   (str
-                   "-- /* partner: \"metabase\", {\"dashboard_id\":null,\"chart_id\":null,\"optional_user_id\":1000,\"optional_account_id\":null,"
+                   "-- /* partner: \"metabase\", {\"dashboard_id\":null,\"chart_id\":null,\"optional_user_id\":1000,"
+                   "\"optional_account_id\":\"" (pubset/site-uuid) "\","
                    "\"filter_values\":{\"userid\":1,\"firstname\":[\"Rafael\",\"Robert\"]}} */"
                    " Metabase:: userID: 1000 queryType: MBQL queryHash: cb83d4f6eedc250edb0f2c16f8d9a21e5d42f322ccece1494c8ef3d634581fe2\n"
                    "SELECT \"%schema%\".\"test_data_users\".\"id\" AS \"id\","
