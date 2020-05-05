@@ -44,3 +44,11 @@
     (testing "No special formatting for year? :shrug:"
       (is (= ["2018-07-16T18:04:00Z" "2021-07-16T18:04:00Z"]
              (format-temporal-string-pair :year "2018-07-16T18:04:00Z" "2021-07-16T18:04:00Z"))))))
+
+(deftest format-temporal-str-test
+  (testing "Null values do not blow up"
+    (is (= ""
+           (datetime/format-temporal-str "UTC" nil :now))))
+  (testing "Not-null values work"
+    (is (= "Jul 16, 2020"
+           (datetime/format-temporal-str "UTC" now :day)))))
