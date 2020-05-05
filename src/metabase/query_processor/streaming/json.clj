@@ -12,7 +12,7 @@
 
 (defmethod i/stream-options :json
   [_]
-  {:content-type "applicaton/json; charset=utf-8"
+  {:content-type "application/json; charset=utf-8"
    :headers      {"Content-Disposition" (format "attachment; filename=\"query_result_%s.json\""
                                                 (u.date/format (t/zoned-date-time)))}})
 
@@ -40,7 +40,7 @@
 
 (defmethod i/stream-options :api
   [stream-type]
-  {:content-type "applicaton/json; charset=utf-8"})
+  {:content-type "application/json; charset=utf-8"})
 
 (defn- map->serialized-json-kvs
   "{:a 100, :b 200} ; -> \"a\":100,\"b\":200"
