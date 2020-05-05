@@ -31,7 +31,7 @@
               response    {:status       200
                            :headers      {}
                            :body         input-chan
-                           :content-type "applicaton/json; charset=utf-8"}]
+                           :content-type "application/json; charset=utf-8"}]
           ;; and keep it from getting [re]created.
           (with-redefs [async-response/async-keepalive-channel identity]
             (ring.protocols/write-body-to-stream output-chan response os))
