@@ -90,13 +90,13 @@
 
 (defmulti has-select-privilege?
   "Does the user `user` have (SELECT) access to a given table?"
-  {:arglists '([driver, ^DatabaseMetaData metadata, ^String user, ^String db-name-or-nil, ^String schema-or-nil,
+  {:arglists '([driver ^DatabaseMetaData metadata ^String user ^String db-name-or-nil ^String schema-or-nil
                 ^String table])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmethod has-select-privilege? :sql-jdbc
-  [_, ^DatabaseMetaData metadata, ^String user, ^String db-name-or-nil, ^String schema-or-nil, ^String table]
+  [_ ^DatabaseMetaData metadata ^String user ^String db-name-or-nil ^String schema-or-nil ^String table]
   (or (str/blank? user) ; DBs such as H2 and Druid don't require a username when connecting.
                         ; In that case assume all tables are visible.
       (with-open [rs (.getTablePrivileges metadata db-name-or-nil schema-or-nil table)]
@@ -106,22 +106,22 @@
 (defmulti db-tables
   "Fetch a JDBC Metadata ResultSet of tables accessable to us in the DB, optionally limited to ones belonging to a given
   schema."
-  {:arglists '([driver, ^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil])}
+  {:arglists '([driver ^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil])}
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
 (defmethod db-tables :sql-jdbc
-  [_, ^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
+  [_, ^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
   ;; tablePattern "%" = match all tables
   (with-open [rs (.getTables metadata db-name-or-nil schema-or-nil "%"
-                             (into-array String ["TABLE", "VIEW", "FOREIGN TABLE", "MATERIALIZED VIEW"]))]
+                             (into-array String ["TABLE" "VIEW" "FOREIGN TABLE" "MATERIALIZED VIEW"]))]
     (vec (jdbc/metadata-result rs))))
 
 (defn- accessible-tables
-  [^DatabaseMetaData metadata, ^String schema-or-nil, ^String db-name-or-nil]
+  [^DatabaseMetaData metadata ^String schema-or-nil ^String db-name-or-nil]
   (let [user (.getUserName metadata)]
     (vec (for [{:keys [table_name table_schem] :as table} (db-tables :sql-jdbc
-                                                                      metadata schema-or-nil db-name-or-nil)
+                                                                     metadata schema-or-nil db-name-or-nil)
                :when (has-select-privilege? :sql-jdbc metadata user db-name-or-nil table_schem table_name)]
            table))))
 
