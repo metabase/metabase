@@ -351,3 +351,16 @@
                                             [:field-id (data/id :lots_of_fields (keyword field))]))})
                   (mt/formatted-rows [int])
                   ffirst))))))
+
+;; Test for https://github.com/metabase/metabase/issues/12305
+(deftest expression-with-slashes
+  (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
+    (is (= [[1 "Red Medicine"           4 10.0646 -165.374 3 4.0]
+            [2 "Stout Burgers & Beers" 11 34.0996 -118.329 2 3.0]
+            [3 "The Apple Pan"         11 34.0406 -118.428 2 3.0]]
+           (mt/formatted-rows [int str int 4.0 4.0 int float]
+             (mt/run-mbql-query venues
+               {:expressions {:TEST/my-cool-new-field [:+ $price 1]}
+                :limit       3
+                :order-by    [[:asc $id]]})))
+        "Make sure an expression with a / in its name works")))
