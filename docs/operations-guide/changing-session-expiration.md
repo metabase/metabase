@@ -20,7 +20,7 @@ java -DMAX_SESSION_AGE=1440 -jar metabase.jar
 `MAX_SESSION_AGE` is in minutes.
 
 
-### Using "Session Cookies"
+### Using Session cookies
 
 Metabase also support using [session
 cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#Session_cookies), which mean users will stay
