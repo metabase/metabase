@@ -199,95 +199,97 @@
 ;;; GET api/table/:id/query_metadata?include_sensitive_fields
 ;; Make sure that getting the User table *does* include info about the password field, but not actual values
 ;; themselves
-(expect
-  (merge
-   (query-metadata-defaults)
-   (db/select-one [Table :created_at :updated_at :fields_hash] :id (mt/id :users))
-   {:schema       "PUBLIC"
-    :name         "USERS"
-    :display_name "Users"
-    :entity_type  "entity/UserTable"
-    :fields       [(assoc (field-details (Field (mt/id :users :id)))
-                     :special_type     "type/PK"
-                     :table_id         (mt/id :users)
-                     :name             "ID"
-                     :display_name     "ID"
-                     :database_type    "BIGINT"
-                     :base_type        "type/BigInteger"
-                     :visibility_type  "normal"
-                     :has_field_values "none")
-                   (assoc (field-details (Field (mt/id :users :last_login)))
-                     :table_id                 (mt/id :users)
-                     :name                     "LAST_LOGIN"
-                     :display_name             "Last Login"
-                     :database_type            "TIMESTAMP"
-                     :base_type                "type/DateTime"
-                     :visibility_type          "normal"
-                     :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
-                     :default_dimension_option (var-get #'table-api/date-default-index)
-                     :has_field_values         "none")
-                   (assoc (field-details (Field (mt/id :users :name)))
-                     :special_type             "type/Name"
-                     :table_id                 (mt/id :users)
-                     :name                     "NAME"
-                     :display_name             "Name"
-                     :database_type            "VARCHAR"
-                     :base_type                "type/Text"
-                     :visibility_type          "normal"
-                     :dimension_options        []
-                     :default_dimension_option nil
-                     :has_field_values         "list")
-                   (assoc (field-details (Field :table_id (mt/id :users), :name "PASSWORD"))
-                     :special_type     "type/Category"
-                     :table_id         (mt/id :users)
-                     :name             "PASSWORD"
-                     :display_name     "Password"
-                     :database_type    "VARCHAR"
-                     :base_type        "type/Text"
-                     :visibility_type  "sensitive"
-                     :has_field_values "list")]
-    :rows         nil
-    :id           (mt/id :users)})
-  ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (mt/id :users))))
+(deftest sensitive-fields-included-test
+  (testing "Sensitive fields are included"
+    (is (= (merge
+            (query-metadata-defaults)
+            (db/select-one [Table :created_at :updated_at :fields_hash] :id (mt/id :users))
+            {:schema       "PUBLIC"
+             :name         "USERS"
+             :display_name "Users"
+             :entity_type  "entity/UserTable"
+             :fields       [(assoc (field-details (Field (mt/id :users :id)))
+                                   :special_type     "type/PK"
+                                   :table_id         (mt/id :users)
+                                   :name             "ID"
+                                   :display_name     "ID"
+                                   :database_type    "BIGINT"
+                                   :base_type        "type/BigInteger"
+                                   :visibility_type  "normal"
+                                   :has_field_values "none")
+                            (assoc (field-details (Field (mt/id :users :last_login)))
+                                   :table_id                 (mt/id :users)
+                                   :name                     "LAST_LOGIN"
+                                   :display_name             "Last Login"
+                                   :database_type            "TIMESTAMP"
+                                   :base_type                "type/DateTime"
+                                   :visibility_type          "normal"
+                                   :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
+                                   :default_dimension_option (var-get #'table-api/date-default-index)
+                                   :has_field_values         "none")
+                            (assoc (field-details (Field (mt/id :users :name)))
+                                   :special_type             "type/Name"
+                                   :table_id                 (mt/id :users)
+                                   :name                     "NAME"
+                                   :display_name             "Name"
+                                   :database_type            "VARCHAR"
+                                   :base_type                "type/Text"
+                                   :visibility_type          "normal"
+                                   :dimension_options        []
+                                   :default_dimension_option nil
+                                   :has_field_values         "list")
+                            (assoc (field-details (Field :table_id (mt/id :users), :name "PASSWORD"))
+                                   :special_type     "type/Category"
+                                   :table_id         (mt/id :users)
+                                   :name             "PASSWORD"
+                                   :display_name     "Password"
+                                   :database_type    "VARCHAR"
+                                   :base_type        "type/Text"
+                                   :visibility_type  "sensitive"
+                                   :has_field_values "list")]
+             :rows         nil
+             :id           (mt/id :users)})
+           ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata?include_sensitive_fields=true" (mt/id :users)))))))
 
 ;;; GET api/table/:id/query_metadata
 ;;; Make sure that getting the User table does *not* include password info
-(expect
-  (merge
-   (query-metadata-defaults)
-   (db/select-one [Table :created_at :updated_at :fields_hash] :id (mt/id :users))
-   {:schema       "PUBLIC"
-    :name         "USERS"
-    :display_name "Users"
-    :entity_type  "entity/UserTable"
-    :fields       [(assoc (field-details (Field (mt/id :users :id)))
-                     :table_id         (mt/id :users)
-                     :special_type     "type/PK"
-                     :name             "ID"
-                     :display_name     "ID"
-                     :database_type    "BIGINT"
-                     :base_type        "type/BigInteger"
-                     :has_field_values "none")
-                   (assoc (field-details (Field (mt/id :users :last_login)))
-                     :table_id                 (mt/id :users)
-                     :name                     "LAST_LOGIN"
-                     :display_name             "Last Login"
-                     :database_type            "TIMESTAMP"
-                     :base_type                "type/DateTime"
-                     :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
-                     :default_dimension_option (var-get #'table-api/date-default-index)
-                     :has_field_values         "none")
-                   (assoc (field-details (Field (mt/id :users :name)))
-                     :table_id         (mt/id :users)
-                     :special_type     "type/Name"
-                     :name             "NAME"
-                     :display_name     "Name"
-                     :database_type    "VARCHAR"
-                     :base_type        "type/Text"
-                     :has_field_values "list")]
-    :rows         nil
-    :id           (mt/id :users)})
-  ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :users))))
+(deftest sensitive-fields-not-included-test
+  (testing "Sensitive fields should not be included"
+    (is (= (merge
+            (query-metadata-defaults)
+            (db/select-one [Table :created_at :updated_at :fields_hash] :id (mt/id :users))
+            {:schema       "PUBLIC"
+             :name         "USERS"
+             :display_name "Users"
+             :entity_type  "entity/UserTable"
+             :fields       [(assoc (field-details (Field (mt/id :users :id)))
+                                   :table_id         (mt/id :users)
+                                   :special_type     "type/PK"
+                                   :name             "ID"
+                                   :display_name     "ID"
+                                   :database_type    "BIGINT"
+                                   :base_type        "type/BigInteger"
+                                   :has_field_values "none")
+                            (assoc (field-details (Field (mt/id :users :last_login)))
+                                   :table_id                 (mt/id :users)
+                                   :name                     "LAST_LOGIN"
+                                   :display_name             "Last Login"
+                                   :database_type            "TIMESTAMP"
+                                   :base_type                "type/DateTime"
+                                   :dimension_options        (var-get #'table-api/datetime-dimension-indexes)
+                                   :default_dimension_option (var-get #'table-api/date-default-index)
+                                   :has_field_values         "none")
+                            (assoc (field-details (Field (mt/id :users :name)))
+                                   :table_id         (mt/id :users)
+                                   :special_type     "type/Name"
+                                   :name             "NAME"
+                                   :display_name     "Name"
+                                   :database_type    "VARCHAR"
+                                   :base_type        "type/Text"
+                                   :has_field_values "list")]
+             :rows         nil
+             :id           (mt/id :users)})
+           ((test-users/user->client :rasta) :get 200 (format "table/%d/query_metadata" (mt/id :users)))))))
 
 ;; Check that FK fields belonging to Tables we don't have permissions for don't come back as hydrated `:target`(#3867)
 (expect
@@ -714,3 +716,89 @@
 (expect
   "Not found."
   ((test-users/user->client :crowberto) :post 404 (format "table/%d/discard_values" Integer/MAX_VALUE)))
+
+(deftest hidden-field-visibility-test
+  (tt/with-temp* [Table [table]
+                  Field [table-pk {:table_id      (u/get-id table)
+                                   :name          "id"
+                                   :database_type "BIGINT"
+                                   :base_type     :type/Integer
+                                   :special_type  :type/PK
+                                   :position      0}]
+                  Field [hidden-field {:table_id        (u/get-id table)
+                                       :name            "hidden"
+                                       :database_type   "INT"
+                                       :base_type       :type/Integer
+                                       :visibility_type "hidden"
+                                       :position         1}]]
+    (testing "hidden field is visible with include_hidden_fields set"
+      (is (= (merge
+              (-> (table-defaults)
+                  (dissoc :field_values :id)
+                  (assoc :entity_type nil))
+              (db/select-one [Table :id :schema :name :created_at :fields_hash :updated_at :display_name] :id (u/get-id table))
+              {:dimension_options (default-dimension-options)
+               :rows nil
+               :fields [(merge
+                         (field-details table-pk)
+                         {:table_id         (u/id table)
+                          :special_type     "type/PK"
+                          :name             "id"
+                          :display_name     "ID"
+                          :database_type    "BIGINT"
+                          :has_field_values "none"
+                          :base_type        "type/Integer"
+                          :position         0})
+                        (merge
+                         (field-details hidden-field)
+                         {:table_id         (u/id table)
+                          :special_type     nil
+                          :database_type    "INT"
+                          :name             "hidden"
+                          :display_name     "Hidden"
+                          :visibility_type  "hidden"
+                          :has_field_values "none"
+                          :base_type        "type/Integer"
+                          :position         1})]})
+             ((test-users/user->client :rasta) :get 200
+              (format "table/%d/query_metadata?include_hidden_fields=true" (u/get-id table))))))
+    (testing "hidden field is invisible without include_hidden_fields set"
+      (is (= (merge
+              (-> (table-defaults)
+                  (dissoc :field_values :id)
+                  (assoc :entity_type nil))
+              (db/select-one [Table :id :schema :name :created_at :fields_hash :updated_at :display_name] :id (u/get-id table))
+              {:dimension_options (default-dimension-options)
+               :rows nil
+               :fields [(merge
+                         (field-details table-pk)
+                         {:table_id         (u/id table)
+                          :special_type     "type/PK"
+                          :name             "id"
+                          :display_name     "ID"
+                          :database_type    "BIGINT"
+                          :has_field_values "none"
+                          :base_type        "type/Integer"
+                          :position         0})]})
+             ((test-users/user->client :rasta) :get 200
+              (format "table/%d/query_metadata?include_hidden_fields=false" (u/get-id table))))))
+    (testing "hidden field is invisible without include_hidden_fields (default)"
+      (is (= (merge
+              (-> (table-defaults)
+                  (dissoc :field_values :id)
+                  (assoc :entity_type nil))
+              (db/select-one [Table :id :schema :name :created_at :fields_hash :updated_at :display_name] :id (u/get-id table))
+              {:dimension_options (default-dimension-options)
+               :rows nil
+               :fields [(merge
+                         (field-details table-pk)
+                         {:table_id         (u/id table)
+                          :special_type     "type/PK"
+                          :name             "id"
+                          :display_name     "ID"
+                          :database_type    "BIGINT"
+                          :has_field_values "none"
+                          :base_type        "type/Integer"
+                          :position         0})]})
+             ((test-users/user->client :rasta) :get 200
+              (format "table/%d/query_metadata" (u/get-id table))))))))
