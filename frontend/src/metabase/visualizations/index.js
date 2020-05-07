@@ -18,7 +18,11 @@ visualizations.get = function(key) {
 
 export function getSensibleDisplays(data) {
   return Array.from(visualizations)
-    .filter(([, viz]) => viz.isSensible && viz.isSensible(data))
+    .filter(
+      ([, viz]) =>
+        // don't rule out displays if there's no data
+        data.rows.length === 0 || (viz.isSensible && viz.isSensible(data)),
+    )
     .map(([display]) => display);
 }
 
