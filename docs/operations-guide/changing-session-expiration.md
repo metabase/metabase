@@ -22,11 +22,11 @@ java -DMAX_SESSION_AGE=1440 -jar metabase.jar
 
 ### Using Session cookies
 
-Metabase also support using [session
+Metabase also supports using [session
 cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#Session_cookies), which mean users will stay
 authenticated until they close their browser window. Once they close their browser window, next time they visit
 Metabase they'll have to log in again. Session expiration still applies, so even if you leave your browser window open
-forever you'll still be required to re-authenticate after two weeks or whatever session expiration you've configured.
+forever, you'll still be required to re-authenticate after two weeks or whatever session expiration you've configured.
 
 You can tell Metabase to use session cookies with the environment variable or Java system property
 `MB_SESSION_COOKIES`:
