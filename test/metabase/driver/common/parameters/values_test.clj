@@ -7,9 +7,7 @@
             [metabase.driver.common.parameters.values :as values]
             [metabase.models
              [card :refer [Card]]
-             [database :refer [Database]]
-             [field :refer [map->FieldInstance]]
-             [native-query-snippet :refer [NativeQuerySnippet]]]
+             [field :refer [map->FieldInstance]]]
             [metabase.test.data :as data]
             [toucan.util.test :as tt])
   (:import clojure.lang.ExceptionInfo))
