@@ -78,6 +78,9 @@ function addUsersAndGroups() {
   );
   cy.request("POST", "/api/user", makeUserObject("none", [ALL_USERS_GROUP]));
 
+  // Make a call to `/api/user` because some things (personal collections) get created there
+  cy.request("GET", "/api/user");
+
   // permissions
   cy.request("PUT", "/api/permissions/graph", {
     revision: 0,

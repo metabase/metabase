@@ -24,7 +24,7 @@
 (defmethod type-info :default [_] nil)
 
 (defmethod type-info (class Field) [this]
-  (let [field-info (select-keys this [:base_type :special_type :database_type])]
+  (let [field-info (select-keys this [:base_type :special_type :database_type :name])]
     (merge
      field-info
      ;; add in a default unit for this Field so we know to wrap datetime strings in `absolute-datetime` below based on

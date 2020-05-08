@@ -14,9 +14,7 @@
             [metabase.api
              [common :as api]
              [dataset :as dataset-api]]
-            [metabase.async
-             [streaming-response :as async.streaming-response]
-             [util :as async.u]]
+            [metabase.async.util :as async.u]
             [metabase.email.messages :as messages]
             [metabase.models
              [card :as card :refer [Card]]
@@ -47,10 +45,7 @@
              [hydrate :refer [hydrate]]])
   (:import clojure.core.async.impl.channels.ManyToManyChannel
            java.util.UUID
-           metabase.async.streaming_response.StreamingResponse
            metabase.models.card.CardInstance))
-
-(comment async.streaming-response/keep-me)
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
@@ -207,17 +202,16 @@
   "Save `card-data` as a new Card on a separate thread. Returns a channel to fetch the response; closing this channel
   will cancel the save."
   [card-data]
-  (async.u/do-on-separate-thread
-   (fn []
-     (let [card (db/transaction
-                  ;; Adding a new card at `collection_position` could cause other cards in this
-                  ;; collection to change position, check that and fix it if needed
-                  (api/maybe-reconcile-collection-position! card-data)
-                  (db/insert! Card card-data))]
-       (events/publish-event! :card-create card)
-       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it
-       ;; currently has with returned one -- See #4283
-       (hydrate card :creator :dashboard_count :can_write :collection)))))
+  (async.u/cancelable-thread
+    (let [card (db/transaction
+                 ;; Adding a new card at `collection_position` could cause other cards in this
+                 ;; collection to change position, check that and fix it if needed
+                 (api/maybe-reconcile-collection-position! card-data)
+                 (db/insert! Card card-data))]
+      (events/publish-event! :card-create card)
+      ;; include same information returned by GET /api/card/:id since frontend replaces the Card it
+      ;; currently has with returned one -- See #4283
+      (hydrate card :creator :dashboard_count :can_write :collection))))
 
 (defn- create-card-async!
   "Create a new Card asynchronously. Returns a channel for fetching the newly created Card, or an Exception if one was
@@ -398,29 +392,30 @@
       :else
       nil)))
 
-(defn- update-card-async! [{:keys [id], :as card-before-update} {:keys [archived], :as card-updates}]
+(defn- update-card-async!
+  "Update a Card asynchronously. Returns a `core.async` promise channel that will return updated Card."
+  [{:keys [id], :as card-before-update} {:keys [archived], :as card-updates}]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
-  (async.u/do-on-separate-thread
-   (fn []
-     ;; Setting up a transaction here so that we don't get a partially reconciled/updated card.
-     (db/transaction
-       (api/maybe-reconcile-collection-position! card-before-update card-updates)
+  (async.u/cancelable-thread
+    ;; Setting up a transaction here so that we don't get a partially reconciled/updated card.
+    (db/transaction
+      (api/maybe-reconcile-collection-position! card-before-update card-updates)
 
-       ;; ok, now save the Card
-       (db/update! Card id
-         ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
-         ;; modified if they're passed in as non-nil
-         (u/select-keys-when card-updates
-           :present #{:collection_id :collection_position :description}
-           :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
-                      :embedding_params :result_metadata})))
-     ;; Fetch the updated Card from the DB
-     (let [card (Card id)]
-       (delete-alerts-if-needed! card-before-update card)
-       (publish-card-update! card archived)
-       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
-       ;; has with returned one -- See #4142
-       (hydrate card :creator :dashboard_count :can_write :collection)))))
+      ;; ok, now save the Card
+      (db/update! Card id
+        ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
+        ;; modified if they're passed in as non-nil
+        (u/select-keys-when card-updates
+          :present #{:collection_id :collection_position :description}
+          :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
+                     :embedding_params :result_metadata})))
+    ;; Fetch the updated Card from the DB
+    (let [card (Card id)]
+      (delete-alerts-if-needed! card-before-update card)
+      (publish-card-update! card archived)
+      ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
+      ;; has with returned one -- See #4142
+      (hydrate card :creator :dashboard_count :can_write :collection))))
 
 (api/defendpoint ^:returns-chan PUT "/:id"
   "Update a `Card`."
@@ -584,8 +579,8 @@
     (let [ttl-seconds (Math/round (float (/ (* average-duration (public-settings/query-caching-ttl-ratio))
                                             1000.0)))]
       (when-not (zero? ttl-seconds)
-        (log/info (format "Question's average execution duration is %d ms; using 'magic' TTL of %d seconds"
-                          average-duration ttl-seconds)
+        (log/info (trs "Question''s average execution duration is {0}; using ''magic'' TTL of {1}"
+                       (u/format-milliseconds average-duration) (u/format-seconds ttl-seconds))
                   (u/emoji "💾"))
         ttl-seconds))))
 
@@ -605,15 +600,15 @@
   "Run the query for Card with `parameters` and `constraints`, and return results in a `StreamingResponse` that should
   be returned as the result of an API endpoint fn. Will throw an Exception if preconditions (such as read perms) are
   not met before returning the `StreamingResponse`."
-  ^StreamingResponse [card-id export-format
-                      & {:keys [parameters constraints context dashboard-id middleware run]
-                         :or   {constraints constraints/default-query-constraints
-                                context     :question
-                                ;; param `run` can be used to control how the query is ran, e.g. if you need to
-                                ;; customize the `context` passed to the QP
-                                run         (^:once fn* [query info]
-                                             (qp.streaming/streaming-response [context export-format]
-                                               (qp/process-query-and-save-execution! query info context)))}}]
+  [card-id export-format
+   & {:keys [parameters constraints context dashboard-id middleware run]
+      :or   {constraints constraints/default-query-constraints
+             context     :question
+             ;; param `run` can be used to control how the query is ran, e.g. if you need to
+             ;; customize the `context` passed to the QP
+             run         (^:once fn* [query info]
+                          (qp.streaming/streaming-response [context export-format]
+                            (qp/process-query-and-save-execution! query info context)))}}]
   {:pre [(u/maybe? sequential? parameters)]}
   (let [card  (api/read-check (Card card-id))
         query (assoc (query-for-card card parameters constraints middleware)

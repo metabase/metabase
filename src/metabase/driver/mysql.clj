@@ -35,6 +35,8 @@
 (defmethod driver/display-name :mysql [_] "MySQL")
 
 (defmethod driver/supports? [:mysql :regex] [_ _] false)
+(defmethod driver/supports? [:mysql :percentile-aggregations] [_ _] false)
+
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -153,7 +155,7 @@
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod sql.qp/unix-timestamp->timestamp [:mysql :seconds] [_ _ expr]
+(defmethod sql.qp/unix-timestamp->honeysql [:mysql :seconds] [_ _ expr]
   (hsql/call :from_unixtime expr))
 
 (defn- date-format [format-str expr] (hsql/call :date_format expr (hx/literal format-str)))

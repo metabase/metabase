@@ -77,10 +77,10 @@
     (mt/test-drivers (mt/normal-drivers-with-feature :standard-deviation-aggregations)
       ;; standard deviation calculations are always NOT EXACT (normal behavior) so round results to nearest whole
       ;; number.
-      (is (= [[3 (if (= driver/*driver* :mysql) 25.0 26.0)]
+      (is (= [[3 25.0]
               [1 24.0]
               [2 21.0]
-              [4 (if (= driver/*driver* :mysql) 14.0 15.0)]]
+              [4 14.0]]
              (mt/formatted-rows [int 0.0]
                (mt/run-mbql-query venues
                  {:aggregation [[:stddev $category_id]]

@@ -8,6 +8,7 @@ import { createSelector } from "reselect";
 import { reduxForm, getValues, initialize, change } from "redux-form";
 import { getIn, assocIn } from "icepick";
 import _ from "underscore";
+import { t } from "ttag";
 
 import CustomForm from "metabase/components/form/CustomForm";
 import StandardForm from "metabase/components/form/StandardForm";
@@ -82,6 +83,12 @@ type State = {
   inlineFields: { [name: FormFieldName]: FormFieldDefinition },
 };
 
+type SubmitState = {
+  submitting: boolean,
+  failed: boolean,
+  result: any,
+};
+
 let FORM_ID = 0;
 // use makeMapStateToProps so each component gets it's own unique formId
 const makeMapStateToProps = () => {
@@ -95,19 +102,37 @@ const makeMapStateToProps = () => {
   };
 };
 
-const ReduxFormComponent = reduxForm()(props => {
-  const FormComponent =
-    props.formComponent || (props.children ? CustomForm : StandardForm);
-  return <FormComponent {...props} />;
-});
+const ReduxFormComponent = reduxForm()(
+  ({ handleSubmit, submitState, ...props }) => {
+    const FormComponent =
+      props.formComponent || (props.children ? CustomForm : StandardForm);
+    return (
+      <FormComponent
+        {...props}
+        handleSubmit={async (...args) => {
+          await handleSubmit(...args);
+          // normally handleSubmit swallows the result/error, but we want to make it available to things like ActionButton
+          if (submitState.failed) {
+            throw submitState.result;
+          } else {
+            return submitState.result;
+          }
+        }}
+      />
+    );
+  },
+);
 
 @connect(makeMapStateToProps)
 export default class Form extends React.Component {
   props: Props;
   state: State;
 
-  _submitting: boolean = false;
-  _submitFailed: boolean = false;
+  _state: SubmitState = {
+    submitting: false,
+    failed: false,
+    result: undefined,
+  };
 
   _getFormDefinition: () => FormDefinition;
   _getFormObject: () => FormObject;
@@ -232,8 +257,8 @@ export default class Form extends React.Component {
 
   _validate = (values: FormValues, props: any) => {
     // HACK: clears failed state for global error
-    if (!this._submitting && this._submitFailed) {
-      this._submitFailed = false;
+    if (!this._state.submitting && this._state.failed) {
+      this._state.failed = false;
       props.stopSubmit();
     }
     const formObject = this._getFormObject();
@@ -243,27 +268,35 @@ export default class Form extends React.Component {
   _onSubmit = async (values: FormValues) => {
     const formObject = this._getFormObject();
     // HACK: clears failed state for global error
-    this._submitting = true;
+    this._state.submitting = true;
     try {
       const normalized = formObject.normalize(values);
-      return await this.props.onSubmit(normalized);
+      return (this._state.result = await this.props.onSubmit(normalized));
     } catch (error) {
       console.error("Form submission error", error);
-      this._submitFailed = true;
+      this._state.failed = true;
+      this._state.result = error;
       // redux-form expects { "FIELD NAME": "FIELD ERROR STRING" } or {"_error": "GLOBAL ERROR STRING" }
       if (error && error.data && error.data.errors) {
         try {
           // HACK: blur the current element to ensure we show the error
           document.activeElement.blur();
         } catch (e) {}
-        throw error.data.errors;
+        // if there are errors for fields we don't know about then inject a generic top-level _error key
+        const fieldNames = new Set(this._getFieldNames());
+        const errorNames = Object.keys(error.data.errors);
+        const hasUnknownFields = errorNames.some(name => !fieldNames.has(name));
+        throw {
+          _error: hasUnknownFields ? t`An error occurred` : null,
+          ...error.data.errors,
+        };
       } else if (error) {
         throw {
           _error: error.data.message || error.data,
         };
       }
     } finally {
-      setTimeout(() => (this._submitting = false));
+      setTimeout(() => (this._state.submitting = false));
     }
   };
 
@@ -289,6 +322,8 @@ export default class Form extends React.Component {
         validate={this._validate}
         onSubmit={this._onSubmit}
         onChangeField={this._handleChangeField}
+        // HACK: _state is a mutable object so we can pass by reference into the ReduxFormComponent
+        submitState={this._state}
       />
     );
   }

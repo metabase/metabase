@@ -157,6 +157,18 @@
                                                                      [["=" ["field-id" 2] 1] "foo"]]
                                                               {:default ["field-id" 2]}]]}}))
 
+(expect
+ {:query {:aggregation [:median [:field-id 13]]}}
+ (#'normalize/normalize-tokens {:query {:aggregation ["median" ["field-id" 13]]}}))
+
+(expect
+ {:query {:aggregation [:var [:field-id 13]]}}
+ (#'normalize/normalize-tokens {:query {:aggregation ["var" ["field-id" 13]]}}))
+
+(expect
+ {:query {:aggregation [:percentile [:field-id 13] 0.9]}}
+ (#'normalize/normalize-tokens {:query {:aggregation ["percentile" ["field-id" 13] 0.9]}}))
+
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
@@ -415,6 +427,14 @@
           {:native {:query  "SELECT * FROM venues WHERE name = ?"
                     :params ["Red Medicine"]}}))
       ":native :params shouldn't get normalized."))
+
+(deftest normalize-projections-test
+  (testing "Native :projections shouldn't get normalized."
+    (is (= {:type   :native
+            :native {:projections ["_id" "name" "category_id" "latitude" "longitude" "price"]}}
+           (#'normalize/normalize-tokens
+            {:type   :native
+             :native {:projections ["_id" "name" "category_id" "latitude" "longitude" "price"]}})))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

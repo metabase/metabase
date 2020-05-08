@@ -9,10 +9,15 @@
             [metabase.mbql.schema :as mbql.s]
             [metabase.models.card :refer [Card]]
             [metabase.query-processor.test-util :as qp.test-util]
-            [metabase.sync.analyze.fingerprint.fingerprinters :as fprint]
+            [metabase.sync.analyze.fingerprint
+             [fingerprinters :as fprint]
+             [insights :as insights]]
             [metabase.sync.analyze.query-results :as qr]
-            [metabase.test.mock.util :as mock.u]
-            [metabase.test.util :as tu]))
+            [metabase.test
+             [data :as data]
+             [sync :as sync-test]
+             [util :as tu]]
+            [metabase.test.mock.util :as mock.u]))
 
 (defn- column->name-keyword [field-or-column-metadata]
   (-> field-or-column-metadata
@@ -99,3 +104,20 @@
     (mt/with-temp Card [card {:dataset_query {:database (mt/id), :type :native, :native {:query "select longitude from venues"}}}]
       (is (= (select-keys mock.u/venue-fingerprints [:longitude])
              (name->fingerprints (query->result-metadata (query-for-card card))))))))
+
+(defn- timeseries-dataset
+  []
+  (->> {:aggregation [[:count]]
+        :breakout    [[:datetime-field [:field-id (data/id :checkins :date)] :month]]}
+       (mt/run-mbql-query checkins)
+       :data))
+
+(deftest error-resilience-test
+  (testing "Data should come back even if there is an error during fingerprinting"
+    (is (= 36 (mt/suppress-output
+                (with-redefs [fprint/earliest sync-test/crash-fn]
+                  (-> (timeseries-dataset) :rows count))))))
+  (testing "Data should come back even if there is an error when calculating insights"
+    (is (= 36 (mt/suppress-output
+                (with-redefs [insights/change sync-test/crash-fn]
+                  (-> (timeseries-dataset) :rows count)))))))

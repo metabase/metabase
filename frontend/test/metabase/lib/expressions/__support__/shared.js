@@ -110,6 +110,17 @@ const aggregation = [
 
 const filter = [
   ["[Total] < 10", ["<", total, 10], "filter operator"],
+  // [
+  //   "floor([Total]) < 10",
+  //   ["<", ["floor", total], 10],
+  //   "filter operator with number function",
+  // ],
+  ["between([Subtotal], 1, 2)", ["between", subtotal, 1, 2], "filter function"],
+  [
+    "between([Subtotal] - [Tax], 1, 2)",
+    ["between", ["-", subtotal, tax], 1, 2],
+    "filter function with math",
+  ],
   ["NOT [Total] < 10", ["not", ["<", total, 10]], "filter with not"],
   [
     "[Total] < 10 AND [Tax] >= 1",

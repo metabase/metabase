@@ -33,6 +33,7 @@
 
 (defmethod driver/supports? [:h2 :full-join] [_ _] false)
 (defmethod driver/supports? [:h2 :regex] [_ _] false)
+(defmethod driver/supports? [:h2 :percentile-aggregations] [_ _] false)
 
 (defmethod driver/connection-properties :h2
   [_]
@@ -134,10 +135,10 @@
     expr
     (hsql/raw "timestamp '1970-01-01T00:00:00Z'")))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:h2 :seconds] [_ _ expr]
+(defmethod sql.qp/unix-timestamp->honeysql [:h2 :seconds] [_ _ expr]
   (add-to-1970 expr "second"))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:h2 :millisecond] [_ _ expr]
+(defmethod sql.qp/unix-timestamp->honeysql [:h2 :millisecond] [_ _ expr]
   (add-to-1970 expr "millisecond"))
 
 
@@ -178,6 +179,10 @@
                   (hx/concat (hx/year expr) (hx/- (hx/* (hx/quarter expr)
                                                         3)
                                                   2))))
+
+(defmethod sql.qp/->honeysql [:h2 :log]
+  [driver [_ field]]
+  (hsql/call :log10 (sql.qp/->honeysql driver field)))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -297,7 +302,8 @@
 ;; de-CLOB any CLOB values that come back
 (defmethod sql-jdbc.execute/read-column-thunk :h2
   [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
-  (let [classname (Class/forName (.getColumnClassName rsmeta i) true (classloader/the-classloader))]
+  (let [classname (some-> (.getColumnClassName rsmeta i)
+                          (Class/forName true (classloader/the-classloader)))]
     (if (isa? classname Clob)
       (fn []
         (jdbc-protocols/clob->str (.getObject rs i)))

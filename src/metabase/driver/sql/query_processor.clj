@@ -146,19 +146,32 @@
 
 (defmethod quote-style :sql [_] :ansi)
 
+(defmulti ^{:deprecated "0.35.0"} unix-timestamp->timestamp
+  "DEPRECATED -- use `unix-timestamp->honeysql` instead.
 
-(defmulti unix-timestamp->timestamp
+  This has been deprecated because the name isn't entirely clear or accurate. `unix-timestamp->honeysql` is a better
+  explanation of the purpose of this method. For the time being, `unix-timestamp->honeysql` will fall back to
+  implementations of `unix-timestamp->timestamp`; this will be removed in a future release."
+  {:arglists '([driver seconds-or-milliseconds expr]), :deprecated "0.35.0"}
+  (fn [driver seconds-or-milliseconds _] [(driver/dispatch-on-initialized-driver driver) seconds-or-milliseconds]))
+
+(defmulti unix-timestamp->honeysql
   "Return a HoneySQL form appropriate for converting a Unix timestamp integer field or value to an proper SQL Timestamp.
   `seconds-or-milliseconds` refers to the resolution of the int in question and with be either `:seconds` or
   `:milliseconds`.
 
   There is a default implementation for `:milliseconds` the recursively calls with `:seconds` and `(expr / 1000)`."
-  {:arglists '([driver seconds-or-milliseconds field-or-value])}
+  {:arglists '([driver seconds-or-milliseconds expr]), :added "0.35.0"}
   (fn [driver seconds-or-milliseconds _] [(driver/dispatch-on-initialized-driver driver) seconds-or-milliseconds])
   :hierarchy #'driver/hierarchy)
 
-(defmethod unix-timestamp->timestamp [:sql :milliseconds] [driver _ expr]
-  (unix-timestamp->timestamp driver :seconds (hx// expr 1000)))
+(defmethod unix-timestamp->honeysql [:sql :milliseconds]
+  [driver _ expr]
+  (unix-timestamp->honeysql driver :seconds (hx// expr 1000)))
+
+(defmethod unix-timestamp->honeysql :default
+  [driver seconds-or-milliseconds expr]
+  (unix-timestamp->timestamp driver seconds-or-milliseconds expr))
 
 
 (defmulti apply-top-level-clause
@@ -172,7 +185,8 @@
     [(driver/dispatch-on-initialized-driver driver) top-level-clause])
   :hierarchy #'driver/hierarchy)
 
-(defmethod apply-top-level-clause :default [_ _ honeysql-form _]
+(defmethod apply-top-level-clause :default
+  [_ _ honeysql-form _]
   honeysql-form)
 
 ;; this is the primary way to override behavior for a specific clause or object class.
@@ -212,8 +226,8 @@
   "Wrap a `field-identifier` in appropriate HoneySQL expressions if it refers to a UNIX timestamp Field."
   [driver field field-identifier]
   (condp #(isa? %2 %1) (:special_type field)
-    :type/UNIXTimestampSeconds      (unix-timestamp->timestamp driver :seconds      field-identifier)
-    :type/UNIXTimestampMilliseconds (unix-timestamp->timestamp driver :milliseconds field-identifier)
+    :type/UNIXTimestampSeconds      (unix-timestamp->honeysql driver :seconds      field-identifier)
+    :type/UNIXTimestampMilliseconds (unix-timestamp->honeysql driver :milliseconds field-identifier)
     field-identifier))
 
 ;; default implmentation is a no-op; other drivers can override it as needed
@@ -280,19 +294,35 @@
         (hx/+ min-value))))
 
 
-(defmethod ->honeysql [:sql :count] [driver [_ field]]
+(defmethod ->honeysql [:sql :count]
+  [driver [_ field]]
   (if field
     (hsql/call :count (->honeysql driver field))
     :%count.*))
 
-(defmethod ->honeysql [:sql :avg]      [driver [_ field]] (hsql/call :avg            (->honeysql driver field)))
-(defmethod ->honeysql [:sql :distinct] [driver [_ field]] (hsql/call :distinct-count (->honeysql driver field)))
-(defmethod ->honeysql [:sql :stddev]   [driver [_ field]] (hsql/call :stddev         (->honeysql driver field)))
-(defmethod ->honeysql [:sql :sum]      [driver [_ field]] (hsql/call :sum            (->honeysql driver field)))
-(defmethod ->honeysql [:sql :min]      [driver [_ field]] (hsql/call :min            (->honeysql driver field)))
-(defmethod ->honeysql [:sql :max]      [driver [_ field]] (hsql/call :max            (->honeysql driver field)))
+(defmethod ->honeysql [:sql :avg]        [driver [_ field]]   (hsql/call :avg             (->honeysql driver field)))
+(defmethod ->honeysql [:sql :median]     [driver [_ field]]   (hsql/call :median          (->honeysql driver field)))
+(defmethod ->honeysql [:sql :percentile] [driver [_ field p]] (hsql/call :percentile-cont (->honeysql driver field) (->honeysql driver p)))
+(defmethod ->honeysql [:sql :distinct]   [driver [_ field]]   (hsql/call :distinct-count  (->honeysql driver field)))
+(defmethod ->honeysql [:sql :stddev]     [driver [_ field]]   (hsql/call :stddev_pop      (->honeysql driver field)))
+(defmethod ->honeysql [:sql :var]        [driver [_ field]]   (hsql/call :var_pop         (->honeysql driver field)))
+(defmethod ->honeysql [:sql :sum]        [driver [_ field]]   (hsql/call :sum             (->honeysql driver field)))
+(defmethod ->honeysql [:sql :min]        [driver [_ field]]   (hsql/call :min             (->honeysql driver field)))
+(defmethod ->honeysql [:sql :max]        [driver [_ field]]   (hsql/call :max             (->honeysql driver field)))
 
-(defmethod ->honeysql [:sql :+] [driver [_ & args]]
+(defmethod ->honeysql [:sql :floor] [driver [_ field]] (hsql/call :floor (->honeysql driver field)))
+(defmethod ->honeysql [:sql :ceil]  [driver [_ field]] (hsql/call :ceil  (->honeysql driver field)))
+(defmethod ->honeysql [:sql :round] [driver [_ field]] (hsql/call :round (->honeysql driver field)))
+(defmethod ->honeysql [:sql :abs]   [driver [_ field]] (hsql/call :abs (->honeysql driver field)))
+
+(defmethod ->honeysql [:sql :log]   [driver [_ field]] (hsql/call :log 10 (->honeysql driver field)))
+(defmethod ->honeysql [:sql :exp]   [driver [_ field]] (hsql/call :exp (->honeysql driver field)))
+(defmethod ->honeysql [:sql :sqrt]  [driver [_ field]] (hsql/call :sqrt (->honeysql driver field)))
+(defmethod ->honeysql [:sql :power] [driver [_ field power]]
+  (hsql/call :power (->honeysql driver field) (->honeysql driver power)))
+
+(defmethod ->honeysql [:sql :+]
+  [driver [_ & args]]
   (if (mbql.u/datetime-arithmetics? args)
     (let [[field & intervals] args]
       (reduce (fn [hsql-form [_ amount unit]]
@@ -399,7 +429,8 @@
        (apply hsql/call :case)))
 
 ;; actual handling of the name is done in the top-level clause handler for aggregations
-(defmethod ->honeysql [:sql :aggregation-options] [driver [_ ag]]
+(defmethod ->honeysql [:sql :aggregation-options]
+  [driver [_ ag]]
   (->honeysql driver ag))
 
 ;;  aggregation REFERENCE e.g. the ["aggregation" 0] fields we allow in order-by
@@ -795,7 +826,7 @@
 ;;; -------------------------------------------- putting it all togetrher --------------------------------------------
 
 (defn- expressions->subselect
-  [{:keys [expressions fields] :as query}]
+  [{:keys [expressions] :as query}]
   (let [subselect (-> query
                       (select-keys [:joins :source-table :source-query :source-metadata])
                       (assoc :fields
@@ -806,14 +837,12 @@
                                  (mbql.u/replace expression-definition
                                    [:expression expr] (expressions (keyword expr)))])
                               (distinct
-                               (mbql.u/match query [(_ :guard #{:field-literal :field-id :joined-field}) & _])))))
-        ;; TODO -- correctly handle fields in multiple tables with the same name
-        fields    (mbql.u/replace fields
-                    [:joined-field alias field] [:joined-field "source" field])]
+                               (mbql.u/match query [(_ :guard #{:field-literal :field-id :joined-field}) & _])))))]
     (-> query
+        ;; TODO -- correctly handle fields in multiple tables with the same name
+        (mbql.u/replace [:joined-field alias field] [:joined-field "source" field])
         (dissoc :source-table :source-query :joins :expressions :source-metadata)
-        (assoc :source-query subselect
-               :fields       fields))))
+        (assoc :source-query subselect))))
 
 (defn- apply-clauses
   "Like `apply-top-level-clauses`, but handles `source-query` as well, which needs to be handled in a special way

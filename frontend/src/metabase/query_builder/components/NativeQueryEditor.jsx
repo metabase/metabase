@@ -212,6 +212,7 @@ export default class NativeQueryEditor extends Component {
   }
 
   componentWillUnmount() {
+    this.props.cancelQuery();
     document.removeEventListener("keydown", this.handleKeyDown);
   }
 
@@ -227,6 +228,7 @@ export default class NativeQueryEditor extends Component {
   };
 
   runQuery = () => {
+    this.props.cancelQuery();
     const { query, runQuestionQuery } = this.props;
 
     // if any text is selected, just run that

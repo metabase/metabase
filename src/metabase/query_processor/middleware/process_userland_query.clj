@@ -35,15 +35,22 @@
     (db/insert! QueryExecution (dissoc query-execution :json_query))))
 
 (defn- save-query-execution!
-  "Save a `QueryExecution` row containing `execution-info`. This is done when a query is finished, so
-  regardless of whether results streaming is canceled, we want to continue the save; for this reason, we don't call
-  `future-cancel` if we get a message to `canceled-chan` the way we normally do."
+  "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."
   [execution-info]
-  (log/trace "Saving QueryExecution info")
-  (try
-    (save-query-execution!* (add-running-time execution-info))
-    (catch Throwable e
-      (log/error e (trs "Error saving query execution info")))))
+  (let [execution-info (add-running-time execution-info)]
+    ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
+    ;;    pool, which is a fixed pool of size `nthreads + 2`. This way we don't spin up a ton of threads doing unimportant
+    ;;    background query execution saving (as `future` would do, which uses an unbounded thread pool by default)
+    ;;
+    ;; 2. This is on purpose! By *not* using `bound-fn` or `future`, any dynamic variables in play when the task is
+    ;;    submitted, such as `db/*connection*`, won't be in play when the task is actually executed. That way we won't
+    ;;    attempt to use closed DB connections
+    (.submit clojure.lang.Agent/pooledExecutor ^Runnable (fn []
+                                                           (log/trace "Saving QueryExecution info")
+                                                           (try
+                                                             (save-query-execution!* execution-info)
+                                                             (catch Throwable e
+                                                               (log/error e (trs "Error saving query execution info"))))))))
 
 (defn- save-successful-query-execution! [query-execution result-rows]
   (save-query-execution! (assoc query-execution :result_rows result-rows)))

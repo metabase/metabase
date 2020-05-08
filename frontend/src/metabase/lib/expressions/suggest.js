@@ -52,17 +52,18 @@ import {
   isExpressionType,
   getFunctionArgType,
   EXPRESSION_TYPES,
+  EDITOR_FK_SYMBOLS,
 } from "./config";
 
-const FUNCTION_SUGGESTIONS_BY_TYPE = {};
-const OPERATOR_SUGGESTIONS_BY_TYPE = {};
+const FUNCTIONS_BY_TYPE = {};
+const OPERATORS_BY_TYPE = {};
 for (const type of EXPRESSION_TYPES) {
-  FUNCTION_SUGGESTIONS_BY_TYPE[type] = Array.from(FUNCTIONS)
+  FUNCTIONS_BY_TYPE[type] = Array.from(FUNCTIONS)
     .filter(name => isExpressionType(MBQL_CLAUSES[name].type, type))
-    .map(name => functionSuggestion("functions", name));
-  OPERATOR_SUGGESTIONS_BY_TYPE[type] = Array.from(OPERATORS)
+    .map(name => MBQL_CLAUSES[name]);
+  OPERATORS_BY_TYPE[type] = Array.from(OPERATORS)
     .filter(name => isExpressionType(MBQL_CLAUSES[name].type, type))
-    .map(name => operatorSuggestion(name));
+    .map(name => MBQL_CLAUSES[name]);
 }
 
 export function suggest({
@@ -91,19 +92,22 @@ export function suggest({
   if (
     lastInputToken &&
     ((isTokenType(lastInputToken.tokenType, Identifier) &&
-      /\w/.test(partialSource[partialSource.length - 1])) ||
+      Identifier.PATTERN.test(partialSource[partialSource.length - 1])) ||
       lastInputTokenIsUnclosedIdentifierString)
   ) {
     tokenVector = tokenVector.slice(0, -1);
     partialSuggestionMode = true;
   }
 
-  let finalSuggestions = [];
-
-  const syntacticSuggestions = parserWithRecovery.computeContentAssist(
-    startRule,
-    tokenVector,
-  );
+  const identifierTrimOptions = lastInputTokenIsUnclosedIdentifierString
+    ? {
+        // use the last token's pattern anchored to the end of the text
+        prefixTrim: new RegExp(lastInputToken.tokenType.PATTERN.source + "$"),
+      }
+    : {
+        prefixTrim: new RegExp(Identifier.PATTERN.source + "$"),
+        postfixTrim: new RegExp("^" + Identifier.PATTERN.source + "\\s*"),
+      };
 
   const context = getContext({
     cst,
@@ -118,6 +122,13 @@ export function suggest({
   }
   const { expectedType } = context;
 
+  let finalSuggestions = [];
+
+  const syntacticSuggestions = parserWithRecovery.computeContentAssist(
+    startRule,
+    tokenVector,
+  );
+
   for (const suggestion of syntacticSuggestions) {
     const { nextTokenType, ruleStack } = suggestion;
 
@@ -127,22 +138,14 @@ export function suggest({
       const parentRule = ruleStack.slice(-2, -1)[0];
       const isDimension =
         parentRule === "dimensionExpression" &&
-        isExpressionType(expectedType, "expression");
+        (isExpressionType(expectedType, "expression") ||
+          isExpressionType(expectedType, "boolean"));
       const isSegment =
         parentRule === "segmentExpression" &&
         isExpressionType(expectedType, "boolean");
       const isMetric =
         parentRule === "metricExpression" &&
         isExpressionType(expectedType, "aggregation");
-
-      const trimOptions = lastInputTokenIsUnclosedIdentifierString
-        ? {
-            // use the last token's pattern anchored to the end of the text
-            prefixTrim: new RegExp(
-              lastInputToken.tokenType.PATTERN.source + "$",
-            ),
-          }
-        : { prefixTrim: /\w+$/, postfixTrim: /^\w+\s*/ };
 
       if (isDimension) {
         let dimensions = [];
@@ -177,7 +180,10 @@ export function suggest({
             type: "fields",
             name: getDimensionName(dimension),
             text: formatDimensionName(dimension) + " ",
-            ...trimOptions,
+            alternates: EDITOR_FK_SYMBOLS.symbols.map(symbol =>
+              getDimensionName(dimension, symbol),
+            ),
+            ...identifierTrimOptions,
           })),
         );
       }
@@ -187,7 +193,7 @@ export function suggest({
             type: "segments",
             name: segment.name,
             text: formatSegmentName(segment),
-            ...trimOptions,
+            ...identifierTrimOptions,
           })),
         );
       }
@@ -197,7 +203,7 @@ export function suggest({
             type: "metrics",
             name: metric.name,
             text: formatMetricName(metric),
-            ...trimOptions,
+            ...identifierTrimOptions,
           })),
         );
       }
@@ -235,24 +241,45 @@ export function suggest({
       isTokenType(nextTokenType, FunctionName) ||
       nextTokenType === Case
     ) {
+      const database = query.database();
+      let functions = [];
       if (isExpressionType(expectedType, "aggregation")) {
         // special case for aggregation
         finalSuggestions.push(
-          ...query
-            .aggregationOperatorsWithoutRows()
-            .filter(a => getExpressionName(a.short))
-            .map(aggregationOperator =>
+          // ...query
+          //   .aggregationOperatorsWithoutRows()
+          //   .filter(a => getExpressionName(a.short))
+          //   .map(aggregationOperator =>
+          //     functionSuggestion(
+          //       "aggregations",
+          //       aggregationOperator.short,
+          //       aggregationOperator.fields.length > 0,
+          //     ),
+          //   ),
+          ...FUNCTIONS_BY_TYPE["aggregation"]
+            .filter(clause => database.hasFeature(clause.requiresFeature))
+            .map(clause =>
               functionSuggestion(
                 "aggregations",
-                aggregationOperator.short,
-                aggregationOperator.fields.length > 0,
+                clause.name,
+                clause.args.length > 0,
               ),
             ),
         );
-        finalSuggestions.push(...FUNCTION_SUGGESTIONS_BY_TYPE["number"]);
+        finalSuggestions.push(
+          ...["sum-where", "count-where", "share"].map(short =>
+            functionSuggestion("aggregations", short, true),
+          ),
+        );
+        functions = FUNCTIONS_BY_TYPE["number"];
       } else {
-        finalSuggestions.push(...FUNCTION_SUGGESTIONS_BY_TYPE[expectedType]);
+        functions = FUNCTIONS_BY_TYPE[expectedType];
       }
+      finalSuggestions.push(
+        ...functions
+          .filter(clause => database.hasFeature(clause.requiresFeature))
+          .map(clause => functionSuggestion("functions", clause.name)),
+      );
     } else if (nextTokenType === LParen) {
       finalSuggestions.push({
         type: "other",
@@ -298,11 +325,16 @@ export function suggest({
 
   // throw away any suggestion that is not a suffix of the last partialToken.
   if (partialSuggestionMode) {
+    const input = lastInputToken.image;
     const partial = lastInputTokenIsUnclosedIdentifierString
-      ? lastInputToken.image.slice(1).toLowerCase()
-      : lastInputToken.image.toLowerCase();
+      ? input.slice(1).toLowerCase()
+      : input.toLowerCase();
     for (const suggestion of finalSuggestions) {
-      suggestion: for (const text of [suggestion.name, suggestion.text]) {
+      suggestion: for (const text of [
+        suggestion.name,
+        suggestion.text,
+        ...(suggestion.alternates || []),
+      ]) {
         const lower = (text || "").toLowerCase();
         if (lower.startsWith(partial)) {
           suggestion.range = [0, partial.length];

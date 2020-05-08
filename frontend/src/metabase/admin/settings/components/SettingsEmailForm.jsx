@@ -69,7 +69,7 @@ export default class SettingsEmailForm extends Component {
     const { sendingEmail } = this.state;
     return (
       <SettingsBatchForm
-        ref={form => (this._form = form)}
+        ref={form => (this._form = form && form.getWrappedInstance())}
         {...this.props}
         updateSettings={this.props.updateEmailSettings}
         disable={sendingEmail !== "default"}

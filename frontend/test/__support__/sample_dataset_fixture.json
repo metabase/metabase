@@ -96,13 +96,16 @@
           "basic-aggregations",
           "standard-deviation-aggregations",
           "expression-aggregations",
+          "percentile-aggregations",
           "foreign-keys",
           "native-parameters",
           "expressions",
+          "advanced-math-expressions",
           "right-join",
           "left-join",
           "inner-join",
-          "nested-queries"
+          "nested-queries",
+          "regex"
         ],
         "name": "Sample Dataset",
         "caveats": null,

@@ -108,7 +108,8 @@
        (reduced result#)
        result#)))
 
-(defn- with-error-handling
+(defn with-error-handling
+  "Wrap `rf` in an error-catching transducer."
   [rf msg]
   (fn
     ([] (with-reduced-error msg (rf)))

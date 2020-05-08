@@ -132,7 +132,7 @@
                                   vec)
                              (-> result :results first keys))
         metadata           (result-metadata col-names)
-        annotate-col-names (map (comp keyword :name) (annotate/column-info* outer-query metadata))]
+        annotate-col-names (map (comp keyword :name) (annotate/merged-column-info outer-query metadata))]
     (respond metadata (result-rows result col-names annotate-col-names))))
 
 (defn execute-reducible-query

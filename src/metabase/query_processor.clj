@@ -162,7 +162,7 @@
   (qp.store/with-store
     (let [preprocessed (query->preprocessed query)]
       (driver/with-driver (driver.u/database->driver (:database preprocessed))
-        (seq (annotate/column-info* preprocessed nil))))))
+        (seq (annotate/merged-column-info preprocessed nil))))))
 
 (defn query->native
   "Return the native form for `query` (e.g. for a MBQL query on Postgres this would return a map containing the compiled

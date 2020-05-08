@@ -28,6 +28,8 @@
 (driver/register! :sqlite, :parent :sql-jdbc)
 
 (defmethod driver/supports? [:sqlite :regex] [_ _] false)
+(defmethod driver/supports? [:sqlite :percentile-aggregations] [_ _] false)
+(defmethod driver/supports? [:sqlite :advanced-math-expressions] [_ _] false)
 
 (defmethod sql-jdbc.conn/connection-details->spec :sqlite
   [_ {:keys [db]
@@ -163,7 +165,7 @@
   [driver _ expr]
   (->date (sql.qp/->honeysql driver expr) (hx/literal "start of year")))
 
-(defmethod driver/date-add :sqlite
+(defmethod sql.qp/add-interval-honeysql-form :sqlite
   [driver hsql-form amount unit]
   (let [[multiplier sqlite-unit] (case unit
                                    :second  [1 "seconds"]
@@ -189,7 +191,7 @@
     (->datetime (sql.qp/date driver unit hsql-form)
                 (hx/literal (format "%+d %s" (* amount multiplier) sqlite-unit)))))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:sqlite :seconds]
+(defmethod sql.qp/unix-timestamp->honeysql [:sqlite :seconds]
   [_ _ expr]
   (->datetime expr (hx/literal "unixepoch")))
 
@@ -227,6 +229,14 @@
                                   (if (string? arg)
                                     (hx/literal arg)
                                     arg)))))))
+
+(defmethod sql.qp/->honeysql [:sqlite :floor]
+  [driver [_ arg]]
+  (hsql/call :round (hsql/call :- arg 0.5)))
+
+(defmethod sql.qp/->honeysql [:sqlite :ceil]
+  [driver [_ arg]]
+  (hsql/call :round (hsql/call :+ arg 0.5)))
 
 
 ;; See https://sqlite.org/lang_datefunc.html
@@ -298,7 +308,7 @@
   [& args]
   (apply sql-jdbc.sync/post-filtered-active-tables args))
 
-(defmethod sql.qp/current-datetime-fn :sqlite
+(defmethod sql.qp/current-datetime-honeysql-form :sqlite
   [_]
   (hsql/call :datetime (hx/literal :now)))
 

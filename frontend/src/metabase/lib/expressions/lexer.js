@@ -8,7 +8,6 @@ import {
   BOOLEAN_UNARY_OPERATORS,
   AGGREGATION_FUNCTIONS,
   EXPRESSION_FUNCTIONS,
-  FILTER_FUNCTIONS,
   MBQL_CLAUSES,
   EDITOR_QUOTES,
 } from "./config";
@@ -37,7 +36,7 @@ function createClauseToken(name, options = {}) {
 
 export const Identifier = createToken({
   name: "Identifier",
-  pattern: /\w+/,
+  pattern: /(\w|\.)+/,
   label: "identfier",
 });
 export const IdentifierString = createToken({
@@ -154,18 +153,6 @@ for (const clause of Array.from(EXPRESSION_FUNCTIONS)) {
 // special-case Case since it uses different syntax
 export const Case = createClauseToken("case");
 
-// FILTERS
-
-export const FilterFunctionName = createToken({
-  name: "FilterFunctionName",
-  pattern: Lexer.NA,
-  categories: [FunctionName],
-});
-
-for (const clause of Array.from(FILTER_FUNCTIONS)) {
-  createClauseToken(clause, { categories: [FilterFunctionName] });
-}
-
 // MISC
 
 export const Comma = createToken({
@@ -196,6 +183,14 @@ const getQuoteCategories = character => {
     : [];
 };
 
+const quotedStringRegex = (character, closed = true) => {
+  const open = character;
+  const close = closed ? character : "";
+  return new RegExp(
+    `${open}(?:[^\\\\${character}]|\\\\(?:[bfnrtv${character}\\\\/]|u[0-9a-fA-F]{4}))*${close}`,
+  );
+};
+
 export const BracketQuotedString = createToken({
   name: "BracketQuotedString",
   pattern: /\[[^\]]*\]/,
@@ -203,12 +198,12 @@ export const BracketQuotedString = createToken({
 });
 export const SingleQuotedString = createToken({
   name: "SingleQuotedString",
-  pattern: /'(?:[^\\']+|\\(?:[bfnrtv'\\/]|u[0-9a-fA-F]{4}))*'/,
+  pattern: quotedStringRegex("'"),
   categories: getQuoteCategories("'"),
 });
 export const DoubleQuotedString = createToken({
   name: "DoubleQuotedString",
-  pattern: /"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*"/,
+  pattern: quotedStringRegex('"'),
   categories: getQuoteCategories('"'),
 });
 
@@ -238,7 +233,6 @@ export const allTokens = [
   FunctionName,
   AggregationFunctionName,
   ExpressionFunctionName,
-  FilterFunctionName,
   // all clauses
   ...CLAUSE_TOKENS.keys(),
   // literals
@@ -274,12 +268,12 @@ export const UnclosedBracketQuotedString = createToken({
 });
 export const UnclosedSingleQuotedString = createToken({
   name: "UnclosedSingleQuotedString",
-  pattern: /'(?:[^\\']+|\\(?:[bfnrtv'\\/]|u[0-9a-fA-F]{4}))*/,
+  pattern: quotedStringRegex("'", false),
   categories: [RecoveryToken, UnclosedQuotedString, ...getQuoteCategories("'")],
 });
 export const UnclosedDoubleQuotedString = createToken({
-  name: "DoubleQuoUnclosedDoubleQuotedStringtedString",
-  pattern: /"(?:[^\\"]+|\\(?:[bfnrtv"\\/]|u[0-9a-fA-F]{4}))*/,
+  name: "UnclosedDoubleQuotedString",
+  pattern: quotedStringRegex('"', false),
   categories: [RecoveryToken, UnclosedQuotedString, ...getQuoteCategories('"')],
 });
 export const Any = createToken({

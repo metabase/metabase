@@ -3,7 +3,8 @@
             [clojure.tools.logging :as log]
             [metabase.async.util :as async.u]
             [metabase.query-processor.context :as context]
-            [metabase.query-processor.context.default :as context.default]))
+            [metabase.query-processor.context.default :as context.default]
+            [metabase.util :as u]))
 
 (defn- wire-up-context-channels!
   "Wire up the core.async channels in a QP `context`."
@@ -17,7 +18,7 @@
     (a/go
       (let [[val port] (a/alts! [out-chan (a/timeout timeout)] :priority true)]
         (log/tracef "Port %s got %s"
-                    (if (= port out-chan) "out-chan" (format "[timeout after %d ms]" timeout))
+                    (if (= port out-chan) "out-chan" (format "[timeout after %s]" (u/format-milliseconds timeout)))
                     val)
         (cond
           (not= port out-chan) (context/timeoutf context)
@@ -46,6 +47,7 @@
 
 (defn quit
   "Create a special Exception that, when thrown or raised in the QP, will cause `result` to be returned directly.
+  Similar in concept to using `reduced` to stip reduction early.
 
     (context/raisef (qp.reducible/quit :my-result) context)"
   [result]

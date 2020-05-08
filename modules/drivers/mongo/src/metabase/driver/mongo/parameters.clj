@@ -3,6 +3,7 @@
              [string :as str]
              [walk :as walk]]
             [clojure.tools.logging :as log]
+            [java-time :as t]
             [metabase.driver.common.parameters :as params]
             [metabase.driver.common.parameters
              [dates :as date-params]
@@ -19,19 +20,44 @@
   (:import java.time.temporal.Temporal
            [metabase.driver.common.parameters CommaSeparatedNumbers Date]))
 
-(defn- param-value->str [x]
-  ;; sequences get converted to `$in`
-  (if (sequential? x)
-    (format "{$in: [%s]}" (str/join ", " (map param-value->str x)))
-    (condp instance? x
-      ;; Date = the Parameters Date type, not an actual Temporal type
-      Date                  (param-value->str (u.date/parse (:s x)))
-      ;; convert temporal types to ISODate("2019-12-09T...") (etc.)
-      Temporal              (format "ISODate(\"%s\")" (u.date/format x))
-      ;; there's a special record type for sequences of numbers; pull the sequence it wraps out and recur
-      CommaSeparatedNumbers (param-value->str (:numbers x))
-      ;; for everything else, splice it in as its string representation
-      (pr-str x))))
+(defn- ->utc-instant [t]
+  (t/instant
+   (condp instance? t
+     java.time.LocalDate     (t/zoned-date-time t (t/local-time "00:00") (t/zone-id "UTC"))
+     java.time.LocalDateTime (t/zoned-date-time t (t/zone-id "UTC"))
+     t)))
+
+(defn- param-value->str
+  [{special-type :special_type, :as field} x]
+  (cond
+    ;; sequences get converted to `$in`
+    (sequential? x)
+    (format "{$in: [%s]}" (str/join ", " (map (partial param-value->str field) x)))
+
+    ;; Date = the Parameters Date type, not an java.util.Date or java.sql.Date type
+    ;; convert to a `Temporal` instance and recur
+    (instance? Date x)
+    (param-value->str field (u.date/parse (:s x)))
+
+    (and (instance? Temporal x)
+         (isa? special-type :type/UNIXTimestampSeconds))
+    (long (/ (t/to-millis-from-epoch (->utc-instant x)) 1000))
+
+    (and (instance? Temporal x)
+         (isa? special-type :type/UNIXTimestampMilliseconds))
+    (t/to-millis-from-epoch (->utc-instant x))
+
+    ;; convert temporal types to ISODate("2019-12-09T...") (etc.)
+    (instance? Temporal x)
+    (format "ISODate(\"%s\")" (u.date/format x))
+
+    ;; there's a special record type for sequences of numbers; pull the sequence it wraps out and recur
+    (instance? CommaSeparatedNumbers x)
+    (param-value->str field (:numbers x))
+
+    ;; for everything else, splice it in as its string representation
+    :else
+    (pr-str x)))
 
 (defn- field->name [field]
   ;; store parent Field(s) if needed, since `mongo.qp/field->name` attempts to look them up using the QP store
@@ -45,9 +71,9 @@
 (defn- substitute-one-field-filter-date-range [{field :field, {param-type :type, value :value} :value}]
   (let [{:keys [start end]} (date-params/date-string->range value {:inclusive-end? false})
         start-condition     (when start
-                              (format "{%s: {$gte: %s}}" (field->name field) (param-value->str (u.date/parse start))))
+                              (format "{%s: {$gte: %s}}" (field->name field) (param-value->str field (u.date/parse start))))
         end-condition       (when end
-                              (format "{%s: {$lt: %s}}" (field->name field) (param-value->str (u.date/parse end))))]
+                              (format "{%s: {$lt: %s}}" (field->name field) (param-value->str field (u.date/parse end))))]
     (if (and start-condition end-condition)
       (format "{$and: [%s, %s]}" start-condition end-condition)
       (or start-condition
@@ -66,15 +92,15 @@
          (string? value))
     (let [t (u.date/parse value)]
       (format "{$and: [%s, %s]}"
-              (format "{%s: {$gte: %s}}" (field->name field) (param-value->str t))
-              (format "{%s: {$lt: %s}}"  (field->name field) (param-value->str (u.date/add t :day 1)))))
+              (format "{%s: {$gte: %s}}" (field->name field) (param-value->str field t))
+              (format "{%s: {$lt: %s}}"  (field->name field) (param-value->str field (u.date/add t :day 1)))))
 
     :else
-    (format "{%s: %s}" (field->name field) (param-value->str value))))
+    (format "{%s: %s}" (field->name field) (param-value->str field value))))
 
 (defn- substitute-field-filter [{field :field, {:keys [value]} :value, :as field-filter}]
   (if (sequential? value)
-    (format "{%s: %s}" (field->name field) (param-value->str value))
+    (format "{%s: %s}" (field->name field) (param-value->str field value))
     (substitute-one-field-filter field-filter)))
 
 (defn- substitute-param [param->value [acc missing] in-optional? {:keys [k], :as param}]
@@ -97,7 +123,7 @@
       [acc (conj missing k)]
 
       :else
-      [(conj acc (param-value->str v)) missing])))
+      [(conj acc (param-value->str nil v)) missing])))
 
 (declare substitute*)
 
