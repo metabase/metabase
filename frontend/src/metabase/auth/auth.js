@@ -9,6 +9,7 @@ import { push } from "react-router-redux";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { clearGoogleAuthCredentials } from "metabase/lib/auth";
 
+import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
 
 import { SessionApi } from "metabase/services";
@@ -23,7 +24,10 @@ export const login = createThunkAction(
 
     MetabaseAnalytics.trackEvent("Auth", "Login");
     // TODO: redirect after login (carry user to intended destination)
-    await dispatch(refreshCurrentUser());
+    await Promise.all([
+      dispatch(refreshCurrentUser()),
+      dispatch(refreshSiteSettings()),
+    ]);
     dispatch(push(redirectUrl || "/"));
   },
 );

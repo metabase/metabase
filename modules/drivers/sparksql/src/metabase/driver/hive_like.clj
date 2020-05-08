@@ -56,7 +56,7 @@
 
 (defmethod sql.qp/current-datetime-honeysql-form :hive-like [_] :%now)
 
-(defmethod sql.qp/unix-timestamp->timestamp [:hive-like :seconds]
+(defmethod sql.qp/unix-timestamp->honeysql [:hive-like :seconds]
   [_ _ expr]
   (hx/->timestamp (hsql/call :from_unixtime expr)))
 
@@ -108,6 +108,22 @@
     (hx/* (hx/- (hsql/call :quarter (hx/->timestamp expr))
                 1)
           3)))
+
+(defmethod sql.qp/->honeysql [:hive-like :replace]
+  [driver [_ arg pattern replacement]]
+  (hsql/call :regexp_replace (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern) (sql.qp/->honeysql driver replacement)))
+
+(defmethod sql.qp/->honeysql [:hive-like :regex-match-first]
+  [driver [_ arg pattern]]
+  (hsql/call :regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+
+(defmethod sql.qp/->honeysql [:hive-like :median]
+  [driver [_ arg]]
+  (hsql/call :percentile (sql.qp/->honeysql driver arg) 0.5))
+
+(defmethod sql.qp/->honeysql [:hive-like :percentile]
+  [driver [_ arg p]]
+  (hsql/call :percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)))
 
 (defmethod sql.qp/add-interval-honeysql-form :hive-like
   [_ hsql-form amount unit]

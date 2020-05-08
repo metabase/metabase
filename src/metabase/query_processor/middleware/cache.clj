@@ -13,6 +13,7 @@
   (:require [clojure.core.async :as a]
             [clojure.tools.logging :as log]
             [java-time :as t]
+            [medley.core :as m]
             [metabase
              [config :as config]
              [public-settings :as public-settings]
@@ -25,15 +26,15 @@
              [interface :as i]]
             [metabase.query-processor.middleware.cache.impl :as impl]
             [metabase.util.i18n :refer [trs]])
-  (:import java.io.InputStream))
+  (:import org.eclipse.jetty.io.EofException))
 
 (comment backend.db/keep-me)
 
 (def ^:private cache-version
   "Current serialization format version. Basically
 
-    [initial-metadata & rows]"
-  2)
+    [initial-metadata row-1 row-2 ... row-n final-metadata]"
+  3)
 
 ;; TODO - Why not make this an option in the query itself? :confused:
 (def ^:dynamic ^Boolean *ignore-cached-results*
@@ -48,53 +49,44 @@
 
 ;;; ------------------------------------------------------ Save ------------------------------------------------------
 
-;; purge runs on a loop that gets triggered whenever a new cache entry is saved. On each save, `purge-chan` is sent a
-;; `::purge` message; the channel itself uses a sliding buffer of size 1, so additional messages are dropped. Thus
-;; purge actions won't queue up if multiple queries are ran before we get a chance to finish the last one.
-
 (defn- purge! [backend]
   (try
-    (log/tracef "Purging old cache entires older than %s" (u/format-seconds (public-settings/query-caching-max-ttl)))
+    (log/tracef "Purging cache entires older than %s" (u/format-seconds (public-settings/query-caching-max-ttl)))
     (i/purge-old-entries! backend (public-settings/query-caching-max-ttl))
     (catch Throwable e
       (log/error e (trs "Error purging old cache entires")))))
 
-(defonce ^:private purge-chan
-  (delay
-    (let [purge-chan (a/chan (a/sliding-buffer 1))]
-      (a/go-loop []
-        (when-let [backend (a/<! purge-chan)]
-          (a/<! (a/thread (purge! backend)))
-          (recur)))
-      purge-chan)))
-
-(defn- purge-async! []
-  (log/tracef "Sending async purge message to purge-chan")
-  (a/put! @purge-chan *backend*))
-
 (defn- min-duration-ms
-  "Minimum duration it must take a query to complete in order for it to be eligable for caching."
+  "Minimum duration it must take a query to complete in order for it to be eligible for caching."
   []
   (* (public-settings/query-caching-min-ttl) 1000))
 
-(defn- cache-results-async! [query-hash out-chan]
+(defn- cache-results-async!
+  "Save the results of a query asynchronously once they are delivered (as a byte array) to the promise channel
+  `out-chan`."
+  [query-hash out-chan]
   (log/info (trs "Caching results for next time for query with hash {0}." (pr-str (i/short-hex-hash query-hash))) (u/emoji "💾"))
   (a/go
     (let [x (a/<! out-chan)]
-      (if (instance? Throwable x)
-        (when-not (= (:type (ex-data x)) ::impl/max-bytes)
+      (condp instance? x
+        Throwable
+        (if (= (:type (ex-data x)) ::impl/max-bytes)
+          (log/debug x (trs "Not caching results: results are larger than {0} KB" (public-settings/query-caching-max-kb)))
           (log/error x (trs "Error saving query results to cache.")))
+
+        (Class/forName "[B")
         (let [y (a/<! (a/thread
                         (try
                           (i/save-results! *backend* query-hash x)
-                          :ok
                           (catch Throwable e
                             e))))]
           (if (instance? Throwable y)
             (log/error y (trs "Error saving query results to cache."))
             (do
               (log/debug (trs "Successfully cached results for query."))
-              (purge-async!))))))))
+              (purge! *backend*))))
+
+        (log/error (trs "Cannot cache results: expected byte array, got {0}" (class x)))))))
 
 (defn- save-results-xform [start-time metadata query-hash rf]
   (let [{:keys [in-chan out-chan]} (impl/serialize-async)]
@@ -105,7 +97,7 @@
       ([] (rf))
 
       ([result]
-       ;; TODO - what about the final result? Are we ignoring it completely?
+       (a/put! in-chan (if (map? result) (m/dissoc-in result [:data :rows]) {}))
        (a/close! in-chan)
        (let [duration-ms (- (System/currentTimeMillis) start-time)]
          (log/info (trs "Query took {0} to run; miminum for cache eligibility is {1}"
@@ -120,42 +112,59 @@
 
 ;;; ----------------------------------------------------- Fetch ------------------------------------------------------
 
-(defn- add-cached-metadata-xform [rf]
-  (fn
-    ([] (rf))
+(defn- cached-results-rff
+  "Reducing function for cached results. Merges the final object in the cached results, the `final-metdata` map, with
+  the reduced value assuming it is a normal metadata map."
+  [rff]
+  (fn [{:keys [last-ran], :as metadata}]
+    (let [metadata       (dissoc metadata :last-ran :cache-version)
+          rf             (rff metadata)
+          final-metadata (volatile! nil)]
+      (fn
+        ([]
+         (rf))
 
-    ([acc]
-     (rf (if-not (map? acc)
-           acc
-           (-> acc
-               (assoc :cached true
-                      :updated_at (get-in acc [:data :last-ran]))
-               (update :data dissoc :last-ran :cache-version)))))
+        ([acc]
+         ;; if results are in the 'normal format' the use return the final metadata from the cache rather than
+         ;; whatever `acc` is right now since we don't run the entire post-processing pipeline for cached results
+         (let [normal-format? (and (map? acc) (seq (get-in acc [:data :cols])))
+               acc*           (-> (if normal-format?
+                                    @final-metadata
+                                    acc)
+                                  (assoc :cached true, :updated_at last-ran))]
+           (rf acc*)))
 
-    ([acc row]
-     (rf acc row))))
+        ([acc row]
+         (if (map? row)
+           (do (vreset! final-metadata row)
+               (rf acc))
+           (rf acc row)))))))
 
-(defn- do-with-cached-results
+(defn- maybe-reduce-cached-results
   "Reduces cached results if there is a hit. Otherwise, returns `::miss` directly."
   [query-hash max-age-seconds rff context]
-  (if *ignore-cached-results*
-    ::miss
-    (do
-      (log/tracef "Looking for cached-results for query with hash %s younger than %s\n"
-                  (pr-str (i/short-hex-hash query-hash)) (u/format-seconds max-age-seconds))
-      (i/cached-results *backend* query-hash max-age-seconds
-        (fn [^InputStream is]
-          (if (nil? is)
-            ::miss
-            (impl/reducible-deserialized-results is
-              (fn
-                ([_]
-                 ::miss)
-
-                ([metadata reducible-rows]
-                 (context/reducef (fn [metadata]
-                                    (add-cached-metadata-xform (rff metadata)))
-                                  context metadata reducible-rows))))))))))
+  (try
+    (or (when-not *ignore-cached-results*
+          (log/tracef "Looking for cached results for query with hash %s younger than %s\n"
+                      (pr-str (i/short-hex-hash query-hash)) (u/format-seconds max-age-seconds))
+          (i/with-cached-results *backend* query-hash max-age-seconds [is]
+            (when is
+              (impl/with-reducible-deserialized-results [[metadata reducible-rows] is]
+                (log/tracef "Found cached results. Version: %s" (pr-str (:cache-version metadata)))
+                (when (and (= (:cache-version metadata) cache-version)
+                           reducible-rows)
+                  (log/tracef "Reducing cached rows...")
+                  (context/reducef (cached-results-rff rff) context metadata reducible-rows)
+                  (log/tracef "All cached rows reduced")
+                  ::ok)))))
+        ::miss)
+    (catch EofException _
+      (log/debug (trs "Request is closed; no one to return cached results to"))
+      ::canceled)
+    (catch Throwable e
+      (log/error e (trs "Error attempting to fetch cached results for query with hash {0}"
+                        (i/short-hex-hash query-hash)))
+      ::miss)))
 
 
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
@@ -165,10 +174,10 @@
   ;; TODO - Query will already have `info.hash` if it's a userland query. I'm not 100% sure it will be the same hash,
   ;; because this is calculated after normalization, instead of before
   (let [query-hash (qputil/query-hash query)
-        result     (do-with-cached-results query-hash cache-ttl rff context)]
-    (if-not (= ::miss result)
-      result
+        result     (maybe-reduce-cached-results query-hash cache-ttl rff context)]
+    (when (= result ::miss)
       (let [start-time-ms (System/currentTimeMillis)]
+        (log/trace "Running query and saving cached results (if eligible)...")
         (qp query
             (fn [metadata]
               (save-results-xform start-time-ms metadata query-hash (rff metadata)))
@@ -192,6 +201,8 @@
      *  The result *rows* of the query must be less than `query-caching-max-kb` when serialized (before compression)."
   [qp]
   (fn [query rff context]
-    (if (is-cacheable? query)
-      (run-query-with-cache qp query rff context)
-      (qp query rff context))))
+    (let [cacheable? (is-cacheable? query)]
+      (log/tracef "Query is cacheable? %s" (boolean cacheable?))
+      (if cacheable?
+        (run-query-with-cache qp query rff context)
+        (qp query rff context)))))

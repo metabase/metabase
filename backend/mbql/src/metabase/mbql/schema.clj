@@ -2,7 +2,7 @@
   "Schema for validating a *normalized* MBQL query. This is also the definitive grammar for MBQL, wow!"
   (:refer-clojure
    :exclude
-   [count distinct min max + - / * and or not = < > <= >= time])
+   [count distinct min max + - / * and or not = < > <= >= time case concat replace])
   (:require [clojure
              [core :as core]
              [set :as set]]
@@ -159,7 +159,8 @@
   {(s/optional-key :database_type) (s/maybe su/NonBlankString)
    (s/optional-key :base_type)     (s/maybe su/FieldType)
    (s/optional-key :special_type)  (s/maybe su/FieldType)
-   (s/optional-key :unit)          (s/maybe DatetimeFieldUnit)})
+   (s/optional-key :unit)          (s/maybe DatetimeFieldUnit)
+   (s/optional-key :name)          (s/maybe su/NonBlankString)})
 
 ;; Arguments to filter clauses are automatically replaced with [:value <value> <type-info>] clauses by the
 ;; `wrap-value-literals` middleware. This is done to make it easier to implement query processors, because most driver
@@ -275,46 +276,155 @@
 
 ;; Expressions are "calculated column" definitions, defined once and then used elsewhere in the MBQL query.
 
+(def string-expressions
+  "String functions"
+  #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce})
+
+(declare StringExpression)
+
+(def ^:private StringExpressionArg
+  (s/conditional
+   string?
+   s/Str
+
+   (partial is-clause? string-expressions)
+   (s/recursive #'StringExpression)
+
+   (partial is-clause? :value)
+   value
+
+   :else
+   Field))
+
+(def ^:private arithmetic-expressions #{:+ :- :/ :* :coalesce :length :round :ceil :floor :abs :power :sqrt :log :exp})
+
+(def ^:private aggregations #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct :metric :aggregation-options :count})
+
 (declare ArithmeticExpression)
+(declare Aggregation)
+
+(def ^:private NumericExpressionArg
+  (s/conditional
+   number?
+   s/Num
+
+   (partial is-clause? arithmetic-expressions)
+   (s/recursive #'ArithmeticExpression)
+
+   (partial is-clause? aggregations)
+   (s/recursive #'Aggregation)
+
+   (partial is-clause? :value)
+   value
+
+   :else
+   Field))
 
 (def ^:private ExpressionArg
   (s/conditional
    number?
    s/Num
 
-   (partial is-clause? #{:+ :- :/ :*})
+   (partial is-clause? arithmetic-expressions)
    (s/recursive #'ArithmeticExpression)
+
+   string?
+   s/Str
+
+   (partial is-clause? string-expressions)
+   (s/recursive #'StringExpression)
+
+   (partial is-clause? :value)
+   value
 
    :else
    Field))
 
-(def ^:private ExpressionArgOrInterval
+(def ^:private NumericExpressionArgOrInterval
   (s/if (partial is-clause? :interval)
     interval
-    ExpressionArg))
+    NumericExpressionArg))
+
+(defclause ^{:requires-features #{:expressions}} coalesce
+  a ExpressionArg, b ExpressionArg, more (rest ExpressionArg))
+
+(defclause ^{:requires-features #{:expressions}} substring
+  s StringExpressionArg, start NumericExpressionArg, length (optional NumericExpressionArg))
+
+(defclause ^{:requires-features #{:expressions}} length
+  s StringExpressionArg)
+
+(defclause ^{:requires-features #{:expressions}} trim
+  s StringExpressionArg)
+
+(defclause ^{:requires-features #{:expressions}} rtrim
+  s StringExpressionArg)
+
+(defclause ^{:requires-features #{:expressions}} ltrim
+  s StringExpressionArg)
+
+(defclause ^{:requires-features #{:expressions}} upper
+  s StringExpressionArg)
+
+(defclause ^{:requires-features #{:expressions}} lower
+  s StringExpressionArg)
+
+(defclause ^{:requires-features #{:expressions}} replace
+  s StringExpressionArg, match s/Str, replacement s/Str)
+
+(defclause ^{:requires-features #{:expressions}} concat
+  a StringExpressionArg, b StringExpressionArg, more (rest StringExpressionArg))
+
+(defclause ^{:requires-features #{:expressions :regex}} regex-match-first
+  s StringExpressionArg, pattern s/Str)
+
+(def ^:private StringExpression*
+  (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce))
+
+(def ^:private StringExpression
+  "Schema for the definition of an string expression."
+  (s/recursive #'StringExpression*))
 
 (defclause ^{:requires-features #{:expressions}} +
-  x ExpressionArg, y ExpressionArgOrInterval, more (rest ExpressionArgOrInterval))
+  x NumericExpressionArg, y NumericExpressionArgOrInterval, more (rest NumericExpressionArgOrInterval))
 
 (defclause ^{:requires-features #{:expressions}} -
-  x ExpressionArg, y ExpressionArgOrInterval, more (rest ExpressionArgOrInterval))
+  x NumericExpressionArg, y NumericExpressionArgOrInterval, more (rest NumericExpressionArgOrInterval))
 
-(defclause ^{:requires-features #{:expressions}} /, x ExpressionArg, y ExpressionArg, more (rest ExpressionArg))
-(defclause ^{:requires-features #{:expressions}} *, x ExpressionArg, y ExpressionArg, more (rest ExpressionArg))
+(defclause ^{:requires-features #{:expressions}} /, x NumericExpressionArg, y NumericExpressionArg, more (rest NumericExpressionArg))
+
+(defclause ^{:requires-features #{:expressions}} *, x NumericExpressionArg, y NumericExpressionArg, more (rest NumericExpressionArg))
+
+(defclause ^{:requires-features #{:expressions}} floor
+  x NumericExpressionArg)
+
+(defclause ^{:requires-features #{:expressions}} ceil
+  x NumericExpressionArg)
+
+(defclause ^{:requires-features #{:expressions}} round
+  x NumericExpressionArg)
+
+(defclause ^{:requires-features #{:expressions}} abs
+  x NumericExpressionArg)
+
+(defclause ^{:requires-features #{:advanced-math-expressions}} power
+  x NumericExpressionArg,  y NumericExpressionArg)
+
+(defclause ^{:requires-features #{:advanced-math-expressions}} sqrt
+  x NumericExpressionArg)
+
+(defclause ^{:requires-features #{:advanced-math-expressions}} exp
+  x NumericExpressionArg)
+
+(defclause ^{:requires-features #{:advanced-math-expressions}} log
+  x NumericExpressionArg)
 
 (def ^:private ArithmeticExpression*
-  (one-of + - / *))
+  (one-of + - / * coalesce length floor ceil round abs power sqrt exp log))
 
 (def ^:private ArithmeticExpression
   "Schema for the definition of an arithmetic expression."
   (s/recursive #'ArithmeticExpression*))
-
-(def FieldOrExpressionDef
-  "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
-  `:+` clause or a Field clause such as `:field-id`."
-  (s/if (partial is-clause? #{:+ :- :* :/})
-    ArithmeticExpression
-    Field))
 
 
 ;;; ----------------------------------------------------- Filter -----------------------------------------------------
@@ -347,6 +457,7 @@
     s/Str
     DatetimeLiteral
     FieldOrRelativeDatetime
+    ExpressionArg
     value)))
 
 (def ^:private OrderComparible
@@ -357,6 +468,7 @@
      s/Num
      s/Str
      DatetimeLiteral
+     ExpressionArg
      FieldOrRelativeDatetime)))
 
 ;; For all of the non-compound Filter clauses below the first arg is an implicit Field ID
@@ -370,20 +482,20 @@
 ;; `!=` works like SQL `NOT IN` with more than 2 args
 ;; [:!= [:field-id 1] 2 3] --[DESUGAR]--> [:and [:!= [:field-id 1] 2] [:!= [:field-id 1] 3]]
 
-(defclause =,  field Field, value-or-field EqualityComparible, more-values-or-fields (rest EqualityComparible))
-(defclause !=, field Field, value-or-field EqualityComparible, more-values-or-fields (rest EqualityComparible))
+(defclause =,  field EqualityComparible, value-or-field EqualityComparible, more-values-or-fields (rest EqualityComparible))
+(defclause !=, field EqualityComparible, value-or-field EqualityComparible, more-values-or-fields (rest EqualityComparible))
 
-(defclause <,  field Field, value-or-field OrderComparible)
-(defclause >,  field Field, value-or-field OrderComparible)
-(defclause <=, field Field, value-or-field OrderComparible)
-(defclause >=, field Field, value-or-field OrderComparible)
+(defclause <,  field OrderComparible, value-or-field OrderComparible)
+(defclause >,  field OrderComparible, value-or-field OrderComparible)
+(defclause <=, field OrderComparible, value-or-field OrderComparible)
+(defclause >=, field OrderComparible, value-or-field OrderComparible)
 
-(defclause between field Field, min OrderComparible, max OrderComparible)
+(defclause between field OrderComparible, min OrderComparible, max OrderComparible)
 
 ;; SUGAR CLAUSE: This is automatically written as a pair of `:between` clauses by the `:desugar` middleware.
 (defclause ^:sugar inside
-  lat-field Field
-  lon-field Field
+  lat-field OrderComparible
+  lon-field OrderComparible
   lat-max   OrderComparible
   lon-min   OrderComparible
   lat-min   OrderComparible
@@ -396,19 +508,13 @@
 (def ^:private StringFilterOptions
   {(s/optional-key :case-sensitive) s/Bool}) ; default true
 
-(def ^:private StringOrField
-  (s/cond-pre
-   s/Str
-   Field
-   value))
-
-(defclause starts-with, field Field, string-or-field StringOrField, options (optional StringFilterOptions))
-(defclause ends-with,   field Field, string-or-field StringOrField, options (optional StringFilterOptions))
-(defclause contains,    field Field, string-or-field StringOrField, options (optional StringFilterOptions))
+(defclause starts-with, field StringExpressionArg, string-or-field StringExpressionArg, options (optional StringFilterOptions))
+(defclause ends-with,   field StringExpressionArg, string-or-field StringExpressionArg, options (optional StringFilterOptions))
+(defclause contains,    field StringExpressionArg, string-or-field StringExpressionArg, options (optional StringFilterOptions))
 
 ;; SUGAR: this is rewritten as [:not [:contains ...]]
 (defclause ^:sugar does-not-contain
-  field Field, string-or-field StringOrField, options (optional StringFilterOptions))
+  field StringExpressionArg, string-or-field StringExpressionArg, options (optional StringFilterOptions))
 
 (def ^:private TimeIntervalOptions
   ;; Should we include partial results for the current day/month/etc? Defaults to `false`; set this to `true` to
@@ -443,15 +549,38 @@
 (defclause ^:sugar segment, segment-id (s/cond-pre su/IntGreaterThanZero su/NonBlankString))
 
 (def ^:private Filter*
-  (one-of
-   ;; filters drivers must implement
-   and or not = != < > <= >= between starts-with ends-with contains
-   ;; SUGAR filters drivers do not need to implement
-   does-not-contain inside is-null not-null time-interval segment))
+  (s/conditional
+   (partial is-clause? arithmetic-expressions) ArithmeticExpression
+   (partial is-clause? string-expressions)     StringExpression
+   :else
+   (one-of
+    ;; filters drivers must implement
+    and or not = != < > <= >= between starts-with ends-with contains
+    ;; SUGAR filters drivers do not need to implement
+    does-not-contain inside is-null not-null time-interval segment)))
 
 (def Filter
   "Schema for a valid MBQL `:filter` clause."
   (s/recursive #'Filter*))
+
+(def ^:private CaseClause [(s/one Filter "pred") (s/one ExpressionArg "expr")])
+
+(def ^:private CaseClauses [CaseClause])
+
+(def ^:private CaseOptions
+  {(s/optional-key :default) ExpressionArg})
+
+(defclause ^{:requires-features #{:basic-aggregations}} case
+  clauses CaseClauses, options (optional CaseOptions))
+
+(def FieldOrExpressionDef
+  "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
+  `:+` clause or a Field clause such as `:field-id`."
+  (s/conditional
+   (partial is-clause? arithmetic-expressions) ArithmeticExpression
+   (partial is-clause? string-expressions)     StringExpression
+   (partial is-clause? :case)                  case
+   :else                                       Field))
 
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------
@@ -490,6 +619,16 @@
 (defclause ^{:requires-features #{:standard-deviation-aggregations}} stddev
   field-or-expression FieldOrExpressionDef)
 
+(defclause ^{:requires-features #{:standard-deviation-aggregations}} var
+  field-or-expression FieldOrExpressionDef)
+
+(defclause ^{:requires-features #{:percentile-aggregations}} median
+  field-or-expression FieldOrExpressionDef)
+
+(defclause ^{:requires-features #{:percentile-aggregations}} percentile
+  field-or-expression FieldOrExpressionDef, percentile NumericExpressionArg)
+
+
 ;; Metrics are just 'macros' (placeholders for other aggregations with optional filter and breakout clauses) that get
 ;; expanded to other aggregations/etc. in the expand-macros middleware
 ;;
@@ -499,29 +638,11 @@
 
 ;; the following are definitions for expression aggregations, e.g. [:+ [:sum [:field-id 10]] [:sum [:field-id 20]]]
 
-(declare Aggregation)
-
-(def ^:private ExpressionAggregationArg
-  (s/if number?
-    s/Num
-    (s/recursive #'Aggregation)))
-
-(defclause [^{:requires-features #{:expression-aggregations}} ag:+   +]
-  x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
-
-(defclause [^{:requires-features #{:expression-aggregations}} ag:-   -]
-  x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
-
-(defclause [^{:requires-features #{:expression-aggregations}} ag:*   *]
-  x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
-
-(defclause [^{:requires-features #{:expression-aggregations}} ag:div /]
-  x ExpressionAggregationArg, y ExpressionAggregationArg, more (rest ExpressionAggregationArg))
-;; ag:/ isn't a valid token
-
 (def ^:private UnnamedAggregation*
-  (one-of count avg cum-count cum-sum distinct stddev sum min max ag:+ ag:- ag:* ag:div metric share count-where
-          sum-where))
+  (s/if (partial is-clause? arithmetic-expressions)
+    ArithmeticExpression
+    (one-of count avg cum-count cum-sum distinct stddev sum min max metric share count-where
+            sum-where case median percentile var)))
 
 (def ^:private UnnamedAggregation
   (s/recursive #'UnnamedAggregation*))
@@ -961,7 +1082,7 @@
     "Query must specify either `:native` or `:query`, but not both.")
    (s/constrained
     (fn [{native :native, mbql :query, query-type :type}]
-      (case query-type
+      (core/case query-type
         :native native
         :query  mbql))
     "Native queries must specify `:native`; MBQL queries must specify `:query`.")

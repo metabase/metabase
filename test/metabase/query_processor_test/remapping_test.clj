@@ -18,7 +18,7 @@
          ["800 Degrees Neapolitan Pizzeria" 58 "Pizza"]]
   :cols [(qp.test/col :venues :name)
          (assoc (qp.test/col :venues :category_id) :remapped_to "Foo")
-         (#'add-dimension-projections/create-remapped-col "Foo" (data/format-name "category_id"))]}
+         (#'add-dimension-projections/create-remapped-col "Foo" (data/format-name "category_id") :type/Text)]}
   (data/with-temp-objects
     (data/create-venue-category-remapping "Foo")
     (qp.test/rows-and-cols

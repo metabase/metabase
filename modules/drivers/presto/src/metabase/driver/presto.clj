@@ -260,10 +260,6 @@
   [_ bool]
   (hsql/raw (if bool "TRUE" "FALSE")))
 
-(defmethod sql.qp/->honeysql [:presto :stddev]
-  [driver [_ field]]
-  (hsql/call :stddev_samp (sql.qp/->honeysql driver field)))
-
 (defmethod sql.qp/->honeysql [:presto :time]
   [_ [_ t]]
   (hx/cast :time (u.date/format-sql (t/local-time t))))
@@ -271,6 +267,18 @@
 (defmethod sql.qp/->float :presto
   [_ value]
   (hx/cast :double value))
+
+(defmethod sql.qp/->honeysql [:presto :regex-match-first]
+  [driver [_ arg pattern]]
+  (hsql/call :regexp_extract (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+
+(defmethod sql.qp/->honeysql [:presto :median]
+  [driver [_ arg]]
+  (hsql/call :approx_percentile (sql.qp/->honeysql driver arg) 0.5))
+
+(defmethod sql.qp/->honeysql [:presto :percentile]
+  [driver [_ arg p]]
+  (hsql/call :approx_percentile (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver p)))
 
 ;; See https://prestodb.io/docs/current/functions/datetime.html
 
@@ -297,7 +305,7 @@
    context
    respond]
   (let [sql     (str "-- "
-                     (qputil/query->remark outer-query) "\n"
+                     (qputil/query->remark :presto outer-query) "\n"
                      (unprepare/unprepare driver (cons sql params)))
         details (merge (:details (qp.store/database))
                        settings)]
@@ -366,7 +374,8 @@
 (defmethod sql.qp/date [:presto :quarter-of-year] [_ _ expr] (hsql/call :quarter expr))
 (defmethod sql.qp/date [:presto :year]            [_ _ expr] (hsql/call :date_trunc (hx/literal :year) expr))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:presto :seconds] [_ _ expr]
+(defmethod sql.qp/unix-timestamp->honeysql [:presto :seconds]
+  [_ _ expr]
   (hsql/call :from_unixtime expr))
 
 (defmethod driver.common/current-db-time-date-formatters :presto
@@ -377,7 +386,8 @@
   [_]
   "select to_iso8601(current_timestamp)")
 
-(defmethod driver/current-db-time :presto [& args]
+(defmethod driver/current-db-time :presto
+  [& args]
   (apply driver.common/current-db-time args))
 
 (defmethod driver/supports? [:presto :set-timezone]                    [_ _] true)
@@ -387,5 +397,4 @@
 (defmethod driver/supports? [:presto :native-parameters]               [_ _] true)
 (defmethod driver/supports? [:presto :expression-aggregations]         [_ _] true)
 (defmethod driver/supports? [:presto :binning]                         [_ _] true)
-
-(defmethod driver/supports? [:presto :foreign-keys] [_ _] true)
+(defmethod driver/supports? [:presto :foreign-keys]                    [_ _] true)

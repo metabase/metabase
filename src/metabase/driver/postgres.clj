@@ -118,7 +118,7 @@
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod sql.qp/unix-timestamp->timestamp [:postgres :seconds]
+(defmethod sql.qp/unix-timestamp->honeysql [:postgres :seconds]
   [_ _ expr]
   (hsql/call :to_timestamp expr))
 
@@ -160,6 +160,14 @@
         :type/IPAddress    (hx/cast :inet value)
         :type/PostgresEnum (hx/quoted-cast database-type value)
         (sql.qp/->honeysql driver value)))))
+
+(defmethod sql.qp/->honeysql [:postgres :median]
+  [driver [_ arg]]
+  (sql.qp/->honeysql driver [:percentile arg 0.5]))
+
+(defmethod sql.qp/->honeysql [:postgres :regex-match-first]
+  [driver [_ arg pattern]]
+  (hsql/call :substring (hsql/raw (str (hformat/to-sql (sql.qp/->honeysql driver arg)) " FROM '" pattern "'"))))
 
 (defmethod sql.qp/->honeysql [:postgres Time]
   [_ time-value]

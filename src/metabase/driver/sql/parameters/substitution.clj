@@ -236,11 +236,14 @@
   "Return an approprate snippet to represent this `field` in SQL given its param type.
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the `param-type`."
-  [driver field param-type]
+  [driver {special-type :special_type, :as field} param-type]
   (:replacement-snippet
    (honeysql->replacement-snippet-info
     driver
-    (let [identifier (sql.qp/->honeysql driver (sql.qp/field->identifier driver field))]
+    (let [identifier (sql.qp/->honeysql driver (sql.qp/field->identifier driver field))
+          identifier (cond->> identifier
+                       (isa? special-type :type/UNIXTimestampSeconds)      (sql.qp/unix-timestamp->honeysql driver :seconds)
+                       (isa? special-type :type/UNIXTimestampMilliseconds) (sql.qp/unix-timestamp->honeysql driver :milliseconds))]
       (if (date-params/date-type? param-type)
         (sql.qp/date driver :day identifier)
         identifier)))))

@@ -97,3 +97,13 @@
                    :field_ref    [:field-literal "NAME" :type/Text]
                    :name         "NAME"}]
                  (mt/cols results))))))))
+
+(deftest native-query-date-trunc-test
+  (mt/test-driver :h2
+    (testing "A native query that doesn't return a column class name metadata should work correctly (#12150)"
+      (is (= [{:display_name "D"
+               :base_type    :type/DateTime
+               :source       :native
+               :field_ref    [:field-literal "D" :type/DateTime]
+               :name         "D"}]
+             (mt/cols (qp/process-query (mt/native-query {:query "SELECT date_trunc('day', DATE) AS D FROM CHECKINS LIMIT 5;"}))))))))

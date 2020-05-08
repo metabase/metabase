@@ -27,7 +27,8 @@
                      $id
                      [:value 50 {:base_type     :type/BigInteger
                                  :special_type  :type/PK
-                                 :database_type "BIGINT"}]]})
+                                 :database_type "BIGINT"
+                                 :name "ID"}]]})
          (wrap-value-literals
            (mt/mbql-query venues
              {:filter [:> $id 50]}))))
@@ -35,10 +36,12 @@
            {:filter [:and
                      [:> $id [:value 50 {:base_type     :type/BigInteger
                                          :special_type  :type/PK
-                                         :database_type "BIGINT"}]]
+                                         :database_type "BIGINT"
+                                         :name "ID"}]]
                      [:< $price [:value 5 {:base_type     :type/Integer
                                            :special_type  :type/Category
-                                           :database_type "INTEGER"}]]]})
+                                           :database_type "INTEGER"
+                                           :name "PRICE"}]]]})
          (wrap-value-literals
            (mt/mbql-query venues
              {:filter [:and
@@ -137,7 +140,8 @@
                        [:value "2018-10-01" {:base_type     :type/Date
                                              :special_type  nil
                                              :database_type "DATE"
-                                             :unit          :month}]]})
+                                             :unit          :month
+                                             :name          "DATE"}]]})
            (wrap-value-literals
              (mt/mbql-query checkins
                {:filter [:starts-with !month.date "2018-10-01"]}))))))

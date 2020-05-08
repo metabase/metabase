@@ -7,6 +7,7 @@
              [util :as u]]
             [metabase.query-processor.middleware.annotate :as annotate]
             [metabase.query-processor.store :as qp.store]
+            [metabase.test.data :as data]
             [toucan.db :as db]
             [toucan.util.test :as tt]))
 
@@ -20,22 +21,29 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (deftest native-column-info-test
-  (testing (str "make sure that `column-info` for `:native` queries can still infer types even if the initial value(s) "
-                "are `nil` (#4256)")
-    (is (= [{:name "a", :display_name "a", :base_type :type/Integer, :source :native, :field_ref [:field-literal "a" :type/Integer]}
-            {:name "b", :display_name "b", :base_type :type/Integer, :source :native, :field_ref [:field-literal "b" :type/Integer]}]
-           (annotate/column-info
-            {:type :native}
-            {:cols [{:name "a"} {:name "b"}]
-             :rows [[1 nil] [2 nil] [3 nil] [4 5] [6 7]]}))))
+  (testing "native column info"
+    (testing "should still infer types even if the initial value(s) are `nil` (#4256)"
+      (is (= [{:name "a", :display_name "a", :base_type :type/Integer, :source :native, :field_ref [:field-literal "a" :type/Integer]}
+              {:name "b", :display_name "b", :base_type :type/Integer, :source :native, :field_ref [:field-literal "b" :type/Integer]}]
+             (annotate/column-info
+              {:type :native}
+              {:cols [{:name "a"} {:name "b"}]
+               :rows [[1 nil] [2 nil] [3 nil] [4 5] [6 7]]}))))
 
-  (testing (str "make sure that `column-info` for `:native` queries defaults `base_type` to `type/*` if there are no "
-                "non-nil values when we peek.")
-    (is (= [{:name "a", :display_name "a", :base_type :type/*, :source :native, :field_ref [:field-literal "a" :type/*]}]
-           (annotate/column-info
-            {:type :native}
-            {:cols [{:name "a"}]
-             :rows [[nil]]})))))
+    (testing "should use default `base_type` of `type/*` if there are no non-nil values in the sample"
+      (is (= [{:name "a", :display_name "a", :base_type :type/*, :source :native, :field_ref [:field-literal "a" :type/*]}]
+             (annotate/column-info
+              {:type :native}
+              {:cols [{:name "a"}]
+               :rows [[nil]]}))))
+
+    (testing "should attempt to infer better base type if driver returns :type/* (#12150)"
+      ;; `merged-column-info` handles merging info returned by driver & inferred by annotate
+      (is (= [{:name "a", :display_name "a", :base_type :type/Integer, :source :native, :field_ref [:field-literal "a" :type/Integer]}]
+             (annotate/merged-column-info
+              {:type :native}
+              {:cols [{:name "a", :base_type :type/*}]
+               :rows [[1] [2] [nil] [3]]}))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -376,6 +384,70 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           Other MBQL col info tests                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- infered-col-type
+  [expr]
+  (-> (add-column-info (mt/mbql-query venues {:expressions {"expr" expr}
+                                              :fields      [[:expression "expr"]]
+                                              :limit       10})
+                                      {})
+      :cols
+      first
+      (select-keys [:base_type :special_type])))
+
+(deftest test-string-extracts
+  (is (= {:base_type    :type/Text
+          :special_type nil}
+         (infered-col-type  [:trim "foo"])))
+  (is (= {:base_type    :type/Text
+          :special_type nil}
+         (infered-col-type  [:ltrim "foo"])))
+  (is (= {:base_type    :type/Text
+          :special_type nil}
+         (infered-col-type  [:rtrim "foo"])))
+  (is (= {:base_type    :type/BigInteger
+          :special_type :type/Number}
+         (infered-col-type  [:length "foo"])))
+  (is (= {:base_type    :type/Text
+          :special_type nil}
+         (infered-col-type  [:upper "foo"])))
+  (is (= {:base_type    :type/Text
+          :special_type nil}
+         (infered-col-type  [:lower "foo"])))
+  (is (= {:base_type    :type/Text
+          :special_type nil}
+         (infered-col-type  [:substring "foo" 2])))
+  (is (= {:base_type    :type/Text
+          :special_type nil}
+         (infered-col-type  [:replace "foo" "f" "b"])))
+  (is (= {:base_type    :type/Text
+          :special_type nil}
+         (infered-col-type  [:regex-match-first "foo" "f"])))
+  (is (= {:base_type    :type/Text
+          :special_type nil}
+         (infered-col-type  [:concat "foo" "bar"])))
+  (is (= {:base_type    :type/Text
+          :special_type nil}
+         (infered-col-type  [:coalesce "foo" "bar"])))
+  (is (= {:base_type    :type/Text
+          :special_type :type/Name}
+         (infered-col-type  [:coalesce [:field-id (data/id :venues :name)] "bar"]))))
+
+(deftest test-case
+  (is (= {:base_type    :type/Text
+          :special_type nil}
+         (infered-col-type [:case [[[:> (data/id :venues :price) 2] "big"]]])))
+  (is (= {:base_type    :type/Float
+          :special_type :type/Number}
+         (infered-col-type [:case [[[:> (data/id :venues :price) 2] [:+ (data/id :venues :price) 1]]]])))
+  (testing "Make sure we skip nils when infering case return type"
+    (is (= {:base_type    :type/Number
+            :special_type nil}
+           (infered-col-type [:case [[[:< (data/id :venues :price) 10] nil]
+                                     [[:> (data/id :venues :price) 2] 10]]]))))
+  (is (= {:base_type    :type/Float
+          :special_type :type/Number}
+         (infered-col-type [:case [[[:> (data/id :venues :price) 2] [:+ (data/id :venues :price) 1]]]]))))
 
 (deftest unique-name-key-test
   (testing "Make sure `:cols` always come back with a unique `:name` key (#8759)"

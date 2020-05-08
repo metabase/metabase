@@ -7,6 +7,7 @@
              [reducible :as qp.reducible]]
             [metabase.query-processor.middleware.permissions :as perms]
             [metabase.util :as u]
+            [metabase.util.i18n :refer [trs]]
             schema.utils)
   (:import clojure.lang.ExceptionInfo
            java.sql.SQLException
@@ -83,6 +84,8 @@
   (assoc ((get-method format-exception Throwable) e)
          :state (.getSQLState e)))
 
+;; TODO -- some of this logic duplicates the functionality of `clojure.core/Throwable->map`, we should consider
+;; whether we can use that more extensively and remove some of this logic
 (defn- cause [^Throwable e]
   (let [cause (.getCause e)]
     (when-not (= cause e)
@@ -131,7 +134,9 @@
 (defn- query-execution-info [query-execution]
   (dissoc query-execution :result_rows :hash :executor_id :card_id :dashboard_id :pulse_id :native :start_time_millis))
 
-(defn- format-exception* [query ^Throwable e extra-info]
+(defn- format-exception*
+  "Format a `Throwable` into the usual userland error-response format."
+  [query ^Throwable e extra-info]
   (try
     (if-let [query-execution (:query-execution (ex-data e))]
       (merge (query-execution-info query-execution)
@@ -147,7 +152,6 @@
   "Middleware for catching exceptions thrown by the query processor and returning them in a 'normal' format. Forwards
   exceptions to the `result-chan`."
   [qp]
-
   (fn [query rff {:keys [preprocessedf nativef raisef], :as context}]
     (let [extra-info (atom nil)]
       (letfn [(preprocessedf* [query context]
@@ -157,11 +161,15 @@
                 (swap! extra-info assoc :native query)
                 (nativef query context))
               (raisef* [e context]
+               ;; if the exception is the special quit-early exception, forward this to our parent `raisef` exception
+               ;; handler, which has logic for handling that case
                 (if (qp.reducible/quit-result e)
                   (raisef e context)
-                  (do
-                    (log/tracef "raisef* got %s, returning formatted exception" (class e))
-                    (context/resultf (format-exception* query e @extra-info) context))))]
+                  ;; otherwise format the Exception and return it
+                  (let [formatted-exception (format-exception* query e @extra-info)]
+                    (log/error (str (trs "Error processing query: {0}" (:error format-exception))
+                                    "\n" (u/pprint-to-str formatted-exception)))
+                    (context/resultf formatted-exception context))))]
         (try
           (qp query rff (assoc context
                                   :preprocessedf preprocessedf*

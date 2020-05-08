@@ -135,6 +135,17 @@
 (defn- num-to-ds-interval [unit v] (hsql/call :numtodsinterval v (hx/literal unit)))
 (defn- num-to-ym-interval [unit v] (hsql/call :numtoyminterval v (hx/literal unit)))
 
+
+(defmethod sql.qp/->honeysql [:oracle :substring]
+  [driver [_ arg start length]]
+  (if length
+    (hsql/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
+    (hsql/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start))))
+
+(defmethod sql.qp/->honeysql [:oracle :regex-match-first]
+  [driver [_ arg pattern]]
+  (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
+
 (defmethod sql.qp/add-interval-honeysql-form :oracle
   [_ hsql-form amount unit]
   (hx/+
@@ -149,14 +160,14 @@
      :quarter (num-to-ym-interval :month  (hx/* amount (hsql/raw 3)))
      :year    (num-to-ym-interval :year   amount))))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:oracle :seconds]
+(defmethod sql.qp/unix-timestamp->honeysql [:oracle :seconds]
   [_ _ field-or-value]
   (hx/+ (hsql/raw "timestamp '1970-01-01 00:00:00 UTC'")
         (num-to-ds-interval :second field-or-value)))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:oracle :milliseconds]
+(defmethod sql.qp/unix-timestamp->honeysql [:oracle :milliseconds]
   [driver _ field-or-value]
-  (sql.qp/unix-timestamp->timestamp driver :seconds (hx// field-or-value (hsql/raw 1000))))
+  (sql.qp/unix-timestamp->honeysql driver :seconds (hx// field-or-value (hsql/raw 1000))))
 
 ;; Oracle doesn't support `LIMIT n` syntax. Instead we have to use `WHERE ROWNUM <= n` (`NEXT n ROWS ONLY` isn't
 ;; supported on Oracle versions older than 12). This has to wrap the actual query, e.g.

@@ -131,6 +131,7 @@ export const POP_STATE = "metabase/qb/POP_STATE";
 export const popState = createThunkAction(
   POP_STATE,
   location => async (dispatch, getState) => {
+    dispatch(cancelQuery());
     const card = getCard(getState());
     if (location.state && location.state.card) {
       if (!Utils.equals(card, location.state.card)) {
@@ -299,6 +300,10 @@ export const initializeQB = (location, params) => {
     dispatch(resetQB());
     dispatch(cancelQuery());
 
+    // preload metadata that's used in DataSelector
+    dispatch(Databases.actions.fetchList({ include: "tables" }));
+    dispatch(Databases.actions.fetchList({ saved: true }));
+
     const { currentUser } = getState();
 
     let card, originalCard;
@@ -307,25 +312,6 @@ export const initializeQB = (location, params) => {
       isShowingTemplateTagsEditor: false,
       queryBuilderMode: getQueryBuilderModeFromLocation(location),
     };
-
-    // always start the QB by loading up the databases for the application
-    let databaseFetch;
-    try {
-      databaseFetch = dispatch(
-        Databases.actions.fetchList({
-          include_tables: true,
-          include_cards: true,
-        }),
-      );
-    } catch (error) {
-      console.error("error fetching dbs", error);
-      // NOTE: don't actually error if dbs can't be fetched for some reason,
-      // we may still be able to run the query
-      // NOTE: for some reason previously fetchDatabases would fall back to []
-      // if there was an API error so this would never be hit
-      // dispatch(setErrorPage(error));
-      // return { uiControls };
-    }
 
     // load up or initialize the card we'll be working on
     let options = {};
@@ -450,10 +436,6 @@ export const initializeQB = (location, params) => {
     }
     // Fetch the question metadata (blocking)
     if (card) {
-      // ensure that the database fetch completed before getting the tables
-      if (databaseFetch) {
-        await databaseFetch;
-      }
       await dispatch(loadMetadataForCard(card));
     }
 

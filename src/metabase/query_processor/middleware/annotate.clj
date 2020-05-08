@@ -73,30 +73,39 @@
                   :first-row        (first rows)
                   :type             error-type/qp}))))))
 
+(defn- native-column-info-for-a-single-column
+  "Determine column metadata for a single column for native query results."
+  [{col-name :name, driver-base-type :base_type, :as col} values-sample]
+  ;; Native queries don't have the type information from the original `Field` objects used in the query.
+  ;;
+  ;; If the driver returned a base type more specific than :type/*, use that; otherwise look at the sample
+  ;; of rows and infer the base type based on the classes of the values
+  (let [col-name  (name col-name)
+        base-type (or (when-not (= driver-base-type :type/*)
+                        driver-base-type)
+                      (driver.common/values->base-type values-sample)
+                      :type/*)]
+    (merge
+     {:display_name (u/qualified-name col-name)
+      :base_type    base-type
+      :source       :native}
+     ;; It is perfectly legal for a driver to return a column with a blank name; for example, SQL Server does this
+     ;; for aggregations like `count(*)` if no alias is used. However, it is *not* legal to use blank names in MBQL
+     ;; `:field-literal` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a valid
+     ;; `:field-literal`, omit the `:field_ref`.
+     (when (seq col-name)
+       {:field_ref [:field-literal col-name base-type]})
+     col
+     {:base_type base-type})))
+
 (defmethod column-info :native
   [_ {:keys [cols rows]}]
   (check-driver-native-columns cols rows)
-  ;; Infer the types of columns by looking at the first value for each in the results. Native queries don't have the
-  ;; type information from the original `Field` objects used in the query.
-  (vec
-   (for [i    (range (count cols))
-         :let [{col-name :name, :as col} (nth cols i)
-               col-name                  (name col-name)
-               base-type                 (or (:base_type col)
-                                             (driver.common/values->base-type (for [row rows]
-                                                                                (nth row i)))
-                                             :type/*)]]
-     (merge
-      {:display_name (u/qualified-name col-name)
-       :base_type    base-type
-       :source       :native}
-      ;; It is perfectly legal for a driver to return a column with a blank name; for example, SQL Server does this
-      ;; for aggregations like `count(*)` if no alias is used. However, it is *not* legal to use blank names in MBQL
-      ;; `:field-literal` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a valid
-      ;; `:field-literal`, omit the `:field_ref`.
-      (when (seq col-name)
-        {:field_ref [:field-literal col-name base-type]})
-      col))))
+  (mapv native-column-info-for-a-single-column
+        cols
+        (for [i (range (count cols))]
+          (for [row rows]
+            (nth row i)))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -125,11 +134,46 @@
                     join-alias)]
     (format "%s → %s" qualifier field-display-name)))
 
+(declare col-info-for-field-clause)
+
 (defn- infer-expression-type
   [expression]
-  (if (mbql.u/datetime-arithmetics? expression)
+  (cond
+    (string? expression)
+    {:base_type    :type/Text
+     :special_type nil}
+
+    (number? expression)
+    {:base_type    :type/Number
+     :special_type nil}
+
+    (mbql.u/is-clause? #{:field-id :field-literal :joined-field :fk-> :datetime-field :binning-strategy} expression)
+    (col-info-for-field-clause {} expression)
+
+    (mbql.u/is-clause? :coalesce expression)
+    (infer-expression-type (second expression))
+
+    (mbql.u/is-clause? :length expression)
+    {:base_type    :type/BigInteger
+     :special_type :type/Number}
+
+    (mbql.u/is-clause? :case expression)
+    (->> expression
+         second
+         ;; get the first non-nil val
+         (keep second)
+         first
+         infer-expression-type)
+
+    (mbql.u/datetime-arithmetics? expression)
     {:base_type    :type/DateTime
      :special_type nil}
+
+    (mbql.u/is-clause? mbql.s/string-expressions expression)
+    {:base_type    :type/Text
+     :special_type nil}
+
+    :else
     {:base_type    :type/Float
      :special_type :type/Number}))
 
@@ -260,7 +304,7 @@
     [(_ :guard #{:distinct :cum-count}) _]
     "count"
 
-    [:sum-sum _]
+    [:cum-sum _]
     "sum"
 
     ;; for any other aggregation just use the name of the clause e.g. `sum`.
@@ -293,16 +337,20 @@
                 (expression-arg-display-name (partial aggregation-arg-display-name inner-query) arg)))
 
     [:count]             (tru "Count")
-    [:distinct    arg]   (tru "Distinct values of {0}"  (aggregation-arg-display-name inner-query arg))
-    [:count       arg]   (tru "Count of {0}"            (aggregation-arg-display-name inner-query arg))
-    [:avg         arg]   (tru "Average of {0}"          (aggregation-arg-display-name inner-query arg))
+    [:case]              (tru "Case")
+    [:distinct    arg]   (tru "Distinct values of {0}"    (aggregation-arg-display-name inner-query arg))
+    [:count       arg]   (tru "Count of {0}"              (aggregation-arg-display-name inner-query arg))
+    [:avg         arg]   (tru "Average of {0}"            (aggregation-arg-display-name inner-query arg))
     ;; cum-count and cum-sum get names for count and sum, respectively (see explanation in `aggregation-name`)
-    [:cum-count   arg]   (tru "Count of {0}"            (aggregation-arg-display-name inner-query arg))
-    [:cum-sum     arg]   (tru "Sum of {0}"              (aggregation-arg-display-name inner-query arg))
-    [:stddev      arg]   (tru "SD of {0}"               (aggregation-arg-display-name inner-query arg))
-    [:sum         arg]   (tru "Sum of {0}"              (aggregation-arg-display-name inner-query arg))
-    [:min         arg]   (tru "Min of {0}"              (aggregation-arg-display-name inner-query arg))
-    [:max         arg]   (tru "Max of {0}"              (aggregation-arg-display-name inner-query arg))
+    [:cum-count   arg]   (tru "Count of {0}"              (aggregation-arg-display-name inner-query arg))
+    [:cum-sum     arg]   (tru "Sum of {0}"                (aggregation-arg-display-name inner-query arg))
+    [:stddev      arg]   (tru "SD of {0}"                 (aggregation-arg-display-name inner-query arg))
+    [:sum         arg]   (tru "Sum of {0}"                (aggregation-arg-display-name inner-query arg))
+    [:min         arg]   (tru "Min of {0}"                (aggregation-arg-display-name inner-query arg))
+    [:max         arg]   (tru "Max of {0}"                (aggregation-arg-display-name inner-query arg))
+    [:var         arg]   (tru "Variance of {0}"           (aggregation-arg-display-name inner-query arg))
+    [:median      arg]   (tru "Median of {0}"             (aggregation-arg-display-name inner-query arg))
+    [:percentile  arg p] (tru "{0}th percentile of {1}" p (aggregation-arg-display-name inner-query arg))
 
     ;; until we have a way to generate good names for filters we'll just have to say 'matching condition' for now
     [:sum-where   arg _] (tru "Sum of {0} matching condition" (aggregation-arg-display-name inner-query arg))
@@ -356,16 +404,17 @@
     ;; `col-info-for-ag-clause`, and this info is added into the results)
     (_ :guard mbql.preds/Field?)
     (select-keys (col-info-for-field-clause inner-query &match) [:base_type :special_type :settings])
-
-    ;; For the time being every Expression is an arithmetic operator and returns a floating-point number, so
-    ;; hardcoding these types is fine; In the future when we extend Expressions to handle more functionality
-    ;; we'll want to introduce logic that associates a return type with a given expression. But this will work
-    ;; for the purposes of a patch release.
     #{:expression :+ :- :/ :*}
     (merge
      (infer-expression-type &match)
      (when (mbql.preds/Aggregation? &match)
        (ag->name-info inner-query &match)))
+
+    [:case _ & _]
+    (merge
+     {:base_type    :type/Float
+      :special_type :type/Number}
+     (ag->name-info inner-query &match))
 
     ;; get name/display-name of this ag
     [(_ :guard keyword?) arg & _]
@@ -480,19 +529,28 @@
   It's the responsibility of the driver to make sure the `:cols` are returned in the correct number and order."
   [cols cols-returned-by-driver]
   (if (seq cols-returned-by-driver)
-    (map (fn [col driver-col]
+    (map (fn [our-col-metadata driver-col-metadata]
            ;; 1. Prefer our `:name` if it's something different that what's returned by the driver
            ;;    (e.g. for named aggregations)
-           ;; 2. Then, prefer any non-nil keys returned by the driver
-           ;; 3. Finally, merge in any of our other keys
-           (merge col (m/filter-vals some? driver-col) (u/select-non-nil-keys col [:name])))
+           ;; 2. Prefer our inferred base type if the driver returned `:type/*` and ours is more specific
+           ;; 3. Then, prefer any non-nil keys returned by the driver
+           ;; 4. Finally, merge in any of our other keys
+           (let [non-nil-driver-col-metadata (m/filter-vals some? driver-col-metadata)
+                 our-base-type               (when (= (:base_type driver-col-metadata) :type/*)
+                                               (u/select-non-nil-keys our-col-metadata [:base_type]))
+                 our-name                    (u/select-non-nil-keys our-col-metadata [:name])]
+             (merge our-col-metadata
+                    non-nil-driver-col-metadata
+                    our-base-type
+                    our-name)))
          cols
          cols-returned-by-driver)
     cols))
 
-(s/defn column-info* :- ColsWithUniqueNames
-  "Returns deduplicated `:cols` metadata given a query and the initial results metadata returned by the driver's impl
-  of `execute-reducible-query`."
+(s/defn merged-column-info :- ColsWithUniqueNames
+  "Returns deduplicated and merged column metadata (`:cols`) for query results by combining (a) the initial results
+  metadata returned by the driver's impl of `execute-reducible-query` and (b) column metadata inferred by logic in
+  this namespace."
   [query {cols-returned-by-driver :cols, :as result}]
   ;; merge in `:cols` if returned by the driver, then make sure the `:name` of each map in `:cols` is unique, since
   ;; the FE uses it as a key for stuff like column settings
@@ -510,7 +568,7 @@
    (fn combine [result sampled-rows]
      (rf (cond-> result
            (map? result)
-           (assoc-in [:data :cols] (column-info* query (assoc metadata :rows sampled-rows))))))))
+           (assoc-in [:data :cols] (merged-column-info query (assoc metadata :rows sampled-rows))))))))
 
 (defn add-column-info
   "Middleware for adding type information about the columns in the query results (the `:cols` key)."
@@ -520,7 +578,7 @@
      query
      (fn [metadata]
        (if (= query-type :query)
-         (rff (assoc metadata :cols (column-info* query metadata)))
+         (rff (assoc metadata :cols (merged-column-info query metadata)))
          ;; rows sampling is only needed for native queries! TODO ­ not sure we really even need to do for native
          ;; queries...
          (add-column-info-xform query metadata (rff metadata))))

@@ -31,19 +31,31 @@
            org.apache.log4j.Logger
            [org.quartz CronTrigger JobDetail JobKey Scheduler Trigger]))
 
+(defmethod assert-expr 're= [msg [_ pattern actual]]
+  `(let [pattern#  ~pattern
+         actual#   ~actual
+         matches?# (some->> actual# (re-matches pattern#))]
+     (assert (instance? java.util.regex.Pattern pattern#))
+     (do-report
+      {:type     (if matches?# :pass :fail)
+       :message  ~msg
+       :expected pattern#
+       :actual   actual#
+       :diffs    (when-not matches?#
+                   [[actual# [pattern# nil]]])})))
+
 (defmethod assert-expr 'schema=
-  [message form]
-  (let [[_ schema actual] form]
-    `(let [schema# ~schema
-           actual# ~actual
-           pass?#  (nil? (s/check schema# actual#))]
-       (do-report
-        {:type     (if pass?# :pass :fail)
-         :message  ~message
-         :expected (s/explain schema#)
-         :actual   actual#
-         :diffs    (when-not pass?#
-                     [[actual# [(s/check schema# actual#) nil]]])}))))
+  [message [_ schema actual]]
+  `(let [schema# ~schema
+         actual# ~actual
+         pass?#  (nil? (s/check schema# actual#))]
+     (do-report
+      {:type     (if pass?# :pass :fail)
+       :message  ~message
+       :expected (s/explain schema#)
+       :actual   actual#
+       :diffs    (when-not pass?#
+                   [[actual# [(s/check schema# actual#) nil]]])})))
 
 (defmacro ^:deprecated expect-schema
   "Like `expect`, but checks that results match a schema. DEPRECATED -- you can use `deftest` combined with `schema=`

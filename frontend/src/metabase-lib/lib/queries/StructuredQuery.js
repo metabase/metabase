@@ -7,7 +7,10 @@
 import * as Q from "metabase/lib/query/query";
 import * as Q_DEPRECATED from "metabase/lib/query";
 import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
-import { format as formatExpression } from "metabase/lib/expressions/formatter";
+import {
+  format as formatExpression,
+  DISPLAY_QUOTES,
+} from "metabase/lib/expressions/format";
 
 import _ from "underscore";
 import { chain, updateIn } from "icepick";
@@ -60,8 +63,7 @@ import { augmentDatabase } from "metabase/lib/table";
 
 import { TYPE } from "metabase/lib/types";
 
-import { isSegmentFilter } from "metabase/lib/query/filter";
-import { fieldRefForColumnWithLegacyFallback } from "metabase/lib/dataset";
+import { fieldRefForColumn } from "metabase/lib/dataset";
 
 type DimensionFilter = (dimension: Dimension) => boolean;
 type FieldFilter = (filter: Field) => boolean;
@@ -150,7 +152,7 @@ export default class StructuredQuery extends AtomicQuery {
    */
   database(): ?Database {
     const databaseId = this.databaseId();
-    return databaseId != null ? this._metadata.databases[databaseId] : null;
+    return databaseId != null ? this._metadata.database(databaseId) : null;
   }
 
   /**
@@ -159,6 +161,13 @@ export default class StructuredQuery extends AtomicQuery {
   engine(): ?DatabaseEngine {
     const database = this.database();
     return database && database.engine;
+  }
+
+  /**
+   * Returns true if the database metadata (or lack thererof indicates the user can modify and run this query
+   */
+  readOnly(): boolean {
+    return !this.database();
   }
 
   /* Methods unique to this query type */
@@ -452,7 +461,7 @@ export default class StructuredQuery extends AtomicQuery {
     for (let index = 0; index < query[listName]().length; index++) {
       // $FlowFixMe
       const clause = query[listName]()[index];
-      if (!clause.isValid()) {
+      if (!this._validateClause(clause)) {
         query = clause.remove();
         // since we're removing them in order we need to decrement index when we remove one
         index -= 1;
@@ -464,11 +473,20 @@ export default class StructuredQuery extends AtomicQuery {
   _isValidClauseList(listName) {
     // $FlowFixMe
     for (const clause of this[listName]()) {
-      if (!clause.isValid()) {
+      if (!this._validateClause(clause)) {
         return false;
       }
     }
     return true;
+  }
+
+  _validateClause(clause) {
+    try {
+      return clause.isValid();
+    } catch (e) {
+      console.warn("Error thrown while validating clause:", clause);
+      return false;
+    }
   }
 
   hasData() {
@@ -674,17 +692,8 @@ export default class StructuredQuery extends AtomicQuery {
     return !this.hasAggregations() && !this.hasBreakouts();
   }
 
-  /**
-   * @deprecated use this.aggregations()[index].displayName() directly
-   * @returns the formatted named of the aggregation at the provided index.
-   */
-  aggregationName(index: number = 0): ?string {
-    const aggregation = this.aggregations()[index];
-    return aggregation && aggregation.displayName();
-  }
-
-  formatExpression(expression) {
-    return formatExpression(expression, { query: this });
+  formatExpression(expression, { quotes = DISPLAY_QUOTES, ...options } = {}) {
+    return formatExpression(expression, { quotes, ...options, query: this });
   }
 
   /**
@@ -867,8 +876,7 @@ export default class StructuredQuery extends AtomicQuery {
     if (filter && !(filter instanceof FilterWrapper)) {
       filter = new FilterWrapper(filter, null, this);
     }
-    const currentSegmentId =
-      filter && filter.isSegmentFilter() && filter.segmentId();
+    const currentSegmentId = filter && filter.isSegment() && filter.segmentId();
     return this.table().segments.filter(
       segment =>
         (currentSegmentId != null && currentSegmentId === segment.id) ||
@@ -881,13 +889,8 @@ export default class StructuredQuery extends AtomicQuery {
    */
   segments() {
     return this.filters()
-      .filter(f => isSegmentFilter(f))
-      .map(segmentFilter => {
-        // segment id is stored as the second part of the filter clause
-        // e.x. ["segment", 1]
-        const segmentId = segmentFilter[1];
-        return this.metadata().segment(segmentId);
-      });
+      .filter(filter => filter.isSegment())
+      .map(filter => filter.segment());
   }
 
   /**
@@ -1305,37 +1308,7 @@ export default class StructuredQuery extends AtomicQuery {
   }
 
   fieldReferenceForColumn(column) {
-    return fieldRefForColumnWithLegacyFallback(
-      column,
-      c => this.fieldReferenceForColumn_LEGACY(c),
-      "StructuredQuery::fieldReferenceForColumn",
-      ["field-literal"],
-    );
-  }
-
-  // LEGACY:
-  fieldReferenceForColumn_LEGACY(column) {
-    if (column.fk_field_id != null) {
-      return [
-        "fk->",
-        ["field-id", column.fk_field_id],
-        ["field-id", column.id],
-      ];
-    } else if (column.id != null) {
-      return ["field-id", column.id];
-    } else if (column.expression_name != null) {
-      return ["expression", column.expression_name];
-    } else if (column.source === "aggregation") {
-      // HACK: ideally column would include the aggregation index directly
-      const columnIndex = _.findIndex(
-        this.columnNames(),
-        name => name === column.name,
-      );
-      if (columnIndex >= 0) {
-        return this.columnDimensions()[columnIndex].mbql();
-      }
-    }
-    return null;
+    return fieldRefForColumn(column);
   }
 
   // TODO: better name may be parseDimension?

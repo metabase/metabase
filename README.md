@@ -1,4 +1,5 @@
 # Metabase
+
 Metabase is the easy, open source way for everyone in your company to ask questions and learn from data.
 
 ![Metabase Product Screenshot](docs/metabase-product-screenshot.png)
@@ -9,6 +10,7 @@ Metabase is the easy, open source way for everyone in your company to ask questi
 [![Gitter chat](https://badges.gitter.im/metabase/metabase.png)](https://gitter.im/metabase/metabase)
 
 # Features
+
 - 5 minute [setup](https://metabase.com/docs/latest/setting-up-metabase.html) (We're not kidding)
 - Let anyone on your team [ask questions](https://metabase.com/docs/latest/users-guide/04-asking-questions.html) without knowing SQL
 - Rich beautiful [dashboards](https://metabase.com/docs/latest/users-guide/06-sharing-answers.html) with auto refresh and fullscreen
@@ -42,7 +44,7 @@ Don't see your favorite database? File an issue to let us know.
 
 ## Installation
 
-Metabase can be run just about anywhere so checkout our [Installation Guides](https://metabase.com/docs/latest/operations-guide/start.html#installing-and-running-metabase) for detailed instructions for various deployments.  Here's the TLDR:
+Metabase can be run just about anywhere so checkout our [Installation Guides](https://metabase.com/docs/latest/operations-guide/start.html#installing-and-running-metabase) for detailed instructions for various deployments. Here's the TLDR:
 
 ### Docker
 
@@ -91,26 +93,23 @@ Some questions come up over and over again. Check here first:
 
 Security is very important to us. If you discover any issue regarding security, please disclose the information responsibly by sending an email to security@metabase.com and not by creating a GitHub issue.
 
-
 # Contributing
 
 To get started with a development installation of the Metabase, follow the instructions at our [Developers Guide](docs/developers-guide.md).
 
 Then take a look at our [Contribution Guide](docs/contributing.md) for information about our process and where you can fit in!
 
-Talk to other contributors [in our Gitter room](https://gitter.im/metabase/metabase).
-
 # Internationalization
-We want Metabase to be available in as many languages as possible. See what translations are available and help contribute to internationalization using our project [over at POEditor](https://poeditor.com/join/project/ynjQmwSsGh)
+
+We want Metabase to be available in as many languages as possible. See what translations are available and help contribute to internationalization using our project over at [POEditor](https://poeditor.com/join/project/ynjQmwSsGh). You can also check out our [policies on translations](docs/faq/general/what-languages-can-be-used-with-metabase.md).
 
 # Extending and Deep Integrations
 
 Metabase also allows you to hit our Query API directly from Javascript to integrate the simple analytics we provide with your own application or third party services to do things like:
 
-* Build moderation interfaces
-* Export subsets of your users to third party marketing automation software
-* Provide a specialized customer lookup application for the people in your company
-
+- Build moderation interfaces
+- Export subsets of your users to third party marketing automation software
+- Provide a specialized customer lookup application for the people in your company
 
 # Danger zone
 

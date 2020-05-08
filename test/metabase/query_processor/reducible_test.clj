@@ -96,7 +96,6 @@
                :query    {:source-table (mt/id :venues), :limit 2, :order-by [[:asc (mt/id :venues :id)]]}}
               {:rff maps-rff}))))))
 
-;; TODO - fix me
 (deftest cancelation-test
   (testing "Example of canceling a query early before results are returned."
     (letfn [(process-query [canceled-chan timeout]
@@ -114,14 +113,14 @@
       (mt/with-open-channels [canceled-chan (a/promise-chan)]
         (let [out-chan (process-query canceled-chan 1000)]
           (a/close! out-chan)
-          (is (= :cancel
+          (is (= ::qp.reducible/cancel
                  (first (a/alts!! [canceled-chan (a/timeout 500)]))))))
       (mt/with-open-channels [canceled-chan (a/promise-chan)]
         (let [out-chan (process-query canceled-chan 1000)]
           (future
             (Thread/sleep 50)
             (a/close! out-chan))
-          (is (= :cancel
+          (is (= ::qp.reducible/cancel
                  (a/<!! canceled-chan)))
           (is (= nil
                  (a/<!! out-chan)))))

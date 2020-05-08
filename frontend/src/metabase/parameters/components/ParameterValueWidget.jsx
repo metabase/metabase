@@ -95,7 +95,7 @@ export default class ParameterValueWidget extends Component {
     const { parameter } = this.props;
     if (DATE_WIDGETS[parameter.type]) {
       return DATE_WIDGETS[parameter.type];
-    } else if (this.getFields().length > 0) {
+    } else if (this.getFields().length > 0 && parameter.hasOnlyFieldTargets) {
       return ParameterFieldWidget;
     } else {
       return TextWidget;

@@ -248,26 +248,6 @@
 (defmethod before-run ::test-extensions [_]) ; default-impl is a no-op
 
 
-(defmulti ^:deprecated after-run
-  "Do any cleanup needed after tests are finished running, such as deleting test databases. Use this
-  in place of writing expectations `:after-run` functions, since the driver namespaces are lazily loaded and might
-  not be loaded in time to register those functions with expectations.
-
-  Will only be called once for a given driver; only called when running tests against that driver. This method does
-  not need to call the implementation for any parent drivers; that is done automatically.
-
-  DO NOT CALL THIS METHOD DIRECTLY; THIS IS CALLED AUTOMATICALLY WHEN APPROPRIATE.
-
-  DEPRECATED - this is no longer called automatically when tests conclude due to our switch to `clojure.test`. You
-  should not rely on it for performing cleanup when tests are complete. This may be fixed in the future (PRs
-  welcome)."
-  {:arglists '([driver])}
-  dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod after-run ::test-extensions [_]) ; default-impl is a no-op
-
-
 (defmulti dbdef->connection-details
   "Return the connection details map that should be used to connect to the Database we will create for
   `database-definition`.
@@ -358,6 +338,21 @@
                                     :type     :query
                                     :query    {:source-table table-id
                                                :aggregation  [[aggregation-type [:field-id field-id]]]}}))))
+
+
+(defmulti count-with-template-tag-query
+  "Generate a native query for the count of rows in `table` matching a set of conditions where `field-name` is equal to
+  a param `value`."
+  ^{:arglists '([driver table-name field-name param-type])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmulti count-with-field-filter-query
+  "Generate a native query that returns the count of a Table with `table-name` with a field filter against a Field with
+  `field-name`."
+  ^{:arglists '([driver table-name field-name])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

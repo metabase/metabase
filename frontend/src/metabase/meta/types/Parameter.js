@@ -1,6 +1,7 @@
 /* @flow */
 
 import type { CardId } from "./Card";
+import type { FieldId } from "./Field";
 import type { LocalFieldReference, ForeignFieldReference } from "./Query";
 
 export type ParameterId = string;
@@ -18,7 +19,8 @@ export type Parameter = {
   type: ParameterType,
   slug: string,
   default?: string,
-
+  field_ids?: FieldId[],
+  hasOnlyFieldTargets?: boolean, // true if the parameter is only connected to fields/dimensions rather than variables
   target?: ParameterTarget,
 };
 

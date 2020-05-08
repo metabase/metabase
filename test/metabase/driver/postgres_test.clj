@@ -248,16 +248,36 @@
                           {:filter [:= $user_id nil]})))))
       (testing "Check that we can filter by a UUID for SQL Field filters (#7955)"
         (is (= [[#uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027" 1]]
-               (mt/rows (qp/process-query {:database   (mt/id)
-                                           :type       :native
-                                           :native     {:query         "SELECT * FROM users WHERE {{user}}"
-                                                        :template-tags {:user {:name         "user"
-                                                                               :display_name "User ID"
-                                                                               :type         "dimension"
-                                                                               :dimension    ["field-id" (mt/id :users :user_id)]}}}
-                                           :parameters [{:type   "text"
-                                                         :target ["dimension" ["template-tag" "user"]]
-                                                         :value  "4f01dcfd-13f7-430c-8e6f-e505c0851027"}]}))))))))
+               (mt/rows
+                 (qp/process-query
+                   (assoc (mt/native-query
+                            {:query         "SELECT * FROM users WHERE {{user}}"
+                             :template-tags {:user
+                                             {:name         "user"
+                                              :display_name "User ID"
+                                              :type         "dimension"
+                                              :dimension    ["field-id" (mt/id :users :user_id)]}}})
+                       :parameters
+                       [{:type   "text"
+                         :target ["dimension" ["template-tag" "user"]]
+                         :value  "4f01dcfd-13f7-430c-8e6f-e505c0851027"}])))))
+      (testing "Check that we can filter by multiple UUIDs for SQL Field filters"
+        (is (= [[#uuid "4f01dcfd-13f7-430c-8e6f-e505c0851027" 1]
+                [#uuid "da1d6ecc-e775-4008-b366-c38e7a2e8433" 3]]
+               (mt/rows
+                 (qp/process-query
+                   (assoc (mt/native-query
+                            {:query         "SELECT * FROM users WHERE {{user}}"
+                             :template-tags {:user
+                                             {:name         "user"
+                                              :display_name "User ID"
+                                              :type         "dimension"
+                                              :dimension    ["field-id" (mt/id :users :user_id)]}}})
+                       :parameters
+                       [{:type   "text"
+                         :target ["dimension" ["template-tag" "user"]]
+                         :value  ["4f01dcfd-13f7-430c-8e6f-e505c0851027"
+                                  "da1d6ecc-e775-4008-b366-c38e7a2e8433"]}]))))))))))
 
 
 (mt/defdataset ^:private ip-addresses
@@ -486,8 +506,8 @@
                  (mt/rows results))))
         (testing "cols"
           (is (= [{:display_name "sleep"
-                   :base_type    :type/*
+                   :base_type    :type/Text
                    :source       :native
-                   :field_ref    [:field-literal "sleep" :type/*]
+                   :field_ref    [:field-literal "sleep" :type/Text]
                    :name         "sleep"}]
                  (mt/cols results))))))))

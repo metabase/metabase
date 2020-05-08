@@ -1,5 +1,6 @@
 (ns metabase.query-processor.streaming-test
   (:require [cheshire.core :as json]
+            [clojure.core.async :as a]
             [clojure.data.csv :as csv]
             [clojure.test :refer :all]
             [dk.ative.docjure.spreadsheet :as spreadsheet]
@@ -10,9 +11,9 @@
             [metabase.async.streaming-response :as streaming-response]
             [metabase.query-processor.streaming :as qp.streaming]
             [metabase.test.util :as tu]
-            [ring.core.protocols :as ring.protocols]
             [toucan.db :as db])
-  (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream InputStream InputStreamReader]))
+  (:import [java.io BufferedInputStream BufferedOutputStream ByteArrayInputStream ByteArrayOutputStream InputStream InputStreamReader]
+           javax.servlet.AsyncContext))
 
 (defmulti ^:private parse-result
   {:arglists '([export-format ^InputStream input-stream])}
@@ -40,30 +41,31 @@
        rest))
 
 (defn- process-query-basic-streaming [export-format query]
-  (with-redefs [streaming-response/keepalive-interval-ms 2]
-    (with-open [bos (ByteArrayOutputStream.)
-                os  (BufferedOutputStream. bos)]
-      (qp/process-query query (assoc (qp.streaming/streaming-context export-format os)
-                                     :timeout 15000))
-      (.flush os)
-      (let [bytea (.toByteArray bos)]
-        (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]
-          (parse-result export-format is))))))
+  (with-open [bos (ByteArrayOutputStream.)
+              os  (BufferedOutputStream. bos)]
+    (qp/process-query query (assoc (qp.streaming/streaming-context export-format os)
+                                   :timeout 15000))
+    (.flush os)
+    (let [bytea (.toByteArray bos)]
+      (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]
+        (parse-result export-format is)))))
 
 (defn- process-query-api-response-streaming [export-format query]
-  (with-redefs [streaming-response/keepalive-interval-ms 2]
-    (with-open [bos (ByteArrayOutputStream.)
-                os  (BufferedOutputStream. bos)]
-      (ring.protocols/write-body-to-stream
-       (qp.streaming/streaming-response [context export-format]
-         (qp/process-query-async query (assoc context :timeout 5000)))
-       nil
-       os)
-      (.flush os)
-      (.flush bos)
-      (let [bytea (.toByteArray bos)]
-        (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]
-          (parse-result export-format is))))))
+  (with-open [bos (ByteArrayOutputStream.)
+              os  (BufferedOutputStream. bos)]
+    (mt/with-open-channels [canceled-chan (a/promise-chan)]
+      (let [streaming-response (qp.streaming/streaming-response [context export-format]
+                                 (qp/process-query-async query (assoc context :timeout 5000)))]
+        (#'streaming-response/do-f-async (proxy [AsyncContext] []
+                                           (complete []))
+                                         (.f streaming-response)
+                                         os
+                                         (.donechan streaming-response)
+                                         canceled-chan)
+        (mt/wait-for-result (streaming-response/finished-chan streaming-response) 1000)))
+    (let [bytea (.toByteArray bos)]
+      (with-open [is (BufferedInputStream. (ByteArrayInputStream. bytea))]
+        (parse-result export-format is)))))
 
 (defmulti ^:private expected-results
   {:arglists '([export-format normal-results])}

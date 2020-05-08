@@ -114,6 +114,13 @@ describe("Visualization", () => {
         });
         expect(getTitles(viz)).toEqual([["Foo_name"]]);
       });
+      it("should render a blank title", () => {
+        const viz = renderVisualization({
+          rawSeries: [LineCard("")],
+          showTitle: true,
+        });
+        expect(getTitles(viz)).toEqual([["_name"]]);
+      });
       it("should render normal title and breakout multiseries titles", () => {
         const viz = renderVisualization({
           rawSeries: [MultiseriesLineCard("Foo")],

@@ -3,13 +3,14 @@
             [clojure.tools.logging :as log]
             [metabase.async.util :as async.u]
             [metabase.query-processor.context :as context]
-            [metabase.query-processor.context.default :as context.default]))
+            [metabase.query-processor.context.default :as context.default]
+            [metabase.util :as u]))
 
 (defn- wire-up-context-channels!
   "Wire up the core.async channels in a QP `context`."
   [context]
   ;; 1) If query doesn't complete by `timeoutf`, call `timeoutf`, which should raise an Exception
-  ;; 2) when `out-chan` is closed prematurely, call `cancelf` to send a message to `canceled-chan`
+  ;; 2) when `out-chan` is closed prematurely, send a message to `canceled-chan`
   ;; 3) when `out-chan` is closed or gets a result, close both out-chan and canceled-chan
   (let [out-chan      (context/out-chan context)
         canceled-chan (context/canceled-chan context)
@@ -17,12 +18,12 @@
     (a/go
       (let [[val port] (a/alts! [out-chan (a/timeout timeout)] :priority true)]
         (log/tracef "Port %s got %s"
-                    (if (= port out-chan) "out-chan" (format "[timeout after %d ms]" timeout))
+                    (if (= port out-chan) "out-chan" (format "[timeout after %s]" (u/format-milliseconds timeout)))
                     val)
         (cond
           (not= port out-chan) (context/timeoutf context)
-          (nil? val)           (context/cancelf context))
-        (log/tracef "Closing out-chan and canceled-chan.")
+          (nil? val)           (a/>!! canceled-chan ::cancel))
+        (log/tracef "Closing out-chan.")
         (a/close! out-chan)
         (a/close! canceled-chan)))
     nil))
@@ -46,6 +47,7 @@
 
 (defn quit
   "Create a special Exception that, when thrown or raised in the QP, will cause `result` to be returned directly.
+  Similar in concept to using `reduced` to stip reduction early.
 
     (context/raisef (qp.reducible/quit :my-result) context)"
   [result]
@@ -68,6 +70,12 @@
     (async.u/promise-pipe out-chan out-chan*)
     out-chan*))
 
+(def ^:dynamic *run-on-separate-thread?*
+  "Whether to run the query on a separate thread. When running a query asynchronously (i.e., with `async-qp`), this is
+  normally `true`, meaning the `out-chan` is returned immediately. When running a query synchronously (i.e., with
+  `sync-qp`), this is normally `false`, becuase we are blocking while waiting for results."
+  true)
+
 (defn async-qp
   "Wrap a QP function (middleware or a composition of middleware created with `combine-middleware`) with the signature:
 
@@ -89,10 +97,14 @@
      {:pre [(map? query) ((some-fn nil? map?) context)]}
      (let [context (merge (context.default/default-context) context)]
        (wire-up-context-channels! context)
-       (try
-         (qp query (context/rff context) context)
-         (catch Throwable e
-           (context/raisef e context)))
+       (let [thunk (fn [] (try
+                            (qp query (context/rff context) context)
+                            (catch Throwable e
+                              (context/raisef e context))))]
+         (log/tracef "Running on separate thread? %s" *run-on-separate-thread?*)
+         (if *run-on-separate-thread?*
+           (future (thunk))
+           (thunk)))
        (quittable-out-chan (context/out-chan context))))))
 
 (defn- wait-for-async-result [out-chan]
@@ -111,7 +123,14 @@
     (qp query context)"
   [qp]
   {:pre [(fn? qp)]}
-  (comp wait-for-async-result qp))
+  (fn qp*
+    ([query]
+     (wait-for-async-result (binding [*run-on-separate-thread?* false]
+                              (qp query))))
+
+    ([query context]
+     (wait-for-async-result (binding [*run-on-separate-thread?* false]
+                              (qp query context))))))
 
 
 ;;; ------------------------------------------------- Other Util Fns -------------------------------------------------

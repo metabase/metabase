@@ -1,6 +1,6 @@
 import { signIn, restore } from "__support__/cypress";
 
-describe("permissions", () => {
+describe("scenarios > permissions", () => {
   before(restore);
 
   const PATHS = [
@@ -30,5 +30,11 @@ describe("permissions", () => {
     cy.visit("/pulse/1");
     cy.get(".Icon-key");
     cy.contains("Sorry, you don’t have permission to see that.");
+  });
+
+  it("should let a user with no data permissions view questions", () => {
+    signIn("nodata");
+    cy.visit("/question/1");
+    cy.contains("February 11, 2019, 9:40 PM"); // check that the data loads
   });
 });

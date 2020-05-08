@@ -1,17 +1,17 @@
 (ns metabase.query-processor.middleware.desugar
-  (:require [metabase.mbql
+  (:require [medley.core :as m]
+            [metabase.mbql
              [predicates :as mbql.preds]
              [schema :as mbql.s]
              [util :as mbql.u]]
-            [metabase.util :as u]
             [schema.core :as s]))
 
 (s/defn ^:private desugar* :- mbql.s/Query
   [query]
-  (u/update-when query :query (fn [query]
-                                (mbql.u/replace query
-                                  (filter-clause :guard mbql.preds/Filter?)
-                                  (mbql.u/desugar-filter-clause filter-clause)))))
+  (m/update-existing query :query (fn [query]
+                                    (mbql.u/replace query
+                                                    (filter-clause :guard mbql.preds/Filter?)
+                                                    (mbql.u/desugar-filter-clause filter-clause)))))
 
 (defn desugar
   "Middleware that uses MBQL lib functions to replace high-level 'syntactic sugar' clauses like `time-interval` and

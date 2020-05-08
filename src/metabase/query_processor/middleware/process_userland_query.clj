@@ -9,9 +9,7 @@
              [query-execution :as query-execution :refer [QueryExecution]]]
             [metabase.query-processor.util :as qputil]
             [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db])
-  (:import [java.util.concurrent Executors Future]
-           org.apache.commons.lang3.concurrent.BasicThreadFactory$Builder))
+            [toucan.db :as db]))
 
 (defn- add-running-time [{start-time-ms :start_time_millis, :as query-execution}]
   (-> query-execution
@@ -28,7 +26,7 @@
 ;;
 ;; Async seems like it makes sense from a performance standpoint, but should we have some sort of shared threadpool
 ;; for other places where we would want to do async saves (such as results-metadata for Cards?)
-(defn- save-query-execution!
+(defn- save-query-execution!*
   "Save a `QueryExecution` and update the average execution time for the corresponding `Query`."
   [{query :json_query, query-hash :hash, running-time :running_time, context :context :as query-execution}]
   (query/save-query-and-update-average-execution-time! query query-hash running-time)
@@ -36,42 +34,29 @@
     (log/warn (trs "Cannot save QueryExecution, missing :context"))
     (db/insert! QueryExecution (dissoc query-execution :json_query))))
 
-(def ^:private ^Long thread-pool-size 4)
+(defn- save-query-execution!
+  "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."
+  [execution-info]
+  (let [execution-info (add-running-time execution-info)]
+    ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
+    ;;    pool, which is a fixed pool of size `nthreads + 2`. This way we don't spin up a ton of threads doing unimportant
+    ;;    background query execution saving (as `future` would do, which uses an unbounded thread pool by default)
+    ;;
+    ;; 2. This is on purpose! By *not* using `bound-fn` or `future`, any dynamic variables in play when the task is
+    ;;    submitted, such as `db/*connection*`, won't be in play when the task is actually executed. That way we won't
+    ;;    attempt to use closed DB connections
+    (.submit clojure.lang.Agent/pooledExecutor ^Runnable (fn []
+                                                           (log/trace "Saving QueryExecution info")
+                                                           (try
+                                                             (save-query-execution!* execution-info)
+                                                             (catch Throwable e
+                                                               (log/error e (trs "Error saving query execution info"))))))))
 
-(def ^:private ^{:arglists '(^java.util.concurrent.ExecutorService [])} thread-pool
-  "Thread pool for asynchronously saving query executions."
-  (let [pool (delay
-               (Executors/newFixedThreadPool
-                thread-pool-size
-                (.build
-                 (doto (BasicThreadFactory$Builder.)
-                   (.namingPattern "save-query-execution-thread-pool-%d")
-                   ;; Daemon threads do not block shutdown of the JVM
-                   (.daemon true)
-                   ;; Save query executions should be lower priority than other stuff e.g. API responses
-                   (.priority Thread/MIN_PRIORITY)))))]
-    (fn [] @pool)))
+(defn- save-successful-query-execution! [query-execution result-rows]
+  (save-query-execution! (assoc query-execution :result_rows result-rows)))
 
-(defn- save-query-execution-async!
-  "Asynchronously save a `QueryExecution` row containing `execution-info`. This is done when a query is finished, so
-  regardless of whether results streaming is canceled, we want to continue the save; for this reason, we don't call
-  `future-cancel` if we get a message to `canceled-chan` the way we normally do."
-  ^Future [execution-info]
-  (log/trace "Saving QueryExecution info asynchronously")
-  (let [execution-info (add-running-time execution-info)
-        ^Runnable task (bound-fn []
-                         (try
-                           (save-query-execution! execution-info)
-                           (catch Throwable e
-                             (log/error e (trs "Error saving query execution info"))))
-                         nil)]
-    (.submit (thread-pool) task)))
-
-(defn- save-successful-query-execution-async! [query-execution result-rows]
-  (save-query-execution-async! (assoc query-execution :result_rows result-rows)))
-
-(defn- save-failed-query-execution-async! [query-execution message]
-  (save-query-execution-async! (assoc query-execution :error (str message))))
+(defn- save-failed-query-execution! [query-execution message]
+  (save-query-execution! (assoc query-execution :error (str message))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -100,7 +85,7 @@
          (rf))
 
         ([acc]
-         (save-successful-query-execution-async! execution-info @row-count)
+         (save-successful-query-execution! execution-info @row-count)
          (rf (if (map? acc)
                (success-response execution-info acc)
                acc)))
@@ -142,7 +127,7 @@
       (letfn [(rff* [metadata]
                 (add-and-save-execution-info-xform! metadata execution-info (rff metadata)))
               (raisef* [^Throwable e context]
-                (save-failed-query-execution-async! execution-info (.getMessage e))
+                (save-failed-query-execution! execution-info (.getMessage e))
                 (raisef (ex-info (.getMessage e)
                           {:query-execution execution-info}
                           e)

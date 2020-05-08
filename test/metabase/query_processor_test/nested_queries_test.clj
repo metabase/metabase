@@ -287,7 +287,7 @@
 ;; e.g. the ORDER BY in the source-query should refer the 'stddev' aggregation, NOT the 'avg' aggregation
 (expect
   {:query (str "SELECT avg(\"source\".\"stddev\") AS \"avg\" FROM ("
-               "SELECT \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\", stddev(\"PUBLIC\".\"VENUES\".\"ID\") AS \"stddev\" "
+               "SELECT \"PUBLIC\".\"VENUES\".\"PRICE\" AS \"PRICE\", stddev_pop(\"PUBLIC\".\"VENUES\".\"ID\") AS \"stddev\" "
                "FROM \"PUBLIC\".\"VENUES\" "
                "GROUP BY \"PUBLIC\".\"VENUES\".\"PRICE\" "
                "ORDER BY \"stddev\" DESC, \"PUBLIC\".\"VENUES\".\"PRICE\" ASC"

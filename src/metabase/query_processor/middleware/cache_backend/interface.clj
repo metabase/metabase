@@ -21,7 +21,7 @@
       (with-open [is (...)]
         (respond is)))
 
-  `max-age-seconds` may be floating-point.")
+  `max-age-seconds` may be floating-point. This method *must* return the result of `respond`.")
 
   (save-results! [this ^bytes query-hash ^bytes results]
     "Add a cache entry with the `results` of running query with byte array `query-hash`. This should replace any prior
@@ -30,6 +30,18 @@
   (purge-old-entries! [this max-age-seconds]
     "Purge all cache entires older than `max-age-seconds`. Will be called periodically when this backend is in use.
   `max-age-seconds` may be floating-point."))
+
+(defmacro with-cached-results
+  "Macro version for consuming `cached-results` from a `backend`.
+
+    (with-cached-results backend query-hash max-age-seconds [is]
+      ...)
+
+  InputStream `is` will be `nil` if no cached results were available."
+  {:style/indent 4}
+  [backend query-hash max-age-seconds [is-binding] & body]
+  `(cached-results ~backend ~query-hash ~max-age-seconds (fn [~(vary-meta is-binding assoc :tag 'java.io.InputStream)]
+                                                           ~@body)))
 
 (defmulti cache-backend
   "Return an instance of a cache backend, which is any object that implements `QueryProcessorCacheBackend`.

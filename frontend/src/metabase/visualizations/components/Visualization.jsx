@@ -463,7 +463,14 @@ export default class Visualization extends React.PureComponent {
     );
 
     let { gridSize, gridUnit, classNameWidgets } = this.props;
-    if (!gridSize && gridUnit) {
+    if (
+      !gridSize &&
+      gridUnit &&
+      // Check that width/height are set. If they're not, we want to pass
+      // undefined rather than {width: 0, height: 0}. Passing 0 will hide axes.
+      width != null &&
+      height != null
+    ) {
       gridSize = {
         width: Math.round(width / (gridUnit * 4)),
         height: Math.round(height / (gridUnit * 3)),

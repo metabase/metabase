@@ -20,7 +20,7 @@
 ;; during unit tests don't treat presto as having FK support
 (defmethod driver/supports? [:presto :foreign-keys] [_ _] (not config/is-test?))
 
-;;; IDriverTestExtensions implementation
+;;; driver test extensions implementation
 
 ;; in the past, we had to manually update our Docker image and add a new catalog for every new dataset definition we
 ;; added. That's insane. Just use the `test-data` catalog and put everything in that, and use

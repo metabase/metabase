@@ -14,7 +14,8 @@
 
 (deftest move-top-level-params-to-inner-query-test
   (is (= {:type   :native
-          :native {:query "WOW", :parameters ["My Param"]}}
+          :native {:query "WOW", :parameters ["My Param"]}
+          :user-parameters ["My Param"]}
          (#'parameters/move-top-level-params-to-inner-query
           {:type :native, :native {:query "WOW"}, :parameters ["My Param"]}))))
 
@@ -36,7 +37,8 @@
   (testing "can we expand native params if they are specified at the top level?"
     (is (= (mt/query nil
              {:type   :native
-              :native {:query "SELECT * FROM venues WHERE price = 1;", :params []}})
+              :native {:query "SELECT * FROM venues WHERE price = 1;", :params []}
+              :user-parameters [{:type :category, :target [:variable [:template-tag "price"]], :value "1"}]})
            (substitute-params
             (mt/query nil
               {:type       :native

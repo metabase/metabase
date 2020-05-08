@@ -109,6 +109,7 @@
  [test-users
   user->id
   user->client
+  user->credentials
   with-test-user]
 
  [tt
@@ -150,6 +151,8 @@
   with-system-timezone-id]
 
  [tx
+  count-with-template-tag-query
+  count-with-field-filter-query
   dataset-definition
   db-qualified-table-name
   db-test-env-var
@@ -167,14 +170,14 @@
   with-test-drivers])
 
 (defn do-with-clock [clock thunk]
-  (let [clock (cond
-                (t/clock? clock)           clock
-                (t/zoned-date-time? clock) (t/mock-clock (t/instant clock) (t/zone-id clock))
-                :else                      (throw (Exception. (format "Invalid clock: ^%s %s"
-                                                                      (.getName (class clock))
-                                                                      (pr-str clock)))))]
-    (t/with-clock clock
-      (testing (format "\nsystem clock = %s" (pr-str clock))
+  (testing (format "\nsystem clock = %s" (pr-str clock))
+    (let [clock (cond
+                  (t/clock? clock)           clock
+                  (t/zoned-date-time? clock) (t/mock-clock (t/instant clock) (t/zone-id clock))
+                  :else                      (throw (Exception. (format "Invalid clock: ^%s %s"
+                                                                        (.getName (class clock))
+                                                                        (pr-str clock)))))]
+      (t/with-clock clock
         (thunk)))))
 
 (defmacro with-clock
@@ -218,17 +221,17 @@
                     :runf    (fn [query rff context]
                                (try
                                  (when run (run))
-                                 (let [metadata (qp.context/metadataf metadata context)]
-                                   (qp.context/reducef rff context (assoc metadata :pre query) rows))
+                                 (qp.context/reducef rff context (assoc metadata :pre query) rows)
                                  (catch Throwable e
                                    (println "Error in test-qp-middleware runf:" e)
                                    (throw e))))}
                    context)]
      (if async?
        (async-qp query context)
-       (let [qp     (qp.reducible/sync-qp async-qp)
-             result (qp query context)]
-         {:result   (m/dissoc-in result [:data :pre])
-          :pre      (-> result :data :pre)
-          :post     (-> result :data :rows)
-          :metadata (update result :data #(dissoc % :pre :rows))})))))
+       (binding [qp.reducible/*run-on-separate-thread?* true]
+         (let [qp     (qp.reducible/sync-qp async-qp)
+               result (qp query context)]
+           {:result   (m/dissoc-in result [:data :pre])
+            :pre      (-> result :data :pre)
+            :post     (-> result :data :rows)
+            :metadata (update result :data #(dissoc % :pre :rows))}))))))
