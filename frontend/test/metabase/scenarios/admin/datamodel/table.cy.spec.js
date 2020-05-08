@@ -94,11 +94,26 @@ describe("scenarios > admin > datamodel > table", () => {
       cy.get(alias).contains(desiredOption);
     }
 
-    it("should allow hiding of columns", () => {
+    it("should allow hiding of columns outside of detail views", () => {
       cy.visit(ORDERS_URL);
 
       field("Created At").as("created_at");
       testSelect("@created_at", "Everywhere", "Only in detail views");
+    });
+
+    it("should allow hiding of columns entirely", () => {
+      cy.visit(ORDERS_URL);
+
+      field("Created At").as("created_at");
+      testSelect("@created_at", "Everywhere", "Do not include");
+
+      // click over to products and back so we refresh the columns
+      cy.contains("Products").click();
+      cy.url().should("include", "/admin/datamodel/database/1/table/1");
+      cy.contains("Orders").click();
+
+      // created at should still be there
+      field("Created At");
     });
 
     it("should allow changing of special type and currency", () => {

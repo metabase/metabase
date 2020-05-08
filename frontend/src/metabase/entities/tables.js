@@ -75,9 +75,10 @@ const Tables = createEntity({
         ({ id }) => [...Tables.getObjectStatePath(id), "fetchMetadata"],
       ),
       withNormalize(TableSchema),
-    )(({ id }) => async (dispatch, getState) => {
+    )(({ id }, options = {}) => async (dispatch, getState) => {
       const table = await MetabaseApi.table_query_metadata({
         tableId: id,
+        ...options.params,
       });
       return addValidOperatorsToFields(table);
     }),
