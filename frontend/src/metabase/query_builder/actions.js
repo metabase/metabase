@@ -885,8 +885,6 @@ export const runQuestionQuery = ({
       ? question.isDirtyComparedTo(originalQuestion)
       : true;
 
-    // const cardIsDirty = getIsQuestionDirtyFromOriginal(getState(), question)
-    //
     if (shouldUpdateUrl) {
       dispatch(updateUrl(question.card(), { dirty: cardIsDirty }));
     }
