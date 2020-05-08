@@ -47,25 +47,33 @@
   the normal `streaming-response` macro, which is geared toward Ring responses.
 
     (with-open [os ...]
-      (qp/process-query query (qp.streaming/streaming-context :csv os)))"
-  [export-format ^OutputStream os]
-  (let [results-writer (i/streaming-results-writer export-format os)]
-    {:rff      (streaming-rff results-writer)
-     :reducedf (streaming-reducedf results-writer os)}))
+      (qp/process-query query (qp.streaming/streaming-context :csv os canceled-chan)))"
+  ([export-format ^OutputStream os]
+   (let [results-writer (i/streaming-results-writer export-format os)]
+     {:rff      (streaming-rff results-writer)
+      :reducedf (streaming-reducedf results-writer os)}))
+
+  ([export-format os canceled-chan]
+   (assoc (streaming-context export-format os) :canceled-chan canceled-chan)))
+
+(defn- await-async-result [out-chan canceled-chan]
+  ;; if we get a cancel message, close `out-chan` so the query will be canceled
+  (a/go
+    (when (a/<! canceled-chan)
+      (a/close! out-chan)))
+  ;; block until `out-chan` closes or gets a result
+  (a/<!! out-chan))
 
 (defn streaming-response*
   "Impl for `streaming-response`."
   [export-format f]
   (streaming-response/streaming-response (i/stream-options export-format) [os canceled-chan]
     (let [result (try
-                   (f (streaming-context export-format os))
+                   (f (streaming-context export-format os canceled-chan))
                    (catch Throwable e
                      e))
           result (if (instance? ManyToManyChannel result)
-                   (let [[val port] (a/alts!! [result canceled-chan])]
-                     (when (= port canceled-chan)
-                       (a/close! result))
-                     val)
+                   (await-async-result result canceled-chan)
                    result)]
       (when (or (instance? Throwable result)
                 (= (:status result) :failed))

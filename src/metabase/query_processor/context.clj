@@ -1,4 +1,9 @@
 (ns metabase.query-processor.context
+  "Interface for the QP context/utility functions for using the things in the context correctly.
+
+  The default implementations of all these functions live in `metabase.query-processor.context.default`; refer to
+  those when overriding individual functions. Some wiring for the `core.async` channels takes place in
+  `metabase.query-processor.reducible.`"
   (:require [metabase.async.util :as async.u]))
 
 (defn raisef
@@ -8,14 +13,29 @@
   {:pre [(fn? raisef*)]}
   (raisef* e context))
 
-;; Normal flow is something like
-
-;; [middleware] -> preprocessedf -> nativef -> runf -> executef -> metadataf -> reducef -> reducedf -|
-;                                                                                                   -+-> resultf -> out-chan
-;;          raisef ----------------------------------------------------------------------------------|
-;;            |
-;; cancelf ->-+
+;; Normal flow is something like:
 ;;
+;;    [middleware] → preprocessedf → nativef → runf → executef → reducef → reducedf -\
+;;        ↓                                                                           ↦ resultf → out-chan
+;;    [Exception]  → raisef ---------------------------------------------------------/               ↑
+;;        ↑                                                                                          |
+;;     timeoutf                                                                                      |
+;;        ↑                                                                                          |
+;;    [time out]              [out-chan closed early]                                                |
+;;                                      ↓                                                   [closes] |
+;;                                 canceled-chan ----------------------------------------------------/
+;;                                      ↑
+;;                       [message sent to canceled chan]
+;;
+;; 1. Query normally runs thru middleware and then a series of context functions as described above; result is sent thru
+;;    `resultf` and finally to `out-chan`
+;;
+;; 2. If an `Exception` is thrown, it is sent thru `raisef`, `resultf` and finally to `out-chan`
+;;
+;; 3. If the query times out, `timeoutf` throws an Exception
+;;
+;; 4. If the query is canceled (either by closing `out-chan` before it gets a result, or by sending `canceled-chan` a
+;; message), the execution is canceled and `out-chan` is closed (if not already closed).
 (defn runf
   "Called by pivot fn to run preprocessed query. Normally, this simply calls `executef`, but you can override this for
   test purposes. The result of this function is ignored."
@@ -56,13 +76,6 @@
   {:pre [(fn? reducedf*)]}
   (reducedf* metadata reduced-rows context))
 
-(defn metadataf
-  "Called upon receiving metadata from driver."
-  {:arglists '([metadata context])}
-  [metadata {metadataf* :metadataf, :as context}]
-  {:pre [(fn? metadataf*)], :post [(map? %)]}
-  (metadataf* metadata context))
-
 (defn preprocessedf
   "Called when query is fully preprocessed."
   {:arglsts '([query context])}
@@ -84,15 +97,8 @@
   {:pre [(fn? timeoutf*)]}
   (timeoutf* context))
 
-(defn cancelf
-  "Call this function to cancel a query."
-  {:arglists '([context])}
-  [{cancelf* :cancelf, :as context}]
-  {:pre [(fn? cancelf*)]}
-  (cancelf* context))
-
 (defn resultf
-  "ALWAYS alled exactly once with the final result, which is the result of either `reducedf` or `raisef`."
+  "Called exactly once with the final result, which is the result of either `reducedf` or `raisef`."
   {:arglists '([result context])}
   [result {resultf* :resultf, :as context}]
   {:pre [(fn? resultf*)]}

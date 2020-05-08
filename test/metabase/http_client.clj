@@ -12,7 +12,9 @@
              [util :as u]]
             [metabase.middleware.session :as mw.session]
             [metabase.test.initialize :as initialize]
-            [metabase.util.date-2 :as u.date]
+            [metabase.util
+             [date-2 :as u.date]
+             [schema :as su]]
             [schema.core :as s]))
 
 ;;; build-url
@@ -88,19 +90,34 @@
 
 (declare client)
 
-(s/defn authenticate :- s/Str
+(def ^:private Credentials
+  {:username su/NonBlankString, :password su/NonBlankString})
+
+(def ^:private UUIDString
+  "Schema for a canonical string representation of a UUID."
+  (s/constrained
+   su/NonBlankString
+   (partial re-matches #"^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$")))
+
+(s/defn authenticate :- UUIDString
   "Authenticate a test user with `username` and `password`, returning their Metabase Session token; or throw an
   Exception if that fails."
-  [credentials :- {:username s/Str, :password s/Str}]
+  [credentials :- Credentials]
+  (initialize/initialize-if-needed! :test-users)
   (try
-    (:id (client :post 200 "session" credentials))
+    (let [response (client :post 200 "session" credentials)]
+      (or (:id response)
+          (throw (ex-info "Unexpected response" {:response response}))))
     (catch Throwable e
-      (println "Failed to authenticate with credentials" credentials e))))
+      (println "Failed to authenticate with credentials" credentials e)
+      (throw (ex-info "Failed to authenticate with credentials"
+                      {:credentials credentials}
+                      e)))))
 
 
 ;;; client
 
-(defn- build-request-map [credentials http-body]
+(defn build-request-map [credentials http-body]
   (merge
    {:accept       :json
     :headers      {@#'mw.session/metabase-session-header
@@ -127,7 +144,8 @@
       (throw (ex-info message {:status-code actual-status-code}))))
   ;; all other status codes should be test assertions against the expected status code if one was specified
   (when expected-status-code
-    (t/is (= expected-status-code actual-status-code)
+    (t/is (= expected-status-code
+             actual-status-code)
           (format "%s %s expected a status code of %d, got %d."
                   method-name url expected-status-code actual-status-code))))
 
@@ -137,20 +155,20 @@
    :put    client/put
    :delete client/delete})
 
-(defn- -client [credentials method expected-status url http-body url-param-kwargs request-options]
-  ;; Since the params for this function can get a little complicated make sure we validate them
-  {:pre [(or (u/maybe? map? credentials)
-             (string? credentials))
-         (contains? #{:get :post :put :delete} method)
-         (u/maybe? integer? expected-status)
-         (string? url)
-         (u/maybe? map? http-body)
-         (u/maybe? map? url-param-kwargs)]}
+(s/defn ^:private -client
+    ;; Since the params for this function can get a little complicated make sure we validate them
+  [credentials      :- (s/maybe (s/cond-pre UUIDString Credentials))
+   method           :- (apply s/enum (keys method->request-fn))
+   expected-status  :- (s/maybe su/IntGreaterThanZero)
+   url              :- su/NonBlankString
+   http-body        :- (s/maybe su/Map)
+   url-param-kwargs :- (s/maybe su/Map)
+   request-options  :- (s/maybe su/Map)]
   (initialize/initialize-if-needed! :db :web-server)
-  (let [request-map (merge (build-request-map credentials http-body) request-options)
-        request-fn  (method->request-fn method)
-        url         (build-url url url-param-kwargs)
-        method-name (str/upper-case (name method))
+  (let [request-map                    (merge (build-request-map credentials http-body) request-options)
+        request-fn                     (method->request-fn method)
+        url                            (build-url url url-param-kwargs)
+        method-name                    (str/upper-case (name method))
         ;; Now perform the HTTP request
         {:keys [status body] :as resp} (try (request-fn url request-map)
                                             (catch clojure.lang.ExceptionInfo e

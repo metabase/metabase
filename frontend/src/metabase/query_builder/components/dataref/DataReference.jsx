@@ -26,7 +26,23 @@ export default class DataReference extends Component {
   constructor(props, context) {
     super(props, context);
 
-    const { query } = props;
+    this.state = {
+      stack: this.initialStack(),
+      tables: {},
+      fields: {},
+    };
+  }
+
+  componentDidUpdate(prevProps) {
+    const { id: dbId } = this.props.query.database() || {};
+    const { id: prevDbId } = prevProps.query.database() || {};
+    if (dbId !== prevDbId) {
+      this.setState({ stack: this.initialStack() });
+    }
+  }
+
+  initialStack() {
+    const { query } = this.props;
 
     const stack = [];
     const database = query && query.database();
@@ -38,11 +54,7 @@ export default class DataReference extends Component {
       stack.push({ type: "table", item: table });
     }
 
-    this.state = {
-      stack: stack,
-      tables: {},
-      fields: {},
-    };
+    return stack;
   }
 
   static propTypes = {

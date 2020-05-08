@@ -114,6 +114,17 @@ export default class DashCardCardParameterMapper extends Component {
       mapping.overlapMax === 1
     );
 
+    let selectedFieldWarning = null;
+    if (
+      // variable targets can't accept an list of values like dimension targets
+      target &&
+      target[0] === "variable" &&
+      // date parameters only accept a single value anyways, so hide the warning
+      !parameter.type.startsWith("date/")
+    ) {
+      selectedFieldWarning = t`This field only accepts a single value because it's used in a SQL query.`;
+    }
+
     return (
       <div className="mx1 flex flex-column align-center drag-disabled">
         {dashcard.series && dashcard.series.length > 0 && (
@@ -185,6 +196,11 @@ export default class DashCardCardParameterMapper extends Component {
             </Tooltip>
           )}
         </ParameterTargetWidget>
+        {selectedFieldWarning && (
+          <span style={{ height: 0 }} className="mt1 mbn1 px4 text-centered">
+            {selectedFieldWarning}
+          </span>
+        )}
       </div>
     );
   }
