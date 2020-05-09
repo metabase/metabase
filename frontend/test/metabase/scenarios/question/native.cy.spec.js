@@ -195,23 +195,26 @@ describe("scenarios > question > native", () => {
     cy.visit("/question/new");
     cy.contains("Native query").click();
 
-    // Write a query with parameter firstparameter,nextparameter,lastparameter. 
-    cy.get(".ace_content").type("{{firstparameter}} {{nextparameter}} {{lastparameter}}", {
-      parseSpecialCharSequences: false,
-      delay: 0,
-    });
+    // Write a query with parameter firstparameter,nextparameter,lastparameter.
+    cy.get(".ace_content").type(
+      "{{firstparameter}} {{nextparameter}} {{lastparameter}}",
+      {
+        parseSpecialCharSequences: false,
+        delay: 0,
+      },
+    );
 
     // drag the firstparameter to last position
     cy.get(".align-end")
-    .children()
-    .first()
-    .find(".cursor-grab")
-    .trigger('mousedown',0, 0 ,{force: true})
-    .trigger('mousemove',1, 1 ,{force: true})
-    .trigger('mousemove',600, 1 ,{force: true})
-    .trigger('mouseup',600, 1,{force: true})
+      .children()
+      .first()
+      .find(".cursor-grab")
+      .trigger("mousedown", 0, 0, { force: true })
+      .trigger("mousemove", 1, 1, { force: true })
+      .trigger("mousemove", 600, 1, { force: true })
+      .trigger("mouseup", 600, 1, { force: true });
 
-    // ensure they're in the right order 
+    // ensure they're in the right order
     cy.contains("Variables")
       .parent()
       .parent()
