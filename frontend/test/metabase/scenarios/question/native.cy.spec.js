@@ -366,4 +366,42 @@ describe("scenarios > question > native", () => {
     // Filter dropdown field
     cy.get("fieldset").contains("Filter");
   });
+
+  it("can reorder template tags by drag and drop", () => {
+    cy.visit("/question/new");
+    cy.contains("Native query").click();
+
+    // Write a query with parameter firstparameter,nextparameter,lastparameter.
+    cy.get(".ace_content").type(
+      "{{firstparameter}} {{nextparameter}} {{lastparameter}}",
+      {
+        parseSpecialCharSequences: false,
+        delay: 0,
+      },
+    );
+
+    // drag the firstparameter to last position
+    cy.get(".align-end")
+      .children()
+      .first()
+      .find(".cursor-grab")
+      .trigger("mousedown", 0, 0, { force: true })
+      .trigger("mousemove", 1, 1, { force: true })
+      .trigger("mousemove", 600, 1, { force: true })
+      .trigger("mouseup", 600, 1, { force: true });
+
+    // ensure they're in the right order
+    cy.contains("Variables")
+      .parent()
+      .parent()
+      .find(".text-brand")
+      .as("variableLabels");
+
+    cy.get("@variableLabels")
+      .first()
+      .should("have.text", "nextparameter");
+    cy.get("@variableLabels")
+      .last()
+      .should("have.text", "firstparameter");
+  });
 });
