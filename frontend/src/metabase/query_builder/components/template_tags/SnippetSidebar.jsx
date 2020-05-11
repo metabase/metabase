@@ -5,25 +5,21 @@ import PropTypes from "prop-types";
 
 import { t } from "ttag";
 
-import colors from "metabase/lib/colors";
 import Icon from "metabase/components/Icon";
-import Modal from "metabase/components/Modal";
 import Tooltip from "metabase/components/Tooltip";
-import Link from "metabase/components/Link";
 import SidebarContent from "metabase/query_builder/components/SidebarContent";
 
 import Snippets from "metabase/entities/snippets";
 
-import type { DatasetQuery } from "metabase/meta/types/Card";
 import type { Snippet } from "metabase/meta/types/Snippet";
 import NativeQuery from "metabase-lib/lib/queries/NativeQuery";
 
 type Props = {
   query: NativeQuery,
-  setDatasetQuery: (datasetQuery: DatasetQuery) => void,
   onClose: () => void,
-  nativeEditorCursorOffset: number,
-  nativeEditorSelectedText: string,
+  setModalSnippet: () => void,
+  openSnippetModalWithSelectedText: () => void,
+  insertSnippet: () => void,
   snippets: Snippet[],
 };
 
@@ -38,14 +34,19 @@ export default class SnippetSidebar extends React.Component {
 
   static propTypes = {
     query: PropTypes.object.isRequired,
-    setDatasetQuery: PropTypes.func.isRequired,
     onClose: PropTypes.func.isRequired,
-    nativeEditorCursorOffset: PropTypes.number.isRequired,
-    nativeEditorSelectedText: PropTypes.string.isRequired,
+    setModalSnippet: PropTypes.func.isRequired,
+    openSnippetModalWithSelectedText: PropTypes.func.isRequired,
+    insertSnippet: PropTypes.func.isRequired,
   };
 
   render() {
-    const { query, onClose, snippets } = this.props;
+    const {
+      query,
+      onClose,
+      openSnippetModalWithSelectedText,
+      snippets,
+    } = this.props;
 
     return (
       <SidebarContent title={t`Snippets`} onClose={onClose}>
@@ -58,7 +59,7 @@ export default class SnippetSidebar extends React.Component {
             <div>
               <a
                 className="block my3 text-brand"
-                onClick={this.openCreateModal}
+                onClick={openSnippetModalWithSelectedText}
               >
                 <Icon name={"add"} size={12} className="mr1" />
                 {t`Add a snippet`}
@@ -69,7 +70,6 @@ export default class SnippetSidebar extends React.Component {
             </div>
           )}
         </div>
-        {this.renderModal()}
       </SidebarContent>
     );
   }
@@ -78,7 +78,7 @@ export default class SnippetSidebar extends React.Component {
     <Tooltip key={snippet.id} tooltip={snippet.description}>
       <div className="bg-medium-hover hover-parent hover--display flex p2 rounded">
         <a
-          onClick={() => this.insertSnippet(snippet)}
+          onClick={() => this.props.insertSnippet(snippet)}
           style={{ height: ICON_SIZE }} // without setting this <a> adds more height around the icon
         >
           <Icon name={"snippet"} size={ICON_SIZE} className="mr1" />
@@ -86,7 +86,7 @@ export default class SnippetSidebar extends React.Component {
         <span className="flex-full">{snippet.name}</span>
         <a
           className="hover-child"
-          onClick={() => this.setState({ modalSnippet: snippet })}
+          onClick={() => this.props.setModalSnippet(snippet)}
           style={{ height: ICON_SIZE }}
         >
           <Icon name={"pencil"} size={ICON_SIZE} />
@@ -94,70 +94,4 @@ export default class SnippetSidebar extends React.Component {
       </div>
     </Tooltip>
   );
-
-  insertSnippet({ name }) {
-    const {
-      query,
-      setDatasetQuery,
-      nativeEditorCursorOffset,
-      nativeEditorSelectedText,
-    } = this.props;
-    const newText =
-      query
-        .queryText()
-        .slice(0, nativeEditorCursorOffset - nativeEditorSelectedText.length) +
-      `{{snippet: ${name}}}` +
-      query.queryText().slice(nativeEditorCursorOffset);
-    setDatasetQuery(query.setQueryText(newText).datasetQuery());
-  }
-
-  renderModal() {
-    const snippet = this.state.modalSnippet;
-    if (snippet == null) {
-      return null;
-    }
-    const closeModal = () => this.setState({ modalSnippet: null });
-
-    return (
-      <Modal>
-        <Snippets.ModalForm
-          snippet={snippet}
-          title={
-            snippet.id != null
-              ? t`Editing ${snippet.name}`
-              : t`Create your new snippet`
-          }
-          onSaved={savedSnippet => {
-            if (snippet.id == null) {
-              this.insertSnippet(savedSnippet);
-            }
-            closeModal();
-          }}
-          onClose={closeModal} // the "x" button
-          onCance={closeModal} // the cancel button
-          submitTitle={t`Save`}
-          footerLeftButtons={
-            // only display archive for saved snippets
-            snippet.id != null ? (
-              <Link
-                style={{ color: colors.error }}
-                onClick={async () => {
-                  await snippet.update({ archived: true });
-                  closeModal();
-                }}
-              >{t`Archive`}</Link>
-            ) : null
-          }
-        />
-      </Modal>
-    );
-  }
-
-  openCreateModal = () =>
-    this.setState({
-      modalSnippet: {
-        database_id: this.props.query.databaseId(),
-        content: this.props.nativeEditorSelectedText,
-      },
-    });
 }

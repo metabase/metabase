@@ -35,6 +35,7 @@ import _ from "underscore";
 
 import Icon from "metabase/components/Icon";
 import ExplicitSize from "metabase/components/ExplicitSize";
+import Popover from "metabase/components/Popover";
 
 import Parameters from "metabase/parameters/components/Parameters";
 
@@ -61,6 +62,7 @@ import {
   DatabaseDataSelector,
   SchemaAndTableDataSelector,
 } from "metabase/query_builder/components/DataSelector";
+import SnippetModal from "metabase/query_builder/components/template_tags/SnippetModal";
 
 import RunButtonWithTooltip from "./RunButtonWithTooltip";
 import DataReferenceButton from "./view/DataReferenceButton";
@@ -524,6 +526,35 @@ export default class NativeQueryEditor extends Component {
           resizeHandles={["s"]}
         >
           <div className="flex-full" id="id_sql" ref="editor" />
+          <Popover
+            isOpen={!!this.props.nativeEditorSelectedText}
+            target={() =>
+              ReactDOM.findDOMNode(this.refs.editor).querySelector(
+                ".ace_selection",
+              )
+            }
+          >
+            <div className="flex flex-column">
+              <a className="p2 bg-medium-hover flex" onClick={this.runQuery}>
+                <Icon name={"play"} size={16} className="mr1" />
+                <h4>Run selection</h4>
+              </a>
+              <a
+                className="p2 bg-medium-hover flex"
+                onClick={this.props.openSnippetModalWithSelectedText}
+              >
+                <Icon name={"snippet"} size={16} className="mr1" />
+                <h4>Save as snippet</h4>
+              </a>
+            </div>
+          </Popover>
+          {this.props.modalSnippet && (
+            <SnippetModal
+              snippet={this.props.modalSnippet}
+              insertSnippet={this.props.insertSnippet}
+              closeModal={this.props.closeSnippetModal}
+            />
+          )}
           <div className="flex flex-column align-center border-left">
             <DataReferenceButton
               {...this.props}

@@ -46,6 +46,8 @@ import {
   getQueryBuilderMode,
   getIsShowingTemplateTagsEditor,
   getIsRunning,
+  getNativeEditorCursorOffset,
+  getNativeEditorSelectedText,
 } from "./selectors";
 
 import { MetabaseApi, CardApi, UserApi } from "metabase/services";
@@ -528,6 +530,38 @@ export const SET_NATIVE_EDITOR_SELECTED_RANGE =
 export const setNativeEditorSelectedRange = createAction(
   SET_NATIVE_EDITOR_SELECTED_RANGE,
 );
+
+export const SET_MODAL_SNIPPET = "metabase/qb/SET_MODAL_SNIPPET";
+export const setModalSnippet = createAction(SET_MODAL_SNIPPET);
+
+export const openSnippetModalWithSelectedText = () => (dispatch, getState) => {
+  const database_id = getQuestion(getState())
+    .query()
+    .databaseId();
+  const content = getNativeEditorSelectedText(getState());
+  dispatch(setModalSnippet({ database_id, content }));
+};
+
+export const closeSnippetModal = () => (dispatch, getState) => {
+  dispatch(setModalSnippet(null));
+};
+
+export const insertSnippet = snip => (dispatch, getState) => {
+  console.log("insertSnippet", snip);
+  const name = snip.name;
+  const question = getQuestion(getState());
+  const query = question.query();
+  const nativeEditorCursorOffset = getNativeEditorCursorOffset(getState());
+  const nativeEditorSelectedText = getNativeEditorSelectedText(getState());
+  const selectionStart =
+    nativeEditorCursorOffset - (nativeEditorSelectedText || "").length;
+  const newText =
+    query.queryText().slice(0, selectionStart) +
+    `{{snippet: ${name}}}` +
+    query.queryText().slice(nativeEditorCursorOffset);
+  const datasetQuery = query.setQueryText(newText).datasetQuery();
+  dispatch(updateQuestion(question.setDatasetQuery(datasetQuery)));
+};
 
 export const CLOSE_QB_NEWB_MODAL = "metabase/qb/CLOSE_QB_NEWB_MODAL";
 export const closeQbNewbModal = createThunkAction(CLOSE_QB_NEWB_MODAL, () => {

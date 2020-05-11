@@ -39,6 +39,7 @@ import {
   getIsRunnable,
   getIsResultDirty,
   getMode,
+  getModalSnippet,
   getQuery,
   getQuestion,
   getOriginalQuestion,
@@ -147,6 +148,7 @@ const mapStateToProps = (state, props) => {
     queryStartTime: getQueryStartTime(state),
     nativeEditorCursorOffset: getNativeEditorCursorOffset(state),
     nativeEditorSelectedText: getNativeEditorSelectedText(state),
+    modalSnippet: getModalSnippet(state),
   };
 };
 

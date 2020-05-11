@@ -10,6 +10,7 @@ import {
   TOGGLE_SNIPPET_SIDEBAR,
   SET_IS_SHOWING_TEMPLATE_TAGS_EDITOR,
   SET_NATIVE_EDITOR_SELECTED_RANGE,
+  SET_MODAL_SNIPPET,
   CLOSE_QB_NEWB_MODAL,
   RELOAD_CARD,
   API_CREATE_QUESTION,
@@ -124,6 +125,10 @@ export const uiControls = handleActions(
     [SET_NATIVE_EDITOR_SELECTED_RANGE]: (state, { payload }) => ({
       ...state,
       nativeEditorSelectedRange: payload,
+    }),
+    [SET_MODAL_SNIPPET]: (state, { payload }) => ({
+      ...state,
+      modalSnippet: payload,
     }),
     [CLOSE_QB_NEWB_MODAL]: {
       next: (state, { payload }) => ({ ...state, isShowingNewbModal: false }),
