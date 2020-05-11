@@ -26,7 +26,7 @@
    "eastwood"                          ["with-profile" "+eastwood" "eastwood"]
    "check-reflection-warnings"         ["with-profile" "+reflection-warnings" "check"]
    "docstring-checker"                 ["with-profile" "+docstring-checker" "docstring-checker"]
-   "cloverage"                         ["with-profile" "+cloverage,+test" "cloverage"]
+   "cloverage"                         ["with-profile" "+test-config,+cloverage" "cloverage"]
    ;; `lein lint` will run all linters
    "lint"                              ["do" ["eastwood"] ["bikeshed"] ["check-namespace-decls"] ["docstring-checker"] ["cloverage"]]
    "repl"                              ["with-profile" "+repl" "repl"]
@@ -262,23 +262,26 @@
     :middleware
     [leiningen.include-drivers/middleware]}
 
+   ;; shared config used by various commands that run tests (lein test and lein cloverage)
+   :test-common
+   {:resource-paths
+    ["test_resources"]
+
+    :env
+    {:mb-run-mode     "test"
+     :mb-db-in-memory "true"
+     :mb-jetty-join   "false"
+     :mb-api-key      "test-api-key"
+     ;; use a random port between 3001 and 3501. That way if you run multiple sets of tests at the same time locally
+     ;; they won't stomp on each other
+     :mb-jetty-port   #=(eval (str (+ 3001 (rand-int 500))))}
+
+    :jvm-opts
+    ["-Duser.timezone=UTC"
+     "-Duser.language=en"]}
+
    :test
-   [:with-include-drivers-middleware
-    {:resource-paths
-     ["test_resources"]
-
-     :env
-     {:mb-run-mode "test"}
-
-     :jvm-opts
-     ["-Duser.timezone=UTC"
-      "-Dmb.db.in.memory=true"
-      "-Dmb.jetty.join=false"
-      ;; use a random port between 3001 and 3501. That way if you run multiple sets of tests at the same time locally
-      ;; they won't stomp on each other
-      #=(eval (format "-Dmb.jetty.port=%d" (+ 3001 (rand-int 500))))
-      "-Dmb.api.key=test-api-key"
-      "-Duser.language=en"]}]
+   [:with-include-drivers-middleware :test-common]
 
    :eftest
    {:plugins [[lein-eftest "0.5.9"]]
@@ -354,8 +357,7 @@
     :plugins      [[lein-cloverage  "1.1.3-SNAPSHOT"]]
     :source-paths ^:replace ["src" "backend/mbql/src"]
     :test-paths   ^:replace ["test" "backend/mbql/test"]
-    :cloverage
-    {:fail-threshold 68}}
+    :cloverage    {:fail-threshold 68}}
 
    ;; build the uberjar with `lein uberjar`
    :uberjar
