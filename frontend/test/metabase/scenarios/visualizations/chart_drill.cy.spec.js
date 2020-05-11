@@ -111,7 +111,7 @@ describe("scenarios > visualizations > chart drill", () => {
     cy.contains("Orders by Created At: Week").click({ force: true });
     cy.contains("January, 2019");
 
-    // drill into the first bar
+    // drill into a recent week
     cy.get(".dot")
       .eq(-4)
       .click({ force: true });
