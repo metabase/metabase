@@ -576,6 +576,8 @@ jobs:
       e:
         type: executor
         default: clojure-and-node
+      cypress-group:
+        type: string
       only-single-database:
         type: boolean
         default: false
@@ -586,6 +588,8 @@ jobs:
         type: string
         default: ""
     executor: << parameters.e >>
+    environment:
+      CYPRESS_GROUP:  << parameters.cypress-group >>
     steps:
       - run-yarn-command:
           command-name: Run Cypress tests
@@ -872,10 +876,31 @@ workflows:
           requires:
             - build-uberjar
             - fe-deps
+
       - fe-tests-cypress:
+          name: fe-tests-cypress-1
           requires:
             - build-uberjar
             - fe-deps
+          cypress-group: "default"
+      - fe-tests-cypress:
+          name: fe-tests-cypress-2
+          requires:
+            - build-uberjar
+            - fe-deps
+          cypress-group: "default"
+      - fe-tests-cypress:
+          name: fe-tests-cypress-3
+          requires:
+            - build-uberjar
+            - fe-deps
+          cypress-group: "default"
+      - fe-tests-cypress:
+          name: fe-tests-cypress-4
+          requires:
+            - build-uberjar
+            - fe-deps
+          cypress-group: "default"
 
       - fe-tests-cypress:
           name: fe-tests-cypress-mongo
@@ -883,6 +908,7 @@ workflows:
             - build-uberjar
             - fe-deps
           e: fe-mongo
+          cypress-group: "mongo"
           driver: mongo
           only-single-database: true
           test-files-location: frontend/test/metabase-db/mongo
