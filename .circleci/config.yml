@@ -355,23 +355,23 @@ jobs:
       e:
         type: executor
         default: clojure
+      before-steps:
+        type: steps
+        default: []
       lein-command:
         type: string
-      store-results:
-        type: boolean
-        default: false
+      after-steps:
+        type: steps
+        default: []
     executor: << parameters.e >>
     steps:
       - attach-workspace
       - restore-be-deps-cache
+      - steps: << parameters.before-steps >>
       - run:
           command: lein with-profile +ci << parameters.lein-command >>
           no_output_timeout: 5m
-      - when:
-          condition: << parameters.store-results >>
-          steps:
-            - store_test_results:
-                path: /home/circleci/metabase/metabase/target/test
+      - steps: << parameters.after-steps >>
 
   be-linter-reflection-warnings:
     executor: clojure
@@ -673,6 +673,16 @@ workflows:
             - be-deps
           lein-command: bikeshed
 
+      - lein:
+          name: be-linter-cloverage
+          requires:
+            - be-deps
+          lein-command: cloverage --codecov
+          after-steps:
+            - run:
+                name: Upload code coverage to codecov.io
+                command: bash <(curl -s https://codecov.io/bash)
+
       - be-linter-reflection-warnings:
           requires:
             - be-deps
@@ -893,6 +903,7 @@ workflows:
             - verify-i18n-files
 
             - be-linter-bikeshed
+            - be-linter-cloverage
             - be-linter-docstring-checker
             - be-linter-eastwood
             - be-linter-namespace-decls

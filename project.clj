@@ -26,8 +26,9 @@
    "eastwood"                          ["with-profile" "+eastwood" "eastwood"]
    "check-reflection-warnings"         ["with-profile" "+reflection-warnings" "check"]
    "docstring-checker"                 ["with-profile" "+docstring-checker" "docstring-checker"]
+   "cloverage"                         ["with-profile" "+cloverage,+test" "cloverage"]
    ;; `lein lint` will run all linters
-   "lint"                              ["do" ["eastwood"] ["bikeshed"] ["check-namespace-decls"] ["docstring-checker"]]
+   "lint"                              ["do" ["eastwood"] ["bikeshed"] ["check-namespace-decls"] ["docstring-checker"] ["cloverage"]]
    "repl"                              ["with-profile" "+repl" "repl"]
    "strip-and-compress"                ["with-profile" "+strip-and-compress" "run"]
    "compare-h2-dbs"                    ["with-profile" "+compare-h2-dbs" "run"]}
@@ -44,10 +45,10 @@
    [org.clojure/core.memoize "0.7.1"]                                 ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
    [org.clojure/data.csv "0.1.4"]                                     ; CSV parsing / generation
    [org.clojure/java.classpath "0.3.0"]                               ; examine the Java classpath from Clojure programs
-   [org.clojure/java.jdbc "0.7.9"]                                    ; basic JDBC access from Clojure
+   [org.clojure/java.jdbc "0.7.11"]                                   ; basic JDBC access from Clojure
    [org.clojure/math.combinatorics "0.1.4"]                           ; combinatorics functions
    [org.clojure/math.numeric-tower "0.0.4"]                           ; math functions like `ceil`
-   [org.clojure/tools.logging "0.4.1"]                                ; logging framework
+   [org.clojure/tools.logging "1.1.0"]                                ; logging framework
    [org.clojure/tools.namespace "0.2.11"]
    [org.clojure/tools.trace "0.7.10"]                                 ; function tracing
    [amalloy/ring-buffer "1.2.2"
@@ -123,16 +124,20 @@
    [org.tcrawley/dynapath "1.0.0"]                                    ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
    [org.threeten/threeten-extra "1.5.0"]                               ; extra Java 8 java.time classes like DayOfMonth and Quarter
    [org.yaml/snakeyaml "1.23"]                                        ; YAML parser (required by liquibase)
-   [potemkin "0.4.5"]                                                 ; utility macros & fns
-   [pretty "1.0.1"]                                                   ; protocol for defining how custom types should be pretty printed
+   [potemkin "0.4.5" :exclusions [riddley]]                           ; utility macros & fns
+   [pretty "1.0.4"]                                                   ; protocol for defining how custom types should be pretty printed
    [prismatic/schema "1.1.11"]                                        ; Data schema declaration and validation library
    [puppetlabs/i18n "0.8.0"]                                          ; Internationalization library
    [redux "0.1.4"]                                                    ; Utility functions for building and composing transducers
+   [riddley "0.2.0"]                                                  ; code walking lib -- used interally by Potemkin, manifold, etc.
    [ring/ring-core "1.8.0"]
    [ring/ring-jetty-adapter "1.8.0"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
    [ring/ring-json "0.4.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
-   [toucan "1.15.1" :exclusions [org.clojure/java.jdbc honeysql]]     ; Model layer, hydration, and DB utilities
+   [toucan "1.15.1" :exclusions [org.clojure/java.jdbc                ; Model layer, hydration, and DB utilities
+                                 org.clojure/tools.logging
+                                 org.clojure/tools.namespace
+                                 honeysql]]
    [weavejester/dependency "0.2.1"]                                   ; Dependency graphs and topological sorting
    ]
 
@@ -176,7 +181,7 @@
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
      [jonase/eastwood "0.3.6" :exclusions [org.clojure/clojure]]      ; to run Eastwood
      [methodical "0.9.4-alpha"]
-     [pjstadig/humane-test-output "0.9.0"]
+     [pjstadig/humane-test-output "0.10.0"]
      [ring/ring-mock "0.3.2"]]
 
     :plugins
@@ -343,6 +348,14 @@
     {:plugins               [[lein-check-namespace-decls "1.0.2"]]
      :source-paths          ^:replace ["src" "backend/mbql/src" "test" "backend/mbql/test"]
      :check-namespace-decls {:prefix-rewriting true}}]
+
+   :cloverage
+   {:dependencies [[cloverage "1.1.3-SNAPSHOT" :exclusions [riddley]]]
+    :plugins      [[lein-cloverage  "1.1.3-SNAPSHOT"]]
+    :source-paths ^:replace ["src" "backend/mbql/src"]
+    :test-paths   ^:replace ["test" "backend/mbql/test"]
+    :cloverage
+    {:fail-threshold 68}}
 
    ;; build the uberjar with `lein uberjar`
    :uberjar
