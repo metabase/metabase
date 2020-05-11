@@ -12,10 +12,14 @@ driver:
     - google
     - sql
   connection-properties:
+    - name: service-account-json
+      display-name: Service account JSON file contents
+      placeholder: "{ ... }"
+      required: false
     - name: project-id
       display-name: Project ID
       placeholder: praxis-beacon-120871
-      required: true
+      required: false
     - name: dataset-id
       display-name: Dataset ID
       placeholder: toucanSightings
@@ -23,15 +27,15 @@ driver:
     - name: client-id
       display-name: Client ID
       placeholder: 1201327674725-y6ferb0feo1hfssr7t40o4aikqll46d4.apps.googleusercontent.com
-      required: true
+      required: false
     - name: client-secret
       display-name: Client Secret
       placeholder: dJNi4utWgMzyIFo2JbnsK6Np
-      required: true
+      required: false
     - name: auth-code
       display-name: Auth Code
       placeholder: 4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek
-      required: true
+      required: false
     - name: use-jvm-timezone
       display-name: Use JVM Time Zone
       default: false
