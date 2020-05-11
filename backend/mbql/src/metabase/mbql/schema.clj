@@ -619,7 +619,7 @@
 (defclause ^{:requires-features #{:standard-deviation-aggregations}} stddev
   field-or-expression FieldOrExpressionDef)
 
-(defclause ^{:requires-features #{:standard-deviation-aggregations}} var
+(defclause ^{:requires-features #{:standard-deviation-aggregations}} [ag:var var]
   field-or-expression FieldOrExpressionDef)
 
 (defclause ^{:requires-features #{:percentile-aggregations}} median
@@ -642,7 +642,7 @@
   (s/if (partial is-clause? arithmetic-expressions)
     ArithmeticExpression
     (one-of count avg cum-count cum-sum distinct stddev sum min max metric share count-where
-            sum-where case median percentile var)))
+            sum-where case median percentile ag:var)))
 
 (def ^:private UnnamedAggregation
   (s/recursive #'UnnamedAggregation*))

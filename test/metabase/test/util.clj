@@ -571,7 +571,8 @@
 
 (defn do-with-model-cleanup [model-seq f]
   (try
-    (f)
+    (testing (str (pr-str (cons 'with-model-cleanup model-seq)) "\n")
+      (f))
     (finally
       (doseq [model model-seq]
         (do-model-cleanup! (db/resolve-model model))))))
