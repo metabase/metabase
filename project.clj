@@ -26,7 +26,7 @@
    "eastwood"                          ["with-profile" "+eastwood" "eastwood"]
    "check-reflection-warnings"         ["with-profile" "+reflection-warnings" "check"]
    "docstring-checker"                 ["with-profile" "+docstring-checker" "docstring-checker"]
-   "cloverage"                         ["with-profile" "+test-config,+cloverage" "cloverage"]
+   "cloverage"                         ["with-profile" "+cloverage" "cloverage"]
    ;; `lein lint` will run all linters
    "lint"                              ["do" ["eastwood"] ["bikeshed"] ["check-namespace-decls"] ["docstring-checker"] ["cloverage"]]
    "repl"                              ["with-profile" "+repl" "repl"]
@@ -353,11 +353,12 @@
      :check-namespace-decls {:prefix-rewriting true}}]
 
    :cloverage
-   {:dependencies [[cloverage "1.1.3-SNAPSHOT" :exclusions [riddley]]]
-    :plugins      [[lein-cloverage  "1.1.3-SNAPSHOT"]]
-    :source-paths ^:replace ["src" "backend/mbql/src"]
-    :test-paths   ^:replace ["test" "backend/mbql/test"]
-    :cloverage    {:fail-threshold 68}}
+   [:test-common
+    {:dependencies [[cloverage "1.1.3-SNAPSHOT" :exclusions [riddley]]]
+     :plugins      [[lein-cloverage  "1.1.3-SNAPSHOT"]]
+     :source-paths ^:replace ["src" "backend/mbql/src"]
+     :test-paths   ^:replace ["test" "backend/mbql/test"]
+     :cloverage    {:fail-threshold 69}}]
 
    ;; build the uberjar with `lein uberjar`
    :uberjar
