@@ -25,17 +25,19 @@
 (deftest resolve-mbql-queries-test
   (testing "make sure that the `resolve-card-id-source-tables` middleware correctly resolves MBQL queries"
     (mt/with-temp Card [card {:dataset_query (mt/mbql-query venues)}]
-      (is (= (default-result-with-inner-query
-              {:source-query {:source-table (mt/id :venues)}})
+      (is (= (assoc (default-result-with-inner-query
+                     {:source-query {:source-table (mt/id :venues)}})
+                    :info {:card-id (u/get-id card)})
              (resolve-card-id-source-tables
               (wrap-inner-query
                {:source-table (str "card__" (u/get-id card))}))))
 
       (testing "with aggregations/breakouts"
-        (is (= (default-result-with-inner-query
-                {:aggregation  [[:count]]
-                 :breakout     [[:field-literal "price" :type/Integer]]
-                 :source-query {:source-table (mt/id :venues)}})
+        (is (= (assoc (default-result-with-inner-query
+                       {:aggregation  [[:count]]
+                        :breakout     [[:field-literal "price" :type/Integer]]
+                        :source-query {:source-table (mt/id :venues)}})
+                      :info {:card-id (u/get-id card)})
                (resolve-card-id-source-tables
                 (wrap-inner-query
                  {:source-table (str "card__" (u/get-id card))
@@ -44,9 +46,10 @@
 
     (mt/with-temp Card [card {:dataset_query (mt/mbql-query checkins)}]
       (testing "with filters"
-        (is (= (default-result-with-inner-query
-                {:source-query {:source-table (mt/id :checkins)}
-                 :filter       [:between [:field-literal "date" :type/Date] "2015-01-01" "2015-02-01"]})
+        (is (= (assoc (default-result-with-inner-query
+                       {:source-query {:source-table (mt/id :checkins)}
+                        :filter       [:between [:field-literal "date" :type/Date] "2015-01-01" "2015-02-01"]})
+                      :info {:card-id (u/get-id card)})
                (resolve-card-id-source-tables
                 (wrap-inner-query
                  {:source-table (str "card__" (u/get-id card))
@@ -59,10 +62,11 @@
   (testing "make sure that the `resolve-card-id-source-tables` middleware correctly resolves native queries"
     (mt/with-temp Card [card {:dataset_query (mt/native-query
                                                {:query (format "SELECT * FROM %s" (mt/format-name "venues"))})}]
-      (is (= (default-result-with-inner-query
-              {:aggregation  [[:count]]
-               :breakout     [[:field-literal "price" :type/Integer]]
-               :source-query {:native (format "SELECT * FROM %s" (mt/format-name "venues"))}})
+      (is (= (assoc (default-result-with-inner-query
+                     {:aggregation  [[:count]]
+                      :breakout     [[:field-literal "price" :type/Integer]]
+                      :source-query {:native (format "SELECT * FROM %s" (mt/format-name "venues"))}})
+                    :info {:card-id (u/get-id card)})
              (resolve-card-id-source-tables
               (wrap-inner-query
                {:source-table (str "card__" (u/get-id card))
@@ -77,12 +81,13 @@
                     Card [card-2 {:dataset_query {:database mbql.s/saved-questions-virtual-database-id
                                                   :type     :query
                                                   :query    {:source-table (str "card__" (u/get-id card-1)), :limit 50}}}]]
-      (is (= (default-result-with-inner-query
-              {:limit        25
-               :source-query {:limit           50
-                              :source-query    {:source-table (mt/id :venues)
-                                                :limit        100}
-                              :source-metadata nil}})
+      (is (= (assoc (default-result-with-inner-query
+                     {:limit        25
+                      :source-query {:limit           50
+                                     :source-query    {:source-table (mt/id :venues)
+                                                       :limit        100}
+                                     :source-metadata nil}})
+                    :info {:card-id (u/get-id card-2)})
              (resolve-card-id-source-tables
               (wrap-inner-query
                {:source-table (str "card__" (u/get-id card-2)), :limit 25})))))))
@@ -216,3 +221,10 @@
                      :joins        [{:alias        "c"
                                      :source-table (str "card__" card-2-id)
                                      :condition    [:= *ID/Number &c.venues.id]}]})))))))
+
+(deftest ignore-user-supplied-internal-card-id-keys
+  (testing (str "The middleware uses `::fetch-source-query/card-id` internally and adds it to `:info` at the end. "
+                "Make sure we ignore ones supplied by a user.")
+    (is (= (mt/mbql-query venues)
+           (resolve-card-id-source-tables
+            (assoc-in (mt/mbql-query venues) [:query ::fetch-source-query/card-id] 1))))))
