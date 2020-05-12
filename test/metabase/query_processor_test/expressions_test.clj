@@ -1,7 +1,6 @@
 (ns metabase.query-processor-test.expressions-test
   "Tests for expressions (calculated columns)."
-  (:require [clj-time.core :as time]
-            [clojure
+  (:require [clojure
              [string :as str]
              [test :refer :all]]
             [clojure.java.jdbc :as jdbc]
@@ -11,12 +10,8 @@
              [query-processor-test :as qp.test]
              [sync :as sync]
              [test :as mt]]
-            [metabase.test
-             [data :as data]
-             [util :as tu]]
-            [metabase.test.data
-             [datasets :as datasets]
-             [one-off-dbs :as one-off-dbs]]
+            [metabase.test.data :as data]
+            [metabase.test.data.one-off-dbs :as one-off-dbs]
             [metabase.util.date-2 :as u.date]))
 
 (deftest basic-test
