@@ -1,12 +1,10 @@
 (ns metabase.query-processor
-  "Preprocessor that does simple transformations to all incoming queries, simplifing the driver-specific
-  implementations."
+  "The main entrypoint to running queries."
   (:require [clojure.tools.logging :as log]
             [metabase
              [config :as config]
              [driver :as driver]]
             [metabase.driver.util :as driver.u]
-            [metabase.mbql.schema :as mbql.s]
             [metabase.query-processor
              [context :as context]
              [error-type :as error-type]
