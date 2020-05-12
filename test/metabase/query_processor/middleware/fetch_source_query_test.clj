@@ -228,3 +228,13 @@
     (is (= (mt/mbql-query venues)
            (resolve-card-id-source-tables
             (assoc-in (mt/mbql-query venues) [:query ::fetch-source-query/card-id] 1))))))
+
+(deftest dont-overwrite-existing-card-id-test
+  (testing "Don't overwrite existing values of `[:info :card-id]`"
+    (mt/with-temp Card [{card-id :id} {:dataset_query (mt/mbql-query venues)}]
+      (let [query (assoc (mt/mbql-query nil {:source-table (format "card__%d" card-id)})
+                         :info {:card-id Integer/MAX_VALUE})]
+        (is (= (assoc (mt/mbql-query nil {:source-query    {:source-table (mt/id :venues)}
+                                          :source-metadata nil})
+                      :info {:card-id Integer/MAX_VALUE})
+               (resolve-card-id-source-tables query)))))))
