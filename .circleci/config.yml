@@ -293,7 +293,7 @@ jobs:
             done;
       - run:
           name: Save last git commit message
-          command: git log -1 --oneline > commit.txt
+          command: git log -1 > commit.txt
       - run:
           name: Remove .git directory (not needed for tests)
           command: rm -rf /home/circleci/metabase/metabase/.git
