@@ -198,7 +198,7 @@ function sharedParametersTests(visitUrl) {
 }
 
 const createQuestion = () =>
-  cy.request("POST", "/api/card", {
+  cy.request("PUT", "/api/card/3", {
     name: "Test Question",
     dataset_query: {
       type: "native",

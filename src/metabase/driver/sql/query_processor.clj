@@ -209,6 +209,24 @@
   schema + Table name. Used to implement things like `:joined-field`s."
   nil)
 
+(def ^:dynamic ^:private *name-store*
+  "Record of all field aliases introduced via `as`. Used to correctly reference fields in nested queries.
+  Dynamic so we can have a fresh instance for each query."
+  nil)
+
+(defmacro ^:private with-fresh-namestore
+  [& body]
+  `(binding [*name-store* (atom {})]
+     ~@body))
+
+(defn- alias-for-field
+  [field-id]
+  (some-> *name-store* deref (get field-id)))
+
+(defn- store-field-alias!
+  [field-id field-alias]
+  (some-> *name-store* (swap! assoc field-id field-alias)))
+
 (defmethod ->honeysql [:sql nil]    [_ _]    nil)
 (defmethod ->honeysql [:sql Object] [_ this] this)
 
@@ -236,12 +254,13 @@
   identifier)
 
 (defmethod ->honeysql [:sql (class Field)]
-  [driver {field-name :name, table-id :table_id, :as field}]
+  [driver {field-name :name, table-id :table_id, field-id :id :as field}]
   ;; `indentifer` will automatically unnest nested calls to `identifier`
   (let [qualifiers (if *table-alias*
                      [*table-alias*]
                      (let [{schema :schema, table-name :name} (qp.store/table table-id)]
                        [schema table-name]))
+        field-name (or (alias-for-field field-id) field-name)
         identifier (->honeysql driver (apply hx/identifier :field (concat qualifiers [field-name])))]
     (cast-unix-timestamp-field-if-needed driver field identifier)))
 
@@ -256,7 +275,8 @@
 (defmethod ->honeysql [:sql :joined-field]
   [driver [_ alias field]]
   (binding [*table-alias* alias]
-    (->honeysql driver field)))
+    (with-fresh-namestore
+      (->honeysql driver field))))
 
 ;; (p.types/defrecord+ AtTimezone [expr timezone-id]
 ;;   PrettyPrintable
@@ -482,15 +502,20 @@
   Optionally pass a state-maintaining `unique-name-fn`, such as `mbql.u/unique-name-generator`, to guarantee that each
   alias generated is unique when generating a sequence of aliases, such as for a `SELECT` clause."
   ([driver field-clause]
-   (field-clause->alias driver field-clause identity))
+   (field-clause->alias driver field-clause nil))
 
   ([driver field-clause unique-name-fn]
-   (when-let [alias (mbql.u/match-one field-clause
-                      [:expression expression-name]              expression-name
-                      [:expression-definition expression-name _] expression-name
-                      [:field-literal field-name _]              field-name
-                      [:field-id id]                             (field->alias driver (qp.store/field id)))]
-     (->honeysql driver (hx/identifier :field-alias (unique-name-fn alias))))))
+   (let [unique-name-fn (if unique-name-fn
+                          (partial unique-name-fn (mbql.u/match-one field-clause [:field-id id] id))
+                          identity)]
+     (some->> (mbql.u/match-one field-clause
+                [:expression expression-name]              expression-name
+                [:expression-definition expression-name _] expression-name
+                [:field-literal field-name _]              field-name
+                [:field-id id]                             (field->alias driver (qp.store/field id)))
+              unique-name-fn
+              (hx/identifier :field-alias)
+              (->honeysql driver)))))
 
 (defn as
   "Generate HoneySQL for an `AS` form (e.g. `<form> AS <field>`) using the name information of a `field-clause`. The
@@ -509,12 +534,18 @@
   As with `field-clause->alias`, you can pass a `unique-name-fn` to generate unique names for a sequence of aliases,
   such as for a `SELECT` clause."
   ([driver field-clause]
-   (as driver field-clause identity))
+   (as driver field-clause nil))
 
   ([driver field-clause unique-name-fn]
    (let [honeysql-form (->honeysql driver field-clause)]
      (if-let [alias (field-clause->alias driver field-clause unique-name-fn)]
-       [honeysql-form alias]
+       (do
+         (when-let [field-id (case (first field-clause)
+                               :field-id     (second field-clause)
+                               :joined-field (get-in field-clause [2 1])
+                               nil)]
+           (store-field-alias! field-id (-> alias :components first)))
+         [honeysql-form alias])
        honeysql-form))))
 
 
@@ -539,9 +570,10 @@
 (defmethod apply-top-level-clause [:sql :breakout]
   [driver _ honeysql-form {breakout-fields :breakout, fields-fields :fields :as query}]
   (as-> honeysql-form new-hsql
-    (apply h/merge-select new-hsql (vec (for [field-clause breakout-fields
-                                              :when        (not (contains? (set fields-fields) field-clause))]
-                                          (as driver field-clause))))
+    (->> breakout-fields
+         (remove (partial contains? (set fields-fields)))
+         (mapv (partial as driver))
+         (apply h/merge-select new-hsql))
     (apply h/group new-hsql (map (partial ->honeysql driver) breakout-fields))))
 
 (defmethod apply-top-level-clause [:sql :fields]
@@ -697,7 +729,7 @@
 
 (defmethod apply-top-level-clause [:sql :order-by]
   [driver _ honeysql-form {subclauses :order-by}]
-  (reduce h/merge-order-by honeysql-form (map (partial ->honeysql driver) subclauses)))
+  (reduce h/merge-order-by honeysql-form (mapv (partial ->honeysql driver) subclauses)))
 
 ;;; -------------------------------------------------- limit & page --------------------------------------------------
 
@@ -823,26 +855,26 @@
     (apply-top-level-clauses driver honeysql-form (dissoc inner-query :source-query))))
 
 
-;;; -------------------------------------------- putting it all togetrher --------------------------------------------
+;;; -------------------------------------------- putting it all together --------------------------------------------
 
 (defn- expressions->subselect
   [{:keys [expressions] :as query}]
-  (let [subselect (-> query
+  (let [fields    (vec ; laziness does not play well with dynamic binding
+                   (concat
+                    (for [[expression-name expression-definition] expressions]
+                      [:expression-definition
+                       (mbql.u/qualified-name expression-name)
+                       (mbql.u/replace expression-definition
+                         [:expression expr] (expressions (keyword expr)))])
+                    (distinct
+                     (mbql.u/match (select-keys query [:aggregation :filter :breakout :fields :order-by])
+                       [(_ :guard #{:field-literal :field-id :joined-field}) & _]))))
+        subselect (-> query
                       (select-keys [:joins :source-table :source-query :source-metadata])
-                      (assoc :fields
-                             (vec
-                              (concat
-                               (for [[expression-name expression-definition] expressions]
-                                 [:expression-definition
-                                  (name expression-name)
-                                  (mbql.u/replace expression-definition
-                                    [:expression expr] (expressions (keyword expr)))])
-                               (distinct
-                                (mbql.u/match query [(_ :guard #{:field-literal :field-id :joined-field}) & _]))))))]
+                      (assoc :fields fields))]
     (-> query
-        ;; TODO -- correctly handle fields in multiple tables with the same name
-        (mbql.u/replace [:joined-field alias field] [:joined-field "source" field])
-        (dissoc :source-table :source-query :joins :expressions :source-metadata)
+        (mbql.u/replace [:joined-field alias field] field)
+        (dissoc :source-table :joins :expressions :source-metadata)
         (assoc :source-query subselect))))
 
 (defn- apply-clauses
@@ -865,9 +897,10 @@
 (s/defn build-honeysql-form
   "Build the HoneySQL form we will compile to SQL and execute."
   [driver, {inner-query :query} :- su/Map]
-  (u/prog1 (apply-clauses driver {} inner-query)
-    (when-not i/*disable-qp-logging*
-      (log/tracef "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>)))))
+  (with-fresh-namestore
+    (u/prog1 (apply-clauses driver {} inner-query)
+      (when-not i/*disable-qp-logging*
+        (log/tracef "\nHoneySQL Form: %s\n%s" (u/emoji "🍯") (u/pprint-to-str 'cyan <>))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

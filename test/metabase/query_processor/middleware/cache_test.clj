@@ -8,6 +8,7 @@
             [java-time :as t]
             [medley.core :as m]
             [metabase
+             [public-settings :as public-settings]
              [query-processor :as qp]
              [test :as mt]
              [util :as u]]
@@ -359,3 +360,18 @@
                      (dissoc :updated_at)
                      (m/dissoc-in [:data :results_metadata :checksum])))
               "Query should be cached and results should match those ran without cache"))))))
+
+(deftest caching-big-resultsets
+  (testing "Make sure we can save large result sets without tripping over internal async buffers"
+    (is (= 10000 (count (transduce identity
+                                   (#'cache/save-results-xform 0 {} (byte 0) conj)
+                                   (repeat 10000 [1]))))))
+  (testing "Make sure we don't block somewhere if we decide not to save results"
+    (is (= 10000 (count (transduce identity
+                                   (#'cache/save-results-xform (System/currentTimeMillis) {} (byte 0) conj)
+                                   (repeat 10000 [1]))))))
+  (testing "Make sure we properly handle situations where we abort serialization (e.g. due to result being too big)"
+    (let [max-bytes (* (public-settings/query-caching-max-kb) 1024)]
+      (is (= max-bytes (count (transduce identity
+                                         (#'cache/save-results-xform 0 {} (byte 0) conj)
+                                         (repeat max-bytes [1]))))))))

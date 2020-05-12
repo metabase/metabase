@@ -73,7 +73,12 @@
         (log/tracef "Serializing %s" (pr-str obj))
         (let [result (a/<! (a/thread (freeze! os obj)))]
           (if (instance? Throwable result)
-            (a/>! out-chan result)
+            (do
+              ;; Serialization has failed, close the channel as there's no point in continuing writing to it
+              (a/close! in-chan)
+              ;; Drain the channel to unblock
+              (while (a/poll! in-chan))
+              (a/>! out-chan result))
             (recur))))
       ;; `in-chan` is closed
       (a/thread
