@@ -264,10 +264,14 @@
 
 (deftest e2e-ignore-user-supplied-card-ids-test
   (testing "You shouldn't be able to bypass security restrictions by passing `[:info :card-id]` in the query."
-    (mt/with-temp* [Collection [collection]
-                    Card       [card {:collection_id (u/get-id collection)
-                                      :dataset_query (mt/mbql-query venues {:fields [$id], :order-by [[:asc $id]], :limit 2})}]]
-      (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
-      (is (= "You don't have permissions to do that."
-             ((mt/user->client :rasta) :post "dataset" (assoc (mt/mbql-query venues)
-                                                              :info {:card-id (u/get-id card)})))))))
+    (mt/with-temp-copy-of-db
+      (perms/revoke-permissions! (perms-group/all-users) (mt/id))
+      (mt/with-temp* [Collection [collection]
+                      Card       [card {:collection_id (u/get-id collection)
+                                        :dataset_query (mt/mbql-query venues {:fields [$id], :order-by [[:asc $id]], :limit 2})}]]
+        ;; Since the collection derives from the root collection this grant shouldn't really be needed, but better to
+        ;; be extra-sure in this case that the user is getting rejected for data perms and not card/collection perms
+        (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+        (is (= "You don't have permissions to do that."
+               ((mt/user->client :rasta) :post "dataset" (assoc (mt/mbql-query venues {:limit 1})
+                                                                :info {:card-id (u/get-id card)}))))))))
