@@ -17,7 +17,6 @@ import {
 import { TYPE, isa } from "metabase/lib/types";
 import { singularize, inflect } from "inflection";
 import { formatValue, formatColumn } from "metabase/lib/formatting";
-import { isQueryable } from "metabase/lib/table";
 
 import Tables from "metabase/entities/tables";
 import {
@@ -226,14 +225,10 @@ export class ObjectDetail extends Component {
   }
 
   renderRelationships() {
-    let { tableForeignKeys, tableForeignKeyReferences } = this.props;
+    const { tableForeignKeys, tableForeignKeyReferences } = this.props;
     if (!tableForeignKeys) {
       return null;
     }
-
-    tableForeignKeys = tableForeignKeys.filter(fk =>
-      isQueryable(fk.origin.table),
-    );
 
     if (tableForeignKeys.length < 1) {
       return <p className="my4 text-centered">{t`No relationships found.`}</p>;

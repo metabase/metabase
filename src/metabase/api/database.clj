@@ -53,8 +53,9 @@
 
 (defn- add-tables [dbs]
   (let [db-id->tables (group-by :db_id (filter mi/can-read? (db/select Table
-                                                              :active true
-                                                              :db_id  [:in (map :id dbs)]
+                                                              :active          true
+                                                              :db_id           [:in (map :id dbs)]
+                                                              :visibility_type nil
                                                               {:order-by [[:%lower.schema :asc]
                                                                           [:%lower.display_name :asc]]})))]
     (for [db dbs]
@@ -240,7 +241,7 @@
     (-> (hydrate db (case include
                       "tables"        :tables
                       "tables.fields" [:tables [:fields [:target :has_field_values] :has_field_values]]))
-        (update :tables (partial filter mi/can-read?)))))
+        (update :tables (partial filter #(and (nil? (:visibility_type %)) (mi/can-read? %)))))))
 
 (api/defendpoint GET "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
@@ -264,9 +265,13 @@
   []
   (saved-cards-virtual-db-metadata :include-tables? true, :include-fields? true))
 
-(defn- db-metadata [id]
+(defn- db-metadata [id include-hidden-tables]
   (-> (api/read-check Database id)
       (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics])
+      (update :tables (fn [tables]
+                        (if include-hidden-tables
+                          tables
+                          (filter #(nil? (:visibility_type %)) tables))))
       (update :tables (fn [tables]
                         (for [table tables
                               :when (mi/can-read? table)]
@@ -276,9 +281,11 @@
 
 (api/defendpoint GET "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`.
+   By default only non-hidden tables are returned. Passing include_hidden_tables=true
    Returns DB, fields, and field values."
-  [id]
-  (db-metadata id))
+  [id include_hidden_tables]
+  {include_hidden_tables (s/maybe su/BooleanString)}
+  (db-metadata id include_hidden_tables))
 
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------
@@ -663,7 +670,7 @@
 (defn- schema-tables-list [db-id schema]
   (api/read-check Database db-id)
   (api/check-403 (can-read-schema? db-id schema))
-  (filter mi/can-read? (db/select Table :db_id db-id, :schema schema, :active true, {:order-by [[:name :asc]]})))
+  (filter mi/can-read? (db/select Table :db_id db-id, :schema schema, :active true, :visibility_type nil, {:order-by [[:name :asc]]})))
 
 (api/defendpoint GET "/:id/schema/:schema"
   "Returns a list of Tables for the given Database `id` and `schema`"

@@ -9,7 +9,10 @@ import Tables from "metabase/entities/tables";
 import _ from "underscore";
 
 @Tables.loadList({
-  query: (state, { databaseId }) => ({ dbId: databaseId, includeHidden: true }),
+  query: (state, { databaseId }) => ({
+    dbId: databaseId,
+    include_hidden_tables: true,
+  }),
 })
 export default class MetadataTablePicker extends Component {
   constructor(props, context) {

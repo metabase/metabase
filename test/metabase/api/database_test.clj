@@ -281,6 +281,18 @@
            (let [resp ((mt/user->client :rasta) :get 200 (format "database/%d/metadata" (mt/id)))]
              (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp))))))))
 
+(deftest fetch-database-metadata-without-hidden-test
+  (testing "GET /api/database/:id/metadata"
+    (try
+      (db/update! Table (mt/id :categories) :visibility_type "hidden")
+      (is (= ["CHECKINS" "USERS" "VENUES"]
+             (->> ((mt/user->client :rasta) :get 200 (format "database/%d/metadata" (mt/id)))
+                  :tables
+                  (map :name))))
+      (finally
+        (db/update! Table (mt/id :categories) :visibility_type nil)))))
+
+
 (deftest autocomplete-suggestions-test
   (testing "GET /api/database/:id/autocomplete_suggestions"
     (doseq [[prefix expected] {"u"   [["USERS" "Table"]
