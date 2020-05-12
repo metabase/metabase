@@ -1,0 +1,7 @@
+codecov:
+    bot: "codecov-io"
+    require_ci_to_pass: no
+
+coverage:
+    round: down
+    range: 69..100
