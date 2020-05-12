@@ -116,6 +116,11 @@ const Field = ({ field, foreignKeys, url, icon, isEditing, formField }) => (
         </div>
         <div className={F.fieldOther} />
       </div>
+      {field.description && (
+        <div className={cx(S.itemSubtitle, { mt1: true })}>
+          {field.description}
+        </div>
+      )}
     </div>
   </div>
 );
