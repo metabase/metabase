@@ -3,5 +3,10 @@ codecov:
     require_ci_to_pass: no
 
 coverage:
-    round: down
-    range: 69..100
+  status:
+    project:
+      default:
+        # New code must have minimum 80% test coverage
+        target: 75%
+        # Whole-project test coverage is allowed to drop up to 5%. (For situtations where we delete code with full coverage)
+        threshold: 5%
