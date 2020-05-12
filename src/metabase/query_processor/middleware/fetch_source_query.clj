@@ -22,6 +22,7 @@
   TODO - consider renaming this namespace to `metabase.query-processor.middleware.resolve-card-id-source-tables`"
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase.mbql
              [normalize :as normalize]
              [schema :as mbql.s]
