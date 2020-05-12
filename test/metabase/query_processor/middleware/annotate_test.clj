@@ -43,7 +43,15 @@
              (annotate/merged-column-info
               {:type :native}
               {:cols [{:name "a", :base_type :type/*}]
-               :rows [[1] [2] [nil] [3]]}))))))
+               :rows [[1] [2] [nil] [3]]}))))
+
+    (testing "should disambiguate duplicate names"
+      (is (= [{:name "a", :display_name "a", :base_type :type/Integer, :source :native, :field_ref [:field-literal "a" :type/Integer]}
+              {:name "a", :display_name "a", :base_type :type/Integer, :source :native, :field_ref [:field-literal "a_2" :type/Integer]}]
+             (annotate/column-info
+              {:type :native}
+              {:cols [{:name "a"} {:name "a"}]
+               :rows [[1 nil] [2 nil] [3 nil] [4 5] [6 7]]}))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

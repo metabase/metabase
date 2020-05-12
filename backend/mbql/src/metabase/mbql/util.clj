@@ -589,15 +589,31 @@
       [(unique-name \"A\")
        (unique-name \"B\")
        (unique-name \"A\")])
-    ;; -> [\"A\" \"B\" \"A_2\"]"
+    ;; -> [\"A\" \"B\" \"A_2\"]
+
+  If idempotence is desired, the function returned by the generator also has a 2 airity version where the first argument is the object for which we are generating the name.
+
+    (let [unique-name (unique-name-generator)]
+      [(unique-name :x \"A\")
+       (unique-name :x \"B\")
+       (unique-name :x \"A\")
+       (unique-name :y \"A\")])
+    ;; -> [\"A\" \"B\" \"A\" \"A_2\"]
+  "
   []
-  (let [aliases (atom {})]
-    (s/fn [original-name :- s/Str]
-      (let [total-count (get (swap! aliases update original-name #(if % (inc %) 1))
-                             original-name)]
-        (if (= total-count 1)
-          original-name
-          (recur (str original-name \_ total-count)))))))
+  (let [identity-objects->aliases (atom {})
+        aliases                   (atom {})]
+    (fn generate-name
+      ([alias] (generate-name (gensym) alias))
+      ([identity-object alias]
+       (or (@identity-objects->aliases [identity-object alias])
+           (loop [maybe-unique alias]
+             (let [total-count (get (swap! aliases update maybe-unique (fnil inc 0)) maybe-unique)]
+               (if (= total-count 1)
+                 (do
+                   (swap! identity-objects->aliases assoc [identity-object alias] maybe-unique)
+                   maybe-unique)
+                 (recur (str maybe-unique \_ total-count))))))))))
 
 (s/defn uniquify-names :- (s/constrained [s/Str] distinct? "sequence of unique strings")
   "Make the names in a sequence of string names unique by adding suffixes such as `_2`.

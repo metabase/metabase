@@ -75,7 +75,7 @@
 
 (defn- native-column-info-for-a-single-column
   "Determine column metadata for a single column for native query results."
-  [{col-name :name, driver-base-type :base_type, :as col} values-sample]
+  [unique-name-fn {col-name :name, driver-base-type :base_type, :as col} values-sample]
   ;; Native queries don't have the type information from the original `Field` objects used in the query.
   ;;
   ;; If the driver returned a base type more specific than :type/*, use that; otherwise look at the sample
@@ -94,14 +94,14 @@
      ;; `:field-literal` clauses, because `SELECT ""` doesn't make any sense. So if we can't return a valid
      ;; `:field-literal`, omit the `:field_ref`.
      (when (seq col-name)
-       {:field_ref [:field-literal col-name base-type]})
+       {:field_ref [:field-literal (unique-name-fn col-name) base-type]})
      col
      {:base_type base-type})))
 
 (defmethod column-info :native
   [_ {:keys [cols rows]}]
   (check-driver-native-columns cols rows)
-  (mapv native-column-info-for-a-single-column
+  (mapv (partial native-column-info-for-a-single-column (mbql.u/unique-name-generator))
         cols
         (for [i (range (count cols))]
           (for [row rows]

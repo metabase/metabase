@@ -1,6 +1,7 @@
 import { signInAsAdmin, restore } from "__support__/cypress";
 
-const ORDERS_URL = "/admin/datamodel/database/1/table/2";
+const SAMPLE_DB_URL = "/admin/datamodel/database/1";
+const ORDERS_URL = `${SAMPLE_DB_URL}/table/2`;
 
 describe("scenarios > admin > datamodel > table", () => {
   beforeEach(() => {
@@ -64,6 +65,11 @@ describe("scenarios > admin > datamodel > table", () => {
 
       cy.reload();
       cy.contains("Technical Data").should("have.class", "text-brand");
+
+      // check that it still appears in the sidebar on the db page
+      cy.visit(SAMPLE_DB_URL);
+      cy.contains("1 Hidden Table");
+      cy.contains("Orders");
     });
 
     function field(name) {
@@ -88,11 +94,26 @@ describe("scenarios > admin > datamodel > table", () => {
       cy.get(alias).contains(desiredOption);
     }
 
-    it("should allow hiding of columns", () => {
+    it("should allow hiding of columns outside of detail views", () => {
       cy.visit(ORDERS_URL);
 
       field("Created At").as("created_at");
       testSelect("@created_at", "Everywhere", "Only in detail views");
+    });
+
+    it("should allow hiding of columns entirely", () => {
+      cy.visit(ORDERS_URL);
+
+      field("Created At").as("created_at");
+      testSelect("@created_at", "Everywhere", "Do not include");
+
+      // click over to products and back so we refresh the columns
+      cy.contains("Products").click();
+      cy.url().should("include", "/admin/datamodel/database/1/table/1");
+      cy.contains("Orders").click();
+
+      // created at should still be there
+      field("Created At");
     });
 
     it("should allow changing of special type and currency", () => {
