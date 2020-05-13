@@ -441,6 +441,16 @@
                        saved-questions-virtual-db)
                    (fetch-virtual-database)))))
 
+        (testing "Should work when there are no DBs that support nested queries"
+          (mt/with-temp* [Database [bad-db   {:engine ::no-nested-query-support, :details {}}]
+                          Card     [bad-card {:name            "Bad Card"
+                                              :dataset_query   {:database (u/get-id bad-db)
+                                                                :type     :native
+                                                                :native   {:query "[QUERY GOES HERE]"}}
+                                              :result_metadata [{:name "sparrows"}]
+                                              :database_id     (u/get-id bad-db)}]]
+            (is (nil? (fetch-virtual-database)))))
+
         (testing "should remove Cards that use cumulative-sum and cumulative-count aggregations"
           (mt/with-temp* [Card [ok-card (ok-mbql-card)]
                           Card [_ (merge
@@ -454,7 +464,7 @@
                        virtual-table-for-card
                        saved-questions-virtual-db)
                    (fetch-virtual-database)))))))))
-
+(databases-list-include-saved-questions-tables-test)
 (deftest db-metadata-saved-questions-db-test
   (testing "GET /api/database/:id/metadata works for the Saved Questions 'virtual' database"
     (mt/with-temp* [Card [card (assoc (card-with-native-query "Birthday Card")
