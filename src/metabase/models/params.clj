@@ -5,7 +5,10 @@
             [metabase
              [db :as mdb]
              [util :as u]]
-            [metabase.mbql.util :as mbql.u]
+            [metabase.mbql
+             [schema :as mbql.s]
+             [util :as mbql.u]]
+            [metabase.mbql.schema.helpers :as mbql.s.helpers]
             [metabase.util
              [i18n :as ui18n :refer [deferred-trs tru]]
              [schema :as su]]
@@ -18,15 +21,18 @@
 ;;; |                                                     SHARED                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn field-form->id :- su/IntGreaterThanZero
-  "Expand a `field-id` or `fk->` `form` and return the ID of the Field it references. Also handles unwrapped integers.
+(def ^:private FieldIDOrLiteral
+  (mbql.s.helpers/one-of mbql.s/field-id mbql.s/field-literal))
 
-    (field-form->id [:field-id 100]) ; -> 100"
+(s/defn unwrap-field-clause :- FieldIDOrLiteral
+  "Unwrap a Field clause if needed, returning underlying `:field-id` or `:field-literal`. Also handles unwrapped
+  integers for legacy compatiblity.
+
+    (unwrap-field-clause [:field-id 100]) ; -> [:field-id 100]"
   [field-form]
   (if (integer? field-form)
-    field-form
-    ;; TODO - what are we supposed to do if `field-form` is a field literal?
-    (mbql.u/field-clause->id-or-literal field-form)))
+    [:field-id field-form]
+    (mbql.u/unwrap-field-clause field-form)))
 
 (defn wrap-field-id-if-needed
   "Wrap a raw Field ID in a `:field-id` clause if needed."
@@ -56,14 +62,14 @@
   [[_ tag] dashcard]
   (get-in dashcard [:card :dataset_query :native :template-tags (u/qualified-name tag) :dimension]))
 
-(defn- param-target->field-id
+(s/defn ^:private param-target->field-clause :- (s/maybe FieldIDOrLiteral)
   "Parse a Card parameter `target` form, which looks something like `[:dimension [:field-id 100]]`, and return the Field
   ID it references (if any)."
   [target dashcard]
   (when (mbql.u/is-clause? :dimension target)
     (let [[_ dimension] target]
       (try
-        (field-form->id
+        (unwrap-field-clause
          (if (mbql.u/is-clause? :template-tag dimension)
            (template-tag->field-form dimension dashcard)
            dimension))
@@ -167,16 +173,16 @@
 ;;; |                                               DASHBOARD-SPECIFIC                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- dashboard->parameter-mapping-field-ids
-  "Return the IDs of any Fields referenced directly by the Dashboard's `:parameters` (i.e., 'explicit' parameters) by
+(s/defn ^:private dashboard->parameter-mapping-field-clauses :- (s/maybe #{FieldIDOrLiteral})
+  "Return set of any Fields referenced directly by the Dashboard's `:parameters` (i.e., 'explicit' parameters) by
   looking at the appropriate `:parameter_mappings` entries for its Dashcards."
   [dashboard]
-  (when-let [ids (seq (for [dashcard (:ordered_cards dashboard)
-                            param    (:parameter_mappings dashcard)
-                            :let     [field-id (param-target->field-id (:target param) dashcard)]
-                            :when    field-id]
-                        field-id))]
-    (set ids)))
+  (when-let [fields (seq (for [dashcard (:ordered_cards dashboard)
+                               param    (:parameter_mappings dashcard)
+                               :let     [field-clause (param-target->field-clause (:target param) dashcard)]
+                               :when    field-clause]
+                           field-clause))]
+    (set fields)))
 
 (declare card->template-tag-field-ids)
 
@@ -190,16 +196,16 @@
      (card->template-tag-field-ids card))))
 
 (defn dashboard->param-field-ids
-  "Return a set of Field IDs referenced by parameters in Cards in this DASHBOARD, or `nil` if none are referenced. This
+  "Return a set of Field IDs referenced by parameters in Cards in this `dashboard`, or `nil` if none are referenced. This
   also includes IDs of Fields that are to be found in the 'implicit' parameters for SQL template tag Field filters."
   [dashboard]
   (let [dashboard (hydrate dashboard [:ordered_cards :card])]
     (set/union
-     (dashboard->parameter-mapping-field-ids dashboard)
+     (dashboard->parameter-mapping-field-clauses dashboard)
      (dashboard->card-param-field-ids dashboard))))
 
 (defn- dashboard->param-field-values
-  "Return a map of Field ID to FieldValues (if any) for any Fields referenced by Cards in DASHBOARD,
+  "Return a map of Field ID to FieldValues (if any) for any Fields referenced by Cards in `dashboard`,
    or `nil` if none are referenced or none of them have FieldValues."
   [dashboard]
   (field-ids->param-field-values (dashboard->param-field-ids dashboard)))
@@ -215,14 +221,22 @@
 ;;; |                                                 CARD-SPECIFIC                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn card->template-tag-field-ids
-  "Return a set of Field IDs referenced in template tag parameters in CARD."
+(s/defn card->template-tag-field-clauses :- #{FieldIDOrLiteral}
+  "Return a set of `:field-id`/`:field-literal` clauses referenced in template tag parameters in `card`."
   [card]
   (set (for [[_ {dimension :dimension}] (get-in card [:dataset_query :native :template-tags])
              :when                      dimension
-             :let                       [field-id (field-form->id dimension)]
-             :when                      field-id]
-         field-id)))
+             :let                       [field (unwrap-field-clause dimension)]
+             :when                      field]
+         field)))
+
+(s/defn card->template-tag-field-ids :- #{su/IntGreaterThanZero}
+  "Return a set of Field IDs referenced in template tag parameters in `card`. This is mostly used for determining
+  Fields referenced by Cards for purposes other than processing queries. Filters out `:field-literal` clauses."
+  [card]
+  (set (mbql.u/match (seq (card->template-tag-field-clauses card))
+         [:field-id id]
+         id)))
 
 (defmethod param-values "Card" [card]
   (field-ids->param-field-values (card->template-tag-field-ids card)))

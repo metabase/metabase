@@ -6,6 +6,7 @@
              [amount :as t.amount]
              [core :as t.core]]
             [metabase.mbql.schema :as mbql.s]
+            [metabase.mbql.schema.helpers :as mbql.s.helpers]
             [metabase.mbql.util.match :as mbql.match]
             [metabase.util
              [i18n :refer [tru]]
@@ -418,9 +419,7 @@
     :else
     source-table-id))
 
-(s/defn unwrap-field-clause :- (s/if (partial is-clause? :field-id)
-                                 mbql.s/field-id
-                                 mbql.s/field-literal)
+(s/defn unwrap-field-clause :- (mbql.s.helpers/one-of mbql.s/field-id mbql.s/field-literal)
   "Un-wrap a `Field` clause and return the lowest-level clause it wraps, either a `:field-id` or `:field-literal`."
   [clause :- mbql.s/Field]
   (match-one clause
