@@ -50,6 +50,12 @@ const SECTIONS = updateSectionsWithPlugins({
         type: "string",
       },
       {
+        key: "redirect-all-requests-to-https",
+        display_name: t`Redirect to HTTPS`,
+        type: "boolean",
+        note: t`This value only takes effect if Site URL is HTTPS`,
+      },
+      {
         key: "admin-email",
         display_name: t`Email Address for Help Requests`,
         type: "string",
