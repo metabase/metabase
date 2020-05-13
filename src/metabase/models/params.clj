@@ -47,10 +47,10 @@
     :else
     (throw (IllegalArgumentException. (str (deferred-trs "Don't know how to wrap:") " " field-id-or-form)))))
 
-(defn- field-ids->param-field-values
+(s/defn ^:private field-ids->param-field-values
   "Given a collection of `param-field-ids` return a map of FieldValues for the Fields they reference. This map is
   returned by various endpoints as `:param_values`."
-  [param-field-ids]
+  [param-field-ids :- (s/maybe #{su/IntGreaterThanZero})]
   (when (seq param-field-ids)
     (u/key-by :field_id (db/select ['FieldValues :values :human_readable_values :field_id]
                           :field_id [:in param-field-ids]))))
@@ -148,11 +148,11 @@
                 (map remove-dimension-nonpublic-columns dimension-or-dimensions))))))
 
 
-(defn- param-field-ids->fields
+(s/defn ^:private param-field-ids->fields
   "Get the Fields (as a map of Field ID -> Field) that shoudl be returned for hydrated `:param_fields` for a Card or
   Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
   parameter widgets."
-  [field-ids]
+  [field-ids :- (s/maybe #{su/IntGreaterThanZero})]
   (when (seq field-ids)
     (u/key-by :id (-> (db/select Field:params-columns-only :id [:in field-ids])
                       (hydrate :has_field_values :name_field [:dimensions :human_readable_field])
@@ -195,13 +195,15 @@
    (for [{card :card} (:ordered_cards dashboard)]
      (card->template-tag-field-ids card))))
 
-(defn dashboard->param-field-ids
+(s/defn dashboard->param-field-ids :- #{su/IntGreaterThanZero}
   "Return a set of Field IDs referenced by parameters in Cards in this `dashboard`, or `nil` if none are referenced. This
   also includes IDs of Fields that are to be found in the 'implicit' parameters for SQL template tag Field filters."
   [dashboard]
   (let [dashboard (hydrate dashboard [:ordered_cards :card])]
     (set/union
-     (dashboard->parameter-mapping-field-clauses dashboard)
+     (set (mbql.u/match (seq (dashboard->parameter-mapping-field-clauses dashboard))
+            [:field-id id]
+            id))
      (dashboard->card-param-field-ids dashboard))))
 
 (defn- dashboard->param-field-values
@@ -239,7 +241,7 @@
          id)))
 
 (defmethod param-values "Card" [card]
-  (field-ids->param-field-values (card->template-tag-field-ids card)))
+  (-> card card->template-tag-field-ids field-ids->param-field-values))
 
 (defmethod param-fields "Card" [card]
   (-> card card->template-tag-field-ids param-field-ids->fields))
