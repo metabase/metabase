@@ -133,7 +133,6 @@
    [ring/ring-core "1.8.0"]
    [ring/ring-jetty-adapter "1.8.0"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
    [ring/ring-json "0.4.0"]                                           ; Ring middleware for reading/writing JSON automatically
-   [ring/ring-ssl "0.3.0"]                                            ; Ring middleware for redirecting HTTP to HTTPS
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
    [toucan "1.15.1" :exclusions [org.clojure/java.jdbc                ; Model layer, hydration, and DB utilities
                                  org.clojure/tools.logging
