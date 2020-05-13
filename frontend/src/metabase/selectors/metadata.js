@@ -104,16 +104,9 @@ export const getMetadata = createSelector(
     );
     // hydrateList(meta.schemas, "tables", meta.tables);
     hydrate(meta.schemas, "tables", schema =>
-      schema.tables
-        ? // use the schema tables if they exist
-          schema.tables.map(t => meta.table(t))
-        : schema.database && schema.database.tables.length > 0
-        ? // if the schema has a database with tables, use those
-          schema.database.tables.filter(t => t.schema_name === schema.name)
-        : // otherwise use any loaded tables that match the schema id
-          Object.values(meta.tables).filter(
-            t => t.schema && t.schema.id === schema.id,
-          ),
+      Object.values(meta.tables).filter(
+        t => t.schema && t.schema.id === schema.id,
+      ),
     );
 
     // segments

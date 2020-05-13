@@ -26,9 +26,9 @@ import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 
 const listTables = GET("/api/table");
-const listTablesForDatabase = async (params, ...args) =>
+const listTablesForDatabase = async (...args) =>
   // HACK: no /api/database/:dbId/tables endpoint
-  (await GET("/api/database/:dbId/metadata")(params, ...args)).tables;
+  (await GET("/api/database/:dbId/metadata")(...args)).tables;
 const listTablesForSchema = GET("/api/database/:dbId/schema/:schemaName");
 
 // OBJECT ACTIONS
