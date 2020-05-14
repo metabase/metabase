@@ -3,7 +3,9 @@
 
   (Prefer using `metabase.test` to requiring bits and pieces from these various namespaces going forward, since it
   reduces the cognitive load required to write tests.)"
-  (:require [clojure.test :refer :all]
+  (:require [clojure
+             [test :refer :all]
+             [walk :as walk]]
             [java-time :as t]
             [medley.core :as m]
             [metabase
@@ -235,3 +237,13 @@
             :pre      (-> result :data :pre)
             :post     (-> result :data :rows)
             :metadata (update result :data #(dissoc % :pre :rows))}))))))
+
+(defn derecordize
+  "Convert all record types in `form` to plain maps, so tests won't fail."
+  [form]
+  (walk/postwalk
+   (fn [form]
+     (if (record? form)
+       (into {} form)
+       form))
+   form))
