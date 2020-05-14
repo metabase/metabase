@@ -10,7 +10,7 @@
              [i18n :refer [tru]]])
   (:import java.io.OutputStream
            org.apache.poi.ss.usermodel.Cell
-           org.apache.poi.xssf.usermodel.XSSFWorkbook))
+           org.apache.poi.xssf.streaming.SXSSFWorkbook))
 
 (defmethod i/stream-options :xlsx
   [_]
@@ -35,7 +35,7 @@
 ;; TODO -- this is obviously not streaming! SAD!
 (defmethod i/streaming-results-writer :xlsx
   [_ ^OutputStream os]
-  (let [workbook (XSSFWorkbook.)
+  (let [workbook (SXSSFWorkbook.)
         sheet    (spreadsheet/add-sheet! workbook (tru "Query result"))]
     (reify i/StreamingResultsWriter
       (begin! [_ {{:keys [cols]} :data}]
@@ -46,4 +46,5 @@
 
       (finish! [_ _]
         (spreadsheet/save-workbook-into-stream! os workbook)
+        (.dispose workbook)
         (.close os)))))
