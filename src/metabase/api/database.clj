@@ -164,7 +164,7 @@
   (let [virtual-db-metadata (apply saved-cards-virtual-db-metadata options)]
     ;; only add the 'Saved Questions' DB if there are Cards that can be used
     (cond-> dbs
-      (source-query-cards-exist?) (concat [virtual-db-metadata]))))
+      (and (source-query-cards-exist?) virtual-db-metadata) (concat [virtual-db-metadata]))))
 
 (defn- dbs-list [& {:keys [include-tables? include-saved-questions-db? include-saved-questions-tables?]}]
   (when-let [dbs (seq (filter mi/can-read? (db/select Database {:order-by [:%lower.name :%lower.engine]})))]
