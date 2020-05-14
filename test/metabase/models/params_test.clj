@@ -11,6 +11,19 @@
              [hydrate :refer [hydrate]]]
             [toucan.util.test :as tt]))
 
+(deftest wrap-field-id-if-needed-test
+  (doseq [[x expected] {10                                 [:field-id 10]
+                        [:field-id 10]                     [:field-id 10]
+                        [:field-literal "name" :type/Text] [:field-literal "name" :type/Text]}]
+    (testing x
+      (is (= expected
+             (params/wrap-field-id-if-needed x)))))
+  (testing "Should throw Exception if form is invalid"
+    (is (thrown?
+         java.lang.IllegalArgumentException
+         (params/wrap-field-id-if-needed nil)))))
+
+
 ;;; ---------------------------------------------- name_field hydration ----------------------------------------------
 
 (deftest hydrate-name-field-test

@@ -15,7 +15,7 @@
   "Convert `param-value` to a type appropriate for `param-type`.
   The frontend always passes parameters in as strings, which is what we want in most cases; for numbers, instead
   convert the parameters to integers or floating-point numbers."
-  [param-type param-value, field-clause :- (mbql.s.helpers/one-of mbql.s/field-id mbql.s/field-literal)]
+  [param-type param-value field-clause :- (mbql.s.helpers/one-of mbql.s/field-id mbql.s/field-literal)]
   (cond
     ;; for `id` or `category` type params look up the base-type of the Field and see if it's a number or not.
     ;; If it *is* a number then recursively call this function and parse the param value as a number as appropriate.
