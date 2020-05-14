@@ -44,7 +44,7 @@
   qp.test-util/keep-me
   qp.test/keep-me
   sql-jdbc.tu/keep-me
-  [test-users/keep-me]
+  test-users/keep-me
   tt/keep-me
   tu/keep-me
   tu.async/keep-me
@@ -109,6 +109,7 @@
   sql-jdbc-drivers]
 
  [test-users
+  fetch-user
   user->id
   user->client
   user->credentials
