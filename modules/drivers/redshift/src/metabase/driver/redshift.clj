@@ -14,6 +14,7 @@
              [execute :as sql-jdbc.execute]]
             [metabase.driver.sql-jdbc.execute.legacy-impl :as legacy]
             [metabase.driver.sql.query-processor :as sql.qp]
+            [metabase.mbql.util :as mbql.u]
             [metabase.query-processor
              [store :as qp.store]
              [util :as qputil]]
@@ -136,7 +137,7 @@
 (defmethod sql.qp/->honeysql [:redshift :replace]
   [driver [_ arg pattern replacement]]
   (hsql/call :replace (sql.qp/->honeysql driver arg) (splice-raw-string-value driver pattern)
-              (splice-raw-string-value driver replacement)))
+             (splice-raw-string-value driver replacement)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         metabase.driver.sql-jdbc impls                                         |
@@ -165,7 +166,21 @@
 (defn query->field-values
   "Convert a MBQL query to a map of field->value"
   [query]
-  (into {} (map (fn [param] [(:name (qp.store/field (get-in param [:target 1 1]))) (:value param)]) (:user-parameters query))))
+  (into {}
+        (filter identity
+                (map
+                 (fn [param]
+                   (if (contains? param :name)
+                     [(:name param) (:value param)]
+
+                     (when-let [field-id (mbql.u/match-one
+                                          param
+                                          [:dimension field]
+                                          (let [field-id-or-name (mbql.u/field-clause->id-or-literal field)]
+                                            (when (integer? field-id-or-name)
+                                              field-id-or-name)))]
+                       [(:name (qp.store/field field-id)) (:value param)])))
+                 (:user-parameters query)))))
 
 (defmethod qputil/query->remark :redshift
   [_ {{:keys [executed-by query-hash card-id], :as info} :info, query-type :type :as query}]

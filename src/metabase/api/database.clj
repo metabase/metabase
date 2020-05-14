@@ -123,19 +123,20 @@
 (defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
   [& {:keys [additional-constraints xform], :or {xform identity}}]
-  (transduce
-   (comp (filter card-can-be-used-as-source-query?) xform)
-   (completing conj #(hydrate % :collection))
-   []
-   (db/select-reducible [Card :name :description :database_id :dataset_query :id :collection_id :result_metadata]
-     {:where    (into [:and
-                       [:not= :result_metadata nil]
-                       [:= :archived false]
-                       [:in :database_id (ids-of-dbs-that-support-source-queries)]
-                       (collection/visible-collection-ids->honeysql-filter-clause
-                        (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
-                      additional-constraints)
-      :order-by [[:%lower.name :asc]]})))
+  (when-let [ids-of-dbs-that-support-source-queries (not-empty (ids-of-dbs-that-support-source-queries))]
+    (transduce
+     (comp (filter card-can-be-used-as-source-query?) xform)
+     (completing conj #(hydrate % :collection))
+     []
+     (db/select-reducible [Card :name :description :database_id :dataset_query :id :collection_id :result_metadata]
+       {:where    (into [:and
+                         [:not= :result_metadata nil]
+                         [:= :archived false]
+                         [:in :database_id ids-of-dbs-that-support-source-queries]
+                         (collection/visible-collection-ids->honeysql-filter-clause
+                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+                        additional-constraints)
+       :order-by [[:%lower.name :asc]]}))))
 
 (defn- source-query-cards-exist?
   "Truthy if a single Card that can be used as a source query exists."
@@ -163,7 +164,7 @@
   (let [virtual-db-metadata (apply saved-cards-virtual-db-metadata options)]
     ;; only add the 'Saved Questions' DB if there are Cards that can be used
     (cond-> dbs
-      (source-query-cards-exist?) (concat [virtual-db-metadata]))))
+      (and (source-query-cards-exist?) virtual-db-metadata) (concat [virtual-db-metadata]))))
 
 (defn- dbs-list [& {:keys [include-tables? include-saved-questions-db? include-saved-questions-tables?]}]
   (when-let [dbs (seq (filter mi/can-read? (db/select Database {:order-by [:%lower.name :%lower.engine]})))]
