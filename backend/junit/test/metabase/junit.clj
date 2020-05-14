@@ -3,7 +3,8 @@
   (:require [clojure
              [pprint :as pp]
              [string :as str]]
-            [pjstadig.print :as p]))
+            [pjstadig.print :as p]
+            [test-report-junit-xml.core :as junit-xml]))
 
 (defn- event-description [{:keys [file line context message]}]
   (str
@@ -15,8 +16,8 @@
 
 (defn- result-output [{:keys [expected actual diffs message], :as event}]
   (with-out-str
-    (newline)
     (println (event-description event))
+    ;; this code is adapted from `pjstadig.util`
     (p/with-pretty-writer
       (fn []
         (let [print-expected (fn [actual]
@@ -45,10 +46,9 @@
 
 (defmethod format-result :default
   [event]
-  ((requiring-resolve 'test-report-junit-xml.core/format-result) event))
+  (#'junit-xml/format-result event))
 
 (defmethod format-result :fail
   [event]
   {:tag     :failure
-   :attrs   {:message (event-description event)}
    :content (result-output event)})

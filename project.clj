@@ -208,6 +208,9 @@
    {:plugins
     [[lein-test-report-junit-xml "0.2.0"]] ; output test results in JUnit XML format
 
+    ;; the custom JUnit formatting logic lives in `backend/junit/test/metabase/junit.clj`
+    :test-paths ["backend/junit/test"]
+
     :injections
     [(require 'metabase.junit)]
 
