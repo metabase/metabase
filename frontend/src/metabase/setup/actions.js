@@ -8,6 +8,7 @@ import { SetupApi, UtilApi } from "metabase/services";
 
 // action constants
 export const SET_ACTIVE_STEP = "SET_ACTIVE_STEP";
+export const SET_LANGUAGE_DETAILS = "SET_LANGUAGE_DETAILS";
 export const SET_USER_DETAILS = "SET_USER_DETAILS";
 export const SET_DATABASE_DETAILS = "SET_DATABASE_DETAILS";
 export const SET_ALLOW_TRACKING = "SET_ALLOW_TRACKING";
@@ -18,6 +19,7 @@ export const COMPLETE_SETUP = "COMPLETE_SETUP";
 
 // action creators
 export const setActiveStep = createAction(SET_ACTIVE_STEP);
+export const setLanguageDetails = createAction(SET_LANGUAGE_DETAILS);
 export const setUserDetails = createAction(SET_USER_DETAILS);
 export const setDatabaseDetails = createAction(SET_DATABASE_DETAILS);
 export const setAllowTracking = createAction(SET_ALLOW_TRACKING);
