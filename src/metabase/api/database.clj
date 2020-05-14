@@ -241,7 +241,15 @@
     (-> (hydrate db (case include
                       "tables"        :tables
                       "tables.fields" [:tables [:fields [:target :has_field_values] :has_field_values]]))
-        (update :tables (partial filter #(and (nil? (:visibility_type %)) (mi/can-read? %)))))))
+        (update :tables (fn [tables]
+                          (cond->> tables
+                            ; filter hidden tables
+                            true                        (filter #(and (nil? (:visibility_type %)) (mi/can-read? %)))
+                            ; filter hidden fields
+                            (= include "tables.fields") (map (fn [table]
+                                                               (update table :fields
+                                                                       (fn [fields]
+                                                                         (filter #(not= :sensitive (:visibility_type %)) fields)))))))))))
 
 (api/defendpoint GET "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables

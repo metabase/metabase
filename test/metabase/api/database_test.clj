@@ -140,7 +140,7 @@
                     Field    [f1 {:name "Field 1.1", :table_id (:id t1)}]
                     Field    [f2 {:name "Field 2.1", :table_id (:id t2)}]
                     Field    [f3 {:name "Field 2.2", :table_id (:id t2)}]
-                    Field    [f4 {:name "Field 2.3", :table_id (:id t2), :visibility_type "hidden"}]]
+                    Field    [f4 {:name "Field 2.3", :table_id (:id t2), :visibility_type "sensitive"}]]
       (testing "`?include=tables` -- should be able to include Tables"
         (is (= {:tables [(table-details t1)
                          (table-details t2)]}
@@ -153,9 +153,9 @@
                          :base_type        "type/Text"
                          :visibility_type  "normal"
                          :has_field_values "search"))]
-          (is (= (-> {:tables [(assoc (table-details t1) :fields [(field-details* f1)])
-                               (assoc (table-details t2) :fields [(field-details* f2)
-                                                                  (field-details* f3)])]})
+          (is (= {:tables [(assoc (table-details t1) :fields [(field-details* f1)])
+                           (assoc (table-details t2) :fields [(field-details* f2)
+                                                              (field-details* f3)])]}
                  (select-keys ((mt/user->client :lucky) :get 200 (format "database/%d?include=tables.fields" (:id db)))
                               [:tables]))))))
 
