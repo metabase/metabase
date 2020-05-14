@@ -85,7 +85,9 @@ export default class PinMap extends Component {
     if (
       newProps.series[0].data !== this.props.series[0].data ||
       !_.isEqual(
+        // $FlowFixMe
         _.pick(newProps.settings, ...SETTINGS_KEYS),
+        // $FlowFixMe
         _.pick(this.props.settings, ...SETTINGS_KEYS),
       )
     ) {
@@ -124,6 +126,7 @@ export default class PinMap extends Component {
           data: { cols, rows },
         },
       ],
+      onUpdateWarnings,
     } = props;
     const latitudeIndex = _.findIndex(
       cols,
@@ -138,11 +141,26 @@ export default class PinMap extends Component {
       col => col.name === settings["map.metric_column"],
     );
 
-    const points = rows.map(row => [
+    const allPoints = rows.map(row => [
       row[latitudeIndex],
       row[longitudeIndex],
       metricIndex >= 0 ? row[metricIndex] : 1,
     ]);
+
+    // only use points with numeric coordinates & metric
+    const points = allPoints.filter(
+      ([lat, lng, metric]) => lat != null && lng != null && metric != null,
+    );
+
+    const warnings = [];
+    const filteredRows = allPoints.length - points.length;
+    if (filteredRows > 0) {
+      warnings.push(
+        t`We filtered out ${filteredRows} row(s) containing null values.`,
+      );
+    }
+    // $FlowFixMe flow thinks warnings can be undefined
+    onUpdateWarnings(warnings);
 
     const bounds = L.latLngBounds(points);
 

@@ -28,6 +28,13 @@ import type { DatabaseEngine, DatabaseId } from "metabase/meta/types/Database";
 
 import AtomicQuery from "metabase-lib/lib/queries/AtomicQuery";
 
+import Dimension, { TemplateTagDimension } from "../Dimension";
+import Variable, { TemplateTagVariable } from "../Variable";
+import DimensionOptions from "../DimensionOptions";
+
+type DimensionFilter = (dimension: Dimension) => boolean;
+type VariableFilter = (variable: Variable) => boolean;
+
 export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
   database: null,
   type: "native",
@@ -36,6 +43,21 @@ export const NATIVE_QUERY_TEMPLATE: NativeDatasetQuery = {
     "template-tags": {},
   },
 };
+
+// This regex needs to match logic in replaceCardId and _getUpdatedTemplateTags.
+const CARD_TAG_REGEX = /^#([0-9]*)$/;
+
+function cardTagCardId(name) {
+  const match = name.match(CARD_TAG_REGEX);
+  if (match && match[1].length > 0) {
+    return parseInt(match[1]);
+  }
+  return null;
+}
+
+function isCardQueryName(name) {
+  return CARD_TAG_REGEX.test(name);
+}
 
 export default class NativeQuery extends AtomicQuery {
   // For Flow type completion
@@ -74,12 +96,6 @@ export default class NativeQuery extends AtomicQuery {
     return this.databaseId() == null || this.queryText().length === 0;
   }
 
-  databases(): Database[] {
-    return super
-      .databases()
-      .filter(database => database.native_permissions === "write");
-  }
-
   clean() {
     return this.setDatasetQuery(
       updateIn(
@@ -108,6 +124,14 @@ export default class NativeQuery extends AtomicQuery {
   engine(): ?DatabaseEngine {
     const database = this.database();
     return database && database.engine;
+  }
+
+  /**
+   * Returns true if the database metadata (or lack thererof indicates the user can modify and run this query
+   */
+  readOnly(): boolean {
+    const database = this.database();
+    return !database || database.native_permissions !== "write";
   }
 
   /* Methods unique to this query type */
@@ -247,8 +271,45 @@ export default class NativeQuery extends AtomicQuery {
     );
   }
 
+  setTemplateTag(name, tag) {
+    return this.setDatasetQuery(
+      assocIn(this.datasetQuery(), ["native", "template-tags", name], tag),
+    );
+  }
+
   setDatasetQuery(datasetQuery: DatasetQuery): NativeQuery {
     return new NativeQuery(this._originalQuestion, datasetQuery);
+  }
+
+  // `replaceCardId` updates the query text to reference a different card.
+  // Template tags are updated as a result of calling `setQueryText`.
+  replaceCardId(oldId, newId) {
+    const re = new RegExp(`{{\\s*#${oldId}\\s*}}`, "g");
+    const newQueryText = this.queryText().replace(re, () => `{{#${newId}}}`);
+    return this.setQueryText(newQueryText);
+  }
+
+  dimensionOptions(
+    dimensionFilter: DimensionFilter = () => true,
+  ): DimensionOptions {
+    const dimensions = this.templateTags()
+      .filter(tag => tag.type === "dimension")
+      .map(
+        tag =>
+          new TemplateTagDimension(null, [tag.name], this.metadata(), this),
+      )
+      .filter(dimensionFilter);
+    return new DimensionOptions({
+      dimensions: dimensions,
+      count: dimensions.length,
+    });
+  }
+
+  variables(variableFilter: VariableFilter = () => true): Variable[] {
+    return this.templateTags()
+      .filter(tag => tag.type !== "dimension")
+      .map(tag => new TemplateTagVariable([tag.name], this.metadata(), this))
+      .filter(variableFilter);
   }
 
   /**
@@ -262,16 +323,16 @@ export default class NativeQuery extends AtomicQuery {
       // a variable name can optionally end with :start or :end which is not considered part of the actual variable name
       // expected pattern is like mustache templates, so we are looking for something like {{category}} or {{date:start}}
       // anything that doesn't match our rule is ignored, so {{&foo!}} would simply be ignored
+      // variables referencing other questions, by their card ID, are also supported: {{#123}} references question with ID 123
       let match;
-      const re = /\{\{\s*([A-Za-z0-9_]+?)\s*\}\}/g;
+      const re = /\{\{\s*([A-Za-z0-9_]+?|#[0-9]*)\s*\}\}/g;
       while ((match = re.exec(queryText)) != null) {
         tags.push(match[1]);
       }
 
       // eliminate any duplicates since it's allowed for a user to reference the same variable multiple times
-      const existingTemplateTags = this.templateTagsMap();
-
       tags = _.uniq(tags);
+      const existingTemplateTags = this.templateTagsMap();
       const existingTags = Object.keys(existingTemplateTags);
 
       // if we ended up with any variables in the query then update the card parameters list accordingly
@@ -282,13 +343,18 @@ export default class NativeQuery extends AtomicQuery {
         const templateTags = { ...existingTemplateTags };
         if (oldTags.length === 1 && newTags.length === 1) {
           // renaming
-          templateTags[newTags[0]] = { ...templateTags[oldTags[0]] };
+          const newTag = { ...templateTags[oldTags[0]] };
 
-          if (templateTags[newTags[0]].display_name === humanize(oldTags[0])) {
-            templateTags[newTags[0]].display_name = humanize(newTags[0]);
+          if (newTag["display-name"] === humanize(oldTags[0])) {
+            newTag["display-name"] = humanize(newTags[0]);
           }
 
-          templateTags[newTags[0]].name = newTags[0];
+          newTag.name = newTags[0];
+          if (isCardQueryName(newTag.name)) {
+            newTag.type = "card";
+            newTag["card-id"] = cardTagCardId(newTag.name);
+          }
+          templateTags[newTag.name] = newTag;
           delete templateTags[oldTags[0]];
         } else {
           // remove old vars
@@ -301,9 +367,17 @@ export default class NativeQuery extends AtomicQuery {
             templateTags[tagName] = {
               id: Utils.uuid(),
               name: tagName,
-              display_name: humanize(tagName),
+              "display-name": humanize(tagName),
               type: "text",
             };
+
+            // parse card ID from tag name for card query template tags
+            if (isCardQueryName(tagName)) {
+              templateTags[tagName] = Object.assign(templateTags[tagName], {
+                type: "card",
+                "card-id": cardTagCardId(tagName),
+              });
+            }
           }
         }
 

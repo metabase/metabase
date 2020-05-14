@@ -30,6 +30,8 @@ Here’s where to go for help using the features included in the Enterprise Edit
 #### [Developers Guide](developers-guide.md)
 This guide covers how to contribute back to the Metabase open source project. It includes setting up a development environment, running tests, and the contribution and product process Metabase follows.
 
+#### [Driver Development](developers-guide-drivers.md)
+Want to write your own database driver? This guide lists existing community drivers and shows how to get started with driver development.
 
 ## Reference
 

@@ -15,8 +15,8 @@
 
        (require '[metabase.models.setting :as setting])
 
-       (setting/get :mandrill-api-key)           ; only returns values set explicitly from SuperAdmin
-       (mandrill-api-key)                        ; returns value set in SuperAdmin, OR value of corresponding env var,
+       (setting/get :mandrill-api-key)           ; only returns values set explicitly from the Admin Panel
+       (mandrill-api-key)                        ; returns value set in the Admin Panel, OR value of corresponding env var,
                                                  ; OR the default value, if any (in that order)
 
        (setting/set! :mandrill-api-key \"NEW_KEY\")
@@ -64,6 +64,9 @@
 (def ^:private Type
   (s/enum :string :boolean :json :integer :double :timestamp :csv))
 
+(def ^:private Visibility
+  (s/enum :public :authenticated :admin :internal))
+
 (def ^:private default-tag-for-type
   "Type tag that will be included in the Setting's metadata, so that the getter function will not cause reflection
   warnings."
@@ -82,7 +85,7 @@
    :setter      clojure.lang.IFn
    :tag         (s/maybe Class)  ; type annotation, e.g. ^String, to be applied. Defaults to tag based on :type
    :sensitive?  s/Bool           ; is this sensitive (never show in plaintext), like a password? (default: false)
-   :internal?   s/Bool           ; should the API never return this setting? (default: false)
+   :visibility  Visibility       ; where this setting should be visible (default: :admin)
    :cache?      s/Bool           ; should the getter always fetch this value "fresh" from the DB? (default: false)
 
   ;; called whenever setting value changes, whether from update-setting! or a cache refresh. used to handle cases
@@ -327,7 +330,7 @@
   "Set the value of double `setting-or-name`."
   [setting-or-name new-value]
   (set-string! setting-or-name (when new-value
-                                 (assert (or (float? new-value)
+                                 (assert (or (number? new-value)
                                              (and (string? new-value)
                                                   (re-matches #"[+-]?([0-9]*[.])?[0-9]+" new-value) )))
                                  (str new-value))))
@@ -382,7 +385,10 @@
 
      (mandrill-api-key \"xyz123\")"
   [setting-or-name new-value]
-  (let [{:keys [setter cache?]} (resolve-setting setting-or-name)]
+  (let [{:keys [setter cache?], :as setting} (resolve-setting setting-or-name)
+        name                                 (setting-name setting)]
+    (when (= setter :none)
+      (throw (UnsupportedOperationException. (tru "You cannot set {0}; it is a read-only setting." name))))
     (binding [*disable-cache* (not cache?)]
       (setter new-value))))
 
@@ -405,7 +411,7 @@
                :getter      (partial (default-getter-for-type setting-type) setting-name)
                :setter      (partial (default-setter-for-type setting-type) setting-name)
                :tag         (default-tag-for-type setting-type)
-               :internal?   false
+               :visibility  :admin
                :sensitive?  false
                :cache?      true}
                     (dissoc setting :name :type :default)))
@@ -482,7 +488,7 @@
   (when-not (or (valid-trs-or-tru? desc)
                 (valid-str-of-trs-or-tru? desc))
     (throw (IllegalArgumentException.
-             (trs "defsetting descriptions strings must be `:internal?` or internationalized, found: `{0}`"
+             (trs "defsetting descriptions strings must have `:visibilty` `:internal`, `:setter` `:none`, or internationalized, found: `{0}`"
                   (pr-str desc)))))
   desc)
 
@@ -495,7 +501,7 @@
      (mandrill-api-key new-value) ; update the value
      (mandrill-api-key nil)       ; delete the value
 
-   A setting can be set from the SuperAdmin page or via the corresponding env var, eg. `MB_MANDRILL_API_KEY` for the
+   A setting can be set from the Admin Panel or via the corresponding env var, eg. `MB_MANDRILL_API_KEY` for the
    example above.
 
    You may optionally pass any of the OPTIONS below:
@@ -506,17 +512,17 @@
                       Settings have special default getters and setters that automatically coerce values to the correct
                       types.
 
-   *  `:internal?`  - This Setting is for internal use and shouldn't be exposed in the UI (i.e., not returned by the
-                      corresponding endpoints). Default: `false`
+   *  `:visibility` - `:public`, `:authenticated`, `:admin` (default), or `:internal`. Controls where this setting is
+                      visible
 
    *  `:getter`     - A custom getter fn, which takes no arguments. Overrides the default implementation. (This can in
                       turn call functions in this namespace like `get-string` or `get-boolean` to invoke the default
                       getter behavior.)
 
-   *  `:setter`     - A custom setter fn, which takes a single argument. Overrides the default implementation. (This
-                      can in turn call functions in this namespace like `set-string!` or `set-boolean!` to invoke the
-                      default setter behavior. Keep in mind that the custom setter may be passed `nil`, which should
-                      clear the values of the Setting.)
+   *  `:setter`     - A custom setter fn, which takes a single argument, or `:none` for read-only settings. Overrides the
+                      default implementation. (This can in turn call functions in this namespace like `set-string!` or
+                      `set-boolean!` to invoke the default setter behavior. Keep in mind that the custom setter may be
+                      passed `nil`, which should clear the values of the Setting.)
 
    *  `:cache?`     - Should this Setting be cached? (default `true`)? Be careful when disabling this, because it could
                       have a very negative performance impact.
@@ -529,7 +535,8 @@
   {:style/indent 1}
   [setting-symb description & {:as options}]
   {:pre [(symbol? setting-symb)]}
-  `(let [desc# ~(if (:internal? options)
+  `(let [desc# ~(if (or (= (:visibility options) :internal)
+                        (= (:setter options) :none))
                   description
                   (validate-description description))
          setting# (register-setting! (assoc ~options
@@ -577,7 +584,7 @@
     convert the setting to the appropriate type; you can use `get-string` to get all string values of Settings, for
     example."
   [setting-or-name & {:keys [getter], :or {getter get}}]
-  (let [{:keys [sensitive? default], k :name, :as setting} (resolve-setting setting-or-name)
+  (let [{:keys [sensitive? visibility default], k :name, :as setting} (resolve-setting setting-or-name)
         unparsed-value                                     (get-string k)
         parsed-value                                       (getter k)
         ;; `default` and `env-var-value` are probably still in serialized form so compare
@@ -589,6 +596,9 @@
       ;; the UI.
       (or value-is-default? value-is-from-env-var?)
       nil
+
+      (= visibility :internal)
+      (throw (Exception. (tru "Setting {0} is internal" k)))
 
       sensitive?
       (obfuscate-value parsed-value)
@@ -614,5 +624,14 @@
 
    `options` are passed to `user-facing-value`."
   [& {:as options}]
-  (for [setting (sort-by :name (vals @registered-settings))]
+  (for [setting (sort-by :name (vals @registered-settings)) :when (not= (:visibility setting) :internal)]
     (m/mapply user-facing-info setting options)))
+
+(defn properties
+  "Returns settings values for a given :visibility"
+  [visibility]
+  (->> @registered-settings
+    (filter (fn [[_ options]] (and (not (:sensitive? options))
+                                   (= (:visibility options) visibility))))
+    (map (fn [[name]] [name (get name)]))
+    (into {})))

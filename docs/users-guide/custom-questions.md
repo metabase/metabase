@@ -32,6 +32,12 @@ When you add a filter step, you can select one or more columns to filter on. Dep
 
 You can add subsequent filter steps after every Summarize step. This lets you do things like summarize by the count of rows per month, and then add a filter on the `count` column to only include rows where the count is greater than 100. (This is basically like a SQL `HAVING` clause.)
 
+**Filter expressions and including ORs in filters**
+
+![Filter expression](./images/expressions/filter-expression.png)
+
+If you have a more complex filter you're trying to express, you can pick "Custom Expression" from the add-filter menu create a filter expression. You can use comparison operators like greater than (>) or less than (<), as well as spreadsheet-like functions. For example, `[Subtotal] > 100 OR median([Age]) < 40`. [Learn more about writing expressions](./expressions.md)
+
 #### Summarizing
 
 ![Summarizing](./images/notebook/summarize-step.png)
@@ -44,35 +50,17 @@ If you summarize and add a grouping you can then summarize _again_. You can also
 
 **Custom expressions**
 
-Custom expressions allow you to do simple arithmetic within or between aggregation functions. For example, you could do `Average(FieldX) + Sum(FieldY)` or `Max(FieldX - FieldY)`, where `FieldX` and `FieldY` are fields in the currently selected table. You can either use your cursor to select suggested functions and fields, or simply start typing and use the autocomplete. If you are a Metabase administrator, you can now also use custom aggregation expressions when creating defined common metrics in the Admin Panel.
+![Custom expression](./images/expressions/aggregation-expression.png)
 
-Currently, you can any of the basic aggregation functions (the same ones that appear in the pick-the-metric-you-want-to-see dropdown), and these basic mathematical operators: `+`, `-`, `*` (multiply), `/` (divide). You can also use parentheses to specify the order of operations.
+Custom expressions allow you to use spreadsheet-like functions and simple arithmetic within or between aggregation functions. For example, you could do `Average(sqrt[FieldX]) + Sum([FieldY])` or `Max(floor([FieldX] - [FieldY]))`, where `FieldX` and `FieldY` are fields in the currently selected table. [Learn more about writing expressions](./expressions.md)
 
 #### Creating custom columns
 
-Custom columns are helpful when you need to create a new column based on a calculation, such as subtracting the value of one column from another.
+![Custom column](./images/expressions/custom-column.png)
 
-![Custom columns](images/custom-fields/blank-formula.png)
+Custom columns are helpful when you need to create a new column based on a calculation, such as subtracting the value of one column from another, or extracting a portion of an existing text column. Note that columns you add in a custom question are not permanently added to your table; they'll only be present in the given question.
 
-Say we had a table of baseball games, each row representing a single game, and we wanted to figure out how many more runs the home team scored than the away team (the “run differential”). If we have one field with the home team’s score, and another field with the away team’s score, we could type a formula like this:
-
-![Formula](images/custom-fields/filled-formula.png)
-
-The words in the quotes are the names of the fields in our table. If you start typing in this box, Metabase will show you fields in the current table that match what you’ve typed, and you can select from this list to autocomplete the field name.
-
-Right now, you can only use the following math operators in your formulas: `+`, `–`, `*` (multiplication), and `/` (division). You can also use parentheses to clarify the order of operations.
-
-Once you’ve written your formula and given your new column a name, select `Raw Data` for your view, and click the `Get Answer` button to see your new field appended to your current table. It’ll be on the far right of the table.
-
-**Note that this new column is NOT permanently added to this table.** It will only be kept if you save a question that uses it.
-
-Here’s our result:
-
-![New field](images/custom-fields/query-result.png)
-
-Now we can use this new column just like any other one, meaning we can use it to filter our question, add a grouping with it, or find out things like the average of it. You can add multiple custom fields, and they’ll all show up at the top of drop downs within the question builder:
-
-![Field in dropdown](images/custom-fields/field-in-dropdown.png)
+You can use the following math operators in your formulas: `+`, `–`, `*` (multiplication), and `/` (division), along with a whole host of spreadsheet-like functions. You can also use parentheses to clarify the order of operations. You can [learn more about writing expressions here](./expressions.md).
 
 #### Sorting results
 

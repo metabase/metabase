@@ -24,7 +24,8 @@
            honeysql.types.SqlCall
            java.time.temporal.Temporal
            java.util.UUID
-           [metabase.driver.common.parameters CommaSeparatedNumbers Date DateRange FieldFilter MultipleValues]))
+           [metabase.driver.common.parameters CommaSeparatedNumbers Date DateRange FieldFilter MultipleValues
+            ReferencedCardQuery]))
 
 ;;; ------------------------------------ ->prepared-substitution & default impls -------------------------------------
 
@@ -235,11 +236,14 @@
   "Return an approprate snippet to represent this `field` in SQL given its param type.
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the `param-type`."
-  [driver field param-type]
+  [driver {special-type :special_type, :as field} param-type]
   (:replacement-snippet
    (honeysql->replacement-snippet-info
     driver
-    (let [identifier (sql.qp/->honeysql driver (sql.qp/field->identifier driver field))]
+    (let [identifier (sql.qp/->honeysql driver (sql.qp/field->identifier driver field))
+          identifier (cond->> identifier
+                       (isa? special-type :type/UNIXTimestampSeconds)      (sql.qp/unix-timestamp->honeysql driver :seconds)
+                       (isa? special-type :type/UNIXTimestampMilliseconds) (sql.qp/unix-timestamp->honeysql driver :milliseconds))]
       (if (date-params/date-type? param-type)
         (sql.qp/date driver :day identifier)
         identifier)))))
@@ -261,3 +265,11 @@
     :else
     (update (field-filter->replacement-snippet-info driver value)
             :replacement-snippet (partial str (field->identifier driver field (:type value)) " "))))
+
+
+;;; ------------------------------------- Field Filter replacement snippet info --------------------------------------
+
+(defmethod ->replacement-snippet-info [:sql ReferencedCardQuery]
+  [_driver {:keys [query]}]
+  {:prepared-statement-args nil
+   :replacement-snippet     (str "(" query ")")})

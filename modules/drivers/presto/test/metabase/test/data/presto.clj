@@ -20,7 +20,7 @@
 ;; during unit tests don't treat presto as having FK support
 (defmethod driver/supports? [:presto :foreign-keys] [_ _] (not config/is-test?))
 
-;;; IDriverTestExtensions implementation
+;;; driver test extensions implementation
 
 ;; in the past, we had to manually update our Docker image and add a new catalog for every new dataset definition we
 ;; added. That's insane. Just use the `test-data` catalog and put everything in that, and use
@@ -94,7 +94,7 @@
 (defmethod tx/create-db! :presto
   [driver {:keys [table-definitions database-name] :as dbdef} & {:keys [skip-drop-db?]}]
   (let [details  (tx/dbdef->connection-details driver :db dbdef)
-        execute! (partial #'presto/execute-presto-query! details)]
+        execute! (partial #'presto/execute-presto-query-for-sync details)]
     (doseq [tabledef table-definitions
             :let     [rows       (:rows tabledef)
                       ;; generate an ID for each row because we don't have auto increments
@@ -110,6 +110,16 @@
 (defmethod tx/format-name :presto
   [_ s]
   (str/lower-case s))
+
+(defmethod tx/aggregate-column-info :presto
+  ([driver ag-type]
+   ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type))
+
+  ([driver ag-type field]
+   (merge
+    ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
+    (when (= ag-type :sum)
+      {:base_type :type/BigInteger}))))
 
 ;; FIXME Presto actually has very good timezone support
 (defmethod tx/has-questionable-timezone-support? :presto [_] true)

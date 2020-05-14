@@ -12,7 +12,8 @@
              [collection :as collection]
              [permissions :as perms]
              [permissions-group :as group]
-             [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]]
+             [permissions-group-membership :as perm-membership :refer [PermissionsGroupMembership]]
+             [session :refer [Session]]]
             [metabase.util
              [i18n :refer [trs]]
              [schema :as su]]
@@ -229,6 +230,8 @@
   [user-id password]
   (let [salt     (str (UUID/randomUUID))
         password (creds/hash-bcrypt (str salt password))]
+    ;; when changing/resetting the password, kill any existing sessions
+    (db/simple-delete! Session :user_id user-id)
     ;; NOTE: any password change expires the password reset token
     (db/update! User user-id
       :password_salt   salt
@@ -274,7 +277,7 @@
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
 (defn permissions-set
-  "Return a set of all permissions object paths that USER-OR-ID has been granted access to. (2 DB Calls)"
+  "Return a set of all permissions object paths that `user-or-id` has been granted access to. (2 DB Calls)"
   [user-or-id]
   (set (when-let [user-id (u/get-id user-or-id)]
          (concat

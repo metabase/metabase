@@ -509,17 +509,21 @@ describe("Dimension", () => {
         });
       });
 
+      function aggregation(agg) {
+        const query = new StructuredQuery(ORDERS.question(), {
+          type: "query",
+          database: SAMPLE_DATASET.id,
+          query: {
+            "source-table": ORDERS.id,
+            aggregation: [agg],
+          },
+        });
+        return Dimension.parseMBQL(["aggregation", 0], metadata, query);
+      }
+
       describe("column()", () => {
         function sumOf(column) {
-          const query = new StructuredQuery(ORDERS.question(), {
-            type: "query",
-            database: SAMPLE_DATASET.id,
-            query: {
-              "source-table": ORDERS.id,
-              aggregation: [["sum", ["field-id", column.id]]],
-            },
-          });
-          return Dimension.parseMBQL(["aggregation", 0], metadata, query);
+          return aggregation(["sum", ["field-id", column.id]]);
         }
 
         it("should clear unaggregated special types", () => {
@@ -532,6 +536,29 @@ describe("Dimension", () => {
           const { special_type } = sumOf(ORDERS.TOTAL).column();
 
           expect(special_type).toBe("type/Currency");
+        });
+      });
+
+      describe("field()", () => {
+        it("should return a float field for sum of order total", () => {
+          const { base_type } = aggregation([
+            "sum",
+            ["field-id", ORDERS.TOTAL.id],
+          ]).field();
+          expect(base_type).toBe("type/Float");
+        });
+
+        it("should return an int field for count distinct of product category", () => {
+          const { base_type } = aggregation([
+            "distinct",
+            ["field-id", PRODUCTS.CATEGORY.id],
+          ]).field();
+          expect(base_type).toBe("type/Integer");
+        });
+
+        it("should return an int field for count", () => {
+          const { base_type } = aggregation(["count"]).field();
+          expect(base_type).toBe("type/Integer");
         });
       });
     });

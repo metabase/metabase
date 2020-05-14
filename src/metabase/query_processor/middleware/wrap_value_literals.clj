@@ -24,7 +24,7 @@
 (defmethod type-info :default [_] nil)
 
 (defmethod type-info (class Field) [this]
-  (let [field-info (select-keys this [:base_type :special_type :database_type])]
+  (let [field-info (select-keys this [:base_type :special_type :database_type :name])]
     (merge
      field-info
      ;; add in a default unit for this Field so we know to wrap datetime strings in `absolute-datetime` below based on
@@ -133,4 +133,5 @@
   to make it easier for drivers to write implementations that rely on multimethod dispatch (by clause name) -- they
   can dispatch directly off of these clauses."
   [qp]
-  (comp qp wrap-value-literals*))
+  (fn [query rff context]
+    (qp (wrap-value-literals* query) rff context)))

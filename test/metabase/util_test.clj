@@ -192,18 +192,6 @@
     0     0
     -1444 3))
 
-(deftest update-when-test
-  (testing "update-when"
-    (are [m expected] (= expected
-                         (u/update-when m :bar inc))
-      {:foo 2}        {:foo 2}
-      {:foo 2 :bar 2} {:foo 2 :bar 3}))
-  (testing "update-in-when"
-    (are [m expected] (= expected
-                         (u/update-in-when m [:foo :bar] inc))
-      {:foo 2}        {:foo 2}
-      {:foo {:bar 2}} {:foo {:bar 3}})))
-
 (deftest index-of-test
   (are [input expected] (= expected
                            (u/index-of pos? input))

@@ -5,14 +5,18 @@ export default ComposedComponent => {
     componentDidMount() {
       const { table } = this.props;
       if (table) {
-        table.fetchTableMetadata();
+        table.fetchMetadataAndForeignTables({
+          params: { include_sensitive_fields: true },
+        });
       }
     }
 
     componentDidUpdate(prevProps) {
       const { table } = this.props;
       if (table !== prevProps.table) {
-        table.fetchTableMetadata();
+        table.fetchMetadataAndForeignTables({
+          params: { include_sensitive_fields: true },
+        });
       }
     }
 

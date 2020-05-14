@@ -8,6 +8,8 @@ import Metadata from "metabase-lib/lib/metadata/Metadata";
 import Database from "metabase-lib/lib/metadata/Database";
 import Table from "metabase-lib/lib/metadata/Table";
 
+import { PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE } from "metabase/plugins";
+
 import type {
   Group,
   GroupId,
@@ -105,7 +107,7 @@ export const getTablesPermission = (
     return getPermission(
       permissions,
       groupId,
-      [databaseId, "schemas", schemaName],
+      [databaseId, "schemas", schemaName || ""],
       true,
     );
   } else {
@@ -126,7 +128,7 @@ export const getFieldsPermission = (
     return getPermission(
       permissions,
       groupId,
-      [databaseId, "schemas", schemaName, tableId],
+      [databaseId, "schemas", schemaName || "", tableId],
       true,
     );
   } else {
@@ -177,7 +179,7 @@ export function downgradeNativePermissionsIfNeeded(
 
 const metadataTableToTableEntityId = (table: Table): TableEntityId => ({
   databaseId: table.db_id,
-  schemaName: table.schema || "",
+  schemaName: table.schema_name || "",
   tableId: table.id,
 });
 
@@ -186,7 +188,7 @@ const entityIdToMetadataTableFields = (entityId: EntityId) => ({
   ...(entityId.databaseId ? { db_id: entityId.databaseId } : {}),
   // $FlowFixMe Because schema name can be an empty string, which means an empty schema, this check becomes a little nasty
   ...(entityId.schemaName !== undefined
-    ? { schema: entityId.schemaName !== "" ? entityId.schemaName : null }
+    ? { schema_name: entityId.schemaName !== "" ? entityId.schemaName : null }
     : {}),
   ...(entityId.tableId ? { id: entityId.tableId } : {}),
 });
@@ -230,7 +232,8 @@ export function inferAndUpdateEntityPermissions(
   metadata: Metadata,
 ) {
   // $FlowFixMe
-  const { databaseId, schemaName } = entityId;
+  const { databaseId } = entityId;
+  const schemaName = entityId.schemaName || "";
 
   if (schemaName) {
     // Check all tables for current schema if their shared schema-level permission value should be updated
@@ -284,7 +287,8 @@ export function updateFieldsPermission(
   value: string,
   metadata: Metadata,
 ): GroupsPermissions {
-  const { databaseId, schemaName, tableId } = entityId;
+  const { databaseId, tableId } = entityId;
+  const schemaName = entityId.schemaName || "";
 
   permissions = updateTablesPermission(
     permissions,
@@ -297,7 +301,7 @@ export function updateFieldsPermission(
     permissions,
     groupId,
     [databaseId, "schemas", schemaName, tableId],
-    value /* TODO: field ids, when enabled "controlled" fields */,
+    PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_PERMISSION_VALUE[value] || value,
   );
 
   return permissions;
@@ -310,10 +314,8 @@ export function updateTablesPermission(
   value: string,
   metadata: Metadata,
 ): GroupsPermissions {
-  const database = metadata && metadata.databases[databaseId];
-  const tableIds: ?(number[]) =
-    database &&
-    database.tables.filter(t => (t.schema || "") === schemaName).map(t => t.id);
+  const schema = metadata && metadata.database(databaseId).schema(schemaName);
+  const tableIds = schema && schema.tables.map(t => t.id);
 
   permissions = updateSchemasPermission(
     permissions,
@@ -325,7 +327,7 @@ export function updateTablesPermission(
   permissions = updatePermission(
     permissions,
     groupId,
-    [databaseId, "schemas", schemaName],
+    [databaseId, "schemas", schemaName || ""],
     value,
     tableIds,
   );
@@ -343,7 +345,11 @@ export function updateSchemasPermission(
   const database = metadata.databases[databaseId];
   const schemaNames = database && database.schemaNames();
   const schemaNamesOrNoSchema =
-    schemaNames && schemaNames.length > 0 ? schemaNames : [""];
+    schemaNames &&
+    schemaNames.length > 0 &&
+    !(schemaNames.length === 1 && schemaNames[0] === null)
+      ? schemaNames
+      : [""];
 
   permissions = downgradeNativePermissionsIfNeeded(
     permissions,
@@ -439,12 +445,12 @@ function diffDatabasePermissions(
   for (const table of database.tables) {
     const oldFieldsPerm = getFieldsPermission(oldPerms, groupId, {
       databaseId: database.id,
-      schemaName: table.schema || "",
+      schemaName: table.schema_name || "",
       tableId: table.id,
     });
     const newFieldsPerm = getFieldsPermission(newPerms, groupId, {
       databaseId: database.id,
-      schemaName: table.schema || "",
+      schemaName: table.schema_name || "",
       tableId: table.id,
     });
     if (oldFieldsPerm !== newFieldsPerm) {

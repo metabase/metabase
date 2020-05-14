@@ -40,10 +40,10 @@
 
 (defmethod driver/display-name :postgres [_] "PostgreSQL")
 
-(defmethod driver/date-add :postgres
-  [_ dt amount unit]
-  (hx/+ (hx/->timestamp dt)
-        (hsql/raw (format "(INTERVAL '%d %s')" (int amount) (name unit)))))
+(defmethod sql.qp/add-interval-honeysql-form :postgres
+  [_ hsql-form amount unit]
+  (hx/+ (hx/->timestamp hsql-form)
+        (hsql/raw (format "(INTERVAL '%s %s')" amount (name unit)))))
 
 (defmethod driver/humanize-connection-error-message :postgres
   [_ message]
@@ -118,7 +118,7 @@
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defmethod sql.qp/unix-timestamp->timestamp [:postgres :seconds]
+(defmethod sql.qp/unix-timestamp->honeysql [:postgres :seconds]
   [_ _ expr]
   (hsql/call :to_timestamp expr))
 
@@ -160,6 +160,14 @@
         :type/IPAddress    (hx/cast :inet value)
         :type/PostgresEnum (hx/quoted-cast database-type value)
         (sql.qp/->honeysql driver value)))))
+
+(defmethod sql.qp/->honeysql [:postgres :median]
+  [driver [_ arg]]
+  (sql.qp/->honeysql driver [:percentile arg 0.5]))
+
+(defmethod sql.qp/->honeysql [:postgres :regex-match-first]
+  [driver [_ arg pattern]]
+  (hsql/call :substring (hsql/raw (str (hformat/to-sql (sql.qp/->honeysql driver arg)) " FROM '" pattern "'"))))
 
 (defmethod sql.qp/->honeysql [:postgres Time]
   [_ time-value]
@@ -309,33 +317,46 @@
 
 ;; for some reason postgres `TIMESTAMP WITH TIME ZONE` columns still come back as `Type/TIMESTAMP`, which seems like a
 ;; bug with the JDBC driver?
-(defmethod sql-jdbc.execute/read-column [:postgres Types/TIMESTAMP]
-  [_ _ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+(defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/TIMESTAMP]
+  [_ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (let [^Class klass (if (= (str/lower-case (.getColumnTypeName rsmeta i)) "timestamptz")
                        OffsetDateTime
                        LocalDateTime)]
-    (.getObject rs i klass)))
+    (fn []
+      (.getObject rs i klass))))
 
 ;; Sometimes Postgres times come back as strings like `07:23:18.331+00` (no minute in offset) and there's a bug in the
 ;; JDBC driver where it can't parse those correctly. We can do it ourselves in that case.
-(defmethod sql-jdbc.execute/read-column [:postgres Types/TIME]
-  [driver _ ^ResultSet rs rsmeta ^Integer i]
-  (let [parent-method (get-method sql-jdbc.execute/read-column [:sql-jdbc Types/TIME])]
-    (try
-      (parent-method driver nil rs rsmeta i)
-      (catch Throwable _
-        (let [s (.getString rs i)]
-          (log/tracef "Error in Postgres JDBC driver reading TIME value, fetching as string '%s'" s)
-          (u.date/parse s))))))
+(defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/TIME]
+  [driver ^ResultSet rs rsmeta ^Integer i]
+  (let [parent-thunk ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc Types/TIME]) driver rs rsmeta i)]
+    (fn []
+      (try
+        (parent-thunk)
+        (catch Throwable _
+          (let [s (.getString rs i)]
+            (log/tracef "Error in Postgres JDBC driver reading TIME value, fetching as string '%s'" s)
+            (u.date/parse s)))))))
 
 ;; The postgres JDBC driver cannot properly read MONEY columns — see https://github.com/pgjdbc/pgjdbc/issues/425. Work
 ;; around this by checking whether the column type name is `money`, and reading it out as a String and parsing to a
 ;; BigDecimal if so; otherwise, proceeding as normal
-(defmethod sql-jdbc.execute/read-column [:postgres Types/DOUBLE]
-  [driver _ ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
+(defmethod sql-jdbc.execute/read-column-thunk [:postgres Types/DOUBLE]
+  [driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (if (= (.getColumnTypeName rsmeta i) "money")
-    (some-> (.getString rs i) u/parse-currency)
-    (.getObject rs i)))
+    (fn []
+      (some-> (.getString rs i) u/parse-currency))
+    (fn []
+      (.getObject rs i))))
+
+;; de-CLOB any CLOB values that come back
+(defmethod sql-jdbc.execute/read-column-thunk :postgres
+  [_ ^ResultSet rs _ ^Integer i]
+  (fn []
+    (let [obj (.getObject rs i)]
+      (if (instance? org.postgresql.util.PGobject obj)
+        (.getValue ^org.postgresql.util.PGobject obj)
+        obj))))
 
 ;; Postgres doesn't support OffsetTime
 (defmethod sql-jdbc.execute/set-parameter [:postgres OffsetTime]

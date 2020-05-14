@@ -50,6 +50,8 @@ export const getSettings = state => state.settings.values;
 
 export const getIsNew = state => state.qb.card && !state.qb.card.id;
 
+export const getQueryStartTime = state => state.qb.queryStartTime;
+
 export const getDatabaseId = createSelector(
   [getCard],
   card => card && card.dataset_query && card.dataset_query.database,
@@ -65,7 +67,7 @@ export const getTableForeignKeyReferences = state =>
 
 export const getDatabasesList = state =>
   Databases.selectors.getList(state, {
-    entityQuery: { include_tables: true, include_cards: true },
+    entityQuery: { include: "tables", saved: true },
   }) || [];
 
 export const getTables = createSelector(

@@ -22,6 +22,7 @@
   TODO - consider renaming this namespace to `metabase.query-processor.middleware.resolve-card-id-source-tables`"
   (:require [clojure.string :as str]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase.mbql
              [normalize :as normalize]
              [schema :as mbql.s]
@@ -142,9 +143,12 @@
 
 (s/defn ^:private resolve-one :- MapWithResolvedSourceQuery
   [{:keys [source-table], :as m} :- {:source-table mbql.s/source-table-card-id-regex, s/Keyword s/Any}]
-  (let [source-query-and-metadata (-> source-table source-table-str->card-id card-id->source-query-and-metadata)]
+  (let [card-id                   (-> source-table source-table-str->card-id)
+        source-query-and-metadata (-> card-id card-id->source-query-and-metadata)]
     (merge
      (dissoc m :source-table)
+     ;; record the `::card-id` we've resolved here. We'll include it in `:info` for permissions purposes later
+     {::card-id card-id}
      source-query-and-metadata)))
 
 (defn- resolve-all*
@@ -215,15 +219,29 @@
     (&match :guard (every-pred map? :database (comp integer? :database)))
     (recur (dissoc &match :database))))
 
+(defn- add-card-id-to-info
+  "If the ID of the Card we've resolved (`::card-id`) was added by a previous step, add it to `:info` so it can be used
+  for permissions purposes; remove any `::card-id`s in the query."
+  [query]
+  (let [card-id (get-in query [:query ::card-id])
+        query   (mbql.u/replace-in query [:query]
+                  (&match :guard (every-pred map? ::card-id))
+                  (recur (dissoc &match ::card-id)))]
+    (cond-> query
+      card-id (update-in [:info :card-id] #(or % card-id)))))
+
 (s/defn ^:private resolve-all :- su/Map
-  "Recursively replace all Card ID source tables in `m` with resolved `:source-query` and `:source-metadata`. Since
+  "Recursively replace all Card ID source tables in `query` with resolved `:source-query` and `:source-metadata`. Since
   the `:database` is only useful for top-level source queries, we'll remove it from all other levels."
   [query :- su/Map]
-  (-> query
+  ;; if a `::card-id` is already in the query, remove it, so we don't pull user-supplied input up into `:info`
+  ;; allowing someone to bypass permissions
+  (-> (m/dissoc-in query [:query ::card-id])
       check-for-circular-references
       resolve-all*
       copy-source-query-database-ids
-      remove-unneeded-database-ids))
+      remove-unneeded-database-ids
+      add-card-id-to-info))
 
 (s/defn ^:private resolve-card-id-source-tables* :- FullyResolvedQuery
   "Resolve `card__n`-style `:source-tables` in `query`."
@@ -239,4 +257,5 @@
   "Middleware that assocs the `:source-query` for this query if it was specified using the shorthand `:source-table`
   `card__n` format."
   [qp]
-  (comp qp resolve-card-id-source-tables*))
+  (fn [query rff context]
+    (qp (resolve-card-id-source-tables* query) rff context)))

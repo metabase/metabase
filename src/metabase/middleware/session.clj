@@ -44,7 +44,7 @@
     response
     {:body response, :status 200}))
 
-(defn- https-request?
+(defn https-request?
   "True if the original request made by the frontend client (i.e., browser) was made over HTTPS.
 
   In many production instances, a reverse proxy such as an ELB or nginx will handle SSL termination, and the actual

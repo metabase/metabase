@@ -1,6 +1,10 @@
 (ns metabase.driver.bigquery.query-processor-test
-  (:require [clojure.test :refer :all]
-            [honeysql.core :as hsql]
+  (:require [clojure
+             [string :as str]
+             [test :refer :all]]
+            [honeysql
+             [core :as hsql]
+             [format :as hformat]]
             [java-time :as t]
             [metabase
              [driver :as driver]
@@ -166,15 +170,16 @@
 ;; if I run a BigQuery query, does it get a remark added to it?
 (defn- query->native [query]
   (let [native-query (atom nil)]
-    (with-redefs [bigquery/process-native* (fn [_ sql]
+    (with-redefs [bigquery/process-native* (fn [_ _ sql]
                                              (reset! native-query sql)
                                              (throw (Exception. "Done.")))]
-      (qp/process-query {:database (mt/id)
-                         :type     :query
-                         :query    {:source-table (mt/id :venues)
-                                    :limit        1}
-                         :info     {:executed-by 1000
-                                    :query-hash  (byte-array [1 2 3 4])}})
+      (u/ignore-exceptions
+        (qp/process-query {:database (mt/id)
+                           :type     :query
+                           :query    {:source-table (mt/id :venues)
+                                      :limit        1}
+                           :info     {:executed-by 1000
+                                      :query-hash  (byte-array [1 2 3 4])}}))
       @native-query)))
 
 (deftest remark-test
@@ -229,12 +234,12 @@
     :type  :timestamp
     :as    {:date     (t/local-date "2019-12-10")
             :datetime (t/local-date-time "2019-12-10T14:47:00")}}
-   (let [unix-ts (sql.qp/unix-timestamp->timestamp :bigquery :seconds :some_field)]
+   (let [unix-ts (sql.qp/unix-timestamp->honeysql :bigquery :seconds :some_field)]
      {:value unix-ts
       :type  :timestamp
       :as    {:date     (hx/cast :date unix-ts)
               :datetime (hx/cast :datetime unix-ts)}})
-   (let [unix-ts (sql.qp/unix-timestamp->timestamp :bigquery :milliseconds :some_field)]
+   (let [unix-ts (sql.qp/unix-timestamp->honeysql :bigquery :milliseconds :some_field)]
      {:value unix-ts
       :type  :timestamp
       :as    {:date     (hx/cast :date unix-ts)
@@ -296,14 +301,47 @@
                                            (#'bigquery.qp/temporal-type filter-value))
                             (is (= expected-clause
                                    (sql.qp/->honeysql :bigquery filter-clause))))))))))))
+
           (testing "\ndate extraction filters"
             (doseq [[temporal-type field] fields
                     :let                  [identifier          (hx/identifier :field "ABC" (name temporal-type))
-                                           expected-identifier (if (= temporal-type :timestamp)
-                                                                 identifier
-                                                                 (hx/cast :timestamp identifier))]]
-              (is (= [:= (hsql/call :extract :dayofweek expected-identifier) 1]
-                     (sql.qp/->honeysql :bigquery [:= [:datetime-field [:field-id (:id field)] :day-of-week] 1]))))))))))
+                                           expected-identifier (case temporal-type
+                                                                 :date      identifier
+                                                                 :datetime  (hx/cast :timestamp identifier)
+                                                                 :timestamp identifier)]]
+              (testing (format "\ntemporal-type = %s" temporal-type)
+                (is (= [:= (hsql/call :extract :dayofweek expected-identifier) 1]
+                       (sql.qp/->honeysql :bigquery [:= [:datetime-field [:field-id (:id field)] :day-of-week] 1])))))))))))
+
+(deftest reconcile-relative-datetimes-test
+  (testing "relative-datetime clauses on their own"
+    (doseq [[t [unit expected-sql]]
+            {:time      [:hour "time_trunc(time_add(current_time(), INTERVAL -1 hour), hour)"]
+             :date      [:year "date_trunc(date_add(current_date(), INTERVAL -1 year), year)"]
+             :datetime  [:year "datetime_trunc(datetime_add(current_datetime(), INTERVAL -1 year), year)"]
+             ;; timestamp_add doesn't support `year` so this should cast a datetime instead
+             :timestamp [:year "CAST(datetime_trunc(datetime_add(current_datetime(), INTERVAL -1 year), year) AS timestamp)"]}]
+      (testing t
+        (let [reconciled-clause (#'bigquery.qp/->temporal-type t [:relative-datetime -1 unit])]
+          (is (= t
+                 (#'bigquery.qp/temporal-type reconciled-clause))
+              "Should have correct type metadata after reconciliation")
+          (is (= [(str "WHERE " expected-sql)]
+                 (sql.qp/format-honeysql :bigquery
+                   {:where (sql.qp/->honeysql :bigquery reconciled-clause)}))
+              "Should get converted to the correct SQL")))))
+
+  (testing "relative-datetime clauses inside filter clauses"
+    (doseq [[expected-type t] {:date      #t "2020-01-31"
+                               :datetime  #t "2020-01-31T20:43:00.000"
+                               :timestamp #t "2020-01-31T20:43:00.000-08:00"}]
+      (testing expected-type
+        (let [[_ _ relative-datetime] (sql.qp/->honeysql :bigquery
+                                        [:=
+                                         t
+                                         [:relative-datetime -1 :year]])]
+          (is (= expected-type
+                 (#'bigquery.qp/temporal-type relative-datetime))))))))
 
 (deftest between-test
   (testing "Make sure :between clauses reconcile the temporal types of their args"
@@ -413,8 +451,8 @@
                              :filter       filter-clause})))))))))))))
 
 (deftest datetime-parameterized-sql-test
-  (testing "Make sure Field filters against temporal fields generates correctly-typed SQL (#11578)"
-    (mt/test-driver :bigquery
+  (mt/test-driver :bigquery
+    (testing "Make sure Field filters against temporal fields generates correctly-typed SQL (#11578)"
       (mt/dataset attempted-murders
         (doseq [field              [:datetime
                                     :date
@@ -440,3 +478,129 @@
                                         :name   "d"
                                         :target [:dimension [:template-tag "d"]]
                                         :value  value}]})))))))))))
+
+(deftest current-datetime-honeysql-form-test
+  (testing (str "The object returned by `current-datetime-honeysql-form` should be a magic object that can take on "
+                "whatever temporal type we want.")
+    (let [form (sql.qp/current-datetime-honeysql-form :bigquery)]
+      (is (= nil
+             (#'bigquery.qp/temporal-type form))
+          "When created the temporal type should be unspecified. The world's your oyster!")
+      (is (= ["current_timestamp()"]
+             (hformat/format form))
+          "Should fall back to acting like a timestamp if we don't coerce it to something else first")
+      (doseq [[temporal-type expected-sql] {:date      "current_date()"
+                                            :time      "current_time()"
+                                            :datetime  "current_datetime()"
+                                            :timestamp "current_timestamp()"}]
+        (testing (format "temporal type = %s" temporal-type)
+          (is (= temporal-type
+                 (#'bigquery.qp/temporal-type (#'bigquery.qp/->temporal-type temporal-type form)))
+              "Should be possible to convert to another temporal type/should report its type correctly")
+          (is (= [expected-sql]
+                 (hformat/format (#'bigquery.qp/->temporal-type temporal-type form)))
+              "Should convert to the correct SQL"))))))
+
+(deftest add-interval-honeysql-form-test
+  ;; this doesn't test conversion to/from time because there's no unit we can use that works for all for. So we'll
+  ;; just test the 3 that support `:day` and that should be proof the logic is working. (The code that actually uses
+  ;; this is tested e2e by `filter-by-relative-date-ranges-test` anyway.)
+  (doseq [initial-type [:date :datetime :timestamp]
+          :let         [form (sql.qp/add-interval-honeysql-form
+                              :bigquery
+                              (#'bigquery.qp/->temporal-type
+                               initial-type
+                               (sql.qp/current-datetime-honeysql-form :bigquery))
+                              -1
+                              :day)]]
+    (testing (format "initial form = %s" (pr-str form))
+      (is (= initial-type
+             (#'bigquery.qp/temporal-type form))
+          "Should have the temporal-type of the form it wraps when created.")
+      (doseq [[new-type expected-sql] {:date      "date_add(current_date(), INTERVAL -1 day)"
+                                       :datetime  "datetime_add(current_datetime(), INTERVAL -1 day)"
+                                       :timestamp "timestamp_add(current_timestamp(), INTERVAL -1 day)"}]
+        (testing (format "\nconvert from %s -> %s" initial-type new-type)
+          (is (= new-type
+                 (#'bigquery.qp/temporal-type (#'bigquery.qp/->temporal-type new-type form)))
+              "Should be possible to convert to another temporal type/should report its type correctly")
+          (is (= [expected-sql]
+                 (hformat/format (#'bigquery.qp/->temporal-type new-type form)))
+              "Should convert to the correct SQL"))))))
+
+(defn- can-we-filter-against-relative-datetime? [field unit]
+  (try
+    (mt/run-mbql-query attempts
+      {:aggregation [[:count]]
+       :filter      [:time-interval (mt/id :attempts field) :last unit]})
+    true
+    (catch Throwable _
+      false)))
+
+(deftest filter-by-relative-date-ranges-test
+  (testing "Make sure the SQL we generate for filters against relative-datetimes is typed correctly"
+    (mt/with-everything-store
+      (binding [sql.qp/*table-alias* "ABC"]
+        (doseq [[field-type [unit expected-sql]]
+                {:type/Time                [:hour (str "WHERE time_trunc(ABC.time, hour)"
+                                                       " = time_trunc(time_add(current_time(), INTERVAL -1 hour), hour)")]
+                 :type/Date                [:year (str "WHERE date_trunc(ABC.date, year)"
+                                                       " = date_trunc(date_add(current_date(), INTERVAL -1 year), year)")]
+                 :type/DateTime            [:year (str "WHERE datetime_trunc(ABC.datetime, year)"
+                                                       " = datetime_trunc(datetime_add(current_datetime(), INTERVAL -1 year), year)")]
+                 ;; `timestamp_add` doesn't support `year` so it should cast a `datetime_trunc` instead
+                 :type/DateTimeWithLocalTZ [:year (str "WHERE timestamp_trunc(ABC.datetimewithlocaltz, year)"
+                                                       " = CAST(datetime_trunc(datetime_add(current_datetime(), INTERVAL -1 year), year) AS timestamp)")]}]
+          (mt/with-temp Field [f {:name (str/lower-case (name field-type)), :base_type field-type}]
+            (testing (format "%s field" field-type)
+              (is (= [expected-sql]
+                     (hsql/format {:where (sql.qp/->honeysql :bigquery [:=
+                                                                        [:datetime-field [:field-id (:id f)] unit]
+                                                                        [:relative-datetime -1 unit]])}))))))))))
+
+(def ^:private filter-test-table
+  [[nil          :minute :hour :day  :week :month :quarter :year]
+   [:time        true    true  false false false  false    false]
+   [:datetime    true    true  true  true  true   true     true]
+   [:date        false   false true  true  true   true     true]
+   [:datetime_tz true    true  true  true  true   true     true]])
+
+(defn- test-table-with-fn [table f]
+  (let [units (rest (first table))]
+    (dorun (pmap (fn [[field & vs]]
+                   (testing (format "\nfield = %s" field)
+                     (dorun (pmap (fn [[unit expected]]
+                                    (testing (format "\nunit = %s" unit)
+                                      (is (= expected
+                                             (f field unit)))))
+                                  (zipmap units vs)))))
+                 (rest table)))))
+
+(deftest filter-by-relative-date-ranges-e2e-test
+  (mt/test-driver :bigquery
+    (testing (str "Make sure filtering against relative date ranges works correctly regardless of underlying column "
+                  "type (#11725)")
+      (mt/dataset attempted-murders
+        (test-table-with-fn filter-test-table can-we-filter-against-relative-datetime?)))))
+
+(def ^:private breakout-test-table
+  [[nil          :default :minute :hour :day  :week :month :quarter :year :minute-of-hour :hour-of-day :day-of-week :day-of-month :day-of-year :week-of-year :month-of-year :quarter-of-year]
+   [:time        true     true    true  false false false  false    false true            true         false        false         false        false         false          false]
+   [:datetime    true     true    true  true  true  true   true     true  true            true         true         true          true         true          true           true]
+   [:date        true     false   false true  true  true   true     true  false           false        true         true          true         true          true           true]
+   [:datetime_tz true     true    true  true  true  true   true     true  true            true         true         true          true         true          true           true]])
+
+(defn- can-breakout? [field unit]
+  (try
+    (mt/run-mbql-query attempts
+      {:aggregation [[:count]]
+       :breakout [[:datetime-field (mt/id :attempts field) unit]]})
+    true
+    (catch Throwable _
+      false)))
+
+(deftest breakout-by-bucketed-datetimes-e2e-test
+  (mt/test-driver :bigquery
+    (testing "Make sure datetime breakouts like :minute-of-hour work correctly for different temporal types"
+      (mt/dataset attempted-murders
+        (test-table-with-fn breakout-test-table can-breakout?)))))

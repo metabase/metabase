@@ -32,6 +32,7 @@
 /cypress
 /deploy/artifacts/*
 /docs/uberdoc.html
+/frontend/test/snapshots/*
 /lein-plugins/*/target
 /local/src
 /local/src
@@ -41,6 +42,7 @@
 /node_modules/
 /osx-artifacts
 /plugins
+/process.yml
 /reset-password-artifacts
 /resources/frontend_client/app/dist/
 /resources/frontend_client/app/locales
@@ -56,6 +58,7 @@
 /stats.json
 /target
 /test-report-*
+OSX/.cpcache
 OSX/Metabase/jre
 OSX/Resources/metabase.jar
 OSX/build

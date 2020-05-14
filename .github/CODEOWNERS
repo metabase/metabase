@@ -7,7 +7,7 @@
 /src/metabase/sync/ @camsaul @sbelak
 /test/metabase/sync/ @camsaul @sbelak
 *.css @kdoh
-/frontend/src @tlrobinson @kdoh
+/frontend/src @tlrobinson
 /frontend/src/metabase/components/ @kdoh
 /frontend/src/metabase/admin/datamodel/ @tlrobinson @paulrosenzweig
 /frontend/src/metabase/entities/ @tlrobinson @paulrosenzweig

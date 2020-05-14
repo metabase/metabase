@@ -10,6 +10,7 @@ import { findColumnIndexForColumnSetting } from "metabase/lib/dataset";
 import { getOptionFromColumn } from "metabase/visualizations/lib/settings/utils";
 import { getColumnCardinality } from "metabase/visualizations/lib/utils";
 import { formatColumn } from "metabase/lib/formatting";
+import { PLUGIN_TABLE_COLUMN_SETTINGS } from "metabase/plugins";
 
 import * as Q_DEPRECATED from "metabase/lib/query";
 import {
@@ -22,6 +23,7 @@ import {
   isImageURL,
   isAvatarURL,
 } from "metabase/lib/schema_metadata";
+
 import ChartSettingOrderedColumns from "metabase/visualizations/components/settings/ChartSettingOrderedColumns";
 import ChartSettingsTableFormatting, {
   isFormattable,
@@ -284,6 +286,11 @@ export default class Table extends Component {
           settings["view_as"] !== "email_link",
       };
     }
+
+    for (const getSettings of PLUGIN_TABLE_COLUMN_SETTINGS) {
+      Object.assign(settings, getSettings(column));
+    }
+
     return settings;
   };
 

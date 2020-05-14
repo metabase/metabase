@@ -9,6 +9,12 @@ import TogglePropagateAction from "./containers/TogglePropagateAction";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import { color, alpha } from "metabase/lib/colors";
 
+import {
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION,
+} from "metabase/plugins";
+
 import { t } from "ttag";
 
 import _ from "underscore";
@@ -202,7 +208,7 @@ function getRevokingAccessToAllTablesWarningModal(
     // allTableEntityIds contains tables from all schemas
     const allTableEntityIds = database.tables.map(table => ({
       databaseId: table.db_id,
-      schemaName: table.schema || "",
+      schemaName: table.schema_name || "",
       tableId: table.id,
     }));
 
@@ -305,7 +311,7 @@ export const getTablesPermissionsGrid = createSelector(
       return null;
     }
 
-    const tables = database.tablesInSchema(schemaName || null);
+    const tables = database.schema(schemaName).tables;
     const defaultGroup = _.find(groups, isDefaultGroup);
 
     return {
@@ -327,7 +333,22 @@ export const getTablesPermissionsGrid = createSelector(
         fields: {
           header: t`Data Access`,
           options(groupId, entityId) {
-            return [OPTION_ALL, OPTION_NONE];
+            return [
+              OPTION_ALL,
+              ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
+              OPTION_NONE,
+            ];
+          },
+          actions(groupId, entityId) {
+            const value = getFieldsPermission(permissions, groupId, entityId);
+            const getActions =
+              PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_ACTIONS[value] || [];
+            return getActions.map(getAction => getAction(groupId, entityId));
+          },
+          postAction(groupId, entityId, value) {
+            const getPostAction =
+              PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION[value];
+            return getPostAction && getPostAction(groupId, entityId);
           },
           getter(groupId, entityId) {
             return getFieldsPermission(permissions, groupId, entityId);
@@ -496,6 +517,22 @@ export const getSchemasPermissionsGrid = createSelector(
   },
 );
 
+export function getDatabaseTablesOrSchemasPath(database) {
+  const schemas = database ? database.schemaNames() : [];
+
+  return (
+    "/admin/permissions/databases/" +
+    // schema-less db
+    (schemas.length === 1 && schemas[0] === null
+      ? `${database.id}/tables`
+      : // single schema, auto-select it
+      schemas.length === 1
+      ? `${database.id}/schemas/${schemas[0]}/tables`
+      : // zero or multiple schemas so list them out
+        `${database.id}/schemas`)
+  );
+}
+
 export const getDatabasesPermissionsGrid = createSelector(
   getMetadata,
   getGroups,
@@ -538,25 +575,7 @@ export const getDatabasesPermissionsGrid = createSelector(
           postAction(groupId, { databaseId }, value) {
             if (value === "controlled") {
               const database = metadata.database(databaseId);
-              const schemas = database ? database.schemaNames() : [];
-              if (
-                schemas.length === 0 ||
-                (schemas.length === 1 && schemas[0] === "")
-              ) {
-                return push(
-                  `/admin/permissions/databases/${databaseId}/tables`,
-                );
-              } else if (schemas.length === 1) {
-                return push(
-                  `/admin/permissions/databases/${databaseId}/schemas/${
-                    schemas[0]
-                  }/tables`,
-                );
-              } else {
-                return push(
-                  `/admin/permissions/databases/${databaseId}/schemas`,
-                );
-              }
+              return push(getDatabaseTablesOrSchemasPath(database));
             }
           },
           confirm(groupId, entityId, value) {
@@ -641,7 +660,7 @@ export const getDatabasesPermissionsGrid = createSelector(
           },
           name: database.name,
           link:
-            schemas.length === 0 || (schemas.length === 1 && schemas[0] === "")
+            schemas.length === 0 || (schemas.length === 1 && schemas[0] == null)
               ? {
                   name: t`View tables`,
                   url: `/admin/permissions/databases/${database.id}/tables`,

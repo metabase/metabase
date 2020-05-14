@@ -28,6 +28,11 @@ describe("metabase/visualization/lib/table", () => {
         ).toEqual({
           value: 0,
           column: RAW_COLUMN,
+          origin: {
+            cols: [RAW_COLUMN],
+            row: [0],
+            rowIndex: 0,
+          },
         });
       });
       it("should work with a dimension cell", () => {
@@ -41,6 +46,11 @@ describe("metabase/visualization/lib/table", () => {
         ).toEqual({
           value: 1,
           column: DIMENSION_COLUMN,
+          origin: {
+            cols: [DIMENSION_COLUMN, METRIC_COLUMN],
+            row: [1, 2],
+            rowIndex: 0,
+          },
         });
       });
       it("should work with a metric cell", () => {
@@ -60,6 +70,11 @@ describe("metabase/visualization/lib/table", () => {
               column: DIMENSION_COLUMN,
             },
           ],
+          origin: {
+            cols: [DIMENSION_COLUMN, METRIC_COLUMN],
+            row: [1, 2],
+            rowIndex: 0,
+          },
         });
       });
     });

@@ -129,8 +129,8 @@
   "When fingerprinting decimal columns, NaN and Infinity values are possible. Serializing these values to JSON just
   yields a string, not a value double. This function will attempt to coerce any of those values to double objects"
   [fingerprint]
-  (u/update-in-when fingerprint [:type :type/Number]
-                    (partial m/map-vals maybe-parse-special-numeric-values)))
+  (m/update-existing-in fingerprint [:type :type/Number]
+                        (partial m/map-vals maybe-parse-special-numeric-values)))
 
 (models/add-type! :json-for-fingerprints
   :in  i/json-in

@@ -1,6 +1,8 @@
 (ns metabase.query-processor.middleware.parameters
   "Middleware for substituting parameters in queries."
-  (:require [clojure.data :as data]
+  (:require [clojure
+             [data :as data]
+             [set :as set]]
             [clojure.tools.logging :as log]
             [metabase.mbql
              [normalize :as normalize]
@@ -66,7 +68,7 @@
   "Move any top-level parameters to the same level (i.e., 'inner query') as the query the affect."
   [{:keys [parameters], query-type :type, :as outer-query}]
   {:pre [(#{:query :native} query-type)]}
-  (cond-> (dissoc outer-query :parameters)
+  (cond-> (set/rename-keys outer-query {:parameters :user-parameters})
     (seq parameters)
     (assoc-in [query-type :parameters] parameters)))
 
@@ -93,4 +95,5 @@
   A SQL query with a param like `{{param}}` will have that part of the query replaced with an appropriate snippet as
   well as any prepared statement args needed. MBQL queries will have additional filter clauses added."
   [qp]
-  (comp qp substitute-parameters*))
+  (fn [query rff context]
+    (qp (substitute-parameters* query) rff context)))

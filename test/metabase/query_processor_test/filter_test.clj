@@ -49,35 +49,44 @@
     nil false
     x))
 
-;;; filter = true
-(qp.test/expect-with-non-timeseries-dbs
-  [[1 "Tempest" true]
-   [2 "Bullit"  true]]
-  (qp.test/formatted-rows [int str ->bool] :format-nil-values
-    (data/dataset places-cam-likes
-      (data/run-mbql-query places
-        {:filter   [:= $liked true]
-         :order-by [[:asc $id]]}))))
-
-;;; filter != false
-(qp.test/expect-with-non-timeseries-dbs
-  [[1 "Tempest" true]
-   [2 "Bullit"  true]]
-  (qp.test/formatted-rows [int str ->bool] :format-nil-values
-    (data/dataset places-cam-likes
-      (data/run-mbql-query places
-        {:filter   [:!= $liked false]
-         :order-by [[:asc $id]]}))))
-
-;;; filter != true
-(qp.test/expect-with-non-timeseries-dbs
-  [[3 "The Dentist" false]]
-  (qp.test/formatted-rows [int str ->bool] :format-nil-values
-    (data/dataset places-cam-likes
-      (data/run-mbql-query places
-        {:filter   [:!= $liked true]
-         :order-by [[:asc $id]]}))))
-
+(deftest comparison-test
+  (datasets/test-drivers (qp.test/normal-drivers)
+    (testing "Can we use true literal in comparisons"
+      (is (= [[1 "Tempest" true]
+              [2 "Bullit"  true]]
+             (->> {:filter   [:= $liked true]
+                   :order-by [[:asc $id]]}
+                  (data/run-mbql-query places)
+                  (data/dataset places-cam-likes)
+                  (qp.test/formatted-rows [int str ->bool] :format-nil-values))))
+      (is (= [[3 "The Dentist" false]]
+             (->> {:filter   [:!= $liked true]
+                   :order-by [[:asc $id]]}
+                  (data/run-mbql-query places)
+                  (data/dataset places-cam-likes)
+                  (qp.test/formatted-rows [int str ->bool] :format-nil-values)))))
+    (testing "Can we use false literal in comparisons"
+      (is (= [[1 "Tempest" true]
+              [2 "Bullit"  true]]
+             (->> {:filter   [:!= $liked false]
+                   :order-by [[:asc $id]]}
+                  (data/run-mbql-query places)
+                  (data/dataset places-cam-likes)
+                  (qp.test/formatted-rows [int str ->bool] :format-nil-values)))))
+    (testing "Can we use nil literal in comparisons"
+      (is (= [[3]] (->> {:filter      [:!= $liked nil]
+                         :aggregation [[:count]]}
+                        (data/run-mbql-query places)
+                        (data/dataset places-cam-likes)
+                        (qp.test/formatted-rows [int]))))
+      (is (= true (->> {:filter      [:= $liked nil]
+                        :aggregation [[:count]]}
+                       (data/run-mbql-query places)
+                       (data/dataset places-cam-likes)
+                       (qp.test/formatted-rows [int])
+                       first
+                       ;; Some DBs like Mongo don't return any results at all in this case, and there's no easy workaround
+                       (contains? #{[0] [0M] [nil] nil})))))))
 
 (deftest between-test
   (datasets/test-drivers (qp.test/normal-drivers)
@@ -160,14 +169,14 @@
       {:filter   [:starts-with $name "Che"]
        :order-by [[:asc $id]]})))
 
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :case-sensitivity-string-filter-options)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :case-sensitivity-string-filter-options)
   []
   (qp.test/formatted-rows :venues
     (data/run-mbql-query venues
       {:filter   [:starts-with $name "CHE"]
        :order-by [[:asc $id]]})))
 
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :case-sensitivity-string-filter-options)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :case-sensitivity-string-filter-options)
   [[41 "Cheese Steak Shop" 18 37.7855 -122.44  1]
    [74 "Chez Jay"           2 34.0104 -118.493 2]]
   (qp.test/formatted-rows :venues
@@ -189,14 +198,14 @@
       {:filter   [:ends-with $name "Restaurant"]
        :order-by [[:asc $id]]})))
 
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :case-sensitivity-string-filter-options)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :case-sensitivity-string-filter-options)
   []
   (qp.test/formatted-rows :venues
     (data/run-mbql-query venues
       {:filter   [:ends-with $name "RESTAURANT"]
        :order-by [[:asc $id]]})))
 
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :case-sensitivity-string-filter-options)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :case-sensitivity-string-filter-options)
   [[ 5 "Brite Spot Family Restaurant" 20 34.0778 -118.261 2]
    [ 7 "Don Day Korean Restaurant"    44 34.0689 -118.305 2]
    [17 "Ruen Pair Thai Restaurant"    71 34.1021 -118.306 2]
@@ -218,7 +227,7 @@
        :order-by [[:asc $id]]})))
 
 ;; case-insensitive
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :case-sensitivity-string-filter-options)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :case-sensitivity-string-filter-options)
   []
   (qp.test/formatted-rows :venues
     (data/run-mbql-query venues
@@ -226,7 +235,7 @@
        :order-by [[:asc $id]]})))
 
 ;; case-insensitive
-(datasets/expect-with-drivers (qp.test/non-timeseries-drivers-with-feature :case-sensitivity-string-filter-options)
+(datasets/expect-with-drivers (mt/normal-drivers-with-feature :case-sensitivity-string-filter-options)
   [[31 "Bludso's BBQ"             5 33.8894 -118.207 2]
    [34 "Beachwood BBQ & Brewing" 10 33.7701 -118.191 2]
    [39 "Baby Blues BBQ"           5 34.0003 -118.465 2]]

@@ -21,11 +21,15 @@
              [date-2 :as u.date]
              [honeysql-extensions :as hx]]
             [schema.core :as s])
-  (:import [java.sql ResultSet Types]
+  (:import [java.sql Connection ResultSet Types]
            [java.time LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime]
            java.time.temporal.Temporal))
 
 (driver/register! :sqlite, :parent :sql-jdbc)
+
+(defmethod driver/supports? [:sqlite :regex] [_ _] false)
+(defmethod driver/supports? [:sqlite :percentile-aggregations] [_ _] false)
+(defmethod driver/supports? [:sqlite :advanced-math-expressions] [_ _] false)
 
 (defmethod sql-jdbc.conn/connection-details->spec :sqlite
   [_ {:keys [db]
@@ -161,8 +165,8 @@
   [driver _ expr]
   (->date (sql.qp/->honeysql driver expr) (hx/literal "start of year")))
 
-(defmethod driver/date-add :sqlite
-  [driver dt amount unit]
+(defmethod sql.qp/add-interval-honeysql-form :sqlite
+  [driver hsql-form amount unit]
   (let [[multiplier sqlite-unit] (case unit
                                    :second  [1 "seconds"]
                                    :minute  [1 "minutes"]
@@ -184,10 +188,10 @@
     ;; The SQL we produce instead (for "last month") ends up looking something like:
     ;; DATE(DATETIME(DATE('2015-03-30', 'start of month'), '-1 month'), 'start of month').
     ;; It's a little verbose, but gives us the correct answer (Feb 1st).
-    (->datetime (sql.qp/date driver unit dt)
+    (->datetime (sql.qp/date driver unit hsql-form)
                 (hx/literal (format "%+d %s" (* amount multiplier) sqlite-unit)))))
 
-(defmethod sql.qp/unix-timestamp->timestamp [:sqlite :seconds]
+(defmethod sql.qp/unix-timestamp->honeysql [:sqlite :seconds]
   [_ _ expr]
   (->datetime expr (hx/literal "unixepoch")))
 
@@ -210,6 +214,30 @@
 (defmethod sql.qp/->honeysql [:sqlite Boolean]
   [_ bool]
   (if bool 1 0))
+
+(defmethod sql.qp/->honeysql [:sqlite :substring]
+  [driver [_ arg start length]]
+  (if length
+    (hsql/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
+    (hsql/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start))))
+
+(defmethod sql.qp/->honeysql [:sqlite :concat]
+  [driver [_ & args]]
+  (hsql/raw (str/join " || " (for [arg args]
+                               (let [arg (sql.qp/->honeysql driver arg)]
+                                 (hformat/to-sql
+                                  (if (string? arg)
+                                    (hx/literal arg)
+                                    arg)))))))
+
+(defmethod sql.qp/->honeysql [:sqlite :floor]
+  [driver [_ arg]]
+  (hsql/call :round (hsql/call :- arg 0.5)))
+
+(defmethod sql.qp/->honeysql [:sqlite :ceil]
+  [driver [_ arg]]
+  (hsql/call :round (hsql/call :+ arg 0.5)))
+
 
 ;; See https://sqlite.org/lang_datefunc.html
 
@@ -280,16 +308,43 @@
   [& args]
   (apply sql-jdbc.sync/post-filtered-active-tables args))
 
-(defmethod sql.qp/current-datetime-fn :sqlite [_]
+(defmethod sql.qp/current-datetime-honeysql-form :sqlite
+  [_]
   (hsql/call :datetime (hx/literal :now)))
+
+;; SQLite's JDBC driver is fussy and won't let you change connections to read-only after you create them
+(defmethod sql-jdbc.execute/connection-with-timezone :sqlite
+  [driver database ^String timezone-id]
+  (let [conn (.getConnection (sql-jdbc.execute/datasource database))]
+    (try
+      (sql-jdbc.execute/set-best-transaction-level! driver conn)
+      conn
+      (catch Throwable e
+        (.close conn)
+        (throw e)))))
+
+;; SQLite's JDBC driver is dumb and complains if you try to call `.setFetchDirection` on the Connection
+(defmethod sql-jdbc.execute/prepared-statement :sqlite
+  [driver ^Connection conn ^String sql params]
+  (let [stmt (.prepareStatement conn sql
+                                ResultSet/TYPE_FORWARD_ONLY
+                                ResultSet/CONCUR_READ_ONLY
+                                ResultSet/CLOSE_CURSORS_AT_COMMIT)]
+    (try
+      (sql-jdbc.execute/set-parameters! driver stmt params)
+      stmt
+      (catch Throwable e
+        (.close stmt)
+        (throw e)))))
 
 ;; (.getObject rs i LocalDate) doesn't seem to work, nor does `(.getDate)`; and it seems to be the case that
 ;; timestamps come back as `Types/DATE` as well? Fetch them as a String and then parse them
-(defmethod sql-jdbc.execute/read-column [:sqlite Types/DATE]
-  [_ _ ^ResultSet rs _ ^Integer i]
-  (try
-    (when-let [t (.getDate rs i)]
-      (t/local-date t))
-    (catch Throwable _
-      (when-let [s (.getString rs i)]
-        (u.date/parse s (qp.timezone/results-timezone-id))))))
+(defmethod sql-jdbc.execute/read-column-thunk [:sqlite Types/DATE]
+  [_ ^ResultSet rs _ ^Integer i]
+  (fn []
+    (try
+      (when-let [t (.getDate rs i)]
+        (t/local-date t))
+      (catch Throwable _
+        (when-let [s (.getString rs i)]
+          (u.date/parse s (qp.timezone/results-timezone-id)))))))

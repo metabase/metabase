@@ -2,6 +2,8 @@
 
 import React from "react";
 
+import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
+
 import { Route } from "metabase/hoc/Title";
 import { Redirect, IndexRedirect, IndexRoute } from "react-router";
 import { routerActions } from "react-router-redux";
@@ -46,7 +48,6 @@ import PulseEditApp from "metabase/pulse/containers/PulseEditApp";
 import SetupApp from "metabase/setup/containers/SetupApp";
 import PostSetupApp from "metabase/setup/containers/PostSetupApp";
 import UserSettingsApp from "metabase/user/containers/UserSettingsApp";
-import EntityPage from "metabase/components/EntityPage";
 // new question
 import NewQueryOptions from "metabase/new_query/containers/NewQueryOptions";
 
@@ -103,16 +104,7 @@ const UserIsAuthenticated = UserAuthWrapper({
   failureRedirectPath: "/auth/login",
   authSelector: state => state.currentUser,
   wrapperDisplayName: "UserIsAuthenticated",
-  redirectAction: location =>
-    // HACK: workaround for redux-auth-wrapper not including hash
-    // https://github.com/mjrussell/redux-auth-wrapper/issues/121
-    routerActions.replace({
-      ...location,
-      query: {
-        ...location.query,
-        redirect: location.query.redirect + (window.location.hash || ""),
-      },
-    }),
+  redirectAction: routerActions.replace,
 });
 
 const UserIsAdmin = UserAuthWrapper({
@@ -145,7 +137,7 @@ const IsNotAuthenticated = MetabaseIsSetup(
 );
 
 export const getRoutes = store => (
-  <Route title="Metabase" component={App}>
+  <Route title={t`Metabase`} component={App}>
     {/* SETUP */}
     <Route
       path="/setup"
@@ -175,6 +167,7 @@ export const getRoutes = store => (
         <IndexRedirect to="/auth/login" />
         <Route component={IsNotAuthenticated}>
           <Route path="login" title={t`Login`} component={LoginApp} />
+          <Route path="login/:provider" title={t`Login`} component={LoginApp} />
         </Route>
         <Route path="logout" component={LogoutApp} />
         <Route path="forgot_password" component={ForgotPasswordApp} />
@@ -185,7 +178,16 @@ export const getRoutes = store => (
       {/* MAIN */}
       <Route component={IsAuthenticated}>
         {/* The global all hands rotues, things in here are for all the folks */}
-        <Route path="/" component={Overworld} />
+        <Route
+          path="/"
+          component={Overworld}
+          onEnter={(nextState, replace) => {
+            const page = PLUGIN_LANDING_PAGE[0] && PLUGIN_LANDING_PAGE[0]();
+            if (page && page !== "/") {
+              replace(page);
+            }
+          }}
+        />
 
         <Route path="/explore" component={PostSetupApp} />
         <Route path="/explore/:databaseId" component={PostSetupApp} />
@@ -228,7 +230,6 @@ export const getRoutes = store => (
           <Route path="notebook" component={QueryBuilder} />
           <Route path=":cardId" component={QueryBuilder} />
           <Route path=":cardId/notebook" component={QueryBuilder} />
-          <Route path=":cardId/entity" component={EntityPage} />
         </Route>
 
         <Route path="/ready" component={PostSetupApp} />

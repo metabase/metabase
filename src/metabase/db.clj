@@ -20,7 +20,8 @@
             [ring.util.codec :as codec]
             [schema.core :as s]
             [toucan.db :as db])
-  (:import liquibase.exception.LockException))
+  (:import com.mchange.v2.c3p0.PoolBackedDataSource
+           liquibase.exception.LockException))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          DB FILE & CONNECTION DETAILS                                          |
@@ -152,6 +153,23 @@
 ;;; |                                                    MIGRATE!                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- print-migrations-and-quit-if-needed!
+  "If we are not doing auto migrations then print out migration SQL for user to run manually.
+   Then throw an exception to short circuit the setup process and make it clear we can't proceed."
+  [liquibase]
+  (when (liquibase/has-unrun-migrations? liquibase)
+    (log/info (str (trs "Database Upgrade Required")
+                   "\n\n"
+                   (trs "NOTICE: Your database requires updates to work with this version of Metabase.")
+                   "\n"
+                   (trs "Please execute the following sql commands on your database before proceeding.")
+                   "\n\n"
+                   (liquibase/migrations-sql liquibase)
+                   "\n\n"
+                   (trs "Once your database is updated try running the application again.")
+                   "\n"))
+    (throw (Exception. (trs "Database requires manual upgrade.")))))
+
 (defn migrate!
   "Migrate the database (this can also be ran via command line like `java -jar metabase.jar migrate up` or `lein run
   migrate up`):
@@ -170,13 +188,15 @@
    (migrate! :up))
 
   ([direction]
-   (migrate! @db-connection-details direction))
+   (migrate! (jdbc-spec) direction))
 
-  ([db-details direction]
-   (jdbc/with-db-transaction [conn (jdbc-spec db-details)]
+  ([jdbc-spec direction]
+   (jdbc/with-db-transaction [conn jdbc-spec]
      ;; Tell transaction to automatically `.rollback` instead of `.commit` when the transaction finishes
+     (log/debug (trs "Set transaction to automatically roll back..."))
      (jdbc/db-set-rollback-only! conn)
      ;; Disable auto-commit. This should already be off but set it just to be safe
+     (log/debug (trs "Disable auto-commit..."))
      (.setAutoCommit (jdbc/get-connection conn) false)
      ;; Set up liquibase and let it do its thing
      (log/info (trs "Setting up Liquibase..."))
@@ -188,7 +208,7 @@
            :up            (liquibase/migrate-up-if-needed! conn liquibase)
            :force         (liquibase/force-migrate-up-if-needed! conn liquibase)
            :down-one      (liquibase/rollback-one liquibase)
-           :print         (println (liquibase/migrations-sql liquibase))
+           :print         (print-migrations-and-quit-if-needed! liquibase)
            :release-locks (liquibase/force-release-locks! liquibase))
          ;; Migrations were successful; disable rollback-only so `.commit` will be called instead of `.rollback`
          (jdbc/db-unset-rollback-only! conn)
@@ -221,13 +241,27 @@
   we use separate options for data warehouse DBs. See
   https://www.mchange.com/projects/c3p0/#configuring_connection_testing for an overview of the options used
   below (jump to the 'Simple advice on Connection testing' section.)"
-  {"idleConnectionTestPeriod" 60})
+  (merge
+   {"idleConnectionTestPeriod" 60}
+   ;; only merge in `max-pool-size` if it's actually set, this way it doesn't override any things that may have been
+   ;; set in `c3p0.properties`
+   (when-let [max-pool-size (config/config-int :mb-application-db-max-connection-pool-size)]
+     {"maxPoolSize" max-pool-size})))
 
-(defn- create-connection-pool! [jdbc-spec]
+(defn- create-connection-pool!
+  "Create a connection pool for the application DB and set it as the default Toucan connection. This is normally called
+  once during start up; calling it a second time (e.g. from the REPL) will "
+  [jdbc-spec]
   (db/set-default-quoting-style! (case (db-type)
                                    :postgres :ansi
                                    :h2       :h2
                                    :mysql    :mysql))
+  ;; REPL usage only: kill the old pool if one exists
+  (u/ignore-exceptions
+    (when-let [^PoolBackedDataSource pool (:datasource (db/connection))]
+      (log/trace "Closing old application DB connection pool")
+      (.close pool)))
+  (log/debug (trs "Set default db connection with connection pool..."))
   (db/set-default-db-connection! (connection-pool/connection-pool-spec jdbc-spec application-db-connection-pool-props))
   (db/set-default-jdbc-options! {:read-columns db.jdbc-protocols/read-columns})
   nil)
@@ -270,8 +304,8 @@
 
   ([driver :- s/Keyword, details :- su/Map]
    (log/info (u/format-color 'cyan (trs "Verifying {0} Database Connection ..." (name driver))))
+   (classloader/require 'metabase.driver.util)
    (assert (binding [*allow-potentailly-unsafe-connections* true]
-             (classloader/require 'metabase.driver.util)
              ((resolve 'metabase.driver.util/can-connect-with-details?) driver details :throw-exceptions))
      (trs "Unable to connect to Metabase {0} DB." (name driver)))
    (jdbc/with-db-metadata [metadata (jdbc-spec details)]
@@ -286,30 +320,13 @@
   entries for the \"magic\" groups and permissions entries. "
   false)
 
-(defn- print-migrations-and-quit!
-  "If we are not doing auto migrations then print out migration SQL for user to run manually.
-   Then throw an exception to short circuit the setup process and make it clear we can't proceed."
-  [db-details]
-  (let [sql (migrate! db-details :print)]
-    (log/info (str "Database Upgrade Required\n\n"
-                   "NOTICE: Your database requires updates to work with this version of Metabase.  "
-                   "Please execute the following sql commands on your database before proceeding.\n\n"
-                   sql
-                   "\n\n"
-                   "Once your database is updated try running the application again.\n"))
-    (throw (Exception. "Database requires manual upgrade."))))
-
 (defn- run-schema-migrations!
   "Run through our DB migration process and make sure DB is fully prepared"
   [auto-migrate? db-details]
   (log/info (trs "Running Database Migrations..."))
-  (if auto-migrate?
-    (migrate! db-details :up)
-    ;; if `MB_DB_AUTOMIGRATE` is false, and we have migrations that need to be ran, print and quit. Otherwise continue
-    ;; to start normally
-    (when (liquibase/with-liquibase [liquibase (jdbc-spec)]
-            (liquibase/has-unrun-migrations? liquibase))
-      (print-migrations-and-quit! db-details)))
+  ;; if `MB_DB_AUTOMIGRATE` is false, and we have migrations that need to be ran, print and quit. Otherwise continue
+  ;; to start normally
+  (migrate! (jdbc-spec db-details) (if auto-migrate? :up :print))
   (log/info (trs "Database Migrations Current ... ") (u/emoji "✅")))
 
 (defn- run-data-migrations!

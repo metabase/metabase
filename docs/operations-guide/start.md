@@ -6,6 +6,7 @@ This guide contains detailed information about how to install and configure Meta
 
 *  [How to install Metabase](installing-metabase.md)
 *  [How to upgrade Metabase](upgrading-metabase.md)
+*  [Configuring settings using environment variables](environment-variables.md)
 *  [Configuring the application database](configuring-application-database.md)
 *  [Connecting Metabase to databases in your organization](../administration-guide/01-managing-databases.md)
 *  [Migrating from using the H2 database to MySQL or Postgres](migrating-from-h2.md)
@@ -14,6 +15,7 @@ This guide contains detailed information about how to install and configure Meta
 *  [Encrypting your database connection details at rest](encrypting-database-details-at-rest.md)
 *  [Customizing the Metabase Jetty Webserver](customizing-jetty-webserver.md)
 *  [Changing password complexity](changing-password-complexity.md)
+*  [Changing session expiration](changing-session-expiration.md)
 *  [Handling Timezones](handling-timezones.md)
 *  [Configuring Logging](log-configuration.md)
 *  [How to setup monitoring via JMX](jmx-monitoring.md)

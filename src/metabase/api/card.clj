@@ -8,6 +8,7 @@
             [metabase
              [events :as events]
              [public-settings :as public-settings]
+             [query-processor :as qp]
              [related :as related]
              [util :as u]]
             [metabase.api
@@ -28,6 +29,7 @@
             [metabase.models.query.permissions :as query-perms]
             [metabase.query-processor
              [async :as qp.async]
+             [streaming :as qp.streaming]
              [util :as qputil]]
             [metabase.query-processor.middleware
              [cache :as cache]
@@ -76,14 +78,15 @@
   [_]
   (db/select Card, :creator_id api/*current-user-id*, :archived false, {:order-by [[:%lower.name :asc]]}))
 
-;;return all Cards favorited by the current user.
+;; return all Cards favorited by the current user.
 (defmethod cards-for-filter-option* :fav
   [_]
-  (->> (hydrate (db/select [CardFavorite :card_id], :owner_id api/*current-user-id*)
-                :card)
-       (map :card)
-       (filter (complement :archived))
-       (sort-by :name)))
+  (let [cards (for [{{:keys [archived], :as card} :card} (hydrate (db/select [CardFavorite :card_id]
+                                                                    :owner_id api/*current-user-id*)
+                                                                  :card)
+                    :when                                 (not archived)]
+                card)]
+    (sort-by :name cards)))
 
 ;; Return all Cards belonging to Database with `database-id`.
 (defmethod cards-for-filter-option* :database
@@ -199,17 +202,16 @@
   "Save `card-data` as a new Card on a separate thread. Returns a channel to fetch the response; closing this channel
   will cancel the save."
   [card-data]
-  (async.u/do-on-separate-thread
-   (fn []
-     (let [card (db/transaction
-                  ;; Adding a new card at `collection_position` could cause other cards in this
-                  ;; collection to change position, check that and fix it if needed
-                  (api/maybe-reconcile-collection-position! card-data)
-                  (db/insert! Card card-data))]
-       (events/publish-event! :card-create card)
-       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it
-       ;; currently has with returned one -- See #4283
-       (hydrate card :creator :dashboard_count :can_write :collection)))))
+  (async.u/cancelable-thread
+    (let [card (db/transaction
+                 ;; Adding a new card at `collection_position` could cause other cards in this
+                 ;; collection to change position, check that and fix it if needed
+                 (api/maybe-reconcile-collection-position! card-data)
+                 (db/insert! Card card-data))]
+      (events/publish-event! :card-create card)
+      ;; include same information returned by GET /api/card/:id since frontend replaces the Card it
+      ;; currently has with returned one -- See #4283
+      (hydrate card :creator :dashboard_count :can_write :collection))))
 
 (defn- create-card-async!
   "Create a new Card asynchronously. Returns a channel for fetching the newly created Card, or an Exception if one was
@@ -222,14 +224,14 @@
         card-data            (assoc (zipmap data-keys (map card-data data-keys))
                                     :creator_id api/*current-user-id*)
         result-metadata-chan (result-metadata-async dataset_query result_metadata metadata_checksum)
-        out-chan             (a/chan 1)]
+        out-chan             (a/promise-chan)]
     (a/go
       (try
         (let [card-data (assoc card-data :result_metadata (a/<! result-metadata-chan))]
           (a/close! result-metadata-chan)
           ;; now do the actual saving on a separate thread so we don't tie up our precious core.async thread. Pipe the
           ;; result into `out-chan`.
-          (async.u/single-value-pipe (save-new-card-async! card-data) out-chan))
+          (async.u/promise-pipe (save-new-card-async! card-data) out-chan))
         (catch Throwable e
           (a/put! out-chan e)
           (a/close! out-chan))))
@@ -390,29 +392,30 @@
       :else
       nil)))
 
-(defn- update-card-async! [{:keys [id], :as card-before-update} {:keys [archived], :as card-updates}]
+(defn- update-card-async!
+  "Update a Card asynchronously. Returns a `core.async` promise channel that will return updated Card."
+  [{:keys [id], :as card-before-update} {:keys [archived], :as card-updates}]
   ;; don't block our precious core.async thread, run the actual DB updates on a separate thread
-  (async.u/do-on-separate-thread
-   (fn []
-     ;; Setting up a transaction here so that we don't get a partially reconciled/updated card.
-     (db/transaction
-       (api/maybe-reconcile-collection-position! card-before-update card-updates)
+  (async.u/cancelable-thread
+    ;; Setting up a transaction here so that we don't get a partially reconciled/updated card.
+    (db/transaction
+      (api/maybe-reconcile-collection-position! card-before-update card-updates)
 
-       ;; ok, now save the Card
-       (db/update! Card id
-         ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
-         ;; modified if they're passed in as non-nil
-         (u/select-keys-when card-updates
-           :present #{:collection_id :collection_position :description}
-           :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
-                      :embedding_params :result_metadata})))
-     ;; Fetch the updated Card from the DB
-     (let [card (Card id)]
-       (delete-alerts-if-needed! card-before-update card)
-       (publish-card-update! card archived)
-       ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
-       ;; has with returned one -- See #4142
-       (hydrate card :creator :dashboard_count :can_write :collection)))))
+      ;; ok, now save the Card
+      (db/update! Card id
+        ;; `collection_id` and `description` can be `nil` (in order to unset them). Other values should only be
+        ;; modified if they're passed in as non-nil
+        (u/select-keys-when card-updates
+          :present #{:collection_id :collection_position :description}
+          :non-nil #{:dataset_query :display :name :visualization_settings :archived :enable_embedding
+                     :embedding_params :result_metadata})))
+    ;; Fetch the updated Card from the DB
+    (let [card (Card id)]
+      (delete-alerts-if-needed! card-before-update card)
+      (publish-card-update! card archived)
+      ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently
+      ;; has with returned one -- See #4142
+      (hydrate card :creator :dashboard_count :can_write :collection))))
 
 (api/defendpoint ^:returns-chan PUT "/:id"
   "Update a `Card`."
@@ -443,15 +446,13 @@
                                 dataset_query
                                 result_metadata
                                 metadata_checksum)
-          out-chan             (a/chan 1)]
+          out-chan             (a/promise-chan)]
       ;; asynchronously wait for our updated result metadata, then after that call `update-card-async!`, which is done
       ;; on a non-core.async thread. Pipe the results of that into `out-chan`.
       (a/go
         (try
           (let [card-updates (assoc card-updates :result_metadata (a/<! result-metadata-chan))]
-            (async.u/single-value-pipe
-             (update-card-async! card-before-update card-updates)
-             out-chan))
+            (async.u/promise-pipe (update-card-async! card-before-update card-updates) out-chan))
           (finally
             (a/close! result-metadata-chan))))
       out-chan)))
@@ -578,8 +579,8 @@
     (let [ttl-seconds (Math/round (float (/ (* average-duration (public-settings/query-caching-ttl-ratio))
                                             1000.0)))]
       (when-not (zero? ttl-seconds)
-        (log/info (format "Question's average execution duration is %d ms; using 'magic' TTL of %d seconds"
-                          average-duration ttl-seconds)
+        (log/info (trs "Question''s average execution duration is {0}; using ''magic'' TTL of {1}"
+                       (u/format-milliseconds average-duration) (u/format-seconds ttl-seconds))
                   (u/emoji "💾"))
         ttl-seconds))))
 
@@ -596,42 +597,49 @@
     (assoc query :cache-ttl ttl)))
 
 (defn run-query-for-card-async
-  "Run the query for Card with `parameters` and `constraints`, and return results in a core.async channel. Will throw an
-  Exception if preconditions (such as read perms) are not met before returning a channel."
-  {:style/indent 1}
-  [card-id & {:keys [parameters constraints context dashboard-id middleware]
-              :or   {constraints constraints/default-query-constraints
-                     context     :question}}]
+  "Run the query for Card with `parameters` and `constraints`, and return results in a `StreamingResponse` that should
+  be returned as the result of an API endpoint fn. Will throw an Exception if preconditions (such as read perms) are
+  not met before returning the `StreamingResponse`."
+  [card-id export-format
+   & {:keys [parameters constraints context dashboard-id middleware run]
+      :or   {constraints constraints/default-query-constraints
+             context     :question
+             ;; param `run` can be used to control how the query is ran, e.g. if you need to
+             ;; customize the `context` passed to the QP
+             run         (^:once fn* [query info]
+                          (qp.streaming/streaming-response [context export-format]
+                            (qp/process-query-and-save-execution! query info context)))}}]
   {:pre [(u/maybe? sequential? parameters)]}
-  (let [card    (api/read-check (Card card-id))
-        query   (query-for-card card parameters constraints middleware)
-        options {:executed-by  api/*current-user-id*
-                 :context      context
-                 :card-id      card-id
-                 :dashboard-id dashboard-id}]
+  (let [card  (api/read-check (Card card-id))
+        query (assoc (query-for-card card parameters constraints middleware)
+                     :async? true)
+        info  {:executed-by  api/*current-user-id*
+               :context      context
+               :card-id      card-id
+               :dashboard-id dashboard-id}]
     (api/check-not-archived card)
-    (qp.async/process-query-and-save-execution! query options)))
+    (run query info)))
 
-(api/defendpoint ^:returns-chan POST "/:card-id/query"
+(api/defendpoint ^:streaming POST "/:card-id/query"
   "Run the query associated with a Card."
   [card-id :as {{:keys [parameters ignore_cache], :or {ignore_cache false}} :body}]
   {ignore_cache (s/maybe s/Bool)}
   (binding [cache/*ignore-cached-results* ignore_cache]
-    (run-query-for-card-async card-id, :parameters parameters)))
+    (run-query-for-card-async card-id :api, :parameters parameters)))
 
-(api/defendpoint-async ^:returns-chan POST "/:card-id/query/:export-format"
+(api/defendpoint ^:streaming POST "/:card-id/query/:export-format"
   "Run the query associated with a Card, and return its results as a file in the specified format. Note that this
   expects the parameters as serialized JSON in the 'parameters' parameter"
-  [{{:keys [card-id export-format parameters]} :params} respond raise]
+  [card-id export-format :as {{:keys [parameters]} :params}]
   {parameters    (s/maybe su/JSONString)
    export-format dataset-api/ExportFormat}
   (binding [cache/*ignore-cached-results* true]
-    (dataset-api/as-format-async export-format respond raise
-      (run-query-for-card-async (Integer/parseUnsignedInt card-id)
-        :parameters  (json/parse-string parameters keyword)
-        :constraints nil
-        :context     (dataset-api/export-format->context export-format)
-        :middleware  {:skip-results-metadata? true}))))
+    (run-query-for-card-async
+     card-id export-format
+     :parameters  (json/parse-string parameters keyword)
+     :constraints nil
+     :context     (dataset-api/export-format->context export-format)
+     :middleware  {:skip-results-metadata? true})))
 
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------

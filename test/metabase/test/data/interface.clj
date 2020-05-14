@@ -12,14 +12,13 @@
             [metabase
              [db :as mdb]
              [driver :as driver]
+             [query-processor :as qp]
              [util :as u]]
             [metabase.models
              [database :refer [Database]]
              [field :as field :refer [Field]]
              [table :refer [Table]]]
             [metabase.plugins.classloader :as classloader]
-            [metabase.query-processor.middleware.annotate :as annotate]
-            [metabase.query-processor.store :as qp.store]
             [metabase.test.initialize :as initialize]
             [metabase.util
              [date-2 :as u.date]
@@ -249,26 +248,6 @@
 (defmethod before-run ::test-extensions [_]) ; default-impl is a no-op
 
 
-(defmulti ^:deprecated after-run
-  "Do any cleanup needed after tests are finished running, such as deleting test databases. Use this
-  in place of writing expectations `:after-run` functions, since the driver namespaces are lazily loaded and might
-  not be loaded in time to register those functions with expectations.
-
-  Will only be called once for a given driver; only called when running tests against that driver. This method does
-  not need to call the implementation for any parent drivers; that is done automatically.
-
-  DO NOT CALL THIS METHOD DIRECTLY; THIS IS CALLED AUTOMATICALLY WHEN APPROPRIATE.
-
-  DEPRECATED - this is no longer called automatically when tests conclude due to our switch to `clojure.test`. You
-  should not rely on it for performing cleanup when tests are complete. This may be fixed in the future (PRs
-  welcome)."
-  {:arglists '([driver])}
-  dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod after-run ::test-extensions [_]) ; default-impl is a no-op
-
-
 (defmulti dbdef->connection-details
   "Return the connection details map that should be used to connect to the Database we will create for
   `database-definition`.
@@ -344,27 +323,36 @@
 
 (defmethod aggregate-column-info ::test-extensions
   ([_ aggregation-type]
-   ;; TODO - cumulative count doesn't require a FIELD !!!!!!!!!
-   (assert (= aggregation-type) :count)
-   {:base_type    :type/Integer
+   ;; TODO - Can `:cum-count` be used without args as well ??
+   (assert (= aggregation-type :count))
+   {:base_type    :type/BigInteger
     :special_type :type/Number
     :name         "count"
     :display_name "Count"
     :source       :aggregation
     :field_ref    [:aggregation 0]})
 
-  ([driver aggregation-type {field-id :id, :keys [table_id]}]
-   {:pre [table_id]}
-   (driver/with-driver driver
-     (qp.store/with-store
-       (qp.store/fetch-and-store-database! (db/select-one-field :db_id Table :id table_id))
-       (qp.store/fetch-and-store-fields! [field-id])
-       (merge
-        (annotate/col-info-for-aggregation-clause {} [aggregation-type [:field-id field-id]])
-        {:source    :aggregation
-         :field_ref [:aggregation 0]}
-        (when (#{:count :cum-count} aggregation-type)
-          {:base_type :type/Integer, :special_type :type/Number}))))))
+  ([driver aggregation-type {field-id :id, table-id :table_id}]
+   {:pre [(some? table-id)]}
+   (first (qp/query->expected-cols {:database (db/select-one-field :db_id Table :id table-id)
+                                    :type     :query
+                                    :query    {:source-table table-id
+                                               :aggregation  [[aggregation-type [:field-id field-id]]]}}))))
+
+
+(defmulti count-with-template-tag-query
+  "Generate a native query for the count of rows in `table` matching a set of conditions where `field-name` is equal to
+  a param `value`."
+  ^{:arglists '([driver table-name field-name param-type])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmulti count-with-field-filter-query
+  "Generate a native query that returns the count of a Table with `table-name` with a field filter against a Field with
+  `field-name`."
+  ^{:arglists '([driver table-name field-name])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

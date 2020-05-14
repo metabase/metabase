@@ -122,12 +122,24 @@ export function applyChartTimeseriesXAxis(
     // special handling for weeks
     // TODO: are there any other cases where we should do this?
     let tickFormatUnit = dimensionColumn.unit;
+    const tickFormat = timestamp => {
+      const { column, ...columnSettings } = chart.settings.column(
+        dimensionColumn,
+      );
+      return formatValue(timestamp, {
+        ...columnSettings,
+        column: { ...column, unit: tickFormatUnit },
+        type: "axis",
+        compact: chart.settings["graph.x_axis.axis_enabled"] === "compact",
+      });
+    };
     if (dataInterval.interval === "week") {
       // if tick interval is compressed then show months instead of weeks because they're nicer formatted
       const newTickInterval = computeTimeseriesTicksInterval(
         xDomain,
         tickInterval,
         chart.width(),
+        tickFormat,
       );
       if (
         newTickInterval.interval !== tickInterval.interval ||
@@ -138,21 +150,16 @@ export function applyChartTimeseriesXAxis(
       }
     }
 
-    chart.xAxis().tickFormat(timestamp => {
-      const { column, ...columnSettings } = chart.settings.column(
-        dimensionColumn,
-      );
-      return formatValue(timestamp, {
-        ...columnSettings,
-        column: { ...column, unit: tickFormatUnit },
-        type: "axis",
-        compact: chart.settings["graph.x_axis.axis_enabled"] === "compact",
-      });
-    });
+    chart.xAxis().tickFormat(tickFormat);
 
     // Compute a sane interval to display based on the data granularity, domain, and chart width
     tickInterval = {
-      ...computeTimeseriesTicksInterval(xDomain, tickInterval, chart.width()),
+      ...computeTimeseriesTicksInterval(
+        xDomain,
+        tickInterval,
+        chart.width(),
+        tickFormat,
+      ),
       timezone,
     };
   }
@@ -367,6 +374,33 @@ export function applyChartYAxis(chart, series, yExtent, axisName) {
     // axis.axis().tickFormat((d) => scale.tickFormat(4,d3.format(",d"))(d));
   } else {
     scale = d3.scale.linear();
+  }
+
+  // This makes non-zero bar values take up at least one pixel.
+  // Ideally, we would just pass a custom interpolate factory to `interpolate`.
+  // However, dc.js passes its own after we give it the scael, so instead we
+  // overwrite the scale's interpolate method. That let's us use theirs but
+  // special case values withing one pixel of the edge.
+  if (series.every(s => s.card.display === "bar")) {
+    const _interpolate = scale.interpolate.bind(scale);
+    scale.interpolate = customInterpolatorFactory =>
+      _interpolate((a, b) => {
+        // dc.js uses a rounding interpolator. We want to use the factory they
+        // pass in, but we also need to create d3's default interpolator. We use
+        // that to see when a value is between 0 and 1. If we just looked at the
+        // rounded value, 0.49 would round to 0 and we wouldn't bump it up to 1.
+        const custom = customInterpolatorFactory(a, b);
+        const unrounded = d3.interpolate(a, b);
+        return t => {
+          const value = unrounded(t);
+          const onePixelUp = custom(0) - 1;
+          // y goes from top to bottom, so "onePixelUp" is actually the largest value
+          if (onePixelUp < value && value < unrounded(0)) {
+            return onePixelUp;
+          }
+          return custom(t);
+        };
+      });
   }
 
   scale.clamp(true);

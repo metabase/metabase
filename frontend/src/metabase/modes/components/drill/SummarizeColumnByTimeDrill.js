@@ -3,7 +3,7 @@
 import React from "react";
 import { t } from "ttag";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
-import { getFieldRefFromColumn } from "metabase/modes/lib/actions";
+import { fieldRefForColumn } from "metabase/lib/dataset";
 import {
   getAggregationOperator,
   isCompatibleAggregationOperatorForField,
@@ -47,7 +47,7 @@ export default ({
         question
           .aggregate(
             aggregator.requiresField
-              ? [aggregator.short, getFieldRefFromColumn(column)]
+              ? [aggregator.short, fieldRefForColumn(column)]
               : [aggregator.short],
           )
           .pivot([dateDimension.defaultDimension().mbql()]),

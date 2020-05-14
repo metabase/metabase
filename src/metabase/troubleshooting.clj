@@ -21,7 +21,8 @@
                                              "os.name"
                                              "os.version"
                                              "user.language"
-                                             "user.timezone"])))
+                                             "user.timezone"
+                                             "file.encoding"])))
 
 (defn metabase-info
   "Make it easy for the user to tell us what they're using"

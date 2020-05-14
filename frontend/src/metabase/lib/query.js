@@ -6,7 +6,7 @@ import { t } from "ttag";
 import Utils from "metabase/lib/utils";
 import { isFK, TYPE } from "metabase/lib/types";
 import { stripId } from "metabase/lib/formatting";
-import { format as formatExpression } from "metabase/lib/expressions/formatter";
+import { format as formatExpression } from "metabase/lib/expressions/format";
 
 import * as A_DEPRECATED from "./query_aggregation";
 

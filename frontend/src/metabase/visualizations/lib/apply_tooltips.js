@@ -20,6 +20,7 @@ export function getClickHoverObject(
     classList,
     event,
     element,
+    settings,
   },
 ) {
   let { cols } = series[0].data;
@@ -172,6 +173,7 @@ export function getClickHoverObject(
     dimensions,
     value,
     column,
+    settings,
   };
 }
 
@@ -221,6 +223,7 @@ export function setupTooltips(
       isStacked: stacked,
       event: d3.event,
       element: target,
+      settings,
     });
   };
 

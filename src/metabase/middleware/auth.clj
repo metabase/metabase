@@ -1,8 +1,8 @@
 (ns metabase.middleware.auth
   "Middleware related to enforcing authentication/API keys (when applicable). Unlike most other middleware most of this
   is not used as part of the normal `app`; it is instead added selectively to appropriate routes."
-  (:require [metabase.config :as config]
-            [metabase.middleware.util :as middleware.u]))
+  (:require [metabase.middleware.util :as middleware.u]
+            [metabase.models.setting :refer [defsetting]]))
 
 (def ^:private ^:const ^String metabase-api-key-header "x-metabase-apikey")
 
@@ -26,6 +26,9 @@
   (fn [request respond raise]
     (handler (wrap-api-key* request) respond raise)))
 
+(defsetting api-key
+  "When set, this API key is required for all API requests."
+  :visibility :internal)
 
 (defn enforce-api-key
   "Middleware that enforces validation of the client via API Key, canceling the request processing if the check fails.
@@ -33,11 +36,11 @@
   Validation is handled by first checking for the presence of the `:metabase-api-key` on the request.  If the api key
   is available then we validate it by checking it against the configured `:mb-api-key` value set in our global config.
 
-  If the request `:metabase-api-key` matches the configured `:mb-api-key` value then the request continues, otherwise
-  we reject the request and return a 403 Forbidden response."
+  If the request `:metabase-api-key` matches the configured `api-key` value then the request continues, otherwise we
+  reject the request and return a 403 Forbidden response."
   [handler]
   (fn [{:keys [metabase-api-key], :as request} respond raise]
-    (if (= (config/config-str :mb-api-key) metabase-api-key)
+    (if (= (api-key) metabase-api-key)
       (handler request respond raise)
       ;; default response is 403
       (respond middleware.u/response-forbidden))))

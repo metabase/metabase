@@ -17,6 +17,7 @@ type DeregisterFunction = () => void;
 
 type Props = VisualizationProps & {
   renderer: (element: Element, props: VisualizationProps) => DeregisterFunction,
+  style?: any,
 };
 
 // We track this as part of the render loop.
@@ -107,7 +108,6 @@ export default class CardRenderer extends Component {
       });
     } catch (err) {
       console.error(err);
-      this.props.onRenderError(err.message || err);
     }
   }
 

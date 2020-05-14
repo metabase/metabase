@@ -5,12 +5,16 @@
   reduces the cognitive load required to write tests.)"
   (:require [clojure.test :refer :all]
             [java-time :as t]
+            [medley.core :as m]
             [metabase
              [driver :as driver]
              [query-processor :as qp]
              [query-processor-test :as qp.test]]
-            [metabase.driver.sql-jdbc-test :as sql-jdbc-test]
-            [metabase.query-processor.test-util :as qp.test-util]
+            [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
+            [metabase.query-processor
+             [context :as qp.context]
+             [reducible :as qp.reducible]
+             [test-util :as qp.test-util]]
             [metabase.test
              [data :as data]
              [initialize :as initialize]
@@ -21,6 +25,7 @@
              [interface :as tx]
              [users :as test-users]]
             [metabase.test.util
+             [async :as tu.async]
              [log :as tu.log]
              [timezone :as tu.tz]]
             [potemkin :as p]
@@ -36,10 +41,11 @@
   qp/keep-me
   qp.test-util/keep-me
   qp.test/keep-me
-  sql-jdbc-test/keep-me
+  sql-jdbc.tu/keep-me
   [test-users/keep-me]
   tt/keep-me
   tu/keep-me
+  tu.async/keep-me
   tu.log/keep-me
   tu.tz/keep-me
   tx/keep-me
@@ -97,12 +103,13 @@
   with-report-timezone-id
   with-results-timezone-id]
 
- [sql-jdbc-test
+ [sql-jdbc.tu
   sql-jdbc-drivers]
 
  [test-users
   user->id
   user->client
+  user->credentials
   with-test-user]
 
  [tt
@@ -132,6 +139,11 @@
   with-temp-vals-in-db
   with-temporary-setting-values]
 
+ [tu.async
+  wait-for-close
+  wait-for-result
+  with-open-channels]
+
  [tu.log
   suppress-output]
 
@@ -139,6 +151,8 @@
   with-system-timezone-id]
 
  [tx
+  count-with-template-tag-query
+  count-with-field-filter-query
   dataset-definition
   db-qualified-table-name
   db-test-env-var
@@ -156,14 +170,14 @@
   with-test-drivers])
 
 (defn do-with-clock [clock thunk]
-  (let [clock (cond
-                (t/clock? clock)           clock
-                (t/zoned-date-time? clock) (t/mock-clock (t/instant clock) (t/zone-id clock))
-                :else                      (throw (Exception. (format "Invalid clock: ^%s %s"
-                                                                      (.getName (class clock))
-                                                                      (pr-str clock)))))]
-    (t/with-clock clock
-      (testing (format "\nsystem clock = %s" (pr-str clock))
+  (testing (format "\nsystem clock = %s" (pr-str clock))
+    (let [clock (cond
+                  (t/clock? clock)           clock
+                  (t/zoned-date-time? clock) (t/mock-clock (t/instant clock) (t/zone-id clock))
+                  :else                      (throw (Exception. (format "Invalid clock: ^%s %s"
+                                                                        (.getName (class clock))
+                                                                        (pr-str clock)))))]
+      (t/with-clock clock
         (thunk)))))
 
 (defmacro with-clock
@@ -174,3 +188,50 @@
       ...)"
   [clock & body]
   `(do-with-clock ~clock (fn [] ~@body)))
+
+;; New QP middleware test util fns. Experimental. These will be put somewhere better if confirmed useful.
+
+(defn test-qp-middleware
+  "Helper for testing QP middleware. Changes are returned in a map with keys:
+
+    * `:result`   ­ final result
+    * `:pre`      ­ `query` after preprocessing
+    * `:metadata` ­ `metadata` after post-processing
+    * `:post`     ­ `rows` after post-processing transduction"
+  ([middleware-fn]
+   (test-qp-middleware middleware-fn {}))
+
+  ([middleware-fn query]
+   (test-qp-middleware middleware-fn query []))
+
+  ([middleware-fn query rows]
+   (test-qp-middleware middleware-fn query {} rows))
+
+  ([middleware-fn query metadata rows]
+   (test-qp-middleware middleware-fn query metadata rows nil))
+
+  ([middleware-fn query metadata rows {:keys [run async?], :as context}]
+   (let [async-qp (qp.reducible/async-qp
+                   (qp.reducible/combine-middleware
+                    (if (sequential? middleware-fn)
+                      middleware-fn
+                      [middleware-fn])))
+         context  (merge
+                   {:timeout 500
+                    :runf    (fn [query rff context]
+                               (try
+                                 (when run (run))
+                                 (qp.context/reducef rff context (assoc metadata :pre query) rows)
+                                 (catch Throwable e
+                                   (println "Error in test-qp-middleware runf:" e)
+                                   (throw e))))}
+                   context)]
+     (if async?
+       (async-qp query context)
+       (binding [qp.reducible/*run-on-separate-thread?* true]
+         (let [qp     (qp.reducible/sync-qp async-qp)
+               result (qp query context)]
+           {:result   (m/dissoc-in result [:data :pre])
+            :pre      (-> result :data :pre)
+            :post     (-> result :data :rows)
+            :metadata (update result :data #(dissoc % :pre :rows))}))))))

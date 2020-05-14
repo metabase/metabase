@@ -16,7 +16,9 @@
            [java.time.temporal Temporal TemporalAdjuster WeekFields]
            org.threeten.extra.PeriodDuration))
 
-(defn- add-zone-to-local [t timezone-id]
+(defn- add-zone-to-local
+  "Converts a temporal type without timezone info to one with zone info (i.e., a `ZonedDateTime`)."
+  [t timezone-id]
   (condp instance? t
     LocalDateTime (t/zoned-date-time t (t/zone-id timezone-id))
     LocalDate     (t/zoned-date-time t (t/local-time 0) (t/zone-id timezone-id))
@@ -115,6 +117,8 @@
     :iso-week-of-year
     :month-of-year
     :quarter-of-year
+    ;; TODO - in this namespace `:year` is something you can both extract and truncate to. In MBQL `:year` is a truncation
+    ;; operation. Maybe we should rename this unit to clear up the potential confusion (?)
     :year})
 
 (def ^:private week-fields*

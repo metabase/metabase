@@ -26,18 +26,18 @@ import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 
 const listTables = GET("/api/table");
-const listTablesForDatabase = async (...args) =>
+const listTablesForDatabase = async (params, ...args) =>
   // HACK: no /api/database/:dbId/tables endpoint
-  (await GET("/api/database/:dbId/metadata")(...args)).tables.filter(
-    /*
-     * HACK: Right now the endpoint returns all tables regardless of
-     * whether they're hidden. make sure table lists only use non hidden tables
-     * Ideally this should live in the API?
-     */
+  (await GET("/api/database/:dbId/metadata")(params, ...args)).tables.filter(
+    /* HACK: Right now the endpoint returns all tables regardless of whether
+       they're hidden. make sure table lists only use non hidden tables Ideally
+       this should live in the API? The `includeHidden` exception is used in the
+       admin panel where hidden tables are listed separately. */
     t =>
-      t.visibility_type !== "hidden" &&
-      t.visibility_type !== "technical" &&
-      t.visibility_type !== "cruft",
+      params.includeHidden ||
+      (t.visibility_type !== "hidden" &&
+        t.visibility_type !== "technical" &&
+        t.visibility_type !== "cruft"),
   );
 const listTablesForSchema = GET("/api/database/:dbId/schema/:schemaName");
 
@@ -75,15 +75,16 @@ const Tables = createEntity({
         ({ id }) => [...Tables.getObjectStatePath(id), "fetchMetadata"],
       ),
       withNormalize(TableSchema),
-    )(({ id }) => async (dispatch, getState) => {
+    )(({ id }, options = {}) => async (dispatch, getState) => {
       const table = await MetabaseApi.table_query_metadata({
         tableId: id,
+        ...options.params,
       });
       return addValidOperatorsToFields(table);
     }),
 
     // like fetchMetadata but also loads tables linked by foreign key
-    fetchTableMetadata: createThunkAction(
+    fetchMetadataAndForeignTables: createThunkAction(
       FETCH_TABLE_METADATA,
       ({ id }, options) => async (dispatch, getState) => {
         await dispatch(Tables.actions.fetchMetadata({ id }, options));
