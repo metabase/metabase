@@ -551,7 +551,7 @@ jobs:
             if [ ! -f './target/uberjar/metabase.jar' ];
               then ./bin/build version frontend drivers uberjar;
             fi
-          no_output_timeout: 5m
+          no_output_timeout: 10m
       - store_artifacts:
           path: /home/circleci/metabase/metabase/target/uberjar/metabase.jar
       - save_cache:
