@@ -17,7 +17,6 @@
    "run-with-repl"                     ["with-profile" "+run-with-repl" "repl"]
    "ring"                              ["with-profile" "+ring" "ring"]
    "test"                              ["with-profile" "+test" "test"]
-   "eftest"                            ["with-profile" "+test" "with-profile" "+eftest" "eftest"]
    "bikeshed"                          ["with-profile" "+bikeshed" "bikeshed"
                                         "--max-line-length" "205"
                                         ;; see https://github.com/dakrone/lein-bikeshed/issues/41
@@ -206,9 +205,14 @@
     {:init-ns user}} ; starting in the user namespace is a lot faster than metabase.core since it has less deps
 
    :ci
-   {:jvm-opts ["-Xmx2500m"]
-    :eftest   {:report         eftest.report.junit/report
-               :report-to-file "target/test/junit.xml"}}
+   {:plugins
+    [[lein-test-report-junit-xml "0.2.0"]] ; output test results in JUnit XML format
+
+    :test-report-junit-xml
+    {:output-dir "target/junit"}
+
+    :jvm-opts
+    ["-Xmx2500m"]}
 
    :install
    {}
@@ -282,10 +286,6 @@
 
    :test
    [:with-include-drivers-middleware :test-common]
-
-   :eftest
-   {:plugins [[lein-eftest "0.5.9"]]
-    :eftest  {:multithread? false}}
 
    :include-all-drivers
    [:with-include-drivers-middleware

@@ -372,6 +372,8 @@ jobs:
           command: lein with-profile +ci << parameters.lein-command >>
           no_output_timeout: 5m
       - steps: << parameters.after-steps >>
+      - store_test_results:
+          path: /home/circleci/metabase/metabase/target/junit
 
   be-linter-reflection-warnings:
     executor: clojure
