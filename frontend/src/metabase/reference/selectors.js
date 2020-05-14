@@ -93,17 +93,31 @@ export const getTable = createSelector(
       : {},
 );
 
+function visibleFields(fields) {
+  const visFields = {};
+  for (const [fieldId, field] of Object.entries(fields)) {
+    if (field.visibility_type !== "sensitive") {
+      visFields[fieldId] = field;
+    }
+  }
+  return visFields;
+}
+
 export const getFieldId = (state, props) =>
   Number.parseInt(props.params.fieldId);
 export const getFieldsByTable = createSelector(
   [getTable, getFields],
   (table, fields) =>
-    table && table.fields ? idsToObjectMap(table.fields, fields) : {},
+    table && table.fields
+      ? visibleFields(idsToObjectMap(table.fields, fields))
+      : {},
 );
 export const getFieldsBySegment = createSelector(
   [getTableBySegment, getFields],
   (table, fields) =>
-    table && table.fields ? idsToObjectMap(table.fields, fields) : {},
+    table && table.fields
+      ? visibleFields(idsToObjectMap(table.fields, fields))
+      : {},
 );
 export const getField = createSelector(
   [getFieldId, getFields],

@@ -288,24 +288,13 @@
 
 (deftest fetch-database-metadata-include-hidden-test
   (mt/with-temp-vals-in-db Table (mt/id :categories) {:visibility_type "hidden"}
-    (mt/with-temp-vals-in-db Field (mt/id :venues :name) {:visibility_type "sensitive"}
-      (testing "GET /api/database/:id/metadata?include_hidden=true"
-        (let [tables (:tables ((mt/user->client :rasta) :get 200 (format "database/%d/metadata?include_hidden=true" (mt/id))))]
-          (is (some (is-named "CATEGORIES") tables))
-          (is (->> tables
-                   (filter (is-named "VENUES"))
-                   first
-                   :fields
-                   (some (is-named "NAME"))))))
-      (testing "GET /api/database/:id/metadata"
-        (let [tables (:tables ((mt/user->client :rasta) :get 200 (format "database/%d/metadata" (mt/id))))]
-          (is (not (some (is-named "CATEGORIES") tables)))
-          (is (some (is-named "VENUES") tables))
-          (is (not (->> tables
-                        (filter (is-named "VENUES"))
-                        first
-                        :fields
-                        (some (is-named "NAME"))))))))))
+    (testing "GET /api/database/:id/metadata?include_hidden_tables=true"
+      (let [tables (:tables ((mt/user->client :rasta) :get 200 (format "database/%d/metadata?include_hidden_tables=true" (mt/id))))]
+        (is (some (is-named "CATEGORIES") tables))))
+    (testing "GET /api/database/:id/metadata"
+      (let [tables (:tables ((mt/user->client :rasta) :get 200 (format "database/%d/metadata" (mt/id))))]
+        (is (not (some (is-named "CATEGORIES") tables)))
+        (is (some (is-named "VENUES") tables))))))
 
 (deftest autocomplete-suggestions-test
   (testing "GET /api/database/:id/autocomplete_suggestions"
