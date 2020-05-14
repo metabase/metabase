@@ -139,8 +139,7 @@
                     Table    [t3 {:name "Table 3", :db_id (:id db), :visibility_type "hidden"}]
                     Field    [f1 {:name "Field 1.1", :table_id (:id t1)}]
                     Field    [f2 {:name "Field 2.1", :table_id (:id t2)}]
-                    Field    [f3 {:name "Field 2.2", :table_id (:id t2)}]
-                    Field    [f4 {:name "Field 2.3", :table_id (:id t2), :visibility_type "sensitive"}]]
+                    Field    [f3 {:name "Field 2.2", :table_id (:id t2)}]]
       (testing "`?include=tables` -- should be able to include Tables"
         (is (= {:tables [(table-details t1)
                          (table-details t2)]}
