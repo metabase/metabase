@@ -233,6 +233,10 @@
   [db]
   (assoc db :schedules (expanded-schedules db)))
 
+(defn- filter-sensitive-fields
+  [fields]
+  (filter #(not= :sensitive (:visibility_type %)) fields))
+
 (defn- get-database-hydrate-include
   "If URL param `?include=` was passed to `GET /api/database/:id`, hydrate the Database appropriately."
   [db include]
@@ -246,10 +250,7 @@
                             ; filter hidden tables
                             true                        (filter #(and (nil? (:visibility_type %)) (mi/can-read? %)))
                             ; filter hidden fields
-                            (= include "tables.fields") (map (fn [table]
-                                                               (update table :fields
-                                                                       (fn [fields]
-                                                                         (filter #(not= :sensitive (:visibility_type %)) fields)))))))))))
+                            (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))))))))
 
 (api/defendpoint GET "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
@@ -273,13 +274,15 @@
   []
   (saved-cards-virtual-db-metadata :include-tables? true, :include-fields? true))
 
-(defn- db-metadata [id include-hidden-tables]
+(defn- db-metadata [id include-hidden]
   (-> (api/read-check Database id)
       (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics])
       (update :tables (fn [tables]
-                        (if include-hidden-tables
+                        (if include-hidden
                           tables
-                          (filter #(nil? (:visibility_type %)) tables))))
+                          (->> tables
+                               (filter #(nil? (:visibility_type %)))
+                               (map #(update % :fields filter-sensitive-fields))))))
       (update :tables (fn [tables]
                         (for [table tables
                               :when (mi/can-read? table)]
@@ -289,11 +292,11 @@
 
 (api/defendpoint GET "/:id/metadata"
   "Get metadata about a `Database`, including all of its `Tables` and `Fields`.
-   By default only non-hidden tables are returned. Passing include_hidden_tables=true
+   By default only non-hidden tables and fields are returned. Passing include_hidden=true includes everything.
    Returns DB, fields, and field values."
-  [id include_hidden_tables]
-  {include_hidden_tables (s/maybe su/BooleanString)}
-  (db-metadata id include_hidden_tables))
+  [id include_hidden]
+  {include_hidden (s/maybe su/BooleanString)}
+  (db-metadata id include_hidden))
 
 
 ;;; --------------------------------- GET /api/database/:id/autocomplete_suggestions ---------------------------------

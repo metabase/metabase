@@ -283,23 +283,29 @@
            (let [resp ((mt/user->client :rasta) :get 200 (format "database/%d/metadata" (mt/id)))]
              (assoc resp :tables (filter #(= "CATEGORIES" (:name %)) (:tables resp))))))))
 
-(deftest fetch-database-metadata-without-hidden-test
-  (testing "GET /api/database/:id/metadata"
-    (mt/with-temp-vals-in-db Table (mt/id :categories) {:visibility_type "hidden"}
-      (is (not (some
-                #(-> %
-                     (:name)
-                     (= "CATEGORIES"))
-                (:tables ((mt/user->client :rasta) :get 200 (format "database/%d/metadata" (mt/id))))))))))
+(defn- is-named [name]
+  #(= name (:name %)))
 
-(deftest fetch-database-metadata-including-hidden-test
-  (testing "GET /api/database/:id/metadata?include_hidden_tables=true"
-    (mt/with-temp-vals-in-db Table (mt/id :categories) {:visibility_type "hidden"}
-      (is (some
-           #(-> %
-                (:name)
-                (= "CATEGORIES"))
-           (:tables ((mt/user->client :rasta) :get 200 (format "database/%d/metadata?include_hidden_tables=true" (mt/id)))))))))
+(deftest fetch-database-metadata-include-hidden-test
+  (mt/with-temp-vals-in-db Table (mt/id :categories) {:visibility_type "hidden"}
+    (mt/with-temp-vals-in-db Field (mt/id :venues :name) {:visibility_type "sensitive"}
+      (testing "GET /api/database/:id/metadata?include_hidden=true"
+        (let [tables (:tables ((mt/user->client :rasta) :get 200 (format "database/%d/metadata?include_hidden=true" (mt/id))))]
+          (is (some (is-named "CATEGORIES") tables))
+          (is (->> tables
+                   (filter (is-named "VENUES"))
+                   first
+                   :fields
+                   (some (is-named "NAME"))))))
+      (testing "GET /api/database/:id/metadata"
+        (let [tables (:tables ((mt/user->client :rasta) :get 200 (format "database/%d/metadata" (mt/id))))]
+          (is (not (some (is-named "CATEGORIES") tables)))
+          (is (some (is-named "VENUES") tables))
+          (is (not (->> tables
+                        (filter (is-named "VENUES"))
+                        first
+                        :fields
+                        (some (is-named "NAME"))))))))))
 
 (deftest autocomplete-suggestions-test
   (testing "GET /api/database/:id/autocomplete_suggestions"
