@@ -216,7 +216,7 @@
     :test-paths ["backend/junit/test"]
 
     :injections
-    [(require 'metabase.junit)]
+    [(try (require 'metabase.junit) (catch Throwable _))]
 
     :test-report-junit-xml
     {:output-dir    "target/junit"
