@@ -344,7 +344,7 @@ jobs:
     steps:
       - attach-workspace
       - restore-be-deps-cache
-      - run: lein with-profile +include-all-drivers deps
+      - run: lein with-profile +include-all-drivers,+ci,+cloverage deps
       - save_cache:
           key: be-deps-v2-{{ checksum "project.clj" }}
           paths:

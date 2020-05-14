@@ -205,7 +205,10 @@
     {:init-ns user}} ; starting in the user namespace is a lot faster than metabase.core since it has less deps
 
    :ci
-   {:plugins
+   {:dependencies
+    [[test-report-junit-xml "0.2.0"]]
+
+    :plugins
     [[lein-test-report-junit-xml "0.2.0"]] ; output test results in JUnit XML format
 
     ;; the custom JUnit formatting logic lives in `backend/junit/test/metabase/junit.clj`
