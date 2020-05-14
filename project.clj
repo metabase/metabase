@@ -208,8 +208,12 @@
    {:plugins
     [[lein-test-report-junit-xml "0.2.0"]] ; output test results in JUnit XML format
 
+    :injections
+    [(require 'metabase.junit)]
+
     :test-report-junit-xml
-    {:output-dir "target/junit"}
+    {:output-dir    "target/junit"
+     :format-result metabase.junit/format-result}
 
     :jvm-opts
     ["-Xmx2500m"]}
