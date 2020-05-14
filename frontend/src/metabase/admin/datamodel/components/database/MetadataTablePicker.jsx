@@ -19,7 +19,6 @@ export default class MetadataTablePicker extends Component {
     super(props, context);
 
     this.state = {
-      schemas: null,
       selectedSchema: null,
       showTablePicker: true,
     };
@@ -31,31 +30,24 @@ export default class MetadataTablePicker extends Component {
     selectTable: PropTypes.func.isRequired,
   };
 
-  componentWillMount() {
-    this.componentWillReceiveProps(this.props);
-  }
-
-  componentWillReceiveProps({ tables, tableId }) {
-    const table = tables.find(t => t.id === tableId);
-    const schemas = _.uniq(tables.map(t => t.schema)).sort((a, b) =>
-      a.name.localeCompare(b.name),
-    );
-    this.setState({
-      schemas: schemas,
-      selectedSchema: table && table.schema,
-    });
-  }
-
   render() {
-    const { schemas } = this.state;
+    const tablesBySchemaName = _.groupBy(this.props.tables, t => t.schema_name);
+    const schemas = Object.keys(tablesBySchemaName).sort((a, b) =>
+      a.localeCompare(b),
+    );
     if (schemas.length === 1) {
-      return <MetadataTableList {...this.props} tables={schemas[0].tables} />;
+      return (
+        <MetadataTableList
+          {...this.props}
+          tables={tablesBySchemaName[schemas[0]]}
+        />
+      );
     }
     if (this.state.selectedSchema && this.state.showTablePicker) {
       return (
         <MetadataTableList
           {...this.props}
-          tables={this.state.selectedSchema.tables}
+          tables={tablesBySchemaName[this.state.selectedSchema]}
           schema={this.state.selectedSchema}
           onBack={() => this.setState({ showTablePicker: false })}
         />

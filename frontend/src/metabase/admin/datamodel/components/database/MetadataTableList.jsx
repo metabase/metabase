@@ -125,7 +125,7 @@ export default class MetadataTableList extends Component {
             {this.props.onBack && this.props.schema && (
               <span className="mx1">-</span>
             )}
-            {this.props.schema && <span> {this.props.schema.name}</span>}
+            {this.props.schema && <span> {this.props.schema}</span>}
           </h4>
         )}
 
