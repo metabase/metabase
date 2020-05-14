@@ -2,7 +2,6 @@
   "Tests for /api/pulse endpoints."
   (:require [clojure.test :refer :all]
             [metabase
-             [email-test :as et]
              [http-client :as http]
              [models :refer [Card Collection Dashboard Pulse PulseCard PulseChannel PulseChannelRecipient]]
              [test :as mt]
@@ -17,7 +16,9 @@
              [permissions-group :as perms-group]
              [pulse :as pulse]
              [pulse-test :as pulse-test]]
+            [metabase.pulse.render.png :as png]
             [metabase.test.mock.util :refer [pulse-channel-defaults]]
+            [schema.core :as s]
             [toucan.db :as db]))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -309,100 +310,103 @@
                 "2) value must be a map with the keys `id`, `include_csv`, and `include_xls`. The array cannot be empty.")}})
 
 (deftest update-pulse-validation-test
-  (doseq [[input expected-error]
-          {{:name 123}
-           {:errors {:name "value may be nil, or if non-nil, value must be a non-blank string."}}
+  (testing "PUT /api/pulse/:id"
+    (doseq [[input expected-error]
+            {{:name 123}
+             {:errors {:name "value may be nil, or if non-nil, value must be a non-blank string."}}
 
-           {:cards 123}
-           default-put-card-ref-validation-error
+             {:cards 123}
+             default-put-card-ref-validation-error
 
-           {:cards "foobar"}
-           default-put-card-ref-validation-error
+             {:cards "foobar"}
+             default-put-card-ref-validation-error
 
-           {:cards ["abc"]}
-           default-put-card-ref-validation-error
+             {:cards ["abc"]}
+             default-put-card-ref-validation-error
 
-           {:channels 123}
-           {:errors {:channels (str "value may be nil, or if non-nil, value must be an array. Each value must be a map. "
-                                    "The array cannot be empty.")}}
+             {:channels 123}
+             {:errors {:channels (str "value may be nil, or if non-nil, value must be an array. Each value must be a map. "
+                                      "The array cannot be empty.")}}
 
-           {:channels "foobar"}
-           {:errors {:channels (str "value may be nil, or if non-nil, value must be an array. Each value must be a map. "
-                                    "The array cannot be empty.")}}
+             {:channels "foobar"}
+             {:errors {:channels (str "value may be nil, or if non-nil, value must be an array. Each value must be a map. "
+                                      "The array cannot be empty.")}}
 
-           {:channels ["abc"]}
-           {:errors {:channels (str "value may be nil, or if non-nil, value must be an array. Each value must be a map. "
-                                    "The array cannot be empty.")}}}]
-    (testing (pr-str input)
-      (is (= expected-error
-             ((mt/user->client :rasta) :put 400 "pulse/1" input))))))
+             {:channels ["abc"]}
+             {:errors {:channels (str "value may be nil, or if non-nil, value must be an array. Each value must be a map. "
+                                      "The array cannot be empty.")}}}]
+      (testing (pr-str input)
+        (is (= expected-error
+               ((mt/user->client :rasta) :put 400 "pulse/1" input)))))))
 
 (deftest update-test
-  (mt/with-temp* [Pulse                 [pulse]
-                  PulseChannel          [pc    {:pulse_id (u/get-id pulse)}]
-                  PulseChannelRecipient [_     {:pulse_channel_id (u/get-id pc), :user_id (mt/user->id :rasta)}]
-                  Card                  [card]]
-    (with-pulses-in-writeable-collection [pulse]
-      (card-api-test/with-cards-in-readable-collection [card]
-        (is (= (merge
-                pulse-defaults
-                {:name          "Updated Pulse"
-                 :creator_id    (mt/user->id :rasta)
-                 :creator       (user-details (mt/fetch-user :rasta))
-                 :cards         [(assoc (pulse-card-details card)
-                                        :collection_id true)]
-                 :channels      [(merge pulse-channel-defaults
-                                        {:channel_type  "slack"
-                                         :schedule_type "hourly"
-                                         :details       {:channels "#general"}
-                                         :recipients    []})]
-                 :collection_id true})
-               (-> ((mt/user->client :rasta) :put 200 (format "pulse/%d" (u/get-id pulse))
-                    {:name          "Updated Pulse"
-                     :cards         [{:id          (u/get-id card)
-                                      :include_csv false
-                                      :include_xls false}]
-                     :channels      [{:enabled       true
-                                      :channel_type  "slack"
-                                      :schedule_type "hourly"
-                                      :schedule_hour 12
-                                      :schedule_day  "mon"
-                                      :recipients    []
-                                      :details       {:channels "#general"}}]
-                     :skip_if_empty false})
-                   pulse-response
-                   (update :channels remove-extra-channels-fields))))))))
+  (testing "PUT /api/pulse/:id"
+    (mt/with-temp* [Pulse                 [pulse]
+                    PulseChannel          [pc    {:pulse_id (u/get-id pulse)}]
+                    PulseChannelRecipient [_     {:pulse_channel_id (u/get-id pc), :user_id (mt/user->id :rasta)}]
+                    Card                  [card]]
+      (with-pulses-in-writeable-collection [pulse]
+        (card-api-test/with-cards-in-readable-collection [card]
+          (is (= (merge
+                  pulse-defaults
+                  {:name          "Updated Pulse"
+                   :creator_id    (mt/user->id :rasta)
+                   :creator       (user-details (mt/fetch-user :rasta))
+                   :cards         [(assoc (pulse-card-details card)
+                                          :collection_id true)]
+                   :channels      [(merge pulse-channel-defaults
+                                          {:channel_type  "slack"
+                                           :schedule_type "hourly"
+                                           :details       {:channels "#general"}
+                                           :recipients    []})]
+                   :collection_id true})
+                 (-> ((mt/user->client :rasta) :put 200 (format "pulse/%d" (u/get-id pulse))
+                      {:name          "Updated Pulse"
+                       :cards         [{:id          (u/get-id card)
+                                        :include_csv false
+                                        :include_xls false}]
+                       :channels      [{:enabled       true
+                                        :channel_type  "slack"
+                                        :schedule_type "hourly"
+                                        :schedule_hour 12
+                                        :schedule_day  "mon"
+                                        :recipients    []
+                                        :details       {:channels "#general"}}]
+                       :skip_if_empty false})
+                     pulse-response
+                     (update :channels remove-extra-channels-fields)))))))))
 
 (deftest add-card-to-existing-test
-  (testing "Can we add a card to an existing pulse that has a card?"
-    ;; Specifically this will include a HybridPulseCard (the original card associated with the pulse) and a CardRef
-    ;; (the new card)
-    (mt/with-temp* [Pulse                 [pulse {:name "Original Pulse Name"}]
-                    Card                  [card-1 {:name        "Test"
-                                                   :description "Just Testing"}]
-                    PulseCard             [_      {:card_id  (u/get-id card-1)
-                                                   :pulse_id (u/get-id pulse)}]
-                    Card                  [card-2 {:name        "Test2"
-                                                   :description "Just Testing2"}]]
-      (with-pulses-in-writeable-collection [pulse]
-        (card-api-test/with-cards-in-readable-collection [card-1 card-2]
-          ;; The FE will include the original HybridPulseCard, similar to how the API returns the card via GET
-          (let [pulse-cards (:cards ((mt/user->client :rasta) :get 200 (format "pulse/%d" (u/get-id pulse))))]
-            (is (= (merge
-                    pulse-defaults
-                    {:name          "Original Pulse Name"
-                     :creator_id    (mt/user->id :rasta)
-                     :creator       (user-details (mt/fetch-user :rasta))
-                     :cards         (mapv (comp #(assoc % :collection_id true) pulse-card-details) [card-1 card-2])
-                     :channels      []
-                     :collection_id true})
-                   (-> ((mt/user->client :rasta) :put 200 (format "pulse/%d" (u/get-id pulse))
-                        {:cards (concat pulse-cards
-                                        [{:id          (u/get-id card-2)
-                                          :include_csv false
-                                          :include_xls false}])})
-                       pulse-response
-                       (update :channels remove-extra-channels-fields))))))))))
+  (testing "PUT /api/pulse/:id"
+    (testing "Can we add a card to an existing pulse that has a card?"
+      ;; Specifically this will include a HybridPulseCard (the original card associated with the pulse) and a CardRef
+      ;; (the new card)
+      (mt/with-temp* [Pulse                 [pulse {:name "Original Pulse Name"}]
+                      Card                  [card-1 {:name        "Test"
+                                                     :description "Just Testing"}]
+                      PulseCard             [_      {:card_id  (u/get-id card-1)
+                                                     :pulse_id (u/get-id pulse)}]
+                      Card                  [card-2 {:name        "Test2"
+                                                     :description "Just Testing2"}]]
+        (with-pulses-in-writeable-collection [pulse]
+          (card-api-test/with-cards-in-readable-collection [card-1 card-2]
+            ;; The FE will include the original HybridPulseCard, similar to how the API returns the card via GET
+            (let [pulse-cards (:cards ((mt/user->client :rasta) :get 200 (format "pulse/%d" (u/get-id pulse))))]
+              (is (= (merge
+                      pulse-defaults
+                      {:name          "Original Pulse Name"
+                       :creator_id    (mt/user->id :rasta)
+                       :creator       (user-details (mt/fetch-user :rasta))
+                       :cards         (mapv (comp #(assoc % :collection_id true) pulse-card-details) [card-1 card-2])
+                       :channels      []
+                       :collection_id true})
+                     (-> ((mt/user->client :rasta) :put 200 (format "pulse/%d" (u/get-id pulse))
+                          {:cards (concat pulse-cards
+                                          [{:id          (u/get-id card-2)
+                                            :include_csv false
+                                            :include_xls false}])})
+                         pulse-response
+                         (update :channels remove-extra-channels-fields)))))))))))
 
 (deftest update-collection-id-test
   (testing "Can we update *just* the Collection ID of a Pulse?"
@@ -759,35 +763,31 @@
 ;;; |                                              POST /api/pulse/test                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(deftest test-pulse-test
+(deftest send-test-pulse-test
   (testing "POST /api/pulse/test"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (mt/with-model-cleanup [Pulse]
-        (et/with-fake-inbox
-          (mt/dataset sad-toucan-incidents
-            (mt/with-temp* [Collection [collection]
-                            Card       [card  {:dataset_query {:database (mt/id)
-                                                               :type     "query"
-                                                               :query    {:source-table (mt/id :incidents)
-                                                                          :aggregation  [[:count]]}}}]]
-              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-              (card-api-test/with-cards-in-readable-collection [card]
-                (is (= {:ok true}
-                       ((mt/user->client :rasta) :post 200 "pulse/test" {:name          "Daily Sad Toucans"
-                                                                         :collection_id (u/get-id collection)
-                                                                         :cards         [{:id          (u/get-id card)
-                                                                                          :include_csv false
-                                                                                          :include_xls false}]
-                                                                         :channels      [{:enabled       true
-                                                                                          :channel_type  "email"
-                                                                                          :schedule_type "daily"
-                                                                                          :schedule_hour 12
-                                                                                          :schedule_day  nil
-                                                                                          :recipients    [(mt/fetch-user :rasta)]}]
-                                                                         :skip_if_empty false})))
-                (is (= (et/email-to :rasta {:subject "Pulse: Daily Sad Toucans"
-                                            :body    {"Daily Sad Toucans" true}})
-                       (et/regex-email-bodies #"Daily Sad Toucans")))))))))))
+      (mt/with-fake-inbox
+        (mt/dataset sad-toucan-incidents
+          (mt/with-temp* [Collection [collection]
+                          Card       [card  {:dataset_query (mt/mbql-query incidents {:aggregation [[:count]]})}]]
+            (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
+            (card-api-test/with-cards-in-readable-collection [card]
+              (is (= {:ok true}
+                     ((mt/user->client :rasta) :post 200 "pulse/test" {:name          "Daily Sad Toucans"
+                                                                       :collection_id (u/get-id collection)
+                                                                       :cards         [{:id          (u/get-id card)
+                                                                                        :include_csv false
+                                                                                        :include_xls false}]
+                                                                       :channels      [{:enabled       true
+                                                                                        :channel_type  "email"
+                                                                                        :schedule_type "daily"
+                                                                                        :schedule_hour 12
+                                                                                        :schedule_day  nil
+                                                                                        :recipients    [(mt/fetch-user :rasta)]}]
+                                                                       :skip_if_empty false})))
+              (is (= (mt/email-to :rasta {:subject "Pulse: Daily Sad Toucans"
+                                          :body    {"Daily Sad Toucans" true}})
+                     (mt/regex-email-bodies #"Daily Sad Toucans"))))))))))
 
 ;; This test follows a flow that the user/UI would follow by first creating a pulse, then making a small change to
 ;; that pulse and testing it. The primary purpose of this test is to ensure tha the pulse/test endpoint accepts data
@@ -799,7 +799,7 @@
                                 {:database (mt/id), :type :query, :query {:source-table (mt/id :venues)}}}]]
 
     (card-api-test/with-cards-in-readable-collection [card-1 card-2]
-      (et/with-fake-inbox
+      (mt/with-fake-inbox
         (mt/with-model-cleanup [Pulse]
           (mt/with-temp Collection [collection]
             (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
@@ -824,9 +824,9 @@
               ;; Don't update the pulse, but test the pulse with the updated recipients
               (is (= {:ok true}
                      ((mt/user->client :rasta) :post 200 "pulse/test" (assoc result :channels [email-channel]))))
-              (is (= (et/email-to :rasta {:subject "Pulse: A Pulse"
+              (is (= (mt/email-to :rasta {:subject "Pulse: A Pulse"
                                           :body    {"A Pulse" true}})
-                     (et/regex-email-bodies #"A Pulse"))))))))))
+                     (mt/regex-email-bodies #"A Pulse"))))))))))
 
 (deftest dont-run-cards-async-test
   (testing "A Card saved with `:async?` true should not be ran async for a Pulse"
@@ -858,6 +858,37 @@
         (is (= [{:name "channel", :type "select", :displayName "Post to", :options ["#general"], :required true}]
                (-> ((mt/user->client :rasta) :get 200 "pulse/form_input")
                    (get-in [:channels :slack :fields]))))))))
+
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                        GET /api/pulse/preview_card/:id                                         |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(deftest preview-pulse-test
+  (testing "GET /api/pulse/preview_card/:id"
+    (mt/with-temp* [Collection [collection]
+                    Card       [card  {:dataset_query (mt/mbql-query checkins {:limit 5})}]]
+      (letfn [(preview [expected-status-code]
+                (http/client-full-response (mt/user->credentials :rasta)
+                                           :get expected-status-code (format "pulse/preview_card_png/%d" (u/get-id card))))]
+        (testing "Should be able to preview a Pulse"
+          (let [{{:strs [Content-Type]} :headers, :keys [body]} (preview 200)]
+            (is (= "image/png"
+                   Content-Type))
+            (is (some? body))))
+
+        (testing "If rendering a Pulse fails (e.g. because font registration failed) the endpoint should return the error message"
+          (with-redefs [png/register-fonts-if-needed! (fn []
+                                                        (throw (ex-info "Can't register fonts!"
+                                                                        {}
+                                                                        (NullPointerException.))))]
+            (let [{{:strs [Content-Type]} :headers, :keys [body]} (preview 500)]
+              (is (= "application/json;charset=utf-8"
+                     Content-Type))
+              (is (schema= {:message (s/eq "Can't register fonts!")
+                            :trace   s/Any
+                            :via     s/Any}
+                     body)))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
