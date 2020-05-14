@@ -169,11 +169,13 @@ function getFieldsForEngine(engine, details) {
       }
       const overrides = DATABASE_DETAIL_OVERRIDES[field.name];
       // convert database details-fields to Form fields
+      console.log("field = ", field);
       fields.push({
         name: `details.${field.name}`,
         title: field["display-name"],
         type: field.type,
         placeholder: field.placeholder || field.default,
+        options: field.options,
         validate: value => (field.required && !value ? t`required` : null),
         normalize: value =>
           value === "" || value == null

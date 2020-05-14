@@ -62,14 +62,15 @@
     :display-name "SSH tunnel password"
     :type         :password
     :placeholder  "******"}
-   #_{:name         "tunnel-private-key"
+   {:name         "tunnel-auth-option"
+    :display-name "Authenticate via a SSH key or a password"
+    :type         :select
+    :options      {"ssh-key" "SSH key" "password" "Password"}
+    :default-value "ssh-key"}
+   {:name         "tunnel-private-key"
     :display-name "SSH private key to connect to the tunnel"
     :type         :string
-    :placeholder  "Paste the contents of an ssh private key here"}
-   {:name         "tunnel-private-key-file-name"
-    :display-name "Path on the Metabase server to a SSH private key file to connect to the tunnel"
-    :type         :string
-    :placeholder  "/home/YOUR-USERNAME/.ssh/id_rsa"}])
+    :placeholder  "Paste the contents of an ssh private key here"}])
 
 (defn with-tunnel-config
   "Add preferences for ssh tunnels to a drivers :connection-properties"
