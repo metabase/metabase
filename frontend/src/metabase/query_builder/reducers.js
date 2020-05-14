@@ -199,8 +199,6 @@ export const card = handleActions(
     [QUERY_COMPLETED]: {
       next: (state, { payload }) => ({
         ...state,
-        sensibleDisplays: payload.card.sensibleDisplays,
-        selectedDisplay: payload.card.selectedDisplay,
         display: payload.card.display,
       }),
     },
