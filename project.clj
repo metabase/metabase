@@ -112,6 +112,8 @@
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
    [org.apache.commons/commons-lang3 "3.9"]                           ; helper methods for working with java.lang stuff
+   ;; explicit version of BC specified to resolve illegal reflective access errors
+   [org.bouncycastle/bcprov-jdk15on "1.65"]                           ; Bouncy Castle crypto library
    [org.clojars.pntblnk/clj-ldap "0.0.16"]                            ; LDAP client
    [org.eclipse.jetty/jetty-server "9.4.27.v20200227"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
    [org.flatland/ordered "1.5.9"]                                     ; ordered maps & sets
