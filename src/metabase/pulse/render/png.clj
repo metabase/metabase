@@ -36,7 +36,7 @@
     (catch Throwable e
       (let [message (str (trs "Error registering fonts: Metabase will not be able to send Pulses.")
                          " "
-                         (trs "This is a known issue with certain JVMs. See {0} for more details."
+                         (trs "This is a known issue with certain JVMs. See {0} and for more details."
                               "https://github.com/metabase/metabase/issues/7986"))]
         (log/error e message)
         (throw (ex-info message {} e))))))
@@ -95,11 +95,15 @@
   "Render the Hiccup HTML `content` of a Pulse to a PNG image, returning a byte array."
   [{:keys [content]} :- common/RenderedPulseCard
    width]
-  (let [html (html [:html [:body {:style (style/style
-                                          {:margin           0
-                                           :padding          0
-                                           :background-color :white})}
-                           content]])]
-    (with-open [os (ByteArrayOutputStream.)]
-      (render-to-png! html os width)
-      (.toByteArray os))))
+  (try
+    (let [html (html [:html [:body {:style (style/style
+                                            {:margin           0
+                                             :padding          0
+                                             :background-color :white})}
+                             content]])]
+      (with-open [os (ByteArrayOutputStream.)]
+        (render-to-png! html os width)
+        (.toByteArray os)))
+    (catch Throwable e
+      (log/error e (trs "Error rendering Pulse"))
+      (throw e))))

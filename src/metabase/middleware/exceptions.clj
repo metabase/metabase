@@ -57,8 +57,11 @@
 
                      ;; Otherwise it's a 500. Return the full Exception for debugging purposes
                      :else
-                     (assoc (Throwable->map e)
-                            :message message))]
+                     (merge
+                      other-info
+                      (Throwable->map e)
+                      {:message message
+                       :type    (class e)}))]
 
     {:status  (or status-code 500)
      :headers (mw.security/security-headers)

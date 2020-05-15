@@ -885,9 +885,10 @@
             (let [{{:strs [Content-Type]} :headers, :keys [body]} (preview 500)]
               (is (= "application/json;charset=utf-8"
                      Content-Type))
-              (is (schema= {:message (s/eq "Can't register fonts!")
-                            :trace   s/Any
-                            :via     s/Any}
+              (is (schema= {:message  (s/eq "Can't register fonts!")
+                            :trace    s/Any
+                            :via      s/Any
+                            s/Keyword s/Any}
                      body)))))))))
 
 
