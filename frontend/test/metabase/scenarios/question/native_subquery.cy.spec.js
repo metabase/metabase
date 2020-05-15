@@ -1,4 +1,4 @@
-import { signInAsAdmin, restore, signIn, modal } from "__support__/cypress";
+import { signInAsAdmin, restore, signIn } from "__support__/cypress";
 
 describe("scenarios > question > native subquery", () => {
   before(restore);
@@ -65,10 +65,6 @@ describe("scenarios > question > native subquery", () => {
     // They should be able to access both questions
     cy.get("@nestedQuestionId").then(nestedQuestionId => {
       cy.visit(`/question/${nestedQuestionId}`);
-      modal()
-        .contains("Okay")
-        .click();
-
       cy.contains("Showing 41 rows");
     });
 
