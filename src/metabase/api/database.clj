@@ -241,8 +241,7 @@
     (-> (hydrate db (case include
                       "tables"        :tables
                       "tables.fields" [:tables [:fields [:target :has_field_values] :has_field_values]]))
-        (update :tables (fn [tables]
-                          (filter #(and (nil? (:visibility_type %)) (mi/can-read? %)) tables))))))
+        (update :tables (partial filter (every-pred (complement :visibility_type) mi/can-read?))))))
 
 (api/defendpoint GET "/:id"
   "Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
@@ -266,13 +265,12 @@
   []
   (saved-cards-virtual-db-metadata :include-tables? true, :include-fields? true))
 
-(defn- db-metadata [id include-hidden-tables]
+(defn- db-metadata [id include-hidden-tables?]
   (-> (api/read-check Database id)
       (hydrate [:tables [:fields [:target :has_field_values] :has_field_values] :segments :metrics])
-      (update :tables (fn [tables]
-                        (if include-hidden-tables
-                          tables
-                          (filter #(nil? (:visibility_type %)) tables))))
+      (update :tables (if include-hidden-tables?
+                        identity
+                        (partial remove :visibility_type)))
       (update :tables (fn [tables]
                         (for [table tables
                               :when (mi/can-read? table)]
