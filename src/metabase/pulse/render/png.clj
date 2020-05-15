@@ -25,14 +25,15 @@
            org.fit.cssbox.layout.BrowserCanvas
            org.w3c.dom.Document))
 
+(defn- register-font! [filename]
+  (with-open [is (io/input-stream (io/resource filename))]
+    (.registerFont (java.awt.GraphicsEnvironment/getLocalGraphicsEnvironment)
+                   (java.awt.Font/createFont java.awt.Font/TRUETYPE_FONT is))))
+
 (defn- register-fonts! []
   (try
     (doseq [weight ["regular" "700" "900"]]
-      (with-open [is (io/input-stream
-                      (io/resource
-                       (format "frontend_client/app/fonts/lato-v16-latin/lato-v16-latin-%s.ttf" weight)))]
-        (.registerFont (java.awt.GraphicsEnvironment/getLocalGraphicsEnvironment)
-                       (java.awt.Font/createFont java.awt.Font/TRUETYPE_FONT is))))
+      (register-font! (format "frontend_client/app/fonts/lato-v16-latin/lato-v16-latin-%s.ttf" weight)))
     (catch Throwable e
       (let [message (str (trs "Error registering fonts: Metabase will not be able to send Pulses.")
                          " "
@@ -50,11 +51,7 @@
 
 (defn- write-image!
   [^BufferedImage image, ^String format-name, ^ByteArrayOutputStream output-stream]
-  (try
-    (ImageIO/write image format-name output-stream)
-    (catch javax.imageio.IIOException e
-      (log/error e (trs "Error writing image to output stream"))
-      (throw e))))
+  (ImageIO/write image format-name output-stream))
 
 (defn- dom-analyzer
   ^DOMAnalyzer [^Document doc, ^StreamDocumentSource doc-source, ^Dimension window-size]
