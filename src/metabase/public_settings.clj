@@ -275,3 +275,9 @@
   :visibility :public
   :setter     :none
   :getter     (constantly config/mb-version-info))
+
+(defsetting redirect-all-requests-to-https
+  (deferred-tru "Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS")
+  :visibility :public
+  :type       :boolean
+  :default    false)

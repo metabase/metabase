@@ -20,7 +20,9 @@
     {:database 1, :type :query, :query {:source-query {...}, :source-metadata {...}}}
 
   TODO - consider renaming this namespace to `metabase.query-processor.middleware.resolve-card-id-source-tables`"
-  (:require [clojure.string :as str]
+  (:require [clojure
+             [set :as set]
+             [string :as str]]
             [clojure.tools.logging :as log]
             [medley.core :as m]
             [metabase.mbql
@@ -78,7 +80,7 @@
 ;;; |                                       Resolving card__id -> source query                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(s/defn ^:private trim-query :- su/NonBlankString
+(s/defn ^:private trim-sql-query :- su/NonBlankString
   "Native queries can have trailing SQL comments. This works when executed directly, but when we use the query in a
   nested query, we wrap it in another query, which can cause the last part of the query to be unintentionally
   commented out, causing it to fail. This function removes any trailing SQL comment."
@@ -96,22 +98,26 @@
   (let [card
         (or (db/select-one [Card :dataset_query :database_id :result_metadata] :id card-id)
             (throw (ex-info (tru "Card {0} does not exist." card-id)
-                     {:card-id card-id})))
+                            {:card-id card-id})))
 
-        {{mbql-query                     :query
-          database-id                    :database
-          {native-query  :query,
-           template-tags :template-tags} :native} :dataset_query
-         result-metadata                          :result_metadata}
+        {{mbql-query                   :query
+          database-id                  :database
+          {template-tags :template-tags
+           :as           native-query} :native} :dataset_query
+         result-metadata                        :result_metadata}
         card
 
         source-query
         (or mbql-query
             (when native-query
-              (cond-> {:native (trim-query card-id native-query)}
-                (seq template-tags) (assoc :template-tags template-tags)))
+              ;; rename `:query` to `:native` because source queries have a slightly different shape
+              (let [native-query (set/rename-keys native-query {:query :native})]
+                (cond-> native-query
+                  ;; trim trailing slashes from SQL, but not other types of native queries
+                  (string? (:native native-query)) (update :native (partial trim-sql-query card-id))
+                  (empty? template-tags)           (dissoc :template-tags))))
             (throw (ex-info (tru "Missing source query in Card {0}" card-id)
-                     {:card card})))]
+                            {:card card})))]
     ;; log the query at this point, it's useful for some purposes
     ;;
     ;; TODO - it would be nicer if we could just have some sort of debug function to store useful bits of context
