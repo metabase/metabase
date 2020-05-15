@@ -283,8 +283,8 @@
     :display-name su/NonBlankString
 
     ;; Type of this property. Defaults to `:string` if unspecified.
-    ;; `:radio` implies the underlying value is a string.
-    (s/optional-key :type) (s/enum :string :integer :boolean :password :radio)
+    ;; `:select` is a `String` in the backend.
+    (s/optional-key :type) (s/enum :string :integer :boolean :password :select :text)
 
     ;; A default value for this field if the user hasn't set an explicit value. This is shown in the UI as a
     ;; placeholder.
@@ -298,7 +298,7 @@
     ;; Is this property required? Defaults to `false`.
     (s/optional-key :required?) s/Bool
 
-    ;; Options for this property, for use with type `:radio`.
+    ;; Any options for `:select` types
     (s/optional-key :options) {s/Keyword s/Str}}
 
    (complement (every-pred #(contains? % :default) #(contains? % :placeholder)))

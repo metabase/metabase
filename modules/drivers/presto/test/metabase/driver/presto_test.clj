@@ -139,23 +139,35 @@
     {:page {:page  2
             :items 5}}))
 
-(expect
-  "Hmm, we couldn't connect to the database. Make sure your host and port settings are correct"
-  (try
-    (let [details {:ssl            false
-                   :password       "changeme"
-                   :tunnel-host    "localhost"
-                   :tunnel-pass    "BOGUS-BOGUS"
-                   :catalog        "BOGUS"
-                   :host           "localhost"
-                   :port           9999
-                   :tunnel-enabled true
-                   :tunnel-port    22
-                   :tunnel-user    "bogus"}]
-      (tu.log/suppress-output
-        (driver.u/can-connect-with-details? :presto details :throw-exceptions)))
-    (catch Exception e
-      (.getMessage e))))
+(deftest test-connect-via-tunnel
+  (testing "connection fails as expected"
+    (mt/test-driver
+     :presto
+     (is (thrown?
+          java.net.ConnectException
+          (try
+            (let [engine :presto
+                  details {:ssl            false
+                           :password       "changeme"
+                           :tunnel-host    "localhost"
+                           :tunnel-pass    "BOGUS-BOGUS"
+                           :catalog        "BOGUS"
+                           :host           "localhost"
+                           :port           9999
+                           :tunnel-enabled true
+                           ;; we want to use a bogus port here on purpose -
+                           ;; so that locally, it gets a ConnectionRefused,
+                           ;; and in CI it does too. Apache's SSHD library
+                           ;; doesn't wrap every exception in an SshdException
+                           :tunnel-port    21212
+                           :tunnel-user    "bogus"}]
+              (tu.log/suppress-output
+               (driver.u/can-connect-with-details? engine details :throw-exceptions)))
+            (catch Throwable e
+              (loop [^Throwable e e]
+                (or (when (instance? java.net.ConnectException e)
+                      (throw e))
+                    (some-> (.getCause e) recur))))))))))
 
 (deftest db-default-timezone-test
   (mt/test-driver :presto

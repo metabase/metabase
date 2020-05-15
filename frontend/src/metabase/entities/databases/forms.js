@@ -45,6 +45,23 @@ const DATABASE_DETAIL_OVERRIDES = {
       return null;
     },
   }),
+  "tunnel-private-key": (engine, details) => ({
+    title: t`SSH private key to connect to the tunnel`,
+    placeholder: t`Paste the contents of an ssh private key here`,
+    //TODO: this doesn't seem to work
+    lines: 10,
+  }),
+  "tunnel-private-key-passphrase": (engine, details) => ({
+    title: t`Passphrase for the SSH private key`,
+  }),
+  "tunnel-auth-option": (engine, details) => ({
+    title: t`SSH Authentication`,
+    options: [
+      { name: t`SSH Key`, value: "ssh-key" },
+      { name: t`Password`, value: "password" },
+    ],
+    //TODO: the default value of this select doesn't seem to work
+  }),
 };
 
 const AUTH_URL_PREFIXES = {
@@ -167,9 +184,26 @@ function getFieldsForEngine(engine, details) {
       ) {
         continue;
       }
+
+      // hide the auth settings based on which auth method is selected
+      // private key auth needs tunnel-private-key and tunnel-private-key-passphrase
+      if (
+        field.name.startsWith("tunnel-private-") &&
+        details["tunnel-auth-option"] !== "ssh-key"
+      ) {
+        continue;
+      }
+
+      // username / password auth uses tunnel-pass
+      if (
+        field.name === "tunnel-pass" &&
+        details["tunnel-auth-option"] === "ssh-key"
+      ) {
+        continue;
+      }
+
       const overrides = DATABASE_DETAIL_OVERRIDES[field.name];
       // convert database details-fields to Form fields
-      console.log("field = ", field);
       fields.push({
         name: `details.${field.name}`,
         title: field["display-name"],
