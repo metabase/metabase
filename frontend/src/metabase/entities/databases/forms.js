@@ -3,6 +3,7 @@ import { t, jt } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/components/ExternalLink";
+import Link from "metabase/components/Link";
 
 import MetadataSyncScheduleWidget from "metabase/admin/databases/components/widgets/MetadataSyncScheduleWidget";
 import CacheFieldValuesScheduleWidget from "metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget";
@@ -136,8 +137,112 @@ function getAuthCodeEnableAPILink(engine, details) {
   }
 }
 
+function BigQueryServiceAccountToggle({
+  field: { value, onChange },
+  values: { details },
+}) {
+  const saLink = (
+    <ExternalLink href="https://developers.google.com/identity/protocols/OAuth2ServiceAccount">{t`Service Accounts`}</ExternalLink>
+  );
+
+  const hasNoOldStyleData = [
+    "project-id",
+    "auth-code",
+    "client-id",
+    "client-secret",
+  ].every(key => details[key] == null);
+
+  return (value === "" && hasNoOldStyleData) || value === true ? (
+    <div>
+      <p>{jt`Metabase connects to Big Query via ${saLink}.`}</p>
+      {value === true && (
+        <Link className="link" onClick={() => onChange(false)}>
+          {t`Continue using an OAuth application to connect`}
+        </Link>
+      )}
+    </div>
+  ) : (
+    <div>
+      <p>
+        {jt`We recommend switching to use a ${saLink} instead of an OAuth application to connect to BigQuery`}
+      </p>
+      <Link
+        className="link"
+        onClick={() => onChange(true)}
+      >{t`Connect to a Service Account instead`}</Link>
+    </div>
+  );
+}
+
+function getFieldsForBigQuery(details) {
+  const useServiceAccount =
+    // If this field is unset, show the service account form unless an old-style connection exists.
+    details["use-service-account"] == null
+      ? ["project-id", "auth-code", "client-id", "client-secret"].every(
+          key => details[key] == null,
+        )
+      : details["use-service-account"];
+  return {
+    "details-fields": [
+      {
+        name: "use-service-account",
+        type: BigQueryServiceAccountToggle,
+        hidden: true,
+      },
+      ...(useServiceAccount
+        ? []
+        : [
+            {
+              name: "project-id",
+              "display-name": "Project ID",
+              placeholder: "praxis-beacon-120871",
+            },
+          ]),
+      {
+        name: "dataset-id",
+        "display-name": "Dataset ID",
+        placeholder: "toucanSightings",
+      },
+      ...(useServiceAccount
+        ? [
+            {
+              name: "service-account-json",
+              "display-name": "Service account JSON file contents",
+              type: "textFile",
+            },
+          ]
+        : [
+            {
+              name: "client-id",
+              "display-name": "Client ID",
+              placeholder:
+                "1201327674725-y6ferb0feo1hfssr7t40o4aikqll46d4.apps.googleusercontent.com",
+            },
+            {
+              name: "client-secret",
+              "display-name": "Client Secret",
+              placeholder: "dJNi4utWgMzyIFo2JbnsK6Np",
+            },
+            {
+              name: "auth-code",
+              "display-name": "Auth Code",
+              placeholder: "4/HSk-KtxkSzTt61j5zcbee2Rmm5JHkRFbL5gD5lgkXek",
+            },
+          ]),
+      {
+        name: "use-jvm-timezone",
+        "display-name": "Use JVM Time Zone",
+        default: false,
+      },
+    ],
+  };
+}
+
 function getFieldsForEngine(engine, details) {
-  const info = (MetabaseSettings.get("engines") || {})[engine];
+  let info = (MetabaseSettings.get("engines") || {})[engine];
+  if (engine === "bigquery") {
+    info = getFieldsForBigQuery(details);
+  }
   if (info) {
     const fields = [];
     for (const field of info["details-fields"]) {

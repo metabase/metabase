@@ -83,7 +83,7 @@
                     (.setRedirectUri redirect-uri)))]
     {:access-token (.getAccessToken response), :refresh-token (.getRefreshToken response)}))
 
-(def ^{:arglists '([scopes client-id client-secret auth-code service-account-json])} fetch-access-and-refresh-tokens
+(def ^{:arglists '([scopes client-id client-secret auth-code])} fetch-access-and-refresh-tokens
   "Fetch Google access and refresh tokens. This function is memoized because you're only allowed to redeem an
   auth-code once. This way we can redeem it the first time when `can-connect?` checks to see if the DB details are
   viable; then the second time we go to redeem it we can save the access token and refresh token with the newly
@@ -113,7 +113,7 @@
     (if-not (and (seq access-token)
                  (seq refresh-token))
       ;; If Database doesn't have access/refresh tokens fetch them and try again
-      (let [details (-> (merge details (fetch-access-and-refresh-tokens scopes client-id client-secret auth-code service-account-json))
+      (let [details (-> (merge details (fetch-access-and-refresh-tokens scopes client-id client-secret auth-code))
                         (dissoc :auth-code))]
         (when id
           (db/update! Database id, :details details))
