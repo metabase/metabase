@@ -882,7 +882,7 @@
                                                         (throw (ex-info "Can't register fonts!"
                                                                         {}
                                                                         (NullPointerException.))))]
-            (let [{{:strs [Content-Type]} :headers, :keys [body]} (preview 500)]
+            (let [{{:strs [Content-Type]} :headers, :keys [body]} (mt/suppress-output (preview 500))]
               (is (= "application/json;charset=utf-8"
                      Content-Type))
               (is (schema= {:message  (s/eq "Can't register fonts!")

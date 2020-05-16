@@ -108,6 +108,8 @@
   "How often we should check whether the Settings cache is out of date (which requires a DB call)?"
   (u/minutes->ms 1))
 
+(defonce ^:private last-update-check (atom 0))
+
 (defn- should-check-for-updates?
   "Has it has been more than a minute since the last time we checked for updates?"
   []

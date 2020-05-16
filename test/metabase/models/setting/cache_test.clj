@@ -1,6 +1,5 @@
 (ns metabase.models.setting.cache-test
-  (:require [clojure.core.memoize :as memoize]
-            [clojure.test :refer :all]
+  (:require [clojure.test :refer :all]
             [honeysql.core :as hsql]
             [metabase
              [db :as mdb]
@@ -17,7 +16,7 @@
 
 ;;; --------------------------------------------- Cache Synchronization ----------------------------------------------
 
-(defn- clear-cache! []
+(defn clear-cache! []
   (reset! @#'metabase.models.setting.cache/cache* nil))
 
 (defn- settings-last-updated-value-in-cache []
@@ -89,10 +88,10 @@
                 "updated right away even if another instance updates a value...")
     (reset-last-update-check!)
     (clear-cache!)
-    (setting-test/toucan-name "Sam")    ; should restore cache, and put in {"setting-test/toucan-name" "Sam"}
-    ;; since we cleared the memoized value of `should-restore-cache?` call it again to make sure it gets set to
-    ;; `false` as it would IRL if we were calling it again from the same instance
-    (#'cache/should-restore-cache?)
+    (setting-test/toucan-name "Sam")
+    ;; should restore cache, and put in {"setting-test/toucan-name" "Sam"}
+    (is (= "Sam"
+           (setting-test/toucan-name)))
     ;; now have another instance change the value
     (simulate-another-instance-updating-setting! :toucan-name "Bird Can")
     ;; our cache should not be updated yet because it's on a TTL
@@ -126,17 +125,13 @@
 ;; This process was causing the updated `:toucan-name` to never be read on Server 1 because Server 1 "thought" it had
 ;; the latest values and didn't restore the cache from the db
 (deftest sync-test-2
-  (let [internal-cache       @#'metabase.models.setting.cache/cache*
-        external-cache       (atom nil)
-        external-cache-check (memoize/ttl (constantly nil) :ttl/threshold 60000)]
+  (let [internal-cache @#'metabase.models.setting.cache/cache*
+        external-cache (atom nil)]
     (clear-cache!)
     (reset-last-update-check!)
     (setting-test/test-setting-1 "Starfish")
-    ;; Call this to force memoization, simulating process of:
     ;; 1. User writes
-    (@#'metabase.models.setting.cache/should-restore-cache?)
-    (with-redefs [metabase.models.setting.cache/cache*                external-cache
-                  metabase.models.setting.cache/should-restore-cache? external-cache-check]
+    (with-redefs [metabase.models.setting.cache/cache* external-cache]
       (setting-test/toucan-name "Batman Toucan"))
     (setting-test/test-setting-1 "Batman")
     (is (= "Batman Toucan"
