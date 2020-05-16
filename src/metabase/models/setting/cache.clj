@@ -2,7 +2,6 @@
   "Settings cache. Cache is a 1:1 mapping of what's in the DB. Cached lookup time is ~60µs, compared to ~1800µs for DB
   lookup."
   (:require [clojure.core :as core]
-            [clojure.core.memoize :as memoize]
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
             [honeysql.core :as hsql]
@@ -95,34 +94,25 @@
         (when-let [last-known-update (core/get current-cache settings-last-updated-key)]
           ;; compare it to the value in the DB. This is done be seeing whether a row exists
           ;; WHERE value > <local-value>
-          (u/prog1 (db/select-one 'Setting
-                                  {:where [:and
-                                           [:= :key settings-last-updated-key]
-                                           [:> :value last-known-update]]})
-                   (when <>
-                     (log/info (u/format-color 'red
-                                   (trs "Settings have been changed on another instance, and will be reloaded here."))))))))))
+          (u/prog1 (db/select-one-field :value 'Setting
+                     {:where [:and
+                              [:= :key settings-last-updated-key]
+                              [:> :value last-known-update]]})
+            (log/trace "last known Settings update: " (pr-str last-known-update))
+            (log/trace "actual last Settings update:" (pr-str <>))
+            (when <>
+              (log/info (u/format-color 'red
+                            (trs "Settings have been changed on another instance, and will be reloaded here."))))))))))
 
 (def ^:private ^:const cache-update-check-interval-ms
   "How often we should check whether the Settings cache is out of date (which requires a DB call)?"
   (u/minutes->ms 1))
-
-(defonce ^:private last-update-check (atom 0))
 
 (defn- should-check-for-updates?
   "Has it has been more than a minute since the last time we checked for updates?"
   []
   (> (- (System/currentTimeMillis) @last-update-check)
      cache-update-check-interval-ms))
-
-(defn- should-restore-cache?
-  "Do we need to flush and restore the cache?"
-  []
-  (when (should-check-for-updates?)
-    (locking last-update-check
-      (when (should-check-for-updates?)
-        (reset! last-update-check (System/currentTimeMillis))
-        (cache-out-of-date?)))))
 
 (defn restore-cache!
   "Populate cache with the latest hotness from the db"
@@ -145,17 +135,9 @@
   ;; This is not desirable, since either situation would result in duplicate work. Better to just add a quick lock
   ;; here so only one of them does it, since at any rate waiting for the other thread to finish the task in progress is
   ;; certainly quicker than starting the task ourselves from scratch
-  (when (should-restore-cache?)
-    (locking restore-cache-lock
-      (when (should-restore-cache?)
-        (restore-cache!)
-        ;; Now the cache is up-to-date. That is all good, but if we call `should-restore-cache?` again in a second it
-        ;; will still return `true`, because its result is memoized, and we would be on the hook to (again) update the
-        ;; cache. So go ahead and clear the memozied results for `should-restore-cache?`. The next time around when
-        ;; someone calls this it will cache the latest value (which should be `false`)
-        ;;
-        ;; NOTE: I tried using `memo-swap!` instead to set the cached response to `false` here, avoiding the extra DB
-        ;; call the next fn call would make, but it didn't seem to work correctly (I think it was still discarding the
-        ;; new value because of the TTL). So we will just stick with `memo-clear!` for now. (One extra DB call whenever
-        ;; the cache gets invalidated shouldn't be a huge deal)
-        (memoize/memo-clear! should-restore-cache?)))))
+  (when (should-check-for-updates?)
+    (reset! last-update-check (System/currentTimeMillis))
+    (when (cache-out-of-date?)
+      (locking restore-cache-lock
+        (when (cache-out-of-date?)
+          (restore-cache!))))))
