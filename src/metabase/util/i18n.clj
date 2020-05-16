@@ -137,7 +137,7 @@
 (defn localized-string?
   "Returns true if `x` is a system or user localized string instance"
   [x]
-  (some? #(instance? % x) [UserLocalizedString SystemLocalizedString]))
+  (boolean (some #(instance? % x) [UserLocalizedString SystemLocalizedString])))
 
 (defn localized-strings->strings
   "Walks the datastructure `x` and converts any localized strings to regular string"

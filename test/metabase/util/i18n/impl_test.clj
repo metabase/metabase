@@ -35,7 +35,8 @@
 (deftest graceful-fallback-test
   (testing "If a resource bundle doesn't exist, we should gracefully fall back to English"
     (is (= "Translate me 100"
-           (impl/translate "zz" "Translate me {0}" 100)))))
+           (mt/suppress-output
+             (impl/translate "zz" "Translate me {0}" 100))))))
 
 (deftest translate-test
   (mt/with-mock-i18n-bundles {"es"    {"Your database has been added!"  "¡Tu base de datos ha sido añadida!"
@@ -67,8 +68,10 @@
   (mt/with-mock-i18n-bundles {"ba-DD" {"Bad translation {0}" "BaD TrAnSlAtIoN {a}"}}
     (testing "Should fall back to original format string if translated one is busted"
       (is (= "Bad translation 100"
-             (impl/translate "ba-DD" "Bad translation {0}" 100))))
+             (mt/suppress-output
+               (impl/translate "ba-DD" "Bad translation {0}" 100)))))
 
     (testing "if the original format string is busted, should just return format-string as-is (better than nothing)"
       (is (= "Bad original {a}"
-             (impl/translate "ba-DD" "Bad original {a}" 100))))))
+             (mt/suppress-output
+               (impl/translate "ba-DD" "Bad original {a}" 100)))))))

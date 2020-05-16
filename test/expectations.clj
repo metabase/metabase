@@ -119,18 +119,18 @@
       (compare-expr ~e a# ~msg '~form))))
 
 ;; NOCOMMIT
-(def ^:private old-style-tests (atom #{}))
+(def stats (atom #{}))
 
 (t/deftest no-new-expectations-style-tests-test
-  (let [total-old-style-tests                 (count @old-style-tests)
-        total-namespaces-with-old-style-tests (count (into #{} (map namespace @old-style-tests)))
-        [worst-ns worst-ns-symbols]           (apply max-key (comp count second) (seq (group-by namespace @old-style-tests)))]
-    (println (u/format-color 'red "Total old-style expectations tests: %d" total-old-style-tests))
-    (println (u/format-color 'red "Total namespaces still using old-style expectations tests: %d" total-namespaces-with-old-style-tests))
+  (let [total-stats                 (count @stats)
+        total-namespaces-with-stats (count (into #{} (map namespace @stats)))
+        [worst-ns worst-ns-symbols]           (apply max-key (comp count second) (seq (group-by namespace @stats)))]
+    (println (u/format-color 'red "Total old-style expectations tests: %d" total-stats))
+    (println (u/format-color 'red "Total namespaces still using old-style expectations tests: %d" total-namespaces-with-stats))
     (println (u/format-color 'red "Who has the most? %s with %d old-style tests" worst-ns (count worst-ns-symbols)))
     (t/testing "Don't write any new tests using expect!"
-      (t/is (<= total-old-style-tests 1146 #_1145))
-      (t/is (<= total-namespaces-with-old-style-tests 129)))))
+      (t/is (<= total-stats 2018))
+      (t/is (<= total-namespaces-with-stats 128)))))
 
 (defmacro ^:deprecated expect
   "Simple macro that simulates converts an Expectations-style `expect` form into a `clojure.test` `deftest` form."
@@ -142,10 +142,10 @@
    `(expect ~(symbol (format "expect-%d" (hash &form))) ~expected ~actual))
 
   ([test-name expected actual]
-   (when config/is-test?
-     (print \.)
-     (swap! old-style-tests conj (symbol (name (ns-name *ns*)) (name test-name))))
-   `(t/deftest ~test-name
-      (t/testing (format ~(str (name (ns-name *ns*)) ":%d") (:line (meta #'~test-name)))
-        (t/is
-         (~'expect= ~expected ~actual))))))
+   `(do
+      (t/deftest ~test-name
+        (t/testing (format ~(str (name (ns-name *ns*)) ":%d") (:line (meta #'~test-name)))
+          (t/is
+           (~'expect= ~expected ~actual))))
+      (when config/is-test?
+        (swap! stats conj (symbol ~(name (ns-name *ns*)) (str (:line (meta #'~test-name)))))))))

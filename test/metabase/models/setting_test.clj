@@ -9,7 +9,6 @@
              [fixtures :as fixtures]
              [util :refer :all]]
             [metabase.util
-             [encryption :as encryption]
              [encryption-test :as encryption-test]
              [i18n :as i18n :refer [deferred-tru]]]
             [toucan.db :as db]))
@@ -376,19 +375,18 @@
   (testing "If encryption is *enabled*, make sure Settings get saved as encrypted!"
     (encryption-test/with-secret-key "ABCDEFGH12345678"
       (toucan-name "Sad Can")
-      (is (u/base64-string? (actual-value-in-db :toucan-name))))
+      (is (u/base64-string? (actual-value-in-db :toucan-name)))
 
-    (testing "make sure it can be decrypted as well..."
-      (encryption-test/with-secret-key "12345678ABCDEFGH"
-        (toucan-name "Sad Can")
+      (testing "make sure it can be decrypted as well..."
         (is (= "Sad Can"
-               (encryption/decrypt (actual-value-in-db :toucan-name))))))
+               (toucan-name)))))
 
     (testing "But if encryption is not enabled, of course Settings shouldn't get saved as encrypted."
       (encryption-test/with-secret-key nil
         (toucan-name "Sad Can")
         (is (= "Sad Can"
-               (actual-value-in-db :toucan-name)))))))
+               (mt/suppress-output
+                 (actual-value-in-db :toucan-name))))))))
 
 
 ;;; ----------------------------------------------- TIMESTAMP SETTINGS -----------------------------------------------
