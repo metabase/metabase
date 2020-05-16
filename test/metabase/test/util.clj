@@ -361,7 +361,7 @@
     @messages))
 
 (defmacro with-log-messages
-  "Execute BODY, and return a vector of all messages logged using the `log/` family of functions. Messages are of the
+  "Execute `body`, and return a vector of all messages logged using the `log/` family of functions. Messages are of the
   format `[:level throwable message]`, and are returned in chronological order from oldest to newest.
 
      (with-log-messages (log/warn \"WOW\")) ; -> [[:warn nil \"WOW\"]]"

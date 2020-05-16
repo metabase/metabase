@@ -10,6 +10,7 @@
             [medley.core :as m]
             [metabase
              [driver :as driver]
+             [email-test :as et]
              [query-processor :as qp]
              [query-processor-test :as qp.test]]
             [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
@@ -40,6 +41,7 @@
   data/keep-me
   datasets/keep-me
   driver/keep-me
+  et/keep-me
   i18n.tu/keep-me
   initialize/keep-me
   qp/keep-me
@@ -80,6 +82,16 @@
   *driver*
   with-driver]
 
+ [et
+  email-to
+  fake-inbox-email-fn
+  inbox
+  regex-email-bodies
+  reset-inbox!
+  summarize-multipart-email
+  with-expected-messages
+  with-fake-inbox]
+
  [i18n.tu
   with-mock-i18n-bundles
   with-user-locale]
@@ -115,6 +127,7 @@
   sql-jdbc-drivers]
 
  [test-users
+  fetch-user
   user->id
   user->client
   user->credentials
