@@ -27,7 +27,7 @@
                          {:value value, :error error}))
       value)))
 
-(intern 'schema.core 'validator schema-core-validator)
+(alter-var-root #'schema.core/validator (constantly schema-core-validator))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

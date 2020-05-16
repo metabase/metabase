@@ -12,7 +12,7 @@
              [setting :as setting :refer [defsetting]]]
             metabase.public-settings.metastore
             [metabase.util
-             [i18n :refer [available-locales-with-names deferred-tru set-locale trs tru]]
+             [i18n :refer [available-locales-with-names deferred-tru trs tru]]
              [password :as password]]
             [toucan.db :as db])
   (:import java.util.UUID))
@@ -45,7 +45,7 @@
                 (or (setting/get-string :site-uuid)
                     (let [value (str (UUID/randomUUID))]
                       (setting/set-string! :site-uuid value)
-                     value))))
+                      value))))
 
 (defn- normalize-site-url [^String s]
   (let [ ;; remove trailing slashes
@@ -76,9 +76,7 @@
   (str  (deferred-tru "The default language for this Metabase instance.")
         " "
         (deferred-tru "This only applies to emails, Pulses, etc. Users'' browsers will specify the language used in the user interface."))
-  :type      :string
-  :on-change (fn [_ new-value] (when new-value (set-locale new-value)))
-  :default   "en")
+  :default "en")
 
 (defsetting admin-email
   (deferred-tru "The email address users should be referred to if they encounter a problem.")

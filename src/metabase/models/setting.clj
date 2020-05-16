@@ -49,7 +49,8 @@
             [toucan
              [db :as db]
              [models :as models]])
-  (:import java.io.StringWriter))
+  (:import clojure.lang.Symbol
+           java.io.StringWriter))
 
 (models/defmodel Setting
   "The model that underlies `defsetting`."
@@ -70,11 +71,11 @@
 (def ^:private default-tag-for-type
   "Type tag that will be included in the Setting's metadata, so that the getter function will not cause reflection
   warnings."
-  {:string    String
-   :boolean   Boolean
-   :integer   Long
-   :double    Double
-   :timestamp java.time.temporal.Temporal})
+  {:string    `String
+   :boolean   `Boolean
+   :integer   `Long
+   :double    `Double
+   :timestamp 'java.time.temporal.Temporal})
 
 (def ^:private SettingDefinition
   {:name        s/Keyword
@@ -83,7 +84,7 @@
    :type        Type             ; all values are stored in DB as Strings,
    :getter      clojure.lang.IFn ; different getters/setters take care of parsing/unparsing
    :setter      clojure.lang.IFn
-   :tag         (s/maybe Class)  ; type annotation, e.g. ^String, to be applied. Defaults to tag based on :type
+   :tag         (s/maybe Symbol) ; type annotation, e.g. ^String, to be applied. Defaults to tag based on :type
    :sensitive?  s/Bool           ; is this sensitive (never show in plaintext), like a password? (default: false)
    :visibility  Visibility       ; where this setting should be visible (default: :admin)
    :cache?      s/Bool           ; should the getter always fetch this value "fresh" from the DB? (default: false)

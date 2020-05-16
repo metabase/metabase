@@ -42,7 +42,7 @@
    [org.clojure/core.async "0.4.500"
     :exclusions [org.clojure/tools.reader]]
    [org.clojure/core.match "0.3.0"]                                   ; optimized pattern matching library for Clojure
-   [org.clojure/core.memoize "0.7.1"]                                 ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
+   [org.clojure/core.memoize "1.0.236"]                               ; needed by core.match; has useful FIFO, LRU, etc. caching mechanisms
    [org.clojure/data.csv "0.1.4"]                                     ; CSV parsing / generation
    [org.clojure/java.classpath "0.3.0"]                               ; examine the Java classpath from Clojure programs
    [org.clojure/java.jdbc "0.7.11"]                                   ; basic JDBC access from Clojure
@@ -83,7 +83,7 @@
    [com.h2database/h2 "1.4.197"]                                      ; embedded SQL database
    [com.mattbertolini/liquibase-slf4j "2.0.0"]                        ; Java Migrations lib logging. We don't actually use this AFAIK (?)
    [com.taoensso/nippy "2.14.0"]                                      ; Fast serialization (i.e., GZIP) library for Clojure
-   [commons-codec/commons-codec "1.12"]                               ; Apache Commons -- useful codec util fns
+   [commons-codec/commons-codec "1.14"]                               ; Apache Commons -- useful codec util fns
    [commons-io/commons-io "2.6"]                                      ; Apache Commons -- useful IO util fns
    [commons-validator/commons-validator "1.6"                         ; Apache Commons -- useful validation util fns
     :exclusions [commons-beanutils
@@ -92,7 +92,7 @@
    [compojure "1.6.1" :exclusions [ring/ring-codec]]                  ; HTTP Routing library built on Ring
    [crypto-random "1.2.0"]                                            ; library for generating cryptographically secure random bytes and strings
    [dk.ative/docjure "1.13.0"]                                        ; Excel export
-   [environ "1.1.0"]                                                  ; easy environment management
+   [environ "1.2.0"]                                                  ; easy environment management
    [hiccup "1.0.5"]                                                   ; HTML templating
    [honeysql "0.9.5" :exclusions [org.clojure/clojurescript]]         ; Transform Clojure data structures to SQL
    [instaparse "1.4.10"]                                              ; Make your own parser
@@ -112,7 +112,7 @@
    [metabase/connection-pool "1.1.1"]                                 ; simple wrapper around C3P0. JDBC connection pools
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
-   [org.apache.commons/commons-lang3 "3.9"]                           ; helper methods for working with java.lang stuff
+   [org.apache.commons/commons-lang3 "3.10"]                          ; helper methods for working with java.lang stuff
    [org.clojars.pntblnk/clj-ldap "0.0.16"]                            ; LDAP client
    [org.eclipse.jetty/jetty-server "9.4.27.v20200227"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
    [org.flatland/ordered "1.5.9"]                                     ; ordered maps & sets
@@ -121,18 +121,17 @@
    [org.mariadb.jdbc/mariadb-java-client "2.5.1"]                     ; MySQL/MariaDB driver
    [org.postgresql/postgresql "42.2.8"]                               ; Postgres driver
    [org.slf4j/slf4j-log4j12 "1.7.25"]                                 ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
-   [org.tcrawley/dynapath "1.0.0"]                                    ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
-   [org.threeten/threeten-extra "1.5.0"]                               ; extra Java 8 java.time classes like DayOfMonth and Quarter
+   [org.tcrawley/dynapath "1.1.0"]                                    ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
+   [org.threeten/threeten-extra "1.5.0"]                              ; extra Java 8 java.time classes like DayOfMonth and Quarter
    [org.yaml/snakeyaml "1.23"]                                        ; YAML parser (required by liquibase)
    [potemkin "0.4.5" :exclusions [riddley]]                           ; utility macros & fns
    [pretty "1.0.4"]                                                   ; protocol for defining how custom types should be pretty printed
    [prismatic/schema "1.1.11"]                                        ; Data schema declaration and validation library
-   [puppetlabs/i18n "0.8.0"]                                          ; Internationalization library
    [redux "0.1.4"]                                                    ; Utility functions for building and composing transducers
    [riddley "0.2.0"]                                                  ; code walking lib -- used interally by Potemkin, manifold, etc.
    [ring/ring-core "1.8.0"]
-   [ring/ring-jetty-adapter "1.8.0"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
-   [ring/ring-json "0.4.0"]                                           ; Ring middleware for reading/writing JSON automatically
+   [ring/ring-jetty-adapter "1.8.1"]                                  ; Ring adapter using Jetty webserver (used to run a Ring server for unit tests)
+   [ring/ring-json "0.5.0"]                                           ; Ring middleware for reading/writing JSON automatically
    [stencil "0.5.0"]                                                  ; Mustache templates for Clojure
    [toucan "1.15.1" :exclusions [org.clojure/java.jdbc                ; Model layer, hydration, and DB utilities
                                  org.clojure/tools.logging
@@ -179,10 +178,10 @@
 
     :dependencies
     [[clj-http-fake "1.0.3" :exclusions [slingshot]]                  ; Library to mock clj-http responses
-     [jonase/eastwood "0.3.6" :exclusions [org.clojure/clojure]]      ; to run Eastwood
+     [jonase/eastwood "0.3.11" :exclusions [org.clojure/clojure]]     ; to run Eastwood
      [methodical "0.9.4-alpha"]
      [pjstadig/humane-test-output "0.10.0"]
-     [ring/ring-mock "0.3.2"]]
+     [ring/ring-mock "0.4.0"]]
 
     :plugins
     [[lein-environ "1.1.0"]] ; easy access to environment variables

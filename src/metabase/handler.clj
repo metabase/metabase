@@ -47,7 +47,6 @@
    mw.session/wrap-current-user-id         ; looks for :metabase-session-id and sets :metabase-user-id if Session ID is valid
    mw.session/wrap-session-id              ; looks for a Metabase Session ID and assoc as :metabase-session-id
    mw.auth/wrap-api-key                    ; looks for a Metabase API Key on the request and assocs as :metabase-api-key
-   mw.misc/bind-user-locale                ; Binds *locale* for i18n
    wrap-cookies                            ; Parses cookies in the request map and assocs as :cookies
    mw.misc/add-content-type                ; Adds a Content-Type header for any response that doesn't already have one
    mw.misc/disable-streaming-buffering     ; Add header to streaming (async) responses so ngnix doesn't buffer keepalive bytes

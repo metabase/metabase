@@ -28,6 +28,7 @@
              [users :as test-users]]
             [metabase.test.util
              [async :as tu.async]
+             [i18n :as i18n.tu]
              [log :as tu.log]
              [timezone :as tu.tz]]
             [potemkin :as p]
@@ -39,12 +40,13 @@
   data/keep-me
   datasets/keep-me
   driver/keep-me
+  i18n.tu/keep-me
   initialize/keep-me
   qp/keep-me
   qp.test-util/keep-me
   qp.test/keep-me
   sql-jdbc.tu/keep-me
-  [test-users/keep-me]
+  test-users/keep-me
   tt/keep-me
   tu/keep-me
   tu.async/keep-me
@@ -77,6 +79,10 @@
  [driver
   *driver*
   with-driver]
+
+ [i18n.tu
+  with-mock-i18n-bundles
+  with-user-locale]
 
  [initialize
   initialize-if-needed!]

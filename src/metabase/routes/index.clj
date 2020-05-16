@@ -12,8 +12,7 @@
             [metabase.public-settings :as public-settings]
             [metabase.util
              [embed :as embed]
-             [i18n :refer [trs]]]
-            [puppetlabs.i18n.core :refer [*locale*]]
+             [i18n :as i18n :refer [trs]]]
             [ring.util.response :as resp]
             [stencil.core :as stencil])
   (:import java.io.FileNotFoundException))
@@ -38,11 +37,16 @@
     {"" {"Metabase" {"msgid"  "Metabase"
                      "msgstr" ["Metabase"]}}}}))
 
+(defn- localization-json-file-name [locale]
+  (str "frontend_client/app/locales/" (str (i18n/locale locale)) ".json"))
+
 (defn- load-localization* [locale]
   (or
    (when (and locale (not= locale "en"))
      (try
-       (slurp (or (io/resource (str "frontend_client/app/locales/" locale ".json"))
+       (slurp (or (io/resource (localization-json-file-name locale))
+                  (when-let [parent-locale (i18n/parent-locale locale)]
+                    (io/resource (localization-json-file-name parent-locale)))
                   ;; don't try to i18n the Exception message below, we have no locale to translate it to!
                   (throw (FileNotFoundException. (format "Locale '%s' not found." locale)))))
        (catch Throwable e
@@ -52,7 +56,7 @@
 (def ^:private ^{:arglists '([])} load-localization
   (let [memoized-load-localization (memoize load-localization*)]
     (fn []
-      (memoized-load-localization *locale*))))
+      (memoized-load-localization (i18n/user-locale)))))
 
 (defn- load-inline-js* [resource-name]
   (slurp (io/resource (format "frontend_client/inline_js/%s.js" resource-name))))
