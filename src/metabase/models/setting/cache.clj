@@ -14,8 +14,8 @@
              [i18n :as ui18n :refer [trs]]]
             [toucan.db :as db]))
 
-(def ^:private cache*
-  "Settings cache. Map of Setting key (string) -> Setting value (string)."
+(defonce ^:private ^{:doc "Settings cache. Map of Setting key (string) -> Setting value (string)."}
+  cache*
   (atom nil))
 
 (defn cache
@@ -101,25 +101,36 @@
                                            [:> :value last-known-update]]})
                    (when <>
                      (log/info (u/format-color 'red
-                                               (trs "Settings have been changed on another instance, and will be reloaded here."))))))))))
+                                   (trs "Settings have been changed on another instance, and will be reloaded here."))))))))))
 
-(def ^:private cache-update-check-interval-ms
+(def ^:private ^:const cache-update-check-interval-ms
   "How often we should check whether the Settings cache is out of date (which requires a DB call)?"
-  ;; once a minute
-  (* 60 1000))
+  (u/minutes->ms 1))
 
-(def ^:private ^{:arglists '([])} should-restore-cache?
-  "TTL-memoized version of `cache-out-of-date?`. Call this function to see whether we need to repopulate the cache with
-  values from the DB."
-  (memoize/ttl cache-out-of-date? :ttl/threshold cache-update-check-interval-ms))
+(defonce ^:private last-update-check (atom 0))
 
-(def ^:private restore-cache-if-needed-lock (Object.))
+(defn- should-check-for-updates?
+  "Has it has been more than a minute since the last time we checked for updates?"
+  []
+  (> (- (System/currentTimeMillis) @last-update-check)
+     cache-update-check-interval-ms))
+
+(defn- should-restore-cache?
+  "Do we need to flush and restore the cache?"
+  []
+  (when (should-check-for-updates?)
+    (locking last-update-check
+      (when (should-check-for-updates?)
+        (reset! last-update-check (System/currentTimeMillis))
+        (cache-out-of-date?)))))
 
 (defn restore-cache!
   "Populate cache with the latest hotness from the db"
   []
   (log/debug (trs "Refreshing Settings cache..."))
   (reset! cache* (db/select-field->field :key :value 'Setting)))
+
+(defonce ^:private restore-cache-lock (Object.))
 
 (defn restore-cache-if-needed!
   "Check whether we need to repopulate the cache with fresh values from the DB (because the cache is either empty or
@@ -134,16 +145,17 @@
   ;; This is not desirable, since either situation would result in duplicate work. Better to just add a quick lock
   ;; here so only one of them does it, since at any rate waiting for the other thread to finish the task in progress is
   ;; certainly quicker than starting the task ourselves from scratch
-  (locking restore-cache-if-needed-lock
-    (when (should-restore-cache?)
-      (restore-cache!)
-      ;; Now the cache is up-to-date. That is all good, but if we call `should-restore-cache?` again in a second it
-      ;; will still return `true`, because its result is memoized, and we would be on the hook to (again) update the
-      ;; cache. So go ahead and clear the memozied results for `should-restore-cache?`. The next time around when
-      ;; someone calls this it will cache the latest value (which should be `false`)
-      ;;
-      ;; NOTE: I tried using `memo-swap!` instead to set the cached response to `false` here, avoiding the extra DB
-      ;; call the next fn call would make, but it didn't seem to work correctly (I think it was still discarding the
-      ;; new value because of the TTL). So we will just stick with `memo-clear!` for now. (One extra DB call whenever
-      ;; the cache gets invalidated shouldn't be a huge deal)
-      (memoize/memo-clear! should-restore-cache?))))
+  (when (should-restore-cache?)
+    (locking restore-cache-lock
+      (when (should-restore-cache?)
+        (restore-cache!)
+        ;; Now the cache is up-to-date. That is all good, but if we call `should-restore-cache?` again in a second it
+        ;; will still return `true`, because its result is memoized, and we would be on the hook to (again) update the
+        ;; cache. So go ahead and clear the memozied results for `should-restore-cache?`. The next time around when
+        ;; someone calls this it will cache the latest value (which should be `false`)
+        ;;
+        ;; NOTE: I tried using `memo-swap!` instead to set the cached response to `false` here, avoiding the extra DB
+        ;; call the next fn call would make, but it didn't seem to work correctly (I think it was still discarding the
+        ;; new value because of the TTL). So we will just stick with `memo-clear!` for now. (One extra DB call whenever
+        ;; the cache gets invalidated shouldn't be a huge deal)
+        (memoize/memo-clear! should-restore-cache?)))))
