@@ -1,15 +1,20 @@
 import React from "react";
 import { t, jt } from "ttag";
 
+import { color } from "metabase/lib/colors";
 import ExternalLink from "metabase/components/ExternalLink";
 import Link from "metabase/components/Link";
 
+const SERVICE_ACCOUNT_DOCS_URL =
+  "https://developers.google.com/identity/protocols/OAuth2ServiceAccount";
 function BigQueryServiceAccountToggle({
   field: { value, onChange },
   values: { details },
 }) {
   const saLink = (
-    <ExternalLink href="https://developers.google.com/identity/protocols/OAuth2ServiceAccount">{t`Service Accounts`}</ExternalLink>
+    <ExternalLink
+      href={SERVICE_ACCOUNT_DOCS_URL}
+    >{t`Service Accounts`}</ExternalLink>
   );
 
   const hasNoOldStyleData = ["client-id", "client-secret"].every(
@@ -26,7 +31,14 @@ function BigQueryServiceAccountToggle({
       )}
     </div>
   ) : (
-    <div>
+    <div
+      style={{
+        borderLeftWidth: 3,
+        borderLeftStyle: "solid",
+        borderLeftColor: color("brand"),
+      }}
+      className="pl1"
+    >
       <p>
         {jt`We recommend switching to use ${saLink} instead of an OAuth application to connect to BigQuery`}
       </p>
