@@ -35,7 +35,8 @@
    :last_login       false
    :ldap_auth        false
    :login_attributes nil
-   :updated_at       true})
+   :updated_at       true
+   :locale           nil})
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                   Fetching Users -- GET /api/user, GET /api/user/current, GET /api/user/:id                    |

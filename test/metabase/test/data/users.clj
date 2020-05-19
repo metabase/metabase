@@ -73,7 +73,6 @@
               :is_qbnewb    true
               :is_active    active)))))
 
-
 (s/defn fetch-user :- UserInstance
   "Fetch the User object associated with `username`. Creates user if needed.
 

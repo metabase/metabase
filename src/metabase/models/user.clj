@@ -122,12 +122,12 @@
 
 (def ^:private default-user-columns
   "Sequence of columns that are normally returned when fetching a User from the DB."
-  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb :locale])
+  [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb])
 
 (def admin-or-self-visible-columns
   "Sequence of columns that we can/should return for admins fetching a list of all Users, or for the current user
   fetching themselves. Needed to power the admin page."
-  (into default-user-columns [:google_auth :ldap_auth :is_active :updated_at :login_attributes]))
+  (into default-user-columns [:google_auth :ldap_auth :is_active :updated_at :login_attributes :locale]))
 
 (def non-admin-or-self-visible-columns
   "Sequence of columns that we will allow non-admin Users to see when fetching a list of Users. Why can non-admins see
