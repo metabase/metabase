@@ -1,4 +1,6 @@
 (ns metabase.util.i18n.impl
+  "Lower-level implementation functions for `metabase.util.i18n`. Most of this is not meant to be used directly; use the
+  functions and macros in `metabase.util.i18n` instead."
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.tools.logging :as log]
@@ -58,6 +60,9 @@
     (*bundle-fn* locale)))
 
 (def ^:dynamic *translated-format-string-fn*
+  "Function to use to find the translated version of `format-string` for `locale` -- normally this loads the matching
+  `ResourceBundle` and looks for a matching key, returning `nil` if the bundle or the key weren't found. You can
+  rebind this for test/mocking purposes."
   (fn [^Locale locale format-string]
     (when (seq format-string)
       (when-let [bundle (bundle locale)]
@@ -66,8 +71,9 @@
           ;; no translated version available
           (catch MissingResourceException _))))))
 
-(defn translated-format-string
-  "Find the translated version of `message`"
+(defn- translated-format-string
+  "Find the translated version of `format-string` in the bundle for `locale-or-name`, or `nil` if none can be found.
+  Does not search 'parent' (country-only) locale bundle."
   ^String [locale-or-name format-string]
   (*translated-format-string-fn* (locale locale-or-name) format-string))
 
@@ -88,7 +94,7 @@
   (when (seq format-string)
     (try
       (let [locale                        (locale locale-or-name)
-            ^Sting translated             (or (when (= locale Locale/ENGLISH)
+            ^String translated            (or (when (= locale Locale/ENGLISH)
                                                 format-string)
                                               (translated-format-string locale format-string)
                                               (when-let [parent-locale (parent-locale locale)]

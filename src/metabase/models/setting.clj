@@ -133,7 +133,8 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defprotocol ^:private SettingName
-  (setting-name ^String [setting-definition-or-name]))
+  (setting-name ^String [setting-definition-or-name]
+    "String name of a Setting, e.g. `\"site-url\"`. Works with strings, keywords, or Setting definition maps."))
 
 (extend-protocol SettingName
   clojure.lang.IPersistentMap
