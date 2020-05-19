@@ -1,19 +1,22 @@
 (ns metabase.query-processor.middleware.constraints
   "Middleware that adds default constraints to limit the maximum number of rows returned to queries that specify the
-  `:add-default-userland-constraints?` `:middleware` option.")
+  `:add-default-userland-constraints?` `:middleware` option."
+  (:require [metabase.config :as config]))
 
-(def ^:private max-results-bare-rows
+(defn max-results-bare-rows
   "Maximum number of rows to return specifically on :rows type queries via the API."
-  2000)
+  []
+  (config/config-int :mb-max-results-bare-rows))
 
-(def ^:private max-results
+(defn max-results
   "General maximum number of rows to return from an API query."
-  10000)
+  []
+  (config/config-int :mb-max-results))
 
 (def default-query-constraints
   "Default map of constraints that we apply on dataset queries executed by the api."
-  {:max-results           max-results
-   :max-results-bare-rows max-results-bare-rows})
+  {:max-results           (max-results)
+   :max-results-bare-rows (max-results-bare-rows)})
 
 (defn- ensure-valid-constraints
   "`:max-results-bare-rows` must be less than or equal to `:max-results`, so if someone sets `:max-results` but not

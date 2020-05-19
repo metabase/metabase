@@ -35,6 +35,10 @@
    ;; pulse settings
    :mb-pulse-rows-limit "20" ; Maximum number of rows to render in a Pulse image.
    :mb-pulse-cols-limit "10" ; Maximum number of columns to render in a Pulse image.
+
+   ;; query limits
+   :mb-max-results-bare-rows "2000"  ; Maximum number of rows to return specifically on :rows type queries via the API.
+   :mb-max-results           "10000" ; General maximum number of rows to return from an API query.
    })
 
 
