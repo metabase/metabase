@@ -142,6 +142,12 @@
     (hsql/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start) (sql.qp/->honeysql driver length))
     (hsql/call :substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver start))))
 
+(defmethod sql.qp/->honeysql [:oracle :concat]
+  [driver [_ & args]]
+  (->> args
+       (map (partial sql.qp/->honeysql driver))
+       (reduce (partial hsql/call :concat))))
+
 (defmethod sql.qp/->honeysql [:oracle :regex-match-first]
   [driver [_ arg pattern]]
   (hsql/call :regexp_substr (sql.qp/->honeysql driver arg) (sql.qp/->honeysql driver pattern)))
