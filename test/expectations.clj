@@ -129,8 +129,8 @@
     (println (u/format-color 'red "Total namespaces still using old-style expectations tests: %d" total-namespaces-with-stats))
     (println (u/format-color 'red "Who has the most? %s with %d old-style tests" worst-ns (count worst-ns-symbols)))
     (t/testing "Don't write any new tests using expect!"
-      (t/is (<= total-stats 2018))
-      (t/is (<= total-namespaces-with-stats 128)))))
+      (t/is (<= total-stats 2003))
+      (t/is (<= total-namespaces-with-stats 126)))))
 
 (defmacro ^:deprecated expect
   "Simple macro that simulates converts an Expectations-style `expect` form into a `clojure.test` `deftest` form."
