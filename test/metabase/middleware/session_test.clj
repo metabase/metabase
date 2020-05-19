@@ -2,11 +2,16 @@
   (:require [clojure.test :refer :all]
             [environ.core :as env]
             [expectations :refer [expect]]
-            [java-time :as t]
+            [metabase
+             [db :as mdb]
+             [models :refer [Session User]]
+             [test :as mt]]
             [metabase.api.common :refer [*current-user* *current-user-id*]]
+            [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.middleware.session :as mw.session]
             [metabase.test.data.users :as test-users]
-            [ring.mock.request :as mock])
+            [ring.mock.request :as mock]
+            [toucan.db :as db])
   (:import java.util.UUID))
 
 (deftest set-session-cookie-test
@@ -59,15 +64,21 @@
 
 (deftest session-expired-test
   (testing "Session expiration time = 1 minute"
-    (doseq [[created-at expected msg]
-            [[nil                                              true  "nil created-at"]
-             [(t/offset-date-time)                             false "brand-new session"]
-             [#t "1970-01-01T00:00:00Z"                        true  "really old session"]
-             [(t/instant (- (System/currentTimeMillis) 61000)) true  "session that is 61 seconds old"]
-             [(t/instant (- (System/currentTimeMillis) 59000)) false "session that is 59 seconds old"]]]
-      (is (= expected
-             (#'mw.session/session-expired? {:created_at created-at} 1))
-          (format "%s %s be expired." msg (if expected "SHOULD" "SHOULD NOT"))))))
+    (with-redefs [env/env (assoc env/env :max-session-age "1")]
+      (doseq [[created-at expected msg]
+              [[:%now                                                               false "brand-new session"]
+               [#t "1970-01-01T00:00:00Z"                                           true  "really old session"]
+               [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -61 :second) true  "session that is 61 seconds old"]
+               [(sql.qp/add-interval-honeysql-form (mdb/db-type) :%now -59 :second) false "session that is 59 seconds old"]]]
+        (testing (format "\n%s %s be expired." msg (if expected "SHOULD" "SHOULD NOT"))
+          (mt/with-temp User [{user-id :id}]
+            (let [session-id (str (UUID/randomUUID))]
+              (db/simple-insert! Session {:id session-id, :user_id user-id, :created_at created-at})
+              (let [session (#'mw.session/current-user-info-for-session session-id)]
+                (if expected
+                  (is (= nil
+                         session))
+                  (is (some? session)))))))))))
 
 
 ;;; ---------------------------------------- TEST wrap-session-id middleware -----------------------------------------

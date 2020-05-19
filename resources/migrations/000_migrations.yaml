@@ -6226,3 +6226,18 @@ databaseChangeLog:
         - dropColumn:
             tableName: report_card
             columnName: read_permissions
+
+# Add User `locale` -- when set, this User will see the Metabase in this Locale rather than the system default Locale
+# (the `site-locale` Setting).
+
+  - changeSet:
+      id: 164
+      author: camsaul
+      comment: 'Added 0.35.0'
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              name: locale
+              remarks: 'Preferred ISO locale (language/country) code, e.g "en" or "en-US", for this User. Overrides site default.'
+              type: varchar(5)
