@@ -134,20 +134,15 @@
       (db/honeysql->sql
        {:select    [[:session.user_id :metabase-user-id]
                     [:user.is_superuser :is-superuser?]
-                    :user.locale]
+                    [:user.locale :user-locale]]
         :from      [[Session :session]]
         :left-join [[User :user] [:= :session.user_id :user.id]]
         :where     [:and
                     [:= :user.is_active true]
                     [:= :session.id (hsql/raw "?")]
                     (let [oldest-allowed (sql.qp/add-interval-honeysql-form db-type :%now (- max-age-minutes) :minute)]
-                      (println "oldest-allowed:" oldest-allowed) ; NOCOMMIT
                       [:> :session.created_at oldest-allowed])]
         :limit     1})))))
-
-(defn- fast-session-with-id [session-id]
-  (first (jdbc/query (db/connection) (conj (session-with-id-query (mdb/db-type) (config/config-int :max-session-age))
-                                           session-id))))
 
 (defn- current-user-info-for-session
   "Return User ID and superuser status for Session with `session-id` if it is valid and not expired."
@@ -161,7 +156,7 @@
   (merge request (current-user-info-for-session metabase-session-id)))
 
 (defn wrap-current-user-id
-  "Add `:metabase-user-id` to the request if a valid session token was passed."
+  "Add `:metabase-user-id`, `:is-superuser?`, and `:user-locale` to the request if a valid session token was passed."
   [handler]
   (fn [request respond raise]
     (handler (wrap-current-user-id* request) respond raise)))
@@ -175,9 +170,9 @@
 
 (defn do-with-current-user
   "Impl for `with-current-user`."
-  [{:keys [metabase-user-id is-superuser? locale]} thunk]
+  [{:keys [metabase-user-id is-superuser? user-locale]} thunk]
   (binding [*current-user-id*              metabase-user-id
-            i18n/*user-locale*             locale
+            i18n/*user-locale*             user-locale
             *is-superuser?*                (boolean is-superuser?)
             *current-user*                 (delay (find-user metabase-user-id))
             *current-user-permissions-set* (delay (some-> metabase-user-id user/permissions-set))]
@@ -191,10 +186,11 @@
   "Middleware that binds `metabase.api.common/*current-user*`, `*current-user-id*`, `*is-superuser?*`, and
   `*current-user-permissions-set*`.
 
-  *  `*current-user-id*`             int ID or nil of user associated with request
-  *  `*current-user*`                delay that returns current user (or nil) from DB
-  *  `*is-superuser?*`               Boolean stating whether current user is a superuser.
-  *  `current-user-permissions-set*` delay that returns the set of permissions granted to the current user from DB"
+  *  `*current-user-id*`                int ID or nil of user associated with request
+  *  `*current-user*`                   delay that returns current user (or nil) from DB
+  *  `metabase.util.i18n/*user-locale*` ISO locale code e.g `en` or `en-US` to use for the current User. Overrides `site-locale` if set.
+  *  `*is-superuser?*`                  Boolean stating whether current user is a superuser.
+  *  `current-user-permissions-set*`    delay that returns the set of permissions granted to the current user from DB"
   [handler]
   (fn [request respond raise]
     (with-current-user-for-request request
@@ -206,5 +202,5 @@
   {:style/indent 1}
   [current-user-id & body]
   `(do-with-current-user
-    (db/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] :locale] :id ~current-user-id)
+    (db/select-one [User [:id :metabase-user-id] [:is_superuser :is-superuser?] [:locale :user-locale]] :id ~current-user-id)
     (fn [] ~@body)))

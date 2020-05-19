@@ -10,6 +10,7 @@
             [metabase.driver.sql.query-processor :as sql.qp]
             [metabase.middleware.session :as mw.session]
             [metabase.test.data.users :as test-users]
+            [metabase.util.i18n :as i18n]
             [ring.mock.request :as mock]
             [toucan.db :as db])
   (:import java.util.UUID))
@@ -160,3 +161,35 @@
    :user    {}}
   (user-bound-handler
    (request-with-user-id 0)))
+
+
+;;; ----------------------------------------------------- Locale -----------------------------------------------------
+
+(deftest bind-locale-test
+  (let [handler        (-> (fn [_ respond _]
+                             (respond i18n/*user-locale*))
+                           mw.session/bind-current-user
+                           mw.session/wrap-current-user-id)
+        session-locale (fn [session-id]
+                         (handler
+                          {:metabase-session-id session-id}
+                          identity
+                          (fn [e] (throw e))))]
+    (testing "No Session"
+      (is (= nil
+             (session-locale nil))))
+
+    (testing "w/ Session"
+      (testing "for user with no `:locale`"
+        (mt/with-temp User [{user-id :id}]
+          (let [session-id (str (UUID/randomUUID))]
+            (db/insert! Session {:id session-id, :user_id user-id})
+            (is (= nil
+                   (session-locale session-id))))))
+
+      (testing "for user *with* `:locale`"
+        (mt/with-temp User [{user-id :id} {:locale "es-MX"}]
+          (let [session-id (str (UUID/randomUUID))]
+            (db/insert! Session {:id session-id, :user_id user-id, :created_at :%now})
+            (is (= "es-MX"
+                   (session-locale session-id)))))))))
