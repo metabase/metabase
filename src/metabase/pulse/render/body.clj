@@ -2,6 +2,9 @@
   (:require [cheshire.core :as json]
             [hiccup.core :refer [h]]
             [medley.core :as m]
+            [metabase
+             [config :as config]
+             [types :as types]]
             [metabase.pulse.render
              [color :as color]
              [common :as common]
@@ -10,17 +13,18 @@
              [sparkline :as sparkline]
              [style :as style]
              [table :as table]]
-            [metabase.types :as types]
             [metabase.util.i18n :refer [trs]]
             [schema.core :as s]))
 
-(def rows-limit
+(defn rows-limit
   "Maximum number of rows to render in a Pulse image."
-  20)
+  []
+  (config/config-int :mb-pulse-rows-limit))
 
-(def cols-limit
+(defn cols-limit
   "Maximum number of columns to render in a Pulse image."
-  10)
+  []
+  (config/config-int :mb-pulse-cols-limit))
 
 ;; NOTE: hiccup does not escape content by default so be sure to use "h" to escape any user-controlled content :-/
 
@@ -117,7 +121,7 @@
         limited-cols (take column-limit cols)]
     (cons
      (query-results->header-row remapping-lookup card limited-cols bar-column)
-     (query-results->row-seq timezone-id remapping-lookup limited-cols (take rows-limit rows) bar-column max-value))))
+     (query-results->row-seq timezone-id remapping-lookup limited-cols (take (rows-limit) rows) bar-column max-value))))
 
 (defn- strong-limit-text [number]
   [:strong {:style (style/style {:color style/color-gray-3})} (h (common/format-number number))])
@@ -179,13 +183,13 @@
                     (table/render-table
                      (color/make-color-selector data (:visualization_settings card))
                      (mapv :name (:cols data))
-                     (prep-for-html-rendering timezone-id card data nil nil cols-limit))
-                    (render-truncation-warning cols-limit (count-displayed-columns cols) rows-limit (count rows))]]
+                     (prep-for-html-rendering timezone-id card data nil nil (cols-limit)))
+                    (render-truncation-warning (cols-limit) (count-displayed-columns cols) (rows-limit) (count rows))]]
     {:attachments
      nil
 
      :content
-     (if-let [results-attached (attached-results-text render-type cols cols-limit rows rows-limit)]
+     (if-let [results-attached (attached-results-text render-type cols (cols-limit) rows (rows-limit))]
        (list results-attached table-body)
        (list table-body))}))
 
@@ -202,7 +206,7 @@
       (table/render-table (color/make-color-selector data (:visualization_settings card))
                           (mapv :name cols)
                           (prep-for-html-rendering timezone-id card data y-axis-rowfn max-value 2))
-      (render-truncation-warning 2 (count-displayed-columns cols) rows-limit (count rows))]}))
+      (render-truncation-warning 2 (count-displayed-columns cols) (rows-limit) (count rows))]}))
 
 (s/defmethod render :scalar :- common/RenderedPulseCard
   [_ _ timezone-id card {:keys [cols rows]}]
