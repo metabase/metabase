@@ -277,7 +277,6 @@
                    :table_id               true
                    :can_write              true
                    :dashboard_count        0
-                   :read_permissions       nil
                    :result_metadata        true
                    :creator                (merge
                                             (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login])
@@ -492,7 +491,6 @@
                                          :first_name   "Rasta"
                                          :email        "rasta@metabase.com"})
                :dataset_query          (tu/obj->json->obj (:dataset_query card))
-               :read_permissions       nil
                :display                "table"
                :query_type             "query"
                :visualization_settings {}

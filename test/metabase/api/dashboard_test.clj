@@ -200,7 +200,6 @@
                                                            :creator_id             (user->id :rasta)
                                                            :collection_id          true
                                                            :display                "table"
-                                                           :read_permissions       nil
                                                            :visualization_settings {}
                                                            :result_metadata        nil})
                            :series                 []}]})
@@ -253,7 +252,6 @@
                                                            :collection_id          true
                                                            :display                "table"
                                                            :query_type             nil
-                                                           :read_permissions       nil
                                                            :visualization_settings {}
                                                            :result_metadata        nil})
                            :series                 []}]})
