@@ -14,7 +14,7 @@
              [user :as user :refer [User]]]
             [metabase.util :as u]
             [metabase.util
-             [i18n :as i18n :refer [deferred-tru tru]]
+             [i18n :as i18n :refer [tru]]
              [schema :as su]]
             [schema.core :as s]
             [toucan
@@ -141,10 +141,6 @@
     (not google_auth)
     (not ldap_auth))))
 
-(def ^:private ValidLocale
-  (su/with-api-error-message (s/pred i18n/available-locale? "valid locale")
-    (deferred-tru "String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.")))
-
 (api/defendpoint PUT "/:id"
   "Update an existing, active `User`."
   [id :as {{:keys [email first_name last_name group_ids is_superuser login_attributes locale] :as body} :body}]
@@ -154,7 +150,7 @@
    group_ids        (s/maybe [su/IntGreaterThanZero])
    is_superuser     (s/maybe s/Bool)
    login_attributes (s/maybe user/LoginAttributes)
-   locale           (s/maybe ValidLocale)}
+   locale           (s/maybe su/ValidLocale)}
   (check-self-or-superuser id)
   ;; only allow updates if the specified account is active
   (api/let-404 [user-before-update (fetch-user :id id, :is_active true)]

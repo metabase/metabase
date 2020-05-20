@@ -6,7 +6,7 @@
             [medley.core :as m]
             [metabase.util :as u]
             [metabase.util
-             [i18n :refer [deferred-tru]]
+             [i18n :as i18n :refer [deferred-tru]]
              [password :as password]]
             [schema
              [core :as s]
@@ -250,3 +250,8 @@
   "Schema for a valid map of embedding params."
   (with-api-error-message (s/maybe {s/Keyword (s/enum "disabled" "enabled" "locked")})
     (deferred-tru "value must be a valid embedding params map.")))
+
+(def ValidLocale
+  "Schema for a valid ISO Locale code e.g. `en` or `en-US`. Case-insensitive and allows dashes or underscores."
+  (with-api-error-message (s/constrained NonBlankString i18n/available-locale?)
+    (deferred-tru "String must be a valid two-letter ISO language or language-country code e.g. 'en' or 'en_US'.")))

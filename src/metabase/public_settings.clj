@@ -12,7 +12,7 @@
              [setting :as setting :refer [defsetting]]]
             metabase.public-settings.metastore
             [metabase.util
-             [i18n :refer [available-locales-with-names deferred-tru trs tru]]
+             [i18n :as i18n :refer [available-locales-with-names deferred-tru trs tru]]
              [password :as password]]
             [toucan.db :as db])
   (:import java.util.UUID))
@@ -55,8 +55,7 @@
             s
             (str "http://" s))]
     ;; check that the URL is valid
-    (assert (u/url? s)
-      (tru "Invalid site URL: {0}" s))
+    (assert (u/url? s) (tru "Invalid site URL: {0}" (pr-str s)))
     s))
 
 ;; This value is *guaranteed* to never have a trailing slash :D
@@ -76,7 +75,12 @@
   (str  (deferred-tru "The default language for this Metabase instance.")
         " "
         (deferred-tru "This only applies to emails, Pulses, etc. Users'' browsers will specify the language used in the user interface."))
-  :default "en")
+  :default "en"
+  :setter (fn [new-value]
+            (when new-value
+              (when-not (i18n/available-locale? new-value)
+                (throw (ex-info (tru "Invalid locale {0}" (pr-str new-value)) {:status-code 400}))))
+            (setting/set-string! :site-locale (some-> new-value i18n/normalized-locale-string))))
 
 (defsetting admin-email
   (deferred-tru "The email address users should be referred to if they encounter a problem.")

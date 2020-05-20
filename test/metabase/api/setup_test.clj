@@ -6,146 +6,178 @@
              [email :as email]
              [http-client :as http]
              [public-settings :as public-settings]
-             [setup :as setup]]
+             [setup :as setup]
+             [test :as mt]]
             [metabase.api.setup :as setup-api]
             [metabase.integrations.slack :as slack]
             [metabase.models
              [database :refer [Database]]
+             [setting :as setting]
              [user :refer [User]]]
-            [metabase.test
-             [fixtures :as fixtures]
-             [util :as tu]]
+            [metabase.test.fixtures :as fixtures]
             [schema.core :as s]
             [toucan.db :as db]))
 
+;; make sure the default test users are created before running these tests, otherwise we're going to run into issues
+;; if it attempts to delete this user and it is the only admin test user
 (use-fixtures :once (fixtures/initialize :test-users))
-
-;; ## POST /api/setup/user
-;;
-(deftest create-superuser-test
-  (testing "Check that we can create a new superuser via setup-token"
-    (let [email (tu/random-email)]
-      (try
-        ;; make sure the default test users are created before running this test, otherwise we're going to run into
-        ;; issues if it attempts to delete this user and it is the only admin test user
-        (tu/discard-setting-changes [site-name anon-tracking-enabled admin-email]
-          (let [api-response (http/client :post 200 "setup" {:token (setup/create-token!)
-                                                             :prefs {:site_name "Metabase Test"}
-                                                             :user  {:first_name (tu/random-name)
-                                                                     :last_name  (tu/random-name)
-                                                                     :email      email
-                                                                     :password   "anythingUP12!!"}})]
-            (is (= true
-                   (tu/is-uuid-string? (:id api-response)))
-                "API response should return a Session UUID ")
-            ;; reset our setup token
-            (setup/create-token!)
-            (is (= email
-                   (public-settings/admin-email))
-                "Creating a new admin user should set the `admin-email` Setting")))
-        (finally
-          (db/delete! User :email email))))))
-
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                  POST /setup                                                   |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- setup-body [token db-name user-email]
-  {:token    token
-   :prefs    {:site_name "Test", :allow_tracking "true"},
-   :database {:engine           "h2"
-              :name             db-name
-              :details          {:db  "file:/home/hansen/Downloads/Metabase/longnames.db",
-                                 :ssl true}
-              :auto_run_queries false}
-   :user     {:first_name (tu/random-name)
-              :last_name  (tu/random-name)
-              :email      user-email
-              :password   "Testtest1"
-              :site_name  "Test"}})
+(defn- do-with-setup* [request-body thunk]
+  (try
+    (mt/discard-setting-changes [site-name site-locale anon-tracking-enabled admin-email]
+      (thunk))
+    (finally
+      (db/delete! User :email (get-in request-body [:user :email]))
+      (when-let [db-name (get-in request-body [:database :name])]
+        (db/delete! Database :name db-name)))))
 
-(defn- do-setup [f]
-  (let [token      (setup/create-token!)
-        db-name    (tu/random-name)
-        user-email (tu/random-email)
-        body       (setup-body token db-name user-email)]
-    (try
-      (tu/discard-setting-changes [site-name anon-tracking-enabled admin-email]
-        (f body token db-name user-email))
-      (finally
-        (db/delete! Database :name db-name)
-        (db/delete! User :email user-email)))))
+(defn- do-with-setup [request-body thunk]
+  (let [request-body (merge-with merge
+                       {:token (setup/create-token!)
+                        :prefs {:site_name "Metabase Test"}
+                        :user  {:first_name (mt/random-name)
+                                :last_name  (mt/random-name)
+                                :email      (mt/random-email)
+                                :password   "anythingUP12!!"}}
+                       request-body)]
+    (do-with-setup*
+     request-body
+     (fn []
+       (testing "API response should return a Session UUID"
+         (is (schema= {:id (s/pred mt/is-uuid-string? "UUID string")}
+                      (http/client :post 200 "setup" request-body))))
+       ;; reset our setup token
+       (setup/create-token!)
+       (thunk)))))
 
-(defmacro ^:private setup
-  {:style/indent 1}
-  [[body-binding token-binding db-name-binding user-email-binding] & body]
-  `(do-setup (fn [~(or body-binding '_) ~(or token-binding '_) ~(or db-name-binding '_) ~(or user-email-binding '_)]
-               ~@body)))
+(defmacro ^:private with-setup [request-body & body]
+  `(do-with-setup ~request-body (fn [] ~@body)))
 
-;;
+(deftest create-superuser-test
+  (testing "POST /api/setup"
+    (testing "Check that we can create a new superuser via setup-token"
+      (let [email (mt/random-email)]
+        (with-setup {:user {:email email}}
+          (testing "new User should be created"
+            (is (db/exists? User :email email)))
+          (testing "Creating a new admin user should set the `admin-email` Setting"
+            (is (= email
+                   (public-settings/admin-email)))))))))
+
+(deftest setup-settings-test
+  (testing "POST /api/setup"
+    (testing "check that we can set various Settings during setup"
+      (doseq [[setting-name {:keys [k vs]}] {:site-name
+                                             {:k  "site_name"
+                                              :vs {"Cam's Metabase" "Cam's Metabase"}}
+
+                                             :anon-tracking-enabled
+                                             {:k  "allow_tracking"
+                                              :vs {"TRUE"  true
+                                                   "true"  true
+                                                   true    true
+                                                   nil     true
+                                                   "FALSE" false
+                                                   "false" false
+                                                   false   false}}
+
+                                             :site-locale
+                                             {:k  "site_locale"
+                                              :vs {nil     "en" ; `en` is the default
+                                                   "es"    "es"
+                                                   "ES"    "es"
+                                                   "es-mx" "es_MX"
+                                                   "es_MX" "es_MX"}}}
+              [v expected] vs]
+        (testing (format "Set Setting %s to %s" (pr-str setting-name) (pr-str v))
+          (with-setup {:prefs {k v}}
+            (testing "should be set"
+              (is (= expected
+                     (setting/get setting-name))))))))))
+
 (deftest create-database-test
-  (testing "Check that we can Create a Database when we set up MB (#10135)"
-    (setup [body _ db-name user-email]
-      (is (schema= {:id (s/named #"^[0-9a-f-]{36}$" "UUID str")}
-                   (http/client :post 200 "setup" body)))
-      (testing "Database should be created"
-        (is (= true
-               (db/exists? Database :name db-name))))
-      (testing "User should be created"
-        (is (= true
-               (db/exists? User :email user-email)))))))
+  (testing "POST /api/setup"
+    (testing "Check that we can Create a Database when we set up MB (#10135)"
+      (doseq [[k {:keys [default]}] {:is_on_demand     {:default false}
+                                     :is_full_sync     {:default true}
+                                     :auto_run_queries {:default true}}
+              v                     [true false nil]]
+        (let [db-name (mt/random-name)]
+          (with-setup {:database {:engine  "h2"
+                                  :name    db-name
+                                  :details {:db  "file:/home/hansen/Downloads/Metabase/longnames.db",
+                                            :ssl true}
+                                  k        v}}
+            (testing "Database should be created"
+              (is (= true
+                     (db/exists? Database :name db-name))))
+            (testing (format "should be able to set %s to %s (default: %s) during creation" k (pr-str v) default)
+              (is (= (if (some? v) v default)
+                     (db/select-one-field k Database :name db-name))))))))))
+
+(defn- setup! [f & args]
+  (let [body {:token (setup/create-token!)
+              :prefs {:site_name "Metabase Test"}
+              :user  {:first_name (mt/random-name)
+                      :last_name  (mt/random-name)
+                      :email      (mt/random-email)
+                      :password   "anythingUP12!!"}}
+        body (apply f body args)]
+    (do-with-setup* body #(http/client :post 400 "setup" body))))
 
 (deftest setup-validation-test
   (testing "POST /api/setup validation"
     (testing ":token"
       (testing "missing"
-        (setup [body]
-          (is (= {:errors {:token "Token does not match the setup token."}}
-                 (http/client :post 400 "setup" (dissoc body :token))))))
+        (is (= {:errors {:token "Token does not match the setup token."}}
+               (setup! dissoc :token))))
 
       (testing "incorrect"
-        (setup [body]
-          (is (= {:errors {:token "Token does not match the setup token."}}
-                 (http/client :post 400 "setup" (assoc body :token "foobar")))))))
+        (is (= {:errors {:token "Token does not match the setup token."}}
+               (setup! assoc :token "foobar")))))
 
     (testing "site name"
-      (setup [body]
-        (is (= {:errors {:site_name "value must be a non-blank string."}}
-               (http/client :post 400 "setup" (m/dissoc-in body [:prefs :site_name]))))))
+      (is (= {:errors {:site_name "value must be a non-blank string."}}
+             (setup! m/dissoc-in [:prefs :site_name]))))
+
+    (testing "site locale"
+      (testing "invalid format"
+        (is (schema= {:errors {:site_locale #".*must be a valid two-letter ISO language or language-country code.*"}}
+                     (setup! assoc-in [:prefs :site_locale] "eng-USA"))))
+      (testing "non-existent locale"
+        (is (schema= {:errors {:site_locale #".*must be a valid two-letter ISO language or language-country code.*"}}
+                     (setup! assoc-in [:prefs :site_locale] "en-EN")))))
 
     (testing "user"
       (testing "first name"
-        (setup [body]
-          (is (= {:errors {:first_name "value must be a non-blank string."}}
-                 (http/client :post 400 "setup" (m/dissoc-in body [:user :first_name]))))))
+        (is (= {:errors {:first_name "value must be a non-blank string."}}
+               (setup! m/dissoc-in [:user :first_name]))))
 
       (testing "last name"
-        (setup [body]
-          (is (= {:errors {:last_name "value must be a non-blank string."}}
-                 (http/client :post 400 "setup" (m/dissoc-in body [:user :last_name]))))))
+        (is (= {:errors {:last_name "value must be a non-blank string."}}
+               (setup! m/dissoc-in [:user :last_name]))))
 
       (testing "email"
         (testing "missing"
-          (setup [body]
-            (is (= {:errors {:email "value must be a valid email address."}}
-                   (http/client :post 400 "setup" (m/dissoc-in body [:user :email]))))))
+          (is (= {:errors {:email "value must be a valid email address."}}
+                 (setup! m/dissoc-in [:user :email]))))
 
         (testing "invalid"
-          (setup [body]
-            (is (= {:errors {:email "value must be a valid email address."}}
-                   (http/client :post 400 "setup" (assoc-in body [:user :email] "anything")))))))
+          (is (= {:errors {:email "value must be a valid email address."}}
+                 (setup! assoc-in [:user :email] "anything")))))
 
       (testing "password"
         (testing "missing"
-          (setup [body]
-            (is (= {:errors {:password "Insufficient password strength"}}
-                   (http/client :post 400 "setup" (m/dissoc-in body [:user :password]))))))
+          (is (= {:errors {:password "Insufficient password strength"}}
+                 (setup! m/dissoc-in [:user :password]))))
 
         (testing "invalid"
-          (setup [body]
-            (is (= {:errors {:password "Insufficient password strength"}}
-                   (http/client :post 400 "setup" (assoc-in body [:user :password] "anything"))))))))))
+          (is (= {:errors {:password "Insufficient password strength"}}
+                 (setup! assoc-in [:user :password] "anything"))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

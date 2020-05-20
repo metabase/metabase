@@ -346,7 +346,6 @@
   [model object-or-id column->temp-value & body]
   `(do-with-temp-vals-in-db ~model ~object-or-id ~column->temp-value (fn [] ~@body)))
 
-
 (defn is-uuid-string?
   "Is string S a valid UUID string?"
   ^Boolean [^String s]

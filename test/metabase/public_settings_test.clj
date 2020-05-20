@@ -97,3 +97,37 @@
     (mt/discard-setting-changes [query-caching-max-kb]
       (is (= "1000"
              (public-settings/query-caching-max-kb "1000"))))))
+
+(deftest site-locale-test
+  (testing "site-locale Setting"
+    (testing "should validate input"
+      (testing "invalid format"
+        (testing "blank string"
+          (mt/with-temporary-setting-values [site-locale "en_US"]
+            (is (thrown?
+                 clojure.lang.ExceptionInfo
+                 (public-settings/site-locale "")))
+            (is (= "en_US"
+                   (public-settings/site-locale)))))
+
+        (testing "non-existant locale"
+          (mt/with-temporary-setting-values [site-locale "en_US"]
+            (is (thrown?
+                 clojure.lang.ExceptionInfo
+                 (public-settings/site-locale "en_EN")))
+            (is (= "en_US"
+                   (public-settings/site-locale)))))))
+
+    (testing "should normalize input"
+      (mt/discard-setting-changes [site-locale]
+        (public-settings/site-locale "en-us")
+        (is (= "en_US"
+               (public-settings/site-locale)))))
+
+    (testing "should be able to unset site locale"
+      (mt/discard-setting-changes [site-locale]
+        (public-settings/site-locale "es")
+        (public-settings/site-locale nil)
+        (is (= "en"
+               (public-settings/site-locale))
+            "should default to English")))))
