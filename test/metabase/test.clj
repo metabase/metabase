@@ -128,6 +128,7 @@
 
  [test-users
   fetch-user
+  test-user?
   user->id
   user->client
   user->credentials
@@ -189,6 +190,8 @@
  [tx.env
   set-test-drivers!
   with-test-drivers])
+
+;; TODO -- move this stuff into some other namespace and refer to it here
 
 (defn do-with-clock [clock thunk]
   (testing (format "\nsystem clock = %s" (pr-str clock))
