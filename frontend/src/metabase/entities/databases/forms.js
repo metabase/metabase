@@ -3,6 +3,7 @@ import { t, jt } from "ttag";
 
 import MetabaseSettings from "metabase/lib/settings";
 import ExternalLink from "metabase/components/ExternalLink";
+import getFieldsForBigQuery from "./big-query-fields";
 
 import MetadataSyncScheduleWidget from "metabase/admin/databases/components/widgets/MetadataSyncScheduleWidget";
 import CacheFieldValuesScheduleWidget from "metabase/admin/databases/components/widgets/CacheFieldValuesScheduleWidget";
@@ -30,6 +31,19 @@ const DATABASE_DETAIL_OVERRIDES = {
         <div>{getAuthCodeEnableAPILink(engine, details)}</div>
       </div>
     ),
+  }),
+  "service-account-json": (engine, details) => ({
+    validate: value => {
+      if (!value) {
+        return t`required`;
+      }
+      try {
+        JSON.parse(value);
+      } catch (e) {
+        return t`invalid JSON`;
+      }
+      return null;
+    },
   }),
 };
 
@@ -137,7 +151,11 @@ function getAuthCodeEnableAPILink(engine, details) {
 }
 
 function getFieldsForEngine(engine, details) {
-  const info = (MetabaseSettings.get("engines") || {})[engine];
+  let info = (MetabaseSettings.get("engines") || {})[engine];
+  if (engine === "bigquery") {
+    // BigQuery has special logic to switch out forms depending on what style of authenication we use.
+    info = getFieldsForBigQuery(details);
+  }
   if (info) {
     const fields = [];
     for (const field of info["details-fields"]) {
