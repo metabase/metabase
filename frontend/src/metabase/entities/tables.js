@@ -79,7 +79,10 @@ const Tables = createEntity({
       ({ id }, options) => async (dispatch, getState) => {
         await dispatch(Tables.actions.fetchMetadata({ id }, options));
         // fetch foreign key linked table's metadata as well
-        const table = Tables.selectors.getObject(getState(), { entityId: id });
+        const table = Tables.selectors[options.selectorName || "getObject"](
+          getState(),
+          { entityId: id },
+        );
         await Promise.all(
           getTableForeignKeyTableIds(table).map(id =>
             dispatch(Tables.actions.fetchMetadata({ id }, options)),
@@ -168,7 +171,12 @@ const Tables = createEntity({
 
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).table(entityId),
-
+    getObjectUnfiltered: ({ entities }, { entityId }) =>
+      entities.tables[entityId] || {},
+    getListUnfiltered: ({ entities }, { entityQuery }) =>
+      (entities.tables_list[JSON.stringify(entityQuery)] || []).map(
+        id => entities.tables[id],
+      ),
     getTable: createSelector(
       // we wrap getMetadata to handle a circular dep issue
       [state => getMetadata(state), (state, props) => props.entityId],

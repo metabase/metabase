@@ -284,17 +284,27 @@
 
 (deftest fetch-database-metadata-include-hidden-test
   (mt/with-temp-vals-in-db Table (mt/id :categories) {:visibility_type "hidden"}
-    (testing "GET /api/database/:id/metadata?include_hidden_tables=true"
-      (let [table-names (->> ((mt/user->client :rasta) :get 200 (format "database/%d/metadata?include_hidden_tables=true" (mt/id)))
-                             :tables
-                             (map :name))]
-        (is (some (partial = "CATEGORIES") table-names))))
-    (testing "GET /api/database/:id/metadata"
-      (let [table-names (->> ((mt/user->client :rasta) :get 200 (format "database/%d/metadata" (mt/id)))
-                             :tables
-                             (map :name))]
-        (is (not (some (partial = "CATEGORIES") table-names)))
-        (is (some (partial = "VENUES") table-names))))))
+    (mt/with-temp-vals-in-db Field (mt/id :venues :price) {:visibility_type "sensitive"}
+      (testing "GET /api/database/:id/metadata?include_hidden=true"
+        (let [tables (->> ((mt/user->client :rasta) :get 200 (format "database/%d/metadata?include_hidden=true" (mt/id)))
+                          :tables)]
+          (is (some (partial = "CATEGORIES") (map :name tables)))
+          (is (->> tables
+                  (filter #(= "VENUES" (:name %)))
+                  first
+                  :fields
+                  (map :name)
+                  (some (partial = "PRICE"))))))
+      (testing "GET /api/database/:id/metadata"
+        (let [tables (->> ((mt/user->client :rasta) :get 200 (format "database/%d/metadata" (mt/id)))
+                          :tables)]
+          (is (not (some (partial = "CATEGORIES") (map :name tables))))
+          (is (not (->> tables
+                        (filter #(= "VENUES" (:name %)))
+                        first
+                        :fields
+                        (map :name)
+                        (some (partial = "PRICE"))))))))))
 
 (deftest autocomplete-suggestions-test
   (testing "GET /api/database/:id/autocomplete_suggestions"

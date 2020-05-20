@@ -11,8 +11,9 @@ import _ from "underscore";
 @Tables.loadList({
   query: (state, { databaseId }) => ({
     dbId: databaseId,
-    include_hidden_tables: true,
+    include_hidden: true,
   }),
+  selectorName: "getListUnfiltered",
 })
 export default class MetadataTablePicker extends Component {
   constructor(props, context) {

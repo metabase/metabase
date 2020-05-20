@@ -27,8 +27,13 @@ import { getIn } from "icepick";
 // fully nomalized, raw "entities"
 export const getNormalizedDatabases = state => state.entities.databases;
 export const getNormalizedSchemas = state => state.entities.schemas;
-export const getNormalizedTables = state => state.entities.tables;
-export const getNormalizedFields = state => state.entities.fields;
+export const getNormalizedTables = state =>
+  filterValues(state.entities.tables, table => table.visibility_type === null);
+export const getNormalizedFields = state =>
+  filterValues(
+    state.entities.fields,
+    field => field.visibility_type !== "sensitive",
+  );
 export const getNormalizedMetrics = state => state.entities.metrics;
 export const getNormalizedSegments = state => state.entities.segments;
 
@@ -286,7 +291,9 @@ function hydrate(objects, property, getPropertyValue) {
 // replaces lists of ids with the actual objects
 function hydrateList(objects, property, targetObjects) {
   hydrate(objects, property, object =>
-    (object[property] || []).map(id => targetObjects[id]),
+    (object[property] || [])
+      .map(id => targetObjects[id])
+      .filter(o => o != null),
   );
 }
 
@@ -299,4 +306,14 @@ function hydrateLookup(objects, property, idProperty = "id") {
     }
     return lookup;
   });
+}
+
+function filterValues(obj, pred) {
+  const filtered = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (pred(v)) {
+      filtered[k] = v;
+    }
+  }
+  return filtered;
 }

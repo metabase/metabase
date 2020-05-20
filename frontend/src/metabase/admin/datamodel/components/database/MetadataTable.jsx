@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import { connect } from "react-redux";
 import PropTypes from "prop-types";
 
 import MetricsList from "./MetricsList";
@@ -8,6 +9,7 @@ import { t } from "ttag";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";
+import Fields from "metabase/entities/fields";
 import withTableMetadataLoaded from "metabase/admin/datamodel/withTableMetadataLoaded";
 
 import _ from "underscore";
@@ -17,9 +19,14 @@ import cx from "classnames";
 @Tables.load({
   id: (state, { tableId }) => tableId,
   wrapped: true,
-  selectorName: "getTable",
+  selectorName: "getObjectUnfiltered",
 })
 @withTableMetadataLoaded
+@connect((state, props) => ({
+  fields: props.table.fields.map(entityId =>
+    Fields.selectors.getObjectUnfiltered(state, { entityId }),
+  ),
+}))
 export default class MetadataTable extends Component {
   constructor(props, context) {
     super(props, context);
@@ -116,7 +123,7 @@ export default class MetadataTable extends Component {
   }
 
   render() {
-    const { table, onRetireMetric, onRetireSegment } = this.props;
+    const { table, fields, onRetireMetric, onRetireSegment } = this.props;
     if (!table) {
       return false;
     }
@@ -149,7 +156,7 @@ export default class MetadataTable extends Component {
           <MetricsList onRetire={onRetireMetric} tableMetadata={table} />
           {this.props.idfields && (
             <ColumnsList
-              fields={table.fields}
+              fields={fields}
               updateField={this.props.updateField}
               idfields={this.props.idfields}
             />
