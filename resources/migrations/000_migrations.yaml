@@ -6212,3 +6212,24 @@ databaseChangeLog:
       changes:
         - dropTable:
             tableName: query_queryexecution
+  - changeSet:
+      id: 165
+      author: sb
+      comment: 'Added field_order to Table and database_position to Field'
+      changes:
+        - addColumn:
+            tableName: metabase_field
+            columns:
+              - column:
+                  name: database_position
+                  type: int
+                  constraints:
+                    nullable: false
+        - addColumn:
+            tableName: metabase_table
+            columns:
+              - column:
+                  name: field_order
+                  type: varchar(254)
+                  constraints:
+                    nullable: false

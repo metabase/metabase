@@ -1,9 +1,7 @@
 (ns metabase.query-processor.middleware.add-implicit-clauses
   "Middlware for adding an implicit `:fields` and `:order-by` clauses to certain queries."
   (:require [clojure.tools.logging :as log]
-            [honeysql.core :as hsql]
             [metabase
-             [db :as mdb]
              [types :as types]
              [util :as u]]
             [metabase.mbql
