@@ -32,15 +32,14 @@ const DETAILS_FORM_FIELDS: FormFieldDefinition[] = [
     name: "locale",
     title: t`Language`,
     type: "select",
-    options: (
-      [[null, t`Use site default`]]
-        .concat(
-          _.sortBy(MetabaseSettings.get("available-locales") || [["en", "English"]],
-                   ([code, name]) => name)
-        )
-    ).map(
-        ([code, name]) => ({ name, value: code })
-    ),
+    options: [[null, t`Use site default`]]
+      .concat(
+        _.sortBy(
+          MetabaseSettings.get("available-locales") || [["en", "English"]],
+          ([code, name]) => name,
+        ),
+      )
+      .map(([code, name]) => ({ name, value: code })),
   },
 ];
 

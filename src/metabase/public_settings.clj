@@ -72,15 +72,16 @@
             (setting/set-string! :site-url (some-> new-value normalize-site-url))))
 
 (defsetting site-locale
-  (str  (deferred-tru "The default language for this Metabase instance.")
-        " "
-        (deferred-tru "This only applies to emails, Pulses, etc. Users'' browsers will specify the language used in the user interface."))
-  :default "en"
-  :setter (fn [new-value]
-            (when new-value
-              (when-not (i18n/available-locale? new-value)
-                (throw (ex-info (tru "Invalid locale {0}" (pr-str new-value)) {:status-code 400}))))
-            (setting/set-string! :site-locale (some-> new-value i18n/normalized-locale-string))))
+  (str (deferred-tru "The default language for this Metabase instance.")
+       " "
+       (deferred-tru "This only applies to emails, Pulses, etc. Users'' browsers will specify the language used in the user interface."))
+  :default    "en"
+  :visibility :public
+  :setter     (fn [new-value]
+                (when new-value
+                  (when-not (i18n/available-locale? new-value)
+                    (throw (ex-info (tru "Invalid locale {0}" (pr-str new-value)) {:status-code 400}))))
+                (setting/set-string! :site-locale (some-> new-value i18n/normalized-locale-string))))
 
 (defsetting admin-email
   (deferred-tru "The email address users should be referred to if they encounter a problem.")

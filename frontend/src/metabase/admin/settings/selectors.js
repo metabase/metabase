@@ -215,6 +215,17 @@ const SECTIONS = updateSectionsWithPlugins({
     name: t`Localization`,
     settings: [
       {
+        display_name: t`Instance language`,
+        key: "site-locale",
+        type: "select",
+        options: _.sortBy(
+          MetabaseSettings.get("available-locales") || [],
+          ([code, name]) => name,
+        ).map(([code, name]) => ({ name, value: code })),
+        defaultValue: "en",
+        note: t`Changes to this value will take effect after you reload the page.`,
+      },
+      {
         display_name: t`Localization options`,
         description: "",
         key: "custom-formatting",

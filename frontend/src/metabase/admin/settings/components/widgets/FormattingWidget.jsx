@@ -3,9 +3,7 @@ import { t } from "ttag";
 
 import { TYPE } from "metabase/lib/types";
 
-import MetabaseSettings from "metabase/lib/settings";
 import ColumnSettings from "metabase/visualizations/components/ColumnSettings";
-import SettingsSetting from "metabase/admin/settings/components/SettingsSetting";
 
 const SETTING_TYPES = [
   {
@@ -49,25 +47,6 @@ class FormattingWidget extends React.Component {
     const value = setting.value || setting.default;
     return (
       <div className="mt2">
-        <div className="border-bottom pb2 mb4">
-          <h3>{t`Instance language`}</h3>
-          <p className="text-measure">{t`The language that should be used for Metabase's UI, system emails, pulses, and alerts. This is also the default language for all users, which they can change from their own account settings.`}</p>
-
-          <SettingsSetting
-            setting={{
-              key: "site-locale",
-              type: "select",
-              options: (MetabaseSettings.get("available-locales") || []).map(
-                ([value, name]) => ({ name, value }),
-              ),
-              defaultValue: "en",
-            }}
-            onChange={val => {
-              // TODO - this needs to actually change the val
-              onChange(val);
-            }}
-          />
-        </div>
         {SETTING_TYPES.map(({ type, name, column, settings }) => (
           <div
             className="border-bottom pb2 mb4 flex-full"
