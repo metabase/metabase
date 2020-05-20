@@ -36,7 +36,7 @@ export default class LanguageStep extends React.Component {
           className="SetupStep SetupStep--active rounded bg-white full relative"
         >
           <StepTitle
-            title={"What's your preffered language"}
+            title={"What's your preferred language"}
             circleText={stepNumber}
           />
           <p className="text-default">
