@@ -3,8 +3,8 @@ import React from "react";
 import { formDomOnlyProps } from "metabase/lib/redux";
 
 const FormTextFileWidget = ({ field }) => {
-  const otherProps = formDomOnlyProps(field);
-  delete otherProps.value; // setting value on a file input throws an error
+  // setting value on a file input throws an error
+  const { value, ...otherProps } = formDomOnlyProps(field); // eslint-disable-line no-unused-vars
   return (
     <input
       type="file"
@@ -18,8 +18,14 @@ const FormTextFileWidget = ({ field }) => {
 };
 
 function wrapHandler(h) {
-  return async ({ target: { files } }) =>
-    h(files.length === 0 ? "" : await files[0].text());
+  return ({ target: { files } }) => {
+    if (files.length === 0) {
+      h("");
+    }
+    const fr = new FileReader();
+    fr.onload = () => h(fr.result);
+    fr.readAsText(files[0]);
+  };
 }
 
 export default FormTextFileWidget;
