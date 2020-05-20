@@ -191,5 +191,5 @@
         (mt/with-temp User [{user-id :id} {:locale "es-MX"}]
           (let [session-id (str (UUID/randomUUID))]
             (db/insert! Session {:id session-id, :user_id user-id, :created_at :%now})
-            (is (= "es-MX"
+            (is (= "es_MX"
                    (session-locale session-id)))))))))

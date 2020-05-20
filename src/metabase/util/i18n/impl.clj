@@ -8,12 +8,27 @@
             [metabase.plugins.classloader :as classloader]
             [potemkin.types :as p.types])
   (:import java.text.MessageFormat
-           [java.util Locale MissingResourceException ResourceBundle]))
+           [java.util Locale MissingResourceException ResourceBundle]
+           org.apache.commons.lang3.LocaleUtils))
 
 (p.types/defprotocol+ CoerceToLocale
   "Protocol for anything that can be coerced to a `java.util.Locale`."
   (locale ^java.util.Locale [this]
     "Coerce `this` to a `java.util.Locale`."))
+
+(defn normalized-locale-string
+  "Normalize a locale string to the canonical format.
+
+    (normalized-locale-string \"EN-US\") ;-> \"en_US\"
+
+  Returns `nil` for invalid strings -- you can use this to check whether a String is valid."
+  [s]
+  (when (string? s)
+    (when-let [[_ language country] (re-matches #"^(\w{2})(?:[-_](\w{2}))?$" s)]
+      (let [language (str/lower-case language)]
+        (if country
+          (str language \_ (some-> country str/upper-case))
+          language)))))
 
 (extend-protocol CoerceToLocale
   nil
@@ -24,14 +39,22 @@
 
   String
   (locale [^String s]
-    (Locale/forLanguageTag (str/replace s #"_" "-")))
+    (LocaleUtils/toLocale (normalized-locale-string s)))
 
   ;; Support namespaced keywords like `:en/US` and `:en/UK` because we can
   clojure.lang.Keyword
   (locale [this]
     (locale (if-let [namespce (namespace this)]
-                (str namespce \- (name this))
-                (name this)))))
+              (str namespce \_ (name this))
+              (name this)))))
+
+(defn available-locale?
+  "True if `locale` (a string, keyword, or `Locale`) is a valid locale available on this system. Normalizes args
+  automatically."
+  [locale-or-name]
+  (boolean
+   (when-let [locale (locale locale-or-name)]
+     (LocaleUtils/isAvailableLocale locale))))
 
 (defn parent-locale
   "For langugage + country Locales, returns the language-only Locale. Otherwise returns `nil`.
@@ -142,3 +165,11 @@
   "Fetch the value of the `site-locale` Setting."
   []
   (@system-locale-from-setting-fn))
+
+(defmethod print-method Locale
+  [locale ^java.io.Writer writer]
+  ((get-method print-dup Locale) locale writer))
+
+(defmethod print-dup Locale
+  [locale ^java.io.Writer writer]
+  (.write writer (format "#locale %s" (pr-str (str locale)))))

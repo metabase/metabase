@@ -3,21 +3,56 @@
             [metabase.test :as mt]
             [metabase.util.i18n.impl :as impl]))
 
+(deftest normalized-locale-string-test
+  (doseq [[s expected] {"en"      "en"
+                        "EN"      "en"
+                        "En"      "en"
+                        "en_US"   "en_US"
+                        "en-US"   "en_US"
+                        nil       nil
+                        "en--"    nil
+                        "a"       nil
+                        "eng-USA" nil}]
+    (testing (pr-str (list 'normalized-locale-string s))
+      (is (= expected
+             (impl/normalized-locale-string s))))))
+
 (deftest locale-test
   (testing "Should be able to coerce various types of objects to Locales"
-    (doseq [x [(java.util.Locale/forLanguageTag "en-US")
-               "en-US"
-               "en_us"
-               :en/US
-               :en-US
-               :en_us]]
-      (testing (format "^%s %s" (some-> x class .getCanonicalName) (pr-str x))
-        (is (= (java.util.Locale/forLanguageTag "en-US")
-               (impl/locale x))))))
+    (doseq [arg-type [:str :keyword]
+            country   ["en" "En" "EN"]
+            language  ["us" "Us" "US" nil]
+            separator (when language
+                        (concat ["_" "-"] (when (= arg-type :keyword) ["/"])))
+            :let      [s (str country (when language (str separator language)))
+                       x (case arg-type
+                           :str     s
+                           :keyword (keyword s))]]
+      (testing (pr-str (list 'locale x))
+        (is (= (java.util.Locale/forLanguageTag (if language "en-US" "en"))
+               (impl/locale x)))))
+
+    (testing "If something is already a Locale, `locale` should act as an identity fn"
+      (is (= (java.util.Locale/forLanguageTag "en-US")
+             (impl/locale #locale "en-US")))))
 
   (testing "nil"
     (is (= nil
            (impl/locale nil)))))
+
+(deftest available-locale?-test
+  (doseq [[locale expected] {"en"      true
+                             "EN"      true
+                             "en-US"   true
+                             "en_US"   true
+                             nil       false
+                             ""        false
+                             "en_en"   false
+                             "abc_def" false
+                             "eng_usa" false}]
+    (testing (pr-str (list 'available-locale? locale))
+      (is (= expected
+             (impl/available-locale? locale))))))
 
 (deftest parent-locale-test
   (doseq [[locale expected] {nil                                       nil
@@ -39,10 +74,10 @@
              (impl/translate "zz" "Translate me {0}" 100))))))
 
 (deftest translate-test
-  (mt/with-mock-i18n-bundles {"es"    {"Your database has been added!"  "¡Tu base de datos ha sido añadida!"
+  (mt/with-mock-i18n-bundles {"es"      {"Your database has been added!"  "¡Tu base de datos ha sido añadida!"
                                          "I''m good thanks"               "Está bien, gracias"
                                          "must be {0} characters or less" "deben tener {0} caracteres o menos"}
-                                "es-MX" {"I''m good thanks" "Está muy bien, gracias"}}
+                              "es_MX" {"I''m good thanks" "Está muy bien, gracias"}}
     (testing "Should be able to translate stuff"
       (is (= "¡Tu base de datos ha sido añadida!"
              (impl/translate "es" "Your database has been added!"))))

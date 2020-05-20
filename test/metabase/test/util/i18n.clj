@@ -12,7 +12,7 @@
         (getContents [] contents)))))
 
 (defn do-with-mock-i18n-bundles [bundles thunk]
-  (t/testing (str "\nwith mock i18n bundles %s" (pr-str bundles))
+  (t/testing (format "\nwith mock i18n bundles %s\n" (pr-str bundles))
     (let [locale->bundle (into {} (for [[locale m] bundles]
                                     [(impl/locale locale) (map-bundle m)]))]
       (binding [impl/*bundle-fn* (fn [locale]

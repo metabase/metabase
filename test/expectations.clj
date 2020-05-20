@@ -118,19 +118,21 @@
      (t/do-report
       (compare-expr ~e a# ~msg '~form))))
 
-;; NOCOMMIT
-(def stats (atom #{}))
+;; each time we encounter a new expectations-style test, record a `namespace:line` symbol in `symbols` so we can
+;; display some stats on the total number of old-style tests when running tests, and make sure no one adds any new
+;; ones
+(def symbols (atom #{}))
 
 (t/deftest no-new-expectations-style-tests-test
-  (let [total-stats                 (count @stats)
-        total-namespaces-with-stats (count (into #{} (map namespace @stats)))
-        [worst-ns worst-ns-symbols]           (apply max-key (comp count second) (seq (group-by namespace @stats)))]
-    (println (u/format-color 'red "Total old-style expectations tests: %d" total-stats))
-    (println (u/format-color 'red "Total namespaces still using old-style expectations tests: %d" total-namespaces-with-stats))
+  (let [total-expect-forms            (count @symbols)
+        total-namespaces-using-expect (count (into #{} (map namespace @symbols)))
+        [worst-ns worst-ns-symbols]   (apply max-key (comp count second) (seq (group-by namespace @symbols)))]
+    (println (u/format-color 'red "Total old-style expectations tests: %d" total-expect-forms))
+    (println (u/format-color 'red "Total namespaces still using old-style expectations tests: %d" total-namespaces-using-expect))
     (println (u/format-color 'red "Who has the most? %s with %d old-style tests" worst-ns (count worst-ns-symbols)))
     (t/testing "Don't write any new tests using expect!"
-      (t/is (<= total-stats 1928))
-      (t/is (<= total-namespaces-with-stats 125)))))
+      (t/is (<= total-expect-forms 1899))
+      (t/is (<= total-namespaces-using-expect 125)))))
 
 (defmacro ^:deprecated expect
   "Simple macro that simulates converts an Expectations-style `expect` form into a `clojure.test` `deftest` form."
@@ -148,4 +150,4 @@
           (t/is
            (~'expect= ~expected ~actual))))
       (when config/is-test?
-        (swap! stats conj (symbol ~(name (ns-name *ns*)) (str (:line (meta #'~test-name)))))))))
+        (swap! symbols conj (symbol ~(name (ns-name *ns*)) (str (:line (meta #'~test-name)))))))))

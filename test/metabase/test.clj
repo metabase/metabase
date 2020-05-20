@@ -32,6 +32,7 @@
              [i18n :as i18n.tu]
              [log :as tu.log]
              [timezone :as tu.tz]]
+            [metabase.http-client :as http]
             [potemkin :as p]
             [toucan.util.test :as tt]))
 
@@ -42,6 +43,7 @@
   datasets/keep-me
   driver/keep-me
   et/keep-me
+  http/keep-me
   i18n.tu/keep-me
   initialize/keep-me
   qp/keep-me
@@ -91,6 +93,12 @@
   summarize-multipart-email
   with-expected-messages
   with-fake-inbox]
+
+ [http
+  authenticate
+  build-url
+  client
+  client-full-response]
 
  [i18n.tu
   with-mock-i18n-bundles

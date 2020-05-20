@@ -1,5 +1,5 @@
 (ns metabase.util.i18n
-  (:refer-clojure :exclude [ex-info])
+  "i18n functionality."
   (:require [cheshire.generate :as json-gen]
             [clojure.walk :as walk]
             [metabase.util.i18n.impl :as impl]
@@ -11,7 +11,9 @@
 
 (p/import-vars
  [impl
+  available-locale?
   locale
+  normalized-locale-string
   parent-locale
   translate])
 

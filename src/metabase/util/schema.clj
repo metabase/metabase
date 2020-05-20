@@ -173,11 +173,12 @@
 
 (def KeywordOrString
   "Schema for something that can be either a `Keyword` or a `String`."
-  (s/named (s/cond-pre s/Keyword s/Str) (deferred-tru "Keyword or string")))
+  (with-api-error-message (s/named (s/cond-pre s/Keyword s/Str) (deferred-tru "Keyword or string"))
+    (deferred-tru "value must be a keyword or string.")))
 
 (def FieldType
   "Schema for a valid Field type (does it derive from `:type/*`)?"
-  (with-api-error-message (s/pred (u/rpartial isa? :type/*) (deferred-tru "Valid field type"))
+  (with-api-error-message (s/pred #(isa? % :type/*) (deferred-tru "Valid field type"))
     (deferred-tru "value must be a valid field type.")))
 
 (def FieldTypeKeywordOrString

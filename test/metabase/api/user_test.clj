@@ -18,6 +18,7 @@
              [data :refer :all]
              [fixtures :as fixtures]
              [util :as tu :refer [random-name]]]
+            [metabase.util.i18n :as i18n]
             [toucan
              [db :as db]
              [hydrate :refer [hydrate]]]))
@@ -397,44 +398,46 @@
                     :personal_collection_name "Cam Eron's Personal Collection"}
                    (user)))))))))
 
-;; Test that we can update login attributes after a user has been created
-(expect
-  (merge
-   user-defaults
-   {:is_superuser     true
-    :email            "testuser@metabase.com"
-    :first_name       "Test"
-    :login_attributes {:test "value"}
-    :common_name      "Test User"
-    :last_name        "User"
-    :group_ids        #{(u/get-id (group/all-users))
-                        (u/get-id (group/admin))}})
-  (mt/with-temp User [{user-id :id} {:first_name   "Test"
-                                     :last_name    "User"
-                                     :email        "testuser@metabase.com"
-                                     :is_superuser true}]
-    (->
-     ((mt/user->client :crowberto) :put 200 (str "user/" user-id) {:email            "testuser@metabase.com"
-                                                                           :login_attributes {:test "value"}})
-     (update :group_ids set)
-     tu/boolean-ids-and-timestamps)))
+;;
+(deftest update-login-attributes-test
+  (testing "PUT /api/user/:id"
+    (testing "Test that we can update login attributes after a user has been created"
+      (mt/with-temp User [{user-id :id} {:first_name   "Test"
+                                         :last_name    "User"
+                                         :email        "testuser@metabase.com"
+                                         :is_superuser true}]
+        (is (= (merge
+                user-defaults
+                {:is_superuser     true
+                 :email            "testuser@metabase.com"
+                 :first_name       "Test"
+                 :login_attributes {:test "value"}
+                 :common_name      "Test User"
+                 :last_name        "User"
+                 :group_ids        #{(u/get-id (group/all-users))
+                                     (u/get-id (group/admin))}})
+               (-> ((mt/user->client :crowberto) :put 200 (str "user/" user-id) {:email            "testuser@metabase.com"
+                                                                                 :login_attributes {:test "value"}})
+                   (update :group_ids set)
+                   tu/boolean-ids-and-timestamps)))))))
 
-;; Test that updating a user's email to an existing inactive user's email fails
-(expect
-  {:errors {:email "Email address already associated to another user."}}
-  (let [trashbird (mt/fetch-user :trashbird)
-        rasta     (mt/fetch-user :rasta)]
-    ((mt/user->client :crowberto) :put 400 (str "user/" (u/get-id rasta)) (select-keys trashbird [:email]))))
+(deftest update-email-check-if-already-used-test
+  (testing "PUT /api/user/:id"
+    (testing "test that updating a user's email to an existing inactive user's email fails"
+      (let [trashbird (mt/fetch-user :trashbird)
+            rasta     (mt/fetch-user :rasta)]
+        (is (= {:errors {:email "Email address already associated to another user."}}
+               ((mt/user->client :crowberto) :put 400 (str "user/" (u/get-id rasta)) (select-keys trashbird [:email]))))))))
 
-;; Test that a normal user cannot change the :is_superuser flag for themselves
-(defn- fetch-rasta []
-  (db/select-one [User :first_name :last_name :is_superuser :email], :id (mt/user->id :rasta)))
-
-(expect
-  (fetch-rasta)
-  (do ((mt/user->client :rasta) :put 200 (str "user/" (mt/user->id :rasta)) (assoc (fetch-rasta)
-                                                                                              :is_superuser true))
-      (fetch-rasta)))
+(deftest update-superuser-status-test
+  (testing "PUT /api/user/:id"
+    (testing "Test that a normal user cannot change the :is_superuser flag for themselves"
+      (letfn [(fetch-rasta []
+                (db/select-one [User :first_name :last_name :is_superuser :email], :id (mt/user->id :rasta)))]
+        (let [before (fetch-rasta)]
+          ((mt/user->client :rasta) :put 200 (str "user/" (mt/user->id :rasta)) (assoc (fetch-rasta) :is_superuser true))
+          (is (= before
+                 (fetch-rasta))))))))
 
 ;; Check that a non-superuser CANNOT update someone else's user details
 (expect
@@ -567,6 +570,58 @@
                   (u/get-id (group/admin))]})
     (superuser-and-admin-pgm-info email)))
 
+(deftest update-locale-test
+  (testing "PUT /api/user/:id\n"
+    (mt/with-temp User [{user-id :id, email :email} {:password "p@ssw0rd"}]
+      (letfn [(set-locale! [expected-status-code new-locale]
+                (mt/client {:username email, :password "p@ssw0rd"}
+                           :put expected-status-code (str "user/" user-id)
+                           {:locale new-locale}))
+              (locale-from-db []
+                (db/select-one-field :locale User :id user-id))]
+        (let [url (str "user/" user-id)]
+          (testing "normal Users should be able to update their own locale"
+            (doseq [[message locale] {"to a language-country locale (with dash)"       "es-MX"
+                                      "to a language-country locale (with underscore)" "es_MX"
+                                      "to a language-only locale"                      "es"}]
+              (testing message
+                (testing "response"
+                  (is (= (i18n/normalized-locale-string locale)
+                         (:locale (set-locale! 200 locale)))))
+                (testing "value in DB should be updated to new locale"
+                  (is (= (i18n/normalized-locale-string locale)
+                         (locale-from-db)))))))
+
+          (testing "admins should be able to update someone else's locale"
+            (testing "response"
+              (is (= "en_US"
+                     (:locale ((mt/user->client :crowberto) :put 200 url {:locale "en-US"})))))
+            (testing "value in DB should be updated and normalized"
+              (is (= "en_US"
+                     (locale-from-db)))))
+
+          (testing "normal Users should not be able to update someone else's locale"
+            (testing "response"
+              (is (= "You don't have permissions to do that."
+                     ((mt/user->client :lucky) :put 403 url {:locale "en-GB"}))))
+            (testing "value in DB should be unchanged"
+              (is (= "en_US"
+                     (locale-from-db)))))
+
+          (testing "attempting to set an invalid locales should result in an error"
+            (doseq [[group locales] {"invalid input"              [nil "" 100 "ab/cd" "USA!"]
+                                     "3-letter codes"             ["eng" "eng-USA"]
+                                     "languages that don't exist" ["zz" "xx" "xx-yy"]}
+                    new-locale      locales]
+              (testing group
+                (testing (format "attempt to set locale to %s" new-locale)
+                  (testing "response"
+                    (is (schema= {:errors {:locale #".*String must be a valid two-letter ISO language or language-country code.*"}}
+                                 (set-locale! 400 {:locale new-locale}))))
+                  (testing "value in DB should be unchanged"
+                    (is (= "en_US"
+                           (locale-from-db)))))))))))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              Reactivating a User -- PUT /api/user/:id/reactivate                               |
@@ -615,8 +670,8 @@
     (let [creds           {:username (:email user), :password "def"}
           hashed-password (db/select-one-field :password User, :email (:email user))]
       ;; use API to reset the users password
-      (http/client creds :put 200 (format "user/%d/password" (:id user)) {:password     "abc123!!DEF"
-                                                                          :old_password "def"})
+      (mt/client creds :put 200 (format "user/%d/password" (:id user)) {:password     "abc123!!DEF"
+                                                                        :old_password "def"})
       ;; now simply grab the lastest pass from the db and compare to the one we have from before reset
       (not= hashed-password (db/select-one-field :password User, :email (:email user))))))
 
@@ -685,7 +740,7 @@
                      :password "def123"}]
           (testing "response"
             (is (= {:success true}
-                   (http/client creds :put 200 (format "user/%d/qbnewb" id)))))
+                   (mt/client creds :put 200 (format "user/%d/qbnewb" id)))))
           (testing "newb?"
             (is (= false
                    (db/select-one-field :is_qbnewb User, :id id)))))))
