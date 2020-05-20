@@ -30,7 +30,7 @@
           :special-type      (:special_type field)
           :pk?               (isa? (:special_type field) :type/PK)
           :field-comment     (:description field)
-          :database-position (:database-position field)})
+          :database-position (:database_position field)})
        ;; make a map of parent-id -> set of child Fields
        (group-by :parent-id)
        ;; remove the parent ID because the Metadata from `describe-table` won't have it. Save the results as a set
@@ -63,9 +63,9 @@
 (s/defn ^:private table->fields :- [i/FieldInstance]
   "Fetch active Fields from the Metabase application database for a given `table`."
   [table :- i/TableInstance]
-  (db/select [Field :name :database_type :base_type :special_type :parent_id :id :description]
-    :table_id (u/get-id table)
-    :active   true
+  (db/select [Field :name :database_type :base_type :special_type :parent_id :id :description :database_position]
+    :table_id  (u/get-id table)
+    :active    true
     {:order-by (table/field-order-rule table)}))
 
 (s/defn our-metadata :- #{common/TableMetadataFieldWithID}

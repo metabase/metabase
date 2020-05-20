@@ -60,7 +60,9 @@
 
 (defmethod driver/describe-table ::toucanery
   [_ _ table]
-  (get toucanery-tables (:name table)))
+  (-> (get toucanery-tables (:name table))
+      (update :fields (partial map-indexed (fn [idx field]
+                                             (assoc field :database-position idx))))))
 
 (defmethod driver/table-rows-seq ::toucanery
   [_ _ table]

@@ -6223,6 +6223,7 @@ databaseChangeLog:
               - column:
                   name: database_position
                   type: int
+                  defaultValueNumeric: 0
                   constraints:
                     nullable: false
         - addColumn:
@@ -6231,5 +6232,6 @@ databaseChangeLog:
               - column:
                   name: field_order
                   type: varchar(254)
+                  defaultValue: database
                   constraints:
                     nullable: false

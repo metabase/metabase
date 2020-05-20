@@ -72,12 +72,14 @@
    :active                  true
    :db_id                   (mt/id)
    :segments                []
-   :metrics                 []})
+   :metrics                 []
+   :field_order             "database"})
 
 (def ^:private field-defaults
   {:description              nil
    :active                   true
    :position                 0
+   :database_position        0
    :target                   nil
    :preview_display          true
    :visibility_type          "normal"
