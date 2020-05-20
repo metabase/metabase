@@ -95,6 +95,7 @@ export default class FieldApp extends React.Component {
     databaseId: DatabaseId,
     tableId: TableId,
     fieldId: FieldId,
+    field: Object,
     metadata: Metadata,
     idfields: Object[],
 

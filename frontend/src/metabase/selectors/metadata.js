@@ -28,7 +28,7 @@ import { getIn } from "icepick";
 export const getNormalizedDatabases = state => state.entities.databases;
 export const getNormalizedSchemas = state => state.entities.schemas;
 export const getNormalizedTables = state =>
-  filterValues(state.entities.tables, table => table.visibility_type === null);
+  filterValues(state.entities.tables, table => table.visibility_type == null);
 export const getNormalizedFields = state =>
   filterValues(
     state.entities.fields,
