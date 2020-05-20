@@ -6,6 +6,7 @@
             [clojure.string :as str]
             [clojure.tools.logging :as log]
             [java-time :as t]
+            [medley.core :as m]
             [metabase
              [driver :as driver]
              [util :as u]]
@@ -193,8 +194,9 @@
     (let [column-info (table-sample-column-info conn table)]
       {:schema nil
        :name   (:name table)
-       :fields (set (for [[field info] column-info]
-                      (describe-table-field field info)))})))
+       :fields (set (for [[idx [field info]] (m/indexed column-info)]
+                      (merge (describe-table-field field info)
+                             {:database-position idx})))})))
 
 (doseq [feature [:basic-aggregations
                  :nested-fields

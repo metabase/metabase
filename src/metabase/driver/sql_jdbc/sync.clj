@@ -5,6 +5,7 @@
              [string :as str]]
             [clojure.java.jdbc :as jdbc]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase
              [driver :as driver]
              [util :as u]]
@@ -153,13 +154,14 @@
   [^DatabaseMetaData metadata, driver, {^String schema :schema, ^String table-name :name}, & [^String db-name-or-nil]]
   (with-open [rs (.getColumns metadata db-name-or-nil schema table-name nil)]
     (set
-     (for [{database-type :type_name
-            column-name   :column_name
-            remarks       :remarks} (jdbc/metadata-result rs)]
+     (for [[idx {database-type :type_name
+                 column-name   :column_name
+                 remarks       :remarks}] (m/indexed (jdbc/metadata-result rs))]
        (merge
-        {:name          column-name
-         :database-type database-type
-         :base-type     (database-type->base-type-or-warn driver database-type)}
+        {:name              column-name
+         :database-type     database-type
+         :base-type         (database-type->base-type-or-warn driver database-type)
+         :database-position idx}
         (when (not (str/blank? remarks))
           {:field-comment remarks})
         (when-let [special-type (calculated-special-type driver column-name database-type)]

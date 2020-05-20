@@ -9,7 +9,9 @@
             [metabase.mbql
              [schema :as mbql.s]
              [util :as mbql.u]]
-            [metabase.models.field :refer [Field]]
+            [metabase.models
+             [field :refer [Field]]
+             [table :as table :refer [Table]]]
             [metabase.query-processor
              [error-type :as error-type]
              [interface :as qp.i]
@@ -24,27 +26,15 @@
 ;;; |                                              Add Implicit Fields                                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-;; this is a fn because we don't want to call mdb/isa before type hierarchy is loaded!
-(defn- default-sort-rules []
-  [ ;; sort first by position,
-   [:position :asc]
-   ;; or if that's the same, sort PKs first, followed by names, followed by everything else
-   [(hsql/call :case
-               (mdb/isa :special_type :type/PK)   0
-               (mdb/isa :special_type :type/Name) 1
-               :else                              2)
-    :asc]
-   ;; finally, sort by name (case-insensitive)
-   [:%lower.name :asc]])
-
-(defn- table->sorted-fields [table-or-id]
+(defn- table->sorted-fields
+  [table-id]
   (db/select [Field :id :base_type :special_type]
-    :table_id        (u/get-id table-or-id)
+    :table_id        table-id
     :active          true
     :visibility_type [:not-in ["sensitive" "retired"]]
     :parent_id       nil
     ;; I suppose if we wanted to we could make the `order-by` rules swappable with something other set of rules
-    {:order-by (default-sort-rules)}))
+    {:order-by (table/field-order-rule (Table table-id))}))
 
 (s/defn sorted-implicit-fields-for-table :- mbql.s/Fields
   "For use when adding implicit Field IDs to a query. Return a sequence of field clauses, sorted by the rules listed

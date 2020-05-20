@@ -25,6 +25,7 @@
   {:name                           su/NonBlankString
    :database-type                  (s/maybe su/NonBlankString) ; blank if the Field is all NULL & untyped, i.e. in Mongo
    :base-type                      su/FieldType
+   :database-position              su/IntGreaterThanOrEqualToZero
    (s/optional-key :special-type)  (s/maybe su/FieldType)
    (s/optional-key :field-comment) (s/maybe su/NonBlankString)
    (s/optional-key :pk?)           s/Bool

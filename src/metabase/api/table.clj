@@ -30,6 +30,10 @@
   "Schema for a valid table visibility type."
   (apply s/enum (map name table/visibility-types)))
 
+(def ^:private FieldOrder
+  "Schema for a valid table field ordering."
+  (apply s/enum (map name table/field-orderings)))
+
 (api/defendpoint GET "/"
   "Get all `Tables`."
   []
@@ -51,14 +55,15 @@
 (api/defendpoint PUT "/:id"
   "Update `Table` with ID."
   [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest
-                   show_in_getting_started], :as body} :body}]
+                   show_in_getting_started field_order], :as body} :body}]
   {display_name            (s/maybe su/NonBlankString)
    entity_type             (s/maybe su/EntityTypeKeywordOrString)
    visibility_type         (s/maybe TableVisibilityType)
    description             (s/maybe su/NonBlankString)
    caveats                 (s/maybe su/NonBlankString)
    points_of_interest      (s/maybe su/NonBlankString)
-   show_in_getting_started (s/maybe s/Bool)}
+   show_in_getting_started (s/maybe s/Bool)
+   field_order             (s/maybe FieldOrder)}
   (api/write-check Table id)
   (let [original-visibility-type (db/select-one-field :visibility_type Table :id id)]
     ;; always update visibility type; update display_name, show_in_getting_started, entity_type if non-nil; update
@@ -66,7 +71,7 @@
     (api/check-500
      (db/update! Table id
        (assoc (u/select-keys-when body
-                :non-nil [:display_name :show_in_getting_started :entity_type]
+                :non-nil [:display_name :show_in_getting_started :entity_type :field_order]
                 :present [:description :caveats :points_of_interest])
          :visibility_type visibility_type)))
     (let [updated-table   (Table id)
@@ -345,5 +350,13 @@
   "Return related entities."
   [id]
   (-> id Table api/read-check related/related))
+
+(api/defendpoint PUT "/:id/fields/order"
+  "Reorder fields"
+  [id field_order]
+  {field_order [su/IntGreaterThanZero]}
+  (api/check-superuser)
+  (api/check-404 (Table id))
+  (table/order-fields field_order))
 
 (api/define-routes)

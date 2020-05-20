@@ -1,6 +1,7 @@
 (ns metabase.driver.googleanalytics
   (:require [cheshire.core :as json]
             [clojure.string :as str]
+            [medley.core :as m]
             [metabase
              [driver :as driver]
              [util :as u]]
@@ -55,13 +56,14 @@
 ;;; ------------------------------------------------- describe-table -------------------------------------------------
 
 (defn- describe-columns [database]
-  (set (for [^Column column (metadata/columns database)
+  (set (for [[idx ^Column column] (m/indexed (metadata/columns database))
              :let [ga-type (metadata/column-attribute column :dataType)]]
-         {:name          (.getId column)
-          :base-type     (if (= (.getId column) "ga:date")
-                           :type/Date
-                           (execute/ga-type->base-type ga-type))
-          :database-type ga-type})))
+         {:name              (.getId column)
+          :base-type         (if (= (.getId column) "ga:date")
+                               :type/Date
+                               (execute/ga-type->base-type ga-type))
+          :database-type     ga-type
+          :database-position idx})))
 
 (defmethod driver/describe-table :googleanalytics
   [_ database table]

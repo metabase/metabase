@@ -3,6 +3,7 @@
              [set :as set]
              [string :as str]]
             [clojure.tools.logging :as log]
+            [medley.core :as m]
             [metabase
              [driver :as driver]
              [util :as u]]
@@ -113,10 +114,11 @@
 
 (s/defn ^:private table-schema->metabase-field-info
   [schema :- TableSchema]
-  (for [^TableFieldSchema field (.getFields schema)]
-    {:name          (.getName field)
-     :database-type (.getType field)
-     :base-type     (bigquery-type->base-type (.getType field))}))
+  (for [[idx ^TableFieldSchema field] (m/indexed (.getFields schema))]
+    {:name              (.getName field)
+     :database-type     (.getType field)
+     :base-type         (bigquery-type->base-type (.getType field))
+     :database-position idx}))
 
 (defmethod driver/describe-table :bigquery
   [_ database {table-name :name}]

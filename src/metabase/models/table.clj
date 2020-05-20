@@ -1,5 +1,6 @@
 (ns metabase.models.table
-  (:require [metabase
+  (:require [honeysql.core :as hsql]
+            [metabase
              [db :as mdb]
              [util :as u]]
             [metabase.models
@@ -22,6 +23,14 @@
    (Basically any non-nil value is a reason for hiding the table.)"
   #{:hidden :technical :cruft})
 
+(def ^:const field-orderings
+  "Valid values for `Table.field_order`.
+  `:database`     - use the same order as in the table definition in the DB;
+  `:alphabetical` - order alphabetically by name;
+  `:custom`       - the user manually set the order in the data model
+  `:smart`        - Try to be smart and order like you'd usually want it: first PK, followed by `:type/Name`s, then `:type/Temporal`s, and from there on in alphabetical order. "
+  #{:database :alphabetical :custom :smart})
+
 
 (models/defmodel Table :metabase_table)
 
@@ -29,7 +38,8 @@
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (defn- pre-insert [table]
-  (let [defaults {:display_name (humanization/name->human-readable-name (:name table))}]
+  (let [defaults {:display_name (humanization/name->human-readable-name (:name table))
+                  :field_order  :database}]
     (merge defaults table)))
 
 (defn- pre-delete [{:keys [db_id schema id]}]
@@ -51,7 +61,8 @@
   (merge models/IModelDefaults
          {:hydration-keys (constantly [:table])
           :types          (constantly {:entity_type     :keyword
-                                       :visibility_type :keyword})
+                                       :visibility_type :keyword
+                                       :field_order     :keyword})
           :properties     (constantly {:timestamped? true})
           :pre-insert     pre-insert
           :pre-delete     pre-delete})
@@ -62,16 +73,53 @@
           :perms-objects-set perms-objects-set}))
 
 
+;;; ------------------------------------------------ Field ordering -------------------------------------------------
+
+(defmulti field-order-rule
+  "Generate `:order-by` clause for fields."
+  :field_order)
+
+(defmethod field-order-rule :custom
+  [_]
+  [[:position :asc]])
+
+(defmethod field-order-rule :database
+  [_]
+  [[:database_position :asc]])
+
+(defmethod field-order-rule :smart
+  [_]
+  [[(hsql/call :case
+               (mdb/isa :special_type :type/PK)       0
+               (mdb/isa :special_type :type/Name)     1
+               (mdb/isa :special_type :type/Temporal) 2
+               :else                                  3)
+    :asc]
+   [:%lower.name :asc]])
+
+(defmethod field-order-rule :alphabetical
+  [_]
+  [[:%lower.name :asc]])
+
+(defn order-fields
+  "Set field order to `field-order`."
+  [field-order]
+  (doall
+   (map-indexed (fn [idx field-id]
+                  (db/update! Field field-id :position idx))
+                field-order)))
+
+
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
 (defn fields
   "Return the Fields belonging to a single `table`."
-  [{:keys [id]}]
+  [{:keys [id] :as table}]
   (db/select Field
     :table_id        id
     :active          true
     :visibility_type [:not= "retired"]
-    {:order-by [[:position :asc] [:name :asc]]}))
+    {:order-by (field-order-rule table)}))
 
 (defn metrics
   "Retrieve the Metrics for a single `table`."
@@ -86,11 +134,11 @@
 (defn field-values
   "Return the FieldValues for all Fields belonging to a single `table`."
   {:hydrate :field_values, :arglists '([table])}
-  [{:keys [id]}]
+  [{:keys [id] :as table}]
   (let [field-ids (db/select-ids Field
                     :table_id        id
                     :visibility_type "normal"
-                    {:order-by [[:position :asc] [:name :asc]]})]
+                    {:order-by (field-order-rule table)})]
     (when (seq field-ids)
       (db/select-field->field :field_id :values FieldValues, :field_id [:in field-ids]))))
 
@@ -139,7 +187,7 @@
         :active          true
         :table_id        [:in table-ids]
         :visibility_type [:not= "retired"]
-        {:order-by [[:position :asc] [:name :asc]]}))
+        {:order-by [[:name :asc]]}))
     tables))
 
 
