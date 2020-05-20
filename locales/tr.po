@@ -12407,8 +12407,7 @@ msgid "Using this option requires that provided host is a FQDN.  If connecting t
 "leave this disabled."
 msgstr "Bu seçeneğin kullanılması, sağlanan ana makinenin bir FQDN olmasını gerektirir. Eğer\n"
 "bir Atlas kümesine bağlaniyorsa, bu seçeneği etkinleştirmeniz gerekebilir. Bunun ne anlama geldiğini bilmiyorsanız,\n"
-"bunu devre dışı bırakın.\n"
-""
+"bunu devre dışı bırakın."
 
 #: frontend/src/metabase/entities/databases/forms.js:204
 msgid "Automatically run queries when doing simple filtering and summarizing"
@@ -12902,8 +12901,7 @@ msgstr "{0} çözülemedi"
 
 #: src/metabase/query_processor/middleware/add_implicit_joins.clj
 msgid "Invalid fk-> clause: nowhere to add corresponding join."
-msgstr "\n"
-"Invalid fk cümleciği : karşılık gelen birleştirme hiç bir yerde bulunamadı."
+msgstr "Invalid fk cümleciği : karşılık gelen birleştirme hiç bir yerde bulunamadı."
 
 #: src/metabase/query_processor/middleware/add_implicit_joins.clj
 msgid "{0} driver does not support foreign keys."
@@ -13110,7 +13108,7 @@ msgstr "{0} Veritabanı için görevler zamanlanamadı"
 msgid "All elements must be distinct."
 msgstr "Tüm unsurlar farklı olmalıdır"
 
-#: 
+#:
 msgctxt "Modal for selecting columns in source data or when doing a join."
 msgid "Pick the columns you want to include"
 msgstr "Eklemek istediğiniz sütunları seçin"
@@ -13283,8 +13281,7 @@ msgstr "(⌘ + enter)"
 
 #: frontend/src/metabase/query_builder/components/NativeQueryEditor.jsx:559
 msgid "(Ctrl + enter)"
-msgstr "\n"
-"(Ctrl + enter)"
+msgstr "(Ctrl + enter)"
 
 #: frontend/src/metabase/query_builder/components/QueryVisualization.jsx:149
 msgid "Here's where your results will appear"
@@ -14032,8 +14029,7 @@ msgstr "Normal ifadeye göre eşleşen alt dizeleri ayıklar."
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:137
 msgid "Address"
-msgstr "\n"
-"Adres"
+msgstr "Adres"
 
 #: frontend/src/metabase/lib/expressions/helper_text_strings.js:139
 msgid "The column or string of text to search though."
@@ -14543,8 +14539,7 @@ msgstr "{0} ayarlayamazsınız; salt okunur bir ayardır."
 
 #: src/metabase/models/setting.clj
 msgid "defsetting descriptions strings must have `:visibilty` `:internal`, `:setter` `:none`, or internationalized, found: `{0}`"
-msgstr "\n"
-"defsetting açıklama dizeleri şunlardan biri olmalıdır : `:visibilty` `:internal`, `:setter` `:none`, or internationalized, found: `{0}`"
+msgstr "defsetting açıklama dizeleri şunlardan biri olmalıdır : `:visibilty` `:internal`, `:setter` `:none`, or internationalized, found: `{0}`"
 
 #: src/metabase/models/setting.clj
 msgid "Setting {0} is internal"
@@ -14687,4 +14682,3 @@ msgstr "Sütun için içgörü oluşturulurken hata oluştu:"
 #: src/metabase/task/follow_up_emails.clj
 msgid "Sending abandonment email!"
 msgstr "Vazgeçme e-postası gönderme!"
-
