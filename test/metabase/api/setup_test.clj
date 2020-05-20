@@ -1,7 +1,6 @@
 (ns metabase.api.setup-test
   "Tests for /api/setup endpoints."
   (:require [clojure.test :refer :all]
-            [expectations :refer [expect]]
             [medley.core :as m]
             [metabase
              [email :as email]
@@ -16,6 +15,7 @@
             [metabase.test
              [fixtures :as fixtures]
              [util :as tu]]
+            [schema.core :as s]
             [toucan.db :as db]))
 
 (use-fixtures :once (fixtures/initialize :test-users))
@@ -87,58 +87,65 @@
 (deftest create-database-test
   (testing "Check that we can Create a Database when we set up MB (#10135)"
     (setup [body _ db-name user-email]
-      (http/client :post 200 "setup" body)
-      (is (= true
-             (db/exists? Database :name db-name)))
-      (is (= true
-             (db/exists? User :email user-email))))))
+      (is (schema= {:id (s/named #"^[0-9a-f-]{36}$" "UUID str")}
+                   (http/client :post 200 "setup" body)))
+      (testing "Database should be created"
+        (is (= true
+               (db/exists? Database :name db-name))))
+      (testing "User should be created"
+        (is (= true
+               (db/exists? User :email user-email)))))))
 
-;; Test input validations
-(expect
-  {:errors {:token "Token does not match the setup token."}}
-  (setup [body]
-    (http/client :post 400 "setup" (dissoc body :token))))
+(deftest setup-validation-test
+  (testing "POST /api/setup validation"
+    (testing ":token"
+      (testing "missing"
+        (setup [body]
+          (is (= {:errors {:token "Token does not match the setup token."}}
+                 (http/client :post 400 "setup" (dissoc body :token))))))
 
-(expect
-  {:errors {:token "Token does not match the setup token."}}
-  (setup [body]
-    (http/client :post 400 "setup" (assoc body :token "foobar"))))
+      (testing "incorrect"
+        (setup [body]
+          (is (= {:errors {:token "Token does not match the setup token."}}
+                 (http/client :post 400 "setup" (assoc body :token "foobar")))))))
 
-(expect
-  {:errors {:site_name "value must be a non-blank string."}}
-  (setup [body]
-    (http/client :post 400 "setup" (m/dissoc-in body [:prefs :site_name]))))
+    (testing "site name"
+      (setup [body]
+        (is (= {:errors {:site_name "value must be a non-blank string."}}
+               (http/client :post 400 "setup" (m/dissoc-in body [:prefs :site_name]))))))
 
-(expect
-  {:errors {:first_name "value must be a non-blank string."}}
-  (setup [body]
-    (http/client :post 400 "setup" (m/dissoc-in body [:user :first_name]))))
+    (testing "user"
+      (testing "first name"
+        (setup [body]
+          (is (= {:errors {:first_name "value must be a non-blank string."}}
+                 (http/client :post 400 "setup" (m/dissoc-in body [:user :first_name]))))))
 
-(expect
-  {:errors {:last_name "value must be a non-blank string."}}
-  (setup [body]
-    (http/client :post 400 "setup" (m/dissoc-in body [:user :last_name]))))
+      (testing "last name"
+        (setup [body]
+          (is (= {:errors {:last_name "value must be a non-blank string."}}
+                 (http/client :post 400 "setup" (m/dissoc-in body [:user :last_name]))))))
 
-(expect
-  {:errors {:email "value must be a valid email address."}}
-  (setup [body]
-    (http/client :post 400 "setup" (m/dissoc-in body [:user :email]))))
+      (testing "email"
+        (testing "missing"
+          (setup [body]
+            (is (= {:errors {:email "value must be a valid email address."}}
+                   (http/client :post 400 "setup" (m/dissoc-in body [:user :email]))))))
 
-(expect
-  {:errors {:password "Insufficient password strength"}}
-  (setup [body]
-    (http/client :post 400 "setup" (m/dissoc-in body [:user :password]))))
+        (testing "invalid"
+          (setup [body]
+            (is (= {:errors {:email "value must be a valid email address."}}
+                   (http/client :post 400 "setup" (assoc-in body [:user :email] "anything")))))))
 
-;; valid email + complex password
-(expect
-  {:errors {:email "value must be a valid email address."}}
-  (setup [body]
-    (http/client :post 400 "setup" (assoc-in body [:user :email] "anything"))))
+      (testing "password"
+        (testing "missing"
+          (setup [body]
+            (is (= {:errors {:password "Insufficient password strength"}}
+                   (http/client :post 400 "setup" (m/dissoc-in body [:user :password]))))))
 
-(expect
-  {:errors {:password "Insufficient password strength"}}
-  (setup [body]
-    (http/client :post 400 "setup" (assoc-in body [:user :password] "anything"))))
+        (testing "invalid"
+          (setup [body]
+            (is (= {:errors {:password "Insufficient password strength"}}
+                   (http/client :post 400 "setup" (assoc-in body [:user :password] "anything"))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -162,47 +169,47 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 ;; basic sanity check
-(expect
-  [{:name  "Get connected"
-    :tasks [{:title        "Add a database"
-             :completed    true
-             :triggered    true
-             :is_next_step false}
-            {:title        "Set up email"
-             :completed    true
-             :triggered    true
-             :is_next_step false}
-            {:title        "Set Slack credentials"
-             :completed    false
-             :triggered    true
-             :is_next_step true}
-            {:title        "Invite team members"
-             :completed    true
-             :triggered    true
-             :is_next_step false}]}
-   {:name  "Curate your data"
-    :tasks [{:title        "Hide irrelevant tables"
-             :completed    true
-             :triggered    false
-             :is_next_step false}
-            {:title        "Organize questions"
-             :completed    true
-             :triggered    false
-             :is_next_step false}
-            {:title        "Create metrics"
-             :completed    true
-             :triggered    false
-             :is_next_step false}
-            {:title        "Create segments"
-             :completed    true
-             :triggered    false
-             :is_next_step false}]}]
+(deftest admin-checklist-test
   (with-redefs [db/exists?              (constantly true)
                 db/count                (constantly 5)
                 email/email-configured? (constantly true)
                 slack/slack-configured? (constantly false)]
-    (for [{group-name :name, tasks :tasks} (#'setup-api/admin-checklist)]
-      {:name  (str group-name)
-       :tasks (for [task tasks]
-                (-> (select-keys task [:title :completed :triggered :is_next_step])
-                    (update :title str)))})))
+    (is (= [{:name  "Get connected"
+             :tasks [{:title        "Add a database"
+                      :completed    true
+                      :triggered    true
+                      :is_next_step false}
+                     {:title        "Set up email"
+                      :completed    true
+                      :triggered    true
+                      :is_next_step false}
+                     {:title        "Set Slack credentials"
+                      :completed    false
+                      :triggered    true
+                      :is_next_step true}
+                     {:title        "Invite team members"
+                      :completed    true
+                      :triggered    true
+                      :is_next_step false}]}
+            {:name  "Curate your data"
+             :tasks [{:title        "Hide irrelevant tables"
+                      :completed    true
+                      :triggered    false
+                      :is_next_step false}
+                     {:title        "Organize questions"
+                      :completed    true
+                      :triggered    false
+                      :is_next_step false}
+                     {:title        "Create metrics"
+                      :completed    true
+                      :triggered    false
+                      :is_next_step false}
+                     {:title        "Create segments"
+                      :completed    true
+                      :triggered    false
+                      :is_next_step false}]}]
+           (for [{group-name :name, tasks :tasks} (#'setup-api/admin-checklist)]
+             {:name  (str group-name)
+              :tasks (for [task tasks]
+                       (-> (select-keys task [:title :completed :triggered :is_next_step])
+                           (update :title str)))})))))

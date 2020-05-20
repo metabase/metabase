@@ -74,7 +74,7 @@
                                                allow_tracking))
     ;; setup database (if needed)
     (when engine
-      (when-not (driver/available? engine)
+      (when-not (driver/available? (driver/the-driver engine))
         (throw (ex-info (tru "Cannot create Database: cannot find driver {0}." engine)
                  {:engine engine})))
       (let [db (db/insert! Database
