@@ -353,7 +353,7 @@
 
 (api/defendpoint PUT "/:id/fields/order"
   "Reorder fields"
-  [id field_order]
+  [id :as {field_order :body}]
   {field_order [su/IntGreaterThanZero]}
   (api/check-superuser)
   (api/check-404 (Table id))
