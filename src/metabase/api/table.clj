@@ -356,7 +356,6 @@
   [id :as {field_order :body}]
   {field_order [su/IntGreaterThanZero]}
   (api/check-superuser)
-  (api/check-404 (Table id))
-  (table/order-fields field_order))
+  (-> id Table api/check-404 (table/order-fields field_order)))
 
 (api/define-routes)

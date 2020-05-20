@@ -101,9 +101,15 @@
   [_]
   [[:%lower.name :asc]])
 
+(defn- valid-field-order?
+  "Field ordering is valid if all the fields from a given table are present and only from that table."
+  [table field-ordering]
+  (= (db/select-ids Field :table_id (u/get-id table)) (set field-ordering)))
+
 (defn order-fields
   "Set field order to `field-order`."
-  [field-order]
+  [table field-order]
+  {:pre [(valid-field-order? table field-order)]}
   (doall
    (map-indexed (fn [idx field-id]
                   (db/update! Field field-id :position idx))
@@ -178,7 +184,8 @@
     tables))
 
 (defn with-fields
-  "Efficiently hydrate the Fields for a collection of `tables`."
+  "Efficiently hydrate the Fields for a collection of `tables`.
+   Note: does not respect `:field_order` setting of individual tables, but rather sorts by name."
   {:batched-hydrate :fields}
   [tables]
   (with-objects :fields
@@ -187,7 +194,7 @@
         :active          true
         :table_id        [:in table-ids]
         :visibility_type [:not= "retired"]
-        {:order-by [[:name :asc]]}))
+        {:order-by       [[:name :asc]]}))
     tables))
 
 
