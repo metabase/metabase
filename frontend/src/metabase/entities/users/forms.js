@@ -7,6 +7,8 @@ import MetabaseSettings from "metabase/lib/settings";
 
 import type { FormFieldDefinition } from "metabase/containers/Form";
 
+import _ from "underscore";
+
 const DETAILS_FORM_FIELDS: FormFieldDefinition[] = [
   {
     name: "first_name",
@@ -27,11 +29,17 @@ const DETAILS_FORM_FIELDS: FormFieldDefinition[] = [
     validate: validate.required().email(),
   },
   {
-    name: "language",
+    name: "locale",
     title: t`Language`,
     type: "select",
-    options: (MetabaseSettings.get("available-locales") || []).map(
-      ([value, name]) => ({ name, value }),
+    options: (
+      [[null, t`Use site default`]]
+        .concat(
+          _.sortBy(MetabaseSettings.get("available-locales") || [["en", "English"]],
+                   ([code, name]) => name)
+        )
+    ).map(
+        ([code, name]) => ({ name, value: code })
     ),
   },
 ];

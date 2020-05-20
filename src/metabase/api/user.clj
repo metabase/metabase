@@ -163,9 +163,8 @@
       (api/check-500
        (db/update! User id
          (u/select-keys-when body
-           :present (when api/*is-superuser?*
-                      #{:login_attributes})
-           :non-nil (set (concat [:first_name :last_name :email :locale]
+           :present (into #{:locale} (when api/*is-superuser?* [:login_attributes]))
+           :non-nil (set (concat [:first_name :last_name :email]
                                  (when api/*is-superuser?*
                                    [:is_superuser]))))))
       (maybe-set-user-permissions-groups! id group_ids is_superuser)

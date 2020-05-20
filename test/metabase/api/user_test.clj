@@ -583,7 +583,8 @@
           (testing "normal Users should be able to update their own locale"
             (doseq [[message locale] {"to a language-country locale (with dash)"       "es-MX"
                                       "to a language-country locale (with underscore)" "es_MX"
-                                      "to a language-only locale"                      "es"}]
+                                      "to a language-only locale"                      "es"
+                                      "to `nil` (use system default)"                  nil}]
               (testing message
                 (testing "response"
                   (is (= (i18n/normalized-locale-string locale)
