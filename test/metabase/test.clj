@@ -11,6 +11,7 @@
             [metabase
              [driver :as driver]
              [email-test :as et]
+             [http-client :as http]
              [query-processor :as qp]
              [query-processor-test :as qp.test]]
             [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
@@ -32,7 +33,6 @@
              [i18n :as i18n.tu]
              [log :as tu.log]
              [timezone :as tu.tz]]
-            [metabase.http-client :as http]
             [potemkin :as p]
             [toucan.util.test :as tt]))
 
