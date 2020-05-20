@@ -27,6 +27,7 @@ export default class Setup extends Component {
     activeStep: PropTypes.number.isRequired,
     setupComplete: PropTypes.bool.isRequired,
     userDetails: PropTypes.object,
+    languageDetails: PropTypes.object,
     setActiveStep: PropTypes.func.isRequired,
     databaseDetails: PropTypes.object.isRequired,
   };

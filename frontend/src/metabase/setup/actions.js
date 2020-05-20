@@ -49,7 +49,7 @@ export const validatePassword = createThunkAction(VALIDATE_PASSWORD, function(
 export const submitSetup = createThunkAction(SUBMIT_SETUP, function() {
   return async function(dispatch, getState) {
     const {
-      setup: { allowTracking, databaseDetails, userDetails },
+      setup: { allowTracking, databaseDetails, userDetails, languageDetails },
     } = getState();
 
     try {
@@ -58,6 +58,7 @@ export const submitSetup = createThunkAction(SUBMIT_SETUP, function() {
         token: MetabaseSettings.get("setup-token"),
         prefs: {
           site_name: userDetails.site_name,
+          site_locale: languageDetails.site_locale,
           allow_tracking: allowTracking.toString(),
         },
         database: databaseDetails,

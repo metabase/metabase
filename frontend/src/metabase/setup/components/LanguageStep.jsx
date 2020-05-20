@@ -10,8 +10,11 @@ import Button from "metabase/components/Button";
 import StepTitle from "./StepTitle";
 import CollapsedStep from "./CollapsedStep";
 
+import _ from "underscore";
+
 export default class LanguageStep extends React.Component {
-  state = { selectedLangage: "en" };
+  state = { selectedLanguage: { name: "English", code: "en" } };
+
   render() {
     const {
       activeStep,
@@ -23,8 +26,8 @@ export default class LanguageStep extends React.Component {
       return (
         <CollapsedStep
           stepNumber={stepNumber}
-          stepCircleText={stepNumber}
-          stepText={"Your language is set to English"}
+          stepCircleText={String(stepNumber)}
+          stepText={t`Your language is set to ${this.state.selectedLanguage.name}`}
           isCompleted={activeStep > stepNumber}
           setActiveStep={setActiveStep}
         />
@@ -37,30 +40,38 @@ export default class LanguageStep extends React.Component {
         >
           <StepTitle
             title={"What's your preferred language"}
-            circleText={stepNumber}
+            circleText={String(stepNumber)}
           />
           <p className="text-default">
             {t`This language will be used throughout Metabase and be the default for
           new users`}
           </p>
-          <div style={{ maxHeight: 300 }} className="overflow-hidden">
+          <div className="overflow-hidden">
             <ol className="overflow-scroll">
-              {(MetabaseSettings.get("available-locales") || []).map(
-                ([value, name]) => (
-                  <li
-                    className={cx(
-                      "p1 rounded bg-brand-hover text-white-hover cursor-pointer",
-                      {
-                        "bg-brand text-white":
-                          this.state.selectedLanguage === value,
-                      },
-                    )}
-                    onClick={() => this.setState({ selectedLanguage: value })}
-                  >
-                    {name}
-                  </li>
-                ),
-              )}
+              {_.sortBy(
+                MetabaseSettings.get("available-locales") || [
+                  ["en", "English"],
+                ],
+                ([code, name]) => name,
+              ).map(([code, name]) => (
+                <li
+                  key={code}
+                  className={cx(
+                    "p1 rounded bg-brand-hover text-white-hover cursor-pointer",
+                    {
+                      "bg-brand text-white":
+                        this.state.selectedLanguage.code === code,
+                    },
+                  )}
+                  onClick={() =>
+                    this.setState({
+                      selectedLanguage: { name: name, code: code },
+                    })
+                  }
+                >
+                  {name}
+                </li>
+              ))}
             </ol>
           </div>
           <Button
@@ -69,7 +80,7 @@ export default class LanguageStep extends React.Component {
               console.log("clicky clicky");
               return setLanguageDetails({
                 nextStep: stepNumber + 1,
-                details: "lanugage",
+                details: { site_locale: this.state.selectedLanguage.code },
               });
             }}
           >{t`Next`}</Button>

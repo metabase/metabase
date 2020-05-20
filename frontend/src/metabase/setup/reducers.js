@@ -34,6 +34,13 @@ export const databaseDetails = handleActions(
   null,
 );
 
+export const languageDetails = handleActions(
+  {
+    [SET_LANGUAGE_DETAILS]: { next: (state, { payload }) => payload.details },
+  },
+  null,
+);
+
 export const allowTracking = handleActions(
   {
     [SET_ALLOW_TRACKING]: { next: (state, { payload }) => payload },
