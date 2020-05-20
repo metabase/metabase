@@ -34,7 +34,7 @@
                      {:name          "timestamp"
                       :database-type "timestamp"
                       :base-type     :type/Instant
-                      :pk?           true}
+                      :pk?           false}
                      (for [[idx [field-name {field-type :type}]] (m/indexed (dissoc columns :__time))
                            :let                            [metric? (contains? metric-column-names field-name)]]
                        {:name              (name field-name)

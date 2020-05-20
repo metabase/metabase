@@ -52,6 +52,11 @@
 (def ^:private ^{:arglists '([database])} ^Bigquery database->client
   (comp credential->client database->credential))
 
+(defn find-project-id
+  "Select the user specified project-id or the one from the credential, in the case of a service account"
+  [project-id ^GoogleCredential credential]
+  (or project-id
+      (.getServiceAccountProjectId credential)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                      Sync                                                      |
@@ -65,7 +70,15 @@
    (list-tables database nil))
 
   ([{{:keys [project-id dataset-id]} :details, :as database}, ^String page-token-or-nil]
-   (list-tables (database->client database) project-id dataset-id page-token-or-nil))
+   ;; RAR 2020-May-11 - this gets messy, because this function is used to determine if we
+   ;; can connect to the database. If a service account JSON is being used, the project ID
+   ;; field isn't required in the admin page because it's embedded in that JSON. During the
+   ;; initial save, the database entry doesn't exist yet, so we haven't pulled the project ID
+   ;; from that JSON. In this case, we need to go look it up in the credentials.
+   ;; TODO: maybe handle this better in `driver/can-connect? :bigquery`
+   (let [db-client (database->client database)
+         proj-id (find-project-id project-id (database->credential database))]
+    (list-tables db-client proj-id dataset-id page-token-or-nil)))
 
   ([^Bigquery client, ^String project-id, ^String dataset-id, ^String page-token-or-nil]
    {:pre [client (seq project-id) (seq dataset-id)]}
