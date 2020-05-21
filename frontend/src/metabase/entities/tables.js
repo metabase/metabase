@@ -175,14 +175,18 @@ const Tables = createEntity({
     // these unfiltered selectors include hidden tables/fields for display in the admin panel
     getObjectUnfiltered: (state, { entityId }) => {
       const table = state.entities.tables[entityId];
-      return {
-        ...table,
-        fields: table.fields.map(entityId =>
-          Fields.selectors.getObjectUnfiltered(state, { entityId }),
-        ),
-        metrics: table.metrics.map(id => state.entities.metrics[id]),
-        segments: table.segments.map(id => state.entities.segments[id]),
-      };
+      return (
+        table && {
+          ...table,
+          fields: (table.fields || []).map(entityId =>
+            Fields.selectors.getObjectUnfiltered(state, { entityId }),
+          ),
+          metrics: (table.metrics || []).map(id => state.entities.metrics[id]),
+          segments: (table.segments || []).map(
+            id => state.entities.segments[id],
+          ),
+        }
+      );
     },
     getListUnfiltered: ({ entities }, { entityQuery }) =>
       (entities.tables_list[JSON.stringify(entityQuery)] || []).map(
