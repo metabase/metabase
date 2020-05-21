@@ -217,6 +217,8 @@
              (is (= false
                     (db/exists? User :email user-email))))
            (testing "New DB shouldn't exist"
+             ;; TODO -- we should also be deleting relevant sync tasks for the DB, but this doesn't matter too much
+             ;; for right now.
              (is (= false
                     (db/exists? Database :engine "h2", :name db-name))))
            (testing "Settings should not be changed"
