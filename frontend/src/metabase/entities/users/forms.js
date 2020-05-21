@@ -9,7 +9,7 @@ import type { FormFieldDefinition } from "metabase/containers/Form";
 
 import _ from "underscore";
 
-const DETAILS_FORM_FIELDS: FormFieldDefinition[] = [
+const DETAILS_FORM_FIELDS: () => FormFieldDefinition[] = () => [
   {
     name: "first_name",
     title: t`First name`,
@@ -43,7 +43,7 @@ const DETAILS_FORM_FIELDS: FormFieldDefinition[] = [
   },
 ];
 
-const PASSWORD_FORM_FIELDS: FormFieldDefinition[] = [
+const PASSWORD_FORM_FIELDS: () => FormFieldDefinition[] = () => [
   {
     name: "password",
     title: t`Create a password`,
@@ -64,8 +64,8 @@ const PASSWORD_FORM_FIELDS: FormFieldDefinition[] = [
 
 export default {
   admin: {
-    fields: [
-      ...DETAILS_FORM_FIELDS,
+    fields: () => [
+      ...DETAILS_FORM_FIELDS(),
       {
         name: "group_ids",
         title: "Groups",
@@ -75,12 +75,12 @@ export default {
     ],
   },
   user: {
-    fields: [...DETAILS_FORM_FIELDS],
+    fields: () => [...DETAILS_FORM_FIELDS()],
   },
   setup: {
-    fields: [
-      ...DETAILS_FORM_FIELDS,
-      ...PASSWORD_FORM_FIELDS,
+    fields: () => [
+      ...DETAILS_FORM_FIELDS(),
+      ...PASSWORD_FORM_FIELDS(),
       {
         name: "site_name",
         title: t`Your company or team name`,
@@ -90,7 +90,7 @@ export default {
     ],
   },
   password: {
-    fields: [
+    fields: () => [
       {
         name: "old_password",
         type: "password",
@@ -98,10 +98,10 @@ export default {
         placeholder: t`Shhh...`,
         validate: validate.required(),
       },
-      ...PASSWORD_FORM_FIELDS,
+      ...PASSWORD_FORM_FIELDS(),
     ],
   },
   password_reset: {
-    fields: [...PASSWORD_FORM_FIELDS],
+    fields: () => [...PASSWORD_FORM_FIELDS()],
   },
 };

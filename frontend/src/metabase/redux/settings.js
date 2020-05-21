@@ -14,8 +14,8 @@ export const REFRESH_SITE_SETTINGS = "metabase/settings/REFRESH_SITE_SETTINGS";
 
 export const refreshSiteSettings = createThunkAction(
   REFRESH_SITE_SETTINGS,
-  () => async (dispatch, getState) => {
-    const settings = await SessionApi.properties();
+  params => async (dispatch, getState) => {
+    const settings = await SessionApi.properties(params);
     MetabaseSettings.setAll(settings);
     return settings;
   },
