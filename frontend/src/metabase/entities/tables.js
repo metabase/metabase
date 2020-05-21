@@ -171,8 +171,15 @@ const Tables = createEntity({
 
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).table(entityId),
-    getObjectUnfiltered: ({ entities }, { entityId }) =>
-      entities.tables[entityId] || {},
+    getObjectUnfiltered: ({ entities }, { entityId }) => {
+      const table = entities.tables[entityId];
+      return {
+        ...table,
+        fields: table.fields.map(id => entities.fields[id]),
+        metrics: table.metrics.map(id => entities.metrics[id]),
+        segments: table.segments.map(id => entities.segments[id]),
+      };
+    },
     getListUnfiltered: ({ entities }, { entityQuery }) =>
       (entities.tables_list[JSON.stringify(entityQuery)] || []).map(
         id => entities.tables[id],
