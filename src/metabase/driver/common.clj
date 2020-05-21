@@ -51,7 +51,10 @@
    (deferred-tru "Looks like your username is incorrect.")
 
    :username-or-password-incorrect
-   (deferred-tru "Looks like the username or password is incorrect.")})
+   (deferred-tru "Looks like the username or password is incorrect.")
+
+   :certificate-not-trusted
+   (deferred-tru "Server certificate not trusted - did you specify the correct SSL certificate chain?")})
 
 ;; TODO - we should rename these from `default-*-details` to `default-*-connection-property`
 

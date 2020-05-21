@@ -7,7 +7,12 @@
              [driver :as driver]
              [util :as u]]
             [metabase.util.i18n :refer [trs]]
-            [toucan.db :as db]))
+            [toucan.db :as db])
+  (:import java.io.ByteArrayInputStream
+           [java.security.cert CertificateFactory X509Certificate]
+           java.security.KeyStore
+           javax.net.SocketFactory
+           [javax.net.ssl SSLContext TrustManagerFactory X509TrustManager]))
 
 (def ^:private can-connect-timeout-ms
   "Consider `can-connect?`/`can-connect-with-details?` to have failed after this many milliseconds.
@@ -97,3 +102,44 @@
              ;; TODO - maybe we should rename `details-fields` -> `connection-properties` on the FE as well?
              [driver {:details-fields props
                       :driver-name    (driver/display-name driver)}])))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             TLS Helpers                                                        |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn- dn-for-cert
+  [^X509Certificate cert]
+  (.. cert getSubjectX500Principal getName))
+
+(defn generate-keystore-with-cert
+  "Generates a `KeyStore` with custom certificates added"
+  ^KeyStore [cert-string]
+  (let [cert-factory (CertificateFactory/getInstance "X.509")
+        cert-stream (ByteArrayInputStream. (.getBytes ^String cert-string "UTF-8"))
+        certs (.generateCertificates cert-factory cert-stream)
+        keystore (doto (KeyStore/getInstance (KeyStore/getDefaultType))
+                   (.load nil nil))
+        ;; this TrustManagerFactory is used for cloning the default certs into the new TrustManagerFactory
+        base-trust-manager-factory (doto (TrustManagerFactory/getInstance (TrustManagerFactory/getDefaultAlgorithm))
+                                     (.init ^KeyStore (cast KeyStore nil)))]
+    (doseq [cert certs]
+      (.setCertificateEntry keystore (dn-for-cert cert) cert))
+
+    (doseq [^X509TrustManager trust-mgr (.getTrustManagers base-trust-manager-factory)]
+      (when (instance? X509TrustManager trust-mgr)
+        (doseq [issuer (.getAcceptedIssuers trust-mgr)]
+          (.setCertificateEntry keystore (dn-for-cert issuer) issuer))))
+
+    keystore))
+
+(defn socket-factory-for-cert
+  "Generates an `SocketFactory` with the custom certificates added"
+  ^SocketFactory [cert-string]
+  (let [keystore (generate-keystore-with-cert cert-string)
+        ;; this is the final TrustManagerFactory used to initialize the SSLContext
+        trust-manager-factory (TrustManagerFactory/getInstance (TrustManagerFactory/getDefaultAlgorithm))
+        ssl-context (SSLContext/getInstance "TLS")]
+    (.init trust-manager-factory keystore)
+    (.init ssl-context nil (.getTrustManagers trust-manager-factory) nil)
+
+    (.getSocketFactory ssl-context)))
