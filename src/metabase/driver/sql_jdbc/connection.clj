@@ -92,7 +92,7 @@
 (defn- destroy-pool! [database-id pool-spec]
   (log/debug (u/format-color 'red (trs "Closing old connection pool for database {0} ..." database-id)))
   (connection-pool/destroy-connection-pool! pool-spec)
-  (ssh/close-tunnel pool-spec))
+  (ssh/close-tunnel! pool-spec))
 
 (defonce ^:private ^{:doc "A map of our currently open connection pools, keyed by Database `:id`."}
   database-id->connection-pool
