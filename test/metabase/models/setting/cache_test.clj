@@ -40,7 +40,7 @@
     (db/simple-delete! Setting {:key (name setting-name)}))
   (update-settings-last-updated-value-in-db!))
 
-(defn- reset-last-update-check!
+(defn reset-last-update-check!
   "Reset the value of `last-update-check` so the next cache access will check for updates."
   []
   (reset! (var-get #'cache/last-update-check) 0))
@@ -137,15 +137,11 @@
     (is (= "Batman Toucan"
            (setting-test/toucan-name)))))
 
-(deftest set-site-locale-test
+(deftest sync-test-3
   (mt/discard-setting-changes [site-locale]
-    (let [original-locale (java.util.Locale/getDefault)]
-      (try
-        (clear-cache!)
-        (public-settings/site-locale "en")
-        (simulate-another-instance-updating-setting! :site-locale "fr")
-        (reset-last-update-check!)
-        (is (= "fr"
-               (public-settings/site-locale)))
-        (finally
-          (java.util.Locale/setDefault original-locale))))))
+    (clear-cache!)
+    (public-settings/site-locale "en")
+    (simulate-another-instance-updating-setting! :site-locale "fr")
+    (reset-last-update-check!)
+    (is (= "fr"
+           (public-settings/site-locale)))))
