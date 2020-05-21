@@ -583,53 +583,62 @@
                 :order-by   [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]
                 :limit      5}))))))
 
-(deftest filter-by-numeric-column-test
+(deftest numeric-filter-test
   (mt/test-driver :druid
-    (testing "Make sure we can filter by numeric columns (#10935)"
-      (tqpt/with-flattened-dbdef
-        (letfn [(compiled [query]
-                  (-> (qp/query->native query) :query (select-keys [:filter :queryType])))]
-          (testing "scan query"
-            (let [query (mt/mbql-query checkins
-                          {:order-by [[:desc $id]]
-                           :fields   [$id $venue_price $venue_name]
-                           :filter   [:= $venue_price 1]
-                           :limit    5})]
-              (is (= {:filter    {:type :selector, :dimension "venue_price", :value 1}
-                      :queryType :scan}
-                     (compiled query)))
-              (is (= ["931" "1" "Kinaree Thai Bistro"]
-                     (mt/first-row (qp/process-query query))))))
+    (testing
+        (tqpt/with-flattened-dbdef
+          (letfn [(compiled [query]
+                    (-> (qp/query->native query) :query (select-keys [:filter :queryType])))]
+            (doseq [[message field] {"Make sure we can filter by numeric columns (#10935)" :venue_price
+                                     "We should be able to filter by Metrics (#11823)"     :count}
+                    :let            [field-clause [:field-id (mt/id :checkins field)]
+                                     field-name   (name field)]]
+              (testing message
+                (testing "scan query"
+                  (let [query (mt/mbql-query checkins
+                                {:fields   [$id $venue_price $venue_name]
+                                 :filter   [:= field-clause 1]
+                                 :order-by [[:desc $id]]
+                                 :limit    5})]
+                    (is (= {:filter    {:type :selector, :dimension field-name, :value 1}
+                            :queryType :scan}
+                           (compiled query)))
+                    (is (= ["931" "1" "Kinaree Thai Bistro"]
+                           (mt/first-row (qp/process-query query))))))
 
-          (testing "topN query"
-            (let [query (mt/mbql-query checkins
-                          {:aggregation [[:count]]
-                           :breakout    [$venue_price]
-                           :filter      [:= $venue_price 1]})]
-              (is (= {:filter    {:type :selector, :dimension "venue_price", :value 1}
-                      :queryType :topN}
-                     (compiled query)))
-              (is (= ["1" 221]
-                     (mt/first-row (qp/process-query query))))))
+                (testing "topN query"
+                  (let [query (mt/mbql-query checkins
+                                {:aggregation [[:count]]
+                                 :breakout    [$venue_price]
+                                 :filter      [:= field-clause 1]})]
+                    (is (= {:filter    {:type :selector, :dimension field-name, :value 1}
+                            :queryType :topN}
+                           (compiled query)))
+                    (is (= ["1" 221]
+                           (mt/first-row (qp/process-query query))))))
 
-          (testing "groupBy query"
-            (let [query (mt/mbql-query checkins
-                          {:aggregation [[:aggregation-options [:distinct $checkins.venue_name] {:name "__count_0"}]]
-                           :breakout    [$venue_category_name $user_name]
-                           :order-by    [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]
-                           :filter      [:= $venue_price 1]})]
-              (is (= {:filter    {:type :selector, :dimension "venue_price", :value 1}
-                      :queryType :groupBy}
-                     (compiled query)))
-              (is (= ["Mexican" "Conchúr Tihomir" 4]
-                     (mt/first-row (qp/process-query query))))))
+                (testing "groupBy query"
+                  (let [query (mt/mbql-query checkins
+                                {:aggregation [[:aggregation-options [:distinct $checkins.venue_name] {:name "__count_0"}]]
+                                 :breakout    [$venue_category_name $user_name]
+                                 :order-by    [[:desc [:aggregation 0]] [:asc $checkins.venue_category_name]]
+                                 :filter      [:= field-clause 1]})]
+                    (is (= {:filter    {:type :selector, :dimension field-name, :value 1}
+                            :queryType :groupBy}
+                           (compiled query)))
+                    (is (= (case field
+                             :count       ["Bar" "Felipinho Asklepios" 8]
+                             :venue_price ["Mexican" "Conchúr Tihomir" 4])
+                           (mt/first-row (qp/process-query query))))))
 
-          (testing "timeseries query"
-            (let [query (mt/mbql-query checkins
-                          {:aggregation [[:count]]
-                           :filter      [:= $venue_price 1]})]
-              (is (= {:queryType :timeseries
-                      :filter    {:type :selector, :dimension "venue_price", :value 1}}
-                     (compiled query)))
-              (is (= [221]
-                     (mt/first-row (qp/process-query query)))))))))))
+                (testing "timeseries query"
+                  (let [query (mt/mbql-query checkins
+                                {:aggregation [[:count]]
+                                 :filter      [:= field-clause 1]})]
+                    (is (= {:queryType :timeseries
+                            :filter    {:type :selector, :dimension field-name, :value 1}}
+                           (compiled query)))
+                    (is (= (case field
+                             :count       [1000]
+                             :venue_price [221])
+                           (mt/first-row (qp/process-query query)))))))))))))
