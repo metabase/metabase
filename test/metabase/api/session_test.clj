@@ -5,7 +5,7 @@
             [clojure.test :refer :all]
             [metabase
              [email-test :as et]
-             [http-client :as http-client :refer [client]]
+             [http-client :as http-client]
              [public-settings :as public-settings]
              [test :as mt]
              [util :as u]]
@@ -36,25 +36,25 @@
   (testing "POST /api/session"
     (testing "Test that we can login"
       (is (schema= SessionResponse
-                   (client :post 200 "session" (mt/user->credentials :rasta)))))))
+                   (mt/client :post 200 "session" (mt/user->credentials :rasta)))))))
 
 (deftest login-validation-test
   (testing "POST /api/session"
     (testing "Test for required params"
       (is (= {:errors {:username "value must be a non-blank string."}}
-             (client :post 400 "session" {})))
+             (mt/client :post 400 "session" {})))
 
       (is (= {:errors {:password "value must be a non-blank string."}}
-             (client :post 400 "session" {:username "anything@metabase.com"}))))
+             (mt/client :post 400 "session" {:username "anything@metabase.com"}))))
 
     (testing "Test for inactive user (user shouldn't be able to login if :is_active = false)"
       ;; Return same error as incorrect password to avoid leaking existence of user
       (is (= {:errors {:password "did not match stored password"}}
-             (client :post 400 "session" (mt/user->credentials :trashbird)))))
+             (mt/client :post 400 "session" (mt/user->credentials :trashbird)))))
 
     (testing "Test for password checking"
       (is (= {:errors {:password "did not match stored password"}}
-             (client :post 400 "session" (-> (mt/user->credentials :rasta)
+             (mt/client :post 400 "session" (-> (mt/user->credentials :rasta)
                                              (assoc :password "something else"))))))))
 
 (deftest login-throttling-test
@@ -62,7 +62,7 @@
                 " throttling works at the API level -- more tests in the throttle library itself:"
                 " https://github.com/metabase/throttle)")
     (let [login (fn []
-                  (-> (client :post 400 "session" {:username "fakeaccount3000@metabase.com", :password "toucans"})
+                  (-> (mt/client :post 400 "session" {:username "fakeaccount3000@metabase.com", :password "toucans"})
                       :errors
                       :username))]
       ;; attempt to log in 10 times
@@ -171,16 +171,16 @@
 
     (testing "test that email is required"
       (is (= {:errors {:email "value must be a valid email address."}}
-             (client :post 400 "session/forgot_password" {}))))
+             (mt/client :post 400 "session/forgot_password" {}))))
 
     (testing "Test that email not found also gives 200 as to not leak existence of user"
       (is (= nil
-             (client :post 204 "session/forgot_password" {:email "not-found@metabase.com"}))))))
+             (mt/client :post 204 "session/forgot_password" {:email "not-found@metabase.com"}))))))
 
 (deftest forgot-password-throttling-test
   (testing "Test that email based throttling kicks in after the login failure threshold (10) has been reached"
     (letfn [(send-password-reset [& [expected-status & more]]
-              (client :post (or expected-status 204) "session/forgot_password" {:email "not-found@metabase.com"}))]
+              (mt/client :post (or expected-status 204) "session/forgot_password" {:email "not-found@metabase.com"}))]
       (with-redefs [session-api/forgot-password-throttlers (cleaned-throttlers #'session-api/forgot-password-throttlers
                                                                                [:email :ip-address])]
         (dotimes [n 10]
@@ -209,19 +209,19 @@
                          :new {:password (:new password)
                                :username email}}]
               ;; Check that creds work
-              (client :post 200 "session" (:old creds))
+              (mt/client :post 200 "session" (:old creds))
               ;; Call reset password endpoint to change the PW
               (testing "reset password endpoint should return a valid session token"
                 (is (schema= {:session_id (s/pred mt/is-uuid-string? "session")
                               :success    (s/eq true)}
-                             (client :post 200 "session/reset_password" {:token    token
+                             (mt/client :post 200 "session/reset_password" {:token    token
                                                                          :password (:new password)}))))
               (testing "Old creds should no longer work"
                 (is (= {:errors {:password "did not match stored password"}}
-                       (client :post 400 "session" (:old creds)))))
+                       (mt/client :post 400 "session" (:old creds)))))
               (testing "New creds *should* work"
                 (is (schema= SessionResponse
-                             (client :post 200 "session" (:new creds)))))
+                             (mt/client :post 200 "session" (:new creds)))))
               (testing "check that reset token was cleared"
                 (is (= {:reset_token     nil
                         :reset_triggered nil}
@@ -231,25 +231,25 @@
   (testing "POST /api/session/reset_password"
     (testing "Test that token and password are required"
       (is (= {:errors {:token "value must be a non-blank string."}}
-             (client :post 400 "session/reset_password" {})))
+             (mt/client :post 400 "session/reset_password" {})))
       (is (= {:errors {:password "Insufficient password strength"}}
-             (client :post 400 "session/reset_password" {:token "anything"}))))
+             (mt/client :post 400 "session/reset_password" {:token "anything"}))))
 
     (testing "Test that malformed token returns 400"
       (is (= {:errors {:password "Invalid reset token"}}
-             (client :post 400 "session/reset_password" {:token    "not-found"
+             (mt/client :post 400 "session/reset_password" {:token    "not-found"
                                                          :password "whateverUP12!!"}))))
 
     (testing "Test that invalid token returns 400"
       (is (= {:errors {:password "Invalid reset token"}}
-             (client :post 400 "session/reset_password" {:token    "1_not-found"
+             (mt/client :post 400 "session/reset_password" {:token    "1_not-found"
                                                          :password "whateverUP12!!"}))))
 
     (testing "Test that an expired token doesn't work"
       (let [token (str (mt/user->id :rasta) "_" (UUID/randomUUID))]
         (db/update! User (mt/user->id :rasta), :reset_token token, :reset_triggered 0)
         (is (= {:errors {:password "Invalid reset token"}}
-               (client :post 400 "session/reset_password" {:token    token
+               (mt/client :post 400 "session/reset_password" {:token    token
                                                            :password "whateverUP12!!"})))))))
 
 (deftest check-reset-token-valid-test
@@ -258,23 +258,29 @@
       (let [token (str (mt/user->id :rasta) "_" (UUID/randomUUID))]
         (db/update! User (mt/user->id :rasta), :reset_token token, :reset_triggered (dec (System/currentTimeMillis)))
         (is (= {:valid true}
-               (client :get 200 "session/password_reset_token_valid", :token token)))))
+               (mt/client :get 200 "session/password_reset_token_valid", :token token)))))
 
     (testing "Check than an made-up token returns false"
       (is (= {:valid false}
-             (client :get 200 "session/password_reset_token_valid", :token "ABCDEFG"))))
+             (mt/client :get 200 "session/password_reset_token_valid", :token "ABCDEFG"))))
 
     (testing "Check that an expired but valid token returns false"
       (let [token (str (mt/user->id :rasta) "_" (UUID/randomUUID))]
         (db/update! User (mt/user->id :rasta), :reset_token token, :reset_triggered 0)
         (is (= {:valid false}
-               (client :get 200 "session/password_reset_token_valid", :token token)))))))
+               (mt/client :get 200 "session/password_reset_token_valid", :token token)))))))
 
 (deftest properties-test
   (testing "GET /session/properties"
     (testing "Unauthenticated"
       (is (= (keys (setting/properties :public))
-             (keys (client :get 200 "session/properties")))))
+             (keys (mt/client :get 200 "session/properties"))))
+
+      (testing "Setting the X-Metabase-Locale header should result give you properties in that locale"
+        (mt/with-mock-i18n-bundles {"es" {"Connection String" "Cadena de conexión"}}
+          (is (= "Cadena de conexión"
+                 (-> (mt/client :get 200 "session/properties" {:request-options {:headers {"X-Metabase-Locale" "es"}}})
+                     :engines :h2 :details-fields first :display-name))))))
 
     (testing "Authenticated normal user"
       (is (= (keys (merge
@@ -429,26 +435,26 @@
   (ldap.test/with-ldap-server
     (testing "Test that we can login with LDAP"
       (is (schema= SessionResponse
-                   (client :post 200 "session" (mt/user->credentials :rasta)))))
+                   (mt/client :post 200 "session" (mt/user->credentials :rasta)))))
 
     (testing "Test that login will fallback to local for users not in LDAP"
       (is (schema= SessionResponse
-                   (client :post 200 "session" (mt/user->credentials :crowberto)))))
+                   (mt/client :post 200 "session" (mt/user->credentials :crowberto)))))
 
     (testing "Test that login will NOT fallback for users in LDAP but with an invalid password"
       ;; NOTE: there's a different password in LDAP for Lucky
       (is (= {:errors {:password "did not match stored password"}}
-             (client :post 400 "session" (mt/user->credentials :lucky)))))
+             (mt/client :post 400 "session" (mt/user->credentials :lucky)))))
 
     (testing "Test that login will fallback to local for broken LDAP settings"
       (mt/with-temporary-setting-values [ldap-user-base "cn=wrong,cn=com"]
         (is (schema= SessionResponse
                      (mt/suppress-output
-                       (client :post 200 "session" (mt/user->credentials :rasta)))))))
+                       (mt/client :post 200 "session" (mt/user->credentials :rasta)))))))
 
     (testing "Test that we can login with LDAP with new user"
       (try
         (is (schema= SessionResponse
-                     (client :post 200 "session" {:username "sbrown20", :password "1234"})))
+                     (mt/client :post 200 "session" {:username "sbrown20", :password "1234"})))
         (finally
           (db/delete! User :email "sally.brown@metabase.com"))))))
