@@ -50,12 +50,14 @@ export default createEntity({
     // This selector is used in the data model when we want to show them.
     getObjectUnfiltered: (state, { entityId }) => {
       const field = state.entities.fields[entityId];
-      return {
-        ...field,
-        values: getFieldValues(field),
-        remapping: new Map(getRemappings(field)),
-        target: state.entities.fields[field.fk_target_field_id],
-      };
+      return (
+        field && {
+          ...field,
+          values: getFieldValues(field),
+          remapping: new Map(getRemappings(field)),
+          target: state.entities.fields[field.fk_target_field_id],
+        }
+      );
     },
   },
 

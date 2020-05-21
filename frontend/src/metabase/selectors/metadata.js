@@ -32,7 +32,10 @@ export const getNormalizedTables = state =>
 export const getNormalizedFields = state =>
   filterValues(
     state.entities.fields,
-    field => field.visibility_type !== "sensitive",
+    field =>
+      // remove fields that are sensitive or belong to hidden tables
+      state.entities.tables[field.table_id].visibility_type == null &&
+      field.visibility_type !== "sensitive",
   );
 export const getNormalizedMetrics = state => state.entities.metrics;
 export const getNormalizedSegments = state => state.entities.segments;
