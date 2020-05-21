@@ -7,8 +7,7 @@
             [metabase.api.common :as api]
             metabase.async.streaming-response
             [metabase.middleware.util :as middleware.u]
-            [metabase.util.i18n :refer [trs]]
-            [puppetlabs.i18n.core :as puppet-i18n])
+            [metabase.util.i18n :refer [trs]])
   (:import clojure.core.async.impl.channels.ManyToManyChannel
            metabase.async.streaming_response.StreamingResponse))
 
@@ -60,25 +59,6 @@
     (handler request respond raise)))
 
 
-;;; ------------------------------------------------------ i18n ------------------------------------------------------
-
-(def ^:private available-locales
-  (delay (puppet-i18n/available-locales)))
-
-(defn bind-user-locale
-  "Middleware that binds locale info for the current User. (This is basically a copy of the
-  `puppetlabs.i18n.core/locale-negotiator`, but reworked to handle async-style requests as well.)"
-  ;; TODO - We should really just fork puppet i18n and put these changes there, or PR
-  [handler]
-  (fn [request respond raise]
-    (let [headers    (:headers request)
-          parsed     (puppet-i18n/parse-http-accept-header (get headers "accept-language"))
-          wanted     (mapv first parsed)
-          negotiated ^java.util.Locale (puppet-i18n/negotiate-locale wanted @available-locales)]
-      (puppet-i18n/with-user-locale negotiated
-        (handler request respond raise)))))
-
-
 ;;; ------------------------------------------ Disable Streaming Buffering -------------------------------------------
 
 (defn- maybe-add-disable-buffering-header [{:keys [body], :as response}]
@@ -88,8 +68,9 @@
     (assoc-in [:headers "X-Accel-Buffering"] "no")))
 
 (defn disable-streaming-buffering
-  "Tell nginx not to batch streaming responses -- otherwise the keepalive bytes aren't written and
-  the entire purpose is defeated. See https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_cache"
+  "Tell nginx not to batch streaming responses -- otherwise load balancers are liable to cancel our request prematurely
+  if they aren't configured for longer timeouts. See
+  https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_cache"
   [handler]
   (fn [request respond raise]
     (handler

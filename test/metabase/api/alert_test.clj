@@ -1,9 +1,11 @@
 (ns metabase.api.alert-test
   "Tests for `/api/alert` endpoints."
-  (:require [expectations :refer :all]
+  (:require [clojure.test :refer :all]
+            [expectations :refer :all]
             [metabase
              [email-test :as et]
              [http-client :as http]
+             [test :as mt]
              [util :as u]]
             [metabase.middleware.util :as middleware.u]
             [metabase.models
@@ -31,7 +33,7 @@
 (defn- user-details [user-kwd]
   (-> user-kwd
       fetch-user
-      (select-keys [:email :first_name :last_login :is_qbnewb :is_superuser :last_name :common_name])
+      (select-keys [:email :first_name :last_login :is_qbnewb :is_superuser :last_name :common_name :locale])
       (assoc :id true, :date_joined true, :last_login false)))
 
 (defn- pulse-card-details [card]
@@ -44,7 +46,7 @@
 (defn- recipient-details [user-kwd]
   (-> user-kwd
       user-details
-      (dissoc :last_login :is_qbnewb :is_superuser :date_joined)))
+      (dissoc :last_login :is_qbnewb :is_superuser :date_joined :locale)))
 
 (defn- alert-client
   [username]
@@ -482,24 +484,28 @@
      (et/regex-email-bodies #"https://metabase.com/testmb"
                             #"now getting alerts")]))
 
-;; Admin users can remove a recipieint, that recipient should be notified
-(tt/expect-with-temp [Pulse                 [alert (basic-alert)]
+(deftest admin-users-remove-recipient-test
+  (testing "PUT /api/alert/:id"
+    (testing "admin users can remove a recipieint, that recipient should be notified"
+      (mt/with-temp* [Pulse                 [alert (basic-alert)]
                       Card                  [card]
                       PulseCard             [_     (pulse-card alert card)]
                       PulseChannel          [pc    (pulse-channel alert)]
                       PulseChannelRecipient [_     (recipient pc :crowberto)]
                       PulseChannelRecipient [_     (recipient pc :rasta)]]
-  [(-> (default-alert card)
-       (assoc-in [:channels 0 :recipients] [(recipient-details :crowberto)]))
-   (et/email-to :rasta {:subject "You’ve been unsubscribed from an alert"
-                        :body    {"https://metabase.com/testmb"          true
-                                  "letting you know that Crowberto Corv" true}})]
-  (with-alert-setup
-    [(et/with-expected-messages 1
-       ((alert-client :crowberto) :put 200 (alert-url alert)
-        (default-alert-req card (u/get-id pc) {} [(fetch-user :crowberto)])))
-    (et/regex-email-bodies #"https://metabase.com/testmb"
-                           #"letting you know that Crowberto Corv")]))
+        (with-alert-setup
+          (testing "API response"
+            (is (= (-> (default-alert card)
+                       (assoc-in [:channels 0 :recipients] [(recipient-details :crowberto)]))
+                   (et/with-expected-messages 1
+                     ((alert-client :crowberto) :put 200 (alert-url alert)
+                      (default-alert-req card (u/get-id pc) {} [(fetch-user :crowberto)]))))))
+          (testing "emails"
+            (is (= (et/email-to :rasta {:subject "You’ve been unsubscribed from an alert"
+                                        :body    {"https://metabase.com/testmb"          true
+                                                  "letting you know that Crowberto Corv" true}})
+                   (et/regex-email-bodies #"https://metabase.com/testmb"
+                                          #"letting you know that Crowberto Corv")))))))))
 
 ;; Non-admin users can't edit alerts they didn't create
 (expect

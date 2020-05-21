@@ -24,7 +24,9 @@
 ;; ## Helper Fns
 
 (defn- user-details [user]
-  (select-keys user [:email :first_name :last_login :is_qbnewb :is_superuser :id :last_name :date_joined :common_name]))
+  (select-keys
+   user
+   [:email :first_name :last_login :is_qbnewb :is_superuser :id :last_name :date_joined :common_name :locale]))
 
 (defn- segment-response [segment]
   (-> (into {} segment)

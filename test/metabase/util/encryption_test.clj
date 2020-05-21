@@ -1,6 +1,8 @@
 (ns metabase.util.encryption-test
   "Tests for encryption of Metabase DB details."
-  (:require [clojure.string :as str]
+  (:require [clojure
+             [string :as str]
+             [test :refer :all]]
             [expectations :refer :all]
             [metabase.test.util :as tu]
             [metabase.util.encryption :as encryption]))
@@ -89,12 +91,12 @@
   have the same size"
   (apply str (repeat 64 "a")))
 
-;; Something that is not encrypted, but might be (is the correct shape etc) should attempt to be decrypted. If unable
-;; to decrypt it, log a warning.
-(expect
-  (includes-encryption-warning?
-   (tu/with-log-messages-for-level :warn
-     (encryption/maybe-decrypt secret fake-ciphertext))))
+(deftest log-warning-on-failure-test
+  (testing (str "Something that is not encrypted, but might be (is the correct shape etc) should attempt to be "
+                "decrypted. If unable to decrypt it, log a warning.")
+    (is (includes-encryption-warning?
+         (tu/with-log-messages-for-level :warn
+           (encryption/maybe-decrypt secret fake-ciphertext))))))
 
 ;; Something that is not encrypted, but might be should return the original text
 (expect

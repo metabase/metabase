@@ -1,5 +1,6 @@
 (ns metabase.models.user-test
   (:require [clojure
+             [set :as set]
              [string :as str]
              [test :refer :all]]
             [metabase
@@ -46,24 +47,23 @@
 (deftest personal-collection-permissions-test
   (testing "Does permissions-set include permissions for my Personal Collection?"
     (mt/with-non-admin-groups-no-root-collection-perms
-      (is (= #{(perms/collection-readwrite-path (collection/user->personal-collection (mt/user->id :lucky)))}
-             (-> (user/permissions-set (mt/user->id :lucky))
-                 remove-non-collection-perms))))
+      (is (contains?
+           (user/permissions-set (mt/user->id :lucky))
+           (perms/collection-readwrite-path (collection/user->personal-collection (mt/user->id :lucky)))))
 
-    (testing "...and for any descendant Collections of my Personal Collection?"
-      (mt/with-non-admin-groups-no-root-collection-perms
+      (testing "...and for any descendant Collections of my Personal Collection?"
         (mt/with-temp* [Collection [child-collection      {:name     "child"
                                                            :location (collection/children-location
-                                                                      (collection/user->personal-collection
-                                                                       (mt/user->id :lucky)))}]
+                                                                      (collection/user->personal-collection (mt/user->id :lucky)))}]
                         Collection [grandchild-collection {:name     "grandchild"
                                                            :location (collection/children-location child-collection)}]]
-          (is (= #{(perms/collection-readwrite-path (collection/user->personal-collection (mt/user->id :lucky)))
-                   "/collection/child/"
-                   "/collection/grandchild/"}
-                 (->> (user/permissions-set (mt/user->id :lucky))
-                      remove-non-collection-perms
-                      (collection-test/perms-path-ids->names [child-collection grandchild-collection])))))))))
+          (is (set/subset?
+               #{(perms/collection-readwrite-path (collection/user->personal-collection (mt/user->id :lucky)))
+                 "/collection/child/"
+                 "/collection/grandchild/"}
+               (->> (user/permissions-set (mt/user->id :lucky))
+                    remove-non-collection-perms
+                    (collection-test/perms-path-ids->names [child-collection grandchild-collection])))))))))
 
 ;;; Tests for invite-user and create-new-google-auth-user!
 
@@ -126,39 +126,45 @@
   (testing "admin should get an email when a new user joins..."
     (is (= {"<New User>"             ["You're invited to join Metabase's Metabase"]
             "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]}
-           (invite-user-accept-and-check-inboxes! :invitor default-invitor)))
+           (-> (invite-user-accept-and-check-inboxes! :invitor default-invitor)
+               (select-keys ["<New User>" "crowberto@metabase.com"]))))
 
     (testing "...including the site admin if it is set..."
-      (is (= {"<New User>"             ["You're invited to join Metabase's Metabase"]
-              "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]
-              "cam@metabase.com"       ["<New User> accepted their Metabase invite"]}
-             (mt/with-temporary-setting-values [admin-email "cam@metabase.com"]
-               (invite-user-accept-and-check-inboxes! :invitor default-invitor))))
+      (mt/with-temporary-setting-values [admin-email "cam2@metabase.com"]
+        (is (= {"<New User>"             ["You're invited to join Metabase's Metabase"]
+                "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]
+                "cam2@metabase.com"      ["<New User> accepted their Metabase invite"]}
+               (-> (invite-user-accept-and-check-inboxes! :invitor default-invitor)
+                   (select-keys ["<New User>" "crowberto@metabase.com" "cam2@metabase.com"])))))
 
       (testing "... but if that admin is inactive they shouldn't get an email"
-        (is (= {"<New User>"             ["You're invited to join Metabase's Metabase"]
-                "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]}
-               (mt/with-temp User [inactive-admin {:is_superuser true, :is_active false}]
-                 (invite-user-accept-and-check-inboxes! :invitor (assoc inactive-admin :is_active false))))))))
+        (mt/with-temp User [inactive-admin {:is_superuser true, :is_active false}]
+          (is (= {"<New User>"             ["You're invited to join Metabase's Metabase"]
+                  "crowberto@metabase.com" ["<New User> accepted their Metabase invite"]}
+                 (-> (invite-user-accept-and-check-inboxes! :invitor (assoc inactive-admin :is_active false))
+                     (select-keys ["<New User>" "crowberto@metabase.com" (:email inactive-admin)]))))))))
 
   (testing "for google auth, all admins should get an email..."
-    (is (= {"crowberto@metabase.com"        ["<New User> created a Metabase account"]
-            "some_other_admin@metabase.com" ["<New User> created a Metabase account"]}
-           (mt/with-temp User [_ {:is_superuser true, :email "some_other_admin@metabase.com"}]
-             (invite-user-accept-and-check-inboxes! :google-auth? true))))
+    (mt/with-temp User [_ {:is_superuser true, :email "some_other_admin@metabase.com"}]
+      (is (= {"crowberto@metabase.com"        ["<New User> created a Metabase account"]
+              "some_other_admin@metabase.com" ["<New User> created a Metabase account"]}
+             (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                 (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com"])))))
 
     (testing "...including the site admin if it is set..."
-      (is (= {"crowberto@metabase.com"        ["<New User> created a Metabase account"]
-              "some_other_admin@metabase.com" ["<New User> created a Metabase account"]
-              "cam@metabase.com"              ["<New User> created a Metabase account"]}
-             (mt/with-temporary-setting-values [admin-email "cam@metabase.com"]
-               (mt/with-temp User [_ {:is_superuser true, :email "some_other_admin@metabase.com"}]
-                 (invite-user-accept-and-check-inboxes! :google-auth? true)))))
+      (mt/with-temporary-setting-values [admin-email "cam2@metabase.com"]
+        (mt/with-temp User [_ {:is_superuser true, :email "some_other_admin@metabase.com"}]
+          (is (= {"crowberto@metabase.com"        ["<New User> created a Metabase account"]
+                  "some_other_admin@metabase.com" ["<New User> created a Metabase account"]
+                  "cam2@metabase.com"             ["<New User> created a Metabase account"]}
+                 (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                     (select-keys ["crowberto@metabase.com" "some_other_admin@metabase.com" "cam2@metabase.com"]))))))
 
       (testing "...unless they are inactive"
-        (is (= {"crowberto@metabase.com" ["<New User> created a Metabase account"]}
-               (mt/with-temp User [_ {:is_superuser true, :is_active false}]
-                 (invite-user-accept-and-check-inboxes! :google-auth? true))))))))
+        (mt/with-temp User [user {:is_superuser true, :is_active false}]
+          (is (= {"crowberto@metabase.com" ["<New User> created a Metabase account"]}
+                 (-> (invite-user-accept-and-check-inboxes! :google-auth? true)
+                     (select-keys ["crowberto@metabase.com" (:email user)])))))))))
 
 (deftest ldap-user-passwords-test
   (testing (str "LDAP users should not persist their passwords. Check that if somehow we get passed an LDAP user "
@@ -384,3 +390,38 @@
           (user/set-password! user-id "p@ssw0rd")
           (is (= 0
                  (session-count))))))))
+
+(deftest validate-locale-test
+  (testing "`:locale` should be validated"
+    (testing "creating a new User"
+      (testing "valid locale"
+        (mt/with-temp User [{user-id :id} {:locale "en_US"}]
+          (is (= "en_US"
+                 (db/select-one-field :locale User :id user-id)))))
+      (testing "invalid locale"
+        (is (thrown?
+             AssertionError
+             (mt/with-temp User [{user-id :id} {:locale "en_XX"}])))))
+
+    (testing "updating a User"
+      (mt/with-temp User [{user-id :id} {:locale "en_US"}]
+        (testing "valid locale"
+          (db/update! User user-id :locale "en_GB")
+          (is (= "en_GB"
+                 (db/select-one-field :locale User :id user-id))))
+        (testing "invalid locale"
+          (is (thrown?
+               AssertionError
+               (db/update! User user-id :locale "en_XX"))))))))
+
+(deftest normalize-locale-test
+  (testing "`:locale` should be normalized"
+    (mt/with-temp User [{user-id :id} {:locale "EN-us"}]
+      (testing "creating a new User"
+        (is (= "en_US"
+               (db/select-one-field :locale User :id user-id))))
+
+      (testing "updating a User"
+        (db/update! User user-id :locale "en-GB")
+        (is (= "en_GB"
+               (db/select-one-field :locale User :id user-id)))))))
