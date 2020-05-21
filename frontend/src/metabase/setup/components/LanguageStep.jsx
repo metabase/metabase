@@ -63,11 +63,12 @@ export default class LanguageStep extends React.Component {
                         this.state.selectedLanguage.code === code,
                     },
                   )}
-                  onClick={() =>
+                  onClick={() => {
                     this.setState({
                       selectedLanguage: { name: name, code: code },
-                    })
-                  }
+                    });
+                    MetabaseSettings.set("user-locale", code);
+                  }}
                 >
                   {name}
                 </li>

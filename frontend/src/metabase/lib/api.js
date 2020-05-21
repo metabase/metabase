@@ -18,6 +18,7 @@ export type Options = {
   transformResponse?: TransformFn,
   cancelled?: Promise<any>,
   raw?: { [key: string]: boolean },
+  headers?: { [key: string]: string },
   hasBody?: boolean,
 };
 
@@ -38,6 +39,7 @@ const DEFAULT_OPTIONS: Options = {
   noEvent: false,
   transformResponse: o => o,
   raw: {},
+  headers: {},
   retry: false,
   retryCount: MAX_RETRIES,
   // Creates an array with exponential backoff in millis
@@ -129,6 +131,8 @@ export class Api extends EventEmitter {
             url += (url.indexOf("?") >= 0 ? "&" : "?") + qs;
           }
         }
+
+        Object.assign(headers, options.headers);
 
         if (options.retry) {
           return this._makeRequestWithRetries(
