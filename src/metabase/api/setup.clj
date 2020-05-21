@@ -23,6 +23,7 @@
              [session :refer [Session]]
              [table :refer [Table]]
              [user :as user :refer [User]]]
+            [metabase.models.setting.cache :as setting.cache]
             [metabase.util
              [i18n :as i18n :refer [tru]]
              [schema :as su]]
@@ -100,20 +101,27 @@
    allow_tracking   (s/maybe (s/cond-pre s/Bool su/BooleanString))
    schedules        (s/maybe database-api/ExpandedSchedulesMap)
    auto_run_queries (s/maybe s/Bool)}
-  (db/transaction
-    (let [{:keys [session-id user-id]} (setup-create-user!
-                                        {:email email, :first-name first_name, :last-name last_name, :password password})]
-      (setup-create-database! {:name name, :driver engine, :details details, :schedules schedules, :database database})
-      (setup-set-settings!
-       request
-       {:email email, :site-name site_name, :site-locale site_locale, :allow-tracking? allow_tracking})
-      ;; clear the setup token now, it's no longer needed
-      (setup/clear-token!)
-      ;; notify that we've got a new user in the system AND that this user logged in
-      (events/publish-event! :user-create {:user_id user-id})
-      (events/publish-event! :user-login {:user_id user-id, :session_id session-id, :first_login true})
-      ;; return response with session ID and set the cookie as well
-      (mw.session/set-session-cookie request {:id session-id} (UUID/fromString session-id)))))
+  (try
+    (db/transaction
+      (let [{:keys [session-id user-id]} (setup-create-user!
+                                          {:email email, :first-name first_name, :last-name last_name, :password password})]
+        (setup-create-database! {:name name, :driver engine, :details details, :schedules schedules, :database database})
+        (setup-set-settings!
+         request
+         {:email email, :site-name site_name, :site-locale site_locale, :allow-tracking? allow_tracking})
+        ;; clear the setup token now, it's no longer needed
+        (setup/clear-token!)
+        ;; notify that we've got a new user in the system AND that this user logged in
+        (events/publish-event! :user-create {:user_id user-id})
+        (events/publish-event! :user-login {:user_id user-id, :session_id session-id, :first_login true})
+        ;; return response with session ID and set the cookie as well
+        (mw.session/set-session-cookie request {:id session-id} (UUID/fromString session-id))))
+    (catch Throwable e
+      ;; if the transaction fails, restore the Settings cache from the DB again so any changes made in this endpoint
+      ;; (such as clearing the setup token) are reverted. We can't use `dosync` here to accomplish this because
+      ;; there is `io!` in this block
+      (setting.cache/restore-cache!)
+      (throw e))))
 
 (api/defendpoint POST "/validate"
   "Validate that we can connect to a database given a set of details."

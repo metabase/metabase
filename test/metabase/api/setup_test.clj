@@ -10,10 +10,12 @@
              [test :as mt]]
             [metabase.api.setup :as setup-api]
             [metabase.integrations.slack :as slack]
+            [metabase.middleware.session :as mw.session]
             [metabase.models
              [database :refer [Database]]
              [setting :as setting]
              [user :refer [User]]]
+            [metabase.models.setting.cache-test :as setting.cache-test]
             [metabase.test.fixtures :as fixtures]
             [schema.core :as s]
             [toucan.db :as db]))
@@ -178,6 +180,53 @@
         (testing "invalid"
           (is (= {:errors {:password "Insufficient password strength"}}
                  (setup! assoc-in [:user :password] "anything"))))))))
+
+(deftest setup-with-empty-cache-test
+  (testing "POST /api/setup"
+    ;; I have seen this fail randomly, no idea why
+    (testing "Make sure setup completes successfully if Settings cache needs to be restored"
+      (setting.cache-test/reset-last-update-check!)
+      (setting.cache-test/clear-cache!)
+      (let [db-name (mt/random-name)]
+        (with-setup {:database {:engine "h2", :name db-name}}
+          (is (db/exists? Database :name db-name)))))))
+
+(deftest transaction-test
+  (testing "POST /api/setup/"
+    (testing "should run in a transaction -- if something fails, all changes should be rolled back"
+      (let [user-email  (mt/random-email)
+            setup-token (setup/create-token!)
+            site-name   (mt/random-name)
+            db-name     (mt/random-name)
+            body        {:token    setup-token
+                         :prefs    {:site_locale "es_MX"
+                                    :site_name   site-name}
+                         :database {:engine "h2"
+                                    :name   db-name}
+                         :user     {:first_name (mt/random-name)
+                                    :last_name  (mt/random-name)
+                                    :email      user-email
+                                    :password   "p@ssw0rd"}}]
+        (do-with-setup*
+         body
+         (fn []
+           (is (schema= {:message (s/eq "Oops!"), s/Keyword s/Any}
+                        (with-redefs [mw.session/set-session-cookie (fn [& _] (throw (ex-info "Oops!" {})))]
+                          (http/client :post 500 "setup" body))))
+           (testing "New user shouldn't exist"
+             (is (= false
+                    (db/exists? User :email user-email))))
+           (testing "New DB shouldn't exist"
+             (is (= false
+                    (db/exists? Database :engine "h2", :name db-name))))
+           (testing "Settings should not be changed"
+             (is (not= site-name
+                       (public-settings/site-name)))
+             (is (= "en"
+                    (public-settings/site-locale))))
+           (testing "Setup token should still be set"
+             (is (= setup-token
+                    (setup/setup-token))))))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
