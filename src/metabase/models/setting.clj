@@ -307,6 +307,7 @@
     (if obfuscated?
       (log/info (trs "Attempted to set Setting {0} to obfuscated value. Ignoring change." setting-name))
       (do
+        ;; always update the cache entirely when updating a Setting.
         (cache/restore-cache!)
         ;; write to DB
         (cond
@@ -580,8 +581,15 @@
     (set-all {:mandrill-api-key \"xyz123\", :another-setting \"ABC\"})"
   [settings]
   {:pre [(map? settings)]}
-  (doseq [[k v] settings]
-    (metabase.models.setting/set! k v))
+  ;; if setting any of the settings fails, roll back the entire DB transaction and the restore the cache from the DB
+  ;; to revert any changes in the cache
+  (try
+    (db/transaction
+      (doseq [[k v] settings]
+        (metabase.models.setting/set! k v)))
+    (catch Throwable e
+      (cache/restore-cache!)
+      (throw e)))
   ;; TODO - This event is no longer neccessary or desirable. This is used in only a single place, to stop or restart
   ;; the MetaBot when settings are updated ; this only works if the setting is updated via this specific function.
   ;; Instead, we should define a custom setter for the relevant setting that additionally performs the desired

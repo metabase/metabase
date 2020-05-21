@@ -108,7 +108,29 @@
     (is (= "I win!"
            (db-fetch-setting :test-setting-1)))
     (is (= "For realz"
-           (db-fetch-setting :test-setting-2)))))
+           (db-fetch-setting :test-setting-2))))
+
+  (testing "if one change fails, the entire set of changes should be reverted"
+    (mt/with-temporary-setting-values [test-setting-1 "123"
+                                       test-setting-2 "123"]
+      (let [orig  setting/set!
+            calls (atom 0)]
+        ;; allow the first Setting change to succeed, then throw an Exception after that
+        (with-redefs [setting/set! (fn [& args]
+                                     (if (zero? @calls)
+                                       (do
+                                         (swap! calls inc)
+                                         (apply orig args))
+                                       (throw (ex-info "Oops!" {}))))]
+          (is (thrown-with-msg?
+               Throwable
+               #"Oops"
+               (setting/set-many! {:test-setting-1 "ABC", :test-setting-2 "DEF"})))
+          (testing "changes should be reverted"
+            (is (= "123"
+                   (test-setting-1)))
+            (is (= "123"
+                   (test-setting-2)))))))))
 
 (deftest delete-test
   (testing "delete"
