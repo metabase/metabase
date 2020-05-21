@@ -46,8 +46,8 @@ const DATABASE_DETAIL_OVERRIDES = {
     },
   }),
   "tunnel-private-key": (engine, details) => ({
-    title: t`SSH private key to connect to the tunnel`,
-    placeholder: t`Paste the contents of an ssh private key here`,
+    title: t`SSH private key`,
+    placeholder: t`Paste the contents of your ssh private key here`,
     type: "text",
   }),
   "tunnel-private-key-passphrase": (engine, details) => ({
