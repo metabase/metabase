@@ -18,6 +18,7 @@ import { TableSchema } from "metabase/schema";
 
 import Metrics from "metabase/entities/metrics";
 import Segments from "metabase/entities/segments";
+import Fields from "metabase/entities/fields";
 
 import { GET } from "metabase/lib/api";
 
@@ -171,13 +172,16 @@ const Tables = createEntity({
 
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).table(entityId),
-    getObjectUnfiltered: ({ entities }, { entityId }) => {
-      const table = entities.tables[entityId];
+    // these unfiltered selectors include hidden tables/fields for display in the admin panel
+    getObjectUnfiltered: (state, { entityId }) => {
+      const table = state.entities.tables[entityId];
       return {
         ...table,
-        fields: table.fields.map(id => entities.fields[id]),
-        metrics: table.metrics.map(id => entities.metrics[id]),
-        segments: table.segments.map(id => entities.segments[id]),
+        fields: table.fields.map(entityId =>
+          Fields.selectors.getObjectUnfiltered(state, { entityId }),
+        ),
+        metrics: table.metrics.map(id => state.entities.metrics[id]),
+        segments: table.segments.map(id => state.entities.segments[id]),
       };
     },
     getListUnfiltered: ({ entities }, { entityQuery }) =>

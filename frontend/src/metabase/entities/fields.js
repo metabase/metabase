@@ -54,6 +54,7 @@ export default createEntity({
         ...field,
         values: getFieldValues(field),
         remapping: new Map(getRemappings(field)),
+        target: state.entities.fields[field.fk_target_field_id],
       };
     },
   },
