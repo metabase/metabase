@@ -30,13 +30,14 @@ export const getNormalizedSchemas = state => state.entities.schemas;
 export const getNormalizedTables = state =>
   filterValues(state.entities.tables, table => table.visibility_type == null);
 export const getNormalizedFields = state =>
-  filterValues(
-    state.entities.fields,
-    field =>
-      // remove fields that are sensitive or belong to hidden tables
-      state.entities.tables[field.table_id].visibility_type == null &&
-      field.visibility_type !== "sensitive",
-  );
+  filterValues(state.entities.fields, field => {
+    // remove fields that are sensitive or belong to hidden tables
+    const table = state.entities.tables[field.table_id];
+    return (
+      (!table || table.visibility_type == null) &&
+      field.visibility_type !== "sensitive"
+    );
+  });
 export const getNormalizedMetrics = state => state.entities.metrics;
 export const getNormalizedSegments = state => state.entities.segments;
 
