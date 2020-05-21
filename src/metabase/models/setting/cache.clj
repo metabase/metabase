@@ -11,7 +11,8 @@
             [metabase.util
              [honeysql-extensions :as hx]
              [i18n :as ui18n :refer [trs]]]
-            [toucan.db :as db]))
+            [toucan.db :as db])
+  (:import java.util.concurrent.locks.ReentrantLock))
 
 (defonce ^:private ^{:doc "Settings cache. Map of Setting key (string) -> Setting value (string)."}
   cache*
@@ -110,7 +111,7 @@
 
 (defonce ^:private last-update-check (atom 0))
 
-(defn- should-check-for-updates?
+(defn- time-for-another-update-check?
   "Has it has been more than a minute since the last time we checked for updates?"
   []
   (> (- (System/currentTimeMillis) @last-update-check)
@@ -122,7 +123,7 @@
   (log/debug (trs "Refreshing Settings cache..."))
   (reset! cache* (db/select-field->field :key :value 'Setting)))
 
-(defonce ^:private restore-cache-lock (Object.))
+(defonce ^:private ^ReentrantLock restore-cache-lock (ReentrantLock.))
 
 (defn restore-cache-if-needed!
   "Check whether we need to repopulate the cache with fresh values from the DB (because the cache is either empty or
@@ -137,9 +138,14 @@
   ;; This is not desirable, since either situation would result in duplicate work. Better to just add a quick lock
   ;; here so only one of them does it, since at any rate waiting for the other thread to finish the task in progress is
   ;; certainly quicker than starting the task ourselves from scratch
-  (when (should-check-for-updates?)
-    (reset! last-update-check (System/currentTimeMillis))
-    (when (cache-out-of-date?)
-      (locking restore-cache-lock
-        (when (cache-out-of-date?)
-          (restore-cache!))))))
+  (when (time-for-another-update-check?)
+    ;; if the lock is not already held by any thread, including this one...
+    (when-not (.isLocked restore-cache-lock)
+      ;; attempt to acquire the lock. Returns immediately if lock is is already held.
+      (when (.tryLock restore-cache-lock)
+        (try
+          (reset! last-update-check (System/currentTimeMillis))
+          (when (cache-out-of-date?)
+            (restore-cache!))
+          (finally
+            (.unlock restore-cache-lock)))))))
