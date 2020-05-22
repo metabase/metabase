@@ -1,7 +1,11 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
+import { connect } from "react-redux";
+
+import Tables from "metabase/entities/tables";
 
 import Icon from "metabase/components/Icon";
+import Tooltip from "metabase/components/Tooltip";
 
 import { t, ngettext, msgid } from "ttag";
 
@@ -9,7 +13,18 @@ import _ from "underscore";
 import cx from "classnames";
 
 import { regexpEscape } from "metabase/lib/string";
+import { color } from "metabase/lib/colors";
 
+@connect(
+  null,
+  {
+    setVisibilityForTables: (tables, visibility_type) =>
+      Tables.actions.bulkUpdate({
+        ids: tables.map(t => t.id),
+        visibility_type,
+      }),
+  },
+)
 export default class MetadataTableList extends Component {
   constructor(props, context) {
     super(props, context);
@@ -37,44 +52,33 @@ export default class MetadataTableList extends Component {
     });
   }
 
+  renderTable = table => (
+    <li key={table.id}>
+      <a
+        className={cx(
+          "AdminList-item flex align-center no-decoration text-wrap",
+          {
+            selected: this.props.tableId === table.id,
+          },
+        )}
+        onClick={this.props.selectTable.bind(null, table)}
+      >
+        {table.display_name}
+      </a>
+    </li>
+  );
+
   render() {
     let queryableTablesHeader, hiddenTablesHeader;
-    const queryableTables = [];
-    const hiddenTables = [];
-
-    if (this.props.tables) {
-      const tables = _.sortBy(this.props.tables, "display_name");
-      _.each(tables, table => {
-        const selected = this.props.tableId === table.id;
-        const row = (
-          <li key={table.id}>
-            <a
-              className={cx(
-                "AdminList-item flex align-center no-decoration text-wrap",
-                {
-                  selected,
-                },
-              )}
-              onClick={this.props.selectTable.bind(null, table)}
-            >
-              {table.display_name}
-            </a>
-          </li>
-        );
-        const regex = this.state.searchRegex;
-        if (
-          !regex ||
-          regex.test(table.display_name) ||
-          regex.test(table.name)
-        ) {
-          if (table.visibility_type) {
-            hiddenTables.push(row);
-          } else {
-            queryableTables.push(row);
-          }
-        }
-      });
-    }
+    const regex = this.state.searchRegex;
+    const [hiddenTables, queryableTables] = _.chain(this.props.tables)
+      .filter(
+        table =>
+          !regex || regex.test(table.display_name) || regex.test(table.name),
+      )
+      .sortBy("display_name")
+      .partition(table => table.visibility_type != null)
+      .value();
 
     if (queryableTables.length > 0) {
       queryableTablesHeader = (
@@ -83,6 +87,17 @@ export default class MetadataTableList extends Component {
             ngettext(msgid`${n} Queryable Table`, `${n} Queryable Tables`, n))(
             queryableTables.length,
           )}
+          <Tooltip tooltip={t`Hide all`}>
+            <Icon
+              name="eye_crossed_out"
+              onClick={() =>
+                this.props.setVisibilityForTables(queryableTables, "hidden")
+              }
+              size={18}
+              className="float-right cursor-pointer"
+              hover={{ color: color("brand") }}
+            />
+          </Tooltip>
         </li>
       );
     }
@@ -92,6 +107,17 @@ export default class MetadataTableList extends Component {
           {(n => ngettext(msgid`${n} Hidden Table`, `${n} Hidden Tables`, n))(
             hiddenTables.length,
           )}
+          <Tooltip tooltip={t`Make all queryable`}>
+            <Icon
+              name="eye"
+              onClick={() =>
+                this.props.setVisibilityForTables(hiddenTables, null)
+              }
+              size={18}
+              className="float-right cursor-pointer"
+              hover={{ color: color("brand") }}
+            />
+          </Tooltip>
         </li>
       );
     }
@@ -131,9 +157,9 @@ export default class MetadataTableList extends Component {
 
         <ul className="AdminList-items">
           {queryableTablesHeader}
-          {queryableTables}
+          {queryableTables.map(this.renderTable)}
           {hiddenTablesHeader}
-          {hiddenTables}
+          {hiddenTables.map(this.renderTable)}
         </ul>
       </div>
     );
