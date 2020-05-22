@@ -2,6 +2,7 @@
   (:require [clojure
              [data :as data]
              [test :as t]]
+            [environ.core :as env]
             [metabase
              [config :as config]
              [util :as u]]
@@ -126,13 +127,18 @@
 (t/deftest no-new-expectations-style-tests-test
   (let [total-expect-forms            (count @symbols)
         total-namespaces-using-expect (count (into #{} (map namespace @symbols)))
-        [worst-ns worst-ns-symbols]   (apply max-key (comp count second) (seq (group-by namespace @symbols)))]
+        [worst-ns worst-ns-symbols]   (when (seq @symbols)
+                                        (apply max-key (comp count second) (seq (group-by namespace @symbols))))]
     (println (u/format-color 'red "Total old-style expectations tests: %d" total-expect-forms))
     (println (u/format-color 'red "Total namespaces still using old-style expectations tests: %d" total-namespaces-using-expect))
-    (println (u/format-color 'red "Who has the most? %s with %d old-style tests" worst-ns (count worst-ns-symbols)))
-    (t/testing "Don't write any new tests using expect!"
-      (t/is (<= total-expect-forms 1889))
-      (t/is (<= total-namespaces-using-expect 124)))))
+    (when worst-ns
+      (println (u/format-color 'red "Who has the most? %s with %d old-style tests" worst-ns (count worst-ns-symbols))))
+    ;; only check total test forms when driver-specific tests are off! Otherwise this number can change without us
+    ;; expecting it.
+    (when-not (env/env :drivers)
+      (t/testing "Don't write any new tests using expect!"
+        (t/is (<= total-expect-forms 1889))
+        (t/is (<= total-namespaces-using-expect 124))))))
 
 (defmacro ^:deprecated expect
   "Simple macro that simulates converts an Expectations-style `expect` form into a `clojure.test` `deftest` form."
