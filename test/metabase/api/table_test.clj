@@ -351,6 +351,25 @@
         (test-fun "technical")
         @called)))
 
+
+;; ## PUT /api/table
+(tt/expect-with-temp [Table [table-1]
+                      Table [table-2]]
+  [{:description     "This nice table was updated!"
+    :visibility_type "hidden"
+    :display_name    "Userz"
+    :id              (u/get-id table-1)}
+   {:description     "This nice table was updated!"
+    :visibility_type "hidden"
+    :display_name    "Userz"
+    :id              (u/get-id table-2)}]
+  (map #(select-keys % [:description :visibility_type :display_name :id])
+       ((test-users/user->client :crowberto) :put 200 "table"
+        {:ids             (map u/get-id [table-1 table-2])
+         :display_name    "Userz"
+         :visibility_type "hidden"
+         :description     "This nice table was updated!"})))
+
 ;; ## GET /api/table/:id/fks
 ;; We expect a single FK from CHECKINS.USER_ID -> USERS.ID
 (expect

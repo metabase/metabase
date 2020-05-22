@@ -47,7 +47,8 @@
   (-> (api/read-check Table id)
       (hydrate :db :pk_field)))
 
-(defn- update-table
+;; TODO: this should changed to `update-tables!` and update multiple tables in one db request
+(defn- update-table!
   [id {:keys [visibility_type] :as body}]
   (api/write-check Table id)
   (let [original-visibility-type (db/select-one-field :visibility_type Table :id id)]
@@ -79,13 +80,13 @@
    caveats                 (s/maybe su/NonBlankString)
    points_of_interest      (s/maybe su/NonBlankString)
    show_in_getting_started (s/maybe s/Bool)}
-  (update-table id body))
+  (update-table! id body))
 
-(api/defendpoint PUT "/bulk"
+(api/defendpoint PUT "/"
   "Update all `Table` in `ids`."
   [:as {{:keys [ids display_name entity_type visibility_type description caveats points_of_interest
-            show_in_getting_started], :as body} :body}]
-  {ids                     (s/pred vector?)
+                show_in_getting_started], :as body} :body}]
+  {ids                     (su/non-empty [su/IntGreaterThanZero])
    display_name            (s/maybe su/NonBlankString)
    entity_type             (s/maybe su/EntityTypeKeywordOrString)
    visibility_type         (s/maybe TableVisibilityType)
@@ -93,7 +94,8 @@
    caveats                 (s/maybe su/NonBlankString)
    points_of_interest      (s/maybe su/NonBlankString)
    show_in_getting_started (s/maybe s/Bool)}
-  (map #(update-table % body) ids))
+  (db/transaction
+    (mapv #(update-table! % body) ids)))
 
 
 (def ^:private auto-bin-str (deferred-tru "Auto bin"))

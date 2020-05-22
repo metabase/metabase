@@ -31,7 +31,7 @@ const listTablesForDatabase = async (...args) =>
   // HACK: no /api/database/:dbId/tables endpoint
   (await GET("/api/database/:dbId/metadata")(...args)).tables;
 const listTablesForSchema = GET("/api/database/:dbId/schema/:schemaName");
-const updateTables = PUT("/api/table/bulk");
+const updateTables = PUT("/api/table");
 
 // OBJECT ACTIONS
 export const TABLES_BULK_UPDATE = "metabase/entities/TABLES_BULK_UPDATE";

@@ -52,24 +52,7 @@ export default class MetadataTableList extends Component {
     });
   }
 
-  renderTable = table => (
-    <li key={table.id}>
-      <a
-        className={cx(
-          "AdminList-item flex align-center no-decoration text-wrap",
-          {
-            selected: this.props.tableId === table.id,
-          },
-        )}
-        onClick={this.props.selectTable.bind(null, table)}
-      >
-        {table.display_name}
-      </a>
-    </li>
-  );
-
-  render() {
-    let queryableTablesHeader, hiddenTablesHeader;
+  partitionedTables() {
     const regex = this.state.searchRegex;
     const [hiddenTables, queryableTables] = _.chain(this.props.tables)
       .filter(
@@ -79,6 +62,14 @@ export default class MetadataTableList extends Component {
       .sortBy("display_name")
       .partition(table => table.visibility_type != null)
       .value();
+    return { hiddenTables, queryableTables };
+  }
+
+  render() {
+    let queryableTablesHeader, hiddenTablesHeader;
+    const { hiddenTables, queryableTables } = this.partitionedTables();
+
+    const { setVisibilityForTables } = this.props;
 
     if (queryableTables.length > 0) {
       queryableTablesHeader = (
@@ -87,17 +78,11 @@ export default class MetadataTableList extends Component {
             ngettext(msgid`${n} Queryable Table`, `${n} Queryable Tables`, n))(
             queryableTables.length,
           )}
-          <Tooltip tooltip={t`Hide all`}>
-            <Icon
-              name="eye_crossed_out"
-              onClick={() =>
-                this.props.setVisibilityForTables(queryableTables, "hidden")
-              }
-              size={18}
-              className="float-right cursor-pointer"
-              hover={{ color: color("brand") }}
-            />
-          </Tooltip>
+          <ToggleHiddenButton
+            setVisibilityForTables={setVisibilityForTables}
+            tables={queryableTables}
+            isHidden={false}
+          />
         </li>
       );
     }
@@ -107,23 +92,19 @@ export default class MetadataTableList extends Component {
           {(n => ngettext(msgid`${n} Hidden Table`, `${n} Hidden Tables`, n))(
             hiddenTables.length,
           )}
-          <Tooltip tooltip={t`Unhide all`}>
-            <Icon
-              name="eye"
-              onClick={() =>
-                this.props.setVisibilityForTables(hiddenTables, null)
-              }
-              size={18}
-              className="float-right cursor-pointer"
-              hover={{ color: color("brand") }}
-            />
-          </Tooltip>
+          <ToggleHiddenButton
+            setVisibilityForTables={setVisibilityForTables}
+            tables={hiddenTables}
+            isHidden={true}
+          />
         </li>
       );
     }
     if (queryableTables.length === 0 && hiddenTables.length === 0) {
       queryableTablesHeader = <li className="AdminList-section">0 Tables</li>;
     }
+
+    const { tableId, selectTable } = this.props;
 
     return (
       <div className="MetadataEditor-table-list AdminList flex-no-shrink">
@@ -157,11 +138,81 @@ export default class MetadataTableList extends Component {
 
         <ul className="AdminList-items">
           {queryableTablesHeader}
-          {queryableTables.map(this.renderTable)}
+          {queryableTables.map(table => (
+            <TableRow
+              table={table}
+              selected={tableId === table.id}
+              selectTable={selectTable}
+              setVisibilityForTables={setVisibilityForTables}
+            />
+          ))}
           {hiddenTablesHeader}
-          {hiddenTables.map(this.renderTable)}
+          {hiddenTables.map(table => (
+            <TableRow
+              table={table}
+              selected={tableId === table.id}
+              selectTable={selectTable}
+              setVisibilityForTables={setVisibilityForTables}
+            />
+          ))}
         </ul>
       </div>
     );
   }
+}
+
+function TableRow({
+  table,
+  selectTable,
+  toggleHidden,
+  selected,
+  setVisibilityForTables,
+}) {
+  return (
+    <li key={table.id} className="hover-parent hover--display">
+      <a
+        className={cx(
+          "AdminList-item flex align-center no-decoration text-wrap justify-between",
+          { selected },
+        )}
+        onClick={() => selectTable(table)}
+      >
+        {table.display_name}
+        <div className="hover-child float-right">
+          <ToggleHiddenButton
+            tables={[table]}
+            isHidden={table.visibility_type != null}
+            setVisibilityForTables={setVisibilityForTables}
+          />
+        </div>
+      </a>
+    </li>
+  );
+}
+
+function ToggleHiddenButton({ setVisibilityForTables, tables, isHidden }) {
+  return (
+    <Tooltip
+      tooltip={
+        tables.length > 1
+          ? isHidden
+            ? t`Unhide all`
+            : t`Hide all`
+          : isHidden
+          ? t`Unhide`
+          : t`Hide`
+      }
+    >
+      <Icon
+        name={isHidden ? "eye" : "eye_crossed_out"}
+        onClick={e => {
+          e.stopPropagation();
+          setVisibilityForTables(tables, isHidden ? null : "hidden");
+        }}
+        size={18}
+        className={"float-right cursor-pointer"}
+        hover={{ color: color("brand") }}
+      />
+    </Tooltip>
+  );
 }
