@@ -3,7 +3,6 @@
   (:require [cheshire.generate :as json-gen]
             [clojure.tools.logging :as log]
             [clojure.walk :as walk]
-            [metabase.util.i18n :as i18n]
             [metabase.util.i18n.impl :as impl]
             [potemkin :as p]
             [potemkin.types :as p.types]
@@ -43,7 +42,7 @@
   "Returns all locale abbreviations and their full names"
   []
   (for [locale (impl/available-locale-names)]
-    [locale (.getDisplayName (i18n/locale locale))]))
+    [locale (.getDisplayName (locale locale))]))
 
 (defn translate-site-locale
   "Translate a string with the System locale."
