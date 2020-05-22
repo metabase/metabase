@@ -10,6 +10,7 @@
              [test :as mt]
              [util :as u]]
             [metabase.api.session :as session-api]
+            [metabase.driver.h2 :as h2]
             [metabase.models
              [session :refer [Session]]
              [setting :as setting]
@@ -20,6 +21,10 @@
             [schema.core :as s]
             [toucan.db :as db])
   (:import java.util.UUID))
+
+;; one of the tests below compares the way properties for the H2 driver are translated, so we need to make sure it's
+;; loaded
+(comment h2/keep-me)
 
 (use-fixtures :once (fixtures/initialize :db :web-server :test-users))
 
@@ -273,27 +278,29 @@
 (deftest properties-test
   (testing "GET /session/properties"
     (testing "Unauthenticated"
-      (is (= (keys (setting/properties :public))
-             (keys (mt/client :get 200 "session/properties"))))
-
-      (testing "Setting the X-Metabase-Locale header should result give you properties in that locale"
-        (mt/with-mock-i18n-bundles {"es" {"Connection String" "Cadena de conexión"}}
-          (is (= "Cadena de conexión"
-                 (-> (mt/client :get 200 "session/properties" {:request-options {:headers {"X-Metabase-Locale" "es"}}})
-                     :engines :h2 :details-fields first :display-name))))))
+      (is (= (set (keys (setting/properties :public)))
+             (set (keys (mt/client :get 200 "session/properties"))))))
 
     (testing "Authenticated normal user"
-      (is (= (keys (merge
-                    (setting/properties :public)
-                    (setting/properties :authenticated)))
-             (keys ((mt/user->client :lucky) :get 200 "session/properties")))))
+      (is (= (set (keys (merge
+                         (setting/properties :public)
+                         (setting/properties :authenticated))))
+             (set (keys ((mt/user->client :lucky) :get 200 "session/properties"))))))
 
     (testing "Authenticated super user"
-      (is (= (keys (merge
-                    (setting/properties :public)
-                    (setting/properties :authenticated)
-                    (setting/properties :admin)))
-             (keys ((mt/user->client :crowberto) :get 200 "session/properties")))))))
+      (is (= (set (keys (merge
+                         (setting/properties :public)
+                         (setting/properties :authenticated)
+                         (setting/properties :admin))))
+             (set (keys ((mt/user->client :crowberto) :get 200 "session/properties"))))))))
+
+(deftest properties-i18n-test
+  (testing "GET /session/properties"
+    (testing "Setting the X-Metabase-Locale header should result give you properties in that locale"
+      (mt/with-mock-i18n-bundles {"es" {"Connection String" "Cadena de conexión !"}}
+        (is (= "Cadena de conexión !"
+               (-> (mt/client :get 200 "session/properties" {:request-options {:headers {"X-Metabase-Locale" "es"}}})
+                   :engines :h2 :details-fields first :display-name)))))))
 
 
 ;;; ------------------------------------------ TESTS FOR GOOGLE AUTH STUFF -------------------------------------------

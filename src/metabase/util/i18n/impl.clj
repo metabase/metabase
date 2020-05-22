@@ -23,6 +23,7 @@
 
   Returns `nil` for invalid strings -- you can use this to check whether a String is valid."
   [s]
+  {:pre [((some-fn nil? string?) s)]}
   (when (string? s)
     (when-let [[_ language country] (re-matches #"^(\w{2})(?:[-_](\w{2}))?$" s)]
       (let [language (str/lower-case language)]
@@ -67,38 +68,29 @@
 
 (def ^:private ^:const ^String i18n-bundle-name "metabase.Messages")
 
-(def ^:dynamic *bundle-fn*
-  "Function that should be used to fetch the i18n translations resources bundle for a Locale. Bind this value for
-  dev/test mocking purposes."
-  (fn [^Locale locale]
-    (try
-      (ResourceBundle/getBundle i18n-bundle-name locale (classloader/the-classloader))
-      (catch MissingResourceException _
-        (log/error (format "Error translating to %s: no resource bundle" locale))))))
+(defn- bundle* [^Locale locale]
+  (try
+    (ResourceBundle/getBundle i18n-bundle-name locale (classloader/the-classloader))
+    (catch MissingResourceException _
+      (log/error (format "Error translating to %s: no resource bundle" locale)))))
 
 (defn- bundle
   "Get the Metabase i18n resource bundle associated with `locale`. Returns `nil` if no such bundle can be found."
   ^ResourceBundle [locale-or-name]
   (when-let [locale (locale locale-or-name)]
-    (*bundle-fn* locale)))
+    (bundle* locale)))
 
-(def ^:dynamic *translated-format-string-fn*
-  "Function to use to find the translated version of `format-string` for `locale` -- normally this loads the matching
-  `ResourceBundle` and looks for a matching key, returning `nil` if the bundle or the key weren't found. You can
-  rebind this for test/mocking purposes."
-  (fn [^Locale locale format-string]
-    (when (seq format-string)
+(defn translated-format-string
+  "Find the translated version of `format-string` in the bundle for `locale-or-name`, or `nil` if none can be found.
+  Does not search 'parent' (country-only) locale bundle."
+  ^String [locale-or-name format-string]
+  (when (seq format-string)
+    (when-let [locale (locale locale-or-name)]
       (when-let [bundle (bundle locale)]
         (try
           (.getString bundle format-string)
           ;; no translated version available
           (catch MissingResourceException _))))))
-
-(defn- translated-format-string
-  "Find the translated version of `format-string` in the bundle for `locale-or-name`, or `nil` if none can be found.
-  Does not search 'parent' (country-only) locale bundle."
-  ^String [locale-or-name format-string]
-  (*translated-format-string-fn* (locale locale-or-name) format-string))
 
 (defn- message-format ^MessageFormat [locale-or-name ^String format-string]
   (if-let [locale (locale locale-or-name)]
@@ -106,6 +98,7 @@
                                    format-string)
                                  (translated-format-string locale format-string)
                                  (when-let [parent-locale (parent-locale locale)]
+                                   (log/tracef "No translated string found, trying parent locale %s" (pr-str parent-locale))
                                    (translated-format-string parent-locale format-string))
                                  format-string)]
       (MessageFormat. translated locale))
@@ -138,34 +131,34 @@
             (log/errorf e "Invalid format string %s" (pr-str format-string))
             format-string))))))
 
-(defn- available-locales*
+(defn- available-locale-names*
   []
   (log/info "Reading available locales from locales.clj...")
   (some-> (io/resource "locales.clj") slurp edn/read-string :locales set))
 
-(def ^{:arglists '([])} available-locales
+6(def ^{:arglists '([])} available-locale-names
   "Return set of available locales, as Strings.
 
-    (available-locales) ; -> #{\"nl\" \"pt\" \"en\" \"zh\"}"
-  (let [locales (delay (available-locales*))]
+    (available-locale-names) ; -> #{\"nl\" \"pt\" \"en\" \"zh\"}"
+  (let [locales (delay (available-locale-names*))]
     (fn [] @locales)))
 
 ;; We can't fetch the system locale until the application DB has been initiailized. Once that's done, we don't need to
 ;; do the check anymore -- swapping out the getter fn with the simpler one speeds things up substantially
-(def ^:private system-locale-from-setting-fn
+(def ^:private site-locale-from-setting-fn
   (atom
    (fn []
      (when-let [db-is-setup? (resolve 'metabase.db/db-is-setup?)]
        (when (db-is-setup?)
          (when-let [get-string (var-get (resolve 'metabase.models.setting/get-string))]
            (let [f (fn [] (get-string :site-locale))]
-             (reset! system-locale-from-setting-fn f)
+             (reset! site-locale-from-setting-fn f)
              (f))))))))
 
-(defn system-locale-from-setting
+(defn site-locale-from-setting
   "Fetch the value of the `site-locale` Setting."
   []
-  (@system-locale-from-setting-fn))
+  (@site-locale-from-setting-fn))
 
 (defmethod print-method Locale
   [locale ^java.io.Writer writer]
