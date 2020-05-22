@@ -17,7 +17,7 @@
                 :name   "checkins"
                 :fields #{{:name "count",               :base-type :type/Integer,          :database-type "LONG [metric]"}
                           {:name "id",                  :base-type :type/Text,             :database-type "STRING"}
-                          {:name "timestamp",           :base-type :type/Instant,          :database-type "timestamp", :pk? true}
+                          {:name "timestamp",           :base-type :type/Instant,          :database-type "timestamp", :pk? false}
                           {:name "user_last_login",     :base-type :type/Text,             :database-type "STRING"}
                           {:name "user_name",           :base-type :type/Text,             :database-type "STRING"}
                           {:name "user_password",       :base-type :type/Text,             :database-type "STRING"}

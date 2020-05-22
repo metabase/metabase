@@ -50,7 +50,7 @@ export default class SearchApp extends React.Component {
                 .groupBy("model")
                 .value();
 
-              // either use the specified filter type or order the full set according to our preffered order
+              // either use the specified filter type or order the full set according to our preferred order
               // (this should probably just be the default return from the endpoint no?
               const resultDisplay = resultsByType[location.query.type] || [
                 ...(resultsByType.dashboard || []),

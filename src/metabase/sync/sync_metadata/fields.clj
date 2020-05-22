@@ -94,13 +94,10 @@
            new-hash      (calculate-table-hash db-metadata)
            hash-changed? (or (not old-hash) (not= new-hash old-hash))]
        ;; if hash is unchanged we can skip the rest of the sync process
-       (when-not hash-changed?
+       (if hash-changed?
+          ;; Now that Fields sync has completed successfully, save updated hash in the application DB...
+         (db/update! Table (u/get-id table) :fields_hash new-hash)
          (log/debug (trs "Hash of {0} matches stored hash, skipping Fields sync" (sync-util/name-for-logging table))))
-       ;; Ok, sync Fields if needed
-       ;; Now that Fields sync has completed successfully, save updated hash in the application DB...
-       (when hash-changed?
-         (db/update! Table (u/get-id table) :fields_hash new-hash))
-         ;;; ...and return the results
        {:total-fields   total-fields
         :updated-fields (or (when hash-changed?
                               (sync-and-update! table db-metadata))

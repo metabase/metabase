@@ -442,7 +442,7 @@ export const initializeQB = (location, params) => {
     let question = card && new Question(card, getMetadata(getState()));
     if (params.cardId) {
       // loading a saved question prevents auto-viz selection
-      question = question && question.setSelectedDisplay(question.display());
+      question = question && question.lockDisplay();
     }
 
     card = question && question.card();
@@ -541,9 +541,11 @@ export const updateCardVisualizationSettings = settings => async (
 ) => {
   const question = getQuestion(getState());
   await dispatch(
-    updateQuestion(question.updateSettings(settings), { run: "auto" }),
+    updateQuestion(question.updateSettings(settings), {
+      run: "auto",
+      shouldUpdateUrl: true,
+    }),
   );
-  dispatch(updateUrl(null, { dirty: true }));
 };
 
 export const replaceAllCardVisualizationSettings = settings => async (
@@ -552,9 +554,11 @@ export const replaceAllCardVisualizationSettings = settings => async (
 ) => {
   const question = getQuestion(getState());
   await dispatch(
-    updateQuestion(question.setSettings(settings), { run: "auto" }),
+    updateQuestion(question.setSettings(settings), {
+      run: "auto",
+      shouldUpdateUrl: true,
+    }),
   );
-  dispatch(updateUrl(null, { dirty: true }));
 };
 
 export const UPDATE_TEMPLATE_TAG = "metabase/qb/UPDATE_TEMPLATE_TAG";
@@ -697,7 +701,7 @@ export const navigateToNewCardInsideQB = createThunkAction(
 export const UPDATE_QUESTION = "metabase/qb/UPDATE_QUESTION";
 export const updateQuestion = (
   newQuestion,
-  { doNotClearNameAndId = false, run = false } = {},
+  { doNotClearNameAndId = false, run = false, shouldUpdateUrl = false } = {},
 ) => {
   return async (dispatch, getState) => {
     const oldQuestion = getQuestion(getState());
@@ -725,6 +729,10 @@ export const updateQuestion = (
 
     // Replace the current question with a new one
     await dispatch.action(UPDATE_QUESTION, { card: newQuestion.card() });
+
+    if (shouldUpdateUrl) {
+      dispatch(updateUrl(null, { dirty: true }));
+    }
 
     // See if the template tags editor should be shown/hidden
     const oldTagCount = getTemplateTagCount(oldQuestion);
@@ -805,12 +813,8 @@ export const apiCreateQuestion = question => {
     );
 
     // Saving a card, locks in the current display as though it had been
-    // selected in the UI. We also copy over `sensibleDisplays` since those were
-    // not persisted onto `createdQuestion`.
-    const card = createdQuestion
-      .setSensibleDisplays(question.sensibleDisplays())
-      .setSelectedDisplay(question.display())
-      .card();
+    // selected in the UI.
+    const card = createdQuestion.lockDisplay().card();
 
     dispatch.action(API_CREATE_QUESTION, card);
   };
@@ -936,12 +940,20 @@ export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
 export const queryCompleted = (question, queryResults) => {
   return async (dispatch, getState) => {
     const [{ data }] = queryResults;
-    const card = question
-      .setSensibleDisplays(getSensibleDisplays(data))
-      .setDefaultDisplay()
-      .switchTableScalar(data)
-      .card();
-    dispatch.action(QUERY_COMPLETED, { card, queryResults });
+    const originalQuestion = getOriginalQuestion(getState());
+    const dirty =
+      !originalQuestion ||
+      (originalQuestion && question.isDirtyComparedTo(originalQuestion));
+    if (dirty) {
+      // Only update the display if the question is new or has been changed.
+      // Otherwise, trust that the question was saved with the correct display.
+      question = question
+        // if we are going to trigger autoselection logic, check if the locked display no longer is "sensible".
+        .maybeUnlockDisplay(getSensibleDisplays(data))
+        .setDefaultDisplay()
+        .switchTableScalar(data);
+    }
+    dispatch.action(QUERY_COMPLETED, { card: question.card(), queryResults });
   };
 };
 

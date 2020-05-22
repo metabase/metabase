@@ -12,7 +12,7 @@
              [setting :as setting :refer [defsetting]]]
             metabase.public-settings.metastore
             [metabase.util
-             [i18n :refer [available-locales-with-names deferred-tru set-locale trs tru]]
+             [i18n :as i18n :refer [available-locales-with-names deferred-tru trs tru]]
              [password :as password]]
             [toucan.db :as db])
   (:import java.util.UUID))
@@ -45,7 +45,7 @@
                 (or (setting/get-string :site-uuid)
                     (let [value (str (UUID/randomUUID))]
                       (setting/set-string! :site-uuid value)
-                     value))))
+                      value))))
 
 (defn- normalize-site-url [^String s]
   (let [ ;; remove trailing slashes
@@ -55,8 +55,7 @@
             s
             (str "http://" s))]
     ;; check that the URL is valid
-    (assert (u/url? s)
-      (tru "Invalid site URL: {0}" s))
+    (assert (u/url? s) (tru "Invalid site URL: {0}" (pr-str s)))
     s))
 
 ;; This value is *guaranteed* to never have a trailing slash :D
@@ -73,12 +72,16 @@
             (setting/set-string! :site-url (some-> new-value normalize-site-url))))
 
 (defsetting site-locale
-  (str  (deferred-tru "The default language for this Metabase instance.")
-        " "
-        (deferred-tru "This only applies to emails, Pulses, etc. Users'' browsers will specify the language used in the user interface."))
-  :type      :string
-  :on-change (fn [_ new-value] (when new-value (set-locale new-value)))
-  :default   "en")
+  (str (deferred-tru "The language that should be used for Metabase's UI, system emails, pulses, and alerts.")
+       " "
+       (deferred-tru "This is also the default language for all users, which they can change from their own account settings."))
+  :default    "en"
+  :visibility :public
+  :setter     (fn [new-value]
+                (when new-value
+                  (when-not (i18n/available-locale? new-value)
+                    (throw (ex-info (tru "Invalid locale {0}" (pr-str new-value)) {:status-code 400}))))
+                (setting/set-string! :site-locale (some-> new-value i18n/normalized-locale-string))))
 
 (defsetting admin-email
   (deferred-tru "The email address users should be referred to if they encounter a problem.")
@@ -275,3 +278,9 @@
   :visibility :public
   :setter     :none
   :getter     (constantly config/mb-version-info))
+
+(defsetting redirect-all-requests-to-https
+  (deferred-tru "Force all traffic to use HTTPS via a redirect, if the site URL is HTTPS")
+  :visibility :public
+  :type       :boolean
+  :default    false)

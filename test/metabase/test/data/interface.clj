@@ -343,14 +343,14 @@
 (defmulti count-with-template-tag-query
   "Generate a native query for the count of rows in `table` matching a set of conditions where `field-name` is equal to
   a param `value`."
-  ^{:arglists '([driver table-name field-name param-type])}
+  {:arglists '([driver table-name field-name param-type])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
 (defmulti count-with-field-filter-query
   "Generate a native query that returns the count of a Table with `table-name` with a field filter against a Field with
   `field-name`."
-  ^{:arglists '([driver table-name field-name])}
+  {:arglists '([driver table-name field-name])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 

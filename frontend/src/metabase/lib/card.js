@@ -80,6 +80,7 @@ export function serializeCardForUrl(card) {
     description: card.description,
     dataset_query: dataset_query,
     display: card.display,
+    displayIsLocked: card.displayIsLocked,
     parameters: card.parameters,
     visualization_settings: card.visualization_settings,
     original_card_id: card.original_card_id,

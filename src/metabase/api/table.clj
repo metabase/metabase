@@ -235,7 +235,7 @@
 
 (defn fetch-query-metadata
   "Returns the query metadata used to power the query builder for the given table `table-or-table-id`"
-  [table include_sensitive_fields]
+  [table include_sensitive_fields include_hidden_fields]
   (api/read-check table)
   (let [driver (driver.u/database->driver (:db_id table))]
     (-> table
@@ -243,22 +243,27 @@
         (m/dissoc-in [:db :details])
         (assoc-dimension-options driver)
         format-fields-for-response
-        (update :fields (if (Boolean/parseBoolean include_sensitive_fields)
-                          ;; If someone passes include_sensitive_fields return hydrated :fields as-is
-                          identity
-                          ;; Otherwise filter out all :sensitive fields
-                          (partial filter (fn [{:keys [visibility_type]}]
-                                            (not= (keyword visibility_type) :sensitive))))))))
+        (update :fields
+                (let [hidden (Boolean/parseBoolean include_hidden_fields)
+                      sensitive (Boolean/parseBoolean include_sensitive_fields)]
+                  (partial filter (fn [{:keys [visibility_type]}]
+                                    (case (keyword visibility_type)
+                                      :hidden hidden
+                                      :sensitive sensitive
+                                      true))))))))
 
 (api/defendpoint GET "/:id/query_metadata"
   "Get metadata about a `Table` useful for running queries.
    Returns DB, fields, field FKs, and field values.
 
-  By passing `include_sensitive_fields=true`, information *about* sensitive `Fields` will be returned; in no case will
-  any of its corresponding values be returned. (This option is provided for use in the Admin Edit Metadata page)."
-  [id include_sensitive_fields]
-  {include_sensitive_fields (s/maybe su/BooleanString)}
-  (fetch-query-metadata (Table id) include_sensitive_fields))
+  Passing `include_hidden_fields=true` will include any hidden `Fields` in the response. Defaults to `false`
+  Passing `include_sensitive_fields=true` will include any sensitive `Fields` in the response. Defaults to `false`.
+
+  These options are provided for use in the Admin Edit Metadata page."
+  [id include_sensitive_fields include_hidden_fields]
+  {include_sensitive_fields (s/maybe su/BooleanString)
+   include_hidden_fields (s/maybe su/BooleanString)}
+  (fetch-query-metadata (Table id) include_sensitive_fields include_hidden_fields))
 
 (defn- card-result-metadata->virtual-fields
   "Return a sequence of 'virtual' fields metadata for the 'virtual' table for a Card in the Saved Questions 'virtual'
