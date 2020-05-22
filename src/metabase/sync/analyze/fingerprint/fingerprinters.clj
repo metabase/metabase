@@ -13,7 +13,7 @@
             [metabase.util :as u]
             [metabase.util
              [date-2 :as u.date]
-             [i18n :refer [trs]]]
+             [i18n :refer [trs deferred-trs]]]
             [redux.core :as redux])
   (:import com.bigml.histogram.Histogram
            com.clearspring.analytics.stream.cardinality.HyperLogLogPlus
@@ -88,7 +88,7 @@
   [kfs]
   (redux/fuse (m/map-kv-vals (fn [k f]
                                (redux/post-complete
-                                (with-error-handling f (trs "Error reducing {0}" (name k)))
+                                (with-error-handling f (deferred-trs "Error reducing {0}" (name k)))
                                 (fn [result]
                                   (when-not (instance? Throwable result)
                                     result))))

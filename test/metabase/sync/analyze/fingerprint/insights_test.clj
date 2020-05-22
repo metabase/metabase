@@ -1,6 +1,5 @@
 (ns metabase.sync.analyze.fingerprint.insights-test
   (:require [clojure.test :refer :all]
-            [expectations :refer :all]
             [metabase.sync.analyze.fingerprint.insights :as i :refer :all]))
 
 (def ^:private cols [{:base_type :type/DateTime} {:base_type :type/Number}])
