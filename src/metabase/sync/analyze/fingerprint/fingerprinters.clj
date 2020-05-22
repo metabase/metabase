@@ -54,7 +54,8 @@
    (.offer acc x)
    acc))
 
-(defmacro ^:private robust-map
+(defmacro robust-map
+  "Wrap each map value in try-catch block."
   [& kvs]
   `(hash-map ~@(apply concat (for [[k v] (partition 2 kvs)]
                                `[~k (try

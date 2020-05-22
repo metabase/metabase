@@ -196,10 +196,11 @@
                (redux/post-complete
                 (let [y-position (:position number-col)
                       yfn        #(nth % y-position)]
-                  (redux/juxt ((map yfn) (last-n 2))
-                              ((map xfn) (last-n 2))
-                              (stats/simple-linear-regression xfn yfn)
-                              (best-fit xfn yfn)))
+                  ((filter (comp f/real-number? yfn))
+                   (redux/juxt ((map yfn) (last-n 2))
+                               ((map xfn) (last-n 2))
+                               (stats/simple-linear-regression xfn yfn)
+                               (best-fit xfn yfn))))
                 (fn [[[y-previous y-current] [x-previous x-current] [offset slope] best-fit]]
                   (let [unit         (if (or (nil? (:unit datetime))
                                              (->> datetime :unit mbql.u/normalize-token (= :default)))
