@@ -13,7 +13,7 @@
             [metabase.util :as u]
             [metabase.util
              [date-2 :as u.date]
-             [i18n :refer [trs deferred-trs]]]
+             [i18n :refer [deferred-trs trs]]]
             [redux.core :as redux])
   (:import com.bigml.histogram.Histogram
            com.clearspring.analytics.stream.cardinality.HyperLogLogPlus
