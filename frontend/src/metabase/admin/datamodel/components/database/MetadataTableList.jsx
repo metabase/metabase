@@ -107,7 +107,7 @@ export default class MetadataTableList extends Component {
           {(n => ngettext(msgid`${n} Hidden Table`, `${n} Hidden Tables`, n))(
             hiddenTables.length,
           )}
-          <Tooltip tooltip={t`Make all queryable`}>
+          <Tooltip tooltip={t`Unhide all`}>
             <Icon
               name="eye"
               onClick={() =>
