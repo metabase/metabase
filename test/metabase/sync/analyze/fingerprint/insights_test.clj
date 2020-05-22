@@ -108,7 +108,9 @@
            :col            nil,
            :unit           :day}]
          (transduce identity
-                    (insights [{:base_type :type/DateTime} {:base_type :type/Number} {:base_type :type/Number}])
+                    (insights [{:base_type :type/DateTime}
+                               {:base_type :type/Number}
+                               {:base_type :type/Number}])
                     ts)))
   (testing "We should robustly survive weird values such as NaN, Infinity, and nil"
     (is (= [{:last-value     20.0
@@ -116,7 +118,7 @@
              :last-change    1.0
              :slope          10.0
              :offset         -178350.0
-             :best-fit       [ :+ -178350.0 [ :* 10.0 :x ] ]
+             :best-fit       [:+ -178350.0 [:* 10.0 :x]]
              :unit           :day
              :col            nil}]
            (transduce identity
