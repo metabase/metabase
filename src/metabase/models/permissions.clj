@@ -672,6 +672,7 @@
          (doseq [[group-id changes] new]
            (update-group-permissions! group-id changes))
          (save-perms-revision! (:revision old-graph) old new)))))
+
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks :- [s/Any], new-value]
    (update-graph! (assoc-in (graph) (cons :groups ks) new-value))))

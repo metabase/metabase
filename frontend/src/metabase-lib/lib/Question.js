@@ -277,40 +277,30 @@ export default class Question {
     return this.setCard(assoc(this.card(), "display", display));
   }
 
-  // The selected display is set when the user explicitly chooses a
-  // visualization type. Having it set prevents auto selecting a new type,
-  // unless the selected type isn't sensible.
-  setSelectedDisplay(display): Question {
-    return this.setCard(
-      assoc(this.card(), "selectedDisplay", display),
-    ).setDisplay(display);
+  // locking the display prevents auto-selection
+  lockDisplay(): Question {
+    return this.setDisplayIsLocked(true);
   }
-  selectedDisplay(): string {
-    return this._card && this._card.selectedDisplay;
+  setDisplayIsLocked(locked: boolean): Question {
+    return this.setCard(assoc(this.card(), "displayIsLocked", locked));
   }
-
-  // This feels a bit hacky because it stores result-dependent info on card. We
-  // use the list of sensible displays to override a user-selected display if it
-  // no longer makes sense for the data.
-  setSensibleDisplays(displays): Question {
-    return this.setCard(assoc(this.card(), "sensibleDisplays", displays));
-  }
-  sensibleDisplays(): string[] {
-    return (this._card && this._card.sensibleDisplays) || [];
+  displayIsLocked(): boolean {
+    return this._card && this._card.displayIsLocked;
   }
 
-  // This determines whether `setDefaultDisplay` should replace the current
-  // display. If we have a list of sensibleDisplays and the user-selected
-  // display is one of them, we won't overwrite it in `setDefaultDisplay`. If
-  // the user hasn't selected a display or `sensibleDisplays` hasn't been set,
-  // we can let `setDefaultDisplay` choose a display type.
-  shouldNotSetDisplay(): boolean {
-    return this.sensibleDisplays().includes(this.selectedDisplay());
+  // If we're locked to a display that is no longer "sensible", unlock it.
+  maybeUnlockDisplay(sensibleDisplays): Question {
+    const locked =
+      this.displayIsLocked() && sensibleDisplays.includes(this.display());
+    return this.setDisplayIsLocked(locked);
   }
 
   // Switches display based on data shape. For 1x1 data, we show a scalar. If
   // our display was a 1x1 type, but the data isn't 1x1, we show a table.
   switchTableScalar({ rows = [], cols }): Question {
+    if (this.displayIsLocked()) {
+      return this;
+    }
     const display = this.display();
     const isScalar = ["scalar", "progress", "gauge"].includes(display);
     const isOneByOne = rows.length === 1 && cols.length === 1;
@@ -329,7 +319,7 @@ export default class Question {
   }
 
   setDefaultDisplay(): Question {
-    if (this.shouldNotSetDisplay()) {
+    if (this.displayIsLocked()) {
       return this;
     }
     const query = this.query();

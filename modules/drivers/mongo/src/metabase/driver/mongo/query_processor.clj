@@ -602,10 +602,22 @@
            handle-limit
            handle-page]))
 
+(defn- query->collection-name
+  "Return `:collection` from a source query, if it exists."
+  [query]
+  (mbql.u/match-one query
+    (_ :guard (every-pred map? :collection))
+    ;; ignore source queries inside `:joins` or `:collection` outside of a `:source-query`
+    (when (and (= (last &parents) :source-query)
+               (not (contains? (set &parents) :joins)))
+      (:collection &match))))
+
 (defn mbql->native
   "Process and run an MBQL query."
-  [{{source-table-id :source-table} :query, :as query}]
-  (let [{source-table-name :name} (qp.store/table source-table-id)]
+  [query]
+  (let [source-table-name (if-let [source-table-id (mbql.u/query->source-table-id query)]
+                            (:name (qp.store/table source-table-id))
+                            (query->collection-name query))]
     (binding [*query* query]
       (let [{proj :projections, generated-pipeline :query} (generate-aggregation-pipeline (:query query))]
         (log-aggregation-pipeline generated-pipeline)

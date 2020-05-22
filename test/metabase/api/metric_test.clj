@@ -35,7 +35,9 @@
    :definition              nil})
 
 (defn- user-details [user]
-  (select-keys user [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb :common_name]))
+  (select-keys
+   user
+   [:id :email :date_joined :first_name :last_name :last_login :is_superuser :is_qbnewb :common_name :locale]))
 
 (defn- metric-response [{:keys [created_at updated_at], :as metric}]
   (-> (into {} metric)

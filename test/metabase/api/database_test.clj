@@ -19,7 +19,9 @@
              [analyze :as analyze]
              [field-values :as field-values]
              [sync-metadata :as sync-metadata]]
-            [metabase.test.fixtures :as fixtures]
+            [metabase.test
+             [fixtures :as fixtures]
+             [util :as tu]]
             [metabase.util.schema :as su]
             [schema.core :as s]
             [toucan
@@ -396,7 +398,10 @@
     (testing "We should not include the saved questions virtual DB if there aren't any cards"
       (not-any?
        :is_saved_questions
-       ((mt/user->client :lucky) :get 200 "database?saved=true")))))
+       ((mt/user->client :lucky) :get 200 "database?saved=true")))
+    (testing "Ommit virtual DB if nested queries are disabled"
+      (tu/with-temporary-setting-values [enable-nested-queries false]
+        (every? some? ((mt/user->client :lucky) :get 200 "database?saved=true"))))))
 
 (def ^:private SavedQuestionsDB
   "Schema for the expected shape of info about the 'saved questions' virtual DB from API responses."
@@ -493,6 +498,10 @@
                            response))
               (check-tables-included response (virtual-table-for-card ok-card))
               (check-tables-not-included response (virtual-table-for-card bad-card)))))
+
+        (testing "should work when there are no DBs that support nested queries"
+          (with-redefs [metabase.driver/supports? (constantly false)]
+            (is (nil? (fetch-virtual-database)))))
 
         (testing "should remove Cards that use cumulative-sum and cumulative-count aggregations"
           (mt/with-temp* [Card [ok-card  (ok-mbql-card)]

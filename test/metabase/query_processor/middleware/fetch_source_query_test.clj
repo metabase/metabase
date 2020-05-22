@@ -1,6 +1,8 @@
 (ns metabase.query-processor.middleware.fetch-source-query-test
   (:require [cheshire.core :as json]
-            [clojure.test :refer :all]
+            [clojure
+             [set :as set]
+             [test :refer :all]]
             [metabase
              [models :refer [Card]]
              [test :as mt]
@@ -238,3 +240,28 @@
                                           :source-metadata nil})
                       :info {:card-id Integer/MAX_VALUE})
                (resolve-card-id-source-tables query)))))))
+
+(deftest card-id->source-query-and-metadata-test
+  (testing "card-id->source-query-and-metadata-test should trim SQL queries"
+    (let [query {:type     :native
+                 :native   {:query "SELECT * FROM table\n-- remark"}
+                 :database (mt/id)}]
+      (mt/with-temp Card [{card-id :id} {:dataset_query query}]
+        (is (= {:source-metadata nil
+                :source-query    {:native "SELECT * FROM table\n"}
+                :database        (mt/id)}
+               (#'fetch-source-query/card-id->source-query-and-metadata card-id))))))
+
+  (testing "card-id->source-query-and-metadata-test should preserve non-SQL native queries"
+    (let [query {:type     :native
+                 :native   {:projections ["_id" "user_id" "venue_id"],
+                            :query       [{:$project {:_id "$_id"}}
+                                          {:$limit 1048576}]
+                            :collection  "checkins"
+                            :mbql?       true}
+                 :database (mt/id)}]
+      (mt/with-temp Card [{card-id :id} {:dataset_query query}]
+        (is (= {:source-metadata nil
+                :source-query    (set/rename-keys (:native query) {:query :native})
+                :database        (mt/id)}
+               (#'fetch-source-query/card-id->source-query-and-metadata card-id)))))))

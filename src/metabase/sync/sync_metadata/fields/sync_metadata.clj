@@ -37,8 +37,7 @@
         (not= old-base-type new-base-type)
 
         new-special-type?
-        (and new-special-type
-             (not= old-special-type new-special-type))
+        (not= old-special-type new-special-type)
 
         ;; only sync comment if old Field description was blank
         new-comment?

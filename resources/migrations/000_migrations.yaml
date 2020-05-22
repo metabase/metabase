@@ -6212,3 +6212,32 @@ databaseChangeLog:
       changes:
         - dropTable:
             tableName: query_queryexecution
+
+# Drop Card.read_permissions. Prior to 0.30.0 Card permissions were always based on the Database/Table(s) being
+# queried (i.e., the permissions model we use for ad-hoc queries). These permissions were calculated and stored in
+# `read_permissions` for performance reasons. In 0.30.0, we switched to having Card permissions always be inherited
+# from their parent Collection, and the column hasn't been used since then. Time to let it go.
+
+  - changeSet:
+      id: 163
+      author: camsaul
+      comment: 'Added 0.35.0'
+      changes:
+        - dropColumn:
+            tableName: report_card
+            columnName: read_permissions
+
+# Add User `locale` -- when set, this User will see the Metabase in this Locale rather than the system default Locale
+# (the `site-locale` Setting).
+
+  - changeSet:
+      id: 164
+      author: camsaul
+      comment: 'Added 0.35.0'
+      changes:
+        - addColumn:
+            tableName: core_user
+            columns:
+              name: locale
+              remarks: 'Preferred ISO locale (language/country) code, e.g "en" or "en-US", for this User. Overrides site default.'
+              type: varchar(5)

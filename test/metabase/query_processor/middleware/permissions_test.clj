@@ -214,11 +214,12 @@
                                :type                 (s/eq error-type/missing-required-permissions)
                                s/Keyword             s/Any}
                     s/Keyword s/Any}
-                   (qp/process-userland-query
-                    {:database (mt/id)
-                     :type     :query
-                     :query    {:source-table (mt/id :venues)
-                                :limit        1}}))))))
+                   (mt/suppress-output
+                     (qp/process-userland-query
+                      {:database (mt/id)
+                       :type     :query
+                       :query    {:source-table (mt/id :venues)
+                                  :limit        1}})))))))
 
 (deftest e2e-nested-source-card-test
   (testing "Make sure permissions are calculated for Card -> Card -> Source Query (#12354)"
