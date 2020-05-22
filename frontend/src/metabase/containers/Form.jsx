@@ -186,10 +186,24 @@ export default class Form extends React.Component {
         (state, props) => props.initialValues || {},
         (state, props) => props.values || {},
       ],
-      (formObject, initialValues, values) => ({
-        ...initialValues,
-        ...formObject.initial(values),
-      }),
+      (formObject, initialValues, values) => {
+        const formInitialValues = formObject.initial(values);
+        // merge nested fields: {details: {foo: 123}} + {details: {bar: 321}} => {details: {foo: 123, bar: 321}}
+        const merged = {};
+        for (const k of Object.keys(initialValues)) {
+          if (
+            typeof initialValues[k] === "object" &&
+            typeof formInitialValues[k] === "object"
+          ) {
+            merged[k] = { ...formInitialValues[k], ...initialValues[k] };
+          }
+        }
+        return {
+          ...initialValues,
+          ...formInitialValues,
+          ...merged,
+        };
+      },
     );
     const getFieldNames = createSelector(
       [getFormObject, getInitialValues, (state, props) => props.values || {}],
