@@ -63,7 +63,7 @@
 
 (def default-port-details
   "Map of the db port details field, useful for `connection-properties` implementations. Implementations should assoc a
-  `:default` key."
+  `:placeholder` key."
   {:name         "port"
    :display-name (deferred-tru "Port")
    :type         :integer})
