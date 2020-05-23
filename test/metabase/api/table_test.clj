@@ -420,7 +420,7 @@
                                                 :type     :native
                                                 :native   {:query (format "SELECT NAME, ID, PRICE, LATITUDE FROM VENUES")}}}]
         ;; run the Card which will populate its result_metadata column
-        ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
+        ((mt/user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
         ;; Now fetch the metadata for this "table"
         (is (= (let [card-virtual-table-id (str "card__" (u/get-id card))]
                  {:display_name      "Go Dubs!"
@@ -470,7 +470,7 @@
                                                 :native   {:query (format "SELECT NAME, LAST_LOGIN FROM USERS")}}}]
         (let [card-virtual-table-id (str "card__" (u/get-id card))]
           ;; run the Card which will populate its result_metadata column
-          ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
+          ((mt/user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
           ;; Now fetch the metadata for this "table" via the API
           (let [[name-metadata last-login-metadata] (db/select-one-field :result_metadata Card :id (u/get-id card))]
             (is (= {:display_name      "Users"
@@ -669,7 +669,7 @@
 
             (testing "Nested queries with a fingerprint should have dimension options for binning"
               ;; run the Card which will populate its result_metadata column
-              ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
+              ((mt/user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
               (let [response ((mt/user->client :crowberto) :get 200 (format "table/card__%d/query_metadata" (u/get-id card)))]
                 (is (= (repeat 2 (var-get #'table-api/coordinate-dimension-indexes))
                        (dimension-options)))))))))))

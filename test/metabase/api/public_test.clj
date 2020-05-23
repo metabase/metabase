@@ -146,20 +146,20 @@
       (with-temp-public-card [{uuid :public_uuid}]
         (testing "Default :api response format"
           (is (= [[100]]
-                 (mt/rows (http/client :get 202 (str "public/card/" uuid "/query"))))))
+                 (mt/rows (http/client :get 200 (str "public/card/" uuid "/query"))))))
 
         (testing ":json download response format"
           (is (= [{:Count 100}]
-                 (http/client :get 202 (str "public/card/" uuid "/query/json")))))
+                 (http/client :get 200 (str "public/card/" uuid "/query/json")))))
 
         (testing ":csv download response format"
           (is (= "Count\n100\n"
-                 (http/client :get 202 (str "public/card/" uuid "/query/csv"), :format :csv))))
+                 (http/client :get 200 (str "public/card/" uuid "/query/csv"), :format :csv))))
 
         (testing ":xlsx download response format"
           (is (= [{:col "Count"} {:col 100.0}]
                  (parse-xlsx-response
-                  (http/client :get 202 (str "public/card/" uuid "/query/xlsx") {:request-options {:as :byte-array}})))))))))
+                  (http/client :get 200 (str "public/card/" uuid "/query/xlsx") {:request-options {:as :byte-array}})))))))))
 
 (deftest execute-public-card-as-user-without-perms-test
   (testing "A user that doesn't have permissions to run the query normally should still be able to run a public Card as if they weren't logged in"
@@ -172,13 +172,13 @@
               "Sanity check: shouldn't be allowed to run the query normally")
           (is (= [[100]]
                  (mt/rows
-                   ((mt/user->client :rasta) :get 202 (str "public/card/" uuid "/query"))))))))))
+                   ((mt/user->client :rasta) :get 200 (str "public/card/" uuid "/query"))))))))))
 
 (deftest check-that-we-can-exec-a-publiccard-with---parameters-
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (with-temp-public-card [{uuid :public_uuid}]
       (is (= [{:name "Venue ID", :slug "venue_id", :type "id", :value 2}]
-             (get-in (http/client :get 202 (str "public/card/" uuid "/query")
+             (get-in (http/client :get 200 (str "public/card/" uuid "/query")
                                   :parameters (json/encode [{:name "Venue ID", :slug "venue_id", :type "id", :value 2}]))
                      [:json_query :parameters]))))))
 
@@ -203,7 +203,7 @@
   (with-required-param-card [uuid]
     (is (= [[22]]
            (mt/rows
-             (http/client :get 202 (str "public/card/" uuid "/query")
+             (http/client :get 200 (str "public/card/" uuid "/query")
                           :parameters (json/encode [{:type   "category"
                                                      :target [:variable [:template-tag "price"]]
                                                      :value  1}])))))))
@@ -216,7 +216,7 @@
               :error      "You'll need to pick a value for 'Price' before this query can run."
               :error_type "missing-required-parameter"}
              (mt/suppress-output
-               (http/client :get 202 (str "public/card/" uuid "/query"))))))))
+               (http/client :get 200 (str "public/card/" uuid "/query"))))))))
 
 (defn- card-with-date-field-filter []
   (assoc (shared-obj)
@@ -234,7 +234,7 @@
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (mt/with-temp Card [{uuid :public_uuid} (card-with-date-field-filter)]
       (is (= "count\n107\n"
-             (http/client :get 202 (str "public/card/" uuid "/query/csv")
+             (http/client :get 200 (str "public/card/" uuid "/query/csv")
                           :parameters (json/encode [{:type   :date/quarter-year
                                                      :target [:dimension [:template-tag :date]]
                                                      :value  "Q1-2014"}])))))))
@@ -247,7 +247,7 @@
       (binding [http/*url-prefix* (str/replace http/*url-prefix* #"/api/$" "/")]
         (mt/with-temporary-setting-values [site-url http/*url-prefix*]
           (is (= "count\n107\n"
-                 (http/client :get 202 (str "public/question/" uuid ".csv")
+                 (http/client :get 200 (str "public/question/" uuid ".csv")
                               :parameters (json/encode [{:type   :date/quarter-year
                                                          :target [:dimension [:template-tag :date]]
                                                          :value  "Q1-2014"}])))))))))
@@ -264,7 +264,7 @@
   (mt/with-temporary-setting-values [enable-public-sharing true]
     (mt/with-temp Card [{uuid :public_uuid} (card-with-trendline)]
       (is (= #{:cols :rows :insights :results_timezone}
-             (-> (http/client :get 202 (str "public/card/" uuid "/query"))
+             (-> (http/client :get 200 (str "public/card/" uuid "/query"))
                  :data
                  keys
                  set))))))
@@ -345,7 +345,7 @@
     (mt/with-temporary-setting-values [enable-public-sharing true]
       (with-temp-public-dashboard-and-card [dash card]
         (is (= [[100]]
-               (mt/rows (http/client :get 202 (dashcard-url dash card)))))
+               (mt/rows (http/client :get 200 (dashcard-url dash card)))))
 
         (testing "with parameters"
           (is (= [{:name    "Venue ID"
@@ -354,7 +354,7 @@
                    :value   [10]
                    :default nil
                    :type    "id"}]
-                 (get-in (http/client :get 202 (dashcard-url dash card)
+                 (get-in (http/client :get 200 (dashcard-url dash card)
                                       :parameters (json/encode [{:name   "Venue ID"
                                                                  :slug   :venue_id
                                                                  :target [:dimension (mt/id :venues :id)]
@@ -374,7 +374,7 @@
                 "Sanity check: shouldn't be allowed to run the query normally")
             (is (= [[100]]
                    (mt/rows
-                     ((mt/user->client :rasta) :get 202 (dashcard-url dash card)))))))))))
+                     ((mt/user->client :rasta) :get 200 (dashcard-url dash card)))))))))))
 
 
 (deftest execute-public-dashcard-params-validation-test
@@ -384,7 +384,7 @@
         (with-temp-public-dashboard-and-card [dash card]
           (testing "Should work correctly with a valid parameter"
             (is (= [[1]]
-                   (mt/rows (http/client :get 202 (dashcard-url dash card)
+                   (mt/rows (http/client :get 200 (dashcard-url dash card)
                                          :parameters (json/encode [{:name   "Venue ID"
                                                                     :slug   :venue_id
                                                                     :target [:dimension (mt/id :venues :id)]
@@ -411,7 +411,7 @@
                                                                       :dashboard_id (u/get-id dash))
                                                   :card_id          (u/get-id card-2)}]
               (is (= [[100]]
-                     (mt/rows (http/client :get 202 (dashcard-url dash card-2))))))))))))
+                     (mt/rows (http/client :get 200 (dashcard-url dash card-2))))))))))))
 
 (deftest execute-public-dashcard-parameters-test
   (testing "GET /api/public/dashboard/:uuid/card/:card-id"

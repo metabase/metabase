@@ -285,7 +285,7 @@
                                              :last_name    "Toucan"
                                              :first_name   "Rasta"
                                              :email        "rasta@metabase.com"})})
-                 (-> ((mt/user->client :rasta) :post 202 "card"
+                 (-> ((mt/user->client :rasta) :post 200 "card"
                       (assoc (card-with-name-and-query card-name (mbql-count-query (data/id) (data/id :venues)))
                              :collection_id (u/get-id collection)))
                      (dissoc :created_at :updated_at :id)
@@ -309,7 +309,7 @@
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
         (tu/with-model-cleanup [Card]
           ;; create a card with the metadata
-          ((mt/user->client :rasta) :post 202 "card"
+          ((mt/user->client :rasta) :post 200 "card"
            (assoc (card-with-name-and-query card-name)
                   :collection_id      (u/get-id collection)
                   :result_metadata    metadata
@@ -325,7 +325,7 @@
 (deftest save-card-with-empty-result-metadata
   (is (tu/with-model-cleanup [Card]
         ;; create a card with the metadata
-        ((mt/user->client :rasta) :post 202 "card"
+        ((mt/user->client :rasta) :post 200 "card"
          (assoc (card-with-name-and-query)
                 :result_metadata    []
                 :metadata_checksum  (#'results-metadata/metadata-checksum []))))))
@@ -361,7 +361,7 @@
                (tu/throw-if-called qp.async/result-metadata-for-query-async
                                    (tu/with-model-cleanup [Card]
                                      ;; create a card with the metadata
-                                     ((mt/user->client :rasta) :post 202 "card"
+                                     ((mt/user->client :rasta) :post 200 "card"
                                       (assoc (card-with-name-and-query card-name)
                                              :collection_id      (u/get-id collection)
                                              :result_metadata    (map fingerprint-integers->doubles metadata)
@@ -388,7 +388,7 @@
                (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
                (tu/with-model-cleanup [Card]
                  ;; create a card with the metadata
-                 ((mt/user->client :rasta) :post 202 "card"
+                 ((mt/user->client :rasta) :post 200 "card"
                   (assoc (card-with-name-and-query card-name)
                          :collection_id      (u/get-id collection)
                          :result_metadata    metadata
@@ -416,7 +416,7 @@
                               (reset! sql-result sql)
                               (orig driver conn sql params))]
                 ;; create a card with the metadata
-                ((mt/user->client :rasta) :post 202 "card"
+                ((mt/user->client :rasta) :post 200 "card"
                  (assoc (card-with-name-and-query card-name)
                         :collection_id      (u/get-id collection)
                         :result_metadata    metadata
@@ -445,7 +445,7 @@
              (let [card-name (tu/random-name)]
                (tt/with-temp Collection [collection]
                  (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-                 ((mt/user->client :rasta) :post 202 "card" (assoc (card-with-name-and-query card-name)
+                 ((mt/user->client :rasta) :post 200 "card" (assoc (card-with-name-and-query card-name)
                                                                            :collection_id (u/get-id collection), :collection_position 1))
                  (some-> (db/select-one [Card :collection_id :collection_position] :name card-name)
                          (update :collection_id (partial = (u/get-id collection)))))))))))
@@ -527,7 +527,7 @@
     (with-cards-in-writeable-collection card
       (is (= "Original Name"
              (db/select-one-field :name Card, :id (u/get-id card))))
-      ((mt/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:name "Updated Name"})
+      ((mt/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:name "Updated Name"})
       (is (= "Updated Name"
              (db/select-one-field :name Card, :id (u/get-id card)))))))
 
@@ -536,7 +536,7 @@
     (with-cards-in-writeable-collection card
       (let [archived?     (fn [] (:archived (Card (u/get-id card))))
             set-archived! (fn [archived]
-                            ((mt/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:archived archived})
+                            ((mt/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:archived archived})
                             (archived?))]
         (is (= false
                (archived?)))
@@ -557,21 +557,21 @@
 (deftest can-we-clear-the-description-of-a-card----4738-
   (is (nil? (tt/with-temp Card [card {:description "What a nice Card"}]
               (with-cards-in-writeable-collection card
-                ((mt/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:description nil})
+                ((mt/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:description nil})
                 (db/select-one-field :description Card :id (u/get-id card)))))))
 
 (deftest description-should-be-blankable-as-well
   (is (= ""
          (tt/with-temp Card [card {:description "What a nice Card"}]
            (with-cards-in-writeable-collection card
-             ((mt/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:description ""})
+             ((mt/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:description ""})
              (db/select-one-field :description Card :id (u/get-id card)))))))
 
 (deftest can-we-update-a-card-s-embedding-params-
   (is (= {:abc "enabled"}
          (tt/with-temp Card [card]
            (tu/with-temporary-setting-values [enable-embedding true]
-             ((mt/user->client :crowberto) :put 202 (str "card/" (u/get-id card)) {:embedding_params {:abc "enabled"}}))
+             ((mt/user->client :crowberto) :put 200 (str "card/" (u/get-id card)) {:embedding_params {:abc "enabled"}}))
            (db/select-one-field :embedding_params Card :id (u/get-id card))))))
 
 (deftest we-shouldn-t-be-able-to-update-them-if-we-re-not-an-admin---
@@ -594,7 +594,7 @@
     (tt/with-temp Card [card]
       (with-cards-in-writeable-collection card
         ;; update the Card's query
-        ((mt/user->client :rasta) :put 202 (str "card/" (u/get-id card))
+        ((mt/user->client :rasta) :put 200 (str "card/" (u/get-id card))
          {:dataset_query     (mbql-count-query)
           :result_metadata   metadata
           :metadata_checksum (#'results-metadata/metadata-checksum metadata)})
@@ -613,7 +613,7 @@
     (tt/with-temp Card [card]
       (with-cards-in-writeable-collection card
         ;; update the Card's query
-        ((mt/user->client :rasta) :put 202 (str "card/" (u/get-id card))
+        ((mt/user->client :rasta) :put 200 (str "card/" (u/get-id card))
          {:dataset_query     (mbql-count-query)
           :result_metadata   metadata
           :metadata_checksum "ABC123"}) ; invalid checksum
@@ -630,7 +630,7 @@
 (deftest can-we-change-the-collection-position-of-a-card-
   (tt/with-temp Card [card]
     (with-cards-in-writeable-collection card
-      ((mt/user->client :rasta) :put 202 (str "card/" (u/get-id card))
+      ((mt/user->client :rasta) :put 200 (str "card/" (u/get-id card))
        {:collection_position 1})
       (is (= 1
              (db/select-one-field :collection_position Card :id (u/get-id card)))))))
@@ -638,7 +638,7 @@
 (deftest ---and-unset--unpin--it-as-well-
   (tt/with-temp Card [card {:collection_position 1}]
     (with-cards-in-writeable-collection card
-      ((mt/user->client :rasta) :put 202 (str "card/" (u/get-id card))
+      ((mt/user->client :rasta) :put 200 (str "card/" (u/get-id card))
        {:collection_position nil})
       (is (= nil
              (db/select-one-field :collection_position Card :id (u/get-id card)))))))
@@ -699,7 +699,7 @@
                                       Card c
                                       Card d]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        ((mt/user->client :rasta) :put 202 (str "card/" (u/get-id c))
+        ((mt/user->client :rasta) :put 200 (str "card/" (u/get-id c))
          {:collection_position 1})
         (is (= {"c" 1
                 "a" 2
@@ -715,7 +715,7 @@
                                       Pulse     c
                                       Card      d]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        ((mt/user->client :rasta) :put 202 (str "card/" (u/get-id d))
+        ((mt/user->client :rasta) :put 200 (str "card/" (u/get-id d))
          {:collection_position 1})
         (is (= {"d" 1
                 "a" 2
@@ -731,7 +731,7 @@
                                       Pulse     c
                                       Dashboard d]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        ((mt/user->client :rasta) :put 202 (str "card/" (u/get-id a))
+        ((mt/user->client :rasta) :put 200 (str "card/" (u/get-id a))
          {:collection_position 4})
         (is (= {"b" 1
                 "c" 2
@@ -752,7 +752,7 @@
                            Dashboard  [_ {:name "c", :collection_id coll-id, :collection_position 2}]
                            Card       [_ {:name "d", :collection_id coll-id, :collection_position 3}]]
              (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-             ((mt/user->client :rasta) :put 202 (str "card/" (u/get-id b))
+             ((mt/user->client :rasta) :put 200 (str "card/" (u/get-id b))
               {:collection_position 2})
              (get-name->collection-position :rasta coll-id))))))
 
@@ -768,7 +768,7 @@
                                              Dashboard c
                                              Pulse     d]
                (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-               ((mt/user->client :rasta) :put 202 (str "card/" (u/get-id b))
+               ((mt/user->client :rasta) :put 200 (str "card/" (u/get-id b))
                 {:collection_position nil})
                (get-name->collection-position :rasta collection)))))))
 
@@ -796,7 +796,7 @@
                                                  Dashboard h]
                  (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-1)
                  (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-2)
-                 ((mt/user->client :rasta) :put 202 (str "card/" (u/get-id f))
+                 ((mt/user->client :rasta) :put 200 (str "card/" (u/get-id f))
                   {:collection_id (u/get-id collection-1)})
                  [(get-name->collection-position :rasta collection-1)
                   (get-name->collection-position :rasta collection-2)])))))))
@@ -823,7 +823,7 @@
                                                  Card      h]
                  (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-1)
                  (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-2)
-                 ((mt/user->client :rasta) :put 202 (str "card/" (u/get-id h))
+                 ((mt/user->client :rasta) :put 200 (str "card/" (u/get-id h))
                   {:collection_position 1, :collection_id (u/get-id collection-1)})
                  [(get-name->collection-position :rasta collection-1)
                   (get-name->collection-position :rasta collection-2)])))))))
@@ -850,7 +850,7 @@
                (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
                [(get-name->collection-position :rasta collection)
                 (do
-                  ((mt/user->client :rasta) :post 202 "card"
+                  ((mt/user->client :rasta) :post 200 "card"
                    (merge (card-with-name-and-query "a")
                           {:collection_id       (u/get-id collection)
                            :collection_position 1}))
@@ -877,7 +877,7 @@
                (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
                [(get-name->collection-position :rasta collection)
                 (do
-                  ((mt/user->client :rasta) :post 202 "card"
+                  ((mt/user->client :rasta) :post 200 "card"
                    (merge (card-with-name-and-query "d")
                           {:collection_id       (u/get-id collection)
                            :collection_position 4}))
@@ -904,7 +904,7 @@
                (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
                [(get-name->collection-position :rasta collection)
                 (do
-                  ((mt/user->client :rasta) :post 202 "card"
+                  ((mt/user->client :rasta) :post 200 "card"
                    (merge (card-with-name-and-query "d")
                           {:collection_id       (u/get-id collection)
                            :collection_position nil}))
@@ -925,7 +925,7 @@
                                              Pulse     e
                                              Pulse     f]
                (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-               ((mt/user->client :rasta) :put 202 (str "card/" (u/get-id d))
+               ((mt/user->client :rasta) :put 200 (str "card/" (u/get-id d))
                 {:collection_position 1, :collection_id (u/get-id collection)})
                (name->position ((mt/user->client :rasta) :get 200 (format "collection/%s/items" (u/get-id collection))))))))))
 
@@ -947,23 +947,23 @@
           [{:message        "Archiving a Card should trigger Alert deletion"
             :expected-email "the question was archived by Rasta Toucan"
             :f              (fn [{:keys [card]}]
-                              ((mt/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:archived true}))}
+                              ((mt/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:archived true}))}
            {:message        "Validate changing a display type triggers alert deletion"
             :card           {:display :table}
             :expected-email "the question was edited by Rasta Toucan"
             :f              (fn [{:keys [card]}]
-                              ((mt/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:display :line}))}
+                              ((mt/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:display :line}))}
            {:message        "Changing the display type from line to table should force a delete"
             :card           {:display :line}
             :expected-email "the question was edited by Rasta Toucan"
             :f              (fn [{:keys [card]}]
-                              ((mt/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:display :table}))}
+                              ((mt/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:display :table}))}
            {:message        "Removing the goal value will trigger the alert to be deleted"
             :card           {:display                :line
                              :visualization_settings {:graph.goal_value 10}}
             :expected-email "the question was edited by Rasta Toucan"
             :f              (fn [{:keys [card]}]
-                              ((mt/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:visualization_settings {:something "else"}}))}
+                              ((mt/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:visualization_settings {:something "else"}}))}
            {:message        "Adding an additional breakout will cause the alert to be removed"
             :card           {:display                :line
                              :visualization_settings {:graph.goal_value 10}
@@ -975,7 +975,7 @@
                                                         "hour"]])}
             :expected-email "the question was edited by Crowberto Corv"
             :f              (fn [{:keys [card]}]
-                              ((mt/user->client :crowberto) :put 202 (str "card/" (u/get-id card))
+                              ((mt/user->client :crowberto) :put 200 (str "card/" (u/get-id card))
                                {:dataset_query (assoc-in (mbql-count-query (data/id) (data/id :checkins))
                                                          [:query :breakout] [[:datetime-field (data/id :checkins :date) "hour"]
                                                                              [:datetime-field (data/id :checkins :date) "minute"]])}))}]]
@@ -1028,11 +1028,11 @@
              (et/with-fake-inbox
                (array-map
                 :emails-1 (do
-                            ((mt/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:display :area})
+                            ((mt/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:display :area})
                             (et/regex-email-bodies #"the question was edited by Rasta Toucan"))
                 :pulse-1  (boolean (Pulse (u/get-id pulse)))
                 :emails-2 (do
-                            ((mt/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:display :bar})
+                            ((mt/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:display :bar})
                             (et/regex-email-bodies #"the question was edited by Rasta Toucan"))
                 :pulse-2  (boolean (Pulse (u/get-id pulse))))))))))
 
@@ -1116,7 +1116,7 @@
         (is (= ["COUNT(*)"
                 "75"]
                (str/split-lines
-                ((mt/user->client :rasta) :post 202 (format "card/%d/query/csv"
+                ((mt/user->client :rasta) :post 200 (format "card/%d/query/csv"
                                                                     (u/get-id card)))))))))
   (testing "with-paramters"
     (with-temp-native-card-with-params [_ card]
@@ -1124,7 +1124,7 @@
         (is (= ["COUNT(*)"
                 "8"]
                (str/split-lines
-                ((mt/user->client :rasta) :post 202 (format "card/%d/query/csv?parameters=%s"
+                ((mt/user->client :rasta) :post 200 (format "card/%d/query/csv?parameters=%s"
                                                                     (u/get-id card) encoded-params)))))))))
 
 (deftest json-download-test
@@ -1132,12 +1132,12 @@
     (with-temp-native-card [_ card]
       (with-cards-in-readable-collection card
         (is (= [{(keyword "COUNT(*)") 75}]
-               ((mt/user->client :rasta) :post 202 (format "card/%d/query/json" (u/get-id card))))))))
+               ((mt/user->client :rasta) :post 200 (format "card/%d/query/json" (u/get-id card))))))))
   (testing "with parameters"
     (with-temp-native-card-with-params [_ card]
       (with-cards-in-readable-collection card
         (is (= [{(keyword "COUNT(*)") 8}]
-               ((mt/user->client :rasta) :post 202 (format "card/%d/query/json?parameters=%s"
+               ((mt/user->client :rasta) :post 200 (format "card/%d/query/json?parameters=%s"
                                                                    (u/get-id card) encoded-params))))))))
 
 (defn- parse-xlsx-results [results]
@@ -1153,14 +1153,14 @@
       (with-cards-in-readable-collection card
         (is (= [{:col "COUNT(*)"} {:col 75.0}]
                (parse-xlsx-results
-                ((mt/user->client :rasta) :post 202 (format "card/%d/query/xlsx" (u/get-id card))
+                ((mt/user->client :rasta) :post 200 (format "card/%d/query/xlsx" (u/get-id card))
                  {:request-options {:as :byte-array}})))))))
   (testing "with parameters"
     (with-temp-native-card-with-params [_ card]
       (with-cards-in-readable-collection card
         (is (= [{:col "COUNT(*)"} {:col 8.0}]
                (parse-xlsx-results
-                ((mt/user->client :rasta) :post 202 (format "card/%d/query/xlsx?parameters=%s"
+                ((mt/user->client :rasta) :post 200 (format "card/%d/query/xlsx?parameters=%s"
                                                                     (u/get-id card) encoded-params)
                  {:request-options {:as :byte-array}}))))))))
 
@@ -1202,7 +1202,7 @@
     (tt/with-temp Collection [collection]
       (tu/with-model-cleanup [Card]
         (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection)
-        (let [card ((mt/user->client :rasta) :post 202 "card"
+        (let [card ((mt/user->client :rasta) :post 200 "card"
                     (assoc (card-with-name-and-query)
                            :collection_id (u/get-id collection)))]
           (= (db/select-one-field :collection_id Card :id (u/get-id card))
@@ -1220,7 +1220,7 @@
 (deftest make-sure-we-can-change-the--collection-id--of-a-card-if-it-s-not-in-any-collection
   (tt/with-temp* [Card       [card]
                   Collection [collection]]
-    ((mt/user->client :crowberto) :put 202 (str "card/" (u/get-id card)) {:collection_id (u/get-id collection)})
+    ((mt/user->client :crowberto) :put 200 (str "card/" (u/get-id card)) {:collection_id (u/get-id collection)})
     (= (db/select-one-field :collection_id Card :id (u/get-id card))
        (u/get-id collection))))
 
@@ -1267,7 +1267,7 @@
                     Card       [card                {:collection_id (u/get-id original-collection)}]]
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) original-collection)
       (perms/grant-collection-readwrite-permissions! (perms-group/all-users) new-collection)
-      ((mt/user->client :rasta) :put 202 (str "card/" (u/get-id card)) {:collection_id (u/get-id new-collection)})
+      ((mt/user->client :rasta) :put 200 (str "card/" (u/get-id card)) {:collection_id (u/get-id new-collection)})
       (= (db/select-one-field :collection_id Card :id (u/get-id card))
          (u/get-id new-collection)))))
 

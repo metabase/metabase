@@ -86,7 +86,7 @@
       (is (= [[10]]
              (mt/rows
                ((mt/user->client :lucky)
-                :post 202 "dataset"
+                :post 200 "dataset"
                 {:database (mt/id)
                  :type     "native"
                  :native   {:query {:sleep 10}}})))))))

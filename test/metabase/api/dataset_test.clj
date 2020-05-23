@@ -56,7 +56,7 @@
 (deftest basic-query-test
   (testing "POST /api/dataset"
     (testing "\nJust a basic sanity check to make sure Query Processor endpoint is still working correctly."
-      (let [result ((mt/user->client :rasta) :post 202 "dataset" (mt/mbql-query checkins
+      (let [result ((mt/user->client :rasta) :post 200 "dataset" (mt/mbql-query checkins
                                                                    {:aggregation [[:count]]}))]
         (testing "\nAPI Response"
           (is (= {:data                   {:rows             [[1000]]
@@ -97,7 +97,7 @@
   ;; clear out recent query executions!
   (db/delete! QueryExecution)
   (testing "POST /api/dataset"
-    (testing "\nEven if a query fails we still expect a 202 response from the API"
+    (testing "\nEven if a query fails we still expect a 200 response from the API"
       ;; Error message's format can differ a bit depending on DB version and the comment we prepend to it, so check
       ;; that it exists and contains the substring "Syntax error in SQL statement"
       (let [check-error-message (fn [output]
@@ -107,7 +107,7 @@
                                                            (re-find #"Syntax error in SQL statement")
                                                            boolean))))
             result              (mt/suppress-output
-                                  ((mt/user->client :rasta) :post 202 "dataset" {:database (mt/id)
+                                  ((mt/user->client :rasta) :post 200 "dataset" {:database (mt/id)
                                                                                  :type     "native"
                                                                                  :native   {:query "foobar"}}))]
         (testing "\nAPI Response"
@@ -183,7 +183,7 @@
           ["3" "2014-09-15" "8" "56"]
           ["4" "2014-03-11" "5" "4"]
           ["5" "2013-05-05" "3" "49"]]
-         (let [result ((mt/user->client :rasta) :post 202 "dataset/csv" :query
+         (let [result ((mt/user->client :rasta) :post 200 "dataset/csv" :query
                        (json/generate-string (mt/mbql-query checkins)))]
            (take 5 (parse-and-sort-csv result))))))
 
@@ -195,7 +195,7 @@
             "Expires"             "Tue, 03 Jul 2001 06:00:00 GMT"
             "X-Accel-Buffering"   "no"}
            (-> (http-client/client-full-response (test-users/username->token :rasta)
-                                                 :post 202 "dataset/csv"
+                                                 :post 200 "dataset/csv"
                                                  :query (json/generate-string (mt/mbql-query checkins {:limit 1})))
                :headers
                (select-keys ["Cache-Control" "Content-Disposition" "Content-Type" "Expires" "X-Accel-Buffering"])
@@ -204,7 +204,7 @@
 
 (deftest check-an-empty-date-column
   (mt/dataset defs/test-data-with-null-date-checkins
-    (let [result ((mt/user->client :rasta) :post 202 "dataset/csv" :query
+    (let [result ((mt/user->client :rasta) :post 200 "dataset/csv" :query
                   (json/generate-string (mt/mbql-query checkins)))]
       (is (= [["1" "2014-04-07" "" "5" "12"]
               ["2" "2014-09-18" "" "1" "31"]
@@ -216,7 +216,7 @@
 (deftest sqlite-datetime-test
   (mt/test-driver :sqlite
     (testing "SQLite doesn't return proper date objects but strings, they just pass through the qp untouched"
-      (let [result ((mt/user->client :rasta) :post 202 "dataset/csv" :query
+      (let [result ((mt/user->client :rasta) :post 200 "dataset/csv" :query
                     (json/generate-string (mt/mbql-query checkins {:order-by [[:asc $id]], :limit 5})))]
         (is (= [["1" "2014-04-07" "5" "12"]
                 ["2" "2014-09-18" "1" "31"]
@@ -226,7 +226,7 @@
                (parse-and-sort-csv result)))))))
 
 (deftest datetime-fields-are-untouched-when-exported
-  (let [result ((mt/user->client :rasta) :post 202 "dataset/csv" :query
+  (let [result ((mt/user->client :rasta) :post 200 "dataset/csv" :query
                 (json/generate-string (mt/mbql-query users {:order-by [[:asc $id]], :limit 5})))]
     (is (= [["1" "Plato Yeshua"        "2014-04-01T08:30:00"]
             ["2" "Felipinho Asklepios" "2014-12-05T15:15:00"]
@@ -239,7 +239,7 @@
   (mt/with-temp Card [card {:dataset_query {:database (mt/id)
                                             :type     :native
                                             :native   {:query "SELECT * FROM USERS;"}}}]
-    (let [result ((mt/user->client :rasta) :post 202 "dataset/csv"
+    (let [result ((mt/user->client :rasta) :post 200 "dataset/csv"
                   :query (json/generate-string
                           {:database mbql.s/saved-questions-virtual-database-id
                            :type     :query
@@ -256,7 +256,7 @@
 ;; from one that had it -- see #9831)
 (deftest formatted-results-ignore-query-constraints
   (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
-    (let [result ((mt/user->client :rasta) :post 202 "dataset/csv"
+    (let [result ((mt/user->client :rasta) :post 200 "dataset/csv"
                   :query (json/generate-string
                           {:database   (mt/id)
                            :type       :query
@@ -274,7 +274,7 @@
 (deftest non--download--queries-should-still-get-the-default-constraints
   (with-redefs [constraints/default-query-constraints {:max-results 10, :max-results-bare-rows 10}]
     (let [{row-count :row_count, :as result}
-          ((mt/user->client :rasta) :post 202 "dataset"
+          ((mt/user->client :rasta) :post 200 "dataset"
            {:database (mt/id)
             :type     :query
             :query    {:source-table (mt/id :venues)}})]
@@ -334,7 +334,7 @@
   (mt/test-driver :postgres
     (testing "expected (desired) and actual timezone should be returned as part of query results"
       (mt/with-temporary-setting-values [report-timezone "US/Pacific"]
-        (let [results ((mt/user->client :rasta) :post 202 "dataset" (mt/mbql-query checkins
+        (let [results ((mt/user->client :rasta) :post 200 "dataset" (mt/mbql-query checkins
                                                                       {:aggregation [[:count]]}))]
           (is (= {:requested_timezone "US/Pacific"
                   :results_timezone   "US/Pacific"}

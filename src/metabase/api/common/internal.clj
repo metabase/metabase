@@ -275,7 +275,7 @@
 
   ManyToManyChannel
   (wrap-response-if-needed [chan]
-    {:status 202, :body chan})
+    {:status 200, :body chan})
 
   clojure.lang.IPersistentMap
   (wrap-response-if-needed [m]

@@ -182,7 +182,7 @@
    f {:keys [content-type], :as options} finished-chan]
   (let [canceled-chan (a/promise-chan)]
     (try
-      (.setStatus response 202)
+      (.setStatus response 200)
       (let [gzip?   (should-gzip-response? request-map)
             headers (cond-> (assoc (:headers response-map) "Content-Type" content-type)
                       gzip? (assoc "Content-Encoding" "gzip"))]
@@ -239,7 +239,7 @@
                                      streaming-response))
            :headers      (cond-> (assoc headers "Content-Type" content-type)
                            gzip? (assoc "Content-Encoding" "gzip"))
-           :status       202)))
+           :status       200)))
 
 (defn finished-chan
   "Fetch a promise channel that will get a message when a `StreamingResponse` is completely finished. Provided primarily

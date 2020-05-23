@@ -196,7 +196,7 @@
   (send* [input-chan _ respond _]
     (respond (assoc (response/response input-chan)
                     :content-type "application/json; charset=utf-8"
-                    :status 202))))
+                    :status 200))))
 
 ;; everthing in this namespace is deprecated!
 (doseq [[symb varr] (ns-interns *ns*)]

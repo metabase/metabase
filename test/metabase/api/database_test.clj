@@ -405,7 +405,7 @@
           (testing "The saved questions virtual DB should be the last DB in the list"
             (mt/with-temp Card [card (card-with-native-query "Kanye West Quote Views Per Month")]
               ;; run the Card which will populate its result_metadata column
-              ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
+              ((mt/user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
               ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list
               (let [response (last ((mt/user->client :crowberto) :get 200 (str "database" params)))]
                 (is (schema= SavedQuestionsDB
@@ -416,7 +416,7 @@
             (mt/with-temp Card [card (card-with-native-query "Kanye West Quote Views Per Month")]
               (mt/with-temporary-setting-values [enable-nested-queries false]
                 ;; run the Card which will populate its result_metadata column
-                ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card)))
+                ((mt/user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card)))
                 ;; Now fetch the database list. The 'Saved Questions' DB should NOT be in the list
                 (is (= nil
                        (fetch-virtual-database)))))))
@@ -428,7 +428,7 @@
                           Card       [coin-card  (card-with-native-query "Total Coin Count",  :collection_id (u/get-id coin-collection))]]
             ;; run the Cards which will populate their result_metadata columns
             (doseq [card [stamp-card coin-card]]
-              ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card))))
+              ((mt/user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card))))
             ;; Now fetch the database list. The 'Saved Questions' DB should be last on the list. Cards should have their
             ;; Collection name as their Schema
             (let [response (last ((mt/user->client :crowberto) :get 200 (str "database" params)))]
@@ -732,7 +732,7 @@
                       Card       [card-2 (card-with-native-query "Card 2")]]
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]
-          ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card))))
+          ((mt/user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card))))
         (is (= ["Everything else"
                 "My Collection"]
                ((mt/user->client :lucky) :get 200 (format "database/%d/schemas" mbql.s/saved-questions-virtual-database-id))))))
@@ -838,7 +838,7 @@
                       Card       [card-2 (card-with-native-query "Card 2")]]
         ;; run the cards to populate their result_metadata columns
         (doseq [card [card-1 card-2]]
-          ((mt/user->client :crowberto) :post 202 (format "card/%d/query" (u/get-id card))))
+          ((mt/user->client :crowberto) :post 200 (format "card/%d/query" (u/get-id card))))
         (testing "Should be able to get saved questions in a specific collection"
           (is (= [{:id           (format "card__%d" (:id card-1))
                    :db_id        (mt/id)
