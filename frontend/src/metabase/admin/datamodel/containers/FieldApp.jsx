@@ -128,7 +128,10 @@ export default class FieldApp extends React.Component {
     await Promise.all([
       // A complete database metadata is needed in case that foreign key is
       // changed and then we need to show FK remapping options for a new table
-      fetchDatabaseMetadata({ id: databaseId, include_hidden: true }),
+      fetchDatabaseMetadata(
+        { id: databaseId },
+        { params: { include_hidden: true } },
+      ),
 
       // Only fetchTableMetadata hydrates `dimension` in the field object
       // Force reload to ensure that we are not showing stale information

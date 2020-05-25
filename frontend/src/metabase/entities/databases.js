@@ -37,7 +37,7 @@ const Databases = createEntity({
   objectActions: {
     fetchDatabaseMetadata: createThunkAction(
       FETCH_DATABASE_METADATA,
-      ({ id, ...params }, reload = false) => (dispatch, getState) =>
+      ({ id }, { reload = false, params } = {}) => (dispatch, getState) =>
         fetchData({
           dispatch,
           getState,
