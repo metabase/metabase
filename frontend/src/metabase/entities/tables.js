@@ -18,6 +18,7 @@ import { TableSchema } from "metabase/schema";
 
 import Metrics from "metabase/entities/metrics";
 import Segments from "metabase/entities/segments";
+import Fields from "metabase/entities/fields";
 
 import { GET } from "metabase/lib/api";
 
@@ -26,19 +27,9 @@ import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 
 const listTables = GET("/api/table");
-const listTablesForDatabase = async (params, ...args) =>
+const listTablesForDatabase = async (...args) =>
   // HACK: no /api/database/:dbId/tables endpoint
-  (await GET("/api/database/:dbId/metadata")(params, ...args)).tables.filter(
-    /* HACK: Right now the endpoint returns all tables regardless of whether
-       they're hidden. make sure table lists only use non hidden tables Ideally
-       this should live in the API? The `includeHidden` exception is used in the
-       admin panel where hidden tables are listed separately. */
-    t =>
-      params.includeHidden ||
-      (t.visibility_type !== "hidden" &&
-        t.visibility_type !== "technical" &&
-        t.visibility_type !== "cruft"),
-  );
+  (await GET("/api/database/:dbId/metadata")(...args)).tables;
 const listTablesForSchema = GET("/api/database/:dbId/schema/:schemaName");
 
 // OBJECT ACTIONS
@@ -86,10 +77,13 @@ const Tables = createEntity({
     // like fetchMetadata but also loads tables linked by foreign key
     fetchMetadataAndForeignTables: createThunkAction(
       FETCH_TABLE_METADATA,
-      ({ id }, options) => async (dispatch, getState) => {
+      ({ id }, options = {}) => async (dispatch, getState) => {
         await dispatch(Tables.actions.fetchMetadata({ id }, options));
         // fetch foreign key linked table's metadata as well
-        const table = Tables.selectors.getObject(getState(), { entityId: id });
+        const table = Tables.selectors[options.selectorName || "getObject"](
+          getState(),
+          { entityId: id },
+        );
         await Promise.all(
           getTableForeignKeyTableIds(table).map(id =>
             dispatch(Tables.actions.fetchMetadata({ id }, options)),
@@ -178,7 +172,26 @@ const Tables = createEntity({
 
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).table(entityId),
-
+    // these unfiltered selectors include hidden tables/fields for display in the admin panel
+    getObjectUnfiltered: (state, { entityId }) => {
+      const table = state.entities.tables[entityId];
+      return (
+        table && {
+          ...table,
+          fields: (table.fields || []).map(entityId =>
+            Fields.selectors.getObjectUnfiltered(state, { entityId }),
+          ),
+          metrics: (table.metrics || []).map(id => state.entities.metrics[id]),
+          segments: (table.segments || []).map(
+            id => state.entities.segments[id],
+          ),
+        }
+      );
+    },
+    getListUnfiltered: ({ entities }, { entityQuery }) =>
+      (entities.tables_list[JSON.stringify(entityQuery)] || []).map(
+        id => entities.tables[id],
+      ),
     getTable: createSelector(
       // we wrap getMetadata to handle a circular dep issue
       [state => getMetadata(state), (state, props) => props.entityId],

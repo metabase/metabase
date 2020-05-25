@@ -1,7 +1,6 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { isQueryable } from "metabase/lib/table";
 import Icon from "metabase/components/Icon";
 
 class DatabaseTablesPane extends Component {
@@ -23,9 +22,7 @@ class DatabaseTablesPane extends Component {
 
   render() {
     const { database, show } = this.props;
-    const tables = database.tables
-      .filter(isQueryable)
-      .sort((a, b) => a.name.localeCompare(b.name));
+    const tables = database.tables.sort((a, b) => a.name.localeCompare(b.name));
     return (
       <div>
         <div className="ml1 my2 flex align-center justify-between border-bottom pb1">

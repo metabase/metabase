@@ -19,6 +19,7 @@ import {
   field_special_types,
   has_field_values_options,
 } from "metabase/lib/core";
+import { getFieldValues, getRemappings } from "metabase/lib/query/field";
 import { TYPE } from "metabase/lib/types";
 
 // ADDITIONAL OBJECT ACTIONS
@@ -44,6 +45,20 @@ export default createEntity({
 
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).field(entityId),
+
+    // getMetadata filters out sensitive fields by default.
+    // This selector is used in the data model when we want to show them.
+    getObjectUnfiltered: (state, { entityId }) => {
+      const field = state.entities.fields[entityId];
+      return (
+        field && {
+          ...field,
+          values: getFieldValues(field),
+          remapping: new Map(getRemappings(field)),
+          target: state.entities.fields[field.fk_target_field_id],
+        }
+      );
+    },
   },
 
   // ACTION CREATORS
