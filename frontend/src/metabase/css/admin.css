@@ -172,6 +172,7 @@
   color: var(--color-text-light);
   font-weight: 700;
   font-size: smaller;
+  padding-right: 15px; /* set so that table visibility icons align */
 }
 
 .AdminInput {

@@ -5,7 +5,6 @@ import { connect } from "react-redux";
 import Tables from "metabase/entities/tables";
 
 import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/components/Tooltip";
 
 import { t, ngettext, msgid } from "ttag";
 
@@ -169,7 +168,7 @@ function TableRow({
   setVisibilityForTables,
 }) {
   return (
-    <li key={table.id} className="hover-parent hover--display">
+    <li key={table.id} className="hover-parent hover--visibility">
       <a
         className={cx(
           "AdminList-item flex align-center no-decoration text-wrap justify-between",
@@ -192,7 +191,12 @@ function TableRow({
 
 function ToggleHiddenButton({ setVisibilityForTables, tables, isHidden }) {
   return (
-    <Tooltip
+    <Icon
+      name={isHidden ? "eye" : "eye_crossed_out"}
+      onClick={e => {
+        e.stopPropagation();
+        setVisibilityForTables(tables, isHidden ? null : "hidden");
+      }}
       tooltip={
         tables.length > 1
           ? isHidden
@@ -202,17 +206,9 @@ function ToggleHiddenButton({ setVisibilityForTables, tables, isHidden }) {
           ? t`Unhide`
           : t`Hide`
       }
-    >
-      <Icon
-        name={isHidden ? "eye" : "eye_crossed_out"}
-        onClick={e => {
-          e.stopPropagation();
-          setVisibilityForTables(tables, isHidden ? null : "hidden");
-        }}
-        size={18}
-        className={"float-right cursor-pointer"}
-        hover={{ color: color("brand") }}
-      />
-    </Tooltip>
+      size={18}
+      className={"float-right cursor-pointer"}
+      hover={{ color: color("brand") }}
+    />
   );
 }
