@@ -30,6 +30,7 @@ export const getNormalizedSchemas = state => state.entities.schemas;
 const getNormalizedTablesUnfiltered = state => state.entities.tables;
 export const getNormalizedTables = createSelector(
   [getNormalizedTablesUnfiltered],
+  // remove hidden tables from the metadata graph
   tables => filterValues(tables, table => table.visibility_type == null),
 );
 
