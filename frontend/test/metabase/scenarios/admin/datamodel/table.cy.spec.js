@@ -189,9 +189,9 @@ describe("scenarios > admin > datamodel > table", () => {
     it("should allow bulk hiding tables", () => {
       cy.visit(ORDERS_URL);
       cy.contains("4 Queryable Tables");
-      cy.get(".Icon-eye_crossed_out").click();
+      cy.get(".AdminList-section .Icon-eye_crossed_out").click();
       cy.contains("4 Hidden Tables");
-      cy.get(".Icon-eye").click();
+      cy.get(".AdminList-section .Icon-eye").click();
       cy.contains("4 Queryable Tables");
     });
   });
