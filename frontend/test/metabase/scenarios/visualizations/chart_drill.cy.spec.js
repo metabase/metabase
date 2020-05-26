@@ -78,6 +78,8 @@ describe("scenarios > visualizations > chart drill", () => {
       .contains("City")
       .click();
 
+    // wait for chart to load
+    cy.contains("Count by City");
     // drill into the first bar
     cy.get(".bar")
       .first()

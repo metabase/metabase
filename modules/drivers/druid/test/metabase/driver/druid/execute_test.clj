@@ -19,8 +19,8 @@
             (u/pprint-to-str 'red results))
           (testing "cols"
             (is (= ["id"
-                    "timestamp"
                     "count"
+                    "timestamp"
                     "user_last_login"
                     "user_name"
                     "venue_category_name"
@@ -31,8 +31,8 @@
                    (->> results :data :cols (map :name)))))
           (testing "rows"
             (is (= [["931"
-                     "2013-01-03T08:00:00Z"
                      1
+                     "2013-01-03T08:00:00Z"
                      "2014-01-01T08:30:00.000Z"
                      "Simcha Yan"
                      "Thai"

@@ -293,7 +293,7 @@ jobs:
             done;
       - run:
           name: Save last git commit message
-          command: git log -1 --oneline > commit.txt
+          command: git log -1 > commit.txt
       - run:
           name: Remove .git directory (not needed for tests)
           command: rm -rf /home/circleci/metabase/metabase/.git
@@ -344,7 +344,7 @@ jobs:
     steps:
       - attach-workspace
       - restore-be-deps-cache
-      - run: lein with-profile +include-all-drivers deps
+      - run: lein with-profile +include-all-drivers,+cloverage,+junit deps
       - save_cache:
           key: be-deps-v2-{{ checksum "project.clj" }}
           paths:
@@ -355,23 +355,25 @@ jobs:
       e:
         type: executor
         default: clojure
+      before-steps:
+        type: steps
+        default: []
       lein-command:
         type: string
-      store-results:
-        type: boolean
-        default: false
+      after-steps:
+        type: steps
+        default: []
     executor: << parameters.e >>
     steps:
       - attach-workspace
       - restore-be-deps-cache
+      - steps: << parameters.before-steps >>
       - run:
           command: lein with-profile +ci << parameters.lein-command >>
           no_output_timeout: 5m
-      - when:
-          condition: << parameters.store-results >>
-          steps:
-            - store_test_results:
-                path: /home/circleci/metabase/metabase/target/test
+      - steps: << parameters.after-steps >>
+      - store_test_results:
+          path: /home/circleci/metabase/metabase/target/junit
 
   be-linter-reflection-warnings:
     executor: clojure
@@ -416,7 +418,7 @@ jobs:
                   DRIVERS: h2,<< parameters.driver >>
                 command: >
                   /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
-                  lein with-profile +ci test
+                  lein with-profile +ci,+junit test
                 no_output_timeout: << parameters.timeout >>
       # This is exactly the same as without auto-retry but will try running the tests a second time if they fail
       - when:
@@ -428,7 +430,7 @@ jobs:
                   DRIVERS: h2,<< parameters.driver >>
                 command: >
                   /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
-                  lein with-profile +ci test || lein with-profile +ci test
+                  lein with-profile +ci,+junit test || lein with-profile +ci,+junit test
                 no_output_timeout: << parameters.timeout >>
 
   test-migrate-from-h2:
@@ -549,7 +551,7 @@ jobs:
             if [ ! -f './target/uberjar/metabase.jar' ];
               then ./bin/build version frontend drivers uberjar;
             fi
-          no_output_timeout: 5m
+          no_output_timeout: 10m
       - store_artifacts:
           path: /home/circleci/metabase/metabase/target/uberjar/metabase.jar
       - save_cache:
@@ -576,6 +578,8 @@ jobs:
       e:
         type: executor
         default: clojure-and-node
+      cypress-group:
+        type: string
       only-single-database:
         type: boolean
         default: false
@@ -586,6 +590,8 @@ jobs:
         type: string
         default: ""
     executor: << parameters.e >>
+    environment:
+      CYPRESS_GROUP:  << parameters.cypress-group >>
     steps:
       - run-yarn-command:
           command-name: Run Cypress tests
@@ -640,14 +646,14 @@ workflows:
           name: be-tests
           requires:
             - be-deps
-          lein-command: test
+          lein-command: with-profile +junit test
 
       - lein:
           name: be-tests-java-11
           requires:
             - be-deps
           e: java-11
-          lein-command: test
+          lein-command: with-profile +junit test
 
       - lein:
           name: be-linter-eastwood
@@ -672,6 +678,16 @@ workflows:
           requires:
             - be-deps
           lein-command: bikeshed
+
+      - lein:
+          name: be-linter-cloverage
+          requires:
+            - be-deps
+          lein-command: cloverage --codecov
+          after-steps:
+            - run:
+                name: Upload code coverage to codecov.io
+                command: bash <(curl -s https://codecov.io/bash)
 
       - be-linter-reflection-warnings:
           requires:
@@ -872,10 +888,31 @@ workflows:
           requires:
             - build-uberjar
             - fe-deps
+
       - fe-tests-cypress:
+          name: fe-tests-cypress-1
           requires:
             - build-uberjar
             - fe-deps
+          cypress-group: "default"
+      - fe-tests-cypress:
+          name: fe-tests-cypress-2
+          requires:
+            - build-uberjar
+            - fe-deps
+          cypress-group: "default"
+      - fe-tests-cypress:
+          name: fe-tests-cypress-3
+          requires:
+            - build-uberjar
+            - fe-deps
+          cypress-group: "default"
+      - fe-tests-cypress:
+          name: fe-tests-cypress-4
+          requires:
+            - build-uberjar
+            - fe-deps
+          cypress-group: "default"
 
       - fe-tests-cypress:
           name: fe-tests-cypress-mongo
@@ -883,6 +920,7 @@ workflows:
             - build-uberjar
             - fe-deps
           e: fe-mongo
+          cypress-group: "mongo"
           driver: mongo
           only-single-database: true
           test-files-location: frontend/test/metabase-db/mongo
@@ -893,6 +931,7 @@ workflows:
             - verify-i18n-files
 
             - be-linter-bikeshed
+            - be-linter-cloverage
             - be-linter-docstring-checker
             - be-linter-eastwood
             - be-linter-namespace-decls

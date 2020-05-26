@@ -97,7 +97,7 @@
 
 (defsetting map-tile-server-url
   (deferred-tru "The map tile server URL template used in map visualizations, for example from OpenStreetMaps or MapBox.")
-  :default    "http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+  :default    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
   :visibility :public)
 
 (defsetting enable-public-sharing

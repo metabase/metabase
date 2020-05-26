@@ -512,7 +512,8 @@
                       Settings have special default getters and setters that automatically coerce values to the correct
                       types.
 
-   *  `:visibility` - `:public`, `:authenticated`, `:admin` (default), or :internal. Controls where this setting is visible
+   *  `:visibility` - `:public`, `:authenticated`, `:admin` (default), or `:internal`. Controls where this setting is
+                      visible
 
    *  `:getter`     - A custom getter fn, which takes no arguments. Overrides the default implementation. (This can in
                       turn call functions in this namespace like `get-string` or `get-boolean` to invoke the default

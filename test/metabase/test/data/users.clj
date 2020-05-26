@@ -153,6 +153,6 @@
   `user-kwd`."
   {:style/indent 1}
   [user-kwd & body]
-  `(t/testing ~(format "with test user %s" user-kwd)
+  `(t/testing ~(format "with test user %s\n" user-kwd)
      (mw.session/with-current-user (some-> ~user-kwd user->id)
        ~@body)))

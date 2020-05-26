@@ -12,7 +12,8 @@
 
   <3 Cam"
   (:refer-clojure :exclude [require])
-  (:require [clojure.tools.logging :as log]
+  (:require [clojure.string :as str]
+            [clojure.tools.logging :as log]
             [dynapath.util :as dynapath]
             [metabase.util.i18n :refer [deferred-trs]])
   (:import [clojure.lang DynamicClassLoader RT]
@@ -126,8 +127,9 @@
         (apply clojure.core/require args)))
     (catch Throwable e
       (throw (ex-info (.getMessage e)
-                      {:classloader    (the-classloader)
-                       :classpath-urls (map str (dynapath/all-classpath-urls (the-classloader)))}
+                      {:classloader      (the-classloader)
+                       :classpath-urls   (map str (dynapath/all-classpath-urls (the-classloader)))
+                       :system-classpath (sort (str/split (System/getProperty "java.class.path") #"[:;]"))}
                       e)))))
 
 (defonce ^:private already-added (atom #{}))

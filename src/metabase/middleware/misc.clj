@@ -36,15 +36,16 @@
 ;;; ------------------------------------------------ SETTING SITE-URL ------------------------------------------------
 
 ;; It's important for us to know what the site URL is for things like returning links, etc. this is stored in the
-;; `site-url` Setting; we can set it automatically by looking at the `Origin` or `Host` headers sent with a request.
+;; `site-url` Setting; we can set it automatically by looking at the `Origin`, `X-Forwarded-Host`, or `Host` headers
+;; sent with a request.
+;;
 ;; Effectively the very first API request that gets sent to us (usually some sort of setup request) ends up setting
 ;; the (initial) value of `site-url`
-
-(defn- maybe-set-site-url* [{{:strs [origin host] :as headers} :headers, :as request}]
+(defn- maybe-set-site-url* [{{:strs [origin x-forwarded-host host] :as headers} :headers, :as request}]
   (when (and (mdb/db-is-setup?)
              (not (public-settings/site-url))
              api/*current-user*)
-    (when-let [site-url (or origin host)]
+    (when-let [site-url (or origin x-forwarded-host host)]
       (log/info (trs "Setting Metabase site URL to {0}" site-url))
       (try
         (public-settings/site-url site-url)
