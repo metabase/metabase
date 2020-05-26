@@ -59,6 +59,7 @@ const Tables = createEntity({
   },
 
   actions: {
+    // updates all tables in the `ids` key
     bulkUpdate: compose(
       withAction(TABLES_BULK_UPDATE),
       withNormalize([TableSchema]),
