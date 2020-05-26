@@ -72,7 +72,8 @@
   (deferred-tru "Search base for groups, not required if your LDAP directory provides a ''memberOf'' overlay. (Will be searched recursively)"))
 
 (defsetting ldap-group-mappings
-  ;; Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP group DNs and values are lists of MB groups IDs
+  ;; Should be in the form: {"cn=Some Group,dc=...": [1, 2, 3]} where keys are LDAP group DNs and values are lists of
+  ;; MB groups IDs
   (deferred-tru "JSON containing LDAP to Metabase group mappings.")
   :type    :json
   :default {}
