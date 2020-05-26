@@ -77,7 +77,6 @@
     :exclusions [org.slf4j/slf4j-api
                  it.unimi.dsi/fastutil]]
    [com.draines/postal "2.0.3"]                                       ; SMTP library
-   [com.jcraft/jsch "0.1.55"]                                         ; SSH client for tunnels
    [com.google.guava/guava "28.2-jre"]                                ; dep for BigQuery, Spark, and GA. Require here rather than letting different dep versions stomp on each other — see comments on #9697
    [com.h2database/h2 "1.4.197"]                                      ; embedded SQL database
    [com.mattbertolini/liquibase-slf4j "2.0.0"]                        ; Java Migrations lib logging. We don't actually use this AFAIK (?)
@@ -112,6 +111,7 @@
    [metabase/throttle "1.0.2"]                                        ; Tools for throttling access to API endpoints and other code pathways
    [net.sf.cssbox/cssbox "4.12" :exclusions [org.slf4j/slf4j-api]]    ; HTML / CSS rendering
    [org.apache.commons/commons-lang3 "3.10"]                          ; helper methods for working with java.lang stuff
+   [org.apache.sshd/sshd-core "2.4.0"]                                ; ssh tunneling and test server
    [org.bouncycastle/bcprov-jdk15on "1.65"]                           ; Bouncy Castle crypto library -- explicit version of BC specified to resolve illegal reflective access errors
    [org.clojars.pntblnk/clj-ldap "0.0.16"]                            ; LDAP client
    [org.eclipse.jetty/jetty-server "9.4.27.v20200227"]                ; We require JDK 8 which allows us to run Jetty 9.4, ring-jetty-adapter runs on 1.7 which forces an older version
@@ -120,9 +120,10 @@
     :exclusions [ch.qos.logback/logback-classic]]
    [org.mariadb.jdbc/mariadb-java-client "2.5.1"]                     ; MySQL/MariaDB driver
    [org.postgresql/postgresql "42.2.8"]                               ; Postgres driver
-   [org.slf4j/slf4j-log4j12 "1.7.25"]                                 ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
+   [org.slf4j/slf4j-api "1.7.30"]                                     ; abstraction for logging frameworks -- allows end user to plug in desired logging framework at deployment time
+   [org.slf4j/slf4j-log4j12 "1.7.30"]                                 ; ^^
    [org.tcrawley/dynapath "1.1.0"]                                    ; Dynamically add Jars (e.g. Oracle or Vertica) to classpath
-   [org.threeten/threeten-extra "1.5.0"]                              ; extra Java 8 java.time classes like DayOfMonth and Quarter
+   [org.threeten/threeten-extra "1.5.0"]                               ; extra Java 8 java.time classes like DayOfMonth and Quarter
    [org.yaml/snakeyaml "1.23"]                                        ; YAML parser (required by liquibase)
    [potemkin "0.4.5" :exclusions [riddley]]                           ; utility macros & fns
    [pretty "1.0.4"]                                                   ; protocol for defining how custom types should be pretty printed
