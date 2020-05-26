@@ -31,10 +31,15 @@ executors:
     docker:
       - image: metabase/ci-build:latest
 
+  # Java 11 tests also test Metabase with the at-rest encryption enabled. See
+  # https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html for an explanation of
+  # what this means.
   java-11:
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: circleci/clojure:openjdk-11-lein-2.8.1
+        environment:
+          MB_ENCRYPTION_SECRET_KEY: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
 
   postgres-9-6:
     working_directory: /home/circleci/metabase/metabase/
@@ -70,11 +75,6 @@ executors:
           POSTGRES_HOST_AUTH_METHOD: trust
 
   mysql-5-7:
-    parameters:
-      # for testing the use of an at-rest encryption key. Optional.
-      encryption-key:
-        type: string
-        default: ""
     working_directory: /home/circleci/metabase/metabase/
     docker:
       - image: circleci/clojure:lein-2.8.1
@@ -85,7 +85,6 @@ executors:
           MB_DB_DBNAME: circle_test
           MB_DB_USER: root
           MB_MYSQL_TEST_USER: root
-          MB_ENCRYPTION_SECRET_KEY: << parameters.encryption-key >>
       - image: circleci/mysql:5.7.23
 
   mysql-latest:
@@ -725,7 +724,6 @@ workflows:
             - be-tests
           e:
             name: mysql-5-7
-            encryption-key: Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=
           driver: mysql
 
       - test-driver:
