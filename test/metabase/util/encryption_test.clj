@@ -4,13 +4,16 @@
              [string :as str]
              [test :refer :all]]
             [expectations :refer :all]
+            [metabase.models.setting.cache :as setting.cache]
             [metabase.test.util :as tu]
             [metabase.util.encryption :as encryption]))
 
-(defn do-with-secret-key [^String secret-key, f]
+(defn do-with-secret-key [^String secret-key thunk]
+  ;; flush the Setting cache so unencrypted values have to be fetched from the DB again
+  (setting.cache/restore-cache!)
   (with-redefs [encryption/default-secret-key (when (seq secret-key)
                                                 (encryption/secret-key->hash secret-key))]
-    (f)))
+    (thunk)))
 
 (defmacro with-secret-key
   "Run `body` with the encryption secret key temporarily bound to `secret-key`. Useful for testing how functions behave
