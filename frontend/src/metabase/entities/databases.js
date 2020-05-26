@@ -37,7 +37,7 @@ const Databases = createEntity({
   objectActions: {
     fetchDatabaseMetadata: createThunkAction(
       FETCH_DATABASE_METADATA,
-      ({ id }, reload = false) => (dispatch, getState) =>
+      ({ id }, { reload = false, params } = {}) => (dispatch, getState) =>
         fetchData({
           dispatch,
           getState,
@@ -46,6 +46,7 @@ const Databases = createEntity({
           getData: async () => {
             const databaseMetadata = await MetabaseApi.db_metadata({
               dbId: id,
+              ...params,
             });
             return normalize(databaseMetadata, DatabaseSchema);
           },

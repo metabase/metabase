@@ -27,10 +27,7 @@ export default class Column extends Component {
   };
 
   updateField = properties => {
-    this.props.updateField({
-      ...this.props.field.getPlainObject(),
-      ...properties,
-    });
+    this.props.updateField({ ...this.props.field, ...properties });
   };
 
   handleChangeName = ({ target: { value: display_name } }) => {
