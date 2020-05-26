@@ -19,7 +19,7 @@ import { TableSchema } from "metabase/schema";
 import Metrics from "metabase/entities/metrics";
 import Segments from "metabase/entities/segments";
 
-import { GET } from "metabase/lib/api";
+import { GET, PUT } from "metabase/lib/api";
 
 import { addValidOperatorsToFields } from "metabase/lib/schema_metadata";
 
@@ -40,12 +40,14 @@ const listTablesForDatabase = async (params, ...args) =>
         t.visibility_type !== "cruft"),
   );
 const listTablesForSchema = GET("/api/database/:dbId/schema/:schemaName");
+const updateFieldOrder = PUT("/api/table/:id/fields/order");
 
 // OBJECT ACTIONS
 export const FETCH_METADATA = "metabase/entities/FETCH_METADATA";
 export const FETCH_TABLE_METADATA = "metabase/entities/FETCH_TABLE_METADATA";
 export const FETCH_TABLE_FOREIGN_KEYS =
   "metabase/entities/FETCH_TABLE_FOREIGN_KEYS";
+const UPDATE_TABLE_FIELD_ORDER = "metabase/entities/UPDATE_TABLE_FIELD_ORDER";
 
 const Tables = createEntity({
   name: "tables",
@@ -109,6 +111,11 @@ const Tables = createEntity({
       const fks = await MetabaseApi.table_fks({ tableId: entityObject.id });
       return { id: entityObject.id, fks: fks };
     }),
+
+    setFieldOrder: compose(withAction(UPDATE_TABLE_FIELD_ORDER))(
+      ({ id }, fieldOrder) => (dispatch, getState) =>
+        updateFieldOrder({ id, fieldOrder }, { bodyParamName: "fieldOrder" }),
+    ),
   },
 
   // FORMS

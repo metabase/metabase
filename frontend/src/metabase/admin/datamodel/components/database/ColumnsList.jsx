@@ -1,20 +1,86 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+import _ from "underscore";
+import {
+  SortableContainer,
+  SortableElement,
+  SortableHandle,
+} from "react-sortable-hoc";
+
+import AccordionList from "metabase/components/AccordionList";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import Icon from "metabase/components/Icon";
+import Grabber from "metabase/components/Grabber";
+
 import ColumnItem from "./ColumnItem";
 
 export default class ColumnsList extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { sortedColumns: undefined };
+  }
+
   static propTypes = {
-    fields: PropTypes.array,
+    table: PropTypes.object,
     idfields: PropTypes.array,
     updateField: PropTypes.func.isRequired,
   };
 
+  componentDidMount() {
+    this.setFieldOrder();
+  }
+
+  componentDidUpdate(prevProps) {
+    const { fields } = this.props.table || {};
+    const { fields: prevFields } = prevProps.table || {};
+    if (
+      !_.isEqual(fields.map(f => f.position), prevFields.map(f => f.position))
+    ) {
+      this.setFieldOrder();
+    }
+  }
+
+  setFieldOrder() {
+    const { fields } = this.props.table || {};
+    if (!fields) {
+      return;
+    }
+    const sortedColumns = {};
+    for (const { id, position } of fields) {
+      sortedColumns[id] = position;
+    }
+    this.setState({ sortedColumns });
+  }
+
+  handleSortEnd = ({ oldIndex, newIndex }) => {
+    if (oldIndex === newIndex) {
+      return;
+    }
+    const fieldIdPositionPairs = Object.entries(this.state.sortedColumns);
+    const sortedFieldIds = new Array(fieldIdPositionPairs.length);
+    const sortedColumns = {};
+    for (const [id, index] of fieldIdPositionPairs) {
+      const idx =
+        index === oldIndex ? newIndex : index === newIndex ? oldIndex : index;
+      sortedColumns[id] = idx;
+      sortedFieldIds[idx] = parseInt(id);
+    }
+
+    this.props.table.setFieldOrder(sortedFieldIds);
+    this.setState({ sortedColumns });
+  };
+
   render() {
-    const { fields = [] } = this.props;
+    const { table = {} } = this.props;
+    const { fields = [] } = table;
+    const { sortedColumns } = this.state;
     return (
       <div id="ColumnsList" className="my3">
-        <h2 className="px1 text-orange">{t`Columns`}</h2>
+        <div className="flex align-baseline justify-between">
+          <h2 className="px1 text-orange">{t`Columns`}</h2>
+          <ColumnOrderDropdown table={table} />
+        </div>
         <div className="text-uppercase text-medium py1">
           <div
             style={{ minWidth: 420 }}
@@ -25,17 +91,101 @@ export default class ColumnsList extends Component {
             <div className="flex-half px1">{t`Type`}</div>
           </div>
         </div>
-        <ol className="border-top border-bottom">
-          {fields.map(field => (
-            <ColumnItem
-              key={field.id}
-              field={field}
-              updateField={this.props.updateField}
-              idfields={this.props.idfields}
-            />
-          ))}
-        </ol>
+        {table.field_order === "custom" ? (
+          <SortableColumns
+            onSortEnd={this.handleSortEnd}
+            helperClass="sort-helper"
+            useDragHandle={true}
+          >
+            {(sortedColumns == null
+              ? fields
+              : _.sortBy(fields, ({ id }) => sortedColumns[id])
+            ).map((field, index) => (
+              <SortableColumnItem
+                key={field.id}
+                field={field}
+                updateField={this.props.updateField}
+                idfields={this.props.idfields}
+                dragHandle={<DragHandle />}
+                index={index}
+              />
+            ))}
+          </SortableColumns>
+        ) : (
+          <Columns>
+            {fields.map(field => (
+              <ColumnItem
+                key={field.id}
+                field={field}
+                updateField={this.props.updateField}
+                idfields={this.props.idfields}
+              />
+            ))}
+          </Columns>
+        )}
       </div>
+    );
+  }
+}
+
+function Columns({ children, ...props }) {
+  return (
+    <div className="border-top border-bottom" {...props}>
+      {children}
+    </div>
+  );
+}
+
+const SortableColumns = SortableContainer(Columns);
+
+const SortableColumnItem = SortableElement(ColumnItem);
+const DragHandle = SortableHandle(() => <Grabber style={{ width: 10 }} />);
+
+const COLUMN_ORDERS = {
+  database: t`Database`,
+  alphabetical: t`Alphabetical`,
+  custom: t`Custom`,
+  smart: t`Smart`,
+};
+
+class ColumnOrderDropdown extends Component {
+  handleSelect = ({ value }) => {
+    this.props.table.update({ field_order: value });
+    this._popover.close();
+  };
+
+  render() {
+    const { table } = this.props;
+    const items = Object.entries(COLUMN_ORDERS).map(([value, name]) => ({
+      value,
+      name,
+    }));
+    return (
+      <PopoverWithTrigger
+        ref={ref => (this._popover = ref)}
+        triggerElement={
+          <span
+            className="text-brand"
+            style={{ textTransform: "none", letterSpacing: 0 }}
+          >
+            {t`Column order: ${COLUMN_ORDERS[table.field_order]}`}
+            <Icon
+              className="ml1"
+              name="chevrondown"
+              size={12}
+              style={{ transform: "translateY(2px)" }}
+            />
+          </span>
+        }
+      >
+        <AccordionList
+          className="text-brand"
+          sections={[{ items }]}
+          alwaysExpanded
+          onChange={this.handleSelect}
+          itemIsSelected={({ value }) => value === table.field_order}
+        />
+      </PopoverWithTrigger>
     );
   }
 }

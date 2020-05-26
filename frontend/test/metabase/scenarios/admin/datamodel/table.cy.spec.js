@@ -1,4 +1,4 @@
-import { signInAsAdmin, restore } from "__support__/cypress";
+import { signInAsAdmin, restore, popover } from "__support__/cypress";
 
 const SAMPLE_DB_URL = "/admin/datamodel/database/1";
 const ORDERS_URL = `${SAMPLE_DB_URL}/table/2`;
@@ -83,7 +83,7 @@ describe("scenarios > admin > datamodel > table", () => {
       cy.get(alias)
         .contains(initialOption)
         .click({ force: true });
-      cy.get(".PopoverBody")
+      popover()
         .contains(desiredOption)
         .click({ force: true });
       cy.get(alias).contains(desiredOption);
@@ -176,6 +176,37 @@ describe("scenarios > admin > datamodel > table", () => {
 
       cy.url().should("include", "/admin/datamodel/database/1/table/2");
       cy.contains("Revenue");
+    });
+
+    it("should allow sorting columns", () => {
+      cy.visit(ORDERS_URL);
+      cy.contains("Column order:").click();
+
+      // switch to custom ordering
+      popover()
+        .contains("Custom")
+        .click({ force: true });
+
+      // move subtotal to the top
+      cy.route("PUT", "/api/table/2/fields/order").as("fieldReorder");
+      cy.get(".Grabber")
+        .eq(3)
+        .trigger("mousedown", 0, 0);
+      cy.get("#ColumnsList")
+        .trigger("mousemove", 10, 10)
+        .trigger("mouseup", 10, 10);
+
+      // wait for request to complete
+      cy.wait("@fieldReorder");
+
+      // check that new order is obeyed in queries
+      cy.request("POST", "/api/dataset", {
+        database: 1,
+        query: { "source-table": 2 },
+        type: "query",
+      }).then(resp => {
+        expect(resp.body.data.cols[0].name).to.eq("SUBTOTAL");
+      });
     });
   });
 });

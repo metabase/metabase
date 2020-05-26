@@ -1,11 +1,12 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Link, withRouter } from "react-router";
+import { t } from "ttag";
 
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Select, { Option } from "metabase/components/Select";
 import Icon from "metabase/components/Icon";
-import { t } from "ttag";
+import Card from "metabase/components/Card";
 import * as MetabaseCore from "metabase/lib/core";
 import { isNumericBaseType, isCurrency } from "metabase/lib/schema_metadata";
 import { TYPE, isa, isFK } from "metabase/lib/types";
@@ -24,6 +25,7 @@ export default class Column extends Component {
     field: PropTypes.object,
     idfields: PropTypes.array.isRequired,
     updateField: PropTypes.func.isRequired,
+    dragHandle: PropTypes.node,
   };
 
   updateField = properties => {
@@ -47,10 +49,10 @@ export default class Column extends Component {
   };
 
   render() {
-    const { field, idfields } = this.props;
+    const { field, idfields, dragHandle } = this.props;
 
     return (
-      <li className="mt1 mb3 flex">
+      <Card className="p1 mt1 mb3 flex">
         <div className="flex flex-column flex-auto">
           <div>
             <InputBlurChange
@@ -96,7 +98,8 @@ export default class Column extends Component {
         >
           <Icon name="gear" />
         </Link>
-      </li>
+        {dragHandle}
+      </Card>
     );
   }
 }

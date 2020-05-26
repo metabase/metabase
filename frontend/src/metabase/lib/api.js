@@ -122,7 +122,9 @@ export class Api extends EventEmitter {
 
         let body;
         if (options.hasBody) {
-          body = JSON.stringify(data);
+          body = JSON.stringify(
+            options.bodyParamName != null ? data[options.bodyParamName] : data,
+          );
         } else {
           const qs = querystring.stringify(data);
           if (qs) {

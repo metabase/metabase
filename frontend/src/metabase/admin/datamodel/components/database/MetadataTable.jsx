@@ -149,7 +149,7 @@ export default class MetadataTable extends Component {
           <MetricsList onRetire={onRetireMetric} tableMetadata={table} />
           {this.props.idfields && (
             <ColumnsList
-              fields={table.fields}
+              table={table}
               updateField={this.props.updateField}
               idfields={this.props.idfields}
             />
