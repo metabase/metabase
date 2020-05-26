@@ -185,5 +185,14 @@ describe("scenarios > admin > datamodel > table", () => {
       cy.url().should("include", "/admin/datamodel/database/1/table/2");
       cy.contains("Revenue");
     });
+
+    it("should allow bulk hiding tables", () => {
+      cy.visit(ORDERS_URL);
+      cy.contains("4 Queryable Tables");
+      cy.get(".AdminList-section .Icon-eye_crossed_out").click();
+      cy.contains("4 Hidden Tables");
+      cy.get(".AdminList-section .Icon-eye").click();
+      cy.contains("4 Queryable Tables");
+    });
   });
 });

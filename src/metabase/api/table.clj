@@ -47,18 +47,9 @@
   (-> (api/read-check Table id)
       (hydrate :db :pk_field)))
 
-
-(api/defendpoint PUT "/:id"
-  "Update `Table` with ID."
-  [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest
-                   show_in_getting_started], :as body} :body}]
-  {display_name            (s/maybe su/NonBlankString)
-   entity_type             (s/maybe su/EntityTypeKeywordOrString)
-   visibility_type         (s/maybe TableVisibilityType)
-   description             (s/maybe su/NonBlankString)
-   caveats                 (s/maybe su/NonBlankString)
-   points_of_interest      (s/maybe su/NonBlankString)
-   show_in_getting_started (s/maybe s/Bool)}
+;; TODO: this should changed to `update-tables!` and update multiple tables in one db request
+(defn- update-table!
+  [id {:keys [visibility_type] :as body}]
   (api/write-check Table id)
   (let [original-visibility-type (db/select-one-field :visibility_type Table :id id)]
     ;; always update visibility type; update display_name, show_in_getting_started, entity_type if non-nil; update
@@ -77,6 +68,35 @@
         (log/info (u/format-color 'green (trs "Table ''{0}'' is now visible. Resyncing." (:name updated-table))))
         (sync/sync-table! updated-table))
       updated-table)))
+
+(api/defendpoint PUT "/:id"
+  "Update `Table` with ID."
+  [id :as {{:keys [display_name entity_type visibility_type description caveats points_of_interest
+                   show_in_getting_started], :as body} :body}]
+  {display_name            (s/maybe su/NonBlankString)
+   entity_type             (s/maybe su/EntityTypeKeywordOrString)
+   visibility_type         (s/maybe TableVisibilityType)
+   description             (s/maybe su/NonBlankString)
+   caveats                 (s/maybe su/NonBlankString)
+   points_of_interest      (s/maybe su/NonBlankString)
+   show_in_getting_started (s/maybe s/Bool)}
+  (update-table! id body))
+
+(api/defendpoint PUT "/"
+  "Update all `Table` in `ids`."
+  [:as {{:keys [ids display_name entity_type visibility_type description caveats points_of_interest
+                show_in_getting_started], :as body} :body}]
+  {ids                     (su/non-empty [su/IntGreaterThanZero])
+   display_name            (s/maybe su/NonBlankString)
+   entity_type             (s/maybe su/EntityTypeKeywordOrString)
+   visibility_type         (s/maybe TableVisibilityType)
+   description             (s/maybe su/NonBlankString)
+   caveats                 (s/maybe su/NonBlankString)
+   points_of_interest      (s/maybe su/NonBlankString)
+   show_in_getting_started (s/maybe s/Bool)}
+  (db/transaction
+    (mapv #(update-table! % body) ids)))
+
 
 (def ^:private auto-bin-str (deferred-tru "Auto bin"))
 (def ^:private dont-bin-str (deferred-tru "Don''t bin"))
