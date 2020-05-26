@@ -431,6 +431,9 @@ jobs:
                   /home/circleci/metabase/metabase/.circleci/skip-driver-tests.sh << parameters.driver >> ||
                   lein with-profile +ci,+junit test || lein with-profile +ci,+junit test
                 no_output_timeout: << parameters.timeout >>
+      - run:
+          name: Upload code coverage to codecov.io
+          command: bash <(curl -s https://codecov.io/bash)
 
   test-migrate-from-h2:
     parameters:
