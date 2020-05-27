@@ -39,12 +39,11 @@ export default class LanguageStep extends React.Component {
           className="SetupStep SetupStep--active rounded bg-white full relative"
         >
           <StepTitle
-            title={"What's your preferred language"}
+            title={t`What's your preferred language`}
             circleText={String(stepNumber)}
           />
           <p className="text-default">
-            {t`This language will be used throughout Metabase and be the default for
-          new users`}
+            {t`This language will be used throughout Metabase and be the default for new users`}
           </p>
           <div className="overflow-hidden">
             <ol className="overflow-scroll">
@@ -78,7 +77,6 @@ export default class LanguageStep extends React.Component {
           <Button
             primary
             onClick={() => {
-              console.log("clicky clicky");
               return setLanguageDetails({
                 nextStep: stepNumber + 1,
                 details: { site_locale: this.state.selectedLanguage.code },

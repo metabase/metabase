@@ -41,8 +41,8 @@
 (defn available-locales-with-names
   "Returns all locale abbreviations and their full names"
   []
-  (for [locale (impl/available-locale-names)]
-    [locale (.getDisplayName (locale locale))]))
+  (for [locale-name (impl/available-locale-names)]
+    [locale-name (.getDisplayName (locale locale-name))]))
 
 (defn translate-site-locale
   "Translate a string with the System locale."
