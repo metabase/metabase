@@ -102,7 +102,7 @@ function _init(reducers, getRoutes, callback) {
     ] = MetabaseSettings.isTrackingEnabled() ? null : true;
   });
 
-  MetabaseSettings.on("user-locale", async locale => {
+  async function setAppLocale(locale) {
     // reload locale definition and site settings with the new locale
     await Promise.all([
       loadLocalization(locale),
@@ -110,6 +110,23 @@ function _init(reducers, getRoutes, callback) {
     ]);
     // force re-render of React application
     root.forceUpdate();
+  }
+
+  MetabaseSettings.on("user-locale", locale =>
+    setAppLocale(
+      locale == null
+        ? // if the user selected "use site default", update the UI to display that language
+          MetabaseSettings.get("site-locale")
+        : // otherwise, update the UI with the language they selected
+          locale,
+    ),
+  );
+
+  MetabaseSettings.on("site-locale", locale => {
+    // the UI should only update if there's no locale set for the current user
+    if (store.getState().currentUser.locale == null) {
+      setAppLocale(locale);
+    }
   });
 
   PLUGIN_APP_INIT_FUCTIONS.forEach(init => init({ root }));

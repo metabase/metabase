@@ -7,7 +7,19 @@ export async function loadLocalization(locale) {
   // so load metabase/services only when we need it
   const { I18NApi } = require("metabase/services");
   // load and parse the locale
-  const translationsObject = await I18NApi.locale({ locale });
+  const translationsObject =
+    locale !== "en"
+      ? await I18NApi.locale({ locale })
+      : // We don't serve en.json. Instead, use this object to fall back to theliterals.
+        {
+          headers: {
+            language: "en",
+            "plural-forms": "nplurals=2; plural=(n != 1);",
+          },
+          translations: {
+            "": { Metabase: { msgid: "Metabase", msgstr: ["Metabase"] } },
+          },
+        };
   setLocalization(translationsObject);
 }
 

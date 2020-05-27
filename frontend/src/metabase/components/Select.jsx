@@ -29,6 +29,7 @@ export default class Select extends Component {
     children: PropTypes.any,
 
     value: PropTypes.any.isRequired,
+    defaultValue: PropTypes.any,
     onChange: PropTypes.func.isRequired,
     multiple: PropTypes.bool,
     placeholder: PropTypes.string,
@@ -61,7 +62,13 @@ export default class Select extends Component {
     super(props);
 
     // reselect selectors
-    const _getValue = props => props.value;
+    const _getValue = props =>
+      // If a defaultValue is passed, replace a null value with it.
+      // Otherwise, allow null values since we sometimes want them.
+      props.hasOwnProperty("defaultValue") && props.value == null
+        ? props.defaultValue
+        : props.value;
+
     const _getValues = createSelector(
       [_getValue],
       value => (Array.isArray(value) ? value : [value]),

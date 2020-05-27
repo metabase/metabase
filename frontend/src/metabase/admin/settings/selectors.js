@@ -223,6 +223,8 @@ const SECTIONS = updateSectionsWithPlugins({
           ([code, name]) => name,
         ).map(([code, name]) => ({ name, value: code })),
         defaultValue: "en",
+        onChanged: (oldLocale, newLocale) =>
+          MetabaseSettings.set("site-locale", newLocale),
       },
       {
         display_name: t`Localization options`,
