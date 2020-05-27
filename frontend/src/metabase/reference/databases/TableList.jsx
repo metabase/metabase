@@ -3,7 +3,6 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
-import { isQueryable } from "metabase/lib/table";
 
 import S from "metabase/components/List.css";
 import R from "metabase/reference/Reference.css";
@@ -73,7 +72,6 @@ export const separateTablesBySchema = (
         ? 0
         : -1,
     )
-    .filter(isQueryable)
     .map((table, index, sortedTables) => {
       if (!table || !table.id || !table.name) {
         return;
@@ -131,15 +129,13 @@ export default class TableList extends Component {
                         createSchemaSeparator,
                         createListItem,
                       )
-                    : Object.values(entities)
-                        .filter(isQueryable)
-                        .map(
-                          (entity, index) =>
-                            entity &&
-                            entity.id &&
-                            entity.name &&
-                            createListItem(entity, index),
-                        )}
+                    : Object.values(entities).map(
+                        (entity, index) =>
+                          entity &&
+                          entity.id &&
+                          entity.name &&
+                          createListItem(entity, index),
+                      )}
                 </List>
               </div>
             ) : (

@@ -34,7 +34,7 @@ export default class MetadataSchemaList extends Component {
     const { searchRegex } = this.state;
 
     const filteredSchemas = searchRegex
-      ? schemas.filter(s => searchRegex.test(s.name))
+      ? schemas.filter(s => searchRegex.test(s))
       : schemas;
     return (
       <div className="MetadataEditor-table-list AdminList flex-no-shrink">
@@ -55,18 +55,17 @@ export default class MetadataSchemaList extends Component {
             )}
           </li>
           {filteredSchemas.map(schema => (
-            <li key={schema.name}>
+            <li key={schema}>
               <a
                 className={cx(
                   "AdminList-item flex align-center no-decoration",
                   {
-                    selected:
-                      selectedSchema && selectedSchema.name === schema.name,
+                    selected: selectedSchema && selectedSchema === schema,
                   },
                 )}
                 onClick={() => this.props.onChangeSchema(schema)}
               >
-                {schema.name}
+                {schema}
               </a>
             </li>
           ))}

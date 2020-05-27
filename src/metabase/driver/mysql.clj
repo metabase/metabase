@@ -83,7 +83,7 @@
   [_]
   (ssh/with-tunnel-config
     [driver.common/default-host-details
-     (assoc driver.common/default-port-details :default 3306)
+     (assoc driver.common/default-port-details :placeholder 3306)
      driver.common/default-dbname-details
      driver.common/default-user-details
      driver.common/default-password-details

@@ -5,19 +5,22 @@ export default ComposedComponent => {
     componentDidMount() {
       const { table } = this.props;
       if (table) {
-        table.fetchMetadataAndForeignTables({
-          params: { include_sensitive_fields: true },
-        });
+        this.fetch();
       }
     }
 
-    componentDidUpdate(prevProps) {
-      const { table } = this.props;
-      if (table !== prevProps.table) {
-        table.fetchMetadataAndForeignTables({
-          params: { include_sensitive_fields: true },
-        });
+    componentDidUpdate({ table: { id: prevId } = {} }) {
+      const { table: { id: currId } = {} } = this.props;
+      if (currId !== prevId) {
+        this.fetch();
       }
+    }
+
+    fetch() {
+      this.props.table.fetchMetadataAndForeignTables({
+        params: { include_sensitive_fields: true },
+        selectorName: "getObjectUnfiltered",
+      });
     }
 
     render() {

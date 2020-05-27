@@ -37,8 +37,7 @@
   :type :boolean)
 
 (defsetting ^:private test-json-setting
-  "Test setting - this only shows up in dev (4)"
-  :visibility :internal
+  (deferred-tru "Test setting - this only shows up in dev (4)")
   :type :json)
 
 (defsetting ^:private test-csv-setting
@@ -300,14 +299,18 @@
         (is (= expected
                (user-facing-info-with-db-and-env-var-values :test-boolean-setting nil "TRUE"))))))
 
-  (testing "should throw exception if value isn't true / false"
-    (is (thrown?
-         Exception
-         (test-boolean-setting "X")))
+  (testing "if value isn't true / false"
+    (testing "getter should throw exception"
+      (is (thrown?
+           Exception
+           (test-boolean-setting "X"))))
 
-    (is (thrown?
-         Exception
-         (user-facing-info-with-db-and-env-var-values :test-boolean-setting nil "X")))))
+    (testing "user-facing info should just return `nil` instead of failing entirely"
+      (is (= {:value          nil
+              :is_env_setting true
+              :env_name       "MB_TEST_BOOLEAN_SETTING"
+              :default        "Using value of env var $MB_TEST_BOOLEAN_SETTING"}
+             (user-facing-info-with-db-and-env-var-values :test-boolean-setting nil "X"))))))
 
 (deftest set-boolean-setting-test
   (testing "should be able to set value with a string..."
@@ -409,6 +412,23 @@
         (is (= "Sad Can"
                (mt/suppress-output
                  (actual-value-in-db :toucan-name))))))))
+
+(deftest previously-encrypted-settings-test
+  (testing "Make sure settings that were encrypted don't cause `user-facing-info` to blow up if encyrption key changed"
+    (encryption-test/with-secret-key "0B9cD6++AME+A7/oR7Y2xvPRHX3cHA2z7w+LbObd/9Y="
+      (test-json-setting {:abc 123})
+      (is (not= "{\"abc\":123}"
+                (actual-value-in-db :test-json-setting))))
+    (testing (str "If fetching the Setting fails (e.g. because key changed) `user-facing-info` should return `nil` "
+                  "rather than failing entirely")
+      (encryption-test/with-secret-key nil
+        (is (= {:key            :test-json-setting
+                :value          nil
+                :is_env_setting false
+                :env_name       "MB_TEST_JSON_SETTING"
+                :description    "Test setting - this only shows up in dev (4)"
+                :default        nil}
+               (#'setting/user-facing-info (setting/resolve-setting :test-json-setting))))))))
 
 
 ;;; ----------------------------------------------- TIMESTAMP SETTINGS -----------------------------------------------

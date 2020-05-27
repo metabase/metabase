@@ -200,8 +200,8 @@
               (tru "Invalid value for string: must be either \"true\" or \"false\" (case-insensitive)."))))))
 
 (defn get-boolean
-  "Get boolean value of (presumably `:boolean`) `setting-definition-or-name`. This is the default getter for `:boolean` settings.
-   Returns one of the following values:
+  "Get boolean value of (presumably `:boolean`) `setting-definition-or-name`. This is the default getter for `:boolean`
+  settings. Returns one of the following values:
 
    *  `nil`   if string value of `setting-definition-or-name` is unset (or empty)
    *  `true`  if *lowercased* string value of `setting-definition-or-name` is `true`
@@ -642,7 +642,10 @@
   [{:keys [sensitive? default description], k :name, :as setting} & {:as options}]
   (let [set-via-env-var? (boolean (env-var-value setting))]
     {:key            k
-     :value          (m/mapply user-facing-value setting options)
+     :value          (try
+                       (m/mapply user-facing-value setting options)
+                       (catch Throwable e
+                         (log/error e (trs "Error fetching value of Setting"))))
      :is_env_setting set-via-env-var?
      :env_name       (env-var-name setting)
      :description    (str description)
@@ -656,7 +659,8 @@
 
    `options` are passed to `user-facing-value`."
   [& {:as options}]
-  (for [setting (sort-by :name (vals @registered-settings)) :when (not= (:visibility setting) :internal)]
+  (for [setting (sort-by :name (vals @registered-settings))
+        :when   (not= (:visibility setting) :internal)]
     (m/mapply user-facing-info setting options)))
 
 (defn properties

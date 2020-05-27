@@ -1,36 +1,66 @@
 (ns metabase.util.ssh
-  (:require [clojure.string :as str]
-            [clojure.tools.logging :as log]
+  (:require [clojure.tools.logging :as log]
             [metabase.util :as u])
-  (:import com.jcraft.jsch.JSch))
+  (:import java.io.ByteArrayInputStream
+           org.apache.sshd.client.future.ConnectFuture
+           org.apache.sshd.client.session.ClientSession
+           org.apache.sshd.client.session.forward.PortForwardingTracker
+           org.apache.sshd.client.SshClient
+           [org.apache.sshd.common.config.keys FilePasswordProvider FilePasswordProvider$ResourceDecodeResult]
+           org.apache.sshd.common.session.SessionHolder
+           org.apache.sshd.common.util.GenericUtils
+           org.apache.sshd.common.util.io.resource.AbstractIoResource
+           org.apache.sshd.common.util.net.SshdSocketAddress
+           org.apache.sshd.common.util.security.SecurityUtils
+           org.apache.sshd.server.forward.AcceptAllForwardingFilter))
 
 (def ^:private default-ssh-timeout 30000)
 
-(defn start-ssh-tunnel
-  "Opens a new ssh tunnel and returns the connection along with the dynamically
-   assigned tunnel entrance port. It's the callers responsibility to call .disconnect
-   on the returned connection object."
-  [{:keys [tunnel-host tunnel-port tunnel-user tunnel-pass host port]}]
-  (let [connection (doto ^com.jcraft.jsch.Session (.getSession (new com.jcraft.jsch.JSch)
-                                                               ^String tunnel-user
-                                                               ^String tunnel-host
-                                                               tunnel-port)
-                     (.setPassword ^String tunnel-pass)
-                     (.setConfig "StrictHostKeyChecking" "no")
-                     (.connect default-ssh-timeout)
-                     (.setPortForwardingL 0 host port))
-        input-port (some-> (.getPortForwardingL connection)
-                           first
-                           (str/split #":")
-                           first
-                           (Integer/parseInt))]
-    (assert (number? input-port))
-    (log/info (u/format-color 'cyan "creating ssh tunnel %s@%s:%s -L %s:%s:%s" tunnel-user tunnel-host tunnel-port input-port host port))
-    [connection input-port]))
+(def ^:private ^SshClient client
+  (doto (SshClient/setUpDefaultClient)
+    (.start)
+    (.setForwardingFilter AcceptAllForwardingFilter/INSTANCE)))
+
+(defn- maybe-add-tunnel-password!
+  [^ClientSession session ^String tunnel-pass]
+  (when tunnel-pass
+    (.addPasswordIdentity session tunnel-pass)))
+
+(defn- maybe-add-tunnel-private-key!
+  [^ClientSession session ^String tunnel-private-key tunnel-private-key-passphrase]
+  (when tunnel-private-key
+    (let [resource-key      (proxy [AbstractIoResource] [(class "key") "key"])
+          password-provider (proxy [FilePasswordProvider] []
+                              (getPassword [_ _ _]
+                                tunnel-private-key-passphrase)
+                              (handleDecodeAttemptResult [_ _ _ _ _]
+                                FilePasswordProvider$ResourceDecodeResult/TERMINATE))
+          ids               (with-open [is (ByteArrayInputStream. (.getBytes tunnel-private-key "UTF-8"))]
+                              (SecurityUtils/loadKeyPairIdentities session resource-key is password-provider))
+          keypair           (GenericUtils/head ids)]
+      (.addPublicKeyIdentity session keypair))))
+
+(defn start-ssh-tunnel!
+  "Opens a new ssh tunnel and returns the connection along with the dynamically assigned tunnel entrance port. It's the
+  callers responsibility to call `close-tunnel` on the returned connection object."
+  [{:keys [^String tunnel-host ^Integer tunnel-port ^String tunnel-user tunnel-pass tunnel-private-key
+           tunnel-private-key-passphrase host port]}]
+  (let [^ConnectFuture conn-future (.connect client tunnel-user tunnel-host tunnel-port)
+        ^SessionHolder conn-status (.verify conn-future default-ssh-timeout)
+        session                    (doto ^ClientSession (.getSession conn-status)
+                                     (maybe-add-tunnel-password! tunnel-pass)
+                                     (maybe-add-tunnel-private-key! tunnel-private-key tunnel-private-key-passphrase)
+                                     (.. auth (verify default-ssh-timeout)))
+        tracker                    (.createLocalPortForwardingTracker session
+                                                                      (SshdSocketAddress. "" 0)
+                                                                      (SshdSocketAddress. host port))
+        input-port                 (.. tracker getBoundAddress getPort)]
+    (log/trace (u/format-color 'cyan "creating ssh tunnel %s@%s:%s -L %s:%s:%s" tunnel-user tunnel-host tunnel-port input-port host port))
+    [session tracker]))
 
 (def ssh-tunnel-preferences
   "Configuration parameters to include in the add driver page on drivers that
-   support ssh tunnels"
+  support ssh tunnels"
   [{:name         "tunnel-enabled"
     :display-name "Use SSH tunnel"
     :placeholder  "Enable this ssh tunnel?"
@@ -49,19 +79,26 @@
     :display-name "SSH tunnel username"
     :placeholder  "What username do you use to login to the SSH tunnel?"
     :required     true}
+   ;; this is entirely a UI flag
+   {:name         "tunnel-auth-option"
+    :display-name "SSH Authentication"
+    :type         :select
+    :options      [{:name "SSH Key" :value "ssh-key"}
+                   {:name "Password" :value "password"}]
+    :default      "ssh-key"}
    {:name         "tunnel-pass"
     :display-name "SSH tunnel password"
     :type         :password
-    :placeholder  "******"
-    :required     true}
-   #_{:name         "tunnel-private-key"
+    :placeholder  "******"}
+   {:name         "tunnel-private-key"
     :display-name "SSH private key to connect to the tunnel"
     :type         :string
-    :placeholder  "Paste the contents of an ssh private key here"}
-   #_{:name         "tunnel-private-key-file-name"
-    :display-name "Path on the Metabase server to a SSH private key file to connect to the tunnel"
-    :type         :string
-    :placeholder  "/home/YOUR-USERNAME/.ssh/id_rsa"}])
+    :placeholder  "Paste the contents of an ssh private key here"
+    :required     true}
+   {:name         "tunnel-private-key-passphrase"
+    :display-name "Passphrase for SSH private key"
+    :type         :password
+    :placeholder  "******"}])
 
 (defn with-tunnel-config
   "Add preferences for ssh tunnels to a drivers :connection-properties"
@@ -75,34 +112,42 @@
 
 (defn include-ssh-tunnel
   "Updates connection details for a data warehouse to use the ssh tunnel host and port
-   For drivers that enter hosts including the protocol (https://host), copy the protocol over as well"
+  For drivers that enter hosts including the protocol (https://host), copy the protocol over as well"
   [details]
   (if (use-ssh-tunnel? details)
-    (let [[_ proto host] (re-find #"(.*://)?(.*)" (:host details))
-          [connection tunnel-entrance-port] (start-ssh-tunnel (assoc details :host host)) ;; don't include L7 protocol in ssh tunnel
-          details-with-tunnel (assoc details
-                                :port tunnel-entrance-port ;; This parameter is set dynamically when the connection is established
-                                :host (str proto "localhost")
-                                :tunnel-entrance-port tunnel-entrance-port ;; the input port is not known until the connection is opened
-                                :tunnel-connection connection)]
+    (let [[_ proto host]                           (re-find #"(.*://)?(.*)" (:host details))
+          [session ^PortForwardingTracker tracker] (start-ssh-tunnel! (assoc details :host host))
+          tunnel-entrance-port                     (.. tracker getBoundAddress getPort)
+          tunnel-entrance-host                     (.. tracker getBoundAddress getHostName)
+          details-with-tunnel                      (assoc details
+                                                          :port tunnel-entrance-port ;; This parameter is set dynamically when the connection is established
+                                                          :host (str proto "localhost") ;; SSH tunnel will always be through localhost
+                                                          :tunnel-entrance-host tunnel-entrance-host
+                                                          :tunnel-entrance-port tunnel-entrance-port ;; the input port is not known until the connection is opened
+                                                          :tunnel-session session
+                                                          :tunnel-tracker tracker)]
       details-with-tunnel)
     details))
 
+(defn close-tunnel!
+  "Close a running tunnel session"
+  [details]
+  (when (use-ssh-tunnel? details)
+    (.close ^ClientSession (:tunnel-session details))))
+
 (defn with-ssh-tunnel*
   "Starts an SSH tunnel, runs the supplied function with the tunnel open, then closes it"
-  [{:keys [host port tunnel-host tunnel-user tunnel-pass] :as details} f]
+  [details f]
   (if (use-ssh-tunnel? details)
     (let [details-with-tunnel (include-ssh-tunnel details)]
-      (log/errorf "\nbefore:\n%s\n" (with-out-str (clojure.pprint/pprint details)))
-      (log/errorf "\nafter:\n%s\n" (with-out-str (clojure.pprint/pprint details-with-tunnel)))
       (try
-        (log/info (u/format-color 'cyan "<< OPENED SSH TUNNEL >>"))
+        (log/trace (u/format-color 'cyan "<< OPENED SSH TUNNEL >>"))
         (f details-with-tunnel)
         (catch Exception e
           (throw e))
         (finally
-          (.disconnect ^com.jcraft.jsch.Session (:tunnel-connection details-with-tunnel))
-          (log/info (u/format-color 'cyan "<< CLOSED SSH TUNNEL >>")))))
+          (close-tunnel! details-with-tunnel)
+          (log/trace (u/format-color 'cyan "<< CLOSED SSH TUNNEL >>")))))
     (f details)))
 
 (defmacro with-ssh-tunnel
