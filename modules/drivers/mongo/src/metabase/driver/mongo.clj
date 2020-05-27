@@ -77,6 +77,9 @@
     #"^java.net.ConnectException: Connection refused$"
     (driver.common/connection-error-messages :ssh-tunnel-connection-fail)
 
+    #".*javax.net.ssl.SSLHandshakeException: PKIX path building failed.*"
+    (driver.common/connection-error-messages :certificate-not-trusted)
+
     #".*"                               ; default
     message))
 
