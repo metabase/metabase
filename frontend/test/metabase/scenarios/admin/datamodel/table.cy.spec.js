@@ -14,15 +14,22 @@ describe("scenarios > admin > datamodel > table", () => {
 
   describe("data model editor", () => {
     it("should allow editing of the name and description", () => {
+      cy.route(
+        "GET",
+        "/api/table/2/query_metadata?include_sensitive_fields=true",
+      ).as("tableMetadataFetch");
       cy.visit(ORDERS_URL);
 
       cy.get('input[name="display_name"]').as("display_name");
       cy.get('input[name="description"]').as("description");
 
+      cy.wait("@tableMetadataFetch");
+
       // update the name
       cy.get("@display_name")
         .should("have.value", "Orders")
         .clear()
+        .should("have.value", "")
         .type("new display_name")
         .blur();
       cy.wait("@tableUpdate");
@@ -34,6 +41,7 @@ describe("scenarios > admin > datamodel > table", () => {
           "This is a confirmed order for a product from a user.",
         )
         .clear()
+        .should("have.value", "")
         .type("new description")
         .blur();
       cy.wait("@tableUpdate");
@@ -207,6 +215,14 @@ describe("scenarios > admin > datamodel > table", () => {
       }).then(resp => {
         expect(resp.body.data.cols[0].name).to.eq("SUBTOTAL");
       });
+
+    it("should allow bulk hiding tables", () => {
+      cy.visit(ORDERS_URL);
+      cy.contains("4 Queryable Tables");
+      cy.get(".AdminList-section .Icon-eye_crossed_out").click();
+      cy.contains("4 Hidden Tables");
+      cy.get(".AdminList-section .Icon-eye").click();
+      cy.contains("4 Queryable Tables");
     });
   });
 });

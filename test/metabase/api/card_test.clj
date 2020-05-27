@@ -277,13 +277,11 @@
                    :table_id               true
                    :can_write              true
                    :dashboard_count        0
-                   :read_permissions       nil
                    :result_metadata        true
                    :creator                (merge
-                                            (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login])
+                                            (select-keys (mt/fetch-user :rasta) [:id :date_joined :last_login :locale])
                                             {:common_name  "Rasta Toucan"
                                              :is_superuser false
-                                             :is_qbnewb    true
                                              :last_name    "Toucan"
                                              :first_name   "Rasta"
                                              :email        "rasta@metabase.com"})})
@@ -296,7 +294,8 @@
                      (update :collection_id integer?)
                      (update :dataset_query map?)
                      (update :collection map?)
-                     (update :result_metadata (partial every? map?))))))))))
+                     (update :result_metadata (partial every? map?))
+                     (update :creator dissoc :is_qbnewb)))))))))
 
 ;; Make sure when saving a Card the query metadata is saved (if correct)
 (deftest saving-card-saves-query-metadata
@@ -492,7 +491,6 @@
                                          :first_name   "Rasta"
                                          :email        "rasta@metabase.com"})
                :dataset_query          (tu/obj->json->obj (:dataset_query card))
-               :read_permissions       nil
                :display                "table"
                :query_type             "query"
                :visualization_settings {}

@@ -24,7 +24,7 @@
   []
   (let [db-path (test-fixture-db-path)]
     ;; now set the path at MB_DB_FILE
-    (intern 'environ.core 'env (assoc env :mb-db-type "h2", :mb-db-file db-path))
+    (alter-var-root #'environ.core/env assoc :mb-db-type "h2", :mb-db-file db-path)
     ;; set up the DB, make sure sample dataset is added
     (mdb/setup-db!)
     (sample-data/add-sample-dataset!)

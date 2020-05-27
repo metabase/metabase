@@ -26,7 +26,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defn- user-details [user]
-  (select-keys user [:email :first_name :last_login :is_qbnewb :is_superuser :id :last_name :date_joined :common_name]))
+  (select-keys
+   user
+   [:email :first_name :last_login :is_qbnewb :is_superuser :id :last_name :date_joined :common_name :locale]))
 
 (defn- pulse-card-details [card]
   (-> (select-keys card [:id :collection_id :name :description :display])
@@ -882,7 +884,7 @@
                                                         (throw (ex-info "Can't register fonts!"
                                                                         {}
                                                                         (NullPointerException.))))]
-            (let [{{:strs [Content-Type]} :headers, :keys [body]} (preview 500)]
+            (let [{{:strs [Content-Type]} :headers, :keys [body]} (mt/suppress-output (preview 500))]
               (is (= "application/json;charset=utf-8"
                      Content-Type))
               (is (schema= {:message  (s/eq "Can't register fonts!")

@@ -37,7 +37,7 @@
    {:id (test-users/user->id user-kw)}
    (select-keys
     (test-users/fetch-user user-kw)
-    [:common_name :date_joined :email :first_name :is_qbnewb :is_superuser :last_login :last_name])))
+    [:common_name :date_joined :email :first_name :is_qbnewb :is_superuser :last_login :last_name :locale])))
 
 ;; NOTE: timestamp matching was being a real PITA so I cheated a bit.  ideally we'd fix that
 (deftest activity-list-test
@@ -57,11 +57,11 @@
                                          :model     "user"
                                          :details   {}
                                          :timestamp #t "2015-09-10T05:33:43.641Z[UTC]"}]]
-      (is (= (letfn [(fetch-activity [activity]
-                       (merge
-                        activity-defaults
-                        (db/select-one [Activity :id :user_id :details :model :model_id] :id (u/get-id activity))))]
-               [(merge
+      (letfn [(fetch-activity [activity]
+                (merge
+                 activity-defaults
+                 (db/select-one [Activity :id :user_id :details :model :model_id] :id (u/get-id activity))))]
+        (is (= [(merge
                  (fetch-activity activity2)
                  {:topic "dashboard-create"
                   :user  (activity-user-info :crowberto)})
@@ -73,13 +73,12 @@
                  (fetch-activity activity1)
                  {:topic   "install"
                   :user_id nil
-                  :user    nil})])
-             ;; remove other activities from the API response just in case -- we're not interested in those
-             (let [these-activity-ids (set (map u/get-id [activity1 activity2 activity3]))]
-               (for [activity ((test-users/user->client :crowberto) :get 200 "activity")
-                     :when    (contains? these-activity-ids (u/get-id activity))]
-                 (dissoc activity :timestamp))))))))
-
+                  :user    nil})]
+               ;; remove other activities from the API response just in case -- we're not interested in those
+               (let [these-activity-ids (set (map u/get-id [activity1 activity2 activity3]))]
+                 (for [activity ((test-users/user->client :crowberto) :get 200 "activity")
+                       :when    (contains? these-activity-ids (u/get-id activity))]
+                   (dissoc activity :timestamp)))))))))
 
 ;;; GET /recent_views
 

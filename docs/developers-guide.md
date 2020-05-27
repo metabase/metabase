@@ -316,7 +316,7 @@ const someString = t`Hello ${name}!`;
 const someJSX = <div>{jt`Hello ${name}`}</div>;
 ```
 
-and in the backend using `trs` and related macros (see more details in https://github.com/puppetlabs/clj-i18n):
+and in the backend using `trs` (to use the site language) or `tru` (to use the current User's language):
 
 ```clojure
 (trs "Hello {0}!" name)

@@ -3,8 +3,11 @@ import { t } from "ttag";
 import { PLUGIN_ADMIN_USER_FORM_FIELDS } from "metabase/plugins";
 import validate from "metabase/lib/validate";
 import FormGroupsWidget from "metabase/components/form/widgets/FormGroupsWidget";
+import MetabaseSettings from "metabase/lib/settings";
 
 import type { FormFieldDefinition } from "metabase/containers/Form";
+
+import _ from "underscore";
 
 const DETAILS_FORM_FIELDS: FormFieldDefinition[] = [
   {
@@ -24,6 +27,19 @@ const DETAILS_FORM_FIELDS: FormFieldDefinition[] = [
     title: t`Email`,
     placeholder: "youlooknicetoday@email.com",
     validate: validate.required().email(),
+  },
+  {
+    name: "locale",
+    title: t`Language`,
+    type: "select",
+    options: [[null, t`Use site default`]]
+      .concat(
+        _.sortBy(
+          MetabaseSettings.get("available-locales") || [["en", "English"]],
+          ([code, name]) => name,
+        ),
+      )
+      .map(([code, name]) => ({ name, value: code })),
   },
 ];
 

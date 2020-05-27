@@ -72,16 +72,6 @@ const SECTIONS = updateSectionsWithPlugins({
         allowValueCollection: true,
       },
       {
-        key: "site-locale",
-        display_name: t`Language`,
-        type: "select",
-        options: (MetabaseSettings.get("available-locales") || []).map(
-          ([value, name]) => ({ name, value }),
-        ),
-        defaultValue: "en",
-        getHidden: () => MetabaseSettings.get("available-locales").length < 2,
-      },
-      {
         key: "anon-tracking-enabled",
         display_name: t`Anonymous Tracking`,
         type: "boolean",
@@ -222,10 +212,21 @@ const SECTIONS = updateSectionsWithPlugins({
     ],
   },
   formatting: {
-    name: t`Formatting`,
+    name: t`Localization`,
     settings: [
       {
-        display_name: t`Formatting Options`,
+        display_name: t`Instance language`,
+        key: "site-locale",
+        type: "select",
+        options: _.sortBy(
+          MetabaseSettings.get("available-locales") || [],
+          ([code, name]) => name,
+        ).map(([code, name]) => ({ name, value: code })),
+        defaultValue: "en",
+        note: t`Changes to this value will take effect after you reload the page.`,
+      },
+      {
+        display_name: t`Localization options`,
         description: "",
         key: "custom-formatting",
         widget: FormattingWidget,
