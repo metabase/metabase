@@ -1,6 +1,6 @@
 import React from "react";
 
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import { duration } from "metabase/lib/formatting";
 
 import Tooltip from "metabase/components/Tooltip";

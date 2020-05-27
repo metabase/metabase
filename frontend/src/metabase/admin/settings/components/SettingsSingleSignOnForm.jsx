@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import _ from "underscore";
-import { t, jt } from "ttag";
+import { t, jt } from "metabase/lib/ttag";
 
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import InputBlurChange from "metabase/components/InputBlurChange";

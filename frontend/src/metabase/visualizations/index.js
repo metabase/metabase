@@ -1,6 +1,6 @@
 /* @flow weak */
 
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import _ from "underscore";
 
 import type { Series } from "metabase/meta/types/Visualization";

@@ -1,6 +1,6 @@
 import React from "react";
 import { Flex } from "grid-styled";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import * as Urls from "metabase/lib/urls";
 import fitViewport from "metabase/hoc/FitViewPort";

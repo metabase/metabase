@@ -1,7 +1,7 @@
 import _ from "underscore";
 import { createSelector } from "reselect";
 import MetabaseSettings from "metabase/lib/settings";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import CustomGeoJSONWidget from "./components/widgets/CustomGeoJSONWidget";
 import {
   PublicLinksDashboardListing,
@@ -211,7 +211,7 @@ const SECTIONS = updateSectionsWithPlugins({
       },
     ],
   },
-  formatting: {
+  localization: {
     name: t`Localization`,
     settings: [
       {
@@ -223,7 +223,6 @@ const SECTIONS = updateSectionsWithPlugins({
           ([code, name]) => name,
         ).map(([code, name]) => ({ name, value: code })),
         defaultValue: "en",
-        note: t`Changes to this value will take effect after you reload the page.`,
       },
       {
         display_name: t`Localization options`,

@@ -1,7 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import pure from "recompose/pure";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import S from "./UsefulQuestions.css";
 import D from "metabase/reference/components/Detail.css";
 

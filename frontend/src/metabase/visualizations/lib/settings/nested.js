@@ -1,7 +1,7 @@
 /* @flow */
 
 import _ from "underscore";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import { getComputedSettings, getSettingsWidgets } from "../settings";
 

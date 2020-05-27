@@ -6,7 +6,7 @@ import type {
   ClickAction,
   ClickActionProps,
 } from "metabase/meta/types/Visualization";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 export default ({
   question,

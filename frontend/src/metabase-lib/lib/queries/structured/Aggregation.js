@@ -2,7 +2,7 @@
 
 import MBQLClause from "./MBQLClause";
 
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import { TYPE } from "metabase/lib/types";
 

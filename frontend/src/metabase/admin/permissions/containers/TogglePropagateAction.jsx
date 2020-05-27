@@ -2,7 +2,7 @@ import React from "react";
 
 import { connect } from "react-redux";
 
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import { getPropagatePermissions } from "../selectors";
 import { setPropagatePermissions } from "../permissions";

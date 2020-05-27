@@ -11,7 +11,7 @@ import Icon from "metabase/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Modal from "metabase/components/Modal";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import { PermissionsApi, SettingsApi } from "metabase/services";
 import { isSpecialGroup } from "metabase/lib/groups";
 

@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import { updateIn } from "icepick";
 
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";

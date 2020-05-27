@@ -1,6 +1,6 @@
 import React from "react";
 import { Box } from "grid-styled";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import CollectionSelect from "metabase/containers/CollectionSelect";
 

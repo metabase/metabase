@@ -7,7 +7,7 @@ import {
   createThunkAction,
 } from "metabase/lib/redux";
 import { push } from "react-router-redux";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 

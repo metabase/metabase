@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { Link } from "react-router";
 
 import _ from "underscore";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import { color } from "metabase/lib/colors";
 

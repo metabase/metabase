@@ -1,7 +1,7 @@
 import React from "react";
 import { connect } from "react-redux";
 import { goBack } from "react-router-redux";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import { Flex } from "grid-styled";
 
 import User from "metabase/entities/users";

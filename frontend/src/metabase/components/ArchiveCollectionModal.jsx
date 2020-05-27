@@ -3,7 +3,7 @@ import React from "react";
 import { connect } from "react-redux";
 import { withRouter } from "react-router";
 import { push } from "react-router-redux";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import ArchiveModal from "metabase/components/ArchiveModal";
 

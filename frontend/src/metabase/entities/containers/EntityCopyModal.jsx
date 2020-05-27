@@ -1,6 +1,6 @@
 import React from "react";
 import { dissoc } from "icepick";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import EntityForm from "metabase/entities/containers/EntityForm";
 import ModalContent from "metabase/components/ModalContent";

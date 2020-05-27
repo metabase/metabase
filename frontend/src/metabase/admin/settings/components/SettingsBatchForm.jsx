@@ -4,7 +4,7 @@ import { connect } from "react-redux";
 import _ from "underscore";
 
 import Collapse from "react-collapse";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import Button from "metabase/components/Button";
 import DisclosureTriangle from "metabase/components/DisclosureTriangle";

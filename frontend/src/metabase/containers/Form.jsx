@@ -8,7 +8,7 @@ import { createSelector } from "reselect";
 import { reduxForm, getValues, initialize, change } from "redux-form";
 import { getIn, assocIn } from "icepick";
 import _ from "underscore";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import CustomForm from "metabase/components/form/CustomForm";
 import StandardForm from "metabase/components/form/StandardForm";

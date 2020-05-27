@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import ArchiveModal from "metabase/components/ArchiveModal";
 

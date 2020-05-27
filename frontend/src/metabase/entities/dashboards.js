@@ -11,7 +11,7 @@ import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";
 import { color } from "metabase/lib/colors";
 import { assocIn } from "icepick";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import { addUndo } from "metabase/redux/undo";
 

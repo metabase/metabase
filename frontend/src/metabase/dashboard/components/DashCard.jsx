@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import visualizations, { getVisualizationRaw } from "metabase/visualizations";
 import Visualization, {
   ERROR_MESSAGE_GENERIC,

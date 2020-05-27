@@ -1,4 +1,4 @@
-import { t, dt } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import { PLUGIN_ADMIN_USER_FORM_FIELDS } from "metabase/plugins";
 import validate from "metabase/lib/validate";
@@ -9,19 +9,19 @@ import type { FormFieldDefinition } from "metabase/containers/Form";
 const DETAILS_FORM_FIELDS: FormFieldDefinition[] = [
   {
     name: "first_name",
-    title: dt`First name`,
+    title: t`First name`,
     placeholder: "Johnny",
     validate: validate.required().maxLength(100),
   },
   {
     name: "last_name",
-    title: dt`Last name`,
+    title: t`Last name`,
     placeholder: "Appleseed",
     validate: validate.required().maxLength(100),
   },
   {
     name: "email",
-    title: dt`Email`,
+    title: t`Email`,
     placeholder: "youlooknicetoday@email.com",
     validate: validate.required().email(),
   },
@@ -30,16 +30,16 @@ const DETAILS_FORM_FIELDS: FormFieldDefinition[] = [
 const PASSWORD_FORM_FIELDS: FormFieldDefinition[] = [
   {
     name: "password",
-    title: dt`Create a password`,
+    title: t`Create a password`,
     type: "password",
     placeholder: t`Shhh...`,
     validate: validate.required().passwordComplexity(),
   },
   {
     name: "password_confirm",
-    title: dt`Confirm your password`,
+    title: t`Confirm your password`,
     type: "password",
-    placeholder: dt`Shhh... but one more time so we get it right`,
+    placeholder: t`Shhh... but one more time so we get it right`,
     validate: (password_confirm, { values: { password } = {} }) =>
       (!password_confirm && t`required`) ||
       (password_confirm !== password && t`passwords do not match`),
@@ -52,7 +52,7 @@ export default {
       ...DETAILS_FORM_FIELDS,
       {
         name: "group_ids",
-        title: dt`Groups`,
+        title: t`Groups`,
         type: FormGroupsWidget,
       },
       ...PLUGIN_ADMIN_USER_FORM_FIELDS,
@@ -67,7 +67,7 @@ export default {
       ...PASSWORD_FORM_FIELDS,
       {
         name: "site_name",
-        title: dt`Your company or team name`,
+        title: t`Your company or team name`,
         placeholder: t`Department of Awesome`,
         validate: validate.required(),
       },
@@ -78,7 +78,7 @@ export default {
       {
         name: "old_password",
         type: "password",
-        title: dt`Current password`,
+        title: t`Current password`,
         placeholder: t`Shhh...`,
         validate: validate.required(),
       },

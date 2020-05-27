@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import fitViewport from "metabase/hoc/FitViewPort";
 

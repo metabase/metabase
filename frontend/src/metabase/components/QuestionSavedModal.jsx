@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import ModalContent from "metabase/components/ModalContent";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 export default class QuestionSavedModal extends Component {
   static propTypes = {

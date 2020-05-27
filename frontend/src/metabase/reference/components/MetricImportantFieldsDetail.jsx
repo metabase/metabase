@@ -2,7 +2,7 @@ import React from "react";
 import PropTypes from "prop-types";
 import cx from "classnames";
 import pure from "recompose/pure";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import FieldsToGroupBy from "metabase/reference/components/FieldsToGroupBy";
 
 import Select from "metabase/components/Select";

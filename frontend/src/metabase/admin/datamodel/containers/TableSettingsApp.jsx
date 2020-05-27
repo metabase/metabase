@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { BackButton } from "metabase/admin/datamodel/containers/FieldApp";
 import ActionButton from "metabase/components/ActionButton";

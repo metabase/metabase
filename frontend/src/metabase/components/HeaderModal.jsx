@@ -2,7 +2,7 @@ import React, { Component } from "react";
 
 import BodyComponent from "metabase/components/BodyComponent";
 import cx from "classnames";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 @BodyComponent
 export default class HeaderModal extends Component {

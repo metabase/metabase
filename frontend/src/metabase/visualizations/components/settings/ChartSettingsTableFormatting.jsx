@@ -1,6 +1,6 @@
 import React from "react";
 
-import { t, jt } from "ttag";
+import { t, jt } from "metabase/lib/ttag";
 
 import Button from "metabase/components/Button";
 import Icon from "metabase/components/Icon";

@@ -1,6 +1,6 @@
 /* @flow */
 
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import _ from "underscore";
 import { getIn } from "icepick";
 

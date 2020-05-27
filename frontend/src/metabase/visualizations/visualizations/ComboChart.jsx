@@ -1,6 +1,6 @@
 /* @flow */
 
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import LineAreaBarChart from "../components/LineAreaBarChart.jsx";
 import { comboRenderer } from "../lib/LineAreaBarRenderer";
 

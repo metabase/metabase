@@ -5,7 +5,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { getValues } from "redux-form";
 
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import { Box, Flex } from "grid-styled";
 

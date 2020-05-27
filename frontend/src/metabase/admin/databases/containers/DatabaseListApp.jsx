@@ -4,7 +4,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { Link } from "react-router";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import cx from "classnames";
 import MetabaseSettings from "metabase/lib/settings";

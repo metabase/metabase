@@ -3,7 +3,7 @@
 import React from "react";
 
 import _ from "underscore";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import * as Q_DEPRECATED from "metabase/lib/query";
 import * as A_DEPRECATED from "metabase/lib/query_aggregation";

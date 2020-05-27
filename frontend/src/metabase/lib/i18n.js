@@ -1,23 +1,5 @@
-import { t, addLocale, useLocale } from "ttag";
+import { addLocale, useLocale } from "ttag";
 import moment from "moment";
-
-// a subclass of String to defer translating string until it's actually used a string
-class DeferredTTagString extends String {
-  constructor(args) {
-    super();
-    this._args = args;
-  }
-  // toPrimitive is tried before toString/valueOf
-  [Symbol.toPrimitive](hint) {
-    return t(...this._args);
-  }
-}
-
-// NOTE: monkey-patching ttag module to add `dt`. ideally we'd import this module instead of "ttag" everywhere but this is fine too
-const ttag = require("ttag");
-ttag.dt = function(...args) {
-  return new DeferredTTagString(args);
-};
 
 // note this won't refresh strings that are evaluated at load time
 export async function loadLocalization(locale) {

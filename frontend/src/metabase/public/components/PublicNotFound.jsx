@@ -1,7 +1,7 @@
 /* @flow */
 
 import React from "react";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import EmbedFrame from "./EmbedFrame";
 
 const PublicNotFound = () => (

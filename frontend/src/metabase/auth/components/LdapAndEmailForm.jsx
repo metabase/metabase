@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import { Link } from "react-router";
 import { connect } from "react-redux";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import Settings from "metabase/lib/settings";
 import Utils from "metabase/lib/utils";

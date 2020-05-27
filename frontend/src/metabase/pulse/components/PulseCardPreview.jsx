@@ -7,7 +7,7 @@ import Icon from "metabase/components/Icon";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Tooltip from "metabase/components/Tooltip";
 
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import cx from "classnames";
 import { color, alpha } from "metabase/lib/colors";
 

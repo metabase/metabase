@@ -1,5 +1,5 @@
 import React from "react";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import DatePicker, { getDateTimeFieldTarget } from "./DatePicker";
 import HoursMinutesInput from "./HoursMinutesInput";

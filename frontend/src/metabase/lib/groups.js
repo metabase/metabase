@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 const SPECIAL_GROUP_NAMES = new Map([
   ["All Users", t`All Users`],

@@ -8,7 +8,7 @@ import {
 
 import { getVisualizationRaw } from "metabase/visualizations";
 import { normalizeFieldRef } from "metabase/lib/dataset";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import type { Settings, SettingDefs, WidgetDef } from "../settings";
 import type { Series } from "metabase/meta/types/Visualization";

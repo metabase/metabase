@@ -1,7 +1,7 @@
 /* @flow weak */
 
 import React, { Component } from "react";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 

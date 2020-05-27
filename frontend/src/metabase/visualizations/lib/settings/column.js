@@ -1,6 +1,6 @@
 /* @flow */
 
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import moment from "moment";
 import _ from "underscore";
 

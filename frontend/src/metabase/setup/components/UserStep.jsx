@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import { Flex, Box } from "grid-styled";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import User from "metabase/entities/users";

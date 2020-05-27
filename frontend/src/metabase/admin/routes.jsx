@@ -1,7 +1,7 @@
 import React from "react";
 import { Route } from "metabase/hoc/Title";
 import { IndexRoute, IndexRedirect } from "react-router";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import { PLUGIN_ADMIN_ROUTES } from "metabase/plugins";
 

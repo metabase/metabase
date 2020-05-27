@@ -1,5 +1,5 @@
 import React from "react";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import Tooltip from "metabase/components/Tooltip";
 import NightModeIcon from "metabase/components/icons/NightModeIcon";
 import FullscreenIcon from "metabase/components/icons/FullscreenIcon";

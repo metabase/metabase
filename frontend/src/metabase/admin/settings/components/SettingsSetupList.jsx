@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import Icon from "metabase/components/Icon";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import { SetupApi } from "metabase/services";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import { color } from "metabase/lib/colors";
 
 const TaskList = ({ tasks }) => (

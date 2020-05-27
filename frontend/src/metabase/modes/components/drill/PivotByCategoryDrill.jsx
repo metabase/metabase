@@ -1,6 +1,6 @@
 /* @flow */
 
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import { isCategory, isAddress } from "metabase/lib/schema_metadata";
 

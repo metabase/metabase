@@ -1,7 +1,7 @@
 /* @flow */
 
 import React, { Component } from "react";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import ChoroplethMap, {
   getColorplethColorScale,
 } from "../components/ChoroplethMap";

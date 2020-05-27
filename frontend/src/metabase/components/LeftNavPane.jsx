@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, IndexLink } from "react-router";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 export function LeftNavPaneItem({ name, path, index = false }) {
   return (

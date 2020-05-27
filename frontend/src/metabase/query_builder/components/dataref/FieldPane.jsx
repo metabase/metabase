@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import DetailPane from "./DetailPane";
 import QueryButton from "metabase/components/QueryButton";
 import UseForButton from "./UseForButton";

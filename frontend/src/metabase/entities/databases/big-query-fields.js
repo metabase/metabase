@@ -1,5 +1,5 @@
 import React from "react";
-import { t, jt } from "ttag";
+import { t, jt } from "metabase/lib/ttag";
 
 import { color } from "metabase/lib/colors";
 import ExternalLink from "metabase/components/ExternalLink";

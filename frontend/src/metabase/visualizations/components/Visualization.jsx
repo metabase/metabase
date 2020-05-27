@@ -9,7 +9,7 @@ import ChartClickActions from "metabase/visualizations/components/ChartClickActi
 import LoadingSpinner from "metabase/components/LoadingSpinner";
 import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/components/Tooltip";
-import { t, jt } from "ttag";
+import { t, jt } from "metabase/lib/ttag";
 import { duration, formatNumber } from "metabase/lib/formatting";
 import MetabaseAnalytics from "metabase/lib/analytics";
 

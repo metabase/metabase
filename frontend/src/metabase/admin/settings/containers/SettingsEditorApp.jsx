@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import { connect } from "react-redux";
 import title from "metabase/hoc/Title";
 import MetabaseAnalytics from "metabase/lib/analytics";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import AdminLayout from "metabase/components/AdminLayout";
 import { NotFound } from "metabase/containers/ErrorPages";
 

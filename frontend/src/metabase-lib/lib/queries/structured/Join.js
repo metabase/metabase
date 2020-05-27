@@ -1,7 +1,7 @@
 /* @flow */
 
 import { MBQLObjectClause } from "./MBQLClause";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import StructuredQuery from "../StructuredQuery";
 import Dimension, { JoinedDimension } from "metabase-lib/lib/Dimension";

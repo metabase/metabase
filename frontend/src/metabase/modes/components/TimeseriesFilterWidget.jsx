@@ -1,7 +1,7 @@
 /* @flow weak */
 
 import React, { Component } from "react";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import DatePicker from "metabase/query_builder/components/filters/pickers/DatePicker";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
 import SelectButton from "metabase/components/SelectButton";

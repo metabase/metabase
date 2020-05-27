@@ -1,6 +1,6 @@
 import React from "react";
 import Button from "metabase/components/Button";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 export const component = Button;
 
 export const description = `

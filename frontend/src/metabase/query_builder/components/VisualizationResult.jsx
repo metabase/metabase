@@ -1,7 +1,7 @@
 /* eslint "react/prop-types": "warn" */
 
 import React, { Component } from "react";
-import { t, jt } from "ttag";
+import { t, jt } from "metabase/lib/ttag";
 import cx from "classnames";
 
 import ErrorMessage from "metabase/components/ErrorMessage";

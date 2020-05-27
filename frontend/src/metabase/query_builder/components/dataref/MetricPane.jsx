@@ -2,7 +2,7 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import DetailPane from "./DetailPane";
 import QueryButton from "metabase/components/QueryButton";
 import QueryDefinition from "./QueryDefinition";

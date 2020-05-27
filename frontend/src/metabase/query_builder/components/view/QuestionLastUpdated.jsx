@@ -1,7 +1,7 @@
 import React from "react";
 
 import moment from "moment";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import { Flex } from "grid-styled";
 import Icon from "metabase/components/Icon";

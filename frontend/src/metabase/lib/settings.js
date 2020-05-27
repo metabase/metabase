@@ -1,7 +1,7 @@
 /* @flow weak */
 
 import _ from "underscore";
-import { t, ngettext, msgid } from "ttag";
+import { t, ngettext, msgid } from "metabase/lib/ttag";
 import MetabaseUtils from "metabase/lib/utils";
 
 // TODO: dump this from backend settings definitions

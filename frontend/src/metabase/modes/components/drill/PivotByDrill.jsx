@@ -1,7 +1,7 @@
 /* @flow */
 
 import React from "react";
-import { jt } from "ttag";
+import { jt } from "metabase/lib/ttag";
 import BreakoutPopover from "metabase/query_builder/components/BreakoutPopover";
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 

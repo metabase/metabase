@@ -1,6 +1,6 @@
 // code for filling in the missing values in a set of "datas"
 
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import d3 from "d3";
 
 import {

@@ -4,7 +4,7 @@ import ViewButton from "./view/ViewButton";
 import SidebarHeader from "./SidebarHeader";
 
 import cx from "classnames";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 export default function SidebarContent({
   className,

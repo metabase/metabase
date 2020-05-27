@@ -1,6 +1,6 @@
 import React from "react";
 
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import Tooltip from "metabase/components/Tooltip";
 import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";

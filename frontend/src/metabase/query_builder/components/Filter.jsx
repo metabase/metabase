@@ -11,7 +11,7 @@ import { generateTimeFilterValuesDescriptions } from "metabase/lib/query_time";
 import { hasFilterOptions } from "metabase/lib/query/filter";
 import { getFilterArgumentFormatOptions } from "metabase/lib/schema_metadata";
 
-import { t, ngettext, msgid } from "ttag";
+import { t, ngettext, msgid } from "metabase/lib/ttag";
 
 import type { Filter as FilterObject } from "metabase/meta/types/Query";
 import type { Value as ValueType } from "metabase/meta/types/Dataset";

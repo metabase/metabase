@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import MetricsList from "./MetricsList";
 import ColumnsList from "./ColumnsList";
 import SegmentsList from "./SegmentsList";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import InputBlurChange from "metabase/components/InputBlurChange";
 import Databases from "metabase/entities/databases";
 import Tables from "metabase/entities/tables";

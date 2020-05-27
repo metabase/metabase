@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import TextPicker from "./TextPicker";
 
 type Props = {

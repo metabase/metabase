@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import { connect } from "react-redux";
 import PropTypes from "prop-types";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import cx from "classnames";
 
 import Icon from "metabase/components/Icon";

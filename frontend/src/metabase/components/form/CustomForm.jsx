@@ -13,7 +13,7 @@ import ActionButton from "metabase/components/ActionButton";
 import _ from "underscore";
 import cx from "classnames";
 
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import { getIn } from "icepick";
 
 class CustomForm extends React.Component {

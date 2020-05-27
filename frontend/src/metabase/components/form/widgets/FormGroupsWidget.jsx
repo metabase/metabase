@@ -8,7 +8,7 @@ import Toggle from "metabase/components/Toggle";
 
 import Group from "metabase/entities/groups";
 
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import _ from "underscore";
 
 import {

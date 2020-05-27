@@ -1,6 +1,6 @@
 import React from "react";
 import _ from "underscore";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import cx from "classnames";
 import { Box, Flex } from "grid-styled";
 import Icon from "metabase/components/Icon";

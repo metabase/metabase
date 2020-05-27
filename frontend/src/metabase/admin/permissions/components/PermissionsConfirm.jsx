@@ -1,6 +1,6 @@
 import React from "react";
 
-import { t, ngettext, msgid } from "ttag";
+import { t, ngettext, msgid } from "metabase/lib/ttag";
 import Tooltip from "metabase/components/Tooltip";
 
 const GroupName = ({ group }) => (

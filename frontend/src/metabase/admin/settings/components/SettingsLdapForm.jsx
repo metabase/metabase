@@ -1,5 +1,5 @@
 import React from "react";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import { connect } from "react-redux";
 import { updateLdapSettings } from "metabase/admin/settings/settings";

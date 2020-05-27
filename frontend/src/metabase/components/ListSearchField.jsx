@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import Icon from "metabase/components/Icon";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import cx from "classnames";
 
 export default class ListSearchField extends Component {

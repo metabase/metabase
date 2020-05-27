@@ -3,7 +3,7 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
 import AutosizeTextarea from "react-textarea-autosize";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import cx from "classnames";
 import _ from "underscore";
 

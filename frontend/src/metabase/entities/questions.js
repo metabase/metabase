@@ -1,7 +1,7 @@
 /* @flow */
 
 import { assocIn } from "icepick";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import { createEntity, undo } from "metabase/lib/entities";
 import * as Urls from "metabase/lib/urls";

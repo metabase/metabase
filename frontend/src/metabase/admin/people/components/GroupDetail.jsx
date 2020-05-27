@@ -13,7 +13,7 @@ import {
 import { color } from "metabase/lib/colors";
 
 import { PermissionsApi } from "metabase/services";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import Icon from "metabase/components/Icon";
 import Popover from "metabase/components/Popover";
 import UserAvatar from "metabase/components/UserAvatar";

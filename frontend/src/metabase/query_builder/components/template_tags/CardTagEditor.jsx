@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { Link } from "react-router";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import Icon from "metabase/components/Icon";
 import QuestionPicker from "metabase/containers/QuestionPicker";

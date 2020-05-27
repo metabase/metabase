@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 const AuthenticationOption = ({ setting, settingValues }) => (
   <div className="bordered rounded shadowed bg-white p4" style={{ width: 500 }}>

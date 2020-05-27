@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import cx from "classnames";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 export const SERVER_ERROR_MESSAGE = t`Server error encountered`;
 export const UNKNOWN_ERROR_MESSAGE = t`Unknown error encountered`;
 

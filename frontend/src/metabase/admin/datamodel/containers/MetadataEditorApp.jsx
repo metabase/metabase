@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { push, replace } from "react-router-redux";
 
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import MetabaseAnalytics from "metabase/lib/analytics";
 
 import AdminEmptyText from "metabase/components/AdminEmptyText";

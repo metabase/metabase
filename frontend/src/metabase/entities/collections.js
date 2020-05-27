@@ -14,7 +14,7 @@ import {
   getUserPersonalCollectionId,
 } from "metabase/selectors/user";
 
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 const Collections = createEntity({
   name: "collections",

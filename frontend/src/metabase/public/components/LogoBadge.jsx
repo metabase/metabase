@@ -3,7 +3,7 @@
 import React from "react";
 import LogoIcon from "metabase/components/LogoIcon";
 
-import { t, jt } from "ttag";
+import { t, jt } from "metabase/lib/ttag";
 
 type Props = {
   dark: boolean,

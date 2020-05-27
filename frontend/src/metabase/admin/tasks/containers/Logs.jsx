@@ -10,7 +10,7 @@ import "react-ansi-style/inject-css";
 
 import _ from "underscore";
 import moment from "moment";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import Select, { Option } from "metabase/components/Select";
 import { addCSSRule } from "metabase/lib/dom";

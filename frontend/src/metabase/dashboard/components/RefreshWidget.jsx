@@ -6,7 +6,7 @@ import Tooltip from "metabase/components/Tooltip";
 import Icon from "metabase/components/Icon";
 import ClockIcon from "metabase/components/icons/ClockIcon";
 import CountdownIcon from "metabase/components/icons/CountdownIcon";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import cx from "classnames";
 
 const OPTIONS = [

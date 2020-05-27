@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import { color } from "metabase/lib/colors";
 

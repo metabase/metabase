@@ -8,7 +8,7 @@ import { connect } from "react-redux";
 import { push } from "react-router-redux";
 
 import cx from "classnames";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import { Flex, Box } from "grid-styled";
 import styled from "styled-components";
 import { space } from "styled-system";

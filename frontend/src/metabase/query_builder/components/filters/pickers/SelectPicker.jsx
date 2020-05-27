@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import CheckBox from "metabase/components/CheckBox";
 import ListSearchField from "metabase/components/ListSearchField";
 
@@ -81,7 +81,10 @@ export default class SelectPicker extends Component {
   nameForOption(option: SelectOption) {
     if (option.name === "") {
       return t`Empty`;
-    } else if (typeof option.name === "string") {
+    } else if (
+      option.name instanceof String ||
+      typeof option.name === "string"
+    ) {
       return option.name;
     } else {
       return capitalize(String(option.name));

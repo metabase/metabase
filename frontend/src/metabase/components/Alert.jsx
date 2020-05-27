@@ -1,5 +1,5 @@
 import React from "react";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import Modal from "metabase/components/Modal";
 
 const Alert = ({ message, onClose }) => (

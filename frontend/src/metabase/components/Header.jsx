@@ -7,7 +7,7 @@ import HeaderModal from "metabase/components/HeaderModal";
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 import EditBar from "metabase/components/EditBar";
 import EditWarning from "metabase/components/EditWarning";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import { getScrollY } from "metabase/lib/dom";
 
 export default class Header extends Component {

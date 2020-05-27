@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import { formatValue } from "metabase/lib/formatting";
 import { isNumeric } from "metabase/lib/schema_metadata";
 import Icon from "metabase/components/Icon";

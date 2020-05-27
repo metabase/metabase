@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
 import { Link } from "react-router";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import LogoIcon from "metabase/components/LogoIcon";
 import NewsletterForm from "metabase/components/NewsletterForm";
 import MetabaseAnalytics from "metabase/lib/analytics";

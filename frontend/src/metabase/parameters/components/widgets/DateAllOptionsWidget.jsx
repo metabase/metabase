@@ -2,7 +2,7 @@
 
 import React, { Component } from "react";
 import cx from "classnames";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import DatePicker, {
   DATE_OPERATORS,
   getOperator,

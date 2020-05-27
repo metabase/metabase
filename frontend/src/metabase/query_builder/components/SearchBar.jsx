@@ -1,7 +1,7 @@
 import React from "react";
 import PropTypes from "prop-types";
 import ReactDOM from "react-dom";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 export default class SearchBar extends React.Component {
   constructor(props, context) {

@@ -1,5 +1,5 @@
 import { TYPE } from "metabase/lib/types";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 export const field_special_types = [
   /* Overall Row */

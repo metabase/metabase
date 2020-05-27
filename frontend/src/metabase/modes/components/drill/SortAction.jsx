@@ -3,7 +3,7 @@
 import StructuredQuery from "metabase-lib/lib/queries/StructuredQuery";
 import Dimension from "metabase-lib/lib/Dimension";
 
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import type {
   ClickAction,
   ClickActionProps,

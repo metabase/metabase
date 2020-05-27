@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import PropTypes from "prop-types";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import Utils from "metabase/lib/utils";
 import Select, { Option } from "metabase/components/Select";

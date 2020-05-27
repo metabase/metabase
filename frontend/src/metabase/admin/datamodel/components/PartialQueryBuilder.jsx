@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import PropTypes from "prop-types";
 
 import GuiQueryEditor from "metabase/query_builder/components/GuiQueryEditor";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import * as Urls from "metabase/lib/urls";
 
 import cx from "classnames";

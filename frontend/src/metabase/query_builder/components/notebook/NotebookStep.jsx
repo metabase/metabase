@@ -1,6 +1,6 @@
 import React from "react";
 
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 import _ from "underscore";
 
 import { color as c, lighten, darken } from "metabase/lib/colors";

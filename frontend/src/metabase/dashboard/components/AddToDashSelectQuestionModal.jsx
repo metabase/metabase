@@ -1,6 +1,6 @@
 import React from "react";
 import PropTypes from "prop-types";
-import { t } from "ttag";
+import { t } from "metabase/lib/ttag";
 
 import ModalContent from "metabase/components/ModalContent";
 import QuestionPicker from "metabase/containers/QuestionPicker";
