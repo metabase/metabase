@@ -110,6 +110,7 @@
   "Set field order to `field-order`."
   [table field-order]
   {:pre [(valid-field-order? table field-order)]}
+  (db/update! Table (u/get-id table) {:field_order :custom})
   (doall
    (map-indexed (fn [idx field-id]
                   (db/update! Field field-id :position idx))
