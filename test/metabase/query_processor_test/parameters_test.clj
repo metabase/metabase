@@ -117,3 +117,12 @@
           (mt/dataset places-cam-likes
             (is-count-= 2
                         :places :liked :boolean true)))))))
+
+(deftest string-escape-test
+  ;; test `:sql` drivers that support native parameters
+  (mt/test-drivers (set (filter #(isa? driver/hierarchy % :sql) (mt/normal-drivers-with-feature :native-parameters)))
+    (testing "Make sure field filter parameters are properly escaped"
+      (let [query   (field-filter-count-query :venues :name :text "Tito's Tacos")
+            results (qp/process-query query)]
+        (is (= [[1]]
+               (mt/formatted-rows [int] results)))))))

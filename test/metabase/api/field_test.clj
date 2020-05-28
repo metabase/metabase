@@ -12,7 +12,6 @@
              [field-values :refer [FieldValues]]
              [table :refer [Table]]]
             [metabase.test
-             [data :as data]
              [fixtures :as fixtures]
              [util :as tu]]
             [metabase.test.data.users :as test-users]
@@ -30,7 +29,7 @@
 
 (defn- db-details []
   (merge
-   (select-keys (data/db) [:id :created_at :updated_at :timezone])
+   (select-keys (mt/db) [:id :created_at :updated_at :timezone])
    {:engine                      "h2"
     :caveats                     nil
     :points_of_interest          nil
@@ -49,11 +48,11 @@
 (expect
   (merge
    (db/select-one [Field :created_at :updated_at :last_analyzed :fingerprint :fingerprint_version]
-     :id (data/id :users :name))
+     :id (mt/id :users :name))
    {:description         nil
-    :table_id            (data/id :users)
+    :table_id            (mt/id :users)
     :table               (merge
-                          (db/select-one [Table :created_at :updated_at :fields_hash] :id (data/id :users))
+                          (db/select-one [Table :created_at :updated_at :fields_hash] :id (mt/id :users))
                           {:description             nil
                            :entity_type             "entity/UserTable"
                            :visibility_type         nil
@@ -64,8 +63,8 @@
                            :rows                    nil
                            :entity_name             nil
                            :active                  true
-                           :id                      (data/id :users)
-                           :db_id                   (data/id)
+                           :id                      (mt/id :users)
+                           :db_id                   (mt/id)
                            :caveats                 nil
                            :points_of_interest      nil
                            :show_in_getting_started false})
@@ -75,7 +74,7 @@
     :caveats             nil
     :points_of_interest  nil
     :active              true
-    :id                  (data/id :users :name)
+    :id                  (mt/id :users :name)
     :visibility_type     "normal"
     :position            0
     :preview_display     true
@@ -87,7 +86,7 @@
     :dimensions          []
     :name_field          nil
     :settings            nil})
-  ((test-users/user->client :rasta) :get 200 (format "field/%d" (data/id :users :name))))
+  ((test-users/user->client :rasta) :get 200 (format "field/%d" (mt/id :users :name))))
 
 
 
@@ -96,7 +95,7 @@
 (expect
   [["count" 75]                         ; why doesn't this come back as a dictionary ?
    ["distincts" 75]]
-  ((test-users/user->client :rasta) :get 200 (format "field/%d/summary" (data/id :categories :name))))
+  ((test-users/user->client :rasta) :get 200 (format "field/%d/summary" (mt/id :categories :name))))
 
 
 ;;; ----------------------------------------------- PUT /api/field/:id -----------------------------------------------
@@ -164,7 +163,7 @@
 (defn- field->field-values
   "Fetch the `FieldValues` object that corresponds to a given `Field`."
   [table-kw field-kw]
-  (FieldValues :field_id (data/id table-kw field-kw)))
+  (FieldValues :field_id (mt/id table-kw field-kw)))
 
 (defn- field-values-id [table-key field-key]
   (:id (field->field-values table-key field-key)))
@@ -172,23 +171,23 @@
 ;; ## GET /api/field/:id/values
 ;; Should return something useful for a field whose `has_field_values` is `list`
 (expect
-  {:values [[1] [2] [3] [4]], :field_id (data/id :venues :price)}
+  {:values [[1] [2] [3] [4]], :field_id (mt/id :venues :price)}
   (do
     ;; clear out existing human_readable_values in case they're set
     (db/update! FieldValues (field-values-id :venues :price)
       :human_readable_values nil)
     ;; now update the values via the API
-    ((test-users/user->client :rasta) :get 200 (format "field/%d/values" (data/id :venues :price)))))
+    ((test-users/user->client :rasta) :get 200 (format "field/%d/values" (mt/id :venues :price)))))
 
 ;; Should return nothing for a field whose `has_field_values` is not `list`
 (expect
-  {:values [], :field_id (data/id :venues :id)}
-  ((test-users/user->client :rasta) :get 200 (format "field/%d/values" (data/id :venues :id))))
+  {:values [], :field_id (mt/id :venues :id)}
+  ((test-users/user->client :rasta) :get 200 (format "field/%d/values" (mt/id :venues :id))))
 
 ;; Sensisitive fields do not have field values and should return empty
 (expect
-  {:values [], :field_id (data/id :users :password)}
-  ((test-users/user->client :rasta) :get 200 (format "field/%d/values" (data/id :users :password))))
+  {:values [], :field_id (mt/id :users :password)}
+  ((test-users/user->client :rasta) :get 200 (format "field/%d/values" (mt/id :users :password))))
 
 
 ;;; ------------------------------------------- POST /api/field/:id/values -------------------------------------------
@@ -584,26 +583,26 @@
     (mt/test-drivers (mt/normal-drivers)
       (is (= [[1 "Red Medicine"]]
              (mt/format-rows-by [int str]
-               (field-api/search-values (Field (data/id :venues :id))
-                                        (Field (data/id :venues :name))
+               (field-api/search-values (Field (mt/id :venues :id))
+                                        (Field (mt/id :venues :name))
                                         "Red")))))
     (tqp.test/test-timeseries-drivers
       (is (= [["139" "Red Medicine"]
               ["375" "Red Medicine"]
               ["72"  "Red Medicine"]]
-             (field-api/search-values (Field (data/id :checkins :id))
-                                      (Field (data/id :checkins :venue_name))
+             (field-api/search-values (Field (mt/id :checkins :id))
+                                      (Field (mt/id :checkins :venue_name))
                                       "Red"))))))
 
 (deftest search-values-with-field-same-as-search-field-test
   (testing "make sure it also works if you use the same Field twice"
     (mt/test-drivers (mt/normal-drivers)
       (is (= [["Red Medicine" "Red Medicine"]]
-             (field-api/search-values (Field (data/id :venues :name))
-                                      (Field (data/id :venues :name))
+             (field-api/search-values (Field (mt/id :venues :name))
+                                      (Field (mt/id :venues :name))
                                       "Red"))))
     (tqp.test/test-timeseries-drivers
       (is (= [["Red Medicine" "Red Medicine"]]
-             (field-api/search-values (Field (data/id :checkins :venue_name))
-                                      (Field (data/id :checkins :venue_name))
+             (field-api/search-values (Field (mt/id :checkins :venue_name))
+                                      (Field (mt/id :checkins :venue_name))
                                       "Red"))))))
