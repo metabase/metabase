@@ -570,9 +570,11 @@
     (dorun (pmap (fn [[field & vs]]
                    (testing (format "\nfield = %s" field)
                      (dorun (pmap (fn [[unit expected]]
-                                    (testing (format "\nunit = %s" unit)
-                                      (is (= expected
-                                             (f field unit)))))
+                                    (let [result (f field unit)]
+                                      (locking f
+                                        (testing (format "\nunit = %s" unit)
+                                          (is (= expected
+                                                 result))))))
                                   (zipmap units vs)))))
                  (rest table)))))
 
