@@ -19,6 +19,7 @@ export type Options = {
   cancelled?: Promise<any>,
   raw?: { [key: string]: boolean },
   hasBody?: boolean,
+  bodyParamName?: string,
 };
 
 const ONE_SECOND = 1000;
