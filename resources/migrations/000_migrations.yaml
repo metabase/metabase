@@ -6241,7 +6241,7 @@ databaseChangeLog:
   - changeSet:
       id: 166
       author: camsaul
-      comment: Added 0.36.0
+      comment: Added 0.36.0/1.35.4
       changes:
         - modifyDataType:
             tableName: metabase_fieldvalues
