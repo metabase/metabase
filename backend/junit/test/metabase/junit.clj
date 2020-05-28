@@ -3,7 +3,6 @@
   (:require [clojure
              [pprint :as pp]
              [string :as str]]
-            [clojure.data.xml :as xml]
             [pjstadig.print :as p]
             [test-report-junit-xml.core :as junit-xml]))
 
@@ -52,4 +51,4 @@
 (defmethod format-result :fail
   [event]
   {:tag     :failure
-   :content (xml/cdata (result-output event))})
+   :content (result-output event)})
