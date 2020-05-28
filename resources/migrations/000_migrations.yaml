@@ -6212,7 +6212,7 @@ databaseChangeLog:
       changes:
         - dropTable:
             tableName: query_queryexecution
-            
+
 # Drop Card.read_permissions. Prior to 0.30.0 Card permissions were always based on the Database/Table(s) being
 # queried (i.e., the permissions model we use for ad-hoc queries). These permissions were calculated and stored in
 # `read_permissions` for performance reasons. In 0.30.0, we switched to having Card permissions always be inherited
@@ -6244,7 +6244,7 @@ databaseChangeLog:
 
 # Add Field `database_position` to keep the order in which fields are ordered in the DB and Table `field_order` setting.
 
-- changeSet:
+  - changeSet:
       id: 165
       author: sb
       comment: 'Added field_order to Table and database_position to Field'
