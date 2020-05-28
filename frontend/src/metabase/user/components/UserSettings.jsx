@@ -4,7 +4,6 @@ import PropTypes from "prop-types";
 import { Box, Flex } from "grid-styled";
 
 import { t } from "ttag";
-import MetabaseSettings from "metabase/lib/settings";
 
 import User from "metabase/entities/users";
 
@@ -77,9 +76,11 @@ export default class UserSettings extends Component {
             <User.Form
               {...this.props}
               form={User.forms.user}
-              onSaved={({ locale }) =>
-                MetabaseSettings.set("user-locale", locale)
-              }
+              onSaved={({ locale }) => {
+                if (locale !== this.props.user.locale) {
+                  window.location.reload();
+                }
+              }}
             />
           ) : tab === "password" ? (
             <SetUserPassword

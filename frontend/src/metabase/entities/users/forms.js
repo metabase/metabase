@@ -8,7 +8,7 @@ import FormGroupsWidget from "metabase/components/form/widgets/FormGroupsWidget"
 
 import type { FormFieldDefinition } from "metabase/containers/Form";
 
-const DETAILS_FORM_FIELDS: FormFieldDefinition[] = [
+const DETAILS_FORM_FIELDS: () => FormFieldDefinition[] = () => [
   {
     name: "first_name",
     title: t`First name`,
@@ -27,21 +27,22 @@ const DETAILS_FORM_FIELDS: FormFieldDefinition[] = [
     placeholder: "youlooknicetoday@email.com",
     validate: validate.required().email(),
   },
-  {
-    name: "locale",
-    title: t`Language`,
-    type: "select",
-    options: [
-      [null, t`Use site default`],
-      ..._.sortBy(
-        MetabaseSettings.get("available-locales") || [["en", "English"]],
-        ([code, name]) => name,
-      ),
-    ].map(([code, name]) => ({ name, value: code })),
-  },
 ];
 
-const PASSWORD_FORM_FIELDS: FormFieldDefinition[] = [
+const LOCALE_FIELD: FormFieldDefinition = {
+  name: "locale",
+  title: t`Language`,
+  type: "select",
+  options: [
+    [null, t`Use site default`],
+    ..._.sortBy(
+      MetabaseSettings.get("available-locales") || [["en", "English"]],
+      ([code, name]) => name,
+    ),
+  ].map(([code, name]) => ({ name, value: code })),
+};
+
+const PASSWORD_FORM_FIELDS: () => FormFieldDefinition[] = () => [
   {
     name: "password",
     title: t`Create a password`,
@@ -63,7 +64,7 @@ const PASSWORD_FORM_FIELDS: FormFieldDefinition[] = [
 export default {
   admin: {
     fields: [
-      ...DETAILS_FORM_FIELDS,
+      ...DETAILS_FORM_FIELDS(),
       {
         name: "group_ids",
         title: t`Groups`,
@@ -73,12 +74,12 @@ export default {
     ],
   },
   user: {
-    fields: [...DETAILS_FORM_FIELDS],
+    fields: [...DETAILS_FORM_FIELDS(), LOCALE_FIELD],
   },
-  setup: {
+  setup: () => ({
     fields: [
-      ...DETAILS_FORM_FIELDS,
-      ...PASSWORD_FORM_FIELDS,
+      ...DETAILS_FORM_FIELDS(),
+      ...PASSWORD_FORM_FIELDS(),
       {
         name: "site_name",
         title: t`Your company or team name`,
@@ -86,7 +87,7 @@ export default {
         validate: validate.required(),
       },
     ],
-  },
+  }),
   password: {
     fields: [
       {
@@ -96,10 +97,10 @@ export default {
         placeholder: t`Shhh...`,
         validate: validate.required(),
       },
-      ...PASSWORD_FORM_FIELDS,
+      ...PASSWORD_FORM_FIELDS(),
     ],
   },
   password_reset: {
-    fields: [...PASSWORD_FORM_FIELDS],
+    fields: [...PASSWORD_FORM_FIELDS()],
   },
 };

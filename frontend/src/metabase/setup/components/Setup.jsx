@@ -2,7 +2,6 @@
 import React, { Component } from "react";
 import ReactDOM from "react-dom";
 import PropTypes from "prop-types";
-import { Link } from "react-router";
 import { t } from "ttag";
 import LogoIcon from "metabase/components/LogoIcon";
 import NewsletterForm from "metabase/components/NewsletterForm";
@@ -37,10 +36,6 @@ export default class Setup extends Component {
     MetabaseAnalytics.trackEvent("Setup", "Welcome");
   }
 
-  completeSetup() {
-    MetabaseAnalytics.trackEvent("Setup", "Complete");
-  }
-
   renderFooter() {
     return (
       <div className="SetupHelp bordered border-dashed p2 rounded mb4">
@@ -69,6 +64,10 @@ export default class Setup extends Component {
           node && node.scrollIntoView && node.scrollIntoView();
         }
       }, 10);
+    }
+
+    if (!this.props.setupComplete && nextProps.setupComplete) {
+      MetabaseAnalytics.trackEvent("Setup", "Complete");
     }
   }
 
@@ -150,11 +149,11 @@ export default class Setup extends Component {
                     />
                   </div>
                   <div className="pt4 pb2">
-                    <Link
-                      to="/"
+                    {/* We use <a> rather than <Link> because we want a full refresh in case locale changed. */}
+                    <a
+                      href="/"
                       className="Button Button--primary"
-                      onClick={this.completeSetup.bind(this)}
-                    >{t`Take me to Metabase`}</Link>
+                    >{t`Take me to Metabase`}</a>
                   </div>
                 </section>
               ) : null}
