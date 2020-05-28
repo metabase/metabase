@@ -119,7 +119,7 @@
 
 ;;; --------------------------------------------------- Hydration ----------------------------------------------------
 
-(defn fields
+(defn ^:hydrate fields
   "Return the Fields belonging to a single `table`."
   [{:keys [id] :as table}]
   (db/select Field
@@ -187,7 +187,6 @@
 (defn with-fields
   "Efficiently hydrate the Fields for a collection of `tables`.
    Note: does not respect `:field_order` setting of individual tables, but rather sorts by name."
-  {:batched-hydrate :fields}
   [tables]
   (with-objects :fields
     (fn [table-ids]
