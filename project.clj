@@ -208,7 +208,8 @@
    ;; output test results in JUnit XML format
    :junit
    {:dependencies
-    [[pjstadig/humane-test-output "0.10.0"]
+    [[org.clojure/data.xml "0.0.8"]
+     [pjstadig/humane-test-output "0.10.0"]
      [test-report-junit-xml "0.2.0"]]
 
     :plugins
